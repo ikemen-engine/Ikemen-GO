@@ -1,1 +1,1 @@
-print('hello')
+while true do refresh() end

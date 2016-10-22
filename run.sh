@@ -2,4 +2,4 @@
 GOPATH=`pwd`/go
 export GOPATH
 go fmt ./src/*.go
-go run ./src/main.go
+go run ./src/*.go

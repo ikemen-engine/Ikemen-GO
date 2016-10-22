@@ -10,8 +10,7 @@ func init() {
 	runtime.LockOSThread()
 }
 func main() {
-	err := glfw.Init()
-	if err != nil {
+	if err := glfw.Init(); err != nil {
 		panic(err)
 	}
 	defer glfw.Terminate()
@@ -22,11 +21,24 @@ func main() {
 	window.MakeContextCurrent()
 	l := lua.NewState()
 	lua.OpenLibraries(l)
-	if err := lua.DoFile(l, "script/main.lua"); err != nil {
-		panic(err)
-	}
-	for !window.ShouldClose() {
+	l.PushGoFunction(func(*lua.State) int {
+		if window.ShouldClose() {
+			panic(lua.RuntimeError("<game end>"))
+		}
 		window.SwapBuffers()
 		glfw.PollEvents()
+		return 0
+	})
+	l.SetGlobal("refresh")
+	if err := lua.DoFile(l, "script/main.lua"); err != nil {
+		switch err.(type) {
+		case lua.RuntimeError:
+			errstr := err.Error()
+			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
+				panic(err)
+			}
+		default:
+			panic(err)
+		}
 	}
 }
