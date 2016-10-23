@@ -33,7 +33,7 @@ func await(fps int) {
 		redrawWait.lastDraw = now
 		frameSkip = false
 	default:
-		if -diff > 150*time.Millisecond {
+		if diff < -150*time.Millisecond {
 			redrawWait.nextTime = now.Add(wait)
 		}
 		frameSkip = true
