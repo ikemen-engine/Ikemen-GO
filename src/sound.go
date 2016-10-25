@@ -105,7 +105,6 @@ func (v *Vorbis) clear() {
 		chk(v.fh.Close())
 		v.fh = nil
 	}
-	v.buf = nil
 }
 func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 	var o1i int
@@ -133,8 +132,9 @@ func (v *Vorbis) read() (out []int16) {
 			v.buf = v.buf[audioOutLen*2:]
 			return
 		}
-		for len(v.buf) < audioOutLen*2 && v.dec != nil {
-			sam, err := v.dec.DecodePacket()
+		localdec := v.dec
+		for ; len(v.buf) < audioOutLen*2 && localdec != nil; localdec = v.dec {
+			sam, err := localdec.DecodePacket()
 			if err == io.EOF {
 				v.restart()
 				continue
