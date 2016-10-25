@@ -5,6 +5,7 @@ import (
 	"github.com/timshannon/go-openal/openal"
 	"io"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -75,6 +76,7 @@ type Vorbis struct {
 	dec *vorbis.Vorbis
 	fh  *os.File
 	buf []int16
+	mut sync.Mutex
 }
 
 func (v *Vorbis) open(file string) bool {
@@ -86,6 +88,8 @@ func (v *Vorbis) open(file string) bool {
 	return v.restart()
 }
 func (v *Vorbis) restart() bool {
+	v.mut.Lock()
+	defer v.mut.Unlock()
 	if v.fh == nil {
 		return false
 	}
@@ -95,6 +99,7 @@ func (v *Vorbis) restart() bool {
 		v.clear()
 		return false
 	}
+	v.buf = nil
 	return true
 }
 func (v *Vorbis) clear() {
