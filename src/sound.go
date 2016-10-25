@@ -5,7 +5,6 @@ import (
 	"github.com/timshannon/go-openal/openal"
 	"io"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -14,7 +13,7 @@ const (
 	audioFrequency = 48000
 )
 
-var bgm = &Vorbis{}
+var bgm = &Vorbis{openReq: make(chan string, 1)}
 var audioContext *openal.Context
 
 func audioOpen() {
@@ -73,13 +72,16 @@ func soundWrite() {
 }
 
 type Vorbis struct {
-	dec *vorbis.Vorbis
-	fh  *os.File
-	buf []int16
-	mut sync.Mutex
+	dec     *vorbis.Vorbis
+	fh      *os.File
+	buf     []int16
+	openReq chan string
 }
 
-func (v *Vorbis) open(file string) bool {
+func (v *Vorbis) Open(file string) {
+	v.openReq <- file
+}
+func (v *Vorbis) openFile(file string) bool {
 	v.clear()
 	var err error
 	if v.fh, err = os.Open(file); err != nil {
@@ -88,8 +90,6 @@ func (v *Vorbis) open(file string) bool {
 	return v.restart()
 }
 func (v *Vorbis) restart() bool {
-	v.mut.Lock()
-	defer v.mut.Unlock()
 	if v.fh == nil {
 		return false
 	}
@@ -131,6 +131,11 @@ func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 	return
 }
 func (v *Vorbis) read() (out []int16) {
+	select {
+	case file := <-v.openReq:
+		v.openFile(file)
+	default:
+	}
 	for v.dec != nil {
 		if len(v.buf) >= audioOutLen*2 {
 			out = v.buf[:audioOutLen*2]

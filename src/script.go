@@ -19,7 +19,7 @@ func strArg(l *lua.State, argi int) string {
 }
 func scriptCommonInit(l *lua.State) {
 	luaRegister(l, "playBGM", func(l *lua.State) int {
-		bgm.open(strArg(l, 1))
+		bgm.Open(strArg(l, 1))
 		return 0
 	})
 }
