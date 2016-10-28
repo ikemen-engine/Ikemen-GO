@@ -22,6 +22,7 @@ func chk(err error) {
 	}
 }
 func await(fps int) {
+	playSound()
 	if !frameSkip {
 		window.SwapBuffers()
 	}
