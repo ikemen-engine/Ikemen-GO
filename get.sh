@@ -1,5 +1,5 @@
 #!/bin/sh
-GOPATH=`pwd`/go
+GOPATH=$PWD/go
 export GOPATH
 go get -u github.com/Shopify/go-lua
 go get -u github.com/go-gl/glfw/v3.2/glfw

@@ -1,5 +1,5 @@
 #!/bin/sh
-GOPATH=`pwd`/go
+GOPATH=$PWD/go
 export GOPATH
 go fmt ./src/*.go
 godoc -src ./src .* > godoc.txt
