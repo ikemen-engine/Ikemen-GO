@@ -3,4 +3,4 @@ GOPATH=$PWD/go
 export GOPATH
 go fmt ./src/*.go
 godoc -src ./src .* > godoc.txt
-go run ./src/*.go
+GODEBUG=cgocheck=0 go run ./src/*.go

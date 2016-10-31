@@ -56,12 +56,16 @@ func await(fps int) {
 func main() {
 	chk(glfw.Init())
 	defer glfw.Terminate()
-	chk(gl.Init())
+	glfw.WindowHint(glfw.Resizable, glfw.False)
+	glfw.WindowHint(glfw.ContextVersionMajor, 2)
+	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	var err error
 	window, err =
 		glfw.CreateWindow(windowWidth, windowHeight, "Ikemen GO", nil, nil)
 	chk(err)
 	window.MakeContextCurrent()
+	chk(gl.Init())
+	gltest()
 	glfw.SwapInterval(1)
 	l := lua.NewState()
 	audioOpen()
