@@ -176,13 +176,13 @@ func (sh *SffHeader) read(f *os.File, lofs *uint32, tofs *uint32) error {
 		if err := read(&sh.numberOfPalettes); err != nil {
 			return err
 		}
-		if err := read(&lofs); err != nil {
+		if err := read(lofs); err != nil {
 			return err
 		}
 		if err := read(&dummy); err != nil {
 			return err
 		}
-		if err := read(&tofs); err != nil {
+		if err := read(tofs); err != nil {
 			return err
 		}
 	default:
