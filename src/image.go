@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/binary"
 	"github.com/go-gl/gl/v2.1/gl"
+	"os"
 	"strings"
 )
 
@@ -106,4 +108,85 @@ func gltest() {
 	gl.GetUniformLocationARB(shaderFcS, gl.Str("color\x00"))
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
+}
+
+type SffHeader struct {
+	ver0, ver1, ver2, ver3   byte
+	firstSpriteHeaderOffset  uint32
+	firstPaletteHeaderOffset uint32
+	numberOfPalettes         uint32
+	numberOfSprites          uint32
+}
+
+func (sh *SffHeader) read(f *os.File, lofs *uint32, tofs *uint32) error {
+	buf := make([]byte, 12)
+	n, err := f.Read(buf)
+	if err != nil {
+		return err
+	}
+	if string(buf[:n]) != "ElecbyteSpr\x00" {
+		return Error("ElecbyteSprではありません")
+	}
+	read := func(x interface{}) error {
+		return binary.Read(f, binary.LittleEndian, x)
+	}
+	if err := read(&sh.ver3); err != nil {
+		return err
+	}
+	if err := read(&sh.ver2); err != nil {
+		return err
+	}
+	if err := read(&sh.ver1); err != nil {
+		return err
+	}
+	if err := read(&sh.ver0); err != nil {
+		return err
+	}
+	var dummy uint32
+	if err := read(&dummy); err != nil {
+		return err
+	}
+	switch sh.ver0 {
+	case 1:
+		sh.firstPaletteHeaderOffset ,sh.numberOfPalettes = 0,0
+		if err := read(&sh.numberOfSprites); err != nil {
+			return err
+		}
+		if err := read(&sh.firstSpriteHeaderOffset); err != nil {
+			return err
+		}
+		if err := read(&dummy); err != nil {
+			return err
+		}
+	case 2:
+		for i := 0; i < 4; i++ {
+			if err := read(&dummy); err != nil {
+				return err
+			}
+		}
+		if err := read(&sh.firstSpriteHeaderOffset); err != nil {
+			return err
+		}
+		if err := read(&sh.numberOfSprites); err != nil {
+			return err
+		}
+		if err := read(&sh.firstPaletteHeaderOffset); err != nil {
+			return err
+		}
+		if err := read(&sh.numberOfPalettes); err != nil {
+			return err
+		}
+		if err := read(&lofs); err != nil {
+			return err
+		}
+		if err := read(&dummy); err != nil {
+			return err
+		}
+		if err := read(&tofs); err != nil {
+			return err
+		}
+	default:
+		return Error("バージョンが不正です")
+	}
+	return nil
 }
