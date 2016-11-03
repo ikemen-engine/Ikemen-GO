@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"github.com/go-gl/gl/v2.1/gl"
+	"image/color"
 	"os"
 	"strings"
 )
@@ -110,15 +111,74 @@ func gltest() {
 	gl.DeleteObjectARB(vertObj)
 }
 
-type SffHeader struct {
-	ver0, ver1, ver2, ver3   byte
-	firstSpriteHeaderOffset  uint32
-	firstPaletteHeaderOffset uint32
-	numberOfPalettes         uint32
-	numberOfSprites          uint32
+type PalleteList struct {
+	palletes   [][]color.Color
+	palleteMap []int
+	PalTable   map[[2]int16]int
 }
 
-func (sh *SffHeader) read(f *os.File, lofs *uint32, tofs *uint32) error {
+func (pl *PalleteList) Clear() {
+	pl.palletes = nil
+	pl.palleteMap = nil
+	pl.PalTable = make(map[[2]int16]int)
+}
+func (pl *PalleteList) SetSource(i int, p []color.Color) {
+	if i < len(pl.palleteMap) {
+		pl.palleteMap[i] = i
+	} else {
+		for i > len(pl.palleteMap) {
+			AppendI(&pl.palleteMap, len(pl.palleteMap))
+		}
+		AppendI(&pl.palleteMap, i)
+	}
+	if i < len(pl.palletes) {
+		pl.palletes[i] = p
+	} else {
+		for i > len(pl.palletes) {
+			AppendPal(&pl.palletes, nil)
+		}
+		AppendPal(&pl.palletes, p)
+	}
+}
+func (pl *PalleteList) NewPal() (i int, p []color.Color) {
+	i = len(pl.palletes)
+	p = make([]color.Color, 256)
+	pl.SetSource(i, p)
+	return
+}
+func (pl *PalleteList) Get(i int) []color.Color {
+	return pl.palletes[pl.palleteMap[i]]
+}
+func (pl *PalleteList) Remap(source int, destination int) {
+	pl.palleteMap[source] = destination
+}
+func (pl *PalleteList) ResetRemap() {
+	for i := range pl.palleteMap {
+		pl.palleteMap[i] = i
+	}
+}
+func (pl *PalleteList) GetPalMap() []int {
+	pm := make([]int, len(pl.palleteMap))
+	copy(pm, pl.palleteMap)
+	return pm
+}
+func (pl *PalleteList) SwapPalMap(palMap *[]int) bool {
+	if len(*palMap) != len(pl.palleteMap) {
+		return false
+	}
+	*palMap, pl.palleteMap = pl.palleteMap, *palMap
+	return true
+}
+
+type SffHeader struct {
+	Ver0, Ver1, Ver2, Ver3   byte
+	FirstSpriteHeaderOffset  uint32
+	FirstPaletteHeaderOffset uint32
+	NumberOfSprites          uint32
+	NumberOfPalettes         uint32
+}
+
+func (sh *SffHeader) Read(f *os.File, lofs *uint32, tofs *uint32) error {
 	buf := make([]byte, 12)
 	n, err := f.Read(buf)
 	if err != nil {
@@ -130,29 +190,29 @@ func (sh *SffHeader) read(f *os.File, lofs *uint32, tofs *uint32) error {
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
 	}
-	if err := read(&sh.ver3); err != nil {
+	if err := read(&sh.Ver3); err != nil {
 		return err
 	}
-	if err := read(&sh.ver2); err != nil {
+	if err := read(&sh.Ver2); err != nil {
 		return err
 	}
-	if err := read(&sh.ver1); err != nil {
+	if err := read(&sh.Ver1); err != nil {
 		return err
 	}
-	if err := read(&sh.ver0); err != nil {
+	if err := read(&sh.Ver0); err != nil {
 		return err
 	}
 	var dummy uint32
 	if err := read(&dummy); err != nil {
 		return err
 	}
-	switch sh.ver0 {
+	switch sh.Ver0 {
 	case 1:
-		sh.firstPaletteHeaderOffset ,sh.numberOfPalettes = 0,0
-		if err := read(&sh.numberOfSprites); err != nil {
+		sh.FirstPaletteHeaderOffset, sh.NumberOfPalettes = 0, 0
+		if err := read(&sh.NumberOfSprites); err != nil {
 			return err
 		}
-		if err := read(&sh.firstSpriteHeaderOffset); err != nil {
+		if err := read(&sh.FirstSpriteHeaderOffset); err != nil {
 			return err
 		}
 		if err := read(&dummy); err != nil {
@@ -164,16 +224,16 @@ func (sh *SffHeader) read(f *os.File, lofs *uint32, tofs *uint32) error {
 				return err
 			}
 		}
-		if err := read(&sh.firstSpriteHeaderOffset); err != nil {
+		if err := read(&sh.FirstSpriteHeaderOffset); err != nil {
 			return err
 		}
-		if err := read(&sh.numberOfSprites); err != nil {
+		if err := read(&sh.NumberOfSprites); err != nil {
 			return err
 		}
-		if err := read(&sh.firstPaletteHeaderOffset); err != nil {
+		if err := read(&sh.FirstPaletteHeaderOffset); err != nil {
 			return err
 		}
-		if err := read(&sh.numberOfPalettes); err != nil {
+		if err := read(&sh.NumberOfPalettes); err != nil {
 			return err
 		}
 		if err := read(lofs); err != nil {

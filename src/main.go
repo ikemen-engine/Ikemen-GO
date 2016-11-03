@@ -1,5 +1,6 @@
 package main
 
+//go:generate go run ./gen/gen.go
 import (
 	"github.com/Shopify/go-lua"
 	"github.com/go-gl/gl/v2.1/gl"
