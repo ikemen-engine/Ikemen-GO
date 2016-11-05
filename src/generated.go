@@ -1,7 +1,5 @@
 package main
 
-import "image/color"
-
 func AppendI(slice *[]int, data ...int) {
 	m := len(*slice)
 	n := m + len(data)
@@ -13,11 +11,11 @@ func AppendI(slice *[]int, data ...int) {
 	*slice = (*slice)[:n]
 	copy((*slice)[m:n], data)
 }
-func AppendPal(slice *[][]color.Color, data ...[]color.Color) {
+func AppendPal(slice *[][]uint32, data ...[]uint32) {
 	m := len(*slice)
 	n := m + len(data)
 	if n > cap(*slice) {
-		newSlice := make([][]color.Color, n+n/4)
+		newSlice := make([][]uint32, n+n/4)
 		copy(newSlice, *slice)
 		*slice = newSlice
 	}

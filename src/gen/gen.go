@@ -4,7 +4,7 @@ import "os"
 
 var AppendFunc = [...][2]string{
 	{"I", "int"},
-	{"Pal", "[]color.Color"},
+	{"Pal", "[]uint32"},
 }
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 			panic(err)
 		}
 	}
-	write("package main\n\nimport \"image/color\"\n\n")
+	write("package main\n\n")
 	for i := range AppendFunc {
 		write("func Append")
 		write(AppendFunc[i][0])

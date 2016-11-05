@@ -300,7 +300,7 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 
 type Vorbis struct {
 	dec        *vorbis.Vorbis
-	fh         *os.File
+	fd         *os.File
 	buf        []int16
 	bufi       float64
 	openReq    chan string
@@ -316,18 +316,18 @@ func (v *Vorbis) Open(file string) {
 func (v *Vorbis) openFile(file string) bool {
 	v.clear()
 	var err error
-	if v.fh, err = os.Open(file); err != nil {
+	if v.fd, err = os.Open(file); err != nil {
 		return false
 	}
 	return v.restart()
 }
 func (v *Vorbis) restart() bool {
-	if v.fh == nil {
+	if v.fd == nil {
 		return false
 	}
-	_, err := v.fh.Seek(0, 0)
+	_, err := v.fd.Seek(0, 0)
 	chk(err)
-	if v.dec, err = vorbis.Open(v.fh); err != nil {
+	if v.dec, err = vorbis.Open(v.fd); err != nil {
 		v.clear()
 		return false
 	}
@@ -338,9 +338,9 @@ func (v *Vorbis) clear() {
 	if v.dec != nil {
 		v.dec = nil
 	}
-	if v.fh != nil {
-		chk(v.fh.Close())
-		v.fh = nil
+	if v.fd != nil {
+		chk(v.fd.Close())
+		v.fd = nil
 	}
 }
 func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
@@ -495,7 +495,7 @@ func LoadSndFile(filename string) (*Snd, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { chk(f.Close()) }()
 	buf := make([]byte, 12)
 	var n int
 	if n, err = f.Read(buf); err != nil {
