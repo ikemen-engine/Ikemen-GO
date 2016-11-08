@@ -4,6 +4,7 @@ import "os"
 
 var AppendFunc = [...][2]string{
 	{"I", "int"},
+	{"U32", "uint32"},
 	{"Pal", "[]uint32"},
 }
 
