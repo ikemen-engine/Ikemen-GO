@@ -27,9 +27,11 @@ func NewTexture() (t *Texture) {
 	return
 }
 
-type PalFX struct{}
+type PalFX struct {
+	Remap []int
+}
 
-func (fx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
+func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	add, mul [3]float32) {
 	neg = false
 	color = 1
@@ -225,7 +227,6 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 		}
 		return nil
 	}
-	var palletSame bool
 	var dummy *Sprite
 	var newSubHeaderOffset []uint32
 	AppendU32(&newSubHeaderOffset, shofs)
@@ -256,7 +257,7 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 			switch h.Ver0 {
 			case 1:
 				if err := s.read(f, h, int64(shofs+32), size, xofs, dummy,
-					&palletSame, pl, false); err != nil {
+					pl, false); err != nil {
 					return nil, err
 				}
 			case 2:
@@ -283,27 +284,27 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 		s.palidx = -1
 		return s, nil
 	}
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-	size = 0
-	indexOfPrevious = uint16(s.palidx)
-	ip := indexOfPrevious + 1
-	for size == 0 && ip != indexOfPrevious {
-		ip = indexOfPrevious
-		shofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
-		f.Seek(int64(shofs)+6, 0)
-		if err := read(&indexOfPrevious); err != nil {
-			return nil, err
-		}
-		if err := read(&xofs); err != nil {
-			return nil, err
-		}
-		if err := read(&size); err != nil {
-			return nil, err
-		}
-	}
 	if s.rle != -12 {
+		read := func(x interface{}) error {
+			return binary.Read(f, binary.LittleEndian, x)
+		}
+		size = 0
+		indexOfPrevious = uint16(s.palidx)
+		ip := indexOfPrevious + 1
+		for size == 0 && ip != indexOfPrevious {
+			ip = indexOfPrevious
+			shofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
+			f.Seek(int64(shofs)+6, 0)
+			if err := read(&indexOfPrevious); err != nil {
+				return nil, err
+			}
+			if err := read(&xofs); err != nil {
+				return nil, err
+			}
+			if err := read(&size); err != nil {
+				return nil, err
+			}
+		}
 		f.Seek(int64(lofs+xofs), 0)
 		s.Pal = make([]uint32, 256)
 		var rgba [4]byte
@@ -313,8 +314,8 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 			}
 			s.Pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 		}
+		s.palidx = -1
 	}
-	s.palidx = -1
 	return s, nil
 }
 func (s *Sprite) shareCopy(src *Sprite) {
@@ -439,9 +440,8 @@ func (s *Sprite) RlePcxDecode(rle []byte) (p []byte) {
 	s.rle = 0
 	return
 }
-func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64,
-	datasize uint32, nextSubheader uint32, prev *Sprite,
-	palletSame *bool, pl *PalleteList, c00 bool) error {
+func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
+	nextSubheader uint32, prev *Sprite, pl *PalleteList, c00 bool) error {
 	if int64(nextSubheader) > offset {
 		// 最後以外datasizeを無視
 		datasize = nextSubheader - uint32(offset)
@@ -453,22 +453,25 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64,
 	if err := read(&ps); err != nil {
 		return err
 	}
-	*palletSame = ps != 0 && prev != nil
+	palletSame := ps != 0 && prev != nil
 	if err := s.readPcxHeader(f, offset); err != nil {
 		return err
 	}
 	f.Seek(offset+128, 0)
-	var palSize int
-	if c00 || *palletSame {
+	var palSize uint32
+	if c00 || palletSame {
 		palSize = 0
 	} else {
 		palSize = 768
 	}
-	px := make([]byte, int(datasize)-(128+palSize))
+	if datasize < 128+palSize {
+		datasize = 128 + palSize
+	}
+	px := make([]byte, datasize-(128+palSize))
 	if err := read(px); err != nil {
 		return err
 	}
-	if *palletSame {
+	if palletSame {
 		if prev != nil {
 			s.palidx = prev.palidx
 		}
@@ -694,8 +697,12 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 		format := -s.rle
 		var px []byte
 		if 2 <= format && format <= 4 {
-			px = make([]byte, datasize)
+			if datasize < 4 {
+				datasize = 4
+			}
+			px = make([]byte, datasize-4)
 			if err := binary.Read(f, binary.LittleEndian, px); err != nil {
+				panic(err)
 				return err
 			}
 		}
@@ -816,12 +823,12 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	xts, xbs, ys, rxadd, agl float32, trans int32, window *[4]int32,
-	rcx, rcy float32, fx *PalFX) {
+	rcx, rcy float32, pfx *PalFX) {
 	if s.Tex == nil {
 		return
 	}
 	if s.rle == -12 {
-		neg, color, padd, pmul := fx.GetFcPalFx(trans)
+		neg, color, padd, pmul := pfx.GetFcPalFx(trans)
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {
@@ -830,15 +837,137 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
-	x -= xscale*float32(s.Offset[0]) + float32(GameWidth-320)/2
-	y -= yscale*float32(s.Offset[1]) + float32(GameHeight-240)
+	x -= xscale*float32(s.Offset[0]) + float32(gameWidth-320)/2
+	y -= yscale*float32(s.Offset[1]) + float32(gameHeight-240)
 	if xscale < 0 {
 		x *= -1
 	}
 	if yscale < 0 {
 		y *= -1
 	}
-	s.glDraw(pal, 0, -x*WidthScale, -y*HeightScale, &notiling,
-		xscale*WidthScale, xscale*WidthScale, yscale*HeightScale, 0, 0, 255,
+	s.glDraw(pal, 0, -x*widthScale, -y*heightScale, &notiling,
+		xscale*widthScale, xscale*widthScale, yscale*heightScale, 0, 0, 255,
 		&scrrect, 0, 0, nil)
+}
+
+type Sff struct {
+	header  SffHeader
+	sprites map[[2]int16]*Sprite
+	palList PalleteList
+}
+
+func (s *Sff) init() {
+	s.sprites = make(map[[2]int16]*Sprite)
+	s.palList.init()
+}
+func LoadSff(filename string, char bool) (*Sff, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	s := &Sff{}
+	s.init()
+	var lofs, tofs uint32
+	if err := s.header.Read(f, &lofs, &tofs); err != nil {
+		return nil, err
+	}
+	read := func(x interface{}) error {
+		return binary.Read(f, binary.LittleEndian, x)
+	}
+	if s.header.Ver0 != 1 {
+		for i := 0; i < int(s.header.NumberOfPalettes); i++ {
+			f.Seek(int64(s.header.FirstPaletteHeaderOffset)+int64(i*16), 0)
+			var gn_ [3]int16
+			if err := read(gn_[:]); err != nil {
+				return nil, err
+			}
+			var link uint16
+			if err := read(&link); err != nil {
+				return nil, err
+			}
+			var ofs, siz uint32
+			if err := read(&ofs); err != nil {
+				return nil, err
+			}
+			if err := read(&siz); err != nil {
+				return nil, err
+			}
+			var pal []uint32
+			var idx int
+			if siz == 0 {
+				idx = int(link)
+				pal = s.palList.Get(idx)
+			} else {
+				f.Seek(int64(lofs+ofs), 0)
+				pal = make([]uint32, 256)
+				var rgba [4]byte
+				for i := 0; i < int(siz)/4 && i < len(pal); i++ {
+					if err := read(rgba[:]); err != nil {
+						return nil, err
+					}
+					pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
+				}
+				idx = i
+			}
+			s.palList.SetSource(i, pal)
+			s.palList.PalTable[[2]int16{gn_[0], gn_[1]}] = idx
+		}
+	}
+	spriteList := make([]*Sprite, int(s.header.NumberOfSprites))
+	var prev *Sprite
+	shofs := int64(s.header.FirstSpriteHeaderOffset)
+	for i := 0; i < len(spriteList); i++ {
+		f.Seek(shofs, 0)
+		spriteList[i] = &Sprite{}
+		var xofs, size uint32
+		var indexOfPrevious uint16
+		switch s.header.Ver0 {
+		case 1:
+			if err := spriteList[i].readHeader(f, &xofs, &size,
+				&indexOfPrevious); err != nil {
+				return nil, err
+			}
+		case 2:
+			if err := spriteList[i].readHeaderV2(f, &xofs, &size,
+				lofs, tofs, &indexOfPrevious); err != nil {
+				return nil, err
+			}
+		}
+		if size == 0 {
+			if int(indexOfPrevious) < i {
+				spriteList[i].shareCopy(spriteList[int(indexOfPrevious)])
+				spriteList[i].link = int(indexOfPrevious)
+			}
+		} else {
+			switch s.header.Ver0 {
+			case 1:
+				if err := spriteList[i].read(f, &s.header, shofs+32, size,
+					xofs, prev, &s.palList,
+					char && (prev == nil || spriteList[i].Group == 0 &&
+						spriteList[i].Number == 0)); err != nil {
+					return nil, err
+				}
+			case 2:
+				if err := spriteList[i].readV2(f, int64(xofs), size); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if s.sprites[[2]int16{spriteList[i].Group, spriteList[i].Number}] == nil {
+			s.sprites[[2]int16{spriteList[i].Group, spriteList[i].Number}] =
+				spriteList[i]
+		}
+		if s.header.Ver0 == 1 {
+			shofs = int64(xofs)
+		} else {
+			shofs += 28
+		}
+	}
+	return s, nil
+}
+func (s *Sff) GetSprite(g, n int16) *Sprite {
+	if g == -1 {
+		return nil
+	}
+	return s.sprites[[2]int16{g, n}]
 }

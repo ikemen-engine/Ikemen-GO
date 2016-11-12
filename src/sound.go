@@ -488,7 +488,7 @@ type Snd struct {
 	ver, ver2 uint16
 }
 
-func LoadSndFile(filename string) (*Snd, error) {
+func LoadSnd(filename string) (*Snd, error) {
 	s := &Snd{}
 	s.Clear()
 	f, err := os.Open(filename)

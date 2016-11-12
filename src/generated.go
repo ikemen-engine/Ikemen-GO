@@ -33,3 +33,14 @@ func AppendPal(slice *[][]uint32, data ...[]uint32) {
 	*slice = (*slice)[:n]
 	copy((*slice)[m:n], data)
 }
+func AppendAF(slice *[]AnimFrame, data ...AnimFrame) {
+	m := len(*slice)
+	n := m + len(data)
+	if n > cap(*slice) {
+		newSlice := make([]AnimFrame, n+n/4)
+		copy(newSlice, *slice)
+		*slice = newSlice
+	}
+	*slice = (*slice)[:n]
+	copy((*slice)[m:n], data)
+}

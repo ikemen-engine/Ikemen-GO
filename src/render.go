@@ -8,7 +8,6 @@ import (
 )
 
 var notiling = [4]int32{0, 0, 0, 0}
-var scrrect = [4]int32{0, 0, int32(windowWidth), int32(windowHeight)}
 var mugenShader uintptr
 var uniformA, uniformPal, uniformMsk int32
 var mugenShaderFc uintptr
@@ -120,7 +119,6 @@ func RenderInit() {
 	uniformColor = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("color\x00"))
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
-	scrrect[2], scrrect[3] = int32(windowWidth), int32(windowHeight)
 }
 func kaiten(x *float32, y *float32,
 	angle float64, rcx float32, rcy float32, vscl float32) {
@@ -152,7 +150,7 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers float32) {
 	gl.Vertex2f(x4, y4)
 	if pers != 1 {
 		n := int((1 - (pers * pers)) * Abs(x1-x2) *
-			float32(windowHeight>>5) / (Abs(y1-y4) + float32(windowHeight>>5)))
+			float32(scrrect[3]>>5) / (Abs(y1-y4) + float32(scrrect[3]>>5)))
 		for i := 1; i < n; i++ {
 			gl.TexCoord2f(float32(i)/float32(n), 1)
 			gl.Vertex2f(x1+(x2-x1)*float32(i)/float32(n),
@@ -184,17 +182,17 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 				x4d = x3d - xtw
 				x1d = x2d - xbw
 				if topdist < 0 {
-					if x1d >= float32(windowWidth) && x2d >= float32(windowWidth) &&
-						x3d >= float32(windowWidth) && x4d >= float32(windowWidth) {
+					if x1d >= float32(scrrect[2]) && x2d >= float32(scrrect[2]) &&
+						x3d >= float32(scrrect[2]) && x4d >= float32(scrrect[2]) {
 						break
 					}
 				} else if x1d <= 0 && x2d <= 0 && x3d <= 0 && x4d <= 0 {
 					break
 				}
 				if (0 < x1d || 0 < x2d) &&
-					(x1d < float32(windowWidth) || x2d < float32(windowWidth)) ||
+					(x1d < float32(scrrect[2]) || x2d < float32(scrrect[2])) ||
 					(0 < x3d || 0 < x4d) &&
-						(x3d < float32(windowWidth) || x4d < float32(windowWidth)) {
+						(x3d < float32(scrrect[2]) || x4d < float32(scrrect[2])) {
 					drawQuads(x1d, y1, x2d, y2, x3d, y3, x4d, y4, r, g, b, a, pers)
 				}
 			}
@@ -203,17 +201,17 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	n := (*tl)[2]
 	for {
 		if topdist > 0 {
-			if x1 >= float32(windowWidth) && x2 >= float32(windowWidth) &&
-				x3 >= float32(windowWidth) && x4 >= float32(windowWidth) {
+			if x1 >= float32(scrrect[2]) && x2 >= float32(scrrect[2]) &&
+				x3 >= float32(scrrect[2]) && x4 >= float32(scrrect[2]) {
 				break
 			}
 		} else if x1 <= 0 && x2 <= 0 && x3 <= 0 && x4 <= 0 {
 			break
 		}
 		if (0 < x1 || 0 < x2) &&
-			(x1 < float32(windowWidth) || x2 < float32(windowWidth)) ||
+			(x1 < float32(scrrect[2]) || x2 < float32(scrrect[2])) ||
 			(0 < x3 || 0 < x4) &&
-				(x3 < float32(windowWidth) || x4 < float32(windowWidth)) {
+				(x3 < float32(scrrect[2]) || x4 < float32(scrrect[2])) {
 			drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers)
 		}
 		if (*tl)[2] != 1 && n != 0 {
@@ -261,14 +259,14 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 			}
 			y4d = y3d
 			if ys*(float32(h)+float32((*tl)[1])) < 0 {
-				if y1d <= float32(-windowHeight) && y4d <= float32(-windowHeight) {
+				if y1d <= float32(-scrrect[3]) && y4d <= float32(-scrrect[3]) {
 					break
 				}
 			} else if y1d >= 0 && y4d >= 0 {
 				break
 			}
 			if (0 > y1d || 0 > y4d) &&
-				(y1d > float32(-windowHeight) || y4d > float32(-windowHeight)) {
+				(y1d > float32(-scrrect[3]) || y4d > float32(-scrrect[3])) {
 				rmTileHSub(x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
 					(x3d-x4d)/float32(w), (x2d-x1d)/float32(w), tl,
 					rcx, r, g, b, a, pers)
@@ -279,14 +277,14 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 		n := (*tl)[3]
 		for {
 			if ys*(float32(h)+float32((*tl)[1])) > 0 {
-				if y1 <= float32(-windowHeight) && y4 <= float32(-windowHeight) {
+				if y1 <= float32(-scrrect[3]) && y4 <= float32(-scrrect[3]) {
 					break
 				}
 			} else if y1 >= 0 && y4 >= 0 {
 				break
 			}
 			if (0 > y1 || 0 > y4) &&
-				(y1 > float32(-windowHeight) || y4 > float32(-windowHeight)) {
+				(y1 > float32(-scrrect[3]) || y4 > float32(-scrrect[3])) {
 				rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
 					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx, r, g, b, a, pers)
 			}
@@ -313,10 +311,10 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
-	gl.Ortho(0, float64(windowWidth), 0, float64(windowHeight), -1, 1)
+	gl.Ortho(0, float64(scrrect[2]), 0, float64(scrrect[3]), -1, 1)
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.PushMatrix()
-	gl.Translated(0, float64(windowHeight), 0)
+	gl.Translated(0, float64(scrrect[3]), 0)
 	switch {
 	case trans == -1:
 		gl.Uniform1fARB(a, 1)
@@ -389,7 +387,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor((*window)[0], windowHeight-((*window)[1]+(*window)[3]),
+	gl.Scissor((*window)[0], scrrect[3]-((*window)[1]+(*window)[3]),
 		(*window)[2], (*window)[3])
 	return
 }
