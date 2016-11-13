@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"strconv"
 	"strings"
 )
@@ -54,8 +55,8 @@ func ReadAnimFrame(line string) *AnimFrame {
 	if ia >= 0 {
 		ary[6] = ary[6][ia:]
 	}
-	ary = strings.Split(ary[6], ",")
-	a := strings.ToLower(strings.TrimSpace(ary[0]))
+	ary = SplitAndTrim(ary[6], ",")
+	a := strings.ToLower(ary[0])
 	switch {
 	case a == "a1":
 		af.Srcalpha, af.Dstalpha = 255, 128
@@ -89,23 +90,23 @@ func ReadAnimFrame(line string) *AnimFrame {
 	}
 	if len(ary) > 1 {
 		af.Ex = make([][]float32, 3)
-		f, err := strconv.ParseFloat(strings.TrimSpace(ary[1]), 32)
+		f, err := strconv.ParseFloat(ary[1], 32)
 		if err != nil {
 			f = 1
 		}
 		af.Ex[2] = append(af.Ex[2], float32(f)) // X-Scale
 		if len(ary) > 2 {
-			f, err := strconv.ParseFloat(strings.TrimSpace(ary[2]), 32)
+			f, err := strconv.ParseFloat(ary[2], 32)
 			if err != nil {
 				f = 1
 			}
 			af.Ex[2] = append(af.Ex[2], float32(f)) // Y-Scale
 			if len(ary) > 3 {
-				f, err := strconv.ParseFloat(strings.TrimSpace(ary[3]), 32)
+				f, err := strconv.ParseFloat(ary[3], 32)
 				if err != nil {
 					f = 0
 				}
-				af.Ex[2] = append(af.Ex[2], float32(f)) // Angle
+				af.Ex[2] = append(af.Ex[2], float32(f*math.Pi/180)) // Angle
 			}
 		}
 	}
@@ -251,11 +252,9 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 			a.totaltime += a.frames[i].Time
 			if i < int(a.loopstart) {
 				a.nazotime += a.frames[i].Time
+				tmp += a.frames[i].Time
 			} else {
 				a.looptime += a.frames[i].Time
-			}
-			if i < int(a.loopstart) {
-				tmp += a.frames[i].Time
 			}
 		}
 		if a.totaltime == -1 {
@@ -400,50 +399,73 @@ func (a *Animation) pal(pfx *PalFX) (p []uint32) {
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd, rcx float32, pfx *PalFX, old bool) {
+	rxadd, angle, rcx float32, pfx *PalFX, old bool) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
 	h, v := float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
-	xs *= h * xcs
-	ys *= v * ycs
-	x = xcs*x - xs*float32(a.spr.Offset[0]-a.frames[a.drawidx].X) + rcx
-	y = ycs*y - ys*float32(a.spr.Offset[1]-a.frames[a.drawidx].Y)
-	if xs < 0 {
-		x *= -1
-		x += rcx * 2
-		if old {
-			x += xs
+	if len(a.frames[a.drawidx].Ex) > 2 {
+		if len(a.frames[a.drawidx].Ex[2]) > 0 {
+			h *= a.frames[a.drawidx].Ex[2][0]
+			if len(a.frames[a.drawidx].Ex[2]) > 1 {
+				v *= a.frames[a.drawidx].Ex[2][1]
+				if len(a.frames[a.drawidx].Ex[2]) > 2 {
+					angle += a.frames[a.drawidx].Ex[2][2]
+				}
+			}
 		}
 	}
-	if ys < 0 {
-		y *= -1
-		if old {
-			y += ys
-		}
+	xs *= xcs
+	ys *= ycs
+	if (xs < 0) != (ys < 0) {
+		angle *= -1
 	}
-	if a.tile[2] == 1 {
-		tmp := xs * float32(a.tile[0])
-		if a.tile[0] <= 0 {
-			tmp += xs * float32(a.spr.Size[0])
+	xs *= h
+	ys *= v
+	x = xcs*x + xs*float32(a.frames[a.drawidx].X)
+	y = ycs*y + ys*float32(a.frames[a.drawidx].Y)
+	var rcy float32
+	if angle == 0 {
+		if xs < 0 {
+			x *= -1
+			if old {
+				x += xs
+			}
 		}
-		if tmp != 0 {
-			x -= float32(int(x/tmp)) * tmp
+		if ys < 0 {
+			y *= -1
+			if old {
+				y += ys
+			}
 		}
+		if a.tile[2] == 1 {
+			tmp := xs * float32(a.tile[0])
+			if a.tile[0] <= 0 {
+				tmp += xs * float32(a.spr.Size[0])
+			}
+			if tmp != 0 {
+				x -= float32(int(x/tmp)) * tmp
+			}
+		}
+		if a.tile[3] == 1 {
+			tmp := ys * float32(a.tile[1])
+			if a.tile[1] <= 0 {
+				tmp += ys * float32(a.spr.Size[1])
+			}
+			if tmp != 0 {
+				y -= float32(int(y/tmp)) * tmp
+			}
+		}
+		rcx, rcy = rcx*widthScale, 0
+		x, y = -x+xs*float32(a.spr.Offset[0]), -y+ys*float32(a.spr.Offset[1])
+	} else {
+		rcx, rcy = (x+rcx)*widthScale, y*heightScale
+		x, y = Abs(xs)*float32(a.spr.Offset[0]), Abs(ys)*float32(a.spr.Offset[1])
 	}
-	if a.tile[3] == 1 {
-		tmp := ys * float32(a.tile[1])
-		if a.tile[1] <= 0 {
-			tmp += ys * float32(a.spr.Size[1])
-		}
-		if tmp != 0 {
-			y -= float32(int(y/tmp)) * tmp
-		}
-	}
-	a.spr.glDraw(a.pal(pfx), int32(a.mask), (rcx-x)*widthScale, -y*heightScale,
+	a.spr.glDraw(a.pal(pfx), int32(a.mask), x*widthScale, y*heightScale,
 		&a.tile, xs*widthScale, xcs*xbs*h*widthScale, ys*heightScale,
-		xcs*rxadd*widthScale/heightScale, 0, a.alpha(), window,
-		rcx*widthScale, 0, pfx)
+		xcs*rxadd*widthScale/heightScale, angle, a.alpha(), window,
+		rcx, rcy, pfx)
 }
 
 type Anim struct {
@@ -493,6 +515,6 @@ func (a *Anim) Draw() {
 	if !frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(gameWidth-320)/2,
 			a.y+float32(gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, nil, false)
+			0, 0, 0, nil, false)
 	}
 }

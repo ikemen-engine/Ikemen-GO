@@ -384,8 +384,8 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		*y *= -1
 	}
 	*y += *rcy
+	gl.Enable(gl.BLEND)
 	gl.Enable(gl.TEXTURE_2D)
-	gl.Disable(gl.DEPTH_TEST)
 	gl.Enable(gl.SCISSOR_TEST)
 	gl.Scissor((*window)[0], scrrect[3]-((*window)[1]+(*window)[3]),
 		(*window)[2], (*window)[3])
@@ -420,6 +420,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	gl.Disable(gl.TEXTURE_1D)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
+	gl.Disable(gl.BLEND)
 }
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32, trans int32,
@@ -444,4 +445,5 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
+	gl.Disable(gl.BLEND)
 }
