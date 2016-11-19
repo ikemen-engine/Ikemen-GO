@@ -69,6 +69,15 @@ func Atof(str string) float64 {
 	}
 	return f
 }
+func I32ToU16(i32 int32) uint16 {
+	if i32 < 0 {
+		return 0
+	}
+	if i32 > int32(^uint16(0)) {
+		return ^uint16(0)
+	}
+	return uint16(i32)
+}
 func AsciiToString(ascii []byte) string {
 	buf := make([]rune, len(ascii))
 	for i, a := range ascii {
@@ -83,25 +92,25 @@ func SplitAndTrim(str, sep string) (ss []string) {
 	}
 	return
 }
-func SectionName(sec *string) string {
-	if len(*sec) == 0 || (*sec)[0] != '[' {
-		return ""
+func SectionName(sec string) (string, string) {
+	if len(sec) == 0 || sec[0] != '[' {
+		return "", ""
 	}
-	*sec = strings.TrimSpace(strings.SplitN(*sec, ";", 2)[0])
-	if (*sec)[len(*sec)-1] != ']' {
-		return ""
+	sec = strings.TrimSpace(strings.SplitN(sec, ";", 2)[0])
+	if sec[len(sec)-1] != ']' {
+		return "", ""
 	}
-	*sec = (*sec)[1 : len(*sec)-1]
+	sec = sec[1 : len(sec)-1]
 	var name string
-	i := strings.Index(*sec, " ")
+	i := strings.Index(sec, " ")
 	if i >= 0 {
-		name = (*sec)[:i]
-		*sec = (*sec)[i+1:]
+		name = sec[:i]
+		sec = sec[i+1:]
 	} else {
-		name = *sec
-		*sec = ""
+		name = sec
+		sec = ""
 	}
-	return strings.ToLower(name)
+	return strings.ToLower(name), sec
 }
 
 type Error string
@@ -111,6 +120,22 @@ func (e Error) Error() string { return string(e) }
 type IniSection map[string]string
 
 func NewIniSection() IniSection { return IniSection(make(map[string]string)) }
+func ReadIniSection(lines []string, i *int) (
+	is IniSection, name string, subname string) {
+	for ; *i < len(lines); (*i)++ {
+		name, subname = SectionName(lines[*i])
+		if len(name) > 0 {
+			(*i)++
+			break
+		}
+	}
+	if len(name) == 0 {
+		return
+	}
+	is = NewIniSection()
+	is.Parse(lines, i)
+	return
+}
 func (is IniSection) Parse(lines []string, i *int) {
 	for ; *i < len(lines); (*i)++ {
 		if len(lines[*i]) > 0 && lines[*i][0] == '[' {

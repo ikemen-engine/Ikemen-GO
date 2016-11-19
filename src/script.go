@@ -42,6 +42,14 @@ func scriptCommonInit(l *lua.State) {
 		l.PushUserData(snd)
 		return 1
 	})
+	luaRegister(l, "fontNew", func(l *lua.State) int {
+		fnt, err := LoadFnt(strArg(l, 1))
+		if err != nil {
+			panic(lua.RuntimeError(err.Error()))
+		}
+		l.PushUserData(fnt)
+		return 1
+	})
 	luaRegister(l, "sndPlay", func(l *lua.State) int {
 		ud := l.ToUserData(1)
 		switch ud.(type) {
@@ -59,6 +67,88 @@ func scriptCommonInit(l *lua.State) {
 }
 func systemScriptInit(l *lua.State) {
 	scriptCommonInit(l)
+	luaRegister(l, "textImgNew", func(*lua.State) int {
+		l.PushUserData(NewTextSprite())
+		return 1
+	})
+	luaRegister(l, "textImgSetFont", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		fnt := l.ToUserData(2)
+		switch fnt.(type) {
+		case *Fnt:
+		default:
+			panic(lua.RuntimeError("2番目の引数がFntではありません。"))
+		}
+		ud.(*TextSprite).fnt = fnt.(*Fnt)
+		return 0
+	})
+	luaRegister(l, "textImgSetBank", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).bank = int32(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "textImgSetAlign", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).align = int32(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "textImgSetText", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).text = strArg(l, 2)
+		return 0
+	})
+	luaRegister(l, "textImgSetPos", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).x = float32(numArg(l, 2))
+		ud.(*TextSprite).y = float32(numArg(l, 3))
+		return 0
+	})
+	luaRegister(l, "textImgSetScale", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).xscl = float32(numArg(l, 2))
+		ud.(*TextSprite).yscl = float32(numArg(l, 3))
+		return 0
+	})
+	luaRegister(l, "textImgDraw", func(*lua.State) int {
+		ud := l.ToUserData(1)
+		switch ud.(type) {
+		case *TextSprite:
+		default:
+			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		}
+		ud.(*TextSprite).Draw()
+		return 0
+	})
 	luaRegister(l, "animNew", func(*lua.State) int {
 		ud := l.ToUserData(1)
 		switch ud.(type) {

@@ -16,7 +16,7 @@ type AnimFrame struct {
 	Ex            [][]float32
 }
 
-func NewAnimFrame() *AnimFrame {
+func newAnimFrame() *AnimFrame {
 	return &AnimFrame{Time: -1, Group: -1, Srcalpha: 255, H: 1, V: 1}
 }
 func ReadAnimFrame(line string) *AnimFrame {
@@ -27,7 +27,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 	if len(ary) < 5 {
 		return nil
 	}
-	af := NewAnimFrame()
+	af := newAnimFrame()
 	af.Group, af.Number = int16(Atoi(ary[0])), int16(Atoi(ary[1]))
 	af.X, af.Y = int16(Atoi(ary[2])), int16(Atoi(ary[3]))
 	af.Time = Atoi(ary[4])
@@ -133,11 +133,11 @@ type Animation struct {
 	loopend   bool
 }
 
-func NewAnimation(sff *Sff) *Animation {
+func newAnimation(sff *Sff) *Animation {
 	return &Animation{sff: sff, mask: -1, srcalpha: -1, newframe: true}
 }
 func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
-	a := NewAnimation(sff)
+	a := newAnimation(sff)
 	a.mask = 0
 	ols := int32(0)
 	var clsn1, clsn1d, clsn2, clsn2d []float32
@@ -372,7 +372,7 @@ func (a *Animation) alpha() int32 {
 	if sa == 1 && da == 255 {
 		return -2
 	}
-	sa = byte(int(sa) * brightness >> 8)
+	sa = byte(int32(sa) * brightness >> 8)
 	if sa < 5 && da == 255 {
 		return 0
 	}

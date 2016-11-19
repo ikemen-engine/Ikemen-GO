@@ -15,7 +15,7 @@ var widthScale, heightScale float32 = 1, 1
 var window *glfw.Window
 var gameEnd, frameSkip = false, false
 var redrawWait = struct{ nextTime, lastDraw time.Time }{}
-var brightness = 256
+var brightness = int32(256)
 
 func init() {
 	runtime.LockOSThread()

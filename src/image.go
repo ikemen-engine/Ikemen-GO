@@ -13,6 +13,8 @@ import (
 	"unsafe"
 )
 
+var allPalFX = NewPalFX()
+
 type Texture uint32
 
 func textureFinalizer(t *Texture) {
@@ -28,9 +30,12 @@ func NewTexture() (t *Texture) {
 }
 
 type PalFX struct {
+	Time  int32
 	Remap []int
 }
 
+func NewPalFX() *PalFX                                      { return &PalFX{} }
+func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 { return pal }
 func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	add, mul [3]float32) {
 	neg = false
@@ -44,62 +49,62 @@ func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	return
 }
 
-type PalleteList struct {
-	palletes   [][]uint32
-	palleteMap []int
+type PaletteList struct {
+	palettes   [][]uint32
+	paletteMap []int
 	PalTable   map[[2]int16]int
 }
 
-func (pl *PalleteList) init() {
-	pl.palletes = nil
-	pl.palleteMap = nil
+func (pl *PaletteList) init() {
+	pl.palettes = nil
+	pl.paletteMap = nil
 	pl.PalTable = make(map[[2]int16]int)
 }
-func (pl *PalleteList) SetSource(i int, p []uint32) {
-	if i < len(pl.palleteMap) {
-		pl.palleteMap[i] = i
+func (pl *PaletteList) SetSource(i int, p []uint32) {
+	if i < len(pl.paletteMap) {
+		pl.paletteMap[i] = i
 	} else {
-		for i > len(pl.palleteMap) {
-			AppendI(&pl.palleteMap, len(pl.palleteMap))
+		for i > len(pl.paletteMap) {
+			AppendI(&pl.paletteMap, len(pl.paletteMap))
 		}
-		AppendI(&pl.palleteMap, i)
+		AppendI(&pl.paletteMap, i)
 	}
-	if i < len(pl.palletes) {
-		pl.palletes[i] = p
+	if i < len(pl.palettes) {
+		pl.palettes[i] = p
 	} else {
-		for i > len(pl.palletes) {
-			AppendPal(&pl.palletes, nil)
+		for i > len(pl.palettes) {
+			AppendPal(&pl.palettes, nil)
 		}
-		AppendPal(&pl.palletes, p)
+		AppendPal(&pl.palettes, p)
 	}
 }
-func (pl *PalleteList) NewPal() (i int, p []uint32) {
-	i = len(pl.palletes)
+func (pl *PaletteList) NewPal() (i int, p []uint32) {
+	i = len(pl.palettes)
 	p = make([]uint32, 256)
 	pl.SetSource(i, p)
 	return
 }
-func (pl *PalleteList) Get(i int) []uint32 {
-	return pl.palletes[pl.palleteMap[i]]
+func (pl *PaletteList) Get(i int) []uint32 {
+	return pl.palettes[pl.paletteMap[i]]
 }
-func (pl *PalleteList) Remap(source int, destination int) {
-	pl.palleteMap[source] = destination
+func (pl *PaletteList) Remap(source int, destination int) {
+	pl.paletteMap[source] = destination
 }
-func (pl *PalleteList) ResetRemap() {
-	for i := range pl.palleteMap {
-		pl.palleteMap[i] = i
+func (pl *PaletteList) ResetRemap() {
+	for i := range pl.paletteMap {
+		pl.paletteMap[i] = i
 	}
 }
-func (pl *PalleteList) GetPalMap() []int {
-	pm := make([]int, len(pl.palleteMap))
-	copy(pm, pl.palleteMap)
+func (pl *PaletteList) GetPalMap() []int {
+	pm := make([]int, len(pl.paletteMap))
+	copy(pm, pl.paletteMap)
 	return pm
 }
-func (pl *PalleteList) SwapPalMap(palMap *[]int) bool {
-	if len(*palMap) != len(pl.palleteMap) {
+func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
+	if len(*palMap) != len(pl.paletteMap) {
 		return false
 	}
-	*palMap, pl.palleteMap = pl.palleteMap, *palMap
+	*palMap, pl.paletteMap = pl.paletteMap, *palMap
 	return true
 }
 
@@ -194,11 +199,11 @@ type Sprite struct {
 	rle           int
 }
 
-func NewSprite() *Sprite {
+func newSprite() *Sprite {
 	return &Sprite{palidx: -1, link: -1}
 }
 func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
-	s := NewSprite()
+	s := newSprite()
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -211,7 +216,7 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 	}
 	var shofs, xofs, size uint32 = h.FirstSpriteHeaderOffset, 0, 0
 	var indexOfPrevious uint16
-	pl := &PalleteList{}
+	pl := &PaletteList{}
 	pl.init()
 	foo := func() error {
 		switch h.Ver0 {
@@ -324,7 +329,7 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	s.Size = src.Size
 	s.palidx = src.palidx
 }
-func (s *Sprite) GetPal(pl *PalleteList) []uint32 {
+func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if s.Pal != nil || s.rle == -12 {
 		return s.Pal
 	}
@@ -441,7 +446,7 @@ func (s *Sprite) RlePcxDecode(rle []byte) (p []byte) {
 	return
 }
 func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
-	nextSubheader uint32, prev *Sprite, pl *PalleteList, c00 bool) error {
+	nextSubheader uint32, prev *Sprite, pl *PaletteList, c00 bool) error {
 	if int64(nextSubheader) > offset {
 		// 最後以外datasizeを無視
 		datasize = nextSubheader - uint32(offset)
@@ -453,13 +458,13 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
 	if err := read(&ps); err != nil {
 		return err
 	}
-	palletSame := ps != 0 && prev != nil
+	paletteSame := ps != 0 && prev != nil
 	if err := s.readPcxHeader(f, offset); err != nil {
 		return err
 	}
 	f.Seek(offset+128, 0)
 	var palSize uint32
-	if c00 || palletSame {
+	if c00 || paletteSame {
 		palSize = 0
 	} else {
 		palSize = 768
@@ -471,7 +476,7 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
 	if err := read(px); err != nil {
 		return err
 	}
-	if palletSame {
+	if paletteSame {
 		if prev != nil {
 			s.palidx = prev.palidx
 		}
@@ -837,8 +842,8 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
-	x -= xscale*float32(s.Offset[0]) + float32(gameWidth-320)/2
-	y -= yscale*float32(s.Offset[1]) + float32(gameHeight-240)
+	x += float32(gameWidth-320)/2 - xscale*float32(s.Offset[0])
+	y += float32(gameHeight-240) - yscale*float32(s.Offset[1])
 	if xscale < 0 {
 		x *= -1
 	}
@@ -846,27 +851,28 @@ func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
 		y *= -1
 	}
 	s.glDraw(pal, 0, -x*widthScale, -y*heightScale, &notiling,
-		xscale*widthScale, xscale*widthScale, yscale*heightScale, 0, 0, 255,
-		&scrrect, 0, 0, nil)
+		xscale*widthScale, xscale*widthScale, yscale*heightScale, 0, 0,
+		brightness*255>>8|1<<9, &scrrect, 0, 0, nil)
 }
 
 type Sff struct {
 	header  SffHeader
 	sprites map[[2]int16]*Sprite
-	palList PalleteList
+	palList PaletteList
 }
 
-func (s *Sff) init() {
-	s.sprites = make(map[[2]int16]*Sprite)
+func newSff() (s *Sff) {
+	s = &Sff{sprites: make(map[[2]int16]*Sprite)}
 	s.palList.init()
+	return
 }
 func LoadSff(filename string, char bool) (*Sff, error) {
+	s := newSff()
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	s := &Sff{}
-	s.init()
+	defer func() { chk(f.Close()) }()
 	var lofs, tofs uint32
 	if err := s.header.Read(f, &lofs, &tofs); err != nil {
 		return nil, err

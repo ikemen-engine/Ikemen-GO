@@ -16,8 +16,8 @@ const (
 	audioFrequency = 48000
 )
 
-var mixer = NewMixer()
-var bgm = NewVorbis()
+var mixer = newMixer()
+var bgm = newVorbis()
 var audioContext *openal.Context
 var nullSndBuf [audioOutLen * 2]int16
 var sounds = newSounds()
@@ -136,7 +136,7 @@ type Mixer struct {
 	normalizer *Normalizer
 }
 
-func NewMixer() *Mixer {
+func newMixer() *Mixer {
 	return &Mixer{out: make(chan []int16, 1), normalizer: NewNormalizer()}
 }
 func (m *Mixer) bufClear() {
@@ -300,14 +300,14 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 
 type Vorbis struct {
 	dec        *vorbis.Vorbis
-	fd         *os.File
+	fp         *os.File
 	buf        []int16
 	bufi       float64
 	openReq    chan string
 	normalizer *Normalizer
 }
 
-func NewVorbis() *Vorbis {
+func newVorbis() *Vorbis {
 	return &Vorbis{openReq: make(chan string, 1), normalizer: NewNormalizer()}
 }
 func (v *Vorbis) Open(file string) {
@@ -316,18 +316,18 @@ func (v *Vorbis) Open(file string) {
 func (v *Vorbis) openFile(file string) bool {
 	v.clear()
 	var err error
-	if v.fd, err = os.Open(file); err != nil {
+	if v.fp, err = os.Open(file); err != nil {
 		return false
 	}
 	return v.restart()
 }
 func (v *Vorbis) restart() bool {
-	if v.fd == nil {
+	if v.fp == nil {
 		return false
 	}
-	_, err := v.fd.Seek(0, 0)
+	_, err := v.fp.Seek(0, 0)
 	chk(err)
-	if v.dec, err = vorbis.Open(v.fd); err != nil {
+	if v.dec, err = vorbis.Open(v.fp); err != nil {
 		v.clear()
 		return false
 	}
@@ -338,9 +338,9 @@ func (v *Vorbis) clear() {
 	if v.dec != nil {
 		v.dec = nil
 	}
-	if v.fd != nil {
-		chk(v.fd.Close())
-		v.fd = nil
+	if v.fp != nil {
+		chk(v.fp.Close())
+		v.fp = nil
 	}
 }
 func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
@@ -488,9 +488,9 @@ type Snd struct {
 	ver, ver2 uint16
 }
 
+func newSnd() *Snd { return &Snd{table: make(map[[2]int32]*Wave)} }
 func LoadSnd(filename string) (*Snd, error) {
-	s := &Snd{}
-	s.Clear()
+	s := newSnd()
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -548,9 +548,6 @@ func LoadSnd(filename string) (*Snd, error) {
 		subHeaderOffset = nextSubHeaderOffset
 	}
 	return s, nil
-}
-func (s *Snd) Clear() {
-	s.table = make(map[[2]int32]*Wave)
 }
 func (s *Snd) Get(group int32, number int32) *Wave {
 	return s.table[[2]int32{group, number}]
