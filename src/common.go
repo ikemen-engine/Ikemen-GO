@@ -5,7 +5,35 @@ import (
 	"strings"
 )
 
-func Abs(f float32) float32 {
+func Min(arg ...int32) (min int32) {
+	if len(arg) > 0 {
+		min = arg[0]
+		for i := 1; i < len(arg); i++ {
+			if arg[i] < min {
+				min = arg[i]
+			}
+		}
+	}
+	return
+}
+func Max(arg ...int32) (max int32) {
+	if len(arg) > 0 {
+		max = arg[0]
+		for i := 1; i < len(arg); i++ {
+			if arg[i] > max {
+				max = arg[i]
+			}
+		}
+	}
+	return
+}
+func Abs(i int32) int32 {
+	if i < 0 {
+		return -i
+	}
+	return i
+}
+func AbsF(f float32) float32 {
 	if f < 0 {
 		return -f
 	}

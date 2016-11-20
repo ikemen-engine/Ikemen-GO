@@ -149,8 +149,8 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers float32) {
 	gl.TexCoord2f(0, 0)
 	gl.Vertex2f(x4, y4)
 	if pers != 1 {
-		n := int((1 - (pers * pers)) * Abs(x1-x2) *
-			float32(scrrect[3]>>5) / (Abs(y1-y4) + float32(scrrect[3]>>5)))
+		n := int((1 - (pers * pers)) * AbsF(x1-x2) *
+			float32(scrrect[3]>>5) / (AbsF(y1-y4) + float32(scrrect[3]>>5)))
 		for i := 1; i < n; i++ {
 			gl.TexCoord2f(float32(i)/float32(n), 1)
 			gl.Vertex2f(x1+(x2-x1)*float32(i)/float32(n),
@@ -169,9 +169,9 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers float32) {
 func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl *[4]int32, rcx, r, g, b, a, pers float32) {
 	topdist := xtw + xts*float32((*tl)[0])
-	if Abs(topdist) >= 0.01 {
+	if AbsF(topdist) >= 0.01 {
 		botdist := xbw + xbs*float32((*tl)[0])
-		db := (x4 - rcx) * (botdist - topdist) / Abs(topdist)
+		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
 		if (*tl)[2] == 1 {
@@ -217,7 +217,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 		if (*tl)[2] != 1 && n != 0 {
 			n--
 		}
-		if n == 0 || Abs(topdist) < 0.01 {
+		if n == 0 || AbsF(topdist) < 0.01 {
 			break
 		}
 		x4 = x3 + xts*float32((*tl)[0])
@@ -233,10 +233,10 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 	x3, y3 := x+xts*float32(w), rcy+(y-rcy)*vs
 	x4, y4 := x, y3
 	var pers float32
-	if Abs(xts) < Abs(xbs) {
-		pers = Abs(xts) / Abs(xbs)
+	if AbsF(xts) < AbsF(xbs) {
+		pers = AbsF(xts) / AbsF(xbs)
 	} else {
-		pers = Abs(xbs) / Abs(xts)
+		pers = AbsF(xbs) / AbsF(xts)
 	}
 	if agl != 0 {
 		kaiten(&x1, &y1, float64(agl), rcx, rcy, vs)
@@ -254,7 +254,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 			x3d = x4d - rxadd*ys*float32(h) + (xts/xbs)*(x3d-x4d)
 			y3d = y2d + ys*vs*float32(h)
 			x4d = x4d - rxadd*ys*float32(h)
-			if Abs(y3d-y4d) < 0.01 {
+			if AbsF(y3d-y4d) < 0.01 {
 				break
 			}
 			y4d = y3d
@@ -299,7 +299,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 			x2 = x1 + rxadd*ys*float32(h) + (xbs/xts)*(x2-x1)
 			y2 = y3 - ys*vs*float32(h)
 			x1 = x1 + rxadd*ys*float32(h)
-			if Abs(y1-y2) < 0.01 {
+			if AbsF(y1-y2) < 0.01 {
 				break
 			}
 			y1 = y2

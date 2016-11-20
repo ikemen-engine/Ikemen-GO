@@ -78,6 +78,7 @@ func main() {
 		"Ikemen GO", nil, nil)
 	chk(err)
 	window.MakeContextCurrent()
+	window.SetKeyCallback(keyCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
 	RenderInit()

@@ -460,7 +460,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x, y = -x+xs*float32(a.spr.Offset[0]), -y+ys*float32(a.spr.Offset[1])
 	} else {
 		rcx, rcy = (x+rcx)*widthScale, y*heightScale
-		x, y = Abs(xs)*float32(a.spr.Offset[0]), Abs(ys)*float32(a.spr.Offset[1])
+		x, y = AbsF(xs)*float32(a.spr.Offset[0]), AbsF(ys)*float32(a.spr.Offset[1])
 	}
 	a.spr.glDraw(a.pal(pfx), int32(a.mask), x*widthScale, y*heightScale,
 		&a.tile, xs*widthScale, xcs*xbs*h*widthScale, ys*heightScale,
