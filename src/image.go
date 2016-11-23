@@ -65,17 +65,17 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 		pl.paletteMap[i] = i
 	} else {
 		for i > len(pl.paletteMap) {
-			AppendI(&pl.paletteMap, len(pl.paletteMap))
+			pl.paletteMap = AppendI(pl.paletteMap, len(pl.paletteMap))
 		}
-		AppendI(&pl.paletteMap, i)
+		pl.paletteMap = AppendI(pl.paletteMap, i)
 	}
 	if i < len(pl.palettes) {
 		pl.palettes[i] = p
 	} else {
 		for i > len(pl.palettes) {
-			AppendPal(&pl.palettes, nil)
+			pl.palettes = AppendPal(pl.palettes, nil)
 		}
-		AppendPal(&pl.palettes, p)
+		pl.palettes = AppendPal(pl.palettes, p)
 	}
 }
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
@@ -234,10 +234,10 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 	}
 	var dummy *Sprite
 	var newSubHeaderOffset []uint32
-	AppendU32(&newSubHeaderOffset, shofs)
+	newSubHeaderOffset = AppendU32(newSubHeaderOffset, shofs)
 	i := 0
 	for ; i < int(h.NumberOfSprites); i++ {
-		AppendU32(&newSubHeaderOffset, shofs)
+		newSubHeaderOffset = AppendU32(newSubHeaderOffset, shofs)
 		f.Seek(int64(shofs), 0)
 		if err := foo(); err != nil {
 			return nil, err

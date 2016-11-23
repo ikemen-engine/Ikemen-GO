@@ -5,6 +5,38 @@ import (
 	"strings"
 )
 
+const (
+	IMAX = int32(^uint32(0) >> 1)
+	IERR = ^IMAX
+)
+
+var randseed int32
+
+func Random() int32 {
+	w := randseed / 127773
+	randseed = (randseed-w*127773)*16807 - w*2836
+	if randseed <= 0 {
+		randseed += IMAX - Btoi(randseed == 0)
+	}
+	return randseed
+}
+func Srand(s int32)             { randseed = s }
+func Rand(min, max int32) int32 { return min + Random()/(IMAX/(max-min+1)+1) }
+func RandI(x, y int32) int32 {
+	if y < x {
+		if uint32(x-y) > uint32(IMAX) {
+			return int32(int64(y) + int64(Random())*(int64(x)-int64(y))/int64(IMAX))
+		}
+		return Rand(y, x)
+	}
+	if uint32(y-x) > uint32(IMAX) {
+		return int32(int64(x) + int64(Random())*(int64(y)-int64(x))/int64(IMAX))
+	}
+	return Rand(x, y)
+}
+func RandF(x, y float32) float32 {
+	return x + float32(Random())*(y-x)/float32(IMAX)
+}
 func Min(arg ...int32) (min int32) {
 	if len(arg) > 0 {
 		min = arg[0]
@@ -96,6 +128,12 @@ func Atof(str string) float64 {
 		}
 	}
 	return f
+}
+func Btoi(b bool) int32 {
+	if b {
+		return 1
+	}
+	return 0
 }
 func I32ToU16(i32 int32) uint16 {
 	if i32 < 0 {

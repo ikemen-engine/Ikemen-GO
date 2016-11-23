@@ -16,6 +16,7 @@ var window *glfw.Window
 var gameEnd, frameSkip = false, false
 var redrawWait = struct{ nextTime, lastDraw time.Time }{}
 var brightness = int32(256)
+var introTime = int32(0)
 
 func init() {
 	runtime.LockOSThread()
@@ -81,6 +82,11 @@ func main() {
 	window.SetKeyCallback(keyCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
+	randseed = int32(time.Now().UnixNano())
+	keyConfig = append(keyConfig, &KeyConfig{-1,
+		int(glfw.KeyUp), int(glfw.KeyDown), int(glfw.KeyLeft), int(glfw.KeyRight),
+		int(glfw.KeyZ), int(glfw.KeyX), int(glfw.KeyC),
+		int(glfw.KeyA), int(glfw.KeyS), int(glfw.KeyD), int(glfw.KeyEnter)})
 	RenderInit()
 	audioOpen()
 	l := lua.NewState()

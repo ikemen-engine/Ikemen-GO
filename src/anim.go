@@ -166,7 +166,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 				af.Ex[0] = clsn1
 				af.Ex[1] = clsn2
 			}
-			AppendAF(&a.frames, *af)
+			a.frames = AppendAF(a.frames, *af)
 			def1, def2 = true, true
 		case len(line) >= 9 && line[:9] == "loopstart":
 			a.loopstart = int32(len(a.frames))
