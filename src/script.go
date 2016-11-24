@@ -12,24 +12,31 @@ func luaRegister(l *lua.State, name string, f func(*lua.State) int) {
 func strArg(l *lua.State, argi int) string {
 	str, ok := l.ToString(argi)
 	if !ok {
-		panic(lua.RuntimeError(
-			fmt.Sprintf("%d番目の引数が文字列ではありません。", argi)))
+		lua.Errorf(l, "%d番目の引数が文字列ではありません。", argi)
 	}
 	return str
 }
 func numArg(l *lua.State, argi int) float64 {
 	num, ok := l.ToNumber(argi)
 	if !ok {
-		panic(lua.RuntimeError(
-			fmt.Sprintf("%d番目の引数が数ではありません。", argi)))
+		lua.Errorf(l, "%d番目の引数が数ではありません。", argi)
 	}
 	return num
+}
+func boolArg(l *lua.State, argi int) bool {
+	if !l.IsBoolean(argi) {
+		lua.Errorf(l, "%d番目の引数が論理値ではありません。", argi)
+	}
+	return l.ToBoolean(argi)
+}
+func userDataError(l *lua.State, argi int, udtype interface{}) {
+	lua.Errorf(l, fmt.Sprintf("%d番目の引数が%Tではありません。", argi, udtype))
 }
 func scriptCommonInit(l *lua.State) {
 	luaRegister(l, "sffNew", func(l *lua.State) int {
 		sff, err := LoadSff(strArg(l, 1), false)
 		if err != nil {
-			panic(lua.RuntimeError(err.Error()))
+			lua.Errorf(l, err.Error())
 		}
 		l.PushUserData(sff)
 		return 1
@@ -37,7 +44,7 @@ func scriptCommonInit(l *lua.State) {
 	luaRegister(l, "sndNew", func(l *lua.State) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
-			panic(lua.RuntimeError(err.Error()))
+			lua.Errorf(l, err.Error())
 		}
 		l.PushUserData(snd)
 		return 1
@@ -45,26 +52,31 @@ func scriptCommonInit(l *lua.State) {
 	luaRegister(l, "fontNew", func(l *lua.State) int {
 		fnt, err := LoadFnt(strArg(l, 1))
 		if err != nil {
-			panic(lua.RuntimeError(err.Error()))
+			lua.Errorf(l, err.Error())
 		}
 		l.PushUserData(fnt)
 		return 1
 	})
 	luaRegister(l, "sndPlay", func(l *lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Snd:
-		default:
-			panic(lua.RuntimeError("1番目の引数がSndではありません。"))
+		s, ok := l.ToUserData(1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
 		}
-		ud.(*Snd).Play(int32(numArg(l, 2)), int32(numArg(l, 3)))
+		s.Play(int32(numArg(l, 2)), int32(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.State) int {
 		bgm.Open(strArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setRoundTime", func(l *lua.State) int {
+		roundTime = int32(numArg(l, 1))
+		return 0
+	})
 }
+
+// System Script
+
 func systemScriptInit(l *lua.State) {
 	scriptCommonInit(l)
 	luaRegister(l, "textImgNew", func(*lua.State) int {
@@ -72,195 +84,188 @@ func systemScriptInit(l *lua.State) {
 		return 1
 	})
 	luaRegister(l, "textImgSetFont", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		fnt := l.ToUserData(2)
-		switch fnt.(type) {
-		case *Fnt:
-		default:
-			panic(lua.RuntimeError("2番目の引数がFntではありません。"))
+		fnt, ok2 := l.ToUserData(2).(*Fnt)
+		if !ok2 {
+			userDataError(l, 2, fnt)
 		}
-		ud.(*TextSprite).fnt = fnt.(*Fnt)
+		ts.fnt = fnt
 		return 0
 	})
 	luaRegister(l, "textImgSetBank", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).bank = int32(numArg(l, 2))
+		ts.bank = int32(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "textImgSetAlign", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).align = int32(numArg(l, 2))
+		ts.align = int32(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "textImgSetText", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).text = strArg(l, 2)
+		ts.text = strArg(l, 2)
 		return 0
 	})
 	luaRegister(l, "textImgSetPos", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).x = float32(numArg(l, 2))
-		ud.(*TextSprite).y = float32(numArg(l, 3))
+		ts.x, ts.y = float32(numArg(l, 2)), float32(numArg(l, 3))
 		return 0
 	})
 	luaRegister(l, "textImgSetScale", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).xscl = float32(numArg(l, 2))
-		ud.(*TextSprite).yscl = float32(numArg(l, 3))
+		ts.xscl, ts.yscl = float32(numArg(l, 2)), float32(numArg(l, 3))
 		return 0
 	})
 	luaRegister(l, "textImgDraw", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *TextSprite:
-		default:
-			panic(lua.RuntimeError("1番目の引数がTextSpriteではありません。"))
+		ts, ok := l.ToUserData(1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
 		}
-		ud.(*TextSprite).Draw()
+		ts.Draw()
 		return 0
 	})
 	luaRegister(l, "animNew", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Sff:
-		default:
-			panic(lua.RuntimeError("1番目の引数がSffではありません。"))
+		s, ok := l.ToUserData(1).(*Sff)
+		if !ok {
+			userDataError(l, 1, s)
 		}
 		act := strArg(l, 2)
-		anim := NewAnim(ud.(*Sff), act)
+		anim := NewAnim(s, act)
 		if anim == nil {
-			panic(lua.RuntimeError(fmt.Sprintf(
-				"\n%s\n\nデータの読み込みに失敗しました。", act)))
+			lua.Errorf(l, "\n%s\n\nデータの読み込みに失敗しました。", act)
 		}
 		l.PushUserData(anim)
 		return 1
 	})
 	luaRegister(l, "animSetPos", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "animAddPos", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).AddPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.AddPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "animSetTile", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetTile(int32(numArg(l, 2)), int32(numArg(l, 3)))
+		a.SetTile(int32(numArg(l, 2)), int32(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "animSetColorKey", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetColorKey(int16(numArg(l, 2)))
+		a.SetColorKey(int16(numArg(l, 2)))
 		return 0
 	})
 	luaRegister(l, "animSetAlpha", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetAlpha(int16(numArg(l, 2)), int16(numArg(l, 3)))
+		a.SetAlpha(int16(numArg(l, 2)), int16(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "animSetScale", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
 		return 0
 	})
 	luaRegister(l, "animSetWindow", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).SetWindow(float32(numArg(l, 2)), float32(numArg(l, 3)),
+		a.SetWindow(float32(numArg(l, 2)), float32(numArg(l, 3)),
 			float32(numArg(l, 4)), float32(numArg(l, 5)))
 		return 0
 	})
 	luaRegister(l, "animUpdate", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).Update()
+		a.Update()
 		return 0
 	})
 	luaRegister(l, "animDraw", func(*lua.State) int {
-		ud := l.ToUserData(1)
-		switch ud.(type) {
-		case *Anim:
-		default:
-			panic(lua.RuntimeError("1番目の引数がAnimではありません。"))
+		a, ok := l.ToUserData(1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
 		}
-		ud.(*Anim).Draw()
+		a.Draw()
 		return 0
 	})
 	luaRegister(l, "refresh", func(*lua.State) int {
 		await(60)
 		if gameEnd {
-			panic(lua.RuntimeError("<game end>"))
+			lua.Errorf(l, "<game end>")
 		}
+		return 0
+	})
+	luaRegister(l, "loadLifebar", func(l *lua.State) int {
+		lua.Errorf(l, strArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLifeMul", func(l *lua.State) int {
+		lifeMul = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setTeam1VS2Life", func(l *lua.State) int {
+		team1VS2Life = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setTurnsRecoveryRate", func(l *lua.State) int {
+		turnsRecoveryRate = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setZoom", func(l *lua.State) int {
+		zoomEnable = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setZoomMin", func(l *lua.State) int {
+		zoomMin = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setZoomMax", func(l *lua.State) int {
+		zoomMax = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setZoomSpeed", func(l *lua.State) int {
+		zoomSpeed = float32(numArg(l, 1))
 		return 0
 	})
 }

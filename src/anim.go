@@ -263,6 +263,27 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	}
 	return a
 }
+func ReadAction(sff *Sff, lines []string, i *int) (no int32, a *Animation) {
+	var name, subname string
+	for ; *i < len(lines); (*i)++ {
+		name, subname = SectionName(lines[*i])
+		if len(name) > 0 {
+			break
+		}
+	}
+	if name != "begin " {
+		return
+	}
+	spi := strings.Index(subname, " ")
+	if spi < 0 {
+		return
+	}
+	if strings.ToLower(subname[:spi+1]) != "action " {
+		return
+	}
+	(*i)++
+	return Atoi(subname[spi+1:]), ReadAnimation(sff, lines, i)
+}
 func (a *Animation) AnimTime() int32 {
 	return a.sumtime - a.totaltime
 }
@@ -466,6 +487,52 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		&a.tile, xs*widthScale, xcs*xbs*h*widthScale, ys*heightScale,
 		xcs*rxadd*widthScale/heightScale, angle, a.alpha(), window,
 		rcx, rcy, pfx)
+}
+
+type AnimationTable struct{ table map[int32]*Animation }
+
+func NewAnimationTable() *AnimationTable {
+	return &AnimationTable{table: make(map[int32]*Animation)}
+}
+func (al *AnimationTable) NewAnimation(no int32,
+	sff *Sff, lines []string, i *int) *Animation {
+	a := ReadAnimation(sff, lines, i)
+	al.table[no] = a
+	return a
+}
+func (al *AnimationTable) readActionSub(sff *Sff,
+	lines []string, i *int) *Animation {
+	for *i < len(lines) {
+		no, a := ReadAction(sff, lines, i)
+		if a != nil {
+			if al.table[no] == nil {
+				al.table[no] = a
+				for len(a.frames) == 0 {
+					a2 := al.readActionSub(sff, lines, i)
+					if a2 != nil {
+						*a = *a2
+					}
+				}
+			}
+			return a
+		} else {
+			(*i)++
+		}
+	}
+	return nil
+}
+func (al *AnimationTable) ReadAction(sff *Sff, lines []string, i *int) {
+	for al.readActionSub(sff, lines, i) != nil {
+	}
+}
+func (al *AnimationTable) get(no int32) *Animation {
+	a := al.table[no]
+	if a == nil {
+		return a
+	}
+	ret := &Animation{}
+	*ret = *a
+	return ret
 }
 
 type Anim struct {

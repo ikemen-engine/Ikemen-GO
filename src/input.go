@@ -868,8 +868,10 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 	if c.tamei != c.cmdi {
 		if c.cmd[c.cmdi].tametime > 1 {
 			for _, k := range c.cmd[c.cmdi].key {
-				ks:=cbuf.State(k)
-				if ks>0{return ai}
+				ks := cbuf.State(k)
+				if ks > 0 {
+					return ai
+				}
 				if func() bool {
 					if ai {
 						return Rand(0, c.cmd[c.cmdi].tametime) != 0
@@ -946,4 +948,16 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	if complete {
 		c.curbuftime = c.buftime + buftime
 	}
+}
+
+type CommandList struct {
+	Buffer            []CommandBuffer
+	Names             map[string]int
+	Commands          [][]Command
+	DefaultTime       int32
+	DefaultBufferTime int32
+}
+
+func NewCommandList() *CommandList {
+	return &CommandList{Names: make(map[string]int)}
 }

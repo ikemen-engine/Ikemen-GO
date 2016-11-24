@@ -14,9 +14,13 @@ var gameWidth, gameHeight int32 = 320, 240
 var widthScale, heightScale float32 = 1, 1
 var window *glfw.Window
 var gameEnd, frameSkip = false, false
-var redrawWait = struct{ nextTime, lastDraw time.Time }{}
-var brightness = int32(256)
-var introTime = int32(0)
+var redrawWait struct{ nextTime, lastDraw time.Time }
+var brightness int32 = 256
+var introTime, roundTime int32 = 0, -1
+var lifeMul, team1VS2Life float32 = 1, 1
+var turnsRecoveryRate float32 = 1.0 / 300
+var zoomEnable = false
+var zoomMin, zoomMax, zoomSpeed float32 = 1, 1, 1
 
 func init() {
 	runtime.LockOSThread()

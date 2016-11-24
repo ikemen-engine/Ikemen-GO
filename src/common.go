@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"math"
 	"strings"
 )
@@ -151,6 +152,17 @@ func AsciiToString(ascii []byte) string {
 	}
 	return string(buf)
 }
+func LoadText(filename string) (string, error) {
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	if len(bytes) >= 3 &&
+		bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
+		return string(bytes[3:]), nil
+	}
+	return AsciiToString(bytes), nil
+}
 func SplitAndTrim(str, sep string) (ss []string) {
 	ss = strings.Split(str, sep)
 	for i, s := range ss {
@@ -170,7 +182,7 @@ func SectionName(sec string) (string, string) {
 	var name string
 	i := strings.Index(sec, " ")
 	if i >= 0 {
-		name = sec[:i]
+		name = sec[:i+1]
 		sec = sec[i+1:]
 	} else {
 		name = sec
