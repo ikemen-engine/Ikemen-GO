@@ -21,6 +21,7 @@ var lifeMul, team1VS2Life float32 = 1, 1
 var turnsRecoveryRate float32 = 1.0 / 300
 var zoomEnable = false
 var zoomMin, zoomMax, zoomSpeed float32 = 1, 1, 1
+var lifebarFontScale float32 = 1
 
 func init() {
 	runtime.LockOSThread()

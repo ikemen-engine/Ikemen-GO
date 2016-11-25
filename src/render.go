@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/go-gl/gl/v2.1/gl"
 	"math"
-	"strings"
 	"unsafe"
 )
 
@@ -16,51 +15,47 @@ var mugenShaderFcS uintptr
 var uniformFcSA, uniformColor int32
 
 func RenderInit() {
-	vertShader := strings.Join([]string{
-		"void main(void){",
-		"gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;",
-		"gl_Position = ftransform();",
-		"}\x00"}, "")
-	fragShader := strings.Join([]string{
-		"uniform float a;",
-		"uniform sampler2D tex;",
-		"uniform sampler1D pal;",
-		"uniform int msk;",
-		"void main(void){",
-		"float r = texture2D(tex, gl_TexCoord[0].st).r;",
-		"vec4 c;",
-		"gl_FragColor =",
-		"int(255.0*r) == msk ? vec4(0.0)",
-		": (c = texture1D(pal, r*0.9961), vec4(c.rgb, a));",
-		"}\x00"}, "")
-	fragShaderFc := strings.Join([]string{
-		"uniform float a;",
-		"uniform sampler2D tex;",
-		"uniform bool neg;",
-		"uniform float gray;",
-		"uniform vec3 add;",
-		"uniform vec3 mul;",
-		"void main(void){",
-		"vec4 c = texture2D(tex, gl_TexCoord[0].st);",
-		"if(neg) c.rgb = vec3(1.0) - c.rgb;",
-		"float gcol = (c.r + c.g + c.b) / 3.0;",
-		"c.r += (gcol - c.r) * gray + add.r;",
-		"c.g += (gcol - c.g) * gray + add.g;",
-		"c.b += (gcol - c.b) * gray + add.b;",
-		"c.rgb *= mul;",
-		"c.a *= a;",
-		"gl_FragColor = c;",
-		"}\x00"}, "")
-	fragShaderFcS := strings.Join([]string{
-		"uniform float a;",
-		"uniform sampler2D tex;",
-		"uniform vec3 color;",
-		"void main(void){",
-		"vec4 c = texture2D(tex, gl_TexCoord[0].st);",
-		"c.rgb = color * c.a;",
-		"c.a *= a;",
-		"gl_FragColor = c;",
-		"}\x00"}, "")
+	vertShader := "void main(void){" +
+		"gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;" +
+		"gl_Position = ftransform();" +
+		"}\x00"
+	fragShader := "uniform float a;" +
+		"uniform sampler2D tex;" +
+		"uniform sampler1D pal;" +
+		"uniform int msk;" +
+		"void main(void){" +
+		"float r = texture2D(tex, gl_TexCoord[0].st).r;" +
+		"vec4 c;" +
+		"gl_FragColor =" +
+		"int(255.0*r) == msk ? vec4(0.0)" +
+		": (c = texture1D(pal, r*0.9961), vec4(c.rgb, a));" +
+		"}\x00"
+	fragShaderFc := "uniform float a;" +
+		"uniform sampler2D tex;" +
+		"uniform bool neg;" +
+		"uniform float gray;" +
+		"uniform vec3 add;" +
+		"uniform vec3 mul;" +
+		"void main(void){" +
+		"vec4 c = texture2D(tex, gl_TexCoord[0].st);" +
+		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
+		"float gcol = (c.r + c.g + c.b) / 3.0;" +
+		"c.r += (gcol - c.r) * gray + add.r;" +
+		"c.g += (gcol - c.g) * gray + add.g;" +
+		"c.b += (gcol - c.b) * gray + add.b;" +
+		"c.rgb *= mul;" +
+		"c.a *= a;" +
+		"gl_FragColor = c;" +
+		"}\x00"
+	fragShaderFcS := "uniform float a;" +
+		"uniform sampler2D tex;" +
+		"uniform vec3 color;" +
+		"void main(void){" +
+		"vec4 c = texture2D(tex, gl_TexCoord[0].st);" +
+		"c.rgb = color * c.a;" +
+		"c.a *= a;" +
+		"gl_FragColor = c;" +
+		"}\x00"
 	errLog := func(obl uintptr) error {
 		var size int32
 		gl.GetObjectParameterivARB(obl, gl.INFO_LOG_LENGTH, &size)
