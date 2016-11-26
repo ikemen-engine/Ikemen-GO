@@ -5,13 +5,14 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 const (
-	IMax           = int32(^uint32(0) >> 1)
-	IErr           = ^IMax
-	PathDelimiters = "/\\"
+	IMax = int32(^uint32(0) >> 1)
+	IErr = ^IMax
 )
 
 var randseed int32
@@ -176,22 +177,58 @@ func LoadText(filename string) (string, error) {
 	return AsciiToString(bytes), nil
 }
 func LoadFile(file *string, deffile string, load func(string) error) error {
-	var filepath string
-	if li := strings.LastIndexAny(deffile, PathDelimiters); li >= 0 {
-		filepath = deffile[:li+1] + *file
-		if _, err := os.Stat(filepath); os.IsNotExist(err) {
-			filepath = "data/" + *file
+	var fp string
+	isNotExist := func() bool {
+		if _, err := os.Stat(fp); !os.IsNotExist(err) {
+			return false
 		}
+		var pattern string
+		for _, r := range fp {
+			if r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
+				pattern += "[" + string(unicode.ToLower(r)) +
+					string(unicode.ToLower(r)+'A'-'a') + "]"
+			} else if r == '*' || r == '?' || r == '[' {
+				pattern += "\\" + string(r)
+			} else {
+				pattern += string(r)
+			}
+		}
+		if m, _ := filepath.Glob(pattern); len(m) > 0 {
+			fp = m[0]
+			return false
+		}
+		return true
+	}
+	*file = strings.Replace(*file, "\\", "/", -1)
+	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
+	if defdir == "." {
+		fp = *file
+	} else if defdir == "/" {
+		fp = defdir + *file
 	} else {
-		filepath = "data/" + *file
+		fp = defdir + "/" + *file
 	}
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		filepath = *file
+	if isNotExist() {
+		_else := false
+		if defdir != "data" {
+			fp = "data/" + *file
+			if isNotExist() {
+				_else = true
+			}
+		} else {
+			_else = true
+		}
+		if _else {
+			if defdir != "." {
+				fp = *file
+				isNotExist()
+			}
+		}
 	}
-	if err := load(filepath); err != nil {
-		return Error(fmt.Sprintf("%s:\n%s", filepath, err.Error()))
+	if err := load(fp); err != nil {
+		return Error(fmt.Sprintf("%s:\n%s", fp, err.Error()))
 	}
-	*file = filepath
+	*file = fp
 	return nil
 }
 func SplitAndTrim(str, sep string) (ss []string) {
@@ -315,20 +352,23 @@ func readLayout(pre string, is IniSection) *Layout {
 	l := newLayout()
 	is.ReadF32(pre+"offset", &l.offset[0], &l.offset[1])
 	is.ReadI32(pre+"displaytime", &l.displaytime)
-	if str := is["facing"]; len(str) > 0 {
+	if str := is[pre+"facing"]; len(str) > 0 {
 		if Atoi(str) < 0 {
 			l.facing = -1
 		} else {
 			l.facing = 1
 		}
 	}
-	if str := is["vfacing"]; len(str) > 0 {
+	if str := is[pre+"vfacing"]; len(str) > 0 {
 		if Atoi(str) < 0 {
 			l.vfacing = -1
 		} else {
 			l.vfacing = 1
 		}
 	}
+	var ln int32
+	is.ReadI32(pre+"layerno", &ln)
+	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
 	return l
 }
