@@ -284,6 +284,12 @@ func ReadAction(sff *Sff, lines []string, i *int) (no int32, a *Animation) {
 	(*i)++
 	return Atoi(subname[spi+1:]), ReadAnimation(sff, lines, i)
 }
+func (a *Animation) reset() {
+	a.current, a.drawidx = 0, 0
+	a.time, a.sumtime = 0, 0
+	a.newframe, a.loopend = false, false
+	a.spr = nil
+}
 func (a *Animation) AnimTime() int32 {
 	return a.sumtime - a.totaltime
 }

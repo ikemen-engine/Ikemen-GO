@@ -372,11 +372,3 @@ func readLayout(pre string, is IniSection) *Layout {
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
 	return l
 }
-func (l *Layout) setup() {
-	if l.facing < 0 {
-		l.offset[0] += lifebarFontScale
-	}
-	if l.vfacing < 0 {
-		l.offset[1] += lifebarFontScale
-	}
-}
