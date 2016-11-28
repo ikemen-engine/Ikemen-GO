@@ -414,6 +414,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	if err := read(&riffSize); err != nil {
 		return nil, err
 	}
+	riffSize += 8
 	if n, err = f.Read(buf); err != nil {
 		return nil, err
 	}
@@ -423,7 +424,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	}
 	fmtSize, dataSize := uint32(0), uint32(0)
 	w := Wave{}
-	riffend := ofs + 24 + int64(riffSize)
+	riffend := ofs + 16 + int64(riffSize)
 	ofs += 28
 	for (fmtSize == 0 || dataSize == 0) && ofs < riffend {
 		if n, err = f.Read(buf); err != nil {

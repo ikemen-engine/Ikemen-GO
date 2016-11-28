@@ -22,6 +22,8 @@ var turnsRecoveryRate float32 = 1.0 / 300
 var zoomEnable = false
 var zoomMin, zoomMax, zoomSpeed float32 = 1, 1, 1
 var lifebarFontScale float32 = 1
+var debugFont *Fnt
+var debugScript string
 
 func init() {
 	runtime.LockOSThread()

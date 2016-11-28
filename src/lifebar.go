@@ -35,122 +35,69 @@ func (wt *WinType) SetPerfect() {
 		*wt += WT_PN - WT_N
 	}
 }
-func readSpr(name string, is IniSection, a *Animation) {
-	a.frames = make([]AnimFrame, 1)
-	var g, n int32 = -1, 0
-	is.ReadI32(name, &g, &n)
-	a.frames[0].Group, a.frames[0].Number = I32ToI16(g), I32ToI16(n)
-	a.mask = 0
-}
-func readAnm(name string, is IniSection, a *Animation, at *AnimationTable) {
-	n := int32(-1)
-	is.ReadI32(name, &n)
-	ani := at.get(n)
-	if ani != nil {
-		*a = *ani
-	}
-}
 
 type HealthBar struct {
-	pos       [2]int32
-	range_x   [2]int32
-	bg0       Animation
-	bg0_lay   Layout
-	bg1       Animation
-	bg1_lay   Layout
-	bg2       Animation
-	bg2_lay   Layout
-	mid       Animation
-	mid_lay   Layout
-	front     Animation
-	front_lay Layout
+	pos     [2]int32
+	range_x [2]int32
+	bg0     AnimLayout
+	bg1     AnimLayout
+	bg2     AnimLayout
+	mid     AnimLayout
+	front   AnimLayout
 }
 
-func newHealthBar(sff *Sff) (hb *HealthBar) {
-	hb = &HealthBar{bg0: *newAnimation(sff), bg1: *newAnimation(sff),
-		bg2: *newAnimation(sff), mid: *newAnimation(sff),
-		front: *newAnimation(sff)}
-	return
-}
 func readHealthBar(pre string, is IniSection,
 	sff *Sff, at *AnimationTable) *HealthBar {
-	hb := newHealthBar(sff)
+	hb := &HealthBar{}
 	is.ReadI32(pre+"pos", &hb.pos[0], &hb.pos[1])
 	is.ReadI32(pre+"range.x", &hb.range_x[0], &hb.range_x[1])
-	readSpr(pre+"bg0.spr", is, &hb.bg0)
-	readAnm(pre+"bg0.anim", is, &hb.bg0, at)
-	hb.bg0_lay = *readLayout(pre+"bg0.", is)
-	readSpr(pre+"bg1.spr", is, &hb.bg1)
-	readAnm(pre+"bg1.anim", is, &hb.bg1, at)
-	hb.bg1_lay = *readLayout(pre+"bg1.", is)
-	readSpr(pre+"bg2.spr", is, &hb.bg2)
-	readAnm(pre+"bg2.anim", is, &hb.bg2, at)
-	hb.bg2_lay = *readLayout(pre+"bg2.", is)
-	readSpr(pre+"mid.spr", is, &hb.mid)
-	readAnm(pre+"mid.anim", is, &hb.mid, at)
-	hb.mid_lay = *readLayout(pre+"mid.", is)
-	readSpr(pre+"front.spr", is, &hb.front)
-	readAnm(pre+"front.anim", is, &hb.front, at)
-	hb.front_lay = *readLayout(pre+"front.", is)
+	hb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at)
+	hb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at)
+	hb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at)
+	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at)
+	hb.front = *ReadAnimLayout(pre+"front.", is, sff, at)
 	return hb
 }
 func (hb *HealthBar) reset() {
-	hb.bg0.reset()
-	hb.bg1.reset()
-	hb.bg2.reset()
-	hb.mid.reset()
-	hb.front.reset()
+	hb.bg0.Reset()
+	hb.bg1.Reset()
+	hb.bg2.Reset()
+	hb.mid.Reset()
+	hb.front.Reset()
 }
 
 type PowerBar struct {
 	snd          *Snd
 	pos          [2]int32
 	range_x      [2]int32
-	bg0          Animation
-	bg0_lay      Layout
-	bg1          Animation
-	bg1_lay      Layout
-	bg2          Animation
-	bg2_lay      Layout
-	mid          Animation
-	mid_lay      Layout
-	front        Animation
-	front_lay    Layout
+	bg0          AnimLayout
+	bg1          AnimLayout
+	bg2          AnimLayout
+	mid          AnimLayout
+	front        AnimLayout
 	counter_font [3]int32
 	counter_lay  Layout
 	level_snd    [3][2]int32
 }
 
-func newPowerBar(sff *Sff, snd *Snd) (pb *PowerBar) {
-	pb = &PowerBar{snd: snd, bg0: *newAnimation(sff),
-		bg1: *newAnimation(sff), bg2: *newAnimation(sff), mid: *newAnimation(sff),
-		front: *newAnimation(sff), counter_font: [3]int32{-1},
+func newPowerBar(snd *Snd) (pb *PowerBar) {
+	pb = &PowerBar{snd: snd, counter_font: [3]int32{-1},
 		level_snd: [3][2]int32{{-1}, {-1}, {-1}}}
 	return
 }
 func readPowerBar(pre string, is IniSection,
 	sff *Sff, at *AnimationTable, snd *Snd) *PowerBar {
-	pb := newPowerBar(sff, snd)
+	pb := newPowerBar(snd)
 	is.ReadI32(pre+"pos", &pb.pos[0], &pb.pos[1])
 	is.ReadI32(pre+"range.x", &pb.range_x[0], &pb.range_x[1])
-	readSpr(pre+"bg0.spr", is, &pb.bg0)
-	readAnm(pre+"bg0.anim", is, &pb.bg0, at)
-	pb.bg0_lay = *readLayout(pre+"bg0.", is)
-	readSpr(pre+"bg1.spr", is, &pb.bg1)
-	readAnm(pre+"bg1.anim", is, &pb.bg1, at)
-	pb.bg1_lay = *readLayout(pre+"bg1.", is)
-	readSpr(pre+"bg2.spr", is, &pb.bg2)
-	readAnm(pre+"bg2.anim", is, &pb.bg2, at)
-	pb.bg2_lay = *readLayout(pre+"bg2.", is)
-	readSpr(pre+"mid.spr", is, &pb.mid)
-	readAnm(pre+"mid.anim", is, &pb.mid, at)
-	pb.mid_lay = *readLayout(pre+"mid.", is)
-	readSpr(pre+"front.spr", is, &pb.front)
-	readAnm(pre+"front.anim", is, &pb.front, at)
-	pb.front_lay = *readLayout(pre+"front.", is)
+	pb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at)
+	pb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at)
+	pb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at)
+	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at)
+	pb.front = *ReadAnimLayout(pre+"front.", is, sff, at)
 	is.ReadI32(pre+"counter.font", &pb.counter_font[0], &pb.counter_font[1],
 		&pb.counter_font[2])
-	pb.counter_lay = *readLayout(pre+"counter.", is)
+	pb.counter_lay = *ReadLayout(pre+"counter.", is)
 	for i := range pb.level_snd {
 		is.ReadI32(fmt.Sprintf("%slevel%d.snd", pre, i+1), &pb.level_snd[i][0],
 			&pb.level_snd[i][1])
@@ -158,89 +105,75 @@ func readPowerBar(pre string, is IniSection,
 	return pb
 }
 func (pb *PowerBar) reset() {
-	pb.bg0.reset()
-	pb.bg1.reset()
-	pb.bg2.reset()
-	pb.mid.reset()
-	pb.front.reset()
+	pb.bg0.Reset()
+	pb.bg1.Reset()
+	pb.bg2.Reset()
+	pb.mid.Reset()
+	pb.front.Reset()
 }
 
 type LifeBarFace struct {
 	pos               [2]int32
-	bg                Animation
-	bg_lay            Layout
+	bg                AnimLayout
 	face_spr          [2]int32
 	face              *Sprite
 	face_lay          Layout
 	teammate_pos      [2]int32
 	teammate_spacing  [2]int32
-	teammate_bg       Animation
-	teammate_bg_lay   Layout
-	teammate_ko       Animation
-	teammate_ko_lay   Layout
+	teammate_bg       AnimLayout
+	teammate_ko       AnimLayout
 	teammate_face_spr [2]int32
 	teammate_face     []*Sprite
 	teammate_face_lay Layout
 }
 
-func newLifeBarFace(sff *Sff) *LifeBarFace {
-	return &LifeBarFace{bg: *newAnimation(sff), face_spr: [2]int32{-1},
-		teammate_bg: *newAnimation(sff), teammate_ko: *newAnimation(sff),
-		teammate_face_spr: [2]int32{-1}}
+func newLifeBarFace() *LifeBarFace {
+	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at *AnimationTable) *LifeBarFace {
-	f := newLifeBarFace(sff)
+	f := newLifeBarFace()
 	is.ReadI32(pre+"pos", &f.pos[0], &f.pos[1])
-	readSpr(pre+"bg.spr", is, &f.bg)
-	readAnm(pre+"bg.anim", is, &f.bg, at)
-	f.bg_lay = *readLayout(pre+"bg.", is)
+	f.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
 	is.ReadI32(pre+"face.spr", &f.face_spr[0], &f.face_spr[1])
-	f.face_lay = *readLayout(pre+"face.", is)
+	f.face_lay = *ReadLayout(pre+"face.", is)
 	is.ReadI32(pre+"teammate.pos", &f.teammate_pos[0], &f.teammate_pos[1])
 	is.ReadI32(pre+"teammate.spacing", &f.teammate_spacing[0],
 		&f.teammate_spacing[1])
-	readSpr(pre+"teammate.bg.spr", is, &f.teammate_bg)
-	readAnm(pre+"teammate.bg.anim", is, &f.teammate_bg, at)
-	f.teammate_bg_lay = *readLayout(pre+"teammate.bg.", is)
-	readSpr(pre+"teammate.ko.spr", is, &f.teammate_ko)
-	readAnm(pre+"teammate.ko.anim", is, &f.teammate_ko, at)
-	f.teammate_ko_lay = *readLayout(pre+"teammate.ko.", is)
+	f.teammate_bg = *ReadAnimLayout(pre+"teammate.bg.", is, sff, at)
+	f.teammate_ko = *ReadAnimLayout(pre+"teammate.ko.", is, sff, at)
 	is.ReadI32(pre+"teammate.face.spr", &f.teammate_face_spr[0],
 		&f.teammate_face_spr[1])
-	f.teammate_face_lay = *readLayout(pre+"teammate.face.", is)
+	f.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is)
 	return f
 }
 func (f *LifeBarFace) reset() {
-	f.bg.reset()
-	f.teammate_bg.reset()
-	f.teammate_ko.reset()
+	f.bg.Reset()
+	f.teammate_bg.Reset()
+	f.teammate_ko.Reset()
 }
 
 type LifeBarName struct {
 	pos       [2]int32
 	name_font [3]int32
 	name_lay  Layout
-	bg        Animation
-	bg_lay    Layout
+	bg        AnimLayout
 }
 
-func newLifeBarName(sff *Sff) *LifeBarName {
-	return &LifeBarName{name_font: [3]int32{-1}, bg: *newAnimation(sff)}
+func newLifeBarName() *LifeBarName {
+	return &LifeBarName{name_font: [3]int32{-1}}
 }
 func readLifeBarName(pre string, is IniSection,
 	sff *Sff, at *AnimationTable) *LifeBarName {
-	n := newLifeBarName(sff)
+	n := newLifeBarName()
 	is.ReadI32(pre+"pos", &n.pos[0], &n.pos[1])
 	is.ReadI32(pre+"name.font", &n.name_font[0], &n.name_font[1],
 		&n.name_font[2])
-	n.name_lay = *readLayout(pre+"name.", is)
-	readSpr(pre+"bg.spr", is, &n.bg)
-	readAnm(pre+"bg.anim", is, &n.bg, at)
-	n.bg_lay = *readLayout(pre+"bg.", is)
+	n.name_lay = *ReadLayout(pre+"name.", is)
+	n.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
 	return n
 }
-func (n *LifeBarName) reset() { n.bg.reset() }
+func (n *LifeBarName) reset() { n.bg.Reset() }
 
 type LifeBarWinIcon struct {
 	pos           [2]int32
@@ -248,61 +181,38 @@ type LifeBarWinIcon struct {
 	useiconupto   int32
 	counter_font  [3]int32
 	counter_lay   Layout
-	icon          [WT_NumTypes]Animation
-	icon_lay      [WT_NumTypes]Layout
+	icon          [WT_NumTypes]AnimLayout
 	wins          []WinType
 	numWins       int
 	added, addedp *Animation
 }
 
-func newLifeBarWinIcon(sff *Sff) (wi *LifeBarWinIcon) {
-	wi = &LifeBarWinIcon{useiconupto: 4, counter_font: [3]int32{-1}}
-	for i := range wi.icon {
-		wi.icon[i] = *newAnimation(sff)
-	}
-	return
+func newLifeBarWinIcon() *LifeBarWinIcon {
+	return &LifeBarWinIcon{useiconupto: 4, counter_font: [3]int32{-1}}
 }
 func readLifeBarWinIcon(pre string, is IniSection,
 	sff *Sff, at *AnimationTable) *LifeBarWinIcon {
-	wi := newLifeBarWinIcon(sff)
+	wi := newLifeBarWinIcon()
 	is.ReadI32(pre+"pos", &wi.pos[0], &wi.pos[1])
 	is.ReadI32(pre+"iconoffset", &wi.iconoffset[0], &wi.iconoffset[1])
 	is.ReadI32(pre+"useiconupto", &wi.useiconupto)
 	is.ReadI32(pre+"counter.font", &wi.counter_font[0], &wi.counter_font[1],
 		&wi.counter_font[2])
-	wi.counter_lay = *readLayout(pre+"counter.", is)
-	readSpr(pre+"n.spr", is, &wi.icon[WT_N])
-	readAnm(pre+"n.anim", is, &wi.icon[WT_N], at)
-	wi.icon_lay[WT_N] = *readLayout(pre+"n.", is)
-	readSpr(pre+"s.spr", is, &wi.icon[WT_S])
-	readAnm(pre+"s.anim", is, &wi.icon[WT_S], at)
-	wi.icon_lay[WT_S] = *readLayout(pre+"s.", is)
-	readSpr(pre+"h.spr", is, &wi.icon[WT_H])
-	readAnm(pre+"h.anim", is, &wi.icon[WT_H], at)
-	wi.icon_lay[WT_H] = *readLayout(pre+"h.", is)
-	readSpr(pre+"c.spr", is, &wi.icon[WT_C])
-	readAnm(pre+"c.anim", is, &wi.icon[WT_C], at)
-	wi.icon_lay[WT_C] = *readLayout(pre+"c.", is)
-	readSpr(pre+"t.spr", is, &wi.icon[WT_T])
-	readAnm(pre+"t.anim", is, &wi.icon[WT_T], at)
-	wi.icon_lay[WT_T] = *readLayout(pre+"t.", is)
-	readSpr(pre+"throw.spr", is, &wi.icon[WT_Throw])
-	readAnm(pre+"throw.anim", is, &wi.icon[WT_Throw], at)
-	wi.icon_lay[WT_Throw] = *readLayout(pre+"throw.", is)
-	readSpr(pre+"suicide.spr", is, &wi.icon[WT_Suicide])
-	readAnm(pre+"suicide.anim", is, &wi.icon[WT_Suicide], at)
-	wi.icon_lay[WT_Suicide] = *readLayout(pre+"suicide.", is)
-	readSpr(pre+"teammate.spr", is, &wi.icon[WT_Teammate])
-	readAnm(pre+"teammate.anim", is, &wi.icon[WT_Teammate], at)
-	wi.icon_lay[WT_Teammate] = *readLayout(pre+"teammate.", is)
-	readSpr(pre+"perfect.spr", is, &wi.icon[WT_Perfect])
-	readAnm(pre+"perfect.anim", is, &wi.icon[WT_Perfect], at)
-	wi.icon_lay[WT_Perfect] = *readLayout(pre+"perfect.", is)
+	wi.counter_lay = *ReadLayout(pre+"counter.", is)
+	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at)
+	wi.icon[WT_S] = *ReadAnimLayout(pre+"s.", is, sff, at)
+	wi.icon[WT_H] = *ReadAnimLayout(pre+"h.", is, sff, at)
+	wi.icon[WT_C] = *ReadAnimLayout(pre+"c.", is, sff, at)
+	wi.icon[WT_T] = *ReadAnimLayout(pre+"t.", is, sff, at)
+	wi.icon[WT_Throw] = *ReadAnimLayout(pre+"throw.", is, sff, at)
+	wi.icon[WT_Suicide] = *ReadAnimLayout(pre+"suicide.", is, sff, at)
+	wi.icon[WT_Teammate] = *ReadAnimLayout(pre+"teammate.", is, sff, at)
+	wi.icon[WT_Perfect] = *ReadAnimLayout(pre+"perfect.", is, sff, at)
 	return wi
 }
 func (wi *LifeBarWinIcon) reset() {
 	for i := range wi.icon {
-		wi.icon[i].reset()
+		wi.icon[i].Reset()
 	}
 	wi.numWins = len(wi.wins)
 	wi.added, wi.addedp = nil, nil
@@ -313,29 +223,25 @@ type LifeBarTime struct {
 	pos            [2]int32
 	counter_font   [3]int32
 	counter_lay    Layout
-	bg             Animation
-	bg_lay         Layout
+	bg             AnimLayout
 	framespercount int32
 }
 
-func newLifeBarTime(sff *Sff) *LifeBarTime {
-	return &LifeBarTime{counter_font: [3]int32{-1}, bg: *newAnimation(sff),
-		framespercount: 60}
+func newLifeBarTime() *LifeBarTime {
+	return &LifeBarTime{counter_font: [3]int32{-1}, framespercount: 60}
 }
 func readLifeBarTime(is IniSection,
 	sff *Sff, at *AnimationTable) *LifeBarTime {
-	t := newLifeBarTime(sff)
+	t := newLifeBarTime()
 	is.ReadI32("pos", &t.pos[0], &t.pos[1])
 	is.ReadI32("counter.font", &t.counter_font[0], &t.counter_font[1],
 		&t.counter_font[2])
-	t.counter_lay = *readLayout("counter.", is)
-	readSpr("bg.spr", is, &t.bg)
-	readAnm("bg.anim", is, &t.bg, at)
-	t.bg_lay = *readLayout("bg.", is)
+	t.counter_lay = *ReadLayout("counter.", is)
+	t.bg = *ReadAnimLayout("bg.", is, sff, at)
 	is.ReadI32("framespercount", &t.framespercount)
 	return t
 }
-func (t *LifeBarTime) reset() { t.bg.reset() }
+func (t *LifeBarTime) reset() { t.bg.Reset() }
 
 type LifeBarCombo struct {
 	pos           [2]int32
@@ -365,11 +271,11 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	is.ReadI32("counter.font", &c.counter_font[0], &c.counter_font[1],
 		&c.counter_font[2])
 	is.ReadI32("counter.shake", &c.counter_shake)
-	c.counter_lay = *readLayout("counter.", is)
+	c.counter_lay = *ReadLayout("counter.", is)
 	c.counter_lay.offset = [2]float32{0, 0}
 	is.ReadI32("text.font", &c.text_font[0], &c.text_font[1], &c.text_font[2])
 	c.text_text = is["text.text"]
-	c.text_lay = *readLayout("text.", is)
+	c.text_lay = *ReadLayout("text.", is)
 	is.ReadI32("displaytime", &c.displaytime)
 	return c
 }
@@ -379,14 +285,101 @@ func (c *LifeBarCombo) reset() {
 	c.shaketime = [2]int32{}
 }
 
-type LifeBarRound struct{}
+type LifeBarRound struct {
+	snd                *Snd
+	pos                [2]int32
+	match_wins         int32
+	match_maxdrawgames int32
+	start_waittime     int32
+	round_time         int32
+	round_sndtime      int32
+	round_default      AnimTextSnd
+	round              [9]AnimTextSnd
+	fight_time         int32
+	fight_sndtime      int32
+	fight              AnimTextSnd
+	ctrl_time          int32
+	ko_time            int32
+	ko_sndtime         int32
+	ko, dko, to        AnimTextSnd
+	slow_time          int32
+	over_waittime      int32
+	over_hittime       int32
+	over_wintime       int32
+	over_time          int32
+	win_time           int32
+	win_sndtime        int32
+	win, win2, drawn   AnimTextSnd
+}
 
-func newLifeBarRound(sff *Sff) *LifeBarRound {
-	return &LifeBarRound{}
+func newLifeBarRound(snd *Snd) *LifeBarRound {
+	return &LifeBarRound{snd: snd, match_wins: 2, match_maxdrawgames: 1,
+		start_waittime: 30, ctrl_time: 30, slow_time: 60, over_waittime: 45,
+		over_hittime: 10, over_wintime: 45, over_time: 210, win_sndtime: 60}
+}
+func readLifeBarRound(is IniSection,
+	sff *Sff, at *AnimationTable, snd *Snd) *LifeBarRound {
+	r := newLifeBarRound(snd)
+	var tmp int32
+	is.ReadI32("pos", &r.pos[0], &r.pos[1])
+	is.ReadI32("match.wins", &r.match_wins)
+	is.ReadI32("match.maxdrawgames", &r.match_maxdrawgames)
+	if is.ReadI32("start.waittime", &tmp) {
+		r.start_waittime = Max(1, tmp)
+	}
+	is.ReadI32("round.time", &r.round_time)
+	is.ReadI32("round.sndtime", &r.round_sndtime)
+	r.round_default = *ReadAnimTextSnd("round.default.", is, sff, at)
+	for i := range r.round {
+		r.round[i] = *ReadAnimTextSnd(fmt.Sprintf("round%d.", i+1), is, sff, at)
+	}
+	is.ReadI32("fight.time", &r.fight_time)
+	is.ReadI32("fight.sndtime", &r.fight_sndtime)
+	r.fight = *ReadAnimTextSnd("fight.", is, sff, at)
+	if is.ReadI32("ctrl.time", &tmp) {
+		r.ctrl_time = Max(1, tmp)
+	}
+	is.ReadI32("ko.time", &r.ko_time)
+	is.ReadI32("ko.sndtime", &r.ko_sndtime)
+	r.ko = *ReadAnimTextSnd("ko.", is, sff, at)
+	r.dko = *ReadAnimTextSnd("dko.", is, sff, at)
+	r.to = *ReadAnimTextSnd("to.", is, sff, at)
+	is.ReadI32("slow.time", &r.slow_time)
+	if is.ReadI32("over.hittime", &tmp) {
+		r.over_hittime = Max(0, tmp)
+	}
+	if is.ReadI32("over.waittime", &tmp) {
+		r.over_waittime = Max(1, tmp)
+	}
+	if is.ReadI32("over.wintime", &tmp) {
+		r.over_wintime = Max(1, tmp)
+	}
+	if is.ReadI32("over.time", &tmp) {
+		r.over_time = Max(r.over_wintime+1, tmp)
+	}
+	is.ReadI32("win.time", &r.win_time)
+	is.ReadI32("win.sndtime", &r.win_sndtime)
+	r.win = *ReadAnimTextSnd("win.", is, sff, at)
+	r.win2 = *ReadAnimTextSnd("win2.", is, sff, at)
+	r.drawn = *ReadAnimTextSnd("draw.", is, sff, at)
+	return r
+}
+func (r *LifeBarRound) reset() {
+	r.round_default.Reset()
+	for i := range r.round {
+		r.round[i].Reset()
+	}
+	r.fight.Reset()
+	r.ko.Reset()
+	r.dko.Reset()
+	r.to.Reset()
+	r.win.Reset()
+	r.win2.Reset()
+	r.drawn.Reset()
 }
 
 type Lifebar struct {
-	at, fat   *AnimationTable
+	fat       *AnimationTable
 	snd, fsnd *Snd
 	fnt       [10]*Fnt
 	hb        [3][]*HealthBar
@@ -404,14 +397,14 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 	if err != nil {
 		return nil, err
 	}
-	sff, fsff, lines, i := &Sff{}, &Sff{}, SplitAndTrim(str, "\n"), 0
-	l := &Lifebar{at: ReadAnimationTable(sff, lines, &i), snd: &Snd{},
-		hb: [3][]*HealthBar{make([]*HealthBar, 2), make([]*HealthBar, 4),
-			make([]*HealthBar, 2)},
+	l := &Lifebar{snd: &Snd{}, hb: [3][]*HealthBar{make([]*HealthBar, 2),
+		make([]*HealthBar, 4), make([]*HealthBar, 2)},
 		fa: [3][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 4),
 			make([]*LifeBarFace, 2)},
 		nm: [3][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 4),
 			make([]*LifeBarName, 2)}}
+	sff, fsff, lines, i := &Sff{}, &Sff{}, SplitAndTrim(str, "\n"), 0
+	at := ReadAnimationTable(sff, lines, &i)
 	i = 0
 	filesflg := true
 	for i < len(lines) {
@@ -479,73 +472,73 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 			}
 		case "lifebar":
 			if l.hb[0][0] == nil {
-				l.hb[0][0] = readHealthBar("p1.", is, sff, l.at)
+				l.hb[0][0] = readHealthBar("p1.", is, sff, at)
 			}
 			if l.hb[0][1] == nil {
-				l.hb[0][1] = readHealthBar("p2.", is, sff, l.at)
+				l.hb[0][1] = readHealthBar("p2.", is, sff, at)
 			}
 		case "powerbar":
 			if l.pb[0] == nil {
-				l.pb[0] = readPowerBar("p1.", is, sff, l.at, l.snd)
+				l.pb[0] = readPowerBar("p1.", is, sff, at, l.snd)
 			}
 			if l.pb[1] == nil {
-				l.pb[1] = readPowerBar("p2.", is, sff, l.at, l.snd)
+				l.pb[1] = readPowerBar("p2.", is, sff, at, l.snd)
 			}
 		case "face":
 			if l.fa[0][0] == nil {
-				l.fa[0][0] = readLifeBarFace("p1.", is, sff, l.at)
+				l.fa[0][0] = readLifeBarFace("p1.", is, sff, at)
 			}
 			if l.fa[0][1] == nil {
-				l.fa[0][1] = readLifeBarFace("p2.", is, sff, l.at)
+				l.fa[0][1] = readLifeBarFace("p2.", is, sff, at)
 			}
 		case "name":
 			if l.nm[0][0] == nil {
-				l.nm[0][0] = readLifeBarName("p1.", is, sff, l.at)
+				l.nm[0][0] = readLifeBarName("p1.", is, sff, at)
 			}
 			if l.nm[0][1] == nil {
-				l.nm[0][1] = readLifeBarName("p2.", is, sff, l.at)
+				l.nm[0][1] = readLifeBarName("p2.", is, sff, at)
 			}
 		case "simul ":
 			subname = strings.ToLower(subname)
 			switch {
 			case len(subname) >= 7 && subname[:7] == "lifebar":
 				if l.hb[1][0] == nil {
-					l.hb[1][0] = readHealthBar("p1.", is, sff, l.at)
+					l.hb[1][0] = readHealthBar("p1.", is, sff, at)
 				}
 				if l.hb[1][1] == nil {
-					l.hb[1][1] = readHealthBar("p2.", is, sff, l.at)
+					l.hb[1][1] = readHealthBar("p2.", is, sff, at)
 				}
 				if l.hb[1][2] == nil {
-					l.hb[1][2] = readHealthBar("p3.", is, sff, l.at)
+					l.hb[1][2] = readHealthBar("p3.", is, sff, at)
 				}
 				if l.hb[1][3] == nil {
-					l.hb[1][3] = readHealthBar("p4.", is, sff, l.at)
+					l.hb[1][3] = readHealthBar("p4.", is, sff, at)
 				}
 			case len(subname) >= 4 && subname[:4] == "face":
 				if l.fa[1][0] == nil {
-					l.fa[1][0] = readLifeBarFace("p1.", is, sff, l.at)
+					l.fa[1][0] = readLifeBarFace("p1.", is, sff, at)
 				}
 				if l.fa[1][1] == nil {
-					l.fa[1][1] = readLifeBarFace("p2.", is, sff, l.at)
+					l.fa[1][1] = readLifeBarFace("p2.", is, sff, at)
 				}
 				if l.fa[1][2] == nil {
-					l.fa[1][2] = readLifeBarFace("p3.", is, sff, l.at)
+					l.fa[1][2] = readLifeBarFace("p3.", is, sff, at)
 				}
 				if l.fa[1][3] == nil {
-					l.fa[1][3] = readLifeBarFace("p4.", is, sff, l.at)
+					l.fa[1][3] = readLifeBarFace("p4.", is, sff, at)
 				}
 			case len(subname) >= 4 && subname[:4] == "name":
 				if l.nm[1][0] == nil {
-					l.nm[1][0] = readLifeBarName("p1.", is, sff, l.at)
+					l.nm[1][0] = readLifeBarName("p1.", is, sff, at)
 				}
 				if l.nm[1][1] == nil {
-					l.nm[1][1] = readLifeBarName("p2.", is, sff, l.at)
+					l.nm[1][1] = readLifeBarName("p2.", is, sff, at)
 				}
 				if l.nm[1][2] == nil {
-					l.nm[1][2] = readLifeBarName("p3.", is, sff, l.at)
+					l.nm[1][2] = readLifeBarName("p3.", is, sff, at)
 				}
 				if l.nm[1][3] == nil {
-					l.nm[1][3] = readLifeBarName("p4.", is, sff, l.at)
+					l.nm[1][3] = readLifeBarName("p4.", is, sff, at)
 				}
 			}
 		case "turns ":
@@ -553,42 +546,45 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 			switch {
 			case len(subname) >= 7 && subname[:7] == "lifebar":
 				if l.hb[2][0] == nil {
-					l.hb[2][0] = readHealthBar("p1.", is, sff, l.at)
+					l.hb[2][0] = readHealthBar("p1.", is, sff, at)
 				}
 				if l.hb[2][1] == nil {
-					l.hb[2][1] = readHealthBar("p2.", is, sff, l.at)
+					l.hb[2][1] = readHealthBar("p2.", is, sff, at)
 				}
 			case len(subname) >= 4 && subname[:4] == "face":
 				if l.fa[2][0] == nil {
-					l.fa[2][0] = readLifeBarFace("p1.", is, sff, l.at)
+					l.fa[2][0] = readLifeBarFace("p1.", is, sff, at)
 				}
 				if l.fa[2][1] == nil {
-					l.fa[2][1] = readLifeBarFace("p2.", is, sff, l.at)
+					l.fa[2][1] = readLifeBarFace("p2.", is, sff, at)
 				}
 			case len(subname) >= 4 && subname[:4] == "name":
 				if l.nm[2][0] == nil {
-					l.nm[2][0] = readLifeBarName("p1.", is, sff, l.at)
+					l.nm[2][0] = readLifeBarName("p1.", is, sff, at)
 				}
 				if l.nm[2][1] == nil {
-					l.nm[2][1] = readLifeBarName("p2.", is, sff, l.at)
+					l.nm[2][1] = readLifeBarName("p2.", is, sff, at)
 				}
 			}
 		case "winicon":
 			if l.wi[0] == nil {
-				l.wi[0] = readLifeBarWinIcon("p1.", is, sff, l.at)
+				l.wi[0] = readLifeBarWinIcon("p1.", is, sff, at)
 			}
 			if l.wi[1] == nil {
-				l.wi[1] = readLifeBarWinIcon("p2.", is, sff, l.at)
+				l.wi[1] = readLifeBarWinIcon("p2.", is, sff, at)
 			}
 		case "time":
 			if l.ti == nil {
-				l.ti = readLifeBarTime(is, sff, l.at)
+				l.ti = readLifeBarTime(is, sff, at)
 			}
 		case "combo":
 			if l.co == nil {
 				l.co = readLifeBarCombo(is)
 			}
 		case "round":
+			if l.ro == nil {
+				l.ro = readLifeBarRound(is, sff, at, l.snd)
+			}
 		}
 	}
 	return l, nil

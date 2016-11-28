@@ -237,7 +237,23 @@ func systemScriptInit(l *lua.State) {
 		return 0
 	})
 	luaRegister(l, "loadLifebar", func(l *lua.State) int {
-		lua.Errorf(l, strArg(l, 1))
+		lb, err := LoadLifebar(strArg(l, 1))
+		if err != nil {
+			lua.Errorf(l, err.Error())
+		}
+		lifebar = *lb
+		return 0
+	})
+	luaRegister(l, "loadDebugFont", func(l *lua.State) int {
+		f, err := LoadFnt(strArg(l, 1))
+		if err != nil {
+			lua.Errorf(l, err.Error())
+		}
+		debugFont = f
+		return 0
+	})
+	luaRegister(l, "setDebugScript", func(l *lua.State) int {
+		debugScript = strArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setLifeMul", func(l *lua.State) int {
