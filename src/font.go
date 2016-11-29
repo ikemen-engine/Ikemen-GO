@@ -238,15 +238,16 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	if spr == nil {
 		return 0
 	}
-	spr.glDraw(pal, 0, -x*widthScale, -y*heightScale, &notiling,
-		xscl*widthScale, xscl*widthScale, yscl*heightScale, 0, 0,
-		brightness*255>>8|1<<9, &scrrect, 0, 0, nil)
+	spr.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
+		xscl*sys.widthScale, xscl*sys.widthScale, yscl*sys.heightScale, 0, 0,
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
 	return float32(spr.Size[0]) * xscl
 }
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
 	align int32) {
-	x += float32(f.offset[0])*xscl + float32(gameWidth-320)/2
-	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(gameHeight-240)
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl +
+		float32(sys.gameHeight-240)
 	if align == 0 {
 		x -= float32(f.TextWidth(txt)) * xscl * 0.5
 	} else if align < 0 {
@@ -256,8 +257,8 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
 		bank = 0
 	}
 	pal := f.palettes[bank][:]
-	if allPalFX.Time != 0 {
-		pal = allPalFX.GetFxPal(pal, false)
+	if sys.allPalFX.Time != 0 {
+		pal = sys.allPalFX.GetFxPal(pal, false)
 	}
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, c, pal) +
@@ -276,7 +277,7 @@ func NewTextSprite() *TextSprite {
 	return &TextSprite{align: 1, xscl: 1, yscl: 1}
 }
 func (ts *TextSprite) Draw() {
-	if !frameSkip && ts.fnt != nil {
+	if !sys.frameSkip && ts.fnt != nil {
 		ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
 	}
 }

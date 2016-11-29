@@ -166,7 +166,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 				af.Ex[0] = clsn1
 				af.Ex[1] = clsn2
 			}
-			a.frames = AppendAF(a.frames, *af)
+			a.frames = append(a.frames, *af)
 			def1, def2 = true, true
 		case len(line) >= 9 && line[:9] == "loopstart":
 			a.loopstart = int32(len(a.frames))
@@ -399,7 +399,7 @@ func (a *Animation) alpha() int32 {
 	if sa == 1 && da == 255 {
 		return -2
 	}
-	sa = byte(int32(sa) * brightness >> 8)
+	sa = byte(int32(sa) * sys.brightness >> 8)
 	if sa < 5 && da == 255 {
 		return 0
 	}
@@ -483,15 +483,15 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 				y -= float32(int(y/tmp)) * tmp
 			}
 		}
-		rcx, rcy = rcx*widthScale, 0
+		rcx, rcy = rcx*sys.widthScale, 0
 		x, y = -x+xs*float32(a.spr.Offset[0]), -y+ys*float32(a.spr.Offset[1])
 	} else {
-		rcx, rcy = (x+rcx)*widthScale, y*heightScale
+		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
 		x, y = AbsF(xs)*float32(a.spr.Offset[0]), AbsF(ys)*float32(a.spr.Offset[1])
 	}
-	a.spr.glDraw(a.pal(pfx), int32(a.mask), x*widthScale, y*heightScale,
-		&a.tile, xs*widthScale, xcs*xbs*h*widthScale, ys*heightScale,
-		xcs*rxadd*widthScale/heightScale, angle, a.alpha(), window,
+	a.spr.glDraw(a.pal(pfx), int32(a.mask), x*sys.widthScale, y*sys.heightScale,
+		&a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale, ys*sys.heightScale,
+		xcs*rxadd*sys.widthScale/sys.heightScale, angle, a.alpha(), window,
 		rcx, rcy, pfx)
 }
 
@@ -547,7 +547,7 @@ type Anim struct {
 func NewAnim(sff *Sff, action string) *Anim {
 	lines, i := SplitAndTrim(action, "\n"), 0
 	a := &Anim{anim: ReadAnimation(sff, lines, &i),
-		window: scrrect, xscl: 1, yscl: 1}
+		window: sys.scrrect, xscl: 1, yscl: 1}
 	if len(a.anim.frames) == 0 {
 		return nil
 	}
@@ -573,18 +573,18 @@ func (a *Anim) SetScale(x, y float32) {
 	a.xscl, a.yscl = x, y
 }
 func (a *Anim) SetWindow(x, y, w, h float32) {
-	a.window[0] = int32((x + float32(gameWidth-320)/2) * widthScale)
-	a.window[1] = int32((y + float32(gameHeight-240)) * heightScale)
-	a.window[2] = int32(w*widthScale + 0.5)
-	a.window[3] = int32(h*heightScale + 0.5)
+	a.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
+	a.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+	a.window[2] = int32(w*sys.widthScale + 0.5)
+	a.window[3] = int32(h*sys.heightScale + 0.5)
 }
 func (a *Anim) Update() {
 	a.anim.Action()
 }
 func (a *Anim) Draw() {
-	if !frameSkip {
-		a.anim.Draw(&a.window, a.x+float32(gameWidth-320)/2,
-			a.y+float32(gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
+	if !sys.frameSkip {
+		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
+			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
 			0, 0, 0, nil, false)
 	}
 }

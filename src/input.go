@@ -426,7 +426,7 @@ type AiInput struct {
 }
 
 func (__ *AiInput) Update() {
-	if introTime != 0 {
+	if sys.introTime != 0 {
 		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
 		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
 		return

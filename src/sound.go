@@ -16,29 +16,23 @@ const (
 	audioFrequency = 48000
 )
 
-var mixer = newMixer()
-var bgm = newVorbis()
-var audioContext *openal.Context
-var nullSndBuf [audioOutLen * 2]int16
-var sounds = newSounds()
-
-func audioOpen() {
-	if audioContext == nil {
+func (s *System) audioOpen() {
+	if s.audioContext == nil {
 		device := openal.OpenDevice("")
 		if device == nil {
 			chk(openal.Err())
 		}
-		audioContext = device.CreateContext()
+		s.audioContext = device.CreateContext()
 		chk(device.Err())
-		audioContext.Activate()
-		go soundWrite()
+		s.audioContext.Activate()
+		go s.soundWrite()
 	}
 }
-func soundWrite() {
+func (s *System) soundWrite() {
 	src := NewAudioSource()
 	bgmSrc := NewAudioSource()
 	processed := false
-	for !gameEnd {
+	for !s.gameEnd {
 		if src.Src.State() != openal.Playing {
 			src.Src.Play()
 		}
@@ -52,9 +46,9 @@ func soundWrite() {
 		if src.Src.BuffersProcessed() > 0 {
 			var out []int16
 			select {
-			case out = <-mixer.out:
+			case out = <-s.mixer.out:
 			default:
-				out = nullSndBuf[:]
+				out = s.nullSndBuf[:]
 			}
 			buf := src.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
@@ -63,7 +57,7 @@ func soundWrite() {
 			processed = true
 		}
 		if bgmSrc.Src.BuffersProcessed() > 0 {
-			out := bgm.read()
+			out := s.bgm.read()
 			buf := bgmSrc.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
 			out = nil
@@ -75,34 +69,14 @@ func soundWrite() {
 	bgmSrc.Delete()
 	src.Delete()
 	openal.NullContext.Activate()
-	device := audioContext.GetDevice()
-	audioContext.Destroy()
-	audioContext = nil
+	device := s.audioContext.GetDevice()
+	s.audioContext.Destroy()
+	s.audioContext = nil
 	device.CloseDevice()
 }
-func newSounds() (s []*Sound) {
-	s = make([]*Sound, 16)
-	for i := range s {
-		s[i] = &Sound{volume: 256, freqmul: 1}
-	}
-	return
-}
-func GetChannel() *Sound {
-	for i := range sounds {
-		if sounds[i].sound == nil {
-			return sounds[i]
-		}
-	}
-	return nil
-}
-func mixSounds() {
-	for i := range sounds {
-		sounds[i].Mix()
-	}
-}
-func playSound() {
-	if mixer.write() {
-		mixSounds()
+func (s *System) playSound() {
+	if s.mixer.write() {
+		s.sounds.mixSounds()
 	}
 }
 
@@ -114,7 +88,7 @@ type AudioSource struct {
 func NewAudioSource() (s *AudioSource) {
 	s = &AudioSource{Src: openal.NewSource(), bufs: openal.NewBuffers(2)}
 	for i := range s.bufs {
-		s.bufs[i].SetDataInt16(openal.FormatStereo16, nullSndBuf[:],
+		s.bufs[i].SetDataInt16(openal.FormatStereo16, sys.nullSndBuf[:],
 			audioFrequency)
 	}
 	s.Src.QueueBuffers(s.bufs)
@@ -387,7 +361,7 @@ func (v *Vorbis) read() []int16 {
 			v.buf = append(v.buf, v.samToAudioOut(sam)...)
 		}
 	}
-	return nullSndBuf[:]
+	return sys.nullSndBuf[:]
 }
 
 type Wave struct {
@@ -554,7 +528,7 @@ func (s *Snd) Get(group int32, number int32) *Wave {
 	return s.table[[2]int32{group, number}]
 }
 func (s *Snd) Play(g int32, n int32) bool {
-	c := GetChannel()
+	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
 	}
@@ -575,7 +549,7 @@ func (s *Sound) Mix() {
 	if s.sound == nil {
 		return
 	}
-	s.fidx = mixer.Mix(s.sound.Wav, s.fidx,
+	s.fidx = sys.mixer.Mix(s.sound.Wav, s.fidx,
 		int(s.sound.BytesPerSample), int(s.sound.Channels),
 		float64(s.sound.SamplesPerSec)*float64(s.freqmul), s.loop,
 		float32(s.volume)/256)
@@ -583,5 +557,28 @@ func (s *Sound) Mix() {
 		int(s.sound.BytesPerSample*s.sound.Channels) {
 		s.sound = nil
 		s.fidx = 0
+	}
+}
+
+type Sounds []*Sound
+
+func newSounds() (s Sounds) {
+	s = Sounds(make([]*Sound, 16))
+	for i := range s {
+		s[i] = &Sound{volume: 256, freqmul: 1}
+	}
+	return
+}
+func (s Sounds) GetChannel() *Sound {
+	for i := range s {
+		if s[i].sound == nil {
+			return s[i]
+		}
+	}
+	return nil
+}
+func (s Sounds) mixSounds() {
+	for i := range s {
+		s[i].Mix()
 	}
 }

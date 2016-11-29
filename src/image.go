@@ -13,8 +13,6 @@ import (
 	"unsafe"
 )
 
-var allPalFX = NewPalFX()
-
 type Texture uint32
 
 func textureFinalizer(t *Texture) {
@@ -65,17 +63,17 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 		pl.paletteMap[i] = i
 	} else {
 		for i > len(pl.paletteMap) {
-			pl.paletteMap = AppendI(pl.paletteMap, len(pl.paletteMap))
+			pl.paletteMap = append(pl.paletteMap, len(pl.paletteMap))
 		}
-		pl.paletteMap = AppendI(pl.paletteMap, i)
+		pl.paletteMap = append(pl.paletteMap, i)
 	}
 	if i < len(pl.palettes) {
 		pl.palettes[i] = p
 	} else {
 		for i > len(pl.palettes) {
-			pl.palettes = AppendPal(pl.palettes, nil)
+			pl.palettes = append(pl.palettes, nil)
 		}
-		pl.palettes = AppendPal(pl.palettes, p)
+		pl.palettes = append(pl.palettes, p)
 	}
 }
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
@@ -234,10 +232,10 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 	}
 	var dummy *Sprite
 	var newSubHeaderOffset []uint32
-	newSubHeaderOffset = AppendU32(newSubHeaderOffset, shofs)
+	newSubHeaderOffset = append(newSubHeaderOffset, shofs)
 	i := 0
 	for ; i < int(h.NumberOfSprites); i++ {
-		newSubHeaderOffset = AppendU32(newSubHeaderOffset, shofs)
+		newSubHeaderOffset = append(newSubHeaderOffset, shofs)
 		f.Seek(int64(shofs), 0)
 		if err := foo(); err != nil {
 			return nil, err
@@ -842,17 +840,17 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
-	x += float32(gameWidth-320)/2 - xscale*float32(s.Offset[0])
-	y += float32(gameHeight-240) - yscale*float32(s.Offset[1])
+	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
+	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	if xscale < 0 {
 		x *= -1
 	}
 	if yscale < 0 {
 		y *= -1
 	}
-	s.glDraw(pal, 0, -x*widthScale, -y*heightScale, &notiling,
-		xscale*widthScale, xscale*widthScale, yscale*heightScale, 0, 0,
-		brightness*255>>8|1<<9, &scrrect, 0, 0, nil)
+	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0,
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
 }
 
 type Sff struct {

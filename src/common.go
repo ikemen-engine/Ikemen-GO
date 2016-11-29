@@ -15,17 +15,15 @@ const (
 	IErr = ^IMax
 )
 
-var randseed int32
-
 func Random() int32 {
-	w := randseed / 127773
-	randseed = (randseed-w*127773)*16807 - w*2836
-	if randseed <= 0 {
-		randseed += IMax - Btoi(randseed == 0)
+	w := sys.randseed / 127773
+	sys.randseed = (sys.randseed-w*127773)*16807 - w*2836
+	if sys.randseed <= 0 {
+		sys.randseed += IMax - Btoi(sys.randseed == 0)
 	}
-	return randseed
+	return sys.randseed
 }
-func Srand(s int32)             { randseed = s }
+func Srand(s int32)             { sys.randseed = s }
 func Rand(min, max int32) int32 { return min + Random()/(IMax/(max-min+1)+1) }
 func RandI(x, y int32) int32 {
 	if y < x {
@@ -176,29 +174,28 @@ func LoadText(filename string) (string, error) {
 	}
 	return AsciiToString(bytes), nil
 }
+func FileExist(filename string) string {
+	if _, err := os.Stat(filename); !os.IsNotExist(err) {
+		return filename
+	}
+	var pattern string
+	for _, r := range filename {
+		if r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
+			pattern += "[" + string(unicode.ToLower(r)) +
+				string(unicode.ToLower(r)+'A'-'a') + "]"
+		} else if r == '*' || r == '?' || r == '[' {
+			pattern += "\\" + string(r)
+		} else {
+			pattern += string(r)
+		}
+	}
+	if m, _ := filepath.Glob(pattern); len(m) > 0 {
+		return m[0]
+	}
+	return ""
+}
 func LoadFile(file *string, deffile string, load func(string) error) error {
 	var fp string
-	isNotExist := func() bool {
-		if _, err := os.Stat(fp); !os.IsNotExist(err) {
-			return false
-		}
-		var pattern string
-		for _, r := range fp {
-			if r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
-				pattern += "[" + string(unicode.ToLower(r)) +
-					string(unicode.ToLower(r)+'A'-'a') + "]"
-			} else if r == '*' || r == '?' || r == '[' {
-				pattern += "\\" + string(r)
-			} else {
-				pattern += string(r)
-			}
-		}
-		if m, _ := filepath.Glob(pattern); len(m) > 0 {
-			fp = m[0]
-			return false
-		}
-		return true
-	}
 	*file = strings.Replace(*file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
 	if defdir == "." {
@@ -208,11 +205,11 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 	} else {
 		fp = defdir + "/" + *file
 	}
-	if isNotExist() {
+	if fp = FileExist(fp); len(fp) == 0 {
 		_else := false
 		if defdir != "data" {
 			fp = "data/" + *file
-			if isNotExist() {
+			if fp = FileExist(fp); len(fp) == 0 {
 				_else = true
 			}
 		} else {
@@ -221,7 +218,9 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 		if _else {
 			if defdir != "." {
 				fp = *file
-				isNotExist()
+				if fp = FileExist(fp); len(fp) == 0 {
+					fp = *file
+				}
 			}
 		}
 	}
@@ -373,32 +372,33 @@ func ReadLayout(pre string, is IniSection) *Layout {
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
 	return l
 }
-func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16, a *Animation) {
+func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
+	a *Animation) {
 	if l.layerno == ln {
 		if l.facing < 0 {
-			x += lifebarFontScale
+			x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			y += lifebarFontScale
+			y += sys.lifebarFontScale
 		}
-		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(gameHeight-240), scl, scl,
-			l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
+		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
+			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
 			l.scale[1]*float32(l.vfacing),
-			0, 0, float32(gameWidth-320)/2, nil, false)
+			0, 0, float32(sys.gameWidth-320)/2, nil, false)
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32) {
 	if l.layerno == ln {
 		if l.facing < 0 {
-			x += lifebarFontScale
+			x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			y += lifebarFontScale
+			y += sys.lifebarFontScale
 		}
 		f.DrawText(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
-			l.scale[0]*lifebarFontScale*float32(l.facing)*scl,
-			l.scale[1]*lifebarFontScale*float32(l.vfacing)*scl, a, b)
+			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
+			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, a, b)
 	}
 }
 
@@ -435,7 +435,7 @@ func (al *AnimLayout) Action() {
 	al.anim.Action()
 }
 func (al *AnimLayout) Draw(x, y float32, layerno int16) {
-	al.lay.DrawAnim(&scrrect, x, y, 1, layerno, &al.anim)
+	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim)
 }
 
 type AnimTextSnd struct {

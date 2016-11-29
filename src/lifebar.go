@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-var lifebar Lifebar
-
 type WinType int32
 
 const (
