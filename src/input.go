@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-var netInput *NetInput
-var fileInput *FileInput
-var aiInput []AiInput
-var keyConfig []*KeyConfig
-
 type CommandKey byte
 
 const (
@@ -136,18 +131,19 @@ const (
 )
 
 func (ib *InputBits) SetInput(in int) {
-	if 0 <= in && in < len(keyConfig) {
-		*ib = InputBits(Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].U)) |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].D))<<1 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].L))<<2 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].R))<<3 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].A))<<4 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].B))<<5 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].C))<<6 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].X))<<7 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].Y))<<8 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].Z))<<9 |
-			Btoi(JoystickState(keyConfig[in].Joy, keyConfig[in].S))<<10)
+	if 0 <= in && in < len(sys.keyConfig) {
+		*ib = InputBits(Btoi(JoystickState(sys.keyConfig[in].Joy,
+			sys.keyConfig[in].U)) |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].D))<<1 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].L))<<2 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].R))<<3 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].A))<<4 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].B))<<5 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].C))<<6 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].X))<<7 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].Y))<<8 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].Z))<<9 |
+			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].S))<<10)
 	}
 }
 
@@ -167,8 +163,13 @@ type CommandBuffer struct {
 	a, b, c, x, y, z, s        int8
 }
 
-func newCommandBuffer() *CommandBuffer {
-	return &CommandBuffer{B: -1, D: -1, F: -1, U: -1,
+func newCommandBuffer() (c *CommandBuffer) {
+	c = &CommandBuffer{}
+	c.Reset()
+	return
+}
+func (__ *CommandBuffer) Reset() {
+	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
 		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1}
 }
 func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s bool) {
@@ -420,7 +421,13 @@ type NetBuffer struct {
 	curT, inpT, senT int
 }
 type NetInput struct{ buf []NetBuffer }
+
+func (ni *NetInput) Close() {}
+
 type FileInput struct{ ib []InputBits }
+
+func (ni *FileInput) Close() {}
+
 type AiInput struct {
 	dir, dt, at, bt, ct, xt, yt, zt, st int32
 }
@@ -533,8 +540,9 @@ type Command struct {
 }
 
 func newCommand() *Command { return &Command{tamei: -1, time: 1, buftime: 1} }
-func ReadCommand(cmdstr string) *Command {
+func ReadCommand(name, cmdstr string) (*Command, error) {
 	c := newCommand()
+	c.name = name
 	cmd := strings.Split(cmdstr, ",")
 	for _, cestr := range cmd {
 		if len(c.cmd) > 0 && c.cmd[len(c.cmd)-1].slash {
@@ -778,7 +786,7 @@ func ReadCommand(cmdstr string) *Command {
 		c.hold = append(c.hold, c.cmd[len(c.cmd)-1].key)
 	}
 	c.held = make([]bool, len(c.hold))
-	return c
+	return c, nil
 }
 func (c *Command) Clear() {
 	c.cmdi, c.tamei, c.cur, c.curbuftime = 0, -1, 0, 0
@@ -951,7 +959,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 }
 
 type CommandList struct {
-	Buffer            []CommandBuffer
+	Buffer            *CommandBuffer
 	Names             map[string]int
 	Commands          [][]Command
 	DefaultTime       int32
@@ -960,4 +968,23 @@ type CommandList struct {
 
 func NewCommandList() *CommandList {
 	return &CommandList{Names: make(map[string]int)}
+}
+func (cl *CommandList) BufReset() {
+	if cl.Buffer != nil {
+		cl.Buffer.Reset()
+		for i := range cl.Commands {
+			for j := range cl.Commands[i] {
+				cl.Commands[i][j].Clear()
+			}
+		}
+	}
+}
+func (cl *CommandList) Add(c Command) {
+	i, ok := cl.Names[c.name]
+	if !ok || i < 0 || i >= len(cl.Commands) {
+		i = len(cl.Commands)
+		cl.Commands = append(cl.Commands, []Command{})
+	}
+	cl.Commands[i] = append(cl.Commands[i], c)
+	cl.Names[c.name] = i
 }

@@ -975,3 +975,15 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	}
 	return s.sprites[[2]int16{g, n}]
 }
+func (s *Sff) GetOwnPalSprite(g, n int16) *Sprite {
+	sp := s.GetSprite(g, n)
+	if sp == nil {
+		return nil
+	}
+	osp := &Sprite{}
+	*osp = *sp
+	pal := sp.GetPal(&s.palList)
+	osp.Pal = make([]uint32, len(pal))
+	copy(osp.Pal, pal)
+	return osp
+}

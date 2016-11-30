@@ -1,13 +1,15 @@
 package main
 
 import (
-	"github.com/Shopify/go-lua"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
+	"github.com/yuin/gopher-lua"
 	"strings"
 	"time"
 )
+
+const MaxSimul = 4
 
 var sys = System{
 	randseed:  int32(time.Now().UnixNano()),
@@ -23,7 +25,11 @@ var sys = System{
 	mixer:            *newMixer(),
 	bgm:              *newVorbis(),
 	sounds:           newSounds(),
-	allPalFX:         *NewPalFX()}
+	allPalFX:         *NewPalFX(),
+	sel:              *newSelect(),
+	match:            1,
+	inputRemap:       [...]int{0, 1, 2, 3, 4, 5, 6, 7},
+	listenPort:       "7500"}
 
 type System struct {
 	randseed                    int32
@@ -50,11 +56,19 @@ type System struct {
 	allPalFX                    PalFX
 	lifebar                     Lifebar
 	sel                         Select
+	netInput                    *NetInput
+	fileInput                   *FileInput
+	aiInput                     []AiInput
+	keyConfig                   []*KeyConfig
+	com                         [MaxSimul * 2]int32
+	autolevel                   bool
+	home                        int32
+	match                       int32
+	inputRemap                  [MaxSimul * 2]int
+	listenPort                  string
 }
 
-func (s *System) init(w, h int32) *lua.State {
-	chk(glfw.Init())
-	defer glfw.Terminate()
+func (s *System) init(w, h int32) *lua.LState {
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -67,14 +81,14 @@ func (s *System) init(w, h int32) *lua.State {
 	s.window.SetKeyCallback(keyCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
-	keyConfig = append(keyConfig, &KeyConfig{-1,
+	s.keyConfig = append(s.keyConfig, &KeyConfig{-1,
 		int(glfw.KeyUp), int(glfw.KeyDown), int(glfw.KeyLeft), int(glfw.KeyRight),
 		int(glfw.KeyZ), int(glfw.KeyX), int(glfw.KeyC),
 		int(glfw.KeyA), int(glfw.KeyS), int(glfw.KeyD), int(glfw.KeyEnter)})
 	RenderInit()
 	s.audioOpen()
 	l := lua.NewState()
-	lua.OpenLibraries(l)
+	l.OpenLibs()
 	systemScriptInit(l)
 	return l
 }
@@ -119,17 +133,45 @@ func (s *System) await(fps int) {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 }
+func (s *System) resetRemapInput() {
+	for i := range s.inputRemap {
+		s.inputRemap[i] = i
+	}
+}
 
 type SelectChar struct {
 	def, name            string
 	sportrait, lportrait *Sprite
 }
-type Select struct{ charlist []SelectChar }
+type SelectStage struct {
+	def, name string
+}
+type Select struct {
+	columns, rows int32
+	cellsize      [2]float32
+	cellscale     [2]float32
+	randomspr     *Sprite
+	randomscl     [2]float32
+	charlist      []SelectChar
+	stagelist     []SelectStage
+	curStageNo    int
+}
 
+func newSelect() *Select {
+	return &Select{columns: 5, rows: 2, randomscl: [2]float32{1, 1},
+		cellsize: [2]float32{29, 29}, cellscale: [2]float32{1, 1}}
+}
+func (s *Select) setStageNo(n int) int {
+	s.curStageNo = n % (len(s.stagelist) + 1)
+	if s.curStageNo < 0 {
+		s.curStageNo += len(s.stagelist) + 1
+	}
+	return s.curStageNo
+}
 func (s *Select) AddCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
-	def = strings.Replace(strings.TrimSpace(strings.Split(",", def)[0]),
+	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
 		"\\", "/", -1)
 	if strings.ToLower(def) == "randomselect" {
 		sc.def, sc.name = "randomselect", "Random"
@@ -175,14 +217,46 @@ func (s *Select) AddCahr(def string) {
 			}
 		}
 	}
+	sprcopy := sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
 		sc.sportrait, err = LoadFromSff(file, 9000, 0)
 		return err
 	})
-	LoadFile(&sprite, def, func(file string) error {
+	LoadFile(&sprcopy, def, func(file string) error {
 		var err error
 		sc.lportrait, err = LoadFromSff(file, 9000, 1)
 		return err
 	})
+}
+func (s *Select) AddStage(def string) error {
+	var lines []string
+	if err := LoadFile(&def, "stages/", func(file string) error {
+		str, err := LoadText(file)
+		if err != nil {
+			return err
+		}
+		lines = SplitAndTrim(str, "\n")
+		return nil
+	}); err != nil {
+		return err
+	}
+	i, info := 0, false
+	s.stagelist = append(s.stagelist, SelectStage{})
+	ss := &s.stagelist[len(s.stagelist)-1]
+	ss.def = def
+	for i < len(lines) {
+		is, name, _ := ReadIniSection(lines, &i)
+		switch name {
+		case "info":
+			if info {
+				info = false
+				ss.name = is["displayname"]
+				if len(ss.name) == 0 {
+					ss.name = is["name"]
+				}
+			}
+		}
+	}
+	return nil
 }

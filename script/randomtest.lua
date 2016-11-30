@@ -1,4 +1,4 @@
-﻿
+
 module(..., package.seeall)
 
 function strsplit(delimiter, text)

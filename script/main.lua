@@ -1,4 +1,4 @@
-﻿
+
 setRoundTime(999 * 6)--frames
 setLifeMul(1.0)
 setTeam1VS2Life(1.0)

@@ -1,4 +1,4 @@
-﻿
+
 addHotkey('c', true, false, false, 'toggleClsnDraw()')
 addHotkey('d', true, false, false, 'toggleDebugDraw()')
 addHotkey('s', true, false, false, 'changeSpeed()')

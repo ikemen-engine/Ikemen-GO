@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -201,7 +200,7 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 	if defdir == "." {
 		fp = *file
 	} else if defdir == "/" {
-		fp = defdir + *file
+		fp = "/" + *file
 	} else {
 		fp = defdir + "/" + *file
 	}
@@ -216,16 +215,14 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 			_else = true
 		}
 		if _else {
-			if defdir != "." {
+			fp = *file
+			if fp = FileExist(fp); len(fp) == 0 {
 				fp = *file
-				if fp = FileExist(fp); len(fp) == 0 {
-					fp = *file
-				}
 			}
 		}
 	}
 	if err := load(fp); err != nil {
-		return Error(fmt.Sprintf("%s:\n%s", fp, err.Error()))
+		return Error(fp + "\n" + err.Error())
 	}
 	*file = fp
 	return nil
