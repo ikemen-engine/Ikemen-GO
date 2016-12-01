@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
 	"runtime"
@@ -14,6 +15,10 @@ func chk(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+func unimplemented() {
+	_, fn, line, _ := runtime.Caller(1)
+	panic(Error(fmt.Sprintf("%v:%v: unimplemented", fn, line)))
 }
 func main() {
 	chk(glfw.Init())

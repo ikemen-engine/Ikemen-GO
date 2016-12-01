@@ -73,7 +73,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "commandNew", func(l *lua.LState) int {
-		l.Push(newUserData(l, NewCommandList()))
+		l.Push(newUserData(l, NewCommandList(&CommandBuffer{})))
 		return 1
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
@@ -86,6 +86,24 @@ func scriptCommonInit(l *lua.LState) {
 			l.RaiseError(err.Error())
 		}
 		cl.Add(*c)
+		return 0
+	})
+	luaRegister(l, "commandGetState", func(l *lua.LState) int {
+		cl, ok := toUserData(l, 1).(*CommandList)
+		if !ok {
+			userDataError(l, 1, cl)
+		}
+		l.Push(lua.LBool(cl.GetState(strArg(l, 2))))
+		return 1
+	})
+	luaRegister(l, "commandInput", func(l *lua.LState) int {
+		cl, ok := toUserData(l, 1).(*CommandList)
+		if !ok {
+			userDataError(l, 1, cl)
+		}
+		if cl.Input(int32(numArg(l, 2))-1, 1) {
+			cl.Step(1, false, false, 0)
+		}
 		return 0
 	})
 	luaRegister(l, "commandBufReset", func(l *lua.LState) int {
@@ -356,7 +374,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setStage", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.sel.setStageNo(int(numArg(l, 1)))))
+		l.Push(lua.LNumber(sys.sel.SetStageNo(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
@@ -416,6 +434,15 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "resetRemapInput", func(l *lua.LState) int {
 		sys.resetRemapInput()
+		return 0
+	})
+	luaRegister(l, "loadStart", func(l *lua.LState) int {
+		sys.loadStart()
+		return 0
+	})
+	luaRegister(l, "selectStart", func(l *lua.LState) int {
+		sys.sel.ClearSelected()
+		sys.loadStart()
 		return 0
 	})
 }

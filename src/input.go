@@ -422,11 +422,17 @@ type NetBuffer struct {
 }
 type NetInput struct{ buf []NetBuffer }
 
-func (ni *NetInput) Close() {}
+func (ni *NetInput) Close() { unimplemented() }
+func (ni *NetInput) Input(cb *CommandBuffer, i, facing int32) {
+	unimplemented()
+}
 
 type FileInput struct{ ib []InputBits }
 
-func (ni *FileInput) Close() {}
+func (ni *FileInput) Close() { unimplemented() }
+func (ni *FileInput) Input(cb *CommandBuffer, i, facing int32) {
+	unimplemented()
+}
 
 type AiInput struct {
 	dir, dt, at, bt, ct, xt, yt, zt, st int32
@@ -902,7 +908,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 		}
 	}
 	foo := false
-	for _, k := range c.cmd[c.cmdi-1].key {
+	for _, k := range c.cmd[c.cmdi].key {
 		n := cbuf.State2(k)
 		if c.cmd[c.cmdi].slash {
 			foo = foo || n > 0
@@ -966,8 +972,81 @@ type CommandList struct {
 	DefaultBufferTime int32
 }
 
-func NewCommandList() *CommandList {
-	return &CommandList{Names: make(map[string]int)}
+func NewCommandList(cb *CommandBuffer) *CommandList {
+	return &CommandList{Buffer: cb, Names: make(map[string]int)}
+}
+func (cl *CommandList) Input(i, facing int32) bool {
+	if cl.Buffer == nil {
+		return false
+	}
+	step := cl.Buffer.Bb != 0
+	if i < 0 && int(^i) < len(sys.aiInput) {
+		sys.aiInput[^i].Update() // 乱数を使うので同期がずれないようここで
+	}
+	_else := i < 0
+	if _else {
+	} else if sys.fileInput != nil {
+		sys.fileInput.Input(cl.Buffer, i, facing)
+	} else if sys.netInput != nil {
+		sys.netInput.Input(cl.Buffer, i, facing)
+	} else {
+		_else = true
+	}
+	if _else {
+		var l, r, u, d, a, b, c, x, y, z, s bool
+		if i < 0 {
+			i = ^i
+			if int(i) < len(sys.aiInput) {
+				l = sys.aiInput[i].L()
+				r = sys.aiInput[i].R()
+				u = sys.aiInput[i].U()
+				d = sys.aiInput[i].D()
+				a = sys.aiInput[i].A()
+				b = sys.aiInput[i].B()
+				c = sys.aiInput[i].C()
+				x = sys.aiInput[i].X()
+				y = sys.aiInput[i].Y()
+				z = sys.aiInput[i].Z()
+				s = sys.aiInput[i].S()
+			}
+		} else if int(i) < len(sys.inputRemap) {
+			in := sys.inputRemap[i]
+			if in < len(sys.keyConfig) {
+				joy := sys.keyConfig[in].Joy
+				if joy >= -1 {
+					l = JoystickState(joy, sys.keyConfig[in].L)
+					r = JoystickState(joy, sys.keyConfig[in].R)
+					u = JoystickState(joy, sys.keyConfig[in].U)
+					d = JoystickState(joy, sys.keyConfig[in].D)
+					a = JoystickState(joy, sys.keyConfig[in].A)
+					b = JoystickState(joy, sys.keyConfig[in].B)
+					c = JoystickState(joy, sys.keyConfig[in].C)
+					x = JoystickState(joy, sys.keyConfig[in].X)
+					y = JoystickState(joy, sys.keyConfig[in].Y)
+					z = JoystickState(joy, sys.keyConfig[in].Z)
+					s = JoystickState(joy, sys.keyConfig[in].S)
+				}
+			}
+		}
+		var B, F bool
+		if facing < 0 {
+			B, F = r, l
+		} else {
+			B, F = l, r
+		}
+		cl.Buffer.Input(B, d, F, u, a, b, c, x, y, z, s)
+	}
+	return step
+}
+func (cl *CommandList) Step(facing int32, ai, hitpause bool,
+	buftime int32) {
+	if cl.Buffer != nil {
+		for i := range cl.Commands {
+			for j := range cl.Commands[i] {
+				cl.Commands[i][j].Step(cl.Buffer, ai, hitpause, buftime)
+			}
+		}
+	}
 }
 func (cl *CommandList) BufReset() {
 	if cl.Buffer != nil {
@@ -987,4 +1066,25 @@ func (cl *CommandList) Add(c Command) {
 	}
 	cl.Commands[i] = append(cl.Commands[i], c)
 	cl.Names[c.name] = i
+}
+func (cl *CommandList) At(i int) []Command {
+	if i < 0 || i >= len(cl.Commands) {
+		return []Command{}
+	}
+	return cl.Commands[i]
+}
+func (cl *CommandList) Get(name string) []Command {
+	i, ok := cl.Names[name]
+	if !ok {
+		return []Command{}
+	}
+	return cl.At(i)
+}
+func (cl *CommandList) GetState(name string) bool {
+	for _, c := range cl.Get(name) {
+		if c.curbuftime > 0 {
+			return true
+		}
+	}
+	return false
 }

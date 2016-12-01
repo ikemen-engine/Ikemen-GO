@@ -17,8 +17,8 @@ var sys = System{
 	gameWidth: 320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
 	brightness: 256,
-	introTime:  0, roundTime: -1,
-	lifeMul: 1, team1VS2Life: 1,
+	roundTime:  -1,
+	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	zoomMin:           1, zoomMax: 1, zoomSpeed: 1,
 	lifebarFontScale: 1,
@@ -29,7 +29,8 @@ var sys = System{
 	sel:              *newSelect(),
 	match:            1,
 	inputRemap:       [...]int{0, 1, 2, 3, 4, 5, 6, 7},
-	listenPort:       "7500"}
+	listenPort:       "7500",
+	loader:           *newLoader()}
 
 type System struct {
 	randseed                    int32
@@ -58,7 +59,7 @@ type System struct {
 	sel                         Select
 	netInput                    *NetInput
 	fileInput                   *FileInput
-	aiInput                     []AiInput
+	aiInput                     [MaxSimul * 2]AiInput
 	keyConfig                   []*KeyConfig
 	com                         [MaxSimul * 2]int32
 	autolevel                   bool
@@ -66,6 +67,12 @@ type System struct {
 	match                       int32
 	inputRemap                  [MaxSimul * 2]int
 	listenPort                  string
+	round                       int32
+	wins                        [2]int32
+	rexisted                    [2]int32
+	loader                      Loader
+	chars                       [MaxSimul * 2][]*Char
+	cgi                         [MaxSimul * 2]CharGlobalInfo
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -138,6 +145,14 @@ func (s *System) resetRemapInput() {
 		s.inputRemap[i] = i
 	}
 }
+func (s *System) loaderReset() {
+	s.round, s.wins, s.rexisted = 1, [2]int32{0, 0}, [2]int32{0, 0}
+	s.loader.reset()
+}
+func (s *System) loadStart() {
+	s.loaderReset()
+	s.loader.runTread()
+}
 
 type SelectChar struct {
 	def, name            string
@@ -147,27 +162,31 @@ type SelectStage struct {
 	def, name string
 }
 type Select struct {
-	columns, rows int32
-	cellsize      [2]float32
-	cellscale     [2]float32
-	randomspr     *Sprite
-	randomscl     [2]float32
-	charlist      []SelectChar
-	stagelist     []SelectStage
-	curStageNo    int
+	columns, rows   int32
+	cellsize        [2]float32
+	cellscale       [2]float32
+	randomspr       *Sprite
+	randomscl       [2]float32
+	charlist        []SelectChar
+	stagelist       []SelectStage
+	curStageNo      int
+	selected        [2][][2]int
+	selectedStageNo int
 }
 
 func newSelect() *Select {
 	return &Select{columns: 5, rows: 2, randomscl: [2]float32{1, 1},
-		cellsize: [2]float32{29, 29}, cellscale: [2]float32{1, 1}}
+		cellsize: [2]float32{29, 29}, cellscale: [2]float32{1, 1},
+		selectedStageNo: -1}
 }
-func (s *Select) setStageNo(n int) int {
+func (s *Select) SetStageNo(n int) int {
 	s.curStageNo = n % (len(s.stagelist) + 1)
 	if s.curStageNo < 0 {
 		s.curStageNo += len(s.stagelist) + 1
 	}
 	return s.curStageNo
 }
+func (s *Select) SelectStage(n int) { s.selectedStageNo = n }
 func (s *Select) AddCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
@@ -259,4 +278,72 @@ func (s *Select) AddStage(def string) error {
 		}
 	}
 	return nil
+}
+func (s *Select) ClearSelected() {
+	s.selected = [2][][2]int{[][2]int{}, [][2]int{}}
+	s.selectedStageNo = -1
+}
+
+type LoaderState int32
+
+const (
+	LS_NotYet LoaderState = iota
+	LS_Loading
+	LS_Complete
+	LS_Error
+	LS_Cancel
+)
+
+type Loader struct {
+	state    LoaderState
+	loadExit chan LoaderState
+	compiler *Compiler
+	err      error
+}
+
+func newLoader() *Loader {
+	return &Loader{state: LS_NotYet, loadExit: make(chan LoaderState, 1)}
+}
+func (l *Loader) load() {
+	defer func() { l.loadExit <- l.state }()
+	charDone, codeDone, stageDone := make([]bool, len(sys.chars)), false, false
+	allCharDone := func() bool {
+		for _, b := range charDone {
+			if !b {
+				return false
+			}
+		}
+		return true
+	}
+	for !codeDone || !stageDone || !allCharDone() {
+		unimplemented()
+		if sys.gameEnd {
+			l.state = LS_Cancel
+		}
+		if l.state == LS_Cancel {
+			return
+		}
+	}
+	l.state = LS_Complete
+}
+func (l *Loader) reset() {
+	if l.state != LS_NotYet {
+		l.state = LS_Cancel
+		<-l.loadExit
+		l.state = LS_NotYet
+	}
+	l.compiler, l.err = nil, nil
+	for i := range sys.cgi {
+		if sys.rexisted[i&1] == 0 {
+			sys.cgi[i].drawpalno = -1
+		}
+	}
+}
+func (l *Loader) runTread() bool {
+	if l.state != LS_NotYet {
+		return false
+	}
+	l.state = LS_Loading
+	go l.load()
+	return true
 }

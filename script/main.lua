@@ -327,7 +327,7 @@ function p1SelSub()
       p1SelEnd = true
       if p2In == 1 then
         p2Task = p2TmSub
-        commandBufReset(p2Cmd, p2In)
+        commandBufReset(p2Cmd)
       end
     end
   end
@@ -404,7 +404,7 @@ function p2SelSub()
       p2SelEnd = true
       if p1In == 2 then
         p1Task = p1TmSub
-        commandBufReset(p1Cmd, p1In)
+        commandBufReset(p1Cmd)
       end
     end
   end
@@ -519,8 +519,8 @@ function main()
 
     refresh()
 
-    commandBufReset(p1Cmd, p1In)
-    commandBufReset(p2Cmd, p2In)
+    commandBufReset(p1Cmd)
+    commandBufReset(p2Cmd)
 
     selMode = true
     selectStart()
@@ -587,7 +587,7 @@ function modeSel()
     textImgSetText(portChange, 'Port Change(' .. getListenPort() .. ')')
 
     refresh()
-    commandBufReset(p1Cmd, 1)
+    commandBufReset(p1Cmd)
 
     while btnPalNo(p1Cmd) <= 0 do
       if commandGetState(p1Cmd, 'u') then

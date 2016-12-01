@@ -32,18 +32,27 @@ type PalFX struct {
 	Remap []int
 }
 
-func NewPalFX() *PalFX                                      { return &PalFX{} }
-func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 { return pal }
+func NewPalFX() *PalFX { return &PalFX{} }
+func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 {
+	if pfx == nil || pfx.Time == 0 {
+		return pal
+	}
+	unimplemented()
+	return nil
+}
 func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	add, mul [3]float32) {
-	neg = false
-	color = 1
-	for i := range add {
-		add[i] = 0
+	if pfx == nil || pfx.Time == 0 {
+		neg = false
+		color = 1
+		for i := range add {
+			add[i] = 0
+		}
+		for i := range mul {
+			mul[i] = 1
+		}
 	}
-	for i := range mul {
-		mul[i] = 1
-	}
+	unimplemented()
 	return
 }
 
