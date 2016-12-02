@@ -70,12 +70,14 @@ const (
 var keySatate = make(map[glfw.Key]bool)
 
 func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
-	action glfw.Action, _ glfw.ModifierKey) {
+	action glfw.Action, mk glfw.ModifierKey) {
 	switch action {
 	case glfw.Release:
 		keySatate[key] = false
 	case glfw.Press:
 		keySatate[key] = true
+		sys.esc = sys.esc ||
+			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 	}
 }
 

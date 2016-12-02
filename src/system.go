@@ -5,6 +5,7 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
 	"github.com/yuin/gopher-lua"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -30,7 +31,17 @@ var sys = System{
 	match:            1,
 	inputRemap:       [...]int{0, 1, 2, 3, 4, 5, 6, 7},
 	listenPort:       "7500",
-	loader:           *newLoader()}
+	loader:           *newLoader(),
+	numSimul:         [2]int{2, 2},
+	numTurns:         [2]int{2, 2}}
+
+type TeamMode int32
+
+const (
+	TM_Single TeamMode = iota
+	TM_Simul
+	TM_Turns
+)
 
 type System struct {
 	randseed                    int32
@@ -73,6 +84,10 @@ type System struct {
 	loader                      Loader
 	chars                       [MaxSimul * 2][]*Char
 	cgi                         [MaxSimul * 2]CharGlobalInfo
+	tmode                       [2]TeamMode
+	numSimul                    [2]int
+	numTurns                    [2]int
+	esc                         bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -133,6 +148,7 @@ func (s *System) await(fps int) {
 		}
 		s.frameSkip = true
 	}
+	s.esc = false
 	glfw.PollEvents()
 	s.gameEnd = s.window.ShouldClose()
 	if !s.frameSkip {
@@ -280,7 +296,7 @@ func (s *Select) AddStage(def string) error {
 	return nil
 }
 func (s *Select) ClearSelected() {
-	s.selected = [2][][2]int{[][2]int{}, [][2]int{}}
+	s.selected = [2][][2]int{}
 	s.selectedStageNo = -1
 }
 
@@ -299,10 +315,43 @@ type Loader struct {
 	loadExit chan LoaderState
 	compiler *Compiler
 	err      error
+	code     [MaxSimul * 2]*ByteCode
 }
 
 func newLoader() *Loader {
 	return &Loader{state: LS_NotYet, loadExit: make(chan LoaderState, 1)}
+}
+func (l *Loader) loadChar(pn int) int {
+	nsel := len(sys.sel.selected[pn&1])
+	if sys.tmode[pn&1] == TM_Simul {
+		if pn>>1 >= sys.numSimul[pn&1] {
+			l.code[pn] = nil
+			sys.chars[pn] = nil
+			return 1
+		}
+	} else if pn >= 2 {
+		return 0
+	}
+	if sys.tmode[pn&1] == TM_Turns && nsel < sys.numTurns[pn&1] {
+		return 0
+	}
+	memberNo := pn >> 1
+	if sys.tmode[pn&1] == TM_Turns {
+		memberNo = int(sys.wins[^pn&1])
+	}
+	if nsel <= memberNo {
+		return 0
+	}
+	unimplemented()
+	return 1
+}
+func (l *Loader) loadStage() bool {
+	unimplemented()
+	return true
+}
+func (l *Loader) stateCompile() bool {
+	unimplemented()
+	return true
 }
 func (l *Loader) load() {
 	defer func() { l.loadExit <- l.state }()
@@ -316,7 +365,43 @@ func (l *Loader) load() {
 		return true
 	}
 	for !codeDone || !stageDone || !allCharDone() {
-		unimplemented()
+		runtime.LockOSThread()
+		for i, b := range charDone {
+			if !b {
+				result := l.loadChar(i)
+				if result > 0 {
+					charDone[i] = true
+				} else if result < 0 {
+					l.state = LS_Error
+					return
+				}
+			}
+		}
+		for i := 0; i < 2; i++ {
+			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
+				sys.tmode[i] != TM_Simul {
+				for j := i + 2; j < len(sys.chars); j += 2 {
+					sys.chars[j], l.code[j], charDone[j] = nil, nil, true
+					sys.cgi[j].wakewakaLength = 0
+				}
+			}
+		}
+		if !stageDone && sys.sel.selectedStageNo >= 0 {
+			if !l.loadStage() {
+				l.state = LS_Error
+				return
+			}
+			stageDone = true
+		}
+		runtime.UnlockOSThread()
+		if !codeDone && allCharDone() {
+			if !l.stateCompile() {
+				l.state = LS_Error
+				return
+			}
+			codeDone = true
+		}
+		time.Sleep(10 * time.Millisecond)
 		if sys.gameEnd {
 			l.state = LS_Cancel
 		}

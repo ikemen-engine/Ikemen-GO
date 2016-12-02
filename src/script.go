@@ -130,6 +130,10 @@ func scriptCommonInit(l *lua.LState) {
 		sys.bgm.Open(strArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "esc", func(l *lua.LState) int {
+		l.Push(lua.LBool(sys.esc))
+		return 1
+	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
