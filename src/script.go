@@ -364,8 +364,8 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setSelColRow", func(*lua.LState) int {
-		sys.sel.columns = int32(numArg(l, 1))
-		sys.sel.rows = int32(numArg(l, 2))
+		sys.sel.columns = int(numArg(l, 1))
+		sys.sel.rows = int(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "setSelCellSize", func(*lua.LState) int {
@@ -381,10 +381,107 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.sel.SetStageNo(int(numArg(l, 1)))))
 		return 1
 	})
+	luaRegister(l, "setTeamMode", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > 2 {
+			l.RaiseError("チーム番号(%v)が不正です。", pn)
+		}
+		tm := TeamMode(numArg(l, 2))
+		if tm < 0 || tm > TM_LAST {
+			l.RaiseError("モード番号(%v)が不正です。", tm)
+		}
+		nt := int(numArg(l, 3))
+		if nt < 1 || nt > MaxSimul {
+			l.RaiseError("チーム人数(%v)が不正です。", nt)
+		}
+		sys.sel.selected[pn-1] = nil
+		sys.tmode[pn-1] = tm
+		sys.numTurns[pn-1], sys.numSimul[pn-1] = nt, nt
+		if tm == TM_Simul && nt == 1 {
+			sys.tmode[pn-1] = TM_Single
+		}
+		return 0
+	})
+	luaRegister(l, "getCharName", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.name))
+		return 1
+	})
+	luaRegister(l, "selectChar", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > 2 {
+			l.RaiseError("チーム番号(%v)が不正です。", pn)
+		}
+		cn, pl, ret := int(numArg(l, 2)), int(numArg(l, 3)), 0
+		if pl >= 1 && pl <= 12 && sys.sel.AddSelectedChar(pn-1, cn, pl) {
+			switch sys.tmode[pn-1] {
+			case TM_Single:
+				ret = 2
+			case TM_Simul:
+				if len(sys.sel.selected[pn-1]) >= sys.numSimul[pn-1] {
+					ret = 2
+				} else {
+					ret = 1
+				}
+			case TM_Turns:
+				if len(sys.sel.selected[pn-1]) >= sys.numTurns[pn-1] {
+					ret = 2
+				} else {
+					ret = 1
+				}
+			}
+		}
+		l.Push(lua.LNumber(ret))
+		return 1
+	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
 		sys.await(60)
 		if sys.gameEnd {
 			l.RaiseError("<game end>")
+		}
+		return 0
+	})
+	luaRegister(l, "drawPortrait", func(l *lua.LState) int {
+		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
+		var xscl, yscl float32 = 1, 1
+		if l.GetTop() >= 4 {
+			xscl = float32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				yscl = float32(numArg(l, 5))
+			}
+		}
+		if !sys.frameSkip {
+			c := sys.sel.GetChar(n)
+			if c != nil && c.lportrait != nil {
+				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal)
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "drawFace", func(l *lua.LState) int {
+		x, y := float32(numArg(l, 1)), float32(numArg(l, 2))
+		offset := 0
+		if l.GetTop() >= 3 {
+			offset = int(numArg(l, 3))
+		}
+		if !sys.frameSkip {
+			for j := 0; j < sys.sel.rows; j++ {
+				for i := 0; i < sys.sel.columns; i++ {
+					c := sys.sel.GetChar(offset)
+					offset++
+					if c != nil {
+						if c.sportrait != nil {
+							c.sportrait.Draw(x+float32(i)*sys.sel.cellsize[0],
+								y+float32(j)*sys.sel.cellsize[1], sys.sel.cellscale[0],
+								sys.sel.cellscale[1], c.sportrait.Pal)
+						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
+							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
+								y+float32(j)*sys.sel.cellsize[1], sys.sel.randomscl[0],
+								sys.sel.randomscl[1], sys.sel.randomspr.Pal)
+						}
+					}
+				}
+			}
 		}
 		return 0
 	})

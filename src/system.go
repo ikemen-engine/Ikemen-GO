@@ -7,6 +7,7 @@ import (
 	"github.com/yuin/gopher-lua"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,6 +42,7 @@ const (
 	TM_Single TeamMode = iota
 	TM_Simul
 	TM_Turns
+	TM_LAST = TM_Turns
 )
 
 type System struct {
@@ -88,6 +90,7 @@ type System struct {
 	numSimul                    [2]int
 	numTurns                    [2]int
 	esc                         bool
+	loadMutex                   sync.Mutex
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -178,7 +181,7 @@ type SelectStage struct {
 	def, name string
 }
 type Select struct {
-	columns, rows   int32
+	columns, rows   int
 	cellsize        [2]float32
 	cellscale       [2]float32
 	randomspr       *Sprite
@@ -194,6 +197,23 @@ func newSelect() *Select {
 	return &Select{columns: 5, rows: 2, randomscl: [2]float32{1, 1},
 		cellsize: [2]float32{29, 29}, cellscale: [2]float32{1, 1},
 		selectedStageNo: -1}
+}
+func (s *Select) GetCharNo(i int) int {
+	n := i
+	if len(s.charlist) > 0 {
+		n %= len(s.charlist)
+		if n < 0 {
+			n += len(s.charlist)
+		}
+	}
+	return n
+}
+func (s *Select) GetChar(i int) *SelectChar {
+	if len(s.charlist) == 0 {
+		return nil
+	}
+	n := s.GetCharNo(i)
+	return &s.charlist[n]
 }
 func (s *Select) SetStageNo(n int) int {
 	s.curStageNo = n % (len(s.stagelist) + 1)
@@ -232,8 +252,8 @@ func (s *Select) AddCahr(def string) {
 	if err != nil {
 		return
 	}
-	lines, i, info, files := SplitAndTrim(str, "\n"), 0, true, true
-	sprite := ""
+	sc.def = def
+	lines, i, info, files, sprite := SplitAndTrim(str, "\n"), 0, true, true, ""
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
@@ -294,6 +314,24 @@ func (s *Select) AddStage(def string) error {
 		}
 	}
 	return nil
+}
+func (s *Select) AddSelectedChar(pn, cn, pl int) bool {
+	m, n := 0, s.GetCharNo(cn)
+	if len(s.charlist) == 0 || len(s.charlist[n].def) == 0 {
+		return false
+	}
+	for s.charlist[n].def == "randomselect" || len(s.charlist[n].def) == 0 {
+		m++
+		if m > 100000 {
+			return false
+		}
+		n = int(Rand(0, int32(len(s.charlist))-1))
+		pl = int(Rand(1, 12))
+	}
+	sys.loadMutex.Lock()
+	s.selected[pn] = append(s.selected[pn], [2]int{n, pl})
+	sys.loadMutex.Unlock()
+	return true
 }
 func (s *Select) ClearSelected() {
 	s.selected = [2][][2]int{}
