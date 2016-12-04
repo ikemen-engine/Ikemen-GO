@@ -101,7 +101,7 @@ func scriptCommonInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		if cl.Input(int32(numArg(l, 2))-1, 1) {
+		if cl.Input(int(numArg(l, 2))-1, 1) {
 			cl.Step(1, false, false, 0)
 		}
 		return 0
@@ -382,9 +382,9 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", pn)
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("チーム番号(%v)が不正です。", tn)
 		}
 		tm := TeamMode(numArg(l, 2))
 		if tm < 0 || tm > TM_LAST {
@@ -394,11 +394,10 @@ func systemScriptInit(l *lua.LState) {
 		if nt < 1 || nt > MaxSimul {
 			l.RaiseError("チーム人数(%v)が不正です。", nt)
 		}
-		sys.sel.selected[pn-1] = nil
-		sys.tmode[pn-1] = tm
-		sys.numTurns[pn-1], sys.numSimul[pn-1] = nt, nt
+		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
+		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
 		if tm == TM_Simul && nt == 1 {
-			sys.tmode[pn-1] = TM_Single
+			sys.tmode[tn-1] = TM_Single
 		}
 		return 0
 	})
@@ -408,23 +407,23 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", pn)
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("チーム番号(%v)が不正です。", tn)
 		}
 		cn, pl, ret := int(numArg(l, 2)), int(numArg(l, 3)), 0
-		if pl >= 1 && pl <= 12 && sys.sel.AddSelectedChar(pn-1, cn, pl) {
-			switch sys.tmode[pn-1] {
+		if pl >= 1 && pl <= 12 && sys.sel.AddSelectedChar(tn-1, cn, pl) {
+			switch sys.tmode[tn-1] {
 			case TM_Single:
 				ret = 2
 			case TM_Simul:
-				if len(sys.sel.selected[pn-1]) >= sys.numSimul[pn-1] {
+				if len(sys.sel.selected[tn-1]) >= sys.numSimul[tn-1] {
 					ret = 2
 				} else {
 					ret = 1
 				}
 			case TM_Turns:
-				if len(sys.sel.selected[pn-1]) >= sys.numTurns[pn-1] {
+				if len(sys.sel.selected[tn-1]) >= sys.numTurns[tn-1] {
 					ret = 2
 				} else {
 					ret = 1

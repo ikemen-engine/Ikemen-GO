@@ -425,14 +425,14 @@ type NetBuffer struct {
 type NetInput struct{ buf []NetBuffer }
 
 func (ni *NetInput) Close() { unimplemented() }
-func (ni *NetInput) Input(cb *CommandBuffer, i, facing int32) {
+func (ni *NetInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
 
 type FileInput struct{ ib []InputBits }
 
 func (ni *FileInput) Close() { unimplemented() }
-func (ni *FileInput) Input(cb *CommandBuffer, i, facing int32) {
+func (ni *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
 
@@ -977,12 +977,12 @@ type CommandList struct {
 func NewCommandList(cb *CommandBuffer) *CommandList {
 	return &CommandList{Buffer: cb, Names: make(map[string]int)}
 }
-func (cl *CommandList) Input(i, facing int32) bool {
+func (cl *CommandList) Input(i int, facing int32) bool {
 	if cl.Buffer == nil {
 		return false
 	}
 	step := cl.Buffer.Bb != 0
-	if i < 0 && int(^i) < len(sys.aiInput) {
+	if i < 0 && ^i < len(sys.aiInput) {
 		sys.aiInput[^i].Update() // 乱数を使うので同期がずれないようここで
 	}
 	_else := i < 0
@@ -998,7 +998,7 @@ func (cl *CommandList) Input(i, facing int32) bool {
 		var l, r, u, d, a, b, c, x, y, z, s bool
 		if i < 0 {
 			i = ^i
-			if int(i) < len(sys.aiInput) {
+			if i < len(sys.aiInput) {
 				l = sys.aiInput[i].L()
 				r = sys.aiInput[i].R()
 				u = sys.aiInput[i].U()
@@ -1011,7 +1011,7 @@ func (cl *CommandList) Input(i, facing int32) bool {
 				z = sys.aiInput[i].Z()
 				s = sys.aiInput[i].S()
 			}
-		} else if int(i) < len(sys.inputRemap) {
+		} else if i < len(sys.inputRemap) {
 			in := sys.inputRemap[i]
 			if in < len(sys.keyConfig) {
 				joy := sys.keyConfig[in].Joy

@@ -315,7 +315,7 @@ func (s *Select) AddStage(def string) error {
 	}
 	return nil
 }
-func (s *Select) AddSelectedChar(pn, cn, pl int) bool {
+func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 	m, n := 0, s.GetCharNo(cn)
 	if len(s.charlist) == 0 || len(s.charlist[n].def) == 0 {
 		return false
@@ -329,12 +329,14 @@ func (s *Select) AddSelectedChar(pn, cn, pl int) bool {
 		pl = int(Rand(1, 12))
 	}
 	sys.loadMutex.Lock()
-	s.selected[pn] = append(s.selected[pn], [2]int{n, pl})
+	s.selected[tn] = append(s.selected[tn], [2]int{n, pl})
 	sys.loadMutex.Unlock()
 	return true
 }
 func (s *Select) ClearSelected() {
+	sys.loadMutex.Lock()
 	s.selected = [2][][2]int{}
+	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
 }
 
@@ -351,7 +353,6 @@ const (
 type Loader struct {
 	state    LoaderState
 	loadExit chan LoaderState
-	compiler *Compiler
 	err      error
 	code     [MaxSimul * 2]*ByteCode
 }
@@ -360,25 +361,63 @@ func newLoader() *Loader {
 	return &Loader{state: LS_NotYet, loadExit: make(chan LoaderState, 1)}
 }
 func (l *Loader) loadChar(pn int) int {
+	sys.loadMutex.Lock()
+	result := -1
 	nsel := len(sys.sel.selected[pn&1])
 	if sys.tmode[pn&1] == TM_Simul {
 		if pn>>1 >= sys.numSimul[pn&1] {
 			l.code[pn] = nil
 			sys.chars[pn] = nil
-			return 1
+			result = 1
 		}
 	} else if pn >= 2 {
-		return 0
+		result = 0
 	}
 	if sys.tmode[pn&1] == TM_Turns && nsel < sys.numTurns[pn&1] {
-		return 0
+		result = 0
 	}
 	memberNo := pn >> 1
 	if sys.tmode[pn&1] == TM_Turns {
 		memberNo = int(sys.wins[^pn&1])
 	}
 	if nsel <= memberNo {
-		return 0
+		result = 0
+	}
+	if result >= 0 {
+		sys.loadMutex.Unlock()
+		return result
+	}
+	pal, idx := int32(sys.sel.selected[pn&1][memberNo][1]), make([]int, nsel)
+	for i := range idx {
+		idx[i] = sys.sel.selected[pn&1][i][0]
+	}
+	sys.loadMutex.Unlock()
+	cdef := sys.sel.charlist[idx[memberNo]].def
+	var p *Char
+	if len(sys.chars) > 0 && cdef == sys.cgi[pn].def {
+		p = sys.chars[pn][0]
+		p.key = pn
+		if sys.com[pn] != 0 {
+			p.key ^= -1
+		}
+	} else {
+		p = newChar(pn, 0)
+		sys.cgi[pn].sff = nil
+	}
+	sys.chars[pn] = make([]*Char, 1)
+	sys.chars[pn][0] = p
+	if sys.rexisted[pn&1] == 0 {
+		sys.cgi[pn].palno = pal
+	}
+	if sys.cgi[pn].sff == nil {
+		if l.code[pn], l.err = newCompiler().Compile(p.playerno, cdef); l.err != nil {
+			sys.chars[pn] = nil
+			return -1
+		}
+		if l.err = p.load(cdef); l.err != nil {
+			sys.chars[pn] = nil
+			return -1
+		}
 	}
 	unimplemented()
 	return 1
@@ -455,7 +494,7 @@ func (l *Loader) reset() {
 		<-l.loadExit
 		l.state = LS_NotYet
 	}
-	l.compiler, l.err = nil, nil
+	l.err = nil
 	for i := range sys.cgi {
 		if sys.rexisted[i&1] == 0 {
 			sys.cgi[i].drawpalno = -1
