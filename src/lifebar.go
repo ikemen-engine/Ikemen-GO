@@ -45,7 +45,7 @@ type HealthBar struct {
 }
 
 func readHealthBar(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *HealthBar {
+	sff *Sff, at AnimationTable) *HealthBar {
 	hb := &HealthBar{}
 	is.ReadI32(pre+"pos", &hb.pos[0], &hb.pos[1])
 	is.ReadI32(pre+"range.x", &hb.range_x[0], &hb.range_x[1])
@@ -84,7 +84,7 @@ func newPowerBar(snd *Snd) (pb *PowerBar) {
 	return
 }
 func readPowerBar(pre string, is IniSection,
-	sff *Sff, at *AnimationTable, snd *Snd) *PowerBar {
+	sff *Sff, at AnimationTable, snd *Snd) *PowerBar {
 	pb := newPowerBar(snd)
 	is.ReadI32(pre+"pos", &pb.pos[0], &pb.pos[1])
 	is.ReadI32(pre+"range.x", &pb.range_x[0], &pb.range_x[1])
@@ -129,7 +129,7 @@ func newLifeBarFace() *LifeBarFace {
 	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
 }
 func readLifeBarFace(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *LifeBarFace {
+	sff *Sff, at AnimationTable) *LifeBarFace {
 	f := newLifeBarFace()
 	is.ReadI32(pre+"pos", &f.pos[0], &f.pos[1])
 	f.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
@@ -162,7 +162,7 @@ func newLifeBarName() *LifeBarName {
 	return &LifeBarName{name_font: [3]int32{-1}}
 }
 func readLifeBarName(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *LifeBarName {
+	sff *Sff, at AnimationTable) *LifeBarName {
 	n := newLifeBarName()
 	is.ReadI32(pre+"pos", &n.pos[0], &n.pos[1])
 	is.ReadI32(pre+"name.font", &n.name_font[0], &n.name_font[1],
@@ -189,7 +189,7 @@ func newLifeBarWinIcon() *LifeBarWinIcon {
 	return &LifeBarWinIcon{useiconupto: 4, counter_font: [3]int32{-1}}
 }
 func readLifeBarWinIcon(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *LifeBarWinIcon {
+	sff *Sff, at AnimationTable) *LifeBarWinIcon {
 	wi := newLifeBarWinIcon()
 	is.ReadI32(pre+"pos", &wi.pos[0], &wi.pos[1])
 	is.ReadI32(pre+"iconoffset", &wi.iconoffset[0], &wi.iconoffset[1])
@@ -229,7 +229,7 @@ func newLifeBarTime() *LifeBarTime {
 	return &LifeBarTime{counter_font: [3]int32{-1}, framespercount: 60}
 }
 func readLifeBarTime(is IniSection,
-	sff *Sff, at *AnimationTable) *LifeBarTime {
+	sff *Sff, at AnimationTable) *LifeBarTime {
 	t := newLifeBarTime()
 	is.ReadI32("pos", &t.pos[0], &t.pos[1])
 	is.ReadI32("counter.font", &t.counter_font[0], &t.counter_font[1],
@@ -316,7 +316,7 @@ func newLifeBarRound(snd *Snd) *LifeBarRound {
 		over_hittime: 10, over_wintime: 45, over_time: 210, win_sndtime: 60}
 }
 func readLifeBarRound(is IniSection,
-	sff *Sff, at *AnimationTable, snd *Snd) *LifeBarRound {
+	sff *Sff, at AnimationTable, snd *Snd) *LifeBarRound {
 	r := newLifeBarRound(snd)
 	var tmp int32
 	is.ReadI32("pos", &r.pos[0], &r.pos[1])
@@ -377,7 +377,7 @@ func (r *LifeBarRound) reset() {
 }
 
 type Lifebar struct {
-	fat       *AnimationTable
+	fat       AnimationTable
 	snd, fsnd *Snd
 	fnt       [10]*Fnt
 	hb        [3][]*HealthBar

@@ -408,7 +408,7 @@ func newAnimLayout(sff *Sff) *AnimLayout {
 	return &AnimLayout{anim: *newAnimation(sff)}
 }
 func ReadAnimLayout(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *AnimLayout {
+	sff *Sff, at AnimationTable) *AnimLayout {
 	al := newAnimLayout(sff)
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
@@ -447,7 +447,7 @@ func newAnimTextSnd(sff *Sff) *AnimTextSnd {
 	return &AnimTextSnd{snd: [2]int32{-1}, font: [3]int32{-1}, displaytime: -2}
 }
 func ReadAnimTextSnd(pre string, is IniSection,
-	sff *Sff, at *AnimationTable) *AnimTextSnd {
+	sff *Sff, at AnimationTable) *AnimTextSnd {
 	ats := newAnimTextSnd(sff)
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
 	is.ReadI32(pre+"font", &ats.font[0], &ats.font[1], &ats.font[2])

@@ -495,22 +495,22 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		rcx, rcy, pfx)
 }
 
-type AnimationTable struct{ table map[int32]*Animation }
+type AnimationTable map[int32]*Animation
 
-func NewAnimationTable() *AnimationTable {
-	return &AnimationTable{table: make(map[int32]*Animation)}
+func NewAnimationTable() AnimationTable {
+	return AnimationTable(make(map[int32]*Animation))
 }
-func (al *AnimationTable) readAction(sff *Sff,
+func (at AnimationTable) readAction(sff *Sff,
 	lines []string, i *int) *Animation {
 	for *i < len(lines) {
 		no, a := ReadAction(sff, lines, i)
 		if a != nil {
-			if tmp := al.table[no]; tmp != nil {
+			if tmp := at[no]; tmp != nil {
 				return tmp
 			}
-			al.table[no] = a
+			at[no] = a
 			for len(a.frames) == 0 {
-				a2 := al.readAction(sff, lines, i)
+				a2 := at.readAction(sff, lines, i)
 				if a2 != nil {
 					*a = *a2
 				}
@@ -522,14 +522,14 @@ func (al *AnimationTable) readAction(sff *Sff,
 	}
 	return nil
 }
-func ReadAnimationTable(sff *Sff, lines []string, i *int) *AnimationTable {
-	al := NewAnimationTable()
-	for al.readAction(sff, lines, i) != nil {
+func ReadAnimationTable(sff *Sff, lines []string, i *int) AnimationTable {
+	at := NewAnimationTable()
+	for at.readAction(sff, lines, i) != nil {
 	}
-	return al
+	return at
 }
-func (al *AnimationTable) get(no int32) *Animation {
-	a := al.table[no]
+func (at AnimationTable) get(no int32) *Animation {
+	a := at[no]
 	if a == nil {
 		return a
 	}
