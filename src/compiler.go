@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type ByteCode struct{}
 
@@ -40,6 +43,63 @@ func (c *Compiler) Compile(n int, def string) (*ByteCode, error) {
 				for i := 1; i < len(st); i++ {
 					st[i] = is[fmt.Sprintf("st%d", i-1)]
 				}
+			}
+		}
+	}
+	if err := LoadFile(&cmd, def, func(filename string) error {
+		str, err := LoadText(filename)
+		if err != nil {
+			return err
+		}
+		lines, i = SplitAndTrim(str, "\n"), 0
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if sys.chars[n][0].cmd == nil {
+		sys.chars[n][0].cmd = make([]CommandList, MaxSimul*2)
+		b := newCommandBuffer()
+		for i := range sys.chars[n][0].cmd {
+			sys.chars[n][0].cmd[i] = *NewCommandList(b)
+		}
+	}
+	cl, remap, defaults := &sys.chars[n][0].cmd[n], true, true
+	ckr := NewCommandKeyRemap()
+	for i < len(lines) {
+		is, name, _ := ReadIniSection(lines, &i)
+		switch name {
+		case "remap":
+			if remap {
+				remap = false
+				rm := func(name string, k, nk *CommandKey) {
+					switch strings.ToLower(is[name]) {
+					case "x":
+						*k, *nk = CK_x, CK_nx
+					case "y":
+						*k, *nk = CK_y, CK_ny
+					case "z":
+						*k, *nk = CK_z, CK_nz
+					case "a":
+						*k, *nk = CK_a, CK_na
+					case "b":
+						*k, *nk = CK_b, CK_nb
+					case "c":
+						*k, *nk = CK_c, CK_nc
+					case "s":
+						*k, *nk = CK_s, CK_ns
+					}
+				}
+				rm("x", &ckr.x, &ckr.nx)
+				rm("y", &ckr.y, &ckr.ny)
+				rm("z", &ckr.z, &ckr.nz)
+				rm("a", &ckr.a, &ckr.na)
+				rm("b", &ckr.b, &ckr.nb)
+				rm("c", &ckr.c, &ckr.nc)
+				rm("s", &ckr.s, &ckr.ns)
+			}
+		case "defaults":
+			if defaults {
+				defaults = false
 			}
 		}
 	}

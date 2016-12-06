@@ -5,153 +5,47 @@ import (
 	"strings"
 )
 
-type CharGlobalInfo struct {
-	def              string
-	displayname      string
-	author           string
-	palkeymap        [12]int
-	sff              *Sff
-	snd              *Snd
-	anim             AnimationTable
-	palno, drawpalno int32
-	ver              [2]int16
-	data             struct {
-		life    int32
-		power   int32
-		attack  int32
-		defence int32
-		fall    struct {
-			defence_mul float32
-		}
-		liedown struct {
-			time int32
-		}
-		airjuggle int32
-		sparkno   int32
-		guard     struct {
-			sparkno int32
-		}
-		ko struct {
-			echo int32
-		}
-		volume            int32
-		intpersistindex   int32
-		floatpersistindex int32
+type CharData struct {
+	life    int32
+	power   int32
+	attack  int32
+	defence int32
+	fall    struct {
+		defence_mul float32
 	}
-	velocity struct {
-		walk struct {
-			fwd  float32
-			back float32
-			up   struct {
-				x float32
-			}
-			down struct {
-				x float32
-			}
-		}
-		run struct {
-			fwd  [2]float32
-			back [2]float32
-			up   struct {
-				x float32
-				y float32
-			}
-			down struct {
-				x float32
-				y float32
-			}
-		}
-		jump struct {
-			neu  [2]float32
-			back float32
-			fwd  float32
-			up   struct {
-				x float32
-			}
-			down struct {
-				x float32
-			}
-		}
-		runjump struct {
-			back [2]float32
-			fwd  [2]float32
-			up   struct {
-				x float32
-			}
-			down struct {
-				x float32
-			}
-		}
-		airjump struct {
-			neu  [2]float32
-			back float32
-			fwd  float32
-			up   struct {
-				x float32
-			}
-			down struct {
-				x float32
-			}
-		}
-		air struct {
-			gethit struct {
-				groundrecover [2]float32
-				airrecover    struct {
-					mul  [2]float32
-					add  [2]float32
-					back float32
-					fwd  float32
-					up   float32
-					down float32
-				}
-			}
-		}
+	liedown struct {
+		time int32
 	}
-	movement struct {
-		airjump struct {
-			num    int32
-			height int32
-		}
-		yaccel float32
-		stand  struct {
-			friction           float32
-			friction_threshold float32
-		}
-		crouch struct {
-			friction           float32
-			friction_threshold float32
-		}
-		air struct {
-			gethit struct {
-				groundlevel   float32
-				groundrecover struct {
-					ground struct {
-						threshold float32
-					}
-					groundlevel float32
-				}
-				airrecover struct {
-					threshold float32
-					yaccel    float32
-				}
-				trip struct {
-					groundlevel float32
-				}
-			}
-		}
-		down struct {
-			bounce struct {
-				offset      [2]float32
-				yaccel      float32
-				groundlevel float32
-			}
-			friction struct {
-				threshold float32
-			}
-		}
+	airjuggle int32
+	sparkno   int32
+	guard     struct {
+		sparkno int32
 	}
-	wakewakaLength int
+	ko struct {
+		echo int32
+	}
+	volume            int32
+	intpersistindex   int32
+	floatpersistindex int32
 }
+
+func (cd *CharData) init() {
+	*cd = CharData{}
+	cd.life = 1000
+	cd.power = 3000
+	cd.attack = 100
+	cd.defence = 100
+	cd.fall.defence_mul = 1.5
+	cd.liedown.time = 60
+	cd.airjuggle = 15
+	cd.sparkno = 2
+	cd.guard.sparkno = 40
+	cd.ko.echo = 0
+	cd.volume = 256
+	cd.intpersistindex = 0
+	cd.floatpersistindex = 0
+}
+
 type CharSize struct {
 	xscale float32
 	yscale float32
@@ -192,8 +86,191 @@ type CharSize struct {
 		width int32
 	}
 }
+
+func (cs *CharSize) init() {
+	*cs = CharSize{}
+	cs.xscale = 1
+	cs.yscale = 1
+	cs.ground.back = 15
+	cs.ground.front = 16
+	cs.air.back = 12
+	cs.air.front = 12
+	cs.height = 60
+	cs.attack.dist = 160
+	cs.proj.attack.dist = 90
+	cs.proj.doscale = 0
+	cs.proj.xscale = 1
+	cs.proj.yscale = 1
+	cs.head.pos = [2]int32{-5, -90}
+	cs.mid.pos = [2]int32{-5, -60}
+	cs.shadowoffset = 0
+	cs.draw.offset = [2]int32{0, 0}
+	cs.z.width = 3
+	cs.attack.z.width = [2]int32{4, 4}
+}
+
+type CharVelocity struct {
+	walk struct {
+		fwd  float32
+		back float32
+		up   struct {
+			x float32
+		}
+		down struct {
+			x float32
+		}
+	}
+	run struct {
+		fwd  [2]float32
+		back [2]float32
+		up   struct {
+			x float32
+			y float32
+		}
+		down struct {
+			x float32
+			y float32
+		}
+	}
+	jump struct {
+		neu  [2]float32
+		back float32
+		fwd  float32
+		up   struct {
+			x float32
+		}
+		down struct {
+			x float32
+		}
+	}
+	runjump struct {
+		back [2]float32
+		fwd  [2]float32
+		up   struct {
+			x float32
+		}
+		down struct {
+			x float32
+		}
+	}
+	airjump struct {
+		neu  [2]float32
+		back float32
+		fwd  float32
+		up   struct {
+			x float32
+		}
+		down struct {
+			x float32
+		}
+	}
+	air struct {
+		gethit struct {
+			groundrecover [2]float32
+			airrecover    struct {
+				mul  [2]float32
+				add  [2]float32
+				back float32
+				fwd  float32
+				up   float32
+				down float32
+			}
+		}
+	}
+}
+
+func (cv *CharVelocity) init() {
+	*cv = CharVelocity{}
+	cv.air.gethit.groundrecover = [2]float32{-0.15, -3.5}
+	cv.air.gethit.airrecover.mul = [2]float32{0.5, 0.2}
+	cv.air.gethit.airrecover.add = [2]float32{0.0, -4.5}
+	cv.air.gethit.airrecover.back = -1.0
+	cv.air.gethit.airrecover.fwd = 0.0
+	cv.air.gethit.airrecover.up = -2.0
+	cv.air.gethit.airrecover.down = 1.5
+}
+
+type CharMovement struct {
+	airjump struct {
+		num    int32
+		height int32
+	}
+	yaccel float32
+	stand  struct {
+		friction           float32
+		friction_threshold float32
+	}
+	crouch struct {
+		friction           float32
+		friction_threshold float32
+	}
+	air struct {
+		gethit struct {
+			groundlevel   float32
+			groundrecover struct {
+				ground struct {
+					threshold float32
+				}
+				groundlevel float32
+			}
+			airrecover struct {
+				threshold float32
+				yaccel    float32
+			}
+			trip struct {
+				groundlevel float32
+			}
+		}
+	}
+	down struct {
+		bounce struct {
+			offset      [2]float32
+			yaccel      float32
+			groundlevel float32
+		}
+		friction_threshold float32
+	}
+}
+
+func (cm *CharMovement) init() {
+	*cm = CharMovement{}
+	cm.airjump.num = 0
+	cm.airjump.height = 35
+	cm.yaccel = 0.44
+	cm.stand.friction = 0.85
+	cm.stand.friction_threshold = 2.0
+	cm.crouch.friction = 0.82
+	cm.crouch.friction_threshold = 0.0
+	cm.air.gethit.groundlevel = 10.0
+	cm.air.gethit.groundrecover.ground.threshold = -20.0
+	cm.air.gethit.groundrecover.groundlevel = 10.0
+	cm.air.gethit.airrecover.threshold = -1.0
+	cm.air.gethit.airrecover.yaccel = 0.35
+	cm.air.gethit.trip.groundlevel = 15.0
+	cm.down.bounce.offset = [2]float32{0.0, 20.0}
+	cm.down.bounce.yaccel = 0.4
+	cm.down.bounce.groundlevel = 12.0
+	cm.down.friction_threshold = 0.05
+}
+
+type CharGlobalInfo struct {
+	def              string
+	displayname      string
+	author           string
+	palkeymap        [12]int
+	sff              *Sff
+	snd              *Snd
+	anim             AnimationTable
+	palno, drawpalno int32
+	ver              [2]int16
+	data             CharData
+	velocity         CharVelocity
+	movement         CharMovement
+	wakewakaLength   int
+}
 type Char struct {
 	name        string
+	cmd         []CommandList
 	key         int
 	helperindex int
 	playerno    int
@@ -280,36 +357,9 @@ func (c *Char) load(def string) error {
 	}); err != nil {
 		return err
 	}
-	gi.data.life = 1000
-	gi.data.power = 3000
-	gi.data.attack = 100
-	gi.data.defence = 100
-	gi.data.fall.defence_mul = 1.5
-	gi.data.liedown.time = 60
-	gi.data.airjuggle = 15
-	gi.data.sparkno = 2
-	gi.data.guard.sparkno = 40
-	gi.data.ko.echo = 0
-	gi.data.volume = 256
-	gi.data.intpersistindex = 0
-	gi.data.floatpersistindex = 0
-	c.size.xscale = 1
-	c.size.yscale = 1
-	c.size.ground.back = 15
-	c.size.ground.front = 16
-	c.size.air.back = 12
-	c.size.air.front = 12
-	c.size.height = 60
-	c.size.attack.dist = 160
-	c.size.proj.attack.dist = 90
-	c.size.proj.doscale = 0
-	c.size.proj.xscale, c.size.proj.yscale = 1, 1
-	c.size.head.pos = [2]int32{-5, -90}
-	c.size.mid.pos = [2]int32{-5, -60}
-	c.size.shadowoffset = 0
-	c.size.draw.offset = [2]int32{0, 0}
-	c.size.z.width = 3
-	c.size.attack.z.width = [2]int32{4, 4}
+	gi.data.init()
+	c.size.init()
+	gi.velocity.init()
 	data, size, velocity, movement := true, true, true, true
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
@@ -325,7 +375,9 @@ func (c *Char) load(def string) error {
 				if is.ReadI32("fall.defence_up", &i32) {
 					gi.data.fall.defence_mul = (float32(i32) + 100) / 100
 				}
-				is.ReadI32("liedown.time", &gi.data.liedown.time)
+				if is.ReadI32("liedown.time", &i32) {
+					gi.data.liedown.time = Max(1, i32)
+				}
 				is.ReadI32("airjuggle", &gi.data.airjuggle)
 				is.ReadI32("sparkno", &gi.data.sparkno)
 				is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
@@ -368,13 +420,116 @@ func (c *Char) load(def string) error {
 		case "velocity":
 			if velocity {
 				velocity = false
+				is.ReadF32("walk.fwd", &gi.velocity.walk.fwd)
+				is.ReadF32("walk.back", &gi.velocity.walk.back)
+				is.ReadF32("walk.up.x", &gi.velocity.walk.up.x)
+				is.ReadF32("walk.down.x", &gi.velocity.walk.down.x)
+				is.ReadF32("run.fwd", &gi.velocity.run.fwd[0], &gi.velocity.run.fwd[1])
+				is.ReadF32("run.back",
+					&gi.velocity.run.back[0], &gi.velocity.run.back[1])
+				is.ReadF32("run.up.x", &gi.velocity.run.up.x)
+				is.ReadF32("run.up.y", &gi.velocity.run.up.y)
+				is.ReadF32("run.down.x", &gi.velocity.run.down.x)
+				is.ReadF32("run.down.y", &gi.velocity.run.down.y)
+				is.ReadF32("jump.neu",
+					&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
+				is.ReadF32("jump.back", &gi.velocity.jump.back)
+				is.ReadF32("jump.fwd", &gi.velocity.jump.fwd)
+				is.ReadF32("jump.up.x", &gi.velocity.jump.up.x)
+				is.ReadF32("jump.down.x", &gi.velocity.jump.down.x)
+				is.ReadF32("runjump.back",
+					&gi.velocity.runjump.back[0], &gi.velocity.runjump.back[1])
+				is.ReadF32("runjump.fwd",
+					&gi.velocity.runjump.fwd[0], &gi.velocity.runjump.fwd[1])
+				is.ReadF32("runjump.up.x", &gi.velocity.runjump.up.x)
+				is.ReadF32("runjump.down.x", &gi.velocity.runjump.down.x)
+				is.ReadF32("airjump.neu",
+					&gi.velocity.airjump.neu[0], &gi.velocity.airjump.neu[1])
+				is.ReadF32("airjump.back", &gi.velocity.airjump.back)
+				is.ReadF32("airjump.fwd", &gi.velocity.airjump.fwd)
+				is.ReadF32("airjump.up.x", &gi.velocity.airjump.up.x)
+				is.ReadF32("airjump.down.x", &gi.velocity.airjump.down.x)
+				is.ReadF32("air.gethit.groundrecover",
+					&gi.velocity.air.gethit.groundrecover[0],
+					&gi.velocity.air.gethit.groundrecover[1])
+				is.ReadF32("air.gethit.airrecover.mul",
+					&gi.velocity.air.gethit.airrecover.mul[0],
+					&gi.velocity.air.gethit.airrecover.mul[1])
+				is.ReadF32("air.gethit.airrecover.add",
+					&gi.velocity.air.gethit.airrecover.add[0],
+					&gi.velocity.air.gethit.airrecover.add[1])
+				is.ReadF32("air.gethit.airrecover.back",
+					&gi.velocity.air.gethit.airrecover.back)
+				is.ReadF32("air.gethit.airrecover.fwd",
+					&gi.velocity.air.gethit.airrecover.fwd)
+				is.ReadF32("air.gethit.airrecover.up",
+					&gi.velocity.air.gethit.airrecover.up)
+				is.ReadF32("air.gethit.airrecover.down",
+					&gi.velocity.air.gethit.airrecover.down)
 			}
 		case "movement":
 			if movement {
 				movement = false
+				is.ReadI32("airjump.num", &gi.movement.airjump.num)
+				is.ReadI32("airjump.height", &gi.movement.airjump.height)
+				is.ReadF32("yaccel", &gi.movement.yaccel)
+				is.ReadF32("stand.friction", &gi.movement.stand.friction)
+				is.ReadF32("stand.friction.threshold",
+					&gi.movement.stand.friction_threshold)
+				is.ReadF32("crouch.friction", &gi.movement.crouch.friction)
+				is.ReadF32("crouch.friction.threshold",
+					&gi.movement.crouch.friction_threshold)
+				is.ReadF32("air.gethit.groundlevel",
+					&gi.movement.air.gethit.groundlevel)
+				is.ReadF32("air.gethit.groundrecover.ground.threshold",
+					&gi.movement.air.gethit.groundrecover.ground.threshold)
+				is.ReadF32("air.gethit.groundrecover.groundlevel",
+					&gi.movement.air.gethit.groundrecover.groundlevel)
+				is.ReadF32("air.gethit.airrecover.threshold",
+					&gi.movement.air.gethit.airrecover.threshold)
+				is.ReadF32("air.gethit.airrecover.yaccel",
+					&gi.movement.air.gethit.airrecover.yaccel)
+				is.ReadF32("air.gethit.trip.groundlevel",
+					&gi.movement.air.gethit.trip.groundlevel)
+				is.ReadF32("down.bounce.offset",
+					&gi.movement.down.bounce.offset[0],
+					&gi.movement.down.bounce.offset[1])
+				is.ReadF32("down.bounce.yaccel", &gi.movement.down.bounce.yaccel)
+				is.ReadF32("down.bounce.groundlevel",
+					&gi.movement.down.bounce.groundlevel)
+				is.ReadF32("down.friction.threshold",
+					&gi.movement.down.friction_threshold)
 			}
 		}
 	}
-	unimplemented()
+	if LoadFile(&sprite, def, func(filename string) error {
+		var err error
+		gi.sff, err = LoadSff(filename, false)
+		return err
+	}); err != nil {
+		return err
+	}
+	if LoadFile(&anim, def, func(filename string) error {
+		str, err := LoadText(filename)
+		if err != nil {
+			return err
+		}
+		lines, i := SplitAndTrim(str, "\n"), 0
+		gi.anim = ReadAnimationTable(gi.sff, lines, &i)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if len(sound) > 0 {
+		if LoadFile(&sound, def, func(filename string) error {
+			var err error
+			gi.snd, err = LoadSnd(filename)
+			return err
+		}); err != nil {
+			return err
+		}
+	} else {
+		gi.snd = newSnd()
+	}
 	return nil
 }
