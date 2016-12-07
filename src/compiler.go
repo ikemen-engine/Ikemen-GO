@@ -5,16 +5,63 @@ import (
 	"strings"
 )
 
-type ByteCode struct{}
+type StateByteCode struct{}
+type ByteCode struct{ states map[int32]StateByteCode }
 
 func newByteCode() *ByteCode {
-	return &ByteCode{}
+	return &ByteCode{states: make(map[int32]StateByteCode)}
 }
 
-type Compiler struct{ ver [2]int16 }
+type Compiler struct{ cmdl *CommandList }
 
 func newCompiler() *Compiler {
 	return &Compiler{}
+}
+func (c *Compiler) parseSection(lines []string, i *int,
+	f func(name, data string) error) (IniSection, error) {
+	is := NewIniSection()
+	unimplemented()
+	return is, nil
+}
+func (c *Compiler) stateCompile(bc *ByteCode, filename, def string) error {
+	var lines []string
+	if err := LoadFile(&filename, def, func(filename string) error {
+		str, err := LoadText(filename)
+		if err != nil {
+			return err
+		}
+		lines = SplitAndTrim(str, "\n")
+		return nil
+	}); err != nil {
+		return err
+	}
+	i := 0
+	errmes := func(err error) error {
+		return Error(fmt.Sprintf("%v:%v:\n%v", filename, i+1, err.Error()))
+	}
+	existInThisFile := make(map[int32]bool)
+	for ; i < len(lines); i++ {
+		line := strings.ToLower(lines[i])
+		if idx := strings.Index(line, ";"); idx >= 0 {
+			line = strings.TrimSpace(line[:idx])
+		}
+		if len(line) < 11 || line[0] != '[' || line[len(line)-1] != ']' ||
+			line[1:10] != "statedef " {
+			continue
+		}
+		n := Atoi(line[11:])
+		if existInThisFile[n] {
+			continue
+		}
+		existInThisFile[n] = true
+		i++
+		is, err := c.parseSection(lines, &i, nil)
+		if err != nil {
+			return errmes(err)
+		}
+		unimplemented()
+	}
+	return nil
 }
 func (c *Compiler) Compile(n int, def string) (*ByteCode, error) {
 	bc := newByteCode()
@@ -63,8 +110,9 @@ func (c *Compiler) Compile(n int, def string) (*ByteCode, error) {
 			sys.chars[n][0].cmd[i] = *NewCommandList(b)
 		}
 	}
-	cl, remap, defaults := &sys.chars[n][0].cmd[n], true, true
-	ckr := NewCommandKeyRemap()
+	c.cmdl = &sys.chars[n][0].cmd[n]
+	remap, defaults, ckr := true, true, NewCommandKeyRemap()
+	var cmds []IniSection
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
@@ -100,9 +148,45 @@ func (c *Compiler) Compile(n int, def string) (*ByteCode, error) {
 		case "defaults":
 			if defaults {
 				defaults = false
+				is.ReadI32("command.time", &c.cmdl.DefaultTime)
+				var i32 int32
+				if is.ReadI32("command.buffer.time", &i32) {
+					c.cmdl.DefaultBufferTime = Max(1, i32)
+				}
+			}
+		default:
+			if len(name) >= 7 && name[:7] == "command" {
+				cmds = append(cmds, is)
 			}
 		}
 	}
-	unimplemented()
+	for _, is := range cmds {
+		cm, err := ReadCommand(is["name"], is["command"], ckr)
+		if err != nil {
+			return nil, Error(cmd + ":\nname = " + is["name"] +
+				"\ncommand = " + is["command"] + "\n" + err.Error())
+		}
+		is.ReadI32("time", &cm.time)
+		var i32 int32
+		if is.ReadI32("buffer.time", &i32) {
+			cm.buftime = Max(1, i32)
+		}
+		c.cmdl.Add(*cm)
+	}
+	for _, s := range st {
+		if len(s) > 0 {
+			if err := c.stateCompile(bc, s, def); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := c.stateCompile(bc, cmd, def); err != nil {
+		return nil, err
+	}
+	if len(stcommon) > 0 {
+		if err := c.stateCompile(bc, stcommon, def); err != nil {
+			return nil, err
+		}
+	}
 	return bc, nil
 }

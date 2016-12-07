@@ -548,7 +548,7 @@ type Command struct {
 }
 
 func newCommand() *Command { return &Command{tamei: -1, time: 1, buftime: 1} }
-func ReadCommand(name, cmdstr string) (*Command, error) {
+func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 	c := newCommand()
 	c.name = name
 	cmd := strings.Split(cmdstr, ",")
@@ -664,51 +664,51 @@ func ReadCommand(name, cmdstr string) (*Command, error) {
 				tilde = false
 			case 'a':
 				if tilde {
-					ce.key = append(ce.key, CK_na)
+					ce.key = append(ce.key, kr.na)
 				} else {
-					ce.key = append(ce.key, CK_a)
+					ce.key = append(ce.key, kr.a)
 				}
 				tilde = false
 			case 'b':
 				if tilde {
-					ce.key = append(ce.key, CK_nb)
+					ce.key = append(ce.key, kr.nb)
 				} else {
-					ce.key = append(ce.key, CK_b)
+					ce.key = append(ce.key, kr.b)
 				}
 				tilde = false
 			case 'c':
 				if tilde {
-					ce.key = append(ce.key, CK_nc)
+					ce.key = append(ce.key, kr.nc)
 				} else {
-					ce.key = append(ce.key, CK_c)
+					ce.key = append(ce.key, kr.c)
 				}
 				tilde = false
 			case 'x':
 				if tilde {
-					ce.key = append(ce.key, CK_nx)
+					ce.key = append(ce.key, kr.x)
 				} else {
-					ce.key = append(ce.key, CK_x)
+					ce.key = append(ce.key, kr.x)
 				}
 				tilde = false
 			case 'y':
 				if tilde {
-					ce.key = append(ce.key, CK_ny)
+					ce.key = append(ce.key, kr.ny)
 				} else {
-					ce.key = append(ce.key, CK_y)
+					ce.key = append(ce.key, kr.y)
 				}
 				tilde = false
 			case 'z':
 				if tilde {
-					ce.key = append(ce.key, CK_nz)
+					ce.key = append(ce.key, kr.nz)
 				} else {
-					ce.key = append(ce.key, CK_z)
+					ce.key = append(ce.key, kr.z)
 				}
 				tilde = false
 			case 's':
 				if tilde {
-					ce.key = append(ce.key, CK_ns)
+					ce.key = append(ce.key, kr.ns)
 				} else {
-					ce.key = append(ce.key, CK_s)
+					ce.key = append(ce.key, kr.s)
 				}
 				tilde = false
 			case '$':

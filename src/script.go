@@ -81,7 +81,7 @@ func scriptCommonInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		c, err := ReadCommand(strArg(l, 2), strArg(l, 3))
+		c, err := ReadCommand(strArg(l, 2), strArg(l, 3), NewCommandKeyRemap())
 		if err != nil {
 			l.RaiseError(err.Error())
 		}

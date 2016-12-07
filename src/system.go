@@ -91,6 +91,7 @@ type System struct {
 	numTurns                    [2]int
 	esc                         bool
 	loadMutex                   sync.Mutex
+	ignoreMostErrors            bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
