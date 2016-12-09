@@ -428,12 +428,21 @@ func (ni *NetInput) Close() { unimplemented() }
 func (ni *NetInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
+func (ni *NetInput) Stop() { unimplemented() }
+func (ni *NetInput) Synchronize() error {
+	unimplemented()
+	return nil
+}
 
 type FileInput struct{ ib []InputBits }
 
-func (ni *FileInput) Close() { unimplemented() }
-func (ni *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
+func (fi *FileInput) Close() { unimplemented() }
+func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
+}
+func (fi *FileInput) Synchronize() error {
+	unimplemented()
+	return nil
 }
 
 type AiInput struct {

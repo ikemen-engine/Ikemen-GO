@@ -83,6 +83,7 @@ type System struct {
 	round                       int32
 	wins                        [2]int32
 	rexisted                    [2]int32
+	draws                       int32
 	loader                      Loader
 	chars                       [MaxSimul * 2][]*Char
 	cgi                         [MaxSimul * 2]CharGlobalInfo
@@ -173,6 +174,14 @@ func (s *System) loadStart() {
 	s.loaderReset()
 	s.loader.runTread()
 }
+func (s *System) synchronize() error {
+	if s.fileInput != nil {
+		return s.fileInput.Synchronize()
+	} else if s.netInput != nil {
+		return s.netInput.Synchronize()
+	}
+	return nil
+}
 
 type SelectChar struct {
 	def, name            string
@@ -224,6 +233,16 @@ func (s *Select) SetStageNo(n int) int {
 	return s.curStageNo
 }
 func (s *Select) SelectStage(n int) { s.selectedStageNo = n }
+func (s *Select) GetStageName(n int) string {
+	n %= len(s.stagelist) + 1
+	if n < 0 {
+		n += len(s.stagelist) + 1
+	}
+	if n == 0 {
+		return "Random"
+	}
+	return s.stagelist[n-1].name
+}
 func (s *Select) AddCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
@@ -297,7 +316,7 @@ func (s *Select) AddStage(def string) error {
 	}); err != nil {
 		return err
 	}
-	i, info := 0, false
+	i, info := 0, true
 	s.stagelist = append(s.stagelist, SelectStage{})
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def

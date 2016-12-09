@@ -381,6 +381,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.sel.SetStageNo(int(numArg(l, 1)))))
 		return 1
 	})
+	luaRegister(l, "selectStage", func(*lua.LState) int {
+		sys.sel.SelectStage(int(numArg(l, 1)))
+		return 0
+	})
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
@@ -431,6 +435,10 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		l.Push(lua.LNumber(ret))
+		return 1
+	})
+	luaRegister(l, "getStageName", func(*lua.LState) int {
+		l.Push(lua.LString(sys.sel.GetStageName(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
@@ -544,5 +552,65 @@ func systemScriptInit(l *lua.LState) {
 		sys.sel.ClearSelected()
 		sys.loadStart()
 		return 0
+	})
+	luaRegister(l, "game", func(l *lua.LState) int {
+		if sys.gameEnd {
+			l.Push(lua.LNumber(-1))
+			return 1
+		}
+		winp := int32(0)
+		sys.rexisted = [2]int32{0, 0}
+		mw := sys.rexisted
+		for i := range sys.lifebar.wi {
+			sys.lifebar.wi[i].clear()
+		}
+		sys.draws = 0
+		load := func() error {
+			sys.loader.runTread()
+			for sys.loader.state != LS_Complete {
+				if sys.loader.state == LS_Error {
+					return sys.loader.err
+				}
+				sys.await(60)
+			}
+			return nil
+		}
+		fight := func() (int32, error) {
+			if err := load(); err != nil {
+				return -1, err
+			}
+			unimplemented()
+			if sys.round == 1 {
+				if sys.tmode[1] == TM_Turns {
+					mw[0] = int32(sys.numTurns[1])
+				} else {
+					mw[0] = sys.lifebar.ro.match_wins
+				}
+				if sys.tmode[0] == TM_Turns {
+					mw[1] = int32(sys.numTurns[0])
+				} else {
+					mw[1] = sys.lifebar.ro.match_wins
+				}
+			}
+			unimplemented()
+			return winp, nil
+		}
+		if sys.netInput != nil {
+			sys.netInput.Stop()
+		}
+		defer sys.synchronize()
+		for {
+			var err error
+			if winp, err = fight(); err != nil {
+				l.RaiseError(err.Error())
+			}
+			if winp < 0 || sys.tmode[0] != TM_Turns && sys.tmode[1] != TM_Turns ||
+				sys.wins[0] >= mw[0] || sys.wins[1] >= mw[1] || sys.gameEnd {
+				break
+			}
+			unimplemented()
+		}
+		l.Push(lua.LNumber(winp))
+		return 1
 	})
 }
