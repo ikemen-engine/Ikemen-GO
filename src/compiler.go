@@ -2,77 +2,13 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
 const kuuhaktokigou = " !=<>()|&+-*/%,[]^|:\"\t\r\n"
 
-type StateType int32
-
-const (
-	ST_S StateType = 1 << iota
-	ST_C
-	ST_A
-	ST_L
-	ST_N
-	ST_U
-	ST_D = ST_L
-	ST_F = ST_N
-	ST_P = ST_U
-)
-
-type AttackType int32
-
-const (
-	AT_NA AttackType = 1 << (iota + 6)
-	AT_NT
-	AT_NP
-	AT_SA
-	AT_ST
-	AT_SP
-	AT_HA
-	AT_HT
-	AT_HP
-)
-
-type MoveType int32
-
-const (
-	MT_I MoveType = 1 << (iota + 15)
-	MT_H
-	MT_A   = MT_I + 1
-	MT_U   = MT_H + 1
-	MT_MNS = MT_I
-	MT_PLS = MT_H
-)
-
-type ValueType int
-
-const (
-	VT_Any ValueType = iota
-	VT_Float
-	VT_Int
-	VT_Bool
-)
-
-type ByteExp []byte
-type StateByteCode struct {
-	stateType StateType
-	moveType  MoveType
-	physics   StateType
-}
-
-func newStateByteCode() *StateByteCode {
-	return &StateByteCode{stateType: ST_S, moveType: MT_I, physics: ST_N}
-}
-
-type ByteCode struct{ states map[int32]StateByteCode }
-
-func newByteCode() *ByteCode {
-	return &ByteCode{states: make(map[int32]StateByteCode)}
-}
-
-type ExpFunc func(out *ByteExp, in *string) (ValueType, error)
+type ExpFunc func(out *BytecodeExp, in *string) (ValueType, float64, error)
 type Compiler struct{ cmdl *CommandList }
 
 func newCompiler() *Compiler {
@@ -185,28 +121,42 @@ func (c *Compiler) tokenizer(in *string) string {
 	*in = (*in)[ia:]
 	return token
 }
-func (c *Compiler) expBoolOr(out *ByteExp, in *string) (ValueType, error) {
+func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (ValueType,
+	float64, error) {
 	unimplemented()
-	return 0, nil
+	return 0, 0, nil
 }
-func (c *Compiler) typedExp(ef ExpFunc, out *ByteExp, in *string,
-	vt ValueType) error {
-	t, err := ef(out, in)
+func (c *Compiler) typedExp(ef ExpFunc, out *BytecodeExp, in *string,
+	vt ValueType) (float64, error) {
+	var be BytecodeExp
+	t, v, err := ef(&be, in)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	unimplemented()
-	return nil
+	if len(be) == 0 && vt != VT_Variant {
+		if vt == VT_Bool {
+			if v != 0 {
+				v = 1
+			} else {
+				v = 0
+			}
+		}
+		return v, nil
+	}
+	*out = append(*out, be...)
+	out.AppendValue(t, v)
+	return math.NaN(), nil
 }
-func (c *Compiler) fullExpression(out *ByteExp, in *string,
-	vt ValueType) error {
-	if err := c.typedExp(c.expBoolOr, out, in, vt); err != nil {
-		return err
+func (c *Compiler) fullExpression(out *BytecodeExp, in *string,
+	vt ValueType) (float64, error) {
+	v, err := c.typedExp(c.expBoolOr, out, in, vt)
+	if err != nil {
+		return 0, err
 	}
 	if token := c.tokenizer(in); len(token) > 0 {
-		return Error(token + "が不正です")
+		return 0, Error(token + "が不正です")
 	}
-	return nil
+	return v, nil
 }
 func (c *Compiler) parseSection(lines []string, i *int,
 	sctrl func(name, data string) error) (IniSection, error) {
@@ -293,7 +243,7 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	}
 	return nil
 }
-func (c *Compiler) stateDef(is IniSection, sbc *StateByteCode) error {
+func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		if err := c.stateParam(is, "type", func(data string) error {
 			if len(data) == 0 {
@@ -360,6 +310,8 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateByteCode) error {
 			return err
 		}
 		if err := c.stateParam(is, "hitcountpersist", func(data string) error {
+			var be BytecodeExp
+			v, err := c.fullExpression(&be, &data, VT_Bool)
 			unimplemented()
 			return nil
 		}); err != nil {
@@ -369,7 +321,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateByteCode) error {
 		return nil
 	})
 }
-func (c *Compiler) stateCompile(bc *ByteCode, filename, def string) error {
+func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
 		str, err := LoadText(filename)
@@ -403,7 +355,7 @@ func (c *Compiler) stateCompile(bc *ByteCode, filename, def string) error {
 		if err != nil {
 			return errmes(err)
 		}
-		sbc := newStateByteCode()
+		sbc := newStateBytecode()
 		if err := c.stateDef(is, sbc); err != nil {
 			return errmes(err)
 		}
@@ -411,8 +363,8 @@ func (c *Compiler) stateCompile(bc *ByteCode, filename, def string) error {
 	}
 	return nil
 }
-func (c *Compiler) Compile(n int, def string) (*ByteCode, error) {
-	bc := newByteCode()
+func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
+	bc := newBytecode()
 	str, err := LoadText(def)
 	if err != nil {
 		return nil, err

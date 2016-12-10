@@ -30,7 +30,6 @@ var sys = System{
 	allPalFX:         *NewPalFX(),
 	sel:              *newSelect(),
 	match:            1,
-	inputRemap:       [...]int{0, 1, 2, 3, 4, 5, 6, 7},
 	listenPort:       "7500",
 	loader:           *newLoader(),
 	numSimul:         [2]int{2, 2},
@@ -93,6 +92,7 @@ type System struct {
 	esc                         bool
 	loadMutex                   sync.Mutex
 	ignoreMostErrors            bool
+	stringPool                  [MaxSimul * 2]StringPool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -116,6 +116,12 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.audioOpen()
 	l := lua.NewState()
 	l.OpenLibs()
+	for i := range s.inputRemap {
+		s.inputRemap[i] = i
+	}
+	for i := range s.stringPool {
+		s.stringPool[i] = *NewStringPool()
+	}
 	systemScriptInit(l)
 	return l
 }
@@ -374,7 +380,7 @@ type Loader struct {
 	state    LoaderState
 	loadExit chan LoaderState
 	err      error
-	code     [MaxSimul * 2]*ByteCode
+	code     [MaxSimul * 2]*Bytecode
 }
 
 func newLoader() *Loader {
