@@ -56,11 +56,7 @@ const (
 type OpCode byte
 
 const (
-	OC_var0     OpCode = 0
-	OC_sysvar0  OpCode = 60
-	OC_fvar0    OpCode = 65
-	OC_sysfvar0 OpCode = 105
-	OC_var      OpCode = iota + 110
+	OC_var OpCode = iota + 110
 	OC_sysvar
 	OC_fvar
 	OC_sysfvar
@@ -190,6 +186,9 @@ const (
 	OC_hitvel_y
 	OC_roundno
 	OC_roundsexisted
+	OC_matchno
+	OC_ishometeam
+	OC_tickspersecond
 	OC_parent
 	OC_root
 	OC_helper
@@ -201,7 +200,12 @@ const (
 	OC_p2
 	OC_const_
 	OC_gethitvar_
+	OC_stagevar_
 	OC_ex_
+	OC_var0     OpCode = 0
+	OC_sysvar0  OpCode = 60
+	OC_fvar0    OpCode = 65
+	OC_sysfvar0 OpCode = 105
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -329,6 +333,11 @@ const (
 	OC_gethitvar_fall_envshake_phase
 )
 const (
+	OC_stagevar_info_author OpCode = iota
+	OC_stagevar_info_displayname
+	OC_stagevar_info_name
+)
+const (
 	OC_ex_name OpCode = iota
 	OC_ex_authorname
 	OC_ex_p2name
@@ -350,15 +359,6 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
-	OC_ex_matchno
-	OC_ex_ishometeam
-	OC_ex_tickspersecond
-	OC_ex_stagevar_
-)
-const (
-	OC_ex_stagevar_info_author OpCode = iota
-	OC_ex_stagevar_info_displayname
-	OC_ex_stagevar_info_name
 )
 
 type StringPool struct {
@@ -385,11 +385,16 @@ func (sp *StringPool) Add(s string) int {
 type BytecodeExp []OpCode
 
 func (be *BytecodeExp) appendFloat(f float32) {
-	*be = append(append(*be, OC_float),
-		(*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
+	*be = append(*be, (*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
 }
 func (be *BytecodeExp) appendInt(i int32) {
-	*be = append(append(*be, OC_int), (*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
+	*be = append(*be, (*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
+}
+func (be BytecodeExp) toF() float32 {
+	return *(*float32)(unsafe.Pointer(&be[0]))
+}
+func (be BytecodeExp) toI() int32 {
+	return *(*int32)(unsafe.Pointer(&be[0]))
 }
 func (be *BytecodeExp) AppendValue(t ValueType, v float64) (ok bool) {
 	if math.IsNaN(v) {
@@ -397,11 +402,13 @@ func (be *BytecodeExp) AppendValue(t ValueType, v float64) (ok bool) {
 	}
 	switch t {
 	case VT_Float:
+		*be = append(*be, OC_float)
 		be.appendFloat(float32(v))
 	case VT_Int:
 		if v >= -128 || v <= 127 {
 			*be = append(*be, OC_int8, OpCode(v))
 		} else {
+			*be = append(*be, OC_int)
 			be.appendInt(int32(v))
 		}
 	case VT_Bool:
@@ -415,11 +422,79 @@ func (be *BytecodeExp) AppendValue(t ValueType, v float64) (ok bool) {
 	}
 	return true
 }
+func (be BytecodeExp) run(c *Char) (t ValueType, v float64) {
+	unimplemented()
+	return VT_Int, 0
+}
+func (be BytecodeExp) eval(c *Char) float64 {
+	_, v := be.run(c)
+	return v
+}
+
+type StateController interface {
+	Run(c *Char) (changeState bool)
+}
+
+const (
+	SCID_trigger byte = 0
+	SCID_const   byte = 128
+)
+
+type StateControllerBase []byte
+
+func (scb StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
+	return be
+}
+func (scb StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
+	for _, v := range f {
+		var be BytecodeExp
+		be.appendFloat(v)
+		exp = append(exp, be)
+	}
+	return
+}
+func (scb StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
+	for _, v := range i {
+		var be BytecodeExp
+		be.appendInt(v)
+		exp = append(exp, be)
+	}
+	return
+}
+func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
+	*scb = append(*scb, id, byte(len(exp)))
+	for _, e := range exp {
+		l := int32(len(e))
+		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
+		*scb = append(*scb, (*(*[]byte)(unsafe.Pointer(&e)))...)
+	}
+}
+func (scb StateControllerBase) run(f func(byte, []BytecodeExp) bool) bool {
+	for i := 0; i < len(scb); {
+		id := scb[i]
+		i++
+		n := scb[i]
+		i++
+		exp := make([]BytecodeExp, n)
+		for m := byte(0); m < n; m++ {
+			l := *(*int32)(unsafe.Pointer(&scb[i]))
+			i += 4
+			exp[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
+			i += int(l)
+		}
+		if !f(id, exp) {
+			return false
+		}
+	}
+	return true
+}
 
 type StateBytecode struct {
 	stateType StateType
 	moveType  MoveType
 	physics   StateType
+	stateDef  StateController
+	ctrls     []StateController
 }
 
 func newStateBytecode() *StateBytecode {

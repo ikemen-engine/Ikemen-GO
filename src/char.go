@@ -276,6 +276,8 @@ type Char struct {
 	playerno    int
 	keyctrl     bool
 	player      bool
+	sprpriority int32
+	juggle      int32
 	size        CharSize
 }
 
@@ -532,4 +534,22 @@ func (c *Char) load(def string) error {
 		gi.snd = newSnd()
 	}
 	return nil
+}
+func (c *Char) clearHitCount() {
+	unimplemented()
+}
+func (c *Char) clearMoveHit() {
+	unimplemented()
+}
+func (c *Char) clearHitDef() {
+	unimplemented()
+}
+func (c *Char) faceP2() {
+	unimplemented()
+}
+func (c *Char) setXV(xv float32) {
+	unimplemented()
+}
+func (c *Char) setYV(yv float32) {
+	unimplemented()
 }

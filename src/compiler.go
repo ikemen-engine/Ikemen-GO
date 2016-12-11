@@ -8,6 +8,72 @@ import (
 
 const kuuhaktokigou = " !=<>()|&+-*/%,[]^|:\"\t\r\n"
 
+type stateDef StateControllerBase
+
+const (
+	stateDef_hitcountpersist byte = iota + 1
+	stateDef_movehitpersist
+	stateDef_hitdefpersist
+	stateDef_sprpriority
+	stateDef_facep2
+	stateDef_juggle
+	stateDef_velset
+	stateDef_hitcountpersist_c = stateDef_hitcountpersist + SCID_const
+	stateDef_movehitpersist_c  = stateDef_movehitpersist + SCID_const
+	stateDef_hitdefpersist_c   = stateDef_hitdefpersist + SCID_const
+	stateDef_sprpriority_c     = stateDef_sprpriority + SCID_const
+	stateDef_facep2_c          = stateDef_facep2 + SCID_const
+	stateDef_juggle_c          = stateDef_juggle + SCID_const
+	stateDef_velset_c          = stateDef_velset + SCID_const
+)
+
+func (sd stateDef) Run(c *Char) bool {
+	StateControllerBase(sd).run(func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case stateDef_hitcountpersist, stateDef_hitcountpersist_c:
+			if id == stateDef_hitcountpersist_c || exp[0].eval(c) == 0 {
+				c.clearHitCount()
+			}
+		case stateDef_movehitpersist, stateDef_movehitpersist_c:
+			if id == stateDef_movehitpersist_c || exp[0].eval(c) == 0 {
+				c.clearMoveHit()
+			}
+		case stateDef_hitdefpersist, stateDef_hitdefpersist_c:
+			if id == stateDef_hitdefpersist_c || exp[0].eval(c) == 0 {
+				c.clearHitDef()
+			}
+		case stateDef_sprpriority:
+			c.sprpriority = int32(exp[0].eval(c))
+		case stateDef_sprpriority_c:
+			c.sprpriority = exp[0].toI()
+		case stateDef_facep2, stateDef_facep2_c:
+			if id == stateDef_facep2_c || exp[0].eval(c) != 0 {
+				c.faceP2()
+			}
+		case stateDef_juggle:
+			c.juggle = int32(exp[0].eval(c))
+		case stateDef_juggle_c:
+			c.juggle = exp[0].toI()
+		case stateDef_velset:
+			c.setXV(float32(exp[0].eval(c)))
+			if len(exp) > 1 {
+				c.setYV(float32(exp[1].eval(c)))
+				if len(exp) > 2 {
+					exp[2].eval(c)
+				}
+			}
+		case stateDef_velset_c:
+			c.setXV(exp[0].toF())
+			if len(exp) > 1 {
+				c.setYV(exp[1].toF())
+			}
+		}
+		unimplemented()
+		return true
+	})
+	return false
+}
+
 type ExpFunc func(out *BytecodeExp, in *string) (ValueType, float64, error)
 type Compiler struct{ cmdl *CommandList }
 
@@ -147,16 +213,34 @@ func (c *Compiler) typedExp(ef ExpFunc, out *BytecodeExp, in *string,
 	out.AppendValue(t, v)
 	return math.NaN(), nil
 }
-func (c *Compiler) fullExpression(out *BytecodeExp, in *string,
-	vt ValueType) (float64, error) {
-	v, err := c.typedExp(c.expBoolOr, out, in, vt)
+func (c *Compiler) argExpression(in *string,
+	vt ValueType) (BytecodeExp, float64, error) {
+	var be BytecodeExp
+	v, err := c.typedExp(c.expBoolOr, &be, in, vt)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
+	}
+	oldin := *in
+	if token := c.tokenizer(in); len(token) > 0 {
+		if token == "," {
+			*in = oldin
+		} else {
+			return nil, 0, Error(token + "が不正です")
+		}
+	}
+	return be, v, nil
+}
+func (c *Compiler) fullExpression(in *string,
+	vt ValueType) (BytecodeExp, float64, error) {
+	var be BytecodeExp
+	v, err := c.typedExp(c.expBoolOr, &be, in, vt)
+	if err != nil {
+		return nil, 0, err
 	}
 	if token := c.tokenizer(in); len(token) > 0 {
-		return 0, Error(token + "が不正です")
+		return nil, 0, Error(token + "が不正です")
 	}
-	return v, nil
+	return be, v, nil
 }
 func (c *Compiler) parseSection(lines []string, i *int,
 	sctrl func(name, data string) error) (IniSection, error) {
@@ -243,8 +327,54 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	}
 	return nil
 }
+func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
+	data string, vt ValueType, numArg int) error {
+	bes, vs := []BytecodeExp{}, []float64{}
+	for n := 1; n <= numArg; n++ {
+		var be BytecodeExp
+		var v float64
+		var err error
+		if n < numArg {
+			be, v, err = c.argExpression(&data, vt)
+		} else {
+			be, v, err = c.fullExpression(&data, vt)
+		}
+		if err != nil {
+			return err
+		}
+		bes = append(bes, be)
+		vs = append(vs, v)
+	}
+	cns := true
+	for i, v := range vs {
+		if math.IsNaN(v) {
+			cns = false
+		} else {
+			bes[i].AppendValue(vt, v)
+		}
+	}
+	if cns {
+		if vt == VT_Float {
+			floats := make([]float32, len(vs))
+			for i := range floats {
+				floats[i] = float32(vs[i])
+			}
+			sc.add(id+SCID_const, sc.fToExp(floats...))
+		} else {
+			ints := make([]int32, len(vs))
+			for i := range ints {
+				ints[i] = int32(vs[i])
+			}
+			sc.add(id+SCID_const, sc.iToExp(ints...))
+		}
+	} else {
+		sc.add(id, bes)
+	}
+	return nil
+}
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
+		var sc StateControllerBase
 		if err := c.stateParam(is, "type", func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -309,15 +439,99 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}); err != nil {
 			return err
 		}
+		b := false
 		if err := c.stateParam(is, "hitcountpersist", func(data string) error {
-			var be BytecodeExp
-			v, err := c.fullExpression(&be, &data, VT_Bool)
-			unimplemented()
+			b = true
+			be, v, err := c.fullExpression(&data, VT_Bool)
+			if err != nil {
+				return err
+			}
+			if math.IsNaN(v) {
+				sc.add(stateDef_hitcountpersist, sc.beToExp(be))
+			} else if v == 0 { // falseのときだけクリアする
+				sc.add(stateDef_hitcountpersist_c, nil)
+			}
 			return nil
 		}); err != nil {
 			return err
 		}
+		if !b {
+			sc.add(stateDef_hitcountpersist_c, nil)
+		}
+		b = false
+		if err := c.stateParam(is, "movehitpersist", func(data string) error {
+			b = true
+			be, v, err := c.fullExpression(&data, VT_Bool)
+			if err != nil {
+				return err
+			}
+			if math.IsNaN(v) {
+				sc.add(stateDef_movehitpersist, sc.beToExp(be))
+			} else if v == 0 { // falseのときだけクリアする
+				sc.add(stateDef_movehitpersist_c, nil)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(stateDef_movehitpersist_c, nil)
+		}
+		b = false
+		if err := c.stateParam(is, "hitdefpersist", func(data string) error {
+			b = true
+			be, v, err := c.fullExpression(&data, VT_Bool)
+			if err != nil {
+				return err
+			}
+			if math.IsNaN(v) {
+				sc.add(stateDef_hitdefpersist, sc.beToExp(be))
+			} else if v == 0 { // falseのときだけクリアする
+				sc.add(stateDef_hitdefpersist_c, nil)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(stateDef_hitdefpersist_c, nil)
+		}
+		if err := c.stateParam(is, "sprpriority", func(data string) error {
+			return c.scAdd(&sc, stateDef_sprpriority, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "facep2", func(data string) error {
+			be, v, err := c.fullExpression(&data, VT_Bool)
+			if err != nil {
+				return err
+			}
+			if math.IsNaN(v) {
+				sc.add(stateDef_facep2, sc.beToExp(be))
+			} else if v != 0 {
+				sc.add(stateDef_facep2_c, nil)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		b = false
+		if err := c.stateParam(is, "juggle", func(data string) error {
+			b = true
+			return c.scAdd(&sc, stateDef_juggle, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(stateDef_juggle_c, sc.iToExp(0))
+		}
+		if err := c.stateParam(is, "velset", func(data string) error {
+			return c.scAdd(&sc, stateDef_velset, data, VT_Float, 3)
+		}); err != nil {
+			return err
+		}
 		unimplemented()
+		sbc.stateDef = stateDef(sc)
 		return nil
 	})
 }
