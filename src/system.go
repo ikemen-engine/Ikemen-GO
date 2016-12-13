@@ -93,6 +93,7 @@ type System struct {
 	loadMutex                   sync.Mutex
 	ignoreMostErrors            bool
 	stringPool                  [MaxSimul * 2]StringPool
+	bcStack                     BytecodeStack
 }
 
 func (s *System) init(w, h int32) *lua.LState {

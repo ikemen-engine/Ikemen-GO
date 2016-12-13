@@ -382,13 +382,40 @@ func (sp *StringPool) Add(s string) int {
 	return i
 }
 
+type BytecodeValue struct {
+	t ValueType
+	v float64
+}
+
+func (bv BytecodeValue) IsNaN() bool { return math.IsNaN(bv.v) }
+
+func BytecodeNaN() BytecodeValue { return BytecodeValue{v: math.NaN()} }
+
+type BytecodeStack []BytecodeValue
+
+func (bs *BytecodeStack) Clear()                { *bs = (*bs)[:0] }
+func (bs *BytecodeStack) Push(bv BytecodeValue) { *bs = append(*bs, bv) }
+func (bs BytecodeStack) Top() *BytecodeValue {
+	return &bs[len(bs)-1]
+}
+func (bs *BytecodeStack) Pop() (bv BytecodeValue) {
+	bv, *bs = *bs.Top(), (*bs)[:len(*bs)-1]
+	return
+}
+func (bs *BytecodeStack) Dup() {
+	bs.Push(*bs.Top())
+}
+
 type BytecodeExp []OpCode
 
+func (be *BytecodeExp) append(op ...OpCode) {
+	*be = append(*be, op...)
+}
 func (be *BytecodeExp) appendFloat(f float32) {
-	*be = append(*be, (*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
+	be.append((*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
 }
 func (be *BytecodeExp) appendInt(i int32) {
-	*be = append(*be, (*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
+	be.append((*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
 }
 func (be BytecodeExp) toF() float32 {
 	return *(*float32)(unsafe.Pointer(&be[0]))
@@ -396,40 +423,60 @@ func (be BytecodeExp) toF() float32 {
 func (be BytecodeExp) toI() int32 {
 	return *(*int32)(unsafe.Pointer(&be[0]))
 }
-func (be *BytecodeExp) AppendValue(t ValueType, v float64) (ok bool) {
-	if math.IsNaN(v) {
+func (be *BytecodeExp) AppendValue(bv BytecodeValue) (ok bool) {
+	if bv.IsNaN() {
 		return false
 	}
-	switch t {
+	switch bv.t {
 	case VT_Float:
-		*be = append(*be, OC_float)
-		be.appendFloat(float32(v))
+		be.append(OC_float)
+		be.appendFloat(float32(bv.v))
 	case VT_Int:
-		if v >= -128 || v <= 127 {
-			*be = append(*be, OC_int8, OpCode(v))
+		if bv.v >= -128 || bv.v <= 127 {
+			be.append(OC_int8, OpCode(bv.v))
 		} else {
-			*be = append(*be, OC_int)
-			be.appendInt(int32(v))
+			be.append(OC_int)
+			be.appendInt(int32(bv.v))
 		}
 	case VT_Bool:
-		if v != 0 {
-			*be = append(*be, OC_int8, 1)
+		if bv.v != 0 {
+			be.append(OC_int8, 1)
 		} else {
-			*be = append(*be, OC_int8, 0)
+			be.append(OC_int8, 0)
 		}
 	default:
 		return false
 	}
 	return true
 }
-func (be BytecodeExp) run(c *Char) (t ValueType, v float64) {
-	unimplemented()
-	return VT_Int, 0
+func (be BytecodeExp) run(c *Char) BytecodeValue {
+	sys.bcStack.Clear()
+	for i := 1; i <= len(be); i++ {
+		switch be[i-1] {
+		case OC_int8:
+			sys.bcStack.Push(BytecodeValue{VT_Int, float64(int8(be[i]))})
+			i++
+		case OC_int:
+			sys.bcStack.Push(BytecodeValue{VT_Int, float64(be[i:].toI())})
+			i += 4
+		case OC_float:
+			sys.bcStack.Push(BytecodeValue{VT_Float, float64(be[i:].toF())})
+			i += 4
+		case OC_blnot:
+			top := sys.bcStack.Top()
+			top.t = VT_Int
+			if top.v != 0 {
+				top.v = 0
+			} else {
+				top.v = 1
+			}
+		default:
+			unimplemented()
+		}
+	}
+	return sys.bcStack.Pop()
 }
-func (be BytecodeExp) eval(c *Char) float64 {
-	_, v := be.run(c)
-	return v
-}
+func (be BytecodeExp) eval(c *Char) float64 { return be.run(c).v }
 
 type StateController interface {
 	Run(c *Char) (changeState bool)
@@ -487,6 +534,89 @@ func (scb StateControllerBase) run(f func(byte, []BytecodeExp) bool) bool {
 		}
 	}
 	return true
+}
+
+type stateDef StateControllerBase
+
+const (
+	stateDef_hitcountpersist byte = iota + 1
+	stateDef_movehitpersist
+	stateDef_hitdefpersist
+	stateDef_sprpriority
+	stateDef_facep2
+	stateDef_juggle
+	stateDef_velset
+	stateDef_anim
+	stateDef_ctrl
+	stateDef_poweradd
+	stateDef_hitcountpersist_c = stateDef_hitcountpersist + SCID_const
+	stateDef_movehitpersist_c  = stateDef_movehitpersist + SCID_const
+	stateDef_hitdefpersist_c   = stateDef_hitdefpersist + SCID_const
+	stateDef_sprpriority_c     = stateDef_sprpriority + SCID_const
+	stateDef_facep2_c          = stateDef_facep2 + SCID_const
+	stateDef_juggle_c          = stateDef_juggle + SCID_const
+	stateDef_velset_c          = stateDef_velset + SCID_const
+	stateDef_anim_c            = stateDef_anim + SCID_const
+	stateDef_ctrl_c            = stateDef_ctrl + SCID_const
+	stateDef_poweradd_c        = stateDef_poweradd + SCID_const
+)
+
+func (sd stateDef) Run(c *Char) bool {
+	StateControllerBase(sd).run(func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case stateDef_hitcountpersist, stateDef_hitcountpersist_c:
+			if id == stateDef_hitcountpersist_c || exp[0].eval(c) == 0 {
+				c.clearHitCount()
+			}
+		case stateDef_movehitpersist, stateDef_movehitpersist_c:
+			if id == stateDef_movehitpersist_c || exp[0].eval(c) == 0 {
+				c.clearMoveHit()
+			}
+		case stateDef_hitdefpersist, stateDef_hitdefpersist_c:
+			if id == stateDef_hitdefpersist_c || exp[0].eval(c) == 0 {
+				c.clearHitDef()
+			}
+		case stateDef_sprpriority:
+			c.setSprPriority(int32(exp[0].eval(c)))
+		case stateDef_sprpriority_c:
+			c.setSprPriority(exp[0].toI())
+		case stateDef_facep2, stateDef_facep2_c:
+			if id == stateDef_facep2_c || exp[0].eval(c) != 0 {
+				c.faceP2()
+			}
+		case stateDef_juggle:
+			c.setJuggle(int32(exp[0].eval(c)))
+		case stateDef_juggle_c:
+			c.setJuggle(exp[0].toI())
+		case stateDef_velset:
+			c.setXV(float32(exp[0].eval(c)))
+			if len(exp) > 1 {
+				c.setYV(float32(exp[1].eval(c)))
+				if len(exp) > 2 {
+					exp[2].run(c)
+				}
+			}
+		case stateDef_velset_c:
+			c.setXV(exp[0].toF())
+			if len(exp) > 1 {
+				c.setYV(exp[1].toF())
+			}
+		case stateDef_anim:
+			c.changeAnim(int32(exp[0].eval(c)))
+		case stateDef_anim_c:
+			c.changeAnim(exp[0].toI())
+		case stateDef_ctrl:
+			c.setCtrl(exp[0].eval(c) != 0)
+		case stateDef_ctrl_c:
+			c.setCtrl(exp[0].toI() != 0)
+		case stateDef_poweradd:
+			c.addPower(int32(exp[0].eval(c)))
+		case stateDef_poweradd_c:
+			c.addPower(exp[0].toI())
+		}
+		return true
+	})
+	return false
 }
 
 type StateBytecode struct {

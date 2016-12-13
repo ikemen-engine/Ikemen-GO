@@ -544,12 +544,27 @@ func (c *Char) clearMoveHit() {
 func (c *Char) clearHitDef() {
 	unimplemented()
 }
+func (c *Char) setSprPriority(sprpriority int32) {
+	c.sprpriority = sprpriority
+}
 func (c *Char) faceP2() {
 	unimplemented()
+}
+func (c *Char) setJuggle(juggle int32) {
+	c.juggle = juggle
 }
 func (c *Char) setXV(xv float32) {
 	unimplemented()
 }
 func (c *Char) setYV(yv float32) {
+	unimplemented()
+}
+func (c *Char) changeAnim(animNo int32) {
+	unimplemented()
+}
+func (c *Char) setCtrl(ctrl bool) {
+	unimplemented()
+}
+func (c *Char) addPower(power int32) {
 	unimplemented()
 }

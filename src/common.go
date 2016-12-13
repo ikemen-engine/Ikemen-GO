@@ -122,8 +122,26 @@ func Atof(str string) float64 {
 			}
 			f = f*10 + float64(a[i]-'0')
 		}
+		e := 0.0
+		if i+1 < len(a) && (a[i] == 'e' || a[i] == 'E') {
+			j := i + 1
+			if a[j] == '-' || a[j] == '+' {
+				j++
+			}
+			for ; j < len(a) && '0' <= a[j] && a[j] <= '9'; j++ {
+				e = e*10 + float64(a[j]-'0')
+			}
+			if e != 0 {
+				if str[i+1] == '-' {
+					e *= -1
+				}
+				if p == 0 {
+					p = i
+				}
+			}
+		}
 		if p > 0 {
-			f *= math.Pow10(p - i)
+			f *= math.Pow10(p - i + int(e))
 		}
 		if str[0] == '-' {
 			f *= -1
