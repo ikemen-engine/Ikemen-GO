@@ -47,10 +47,10 @@ const (
 type ValueType int
 
 const (
-	VT_Variant ValueType = iota
-	VT_Float
+	VT_Float ValueType = iota
 	VT_Int
 	VT_Bool
+	VT_SFalse
 )
 
 type OpCode byte
@@ -387,9 +387,43 @@ type BytecodeValue struct {
 	v float64
 }
 
-func (bv BytecodeValue) IsNaN() bool { return math.IsNaN(bv.v) }
+func (bv BytecodeValue) IsSF() bool { return bv.t == VT_SFalse }
+func (bv BytecodeValue) ToF() float32 {
+	if bv.IsSF() {
+		return 0
+	}
+	return float32(bv.v)
+}
+func (bv BytecodeValue) ToI() int32 {
+	if bv.IsSF() {
+		return 0
+	}
+	return int32(bv.v)
+}
+func (bv BytecodeValue) ToB() bool {
+	if bv.IsSF() || bv.v == 0 {
+		return false
+	}
+	return true
+}
+func (bv *BytecodeValue) SetF(f float32) {
+	*bv = BytecodeValue{VT_Float, float64(f)}
+}
+func (bv *BytecodeValue) SetI(i int32) {
+	*bv = BytecodeValue{VT_Int, float64(i)}
+}
+func (bv *BytecodeValue) SetB(b bool) {
+	bv.t = VT_Bool
+	if b {
+		bv.v = 1
+	} else {
+		bv.v = 0
+	}
+}
 
-func BytecodeNaN() BytecodeValue { return BytecodeValue{v: math.NaN()} }
+func BytecodeSF() BytecodeValue {
+	return BytecodeValue{VT_SFalse, math.NaN()}
+}
 
 type BytecodeStack []BytecodeValue
 
@@ -423,8 +457,8 @@ func (be BytecodeExp) toF() float32 {
 func (be BytecodeExp) toI() int32 {
 	return *(*int32)(unsafe.Pointer(&be[0]))
 }
-func (be *BytecodeExp) AppendValue(bv BytecodeValue) (ok bool) {
-	if bv.IsNaN() {
+func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
+	if bv.IsSF() {
 		return false
 	}
 	switch bv.t {
@@ -449,6 +483,47 @@ func (be *BytecodeExp) AppendValue(bv BytecodeValue) (ok bool) {
 	}
 	return true
 }
+func (_ BytecodeExp) blnot(v *BytecodeValue) {
+	if v.ToB() {
+		v.v = 0
+	} else {
+		v.v = 1
+	}
+	v.t = VT_Int
+}
+func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
+	t := ValueType(Min(int32(v1.t), int32(v2.t)))
+	if t == VT_Float {
+		v1.SetF(float32(math.Pow(float64(v1.ToF()), float64(v2.ToF()))))
+	} else if v2.ToF() < 0 {
+		if sys.cgi[pn].ver[0] == 1 {
+			v1.SetF(float32(math.Pow(float64(v1.ToI()), float64(v2.ToI()))))
+		} else {
+			f := float32(math.Pow(float64(v1.ToI()), float64(v2.ToI())))
+			i := *(*int32)(unsafe.Pointer(&f))
+			v1.SetI(i << 29)
+		}
+	} else {
+		i1, i2, hb := v1.ToI(), v2.ToI(), int32(-1)
+		for uint32(i2)>>uint(hb+1) != 0 {
+			hb++
+		}
+		var i, bit, tmp int32 = 1, 0, i1
+		for ; bit <= hb; bit++ {
+			var shift uint
+			if bit == hb || sys.cgi[pn].ver[0] == 1 {
+				shift = uint(bit)
+			} else {
+				shift = uint((hb - 1) - bit)
+			}
+			if i2&(1<<shift) != 0 {
+				i *= tmp
+			}
+			tmp *= tmp
+		}
+		v1.SetI(i)
+	}
+}
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	sys.bcStack.Clear()
 	for i := 1; i <= len(be); i++ {
@@ -463,13 +538,10 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeValue{VT_Float, float64(be[i:].toF())})
 			i += 4
 		case OC_blnot:
-			top := sys.bcStack.Top()
-			top.t = VT_Int
-			if top.v != 0 {
-				top.v = 0
-			} else {
-				top.v = 1
-			}
+			be.blnot(sys.bcStack.Top())
+		case OC_pow:
+			v2 := sys.bcStack.Pop()
+			be.pow(sys.bcStack.Top(), v2, c.playerno)
 		default:
 			unimplemented()
 		}

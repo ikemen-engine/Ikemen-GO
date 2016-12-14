@@ -11,12 +11,13 @@ const kuuhaktokigou = " !=<>()|&+-*/%,[]^|:\"\t\r\n"
 
 type ExpFunc func(out *BytecodeExp, in *string) (BytecodeValue, error)
 type Compiler struct {
-	cmdl    *CommandList
-	valCnt  int
-	maeOp   string
-	usiroOp bool
-	norange bool
-	token   string
+	cmdl     *CommandList
+	valCnt   int
+	maeOp    string
+	usiroOp  bool
+	norange  bool
+	token    string
+	playerno int
 }
 
 func newCompiler() *Compiler {
@@ -199,14 +200,14 @@ func (c *Compiler) operator(in *string) (string, error) {
 func (c *Compiler) number(token string) BytecodeValue {
 	f, err := strconv.ParseFloat(token, 64)
 	if err != nil && f == 0 {
-		return BytecodeNaN()
+		return BytecodeSF()
 	}
 	if strings.Index(token, ".") >= 0 {
 		c.usiroOp = false
 		return BytecodeValue{VT_Float, f}
 	}
 	if strings.IndexAny(token, "Ee") >= 0 {
-		return BytecodeNaN()
+		return BytecodeSF()
 	}
 	c.usiroOp = false
 	if f > math.MaxInt32 {
@@ -221,7 +222,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	c.usiroOp, c.norange = true, false
 	bv := c.number(c.token)
-	if !bv.IsNaN() {
+	if !bv.IsSF() {
 		c.valCnt++
 		c.token = c.tokenizer(in)
 		return bv, nil
@@ -253,19 +254,14 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expValue(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	for c.token == "!" {
 		c.usiroOp = true
-		if bv.IsNaN() {
+		if bv.IsSF() {
 			out.append(OC_blnot)
 		} else {
-			bv.t = VT_Bool
-			if bv.v != 0 {
-				bv.v = 0
-			} else {
-				bv.v = 1
-			}
+			out.blnot(&bv)
 		}
 		c.token = c.tokenizer(in)
 	}
@@ -274,24 +270,24 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		opp := c.isOperator(c.token)
 		if opp == 0 {
 			if !c.usiroOp && c.token == "(" {
-				return BytecodeNaN(), Error("演算子がありません")
+				return BytecodeSF(), Error("演算子がありません")
 			}
 			oldin := *in
 			var dummyout BytecodeExp
 			if _, err := c.expValue(&dummyout, in); err != nil {
-				return BytecodeNaN(), err
+				return BytecodeSF(), err
 			}
 			if c.isOperator(c.token) <= 0 {
-				return BytecodeNaN(), Error("演算子がありません")
+				return BytecodeSF(), Error("演算子がありません")
 			}
 			if err := c.renzikuEnzansihaError(in); err != nil {
-				return BytecodeNaN(), err
+				return BytecodeSF(), err
 			}
 			oldin = oldin[:len(oldin)-len(*in)]
 			*in = "(" + oldin[:strings.LastIndex(oldin, c.token)] + *in
 		} else if opp > 0 {
 			if err := c.renzikuEnzansihaError(in); err != nil {
-				return BytecodeNaN(), err
+				return BytecodeSF(), err
 			}
 		}
 	}
@@ -301,16 +297,42 @@ func (c *Compiler) expPow(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expPostNot(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
-	unimplemented()
+	for {
+		op, err := c.operator(in)
+		if err != nil {
+			return BytecodeSF(), err
+		}
+		if op == "**" {
+			var be BytecodeExp
+			bv2, err := c.expPostNot(&be, in)
+			if err != nil {
+				return BytecodeSF(), err
+			}
+			if !bv.IsSF() && !bv.IsSF() {
+				out.pow(&bv, bv, c.playerno)
+			} else {
+				if !bv.IsSF() {
+					out.appendValue(bv)
+				}
+				out.append(be...)
+				if !bv.IsSF() {
+					out.appendValue(bv2)
+				}
+				out.append(OC_pow)
+				bv = BytecodeSF()
+			}
+		}
+		unimplemented()
+	}
 	return bv, nil
 }
 func (c *Compiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expPow(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -319,7 +341,7 @@ func (c *Compiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expMldv(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -328,7 +350,7 @@ func (c *Compiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expAdsb(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -337,7 +359,7 @@ func (c *Compiler) expEqu(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expGrls(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -346,7 +368,7 @@ func (c *Compiler) expAnd(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expEqu(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -355,7 +377,7 @@ func (c *Compiler) expXor(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expAnd(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -363,7 +385,7 @@ func (c *Compiler) expXor(out *BytecodeExp, in *string) (BytecodeValue,
 func (c *Compiler) expOr(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expXor(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -372,7 +394,7 @@ func (c *Compiler) expBoolAnd(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expOr(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -381,7 +403,7 @@ func (c *Compiler) expBoolXor(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expBoolAnd(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
@@ -393,20 +415,20 @@ func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue,
 	}(c.valCnt, c.maeOp)
 	bv, err := c.expBoolXor(out, in)
 	if err != nil {
-		return BytecodeNaN(), err
+		return BytecodeSF(), err
 	}
 	unimplemented()
 	return bv, nil
 }
-func (c *Compiler) typedExp(ef ExpFunc, out *BytecodeExp, in *string,
-	vt ValueType) (float64, error) {
+func (c *Compiler) typedExp(ef ExpFunc, in *string,
+	vt ValueType) (BytecodeExp, BytecodeValue, error) {
 	c.token = c.tokenizer(in)
 	var be BytecodeExp
 	bv, err := ef(&be, in)
 	if err != nil {
-		return 0, err
+		return nil, BytecodeSF(), err
 	}
-	if len(be) == 0 && vt != VT_Variant {
+	if !bv.IsSF() {
 		if vt == VT_Bool {
 			if bv.v != 0 {
 				bv.v = 1
@@ -414,33 +436,29 @@ func (c *Compiler) typedExp(ef ExpFunc, out *BytecodeExp, in *string,
 				bv.v = 0
 			}
 		}
-		return bv.v, nil
+		return nil, bv, nil
 	}
-	out.append(be...)
-	out.AppendValue(bv)
-	return math.NaN(), nil
+	return be, BytecodeSF(), nil
 }
 func (c *Compiler) argExpression(in *string,
-	vt ValueType) (BytecodeExp, float64, error) {
-	var be BytecodeExp
-	v, err := c.typedExp(c.expBoolOr, &be, in, vt)
+	vt ValueType) (BytecodeExp, BytecodeValue, error) {
+	be, v, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
-		return nil, 0, err
+		return nil, BytecodeSF(), err
 	}
 	if len(c.token) > 0 && c.token != "," {
-		return nil, 0, Error(c.token + "が不正です")
+		return nil, BytecodeSF(), Error(c.token + "が不正です")
 	}
 	return be, v, nil
 }
 func (c *Compiler) fullExpression(in *string,
-	vt ValueType) (BytecodeExp, float64, error) {
-	var be BytecodeExp
-	v, err := c.typedExp(c.expBoolOr, &be, in, vt)
+	vt ValueType) (BytecodeExp, BytecodeValue, error) {
+	be, v, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
-		return nil, 0, err
+		return nil, BytecodeSF(), err
 	}
 	if len(c.token) > 0 {
-		return nil, 0, Error(c.token + "が不正です")
+		return nil, BytecodeSF(), Error(c.token + "が不正です")
 	}
 	return be, v, nil
 }
@@ -531,10 +549,10 @@ func (c *Compiler) stateParam(is IniSection, name string,
 }
 func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 	data string, vt ValueType, numArg int) error {
-	bes, vs := []BytecodeExp{}, []float64{}
+	bes, vs := []BytecodeExp{}, []BytecodeValue{}
 	for n := 1; n <= numArg; n++ {
 		var be BytecodeExp
-		var v float64
+		var v BytecodeValue
 		var err error
 		if n < numArg {
 			be, v, err = c.argExpression(&data, vt)
@@ -551,24 +569,22 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 		}
 	}
 	cns := true
-	for i, v := range vs {
-		if math.IsNaN(v) {
+	for _, v := range vs {
+		if v.IsSF() {
 			cns = false
-		} else {
-			bes[i].AppendValue(BytecodeValue{vt, v})
 		}
 	}
 	if cns {
 		if vt == VT_Float {
 			floats := make([]float32, len(vs))
 			for i := range floats {
-				floats[i] = float32(vs[i])
+				floats[i] = float32(vs[i].v)
 			}
 			sc.add(id+SCID_const, sc.fToExp(floats...))
 		} else {
 			ints := make([]int32, len(vs))
 			for i := range ints {
-				ints[i] = int32(vs[i])
+				ints[i] = int32(vs[i].v)
 			}
 			sc.add(id+SCID_const, sc.iToExp(ints...))
 		}
@@ -651,9 +667,9 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			if err != nil {
 				return err
 			}
-			if math.IsNaN(v) {
+			if v.IsSF() {
 				sc.add(stateDef_hitcountpersist, sc.beToExp(be))
-			} else if v == 0 { // falseのときだけクリアする
+			} else if v.v == 0 { // falseのときだけクリアする
 				sc.add(stateDef_hitcountpersist_c, nil)
 			}
 			return nil
@@ -670,9 +686,9 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			if err != nil {
 				return err
 			}
-			if math.IsNaN(v) {
+			if v.IsSF() {
 				sc.add(stateDef_movehitpersist, sc.beToExp(be))
-			} else if v == 0 { // falseのときだけクリアする
+			} else if v.v == 0 { // falseのときだけクリアする
 				sc.add(stateDef_movehitpersist_c, nil)
 			}
 			return nil
@@ -689,9 +705,9 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			if err != nil {
 				return err
 			}
-			if math.IsNaN(v) {
+			if v.IsSF() {
 				sc.add(stateDef_hitdefpersist, sc.beToExp(be))
-			} else if v == 0 { // falseのときだけクリアする
+			} else if v.v == 0 { // falseのときだけクリアする
 				sc.add(stateDef_hitdefpersist_c, nil)
 			}
 			return nil
@@ -711,9 +727,9 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			if err != nil {
 				return err
 			}
-			if math.IsNaN(v) {
+			if v.IsSF() {
 				sc.add(stateDef_facep2, sc.beToExp(be))
-			} else if v != 0 {
+			} else if v.v != 0 {
 				sc.add(stateDef_facep2_c, nil)
 			}
 			return nil
@@ -797,6 +813,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	return nil
 }
 func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
+	c.playerno = n
 	bc := newBytecode()
 	str, err := LoadText(def)
 	if err != nil {
