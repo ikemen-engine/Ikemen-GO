@@ -153,6 +153,8 @@ func (_ *Compiler) tokenizer(in *string) string {
 }
 func (_ *Compiler) isOperator(token string) int {
 	switch token {
+	case "", ",", ")", "]":
+		return -1
 	case "||":
 		return 1
 	case "^^":
@@ -181,9 +183,9 @@ func (_ *Compiler) isOperator(token string) int {
 func (c *Compiler) operator(in *string) (string, error) {
 	if len(c.maeOp) > 0 {
 		if opp := c.isOperator(c.token); opp <= c.isOperator(c.maeOp) {
-			if opp > 0 || len(c.token) == 0 ||
-				(c.token[0] != '(' && (c.token[0] < 'A' || c.token[0] > 'Z') &&
-					(c.token[0] < 'a' || c.token[0] > 'z')) {
+			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
+				(c.token[0] < 'A' || c.token[0] > 'Z') &&
+				(c.token[0] < 'a' || c.token[0] > 'z')) {
 				return "", Error(c.maeOp + "が不正です")
 			}
 			*in = c.token + " " + *in
@@ -224,10 +226,28 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		c.token = c.tokenizer(in)
 		return bv, nil
 	}
+	if !sys.ignoreMostErrors {
+		defer func() { c.usiroOp = false }()
+	}
 	unimplemented()
 	c.valCnt++
 	c.token = c.tokenizer(in)
 	return bv, nil
+}
+func (c *Compiler) renzikuEnzansihaError(in *string) error {
+	*in = strings.TrimSpace(*in)
+	if len(*in) > 0 {
+		switch (*in)[0] {
+		default:
+			if len(*in) < 2 || (*in)[:2] != "!=" {
+				break
+			}
+			fallthrough
+		case '=', '<', '>', '|', '&', '+', '*', '/', '%', '^':
+			return Error(c.tokenizer(in) + "が不正です")
+		}
+	}
+	return nil
 }
 func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
@@ -249,17 +269,31 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 		c.token = c.tokenizer(in)
 	}
-	if len(c.maeOp) == 0 && c.usiroOp && c.token == "(" {
-		oldin := *in
-		var dummyout BytecodeExp
-		if _, err := c.expValue(&dummyout, in); err != nil {
-			return BytecodeNaN(), err
+
+	if len(c.maeOp) == 0 {
+		opp := c.isOperator(c.token)
+		if opp == 0 {
+			if !c.usiroOp && c.token == "(" {
+				return BytecodeNaN(), Error("演算子がありません")
+			}
+			oldin := *in
+			var dummyout BytecodeExp
+			if _, err := c.expValue(&dummyout, in); err != nil {
+				return BytecodeNaN(), err
+			}
+			if c.isOperator(c.token) <= 0 {
+				return BytecodeNaN(), Error("演算子がありません")
+			}
+			if err := c.renzikuEnzansihaError(in); err != nil {
+				return BytecodeNaN(), err
+			}
+			oldin = oldin[:len(oldin)-len(*in)]
+			*in = "(" + oldin[:strings.LastIndex(oldin, c.token)] + *in
+		} else if opp > 0 {
+			if err := c.renzikuEnzansihaError(in); err != nil {
+				return BytecodeNaN(), err
+			}
 		}
-		if c.isOperator(c.token) <= 0 {
-			return BytecodeNaN(), Error("演算子がありません")
-		}
-		oldin = oldin[:len(oldin)-len(*in)]
-		*in = "(" + oldin[:strings.LastIndex(oldin, c.token)] + *in
 	}
 	return bv, nil
 }
