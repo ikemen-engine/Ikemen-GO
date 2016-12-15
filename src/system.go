@@ -437,7 +437,7 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].palno = pal
 	}
 	if sys.cgi[pn].sff == nil {
-		if l.code[pn], l.err = newCompiler().Compile(p.playerno, cdef); l.err != nil {
+		if l.code[pn], l.err = newCompiler().Compile(p.playerNo, cdef); l.err != nil {
 			sys.chars[pn] = nil
 			return -1
 		}

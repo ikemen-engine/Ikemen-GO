@@ -458,9 +458,6 @@ func (be BytecodeExp) toI() int32 {
 	return *(*int32)(unsafe.Pointer(&be[0]))
 }
 func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
-	if bv.IsSF() {
-		return false
-	}
 	switch bv.t {
 	case VT_Float:
 		be.append(OC_float)
@@ -492,16 +489,14 @@ func (_ BytecodeExp) blnot(v *BytecodeValue) {
 	v.t = VT_Int
 }
 func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
-	t := ValueType(Min(int32(v1.t), int32(v2.t)))
-	if t == VT_Float {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(float32(math.Pow(float64(v1.ToF()), float64(v2.ToF()))))
 	} else if v2.ToF() < 0 {
 		if sys.cgi[pn].ver[0] == 1 {
 			v1.SetF(float32(math.Pow(float64(v1.ToI()), float64(v2.ToI()))))
 		} else {
 			f := float32(math.Pow(float64(v1.ToI()), float64(v2.ToI())))
-			i := *(*int32)(unsafe.Pointer(&f))
-			v1.SetI(i << 29)
+			v1.SetI(*(*int32)(unsafe.Pointer(&f)) << 29)
 		}
 	} else {
 		i1, i2, hb := v1.ToI(), v2.ToI(), int32(-1)
@@ -524,7 +519,30 @@ func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 		v1.SetI(i)
 	}
 }
-func (be BytecodeExp) run(c *Char) BytecodeValue {
+func (_ BytecodeExp) mul(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetF(v1.ToF() * v2.ToF())
+	} else {
+		v1.SetI(v1.ToI() * v2.ToI())
+	}
+}
+func (_ BytecodeExp) div(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetF(v1.ToF() / v2.ToF())
+	} else if v2.ToI() == 0 {
+		*v1 = BytecodeSF()
+	} else {
+		v1.SetI(v1.ToI() / v2.ToI())
+	}
+}
+func (_ BytecodeExp) mod(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v2.ToI() == 0 {
+		*v1 = BytecodeSF()
+	} else {
+		v1.SetI(v1.ToI() % v2.ToI())
+	}
+}
+func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	sys.bcStack.Clear()
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
@@ -541,17 +559,34 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			be.blnot(sys.bcStack.Top())
 		case OC_pow:
 			v2 := sys.bcStack.Pop()
-			be.pow(sys.bcStack.Top(), v2, c.playerno)
+			be.pow(sys.bcStack.Top(), v2, scpn)
+		case OC_mul:
+			v2 := sys.bcStack.Pop()
+			be.mul(sys.bcStack.Top(), v2)
+		case OC_div:
+			v2 := sys.bcStack.Pop()
+			be.div(sys.bcStack.Top(), v2)
+		case OC_mod:
+			v2 := sys.bcStack.Pop()
+			be.mod(sys.bcStack.Top(), v2)
 		default:
 			unimplemented()
 		}
 	}
 	return sys.bcStack.Pop()
 }
-func (be BytecodeExp) eval(c *Char) float64 { return be.run(c).v }
+func (be BytecodeExp) evalF(c *Char, scpn int) float32 {
+	return be.run(c, scpn).ToF()
+}
+func (be BytecodeExp) evalI(c *Char, scpn int) int32 {
+	return be.run(c, scpn).ToI()
+}
+func (be BytecodeExp) evalB(c *Char, scpn int) bool {
+	return be.run(c, scpn).ToB()
+}
 
 type StateController interface {
-	Run(c *Char) (changeState bool)
+	Run(c *Char, scpn int) (changeState bool)
 }
 
 const (
@@ -559,8 +594,14 @@ const (
 	SCID_const   byte = 128
 )
 
-type StateControllerBase []byte
+type StateControllerBase struct {
+	playerNo int
+	code     []byte
+}
 
+func newStateControllerBase(pn int) *StateControllerBase {
+	return &StateControllerBase{playerNo: pn}
+}
 func (scb StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
@@ -581,24 +622,24 @@ func (scb StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	return
 }
 func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
-	*scb = append(*scb, id, byte(len(exp)))
+	scb.code = append(scb.code, id, byte(len(exp)))
 	for _, e := range exp {
 		l := int32(len(e))
-		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
-		*scb = append(*scb, (*(*[]byte)(unsafe.Pointer(&e)))...)
+		scb.code = append(scb.code, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
+		scb.code = append(scb.code, (*(*[]byte)(unsafe.Pointer(&e)))...)
 	}
 }
 func (scb StateControllerBase) run(f func(byte, []BytecodeExp) bool) bool {
-	for i := 0; i < len(scb); {
-		id := scb[i]
+	for i := 0; i < len(scb.code); {
+		id := scb.code[i]
 		i++
-		n := scb[i]
+		n := scb.code[i]
 		i++
 		exp := make([]BytecodeExp, n)
-		for m := byte(0); m < n; m++ {
-			l := *(*int32)(unsafe.Pointer(&scb[i]))
+		for m := 0; m < int(n); m++ {
+			l := *(*int32)(unsafe.Pointer(&scb.code[i]))
 			i += 4
-			exp[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
+			exp[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb.code)))[i : i+int(l)]
 			i += int(l)
 		}
 		if !f(id, exp) {
@@ -633,39 +674,39 @@ const (
 	stateDef_poweradd_c        = stateDef_poweradd + SCID_const
 )
 
-func (sd stateDef) Run(c *Char) bool {
+func (sd stateDef) Run(c *Char, scpn int) bool {
 	StateControllerBase(sd).run(func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case stateDef_hitcountpersist, stateDef_hitcountpersist_c:
-			if id == stateDef_hitcountpersist_c || exp[0].eval(c) == 0 {
+			if id == stateDef_hitcountpersist_c || !exp[0].evalB(c, scpn) {
 				c.clearHitCount()
 			}
 		case stateDef_movehitpersist, stateDef_movehitpersist_c:
-			if id == stateDef_movehitpersist_c || exp[0].eval(c) == 0 {
+			if id == stateDef_movehitpersist_c || !exp[0].evalB(c, scpn) {
 				c.clearMoveHit()
 			}
 		case stateDef_hitdefpersist, stateDef_hitdefpersist_c:
-			if id == stateDef_hitdefpersist_c || exp[0].eval(c) == 0 {
+			if id == stateDef_hitdefpersist_c || !exp[0].evalB(c, scpn) {
 				c.clearHitDef()
 			}
 		case stateDef_sprpriority:
-			c.setSprPriority(int32(exp[0].eval(c)))
+			c.setSprPriority(exp[0].evalI(c, scpn))
 		case stateDef_sprpriority_c:
 			c.setSprPriority(exp[0].toI())
 		case stateDef_facep2, stateDef_facep2_c:
-			if id == stateDef_facep2_c || exp[0].eval(c) != 0 {
+			if id == stateDef_facep2_c || exp[0].evalB(c, scpn) {
 				c.faceP2()
 			}
 		case stateDef_juggle:
-			c.setJuggle(int32(exp[0].eval(c)))
+			c.setJuggle(exp[0].evalI(c, scpn))
 		case stateDef_juggle_c:
 			c.setJuggle(exp[0].toI())
 		case stateDef_velset:
-			c.setXV(float32(exp[0].eval(c)))
+			c.setXV(exp[0].evalF(c, scpn))
 			if len(exp) > 1 {
-				c.setYV(float32(exp[1].eval(c)))
+				c.setYV(exp[1].evalF(c, scpn))
 				if len(exp) > 2 {
-					exp[2].run(c)
+					exp[2].run(c, scpn)
 				}
 			}
 		case stateDef_velset_c:
@@ -674,15 +715,15 @@ func (sd stateDef) Run(c *Char) bool {
 				c.setYV(exp[1].toF())
 			}
 		case stateDef_anim:
-			c.changeAnim(int32(exp[0].eval(c)))
+			c.changeAnim(exp[0].evalI(c, scpn))
 		case stateDef_anim_c:
 			c.changeAnim(exp[0].toI())
 		case stateDef_ctrl:
-			c.setCtrl(exp[0].eval(c) != 0)
+			c.setCtrl(exp[0].evalB(c, scpn))
 		case stateDef_ctrl_c:
 			c.setCtrl(exp[0].toI() != 0)
 		case stateDef_poweradd:
-			c.addPower(int32(exp[0].eval(c)))
+			c.addPower(exp[0].evalI(c, scpn))
 		case stateDef_poweradd_c:
 			c.addPower(exp[0].toI())
 		}

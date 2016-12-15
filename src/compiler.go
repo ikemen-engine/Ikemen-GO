@@ -12,12 +12,11 @@ const kuuhaktokigou = " !=<>()|&+-*/%,[]^|:\"\t\r\n"
 type ExpFunc func(out *BytecodeExp, in *string) (BytecodeValue, error)
 type Compiler struct {
 	cmdl     *CommandList
-	valCnt   int
 	maeOp    string
 	usiroOp  bool
 	norange  bool
 	token    string
-	playerno int
+	playerNo int
 }
 
 func newCompiler() *Compiler {
@@ -181,13 +180,13 @@ func (_ *Compiler) isOperator(token string) int {
 	}
 	return 0
 }
-func (c *Compiler) operator(in *string) (string, error) {
+func (c *Compiler) operator(in *string) error {
 	if len(c.maeOp) > 0 {
 		if opp := c.isOperator(c.token); opp <= c.isOperator(c.maeOp) {
 			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return "", Error(c.maeOp + "が不正です")
+				return Error(c.maeOp + "が不正です")
 			}
 			*in = c.token + " " + *in
 			c.token = c.maeOp
@@ -195,7 +194,7 @@ func (c *Compiler) operator(in *string) (string, error) {
 			c.norange = true
 		}
 	}
-	return c.token, nil
+	return nil
 }
 func (c *Compiler) number(token string) BytecodeValue {
 	f, err := strconv.ParseFloat(token, 64)
@@ -223,7 +222,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	c.usiroOp, c.norange = true, false
 	bv := c.number(c.token)
 	if !bv.IsSF() {
-		c.valCnt++
 		c.token = c.tokenizer(in)
 		return bv, nil
 	}
@@ -231,11 +229,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		defer func() { c.usiroOp = false }()
 	}
 	unimplemented()
-	c.valCnt++
 	c.token = c.tokenizer(in)
 	return bv, nil
 }
-func (c *Compiler) renzikuEnzansihaError(in *string) error {
+func (c *Compiler) renzokuEnzansihaError(in *string) error {
 	*in = strings.TrimSpace(*in)
 	if len(*in) > 0 {
 		switch (*in)[0] {
@@ -265,14 +262,13 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 		c.token = c.tokenizer(in)
 	}
-
 	if len(c.maeOp) == 0 {
 		opp := c.isOperator(c.token)
 		if opp == 0 {
 			if !c.usiroOp && c.token == "(" {
 				return BytecodeSF(), Error("演算子がありません")
 			}
-			oldin := *in
+			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
 			if _, err := c.expValue(&dummyout, in); err != nil {
 				return BytecodeSF(), err
@@ -280,13 +276,14 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			if c.isOperator(c.token) <= 0 {
 				return BytecodeSF(), Error("演算子がありません")
 			}
-			if err := c.renzikuEnzansihaError(in); err != nil {
+			if err := c.renzokuEnzansihaError(in); err != nil {
 				return BytecodeSF(), err
 			}
 			oldin = oldin[:len(oldin)-len(*in)]
-			*in = "(" + oldin[:strings.LastIndex(oldin, c.token)] + *in
+			*in = oldtoken + " " + oldin[:strings.LastIndex(oldin, c.token)] + " " +
+				*in
 		} else if opp > 0 {
-			if err := c.renzikuEnzansihaError(in); err != nil {
+			if err := c.renzokuEnzansihaError(in); err != nil {
 				return BytecodeSF(), err
 			}
 		}
@@ -300,31 +297,27 @@ func (c *Compiler) expPow(out *BytecodeExp, in *string) (BytecodeValue,
 		return BytecodeSF(), err
 	}
 	for {
-		op, err := c.operator(in)
-		if err != nil {
+		if err := c.operator(in); err != nil {
 			return BytecodeSF(), err
 		}
-		if op == "**" {
+		if c.token == "**" {
 			var be BytecodeExp
 			bv2, err := c.expPostNot(&be, in)
 			if err != nil {
 				return BytecodeSF(), err
 			}
-			if !bv.IsSF() && !bv.IsSF() {
-				out.pow(&bv, bv, c.playerno)
+			if !bv.IsSF() && !bv2.IsSF() {
+				out.pow(&bv, bv2, c.playerNo)
 			} else {
-				if !bv.IsSF() {
-					out.appendValue(bv)
-				}
+				out.appendValue(bv)
 				out.append(be...)
-				if !bv.IsSF() {
-					out.appendValue(bv2)
-				}
+				out.appendValue(bv2)
 				out.append(OC_pow)
 				bv = BytecodeSF()
 			}
+		} else {
+			break
 		}
-		unimplemented()
 	}
 	return bv, nil
 }
@@ -334,8 +327,44 @@ func (c *Compiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue,
 	if err != nil {
 		return BytecodeSF(), err
 	}
-	unimplemented()
-	return bv, nil
+	for {
+		if err := c.operator(in); err != nil {
+			return BytecodeSF(), err
+		}
+		switch c.token {
+		case "*", "/", "%":
+		default:
+			return bv, nil
+		}
+		var be BytecodeExp
+		bv2, err := c.expPow(&be, in)
+		if err != nil {
+			return BytecodeSF(), err
+		}
+		if !bv.IsSF() && !bv2.IsSF() {
+			switch c.token {
+			case "*":
+				out.mul(&bv, bv2)
+			case "/":
+				out.div(&bv, bv2)
+			case "%":
+				out.mod(&bv, bv2)
+			}
+		} else {
+			out.appendValue(bv)
+			out.append(be...)
+			out.appendValue(bv2)
+			switch c.token {
+			case "*":
+				out.append(OC_mul)
+			case "/":
+				out.append(OC_div)
+			case "%":
+				out.append(OC_mod)
+			}
+			bv = BytecodeSF()
+		}
+	}
 }
 func (c *Compiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
@@ -410,9 +439,7 @@ func (c *Compiler) expBoolXor(out *BytecodeExp, in *string) (BytecodeValue,
 }
 func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
-	defer func(ovc int, omp string) {
-		c.valCnt, c.maeOp = ovc, omp
-	}(c.valCnt, c.maeOp)
+	defer func(omp string) { c.maeOp = omp }(c.maeOp)
 	bv, err := c.expBoolXor(out, in)
 	if err != nil {
 		return BytecodeSF(), err
@@ -430,11 +457,7 @@ func (c *Compiler) typedExp(ef ExpFunc, in *string,
 	}
 	if !bv.IsSF() {
 		if vt == VT_Bool {
-			if bv.v != 0 {
-				bv.v = 1
-			} else {
-				bv.v = 0
-			}
+			bv.SetB(bv.ToB())
 		}
 		return nil, bv, nil
 	}
@@ -569,9 +592,11 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 		}
 	}
 	cns := true
-	for _, v := range vs {
+	for i, v := range vs {
 		if v.IsSF() {
 			cns = false
+		} else {
+			bes[i].appendValue(v)
 		}
 	}
 	if cns {
@@ -595,7 +620,7 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 }
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
-		var sc StateControllerBase
+		sc := newStateControllerBase(c.playerNo)
 		if err := c.stateParam(is, "type", func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -669,7 +694,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			}
 			if v.IsSF() {
 				sc.add(stateDef_hitcountpersist, sc.beToExp(be))
-			} else if v.v == 0 { // falseのときだけクリアする
+			} else if !v.ToB() { // falseのときだけクリアする
 				sc.add(stateDef_hitcountpersist_c, nil)
 			}
 			return nil
@@ -688,7 +713,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			}
 			if v.IsSF() {
 				sc.add(stateDef_movehitpersist, sc.beToExp(be))
-			} else if v.v == 0 { // falseのときだけクリアする
+			} else if !v.ToB() { // falseのときだけクリアする
 				sc.add(stateDef_movehitpersist_c, nil)
 			}
 			return nil
@@ -707,7 +732,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			}
 			if v.IsSF() {
 				sc.add(stateDef_hitdefpersist, sc.beToExp(be))
-			} else if v.v == 0 { // falseのときだけクリアする
+			} else if !v.ToB() { // falseのときだけクリアする
 				sc.add(stateDef_hitdefpersist_c, nil)
 			}
 			return nil
@@ -718,7 +743,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			sc.add(stateDef_hitdefpersist_c, nil)
 		}
 		if err := c.stateParam(is, "sprpriority", func(data string) error {
-			return c.scAdd(&sc, stateDef_sprpriority, data, VT_Int, 1)
+			return c.scAdd(sc, stateDef_sprpriority, data, VT_Int, 1)
 		}); err != nil {
 			return err
 		}
@@ -729,7 +754,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			}
 			if v.IsSF() {
 				sc.add(stateDef_facep2, sc.beToExp(be))
-			} else if v.v != 0 {
+			} else if v.ToB() {
 				sc.add(stateDef_facep2_c, nil)
 			}
 			return nil
@@ -739,7 +764,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		b = false
 		if err := c.stateParam(is, "juggle", func(data string) error {
 			b = true
-			return c.scAdd(&sc, stateDef_juggle, data, VT_Int, 1)
+			return c.scAdd(sc, stateDef_juggle, data, VT_Int, 1)
 		}); err != nil {
 			return err
 		}
@@ -747,26 +772,26 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			sc.add(stateDef_juggle_c, sc.iToExp(0))
 		}
 		if err := c.stateParam(is, "velset", func(data string) error {
-			return c.scAdd(&sc, stateDef_velset, data, VT_Float, 3)
+			return c.scAdd(sc, stateDef_velset, data, VT_Float, 3)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
-			return c.scAdd(&sc, stateDef_anim, data, VT_Int, 1)
+			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "ctrl", func(data string) error {
-			return c.scAdd(&sc, stateDef_ctrl, data, VT_Bool, 1)
+			return c.scAdd(sc, stateDef_ctrl, data, VT_Bool, 1)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "poweradd", func(data string) error {
-			return c.scAdd(&sc, stateDef_poweradd, data, VT_Int, 1)
+			return c.scAdd(sc, stateDef_poweradd, data, VT_Int, 1)
 		}); err != nil {
 			return err
 		}
-		sbc.stateDef = stateDef(sc)
+		sbc.stateDef = stateDef(*sc)
 		return nil
 	})
 }
@@ -813,7 +838,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	return nil
 }
 func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
-	c.playerno = n
+	c.playerNo = n
 	bc := newBytecode()
 	str, err := LoadText(def)
 	if err != nil {

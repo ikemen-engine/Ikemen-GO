@@ -272,8 +272,8 @@ type Char struct {
 	name        string
 	cmd         []CommandList
 	key         int
-	helperindex int
-	playerno    int
+	helperIndex int
+	playerNo    int
 	keyctrl     bool
 	player      bool
 	sprpriority int32
@@ -287,8 +287,8 @@ func newChar(n, idx int) (c *Char) {
 	return c
 }
 func (c *Char) init(n, idx int) {
-	c.playerno, c.helperindex = n, idx
-	if c.helperindex == 0 {
+	c.playerNo, c.helperIndex = n, idx
+	if c.helperIndex == 0 {
 		c.keyctrl, c.player = true, true
 	}
 	c.key = n
@@ -297,7 +297,7 @@ func (c *Char) init(n, idx int) {
 	}
 }
 func (c *Char) load(def string) error {
-	gi := &sys.cgi[c.playerno]
+	gi := &sys.cgi[c.playerNo]
 	gi.displayname, gi.author, gi.sff, gi.snd = "", "", nil, nil
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
