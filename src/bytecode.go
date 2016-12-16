@@ -64,6 +64,7 @@ const (
 	OC_int
 	OC_float
 	OC_dup
+	OC_swap
 	OC_jmp8
 	OC_jz8
 	OC_jnz8
@@ -188,7 +189,6 @@ const (
 	OC_roundsexisted
 	OC_matchno
 	OC_ishometeam
-	OC_tickspersecond
 	OC_parent
 	OC_root
 	OC_helper
@@ -359,6 +359,7 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
+	OC_ex_tickspersecond
 )
 
 type StringPool struct {
@@ -438,6 +439,9 @@ func (bs *BytecodeStack) Pop() (bv BytecodeValue) {
 }
 func (bs *BytecodeStack) Dup() {
 	bs.Push(*bs.Top())
+}
+func (bs *BytecodeStack) Swap() {
+	*bs.Top(), (*bs)[len(*bs)-2] = (*bs)[len(*bs)-2], *bs.Top()
 }
 
 type BytecodeExp []OpCode
@@ -542,6 +546,80 @@ func (_ BytecodeExp) mod(v1 *BytecodeValue, v2 BytecodeValue) {
 		v1.SetI(v1.ToI() % v2.ToI())
 	}
 }
+func (_ BytecodeExp) add(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetF(v1.ToF() + v2.ToF())
+	} else {
+		v1.SetI(v1.ToI() + v2.ToI())
+	}
+}
+func (_ BytecodeExp) sub(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetF(v1.ToF() - v2.ToF())
+	} else {
+		v1.SetI(v1.ToI() - v2.ToI())
+	}
+}
+func (_ BytecodeExp) gt(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() > v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() > v2.ToI())
+	}
+}
+func (_ BytecodeExp) ge(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() >= v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() >= v2.ToI())
+	}
+}
+func (_ BytecodeExp) lt(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() < v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() < v2.ToI())
+	}
+}
+func (_ BytecodeExp) le(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() <= v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() <= v2.ToI())
+	}
+}
+func (_ BytecodeExp) eq(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() == v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() == v2.ToI())
+	}
+}
+func (_ BytecodeExp) ne(v1 *BytecodeValue, v2 BytecodeValue) {
+	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
+		v1.SetB(v1.ToF() != v2.ToF())
+	} else {
+		v1.SetB(v1.ToI() != v2.ToI())
+	}
+}
+func (_ BytecodeExp) and(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetI(v1.ToI() & v2.ToI())
+}
+func (_ BytecodeExp) xor(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetI(v1.ToI() ^ v2.ToI())
+}
+func (_ BytecodeExp) or(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetI(v1.ToI() | v2.ToI())
+}
+func (_ BytecodeExp) bland(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetB(v1.ToB() && v2.ToB())
+}
+func (_ BytecodeExp) blxor(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetB(v1.ToB() != v2.ToB())
+}
+func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetB(v1.ToB() || v2.ToB())
+}
 func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	sys.bcStack.Clear()
 	for i := 1; i <= len(be); i++ {
@@ -569,6 +647,52 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_mod:
 			v2 := sys.bcStack.Pop()
 			be.mod(sys.bcStack.Top(), v2)
+		case OC_add:
+			v2 := sys.bcStack.Pop()
+			be.add(sys.bcStack.Top(), v2)
+		case OC_sub:
+			v2 := sys.bcStack.Pop()
+			be.sub(sys.bcStack.Top(), v2)
+		case OC_gt:
+			v2 := sys.bcStack.Pop()
+			be.gt(sys.bcStack.Top(), v2)
+		case OC_ge:
+			v2 := sys.bcStack.Pop()
+			be.ge(sys.bcStack.Top(), v2)
+		case OC_lt:
+			v2 := sys.bcStack.Pop()
+			be.lt(sys.bcStack.Top(), v2)
+		case OC_le:
+			v2 := sys.bcStack.Pop()
+			be.le(sys.bcStack.Top(), v2)
+		case OC_eq:
+			v2 := sys.bcStack.Pop()
+			be.eq(sys.bcStack.Top(), v2)
+		case OC_ne:
+			v2 := sys.bcStack.Pop()
+			be.ne(sys.bcStack.Top(), v2)
+		case OC_and:
+			v2 := sys.bcStack.Pop()
+			be.and(sys.bcStack.Top(), v2)
+		case OC_xor:
+			v2 := sys.bcStack.Pop()
+			be.xor(sys.bcStack.Top(), v2)
+		case OC_or:
+			v2 := sys.bcStack.Pop()
+			be.or(sys.bcStack.Top(), v2)
+		case OC_bland:
+			v2 := sys.bcStack.Pop()
+			be.bland(sys.bcStack.Top(), v2)
+		case OC_blxor:
+			v2 := sys.bcStack.Pop()
+			be.blxor(sys.bcStack.Top(), v2)
+		case OC_blor:
+			v2 := sys.bcStack.Pop()
+			be.blor(sys.bcStack.Top(), v2)
+		case OC_dup:
+			sys.bcStack.Dup()
+		case OC_swap:
+			sys.bcStack.Swap()
 		default:
 			unimplemented()
 		}
@@ -595,12 +719,14 @@ const (
 )
 
 type StateControllerBase struct {
-	playerNo int
-	code     []byte
+	playerNo       int
+	persistent     int32
+	ignorehitpause bool
+	code           []byte
 }
 
 func newStateControllerBase(pn int) *StateControllerBase {
-	return &StateControllerBase{playerNo: pn}
+	return &StateControllerBase{playerNo: pn, persistent: 1}
 }
 func (scb StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
@@ -729,6 +855,29 @@ func (sd stateDef) Run(c *Char, scpn int) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type hitBy StateControllerBase
+
+const (
+	_hitBy_value byte = iota
+	_hitBy_value2
+	hitBy_time
+	hitBy_value_c  = _hitBy_value + SCID_const
+	hitBy_value2_c = _hitBy_value2 + SCID_const
+	hitBy_time_c   = hitBy_time + SCID_const
+)
+
+func (nhb hitBy) Run(c *Char, scpn int) bool {
+	unimplemented()
+	return false
+}
+
+type notHitBy hitBy
+
+func (nhb notHitBy) Run(c *Char, scpn int) bool {
+	unimplemented()
 	return false
 }
 
