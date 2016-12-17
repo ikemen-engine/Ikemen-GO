@@ -149,6 +149,14 @@ func Atof(str string) float64 {
 	}
 	return f
 }
+func readDigit(d string) (int32, bool) {
+	for _, c := range d {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+	}
+	return int32(Atof(d)), true
+}
 func Btoi(b bool) int32 {
 	if b {
 		return 1

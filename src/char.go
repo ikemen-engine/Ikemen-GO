@@ -568,3 +568,7 @@ func (c *Char) setCtrl(ctrl bool) {
 func (c *Char) addPower(power int32) {
 	unimplemented()
 }
+func (c *Char) time() int32 {
+	unimplemented()
+	return 0
+}

@@ -63,6 +63,7 @@ const (
 	OC_int8
 	OC_int
 	OC_float
+	OC_pop
 	OC_dup
 	OC_swap
 	OC_jmp8
@@ -187,7 +188,6 @@ const (
 	OC_hitvel_y
 	OC_roundno
 	OC_roundsexisted
-	OC_matchno
 	OC_ishometeam
 	OC_parent
 	OC_root
@@ -359,6 +359,7 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
+	OC_ex_matchno
 	OC_ex_tickspersecond
 )
 
@@ -425,6 +426,15 @@ func (bv *BytecodeValue) SetB(b bool) {
 func BytecodeSF() BytecodeValue {
 	return BytecodeValue{VT_SFalse, math.NaN()}
 }
+func BytecodeFloat(f float32) BytecodeValue {
+	return BytecodeValue{VT_Float, float64(f)}
+}
+func BytecodeInt(i int32) BytecodeValue {
+	return BytecodeValue{VT_Int, float64(i)}
+}
+func BytecodeBool(b bool) BytecodeValue {
+	return BytecodeValue{VT_Bool, float64(Btoi(b))}
+}
 
 type BytecodeStack []BytecodeValue
 
@@ -449,29 +459,19 @@ type BytecodeExp []OpCode
 func (be *BytecodeExp) append(op ...OpCode) {
 	*be = append(*be, op...)
 }
-func (be *BytecodeExp) appendFloat(f float32) {
-	be.append((*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
-}
-func (be *BytecodeExp) appendInt(i int32) {
-	be.append((*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
-}
-func (be BytecodeExp) toF() float32 {
-	return *(*float32)(unsafe.Pointer(&be[0]))
-}
-func (be BytecodeExp) toI() int32 {
-	return *(*int32)(unsafe.Pointer(&be[0]))
-}
 func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 	switch bv.t {
 	case VT_Float:
 		be.append(OC_float)
-		be.appendFloat(float32(bv.v))
+		f := float32(bv.v)
+		be.append((*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
 	case VT_Int:
 		if bv.v >= -128 || bv.v <= 127 {
 			be.append(OC_int8, OpCode(bv.v))
 		} else {
 			be.append(OC_int)
-			be.appendInt(int32(bv.v))
+			i := int32(bv.v)
+			be.append((*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
 		}
 	case VT_Bool:
 		if bv.v != 0 {
@@ -483,6 +483,10 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 		return false
 	}
 	return true
+}
+func (be *BytecodeExp) appendJmp(op OpCode, addr int32) {
+	be.append(OC_int)
+	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
 func (_ BytecodeExp) blnot(v *BytecodeValue) {
 	if v.ToB() {
@@ -624,14 +628,36 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	sys.bcStack.Clear()
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
+		case OC_jz8, OC_jnz8:
+			if sys.bcStack.Top().ToB() == (be[i-1] == OC_jz8) {
+				i++
+				break
+			}
+			fallthrough
+		case OC_jmp8:
+			if be[i] == 0 {
+				i = len(be)
+			} else {
+				i += int(uint8(be[i])) + 1
+			}
+		case OC_jz, OC_jnz:
+			if sys.bcStack.Top().ToB() == (be[i-1] == OC_jz) {
+				i += 4
+				break
+			}
+			fallthrough
+		case OC_jmp:
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_int8:
 			sys.bcStack.Push(BytecodeValue{VT_Int, float64(int8(be[i]))})
 			i++
 		case OC_int:
-			sys.bcStack.Push(BytecodeValue{VT_Int, float64(be[i:].toI())})
+			sys.bcStack.Push(BytecodeValue{VT_Int,
+				float64(*(*int32)(unsafe.Pointer(&be[i])))})
 			i += 4
 		case OC_float:
-			sys.bcStack.Push(BytecodeValue{VT_Float, float64(be[i:].toF())})
+			sys.bcStack.Push(BytecodeValue{VT_Float,
+				float64(*(*float32)(unsafe.Pointer(&be[i])))})
 			i += 4
 		case OC_blnot:
 			be.blnot(sys.bcStack.Top())
@@ -689,10 +715,14 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_blor:
 			v2 := sys.bcStack.Pop()
 			be.blor(sys.bcStack.Top(), v2)
+		case OC_pop:
+			sys.bcStack.Pop()
 		case OC_dup:
 			sys.bcStack.Dup()
 		case OC_swap:
 			sys.bcStack.Swap()
+		case OC_time:
+			sys.bcStack.Push(BytecodeInt(c.time()))
 		default:
 			unimplemented()
 		}
@@ -710,13 +740,10 @@ func (be BytecodeExp) evalB(c *Char, scpn int) bool {
 }
 
 type StateController interface {
-	Run(c *Char, scpn int) (changeState bool)
+	Run(c *Char, ps *int32) (changeState bool)
 }
 
-const (
-	SCID_trigger byte = 0
-	SCID_const   byte = 128
-)
+const SCID_trigger byte = 255
 
 type StateControllerBase struct {
 	playerNo       int
@@ -728,21 +755,21 @@ type StateControllerBase struct {
 func newStateControllerBase(pn int) *StateControllerBase {
 	return &StateControllerBase{playerNo: pn, persistent: 1}
 }
-func (scb StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
+func (_ StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
-func (scb StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
+func (_ StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
 	for _, v := range f {
 		var be BytecodeExp
-		be.appendFloat(v)
+		be.appendValue(BytecodeFloat(v))
 		exp = append(exp, be)
 	}
 	return
 }
-func (scb StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
+func (_ StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	for _, v := range i {
 		var be BytecodeExp
-		be.appendInt(v)
+		be.appendValue(BytecodeInt(v))
 		exp = append(exp, be)
 	}
 	return
@@ -755,7 +782,12 @@ func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
 		scb.code = append(scb.code, (*(*[]byte)(unsafe.Pointer(&e)))...)
 	}
 }
-func (scb StateControllerBase) run(f func(byte, []BytecodeExp) bool) bool {
+func (scb StateControllerBase) run(c *Char, ps *int32,
+	f func(byte, []BytecodeExp)) bool {
+	(*ps)--
+	if *ps > 0 {
+		return false
+	}
 	for i := 0; i < len(scb.code); {
 		id := scb.code[i]
 		i++
@@ -768,17 +800,22 @@ func (scb StateControllerBase) run(f func(byte, []BytecodeExp) bool) bool {
 			exp[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb.code)))[i : i+int(l)]
 			i += int(l)
 		}
-		if !f(id, exp) {
-			return false
+		if id == SCID_trigger {
+			if !exp[0].evalB(c, scb.playerNo) {
+				return false
+			}
+		} else {
+			f(id, exp)
 		}
 	}
+	*ps = scb.persistent
 	return true
 }
 
 type stateDef StateControllerBase
 
 const (
-	stateDef_hitcountpersist byte = iota + 1
+	stateDef_hitcountpersist byte = iota
 	stateDef_movehitpersist
 	stateDef_hitdefpersist
 	stateDef_sprpriority
@@ -788,72 +825,46 @@ const (
 	stateDef_anim
 	stateDef_ctrl
 	stateDef_poweradd
-	stateDef_hitcountpersist_c = stateDef_hitcountpersist + SCID_const
-	stateDef_movehitpersist_c  = stateDef_movehitpersist + SCID_const
-	stateDef_hitdefpersist_c   = stateDef_hitdefpersist + SCID_const
-	stateDef_sprpriority_c     = stateDef_sprpriority + SCID_const
-	stateDef_facep2_c          = stateDef_facep2 + SCID_const
-	stateDef_juggle_c          = stateDef_juggle + SCID_const
-	stateDef_velset_c          = stateDef_velset + SCID_const
-	stateDef_anim_c            = stateDef_anim + SCID_const
-	stateDef_ctrl_c            = stateDef_ctrl + SCID_const
-	stateDef_poweradd_c        = stateDef_poweradd + SCID_const
 )
 
-func (sd stateDef) Run(c *Char, scpn int) bool {
-	StateControllerBase(sd).run(func(id byte, exp []BytecodeExp) bool {
+func (sc stateDef) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
 		switch id {
-		case stateDef_hitcountpersist, stateDef_hitcountpersist_c:
-			if id == stateDef_hitcountpersist_c || !exp[0].evalB(c, scpn) {
+		case stateDef_hitcountpersist:
+			if !exp[0].evalB(c, sc.playerNo) {
 				c.clearHitCount()
 			}
-		case stateDef_movehitpersist, stateDef_movehitpersist_c:
-			if id == stateDef_movehitpersist_c || !exp[0].evalB(c, scpn) {
+		case stateDef_movehitpersist:
+			if !exp[0].evalB(c, sc.playerNo) {
 				c.clearMoveHit()
 			}
-		case stateDef_hitdefpersist, stateDef_hitdefpersist_c:
-			if id == stateDef_hitdefpersist_c || !exp[0].evalB(c, scpn) {
+		case stateDef_hitdefpersist:
+			if !exp[0].evalB(c, sc.playerNo) {
 				c.clearHitDef()
 			}
 		case stateDef_sprpriority:
-			c.setSprPriority(exp[0].evalI(c, scpn))
-		case stateDef_sprpriority_c:
-			c.setSprPriority(exp[0].toI())
-		case stateDef_facep2, stateDef_facep2_c:
-			if id == stateDef_facep2_c || exp[0].evalB(c, scpn) {
+			c.setSprPriority(exp[0].evalI(c, sc.playerNo))
+		case stateDef_facep2:
+			if exp[0].evalB(c, sc.playerNo) {
 				c.faceP2()
 			}
 		case stateDef_juggle:
-			c.setJuggle(exp[0].evalI(c, scpn))
-		case stateDef_juggle_c:
-			c.setJuggle(exp[0].toI())
+			c.setJuggle(exp[0].evalI(c, sc.playerNo))
 		case stateDef_velset:
-			c.setXV(exp[0].evalF(c, scpn))
+			c.setXV(exp[0].evalF(c, sc.playerNo))
 			if len(exp) > 1 {
-				c.setYV(exp[1].evalF(c, scpn))
+				c.setYV(exp[1].evalF(c, sc.playerNo))
 				if len(exp) > 2 {
-					exp[2].run(c, scpn)
+					exp[2].run(c, sc.playerNo)
 				}
 			}
-		case stateDef_velset_c:
-			c.setXV(exp[0].toF())
-			if len(exp) > 1 {
-				c.setYV(exp[1].toF())
-			}
 		case stateDef_anim:
-			c.changeAnim(exp[0].evalI(c, scpn))
-		case stateDef_anim_c:
-			c.changeAnim(exp[0].toI())
+			c.changeAnim(exp[0].evalI(c, sc.playerNo))
 		case stateDef_ctrl:
-			c.setCtrl(exp[0].evalB(c, scpn))
-		case stateDef_ctrl_c:
-			c.setCtrl(exp[0].toI() != 0)
+			c.setCtrl(exp[0].evalB(c, sc.playerNo))
 		case stateDef_poweradd:
-			c.addPower(exp[0].evalI(c, scpn))
-		case stateDef_poweradd_c:
-			c.addPower(exp[0].toI())
+			c.addPower(exp[0].evalI(c, sc.playerNo))
 		}
-		return true
 	})
 	return false
 }
@@ -861,23 +872,49 @@ func (sd stateDef) Run(c *Char, scpn int) bool {
 type hitBy StateControllerBase
 
 const (
-	_hitBy_value byte = iota
-	_hitBy_value2
+	hitBy_value byte = iota
+	hitBy_value2
 	hitBy_time
-	hitBy_value_c  = _hitBy_value + SCID_const
-	hitBy_value2_c = _hitBy_value2 + SCID_const
-	hitBy_time_c   = hitBy_time + SCID_const
 )
 
-func (nhb hitBy) Run(c *Char, scpn int) bool {
-	unimplemented()
+func (sc hitBy) Run(c *Char, ps *int32) bool {
+	time := int32(1)
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+		switch id {
+		case hitBy_time:
+			time = exp[0].evalI(c, sc.playerNo)
+		case hitBy_value:
+			unimplemented()
+		case hitBy_value2:
+			unimplemented()
+		}
+	})
 	return false
 }
 
 type notHitBy hitBy
 
-func (nhb notHitBy) Run(c *Char, scpn int) bool {
-	unimplemented()
+func (sc notHitBy) Run(c *Char, ps *int32) bool {
+	time := int32(1)
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+		switch id {
+		case hitBy_time:
+			time = exp[0].evalI(c, sc.playerNo)
+		case hitBy_value:
+			unimplemented()
+		case hitBy_value2:
+			unimplemented()
+		}
+	})
+	return false
+}
+
+type assertSpecial StateControllerBase
+
+func (sc assertSpecial) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+		unimplemented()
+	})
 	return false
 }
 

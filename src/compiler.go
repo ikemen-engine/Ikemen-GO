@@ -324,7 +324,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	if !sys.ignoreMostErrors {
 		defer func() { c.usiroOp = false }()
 	}
-	unimplemented()
+	switch c.token {
+	case "time":
+		out.append(OC_time)
+	default:
+		println(c.token)
+		unimplemented()
+	}
 	c.token = c.tokenizer(in)
 	return bv, nil
 }
@@ -704,42 +710,47 @@ func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue,
 	return c.expOneOp(out, in, c.expBoolXor, "||", out.blor, OC_blor)
 }
 func (c *Compiler) typedExp(ef ExpFunc, in *string,
-	vt ValueType) (BytecodeExp, BytecodeValue, error) {
+	vt ValueType) (BytecodeExp, error) {
 	c.token = c.tokenizer(in)
 	var be BytecodeExp
 	bv, err := ef(&be, in)
 	if err != nil {
-		return nil, BytecodeSF(), err
+		return nil, err
 	}
 	if !bv.IsSF() {
-		if vt == VT_Bool {
+		switch vt {
+		case VT_Float:
+			bv.SetF(bv.ToF())
+		case VT_Int:
+			bv.SetI(bv.ToI())
+		case VT_Bool:
 			bv.SetB(bv.ToB())
 		}
-		return nil, bv, nil
+		be.appendValue(bv)
 	}
-	return be, BytecodeSF(), nil
+	return be, nil
 }
-func (c *Compiler) argExpression(in *string,
-	vt ValueType) (BytecodeExp, BytecodeValue, error) {
-	be, v, err := c.typedExp(c.expBoolOr, in, vt)
+func (c *Compiler) argExpression(in *string, vt ValueType) (BytecodeExp,
+	error) {
+	be, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
-		return nil, BytecodeSF(), err
+		return nil, err
 	}
 	if len(c.token) > 0 && c.token != "," {
-		return nil, BytecodeSF(), Error(c.token + "が不正です")
+		return nil, Error(c.token + "が不正です")
 	}
-	return be, v, nil
+	return be, nil
 }
-func (c *Compiler) fullExpression(in *string,
-	vt ValueType) (BytecodeExp, BytecodeValue, error) {
-	be, v, err := c.typedExp(c.expBoolOr, in, vt)
+func (c *Compiler) fullExpression(in *string, vt ValueType) (BytecodeExp,
+	error) {
+	be, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
-		return nil, BytecodeSF(), err
+		return nil, err
 	}
 	if len(c.token) > 0 {
-		return nil, BytecodeSF(), Error(c.token + "が不正です")
+		return nil, Error(c.token + "が不正です")
 	}
-	return be, v, nil
+	return be, nil
 }
 func (c *Compiler) parseSection(lines []string, i *int,
 	sctrl func(name, data string) error) (IniSection, error) {
@@ -843,50 +854,24 @@ func (c *Compiler) stateParam(is IniSection, name string,
 }
 func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 	data string, vt ValueType, numArg int) error {
-	bes, vs := []BytecodeExp{}, []BytecodeValue{}
+	bes := []BytecodeExp{}
 	for n := 1; n <= numArg; n++ {
 		var be BytecodeExp
-		var v BytecodeValue
 		var err error
 		if n < numArg {
-			be, v, err = c.argExpression(&data, vt)
+			be, err = c.argExpression(&data, vt)
 		} else {
-			be, v, err = c.fullExpression(&data, vt)
+			be, err = c.fullExpression(&data, vt)
 		}
 		if err != nil {
 			return err
 		}
 		bes = append(bes, be)
-		vs = append(vs, v)
-		if n < numArg && c.token != "," {
+		if c.token != "," {
 			break
 		}
 	}
-	cns := true
-	for i, v := range vs {
-		if v.IsSF() {
-			cns = false
-		} else {
-			bes[i].appendValue(v)
-		}
-	}
-	if cns {
-		if vt == VT_Float {
-			floats := make([]float32, len(vs))
-			for i := range floats {
-				floats[i] = float32(vs[i].v)
-			}
-			sc.add(id+SCID_const, sc.fToExp(floats...))
-		} else {
-			ints := make([]int32, len(vs))
-			for i := range ints {
-				ints[i] = int32(vs[i].v)
-			}
-			sc.add(id+SCID_const, sc.iToExp(ints...))
-		}
-	} else {
-		sc.add(id, bes)
-	}
+	sc.add(id, bes)
 	return nil
 }
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
@@ -959,59 +944,32 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		b := false
 		if err := c.stateParam(is, "hitcountpersist", func(data string) error {
 			b = true
-			be, v, err := c.fullExpression(&data, VT_Bool)
-			if err != nil {
-				return err
-			}
-			if v.IsSF() {
-				sc.add(stateDef_hitcountpersist, sc.beToExp(be))
-			} else if !v.ToB() { // falseのときだけクリアする
-				sc.add(stateDef_hitcountpersist_c, nil)
-			}
-			return nil
+			return c.scAdd(sc, stateDef_hitcountpersist, data, VT_Bool, 1)
 		}); err != nil {
 			return err
 		}
 		if !b {
-			sc.add(stateDef_hitcountpersist_c, nil)
+			sc.add(stateDef_hitcountpersist, sc.iToExp(0))
 		}
 		b = false
 		if err := c.stateParam(is, "movehitpersist", func(data string) error {
 			b = true
-			be, v, err := c.fullExpression(&data, VT_Bool)
-			if err != nil {
-				return err
-			}
-			if v.IsSF() {
-				sc.add(stateDef_movehitpersist, sc.beToExp(be))
-			} else if !v.ToB() { // falseのときだけクリアする
-				sc.add(stateDef_movehitpersist_c, nil)
-			}
-			return nil
+			return c.scAdd(sc, stateDef_movehitpersist, data, VT_Bool, 1)
 		}); err != nil {
 			return err
 		}
 		if !b {
-			sc.add(stateDef_movehitpersist_c, nil)
+			sc.add(stateDef_movehitpersist, sc.iToExp(0))
 		}
 		b = false
 		if err := c.stateParam(is, "hitdefpersist", func(data string) error {
 			b = true
-			be, v, err := c.fullExpression(&data, VT_Bool)
-			if err != nil {
-				return err
-			}
-			if v.IsSF() {
-				sc.add(stateDef_hitdefpersist, sc.beToExp(be))
-			} else if !v.ToB() { // falseのときだけクリアする
-				sc.add(stateDef_hitdefpersist_c, nil)
-			}
-			return nil
+			return c.scAdd(sc, stateDef_hitdefpersist, data, VT_Bool, 1)
 		}); err != nil {
 			return err
 		}
 		if !b {
-			sc.add(stateDef_hitdefpersist_c, nil)
+			sc.add(stateDef_hitdefpersist, sc.iToExp(0))
 		}
 		if err := c.stateParam(is, "sprpriority", func(data string) error {
 			return c.scAdd(sc, stateDef_sprpriority, data, VT_Int, 1)
@@ -1019,16 +977,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			return err
 		}
 		if err := c.stateParam(is, "facep2", func(data string) error {
-			be, v, err := c.fullExpression(&data, VT_Bool)
-			if err != nil {
-				return err
-			}
-			if v.IsSF() {
-				sc.add(stateDef_facep2, sc.beToExp(be))
-			} else if v.ToB() {
-				sc.add(stateDef_facep2_c, nil)
-			}
-			return nil
+			return c.scAdd(sc, stateDef_facep2, data, VT_Bool, 1)
 		}); err != nil {
 			return err
 		}
@@ -1040,7 +989,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			return err
 		}
 		if !b {
-			sc.add(stateDef_juggle_c, sc.iToExp(0))
+			sc.add(stateDef_juggle, sc.iToExp(0))
 		}
 		if err := c.stateParam(is, "velset", func(data string) error {
 			return c.scAdd(sc, stateDef_velset, data, VT_Float, 3)
@@ -1066,14 +1015,14 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		return nil
 	})
 }
-func (c *Compiler) hitBySub(is IniSection) (attr int32,
-	timebe BytecodeExp, timev BytecodeValue, two bool, err error) {
-	attr = -1
+func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
+	attr, two := int32(-1), false
+	var err error
 	if err = c.stateParam(is, "value", func(data string) error {
 		attr, err = c.attr(data, false)
 		return err
 	}); err != nil {
-		return
+		return err
 	}
 	if attr == -1 {
 		if err = c.stateParam(is, "value2", func(data string) error {
@@ -1081,43 +1030,39 @@ func (c *Compiler) hitBySub(is IniSection) (attr int32,
 			attr, err = c.attr(data, false)
 			return err
 		}); err != nil {
-			return
+			return err
 		}
 	}
 	if attr == -1 {
-		err = Error("valueが指定されていません")
-		return
+		return Error("valueが指定されていません")
 	}
-	timev = BytecodeSF()
 	if err = c.stateParam(is, "time", func(data string) error {
-		timebe, timev, err = c.fullExpression(&data, VT_Int)
-		return err
+		return c.scAdd(sc, hitBy_time, data, VT_Int, 1)
 	}); err != nil {
-		return
+		return err
 	}
-	if len(timebe) == 0 && timev.IsSF() {
-		timev.SetI(1)
+	if two {
+		sc.add(hitBy_value2, sc.iToExp(attr))
+	} else {
+		sc.add(hitBy_value, sc.iToExp(attr))
 	}
-	return
+	return nil
 }
 func (c *Compiler) hitBy(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase) (StateController, error) {
 	return hitBy(*sc), c.stateSec(is, func() error {
-		attr, timebe, timev, two, err := c.hitBySub(is)
-		if err != nil {
-			return err
-		}
-		unimplemented()
-		return nil
+		return c.hitBySub(is, sc)
 	})
 }
 func (c *Compiler) notHitBy(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase) (StateController, error) {
 	return notHitBy(*sc), c.stateSec(is, func() error {
-		attr, timebe, timev, two, err := c.hitBySub(is)
-		if err != nil {
-			return err
-		}
+		return c.hitBySub(is, sc)
+	})
+}
+func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return assertSpecial(*sc), c.stateSec(is, func() error {
 		unimplemented()
 		return nil
 	})
@@ -1171,6 +1116,10 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			sc := newStateControllerBase(c.playerNo)
 			var scf func(is IniSection, sbc *StateBytecode,
 				sc *StateControllerBase) (StateController, error)
+			var triggerall []BytecodeExp
+			allUtikiri := false
+			var trigger [][]BytecodeExp
+			var trexist []int8
 			is, err := c.parseSection(lines, &i, func(name, data string) error {
 				switch name {
 				case "type":
@@ -1179,6 +1128,8 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.hitBy
 					case "nothitby":
 						scf = c.notHitBy
+					case "assertspecial":
+						scf = c.assertSpecial
 					default:
 						println(data)
 						unimplemented()
@@ -1188,12 +1139,61 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						sc.persistent = Atoi(data)
 						if sc.persistent > 128 {
 							sc.persistent = 1
+						} else if sc.persistent <= 0 {
+							sc.persistent = math.MaxInt32
 						}
 					}
 				case "ignorehitpause":
 					sc.ignorehitpause = Atoi(data) != 0
+				case "triggerall":
+					be, err := c.fullExpression(&data, VT_Bool)
+					if err != nil {
+						return err
+					}
+					if len(be) == 2 && be[0] == OC_int8 {
+						if be[1] == 0 {
+							allUtikiri = true
+						}
+					} else if !allUtikiri {
+						triggerall = append(triggerall, be)
+					}
 				default:
-					unimplemented()
+					tn, ok := readDigit(name[7:])
+					if !ok || tn <= 0 || tn > 65536 {
+						errmes(Error("トリガー名 (" + name + ") が不正です"))
+					}
+					if len(trigger) < int(tn) {
+						trigger = append(trigger, make([][]BytecodeExp,
+							int(tn)-len(trigger))...)
+						trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
+					}
+					tn--
+					be, err := c.fullExpression(&data, VT_Bool)
+					if err != nil {
+						if sys.ignoreMostErrors {
+							_break := false
+							for i := 0; i < int(tn); i++ {
+								if trexist[i] == 0 {
+									_break = true
+									break
+								}
+							}
+							if _break {
+								break
+							}
+						}
+						return err
+					}
+					if len(be) == 2 && be[0] == OC_int8 {
+						if be[1] == 0 {
+							trexist[tn] = -1
+						} else if trexist[tn] == 0 {
+							trexist[tn] = 1
+						}
+					} else if !allUtikiri && trexist[tn] >= 0 {
+						trigger[tn] = append(trigger[tn], be)
+						trexist[tn] = 1
+					}
 				}
 				return nil
 			})
@@ -1203,11 +1203,92 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			if scf == nil {
 				return errmes(Error("typeが指定されていません"))
 			}
+			if len(trexist) == 0 || trexist[0] == 0 {
+				return errmes(Error("trigger1がありません"))
+			}
+			var texp BytecodeExp
+			for i, e := range triggerall {
+				if len(e) > 0 {
+					texp.append(e...)
+					if i < len(triggerall)-1 {
+						texp.append(OC_jz8, 0)
+						texp.append(OC_pop)
+					}
+				}
+			}
+			if allUtikiri {
+				if len(texp) > 0 {
+					texp.appendValue(BytecodeBool(false))
+				}
+			} else {
+				for i, tr := range trigger {
+					if trexist[i] == 0 {
+						break
+					}
+					var te BytecodeExp
+					if trexist[i] < 0 {
+						te.appendValue(BytecodeBool(false))
+					}
+					oldlen := len(te)
+					for j := len(tr) - 1; j >= 0; j-- {
+						tmp := tr[j]
+						if len(tmp) > 0 {
+							if j < len(tr)-1 {
+								if len(te) > int(math.MaxUint8-1) {
+									tmp.appendJmp(OC_jz, int32(len(te)+1))
+									tmp.append(OC_pop)
+								} else {
+									tmp.append(OC_jz8, OpCode(len(te)+1))
+									tmp.append(OC_pop)
+								}
+							}
+							te = append(tmp, te...)
+						}
+					}
+					if len(te) == oldlen {
+						te = nil
+					}
+					if len(te) == 0 {
+						if trexist[i] > 0 {
+							if len(texp) > 0 {
+								texp.appendValue(BytecodeBool(true))
+							}
+							break
+						}
+					} else {
+						texp.append(te...)
+						if i < len(trigger)-1 {
+							texp.append(OC_jnz8, 0)
+							texp.append(OC_pop)
+						}
+					}
+				}
+			}
+			if len(texp) > 0 {
+				sc.add(SCID_trigger, sc.beToExp(texp))
+			}
 			sctrl, err := scf(is, sbc, sc)
 			if err != nil {
 				return errmes(err)
 			}
-			sbc.ctrls = append(sbc.ctrls, sctrl)
+			appending := true
+			if len(texp) > 0 {
+			} else if allUtikiri {
+				appending = false
+			} else {
+				appending = false
+				for _, te := range trexist {
+					if te >= 0 {
+						if te > 0 {
+							appending = true
+						}
+						break
+					}
+				}
+			}
+			if appending {
+				sbc.ctrls = append(sbc.ctrls, sctrl)
+			}
 		}
 		_, ok := bc.states[n]
 		if !ok {
