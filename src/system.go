@@ -94,6 +94,7 @@ type System struct {
 	ignoreMostErrors            bool
 	stringPool                  [MaxSimul * 2]StringPool
 	bcStack                     BytecodeStack
+	specialFlag                 GlobalSpecialFlag
 }
 
 func (s *System) init(w, h int32) *lua.LState {

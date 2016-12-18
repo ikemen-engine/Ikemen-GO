@@ -5,6 +5,36 @@ import (
 	"strings"
 )
 
+type CharSpecialFlag uint32
+
+const (
+	CSF_nostandguard CharSpecialFlag = 1 << iota
+	CSF_nocrouchguard
+	CSF_noairguard
+	CSF_noshadow
+	CSF_invisible
+	CSF_unguardable
+	CSF_nojugglecheck
+	CSF_noautoturn
+	CSF_nowalk
+)
+
+type GlobalSpecialFlag uint32
+
+const (
+	GSF_intro GlobalSpecialFlag = 1 << iota
+	GSF_roundnotover
+	GSF_nomusic
+	GSF_nobardisplay
+	GSF_nobg
+	GSF_nofg
+	GSF_globalnoshadow
+	GSF_timerfreeze
+	GSF_nokosnd
+	GSF_nokoslow
+	GSF_noko
+)
+
 type CharData struct {
 	life    int32
 	power   int32
@@ -279,6 +309,9 @@ type Char struct {
 	sprpriority int32
 	juggle      int32
 	size        CharSize
+	pos         [2]float32
+	vel         [2]float32
+	standby     bool
 }
 
 func newChar(n, idx int) (c *Char) {
@@ -554,12 +587,18 @@ func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
 func (c *Char) setXV(xv float32) {
-	unimplemented()
+	c.vel[0] = xv
 }
 func (c *Char) setYV(yv float32) {
-	unimplemented()
+	c.vel[1] = yv
 }
 func (c *Char) changeAnim(animNo int32) {
+	unimplemented()
+}
+func (c *Char) changeAnim2(animNo int32) {
+	unimplemented()
+}
+func (c *Char) setAnimElem(e int32) {
 	unimplemented()
 }
 func (c *Char) setCtrl(ctrl bool) {
@@ -571,4 +610,48 @@ func (c *Char) addPower(power int32) {
 func (c *Char) time() int32 {
 	unimplemented()
 	return 0
+}
+func (c *Char) alive() bool {
+	unimplemented()
+	return false
+}
+func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
+	p, fr float32, x *float32) {
+	unimplemented()
+}
+func (c *Char) changeState(no, anim, ctrl int32) {
+	unimplemented()
+}
+func (c *Char) selfState(no, anim, ctrl int32) {
+	unimplemented()
+}
+func (c *Char) partner(n int32) *Char {
+	n = Max(0, n)
+	if int(n) > len(sys.chars)/2-2 {
+		return nil
+	}
+	var p int
+	if int(n) == c.playerNo>>1 {
+		p = c.playerNo + 2
+	} else {
+		p = c.playerNo&1 + int(n)<<1
+		if int(n) > c.playerNo>>1 {
+			p += 2
+		}
+	}
+	if len(sys.chars[p]) > 0 {
+		return sys.chars[p][0]
+	}
+	return nil
+}
+func (c *Char) destroySelf(recursive, removeexplods bool) bool {
+	if c.helperIndex <= 0 {
+		return false
+	}
+	unimplemented()
+	return true
+}
+func (c *Char) newHelper() *Char {
+	unimplemented()
+	return nil
 }

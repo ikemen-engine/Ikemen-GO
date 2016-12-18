@@ -310,7 +310,6 @@ func (c *Compiler) kakkotojiru(in *string) error {
 	if c.token != ")" {
 		return Error(c.token + "の前に')'がありません")
 	}
-	c.token = c.tokenizer(in)
 	return nil
 }
 func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
@@ -324,9 +323,56 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	if !sys.ignoreMostErrors {
 		defer func() { c.usiroOp = false }()
 	}
+	var be1, be2, be3 BytecodeExp
+	var bv1, bv2, bv3 BytecodeValue
+	var err error
 	switch c.token {
 	case "time":
 		out.append(OC_time)
+	case "alive":
+		out.append(OC_alive)
+	case "ifelse":
+		if c.tokenizer(in) != "(" {
+			return BytecodeSF(), Error(c.token + "の次に'('がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return BytecodeSF(), err
+		}
+		if c.token != "," {
+			return BytecodeSF(), Error("','がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return BytecodeSF(), err
+		}
+		if c.token != "," {
+			return BytecodeSF(), Error("','がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv3, err = c.expBoolOr(&be3, in); err != nil {
+			return BytecodeSF(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return BytecodeSF(), err
+		}
+		if bv1.IsSF() || bv2.IsSF() || bv3.IsSF() {
+			out.append(be1...)
+			out.appendValue(bv1)
+			out.append(be2...)
+			out.appendValue(bv2)
+			out.append(be3...)
+			out.appendValue(bv3)
+			out.append(OC_ifelse)
+		} else {
+			if bv1.ToB() {
+				bv = bv2
+			} else {
+				bv = bv3
+			}
+		}
+	case "random":
+		out.append(OC_random)
 	default:
 		println(c.token)
 		unimplemented()
@@ -409,14 +455,14 @@ func (c *Compiler) expPow(out *BytecodeExp, in *string) (BytecodeValue,
 			if err != nil {
 				return BytecodeSF(), err
 			}
-			if !bv.IsSF() && !bv2.IsSF() {
-				out.pow(&bv, bv2, c.playerNo)
-			} else {
+			if bv.IsSF() || bv2.IsSF() {
 				out.appendValue(bv)
 				out.append(be...)
 				out.appendValue(bv2)
 				out.append(OC_pow)
 				bv = BytecodeSF()
+			} else {
+				out.pow(&bv, bv2, c.playerNo)
 			}
 		} else {
 			break
@@ -523,19 +569,20 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 		if err := c.kakkotojiru(in); err != nil {
 			return err
 		}
-		if !bv.IsSF() && !bv2.IsSF() {
+		c.token = c.tokenizer(in)
+		if bv.IsSF() || bv2.IsSF() {
+			out.appendValue(*bv)
+			out.append(be2...)
+			out.appendValue(bv2)
+			out.append(opc)
+			*bv = BytecodeSF()
+		} else {
 			switch opc {
 			case OC_eq:
 				out.eq(bv, bv2)
 			case OC_ne:
 				out.ne(bv, bv2)
 			}
-		} else {
-			out.appendValue(*bv)
-			out.append(be2...)
-			out.appendValue(bv2)
-			out.append(opc)
-			*bv = BytecodeSF()
 		}
 		return nil
 	}
@@ -546,23 +593,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 		return Error("]か)がありません")
 	}
 	c.token = c.tokenizer(in)
-	if !bv.IsSF() && !bv2.IsSF() && !bv3.IsSF() {
-		tmp := *bv
-		if open == "(" {
-			out.gt(&tmp, bv2)
-		} else {
-			out.ge(&tmp, bv2)
-		}
-		if close == ")" {
-			out.lt(bv, bv3)
-		} else {
-			out.le(bv, bv3)
-		}
-		bv.SetB(tmp.ToB() && bv.ToB())
-		if opc == OC_ne {
-			bv.SetB(!bv.ToB())
-		}
-	} else {
+	if bv.IsSF() || bv2.IsSF() || bv3.IsSF() {
 		var op1, op2, op3 OpCode
 		if opc == OC_ne {
 			if open == "(" {
@@ -600,6 +631,22 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 		out.append(op2)
 		out.append(op3)
 		*bv = BytecodeSF()
+	} else {
+		tmp := *bv
+		if open == "(" {
+			out.gt(&tmp, bv2)
+		} else {
+			out.ge(&tmp, bv2)
+		}
+		if close == ")" {
+			out.lt(bv, bv3)
+		} else {
+			out.le(bv, bv3)
+		}
+		bv.SetB(tmp.ToB() && bv.ToB())
+		if opc == OC_ne {
+			bv.SetB(!bv.ToB())
+		}
 	}
 	return nil
 }
@@ -653,14 +700,14 @@ func (_ *Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
 	if err != nil {
 		return err
 	}
-	if !bv.IsSF() && !bv2.IsSF() {
-		opf(bv, bv2)
-	} else {
+	if bv.IsSF() || bv2.IsSF() {
 		out.appendValue(*bv)
 		out.append(be...)
 		out.appendValue(bv2)
 		out.append(opc)
 		*bv = BytecodeSF()
+	} else {
+		opf(bv, bv2)
 	}
 	return nil
 }
@@ -853,7 +900,7 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	return nil
 }
 func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
-	data string, vt ValueType, numArg int) error {
+	data string, vt ValueType, numArg int, topbe ...BytecodeExp) error {
 	bes := []BytecodeExp{}
 	for n := 1; n <= numArg; n++ {
 		var be BytecodeExp
@@ -871,7 +918,7 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 			break
 		}
 	}
-	sc.add(id, bes)
+	sc.add(id, append(topbe, bes...))
 	return nil
 }
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
@@ -1063,6 +1110,287 @@ func (c *Compiler) notHitBy(is IniSection, sbc *StateBytecode,
 func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase) (StateController, error) {
 	return assertSpecial(*sc), c.stateSec(is, func() error {
+		foo := func(data string) error {
+			switch data {
+			case "nostandguard":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nostandguard)))
+			case "nocrouchguard":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nocrouchguard)))
+			case "noairguard":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noairguard)))
+			case "noshadow":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noshadow)))
+			case "invisible":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_invisible)))
+			case "unguardable":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_unguardable)))
+			case "nojugglecheck":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nojugglecheck)))
+			case "noautoturn":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noautoturn)))
+			case "nowalk":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nowalk)))
+			case "intro":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
+			case "roundnotover":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotover)))
+			case "nomusic":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nomusic)))
+			case "nobardisplay":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nobardisplay)))
+			case "nobg":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nobg)))
+			case "nofg":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nofg)))
+			case "globalnoshadow":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_globalnoshadow)))
+			case "timerfreeze":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_timerfreeze)))
+			case "nokosnd":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokosnd)))
+			case "nokoslow":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokoslow)))
+			case "noko":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_noko)))
+			default:
+				return Error(data + "が無効な値です")
+			}
+			return nil
+		}
+		f := false
+		if err := c.stateParam(is, "flag", func(data string) error {
+			f = true
+			return foo(data)
+		}); err != nil {
+			return err
+		}
+		if !f {
+			return Error("flagが指定されていません")
+		}
+		if err := c.stateParam(is, "flag2", func(data string) error {
+			return foo(data)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "flag3", func(data string) error {
+			return foo(data)
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+func (c *Compiler) playSnd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return playSnd(*sc), c.stateSec(is, func() error {
+		f := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			f = true
+			fflg := false
+			if len(data) > 0 {
+				switch data[0] {
+				case 'F', 'f':
+					fflg = true
+					data = data[1:]
+				case 'S', 's':
+					data = data[1:]
+				}
+			}
+			return c.scAdd(sc, playSnd_value, data, VT_Int, 2,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		if !f {
+			return Error("valueが指定されていません")
+		}
+		if err := c.stateParam(is, "channel", func(data string) error {
+			return c.scAdd(sc, playSnd_channel, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "lowpriority", func(data string) error {
+			return c.scAdd(sc, playSnd_lowpriority, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "pan", func(data string) error {
+			return c.scAdd(sc, playSnd_pan, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "abspan", func(data string) error {
+			return c.scAdd(sc, playSnd_abspan, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		var volname string
+		if sys.cgi[c.playerNo].ver[0] == 1 {
+			volname = "volumescale"
+		} else {
+			volname = "volume"
+		}
+		if err := c.stateParam(is, volname, func(data string) error {
+			return c.scAdd(sc, playSnd_volume, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "freqmul", func(data string) error {
+			return c.scAdd(sc, playSnd_freqmul, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "loop", func(data string) error {
+			return c.scAdd(sc, playSnd_loop, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+func (c *Compiler) changeStateSub(is IniSection,
+	sc *StateControllerBase) error {
+	f := false
+	if err := c.stateParam(is, "value", func(data string) error {
+		f = true
+		return c.scAdd(sc, changeState_value, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	if !f {
+		return Error("valueが指定されていません")
+	}
+	if err := c.stateParam(is, "ctrl", func(data string) error {
+		return c.scAdd(sc, changeState_ctrl, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "anim", func(data string) error {
+		return c.scAdd(sc, changeState_anim, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Compiler) changeState(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return changeState(*sc), c.stateSec(is, func() error {
+		return c.changeStateSub(is, sc)
+	})
+}
+func (c *Compiler) selfState(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return selfState(*sc), c.stateSec(is, func() error {
+		return c.changeStateSub(is, sc)
+	})
+}
+func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return tagIn(*sc), c.stateSec(is, func() error {
+		f := false
+		if err := c.stateParam(is, "stateno", func(data string) error {
+			f = true
+			return c.scAdd(sc, tagIn_stateno, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !f {
+			return Error("statenoが指定されていません")
+		}
+		f = false
+		if err := c.stateParam(is, "partnerstateno", func(data string) error {
+			f = true
+			return c.scAdd(sc, tagIn_partnerstateno, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !f {
+			sc.add(tagIn_partnerstateno, sc.iToExp(-1))
+		}
+		return nil
+	})
+}
+func (c *Compiler) tagOut(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return tagOut(*sc), c.stateSec(is, func() error {
+		sc.add(tagOut_, nil)
+		return nil
+	})
+}
+func (c *Compiler) destroySelf(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return destroySelf(*sc), c.stateSec(is, func() error {
+		if err := c.stateParam(is, "recursive", func(data string) error {
+			return c.scAdd(sc, destroySelf_recursive, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "removeexplods", func(data string) error {
+			return c.scAdd(sc, destroySelf_removeexplods, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+func (c *Compiler) changeAnimSub(is IniSection,
+	sc *StateControllerBase) error {
+	if err := c.stateParam(is, "elem", func(data string) error {
+		return c.scAdd(sc, changeAnim_elem, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	f := false
+	if err := c.stateParam(is, "value", func(data string) error {
+		f = true
+		return c.scAdd(sc, changeAnim_value, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	if !f {
+		return Error("valueが指定されていません")
+	}
+	return nil
+}
+func (c *Compiler) changeAnim(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return changeAnim(*sc), c.stateSec(is, func() error {
+		return c.changeAnimSub(is, sc)
+	})
+}
+func (c *Compiler) changeAnim2(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return changeAnim2(*sc), c.stateSec(is, func() error {
+		return c.changeAnimSub(is, sc)
+	})
+}
+func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return helper(*sc), c.stateSec(is, func() error {
+		if err := c.stateParam(is, "helpertype", func(data string) error {
+			if len(data) == 0 {
+				return Error("値が指定されていません")
+			}
+			switch strings.ToLower(data)[0] {
+			case 'n':
+			case 'p':
+				sc.add(helper_helpertype, sc.iToExp(1))
+			default:
+				return Error(data + "が無効な値です")
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "name", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(helper_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
 		unimplemented()
 		return nil
 	})
@@ -1130,6 +1458,24 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.notHitBy
 					case "assertspecial":
 						scf = c.assertSpecial
+					case "playsnd":
+						scf = c.playSnd
+					case "changestate":
+						scf = c.changeState
+					case "selfstate":
+						scf = c.selfState
+					case "tagin":
+						scf = c.tagIn
+					case "tagout":
+						scf = c.tagOut
+					case "destroyself":
+						scf = c.destroySelf
+					case "changeanim":
+						scf = c.changeAnim
+					case "changeanim2":
+						scf = c.changeAnim2
+					case "helper":
+						scf = c.helper
 					default:
 						println(data)
 						unimplemented()
@@ -1159,7 +1505,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 					}
 				default:
 					tn, ok := readDigit(name[7:])
-					if !ok || tn <= 0 || tn > 65536 {
+					if !ok || tn < 1 || tn > 65536 {
 						errmes(Error("トリガー名 (" + name + ") が不正です"))
 					}
 					if len(trigger) < int(tn) {
@@ -1208,12 +1554,10 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			}
 			var texp BytecodeExp
 			for i, e := range triggerall {
-				if len(e) > 0 {
-					texp.append(e...)
-					if i < len(triggerall)-1 {
-						texp.append(OC_jz8, 0)
-						texp.append(OC_pop)
-					}
+				texp.append(e...)
+				if i < len(triggerall)-1 {
+					texp.append(OC_jz8, 0)
+					texp.append(OC_pop)
 				}
 			}
 			if allUtikiri {
@@ -1232,18 +1576,16 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 					oldlen := len(te)
 					for j := len(tr) - 1; j >= 0; j-- {
 						tmp := tr[j]
-						if len(tmp) > 0 {
-							if j < len(tr)-1 {
-								if len(te) > int(math.MaxUint8-1) {
-									tmp.appendJmp(OC_jz, int32(len(te)+1))
-									tmp.append(OC_pop)
-								} else {
-									tmp.append(OC_jz8, OpCode(len(te)+1))
-									tmp.append(OC_pop)
-								}
+						if j < len(tr)-1 {
+							if len(te) > int(math.MaxUint8-1) {
+								tmp.appendJmp(OC_jz, int32(len(te)+1))
+								tmp.append(OC_pop)
+							} else {
+								tmp.append(OC_jz8, OpCode(len(te)+1))
+								tmp.append(OC_pop)
 							}
-							te = append(tmp, te...)
 						}
+						te = append(tmp, te...)
 					}
 					if len(te) == oldlen {
 						te = nil

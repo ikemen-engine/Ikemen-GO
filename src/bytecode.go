@@ -66,6 +66,7 @@ const (
 	OC_pop
 	OC_dup
 	OC_swap
+	OC_run
 	OC_jmp8
 	OC_jz8
 	OC_jnz8
@@ -177,7 +178,6 @@ const (
 	OC_numpartner
 	OC_ailevel
 	OC_palno
-	OC_matchover
 	OC_hitcount
 	OC_uniqhitcount
 	OC_hitpausetime
@@ -359,6 +359,7 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
+	OC_ex_matchover
 	OC_ex_matchno
 	OC_ex_tickspersecond
 )
@@ -626,6 +627,7 @@ func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 }
 func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	sys.bcStack.Clear()
+	orgc := c
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
 		case OC_jz8, OC_jnz8:
@@ -649,15 +651,13 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_jmp:
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_int8:
-			sys.bcStack.Push(BytecodeValue{VT_Int, float64(int8(be[i]))})
+			sys.bcStack.Push(BytecodeInt(int32(int8(be[i]))))
 			i++
 		case OC_int:
-			sys.bcStack.Push(BytecodeValue{VT_Int,
-				float64(*(*int32)(unsafe.Pointer(&be[i])))})
+			sys.bcStack.Push(BytecodeInt(*(*int32)(unsafe.Pointer(&be[i]))))
 			i += 4
 		case OC_float:
-			sys.bcStack.Push(BytecodeValue{VT_Float,
-				float64(*(*float32)(unsafe.Pointer(&be[i])))})
+			sys.bcStack.Push(BytecodeFloat(*(*float32)(unsafe.Pointer(&be[i]))))
 			i += 4
 		case OC_blnot:
 			be.blnot(sys.bcStack.Top())
@@ -715,17 +715,34 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_blor:
 			v2 := sys.bcStack.Pop()
 			be.blor(sys.bcStack.Top(), v2)
+		case OC_ifelse:
+			v3 := sys.bcStack.Pop()
+			v2 := sys.bcStack.Pop()
+			if sys.bcStack.Top().ToB() {
+				*sys.bcStack.Top() = v2
+			} else {
+				*sys.bcStack.Top() = v3
+			}
 		case OC_pop:
 			sys.bcStack.Pop()
 		case OC_dup:
 			sys.bcStack.Dup()
 		case OC_swap:
 			sys.bcStack.Swap()
+		case OC_run:
+			l := int(*(*int32)(unsafe.Pointer(&be[i])))
+			sys.bcStack.Push(be[i+4:i+4+l].run(c, scpn))
+			i += 4 + l
 		case OC_time:
 			sys.bcStack.Push(BytecodeInt(c.time()))
+		case OC_alive:
+			sys.bcStack.Push(BytecodeBool(c.alive()))
+		case OC_random:
+			sys.bcStack.Push(BytecodeInt(Rand(0, 999)))
 		default:
 			unimplemented()
 		}
+		c = orgc
 	}
 	return sys.bcStack.Pop()
 }
@@ -783,7 +800,7 @@ func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
 	}
 }
 func (scb StateControllerBase) run(c *Char, ps *int32,
-	f func(byte, []BytecodeExp)) bool {
+	f func(byte, []BytecodeExp) bool) bool {
 	(*ps)--
 	if *ps > 0 {
 		return false
@@ -804,8 +821,8 @@ func (scb StateControllerBase) run(c *Char, ps *int32,
 			if !exp[0].evalB(c, scb.playerNo) {
 				return false
 			}
-		} else {
-			f(id, exp)
+		} else if !f(id, exp) {
+			break
 		}
 	}
 	*ps = scb.persistent
@@ -828,7 +845,7 @@ const (
 )
 
 func (sc stateDef) Run(c *Char, ps *int32) bool {
-	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case stateDef_hitcountpersist:
 			if !exp[0].evalB(c, sc.playerNo) {
@@ -865,6 +882,7 @@ func (sc stateDef) Run(c *Char, ps *int32) bool {
 		case stateDef_poweradd:
 			c.addPower(exp[0].evalI(c, sc.playerNo))
 		}
+		return true
 	})
 	return false
 }
@@ -879,7 +897,7 @@ const (
 
 func (sc hitBy) Run(c *Char, ps *int32) bool {
 	time := int32(1)
-	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c, sc.playerNo)
@@ -888,6 +906,7 @@ func (sc hitBy) Run(c *Char, ps *int32) bool {
 		case hitBy_value2:
 			unimplemented()
 		}
+		return true
 	})
 	return false
 }
@@ -896,7 +915,7 @@ type notHitBy hitBy
 
 func (sc notHitBy) Run(c *Char, ps *int32) bool {
 	time := int32(1)
-	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c, sc.playerNo)
@@ -905,15 +924,273 @@ func (sc notHitBy) Run(c *Char, ps *int32) bool {
 		case hitBy_value2:
 			unimplemented()
 		}
+		return true
 	})
 	return false
 }
 
 type assertSpecial StateControllerBase
 
+const (
+	assertSpecial_flag byte = iota
+	assertSpecial_flag_g
+)
+
 func (sc assertSpecial) Run(c *Char, ps *int32) bool {
-	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case assertSpecial_flag:
+			unimplemented()
+		case assertSpecial_flag_g:
+			sys.specialFlag |= GlobalSpecialFlag(exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type playSnd StateControllerBase
+
+const (
+	playSnd_value = iota
+	playSnd_channel
+	playSnd_lowpriority
+	playSnd_pan
+	playSnd_abspan
+	playSnd_volume
+	playSnd_freqmul
+	playSnd_loop
+)
+
+func (sc playSnd) Run(c *Char, ps *int32) bool {
+	f, lw, lp := false, false, false
+	var g, n, ch, vo int32 = -1, 0, -1, 0
+	if sys.cgi[sc.playerNo].ver[0] == 1 {
+		vo = 100
+	}
+	var p, fr float32 = 0, 1
+	x := &c.pos[0]
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case playSnd_value:
+			f = exp[0].evalB(c, sc.playerNo)
+			g = exp[1].evalI(c, sc.playerNo)
+			if len(exp) > 2 {
+				n = exp[2].evalI(c, sc.playerNo)
+			}
+		case playSnd_channel:
+			ch = exp[0].evalI(c, sc.playerNo)
+		case playSnd_lowpriority:
+			lw = exp[0].evalB(c, sc.playerNo)
+		case playSnd_pan:
+			p = exp[0].evalF(c, sc.playerNo)
+		case playSnd_abspan:
+			x = nil
+			p = exp[0].evalF(c, sc.playerNo)
+		case playSnd_volume:
+			vo = exp[0].evalI(c, sc.playerNo)
+		case playSnd_freqmul:
+			fr = exp[0].evalF(c, sc.playerNo)
+		case playSnd_loop:
+			lp = exp[0].evalB(c, sc.playerNo)
+		}
+		return true
+	})
+	c.playSound(f, lw, lp, g, n, ch, vo, p, fr, x)
+	return false
+}
+
+type changeState StateControllerBase
+
+const (
+	changeState_value byte = iota
+	changeState_ctrl
+	changeState_anim
+)
+
+func (sc changeState) Run(c *Char, ps *int32) bool {
+	var v, a, ctrl int32 = -1, -1, -1
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case changeState_value:
+			v = exp[0].evalI(c, sc.playerNo)
+		case changeState_ctrl:
+			ctrl = exp[0].evalI(c, sc.playerNo)
+		case changeState_anim:
+			a = exp[0].evalI(c, sc.playerNo)
+		}
+		return true
+	})
+	c.changeState(v, a, ctrl)
+	return true
+}
+
+type selfState changeState
+
+func (sc selfState) Run(c *Char, ps *int32) bool {
+	var v, a, ctrl int32 = -1, -1, -1
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case changeState_value:
+			v = exp[0].evalI(c, sc.playerNo)
+		case changeState_ctrl:
+			ctrl = exp[0].evalI(c, sc.playerNo)
+		case changeState_anim:
+			a = exp[0].evalI(c, sc.playerNo)
+		}
+		return true
+	})
+	c.selfState(v, a, ctrl)
+	return true
+}
+
+type tagIn StateControllerBase
+
+const (
+	tagIn_stateno = iota
+	tagIn_partnerstateno
+)
+
+func (sc tagIn) Run(c *Char, ps *int32) bool {
+	var p *Char
+	sn := int32(-1)
+	ret := false
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if p == nil {
+			p = c.partner(0)
+			if p == nil {
+				return false
+			}
+		}
+		switch id {
+		case tagIn_stateno:
+			sn = exp[0].evalI(c, sc.playerNo)
+		case tagIn_partnerstateno:
+			if psn := exp[0].evalI(c, sc.playerNo); psn >= 0 {
+				if sn >= 0 {
+					c.changeState(sn, -1, -1)
+				}
+				p.standby = false
+				p.changeState(psn, -1, -1)
+				ret = true
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return ret
+}
+
+type tagOut StateControllerBase
+
+const (
+	tagOut_ = iota
+)
+
+func (sc tagOut) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case tagOut_:
+			c.standby = true
+		}
+		return true
+	})
+	return true
+}
+
+type destroySelf StateControllerBase
+
+const (
+	destroySelf_recursive = iota
+	destroySelf_removeexplods
+)
+
+func (sc destroySelf) Run(c *Char, ps *int32) bool {
+	rec, rem := false, false
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case destroySelf_recursive:
+			rec = exp[0].evalB(c, sc.playerNo)
+		case destroySelf_removeexplods:
+			rem = exp[0].evalB(c, sc.playerNo)
+		}
+		return true
+	})
+	return c.destroySelf(rec, rem)
+}
+
+type changeAnim StateControllerBase
+
+const (
+	changeAnim_elem byte = iota
+	changeAnim_value
+)
+
+func (sc changeAnim) Run(c *Char, ps *int32) bool {
+	var elem int32
+	setelem := false
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case changeAnim_elem:
+			elem = exp[0].evalI(c, sc.playerNo)
+			setelem = true
+		case changeAnim_value:
+			c.changeAnim(exp[0].evalI(c, sc.playerNo))
+			if setelem {
+				c.setAnimElem(elem)
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type changeAnim2 changeAnim
+
+func (sc changeAnim2) Run(c *Char, ps *int32) bool {
+	var elem int32
+	setelem := false
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case changeAnim_elem:
+			elem = exp[0].evalI(c, sc.playerNo)
+			setelem = true
+		case changeAnim_value:
+			c.changeAnim2(exp[0].evalI(c, sc.playerNo))
+			if setelem {
+				c.setAnimElem(elem)
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type helper StateControllerBase
+
+const (
+	helper_helpertype byte = iota
+	helper_name
+)
+
+func (sc helper) Run(c *Char, ps *int32) bool {
+	var h *Char
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if h == nil {
+			h = c.newHelper()
+			if h == nil {
+				return false
+			}
+		}
+		switch id {
+		case helper_helpertype:
+			h.player = exp[0].evalB(c, sc.playerNo)
+		case helper_name:
+			h.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		}
 		unimplemented()
+		return true
 	})
 	return false
 }

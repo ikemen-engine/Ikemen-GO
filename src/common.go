@@ -150,6 +150,9 @@ func Atof(str string) float64 {
 	return f
 }
 func readDigit(d string) (int32, bool) {
+	if len(d) == 0 || (len(d) >= 2 && d[0] == '0') {
+		return 0, false
+	}
 	for _, c := range d {
 		if c < '0' || c > '9' {
 			return 0, false
