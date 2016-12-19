@@ -387,7 +387,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		(*window)[2], (*window)[3])
 	return
 }
-func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
+func RenderMugenPal(tex Texture, paltex uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32,
 	trans int32, window *[4]int32, rcx, rcy float32) {
 	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
@@ -398,6 +398,19 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	gl.UseProgramObjectARB(mugenShader)
 	gl.Uniform1iARB(uniformPal, 1)
 	gl.Uniform1iARB(uniformMsk, mask)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
+	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl,
+		trans, rcx, rcy)
+	gl.UseProgramObjectARB(0)
+	gl.Disable(gl.TEXTURE_1D)
+	gl.Disable(gl.SCISSOR_TEST)
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Disable(gl.BLEND)
+}
+func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
+	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32,
+	trans int32, window *[4]int32, rcx, rcy float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)
@@ -407,16 +420,9 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 		unsafe.Pointer(&pal[0]))
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
-	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl,
-		trans, rcx, rcy)
+	RenderMugenPal(tex, paltex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
+		agl, trans, window, rcx, rcy)
 	gl.DeleteTextures(1, &paltex)
-	gl.UseProgramObjectARB(0)
-	gl.Disable(gl.TEXTURE_1D)
-	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.TEXTURE_2D)
-	gl.Disable(gl.BLEND)
 }
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32, trans int32,

@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-type StateType int32
+type StateType uint32
 
 const (
 	ST_S StateType = 1 << iota
@@ -19,7 +19,7 @@ const (
 	ST_P = ST_U
 )
 
-type AttackType int32
+type AttackType uint32
 
 const (
 	AT_NA AttackType = 1 << (iota + 6)
@@ -33,7 +33,7 @@ const (
 	AT_HP
 )
 
-type MoveType int32
+type MoveType uint32
 
 const (
 	MT_I MoveType = 1 << (iota + 15)
@@ -79,6 +79,7 @@ const (
 	OC_le
 	OC_lt
 	OC_ge
+	OC_neg
 	OC_blnot
 	OC_bland
 	OC_blxor
@@ -188,7 +189,6 @@ const (
 	OC_hitvel_y
 	OC_roundno
 	OC_roundsexisted
-	OC_ishometeam
 	OC_parent
 	OC_root
 	OC_helper
@@ -361,6 +361,7 @@ const (
 	OC_ex_drawgame
 	OC_ex_matchover
 	OC_ex_matchno
+	OC_ex_ishometeam
 	OC_ex_tickspersecond
 )
 
@@ -489,13 +490,18 @@ func (be *BytecodeExp) appendJmp(op OpCode, addr int32) {
 	be.append(OC_int)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
-func (_ BytecodeExp) blnot(v *BytecodeValue) {
-	if v.ToB() {
-		v.v = 0
+func (_ BytecodeExp) neg(v *BytecodeValue) {
+	if v.t == VT_Bool {
+		v.SetI(-v.ToI())
 	} else {
-		v.v = 1
+		v.v *= -1
 	}
-	v.t = VT_Int
+}
+func (_ BytecodeExp) not(v *BytecodeValue) {
+	v.SetI(^v.ToI())
+}
+func (_ BytecodeExp) blnot(v *BytecodeValue) {
+	v.SetB(!v.ToB())
 }
 func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
@@ -659,6 +665,10 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_float:
 			sys.bcStack.Push(BytecodeFloat(*(*float32)(unsafe.Pointer(&be[i]))))
 			i += 4
+		case OC_neg:
+			be.neg(sys.bcStack.Top())
+		case OC_not:
+			be.not(sys.bcStack.Top())
 		case OC_blnot:
 			be.blnot(sys.bcStack.Top())
 		case OC_pow:
@@ -739,6 +749,10 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			sys.bcStack.Push(BytecodeBool(c.alive()))
 		case OC_random:
 			sys.bcStack.Push(BytecodeInt(Rand(0, 999)))
+		case OC_anim:
+			sys.bcStack.Push(BytecodeInt(c.animNo()))
+		case OC_animtime:
+			sys.bcStack.Push(BytecodeInt(c.animTime()))
 		default:
 			unimplemented()
 		}
@@ -1172,10 +1186,34 @@ type helper StateControllerBase
 const (
 	helper_helpertype byte = iota
 	helper_name
+	helper_postype
+	helper_ownpal
+	helper_size_xscale
+	helper_size_yscale
+	helper_size_ground_back
+	helper_size_ground_front
+	helper_size_air_back
+	helper_size_air_front
+	helper_size_height
+	helper_size_proj_doscale
+	helper_size_head_pos
+	helper_size_mid_pos
+	helper_size_shadowoffset
+	helper_stateno
+	helper_keyctrl
+	helper_id
+	helper_pos
+	helper_facing
+	helper_pausemovetime
+	helper_supermovetime
 )
 
 func (sc helper) Run(c *Char, ps *int32) bool {
 	var h *Char
+	pt := PT_P1
+	var f, st int32 = 0, 1
+	op := false
+	var x, y float32 = 0, 0
 	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		if h == nil {
 			h = c.newHelper()
@@ -1188,8 +1226,91 @@ func (sc helper) Run(c *Char, ps *int32) bool {
 			h.player = exp[0].evalB(c, sc.playerNo)
 		case helper_name:
 			h.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case helper_postype:
+			pt = PosType(exp[0].evalI(c, sc.playerNo))
+		case helper_ownpal:
+			op = exp[0].evalB(c, sc.playerNo)
+		case helper_size_xscale:
+			h.size.xscale = exp[0].evalF(c, sc.playerNo)
+		case helper_size_yscale:
+			h.size.yscale = exp[0].evalF(c, sc.playerNo)
+		case helper_size_ground_back:
+			h.size.ground.back = exp[0].evalI(c, sc.playerNo)
+		case helper_size_ground_front:
+			h.size.ground.front = exp[0].evalI(c, sc.playerNo)
+		case helper_size_air_back:
+			h.size.air.back = exp[0].evalI(c, sc.playerNo)
+		case helper_size_air_front:
+			h.size.air.front = exp[0].evalI(c, sc.playerNo)
+		case helper_size_height:
+			h.size.height = exp[0].evalI(c, sc.playerNo)
+		case helper_size_proj_doscale:
+			h.size.proj.doscale = exp[0].evalI(c, sc.playerNo)
+		case helper_size_head_pos:
+			h.size.head.pos[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				h.size.head.pos[1] = exp[1].evalI(c, sc.playerNo)
+			}
+		case helper_size_mid_pos:
+			h.size.mid.pos[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				h.size.mid.pos[1] = exp[1].evalI(c, sc.playerNo)
+			}
+		case helper_size_shadowoffset:
+			h.size.shadowoffset = exp[0].evalI(c, sc.playerNo)
+		case helper_stateno:
+			st = exp[0].evalI(c, sc.playerNo)
+		case helper_keyctrl:
+			h.keyctrl = exp[0].evalB(c, sc.playerNo)
+		case helper_id:
+			h.helperId = exp[0].evalI(c, sc.playerNo)
+		case helper_pos:
+			x = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c, sc.playerNo)
+			}
+		case helper_facing:
+			f = exp[0].evalI(c, sc.playerNo)
+		case helper_pausemovetime:
+			h.pauseMovetime = exp[0].evalI(c, sc.playerNo)
+		case helper_supermovetime:
+			h.superMovetime = exp[0].evalI(c, sc.playerNo)
 		}
-		unimplemented()
+		return true
+	})
+	c.helperInit(h, st, pt, x, y, f, op)
+	return false
+}
+
+type powerAdd StateControllerBase
+
+const (
+	powerAdd_value byte = iota
+)
+
+func (sc powerAdd) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case powerAdd_value:
+			c.addPower(exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type ctrlSet StateControllerBase
+
+const (
+	ctrlSet_value byte = iota
+)
+
+func (sc ctrlSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case ctrlSet_value:
+			c.setCtrl(exp[0].evalB(c, sc.playerNo))
+		}
 		return true
 	})
 	return false

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -33,6 +34,18 @@ const (
 	GSF_nokosnd
 	GSF_nokoslow
 	GSF_noko
+)
+
+type PosType int32
+
+const (
+	PT_P1 PosType = iota
+	PT_P2
+	PT_F
+	PT_B
+	PT_L
+	PT_R
+	PT_N
 )
 
 type CharData struct {
@@ -283,6 +296,181 @@ func (cm *CharMovement) init() {
 	cm.down.friction_threshold = 0.05
 }
 
+type Reaction1 int32
+
+const (
+	AT_Light Reaction1 = iota
+	AT_Medium
+	AT_Hard
+	AT_Back
+	AT_Up
+	AT_Diagup
+	AT_Unknown
+)
+
+type Reaction2 int32
+
+const (
+	R2_None Reaction2 = iota
+	R2_High
+	R2_Low
+	R2_Trip
+	R2_Unknown
+)
+
+type AiuchiType int32
+
+const (
+	AT_Hit AiuchiType = iota
+	AT_Miss
+	AT_Dodge
+)
+
+type Fall struct {
+	animtype       Reaction1
+	xvelocity      float32
+	yvelocity      float32
+	recover        int32
+	recovertime    int32
+	damage         int32
+	kill           int32
+	envshake_time  int32
+	envshake_freq  float32
+	envshake_ampl  int32
+	envshake_phase float32
+}
+
+func (f *Fall) clear() {
+	*f = Fall{animtype: AT_Unknown, xvelocity: float32(math.NaN()),
+		yvelocity: -4.5}
+}
+func (f *Fall) setDefault() {
+	*f = Fall{animtype: AT_Unknown, xvelocity: float32(math.NaN()),
+		yvelocity: -4.5, recover: 1, recovertime: 4, kill: 1, envshake_freq: 60,
+		envshake_ampl: -4, envshake_phase: float32(math.NaN())}
+}
+
+type HitDef struct {
+	attr                       uint32
+	reversal_attr              uint32
+	hitflag                    uint32
+	guardflag                  uint32
+	affectteam                 int32
+	animtype                   Reaction1
+	air_animtype               Reaction1
+	priority                   int32
+	bothhittype                AiuchiType
+	hitdamage                  int32
+	guarddamage                int32
+	pausetime                  int32
+	shaketime                  int32
+	guard_pausetime            int32
+	guard_shaketime            int32
+	sparkno                    int32
+	guard_sparkno              int32
+	sparkxy                    [2]float32
+	hitsound                   [2]int32
+	guardsound                 [2]int32
+	ground_type                Reaction2
+	air_type                   Reaction2
+	ground_slidetime           int32
+	guard_slidetime            int32
+	ground_hittime             int32
+	guard_hittime              int32
+	air_hittime                int32
+	guard_ctrltime             int32
+	airguard_ctrltime          int32
+	guard_dist                 int32
+	yaccel                     float32
+	ground_velocity            [2]float32
+	guard_velocity             float32
+	air_velocity               [2]float32
+	airguard_velocity          [2]float32
+	ground_cornerpush_veloff   float32
+	air_cornerpush_veloff      float32
+	down_cornerpush_veloff     float32
+	guard_cornerpush_veloff    float32
+	airguard_cornerpush_veloff float32
+	air_juggle                 int32
+	p1sprpriority              int32
+	p2sprpriority              int32
+	p1getp2facing              int32
+	p1facing                   int32
+	p2facing                   int32
+	p1stateno                  int32
+	p2stateno                  int32
+	p2getp1state               int32
+	forcestand                 int32
+	ground_fall                int32
+	air_fall                   int32
+	down_velocity              [2]float32
+	down_hittime               int32
+	down_bounce                int32
+	id                         int32
+	chainid                    int32
+	nochainid1                 int32
+	nochainid2                 int32
+	hitonce                    int32
+	numhits                    int32
+	hitgetpower                int32
+	guardgetpower              int32
+	hitgivepower               int32
+	guardgivepower             int32
+	palfx_time                 int32
+	palfx_mul                  [3]int32
+	palfx_add                  [3]int32
+	palfx_ampl                 [3]int32
+	palfx_cycletime            int32
+	palfx_color                int32
+	palfx_invertall            int32
+	envshake_time              int32
+	envshake_freq              float32
+	envshake_ampl              int32
+	envshake_phase             float32
+	mindist                    [2]float32
+	maxdist                    [2]float32
+	snap                       [2]float32
+	snapt                      int32
+	fall                       Fall
+	kill                       bool
+	guard_kill                 bool
+	forcenofall                bool
+	lhit                       bool
+	playerNo                   int
+}
+
+func (hd *HitDef) clear() {
+	*hd = HitDef{hitflag: uint32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
+		animtype: AT_Light, air_animtype: AT_Unknown, priority: 4,
+		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
+		hitsound: [2]int32{IErr, -1}, guardsound: [2]int32{IErr, -1},
+		ground_type: R2_High, air_type: R2_Unknown, air_hittime: 20,
+		yaccel: float32(math.NaN()), guard_velocity: float32(math.NaN()),
+		airguard_velocity: [2]float32{float32(math.NaN()),
+			float32(math.NaN())},
+		ground_cornerpush_veloff:   float32(math.NaN()),
+		air_cornerpush_veloff:      float32(math.NaN()),
+		down_cornerpush_veloff:     float32(math.NaN()),
+		guard_cornerpush_veloff:    float32(math.NaN()),
+		airguard_cornerpush_veloff: float32(math.NaN()), p1sprpriority: 1,
+		p1stateno: -1, p2stateno: -1, forcestand: IErr, air_fall: IErr,
+		down_velocity: [2]float32{float32(math.NaN()), float32(math.NaN())},
+		chainid:       -1, nochainid1: -1, nochainid2: -1, numhits: 1,
+		hitgetpower: IErr, guardgetpower: IErr, hitgivepower: IErr,
+		guardgivepower: IErr, palfx_mul: [3]int32{255, 255, 255}, palfx_color: 256,
+		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN()),
+		mindist: [2]float32{float32(math.NaN()), float32(math.NaN())},
+		maxdist: [2]float32{float32(math.NaN()), float32(math.NaN())},
+		snap:    [2]float32{float32(math.NaN()), float32(math.NaN())}, kill: true,
+		guard_kill: true, playerNo: -1}
+	hd.fall.setDefault()
+}
+func (hd *HitDef) invalidate(stateType StateType) {
+	hd.attr = hd.attr&^(uint32(AT_NA)-1) | uint32(stateType) | 0x80000000
+	hd.reversal_attr |= 0x80000000
+	hd.lhit = false
+}
+
 type CharGlobalInfo struct {
 	def              string
 	displayname      string
@@ -299,19 +487,23 @@ type CharGlobalInfo struct {
 	wakewakaLength   int
 }
 type Char struct {
-	name        string
-	cmd         []CommandList
-	key         int
-	helperIndex int
-	playerNo    int
-	keyctrl     bool
-	player      bool
-	sprpriority int32
-	juggle      int32
-	size        CharSize
-	pos         [2]float32
-	vel         [2]float32
-	standby     bool
+	name          string
+	cmd           []CommandList
+	key           int
+	helperIndex   int
+	helperId      int32
+	playerNo      int
+	keyctrl       bool
+	player        bool
+	sprpriority   int32
+	juggle        int32
+	size          CharSize
+	hitdef        HitDef
+	pos           [2]float32
+	vel           [2]float32
+	standby       bool
+	pauseMovetime int32
+	superMovetime int32
 }
 
 func newChar(n, idx int) (c *Char) {
@@ -654,4 +846,16 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 func (c *Char) newHelper() *Char {
 	unimplemented()
 	return nil
+}
+func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
+	facing int32, ownpal bool) {
+	unimplemented()
+}
+func (c *Char) animNo() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) animTime() int32 {
+	unimplemented()
+	return 0
 }

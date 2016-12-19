@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/binary"
+	"github.com/go-gl/gl/v2.1/gl"
 	"os"
 	"regexp"
 	"strings"
+	"unsafe"
 )
 
 type FntCharImage struct {
@@ -230,21 +232,25 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	return &fci.img[bank]
 }
 func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
-	pal []uint32) float32 {
+	paltex uint32) float32 {
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
 	}
 	spr := f.getCharSpr(c, bank)
-	if spr == nil {
+	if spr == nil || spr.Tex == nil {
 		return 0
 	}
-	spr.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscl*sys.widthScale, xscl*sys.widthScale, yscl*sys.heightScale, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
+	RenderMugenPal(*spr.Tex, paltex, 0, spr.Size, -x*sys.widthScale,
+		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+		yscl*sys.heightScale, 1, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+		0, 0)
 	return float32(spr.Size[0]) * xscl
 }
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
 	align int32) {
+	if len(txt) == 0 {
+		return
+	}
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl +
 		float32(sys.gameHeight-240)
@@ -260,10 +266,20 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
 	if sys.allPalFX.Time != 0 {
 		pal = sys.allPalFX.GetFxPal(pal, false)
 	}
+	gl.ActiveTexture(gl.TEXTURE1)
+	var paltex uint32
+	gl.GenTextures(1, &paltex)
+	gl.BindTexture(gl.TEXTURE_1D, paltex)
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+		unsafe.Pointer(&pal[0]))
+	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, c, pal) +
+		x += f.drawChar(x, y, xscl, yscl, bank, c, paltex) +
 			xscl*float32(f.Spacing[0])
 	}
+	gl.DeleteTextures(1, &paltex)
 }
 
 type TextSprite struct {
