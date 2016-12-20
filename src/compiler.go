@@ -196,6 +196,25 @@ func (c *Compiler) operator(in *string) error {
 	}
 	return nil
 }
+func (c *Compiler) integer2(in *string) (int32, error) {
+	istr := c.token
+	c.token = c.tokenizer(in)
+	minus := istr == "-"
+	if minus {
+		istr = c.token
+		c.token = c.tokenizer(in)
+	}
+	for _, c := range istr {
+		if c < '0' || c > '9' {
+			return 0, Error(istr + "が整数でありません")
+		}
+	}
+	i := Atoi(istr)
+	if minus {
+		i *= -1
+	}
+	return i, nil
+}
 func (c *Compiler) number(token string) BytecodeValue {
 	f, err := strconv.ParseFloat(token, 64)
 	if err != nil && f == 0 {
@@ -312,6 +331,165 @@ func (c *Compiler) kakkotojiru(in *string) error {
 	}
 	return nil
 }
+func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
+	for {
+		if c.token == "!=" {
+			not = true
+			break
+		} else if len(c.token) > 0 {
+			if c.token[len(c.token)-1] == '=' {
+				break
+			}
+		} else {
+			return false, Error("'='か'!='がありません")
+		}
+		c.token = c.tokenizer(in)
+	}
+	c.token = c.tokenizer(in)
+	return
+}
+func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
+	min, max int32, err error) {
+	switch c.token {
+	case "(":
+		minop = OC_gt
+	case "[":
+		minop = OC_ge
+	default:
+		err = Error("'['か'('がありません")
+		return
+	}
+	integer := func() (int32, error) {
+		c.token = c.tokenizer(in)
+		minus := false
+		for c.token == "-" || c.token == "+" {
+			minus = minus || c.token == "-"
+			c.token = c.tokenizer(in)
+		}
+		if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
+			return 0, Error("数字の読み込みエラーです")
+		}
+		i := Atoi(c.token)
+		if minus {
+			i *= -1
+		}
+		return i, nil
+	}
+	if min, err = integer(); err != nil {
+		return
+	}
+	i := strings.Index(*in, ",")
+	if i < 0 {
+		err = Error("','がありません")
+		return
+	}
+	*in = (*in)[i+1:]
+	if max, err = integer(); err != nil {
+		return
+	}
+	i = strings.IndexAny(*in, "])")
+	if i < 0 {
+		err = Error("']'か')'がありません")
+		return
+	}
+	if (*in)[i] == ')' {
+		maxop = OC_lt
+	} else {
+		maxop = OC_le
+	}
+	*in = (*in)[i+1:]
+	c.token = c.tokenizer(in)
+	return
+}
+func (c *Compiler) kyuushikiThroughNeo(_range bool, in *string) {
+	i := 0
+	for ; i < len(*in); i++ {
+		if (*in)[i] >= '0' && (*in)[i] <= '9' || (*in)[i] == '-' ||
+			_range && ((*in)[i] == '[' || (*in)[i] == '(') {
+			break
+		}
+	}
+	*in = (*in)[i:]
+	c.token = c.tokenizer(in)
+}
+func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
+	hissu bool) error {
+	comma := c.token == ","
+	if comma {
+		c.token = c.tokenizer(in)
+	}
+	var opc OpCode
+	switch c.token {
+	case "<":
+		opc = OC_lt
+		c.kyuushikiThroughNeo(false, in)
+	case ">":
+		opc = OC_gt
+		c.kyuushikiThroughNeo(false, in)
+	case "<=":
+		opc = OC_le
+		c.kyuushikiThroughNeo(false, in)
+	case ">=":
+		opc = OC_ge
+		c.kyuushikiThroughNeo(false, in)
+	default:
+		opc = OC_eq
+		hikaku := false
+		switch c.token {
+		case "!=":
+			opc = OC_ne
+			hikaku = true
+		case "=":
+			hikaku = true
+		default:
+			if hissu && !comma {
+				return Error("比較演算子がありません")
+			}
+		}
+		if hikaku {
+			c.kyuushikiThroughNeo(true, in)
+		}
+		if c.token == "[" || c.token == "(" {
+			minop, maxop, min, max, err := c.intRange(in)
+			if err != nil {
+				return err
+			}
+			if opc == OC_ne {
+				if minop == OC_gt {
+					minop = OC_le
+				} else {
+					minop = OC_lt
+				}
+				if maxop == OC_lt {
+					minop = OC_ge
+				} else {
+					minop = OC_gt
+				}
+			}
+			out.append(OC_dup)
+			out.appendValue(BytecodeInt(min))
+			out.append(minop)
+			out.append(OC_swap)
+			out.appendValue(BytecodeInt(max))
+			out.append(maxop)
+			if opc == OC_ne {
+				out.append(OC_blor)
+			} else {
+				out.append(OC_bland)
+			}
+			c.usiroOp = comma || hikaku
+			return nil
+		}
+	}
+	n, err := c.integer2(in)
+	if err != nil {
+		return err
+	}
+	out.appendValue(BytecodeInt(n))
+	out.append(opc)
+	c.usiroOp = true
+	return nil
+}
 func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	c.usiroOp, c.norange = true, false
@@ -325,6 +503,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	}
 	var be1, be2, be3 BytecodeExp
 	var bv1, bv2, bv3 BytecodeValue
+	var n int32
+	var be BytecodeExp
 	var err error
 	switch c.token {
 	case "-":
@@ -405,10 +585,34 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 	case "random":
 		out.append(OC_random)
+	case "roundstate":
+		out.append(OC_roundstate)
+	case "matchover":
+		out.append(OC_ex_, OC_ex_matchover)
 	case "anim":
 		out.append(OC_anim)
 	case "animtime":
 		out.append(OC_animtime)
+	case "animelem":
+		if _, err = c.kyuushiki(in); err != nil {
+			return BytecodeSF(), err
+		}
+		if c.token == "-" {
+			return BytecodeSF(), Error("マイナスが付くとエラーです")
+		}
+		if n, err = c.integer2(in); err != nil {
+			return BytecodeSF(), err
+		}
+		if n <= 0 {
+			return BytecodeSF(), Error("animelemのは0より大きくなければいけません")
+		}
+		out.appendValue(BytecodeInt(n))
+		out.append(OC_animelemtime)
+		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
+			return BytecodeSF(), err
+		}
+		out.append(OC_jsf8, OpCode(len(be)))
+		out.append(be...)
 	default:
 		println(c.token)
 		unimplemented()
@@ -1525,6 +1729,17 @@ func (c *Compiler) ctrlSet(is IniSection, sbc *StateBytecode,
 		return c.paramValue(is, sc, "value", ctrlSet_value, VT_Bool, 1, true)
 	})
 }
+func (c *Compiler) hitDefSub(is IniSection,
+	sc *StateControllerBase) error {
+	unimplemented()
+	return nil
+}
+func (c *Compiler) hitDef(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase) (StateController, error) {
+	return hitDef(*sc), c.stateSec(is, func() error {
+		return c.hitDefSub(is, sc)
+	})
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -1568,6 +1783,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 				strings.SplitN(lines[i], ";", 2)[0]))
 			if len(line) < 7 || line[0] != '[' || line[len(line)-1] != ']' ||
 				line[1:7] != "state " {
+				i--
 				break
 			}
 			i++
@@ -1610,6 +1826,8 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.powerAdd
 					case "ctrlset":
 						scf = c.ctrlSet
+					case "hitdef":
+						scf = c.hitDef
 					default:
 						println(data)
 						unimplemented()

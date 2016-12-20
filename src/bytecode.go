@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-type StateType uint32
+type StateType int32
 
 const (
 	ST_S StateType = 1 << iota
@@ -19,7 +19,7 @@ const (
 	ST_P = ST_U
 )
 
-type AttackType uint32
+type AttackType int32
 
 const (
 	AT_NA AttackType = 1 << (iota + 6)
@@ -33,7 +33,7 @@ const (
 	AT_HP
 )
 
-type MoveType uint32
+type MoveType int32
 
 const (
 	MT_I MoveType = 1 << (iota + 15)
@@ -67,6 +67,7 @@ const (
 	OC_dup
 	OC_swap
 	OC_run
+	OC_jsf8
 	OC_jmp8
 	OC_jz8
 	OC_jnz8
@@ -187,7 +188,6 @@ const (
 	OC_hitfall
 	OC_hitvel_x
 	OC_hitvel_y
-	OC_roundno
 	OC_roundsexisted
 	OC_parent
 	OC_root
@@ -361,8 +361,10 @@ const (
 	OC_ex_drawgame
 	OC_ex_matchover
 	OC_ex_matchno
+	OC_ex_roundno
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
+	OC_ex_timemod
 )
 
 type StringPool struct {
@@ -636,6 +638,16 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	orgc := c
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
+		case OC_jsf8:
+			if sys.bcStack.Top().IsSF() {
+				if be[i] == 0 {
+					i = len(be)
+				} else {
+					i += int(uint8(be[i])) + 1
+				}
+			} else {
+				i++
+			}
 		case OC_jz8, OC_jnz8:
 			if sys.bcStack.Top().ToB() == (be[i-1] == OC_jz8) {
 				i++
@@ -749,16 +761,29 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			sys.bcStack.Push(BytecodeBool(c.alive()))
 		case OC_random:
 			sys.bcStack.Push(BytecodeInt(Rand(0, 999)))
+		case OC_roundstate:
+			sys.bcStack.Push(BytecodeInt(c.roundState()))
 		case OC_anim:
 			sys.bcStack.Push(BytecodeInt(c.animNo()))
 		case OC_animtime:
 			sys.bcStack.Push(BytecodeInt(c.animTime()))
+		case OC_animelemtime:
+			sys.bcStack.Push(BytecodeInt(c.animElemTime(sys.bcStack.Pop().ToI())))
+		case OC_ex_:
+			be.run_ex(c, scpn, &i)
 		default:
 			unimplemented()
 		}
 		c = orgc
 	}
 	return sys.bcStack.Pop()
+}
+func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
+	(*i)++
+	switch be[*i-1] {
+	case OC_ex_matchover:
+		sys.bcStack.Push(BytecodeBool(sys.matchOver()))
+	}
 }
 func (be BytecodeExp) evalF(c *Char, scpn int) float32 {
 	return be.run(c, scpn).ToF()
@@ -1311,6 +1336,23 @@ func (sc ctrlSet) Run(c *Char, ps *int32) bool {
 		case ctrlSet_value:
 			c.setCtrl(exp[0].evalB(c, sc.playerNo))
 		}
+		return true
+	})
+	return false
+}
+
+type hitDef StateControllerBase
+
+const (
+	hitDef_ byte = iota
+)
+
+func (sc hitDef) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitDef_:
+		}
+		unimplemented()
 		return true
 	})
 	return false

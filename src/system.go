@@ -33,7 +33,8 @@ var sys = System{
 	listenPort:       "7500",
 	loader:           *newLoader(),
 	numSimul:         [2]int{2, 2},
-	numTurns:         [2]int{2, 2}}
+	numTurns:         [2]int{2, 2},
+	afterImageMax:    8}
 
 type TeamMode int32
 
@@ -80,6 +81,7 @@ type System struct {
 	inputRemap                  [MaxSimul * 2]int
 	listenPort                  string
 	round                       int32
+	matchWins                   [2]int32
 	wins                        [2]int32
 	rexisted                    [2]int32
 	draws                       int32
@@ -95,6 +97,7 @@ type System struct {
 	stringPool                  [MaxSimul * 2]StringPool
 	bcStack                     BytecodeStack
 	specialFlag                 GlobalSpecialFlag
+	afterImageMax               int
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -189,6 +192,9 @@ func (s *System) synchronize() error {
 		return s.netInput.Synchronize()
 	}
 	return nil
+}
+func (s *System) matchOver() bool {
+	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
 }
 
 type SelectChar struct {

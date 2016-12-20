@@ -79,7 +79,7 @@ func IsFinite(f float32) bool {
 func Atoi(str string) int32 {
 	n := int32(0)
 	str = strings.TrimSpace(str)
-	if len(str) >= 0 {
+	if len(str) > 0 {
 		var a string
 		if str[0] == '-' || str[0] == '+' {
 			a = str[1:]

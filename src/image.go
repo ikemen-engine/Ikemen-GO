@@ -28,8 +28,16 @@ func NewTexture() (t *Texture) {
 }
 
 type PalFX struct {
-	Time  int32
-	Remap []int
+	Time       int32
+	Remap      []int
+	Invertall  bool
+	negType    bool
+	enable     bool
+	eInvertall bool
+	enegType   bool
+	eAdd       [3]int32
+	eMul       [3]int32
+	eColor     float32
 }
 
 func NewPalFX() *PalFX { return &PalFX{} }

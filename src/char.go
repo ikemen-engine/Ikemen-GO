@@ -296,26 +296,26 @@ func (cm *CharMovement) init() {
 	cm.down.friction_threshold = 0.05
 }
 
-type Reaction1 int32
+type Reaction int32
 
 const (
-	AT_Light Reaction1 = iota
-	AT_Medium
-	AT_Hard
-	AT_Back
-	AT_Up
-	AT_Diagup
-	AT_Unknown
+	RA_Light Reaction = iota
+	RA_Medium
+	RA_Hard
+	RA_Back
+	RA_Up
+	RA_Diagup
+	RA_Unknown
 )
 
-type Reaction2 int32
+type HitType int32
 
 const (
-	R2_None Reaction2 = iota
-	R2_High
-	R2_Low
-	R2_Trip
-	R2_Unknown
+	HT_None HitType = iota
+	HT_High
+	HT_Low
+	HT_Trip
+	HT_Unknown
 )
 
 type AiuchiType int32
@@ -327,7 +327,7 @@ const (
 )
 
 type Fall struct {
-	animtype       Reaction1
+	animtype       Reaction
 	xvelocity      float32
 	yvelocity      float32
 	recover        int32
@@ -341,23 +341,23 @@ type Fall struct {
 }
 
 func (f *Fall) clear() {
-	*f = Fall{animtype: AT_Unknown, xvelocity: float32(math.NaN()),
+	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
 		yvelocity: -4.5}
 }
 func (f *Fall) setDefault() {
-	*f = Fall{animtype: AT_Unknown, xvelocity: float32(math.NaN()),
+	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
 		yvelocity: -4.5, recover: 1, recovertime: 4, kill: 1, envshake_freq: 60,
 		envshake_ampl: -4, envshake_phase: float32(math.NaN())}
 }
 
 type HitDef struct {
-	attr                       uint32
-	reversal_attr              uint32
-	hitflag                    uint32
-	guardflag                  uint32
+	attr                       int32
+	reversal_attr              int32
+	hitflag                    int32
+	guardflag                  int32
 	affectteam                 int32
-	animtype                   Reaction1
-	air_animtype               Reaction1
+	animtype                   Reaction
+	air_animtype               Reaction
 	priority                   int32
 	bothhittype                AiuchiType
 	hitdamage                  int32
@@ -371,8 +371,8 @@ type HitDef struct {
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
 	guardsound                 [2]int32
-	ground_type                Reaction2
-	air_type                   Reaction2
+	ground_type                HitType
+	air_type                   HitType
 	ground_slidetime           int32
 	guard_slidetime            int32
 	ground_hittime             int32
@@ -432,19 +432,19 @@ type HitDef struct {
 	snap                       [2]float32
 	snapt                      int32
 	fall                       Fall
+	playerNo                   int
 	kill                       bool
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
-	playerNo                   int
 }
 
 func (hd *HitDef) clear() {
-	*hd = HitDef{hitflag: uint32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
-		animtype: AT_Light, air_animtype: AT_Unknown, priority: 4,
+	*hd = HitDef{hitflag: int32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
+		animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
 		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
 		hitsound: [2]int32{IErr, -1}, guardsound: [2]int32{IErr, -1},
-		ground_type: R2_High, air_type: R2_Unknown, air_hittime: 20,
+		ground_type: HT_High, air_type: HT_Unknown, air_hittime: 20,
 		yaccel: float32(math.NaN()), guard_velocity: float32(math.NaN()),
 		airguard_velocity: [2]float32{float32(math.NaN()),
 			float32(math.NaN())},
@@ -466,9 +466,247 @@ func (hd *HitDef) clear() {
 	hd.fall.setDefault()
 }
 func (hd *HitDef) invalidate(stateType StateType) {
-	hd.attr = hd.attr&^(uint32(AT_NA)-1) | uint32(stateType) | 0x80000000
-	hd.reversal_attr |= 0x80000000
+	hd.attr = hd.attr&^(int32(AT_NA)-1) | int32(stateType) | -1<<31
+	hd.reversal_attr |= -1 << 31
 	hd.lhit = false
+}
+
+type GetHitVar struct {
+	hitBy          [][2]int32
+	hit1           [2]int32
+	hit2           [2]int32
+	attr           int32
+	_type          HitType
+	airanimtype    Reaction
+	groundanimtype Reaction
+	airtype        HitType
+	groundtype     HitType
+	damage         int32
+	hitcount       int32
+	fallcount      int32
+	hitshaketime   int32
+	hittime        int32
+	slidetime      int32
+	ctrltime       int32
+	xvel           float32
+	yvel           float32
+	yaccel         float32
+	hitid          int32
+	xoff           float32
+	yoff           float32
+	fall           Fall
+	playerNo       int
+	fallf          bool
+	guarded        bool
+	p2getp1state   bool
+	forcestand     bool
+}
+
+func (ghv *GetHitVar) clear() {
+	*ghv = GetHitVar{_type: -1, hittime: -1, yaccel: float32(math.NaN()),
+		xoff: ghv.xoff, yoff: ghv.yoff, hitid: -1, playerNo: -1}
+	ghv.fall.clear()
+}
+func (ghv *GetHitVar) clearOff() {
+	ghv.xoff, ghv.yoff = 0, 0
+}
+func (ghv GetHitVar) getYaccel() float32 {
+	if math.IsNaN(float64(ghv.yaccel)) {
+		return 0.35
+	}
+	return ghv.yaccel
+}
+func (ghv GetHitVar) idMatch(id int32) bool {
+	for _, v := range ghv.hitBy {
+		if v[0] == id {
+			return true
+		}
+	}
+	return false
+}
+func (ghv GetHitVar) getJuggle(id, defaultJuggle int32) int32 {
+	for _, v := range ghv.hitBy {
+		if v[0] == id {
+			return v[1]
+		}
+	}
+	return defaultJuggle
+}
+func (ghv *GetHitVar) dropId(id int32) {
+	for i, v := range ghv.hitBy {
+		if v[0] == id {
+			ghv.hitBy = append(ghv.hitBy[:i], ghv.hitBy[i+1:]...)
+			break
+		}
+	}
+}
+func (ghv *GetHitVar) addId(id, juggle int32) {
+	ghv.dropId(id)
+	ghv.hitBy = append(ghv.hitBy, [2]int32{id, juggle})
+}
+
+type HitOverride struct {
+	attr     int32
+	stateno  int32
+	time     int32
+	playerNo int
+	forceair bool
+}
+
+func (ho *HitOverride) clear() {
+	*ho = HitOverride{stateno: -1, playerNo: -1}
+}
+
+type aimgImage struct {
+	anim           Animation
+	pos, scl, ascl [2]float32
+	angle          float32
+	angleset, old  bool
+}
+
+type AfterImage struct {
+	time       int32
+	length     int32
+	postbright [3]int32
+	add        [3]int32
+	mul        [3]float32
+	timegap    int32
+	framegap   int32
+	alpha      [2]int32
+	palfx      []PalFX
+	imgs       [64]aimgImage
+	imgidx     int
+	restgap    int32
+	reccount   int32
+}
+
+func newAfterImage() *AfterImage {
+	ai := &AfterImage{palfx: make([]PalFX, sys.afterImageMax)}
+	for i := range ai.palfx {
+		ai.palfx[i].enable, ai.palfx[i].negType = true, true
+	}
+	ai.clear()
+	ai.timegap = 0
+	return ai
+}
+func (ai *AfterImage) clear() {
+	ai.time = 0
+	ai.length = 20
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eColor = 1
+		ai.palfx[0].eInvertall = false
+		ai.palfx[0].eAdd = [3]int32{30, 30, 30}
+		ai.palfx[0].eMul = [3]int32{120, 120, 220}
+	}
+	ai.postbright = [3]int32{0, 0, 0}
+	ai.add = [3]int32{10, 10, 25}
+	ai.mul = [3]float32{0.65, 0.65, 0.75}
+	ai.timegap = 1
+	ai.framegap = 6
+	ai.alpha = [2]int32{-1, 0}
+	ai.imgidx = 0
+	ai.restgap = 0
+	ai.reccount = 0
+}
+func (ai *AfterImage) setPalColor(color int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eColor = float32(Max(0, Min(256, color))) / 256
+	}
+}
+func (ai *AfterImage) setPalInvertall(invertall bool) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eInvertall = invertall
+	}
+}
+func (ai *AfterImage) setPalBrightR(addr int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eAdd[0] = addr
+	}
+}
+func (ai *AfterImage) setPalBrightG(addg int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eAdd[1] = addg
+	}
+}
+func (ai *AfterImage) setPalBrightB(addb int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eAdd[2] = addb
+	}
+}
+func (ai *AfterImage) setPalContrastR(mulr int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eMul[0] = mulr
+	}
+}
+func (ai *AfterImage) setPalContrastG(mulg int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eMul[1] = mulg
+	}
+}
+func (ai *AfterImage) setPalContrastB(mulb int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eMul[2] = mulb
+	}
+}
+func (ai *AfterImage) setupPalFX() {
+	pb := ai.postbright
+	for i := 1; i < len(ai.palfx); i++ {
+		ai.palfx[i].eColor = ai.palfx[i-1].eColor
+		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
+		ai.palfx[i].eAdd[0] = ai.palfx[i-1].eAdd[0] + pb[0]
+		ai.palfx[i].eAdd[1] = ai.palfx[i-1].eAdd[1] + pb[1]
+		ai.palfx[i].eAdd[2] = ai.palfx[i-1].eAdd[2] + pb[2]
+		pb = [3]int32{0, 0, 0}
+		ai.palfx[i].eMul[0] = int32(float32(ai.palfx[i-1].eMul[0]) * ai.mul[0])
+		ai.palfx[i].eMul[1] = int32(float32(ai.palfx[i-1].eMul[1]) * ai.mul[1])
+		ai.palfx[i].eMul[2] = int32(float32(ai.palfx[i-1].eMul[2]) * ai.mul[2])
+	}
+}
+
+type Projectile struct {
+	hitdef        HitDef
+	id            int32
+	anim          int32
+	hitanim       int32
+	remanim       int32
+	cancelanim    int32
+	scale         [2]float32
+	clsnscale     [2]float32
+	remove        bool
+	removetime    int32
+	velocity      [2]float32
+	remvelocity   [2]float32
+	accel         [2]float32
+	velmul        [2]float32
+	hits          int32
+	misstime      int32
+	priority      int32
+	prioritypoint int32
+	sprpriority   int32
+	edgebound     int32
+	stagebound    int32
+	heightbound   [2]int32
+	pos           [2]float32
+	facing        int32
+	shadow        [3]int32
+	supermovetime int32
+	pausemovetime int32
+	ani           *Animation
+	timemiss      int32
+	hitpause      int32
+	oldPos        [2]float32
+	newPos        [2]float32
+	aimg          AfterImage
+	palfx         *PalFX
+}
+
+func (p *Projectile) clear() {
+	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
+		scale: [2]float32{1, 1}, clsnscale: [2]float32{1, 1}, remove: true,
+		removetime: -1, velmul: [2]float32{1, 1}, hits: 1, priority: 1,
+		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
+		heightbound: [2]int32{-240, 1}, facing: 1}
+	p.hitdef.clear()
 }
 
 type CharGlobalInfo struct {
@@ -851,11 +1089,19 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	facing int32, ownpal bool) {
 	unimplemented()
 }
+func (c *Char) roundState() int32 {
+	unimplemented()
+	return 0
+}
 func (c *Char) animNo() int32 {
 	unimplemented()
 	return 0
 }
 func (c *Char) animTime() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) animElemTime(e int32) int32 {
 	unimplemented()
 	return 0
 }
