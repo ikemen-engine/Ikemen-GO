@@ -1,5 +1,3 @@
 #!/bin/sh
-GOPATH=$PWD/go
-export GOPATH
+export GOPATH=$PWD/go
 GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o ikemen ./src
-go clean ./src

@@ -634,7 +634,6 @@ func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() || v2.ToB())
 }
 func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
-	sys.bcStack.Clear()
 	orgc := c
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
@@ -667,6 +666,69 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			}
 			fallthrough
 		case OC_jmp:
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_parent:
+			if c = c.parent(); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_root:
+			if c = c.root(); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_helper:
+			if c = c.helper(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_target:
+			if c = c.target(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_partner:
+			if c = c.partner(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_enemy:
+			if c = c.enemy(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_enemynear:
+			if c = c.enemynear(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_playerid:
+			if c = c.playerid(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_p2:
+			if c = c.p2(); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_int8:
 			sys.bcStack.Push(BytecodeInt(int32(int8(be[i]))))
@@ -768,10 +830,13 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_animtime:
 			sys.bcStack.Push(BytecodeInt(c.animTime()))
 		case OC_animelemtime:
-			sys.bcStack.Push(BytecodeInt(c.animElemTime(sys.bcStack.Pop().ToI())))
+			*sys.bcStack.Top() = BytecodeInt(c.animElemTime(sys.bcStack.Top().ToI()))
+		case OC_stateno:
+			sys.bcStack.Push(BytecodeInt(c.stateNo()))
 		case OC_ex_:
 			be.run_ex(c, scpn, &i)
 		default:
+			println(be[i-1])
 			unimplemented()
 		}
 		c = orgc
@@ -783,6 +848,9 @@ func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
 	switch be[*i-1] {
 	case OC_ex_matchover:
 		sys.bcStack.Push(BytecodeBool(sys.matchOver()))
+	default:
+		println(be[*i-1])
+		unimplemented()
 	}
 }
 func (be BytecodeExp) evalF(c *Char, scpn int) float32 {
@@ -865,6 +933,9 @@ func (scb StateControllerBase) run(c *Char, ps *int32,
 		}
 	}
 	*ps = scb.persistent
+	if len(sys.bcStack) != 0 {
+		unimplemented()
+	}
 	return true
 }
 
@@ -1341,6 +1412,399 @@ func (sc ctrlSet) Run(c *Char, ps *int32) bool {
 	return false
 }
 
+type explod StateControllerBase
+
+const (
+	explod_ownpal byte = iota
+	explod_remappal
+	explod_id
+	explod_facing
+	explod_vfacing
+	explod_pos
+	explod_random
+	explod_postype
+	explod_velocity
+	explod_accel
+	explod_scale
+	explod_bindtime
+	explod_removetime
+	explod_supermove
+	explod_supermovetime
+	explod_pausemovetime
+	explod_sprpriority
+	explod_ontop
+	explod_shadow
+	explod_removeongethit
+	explod_trans
+	explod_anim
+	explod_angle
+	explod_yangle
+	explod_xangle
+	explod_ignorehitpause
+)
+
+func (sc explod) Run(c *Char, ps *int32) bool {
+	var e *Explod
+	var i int
+	rp := [2]int32{-1, 0}
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if e == nil {
+			e, i = c.newExplod()
+			if e == nil {
+				return false
+			}
+		}
+		switch id {
+		case explod_ownpal:
+			e.ownpal = exp[0].evalB(c, sc.playerNo)
+		case explod_remappal:
+			rp[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c, sc.playerNo)
+			}
+		case explod_id:
+			e.id = Max(0, exp[0].evalI(c, sc.playerNo))
+		case explod_facing:
+			if exp[0].evalI(c, sc.playerNo) < 0 {
+				e.relativef = -1
+			} else {
+				e.relativef = 1
+			}
+		case explod_vfacing:
+			if exp[0].evalI(c, sc.playerNo) < 0 {
+				e.vfacing = -1
+			} else {
+				e.vfacing = 1
+			}
+		case explod_pos:
+			e.offset[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.offset[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case explod_random:
+			rndx := exp[0].evalF(c, sc.playerNo)
+			e.offset[0] += RandF(-rndx, rndx)
+			if len(exp) > 1 {
+				rndy := exp[1].evalF(c, sc.playerNo)
+				e.offset[1] += RandF(-rndy, rndy)
+			}
+		case explod_postype:
+			e.postype = PosType(exp[0].evalI(c, sc.playerNo))
+			e.setPos(c)
+		case explod_velocity:
+			e.velocity[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.velocity[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case explod_accel:
+			e.accel[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.accel[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case explod_scale:
+			e.scale[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.scale[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case explod_bindtime:
+			e.bindtime = exp[0].evalI(c, sc.playerNo)
+		case explod_removetime:
+			e.removetime = exp[0].evalI(c, sc.playerNo)
+		case explod_supermove:
+			if exp[0].evalB(c, sc.playerNo) {
+				e.supermovetime = -1
+			} else {
+				e.supermovetime = 0
+			}
+		case explod_supermovetime:
+			e.supermovetime = exp[0].evalI(c, sc.playerNo)
+		case explod_pausemovetime:
+			e.pausemovetime = exp[0].evalI(c, sc.playerNo)
+		case explod_sprpriority:
+			e.sprpriority = exp[0].evalI(c, sc.playerNo)
+		case explod_ontop:
+			e.ontop = exp[0].evalB(c, sc.playerNo)
+			if e.ontop {
+				e.sprpriority = 0
+			}
+		case explod_shadow:
+			e.shadow[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.shadow[1] = exp[1].evalI(c, sc.playerNo)
+				if len(exp) > 2 {
+					e.shadow[2] = exp[2].evalI(c, sc.playerNo)
+				}
+			}
+		case explod_removeongethit:
+			e.removeongethit = exp[0].evalB(c, sc.playerNo)
+		case explod_trans:
+			e.alpha = [2]int32{exp[0].evalI(c, sc.playerNo),
+				exp[1].evalI(c, sc.playerNo)}
+			if len(exp) > 2 {
+				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
+				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
+			}
+		case explod_anim:
+			e.anim = c.getAnim(exp[1].evalI(c, sc.playerNo),
+				exp[0].evalB(c, sc.playerNo))
+		case explod_angle:
+			e.angle = exp[0].evalF(c, sc.playerNo)
+		case explod_yangle:
+			exp[0].run(c, sc.playerNo)
+		case explod_xangle:
+			exp[0].run(c, sc.playerNo)
+		case explod_ignorehitpause:
+			e.ignorehitpause = exp[0].evalB(c, sc.playerNo)
+		}
+		return true
+	})
+	c.insertExplodEx(i, rp[0], rp[1])
+	return false
+}
+
+type modifyExplod explod
+
+func (sc modifyExplod) Run(c *Char, ps *int32) bool {
+	eid := int32(-1)
+	var expls []*Explod
+	rp := [2]int32{-1, 0}
+	eachExpl := func(f func(e *Explod)) {
+		for _, e := range expls {
+			f(e)
+		}
+	}
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case explod_remappal:
+			rp[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c, sc.playerNo)
+			}
+		case explod_id:
+			eid = exp[0].evalI(c, sc.playerNo)
+		default:
+			if len(expls) == 0 {
+				expls = c.getExplods(eid)
+				if len(expls) == 0 {
+					return false
+				}
+				eachExpl(func(e *Explod) {
+					if e.ownpal {
+						c.remapPalSub(e.palfx, 1, 1, rp[0], rp[1])
+					}
+				})
+			}
+			switch id {
+			case explod_facing:
+				if exp[0].evalI(c, sc.playerNo) < 0 {
+					eachExpl(func(e *Explod) { e.relativef = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.relativef = 1 })
+				}
+			case explod_vfacing:
+				if exp[0].evalI(c, sc.playerNo) < 0 {
+					eachExpl(func(e *Explod) { e.vfacing = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.vfacing = 1 })
+				}
+			case explod_pos:
+				x := exp[0].evalF(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.offset[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c, sc.playerNo)
+					eachExpl(func(e *Explod) { e.offset[1] = y })
+				}
+			case explod_random:
+				rndx := exp[0].evalF(c, sc.playerNo)
+				rndx = RandF(-rndx, rndx)
+				eachExpl(func(e *Explod) { e.offset[0] += rndx })
+				if len(exp) > 1 {
+					rndy := exp[1].evalF(c, sc.playerNo)
+					rndy = RandF(-rndy, rndy)
+					eachExpl(func(e *Explod) { e.offset[1] += rndy })
+				}
+			case explod_postype:
+				pt := PosType(exp[0].evalI(c, sc.playerNo))
+				eachExpl(func(e *Explod) {
+					e.postype = pt
+					e.setPos(c)
+				})
+			case explod_velocity:
+				x := exp[0].evalF(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.velocity[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c, sc.playerNo)
+					eachExpl(func(e *Explod) { e.velocity[1] = y })
+				}
+			case explod_accel:
+				x := exp[0].evalF(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.accel[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c, sc.playerNo)
+					eachExpl(func(e *Explod) { e.accel[1] = y })
+				}
+			case explod_scale:
+				x := exp[0].evalF(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.scale[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c, sc.playerNo)
+					eachExpl(func(e *Explod) { e.scale[1] = y })
+				}
+			case explod_bindtime:
+				t := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.bindtime = t })
+			case explod_removetime:
+				t := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.removetime = t })
+			case explod_supermove:
+				if exp[0].evalB(c, sc.playerNo) {
+					eachExpl(func(e *Explod) { e.supermovetime = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.supermovetime = 0 })
+				}
+			case explod_supermovetime:
+				t := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.supermovetime = t })
+			case explod_pausemovetime:
+				t := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.pausemovetime = t })
+			case explod_sprpriority:
+				t := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.sprpriority = t })
+			case explod_ontop:
+				t := exp[0].evalB(c, sc.playerNo)
+				eachExpl(func(e *Explod) {
+					e.ontop = t
+					if e.ontop {
+						e.sprpriority = 0
+					}
+				})
+			case explod_shadow:
+				r := exp[0].evalI(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.shadow[0] = r })
+				if len(exp) > 1 {
+					g := exp[1].evalI(c, sc.playerNo)
+					eachExpl(func(e *Explod) { e.shadow[1] = g })
+					if len(exp) > 2 {
+						b := exp[2].evalI(c, sc.playerNo)
+						eachExpl(func(e *Explod) { e.shadow[2] = b })
+					}
+				}
+			case explod_removeongethit:
+				t := exp[0].evalB(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.removeongethit = t })
+			case explod_trans:
+				s, d := exp[0].evalI(c, sc.playerNo), exp[1].evalI(c, sc.playerNo)
+				if len(exp) > 2 {
+					s = Max(0, Min(255, s))
+					d = Max(0, Min(255, d))
+				}
+				eachExpl(func(e *Explod) { e.alpha = [2]int32{s, d} })
+			case explod_angle:
+				a := exp[0].evalF(c, sc.playerNo)
+				eachExpl(func(e *Explod) { e.angle = a })
+			case explod_yangle:
+				exp[0].run(c, sc.playerNo)
+			case explod_xangle:
+				exp[0].run(c, sc.playerNo)
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type posSet StateControllerBase
+
+const (
+	posSet_x byte = iota
+	posSet_y
+	posSet_z
+)
+
+func (sc posSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posSet_x:
+			c.setX(exp[0].evalF(c, sc.playerNo))
+		case posSet_y:
+			c.setY(exp[0].evalF(c, sc.playerNo))
+		case posSet_z:
+			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
+type posAdd posSet
+
+func (sc posAdd) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posSet_x:
+			c.addX(exp[0].evalF(c, sc.playerNo))
+		case posSet_y:
+			c.addY(exp[0].evalF(c, sc.playerNo))
+		case posSet_z:
+			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
+type velSet posSet
+
+func (sc velSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posSet_x:
+			c.setXV(exp[0].evalF(c, sc.playerNo))
+		case posSet_y:
+			c.setYV(exp[0].evalF(c, sc.playerNo))
+		case posSet_z:
+			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
+type velAdd posSet
+
+func (sc velAdd) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posSet_x:
+			c.addXV(exp[0].evalF(c, sc.playerNo))
+		case posSet_y:
+			c.addYV(exp[0].evalF(c, sc.playerNo))
+		case posSet_z:
+			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
+type velMul posSet
+
+func (sc velMul) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posSet_x:
+			c.mulXV(exp[0].evalF(c, sc.playerNo))
+		case posSet_y:
+			c.mulYV(exp[0].evalF(c, sc.playerNo))
+		case posSet_z:
+			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
 type hitDef StateControllerBase
 
 const (
@@ -1352,9 +1816,9 @@ func (sc hitDef) Run(c *Char, ps *int32) bool {
 		switch id {
 		case hitDef_:
 		}
-		unimplemented()
 		return true
 	})
+	unimplemented()
 	return false
 }
 

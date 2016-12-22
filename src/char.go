@@ -663,6 +663,47 @@ func (ai *AfterImage) setupPalFX() {
 	}
 }
 
+type Explod struct {
+	id             int32
+	bindtime       int32
+	scale          [2]float32
+	time           int32
+	removeongethit bool
+	removetime     int32
+	velocity       [2]float32
+	accel          [2]float32
+	sprpriority    int32
+	postype        PosType
+	offset         [2]float32
+	relativef      int32
+	pos            [2]float32
+	facing         int32
+	vfacing        int32
+	shadow         [3]int32
+	supermovetime  int32
+	pausemovetime  int32
+	anim           *Animation
+	ontop          bool
+	alpha          [2]int32
+	ownpal         bool
+	playerId       int32
+	bindId         int32
+	ignorehitpause bool
+	angle          float32
+	oldPos         [2]float32
+	newPos         [2]float32
+	palfx          *PalFX
+}
+
+func (e *Explod) clear() {
+	*e = Explod{id: IErr, scale: [2]float32{1, 1}, removetime: -2,
+		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1,
+		alpha: [2]int32{-1, 0}, playerId: -1, bindId: -1, ignorehitpause: true}
+}
+func (e *Explod) setPos(c *Char) {
+	unimplemented()
+}
+
 type Projectile struct {
 	hitdef        HitDef
 	id            int32
@@ -738,6 +779,8 @@ type Char struct {
 	size          CharSize
 	hitdef        HitDef
 	pos           [2]float32
+	drawPos       [2]float32
+	oldPos        [2]float32
 	vel           [2]float32
 	standby       bool
 	pauseMovetime int32
@@ -1102,6 +1145,95 @@ func (c *Char) animTime() int32 {
 	return 0
 }
 func (c *Char) animElemTime(e int32) int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) newExplod() (*Explod, int) {
+	unimplemented()
+	return nil, 0
+}
+func (c *Char) getExplods(id int32) []*Explod {
+	unimplemented()
+	return nil
+}
+func (c *Char) remapPalSub(pfx *PalFX, sg, sn, dg, dn int32) {
+	unimplemented()
+}
+func (c *Char) insertExplodEx(i int, rpg, rpn int32) {
+	unimplemented()
+}
+func (c *Char) getAnim(n int32, ffx bool) *Animation {
+	unimplemented()
+	return nil
+}
+func (c *Char) setPosX(x float32) {
+	if c.pos[0] != x {
+		c.pos[0] = x
+		unimplemented()
+	}
+}
+func (c *Char) setPosY(y float32) {
+	c.pos[1] = y
+}
+func (c *Char) setX(x float32) {
+	c.oldPos[0], c.drawPos[0] = x, x
+	c.setPosX(x)
+}
+func (c *Char) setY(y float32) {
+	c.oldPos[1], c.drawPos[1] = y, y
+	c.setPosY(y)
+}
+func (c *Char) addX(x float32) {
+	c.setX(c.pos[0] + x)
+}
+func (c *Char) addY(y float32) {
+	c.setY(c.pos[1] + y)
+}
+func (c *Char) addXV(xv float32) {
+	c.vel[0] += xv
+}
+func (c *Char) addYV(yv float32) {
+	c.vel[1] += yv
+}
+func (c *Char) mulXV(xv float32) {
+	c.vel[0] *= xv
+}
+func (c *Char) mulYV(yv float32) {
+	c.vel[1] *= yv
+}
+func (c *Char) parent() *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) root() *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) helper(id int32) *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) target(id int32) *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) enemy(n int32) *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) enemynear(n int32) *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) playerid(id int32) *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) p2() *Char {
+	unimplemented()
+	return nil
+}
+func (c *Char) stateNo() int32 {
 	unimplemented()
 	return 0
 }

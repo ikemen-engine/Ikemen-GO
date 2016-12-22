@@ -1,6 +1,5 @@
 #!/bin/sh
-GOPATH=$PWD/go
-export GOPATH
+export GOPATH=$PWD/go
 go get -u github.com/yuin/gopher-lua
 go get -u github.com/go-gl/glfw/v3.2/glfw
 go get -u github.com/go-gl/gl/v2.1/gl

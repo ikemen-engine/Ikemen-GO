@@ -505,8 +505,75 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 	var bv1, bv2, bv3 BytecodeValue
 	var n int32
 	var be BytecodeExp
+	var opc OpCode
 	var err error
 	switch c.token {
+	case "root", "parent", "helper", "target", "partner",
+		"enemy", "enemynear", "playerid":
+		switch c.token {
+		case "parent":
+			opc = OC_parent
+			c.token = c.tokenizer(in)
+		case "root":
+			opc = OC_root
+			c.token = c.tokenizer(in)
+		default:
+			switch c.token {
+			case "helper":
+				opc = OC_helper
+			case "target":
+				opc = OC_target
+			case "partner":
+				opc = OC_partner
+			case "enemy":
+				opc = OC_enemy
+			case "enemynear":
+				opc = OC_enemynear
+			case "playerid":
+				opc = OC_playerid
+			}
+			c.token = c.tokenizer(in)
+			if c.token == "(" {
+				c.token = c.tokenizer(in)
+				if bv1, err = c.expBoolOr(out, in); err != nil {
+					return BytecodeSF(), err
+				}
+				if err := c.kakkotojiru(in); err != nil {
+					return BytecodeSF(), err
+				}
+				c.token = c.tokenizer(in)
+				out.appendValue(bv1)
+			} else {
+				switch opc {
+				case OC_helper, OC_target:
+					out.appendValue(BytecodeInt(-1))
+				case OC_partner, OC_enemy, OC_enemynear:
+					out.appendValue(BytecodeInt(0))
+				case OC_playerid:
+					return BytecodeSF(), Error("playeridの次に'('がありません")
+				}
+			}
+		}
+		if c.token != "," {
+			return BytecodeSF(), Error(",がありません")
+		}
+		c.token = c.tokenizer(in)
+		bv1, err = c.expValue(&be1, in)
+		if err != nil {
+			return BytecodeSF(), err
+		}
+		be1.appendValue(bv1)
+		out.appendJmp(opc, int32(len(be1)))
+		out.append(be1...)
+		return BytecodeSF(), nil
+	case "(":
+		c.token = c.tokenizer(in)
+		if bv, err = c.expBoolOr(&be1, in); err != nil {
+			return BytecodeSF(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return BytecodeSF(), err
+		}
 	case "-":
 		if len(*in) > 0 && (((*in)[0] >= '0' && (*in)[0] <= '9') || (*in)[0] == '.') {
 			c.token += c.tokenizer(in)
@@ -613,6 +680,21 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 		out.append(OC_jsf8, OpCode(len(be)))
 		out.append(be...)
+	case "animelemtime":
+		if c.tokenizer(in) != "(" {
+			return BytecodeSF(), Error(c.token + "の次に'('がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv1, err = c.expBoolOr(out, in); err != nil {
+			return BytecodeSF(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return BytecodeSF(), err
+		}
+		out.appendValue(bv1)
+		out.append(OC_animelemtime)
+	case "stateno":
+		out.append(OC_stateno)
 	default:
 		println(c.token)
 		unimplemented()
@@ -1040,7 +1122,7 @@ func (c *Compiler) fullExpression(in *string, vt ValueType) (BytecodeExp,
 	return be, nil
 }
 func (c *Compiler) parseSection(lines []string, i *int,
-	sctrl func(name, data string) error) (IniSection, error) {
+	sctrl func(name, data string) error) (IniSection, bool, error) {
 	is := NewIniSection()
 	_type, persistent, ignorehitpause := true, true, true
 	for ; *i < len(lines); (*i)++ {
@@ -1075,7 +1157,7 @@ func (c *Compiler) parseSection(lines []string, i *int,
 				if sys.ignoreMostErrors {
 					continue
 				}
-				return nil, Error(name + "が重複しています")
+				return nil, false, Error(name + "が重複しています")
 			}
 			if sctrl != nil {
 				switch name {
@@ -1101,14 +1183,14 @@ func (c *Compiler) parseSection(lines []string, i *int,
 					}
 				}
 				if err := sctrl(name, data); err != nil {
-					return nil, err
+					return nil, false, err
 				}
 			} else {
 				is[name] = data
 			}
 		}
 	}
-	return is, nil
+	return is, !ignorehitpause, nil
 }
 func (c *Compiler) stateSec(is IniSection, f func() error) error {
 	if err := f(); err != nil {
@@ -1139,8 +1221,8 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	}
 	return nil
 }
-func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
-	data string, vt ValueType, numArg int, topbe ...BytecodeExp) error {
+func (c *Compiler) exprs(data string, vt ValueType,
+	numArg int) ([]BytecodeExp, error) {
 	bes := []BytecodeExp{}
 	for n := 1; n <= numArg; n++ {
 		var be BytecodeExp
@@ -1151,12 +1233,20 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 			be, err = c.fullExpression(&data, vt)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		bes = append(bes, be)
 		if c.token != "," {
 			break
 		}
+	}
+	return bes, nil
+}
+func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
+	data string, vt ValueType, numArg int, topbe ...BytecodeExp) error {
+	bes, err := c.exprs(data, vt, numArg)
+	if err != nil {
+		return err
 	}
 	sc.add(id, append(topbe, bes...))
 	return nil
@@ -1174,6 +1264,125 @@ func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 		return Error(paramname + "が指定されていません")
 	}
 	return nil
+}
+func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
+	id byte) error {
+	return c.stateParam(is, "postype", func(data string) error {
+		if len(data) == 0 {
+			return Error("値が指定されていません")
+		}
+		var pt PosType
+		if len(data) >= 2 && strings.ToLower(data[:2]) == "p2" {
+			pt = PT_P2
+		} else {
+			switch strings.ToLower(data)[0] {
+			case 'p':
+				pt = PT_P1
+			case 'f':
+				pt = PT_F
+			case 'b':
+				pt = PT_B
+			case 'l':
+				pt = PT_L
+			case 'r':
+				pt = PT_R
+			case 'n':
+				pt = PT_N
+			default:
+				return Error(data + "が無効な値です")
+			}
+		}
+		sc.add(id, sc.iToExp(int32(pt)))
+		return nil
+	})
+}
+func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
+	prefix string, id byte, afterImage bool) error {
+	return c.stateParam(is, prefix+"trans", func(data string) error {
+		if len(data) == 0 {
+			return Error("値が指定されていません")
+		}
+		tt := TT_default
+		data = strings.ToLower(data)
+		switch data {
+		case "none":
+			tt = TT_none
+		case "add1":
+			tt = TT_add1
+		case "sub":
+			tt = TT_sub
+		default:
+			_error := false
+			if afterImage {
+				if len(data) >= 3 && data[:3] == "add" {
+					tt = TT_add
+				} else {
+					_error = true
+				}
+			} else {
+				switch data {
+				case "default":
+					tt = TT_default
+				case "add":
+					tt = TT_add
+				case "addalpha", "alpha":
+					tt = TT_alpha
+				default:
+					_error = true
+				}
+			}
+			if _error && (!afterImage || !sys.ignoreMostErrors) {
+				return Error(data + "が無効な値です")
+			}
+		}
+		var exp []BytecodeExp
+		if !afterImage && (tt == TT_alpha || tt == TT_add1) {
+			b := false
+			if err := c.stateParam(is, prefix+"alpha", func(data string) error {
+				b = true
+				bes, err := c.exprs(data, VT_Int, 2)
+				if err != nil {
+					return err
+				}
+				exp = make([]BytecodeExp, 3) // 長さ3にする
+				exp[0] = bes[0]
+				if len(bes) < 2 {
+					if tt == TT_add1 {
+						exp[1].appendValue(BytecodeInt(128))
+					} else {
+						exp[1].appendValue(BytecodeInt(255))
+					}
+				} else {
+					exp[1] = bes[1]
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+			if !b {
+				if tt == TT_add1 {
+					exp = sc.iToExp(255, 128)
+				} else {
+					exp = sc.iToExp(-1, 0)
+				}
+			}
+		} else {
+			switch tt {
+			case TT_none:
+				exp = sc.iToExp(255, 0)
+			case TT_add:
+				exp = sc.iToExp(255, 255)
+			case TT_add1:
+				exp = sc.iToExp(255, 128)
+			case TT_sub:
+				exp = sc.iToExp(1, 255)
+			default:
+				exp = sc.iToExp(-1, 0)
+			}
+		}
+		sc.add(id, exp)
+		return nil
+	})
 }
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
@@ -1343,19 +1552,19 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	return nil
 }
 func (c *Compiler) hitBy(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return hitBy(*sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
 }
 func (c *Compiler) notHitBy(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return notHitBy(*sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
 }
 func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return assertSpecial(*sc), c.stateSec(is, func() error {
 		foo := func(data string) error {
 			switch data {
@@ -1428,7 +1637,7 @@ func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
 	})
 }
 func (c *Compiler) playSnd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return playSnd(*sc), c.stateSec(is, func() error {
 		f := false
 		if err := c.stateParam(is, "value", func(data string) error {
@@ -1505,19 +1714,19 @@ func (c *Compiler) changeStateSub(is IniSection,
 	return nil
 }
 func (c *Compiler) changeState(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return changeState(*sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
 }
 func (c *Compiler) selfState(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return selfState(*sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
 }
 func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return tagIn(*sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "stateno",
 			tagIn_stateno, VT_Int, 1, true); err != nil {
@@ -1537,14 +1746,14 @@ func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
 	})
 }
 func (c *Compiler) tagOut(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return tagOut(*sc), c.stateSec(is, func() error {
 		sc.add(tagOut_, nil)
 		return nil
 	})
 }
 func (c *Compiler) destroySelf(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return destroySelf(*sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "recursive",
 			destroySelf_recursive, VT_Bool, 1, false); err != nil {
@@ -1570,19 +1779,19 @@ func (c *Compiler) changeAnimSub(is IniSection,
 	return nil
 }
 func (c *Compiler) changeAnim(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return changeAnim(*sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
 }
 func (c *Compiler) changeAnim2(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return changeAnim2(*sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
 }
 func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return helper(*sc), c.stateSec(is, func() error {
 		if err := c.stateParam(is, "helpertype", func(data string) error {
 			if len(data) == 0 {
@@ -1608,34 +1817,7 @@ func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 		}); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "postype", func(data string) error {
-			if len(data) == 0 {
-				return Error("値が指定されていません")
-			}
-			var pt PosType
-			if len(data) >= 2 && strings.ToLower(data[:2]) == "p2" {
-				pt = PT_P2
-			} else {
-				switch strings.ToLower(data)[0] {
-				case 'p':
-					pt = PT_P1
-				case 'f':
-					pt = PT_F
-				case 'b':
-					pt = PT_B
-				case 'l':
-					pt = PT_L
-				case 'r':
-					pt = PT_R
-				case 'n':
-					pt = PT_N
-				default:
-					return Error(data + "が無効な値です")
-				}
-			}
-			sc.add(helper_postype, sc.iToExp(int32(pt)))
-			return nil
-		}); err != nil {
+		if err := c.paramPostye(is, sc, helper_postype); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "ownpal",
@@ -1718,15 +1900,212 @@ func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 	})
 }
 func (c *Compiler) powerAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return powerAdd(*sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
 	})
 }
 func (c *Compiler) ctrlSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return ctrlSet(*sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", ctrlSet_value, VT_Bool, 1, true)
+	})
+}
+func (c *Compiler) explodSub(is IniSection,
+	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "remappal",
+		explod_remappal, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "id",
+		explod_id, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramPostye(is, sc, explod_postype); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "facing",
+		explod_facing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "vfacing",
+		explod_vfacing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "pos",
+		explod_pos, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "random",
+		explod_random, VT_Float, 2, false); err != nil {
+		return err
+	}
+	f := false
+	if err := c.stateParam(is, "vel", func(data string) error {
+		f = true
+		return c.scAdd(sc, explod_velocity, data, VT_Float, 2)
+	}); err != nil {
+		return err
+	}
+	if !f {
+		if err := c.paramValue(is, sc, "velocity",
+			explod_velocity, VT_Float, 2, false); err != nil {
+			return err
+		}
+	}
+	if err := c.paramValue(is, sc, "accel",
+		explod_accel, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "scale",
+		explod_scale, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "bindtime",
+		explod_bindtime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "removetime",
+		explod_removetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "supermove",
+		explod_supermove, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "supermovetime",
+		explod_supermovetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "pausemovetime",
+		explod_pausemovetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "sprpriority",
+		explod_sprpriority, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "ontop",
+		explod_ontop, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shadow",
+		explod_shadow, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "removeongethit",
+		explod_removeongethit, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramTrans(is, sc, "", explod_trans, false); err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Compiler) explod(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, ihp bool) (StateController, error) {
+	return explod(*sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "ownpal",
+			explod_ownpal, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.explodSub(is, sc); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "anim", func(data string) error {
+			fflg := false
+			if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+				fflg = true
+				data = data[1:]
+			}
+			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "angle",
+			explod_angle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "yangle",
+			explod_yangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "xangle",
+			explod_xangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if ihp && !sc.ignorehitpause {
+			sc.add(explod_ignorehitpause, sc.iToExp(0))
+		}
+		return nil
+	})
+}
+func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return modifyExplod(*sc), c.stateSec(is, func() error {
+		if err := c.explodSub(is, sc); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "angle",
+			explod_angle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "yangle",
+			explod_yangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "xangle",
+			explod_xangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+func (c *Compiler) posSetSub(is IniSection,
+	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "x",
+		posSet_x, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "y",
+		posSet_y, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "z",
+		posSet_z, VT_Float, 1, false); err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Compiler) posSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return posSet(*sc), c.stateSec(is, func() error {
+		return c.posSetSub(is, sc)
+	})
+}
+func (c *Compiler) posAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return posAdd(*sc), c.stateSec(is, func() error {
+		return c.posSetSub(is, sc)
+	})
+}
+func (c *Compiler) velSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return velSet(*sc), c.stateSec(is, func() error {
+		return c.posSetSub(is, sc)
+	})
+}
+func (c *Compiler) velAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return velAdd(*sc), c.stateSec(is, func() error {
+		return c.posSetSub(is, sc)
+	})
+}
+func (c *Compiler) velMul(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return velMul(*sc), c.stateSec(is, func() error {
+		return c.posSetSub(is, sc)
 	})
 }
 func (c *Compiler) hitDefSub(is IniSection,
@@ -1735,7 +2114,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	return nil
 }
 func (c *Compiler) hitDef(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase) (StateController, error) {
+	sc *StateControllerBase, _ bool) (StateController, error) {
 	return hitDef(*sc), c.stateSec(is, func() error {
 		return c.hitDefSub(is, sc)
 	})
@@ -1770,7 +2149,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 		}
 		existInThisFile[n] = true
 		i++
-		is, err := c.parseSection(lines, &i, nil)
+		is, _, err := c.parseSection(lines, &i, nil)
 		if err != nil {
 			return errmes(err)
 		}
@@ -1789,12 +2168,12 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			i++
 			sc := newStateControllerBase(c.playerNo)
 			var scf func(is IniSection, sbc *StateBytecode,
-				sc *StateControllerBase) (StateController, error)
+				sc *StateControllerBase, ihp bool) (StateController, error)
 			var triggerall []BytecodeExp
 			allUtikiri := false
 			var trigger [][]BytecodeExp
 			var trexist []int8
-			is, err := c.parseSection(lines, &i, func(name, data string) error {
+			is, ihp, err := c.parseSection(lines, &i, func(name, data string) error {
 				switch name {
 				case "type":
 					switch data {
@@ -1826,6 +2205,20 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.powerAdd
 					case "ctrlset":
 						scf = c.ctrlSet
+					case "explod":
+						scf = c.explod
+					case "modifyexplod":
+						scf = c.modifyExplod
+					case "posset":
+						scf = c.posSet
+					case "posadd":
+						scf = c.posAdd
+					case "velset":
+						scf = c.velSet
+					case "veladd":
+						scf = c.velAdd
+					case "velmul":
+						scf = c.velMul
 					case "hitdef":
 						scf = c.hitDef
 					default:
@@ -1961,7 +2354,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			if len(texp) > 0 {
 				sc.add(SCID_trigger, sc.beToExp(texp))
 			}
-			sctrl, err := scf(is, sbc, sc)
+			sctrl, err := scf(is, sbc, sc, ihp)
 			if err != nil {
 				return errmes(err)
 			}
