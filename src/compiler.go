@@ -698,7 +698,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				be1.append(OC_pop)
 				be1.append(be3...)
 				if rd {
-					out.appendJmp(OC_run, int32(len(be1))) // NOPでリダイレクトをもどす
+					out.appendJmp(OC_run, int32(len(be1)))
 				}
 				out.append(be1...)
 			} else {
