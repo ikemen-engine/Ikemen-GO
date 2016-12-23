@@ -67,6 +67,7 @@ const (
 	OC_dup
 	OC_swap
 	OC_run
+	OC_ocrun
 	OC_jsf8
 	OC_jmp8
 	OC_jz8
@@ -188,7 +189,6 @@ const (
 	OC_hitfall
 	OC_hitvel_x
 	OC_hitvel_y
-	OC_roundsexisted
 	OC_parent
 	OC_root
 	OC_helper
@@ -362,6 +362,7 @@ const (
 	OC_ex_matchover
 	OC_ex_matchno
 	OC_ex_roundno
+	OC_ex_roundsexisted
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
 	OC_ex_timemod
@@ -375,7 +376,7 @@ type StringPool struct {
 func NewStringPool() *StringPool {
 	return &StringPool{Map: make(map[string]int)}
 }
-func (sp *StringPool) Clear(s string) {
+func (sp *StringPool) Clear() {
 	sp.List, sp.Map = nil, make(map[string]int)
 }
 func (sp *StringPool) Add(s string) int {
@@ -634,7 +635,7 @@ func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() || v2.ToB())
 }
 func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
-	orgc := c
+	oc := c
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
 		case OC_jsf8:
@@ -730,6 +731,15 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_run:
+			l := int(*(*int32)(unsafe.Pointer(&be[i])))
+			sys.bcStack.Push(be[i+4:i+4+l].run(c, scpn))
+			i += 4 + l
+		case OC_ocrun:
+			l := int(*(*int32)(unsafe.Pointer(&be[i])))
+			sys.bcStack.Push(be[i+4:i+4+l].run(oc, scpn))
+			i += 4 + l
+			continue
 		case OC_int8:
 			sys.bcStack.Push(BytecodeInt(int32(int8(be[i]))))
 			i++
@@ -813,10 +823,6 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			sys.bcStack.Dup()
 		case OC_swap:
 			sys.bcStack.Swap()
-		case OC_run:
-			l := int(*(*int32)(unsafe.Pointer(&be[i])))
-			sys.bcStack.Push(be[i+4:i+4+l].run(c, scpn))
-			i += 4 + l
 		case OC_time:
 			sys.bcStack.Push(BytecodeInt(c.time()))
 		case OC_alive:
@@ -839,7 +845,7 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			println(be[i-1])
 			unimplemented()
 		}
-		c = orgc
+		c = oc
 	}
 	return sys.bcStack.Pop()
 }

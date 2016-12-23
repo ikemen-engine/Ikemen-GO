@@ -490,8 +490,32 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	c.usiroOp = true
 	return nil
 }
-func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
-	error) {
+func (c *Compiler) oneArg(fun string, out *BytecodeExp, in *string,
+	rd, appendVal bool) (BytecodeValue, error) {
+	if c.tokenizer(in) != "(" {
+		return BytecodeSF(), Error(fun + "の次に'('がありません")
+	}
+	c.token = c.tokenizer(in)
+	var be BytecodeExp
+	bv, err := c.expBoolOr(&be, in)
+	if err != nil {
+		return BytecodeSF(), err
+	}
+	if err := c.kakkotojiru(in); err != nil {
+		return BytecodeSF(), err
+	}
+	if appendVal {
+		be.appendValue(bv)
+		bv = BytecodeSF()
+	}
+	if rd && len(be) > 0 {
+		out.appendJmp(OC_ocrun, int32(len(be)))
+	}
+	out.append(be...)
+	return bv, nil
+}
+func (c *Compiler) expValue(out *BytecodeExp, in *string,
+	rd bool) (BytecodeValue, error) {
 	c.usiroOp, c.norange = true, false
 	bv := c.number(c.token)
 	if !bv.IsSF() {
@@ -535,41 +559,51 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 			c.token = c.tokenizer(in)
 			if c.token == "(" {
 				c.token = c.tokenizer(in)
-				if bv1, err = c.expBoolOr(out, in); err != nil {
+				if bv1, err = c.expBoolOr(&be1, in); err != nil {
 					return BytecodeSF(), err
 				}
 				if err := c.kakkotojiru(in); err != nil {
 					return BytecodeSF(), err
 				}
 				c.token = c.tokenizer(in)
-				out.appendValue(bv1)
+				be1.appendValue(bv1)
 			} else {
 				switch opc {
 				case OC_helper, OC_target:
-					out.appendValue(BytecodeInt(-1))
+					be1.appendValue(BytecodeInt(-1))
 				case OC_partner, OC_enemy, OC_enemynear:
-					out.appendValue(BytecodeInt(0))
+					be1.appendValue(BytecodeInt(0))
 				case OC_playerid:
 					return BytecodeSF(), Error("playeridの次に'('がありません")
 				}
 			}
 		}
+		if rd {
+			out.appendJmp(OC_ocrun, int32(len(be1)))
+		}
+		out.append(be1...)
 		if c.token != "," {
 			return BytecodeSF(), Error(",がありません")
 		}
 		c.token = c.tokenizer(in)
-		bv1, err = c.expValue(&be1, in)
+		bv2, err = c.expValue(&be2, in, true)
 		if err != nil {
 			return BytecodeSF(), err
 		}
-		be1.appendValue(bv1)
-		out.appendJmp(opc, int32(len(be1)))
-		out.append(be1...)
+		be2.appendValue(bv2)
+		out.appendJmp(opc, int32(len(be2)))
+		out.append(be2...)
 		return BytecodeSF(), nil
 	case "(":
 		c.token = c.tokenizer(in)
 		if bv, err = c.expBoolOr(&be1, in); err != nil {
 			return BytecodeSF(), err
+		}
+		if bv.IsSF() {
+			if rd {
+				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+			}
+			out.append(be1...)
 		}
 		if err := c.kakkotojiru(in); err != nil {
 			return BytecodeSF(), err
@@ -583,8 +617,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 			}
 		} else {
 			c.token = c.tokenizer(in)
-			bv, err = c.expValue(out, in)
+			bv, err = c.expValue(&be1, in, false)
 			if bv.IsSF() {
+				if rd {
+					out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+				}
+				out.append(be1...)
 				out.append(OC_neg)
 			} else {
 				out.neg(&bv)
@@ -592,25 +630,30 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 	case "~":
 		c.token = c.tokenizer(in)
-		bv, err = c.expValue(out, in)
+		bv, err = c.expValue(&be1, in, false)
 		if bv.IsSF() {
+			if rd {
+				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+			}
+			out.append(be1...)
 			out.append(OC_not)
 		} else {
 			out.not(&bv)
 		}
 	case "!":
 		c.token = c.tokenizer(in)
-		bv, err = c.expValue(out, in)
+		bv, err = c.expValue(&be1, in, false)
 		if bv.IsSF() {
+			if rd {
+				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+			}
+			out.append(be1...)
 			out.append(OC_blnot)
 		} else {
 			out.blnot(&bv)
 		}
-	case "time":
-		out.append(OC_time)
-	case "alive":
-		out.append(OC_alive)
-	case "ifelse":
+	case "ifelse", "cond":
+		cond := c.token == "cond"
 		if c.tokenizer(in) != "(" {
 			return BytecodeSF(), Error(c.token + "の次に'('がありません")
 		}
@@ -636,13 +679,40 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 			return BytecodeSF(), err
 		}
 		if bv1.IsSF() || bv2.IsSF() || bv3.IsSF() {
-			out.append(be1...)
-			out.appendValue(bv1)
-			out.append(be2...)
-			out.appendValue(bv2)
-			out.append(be3...)
-			out.appendValue(bv3)
-			out.append(OC_ifelse)
+			if cond {
+				be3.appendValue(bv3)
+				be2.appendValue(bv2)
+				if len(be3) > int(math.MaxUint8-1) {
+					be2.appendJmp(OC_jmp, int32(len(be3)+1))
+				} else {
+					be2.append(OC_jmp8, OpCode(len(be3)+1))
+				}
+				be1.appendValue(bv1)
+				if len(be2) > int(math.MaxUint8-1) {
+					be1.appendJmp(OC_jz, int32(len(be2)+1))
+				} else {
+					be1.append(OC_jz8, OpCode(len(be2)+1))
+				}
+				be1.append(OC_pop)
+				be1.append(be2...)
+				be1.append(OC_pop)
+				be1.append(be3...)
+				if rd {
+					out.appendJmp(OC_run, int32(len(be1))) // NOPでリダイレクトをもどす
+				}
+				out.append(be1...)
+			} else {
+				if rd {
+					out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+				}
+				out.append(be1...)
+				out.appendValue(bv1)
+				out.append(be2...)
+				out.appendValue(bv2)
+				out.append(be3...)
+				out.appendValue(bv3)
+				out.append(OC_ifelse)
+			}
 		} else {
 			if bv1.ToB() {
 				bv = bv2
@@ -650,6 +720,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 				bv = bv3
 			}
 		}
+	case "time":
+		out.append(OC_time)
+	case "alive":
+		out.append(OC_alive)
 	case "random":
 		out.append(OC_random)
 	case "roundstate":
@@ -673,7 +747,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		if n <= 0 {
 			return BytecodeSF(), Error("animelemのは0より大きくなければいけません")
 		}
-		out.appendValue(BytecodeInt(n))
+		be1.appendValue(BytecodeInt(n))
+		if rd {
+			out.appendJmp(OC_ocrun, int32(len(be1)))
+		}
+		out.append(be1...)
 		out.append(OC_animelemtime)
 		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
 			return BytecodeSF(), err
@@ -681,17 +759,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string) (BytecodeValue,
 		out.append(OC_jsf8, OpCode(len(be)))
 		out.append(be...)
 	case "animelemtime":
-		if c.tokenizer(in) != "(" {
-			return BytecodeSF(), Error(c.token + "の次に'('がありません")
-		}
-		c.token = c.tokenizer(in)
-		if bv1, err = c.expBoolOr(out, in); err != nil {
+		if _, err := c.oneArg(c.token, out, in, rd, true); err != nil {
 			return BytecodeSF(), err
 		}
-		if err := c.kakkotojiru(in); err != nil {
-			return BytecodeSF(), err
-		}
-		out.appendValue(bv1)
 		out.append(OC_animelemtime)
 	case "stateno":
 		out.append(OC_stateno)
@@ -719,7 +789,7 @@ func (c *Compiler) renzokuEnzansihaError(in *string) error {
 }
 func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
-	bv, err := c.expValue(out, in)
+	bv, err := c.expValue(out, in, false)
 	if err != nil {
 		return BytecodeSF(), err
 	}
@@ -740,7 +810,7 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
-			if _, err := c.expValue(&dummyout, in); err != nil {
+			if _, err := c.expValue(&dummyout, in, false); err != nil {
 				return BytecodeSF(), err
 			}
 			if c.isOperator(c.token) <= 0 {
@@ -2324,11 +2394,10 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						if j < len(tr)-1 {
 							if len(te) > int(math.MaxUint8-1) {
 								tmp.appendJmp(OC_jz, int32(len(te)+1))
-								tmp.append(OC_pop)
 							} else {
 								tmp.append(OC_jz8, OpCode(len(te)+1))
-								tmp.append(OC_pop)
 							}
+							tmp.append(OC_pop)
 						}
 						te = append(tmp, te...)
 					}
@@ -2495,6 +2564,7 @@ func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
 		}
 		c.cmdl.Add(*cm)
 	}
+	sys.stringPool[n].Clear()
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(bc, s, def); err != nil {
