@@ -23,18 +23,20 @@ var sys = System{
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	zoomMin:           1, zoomMax: 1, zoomSpeed: 1,
-	lifebarFontScale: 1,
-	mixer:            *newMixer(),
-	bgm:              *newVorbis(),
-	sounds:           newSounds(),
-	allPalFX:         *NewPalFX(),
-	sel:              *newSelect(),
-	match:            1,
-	listenPort:       "7500",
-	loader:           *newLoader(),
-	numSimul:         [2]int{2, 2},
-	numTurns:         [2]int{2, 2},
-	afterImageMax:    8}
+	lifebarFontScale:      1,
+	mixer:                 *newMixer(),
+	bgm:                   *newVorbis(),
+	sounds:                newSounds(),
+	allPalFX:              *NewPalFX(),
+	sel:                   *newSelect(),
+	match:                 1,
+	listenPort:            "7500",
+	loader:                *newLoader(),
+	numSimul:              [2]int{2, 2},
+	numTurns:              [2]int{2, 2},
+	afterImageMax:         8,
+	attack_LifeToPowerMul: 0.7,
+	getHit_LifeToPowerMul: 0.6}
 
 type TeamMode int32
 
@@ -98,6 +100,8 @@ type System struct {
 	bcStack                     BytecodeStack
 	specialFlag                 GlobalSpecialFlag
 	afterImageMax               int
+	attack_LifeToPowerMul       float32
+	getHit_LifeToPowerMul       float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {

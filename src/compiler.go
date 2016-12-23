@@ -293,11 +293,11 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 		case "hp":
 			flg |= int32(AT_HP)
 		case "aa":
-			flg |= int32(AT_NA | AT_SA | AT_HA)
+			flg |= int32(AT_AA)
 		case "at":
-			flg |= int32(AT_NT | AT_ST | AT_HT)
+			flg |= int32(AT_AT)
 		case "ap":
-			flg |= int32(AT_NP | AT_SP | AT_HP)
+			flg |= int32(AT_AP)
 		case "n":
 			flg |= int32(AT_NA | AT_NT | AT_NP)
 		case "s":
@@ -2132,6 +2132,47 @@ func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
 		return nil
 	})
 }
+func (c *Compiler) gameMakeAnim(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return gameMakeAnim(*sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "pos",
+			gameMakeAnim_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "random",
+			gameMakeAnim_random, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "under",
+			gameMakeAnim_under, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		b := false
+		anim := func(data string) error {
+			b = true
+			fflg := true
+			if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+				fflg = false
+				data = data[1:]
+			}
+			return c.scAdd(sc, gameMakeAnim_anim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}
+		if err := c.stateParam(is, "anim", func(data string) error {
+			return anim(data)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.stateParam(is, "value", func(data string) error {
+				return anim(data)
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
 func (c *Compiler) posSetSub(is IniSection,
 	sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "x",
@@ -2178,8 +2219,188 @@ func (c *Compiler) velMul(is IniSection, sbc *StateBytecode,
 		return c.posSetSub(is, sc)
 	})
 }
+func (c *Compiler) afterImageSub(is IniSection,
+	sc *StateControllerBase, prefix string, idOffset byte) error {
+	if err := c.paramTrans(is, sc, prefix,
+		afterImage_trans+idOffset, true); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"time",
+		afterImage_time+idOffset, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"length",
+		afterImage_length+idOffset, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"timegap",
+		afterImage_timegap+idOffset, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palcolor",
+		afterImage_palcolor+idOffset, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palinvertall",
+		afterImage_palinvertall+idOffset, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palbright",
+		afterImage_palbright+idOffset, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palcontrast",
+		afterImage_palcontrast+idOffset, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palpostbright",
+		afterImage_palpostbright+idOffset, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"paladd",
+		afterImage_paladd+idOffset, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palmul",
+		afterImage_palmul+idOffset, VT_Float, 3, false); err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Compiler) afterImage(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return afterImage(*sc), c.stateSec(is, func() error {
+		return c.afterImageSub(is, sc, "", 0)
+	})
+}
 func (c *Compiler) hitDefSub(is IniSection,
 	sc *StateControllerBase) error {
+	hflg := func(id byte, data string) error {
+		var flg int32
+		for _, c := range data {
+			switch c {
+			case 'H', 'h':
+				flg |= int32(ST_S)
+			case 'L', 'l':
+				flg |= int32(ST_C)
+			case 'M', 'm':
+				flg |= int32(ST_S | ST_C)
+			case 'A', 'a':
+				flg |= int32(ST_A)
+			case 'F', 'f':
+				flg |= int32(ST_F)
+			case 'D', 'd':
+				flg |= int32(ST_D)
+			case 'P', 'p':
+				flg |= int32(ST_P)
+			case '-':
+				flg |= int32(MT_MNS)
+			case '+':
+				flg |= int32(MT_PLS)
+			}
+		}
+		sc.add(id, sc.iToExp(flg))
+		return nil
+	}
+	if err := c.stateParam(is, "guardflag", func(data string) error {
+		return hflg(hitDef_guardflag, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "hitflag", func(data string) error {
+		return hflg(hitDef_hitflag, data)
+	}); err != nil {
+		return err
+	}
+	htyp := func(id byte, data string) error {
+		if len(data) == 0 {
+			return Error("値が指定されていません")
+		}
+		var ht HitType
+		switch data[0] {
+		case 'H', 'h':
+			ht = HT_High
+		case 'L', 'l':
+			ht = HT_Low
+		case 'T', 't':
+			ht = HT_Trip
+		case 'N', 'n':
+			ht = HT_None
+		default:
+			return Error(data + "が無効な値です")
+		}
+		sc.add(id, sc.iToExp(int32(ht)))
+		return nil
+	}
+	if err := c.stateParam(is, "ground.type", func(data string) error {
+		return htyp(hitDef_ground_type, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "air.type", func(data string) error {
+		return htyp(hitDef_air_type, data)
+	}); err != nil {
+		return err
+	}
+	reac := func(id byte, data string) error {
+		if len(data) == 0 {
+			return Error("値が指定されていません")
+		}
+		var ra Reaction
+		switch data[0] {
+		case 'L', 'l':
+			ra = RA_Light
+		case 'M', 'm':
+			ra = RA_Medium
+		case 'H', 'h':
+			ra = RA_Hard
+		case 'B', 'b':
+			ra = RA_Back
+		case 'U', 'u':
+			ra = RA_Up
+		case 'D', 'd':
+			ra = RA_Diagup
+		default:
+			return Error(data + "が無効な値です")
+		}
+		sc.add(id, sc.iToExp(int32(ra)))
+		return nil
+	}
+	if err := c.stateParam(is, "animtype", func(data string) error {
+		return reac(hitDef_animtype, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "air.animtype", func(data string) error {
+		return reac(hitDef_air_animtype, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "fall.animtype", func(data string) error {
+		return reac(hitDef_fall_animtype, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "affectteam", func(data string) error {
+		if len(data) == 0 {
+			return Error("値が指定されていません")
+		}
+		var at int32
+		switch data[0] {
+		case 'E', 'e':
+			at = 1
+		case 'B', 'b':
+			at = 0
+		case 'F', 'f':
+			at = -1
+		default:
+			return Error(data + "が無効な値です")
+		}
+		sc.add(hitDef_affectteam, sc.iToExp(at))
+		return nil
+	}); err != nil {
+		return err
+	}
 	unimplemented()
 	return nil
 }
@@ -2187,6 +2408,143 @@ func (c *Compiler) hitDef(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
 	return hitDef(*sc), c.stateSec(is, func() error {
 		return c.hitDefSub(is, sc)
+	})
+}
+func (c *Compiler) reversalDef(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return reversalDef(*sc), c.stateSec(is, func() error {
+		attr := int32(-1)
+		var err error
+		if err = c.stateParam(is, "reversal.attr", func(data string) error {
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+		if attr == -1 {
+			return Error("reversal.attrが指定されていません")
+		}
+		sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
+		return c.hitDefSub(is, sc)
+	})
+}
+func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	return projectile(*sc), c.stateSec(is, func() error {
+		if err := c.paramPostye(is, sc, projectile_postype); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projid",
+			projectile_projid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projremove",
+			projectile_projremove, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projremovetime",
+			projectile_projremovetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projshadow",
+			projectile_projshadow, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projmisstime",
+			projectile_projmisstime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projhits",
+			projectile_projhits, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projpriority",
+			projectile_projpriority, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projhitanim",
+			projectile_projhitanim, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projremanim",
+			projectile_projremanim, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projcancelanim",
+			projectile_projcancelanim, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "velocity",
+			projectile_velocity, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "velmul",
+			projectile_velmul, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "remvelocity",
+			projectile_remvelocity, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "accel",
+			projectile_accel, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projscale",
+			projectile_projscale, VT_Float, 2, false); err != nil {
+			return err
+		}
+
+		// hitdef部分
+		if err := c.hitDefSub(is, sc); err != nil {
+			return err
+		}
+
+		if err := c.paramValue(is, sc, "offset",
+			projectile_offset, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projsprpriority",
+			projectile_projsprpriority, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projstagebound",
+			projectile_projstagebound, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projedgebound",
+			projectile_projedgebound, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projheightbound",
+			projectile_projheightbound, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projanim",
+			projectile_projanim, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "supermovetime",
+			projectile_supermovetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pausemovetime",
+			projectile_pausemovetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ownpal",
+			projectile_ownpal, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "remappal",
+			projectile_remappal, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.afterImageSub(is, sc,
+			"afterimage.", projectile_afterimage_); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
@@ -2279,6 +2637,8 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.explod
 					case "modifyexplod":
 						scf = c.modifyExplod
+					case "gamemakeanim":
+						scf = c.gameMakeAnim
 					case "posset":
 						scf = c.posSet
 					case "posadd":
@@ -2289,8 +2649,14 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.velAdd
 					case "velmul":
 						scf = c.velMul
+					case "afterimage":
+						scf = c.afterImage
 					case "hitdef":
 						scf = c.hitDef
+					case "reversaldef":
+						scf = c.reversalDef
+					case "projectile":
+						scf = c.projectile
 					default:
 						println(data)
 						unimplemented()

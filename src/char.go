@@ -466,7 +466,7 @@ func (hd *HitDef) clear() {
 	hd.fall.setDefault()
 }
 func (hd *HitDef) invalidate(stateType StateType) {
-	hd.attr = hd.attr&^(int32(AT_NA)-1) | int32(stateType) | -1<<31
+	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
 	hd.reversal_attr |= -1 << 31
 	hd.lhit = false
 }
@@ -782,6 +782,7 @@ type Char struct {
 	drawPos       [2]float32
 	oldPos        [2]float32
 	vel           [2]float32
+	aimg          AfterImage
 	standby       bool
 	pauseMovetime int32
 	superMovetime int32
@@ -1162,6 +1163,9 @@ func (c *Char) remapPalSub(pfx *PalFX, sg, sn, dg, dn int32) {
 func (c *Char) insertExplodEx(i int, rpg, rpn int32) {
 	unimplemented()
 }
+func (c *Char) insertExplod(i int) {
+	c.insertExplodEx(i, -1, 0)
+}
 func (c *Char) getAnim(n int32, ffx bool) *Animation {
 	unimplemented()
 	return nil
@@ -1236,4 +1240,86 @@ func (c *Char) p2() *Char {
 func (c *Char) stateNo() int32 {
 	unimplemented()
 	return 0
+}
+func (c *Char) newProj() *Projectile {
+	unimplemented()
+	return nil
+}
+func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
+	op bool, rpg, rpn int32) {
+	unimplemented()
+}
+func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
+	if !proj {
+		unimplemented()
+	}
+	if hd.attr&^int32(ST_MASK) == 0 {
+		hd.attr = 0
+	}
+	if hd.hitonce < 0 || hd.attr&int32(AT_AT) != 0 {
+		hd.hitonce = 1
+	}
+	ifnanset := func(dst *float32, src float32) {
+		if math.IsNaN(float64(*dst)) {
+			*dst = src
+		}
+	}
+	ifierrset := func(dst *int32, src int32) {
+		if *dst == IErr {
+			*dst = src
+		}
+	}
+	ifnanset(&hd.ground_velocity[0], 0)
+	ifnanset(&hd.ground_velocity[1], 0)
+	ifnanset(&hd.air_velocity[0], 0)
+	ifnanset(&hd.air_velocity[1], 0)
+	ifnanset(&hd.guard_velocity, hd.ground_velocity[0])
+	ifnanset(&hd.airguard_velocity[0], hd.air_velocity[0]*1.5)
+	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
+	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
+	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
+	ifierrset(&hd.air_fall, hd.ground_fall)
+	if hd.fall.animtype == RA_Unknown {
+		if hd.air_animtype != RA_Unknown {
+			hd.fall.animtype = hd.air_animtype
+		} else if hd.animtype < RA_Back {
+			hd.fall.animtype = RA_Back
+		} else {
+			hd.fall.animtype = hd.animtype
+		}
+	}
+	if hd.air_animtype == RA_Unknown {
+		hd.air_animtype = hd.animtype
+	}
+	if hd.air_type == HT_Unknown {
+		if hd.ground_type == HT_Trip {
+			hd.air_type = HT_High
+		} else {
+			hd.air_type = hd.ground_type
+		}
+	}
+	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
+	if hd.attr&int32(ST_A) != 0 {
+		ifnanset(&hd.ground_cornerpush_veloff, 0)
+	} else {
+		ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
+	}
+	ifnanset(&hd.air_cornerpush_veloff, hd.ground_cornerpush_veloff)
+	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
+	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
+	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
+	ifierrset(&hd.hitgetpower,
+		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)))
+	ifierrset(&hd.guardgetpower,
+		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+	ifierrset(&hd.hitgivepower,
+		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)))
+	ifierrset(&hd.guardgivepower,
+		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+	if !math.IsNaN(float64(hd.snap[0])) {
+		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
+	}
+	if !math.IsNaN(float64(hd.snap[1])) {
+		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
+	}
 }

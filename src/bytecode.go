@@ -14,9 +14,10 @@ const (
 	ST_L
 	ST_N
 	ST_U
-	ST_D = ST_L
-	ST_F = ST_N
-	ST_P = ST_U
+	ST_MASK = 1<<iota - 1
+	ST_D    = ST_L
+	ST_F    = ST_N
+	ST_P    = ST_U
 )
 
 type AttackType int32
@@ -31,6 +32,9 @@ const (
 	AT_HA
 	AT_HT
 	AT_HP
+	AT_AA = AT_NA | AT_SA | AT_HA
+	AT_AT = AT_NT | AT_ST | AT_HT
+	AT_AP = AT_NP | AT_SP | AT_HP
 )
 
 type MoveType int32
@@ -1380,7 +1384,9 @@ func (sc helper) Run(c *Char, ps *int32) bool {
 		}
 		return true
 	})
-	c.helperInit(h, st, pt, x, y, f, op)
+	if h != nil {
+		c.helperInit(h, st, pt, x, y, f, op)
+	}
 	return false
 }
 
@@ -1496,7 +1502,6 @@ func (sc explod) Run(c *Char, ps *int32) bool {
 			}
 		case explod_postype:
 			e.postype = PosType(exp[0].evalI(c, sc.playerNo))
-			e.setPos(c)
 		case explod_velocity:
 			e.velocity[0] = exp[0].evalF(c, sc.playerNo)
 			if len(exp) > 1 {
@@ -1564,7 +1569,10 @@ func (sc explod) Run(c *Char, ps *int32) bool {
 		}
 		return true
 	})
-	c.insertExplodEx(i, rp[0], rp[1])
+	if e != nil {
+		e.setPos(c)
+		c.insertExplodEx(i, rp[0], rp[1])
+	}
 	return false
 }
 
@@ -1720,6 +1728,56 @@ func (sc modifyExplod) Run(c *Char, ps *int32) bool {
 	return false
 }
 
+type gameMakeAnim StateControllerBase
+
+const (
+	gameMakeAnim_pos byte = iota
+	gameMakeAnim_random
+	gameMakeAnim_under
+	gameMakeAnim_anim
+)
+
+func (sc gameMakeAnim) Run(c *Char, ps *int32) bool {
+	var e *Explod
+	var i int
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if e == nil {
+			e, i = c.newExplod()
+			if e == nil {
+				return false
+			}
+			e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
+		}
+		switch id {
+		case gameMakeAnim_pos:
+			e.offset[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				e.offset[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case gameMakeAnim_random:
+			rndx := exp[0].evalF(c, sc.playerNo)
+			e.offset[0] += RandF(-rndx, rndx)
+			if len(exp) > 1 {
+				rndy := exp[1].evalF(c, sc.playerNo)
+				e.offset[1] += RandF(-rndy, rndy)
+			}
+		case gameMakeAnim_under:
+			e.ontop = !exp[0].evalB(c, sc.playerNo)
+		case gameMakeAnim_anim:
+			e.anim = c.getAnim(exp[1].evalI(c, sc.playerNo),
+				exp[0].evalB(c, sc.playerNo))
+		}
+		return true
+	})
+	if e != nil {
+		e.offset[0] -= float32(c.size.draw.offset[0])
+		e.offset[1] -= float32(c.size.draw.offset[1])
+		e.setPos(c)
+		c.insertExplod(i)
+	}
+	return false
+}
+
 type posSet StateControllerBase
 
 const (
@@ -1811,20 +1869,314 @@ func (sc velMul) Run(c *Char, ps *int32) bool {
 	return false
 }
 
-type hitDef StateControllerBase
+type afterImage StateControllerBase
 
 const (
-	hitDef_ byte = iota
+	afterImage_trans byte = iota
+	afterImage_time
+	afterImage_length
+	afterImage_timegap
+	afterImage_palcolor
+	afterImage_palinvertall
+	afterImage_palbright
+	afterImage_palcontrast
+	afterImage_palpostbright
+	afterImage_paladd
+	afterImage_palmul
 )
 
+func (sc afterImage) runSub(c *Char, ai *AfterImage,
+	id byte, exp []BytecodeExp) {
+	switch id {
+	case afterImage_trans:
+		ai.alpha = [2]int32{exp[0].evalI(c, sc.playerNo),
+			exp[1].evalI(c, sc.playerNo)}
+	case afterImage_time:
+		ai.time = exp[0].evalI(c, sc.playerNo)
+	case afterImage_length:
+		ai.length = exp[0].evalI(c, sc.playerNo)
+	case afterImage_timegap:
+		ai.timegap = Max(1, exp[0].evalI(c, sc.playerNo))
+	case afterImage_palcolor:
+		ai.setPalColor(exp[0].evalI(c, sc.playerNo))
+	case afterImage_palinvertall:
+		ai.setPalInvertall(exp[0].evalB(c, sc.playerNo))
+	case afterImage_palbright:
+		ai.setPalBrightR(exp[0].evalI(c, sc.playerNo))
+		if len(exp) > 1 {
+			ai.setPalBrightG(exp[1].evalI(c, sc.playerNo))
+			if len(exp) > 2 {
+				ai.setPalBrightB(exp[2].evalI(c, sc.playerNo))
+			}
+		}
+	case afterImage_palcontrast:
+		ai.setPalContrastR(exp[0].evalI(c, sc.playerNo))
+		if len(exp) > 1 {
+			ai.setPalContrastG(exp[1].evalI(c, sc.playerNo))
+			if len(exp) > 2 {
+				ai.setPalContrastB(exp[2].evalI(c, sc.playerNo))
+			}
+		}
+	case afterImage_palpostbright:
+		ai.postbright[0] = exp[0].evalI(c, sc.playerNo)
+		if len(exp) > 1 {
+			ai.postbright[1] = exp[1].evalI(c, sc.playerNo)
+			if len(exp) > 2 {
+				ai.postbright[2] = exp[2].evalI(c, sc.playerNo)
+			}
+		}
+	case afterImage_paladd:
+		ai.add[0] = exp[0].evalI(c, sc.playerNo)
+		if len(exp) > 1 {
+			ai.add[1] = exp[1].evalI(c, sc.playerNo)
+			if len(exp) > 2 {
+				ai.add[2] = exp[2].evalI(c, sc.playerNo)
+			}
+		}
+	case afterImage_palmul:
+		ai.mul[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			ai.mul[1] = exp[1].evalF(c, sc.playerNo)
+			if len(exp) > 2 {
+				ai.mul[2] = exp[2].evalF(c, sc.playerNo)
+			}
+		}
+	}
+}
+func (sc afterImage) Run(c *Char, ps *int32) bool {
+	c.aimg.clear()
+	c.aimg.time = 1
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		sc.runSub(c, &c.aimg, id, exp)
+		return true
+	})
+	c.aimg.setupPalFX()
+	return false
+}
+
+type hitDef afterImage
+
+const (
+	hitDef_guardflag byte = iota
+	hitDef_hitflag
+	hitDef_ground_type
+	hitDef_air_type
+	hitDef_animtype
+	hitDef_air_animtype
+	hitDef_fall_animtype
+	hitDef_affectteam
+	hitDef_last byte = iota - 1
+)
+
+func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
+	switch id {
+	case hitDef_guardflag:
+		hd.guardflag = exp[0].evalI(c, sc.playerNo)
+	case hitDef_hitflag:
+		hd.hitflag = exp[0].evalI(c, sc.playerNo)
+	case hitDef_ground_type:
+		hd.ground_type = HitType(exp[0].evalI(c, sc.playerNo))
+	case hitDef_air_type:
+		hd.air_type = HitType(exp[0].evalI(c, sc.playerNo))
+	case hitDef_animtype:
+		hd.animtype = Reaction(exp[0].evalI(c, sc.playerNo))
+	case hitDef_air_animtype:
+		hd.air_animtype = Reaction(exp[0].evalI(c, sc.playerNo))
+	case hitDef_fall_animtype:
+		hd.fall.animtype = Reaction(exp[0].evalI(c, sc.playerNo))
+	case hitDef_affectteam:
+		hd.affectteam = exp[0].evalI(c, sc.playerNo)
+	default:
+		return false
+	}
+	unimplemented()
+	return true
+}
 func (sc hitDef) Run(c *Char, ps *int32) bool {
+	c.hitdef.clear()
+	c.hitdef.sparkno = ^sys.cgi[c.playerNo].data.sparkno
+	c.hitdef.guard_sparkno = ^sys.cgi[c.playerNo].data.guard.sparkno
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		sc.runSub(c, &c.hitdef, id, exp)
+		return true
+	})
+	c.setHitdefDefault(&c.hitdef, false)
+	return false
+}
+
+type reversalDef hitDef
+
+const (
+	reversalDef_reversal_attr byte = iota + hitDef_last + 1
+)
+
+func (sc reversalDef) Run(c *Char, ps *int32) bool {
+	c.hitdef.clear()
 	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case hitDef_:
+		case reversalDef_reversal_attr:
+			c.hitdef.reversal_attr = exp[0].evalI(c, sc.playerNo)
+		default:
+			hitDef(sc).runSub(c, &c.hitdef, id, exp)
 		}
 		return true
 	})
-	unimplemented()
+	c.setHitdefDefault(&c.hitdef, false)
+	return false
+}
+
+type projectile hitDef
+
+const (
+	projectile_postype byte = iota + hitDef_last + 1
+	projectile_projid
+	projectile_projremove
+	projectile_projremovetime
+	projectile_projshadow
+	projectile_projmisstime
+	projectile_projhits
+	projectile_projpriority
+	projectile_projhitanim
+	projectile_projremanim
+	projectile_projcancelanim
+	projectile_velocity
+	projectile_velmul
+	projectile_remvelocity
+	projectile_accel
+	projectile_projscale
+	projectile_offset
+	projectile_projsprpriority
+	projectile_projstagebound
+	projectile_projedgebound
+	projectile_projheightbound
+	projectile_projanim
+	projectile_supermovetime
+	projectile_pausemovetime
+	projectile_ownpal
+	projectile_remappal
+	projectile_afterimage_
+)
+
+func (sc projectile) Run(c *Char, ps *int32) bool {
+	var p *Projectile
+	pt := PT_P1
+	var x, y float32 = 0, 0
+	op := false
+	rp := [2]int32{-1, 0}
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if p == nil {
+			p = c.newProj()
+			if p == nil {
+				return false
+			}
+			p.aimg.clear()
+		}
+		switch id {
+		case projectile_postype:
+			pt = PosType(exp[0].evalI(c, sc.playerNo))
+		case projectile_projid:
+			p.id = exp[0].evalI(c, sc.playerNo)
+		case projectile_projremove:
+			p.remove = exp[0].evalB(c, sc.playerNo)
+		case projectile_projremovetime:
+			p.removetime = exp[0].evalI(c, sc.playerNo)
+		case projectile_projshadow:
+			p.shadow[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.shadow[1] = exp[1].evalI(c, sc.playerNo)
+				if len(exp) > 2 {
+					p.shadow[2] = exp[2].evalI(c, sc.playerNo)
+				}
+			}
+		case projectile_projmisstime:
+			p.misstime = exp[0].evalI(c, sc.playerNo)
+		case projectile_projhits:
+			p.hits = exp[0].evalI(c, sc.playerNo)
+		case projectile_projpriority:
+			p.priority = exp[0].evalI(c, sc.playerNo)
+		case projectile_projhitanim:
+			p.hitanim = exp[0].evalI(c, sc.playerNo)
+		case projectile_projremanim:
+			p.remanim = Max(-1, exp[0].evalI(c, sc.playerNo))
+		case projectile_projcancelanim:
+			p.cancelanim = Max(-1, exp[0].evalI(c, sc.playerNo))
+		case projectile_velocity:
+			p.velocity[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.velocity[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case projectile_velmul:
+			p.velmul[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.velmul[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case projectile_remvelocity:
+			p.remvelocity[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.remvelocity[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case projectile_accel:
+			p.accel[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.accel[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		case projectile_projscale:
+			p.scale[0] = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.scale[1] = exp[1].evalF(c, sc.playerNo)
+			}
+		default:
+			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
+				switch id {
+				case projectile_offset:
+					x = exp[0].evalF(c, sc.playerNo)
+					if len(exp) > 1 {
+						y = exp[1].evalF(c, sc.playerNo)
+					}
+				case projectile_projsprpriority:
+					p.sprpriority = exp[0].evalI(c, sc.playerNo)
+				case projectile_projstagebound:
+					p.stagebound = exp[0].evalI(c, sc.playerNo)
+				case projectile_projedgebound:
+					p.edgebound = exp[0].evalI(c, sc.playerNo)
+				case projectile_projheightbound:
+					p.heightbound[0] = exp[0].evalI(c, sc.playerNo)
+					if len(exp) > 1 {
+						p.heightbound[1] = exp[1].evalI(c, sc.playerNo)
+					}
+				case projectile_projanim:
+					p.anim = exp[0].evalI(c, sc.playerNo)
+				case projectile_supermovetime:
+					p.supermovetime = exp[0].evalI(c, sc.playerNo)
+				case projectile_pausemovetime:
+					p.pausemovetime = exp[0].evalI(c, sc.playerNo)
+				case projectile_ownpal:
+					op = exp[0].evalB(c, sc.playerNo)
+				case projectile_remappal:
+					rp[0] = exp[0].evalI(c, sc.playerNo)
+					if len(exp) > 1 {
+						rp[1] = exp[1].evalI(c, sc.playerNo)
+					}
+				default:
+					afterImage(sc).runSub(c, &p.aimg, id-projectile_afterimage_, exp)
+				}
+			}
+		}
+		return true
+	})
+	if p != nil {
+		c.setHitdefDefault(&c.hitdef, true)
+		if p.remanim == IErr {
+			p.remanim = p.hitanim
+		}
+		if p.cancelanim == IErr {
+			p.cancelanim = p.remanim
+		}
+		if p.aimg.time != 0 {
+			p.aimg.setupPalFX()
+		}
+		c.projInit(p, pt, x, y, op, rp[0], rp[1])
+	}
 	return false
 }
 
