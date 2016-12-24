@@ -2031,7 +2031,8 @@ func (sc afterImage) Run(c *Char, ps *int32) bool {
 type hitDef afterImage
 
 const (
-	hitDef_guardflag byte = iota + afterImage_last + 1
+	hitDef_attr byte = iota + afterImage_last + 1
+	hitDef_guardflag
 	hitDef_hitflag
 	hitDef_ground_type
 	hitDef_air_type
@@ -2039,6 +2040,69 @@ const (
 	hitDef_air_animtype
 	hitDef_fall_animtype
 	hitDef_affectteam
+	hitDef_id
+	hitDef_chainid
+	hitDef_nochainid
+	hitDef_kill
+	hitDef_guard_kill
+	hitDef_fall_kill
+	hitDef_hitonce
+	hitDef_air_juggle
+	hitDef_getpower
+	hitDef_damage
+	hitDef_givepower
+	hitDef_numhits
+	hitDef_hitsound
+	hitDef_guardsound
+	hitDef_priority
+	hitDef_p1stateno
+	hitDef_p2stateno
+	hitDef_p2getp1state
+	hitDef_p1sprpriority
+	hitDef_p2sprpriority
+	hitDef_forcestand
+	hitDef_forcenofall
+	hitDef_fall_damage
+	hitDef_fall_xvelocity
+	hitDef_fall_yvelocity
+	hitDef_fall_recover
+	hitDef_fall_recovertime
+	hitDef_sparkno
+	hitDef_guard_sparkno
+	hitDef_sparkxy
+	hitDef_down_hittime
+	hitDef_p1facing
+	hitDef_p1getp2facing
+	hitDef_mindist
+	hitDef_maxdist
+	hitDef_snap
+	hitDef_p2facing
+	hitDef_air_hittime
+	hitDef_fall
+	hitDef_air_fall
+	hitDef_air_cornerpush_veloff
+	hitDef_down_bounce
+	hitDef_down_velocity
+	hitDef_down_cornerpush_veloff
+	hitDef_ground_hittime
+	hitDef_guard_hittime
+	hitDef_guard_dist
+	hitDef_pausetime
+	hitDef_guard_pausetime
+	hitDef_air_velocity
+	hitDef_airguard_velocity
+	hitDef_ground_slidetime
+	hitDef_guard_slidetime
+	hitDef_guard_ctrltime
+	hitDef_airguard_ctrltime
+	hitDef_ground_velocity_x
+	hitDef_ground_velocity_y
+	hitDef_ground_velocity
+	hitDef_guard_velocity
+	hitDef_ground_cornerpush_veloff
+	hitDef_guard_cornerpush_veloff
+	hitDef_airguard_cornerpush_veloff
+	hitDef_yaccel
 	hitDef_envshake_time
 	hitDef_envshake_ampl
 	hitDef_envshake_phase
@@ -2052,6 +2116,8 @@ const (
 
 func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	switch id {
+	case hitDef_attr:
+		hd.attr = exp[0].evalI(c, sc.playerNo)
 	case hitDef_guardflag:
 		hd.guardflag = exp[0].evalI(c, sc.playerNo)
 	case hitDef_hitflag:
@@ -2068,6 +2134,221 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.animtype = Reaction(exp[0].evalI(c, sc.playerNo))
 	case hitDef_affectteam:
 		hd.affectteam = exp[0].evalI(c, sc.playerNo)
+	case hitDef_id:
+		hd.id = Max(0, exp[0].evalI(c, sc.playerNo))
+	case hitDef_chainid:
+		hd.chainid = exp[0].evalI(c, sc.playerNo)
+	case hitDef_nochainid:
+		hd.nochainid[0] = exp[0].evalI(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.nochainid[1] = exp[1].evalI(c, sc.playerNo)
+		}
+	case hitDef_kill:
+		hd.kill = exp[0].evalB(c, sc.playerNo)
+	case hitDef_guard_kill:
+		hd.guard_kill = exp[0].evalB(c, sc.playerNo)
+	case hitDef_fall_kill:
+		hd.fall.kill = exp[0].evalB(c, sc.playerNo)
+	case hitDef_hitonce:
+		hd.hitonce = Btoi(exp[0].evalB(c, sc.playerNo))
+	case hitDef_air_juggle:
+		hd.air_juggle = exp[0].evalI(c, sc.playerNo)
+	case hitDef_getpower:
+		hd.hitgetpower = Max(IErr+1, exp[0].evalI(c, sc.playerNo))
+		if len(exp) > 1 {
+			hd.guardgetpower = Max(IErr+1, exp[1].evalI(c, sc.playerNo))
+		}
+	case hitDef_damage:
+		hd.hitdamage = exp[0].evalI(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.guarddamage = exp[1].evalI(c, sc.playerNo)
+		}
+	case hitDef_givepower:
+		hd.hitgivepower = Max(IErr+1, exp[0].evalI(c, sc.playerNo))
+		if len(exp) > 1 {
+			hd.guardgivepower = Max(IErr+1, exp[1].evalI(c, sc.playerNo))
+		}
+	case hitDef_numhits:
+		hd.numhits = exp[0].evalI(c, sc.playerNo)
+	case hitDef_hitsound:
+		n := exp[1].evalI(c, sc.playerNo)
+		if n < 0 {
+			hd.hitsound[0] = IErr
+		} else if exp[0].evalB(c, sc.playerNo) {
+			hd.hitsound[0] = ^n
+		} else {
+			hd.hitsound[0] = n
+		}
+		if len(exp) > 2 {
+			hd.hitsound[1] = exp[2].evalI(c, sc.playerNo)
+		}
+	case hitDef_guardsound:
+		n := exp[1].evalI(c, sc.playerNo)
+		if n < 0 {
+			hd.guardsound[0] = IErr
+		} else if exp[0].evalB(c, sc.playerNo) {
+			hd.guardsound[0] = ^n
+		} else {
+			hd.guardsound[0] = n
+		}
+		if len(exp) > 2 {
+			hd.guardsound[1] = exp[2].evalI(c, sc.playerNo)
+		}
+	case hitDef_priority:
+		hd.priority = exp[0].evalI(c, sc.playerNo)
+		hd.bothhittype = AiuchiType(exp[1].evalI(c, sc.playerNo))
+	case hitDef_p1stateno:
+		hd.p1stateno = exp[0].evalI(c, sc.playerNo)
+	case hitDef_p2stateno:
+		hd.p2stateno = exp[0].evalI(c, sc.playerNo)
+		hd.p2getp1state = true
+	case hitDef_p2getp1state:
+		hd.p2getp1state = exp[0].evalB(c, sc.playerNo)
+	case hitDef_p1sprpriority:
+		hd.p1sprpriority = exp[0].evalI(c, sc.playerNo)
+	case hitDef_p2sprpriority:
+		hd.p2sprpriority = exp[0].evalI(c, sc.playerNo)
+	case hitDef_forcestand:
+		hd.forcestand = Btoi(exp[0].evalB(c, sc.playerNo))
+	case hitDef_forcenofall:
+		hd.forcenofall = exp[0].evalB(c, sc.playerNo)
+	case hitDef_fall_damage:
+		hd.fall.damage = exp[0].evalI(c, sc.playerNo)
+	case hitDef_fall_xvelocity:
+		hd.fall.xvelocity = exp[0].evalF(c, sc.playerNo)
+	case hitDef_fall_yvelocity:
+		hd.fall.yvelocity = exp[0].evalF(c, sc.playerNo)
+	case hitDef_fall_recover:
+		hd.fall.recover = exp[0].evalB(c, sc.playerNo)
+	case hitDef_fall_recovertime:
+		hd.fall.recovertime = exp[0].evalI(c, sc.playerNo)
+	case hitDef_sparkno:
+		n := exp[1].evalI(c, sc.playerNo)
+		if n < 0 {
+			hd.sparkno = IErr
+		} else if exp[0].evalB(c, sc.playerNo) {
+			hd.sparkno = ^n
+		} else {
+			hd.sparkno = n
+		}
+	case hitDef_guard_sparkno:
+		n := exp[1].evalI(c, sc.playerNo)
+		if n < 0 {
+			hd.guard_sparkno = IErr
+		} else if exp[0].evalB(c, sc.playerNo) {
+			hd.guard_sparkno = ^n
+		} else {
+			hd.guard_sparkno = n
+		}
+	case hitDef_sparkxy:
+		hd.sparkxy[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.sparkxy[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_down_hittime:
+		hd.down_hittime = exp[0].evalI(c, sc.playerNo)
+	case hitDef_p1facing:
+		hd.p1facing = exp[0].evalI(c, sc.playerNo)
+	case hitDef_p1getp2facing:
+		hd.p1getp2facing = exp[0].evalI(c, sc.playerNo)
+	case hitDef_mindist:
+		hd.mindist[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.mindist[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_maxdist:
+		hd.maxdist[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.maxdist[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_snap:
+		hd.snap[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.snap[1] = exp[1].evalF(c, sc.playerNo)
+			if len(exp) > 2 {
+				exp[2].run(c, sc.playerNo)
+				if len(exp) > 3 {
+					hd.snapt = exp[3].evalI(c, sc.playerNo)
+				}
+			}
+		}
+	case hitDef_p2facing:
+		hd.p2facing = exp[0].evalI(c, sc.playerNo)
+	case hitDef_air_hittime:
+		hd.air_hittime = exp[0].evalI(c, sc.playerNo)
+	case hitDef_fall:
+		hd.ground_fall = exp[0].evalB(c, sc.playerNo)
+		hd.air_fall = hd.ground_fall
+	case hitDef_air_fall:
+		hd.air_fall = exp[0].evalB(c, sc.playerNo)
+	case hitDef_air_cornerpush_veloff:
+		hd.air_cornerpush_veloff = exp[0].evalF(c, sc.playerNo)
+	case hitDef_down_bounce:
+		hd.down_bounce = exp[0].evalB(c, sc.playerNo)
+	case hitDef_down_velocity:
+		hd.down_velocity[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.down_velocity[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_down_cornerpush_veloff:
+		hd.down_cornerpush_veloff = exp[0].evalF(c, sc.playerNo)
+	case hitDef_ground_hittime:
+		hd.ground_hittime = exp[0].evalI(c, sc.playerNo)
+		hd.guard_hittime = hd.ground_hittime
+	case hitDef_guard_hittime:
+		hd.guard_hittime = exp[0].evalI(c, sc.playerNo)
+	case hitDef_guard_dist:
+		hd.guard_dist = exp[0].evalI(c, sc.playerNo)
+	case hitDef_pausetime:
+		hd.pausetime = exp[0].evalI(c, sc.playerNo)
+		hd.guard_pausetime = hd.pausetime
+		if len(exp) > 1 {
+			hd.shaketime = exp[1].evalI(c, sc.playerNo)
+			hd.guard_shaketime = hd.shaketime
+		}
+	case hitDef_guard_pausetime:
+		hd.guard_pausetime = exp[0].evalI(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.guard_shaketime = exp[1].evalI(c, sc.playerNo)
+		}
+	case hitDef_air_velocity:
+		hd.air_velocity[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.air_velocity[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_airguard_velocity:
+		hd.airguard_velocity[0] = exp[0].evalF(c, sc.playerNo)
+		if len(exp) > 1 {
+			hd.airguard_velocity[1] = exp[1].evalF(c, sc.playerNo)
+		}
+	case hitDef_ground_slidetime:
+		hd.ground_slidetime = exp[0].evalI(c, sc.playerNo)
+		hd.guard_slidetime = hd.ground_slidetime
+		hd.guard_ctrltime = hd.ground_slidetime
+		hd.airguard_ctrltime = hd.ground_slidetime
+	case hitDef_guard_slidetime:
+		hd.guard_slidetime = exp[0].evalI(c, sc.playerNo)
+		hd.guard_ctrltime = hd.guard_slidetime
+		hd.airguard_ctrltime = hd.guard_slidetime
+	case hitDef_guard_ctrltime:
+		hd.guard_ctrltime = exp[0].evalI(c, sc.playerNo)
+		hd.airguard_ctrltime = hd.guard_ctrltime
+	case hitDef_airguard_ctrltime:
+		hd.airguard_ctrltime = exp[0].evalI(c, sc.playerNo)
+	case hitDef_ground_velocity_x:
+		hd.ground_velocity[0] = exp[0].evalF(c, sc.playerNo)
+	case hitDef_ground_velocity_y:
+		hd.ground_velocity[1] = exp[0].evalF(c, sc.playerNo)
+	case hitDef_guard_velocity:
+		hd.guard_velocity = exp[0].evalF(c, sc.playerNo)
+	case hitDef_ground_cornerpush_veloff:
+		hd.ground_cornerpush_veloff = exp[0].evalF(c, sc.playerNo)
+	case hitDef_guard_cornerpush_veloff:
+		hd.guard_cornerpush_veloff = exp[0].evalF(c, sc.playerNo)
+	case hitDef_airguard_cornerpush_veloff:
+		hd.airguard_cornerpush_veloff = exp[0].evalF(c, sc.playerNo)
+	case hitDef_yaccel:
+		hd.yaccel = exp[0].evalF(c, sc.playerNo)
 	case hitDef_envshake_time:
 		hd.envshake_time = exp[0].evalI(c, sc.playerNo)
 	case hitDef_envshake_ampl:
@@ -2089,7 +2370,6 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 			return false
 		}
 	}
-	unimplemented()
 	return true
 }
 func (sc hitDef) Run(c *Char, ps *int32) bool {

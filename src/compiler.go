@@ -2374,6 +2374,16 @@ func (c *Compiler) afterImage(is IniSection, sbc *StateBytecode,
 }
 func (c *Compiler) hitDefSub(is IniSection,
 	sc *StateControllerBase) error {
+	if err := c.stateParam(is, "attr", func(data string) error {
+		attr, err := c.attr(data, true)
+		if err != nil {
+			return err
+		}
+		sc.add(hitDef_attr, sc.iToExp(attr))
+		return nil
+	}); err != nil {
+		return err
+	}
 	hflg := func(id byte, data string) error {
 		var flg int32
 		for _, c := range data {
@@ -2500,7 +2510,329 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}); err != nil {
 		return err
 	}
-	unimplemented()
+	if err := c.paramValue(is, sc, "id",
+		hitDef_id, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "chainid",
+		hitDef_chainid, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "nochainid",
+		hitDef_nochainid, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.kill",
+		hitDef_guard_kill, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.kill",
+		hitDef_fall_kill, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "hitonce",
+		hitDef_hitonce, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "air.juggle",
+		hitDef_air_juggle, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "getpower",
+		hitDef_getpower, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "damage",
+		hitDef_damage, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "givepower",
+		hitDef_givepower, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "numhits",
+		hitDef_numhits, VT_Int, 1, false); err != nil {
+		return err
+	}
+	hsnd := func(id byte, data string) error {
+		fflg := true
+		if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+			switch data[0] {
+			case 'F', 'f':
+				data = data[1:]
+			case 'S', 's':
+				fflg = false
+				data = data[1:]
+			}
+		}
+		return c.scAdd(sc, id, data, VT_Int, 2, sc.iToExp(Btoi(fflg))...)
+	}
+	if err := c.stateParam(is, "hitsound", func(data string) error {
+		return hsnd(hitDef_hitsound, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "guardsound", func(data string) error {
+		return hsnd(hitDef_guardsound, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "priority", func(data string) error {
+		be, err := c.argExpression(&data, VT_Int)
+		if err != nil {
+			return err
+		}
+		at := AT_Hit
+		data = strings.TrimSpace(data)
+		if c.token == "," && len(data) > 0 {
+			switch data[0] {
+			case 'H', 'h':
+				at = AT_Hit
+			case 'M', 'm':
+				at = AT_Miss
+			case 'D', 'd':
+				at = AT_Dodge
+			default:
+				return Error(data + "が無効な値です")
+			}
+		}
+		sc.add(hitDef_priority, append(sc.beToExp(be), sc.iToExp(int32(at))...))
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p1stateno",
+		hitDef_p1stateno, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p2stateno",
+		hitDef_p2stateno, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p2getp1state",
+		hitDef_p2getp1state, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	b := false
+	if err := c.stateParam(is, "p1sprpriority", func(data string) error {
+		b = true
+		return c.scAdd(sc, hitDef_p1sprpriority, data, VT_Int, 1)
+	}); err != nil {
+		return err
+	}
+	if !b {
+		if err := c.paramValue(is, sc, "sprpriority",
+			hitDef_p1sprpriority, VT_Int, 1, false); err != nil {
+			return err
+		}
+	}
+	if err := c.paramValue(is, sc, "p2sprpriority",
+		hitDef_p2sprpriority, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "forcestand",
+		hitDef_forcestand, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "forcenofall",
+		hitDef_forcenofall, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.damage",
+		hitDef_fall_damage, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.xvelocity",
+		hitDef_fall_xvelocity, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.yvelocity",
+		hitDef_fall_yvelocity, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.recover",
+		hitDef_fall_recover, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.recovertime",
+		hitDef_fall_recovertime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	sprk := func(id byte, data string) error {
+		fflg := true
+		if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+			fflg = false
+			data = data[1:]
+		}
+		return c.scAdd(sc, id, data, VT_Int, 1, sc.iToExp(Btoi(fflg))...)
+	}
+	if err := c.stateParam(is, "sparkno", func(data string) error {
+		return sprk(hitDef_sparkno, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "guard.sparkno", func(data string) error {
+		return sprk(hitDef_guard_sparkno, data)
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "sparkxy",
+		hitDef_sparkxy, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "down.hittime",
+		hitDef_down_hittime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p1facing",
+		hitDef_p1facing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p1getp2facing",
+		hitDef_p1getp2facing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "mindist",
+		hitDef_mindist, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "maxdist",
+		hitDef_maxdist, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "snap",
+		hitDef_snap, VT_Float, 4, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "p2facing",
+		hitDef_p2facing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "air.hittime",
+		hitDef_air_hittime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall",
+		hitDef_fall, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "air.fall",
+		hitDef_air_fall, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "air.cornerpush.veloff",
+		hitDef_air_cornerpush_veloff, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "down.bounce",
+		hitDef_down_bounce, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "down.velocity",
+		hitDef_down_velocity, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "down.cornerpush.veloff",
+		hitDef_down_cornerpush_veloff, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "ground.hittime",
+		hitDef_ground_hittime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.hittime",
+		hitDef_guard_hittime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.dist",
+		hitDef_guard_dist, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "pausetime",
+		hitDef_pausetime, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.pausetime",
+		hitDef_guard_pausetime, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "air.velocity",
+		hitDef_air_velocity, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "airguard.velocity",
+		hitDef_airguard_velocity, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "ground.slidetime",
+		hitDef_ground_slidetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.slidetime",
+		hitDef_guard_slidetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.ctrltime",
+		hitDef_guard_ctrltime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "airguard.ctrltime",
+		hitDef_airguard_ctrltime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "ground.velocity", func(data string) error {
+		in := data
+		if c.token = c.tokenizer(&in); strings.ToLower(c.token) == "n" {
+			if c.token = c.tokenizer(&in); len(c.token) > 0 && c.token != "," {
+				return Error(c.token + "がエラーです")
+			}
+		} else {
+			in = data
+			be, err := c.argExpression(&in, VT_Float)
+			if err != nil {
+				return err
+			}
+			sc.add(hitDef_ground_velocity_x, sc.beToExp(be))
+		}
+		if c.token == "," {
+			oldin := in
+			if c.token = c.tokenizer(&in); strings.ToLower(c.token) == "n" {
+				if c.token = c.tokenizer(&in); len(c.token) > 0 {
+					return Error(c.token + "がエラーです")
+				}
+			} else {
+				in = oldin
+				be, err := c.fullExpression(&in, VT_Float)
+				if err != nil {
+					return err
+				}
+				sc.add(hitDef_ground_velocity_y, sc.beToExp(be))
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.velocity",
+		hitDef_guard_velocity, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "ground.cornerpush.veloff",
+		hitDef_ground_cornerpush_veloff, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.cornerpush.veloff",
+		hitDef_guard_cornerpush_veloff, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "airguard.cornerpush.veloff",
+		hitDef_airguard_cornerpush_veloff, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "yaccel",
+		hitDef_yaccel, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.palFXSub(is, sc, "palfx."); err != nil {
 		return err
 	}

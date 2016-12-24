@@ -330,10 +330,10 @@ type Fall struct {
 	animtype       Reaction
 	xvelocity      float32
 	yvelocity      float32
-	recover        int32
+	recover        bool
 	recovertime    int32
 	damage         int32
-	kill           int32
+	kill           bool
 	envshake_time  int32
 	envshake_freq  float32
 	envshake_ampl  int32
@@ -346,8 +346,8 @@ func (f *Fall) clear() {
 }
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: -4.5, recover: 1, recovertime: 4, kill: 1, envshake_freq: 60,
-		envshake_ampl: -4, envshake_phase: float32(math.NaN())}
+		yvelocity: -4.5, recover: true, recovertime: 4, kill: true,
+		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN())}
 }
 
 type HitDef struct {
@@ -399,17 +399,16 @@ type HitDef struct {
 	p2facing                   int32
 	p1stateno                  int32
 	p2stateno                  int32
-	p2getp1state               int32
+	p2getp1state               bool
 	forcestand                 int32
-	ground_fall                int32
-	air_fall                   int32
+	ground_fall                bool
+	air_fall                   bool
 	down_velocity              [2]float32
 	down_hittime               int32
-	down_bounce                int32
+	down_bounce                bool
 	id                         int32
 	chainid                    int32
-	nochainid1                 int32
-	nochainid2                 int32
+	nochainid                  [2]int32
 	hitonce                    int32
 	numhits                    int32
 	hitgetpower                int32
@@ -447,9 +446,9 @@ func (hd *HitDef) clear() {
 		down_cornerpush_veloff:     float32(math.NaN()),
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()), p1sprpriority: 1,
-		p1stateno: -1, p2stateno: -1, forcestand: IErr, air_fall: IErr,
+		p1stateno: -1, p2stateno: -1, forcestand: IErr,
 		down_velocity: [2]float32{float32(math.NaN()), float32(math.NaN())},
-		chainid:       -1, nochainid1: -1, nochainid2: -1, numhits: 1,
+		chainid:       -1, nochainid: [2]int32{-1, -1}, numhits: 1,
 		hitgetpower: IErr, guardgetpower: IErr, hitgivepower: IErr,
 		guardgivepower: IErr, envshake_freq: 60, envshake_ampl: -4,
 		envshake_phase: float32(math.NaN()),
@@ -1274,7 +1273,6 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
-	ifierrset(&hd.air_fall, hd.ground_fall)
 	if hd.fall.animtype == RA_Unknown {
 		if hd.air_animtype != RA_Unknown {
 			hd.fall.animtype = hd.air_animtype
