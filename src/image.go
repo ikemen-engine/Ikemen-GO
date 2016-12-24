@@ -38,22 +38,37 @@ func NewTexture() (t *Texture) {
 	return
 }
 
+type PalFXDef struct {
+	time      int32
+	color     float32
+	add       [3]int32
+	mul       [3]int32
+	sinadd    [3]int32
+	cycletime int32
+	invertall bool
+}
 type PalFX struct {
-	Time       int32
+	def        PalFXDef
 	Remap      []int
-	Invertall  bool
 	negType    bool
 	enable     bool
+	eNegType   bool
 	eInvertall bool
-	enegType   bool
 	eAdd       [3]int32
 	eMul       [3]int32
 	eColor     float32
 }
 
 func NewPalFX() *PalFX { return &PalFX{} }
+func (pfx *PalFX) clear2(nt bool) {
+	pfx.def = PalFXDef{color: 1, mul: [3]int32{256, 256, 256}}
+	pfx.negType = nt
+}
+func (pfx *PalFX) clear() {
+	pfx.clear2(false)
+}
 func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 {
-	if pfx == nil || pfx.Time == 0 {
+	if pfx == nil || pfx.def.time == 0 {
 		return pal
 	}
 	unimplemented()
@@ -61,7 +76,7 @@ func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 {
 }
 func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	add, mul [3]float32) {
-	if pfx == nil || pfx.Time == 0 {
+	if pfx == nil || pfx.def.time == 0 {
 		neg = false
 		color = 1
 		for i := range add {

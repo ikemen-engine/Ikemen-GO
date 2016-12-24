@@ -28,6 +28,7 @@ var sys = System{
 	bgm:                   *newVorbis(),
 	sounds:                newSounds(),
 	allPalFX:              *NewPalFX(),
+	bgPalFX:               *NewPalFX(),
 	sel:                   *newSelect(),
 	match:                 1,
 	listenPort:            "7500",
@@ -70,6 +71,7 @@ type System struct {
 	nullSndBuf                  [audioOutLen * 2]int16
 	sounds                      Sounds
 	allPalFX                    PalFX
+	bgPalFX                     PalFX
 	lifebar                     Lifebar
 	sel                         Select
 	netInput                    *NetInput

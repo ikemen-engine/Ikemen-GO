@@ -263,7 +263,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
 		bank = 0
 	}
 	pal := f.palettes[bank][:]
-	if sys.allPalFX.Time != 0 {
+	if sys.allPalFX.def.time != 0 {
 		pal = sys.allPalFX.GetFxPal(pal, false)
 	}
 	gl.ActiveTexture(gl.TEXTURE1)

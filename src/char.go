@@ -416,13 +416,7 @@ type HitDef struct {
 	guardgetpower              int32
 	hitgivepower               int32
 	guardgivepower             int32
-	palfx_time                 int32
-	palfx_mul                  [3]int32
-	palfx_add                  [3]int32
-	palfx_ampl                 [3]int32
-	palfx_cycletime            int32
-	palfx_color                int32
-	palfx_invertall            int32
+	palfx                      PalFXDef
 	envshake_time              int32
 	envshake_freq              float32
 	envshake_ampl              int32
@@ -457,12 +451,13 @@ func (hd *HitDef) clear() {
 		down_velocity: [2]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:       -1, nochainid1: -1, nochainid2: -1, numhits: 1,
 		hitgetpower: IErr, guardgetpower: IErr, hitgivepower: IErr,
-		guardgivepower: IErr, palfx_mul: [3]int32{255, 255, 255}, palfx_color: 256,
-		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN()),
-		mindist: [2]float32{float32(math.NaN()), float32(math.NaN())},
-		maxdist: [2]float32{float32(math.NaN()), float32(math.NaN())},
-		snap:    [2]float32{float32(math.NaN()), float32(math.NaN())}, kill: true,
-		guard_kill: true, playerNo: -1}
+		guardgivepower: IErr, envshake_freq: 60, envshake_ampl: -4,
+		envshake_phase: float32(math.NaN()),
+		mindist:        [2]float32{float32(math.NaN()), float32(math.NaN())},
+		maxdist:        [2]float32{float32(math.NaN()), float32(math.NaN())},
+		snap:           [2]float32{float32(math.NaN()), float32(math.NaN())},
+		kill:           true, guard_kill: true, playerNo: -1}
+	hd.palfx.mul, hd.palfx.color = [3]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
 func (hd *HitDef) invalidate(stateType StateType) {
@@ -783,6 +778,7 @@ type Char struct {
 	oldPos        [2]float32
 	vel           [2]float32
 	aimg          AfterImage
+	palfx         *PalFX
 	standby       bool
 	pauseMovetime int32
 	superMovetime int32

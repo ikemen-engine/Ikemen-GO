@@ -1623,19 +1623,21 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 }
 func (c *Compiler) hitBy(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return hitBy(*sc), c.stateSec(is, func() error {
+	ret, err := (*hitBy)(sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) notHitBy(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return notHitBy(*sc), c.stateSec(is, func() error {
+	ret, err := (*notHitBy)(sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return assertSpecial(*sc), c.stateSec(is, func() error {
+	ret, err := (*assertSpecial)(sc), c.stateSec(is, func() error {
 		foo := func(data string) error {
 			switch data {
 			case "nostandguard":
@@ -1705,10 +1707,11 @@ func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) playSnd(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return playSnd(*sc), c.stateSec(is, func() error {
+	ret, err := (*playSnd)(sc), c.stateSec(is, func() error {
 		f := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			f = true
@@ -1766,6 +1769,7 @@ func (c *Compiler) playSnd(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) changeStateSub(is IniSection,
 	sc *StateControllerBase) error {
@@ -1785,19 +1789,21 @@ func (c *Compiler) changeStateSub(is IniSection,
 }
 func (c *Compiler) changeState(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return changeState(*sc), c.stateSec(is, func() error {
+	ret, err := (*changeState)(sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) selfState(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return selfState(*sc), c.stateSec(is, func() error {
+	ret, err := (*selfState)(sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return tagIn(*sc), c.stateSec(is, func() error {
+	ret, err := (*tagIn)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "stateno",
 			tagIn_stateno, VT_Int, 1, true); err != nil {
 			return err
@@ -1814,17 +1820,19 @@ func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) tagOut(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return tagOut(*sc), c.stateSec(is, func() error {
+	ret, err := (*tagOut)(sc), c.stateSec(is, func() error {
 		sc.add(tagOut_, nil)
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) destroySelf(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return destroySelf(*sc), c.stateSec(is, func() error {
+	ret, err := (*destroySelf)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "recursive",
 			destroySelf_recursive, VT_Bool, 1, false); err != nil {
 			return err
@@ -1835,6 +1843,7 @@ func (c *Compiler) destroySelf(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) changeAnimSub(is IniSection,
 	sc *StateControllerBase) error {
@@ -1850,19 +1859,21 @@ func (c *Compiler) changeAnimSub(is IniSection,
 }
 func (c *Compiler) changeAnim(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return changeAnim(*sc), c.stateSec(is, func() error {
+	ret, err := (*changeAnim)(sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) changeAnim2(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return changeAnim2(*sc), c.stateSec(is, func() error {
+	ret, err := (*changeAnim2)(sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return helper(*sc), c.stateSec(is, func() error {
+	ret, err := (*helper)(sc), c.stateSec(is, func() error {
 		if err := c.stateParam(is, "helpertype", func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -1968,18 +1979,21 @@ func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) powerAdd(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return powerAdd(*sc), c.stateSec(is, func() error {
+	ret, err := (*powerAdd)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
 	})
+	return *ret, err
 }
 func (c *Compiler) ctrlSet(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return ctrlSet(*sc), c.stateSec(is, func() error {
+	ret, err := (*ctrlSet)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", ctrlSet_value, VT_Bool, 1, true)
 	})
+	return *ret, err
 }
 func (c *Compiler) explodSub(is IniSection,
 	sc *StateControllerBase) error {
@@ -2074,7 +2088,7 @@ func (c *Compiler) explodSub(is IniSection,
 }
 func (c *Compiler) explod(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, ihp bool) (StateController, error) {
-	return explod(*sc), c.stateSec(is, func() error {
+	ret, err := (*explod)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "ownpal",
 			explod_ownpal, VT_Bool, 1, false); err != nil {
 			return err
@@ -2110,10 +2124,11 @@ func (c *Compiler) explod(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return modifyExplod(*sc), c.stateSec(is, func() error {
+	ret, err := (*modifyExplod)(sc), c.stateSec(is, func() error {
 		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
@@ -2131,10 +2146,11 @@ func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) gameMakeAnim(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return gameMakeAnim(*sc), c.stateSec(is, func() error {
+	ret, err := (*gameMakeAnim)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "pos",
 			gameMakeAnim_pos, VT_Float, 2, false); err != nil {
 			return err
@@ -2172,6 +2188,7 @@ func (c *Compiler) gameMakeAnim(is IniSection, sbc *StateBytecode,
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) posSetSub(is IniSection,
 	sc *StateControllerBase) error {
@@ -2191,87 +2208,169 @@ func (c *Compiler) posSetSub(is IniSection,
 }
 func (c *Compiler) posSet(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return posSet(*sc), c.stateSec(is, func() error {
+	ret, err := (*posSet)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) posAdd(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return posAdd(*sc), c.stateSec(is, func() error {
+	ret, err := (*posAdd)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) velSet(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return velSet(*sc), c.stateSec(is, func() error {
+	ret, err := (*velSet)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) velAdd(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return velAdd(*sc), c.stateSec(is, func() error {
+	ret, err := (*velAdd)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) velMul(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return velMul(*sc), c.stateSec(is, func() error {
+	ret, err := (*velMul)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
+	return *ret, err
+}
+func (c *Compiler) palFXSub(is IniSection,
+	sc *StateControllerBase, prefix string) error {
+	if err := c.paramValue(is, sc, prefix+"time",
+		palFX_time, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"color",
+		palFX_color, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, prefix+"add", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 3)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 3 {
+			return Error(prefix + "addの要素が足りません")
+		}
+		sc.add(palFX_add, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, prefix+"mul", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 3)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 3 {
+			return Error(prefix + "mulの要素が足りません")
+		}
+		sc.add(palFX_mul, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, prefix+"sinadd", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 4)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 3 {
+			return Error(prefix + "sinaddの要素が足りません")
+		}
+		sc.add(palFX_sinadd, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"invertall",
+		palFX_invertall, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Compiler) palFX(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*palFX)(sc), c.stateSec(is, func() error {
+		return c.palFXSub(is, sc, "")
+	})
+	return *ret, err
+}
+func (c *Compiler) allPalFX(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*allPalFX)(sc), c.stateSec(is, func() error {
+		return c.palFXSub(is, sc, "")
+	})
+	return *ret, err
+}
+func (c *Compiler) bgPalFX(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*bgPalFX)(sc), c.stateSec(is, func() error {
+		return c.palFXSub(is, sc, "")
+	})
+	return *ret, err
 }
 func (c *Compiler) afterImageSub(is IniSection,
-	sc *StateControllerBase, prefix string, idOffset byte) error {
+	sc *StateControllerBase, prefix string) error {
 	if err := c.paramTrans(is, sc, prefix,
-		afterImage_trans+idOffset, true); err != nil {
+		afterImage_trans, true); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"time",
-		afterImage_time+idOffset, VT_Int, 1, false); err != nil {
+		afterImage_time, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"length",
-		afterImage_length+idOffset, VT_Int, 1, false); err != nil {
+		afterImage_length, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"timegap",
-		afterImage_timegap+idOffset, VT_Int, 1, false); err != nil {
+		afterImage_timegap, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palcolor",
-		afterImage_palcolor+idOffset, VT_Int, 1, false); err != nil {
+		afterImage_palcolor, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
-		afterImage_palinvertall+idOffset, VT_Bool, 1, false); err != nil {
+		afterImage_palinvertall, VT_Bool, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palbright",
-		afterImage_palbright+idOffset, VT_Int, 3, false); err != nil {
+		afterImage_palbright, VT_Int, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palcontrast",
-		afterImage_palcontrast+idOffset, VT_Int, 3, false); err != nil {
+		afterImage_palcontrast, VT_Int, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palpostbright",
-		afterImage_palpostbright+idOffset, VT_Int, 3, false); err != nil {
+		afterImage_palpostbright, VT_Int, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"paladd",
-		afterImage_paladd+idOffset, VT_Int, 3, false); err != nil {
+		afterImage_paladd, VT_Int, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palmul",
-		afterImage_palmul+idOffset, VT_Float, 3, false); err != nil {
+		afterImage_palmul, VT_Float, 3, false); err != nil {
 		return err
 	}
 	return nil
 }
 func (c *Compiler) afterImage(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return afterImage(*sc), c.stateSec(is, func() error {
-		return c.afterImageSub(is, sc, "", 0)
+	ret, err := (*afterImage)(sc), c.stateSec(is, func() error {
+		return c.afterImageSub(is, sc, "")
 	})
+	return *ret, err
 }
 func (c *Compiler) hitDefSub(is IniSection,
 	sc *StateControllerBase) error {
@@ -2402,17 +2501,53 @@ func (c *Compiler) hitDefSub(is IniSection,
 		return err
 	}
 	unimplemented()
+	if err := c.palFXSub(is, sc, "palfx."); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "envshake.time",
+		hitDef_envshake_time, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "envshake.ampl",
+		hitDef_envshake_ampl, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "envshake.phase",
+		hitDef_envshake_phase, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "envshake.freq",
+		hitDef_envshake_freq, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.envshake.time",
+		hitDef_fall_envshake_time, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.envshake.ampl",
+		hitDef_fall_envshake_ampl, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.envshake.phase",
+		hitDef_fall_envshake_phase, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.envshake.freq",
+		hitDef_fall_envshake_freq, VT_Float, 1, false); err != nil {
+		return err
+	}
 	return nil
 }
 func (c *Compiler) hitDef(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return hitDef(*sc), c.stateSec(is, func() error {
+	ret, err := (*hitDef)(sc), c.stateSec(is, func() error {
 		return c.hitDefSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) reversalDef(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return reversalDef(*sc), c.stateSec(is, func() error {
+	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
 		var err error
 		if err = c.stateParam(is, "reversal.attr", func(data string) error {
@@ -2427,10 +2562,11 @@ func (c *Compiler) reversalDef(is IniSection, sbc *StateBytecode,
 		sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
 		return c.hitDefSub(is, sc)
 	})
+	return *ret, err
 }
 func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
-	return projectile(*sc), c.stateSec(is, func() error {
+	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
 		if err := c.paramPostye(is, sc, projectile_postype); err != nil {
 			return err
 		}
@@ -2540,12 +2676,12 @@ func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
 			projectile_remappal, VT_Int, 2, false); err != nil {
 			return err
 		}
-		if err := c.afterImageSub(is, sc,
-			"afterimage.", projectile_afterimage_); err != nil {
+		if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
 			return err
 		}
 		return nil
 	})
+	return *ret, err
 }
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
@@ -2649,6 +2785,12 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.velAdd
 					case "velmul":
 						scf = c.velMul
+					case "palfx":
+						scf = c.palFX
+					case "allpalfx":
+						scf = c.allPalFX
+					case "bgpalfx":
+						scf = c.bgPalFX
 					case "afterimage":
 						scf = c.afterImage
 					case "hitdef":

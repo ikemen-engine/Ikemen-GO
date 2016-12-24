@@ -1869,10 +1869,83 @@ func (sc velMul) Run(c *Char, ps *int32) bool {
 	return false
 }
 
-type afterImage StateControllerBase
+type palFX StateControllerBase
 
 const (
-	afterImage_trans byte = iota
+	palFX_time byte = iota
+	palFX_color
+	palFX_add
+	palFX_mul
+	palFX_sinadd
+	palFX_invertall
+	palFX_last byte = iota - 1
+)
+
+func (sc palFX) runSub(c *Char, pfd *PalFXDef,
+	id byte, exp []BytecodeExp) bool {
+	switch id {
+	case palFX_time:
+		pfd.time = exp[0].evalI(c, sc.playerNo)
+	case palFX_color:
+		pfd.color = MaxF(0, MinF(1, exp[0].evalF(c, sc.playerNo)/256))
+	case palFX_add:
+		pfd.add = [3]int32{exp[0].evalI(c, sc.playerNo),
+			exp[1].evalI(c, sc.playerNo), exp[2].evalI(c, sc.playerNo)}
+	case palFX_mul:
+		pfd.mul = [3]int32{exp[0].evalI(c, sc.playerNo),
+			exp[1].evalI(c, sc.playerNo), exp[2].evalI(c, sc.playerNo)}
+	case palFX_sinadd:
+		pfd.sinadd = [3]int32{exp[0].evalI(c, sc.playerNo),
+			exp[1].evalI(c, sc.playerNo), exp[2].evalI(c, sc.playerNo)}
+		if len(exp) > 3 {
+			pfd.cycletime = exp[3].evalI(c, sc.playerNo)
+		}
+	case palFX_invertall:
+		pfd.invertall = exp[0].evalB(c, sc.playerNo)
+	default:
+		return false
+	}
+	return true
+}
+func (sc palFX) Run(c *Char, ps *int32) bool {
+	pf := c.palfx
+	if pf == nil {
+		pf = NewPalFX()
+	}
+	pf.clear2(true)
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		sc.runSub(c, &pf.def, id, exp)
+		return true
+	})
+	return false
+}
+
+type allPalFX palFX
+
+func (sc allPalFX) Run(c *Char, ps *int32) bool {
+	sys.allPalFX.clear()
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		palFX(sc).runSub(c, &sys.allPalFX.def, id, exp)
+		return true
+	})
+	return false
+}
+
+type bgPalFX palFX
+
+func (sc bgPalFX) Run(c *Char, ps *int32) bool {
+	sys.bgPalFX.clear()
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		palFX(sc).runSub(c, &sys.bgPalFX.def, id, exp)
+		return true
+	})
+	return false
+}
+
+type afterImage palFX
+
+const (
+	afterImage_trans byte = iota + palFX_last + 1
 	afterImage_time
 	afterImage_length
 	afterImage_timegap
@@ -1883,6 +1956,7 @@ const (
 	afterImage_palpostbright
 	afterImage_paladd
 	afterImage_palmul
+	afterImage_last byte = iota - 1
 )
 
 func (sc afterImage) runSub(c *Char, ai *AfterImage,
@@ -1957,7 +2031,7 @@ func (sc afterImage) Run(c *Char, ps *int32) bool {
 type hitDef afterImage
 
 const (
-	hitDef_guardflag byte = iota
+	hitDef_guardflag byte = iota + afterImage_last + 1
 	hitDef_hitflag
 	hitDef_ground_type
 	hitDef_air_type
@@ -1965,6 +2039,14 @@ const (
 	hitDef_air_animtype
 	hitDef_fall_animtype
 	hitDef_affectteam
+	hitDef_envshake_time
+	hitDef_envshake_ampl
+	hitDef_envshake_phase
+	hitDef_envshake_freq
+	hitDef_fall_envshake_time
+	hitDef_fall_envshake_ampl
+	hitDef_fall_envshake_phase
+	hitDef_fall_envshake_freq
 	hitDef_last byte = iota - 1
 )
 
@@ -1986,8 +2068,26 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.animtype = Reaction(exp[0].evalI(c, sc.playerNo))
 	case hitDef_affectteam:
 		hd.affectteam = exp[0].evalI(c, sc.playerNo)
+	case hitDef_envshake_time:
+		hd.envshake_time = exp[0].evalI(c, sc.playerNo)
+	case hitDef_envshake_ampl:
+		hd.envshake_ampl = exp[0].evalI(c, sc.playerNo)
+	case hitDef_envshake_phase:
+		hd.envshake_phase = exp[0].evalF(c, sc.playerNo)
+	case hitDef_envshake_freq:
+		hd.envshake_freq = MaxF(0, exp[0].evalF(c, sc.playerNo))
+	case hitDef_fall_envshake_time:
+		hd.fall.envshake_time = exp[0].evalI(c, sc.playerNo)
+	case hitDef_fall_envshake_ampl:
+		hd.fall.envshake_ampl = exp[0].evalI(c, sc.playerNo)
+	case hitDef_fall_envshake_phase:
+		hd.fall.envshake_phase = exp[0].evalF(c, sc.playerNo)
+	case hitDef_fall_envshake_freq:
+		hd.fall.envshake_freq = MaxF(0, exp[0].evalF(c, sc.playerNo))
 	default:
-		return false
+		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
+			return false
+		}
 	}
 	unimplemented()
 	return true
@@ -2054,7 +2154,6 @@ const (
 	projectile_pausemovetime
 	projectile_ownpal
 	projectile_remappal
-	projectile_afterimage_
 )
 
 func (sc projectile) Run(c *Char, ps *int32) bool {
@@ -2125,41 +2224,38 @@ func (sc projectile) Run(c *Char, ps *int32) bool {
 			if len(exp) > 1 {
 				p.scale[1] = exp[1].evalF(c, sc.playerNo)
 			}
+		case projectile_offset:
+			x = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c, sc.playerNo)
+			}
+		case projectile_projsprpriority:
+			p.sprpriority = exp[0].evalI(c, sc.playerNo)
+		case projectile_projstagebound:
+			p.stagebound = exp[0].evalI(c, sc.playerNo)
+		case projectile_projedgebound:
+			p.edgebound = exp[0].evalI(c, sc.playerNo)
+		case projectile_projheightbound:
+			p.heightbound[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				p.heightbound[1] = exp[1].evalI(c, sc.playerNo)
+			}
+		case projectile_projanim:
+			p.anim = exp[0].evalI(c, sc.playerNo)
+		case projectile_supermovetime:
+			p.supermovetime = exp[0].evalI(c, sc.playerNo)
+		case projectile_pausemovetime:
+			p.pausemovetime = exp[0].evalI(c, sc.playerNo)
+		case projectile_ownpal:
+			op = exp[0].evalB(c, sc.playerNo)
+		case projectile_remappal:
+			rp[0] = exp[0].evalI(c, sc.playerNo)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c, sc.playerNo)
+			}
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
-				switch id {
-				case projectile_offset:
-					x = exp[0].evalF(c, sc.playerNo)
-					if len(exp) > 1 {
-						y = exp[1].evalF(c, sc.playerNo)
-					}
-				case projectile_projsprpriority:
-					p.sprpriority = exp[0].evalI(c, sc.playerNo)
-				case projectile_projstagebound:
-					p.stagebound = exp[0].evalI(c, sc.playerNo)
-				case projectile_projedgebound:
-					p.edgebound = exp[0].evalI(c, sc.playerNo)
-				case projectile_projheightbound:
-					p.heightbound[0] = exp[0].evalI(c, sc.playerNo)
-					if len(exp) > 1 {
-						p.heightbound[1] = exp[1].evalI(c, sc.playerNo)
-					}
-				case projectile_projanim:
-					p.anim = exp[0].evalI(c, sc.playerNo)
-				case projectile_supermovetime:
-					p.supermovetime = exp[0].evalI(c, sc.playerNo)
-				case projectile_pausemovetime:
-					p.pausemovetime = exp[0].evalI(c, sc.playerNo)
-				case projectile_ownpal:
-					op = exp[0].evalB(c, sc.playerNo)
-				case projectile_remappal:
-					rp[0] = exp[0].evalI(c, sc.playerNo)
-					if len(exp) > 1 {
-						rp[1] = exp[1].evalI(c, sc.playerNo)
-					}
-				default:
-					afterImage(sc).runSub(c, &p.aimg, id-projectile_afterimage_, exp)
-				}
+				afterImage(sc).runSub(c, &p.aimg, id, exp)
 			}
 		}
 		return true

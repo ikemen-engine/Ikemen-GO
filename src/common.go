@@ -61,6 +61,28 @@ func Max(arg ...int32) (max int32) {
 	}
 	return
 }
+func MinF(arg ...float32) (min float32) {
+	if len(arg) > 0 {
+		min = arg[0]
+		for i := 1; i < len(arg); i++ {
+			if arg[i] < min {
+				min = arg[i]
+			}
+		}
+	}
+	return
+}
+func MaxF(arg ...float32) (max float32) {
+	if len(arg) > 0 {
+		max = arg[0]
+		for i := 1; i < len(arg); i++ {
+			if arg[i] > max {
+				max = arg[i]
+			}
+		}
+	}
+	return
+}
 func Abs(i int32) int32 {
 	if i < 0 {
 		return -i
