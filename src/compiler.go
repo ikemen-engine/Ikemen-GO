@@ -147,7 +147,7 @@ func (_ *Compiler) tokenizer(in *string) string {
 			i = len(*in)
 		}
 	}
-	token := (*in)[:i]
+	token := strings.ToLower((*in)[:i])
 	*in = (*in)[i:]
 	return token
 }
@@ -325,6 +325,13 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 	}
 	return flg, nil
 }
+func (c *Compiler) kakkohiraku(in *string) error {
+	if c.tokenizer(in) != "(" {
+		return Error(c.token + "の次に'('がありません")
+	}
+	c.token = c.tokenizer(in)
+	return nil
+}
 func (c *Compiler) kakkotojiru(in *string) error {
 	if c.token != ")" {
 		return Error(c.token + "の前に')'がありません")
@@ -490,12 +497,11 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	c.usiroOp = true
 	return nil
 }
-func (c *Compiler) oneArg(fun string, out *BytecodeExp, in *string,
+func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	rd, appendVal bool) (BytecodeValue, error) {
-	if c.tokenizer(in) != "(" {
-		return BytecodeSF(), Error(fun + "の次に'('がありません")
+	if err := c.kakkohiraku(in); err != nil {
+		return BytecodeSF(), err
 	}
-	c.token = c.tokenizer(in)
 	var be BytecodeExp
 	bv, err := c.expBoolOr(&be, in)
 	if err != nil {
@@ -586,8 +592,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return BytecodeSF(), Error(",がありません")
 		}
 		c.token = c.tokenizer(in)
-		bv2, err = c.expValue(&be2, in, true)
-		if err != nil {
+		if bv2, err = c.expValue(&be2, in, true); err != nil {
 			return BytecodeSF(), err
 		}
 		be2.appendValue(bv2)
@@ -617,7 +622,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 		} else {
 			c.token = c.tokenizer(in)
-			bv, err = c.expValue(&be1, in, false)
+			if bv, err = c.expValue(&be1, in, false); err != nil {
+				return BytecodeSF(), err
+			}
 			if bv.IsSF() {
 				if rd {
 					out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
@@ -630,7 +637,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "~":
 		c.token = c.tokenizer(in)
-		bv, err = c.expValue(&be1, in, false)
+		if bv, err = c.expValue(&be1, in, false); err != nil {
+			return BytecodeSF(), err
+		}
 		if bv.IsSF() {
 			if rd {
 				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
@@ -642,7 +651,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "!":
 		c.token = c.tokenizer(in)
-		bv, err = c.expValue(&be1, in, false)
+		if bv, err = c.expValue(&be1, in, false); err != nil {
+			return BytecodeSF(), err
+		}
 		if bv.IsSF() {
 			if rd {
 				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
@@ -654,10 +665,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ifelse", "cond":
 		cond := c.token == "cond"
-		if c.tokenizer(in) != "(" {
-			return BytecodeSF(), Error(c.token + "の次に'('がありません")
+		if err := c.kakkohiraku(in); err != nil {
+			return BytecodeSF(), err
 		}
-		c.token = c.tokenizer(in)
 		if bv1, err = c.expBoolOr(&be1, in); err != nil {
 			return BytecodeSF(), err
 		}
@@ -759,12 +769,134 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_jsf8, OpCode(len(be)))
 		out.append(be...)
 	case "animelemtime":
-		if _, err := c.oneArg(c.token, out, in, rd, true); err != nil {
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return BytecodeSF(), err
 		}
 		out.append(OC_animelemtime)
 	case "stateno":
 		out.append(OC_stateno)
+	case "movecontact":
+		out.append(OC_movecontact)
+	case "movehit":
+		out.append(OC_movehit)
+	case "moveguarded":
+		out.append(OC_moveguarded)
+	case "movereversed":
+		out.append(OC_movereversed)
+	case "vel":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_vel_x)
+		case "y":
+			out.append(OC_vel_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
+		}
+	case "pos":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_pos_x)
+		case "y":
+			out.append(OC_pos_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
+		}
+	case "canrecover":
+		out.append(OC_canrecover)
+	case "gethitvar":
+		if err := c.kakkohiraku(in); err != nil {
+			return BytecodeSF(), err
+		}
+		switch c.token {
+		case "xveladd":
+			bv.SetF(0)
+		case "yveladd":
+			bv.SetF(0)
+		case "type":
+			bv.SetI(0)
+		case "zoff":
+			bv.SetF(0)
+		case "fall.envshake.dir":
+			bv.SetI(0)
+		default:
+			out.append(OC_gethitvar_)
+			switch c.token {
+			case "animtype":
+				out.append(OC_gethitvar_animtype)
+			case "airtype":
+				out.append(OC_gethitvar_airtype)
+			case "groundtype":
+				out.append(OC_gethitvar_groundtype)
+			case "damage":
+				out.append(OC_gethitvar_damage)
+			case "hitcount":
+				out.append(OC_gethitvar_hitcount)
+			case "fallcount":
+				out.append(OC_gethitvar_fallcount)
+			case "hitshaketime":
+				out.append(OC_gethitvar_hitshaketime)
+			case "hittime":
+				out.append(OC_gethitvar_hittime)
+			case "slidetime":
+				out.append(OC_gethitvar_slidetime)
+			case "ctrltime":
+				out.append(OC_gethitvar_ctrltime)
+			case "recovertime":
+				out.append(OC_gethitvar_recovertime)
+			case "xoff":
+				out.append(OC_gethitvar_xoff)
+			case "yoff":
+				out.append(OC_gethitvar_yoff)
+			case "xvel":
+				out.append(OC_gethitvar_xvel)
+			case "yvel":
+				out.append(OC_gethitvar_yvel)
+			case "yaccel":
+				out.append(OC_gethitvar_yaccel)
+			case "hitid", "chainid":
+				out.append(OC_gethitvar_chainid)
+			case "guarded":
+				out.append(OC_gethitvar_guarded)
+			case "isbound":
+				out.append(OC_gethitvar_isbound)
+			case "fall":
+				out.append(OC_gethitvar_fall)
+			case "fall.damage":
+				out.append(OC_gethitvar_fall_damage)
+			case "fall.xvel":
+				out.append(OC_gethitvar_fall_xvel)
+			case "fall.yvel":
+				out.append(OC_gethitvar_fall_yvel)
+			case "fall.recover":
+				out.append(OC_gethitvar_fall_recover)
+			case "fall.time":
+				out.append(OC_gethitvar_fall_time)
+			case "fall.recovertime":
+				out.append(OC_gethitvar_fall_recovertime)
+			case "fall.kill":
+				out.append(OC_gethitvar_fall_kill)
+			case "fall.envshake.time":
+				out.append(OC_gethitvar_fall_envshake_time)
+			case "fall.envshake.freq":
+				out.append(OC_gethitvar_fall_envshake_freq)
+			case "fall.envshake.ampl":
+				out.append(OC_gethitvar_fall_envshake_ampl)
+			case "fall.envshake.phase":
+				out.append(OC_gethitvar_fall_envshake_phase)
+			default:
+				return BytecodeSF(), Error(c.token + "が不正です")
+			}
+		}
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(in); err != nil {
+			return BytecodeSF(), err
+		}
 	default:
 		println(c.token)
 		unimplemented()
@@ -1406,37 +1538,55 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 			}
 		}
 		var exp []BytecodeExp
-		if !afterImage && (tt == TT_alpha || tt == TT_add1) {
-			b := false
+		b := false
+		if !afterImage {
 			if err := c.stateParam(is, prefix+"alpha", func(data string) error {
 				b = true
 				bes, err := c.exprs(data, VT_Int, 2)
 				if err != nil {
 					return err
 				}
-				exp = make([]BytecodeExp, 3) // 長さ3にする
+				if tt == TT_add || tt == TT_alpha || tt == TT_add1 {
+					exp = make([]BytecodeExp, 3) // 長さ3にする
+				} else {
+					exp = make([]BytecodeExp, 2)
+				}
 				exp[0] = bes[0]
-				if len(bes) < 2 {
-					if tt == TT_add1 {
-						exp[1].appendValue(BytecodeInt(128))
-					} else {
+				if len(exp) != 3 {
+					exp[0].append(OC_pop)
+					switch tt {
+					case TT_none:
+						exp[0].appendValue(BytecodeInt(255))
+					case TT_sub:
+						exp[0].appendValue(BytecodeInt(1))
+					default:
+						exp[0].appendValue(BytecodeInt(-1))
+					}
+				}
+				if len(bes) > 1 {
+					exp[1] = bes[1]
+					if tt != TT_alpha {
+						exp[1].append(OC_pop)
+					}
+				}
+				switch tt {
+				case TT_alpha:
+					if len(bes) <= 1 {
 						exp[1].appendValue(BytecodeInt(255))
 					}
-				} else {
-					exp[1] = bes[1]
+				case TT_add, TT_sub:
+					exp[1].appendValue(BytecodeInt(255))
+				case TT_add1:
+					exp[1].appendValue(BytecodeInt(128))
+				default:
+					exp[1].appendValue(BytecodeInt(0))
 				}
 				return nil
 			}); err != nil {
 				return err
 			}
-			if !b {
-				if tt == TT_add1 {
-					exp = sc.iToExp(255, 128)
-				} else {
-					exp = sc.iToExp(-1, 0)
-				}
-			}
-		} else {
+		}
+		if !b {
 			switch tt {
 			case TT_none:
 				exp = sc.iToExp(255, 0)
@@ -2556,7 +2706,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	hsnd := func(id byte, data string) error {
 		fflg := true
-		if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+		if len(data) > 0 {
 			switch data[0] {
 			case 'F', 'f':
 				data = data[1:]
@@ -2782,7 +2932,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	if err := c.stateParam(is, "ground.velocity", func(data string) error {
 		in := data
-		if c.token = c.tokenizer(&in); strings.ToLower(c.token) == "n" {
+		if c.token = c.tokenizer(&in); c.token == "n" {
 			if c.token = c.tokenizer(&in); len(c.token) > 0 && c.token != "," {
 				return Error(c.token + "がエラーです")
 			}
@@ -2796,7 +2946,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		}
 		if c.token == "," {
 			oldin := in
-			if c.token = c.tokenizer(&in); strings.ToLower(c.token) == "n" {
+			if c.token = c.tokenizer(&in); c.token == "n" {
 				if c.token = c.tokenizer(&in); len(c.token) > 0 {
 					return Error(c.token + "がエラーです")
 				}
@@ -3015,6 +3165,51 @@ func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
+func (c *Compiler) width(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*width)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "edge", func(data string) error {
+			b = true
+			if len(data) == 0 {
+				return nil
+			}
+			return c.scAdd(sc, width_edge, data, VT_Float, 2)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "player", func(data string) error {
+			b = true
+			if len(data) == 0 {
+				return nil
+			}
+			return c.scAdd(sc, width_player, data, VT_Float, 2)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.stateParam(is, "value", func(data string) error {
+				b = true
+				return c.scAdd(sc, width_value, data, VT_Float, 2)
+			}); err != nil {
+				return err
+			}
+			if !b {
+				return Error("valueが指定されていません")
+			}
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) sprPriority(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*sprPriority)(sc), c.stateSec(is, func() error {
+		return c.paramValue(is, sc, "value",
+			sprPriority_value, VT_Int, 1, false)
+	})
+	return *ret, err
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -3131,6 +3326,10 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.reversalDef
 					case "projectile":
 						scf = c.projectile
+					case "width":
+						scf = c.width
+					case "sprpriority":
+						scf = c.sprPriority
 					default:
 						println(data)
 						unimplemented()

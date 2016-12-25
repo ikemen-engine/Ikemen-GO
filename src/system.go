@@ -104,6 +104,7 @@ type System struct {
 	afterImageMax               int
 	attack_LifeToPowerMul       float32
 	getHit_LifeToPowerMul       float32
+	cameraPos                   [2]float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {

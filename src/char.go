@@ -299,23 +299,23 @@ func (cm *CharMovement) init() {
 type Reaction int32
 
 const (
-	RA_Light Reaction = iota
-	RA_Medium
-	RA_Hard
-	RA_Back
-	RA_Up
-	RA_Diagup
-	RA_Unknown
+	RA_Light   Reaction = 0
+	RA_Medium  Reaction = 1
+	RA_Hard    Reaction = 2
+	RA_Back    Reaction = 3
+	RA_Up      Reaction = 4
+	RA_Diagup  Reaction = 5
+	RA_Unknown Reaction = -1
 )
 
 type HitType int32
 
 const (
-	HT_None HitType = iota
-	HT_High
-	HT_Low
-	HT_Trip
-	HT_Unknown
+	HT_None    HitType = 0
+	HT_High    HitType = 1
+	HT_Low     HitType = 2
+	HT_Trip    HitType = 3
+	HT_Unknown HitType = -1
 )
 
 type AiuchiType int32
@@ -348,6 +348,12 @@ func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
 		yvelocity: -4.5, recover: true, recovertime: 4, kill: true,
 		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN())}
+}
+func (f *Fall) xvel() float32 {
+	if math.IsNaN(float64(f.xvelocity)) {
+		return -32760
+	}
+	return f.xvelocity
 }
 
 type HitDef struct {
@@ -509,6 +515,12 @@ func (ghv GetHitVar) getYaccel() float32 {
 		return 0.35
 	}
 	return ghv.yaccel
+}
+func (ghv GetHitVar) chainId() int32 {
+	if ghv.hitid > 0 {
+		return ghv.hitid
+	}
+	return 0
 }
 func (ghv GetHitVar) idMatch(id int32) bool {
 	for _, v := range ghv.hitBy {
@@ -770,8 +782,11 @@ type Char struct {
 	player        bool
 	sprpriority   int32
 	juggle        int32
+	recovertime   int32
+	fallTime      int32
 	size          CharSize
 	hitdef        HitDef
+	ghv           GetHitVar
 	pos           [2]float32
 	drawPos       [2]float32
 	oldPos        [2]float32
@@ -1316,4 +1331,43 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !math.IsNaN(float64(hd.snap[1])) {
 		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
 	}
+}
+func (c *Char) setFEdge(fe float32) {
+	unimplemented()
+}
+func (c *Char) setBEdge(be float32) {
+	unimplemented()
+}
+func (c *Char) setFWidth(fw float32) {
+	unimplemented()
+}
+func (c *Char) setBWidth(bw float32) {
+	unimplemented()
+}
+func (c *Char) moveContact() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) moveHit() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) moveGuarded() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) moveReversed() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) gethitAnimtype() Reaction {
+	unimplemented()
+	return 0
+}
+func (c *Char) isBound() bool {
+	unimplemented()
+	return false
+}
+func (c *Char) canRecover() bool {
+	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }

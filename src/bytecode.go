@@ -329,6 +329,7 @@ const (
 	OC_gethitvar_fall_xvel
 	OC_gethitvar_fall_yvel
 	OC_gethitvar_fall_recover
+	OC_gethitvar_fall_time
 	OC_gethitvar_fall_recovertime
 	OC_gethitvar_fall_kill
 	OC_gethitvar_fall_envshake_time
@@ -843,6 +844,26 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			*sys.bcStack.Top() = BytecodeInt(c.animElemTime(sys.bcStack.Top().ToI()))
 		case OC_stateno:
 			sys.bcStack.Push(BytecodeInt(c.stateNo()))
+		case OC_movecontact:
+			sys.bcStack.Push(BytecodeInt(c.moveContact()))
+		case OC_movehit:
+			sys.bcStack.Push(BytecodeInt(c.moveHit()))
+		case OC_moveguarded:
+			sys.bcStack.Push(BytecodeInt(c.moveGuarded()))
+		case OC_movereversed:
+			sys.bcStack.Push(BytecodeInt(c.moveReversed()))
+		case OC_vel_x:
+			sys.bcStack.Push(BytecodeFloat(c.vel[0]))
+		case OC_vel_y:
+			sys.bcStack.Push(BytecodeFloat(c.vel[1]))
+		case OC_pos_x:
+			sys.bcStack.Push(BytecodeFloat(c.pos[0] - sys.cameraPos[0]))
+		case OC_pos_y:
+			sys.bcStack.Push(BytecodeFloat(c.pos[1]))
+		case OC_canrecover:
+			sys.bcStack.Push(BytecodeBool(c.canRecover()))
+		case OC_gethitvar_:
+			be.run_gethitvar(c, scpn, &i)
 		case OC_ex_:
 			be.run_ex(c, scpn, &i)
 		default:
@@ -852,6 +873,76 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		c = oc
 	}
 	return sys.bcStack.Pop()
+}
+func (be BytecodeExp) run_gethitvar(c *Char, scpn int, i *int) {
+	(*i)++
+	switch be[*i-1] {
+	case OC_gethitvar_animtype:
+		sys.bcStack.Push(BytecodeInt(int32(c.gethitAnimtype())))
+	case OC_gethitvar_airtype:
+		sys.bcStack.Push(BytecodeInt(int32(c.ghv.airtype)))
+	case OC_gethitvar_groundtype:
+		sys.bcStack.Push(BytecodeInt(int32(c.ghv.groundtype)))
+	case OC_gethitvar_damage:
+		sys.bcStack.Push(BytecodeInt(c.ghv.damage))
+	case OC_gethitvar_hitcount:
+		sys.bcStack.Push(BytecodeInt(c.ghv.hitcount))
+	case OC_gethitvar_fallcount:
+		sys.bcStack.Push(BytecodeInt(c.ghv.fallcount))
+	case OC_gethitvar_hitshaketime:
+		sys.bcStack.Push(BytecodeInt(c.ghv.hitshaketime))
+	case OC_gethitvar_hittime:
+		sys.bcStack.Push(BytecodeInt(c.ghv.hittime))
+	case OC_gethitvar_slidetime:
+		sys.bcStack.Push(BytecodeInt(c.ghv.slidetime))
+	case OC_gethitvar_ctrltime:
+		sys.bcStack.Push(BytecodeInt(c.ghv.ctrltime))
+	case OC_gethitvar_recovertime:
+		sys.bcStack.Push(BytecodeInt(c.recovertime))
+	case OC_gethitvar_xoff:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.xoff))
+	case OC_gethitvar_yoff:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.yoff))
+	case OC_gethitvar_xvel:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.xvel))
+	case OC_gethitvar_yvel:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.yvel))
+	case OC_gethitvar_yaccel:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.getYaccel()))
+	case OC_gethitvar_chainid:
+		sys.bcStack.Push(BytecodeInt(c.ghv.chainId()))
+	case OC_gethitvar_guarded:
+		sys.bcStack.Push(BytecodeBool(c.ghv.guarded))
+	case OC_gethitvar_isbound:
+		sys.bcStack.Push(BytecodeBool(c.isBound()))
+	case OC_gethitvar_fall:
+		sys.bcStack.Push(BytecodeBool(c.ghv.fallf))
+	case OC_gethitvar_fall_damage:
+		sys.bcStack.Push(BytecodeInt(c.ghv.fall.damage))
+	case OC_gethitvar_fall_xvel:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.fall.xvel()))
+	case OC_gethitvar_fall_yvel:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.fall.yvelocity))
+	case OC_gethitvar_fall_recover:
+		sys.bcStack.Push(BytecodeBool(c.ghv.fall.recover))
+	case OC_gethitvar_fall_time:
+		sys.bcStack.Push(BytecodeInt(c.fallTime))
+	case OC_gethitvar_fall_recovertime:
+		sys.bcStack.Push(BytecodeInt(c.ghv.fall.recovertime))
+	case OC_gethitvar_fall_kill:
+		sys.bcStack.Push(BytecodeBool(c.ghv.fall.kill))
+	case OC_gethitvar_fall_envshake_time:
+		sys.bcStack.Push(BytecodeInt(c.ghv.fall.envshake_time))
+	case OC_gethitvar_fall_envshake_freq:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.fall.envshake_freq))
+	case OC_gethitvar_fall_envshake_ampl:
+		sys.bcStack.Push(BytecodeInt(c.ghv.fall.envshake_ampl))
+	case OC_gethitvar_fall_envshake_phase:
+		sys.bcStack.Push(BytecodeFloat(c.ghv.fall.envshake_phase))
+	default:
+		println(be[*i-1])
+		unimplemented()
+	}
 }
 func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
 	(*i)++
@@ -2553,6 +2644,59 @@ func (sc projectile) Run(c *Char, ps *int32) bool {
 		}
 		c.projInit(p, pt, x, y, op, rp[0], rp[1])
 	}
+	return false
+}
+
+type width StateControllerBase
+
+const (
+	width_edge byte = iota
+	width_player
+	width_value
+)
+
+func (sc width) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case width_edge:
+			c.setFEdge(exp[0].evalF(c, sc.playerNo))
+			if len(exp) > 1 {
+				c.setBEdge(exp[1].evalF(c, sc.playerNo))
+			}
+		case width_player:
+			c.setFWidth(exp[0].evalF(c, sc.playerNo))
+			if len(exp) > 1 {
+				c.setBWidth(exp[1].evalF(c, sc.playerNo))
+			}
+		case width_value:
+			v1 := exp[0].evalF(c, sc.playerNo)
+			c.setFEdge(v1)
+			c.setFWidth(v1)
+			if len(exp) > 1 {
+				v2 := exp[1].evalF(c, sc.playerNo)
+				c.setBEdge(v2)
+				c.setBWidth(v2)
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type sprPriority StateControllerBase
+
+const (
+	sprPriority_value byte = iota
+)
+
+func (sc sprPriority) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case sprPriority_value:
+			c.sprpriority = exp[0].evalI(c, sc.playerNo)
+		}
+		return true
+	})
 	return false
 }
 
