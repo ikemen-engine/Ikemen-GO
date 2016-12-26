@@ -83,10 +83,12 @@ func ReadAnimFrame(line string) *AnimFrame {
 			}
 			if af.Srcalpha == 1 && af.Dstalpha == 255 {
 				af.Srcalpha = 0
+			} else if af.Srcalpha == 255 && af.Dstalpha == 1 {
+				af.Dstalpha = 0
 			}
 		}
 	case len(a) > 0 && a[0] == 'a':
-		af.Srcalpha, af.Dstalpha = 255, 255
+		af.Srcalpha, af.Dstalpha = 255, 1
 	}
 	if len(ary) > 1 {
 		af.Ex = make([][]float32, 3)
@@ -391,10 +393,17 @@ func (a *Animation) alpha() int32 {
 	var sa, da byte
 	if a.srcalpha >= 0 {
 		sa = byte(a.srcalpha)
-		da = byte(a.dstalpha)
+		if a.dstalpha < 0 {
+			da = byte((^a.dstalpha + int16(a.frames[a.drawidx].Dstalpha)) >> 1)
+		} else {
+			da = byte(a.dstalpha)
+		}
 	} else {
 		sa = a.frames[a.drawidx].Srcalpha
 		da = a.frames[a.drawidx].Dstalpha
+		if sa == 255 && da == 1 {
+			da = 255
+		}
 	}
 	if sa == 1 && da == 255 {
 		return -2

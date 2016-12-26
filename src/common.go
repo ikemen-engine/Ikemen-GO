@@ -385,6 +385,18 @@ func (is IniSection) ReadF32(name string, out ...*float32) bool {
 	}
 	return true
 }
+func (is IniSection) getText(name string) (str string, ok bool, err error) {
+	str, ok = is[name]
+	if !ok {
+		return
+	}
+	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {
+		err = Error("\"で囲まれていません")
+		return
+	}
+	str = str[1 : len(str)-1]
+	return
+}
 
 type Layout struct {
 	offset  [2]float32

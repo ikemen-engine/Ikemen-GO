@@ -340,6 +340,7 @@ func (c *Compiler) kakkotojiru(in *string) error {
 }
 func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 	for {
+		c.token = c.tokenizer(in)
 		if c.token == "!=" {
 			not = true
 			break
@@ -350,7 +351,6 @@ func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 		} else {
 			return false, Error("'='か'!='がありません")
 		}
-		c.token = c.tokenizer(in)
 	}
 	c.token = c.tokenizer(in)
 	return
@@ -515,7 +515,7 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 		bv = BytecodeSF()
 	}
 	if rd && len(be) > 0 {
-		out.appendJmp(OC_ocrun, int32(len(be)))
+		out.appendI32Op(OC_nordrun, int32(len(be)))
 	}
 	out.append(be...)
 	return bv, nil
@@ -531,6 +531,28 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	if !sys.ignoreMostErrors {
 		defer func() { c.usiroOp = false }()
 	}
+	text := func() error {
+		i := strings.Index(*in, "\"")
+		if c.token != "\"" || i < 0 {
+			return Error("\"で囲まれていません")
+		}
+		c.token = (*in)[:i]
+		*in = (*in)[i+1:]
+		return nil
+	}
+	eqne := func(f func() error) error {
+		not, err := c.kyuushiki(in)
+		if err != nil {
+			return err
+		}
+		if err := f(); err != nil {
+			return err
+		}
+		if not {
+			out.append(OC_blnot)
+		}
+		return nil
+	}
 	var be1, be2, be3 BytecodeExp
 	var bv1, bv2, bv3 BytecodeValue
 	var n int32
@@ -538,6 +560,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var opc OpCode
 	var err error
 	switch c.token {
+	case "":
+		return BytecodeSF(), Error("空です")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -585,7 +609,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 		}
 		if rd {
-			out.appendJmp(OC_ocrun, int32(len(be1)))
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}
 		out.append(be1...)
 		if c.token != "," {
@@ -596,7 +620,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return BytecodeSF(), err
 		}
 		be2.appendValue(bv2)
-		out.appendJmp(opc, int32(len(be2)))
+		out.appendI32Op(opc, int32(len(be2)))
 		out.append(be2...)
 		return BytecodeSF(), nil
 	case "(":
@@ -606,7 +630,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		if bv.IsSF() {
 			if rd {
-				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+				out.append(OC_rdreset)
 			}
 			out.append(be1...)
 		}
@@ -627,7 +651,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			if bv.IsSF() {
 				if rd {
-					out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+					out.append(OC_rdreset)
 				}
 				out.append(be1...)
 				out.append(OC_neg)
@@ -642,7 +666,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		if bv.IsSF() {
 			if rd {
-				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+				out.append(OC_rdreset)
 			}
 			out.append(be1...)
 			out.append(OC_not)
@@ -656,7 +680,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		if bv.IsSF() {
 			if rd {
-				out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+				out.append(OC_rdreset)
 			}
 			out.append(be1...)
 			out.append(OC_blnot)
@@ -693,13 +717,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				be3.appendValue(bv3)
 				be2.appendValue(bv2)
 				if len(be3) > int(math.MaxUint8-1) {
-					be2.appendJmp(OC_jmp, int32(len(be3)+1))
+					be2.appendI32Op(OC_jmp, int32(len(be3)+1))
 				} else {
 					be2.append(OC_jmp8, OpCode(len(be3)+1))
 				}
 				be1.appendValue(bv1)
 				if len(be2) > int(math.MaxUint8-1) {
-					be1.appendJmp(OC_jz, int32(len(be2)+1))
+					be1.appendI32Op(OC_jz, int32(len(be2)+1))
 				} else {
 					be1.append(OC_jz8, OpCode(len(be2)+1))
 				}
@@ -708,12 +732,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				be1.append(OC_pop)
 				be1.append(be3...)
 				if rd {
-					out.appendJmp(OC_run, int32(len(be1)))
+					out.appendI32Op(OC_run, int32(len(be1)))
 				}
 				out.append(be1...)
 			} else {
 				if rd {
-					out.appendJmp(OC_jmp, int32(0)) // NOPでリダイレクトをもどす
+					out.append(OC_rdreset)
 				}
 				out.append(be1...)
 				out.appendValue(bv1)
@@ -759,7 +783,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		be1.appendValue(BytecodeInt(n))
 		if rd {
-			out.appendJmp(OC_ocrun, int32(len(be1)))
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}
 		out.append(be1...)
 		out.append(OC_animelemtime)
@@ -809,6 +833,20 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "canrecover":
 		out.append(OC_canrecover)
+	case "command":
+		if err := eqne(func() error {
+			if err := text(); err != nil {
+				return err
+			}
+			i, ok := c.cmdl.Names[c.token]
+			if !ok {
+				return Error("コマンド\"" + c.token + "\"は存在しません")
+			}
+			out.appendI32Op(OC_command, int32(i))
+			return nil
+		}); err != nil {
+			return BytecodeSF(), err
+		}
 	case "gethitvar":
 		if err := c.kakkohiraku(in); err != nil {
 			return BytecodeSF(), err
@@ -825,70 +863,70 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "fall.envshake.dir":
 			bv.SetI(0)
 		default:
-			out.append(OC_gethitvar_)
+			out.append(OC_ex_)
 			switch c.token {
 			case "animtype":
-				out.append(OC_gethitvar_animtype)
+				out.append(OC_ex_gethitvar_animtype)
 			case "airtype":
-				out.append(OC_gethitvar_airtype)
+				out.append(OC_ex_gethitvar_airtype)
 			case "groundtype":
-				out.append(OC_gethitvar_groundtype)
+				out.append(OC_ex_gethitvar_groundtype)
 			case "damage":
-				out.append(OC_gethitvar_damage)
+				out.append(OC_ex_gethitvar_damage)
 			case "hitcount":
-				out.append(OC_gethitvar_hitcount)
+				out.append(OC_ex_gethitvar_hitcount)
 			case "fallcount":
-				out.append(OC_gethitvar_fallcount)
+				out.append(OC_ex_gethitvar_fallcount)
 			case "hitshaketime":
-				out.append(OC_gethitvar_hitshaketime)
+				out.append(OC_ex_gethitvar_hitshaketime)
 			case "hittime":
-				out.append(OC_gethitvar_hittime)
+				out.append(OC_ex_gethitvar_hittime)
 			case "slidetime":
-				out.append(OC_gethitvar_slidetime)
+				out.append(OC_ex_gethitvar_slidetime)
 			case "ctrltime":
-				out.append(OC_gethitvar_ctrltime)
+				out.append(OC_ex_gethitvar_ctrltime)
 			case "recovertime":
-				out.append(OC_gethitvar_recovertime)
+				out.append(OC_ex_gethitvar_recovertime)
 			case "xoff":
-				out.append(OC_gethitvar_xoff)
+				out.append(OC_ex_gethitvar_xoff)
 			case "yoff":
-				out.append(OC_gethitvar_yoff)
+				out.append(OC_ex_gethitvar_yoff)
 			case "xvel":
-				out.append(OC_gethitvar_xvel)
+				out.append(OC_ex_gethitvar_xvel)
 			case "yvel":
-				out.append(OC_gethitvar_yvel)
+				out.append(OC_ex_gethitvar_yvel)
 			case "yaccel":
-				out.append(OC_gethitvar_yaccel)
+				out.append(OC_ex_gethitvar_yaccel)
 			case "hitid", "chainid":
-				out.append(OC_gethitvar_chainid)
+				out.append(OC_ex_gethitvar_chainid)
 			case "guarded":
-				out.append(OC_gethitvar_guarded)
+				out.append(OC_ex_gethitvar_guarded)
 			case "isbound":
-				out.append(OC_gethitvar_isbound)
+				out.append(OC_ex_gethitvar_isbound)
 			case "fall":
-				out.append(OC_gethitvar_fall)
+				out.append(OC_ex_gethitvar_fall)
 			case "fall.damage":
-				out.append(OC_gethitvar_fall_damage)
+				out.append(OC_ex_gethitvar_fall_damage)
 			case "fall.xvel":
-				out.append(OC_gethitvar_fall_xvel)
+				out.append(OC_ex_gethitvar_fall_xvel)
 			case "fall.yvel":
-				out.append(OC_gethitvar_fall_yvel)
+				out.append(OC_ex_gethitvar_fall_yvel)
 			case "fall.recover":
-				out.append(OC_gethitvar_fall_recover)
+				out.append(OC_ex_gethitvar_fall_recover)
 			case "fall.time":
-				out.append(OC_gethitvar_fall_time)
+				out.append(OC_ex_gethitvar_fall_time)
 			case "fall.recovertime":
-				out.append(OC_gethitvar_fall_recovertime)
+				out.append(OC_ex_gethitvar_fall_recovertime)
 			case "fall.kill":
-				out.append(OC_gethitvar_fall_kill)
+				out.append(OC_ex_gethitvar_fall_kill)
 			case "fall.envshake.time":
-				out.append(OC_gethitvar_fall_envshake_time)
+				out.append(OC_ex_gethitvar_fall_envshake_time)
 			case "fall.envshake.freq":
-				out.append(OC_gethitvar_fall_envshake_freq)
+				out.append(OC_ex_gethitvar_fall_envshake_freq)
 			case "fall.envshake.ampl":
-				out.append(OC_gethitvar_fall_envshake_ampl)
+				out.append(OC_ex_gethitvar_fall_envshake_ampl)
 			case "fall.envshake.phase":
-				out.append(OC_gethitvar_fall_envshake_phase)
+				out.append(OC_ex_gethitvar_fall_envshake_phase)
 			default:
 				return BytecodeSF(), Error(c.token + "が不正です")
 			}
@@ -1081,6 +1119,7 @@ func (c *Compiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue,
 func (c *Compiler) expRange(out *BytecodeExp, in *string,
 	bv *BytecodeValue, opc OpCode) error {
 	open := c.token
+	c.token = c.tokenizer(in)
 	var be2, be3 BytecodeExp
 	bv2, err := c.expBoolOr(&be2, in)
 	if err != nil {
@@ -1546,13 +1585,15 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				if err != nil {
 					return err
 				}
-				if tt == TT_add || tt == TT_alpha || tt == TT_add1 {
+				if tt == TT_add1 {
+					exp = make([]BytecodeExp, 4) // 長さ4にする
+				} else if tt == TT_add || tt == TT_alpha {
 					exp = make([]BytecodeExp, 3) // 長さ3にする
 				} else {
 					exp = make([]BytecodeExp, 2)
 				}
 				exp[0] = bes[0]
-				if len(exp) != 3 {
+				if len(exp) == 2 {
 					exp[0].append(OC_pop)
 					switch tt {
 					case TT_none:
@@ -1565,19 +1606,17 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				}
 				if len(bes) > 1 {
 					exp[1] = bes[1]
-					if tt != TT_alpha {
+					if tt != TT_alpha && tt != TT_add1 {
 						exp[1].append(OC_pop)
 					}
 				}
 				switch tt {
-				case TT_alpha:
+				case TT_alpha, TT_add1:
 					if len(bes) <= 1 {
 						exp[1].appendValue(BytecodeInt(255))
 					}
 				case TT_add, TT_sub:
 					exp[1].appendValue(BytecodeInt(255))
-				case TT_add1:
-					exp[1].appendValue(BytecodeInt(128))
 				default:
 					exp[1].appendValue(BytecodeInt(0))
 				}
@@ -1593,7 +1632,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 			case TT_add:
 				exp = sc.iToExp(255, 255)
 			case TT_add1:
-				exp = sc.iToExp(255, 128)
+				exp = sc.iToExp(255, ^255)
 			case TT_sub:
 				exp = sc.iToExp(1, 255)
 			default:
@@ -3210,6 +3249,279 @@ func (c *Compiler) sprPriority(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
+func (c *Compiler) varSetSub(is IniSection,
+	sc *StateControllerBase, rd OpCode, oc OpCode) error {
+	b, v, fv := false, false, false
+	var value string
+	if err := c.stateParam(is, "value", func(data string) error {
+		b = true
+		value = data
+		return nil
+	}); err != nil {
+		return err
+	}
+	if b {
+		var ve BytecodeExp
+		if err := c.stateParam(is, "v", func(data string) (err error) {
+			v = true
+			ve, err = c.fullExpression(&data, VT_Int)
+			return
+		}); err != nil {
+			return err
+		}
+		if !v {
+			if err := c.stateParam(is, "fv", func(data string) (err error) {
+				fv = true
+				ve, err = c.fullExpression(&data, VT_Int)
+				return
+			}); err != nil {
+				return err
+			}
+		}
+		if v || fv {
+			if len(ve) == 2 && ve[0] == OC_int8 && int8(ve[1]) >= 0 &&
+				(ve[1] < 40 || v && ve[1] < 60) {
+				if oc == OC_st_var {
+					if v {
+						oc = OC_st_var0 + ve[1]
+					} else {
+						oc = OC_st_fvar0 + ve[1]
+					}
+				} else {
+					if v {
+						oc = OC_st_var0add + ve[1]
+					} else {
+						oc = OC_st_fvar0add + ve[1]
+					}
+				}
+				ve = nil
+			} else if oc == OC_st_var {
+				if v {
+					oc = OC_st_var
+				} else {
+					oc = OC_st_fvar
+				}
+			} else {
+				if v {
+					oc = OC_st_varadd
+				} else {
+					oc = OC_st_fvaradd
+				}
+			}
+			var vt ValueType
+			if v {
+				vt = VT_Int
+			} else {
+				vt = VT_Float
+			}
+			in := value
+			be, err := c.fullExpression(&in, vt)
+			if err != nil {
+				return Error(value + "\n" + "value: " + err.Error())
+			}
+			ve.append(be...)
+			if rd != OC_rdreset {
+				var tmp BytecodeExp
+				tmp.appendI32Op(OC_nordrun, int32(len(ve)))
+				ve.append(oc)
+				ve = append(tmp, ve...)
+				tmp = nil
+				tmp.appendI32Op(rd, int32(len(ve)))
+				ve = append(tmp, ve...)
+			} else {
+				ve.append(oc)
+			}
+			sc.add(varSet_, sc.beToExp(ve))
+		}
+		return nil
+	}
+	sys := false
+	set := func(data string) error {
+		data = strings.TrimSpace(data)
+		if data[0] != '(' {
+			return Error("'('がありません")
+		}
+		var be BytecodeExp
+		c.token = c.tokenizer(&data)
+		bv, err := c.expValue(&be, &data, false)
+		if err != nil {
+			return err
+		}
+		_else := false
+		if !bv.IsSF() {
+			i := bv.ToI()
+			if i >= 0 && (i < 5 || !sys && (i < 40 || v && i < 60)) {
+				if v {
+					if oc == OC_st_var {
+						oc = OC_st_var0 + OpCode(i)
+					} else {
+						oc = OC_st_var0add + OpCode(i)
+					}
+					if sys {
+						oc += 60
+					}
+				} else {
+					if oc == OC_st_var {
+						oc = OC_st_fvar0 + OpCode(i)
+					} else {
+						oc = OC_st_fvar0add + OpCode(i)
+					}
+					if sys {
+						oc += 40
+					}
+				}
+			} else {
+				be.appendValue(bv)
+				_else = true
+			}
+		} else {
+			_else = true
+		}
+		if _else {
+			if oc == OC_st_var {
+				if sys {
+					if v {
+						oc = OC_st_sysvar
+					} else {
+						oc = OC_st_sysfvar
+					}
+				} else {
+					if v {
+						oc = OC_st_var
+					} else {
+						oc = OC_st_fvar
+					}
+				}
+			} else {
+				if sys {
+					if v {
+						oc = OC_st_sysvaradd
+					} else {
+						oc = OC_st_sysfvaradd
+					}
+				} else {
+					if v {
+						oc = OC_st_varadd
+					} else {
+						oc = OC_st_fvaradd
+					}
+				}
+			}
+		}
+		if len(c.token) == 0 || c.token[len(c.token)-1] != '=' {
+			idx := strings.Index(data, "=")
+			if idx < 0 {
+				return Error("'='がありません")
+			}
+			data = data[idx+1:]
+		}
+		var vt ValueType
+		if v {
+			vt = VT_Int
+		} else {
+			vt = VT_Float
+		}
+		ve := be
+		be, err = c.fullExpression(&data, vt)
+		if err != nil {
+			return err
+		}
+		ve.append(be...)
+		if rd != OC_rdreset {
+			var tmp BytecodeExp
+			tmp.appendI32Op(OC_nordrun, int32(len(ve)))
+			ve.append(oc)
+			ve = append(tmp, ve...)
+			tmp = nil
+			tmp.appendI32Op(rd, int32(len(ve)))
+			ve = append(tmp, ve...)
+		} else {
+			ve.append(oc)
+		}
+		sc.add(varSet_, sc.beToExp(ve))
+		return nil
+	}
+	if err := c.stateParam(is, "var", func(data string) error {
+		if data[0] != 'v' {
+			return Error(data[:3] + "の'v'が小文字でありません")
+		}
+		b = true
+		v = true
+		return set(data[3:])
+	}); err != nil {
+		return err
+	}
+	if b {
+		return nil
+	}
+	if err := c.stateParam(is, "fvar", func(data string) error {
+		if rd == OC_rdreset && data[0] != 'f' {
+			return Error(data[:4] + "の'f'が小文字でありません")
+		}
+		b = true
+		fv = true
+		return set(data[4:])
+	}); err != nil {
+		return err
+	}
+	if b {
+		return nil
+	}
+	if err := c.stateParam(is, "sysvar", func(data string) error {
+		if data[3] != 'v' {
+			return Error(data[:6] + "の'v'が小文字でありません")
+		}
+		b = true
+		v = true
+		sys = true
+		return set(data[6:])
+	}); err != nil {
+		return err
+	}
+	if b {
+		return nil
+	}
+	if err := c.stateParam(is, "sysfvar", func(data string) error {
+		b = true
+		fv = true
+		sys = true
+		return set(data[7:])
+	}); err != nil {
+		return err
+	}
+	if b {
+		return nil
+	}
+	return Error("valueが指定されていません")
+}
+func (c *Compiler) varSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		return c.varSetSub(is, sc, OC_rdreset, OC_st_var)
+	})
+	return *ret, err
+}
+func (c *Compiler) varAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		return c.varSetSub(is, sc, OC_rdreset, OC_st_varadd)
+	})
+	return *ret, err
+}
+func (c *Compiler) parentVarSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		return c.varSetSub(is, sc, OC_parent, OC_st_var)
+	})
+	return *ret, err
+}
+func (c *Compiler) parentVarAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		return c.varSetSub(is, sc, OC_parent, OC_st_varadd)
+	})
+	return *ret, err
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -3330,6 +3642,14 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.width
 					case "sprpriority":
 						scf = c.sprPriority
+					case "varset":
+						scf = c.varSet
+					case "varadd":
+						scf = c.varAdd
+					case "parentvarset":
+						scf = c.parentVarSet
+					case "parentvaradd":
+						scf = c.parentVarAdd
 					default:
 						println(data)
 						unimplemented()
@@ -3432,7 +3752,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						tmp := tr[j]
 						if j < len(tr)-1 {
 							if len(te) > int(math.MaxUint8-1) {
-								tmp.appendJmp(OC_jz, int32(len(te)+1))
+								tmp.appendI32Op(OC_jz, int32(len(te)+1))
 							} else {
 								tmp.append(OC_jz8, OpCode(len(te)+1))
 							}
@@ -3591,7 +3911,12 @@ func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
 		}
 	}
 	for _, is := range cmds {
-		cm, err := ReadCommand(is["name"], is["command"], ckr)
+		name, _, err := is.getText("name")
+		if err != nil {
+			return nil, Error(fmt.Sprintf("%v:\nname: %v\n%v",
+				cmd, name, err.Error()))
+		}
+		cm, err := ReadCommand(name, is["command"], ckr)
 		if err != nil {
 			return nil, Error(cmd + ":\nname = " + is["name"] +
 				"\ncommand = " + is["command"] + "\n" + err.Error())

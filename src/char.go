@@ -1371,3 +1371,7 @@ func (c *Char) isBound() bool {
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }
+func (c *Char) command(pn, i int) bool {
+	unimplemented()
+	return false
+}
