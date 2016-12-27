@@ -531,6 +531,75 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	if !sys.ignoreMostErrors {
 		defer func() { c.usiroOp = false }()
 	}
+	_var := func(sys, f bool) error {
+		bv1, err := c.oneArg(out, in, rd, false)
+		if err != nil {
+			return err
+		}
+		var oc OpCode
+		set, _else := c.token == ":=", false
+		if !bv1.IsSF() && bv1.ToI() >= 0 {
+			switch [2]bool{sys, f} {
+			case [2]bool{false, false}:
+				if bv1.ToI() < int32(NumVar) {
+					oc = OC_var0 + OpCode(bv1.ToI()) // OC_st_var0と同じ値
+				} else {
+					_else = true
+				}
+			case [2]bool{false, true}:
+				if bv1.ToI() < int32(NumFvar) {
+					oc = OC_fvar0 + OpCode(bv1.ToI()) // OC_st_fvar0と同じ値
+				} else {
+					_else = true
+				}
+			case [2]bool{true, false}:
+				if bv1.ToI() < int32(NumSysVar) {
+					oc = OC_sysvar0 + OpCode(bv1.ToI()) // OC_st_sysvar0と同じ値
+				} else {
+					_else = true
+				}
+			case [2]bool{true, true}:
+				if bv1.ToI() < int32(NumSysFvar) {
+					oc = OC_sysfvar0 + OpCode(bv1.ToI()) // OC_st_sysfvar0と同じ値
+				} else {
+					_else = true
+				}
+			}
+		} else {
+			_else = true
+		}
+		if set {
+			c.token = c.tokenizer(in)
+			var be2 BytecodeExp
+			bv2, err := c.expEqne(&be2, in)
+			if err != nil {
+				return err
+			}
+			if rd && len(be2) > 0 {
+				out.appendI32Op(OC_nordrun, int32(len(be2)))
+			}
+			out.append(be2...)
+			out.appendValue(bv2)
+			out.append(OC_st_)
+		}
+		if _else {
+			switch [2]bool{sys, f} {
+			case [2]bool{false, false}:
+				oc = OC_var
+			case [2]bool{false, true}:
+				oc = OC_fvar
+			case [2]bool{true, false}:
+				oc = OC_sysvar
+			case [2]bool{true, true}:
+				oc = OC_sysfvar
+			}
+			if set {
+				oc += OC_st_var - OC_var
+			}
+		}
+		out.append(oc)
+		return nil
+	}
 	text := func() error {
 		i := strings.Index(*in, "\"")
 		if c.token != "\"" || i < 0 {
@@ -635,6 +704,22 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be1...)
 		}
 		if err := c.kakkotojiru(in); err != nil {
+			return BytecodeSF(), err
+		}
+	case "var":
+		if err := _var(false, false); err != nil {
+			return BytecodeSF(), err
+		}
+	case "fvar":
+		if err := _var(false, true); err != nil {
+			return BytecodeSF(), err
+		}
+	case "sysvar":
+		if err := _var(true, false); err != nil {
+			return BytecodeSF(), err
+		}
+	case "sysfvar":
+		if err := _var(true, true); err != nil {
 			return BytecodeSF(), err
 		}
 	case "-":
@@ -3227,14 +3312,9 @@ func (c *Compiler) width(is IniSection, sbc *StateBytecode,
 			return err
 		}
 		if !b {
-			if err := c.stateParam(is, "value", func(data string) error {
-				b = true
-				return c.scAdd(sc, width_value, data, VT_Float, 2)
-			}); err != nil {
+			if err := c.paramValue(is, sc, "value",
+				width_value, VT_Float, 2, true); err != nil {
 				return err
-			}
-			if !b {
-				return Error("valueが指定されていません")
 			}
 		}
 		return nil
@@ -3280,7 +3360,7 @@ func (c *Compiler) varSetSub(is IniSection,
 		}
 		if v || fv {
 			if len(ve) == 2 && ve[0] == OC_int8 && int8(ve[1]) >= 0 &&
-				(ve[1] < 40 || v && ve[1] < 60) {
+				(v && ve[1] < NumVar || fv && ve[1] < NumFvar) {
 				if oc == OC_st_var {
 					if v {
 						oc = OC_st_var0 + ve[1]
@@ -3323,13 +3403,13 @@ func (c *Compiler) varSetSub(is IniSection,
 			if rd != OC_rdreset {
 				var tmp BytecodeExp
 				tmp.appendI32Op(OC_nordrun, int32(len(ve)))
-				ve.append(oc)
+				ve.append(OC_st_, oc)
 				ve = append(tmp, ve...)
 				tmp = nil
 				tmp.appendI32Op(rd, int32(len(ve)))
 				ve = append(tmp, ve...)
 			} else {
-				ve.append(oc)
+				ve.append(OC_st_, oc)
 			}
 			sc.add(varSet_, sc.beToExp(ve))
 		}
@@ -3350,7 +3430,9 @@ func (c *Compiler) varSetSub(is IniSection,
 		_else := false
 		if !bv.IsSF() {
 			i := bv.ToI()
-			if i >= 0 && (i < 5 || !sys && (i < 40 || v && i < 60)) {
+			if i >= 0 && (!sys && v && i < int32(NumVar) ||
+				!sys && fv && i < int32(NumFvar) || sys && v && i < int32(NumSysVar) ||
+				sys && fv && i < int32(NumSysFvar)) {
 				if v {
 					if oc == OC_st_var {
 						oc = OC_st_var0 + OpCode(i)
@@ -3358,7 +3440,7 @@ func (c *Compiler) varSetSub(is IniSection,
 						oc = OC_st_var0add + OpCode(i)
 					}
 					if sys {
-						oc += 60
+						oc += NumVar
 					}
 				} else {
 					if oc == OC_st_var {
@@ -3367,7 +3449,7 @@ func (c *Compiler) varSetSub(is IniSection,
 						oc = OC_st_fvar0add + OpCode(i)
 					}
 					if sys {
-						oc += 40
+						oc += NumFvar
 					}
 				}
 			} else {
@@ -3430,13 +3512,13 @@ func (c *Compiler) varSetSub(is IniSection,
 		if rd != OC_rdreset {
 			var tmp BytecodeExp
 			tmp.appendI32Op(OC_nordrun, int32(len(ve)))
-			ve.append(oc)
+			ve.append(OC_st_, oc)
 			ve = append(tmp, ve...)
 			tmp = nil
 			tmp.appendI32Op(rd, int32(len(ve)))
 			ve = append(tmp, ve...)
 		} else {
-			ve.append(oc)
+			ve.append(OC_st_, oc)
 		}
 		sc.add(varSet_, sc.beToExp(ve))
 		return nil
@@ -3519,6 +3601,29 @@ func (c *Compiler) parentVarAdd(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
 		return c.varSetSub(is, sc, OC_parent, OC_st_varadd)
+	})
+	return *ret, err
+}
+func (c *Compiler) turn(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*turn)(sc), c.stateSec(is, func() error {
+		sc.add(turn_, nil)
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetFacing(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetFacing)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetFacing_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetFacing_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
 	})
 	return *ret, err
 }
@@ -3650,6 +3755,10 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.parentVarSet
 					case "parentvaradd":
 						scf = c.parentVarAdd
+					case "turn":
+						scf = c.turn
+					case "targetfacing":
+						scf = c.targetFacing
 					default:
 						println(data)
 						unimplemented()

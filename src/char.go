@@ -555,8 +555,8 @@ type HitOverride struct {
 	attr     int32
 	stateno  int32
 	time     int32
-	playerNo int
 	forceair bool
+	playerNo int
 }
 
 func (ho *HitOverride) clear() {
@@ -683,7 +683,7 @@ type Explod struct {
 	offset         [2]float32
 	relativef      int32
 	pos            [2]float32
-	facing         int32
+	facing         float32
 	vfacing        int32
 	shadow         [3]int32
 	supermovetime  int32
@@ -734,7 +734,7 @@ type Projectile struct {
 	stagebound    int32
 	heightbound   [2]int32
 	pos           [2]float32
-	facing        int32
+	facing        float32
 	shadow        [3]int32
 	supermovetime int32
 	pausemovetime int32
@@ -771,15 +771,73 @@ type CharGlobalInfo struct {
 	movement         CharMovement
 	wakewakaLength   int
 }
+type StateState struct {
+	ps              []int32
+	wakegawakaranai [][]bool
+	no, prevno      int32
+	hitdefContact   bool
+	time            int32
+	sb              StateBytecode
+}
+
+func (ss *StateState) clear() {
+	ss.ps = nil
+	ss.wakegawakaranai = make([][]bool, len(sys.cgi))
+	for i, v := range ss.wakegawakaranai {
+		if len(v) < sys.cgi[i].wakewakaLength {
+			ss.wakegawakaranai[i] = make([]bool, sys.cgi[i].wakewakaLength)
+		} else {
+			for i := range v {
+				v[i] = false
+			}
+		}
+	}
+	ss.no, ss.prevno = 0, 0
+	ss.hitdefContact = false
+	ss.time = 0
+	ss.sb = StateBytecode{stateType: ST_S, moveType: MT_I, physics: ST_N}
+}
+func (ss *StateState) clearWw() {
+	for _, v := range ss.wakegawakaranai {
+		for i := range v {
+			v[i] = false
+		}
+	}
+}
+
+type MoveContact int32
+
+const (
+	MC_Hit MoveContact = iota
+	MC_Guarded
+	MC_Reversed
+)
+
+type ProjContact int32
+
+const (
+	PC_Hit ProjContact = iota
+	PC_Guarded
+	PC_Cancel
+)
+
 type Char struct {
 	name          string
+	palfx         *PalFX
+	anim          *Animation
+	curFrame      *AnimFrame
 	cmd           []CommandList
+	ss            StateState
 	key           int
-	helperIndex   int
+	id            int32
 	helperId      int32
+	helperIndex   int32
+	parentIndex   int32
 	playerNo      int
 	keyctrl       bool
 	player        bool
+	animPN        int
+	animNo        int32
 	sprpriority   int32
 	juggle        int32
 	recovertime   int32
@@ -787,23 +845,39 @@ type Char struct {
 	size          CharSize
 	hitdef        HitDef
 	ghv           GetHitVar
+	ho            [8]HitOverride
+	hoIdx         int
+	mctype        MoveContact
+	mctime        int32
 	pos           [2]float32
 	drawPos       [2]float32
 	oldPos        [2]float32
 	vel           [2]float32
+	facing        float32
+	ivar          [65]int32
+	fvar          [45]float32
 	aimg          AfterImage
-	palfx         *PalFX
-	standby       bool
 	pauseMovetime int32
 	superMovetime int32
+	standby       bool
+	angleset      bool
+	cs1tmp        bool
+	inguarddist   bool
+	p1facing      float32
+	pushed        bool
+	atktmp        int8
+	hittmp        int8
+	acttmp        int8
+	minus         int8
 }
 
-func newChar(n, idx int) (c *Char) {
+func newChar(n int, idx int32) (c *Char) {
 	c = &Char{}
 	c.init(n, idx)
 	return c
 }
-func (c *Char) init(n, idx int) {
+func (c *Char) init(n int, idx int32) {
+	c.clear1()
 	c.playerNo, c.helperIndex = n, idx
 	if c.helperIndex == 0 {
 		c.keyctrl, c.player = true, true
@@ -812,6 +886,45 @@ func (c *Char) init(n, idx int) {
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
 		c.key ^= -1
 	}
+}
+func (c *Char) clear1() {
+	c.anim = nil
+	c.cmd = nil
+	c.curFrame = nil
+	c.ss.clear()
+	c.hitdef.clear()
+	c.ghv.clear()
+	c.ghv.clearOff()
+	for i := range c.ho {
+		c.ho[i].clear()
+	}
+	c.hoIdx = -1
+	c.mctype, c.mctime = MC_Hit, 0
+	c.fallTime = 0
+	c.varRangeSet(0, int32(NumVar)-1, 0)
+	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
+	c.key = -1
+	c.id = IErr
+	c.helperId = 0
+	c.helperIndex = -1
+	c.parentIndex = IErr
+	c.playerNo = -1
+	c.facing = 1
+	c.keyctrl = false
+	c.player = false
+	c.animPN = -1
+	c.animNo = 0
+	c.angleset = false
+	c.cs1tmp = false
+	c.inguarddist = false
+	c.p1facing = 0
+	c.pushed = false
+	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
+}
+func (c *Char) clear2() {
+	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
+	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
+	unimplemented()
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
@@ -1092,8 +1205,7 @@ func (c *Char) addPower(power int32) {
 	unimplemented()
 }
 func (c *Char) time() int32 {
-	unimplemented()
-	return 0
+	return c.ss.time
 }
 func (c *Char) alive() bool {
 	unimplemented()
@@ -1144,10 +1256,6 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	unimplemented()
 }
 func (c *Char) roundState() int32 {
-	unimplemented()
-	return 0
-}
-func (c *Char) animNo() int32 {
 	unimplemented()
 	return 0
 }
@@ -1374,4 +1482,128 @@ func (c *Char) canRecover() bool {
 func (c *Char) command(pn, i int) bool {
 	unimplemented()
 	return false
+}
+func (c *Char) varGet(i int32) BytecodeValue {
+	if i >= 0 && i < int32(NumVar) {
+		return BytecodeInt(c.ivar[i])
+	}
+	return BytecodeSF()
+}
+func (c *Char) fvarGet(i int32) BytecodeValue {
+	if i >= 0 && i < int32(NumFvar) {
+		return BytecodeFloat(c.fvar[i])
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysVarGet(i int32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysVar) {
+		return BytecodeInt(c.ivar[i+int32(NumVar)])
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysFvarGet(i int32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysFvar) {
+		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
+	}
+	return BytecodeSF()
+}
+func (c *Char) varSet(i, v int32) BytecodeValue {
+	if i >= 0 && i < int32(NumVar) {
+		c.ivar[i] = v
+		return BytecodeInt(v)
+	}
+	return BytecodeSF()
+}
+func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
+	if i >= 0 && i < int32(NumFvar) {
+		c.fvar[i] = v
+		return BytecodeFloat(v)
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysVarSet(i, v int32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysVar) {
+		c.ivar[i+int32(NumVar)] = v
+		return BytecodeInt(v)
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysFvar) {
+		c.fvar[i+int32(NumFvar)] = v
+		return BytecodeFloat(v)
+	}
+	return BytecodeSF()
+}
+func (c *Char) varAdd(i, v int32) BytecodeValue {
+	if i >= 0 && i < int32(NumVar) {
+		c.ivar[i] += v
+		return BytecodeInt(c.ivar[i])
+	}
+	return BytecodeSF()
+}
+func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
+	if i >= 0 && i < int32(NumFvar) {
+		c.fvar[i] += v
+		return BytecodeFloat(c.fvar[i])
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysVar) {
+		c.ivar[i+int32(NumVar)] += v
+		return BytecodeInt(c.ivar[i+int32(NumVar)])
+	}
+	return BytecodeSF()
+}
+func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
+	if i >= 0 && i < int32(NumSysFvar) {
+		c.fvar[i+int32(NumFvar)] += v
+		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
+	}
+	return BytecodeSF()
+}
+func (c *Char) varRangeSet(s, e, v int32) {
+	if s >= 0 {
+		for i := s; i <= e && i < int32(NumVar); i++ {
+			c.ivar[i] = v
+		}
+	}
+}
+func (c *Char) fvarRangeSet(s, e int32, v float32) {
+	if s >= 0 {
+		for i := s; i <= e && i < int32(NumFvar); i++ {
+			c.fvar[i] = v
+		}
+	}
+}
+func (c *Char) sysVarRangeSet(s, e, v int32) {
+	if s >= 0 {
+		for i := s; i <= e && i < int32(NumSysVar); i++ {
+			c.ivar[i+int32(NumVar)] = v
+		}
+	}
+}
+func (c *Char) sysFvarRangeSet(s, e int32, v float32) {
+	if s >= 0 {
+		for i := s; i <= e && i < int32(NumSysFvar); i++ {
+			c.fvar[i+int32(NumFvar)] = v
+		}
+	}
+}
+func (c *Char) setFacing(f float32) {
+	if f != 0 {
+		if (c.facing < 0) != (f < 0) {
+			c.facing *= -1
+			c.vel[1] *= -1
+			c.ghv.xvel *= -1
+		}
+	}
+}
+func (c *Char) getTarget(id int32) []int32 {
+	unimplemented()
+	return nil
+}
+func (c *Char) targetFacing(tar []int32, f int32) {
+	unimplemented()
 }

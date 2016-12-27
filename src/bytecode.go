@@ -313,7 +313,7 @@ const (
 	OC_const_stagevar_info_name
 )
 const (
-	OC_st_var OpCode = iota + 220
+	OC_st_var OpCode = iota + OC_var*2
 	OC_st_sysvar
 	OC_st_fvar
 	OC_st_sysfvar
@@ -321,14 +321,14 @@ const (
 	OC_st_sysvaradd
 	OC_st_fvaradd
 	OC_st_sysfvaradd
-	OC_st_var0        OpCode = 0
-	OC_st_sysvar0     OpCode = 60
-	OC_st_fvar0       OpCode = 65
-	OC_st_sysfvar0    OpCode = 105
-	OC_st_var0add     OpCode = 110
-	OC_st_sysvar0add  OpCode = 170
-	OC_st_fvar0add    OpCode = 175
-	OC_st_sysfvar0add OpCode = 215
+	OC_st_var0        OpCode = OC_var0
+	OC_st_sysvar0     OpCode = OC_sysvar0
+	OC_st_fvar0       OpCode = OC_fvar0
+	OC_st_sysfvar0    OpCode = OC_sysfvar0
+	OC_st_var0add     OpCode = OC_var + OC_var0
+	OC_st_sysvar0add  OpCode = OC_var + OC_sysvar0
+	OC_st_fvar0add    OpCode = OC_var + OC_fvar0
+	OC_st_sysfvar0add OpCode = OC_var + OC_sysfvar0
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -385,6 +385,12 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+)
+const (
+	NumVar     = OC_sysvar0 - OC_var0
+	NumSysVar  = OC_fvar0 - OC_sysvar0
+	NumFvar    = OC_sysfvar0 - OC_fvar0
+	NumSysFvar = OC_var - OC_sysfvar0
 )
 
 type StringPool struct {
@@ -857,7 +863,7 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_roundstate:
 			sys.bcStack.Push(BytecodeInt(c.roundState()))
 		case OC_anim:
-			sys.bcStack.Push(BytecodeInt(c.animNo()))
+			sys.bcStack.Push(BytecodeInt(c.animNo))
 		case OC_animtime:
 			sys.bcStack.Push(BytecodeInt(c.animTime()))
 		case OC_animelemtime:
@@ -882,15 +888,79 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			sys.bcStack.Push(BytecodeFloat(c.pos[1]))
 		case OC_canrecover:
 			sys.bcStack.Push(BytecodeBool(c.canRecover()))
+		case OC_st_:
+			be.run_st(c, scpn, &i)
 		case OC_ex_:
 			be.run_ex(c, scpn, &i)
+		case OC_var:
+			*sys.bcStack.Top() = c.varGet(sys.bcStack.Top().ToI())
+		case OC_sysvar:
+			*sys.bcStack.Top() = c.sysVarGet(sys.bcStack.Top().ToI())
+		case OC_fvar:
+			*sys.bcStack.Top() = c.fvarGet(sys.bcStack.Top().ToI())
+		case OC_sysfvar:
+			*sys.bcStack.Top() = c.sysFvarGet(sys.bcStack.Top().ToI())
 		default:
-			println(be[i-1])
-			unimplemented()
+			vi := be[i-1]
+			if vi < OC_sysvar0+NumSysVar {
+				sys.bcStack.Push(BytecodeInt(c.ivar[vi-OC_var0]))
+			} else if vi < OC_sysfvar0+NumSysFvar {
+				sys.bcStack.Push(BytecodeFloat(c.fvar[vi-OC_fvar0]))
+			} else {
+				println(be[i-1])
+				unimplemented()
+			}
 		}
 		c = oc
 	}
 	return sys.bcStack.Pop()
+}
+func (be BytecodeExp) run_st(c *Char, scpn int, i *int) {
+	(*i)++
+	switch be[*i-1] {
+	case OC_st_var:
+		v := sys.bcStack.Pop().ToI()
+		*sys.bcStack.Top() = c.varSet(sys.bcStack.Top().ToI(), v)
+	case OC_st_sysvar:
+		v := sys.bcStack.Pop().ToI()
+		*sys.bcStack.Top() = c.sysVarSet(sys.bcStack.Top().ToI(), v)
+	case OC_st_fvar:
+		v := sys.bcStack.Pop().ToF()
+		*sys.bcStack.Top() = c.fvarSet(sys.bcStack.Top().ToI(), v)
+	case OC_st_sysfvar:
+		v := sys.bcStack.Pop().ToF()
+		*sys.bcStack.Top() = c.sysFvarSet(sys.bcStack.Top().ToI(), v)
+	case OC_st_varadd:
+		v := sys.bcStack.Pop().ToI()
+		*sys.bcStack.Top() = c.varAdd(sys.bcStack.Top().ToI(), v)
+	case OC_st_sysvaradd:
+		v := sys.bcStack.Pop().ToI()
+		*sys.bcStack.Top() = c.sysVarAdd(sys.bcStack.Top().ToI(), v)
+	case OC_st_fvaradd:
+		v := sys.bcStack.Pop().ToF()
+		*sys.bcStack.Top() = c.fvarAdd(sys.bcStack.Top().ToI(), v)
+	case OC_st_sysfvaradd:
+		v := sys.bcStack.Pop().ToF()
+		*sys.bcStack.Top() = c.sysFvarAdd(sys.bcStack.Top().ToI(), v)
+	default:
+		vi := be[*i-1]
+		if vi < OC_st_sysvar0+NumSysVar {
+			c.ivar[vi-OC_st_var0] = sys.bcStack.Top().ToI()
+			sys.bcStack.Top().SetI(c.ivar[vi-OC_st_var0])
+		} else if vi < OC_st_sysfvar0+NumSysFvar {
+			c.fvar[vi-OC_st_fvar0] = sys.bcStack.Top().ToF()
+			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0])
+		} else if vi < OC_st_sysvar0add+NumSysVar {
+			c.ivar[vi-OC_st_var0add] += sys.bcStack.Top().ToI()
+			sys.bcStack.Top().SetI(c.ivar[vi-OC_st_var0add])
+		} else if vi < OC_st_sysfvar0add+NumSysFvar {
+			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
+			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
+		} else {
+			println(be[*i-1])
+			unimplemented()
+		}
+	}
 }
 func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
 	(*i)++
@@ -2724,6 +2794,53 @@ func (sc varSet) Run(c *Char, ps *int32) bool {
 		switch id {
 		case varSet_:
 			exp[0].run(c, sc.playerNo)
+		}
+		return true
+	})
+	return false
+}
+
+type turn StateControllerBase
+
+const (
+	turn_ byte = iota
+)
+
+func (sc turn) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case turn_:
+			c.setFacing(-c.facing)
+		}
+		return true
+	})
+	return false
+}
+
+type targetFacing StateControllerBase
+
+const (
+	targetFacing_id byte = iota
+	targetFacing_value
+)
+
+func (sc targetFacing) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetFacing_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetFacing_value:
+			c.targetFacing(tar, exp[0].evalI(c, sc.playerNo))
 		}
 		return true
 	})
