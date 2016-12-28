@@ -821,6 +821,14 @@ const (
 	PC_Cancel
 )
 
+type HMF int32
+
+const (
+	HMF_H HMF = iota
+	HMF_M
+	HMF_F
+)
+
 type Char struct {
 	name          string
 	palfx         *PalFX
@@ -854,8 +862,8 @@ type Char struct {
 	oldPos        [2]float32
 	vel           [2]float32
 	facing        float32
-	ivar          [65]int32
-	fvar          [45]float32
+	ivar          [NumVar + NumSysVar]int32
+	fvar          [NumFvar + NumSysFvar]float32
 	aimg          AfterImage
 	pauseMovetime int32
 	superMovetime int32
@@ -1199,9 +1207,6 @@ func (c *Char) setAnimElem(e int32) {
 	unimplemented()
 }
 func (c *Char) setCtrl(ctrl bool) {
-	unimplemented()
-}
-func (c *Char) addPower(power int32) {
 	unimplemented()
 }
 func (c *Char) time() int32 {
@@ -1606,4 +1611,78 @@ func (c *Char) getTarget(id int32) []int32 {
 }
 func (c *Char) targetFacing(tar []int32, f int32) {
 	unimplemented()
+}
+func (c *Char) targetBind(tar []int32, t int32, x, y float32) {
+	unimplemented()
+}
+func (c *Char) bindToTarget(tar []int32, t int32, x, y float32, hnf HMF) {
+	unimplemented()
+}
+func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
+	unimplemented()
+}
+func (c *Char) targetState(tar []int32, state int32) {
+	unimplemented()
+}
+func (c *Char) targetVelSetX(tar []int32, x float32) {
+	unimplemented()
+}
+func (c *Char) targetVelSetY(tar []int32, y float32) {
+	unimplemented()
+}
+func (c *Char) targetVelAddX(tar []int32, x float32) {
+	unimplemented()
+}
+func (c *Char) targetVelAddY(tar []int32, y float32) {
+	unimplemented()
+}
+func (c *Char) targetPowerAdd(tar []int32, power int32) {
+	unimplemented()
+}
+func (c *Char) targetDrop(excludeid int32, keepone bool) {
+	unimplemented()
+}
+func (c *Char) lifeAdd(add int32, kill, absolute bool) {
+	unimplemented()
+}
+func (c *Char) lifeSet(add int32) {
+	unimplemented()
+}
+func (c *Char) powerAdd(add int32) {
+	unimplemented()
+}
+func (c *Char) powerSet(add int32) {
+	unimplemented()
+}
+func (c *Char) p2DistX() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) p2DistY() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) p2BodyDistX() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) p2BodyDistY() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) rootDistX() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) rootDistY() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) parentDistX() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
+}
+func (c *Char) parentDistY() BytecodeValue {
+	unimplemented()
+	return BytecodeSF()
 }

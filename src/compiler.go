@@ -575,11 +575,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if err != nil {
 				return err
 			}
-			if rd && len(be2) > 0 {
+			be2.appendValue(bv2)
+			if rd {
 				out.appendI32Op(OC_nordrun, int32(len(be2)))
 			}
 			out.append(be2...)
-			out.appendValue(bv2)
 			out.append(OC_st_)
 		}
 		if _else {
@@ -931,6 +931,54 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		}); err != nil {
 			return BytecodeSF(), err
+		}
+	case "p2dist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_p2dist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_p2dist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
+		}
+	case "p2bodydist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_p2bodydist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_p2bodydist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
+		}
+	case "rootdist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_rootdist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_rootdist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
+		}
+	case "parentdist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_parentdist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_parentdist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return BytecodeSF(), Error(c.token + "が不正です")
 		}
 	case "gethitvar":
 		if err := c.kakkohiraku(in); err != nil {
@@ -2252,13 +2300,6 @@ func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 			return err
 		}
 		return nil
-	})
-	return *ret, err
-}
-func (c *Compiler) powerAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
-	ret, err := (*powerAdd)(sc), c.stateSec(is, func() error {
-		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }
@@ -3627,6 +3668,220 @@ func (c *Compiler) targetFacing(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
+func (c *Compiler) targetBind(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetBind)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetBind_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			targetBind_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			targetBind_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) bindToTarget(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*bindToTarget)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			bindToTarget_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			bindToTarget_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "pos", func(data string) error {
+			be, err := c.argExpression(&data, VT_Float)
+			if err != nil {
+				return err
+			}
+			exp := sc.beToExp(be)
+			if c.token != "," {
+				sc.add(bindToTarget_pos, exp)
+				return nil
+			}
+			if be, err = c.argExpression(&data, VT_Float); err != nil {
+				return err
+			}
+			exp, data = append(exp, be), strings.TrimSpace(data)
+			if c.token != "," || len(data) == 0 {
+				sc.add(bindToTarget_pos, exp)
+				return nil
+			}
+			var hmf HMF
+			switch data[0] {
+			case 'H', 'h':
+				hmf = HMF_H
+			case 'M', 'm':
+				hmf = HMF_M
+			case 'F', 'f':
+				hmf = HMF_F
+			default:
+				return Error(data + "が無効な値です")
+			}
+			sc.add(bindToTarget_pos, append(exp, sc.iToExp(int32(hmf))...))
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetLifeAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetLifeAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			targetLifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "kill",
+			targetLifeAdd_kill, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetLifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetState(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetState)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetState_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetState_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetVelSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetVelSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetVelSet_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "x",
+			targetVelSet_x, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "y",
+			targetVelSet_y, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetVelAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetVelAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetVelAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "x",
+			targetVelAdd_x, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "y",
+			targetVelAdd_y, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetPowerAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			targetPowerAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetPowerAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetDrop(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*targetDrop)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "excludeid",
+			targetDrop_excludeid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "keepone",
+			targetDrop_keepone, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) lifeAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*lifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "absolute",
+			lifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "kill",
+			lifeAdd_kill, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			lifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) lifeSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*lifeSet)(sc), c.stateSec(is, func() error {
+		return c.paramValue(is, sc, "value", lifeSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) powerAdd(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*powerAdd)(sc), c.stateSec(is, func() error {
+		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) powerSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*powerSet)(sc), c.stateSec(is, func() error {
+		return c.paramValue(is, sc, "value", powerSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -3709,8 +3964,6 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.changeAnim2
 					case "helper":
 						scf = c.helper
-					case "poweradd":
-						scf = c.powerAdd
 					case "ctrlset":
 						scf = c.ctrlSet
 					case "explod":
@@ -3759,6 +4012,30 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.turn
 					case "targetfacing":
 						scf = c.targetFacing
+					case "targetbind":
+						scf = c.targetBind
+					case "bindtotarget":
+						scf = c.bindToTarget
+					case "targetlifeadd":
+						scf = c.targetLifeAdd
+					case "targetstate":
+						scf = c.targetState
+					case "targetvelset":
+						scf = c.targetVelSet
+					case "targetveladd":
+						scf = c.targetVelAdd
+					case "targetpoweradd":
+						scf = c.targetPowerAdd
+					case "targetdrop":
+						scf = c.targetDrop
+					case "lifeadd":
+						scf = c.lifeAdd
+					case "lifeset":
+						scf = c.lifeSet
+					case "poweradd":
+						scf = c.powerAdd
+					case "powerset":
+						scf = c.powerSet
 					default:
 						println(data)
 						unimplemented()

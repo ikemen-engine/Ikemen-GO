@@ -967,6 +967,22 @@ func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
 	switch be[*i-1] {
 	case OC_ex_matchover:
 		sys.bcStack.Push(BytecodeBool(sys.matchOver()))
+	case OC_ex_p2dist_x:
+		sys.bcStack.Push(c.p2DistX())
+	case OC_ex_p2dist_y:
+		sys.bcStack.Push(c.p2DistY())
+	case OC_ex_p2bodydist_x:
+		sys.bcStack.Push(c.p2BodyDistX())
+	case OC_ex_p2bodydist_y:
+		sys.bcStack.Push(c.p2BodyDistY())
+	case OC_ex_rootdist_x:
+		sys.bcStack.Push(c.rootDistX())
+	case OC_ex_rootdist_y:
+		sys.bcStack.Push(c.rootDistY())
+	case OC_ex_parentdist_x:
+		sys.bcStack.Push(c.parentDistX())
+	case OC_ex_parentdist_y:
+		sys.bcStack.Push(c.parentDistY())
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.Push(BytecodeInt(int32(c.gethitAnimtype())))
 	case OC_ex_gethitvar_airtype:
@@ -1171,7 +1187,7 @@ func (sc stateDef) Run(c *Char, ps *int32) bool {
 		case stateDef_ctrl:
 			c.setCtrl(exp[0].evalB(c, sc.playerNo))
 		case stateDef_poweradd:
-			c.addPower(exp[0].evalI(c, sc.playerNo))
+			c.powerAdd(exp[0].evalI(c, sc.playerNo))
 		}
 		return true
 	})
@@ -1558,23 +1574,6 @@ func (sc helper) Run(c *Char, ps *int32) bool {
 	if h != nil {
 		c.helperInit(h, st, pt, x, y, f, op)
 	}
-	return false
-}
-
-type powerAdd StateControllerBase
-
-const (
-	powerAdd_value byte = iota
-)
-
-func (sc powerAdd) Run(c *Char, ps *int32) bool {
-	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
-		switch id {
-		case powerAdd_value:
-			c.addPower(exp[0].evalI(c, sc.playerNo))
-		}
-		return true
-	})
 	return false
 }
 
@@ -2841,6 +2840,356 @@ func (sc targetFacing) Run(c *Char, ps *int32) bool {
 			}
 		case targetFacing_value:
 			c.targetFacing(tar, exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type targetBind StateControllerBase
+
+const (
+	targetBind_id byte = iota
+	targetBind_time
+	targetBind_pos
+)
+
+func (sc targetBind) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	t := int32(1)
+	var x, y float32 = 0, 0
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetBind_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetBind_time:
+			t = exp[0].evalI(c, sc.playerNo)
+		case targetBind_pos:
+			x = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c, sc.playerNo)
+			}
+		}
+		return true
+	})
+	c.targetBind(tar, t, x, y)
+	return false
+}
+
+type bindToTarget StateControllerBase
+
+const (
+	bindToTarget_id byte = iota
+	bindToTarget_time
+	bindToTarget_pos
+)
+
+func (sc bindToTarget) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	t := int32(1)
+	x, y := float32(0), float32(math.NaN())
+	hmf := HMF_F
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case bindToTarget_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case bindToTarget_time:
+			t = exp[0].evalI(c, sc.playerNo)
+		case bindToTarget_pos:
+			x = exp[0].evalF(c, sc.playerNo)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c, sc.playerNo)
+				if len(exp) > 2 {
+					hmf = HMF(exp[2].evalI(c, sc.playerNo))
+				}
+			}
+		}
+		return true
+	})
+	c.bindToTarget(tar, t, x, y, hmf)
+	return false
+}
+
+type targetLifeAdd StateControllerBase
+
+const (
+	targetLifeAdd_id byte = iota
+	targetLifeAdd_absolute
+	targetLifeAdd_kill
+	targetLifeAdd_value
+)
+
+func (sc targetLifeAdd) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	a, k := false, true
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetLifeAdd_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetLifeAdd_absolute:
+			a = exp[0].evalB(c, sc.playerNo)
+		case targetLifeAdd_kill:
+			k = exp[0].evalB(c, sc.playerNo)
+		case targetLifeAdd_value:
+			c.targetLifeAdd(tar, exp[0].evalI(c, sc.playerNo), k, a)
+		}
+		return true
+	})
+	return false
+}
+
+type targetState StateControllerBase
+
+const (
+	targetState_id byte = iota
+	targetState_value
+)
+
+func (sc targetState) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetState_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetState_value:
+			c.targetState(tar, exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type targetVelSet StateControllerBase
+
+const (
+	targetVelSet_id byte = iota
+	targetVelSet_x
+	targetVelSet_y
+)
+
+func (sc targetVelSet) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetVelSet_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetVelSet_x:
+			c.targetVelSetX(tar, exp[0].evalF(c, sc.playerNo))
+		case targetVelSet_y:
+			c.targetVelSetY(tar, exp[0].evalF(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type targetVelAdd StateControllerBase
+
+const (
+	targetVelAdd_id byte = iota
+	targetVelAdd_x
+	targetVelAdd_y
+)
+
+func (sc targetVelAdd) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetVelAdd_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetVelAdd_x:
+			c.targetVelAddX(tar, exp[0].evalF(c, sc.playerNo))
+		case targetVelAdd_y:
+			c.targetVelAddY(tar, exp[0].evalF(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type targetPowerAdd StateControllerBase
+
+const (
+	targetPowerAdd_id byte = iota
+	targetPowerAdd_value
+)
+
+func (sc targetPowerAdd) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetPowerAdd_id:
+			tar = c.getTarget(exp[0].evalI(c, sc.playerNo))
+			if len(tar) == 0 {
+				return false
+			}
+		case targetPowerAdd_value:
+			c.targetPowerAdd(tar, exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type targetDrop StateControllerBase
+
+const (
+	targetDrop_excludeid byte = iota
+	targetDrop_keepone
+)
+
+func (sc targetDrop) Run(c *Char, ps *int32) bool {
+	var tar []int32
+	eid := int32(-1)
+	ko := true
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if len(tar) == 0 {
+			tar = c.getTarget(-1)
+			if len(tar) == 0 {
+				return false
+			}
+		}
+		switch id {
+		case targetDrop_excludeid:
+			eid = exp[0].evalI(c, sc.playerNo)
+		case targetDrop_keepone:
+			ko = exp[0].evalB(c, sc.playerNo)
+		}
+		return true
+	})
+	c.targetDrop(eid, ko)
+	return false
+}
+
+type lifeAdd StateControllerBase
+
+const (
+	lifeAdd_absolute byte = iota
+	lifeAdd_kill
+	lifeAdd_value
+)
+
+func (sc lifeAdd) Run(c *Char, ps *int32) bool {
+	a, k := false, true
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case lifeAdd_absolute:
+			a = exp[0].evalB(c, sc.playerNo)
+		case lifeAdd_kill:
+			k = exp[0].evalB(c, sc.playerNo)
+		case lifeAdd_value:
+			c.lifeAdd(exp[0].evalI(c, sc.playerNo), k, a)
+		}
+		return true
+	})
+	return false
+}
+
+type lifeSet StateControllerBase
+
+const (
+	lifeSet_value byte = iota
+)
+
+func (sc lifeSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case lifeSet_value:
+			c.lifeSet(exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type powerAdd StateControllerBase
+
+const (
+	powerAdd_value byte = iota
+)
+
+func (sc powerAdd) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case powerAdd_value:
+			c.powerAdd(exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type powerSet StateControllerBase
+
+const (
+	powerSet_value byte = iota
+)
+
+func (sc powerSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case powerSet_value:
+			c.powerSet(exp[0].evalI(c, sc.playerNo))
 		}
 		return true
 	})
