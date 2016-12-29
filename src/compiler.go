@@ -218,14 +218,14 @@ func (c *Compiler) integer2(in *string) (int32, error) {
 func (c *Compiler) number(token string) BytecodeValue {
 	f, err := strconv.ParseFloat(token, 64)
 	if err != nil && f == 0 {
-		return BytecodeSF()
+		return bvNone()
 	}
 	if strings.Index(token, ".") >= 0 {
 		c.usiroOp = false
 		return BytecodeValue{VT_Float, f}
 	}
 	if strings.IndexAny(token, "Ee") >= 0 {
-		return BytecodeSF()
+		return bvNone()
 	}
 	c.usiroOp = false
 	if f > math.MaxInt32 {
@@ -500,19 +500,19 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	rd, appendVal bool) (BytecodeValue, error) {
 	if err := c.kakkohiraku(in); err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	var be BytecodeExp
 	bv, err := c.expBoolOr(&be, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	if err := c.kakkotojiru(in); err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	if appendVal {
 		be.appendValue(bv)
-		bv = BytecodeSF()
+		bv = bvNone()
 	}
 	if rd && len(be) > 0 {
 		out.appendI32Op(OC_nordrun, int32(len(be)))
@@ -520,11 +520,28 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	out.append(be...)
 	return bv, nil
 }
+func (c *Compiler) mathFunc(out *BytecodeExp, in *string, rd bool,
+	oc OpCode, f func(*BytecodeValue)) (bv BytecodeValue, err error) {
+	var be BytecodeExp
+	if bv, err = c.oneArg(&be, in, false, false); err != nil {
+		return
+	}
+	if bv.IsNone() {
+		if rd {
+			out.append(OC_rdreset)
+		}
+		out.append(be...)
+		out.append(oc)
+	} else {
+		f(&bv)
+	}
+	return
+}
 func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	rd bool) (BytecodeValue, error) {
 	c.usiroOp, c.norange = true, false
 	bv := c.number(c.token)
-	if !bv.IsSF() {
+	if !bv.IsNone() {
 		c.token = c.tokenizer(in)
 		return bv, nil
 	}
@@ -538,7 +555,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		var oc OpCode
 		set, _else := c.token == ":=", false
-		if !bv1.IsSF() && bv1.ToI() >= 0 {
+		if !bv1.IsNone() && bv1.ToI() >= 0 {
 			switch [2]bool{sys, f} {
 			case [2]bool{false, false}:
 				if bv1.ToI() < int32(NumVar) {
@@ -630,7 +647,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var err error
 	switch c.token {
 	case "":
-		return BytecodeSF(), Error("空です")
+		return bvNone(), Error("空です")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -659,10 +676,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if c.token == "(" {
 				c.token = c.tokenizer(in)
 				if bv1, err = c.expBoolOr(&be1, in); err != nil {
-					return BytecodeSF(), err
+					return bvNone(), err
 				}
 				if err := c.kakkotojiru(in); err != nil {
-					return BytecodeSF(), err
+					return bvNone(), err
 				}
 				c.token = c.tokenizer(in)
 				be1.appendValue(bv1)
@@ -673,7 +690,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_partner, OC_enemy, OC_enemynear:
 					be1.appendValue(BytecodeInt(0))
 				case OC_playerid:
-					return BytecodeSF(), Error("playeridの次に'('がありません")
+					return bvNone(), Error("playeridの次に'('がありません")
 				}
 			}
 		}
@@ -682,59 +699,29 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		out.append(be1...)
 		if c.token != "," {
-			return BytecodeSF(), Error(",がありません")
+			return bvNone(), Error(",がありません")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expValue(&be2, in, true); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		be2.appendValue(bv2)
 		out.appendI32Op(opc, int32(len(be2)))
 		out.append(be2...)
-		return BytecodeSF(), nil
-	case "(":
-		c.token = c.tokenizer(in)
-		if bv, err = c.expBoolOr(&be1, in); err != nil {
-			return BytecodeSF(), err
-		}
-		if bv.IsSF() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-		}
-		if err := c.kakkotojiru(in); err != nil {
-			return BytecodeSF(), err
-		}
-	case "var":
-		if err := _var(false, false); err != nil {
-			return BytecodeSF(), err
-		}
-	case "fvar":
-		if err := _var(false, true); err != nil {
-			return BytecodeSF(), err
-		}
-	case "sysvar":
-		if err := _var(true, false); err != nil {
-			return BytecodeSF(), err
-		}
-	case "sysfvar":
-		if err := _var(true, true); err != nil {
-			return BytecodeSF(), err
-		}
+		return bvNone(), nil
 	case "-":
 		if len(*in) > 0 && (((*in)[0] >= '0' && (*in)[0] <= '9') || (*in)[0] == '.') {
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
-			if bv.IsSF() {
-				return BytecodeSF(), Error(c.token + "が不正です")
+			if bv.IsNone() {
+				return bvNone(), Error(c.token + "が不正です")
 			}
 		} else {
 			c.token = c.tokenizer(in)
 			if bv, err = c.expValue(&be1, in, false); err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
-			if bv.IsSF() {
+			if bv.IsNone() {
 				if rd {
 					out.append(OC_rdreset)
 				}
@@ -743,13 +730,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			} else {
 				out.neg(&bv)
 			}
+			return bv, nil
 		}
 	case "~":
 		c.token = c.tokenizer(in)
 		if bv, err = c.expValue(&be1, in, false); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
-		if bv.IsSF() {
+		if bv.IsNone() {
 			if rd {
 				out.append(OC_rdreset)
 			}
@@ -758,12 +746,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else {
 			out.not(&bv)
 		}
+		return bv, nil
 	case "!":
 		c.token = c.tokenizer(in)
 		if bv, err = c.expValue(&be1, in, false); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
-		if bv.IsSF() {
+		if bv.IsNone() {
 			if rd {
 				out.append(OC_rdreset)
 			}
@@ -772,32 +761,63 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else {
 			out.blnot(&bv)
 		}
+		return bv, nil
+	case "(":
+		c.token = c.tokenizer(in)
+		if bv, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
+	case "var":
+		if err := _var(false, false); err != nil {
+			return bvNone(), err
+		}
+	case "fvar":
+		if err := _var(false, true); err != nil {
+			return bvNone(), err
+		}
+	case "sysvar":
+		if err := _var(true, false); err != nil {
+			return bvNone(), err
+		}
+	case "sysfvar":
+		if err := _var(true, true); err != nil {
+			return bvNone(), err
+		}
 	case "ifelse", "cond":
 		cond := c.token == "cond"
 		if err := c.kakkohiraku(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if bv1, err = c.expBoolOr(&be1, in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if c.token != "," {
-			return BytecodeSF(), Error("','がありません")
+			return bvNone(), Error("','がありません")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if c.token != "," {
-			return BytecodeSF(), Error("','がありません")
+			return bvNone(), Error("','がありません")
 		}
 		c.token = c.tokenizer(in)
 		if bv3, err = c.expBoolOr(&be3, in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if err := c.kakkotojiru(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
-		if bv1.IsSF() || bv2.IsSF() || bv3.IsSF() {
+		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone() {
 			if cond {
 				be3.appendValue(bv3)
 				be2.appendValue(bv2)
@@ -847,41 +867,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_random)
 	case "roundstate":
 		out.append(OC_roundstate)
-	case "matchover":
-		out.append(OC_ex_, OC_ex_matchover)
-	case "anim":
-		out.append(OC_anim)
-	case "animtime":
-		out.append(OC_animtime)
-	case "animelem":
-		if _, err = c.kyuushiki(in); err != nil {
-			return BytecodeSF(), err
-		}
-		if c.token == "-" {
-			return BytecodeSF(), Error("マイナスが付くとエラーです")
-		}
-		if n, err = c.integer2(in); err != nil {
-			return BytecodeSF(), err
-		}
-		if n <= 0 {
-			return BytecodeSF(), Error("animelemのは0より大きくなければいけません")
-		}
-		be1.appendValue(BytecodeInt(n))
-		if rd {
-			out.appendI32Op(OC_nordrun, int32(len(be1)))
-		}
-		out.append(be1...)
-		out.append(OC_animelemtime)
-		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
-			return BytecodeSF(), err
-		}
-		out.append(OC_jsf8, OpCode(len(be)))
-		out.append(be...)
-	case "animelemtime":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return BytecodeSF(), err
-		}
-		out.append(OC_animelemtime)
 	case "stateno":
 		out.append(OC_stateno)
 	case "movecontact":
@@ -892,6 +877,45 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_moveguarded)
 	case "movereversed":
 		out.append(OC_movereversed)
+	case "canrecover":
+		out.append(OC_canrecover)
+	case "hitshakeover":
+		out.append(OC_hitshakeover)
+	case "matchover":
+		out.append(OC_matchover)
+	case "anim":
+		out.append(OC_anim)
+	case "animtime":
+		out.append(OC_animtime)
+	case "animelem":
+		if _, err = c.kyuushiki(in); err != nil {
+			return bvNone(), err
+		}
+		if c.token == "-" {
+			return bvNone(), Error("マイナスが付くとエラーです")
+		}
+		if n, err = c.integer2(in); err != nil {
+			return bvNone(), err
+		}
+		if n <= 0 {
+			return bvNone(), Error("animelemのは0より大きくなければいけません")
+		}
+		be1.appendValue(BytecodeInt(n))
+		if rd {
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
+		}
+		out.append(be1...)
+		out.append(OC_animelemtime)
+		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_jsf8, OpCode(len(be)))
+		out.append(be...)
+	case "animelemtime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animelemtime)
 	case "vel":
 		c.token = c.tokenizer(in)
 		switch c.token {
@@ -902,7 +926,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
 		}
 	case "pos":
 		c.token = c.tokenizer(in)
@@ -914,10 +938,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
 		}
-	case "canrecover":
-		out.append(OC_canrecover)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -930,7 +952,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_command, int32(i))
 			return nil
 		}); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 	case "p2dist":
 		c.token = c.tokenizer(in)
@@ -942,7 +964,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
 		}
 	case "p2bodydist":
 		c.token = c.tokenizer(in)
@@ -954,7 +976,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
 		}
 	case "rootdist":
 		c.token = c.tokenizer(in)
@@ -966,7 +988,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
 		}
 	case "parentdist":
 		c.token = c.tokenizer(in)
@@ -978,11 +1000,104 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return BytecodeSF(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "frontedgedist":
+		out.append(OC_frontedgedist)
+	case "frontedgebodydist":
+		out.append(OC_frontedgebodydist)
+	case "frontedge":
+		out.append(OC_frontedge)
+	case "backedgedist":
+		out.append(OC_backedgedist)
+	case "backedgebodydist":
+		out.append(OC_backedgebodydist)
+	case "backedge":
+		out.append(OC_backedge)
+	case "leftedge":
+		out.append(OC_leftedge)
+	case "rightedge":
+		out.append(OC_rightedge)
+	case "topedge":
+		out.append(OC_topedge)
+	case "bottomedge":
+		out.append(OC_bottomedge)
+	case "abs":
+		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
+			return bvNone(), err
+		}
+	case "exp":
+		if bv, err = c.mathFunc(out, in, rd, OC_exp, out.exp); err != nil {
+			return bvNone(), err
+		}
+	case "ln":
+		if bv, err = c.mathFunc(out, in, rd, OC_ln, out.ln); err != nil {
+			return bvNone(), err
+		}
+	case "log":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("','がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.append(be2...)
+			out.append(OC_log)
+			bv = bvNone()
+		} else {
+			out.log(&bv1, bv2)
+			bv = bv1
+		}
+	case "cos":
+		if bv, err = c.mathFunc(out, in, rd, OC_cos, out.cos); err != nil {
+			return bvNone(), err
+		}
+	case "sin":
+		if bv, err = c.mathFunc(out, in, rd, OC_sin, out.sin); err != nil {
+			return bvNone(), err
+		}
+	case "tan":
+		if bv, err = c.mathFunc(out, in, rd, OC_tan, out.tan); err != nil {
+			return bvNone(), err
+		}
+	case "acos":
+		if bv, err = c.mathFunc(out, in, rd, OC_acos, out.acos); err != nil {
+			return bvNone(), err
+		}
+	case "asin":
+		if bv, err = c.mathFunc(out, in, rd, OC_asin, out.asin); err != nil {
+			return bvNone(), err
+		}
+	case "atan":
+		if bv, err = c.mathFunc(out, in, rd, OC_atan, out.atan); err != nil {
+			return bvNone(), err
+		}
+	case "floor":
+		if bv, err = c.mathFunc(out, in, rd, OC_floor, out.floor); err != nil {
+			return bvNone(), err
+		}
+	case "ceil":
+		if bv, err = c.mathFunc(out, in, rd, OC_ceil, out.ceil); err != nil {
+			return bvNone(), err
 		}
 	case "gethitvar":
 		if err := c.kakkohiraku(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		switch c.token {
 		case "xveladd":
@@ -1061,12 +1176,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "fall.envshake.phase":
 				out.append(OC_ex_gethitvar_fall_envshake_phase)
 			default:
-				return BytecodeSF(), Error(c.token + "が不正です")
+				return bvNone(), Error(c.token + "が不正です")
 			}
 		}
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 	default:
 		println(c.token)
@@ -1094,11 +1209,11 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expValue(out, in, false)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for c.token == "!" {
 		c.usiroOp = true
-		if bv.IsSF() {
+		if bv.IsNone() {
 			out.append(OC_blnot)
 		} else {
 			out.blnot(&bv)
@@ -1109,25 +1224,25 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		opp := c.isOperator(c.token)
 		if opp == 0 {
 			if !c.usiroOp && c.token == "(" {
-				return BytecodeSF(), Error("演算子がありません")
+				return bvNone(), Error("演算子がありません")
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
 			if _, err := c.expValue(&dummyout, in, false); err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
 			if c.isOperator(c.token) <= 0 {
-				return BytecodeSF(), Error("演算子がありません")
+				return bvNone(), Error("演算子がありません")
 			}
 			if err := c.renzokuEnzansihaError(in); err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
 			oldin = oldin[:len(oldin)-len(*in)]
 			*in = oldtoken + " " + oldin[:strings.LastIndex(oldin, c.token)] + " " +
 				*in
 		} else if opp > 0 {
 			if err := c.renzokuEnzansihaError(in); err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
 		}
 	}
@@ -1137,25 +1252,25 @@ func (c *Compiler) expPow(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expPostNot(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if c.token == "**" {
 			c.token = c.tokenizer(in)
 			var be BytecodeExp
 			bv2, err := c.expPostNot(&be, in)
 			if err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
-			if bv.IsSF() || bv2.IsSF() {
+			if bv.IsNone() || bv2.IsNone() {
 				out.appendValue(bv)
 				out.append(be...)
 				out.appendValue(bv2)
 				out.append(OC_pow)
-				bv = BytecodeSF()
+				bv = bvNone()
 			} else {
 				out.pow(&bv, bv2, c.playerNo)
 			}
@@ -1169,11 +1284,11 @@ func (c *Compiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expPow(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		switch c.token {
 		case "*":
@@ -1189,7 +1304,7 @@ func (c *Compiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue,
 			return bv, nil
 		}
 		if err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 	}
 }
@@ -1197,11 +1312,11 @@ func (c *Compiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expMldv(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		switch c.token {
 		case "+":
@@ -1214,7 +1329,7 @@ func (c *Compiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue,
 			return bv, nil
 		}
 		if err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 	}
 }
@@ -1222,11 +1337,11 @@ func (c *Compiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expAdsb(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		switch c.token {
 		case ">":
@@ -1245,7 +1360,7 @@ func (c *Compiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue,
 			return bv, nil
 		}
 		if err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 	}
 }
@@ -1266,12 +1381,12 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 			return err
 		}
 		c.token = c.tokenizer(in)
-		if bv.IsSF() || bv2.IsSF() {
+		if bv.IsNone() || bv2.IsNone() {
 			out.appendValue(*bv)
 			out.append(be2...)
 			out.appendValue(bv2)
 			out.append(opc)
-			*bv = BytecodeSF()
+			*bv = bvNone()
 		} else {
 			switch opc {
 			case OC_eq:
@@ -1289,7 +1404,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 		return Error("]か)がありません")
 	}
 	c.token = c.tokenizer(in)
-	if bv.IsSF() || bv2.IsSF() || bv3.IsSF() {
+	if bv.IsNone() || bv2.IsNone() || bv3.IsNone() {
 		var op1, op2, op3 OpCode
 		if opc == OC_ne {
 			if open == "(" {
@@ -1326,7 +1441,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 		out.appendValue(bv3)
 		out.append(op2)
 		out.append(op3)
-		*bv = BytecodeSF()
+		*bv = bvNone()
 	} else {
 		tmp := *bv
 		if open == "(" {
@@ -1350,11 +1465,11 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
 	bv, err := c.expGrls(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		var opc OpCode
 		switch c.token {
@@ -1370,7 +1485,7 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 		case "[", "(":
 			if !c.norange {
 				if err = c.expRange(out, in, &bv, opc); err != nil {
-					return BytecodeSF(), err
+					return bvNone(), err
 				}
 				break
 			}
@@ -1383,7 +1498,7 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 				err = c.expOneOpSub(out, in, &bv, c.expGrls, out.ne, opc)
 			}
 			if err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
 		}
 	}
@@ -1396,12 +1511,12 @@ func (_ *Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
 	if err != nil {
 		return err
 	}
-	if bv.IsSF() || bv2.IsSF() {
+	if bv.IsNone() || bv2.IsNone() {
 		out.appendValue(*bv)
 		out.append(be...)
 		out.appendValue(bv2)
 		out.append(opc)
-		*bv = BytecodeSF()
+		*bv = bvNone()
 	} else {
 		opf(bv, bv2)
 	}
@@ -1412,16 +1527,16 @@ func (c *Compiler) expOneOp(out *BytecodeExp, in *string, ef ExpFunc,
 	opc OpCode) (BytecodeValue, error) {
 	bv, err := ef(out, in)
 	if err != nil {
-		return BytecodeSF(), err
+		return bvNone(), err
 	}
 	for {
 		if err := c.operator(in); err != nil {
-			return BytecodeSF(), err
+			return bvNone(), err
 		}
 		if c.token == opt {
 			c.token = c.tokenizer(in)
 			if err := c.expOneOpSub(out, in, &bv, ef, opf, opc); err != nil {
-				return BytecodeSF(), err
+				return bvNone(), err
 			}
 		} else {
 			return bv, nil
@@ -1460,7 +1575,7 @@ func (c *Compiler) typedExp(ef ExpFunc, in *string,
 	if err != nil {
 		return nil, err
 	}
-	if !bv.IsSF() {
+	if !bv.IsNone() {
 		switch vt {
 		case VT_Float:
 			bv.SetF(bv.ToF())
@@ -2650,6 +2765,10 @@ func (c *Compiler) afterImageSub(is IniSection,
 		afterImage_timegap, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"framegap",
+		afterImage_framegap, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, prefix+"palcolor",
 		afterImage_palcolor, VT_Int, 1, false); err != nil {
 		return err
@@ -2684,6 +2803,31 @@ func (c *Compiler) afterImage(is IniSection, sbc *StateBytecode,
 	sc *StateControllerBase, _ bool) (StateController, error) {
 	ret, err := (*afterImage)(sc), c.stateSec(is, func() error {
 		return c.afterImageSub(is, sc, "")
+	})
+	return *ret, err
+}
+func (c *Compiler) afterImageTime(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*afterImageTime)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "time", func(data string) error {
+			b = true
+			return c.scAdd(sc, afterImageTime_time, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.stateParam(is, "value", func(data string) error {
+				b = true
+				return c.scAdd(sc, afterImageTime_time, data, VT_Int, 1)
+			}); err != nil {
+				return err
+			}
+			if !b {
+				sc.add(afterImageTime_time, sc.iToExp(0))
+			}
+		}
+		return nil
 	})
 	return *ret, err
 }
@@ -3469,7 +3613,7 @@ func (c *Compiler) varSetSub(is IniSection,
 			return err
 		}
 		_else := false
-		if !bv.IsSF() {
+		if !bv.IsNone() {
 			i := bv.ToI()
 			if i >= 0 && (!sys && v && i < int32(NumVar) ||
 				!sys && fv && i < int32(NumFvar) || sys && v && i < int32(NumSysVar) ||
@@ -3882,6 +4026,65 @@ func (c *Compiler) powerSet(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
+func (c *Compiler) hitVelSet(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*hitVelSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "x",
+			hitVelSet_x, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "y",
+			hitVelSet_y, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) screenBound(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*screenBound)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			b = true
+			return c.scAdd(sc, screenBound_value, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(screenBound_value, sc.iToExp(0))
+		}
+		b = false
+		if err := c.stateParam(is, "movecamera", func(data string) error {
+			b = true
+			return c.scAdd(sc, screenBound_movecamera, data, VT_Bool, 2)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(screenBound_value, append(sc.iToExp(0), sc.iToExp(0)...))
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) posFreeze(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*posFreeze)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			b = true
+			return c.scAdd(sc, posFreeze_value, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(screenBound_value, sc.iToExp(1))
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var lines []string
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -3990,6 +4193,8 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.bgPalFX
 					case "afterimage":
 						scf = c.afterImage
+					case "afterimagetime":
+						scf = c.afterImageTime
 					case "hitdef":
 						scf = c.hitDef
 					case "reversaldef":
@@ -4036,6 +4241,12 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.powerAdd
 					case "powerset":
 						scf = c.powerSet
+					case "hitvelset":
+						scf = c.hitVelSet
+					case "screenbound":
+						scf = c.screenBound
+					case "posfreeze":
+						scf = c.posFreeze
 					default:
 						println(data)
 						unimplemented()

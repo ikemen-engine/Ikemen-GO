@@ -203,6 +203,15 @@ func (s *System) synchronize() error {
 func (s *System) matchOver() bool {
 	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
 }
+func (s *System) sf(gsf GlobalSpecialFlag) bool {
+	return s.specialFlag&gsf != 0
+}
+func (s *System) setSF(gsf GlobalSpecialFlag) {
+	s.specialFlag |= gsf
+}
+func (s *System) unsetSF(gsf GlobalSpecialFlag) {
+	s.specialFlag &^= gsf
+}
 
 type SelectChar struct {
 	def, name            string

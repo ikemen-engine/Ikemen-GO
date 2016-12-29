@@ -51,7 +51,8 @@ const (
 type ValueType int
 
 const (
-	VT_Float ValueType = iota
+	VT_None ValueType = iota
+	VT_Float
 	VT_Int
 	VT_Bool
 	VT_SFalse
@@ -94,8 +95,6 @@ const (
 	OC_and
 	OC_xor
 	OC_or
-	OC_shl
-	OC_shr
 	OC_add
 	OC_sub
 	OC_mul
@@ -193,6 +192,8 @@ const (
 	OC_hitfall
 	OC_hitvel_x
 	OC_hitvel_y
+	OC_roundsexisted
+	OC_matchover
 	OC_parent
 	OC_root
 	OC_helper
@@ -347,10 +348,8 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
-	OC_ex_matchover
 	OC_ex_matchno
 	OC_ex_roundno
-	OC_ex_roundsexisted
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
 	OC_ex_timemod
@@ -419,7 +418,8 @@ type BytecodeValue struct {
 	v float64
 }
 
-func (bv BytecodeValue) IsSF() bool { return bv.t == VT_SFalse }
+func (bv BytecodeValue) IsNone() bool { return bv.t == VT_None }
+func (bv BytecodeValue) IsSF() bool   { return bv.t == VT_SFalse }
 func (bv BytecodeValue) ToF() float32 {
 	if bv.IsSF() {
 		return 0
@@ -439,7 +439,11 @@ func (bv BytecodeValue) ToB() bool {
 	return true
 }
 func (bv *BytecodeValue) SetF(f float32) {
-	*bv = BytecodeValue{VT_Float, float64(f)}
+	if math.IsNaN(float64(f)) {
+		*bv = BytecodeSF()
+	} else {
+		*bv = BytecodeValue{VT_Float, float64(f)}
+	}
 }
 func (bv *BytecodeValue) SetI(i int32) {
 	*bv = BytecodeValue{VT_Int, float64(i)}
@@ -453,6 +457,9 @@ func (bv *BytecodeValue) SetB(b bool) {
 	}
 }
 
+func bvNone() BytecodeValue {
+	return BytecodeValue{VT_None, 0}
+}
 func BytecodeSF() BytecodeValue {
 	return BytecodeValue{VT_SFalse, math.NaN()}
 }
@@ -509,6 +516,8 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 		} else {
 			be.append(OC_int8, 0)
 		}
+	case VT_SFalse:
+		be.append(OC_int8, 0)
 	default:
 		return false
 	}
@@ -658,6 +667,64 @@ func (_ BytecodeExp) blxor(v1 *BytecodeValue, v2 BytecodeValue) {
 }
 func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() || v2.ToB())
+}
+func (_ BytecodeExp) abs(v1 *BytecodeValue) {
+	v1.v = math.Abs(v1.v)
+}
+func (_ BytecodeExp) exp(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Exp(v1.v)))
+}
+func (_ BytecodeExp) ln(v1 *BytecodeValue) {
+	if v1.v <= 0 {
+		*v1 = BytecodeSF()
+	} else {
+		v1.SetF(float32(math.Log(v1.v)))
+	}
+}
+func (_ BytecodeExp) log(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v <= 0 || v2.v <= 0 {
+		*v1 = BytecodeSF()
+	} else {
+		v1.SetF(float32(math.Log(v1.v) / math.Log(v2.v)))
+	}
+}
+func (_ BytecodeExp) cos(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Cos(v1.v)))
+}
+func (_ BytecodeExp) sin(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Sin(v1.v)))
+}
+func (_ BytecodeExp) tan(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Tan(v1.v)))
+}
+func (_ BytecodeExp) acos(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Acos(v1.v)))
+}
+func (_ BytecodeExp) asin(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Asin(v1.v)))
+}
+func (_ BytecodeExp) atan(v1 *BytecodeValue) {
+	v1.SetF(float32(math.Atan(v1.v)))
+}
+func (_ BytecodeExp) floor(v1 *BytecodeValue) {
+	if v1.t == VT_Float {
+		f := math.Floor(v1.v)
+		if math.IsNaN(f) {
+			*v1 = BytecodeSF()
+		} else {
+			v1.SetI(int32(f))
+		}
+	}
+}
+func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
+	if v1.t == VT_Float {
+		f := math.Ceil(v1.v)
+		if math.IsNaN(f) {
+			*v1 = BytecodeSF()
+		} else {
+			v1.SetI(int32(f))
+		}
+	}
 }
 func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 	oc := c
@@ -840,6 +907,31 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 		case OC_blor:
 			v2 := sys.bcStack.Pop()
 			be.blor(sys.bcStack.Top(), v2)
+		case OC_abs:
+			be.abs(sys.bcStack.Top())
+		case OC_exp:
+			be.exp(sys.bcStack.Top())
+		case OC_ln:
+			be.ln(sys.bcStack.Top())
+		case OC_log:
+			v2 := sys.bcStack.Pop()
+			be.log(sys.bcStack.Top(), v2)
+		case OC_cos:
+			be.cos(sys.bcStack.Top())
+		case OC_sin:
+			be.sin(sys.bcStack.Top())
+		case OC_tan:
+			be.tan(sys.bcStack.Top())
+		case OC_acos:
+			be.acos(sys.bcStack.Top())
+		case OC_asin:
+			be.asin(sys.bcStack.Top())
+		case OC_atan:
+			be.atan(sys.bcStack.Top())
+		case OC_floor:
+			be.floor(sys.bcStack.Top())
+		case OC_ceil:
+			be.ceil(sys.bcStack.Top())
 		case OC_ifelse:
 			v3 := sys.bcStack.Pop()
 			v2 := sys.bcStack.Pop()
@@ -888,6 +980,30 @@ func (be BytecodeExp) run(c *Char, scpn int) BytecodeValue {
 			sys.bcStack.Push(BytecodeFloat(c.pos[1]))
 		case OC_canrecover:
 			sys.bcStack.Push(BytecodeBool(c.canRecover()))
+		case OC_hitshakeover:
+			sys.bcStack.Push(BytecodeBool(c.hitShakeOver()))
+		case OC_matchover:
+			sys.bcStack.Push(BytecodeBool(sys.matchOver()))
+		case OC_frontedgedist:
+			sys.bcStack.Push(BytecodeInt(c.frontEdgeDist()))
+		case OC_frontedgebodydist:
+			sys.bcStack.Push(BytecodeInt(c.frontEdgeBodyDist()))
+		case OC_frontedge:
+			sys.bcStack.Push(BytecodeFloat(c.frontEdge()))
+		case OC_backedgedist:
+			sys.bcStack.Push(BytecodeInt(c.backEdgeDist()))
+		case OC_backedgebodydist:
+			sys.bcStack.Push(BytecodeInt(c.backEdgeBodyDist()))
+		case OC_backedge:
+			sys.bcStack.Push(BytecodeFloat(c.backEdge()))
+		case OC_leftedge:
+			sys.bcStack.Push(BytecodeFloat(c.leftEdge()))
+		case OC_rightedge:
+			sys.bcStack.Push(BytecodeFloat(c.rightEdge()))
+		case OC_topedge:
+			sys.bcStack.Push(BytecodeFloat(c.topEdge()))
+		case OC_bottomedge:
+			sys.bcStack.Push(BytecodeFloat(c.bottomEdge()))
 		case OC_st_:
 			be.run_st(c, scpn, &i)
 		case OC_ex_:
@@ -965,8 +1081,6 @@ func (be BytecodeExp) run_st(c *Char, scpn int, i *int) {
 func (be BytecodeExp) run_ex(c *Char, scpn int, i *int) {
 	(*i)++
 	switch be[*i-1] {
-	case OC_ex_matchover:
-		sys.bcStack.Push(BytecodeBool(sys.matchOver()))
 	case OC_ex_p2dist_x:
 		sys.bcStack.Push(c.p2DistX())
 	case OC_ex_p2dist_y:
@@ -1247,9 +1361,9 @@ func (sc assertSpecial) Run(c *Char, ps *int32) bool {
 	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case assertSpecial_flag:
-			unimplemented()
+			c.setSF(CharSpecialFlag(exp[0].evalI(c, sc.playerNo)))
 		case assertSpecial_flag_g:
-			sys.specialFlag |= GlobalSpecialFlag(exp[0].evalI(c, sc.playerNo))
+			sys.setSF(GlobalSpecialFlag(exp[0].evalI(c, sc.playerNo)))
 		}
 		return true
 	})
@@ -2122,6 +2236,7 @@ const (
 	afterImage_time
 	afterImage_length
 	afterImage_timegap
+	afterImage_framegap
 	afterImage_palcolor
 	afterImage_palinvertall
 	afterImage_palbright
@@ -2144,6 +2259,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		ai.length = exp[0].evalI(c, sc.playerNo)
 	case afterImage_timegap:
 		ai.timegap = Max(1, exp[0].evalI(c, sc.playerNo))
+	case afterImage_framegap:
+		ai.framegap = exp[0].evalI(c, sc.playerNo)
 	case afterImage_palcolor:
 		ai.setPalColor(exp[0].evalI(c, sc.playerNo))
 	case afterImage_palinvertall:
@@ -2198,6 +2315,26 @@ func (sc afterImage) Run(c *Char, ps *int32) bool {
 		return true
 	})
 	c.aimg.setupPalFX()
+	return false
+}
+
+type afterImageTime StateControllerBase
+
+const (
+	afterImageTime_time byte = iota
+)
+
+func (sc afterImageTime) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		if c.aimg.timegap <= 0 {
+			return false
+		}
+		switch id {
+		case afterImageTime_time:
+			c.aimg.time = exp[0].evalI(c, sc.playerNo)
+		}
+		return true
+	})
 	return false
 }
 
@@ -3190,6 +3327,84 @@ func (sc powerSet) Run(c *Char, ps *int32) bool {
 		switch id {
 		case powerSet_value:
 			c.powerSet(exp[0].evalI(c, sc.playerNo))
+		}
+		return true
+	})
+	return false
+}
+
+type hitVelSet StateControllerBase
+
+const (
+	hitVelSet_x byte = iota
+	hitVelSet_y
+)
+
+func (sc hitVelSet) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitVelSet_x:
+			if exp[0].evalB(c, sc.playerNo) {
+				c.hitVelSetX()
+			}
+		case hitVelSet_y:
+			if exp[0].evalB(c, sc.playerNo) {
+				c.hitVelSetY()
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type screenBound StateControllerBase
+
+const (
+	screenBound_value byte = iota
+	screenBound_movecamera
+)
+
+func (sc screenBound) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case screenBound_value:
+			if exp[0].evalB(c, sc.playerNo) {
+				c.setSF(CSF_screenbound)
+			} else {
+				c.unsetSF(CSF_screenbound)
+			}
+		case screenBound_movecamera:
+			if exp[0].evalB(c, sc.playerNo) {
+				c.setSF(CSF_movecamera_x)
+			} else {
+				c.unsetSF(CSF_movecamera_x)
+			}
+			if len(exp) > 1 {
+				if exp[1].evalB(c, sc.playerNo) {
+					c.setSF(CSF_movecamera_y)
+				} else {
+					c.unsetSF(CSF_movecamera_y)
+				}
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type posFreeze StateControllerBase
+
+const (
+	posFreeze_value byte = iota
+)
+
+func (sc posFreeze) Run(c *Char, ps *int32) bool {
+	StateControllerBase(sc).run(c, ps, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case posFreeze_value:
+			if exp[0].evalB(c, sc.playerNo) {
+				c.setSF(CSF_posfreeze)
+			}
 		}
 		return true
 	})

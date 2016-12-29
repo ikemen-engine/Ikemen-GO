@@ -18,6 +18,10 @@ const (
 	CSF_nojugglecheck
 	CSF_noautoturn
 	CSF_nowalk
+	CSF_screenbound
+	CSF_movecamera_x
+	CSF_movecamera_y
+	CSF_posfreeze
 )
 
 type GlobalSpecialFlag uint32
@@ -857,6 +861,7 @@ type Char struct {
 	hoIdx         int
 	mctype        MoveContact
 	mctime        int32
+	specialFlag   CharSpecialFlag
 	pos           [2]float32
 	drawPos       [2]float32
 	oldPos        [2]float32
@@ -1177,10 +1182,13 @@ func (c *Char) clearHitCount() {
 	unimplemented()
 }
 func (c *Char) clearMoveHit() {
-	unimplemented()
+	c.mctime = 0
+	if c.helperIndex == 0 {
+		unimplemented()
+	}
 }
 func (c *Char) clearHitDef() {
-	unimplemented()
+	c.hitdef.clear()
 }
 func (c *Char) setSprPriority(sprpriority int32) {
 	c.sprpriority = sprpriority
@@ -1208,6 +1216,15 @@ func (c *Char) setAnimElem(e int32) {
 }
 func (c *Char) setCtrl(ctrl bool) {
 	unimplemented()
+}
+func (c *Char) sf(csf CharSpecialFlag) bool {
+	return c.specialFlag&csf != 0
+}
+func (c *Char) setSF(csf CharSpecialFlag) {
+	c.specialFlag |= csf
+}
+func (c *Char) unsetSF(csf CharSpecialFlag) {
+	c.specialFlag &^= csf
 }
 func (c *Char) time() int32 {
 	return c.ss.time
@@ -1685,4 +1702,62 @@ func (c *Char) parentDistX() BytecodeValue {
 func (c *Char) parentDistY() BytecodeValue {
 	unimplemented()
 	return BytecodeSF()
+}
+func (c *Char) hitShakeOver() bool {
+	return c.ghv.hitshaketime <= 0
+}
+func (c *Char) hitVelSetX() {
+	if c.ss.sb.moveType == MT_H {
+		c.setXV(c.ghv.xvel)
+	}
+}
+func (c *Char) hitVelSetY() {
+	if c.ss.sb.moveType == MT_H {
+		c.setYV(c.ghv.yvel)
+	}
+}
+func (c *Char) frontEdgeDist() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) frontEdgeBodyDist() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) frontEdge() float32 {
+	if c.facing > 0 {
+		return c.rightEdge()
+	}
+	return c.leftEdge()
+}
+func (c *Char) backEdgeDist() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) backEdgeBodyDist() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) backEdge() float32 {
+	if c.facing < 0 {
+		return c.rightEdge()
+	}
+	return c.leftEdge()
+}
+
+func (c *Char) leftEdge() float32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) rightEdge() float32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) topEdge() float32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) bottomEdge() float32 {
+	unimplemented()
+	return 0
 }
