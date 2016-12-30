@@ -422,12 +422,12 @@ func (a *Animation) alpha() int32 {
 	return trans
 }
 func (a *Animation) pal(pfx *PalFX) (p []uint32) {
-	if pfx != nil && len(pfx.Remap) > 0 {
-		a.sff.palList.SwapPalMap(&pfx.Remap)
+	if pfx != nil && len(pfx.remap) > 0 {
+		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
 	p = a.spr.GetPal(&a.sff.palList)
-	if pfx != nil && len(pfx.Remap) > 0 {
-		a.sff.palList.SwapPalMap(&pfx.Remap)
+	if pfx != nil && len(pfx.remap) > 0 {
+		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
 	if len(p) == 0 {
 		return

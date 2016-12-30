@@ -49,7 +49,7 @@ type PalFXDef struct {
 }
 type PalFX struct {
 	def        PalFXDef
-	Remap      []int
+	remap      []int
 	negType    bool
 	enable     bool
 	eNegType   bool

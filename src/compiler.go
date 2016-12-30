@@ -341,16 +341,20 @@ func (c *Compiler) kakkotojiru(in *string) error {
 func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 	for {
 		c.token = c.tokenizer(in)
-		if c.token == "!=" {
-			not = true
-			break
-		} else if len(c.token) > 0 {
-			if c.token[len(c.token)-1] == '=' {
+		if len(c.token) > 0 {
+			if c.token == "!=" {
+				not = true
 				break
+			} else if c.token == "=" {
+				break
+			} else if sys.ignoreMostErrors {
+				if c.token[len(c.token)-1] == '=' {
+					break
+				}
+				continue
 			}
-		} else {
-			return false, Error("'='か'!='がありません")
 		}
+		return false, Error("'='か'!='がありません")
 	}
 	c.token = c.tokenizer(in)
 	return
@@ -366,57 +370,76 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 		err = Error("'['か'('がありません")
 		return
 	}
-	integer := func() (int32, error) {
-		c.token = c.tokenizer(in)
-		minus := false
-		for c.token == "-" || c.token == "+" {
-			minus = minus || c.token == "-"
+	var intf func(in *string) (int32, error)
+	if sys.ignoreMostErrors {
+		intf = func(in *string) (int32, error) {
 			c.token = c.tokenizer(in)
+			minus := false
+			for c.token == "-" || c.token == "+" {
+				minus = minus || c.token == "-"
+				c.token = c.tokenizer(in)
+			}
+			if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
+				return 0, Error("数字の読み込みエラーです")
+			}
+			i := Atoi(c.token)
+			if minus {
+				i *= -1
+			}
+			return i, nil
 		}
-		if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
-			return 0, Error("数字の読み込みエラーです")
-		}
-		i := Atoi(c.token)
-		if minus {
-			i *= -1
-		}
-		return i, nil
+	} else {
+		intf = c.integer2
 	}
-	if min, err = integer(); err != nil {
+	if min, err = intf(in); err != nil {
 		return
 	}
-	i := strings.Index(*in, ",")
-	if i < 0 {
+	if sys.ignoreMostErrors {
+		if i := strings.Index(*in, ","); i >= 0 {
+			c.token = ","
+			*in = (*in)[i+1:]
+		}
+	} else {
+		c.token = c.tokenizer(in)
+	}
+	if c.token != "," {
 		err = Error("','がありません")
 		return
 	}
-	*in = (*in)[i+1:]
-	if max, err = integer(); err != nil {
+	if max, err = intf(in); err != nil {
 		return
 	}
-	i = strings.IndexAny(*in, "])")
-	if i < 0 {
+	if sys.ignoreMostErrors {
+		if i := strings.IndexAny(*in, "])"); i >= 0 {
+			c.token = string((*in)[i])
+			*in = (*in)[i+1:]
+		}
+	} else {
+		c.token = c.tokenizer(in)
+	}
+	switch c.token {
+	case ")":
+		maxop = OC_lt
+	case "]":
+		maxop = OC_le
+	default:
 		err = Error("']'か')'がありません")
 		return
 	}
-	if (*in)[i] == ')' {
-		maxop = OC_lt
-	} else {
-		maxop = OC_le
-	}
-	*in = (*in)[i+1:]
 	c.token = c.tokenizer(in)
 	return
 }
 func (c *Compiler) kyuushikiThroughNeo(_range bool, in *string) {
-	i := 0
-	for ; i < len(*in); i++ {
-		if (*in)[i] >= '0' && (*in)[i] <= '9' || (*in)[i] == '-' ||
-			_range && ((*in)[i] == '[' || (*in)[i] == '(') {
-			break
+	if sys.ignoreMostErrors {
+		i := 0
+		for ; i < len(*in); i++ {
+			if (*in)[i] >= '0' && (*in)[i] <= '9' || (*in)[i] == '-' ||
+				_range && ((*in)[i] == '[' || (*in)[i] == '(') {
+				break
+			}
 		}
+		*in = (*in)[i:]
 	}
-	*in = (*in)[i:]
 	c.token = c.tokenizer(in)
 }
 func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
@@ -869,6 +892,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_roundstate)
 	case "stateno":
 		out.append(OC_stateno)
+	case "prevstateno":
+		out.append(OC_prevstateno)
+	case "p2stateno":
+		out.appendI32Op(OC_p2, 1)
+		out.append(OC_stateno)
 	case "movecontact":
 		out.append(OC_movecontact)
 	case "movehit":
@@ -916,6 +944,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_animelemtime)
+	case "animexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animexist)
+	case "selfanimexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_selfanimexist)
 	case "vel":
 		c.token = c.tokenizer(in)
 		switch c.token {
@@ -937,6 +975,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_pos_y)
 		case "z":
 			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "screenpos":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_screenpos_x)
+		case "y":
+			out.append(OC_screenpos_y)
 		default:
 			return bvNone(), Error(c.token + "が不正です")
 		}
@@ -1893,7 +1941,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 }
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
-		sc := newStateControllerBase(c.playerNo)
+		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -4079,7 +4127,161 @@ func (c *Compiler) posFreeze(is IniSection, sbc *StateBytecode,
 			return err
 		}
 		if !b {
-			sc.add(screenBound_value, sc.iToExp(1))
+			sc.add(posFreeze_value, sc.iToExp(1))
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) envShake(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*envShake)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "time",
+			envShake_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ampl",
+			envShake_ampl, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "phase",
+			envShake_phase, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "freq",
+			envShake_freq, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) hitOverride(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*hitOverride)(sc), c.stateSec(is, func() error {
+		if err := c.stateParam(is, "attr", func(data string) error {
+			attr, err := c.attr(data, false)
+			if err != nil {
+				return err
+			}
+			sc.add(hitOverride_attr, sc.iToExp(attr))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "slot",
+			hitOverride_slot, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "stateno",
+			hitOverride_stateno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			hitOverride_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "forceair",
+			hitOverride_forceair, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) pause(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*pause)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "time",
+			pause_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "movetime",
+			pause_movetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pausebg",
+			pause_pausebg, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "endcmdbuftime",
+			pause_endcmdbuftime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) superPause(is IniSection, sbc *StateBytecode,
+	sc *StateControllerBase, _ bool) (StateController, error) {
+	ret, err := (*superPause)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "time",
+			superPause_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "movetime",
+			superPause_movetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pausebg",
+			superPause_pausebg, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "endcmdbuftime",
+			superPause_endcmdbuftime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "darken",
+			superPause_darken, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "anim", func(data string) error {
+			fflg := true
+			if len(data) > 0 {
+				data = strings.ToLower(data)
+				if data[0] == 's' {
+					fflg = false
+					data = data[1:]
+				} else if data[0] == 'f' {
+					data = data[1:]
+				}
+			}
+			return c.scAdd(sc, superPause_anim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			superPause_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "p2defmul",
+			superPause_p2defmul, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "poweradd",
+			superPause_poweradd, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "unhittable",
+			superPause_unhittable, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "sound", func(data string) error {
+			fflg := true
+			if len(data) > 0 {
+				data = strings.ToLower(data)
+				if data[0] == 's' {
+					fflg = false
+					data = data[1:]
+				} else if data[0] == 'f' {
+					data = data[1:]
+				}
+			}
+			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
@@ -4119,7 +4321,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 		if err != nil {
 			return errmes(err)
 		}
-		sbc := newStateBytecode()
+		sbc := newStateBytecode(c.playerNo)
 		if err := c.stateDef(is, sbc); err != nil {
 			return errmes(err)
 		}
@@ -4132,7 +4334,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 				break
 			}
 			i++
-			sc := newStateControllerBase(c.playerNo)
+			sc := newStateControllerBase()
 			var scf func(is IniSection, sbc *StateBytecode,
 				sc *StateControllerBase, ihp bool) (StateController, error)
 			var triggerall []BytecodeExp
@@ -4247,6 +4449,14 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 						scf = c.screenBound
 					case "posfreeze":
 						scf = c.posFreeze
+					case "envshake":
+						scf = c.envShake
+					case "hitoverride":
+						scf = c.hitOverride
+					case "pause":
+						scf = c.pause
+					case "superpause":
+						scf = c.superPause
 					default:
 						println(data)
 						unimplemented()
@@ -4409,8 +4619,8 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	}
 	return nil
 }
-func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
-	c.playerNo = n
+func (c *Compiler) Compile(pn int, def string) (*Bytecode, error) {
+	c.playerNo = pn
 	bc := newBytecode()
 	str, err := LoadText(def)
 	if err != nil {
@@ -4425,9 +4635,20 @@ func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
 		case "info":
 			if info {
 				info = false
-				var v0, v1 int32 = 0, 0
-				is.ReadI32("mugenversion", &v0, &v1)
-				sys.cgi[n].ver = [2]int16{I32ToI16(v0), I32ToI16(v1)}
+				sys.cgi[pn].ver = [2]uint16{0, 0}
+				str, ok := is["mugenversion"]
+				if ok {
+					for i, s := range SplitAndTrim(str, ".") {
+						if i >= len(sys.cgi[pn].ver) {
+							break
+						}
+						if v, err := strconv.ParseUint(s, 10, 16); err == nil {
+							sys.cgi[pn].ver[i] = uint16(v)
+						} else {
+							break
+						}
+					}
+				}
 			}
 		case "files":
 			if files {
@@ -4450,14 +4671,14 @@ func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if sys.chars[n][0].cmd == nil {
-		sys.chars[n][0].cmd = make([]CommandList, MaxSimul*2)
+	if sys.chars[pn][0].cmd == nil {
+		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2)
 		b := newCommandBuffer()
-		for i := range sys.chars[n][0].cmd {
-			sys.chars[n][0].cmd[i] = *NewCommandList(b)
+		for i := range sys.chars[pn][0].cmd {
+			sys.chars[pn][0].cmd[i] = *NewCommandList(b)
 		}
 	}
-	c.cmdl = &sys.chars[n][0].cmd[n]
+	c.cmdl = &sys.chars[pn][0].cmd[pn]
 	remap, defaults, ckr := true, true, NewCommandKeyRemap()
 	var cmds []IniSection
 	for i < len(lines) {
@@ -4525,7 +4746,7 @@ func (c *Compiler) Compile(n int, def string) (*Bytecode, error) {
 		}
 		c.cmdl.Add(*cm)
 	}
-	sys.stringPool[n].Clear()
+	sys.stringPool[pn].Clear()
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(bc, s, def); err != nil {

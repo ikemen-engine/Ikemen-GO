@@ -23,21 +23,23 @@ var sys = System{
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	zoomMin:           1, zoomMax: 1, zoomSpeed: 1,
-	lifebarFontScale:      1,
-	mixer:                 *newMixer(),
-	bgm:                   *newVorbis(),
-	sounds:                newSounds(),
-	allPalFX:              *NewPalFX(),
-	bgPalFX:               *NewPalFX(),
-	sel:                   *newSelect(),
-	match:                 1,
-	listenPort:            "7500",
-	loader:                *newLoader(),
-	numSimul:              [2]int{2, 2},
-	numTurns:              [2]int{2, 2},
-	afterImageMax:         8,
-	attack_LifeToPowerMul: 0.7,
-	getHit_LifeToPowerMul: 0.6}
+	lifebarFontScale:       1,
+	mixer:                  *newMixer(),
+	bgm:                    *newVorbis(),
+	sounds:                 newSounds(),
+	allPalFX:               *NewPalFX(),
+	bgPalFX:                *NewPalFX(),
+	sel:                    *newSelect(),
+	match:                  1,
+	listenPort:             "7500",
+	loader:                 *newLoader(),
+	numSimul:               [2]int{2, 2},
+	numTurns:               [2]int{2, 2},
+	afterImageMax:          8,
+	attack_LifeToPowerMul:  0.7,
+	getHit_LifeToPowerMul:  0.6,
+	superpmap:              *NewPalFX(),
+	super_TargetDefenceMul: 1.5}
 
 type TeamMode int32
 
@@ -100,11 +102,31 @@ type System struct {
 	ignoreMostErrors            bool
 	stringPool                  [MaxSimul * 2]StringPool
 	bcStack                     BytecodeStack
+	workingChar                 *Char
 	specialFlag                 GlobalSpecialFlag
 	afterImageMax               int
 	attack_LifeToPowerMul       float32
 	getHit_LifeToPowerMul       float32
 	cameraPos                   [2]float32
+	envShake                    EnvShake
+	pause                       int32
+	pausetime                   int32
+	pausebg                     bool
+	pauseendcmdbuftime          int32
+	pauseplayer                 int
+	super                       int32
+	supertime                   int32
+	superpausebg                bool
+	superendcmdbuftime          int32
+	superplayer                 int
+	superdarken                 bool
+	superanim                   *Animation
+	superpmap                   PalFX
+	superpos                    [2]float32
+	superfacing                 float32
+	superp2defmul               float32
+	superunhittable             bool
+	super_TargetDefenceMul      float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {

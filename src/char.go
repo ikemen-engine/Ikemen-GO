@@ -769,7 +769,7 @@ type CharGlobalInfo struct {
 	snd              *Snd
 	anim             AnimationTable
 	palno, drawpalno int32
-	ver              [2]int16
+	ver              [2]uint16
 	data             CharData
 	velocity         CharVelocity
 	movement         CharMovement
@@ -1377,10 +1377,6 @@ func (c *Char) p2() *Char {
 	unimplemented()
 	return nil
 }
-func (c *Char) stateNo() int32 {
-	unimplemented()
-	return 0
-}
 func (c *Char) newProj() *Projectile {
 	unimplemented()
 	return nil
@@ -1760,4 +1756,73 @@ func (c *Char) topEdge() float32 {
 func (c *Char) bottomEdge() float32 {
 	unimplemented()
 	return 0
+}
+func (c *Char) screenPosX() float32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) screenPosY() float32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
+	if anim.IsSF() {
+		return BytecodeSF()
+	}
+	if c != wc {
+		return c.selfAnimExist(anim)
+	}
+	return sys.chars[c.ss.sb.playerNo][0].selfAnimExist(anim)
+}
+func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
+	if anim.IsSF() {
+		return BytecodeSF()
+	}
+	unimplemented()
+	return BytecodeBool(false)
+}
+func (c *Char) setPauseTime(pausetime, movetime int32) {
+	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
+		sys.pauseplayer == c.playerNo {
+		sys.pausetime = ^pausetime
+		sys.pauseplayer = c.playerNo
+		if sys.pauseendcmdbuftime < 0 || sys.pauseendcmdbuftime > pausetime {
+			sys.pauseendcmdbuftime = 0
+		}
+	}
+	c.pauseMovetime = Max(0, movetime)
+	if c.pauseMovetime > pausetime {
+		c.pauseMovetime = 0
+	} else if sys.pause > 0 && c.pauseMovetime > 0 {
+		c.pauseMovetime--
+	}
+}
+func (c *Char) setSuperPauseTime(pausetime, movetime int32) {
+	if ^pausetime < sys.supertime || c.playerNo != c.ss.sb.playerNo ||
+		sys.superplayer == c.playerNo {
+		sys.supertime = ^pausetime
+		sys.superplayer = c.playerNo
+		if sys.superendcmdbuftime < 0 || sys.superendcmdbuftime > pausetime {
+			sys.superendcmdbuftime = 0
+		}
+	}
+	c.superMovetime = Max(0, movetime)
+	if c.superMovetime > pausetime {
+		c.superMovetime = 0
+	} else if sys.super > 0 && c.superMovetime > 0 {
+		c.superMovetime--
+	}
+}
+func (c *Char) getPalfx() *PalFX {
+	if c.palfx != nil {
+		return c.palfx
+	}
+	if c.parentIndex < 0 {
+		c.palfx = NewPalFX()
+		return c.palfx
+	}
+	return sys.chars[c.playerNo][c.parentIndex].getPalfx()
+}
+func (c *Char) getPalMap() []int {
+	return c.getPalfx().remap
 }
