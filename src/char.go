@@ -870,6 +870,7 @@ type Char struct {
 	ivar          [NumVar + NumSysVar]int32
 	fvar          [NumFvar + NumSysFvar]float32
 	aimg          AfterImage
+	hitPauseTime  int32
 	pauseMovetime int32
 	superMovetime int32
 	standby       bool
@@ -1825,4 +1826,7 @@ func (c *Char) getPalfx() *PalFX {
 }
 func (c *Char) getPalMap() []int {
 	return c.getPalfx().remap
+}
+func (c *Char) hitPause() bool {
+	return c.hitPauseTime > 0
 }

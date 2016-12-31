@@ -1,0 +1,69 @@
+# Zantei State Script
+
+# 文字コードは utf-8
+# && と || は短絡評価
+# ignorehitpause{} で囲んだ部分はヒットポーズ中でも実行される
+# ignorehitpause{} を含んでいる if も実行される
+# Explod は ignorehitpause を任意に指定できる
+# ignorehitpause persistent(2) if 1 {} ブロックの特性を複数指定 if は最後に
+
+[Statedef 0; type: S; physics: S;
+ sprpriority: 0;]
+if cond(Anim = 5, AnimTime = 0, Anim != 0) {
+    ChangeAnim{value: 0}
+}
+if Time = 0 {
+    VelSet{y: 0}
+}
+if Time = 4 || abs(vel x) < cond(MajorVersion = 1,
+    Const(movement.stand.friction.threshold), 2) {
+    VelSet{x: 0}
+}
+if !alive {
+    ChangeState{value: 5050; ctrl: 0}
+}
+
+[Statedef 10; type: C; physics: C;
+ anim: 10;]
+if Time = 0 {
+    VelMul{x: .75}
+}
+if abs(vel x) < Const(movement.crouch.friction.threshold) {
+    VelSet{x: 0}
+}
+if AnimTime = 0 {
+    ChangeState{value: 11}
+}
+
+[Statedef 11; type: C; physics: C;
+ anim: 11; sprpriority: 0;]
+if Anim = 6 && AnimTime = 0 {
+    ChangeAnim{value: 11}
+}
+if abs(vel x) < Const(movement.crouch.friction.threshold) {
+    VelSet{x: 0}
+}
+
+[Statedef 12; type: S; physics: S;
+ anim: 12;]
+if AnimTime = 0 {
+    ChangeState{value: 0}
+}
+
+[Statedef 20; type: S; physics: S;
+ sprpriority: 0;]
+if command = "holdfwd" {
+    VelSet{x: const(velocity.walk.fwd.x)}
+} else if command = "holdback" {
+    VelSet{x: const(velocity.walk.back.x)}
+}
+if vel x > 0 {
+    if cond(Anim = 5, AnimTime = 0, Anim != 20) {
+        ChangeAnim{value: 20}
+    }
+} else if vel x < 0 {
+    if cond(Anim = 5, AnimTime = 0, Anim != 21) {
+        ChangeAnim{value: 21}
+    }
+}
+
