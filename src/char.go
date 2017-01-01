@@ -22,6 +22,7 @@ const (
 	CSF_movecamera_x
 	CSF_movecamera_y
 	CSF_posfreeze
+	CSF_playerpush
 )
 
 type GlobalSpecialFlag uint32
@@ -869,6 +870,7 @@ type Char struct {
 	facing        float32
 	ivar          [NumVar + NumSysVar]int32
 	fvar          [NumFvar + NumSysFvar]float32
+	alpha         [2]int32
 	aimg          AfterImage
 	hitPauseTime  int32
 	pauseMovetime int32
@@ -1829,4 +1831,15 @@ func (c *Char) getPalMap() []int {
 }
 func (c *Char) hitPause() bool {
 	return c.hitPauseTime > 0
+}
+func (c *Char) getPower() int32 {
+	unimplemented()
+	return 0
+}
+func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
+	if hid.IsSF() {
+		return BytecodeSF()
+	}
+	id := hid.ToI()
+	return BytecodeBool(c.helperIndex != 0 && (id <= 0 || c.helperId == id))
 }

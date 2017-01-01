@@ -11,8 +11,8 @@ import (
 const kuuhaktokigou = " !=<>()|&+-*/%,[]^:;{}#\"\t\r\n"
 
 type expFunc func(out *BytecodeExp, in *string) (BytecodeValue, error)
-type scFunc func(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, ihp bool) (StateController, error)
+type scFunc func(is IniSection, sc *StateControllerBase,
+	ihp int8) (StateController, error)
 type Compiler struct {
 	cmdl     *CommandList
 	maeOp    string
@@ -86,6 +86,9 @@ func newCompiler() *Compiler {
 		"hitoverride":    c.hitOverride,
 		"pause":          c.pause,
 		"superpause":     c.superPause,
+		"trans":          c.trans,
+		"playerpush":     c.playerPush,
+		"statetypeset":   c.stateTypeSet,
 	}
 	return c
 }
@@ -597,17 +600,24 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	return nil
 }
 func (c *Compiler) oneArg(out *BytecodeExp, in *string,
-	rd, appendVal bool) (BytecodeValue, error) {
-	if err := c.kakkohiraku(in); err != nil {
-		return bvNone(), err
-	}
+	rd, appendVal bool, defval ...BytecodeValue) (BytecodeValue, error) {
 	var be BytecodeExp
-	bv, err := c.expBoolOr(&be, in)
-	if err != nil {
-		return bvNone(), err
-	}
-	if err := c.kakkotojiru(in); err != nil {
-		return bvNone(), err
+	var bv BytecodeValue
+	mae := c.token
+	if c.token = c.tokenizer(in); c.token != "(" {
+		if len(defval) == 0 || defval[0].IsNone() {
+			return bvNone(), Error(mae + "の次に'('がありません")
+		}
+		bv = defval[0]
+	} else {
+		c.token = c.tokenizer(in)
+		var err error
+		if bv, err = c.expBoolOr(&be, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
 	}
 	if appendVal {
 		be.appendValue(bv)
@@ -1146,6 +1156,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_topedge)
 	case "bottomedge":
 		out.append(OC_bottomedge)
+	case "power":
+		out.append(OC_power)
+	case "ishelper":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ishelper)
 	case "abs":
 		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
 			return bvNone(), err
@@ -1307,6 +1324,202 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkotojiru(in); err != nil {
 			return bvNone(), err
 		}
+	case "const":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_const_)
+		switch c.token {
+		case "data.life":
+			out.append(OC_const_data_life)
+		case "data.power":
+			out.append(OC_const_data_power)
+		case "data.attack":
+			out.append(OC_const_data_attack)
+		case "data.defence":
+			out.append(OC_const_data_defence)
+		case "data.fall.defence_mul":
+			out.append(OC_const_data_fall_defence_mul)
+		case "data.liedown.time":
+			out.append(OC_const_data_liedown_time)
+		case "data.airjuggle":
+			out.append(OC_const_data_airjuggle)
+		case "data.sparkno":
+			out.append(OC_const_data_sparkno)
+		case "data.guard.sparkno":
+			out.append(OC_const_data_guard_sparkno)
+		case "data.ko.echo":
+			out.append(OC_const_data_ko_echo)
+		case "data.intpersistindex":
+			out.append(OC_const_data_intpersistindex)
+		case "data.floatpersistindex":
+			out.append(OC_const_data_floatpersistindex)
+		case "size.xscale":
+			out.append(OC_const_size_xscale)
+		case "size.yscale":
+			out.append(OC_const_size_yscale)
+		case "size.ground.back":
+			out.append(OC_const_size_ground_back)
+		case "size.ground.front":
+			out.append(OC_const_size_ground_front)
+		case "size.air.back":
+			out.append(OC_const_size_air_back)
+		case "size.air.front":
+			out.append(OC_const_size_air_front)
+		case "size.z.width":
+			out.append(OC_const_size_z_width)
+		case "size.height":
+			out.append(OC_const_size_height)
+		case "size.attack.dist":
+			out.append(OC_const_size_attack_dist)
+		case "size.attack.z.width.back":
+			out.append(OC_const_size_attack_z_width_back)
+		case "size.attack.z.width.front":
+			out.append(OC_const_size_attack_z_width_front)
+		case "size.proj.attack.dist":
+			out.append(OC_const_size_proj_attack_dist)
+		case "size.proj.doscale":
+			out.append(OC_const_size_proj_doscale)
+		case "size.head.pos.x":
+			out.append(OC_const_size_head_pos_x)
+		case "size.head.pos.y":
+			out.append(OC_const_size_head_pos_y)
+		case "size.mid.pos.x":
+			out.append(OC_const_size_mid_pos_x)
+		case "size.mid.pos.y":
+			out.append(OC_const_size_mid_pos_y)
+		case "size.shadowoffset":
+			out.append(OC_const_size_shadowoffset)
+		case "size.draw.offset.x":
+			out.append(OC_const_size_draw_offset_x)
+		case "size.draw.offset.y":
+			out.append(OC_const_size_draw_offset_y)
+		case "velocity.walk.fwd.x":
+			out.append(OC_const_velocity_walk_fwd_x)
+		case "velocity.walk.back.x":
+			out.append(OC_const_velocity_walk_back_x)
+		case "velocity.walk.up.x":
+			out.append(OC_const_velocity_walk_up_x)
+		case "velocity.walk.down.x":
+			out.append(OC_const_velocity_walk_down_x)
+		case "velocity.run.fwd.x":
+			out.append(OC_const_velocity_run_fwd_x)
+		case "velocity.run.fwd.y":
+			out.append(OC_const_velocity_run_fwd_y)
+		case "velocity.run.back.x":
+			out.append(OC_const_velocity_run_back_x)
+		case "velocity.run.back.y":
+			out.append(OC_const_velocity_run_back_y)
+		case "velocity.run.up.x":
+			out.append(OC_const_velocity_run_up_x)
+		case "velocity.run.up.y":
+			out.append(OC_const_velocity_run_up_y)
+		case "velocity.run.down.x":
+			out.append(OC_const_velocity_run_down_x)
+		case "velocity.run.down.y":
+			out.append(OC_const_velocity_run_down_y)
+		case "velocity.jump.y":
+			out.append(OC_const_velocity_jump_y)
+		case "velocity.jump.neu.x":
+			out.append(OC_const_velocity_jump_neu_x)
+		case "velocity.jump.back.x":
+			out.append(OC_const_velocity_jump_back_x)
+		case "velocity.jump.fwd.x":
+			out.append(OC_const_velocity_jump_fwd_x)
+		case "velocity.jump.up.x":
+			out.append(OC_const_velocity_jump_up_x)
+		case "velocity.jump.down.x":
+			out.append(OC_const_velocity_jump_down_x)
+		case "velocity.runjump.back.x":
+			out.append(OC_const_velocity_runjump_back_x)
+		case "velocity.runjump.back.y":
+			out.append(OC_const_velocity_runjump_back_y)
+		case "velocity.runjump.y":
+			out.append(OC_const_velocity_runjump_y)
+		case "velocity.runjump.fwd.x":
+			out.append(OC_const_velocity_runjump_fwd_x)
+		case "velocity.runjump.up.x":
+			out.append(OC_const_velocity_runjump_up_x)
+		case "velocity.runjump.down.x":
+			out.append(OC_const_velocity_runjump_down_x)
+		case "velocity.airjump.y":
+			out.append(OC_const_velocity_airjump_y)
+		case "velocity.airjump.neu.x":
+			out.append(OC_const_velocity_airjump_neu_x)
+		case "velocity.airjump.back.x":
+			out.append(OC_const_velocity_airjump_back_x)
+		case "velocity.airjump.fwd.x":
+			out.append(OC_const_velocity_airjump_fwd_x)
+		case "velocity.airjump.up.x":
+			out.append(OC_const_velocity_airjump_up_x)
+		case "velocity.airjump.down.x":
+			out.append(OC_const_velocity_airjump_down_x)
+		case "velocity.air.gethit.groundrecover.x":
+			out.append(OC_const_velocity_air_gethit_groundrecover_x)
+		case "velocity.air.gethit.groundrecover.y":
+			out.append(OC_const_velocity_air_gethit_groundrecover_y)
+		case "velocity.air.gethit.airrecover.mul.x":
+			out.append(OC_const_velocity_air_gethit_airrecover_mul_x)
+		case "velocity.air.gethit.airrecover.mul.y":
+			out.append(OC_const_velocity_air_gethit_airrecover_mul_y)
+		case "velocity.air.gethit.airrecover.add.x":
+			out.append(OC_const_velocity_air_gethit_airrecover_add_x)
+		case "velocity.air.gethit.airrecover.add.y":
+			out.append(OC_const_velocity_air_gethit_airrecover_add_y)
+		case "velocity.air.gethit.airrecover.back":
+			out.append(OC_const_velocity_air_gethit_airrecover_back)
+		case "velocity.air.gethit.airrecover.fwd":
+			out.append(OC_const_velocity_air_gethit_airrecover_fwd)
+		case "velocity.air.gethit.airrecover.up":
+			out.append(OC_const_velocity_air_gethit_airrecover_up)
+		case "velocity.air.gethit.airrecover.down":
+			out.append(OC_const_velocity_air_gethit_airrecover_down)
+		case "movement.airjump.num":
+			out.append(OC_const_movement_airjump_num)
+		case "movement.airjump.height":
+			out.append(OC_const_movement_airjump_height)
+		case "movement.yaccel":
+			out.append(OC_const_movement_yaccel)
+		case "movement.stand.friction":
+			out.append(OC_const_movement_stand_friction)
+		case "movement.crouch.friction":
+			out.append(OC_const_movement_crouch_friction)
+		case "movement.stand.friction.threshold":
+			out.append(OC_const_movement_stand_friction_threshold)
+		case "movement.crouch.friction.threshold":
+			out.append(OC_const_movement_crouch_friction_threshold)
+		case "movement.air.gethit.groundlevel":
+			out.append(OC_const_movement_air_gethit_groundlevel)
+		case "movement.air.gethit.groundrecover.ground.threshold":
+			out.append(OC_const_movement_air_gethit_groundrecover_ground_threshold)
+		case "movement.air.gethit.groundrecover.groundlevel":
+			out.append(OC_const_movement_air_gethit_groundrecover_groundlevel)
+		case "movement.air.gethit.airrecover.threshold":
+			out.append(OC_const_movement_air_gethit_airrecover_threshold)
+		case "movement.air.gethit.airrecover.yaccel":
+			out.append(OC_const_movement_air_gethit_airrecover_yaccel)
+		case "movement.air.gethit.trip.groundlevel":
+			out.append(OC_const_movement_air_gethit_trip_groundlevel)
+		case "movement.down.bounce.offset.x":
+			out.append(OC_const_movement_down_bounce_offset_x)
+		case "movement.down.bounce.offset.y":
+			out.append(OC_const_movement_down_bounce_offset_y)
+		case "movement.down.bounce.yaccel":
+			out.append(OC_const_movement_down_bounce_yaccel)
+		case "movement.down.bounce.groundlevel":
+			out.append(OC_const_movement_down_bounce_groundlevel)
+		case "movement.down.friction.threshold":
+			out.append(OC_const_movement_down_friction_threshold)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+		*in = strings.TrimSpace(*in)
+		if len(*in) == 0 || (!sys.ignoreMostErrors && (*in)[0] != ')') {
+			return bvNone(), Error(c.token + "の次に')'がありません")
+		}
+		*in = (*in)[1:]
+	case "majorversion":
+		out.append(OC_ex_, OC_ex_majorversion)
 	default:
 		println(c.token)
 		unimplemented()
@@ -1694,7 +1907,7 @@ func (c *Compiler) expBoolAnd(out *BytecodeExp, in *string) (BytecodeValue,
 		if c.token == "&&" {
 			c.token = c.tokenizer(in)
 			var be BytecodeExp
-			bv2, err := c.expOr(&be, in)
+			bv2, err := c.expBoolAnd(&be, in)
 			if err != nil {
 				return bvNone(), err
 			}
@@ -1739,7 +1952,7 @@ func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue,
 		if c.token == "||" {
 			c.token = c.tokenizer(in)
 			var be BytecodeExp
-			bv2, err := c.expBoolXor(&be, in)
+			bv2, err := c.expBoolOr(&be, in)
 			if err != nil {
 				return bvNone(), err
 			}
@@ -1811,8 +2024,7 @@ func (c *Compiler) parseSection(
 	is := NewIniSection()
 	_type, persistent, ignorehitpause := true, true, true
 	for ; c.i < len(c.lines); (c.i)++ {
-		line := strings.ToLower(strings.TrimSpace(
-			strings.SplitN(c.lines[c.i], ";", 2)[0]))
+		line := strings.TrimSpace(strings.SplitN(c.lines[c.i], ";", 2)[0])
 		if len(line) > 0 && line[0] == '[' {
 			c.i--
 			break
@@ -2254,25 +2466,25 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	}
 	return nil
 }
-func (c *Compiler) hitBy(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) hitBy(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*hitBy)(sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) notHitBy(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) notHitBy(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*notHitBy)(sc), c.stateSec(is, func() error {
 		return c.hitBySub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*assertSpecial)(sc), c.stateSec(is, func() error {
 		foo := func(data string) error {
-			switch data {
+			switch strings.ToLower(data) {
 			case "nostandguard":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nostandguard)))
 			case "nocrouchguard":
@@ -2342,8 +2554,8 @@ func (c *Compiler) assertSpecial(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) playSnd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*playSnd)(sc), c.stateSec(is, func() error {
 		f := false
 		if err := c.stateParam(is, "value", func(data string) error {
@@ -2420,22 +2632,22 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) changeState(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) changeState(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*changeState)(sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) selfState(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) selfState(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*selfState)(sc), c.stateSec(is, func() error {
 		return c.changeStateSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) tagIn(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*tagIn)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "stateno",
 			tagIn_stateno, VT_Int, 1, true); err != nil {
@@ -2455,16 +2667,16 @@ func (c *Compiler) tagIn(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) tagOut(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*tagOut)(sc), c.stateSec(is, func() error {
 		sc.add(tagOut_, nil)
 		return nil
 	})
 	return *ret, err
 }
-func (c *Compiler) destroySelf(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*destroySelf)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "recursive",
 			destroySelf_recursive, VT_Bool, 1, false); err != nil {
@@ -2490,22 +2702,22 @@ func (c *Compiler) changeAnimSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) changeAnim(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) changeAnim(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*changeAnim)(sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) changeAnim2(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) changeAnim2(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*changeAnim2)(sc), c.stateSec(is, func() error {
 		return c.changeAnimSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*helper)(sc), c.stateSec(is, func() error {
 		if err := c.stateParam(is, "helpertype", func(data string) error {
 			if len(data) == 0 {
@@ -2614,8 +2826,8 @@ func (c *Compiler) helper(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) ctrlSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) ctrlSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*ctrlSet)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", ctrlSet_value, VT_Bool, 1, true)
 	})
@@ -2712,8 +2924,8 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) explod(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, ihp bool) (StateController, error) {
+func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
+	ihp int8) (StateController, error) {
 	ret, err := (*explod)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "ownpal",
 			explod_ownpal, VT_Bool, 1, false); err != nil {
@@ -2745,15 +2957,15 @@ func (c *Compiler) explod(is IniSection, sbc *StateBytecode,
 			explod_xangle, VT_Float, 1, false); err != nil {
 			return err
 		}
-		if ihp && !c.block.ignorehitpause {
+		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
 		return nil
 	})
 	return *ret, err
 }
-func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*modifyExplod)(sc), c.stateSec(is, func() error {
 		if err := c.explodSub(is, sc); err != nil {
 			return err
@@ -2774,8 +2986,8 @@ func (c *Compiler) modifyExplod(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) gameMakeAnim(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) gameMakeAnim(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*gameMakeAnim)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "pos",
 			gameMakeAnim_pos, VT_Float, 2, false); err != nil {
@@ -2832,36 +3044,36 @@ func (c *Compiler) posSetSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) posSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) posSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*posSet)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) posAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) posAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*posAdd)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) velSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) velSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*velSet)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) velAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) velAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*velAdd)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) velMul(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) velMul(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*velMul)(sc), c.stateSec(is, func() error {
 		return c.posSetSub(is, sc)
 	})
@@ -2922,22 +3134,22 @@ func (c *Compiler) palFXSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) palFX(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) palFX(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*palFX)(sc), c.stateSec(is, func() error {
 		return c.palFXSub(is, sc, "")
 	})
 	return *ret, err
 }
-func (c *Compiler) allPalFX(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) allPalFX(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*allPalFX)(sc), c.stateSec(is, func() error {
 		return c.palFXSub(is, sc, "")
 	})
 	return *ret, err
 }
-func (c *Compiler) bgPalFX(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) bgPalFX(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*bgPalFX)(sc), c.stateSec(is, func() error {
 		return c.palFXSub(is, sc, "")
 	})
@@ -2995,15 +3207,15 @@ func (c *Compiler) afterImageSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) afterImage(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) afterImage(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*afterImage)(sc), c.stateSec(is, func() error {
 		return c.afterImageSub(is, sc, "")
 	})
 	return *ret, err
 }
-func (c *Compiler) afterImageTime(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) afterImageTime(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*afterImageTime)(sc), c.stateSec(is, func() error {
 		b := false
 		if err := c.stateParam(is, "time", func(data string) error {
@@ -3525,15 +3737,15 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	return nil
 }
-func (c *Compiler) hitDef(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) hitDef(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*hitDef)(sc), c.stateSec(is, func() error {
 		return c.hitDefSub(is, sc)
 	})
 	return *ret, err
 }
-func (c *Compiler) reversalDef(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
 		var err error
@@ -3551,8 +3763,8 @@ func (c *Compiler) reversalDef(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
 		if err := c.paramPostye(is, sc, projectile_postype); err != nil {
 			return err
@@ -3670,8 +3882,8 @@ func (c *Compiler) projectile(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) width(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) width(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*width)(sc), c.stateSec(is, func() error {
 		b := false
 		if err := c.stateParam(is, "edge", func(data string) error {
@@ -3702,8 +3914,8 @@ func (c *Compiler) width(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) sprPriority(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) sprPriority(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*sprPriority)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value",
 			sprPriority_value, VT_Int, 1, false)
@@ -3957,44 +4169,44 @@ func (c *Compiler) varSetSub(is IniSection,
 	}
 	return Error("valueが指定されていません")
 }
-func (c *Compiler) varSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) varSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
 		return c.varSetSub(is, sc, OC_rdreset, OC_st_var)
 	})
 	return *ret, err
 }
-func (c *Compiler) varAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) varAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
 		return c.varSetSub(is, sc, OC_rdreset, OC_st_varadd)
 	})
 	return *ret, err
 }
-func (c *Compiler) parentVarSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) parentVarSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
 		return c.varSetSub(is, sc, OC_parent, OC_st_var)
 	})
 	return *ret, err
 }
-func (c *Compiler) parentVarAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) parentVarAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
 		return c.varSetSub(is, sc, OC_parent, OC_st_varadd)
 	})
 	return *ret, err
 }
-func (c *Compiler) turn(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) turn(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*turn)(sc), c.stateSec(is, func() error {
 		sc.add(turn_, nil)
 		return nil
 	})
 	return *ret, err
 }
-func (c *Compiler) targetFacing(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetFacing(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetFacing)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetFacing_id, VT_Int, 1, false); err != nil {
@@ -4008,8 +4220,8 @@ func (c *Compiler) targetFacing(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetBind(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetBind(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetBind)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetBind_id, VT_Int, 1, false); err != nil {
@@ -4027,8 +4239,8 @@ func (c *Compiler) targetBind(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) bindToTarget(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*bindToTarget)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			bindToTarget_id, VT_Int, 1, false); err != nil {
@@ -4076,8 +4288,8 @@ func (c *Compiler) bindToTarget(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetLifeAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetLifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetLifeAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetLifeAdd_id, VT_Int, 1, false); err != nil {
@@ -4099,8 +4311,8 @@ func (c *Compiler) targetLifeAdd(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetState(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetState(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetState)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetState_id, VT_Int, 1, false); err != nil {
@@ -4114,8 +4326,8 @@ func (c *Compiler) targetState(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetVelSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetVelSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetVelSet)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetVelSet_id, VT_Int, 1, false); err != nil {
@@ -4133,8 +4345,8 @@ func (c *Compiler) targetVelSet(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetVelAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetVelAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetVelAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetVelAdd_id, VT_Int, 1, false); err != nil {
@@ -4152,8 +4364,8 @@ func (c *Compiler) targetVelAdd(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetPowerAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetPowerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetPowerAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "id",
 			targetPowerAdd_id, VT_Int, 1, false); err != nil {
@@ -4167,8 +4379,8 @@ func (c *Compiler) targetPowerAdd(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) targetDrop(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) targetDrop(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*targetDrop)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "excludeid",
 			targetDrop_excludeid, VT_Int, 1, false); err != nil {
@@ -4182,8 +4394,8 @@ func (c *Compiler) targetDrop(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) lifeAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) lifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*lifeAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "absolute",
 			lifeAdd_absolute, VT_Bool, 1, false); err != nil {
@@ -4201,29 +4413,29 @@ func (c *Compiler) lifeAdd(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) lifeSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) lifeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*lifeSet)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", lifeSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }
-func (c *Compiler) powerAdd(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) powerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*powerAdd)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }
-func (c *Compiler) powerSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) powerSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*powerSet)(sc), c.stateSec(is, func() error {
 		return c.paramValue(is, sc, "value", powerSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }
-func (c *Compiler) hitVelSet(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) hitVelSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*hitVelSet)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "x",
 			hitVelSet_x, VT_Bool, 1, false); err != nil {
@@ -4237,8 +4449,8 @@ func (c *Compiler) hitVelSet(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) screenBound(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*screenBound)(sc), c.stateSec(is, func() error {
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
@@ -4264,8 +4476,8 @@ func (c *Compiler) screenBound(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) posFreeze(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) posFreeze(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*posFreeze)(sc), c.stateSec(is, func() error {
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
@@ -4281,8 +4493,8 @@ func (c *Compiler) posFreeze(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) envShake(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) envShake(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*envShake)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "time",
 			envShake_time, VT_Int, 1, false); err != nil {
@@ -4304,8 +4516,8 @@ func (c *Compiler) envShake(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) hitOverride(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) hitOverride(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*hitOverride)(sc), c.stateSec(is, func() error {
 		if err := c.stateParam(is, "attr", func(data string) error {
 			attr, err := c.attr(data, false)
@@ -4337,8 +4549,8 @@ func (c *Compiler) hitOverride(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) pause(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) pause(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*pause)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "time",
 			pause_time, VT_Int, 1, false); err != nil {
@@ -4360,8 +4572,8 @@ func (c *Compiler) pause(is IniSection, sbc *StateBytecode,
 	})
 	return *ret, err
 }
-func (c *Compiler) superPause(is IniSection, sbc *StateBytecode,
-	sc *StateControllerBase, _ bool) (StateController, error) {
+func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
 	ret, err := (*superPause)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "time",
 			superPause_time, VT_Int, 1, false); err != nil {
@@ -4428,6 +4640,113 @@ func (c *Compiler) superPause(is IniSection, sbc *StateBytecode,
 			}
 			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
 				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) trans(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*trans)(sc), c.stateSec(is, func() error {
+		return c.paramTrans(is, sc, "", trans_trans, false)
+	})
+	return *ret, err
+}
+func (c *Compiler) playerPush(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*playerPush)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			b = true
+			return c.scAdd(sc, playerPush_value, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(posFreeze_value, sc.iToExp(1))
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*stateTypeSet)(sc), c.stateSec(is, func() error {
+		statetype := func(data string) error {
+			if len(data) == 0 {
+				return Error("値が指定されていません")
+			}
+			var st StateType
+			switch strings.ToLower(data)[0] {
+			case 's':
+				st = ST_S
+			case 'c':
+				st = ST_C
+			case 'a':
+				st = ST_A
+			case 'l':
+				st = ST_L
+			default:
+				return Error(data + "が無効な値です")
+			}
+			sc.add(stateTypeSet_statetype, sc.iToExp(int32(st)))
+			return nil
+		}
+		b := false
+		if err := c.stateParam(is, "statetype", func(data string) error {
+			b = true
+			return statetype(data)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.stateParam(is, "value", func(data string) error {
+				return statetype(data)
+			}); err != nil {
+				return err
+			}
+		}
+		if err := c.stateParam(is, "movetype", func(data string) error {
+			if len(data) == 0 {
+				return Error("値が指定されていません")
+			}
+			var mt MoveType
+			switch strings.ToLower(data)[0] {
+			case 'i':
+				mt = MT_I
+			case 'a':
+				mt = MT_A
+			case 'h':
+				mt = MT_H
+			default:
+				return Error(data + "が無効な値です")
+			}
+			sc.add(stateTypeSet_movetype, sc.iToExp(int32(mt)))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "physics", func(data string) error {
+			if len(data) == 0 {
+				return Error("値が指定されていません")
+			}
+			var st StateType
+			switch strings.ToLower(data)[0] {
+			case 's':
+				st = ST_S
+			case 'c':
+				st = ST_C
+			case 'a':
+				st = ST_A
+			case 'n':
+				st = ST_N
+			default:
+				return Error(data + "が無効な値です")
+			}
+			sc.add(stateTypeSet_physics, sc.iToExp(int32(st)))
+			return nil
 		}); err != nil {
 			return err
 		}
@@ -4502,7 +4821,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 				switch name {
 				case "type":
 					var ok bool
-					scf, ok = c.scmap[data]
+					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
 						println(data)
 						unimplemented()
@@ -4522,6 +4841,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 					}
 				case "ignorehitpause":
 					c.block.ignorehitpause = Atoi(data) != 0
+					c.block.ctrlsIgnorehitpause = c.block.ignorehitpause
 				case "triggerall":
 					be, err := c.fullExpression(&data, VT_Bool)
 					if err != nil {
@@ -4637,7 +4957,11 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 				}
 			}
 			c.block.trigger = texp
-			sctrl, err := scf(is, sbc, sc, ihp)
+			_ihp := int8(-1)
+			if ihp {
+				_ihp = int8(Btoi(c.block.ignorehitpause))
+			}
+			sctrl, err := scf(is, sc, _ihp)
 			if err != nil {
 				return errmes(err)
 			}
@@ -4773,15 +5097,92 @@ func (c *Compiler) statementEnd(line *string) error {
 	if len(c.token) > 0 && c.token[0] != '#' {
 		return c.yokisinaiToken()
 	}
-	c.token = ""
+	c.token, *line = "", ""
 	return nil
 }
-func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
-	for {
-		if c.token == "" {
-			*line, _ = c.nextLine()
+func (c *Compiler) readKeyValue(is IniSection, end string,
+	line *string) error {
+	name := c.scan(line)
+	if name == "" {
+		return c.yokisinaiToken()
+	}
+	if name == end {
+		return nil
+	}
+	c.scan(line)
+	if err := c.needToken(":"); err != nil {
+		return err
+	}
+	data, err := c.readSentence(line)
+	if err != nil {
+		return err
+	}
+	is[name] = data
+	return nil
+}
+func (c *Compiler) subBlock(line *string,
+	parent *StateBlock, root bool) (*StateBlock, error) {
+	bl := newStateBlock()
+	switch c.token {
+	case "{":
+	case "if":
+		expr, err := c.readSentence(line)
+		if err != nil {
+			return nil, err
 		}
-		switch c.scan(line) {
+		otk := c.token
+		if bl.trigger, err = c.fullExpression(&expr, VT_Bool); err != nil {
+			return nil, err
+		}
+		c.token = otk
+		if err := c.needToken("{"); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, c.yokisinaiToken()
+	}
+	if err := c.stateBlock(line, bl, false); err != nil {
+		return nil, err
+	}
+	if bl.ignorehitpause {
+		parent.ignorehitpause = true
+	}
+	if root {
+		if len(bl.trigger) > 0 {
+			if c.token = c.tokenizer(line); c.token != "else" {
+				if len(c.token) == 0 || c.token[0] == '#' {
+					c.token, *line = "", ""
+				} else {
+					return nil, c.yokisinaiToken()
+				}
+				c.scan(line)
+			}
+		} else {
+			if err := c.statementEnd(line); err != nil {
+				return nil, err
+			}
+			c.scan(line)
+		}
+	} else {
+		c.scan(line)
+	}
+	if len(bl.trigger) > 0 && c.token == "else" {
+		c.scan(line)
+		var err error
+		if bl.elseBlock, err = c.subBlock(line, bl, false); err != nil {
+			println("a")
+			return nil, err
+		}
+		if bl.elseBlock.ignorehitpause {
+			bl.ignorehitpause = true
+		}
+	}
+	return bl, nil
+}
+func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
+	c.scan(line)
+	for {
+		switch c.token {
 		case "", "[":
 			if !root {
 				return c.yokisinaiToken()
@@ -4791,30 +5192,54 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 			if root {
 				return c.yokisinaiToken()
 			}
-			if len(bl.trigger) > 0 {
-				unimplemented()
-			} else if err := c.statementEnd(line); err != nil {
-				return err
-			}
 			return nil
-		case "if":
-			expr, err := c.readSentence(line)
-			if err != nil {
+		case "{", "if":
+			if sbl, err := c.subBlock(line, bl, root); err != nil {
 				return err
+			} else {
+				bl.ctrls = append(bl.ctrls, *sbl)
 			}
-			otk := c.token
-			ifbl := newStateBlock()
-			if ifbl.trigger, err = c.fullExpression(&expr, VT_Bool); err != nil {
-				return err
+			continue
+		default:
+			if scf, ok := c.scmap[c.token]; ok {
+				scname := c.token
+				c.scan(line)
+				if err := c.needToken("{"); err != nil {
+					return err
+				}
+				is, sc := NewIniSection(), newStateControllerBase()
+				if err := c.readKeyValue(is, "}", line); err != nil {
+					return err
+				}
+				for c.token != "}" {
+					switch c.token {
+					case ";":
+						if err := c.readKeyValue(is, "}", line); err != nil {
+							return err
+						}
+					default:
+						return c.yokisinaiToken()
+					}
+				}
+				if root {
+					if err := c.statementEnd(line); err != nil {
+						return err
+					}
+				}
+				if scname == "explod" {
+					if err := c.paramValue(is, sc, "ignorehitpause",
+						explod_ignorehitpause, VT_Bool, 1, false); err != nil {
+						return err
+					}
+				}
+				if sctrl, err := scf(is, sc, -1); err != nil {
+					return err
+				} else {
+					bl.ctrls = append(bl.ctrls, sctrl)
+				}
+				c.scan(line)
+				continue
 			}
-			c.token = otk
-			if err := c.needToken("{"); err != nil {
-				return err
-			}
-			if err := c.stateBlock(line, ifbl, false); err != nil {
-				return err
-			}
-			bl.ctrls = append(bl.ctrls, *ifbl)
 		}
 		break
 	}
@@ -4828,67 +5253,66 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 	c.block = nil
 	c.lines, c.i = SplitAndTrim(src, "\n"), 0
 	c.linechan = make(chan *string)
-	endchan := make(chan bool)
-	end := false
-	defer func() {
-		if !end {
-			endchan <- true
+	endchan := make(chan bool, 1)
+	stop := func() int {
+		if c.linechan == nil {
+			return 0
 		}
-	}()
+		endchan <- true
+		lineNo := c.i + 1
+		for {
+			if sp := <-c.linechan; sp != nil && *sp == "\n" {
+				close(endchan)
+				close(c.linechan)
+				c.linechan = nil
+				return lineNo
+			}
+		}
+	}
+	defer stop()
 	go func() {
-		var sp *string
 		i := c.i
-		if i < len(c.lines) {
-			str := strings.TrimSpace(c.lines[i])
-			sp = &str
-		}
 		for {
 			select {
 			case <-endchan:
-				close(c.linechan)
+				str := "\n"
+				c.linechan <- &str
 				return
-			case c.linechan <- sp:
-				if i < len(c.lines) {
-					c.i = i
-					i++
-					str := strings.TrimSpace(c.lines[i])
-					sp = &str
-				} else {
-					sp = nil
-				}
+			default:
+			}
+			var sp *string
+			if i < len(c.lines) {
+				str := strings.TrimSpace(c.lines[i])
+				sp = &str
+			} else {
+				sp = nil
+			}
+			c.linechan <- sp
+			if i < len(c.lines) {
+				c.i = i
+				i++
 			}
 		}
 	}()
 	errmes := func(err error) error {
-		endchan <- true
-		end = true
-		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
+		return Error(fmt.Sprintf("%v:%v:\n%v", filename, stop(), err.Error()))
 	}
 	existInThisFile := make(map[int32]bool)
 	var line string
 	c.token = ""
 	for {
 		if c.token == "" {
-			var ok bool
-			line, ok = c.nextLine()
-			if !ok {
+			c.scan(&line)
+			if c.token == "" {
 				break
 			}
-			if len(line) == 0 {
-				continue
-			}
-			c.scan(&line)
 		}
 		if c.token != "[" {
-			if c.token[0] != '#' {
-				return c.yokisinaiToken()
-			}
-			c.token = ""
-			continue
+			return errmes(c.yokisinaiToken())
 		}
 		switch c.scan(&line) {
 		case "":
-			return c.yokisinaiToken()
+			return errmes(c.yokisinaiToken())
 		case "statedef":
 			c.scan(&line)
 			n, err := c.integer2(&line)
@@ -4903,22 +5327,9 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 			for c.token != "]" {
 				switch c.token {
 				case ";":
-					name := c.scan(&line)
-					if name == "" {
-						return errmes(c.yokisinaiToken())
-					}
-					if name == "]" {
-						break
-					}
-					c.scan(&line)
-					if err := c.needToken(":"); err != nil {
+					if err := c.readKeyValue(is, "]", &line); err != nil {
 						return errmes(err)
 					}
-					data, err := c.readSentence(&line)
-					if err != nil {
-						return errmes(err)
-					}
-					is[name] = data
 				default:
 					return errmes(c.yokisinaiToken())
 				}
@@ -5070,12 +5481,6 @@ func (c *Compiler) Compile(pn int, def string) (*Bytecode, error) {
 		c.cmdl.Add(*cm)
 	}
 	sys.stringPool[pn].Clear()
-
-	// test
-	if err := c.stateCompile(bc, "common1.cns", def); err != nil {
-		return nil, err
-	}
-
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(bc, s, def); err != nil {
