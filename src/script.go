@@ -559,8 +559,8 @@ func systemScriptInit(l *lua.LState) {
 			return 1
 		}
 		winp := int32(0)
-		sys.rexisted = [2]int32{0, 0}
-		mw := sys.rexisted
+		sys.roundsExisted = [2]int32{0, 0}
+		mw := [2]int32{0, 0}
 		for i := range sys.lifebar.wi {
 			sys.lifebar.wi[i].clear()
 		}

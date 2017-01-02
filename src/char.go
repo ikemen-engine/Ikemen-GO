@@ -23,6 +23,9 @@ const (
 	CSF_movecamera_y
 	CSF_posfreeze
 	CSF_playerpush
+	CSF_angledraw
+	CSF_destroy
+	CSF_ko
 )
 
 type GlobalSpecialFlag uint32
@@ -847,6 +850,7 @@ type Char struct {
 	helperIndex   int32
 	parentIndex   int32
 	playerNo      int
+	ctrl          bool
 	keyctrl       bool
 	player        bool
 	animPN        int
@@ -868,6 +872,8 @@ type Char struct {
 	oldPos        [2]float32
 	vel           [2]float32
 	facing        float32
+	angle         float32
+	angleScalse   [2]float32
 	ivar          [NumVar + NumSysVar]int32
 	fvar          [NumFvar + NumSysFvar]float32
 	alpha         [2]int32
@@ -1842,4 +1848,36 @@ func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	}
 	id := hid.ToI()
 	return BytecodeBool(c.helperIndex != 0 && (id <= 0 || c.helperId == id))
+}
+func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
+	if hid.IsSF() {
+		return BytecodeSF()
+	}
+	id := hid.ToI()
+	n := int32(0)
+	for _, h := range sys.chars[c.playerNo][1:] {
+		if !h.sf(CSF_destroy) && (id <= 0 || h.helperId == id) {
+			n++
+		}
+	}
+	return BytecodeInt(n)
+}
+func (c *Char) angleSet(a float32) {
+	c.angle = a
+	if a != 0 {
+		c.angleset = true
+	}
+}
+func (c *Char) roundsExisted() int32 {
+	return sys.roundsExisted[c.playerNo&1]
+}
+func (c *Char) ctrlOver() bool {
+	return sys.time == 0 ||
+		sys.intro < -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
+}
+func (c *Char) canCtrl() bool {
+	return c.ctrl && !c.sf(CSF_ko) && !c.ctrlOver()
+}
+func (c *Char) win() bool {
+	return sys.winTeam == c.playerNo&1
 }

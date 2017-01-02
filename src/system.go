@@ -87,9 +87,12 @@ type System struct {
 	inputRemap                  [MaxSimul * 2]int
 	listenPort                  string
 	round                       int32
+	intro                       int32
+	time                        int32
+	winTeam                     int
 	matchWins                   [2]int32
 	wins                        [2]int32
-	rexisted                    [2]int32
+	roundsExisted               [2]int32
 	draws                       int32
 	loader                      Loader
 	chars                       [MaxSimul * 2][]*Char
@@ -127,6 +130,9 @@ type System struct {
 	superp2defmul               float32
 	superunhittable             bool
 	super_TargetDefenceMul      float32
+	envcol                      [3]int32
+	envcol_time                 int32
+	envcol_under                bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -207,7 +213,7 @@ func (s *System) resetRemapInput() {
 	}
 }
 func (s *System) loaderReset() {
-	s.round, s.wins, s.rexisted = 1, [2]int32{0, 0}, [2]int32{0, 0}
+	s.round, s.wins, s.roundsExisted = 1, [2]int32{0, 0}, [2]int32{0, 0}
 	s.loader.reset()
 }
 func (s *System) loadStart() {
@@ -478,7 +484,7 @@ func (l *Loader) loadChar(pn int) int {
 	}
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
-	if sys.rexisted[pn&1] == 0 {
+	if sys.roundsExisted[pn&1] == 0 {
 		sys.cgi[pn].palno = pal
 	}
 	if sys.cgi[pn].sff == nil {
@@ -568,7 +574,7 @@ func (l *Loader) reset() {
 	}
 	l.err = nil
 	for i := range sys.cgi {
-		if sys.rexisted[i&1] == 0 {
+		if sys.roundsExisted[i&1] == 0 {
 			sys.cgi[i].drawpalno = -1
 		}
 	}

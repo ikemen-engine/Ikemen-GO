@@ -1021,6 +1021,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.getPower())
 		case OC_ishelper:
 			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
+		case OC_numhelper:
+			*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
+		case OC_roundsexisted:
+			sys.bcStack.PushI(c.roundsExisted())
+		case OC_teammode:
+			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
+			i++
+		case OC_ctrl:
+			sys.bcStack.PushB(c.canCtrl())
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
@@ -1312,6 +1321,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 		sys.bcStack.Push(c.parentDistX())
 	case OC_ex_parentdist_y:
 		sys.bcStack.Push(c.parentDistY())
+	case OC_ex_win:
+		sys.bcStack.PushB(c.win())
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_airtype:
@@ -3889,6 +3900,56 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 			c.ss.sb.moveType = MoveType(exp[0].evalI(c))
 		case stateTypeSet_physics:
 			c.ss.sb.physics = StateType(exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type angleDraw StateControllerBase
+
+const (
+	angleDraw_value byte = iota
+	angleDraw_scale
+)
+
+func (sc angleDraw) Run(c *Char, _ []int32) bool {
+	c.setSF(CSF_angledraw)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case angleDraw_value:
+			c.angleSet(exp[0].evalF(c))
+		case angleDraw_scale:
+			c.angleScalse[0] = exp[0].evalF(c)
+			c.angleScalse[1] = exp[1].evalF(c)
+		}
+		return true
+	})
+	return false
+}
+
+type envColor StateControllerBase
+
+const (
+	envColor_value byte = iota
+	envColor_time
+	envColor_under
+)
+
+func (sc envColor) Run(c *Char, _ []int32) bool {
+	sys.envcol = [3]int32{255, 255, 255}
+	sys.envcol_time = 1
+	sys.envcol_under = false
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case envColor_value:
+			sys.envcol[0] = exp[0].evalI(c)
+			sys.envcol[1] = exp[1].evalI(c)
+			sys.envcol[2] = exp[2].evalI(c)
+		case envColor_time:
+			sys.envcol_time = exp[0].evalI(c)
+		case envColor_under:
+			sys.envcol_under = exp[0].evalB(c)
 		}
 		return true
 	})

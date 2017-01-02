@@ -89,6 +89,8 @@ func newCompiler() *Compiler {
 		"trans":          c.trans,
 		"playerpush":     c.playerPush,
 		"statetypeset":   c.stateTypeSet,
+		"angledraw":      c.angleDraw,
+		"envcolor":       c.envColor,
 	}
 	return c
 }
@@ -608,6 +610,7 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 		if len(defval) == 0 || defval[0].IsNone() {
 			return bvNone(), Error(mae + "の次に'('がありません")
 		}
+		*in = c.token + " " + *in
 		bv = defval[0]
 	} else {
 		c.token = c.tokenizer(in)
@@ -1163,6 +1166,35 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ishelper)
+	case "numhelper":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numhelper)
+	case "roundsexisted":
+		out.append(OC_roundsexisted)
+	case "teammode":
+		if err := eqne(func() error {
+			var tm TeamMode
+			switch c.token {
+			case "single":
+				tm = TM_Single
+			case "simul":
+				tm = TM_Simul
+			case "turns":
+				tm = TM_Turns
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			out.append(OC_teammode, OpCode(tm))
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "win":
+		out.append(OC_ex_, OC_ex_win)
+	case "ctrl":
+		out.append(OC_ctrl)
 	case "abs":
 		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
 			return bvNone(), err
@@ -3389,6 +3421,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_nochainid, VT_Int, 2, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "kill",
+		hitDef_kill, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "guard.kill",
 		hitDef_guard_kill, VT_Bool, 1, false); err != nil {
 		return err
@@ -4748,6 +4784,58 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			sc.add(stateTypeSet_physics, sc.iToExp(int32(st)))
 			return nil
 		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*angleDraw)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "value",
+			angleDraw_value, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "scale", func(data string) error {
+			bes, err := c.exprs(data, VT_Float, 2)
+			if err != nil {
+				return err
+			}
+			if len(bes) < 2 {
+				return Error("scaleの要素が足りません")
+			}
+			sc.add(angleDraw_scale, bes)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) envColor(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*envColor)(sc), c.stateSec(is, func() error {
+		if err := c.stateParam(is, "value", func(data string) error {
+			bes, err := c.exprs(data, VT_Int, 3)
+			if err != nil {
+				return err
+			}
+			if len(bes) < 3 {
+				return Error("valueの要素が足りません")
+			}
+			sc.add(envColor_value, bes)
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			envColor_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "under",
+			envColor_under, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
