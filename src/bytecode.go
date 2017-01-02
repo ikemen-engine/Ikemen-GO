@@ -2097,7 +2097,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_removeongethit:
 			e.removeongethit = exp[0].evalB(c)
 		case explod_trans:
-			e.alpha = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			e.alpha[0] = exp[0].evalI(c)
+			e.alpha[1] = exp[1].evalI(c)
 			if len(exp) >= 3 {
 				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
 				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
@@ -2437,11 +2438,17 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_color:
 		pfd.color = MaxF(0, MinF(1, exp[0].evalF(c)/256))
 	case palFX_add:
-		pfd.add = [3]int32{exp[0].evalI(c), exp[1].evalI(c), exp[2].evalI(c)}
+		pfd.add[0] = exp[0].evalI(c)
+		pfd.add[1] = exp[1].evalI(c)
+		pfd.add[2] = exp[2].evalI(c)
 	case palFX_mul:
-		pfd.mul = [3]int32{exp[0].evalI(c), exp[1].evalI(c), exp[2].evalI(c)}
+		pfd.mul[0] = exp[0].evalI(c)
+		pfd.mul[1] = exp[1].evalI(c)
+		pfd.mul[2] = exp[2].evalI(c)
 	case palFX_sinadd:
-		pfd.sinadd = [3]int32{exp[0].evalI(c), exp[1].evalI(c), exp[2].evalI(c)}
+		pfd.sinadd[0] = exp[0].evalI(c)
+		pfd.sinadd[1] = exp[1].evalI(c)
+		pfd.sinadd[2] = exp[2].evalI(c)
 		if len(exp) > 3 {
 			pfd.cycletime = exp[3].evalI(c)
 		}
@@ -3848,7 +3855,8 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case trans_trans:
-			c.alpha = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			c.alpha[0] = exp[0].evalI(c)
+			c.alpha[1] = exp[1].evalI(c)
 			if len(exp) >= 3 {
 				c.alpha[0] = Max(0, Min(255, c.alpha[0]))
 				c.alpha[1] = Max(0, Min(255, c.alpha[1]))
