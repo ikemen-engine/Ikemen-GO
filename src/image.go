@@ -1,6 +1,6 @@
 package main
 
-// #cgo pkg-config: libpng
+// #cgo LDFLAGS: -lpng -lz
 // #include <png.h>
 import "C"
 import (

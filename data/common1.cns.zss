@@ -52,10 +52,10 @@ if AnimTime = 0 {
 
 [Statedef 20; type: S; physics: S;
  sprpriority: 0;]
-if command = "holdfwd" {
-    VelSet{x: const(velocity.walk.fwd.x)}
-} else if command = "holdback" {
+if command = "holdback" {
     VelSet{x: const(velocity.walk.back.x)}
+} else if command = "holdfwd" {
+    VelSet{x: const(velocity.walk.fwd.x)}
 }
 if vel x > 0 {
     if cond(Anim = 5, AnimTime = 0, Anim != 20) {

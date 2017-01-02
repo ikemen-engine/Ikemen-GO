@@ -5170,7 +5170,6 @@ func (c *Compiler) subBlock(line *string,
 		c.scan(line)
 		var err error
 		if bl.elseBlock, err = c.subBlock(line, bl, false); err != nil {
-			println("a")
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause {
