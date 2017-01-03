@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
@@ -82,7 +83,8 @@ type System struct {
 	keyConfig                   []*KeyConfig
 	com                         [MaxSimul * 2]int32
 	autolevel                   bool
-	home                        int32
+	home                        int
+	gameTime                    int32
 	match                       int32
 	inputRemap                  [MaxSimul * 2]int
 	listenPort                  string
@@ -133,6 +135,7 @@ type System struct {
 	envcol                      [3]int32
 	envcol_time                 int32
 	envcol_under                bool
+	clipboardText               [MaxSimul * 2][]string
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -239,6 +242,13 @@ func (s *System) setSF(gsf GlobalSpecialFlag) {
 }
 func (s *System) unsetSF(gsf GlobalSpecialFlag) {
 	s.specialFlag &^= gsf
+}
+func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
+	spl := s.stringPool[pn].List
+	if sn >= 0 && sn < len(spl) {
+		s.clipboardText[pn] = append(s.clipboardText[pn],
+			strings.Split(fmt.Sprintf(spl[sn], a...), "\n")...)
+	}
 }
 
 type SelectChar struct {
@@ -488,7 +498,8 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].palno = pal
 	}
 	if sys.cgi[pn].sff == nil {
-		if l.code[pn], l.err = newCompiler().Compile(p.playerNo, cdef); l.err != nil {
+		if l.code[pn], l.err =
+			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
 			sys.chars[pn] = nil
 			return -1
 		}

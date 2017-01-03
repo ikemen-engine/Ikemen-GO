@@ -478,6 +478,10 @@ func (hd *HitDef) invalidate(stateType StateType) {
 	hd.reversal_attr |= -1 << 31
 	hd.lhit = false
 }
+func (hd *HitDef) testAttr(attr int32) bool {
+	attr &= hd.attr
+	return attr&int32(ST_MASK) != 0 && attr&^int32(ST_MASK)&^(-1<<31) != 0
+}
 
 type GetHitVar struct {
 	hitBy          [][2]int32
@@ -1880,4 +1884,7 @@ func (c *Char) canCtrl() bool {
 }
 func (c *Char) win() bool {
 	return sys.winTeam == c.playerNo&1
+}
+func (c *Char) hitDefAttr(attr int32) bool {
+	return c.ss.sb.moveType == MT_A && c.hitdef.testAttr(attr)
 }

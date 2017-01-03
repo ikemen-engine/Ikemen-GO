@@ -139,7 +139,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setHomeTeam", func(l *lua.LState) int {
-		tn := int32(numArg(l, 1))
+		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
 			l.RaiseError("チーム番号(%v)が不正です。", tn)
 		}

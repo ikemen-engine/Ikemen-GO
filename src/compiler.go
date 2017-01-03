@@ -30,67 +30,69 @@ type Compiler struct {
 func newCompiler() *Compiler {
 	c := &Compiler{}
 	c.scmap = map[string]scFunc{
-		"hitby":          c.hitBy,
-		"nothitby":       c.notHitBy,
-		"assertspecial":  c.assertSpecial,
-		"playsnd":        c.playSnd,
-		"changestate":    c.changeState,
-		"selfstate":      c.selfState,
-		"tagin":          c.tagIn,
-		"tagout":         c.tagOut,
-		"destroyself":    c.destroySelf,
-		"changeanim":     c.changeAnim,
-		"changeanim2":    c.changeAnim2,
-		"helper":         c.helper,
-		"ctrlset":        c.ctrlSet,
-		"explod":         c.explod,
-		"modifyexplod":   c.modifyExplod,
-		"gamemakeanim":   c.gameMakeAnim,
-		"posset":         c.posSet,
-		"posadd":         c.posAdd,
-		"velset":         c.velSet,
-		"veladd":         c.velAdd,
-		"velmul":         c.velMul,
-		"palfx":          c.palFX,
-		"allpalfx":       c.allPalFX,
-		"bgpalfx":        c.bgPalFX,
-		"afterimage":     c.afterImage,
-		"afterimagetime": c.afterImageTime,
-		"hitdef":         c.hitDef,
-		"reversaldef":    c.reversalDef,
-		"projectile":     c.projectile,
-		"width":          c.width,
-		"sprpriority":    c.sprPriority,
-		"varset":         c.varSet,
-		"varadd":         c.varAdd,
-		"parentvarset":   c.parentVarSet,
-		"parentvaradd":   c.parentVarAdd,
-		"turn":           c.turn,
-		"targetfacing":   c.targetFacing,
-		"targetbind":     c.targetBind,
-		"bindtotarget":   c.bindToTarget,
-		"targetlifeadd":  c.targetLifeAdd,
-		"targetstate":    c.targetState,
-		"targetvelset":   c.targetVelSet,
-		"targetveladd":   c.targetVelAdd,
-		"targetpoweradd": c.targetPowerAdd,
-		"targetdrop":     c.targetDrop,
-		"lifeadd":        c.lifeAdd,
-		"lifeset":        c.lifeSet,
-		"poweradd":       c.powerAdd,
-		"powerset":       c.powerSet,
-		"hitvelset":      c.hitVelSet,
-		"screenbound":    c.screenBound,
-		"posfreeze":      c.posFreeze,
-		"envshake":       c.envShake,
-		"hitoverride":    c.hitOverride,
-		"pause":          c.pause,
-		"superpause":     c.superPause,
-		"trans":          c.trans,
-		"playerpush":     c.playerPush,
-		"statetypeset":   c.stateTypeSet,
-		"angledraw":      c.angleDraw,
-		"envcolor":       c.envColor,
+		"hitby":              c.hitBy,
+		"nothitby":           c.notHitBy,
+		"assertspecial":      c.assertSpecial,
+		"playsnd":            c.playSnd,
+		"changestate":        c.changeState,
+		"selfstate":          c.selfState,
+		"tagin":              c.tagIn,
+		"tagout":             c.tagOut,
+		"destroyself":        c.destroySelf,
+		"changeanim":         c.changeAnim,
+		"changeanim2":        c.changeAnim2,
+		"helper":             c.helper,
+		"ctrlset":            c.ctrlSet,
+		"explod":             c.explod,
+		"modifyexplod":       c.modifyExplod,
+		"gamemakeanim":       c.gameMakeAnim,
+		"posset":             c.posSet,
+		"posadd":             c.posAdd,
+		"velset":             c.velSet,
+		"veladd":             c.velAdd,
+		"velmul":             c.velMul,
+		"palfx":              c.palFX,
+		"allpalfx":           c.allPalFX,
+		"bgpalfx":            c.bgPalFX,
+		"afterimage":         c.afterImage,
+		"afterimagetime":     c.afterImageTime,
+		"hitdef":             c.hitDef,
+		"reversaldef":        c.reversalDef,
+		"projectile":         c.projectile,
+		"width":              c.width,
+		"sprpriority":        c.sprPriority,
+		"varset":             c.varSet,
+		"varadd":             c.varAdd,
+		"parentvarset":       c.parentVarSet,
+		"parentvaradd":       c.parentVarAdd,
+		"turn":               c.turn,
+		"targetfacing":       c.targetFacing,
+		"targetbind":         c.targetBind,
+		"bindtotarget":       c.bindToTarget,
+		"targetlifeadd":      c.targetLifeAdd,
+		"targetstate":        c.targetState,
+		"targetvelset":       c.targetVelSet,
+		"targetveladd":       c.targetVelAdd,
+		"targetpoweradd":     c.targetPowerAdd,
+		"targetdrop":         c.targetDrop,
+		"lifeadd":            c.lifeAdd,
+		"lifeset":            c.lifeSet,
+		"poweradd":           c.powerAdd,
+		"powerset":           c.powerSet,
+		"hitvelset":          c.hitVelSet,
+		"screenbound":        c.screenBound,
+		"posfreeze":          c.posFreeze,
+		"envshake":           c.envShake,
+		"hitoverride":        c.hitOverride,
+		"pause":              c.pause,
+		"superpause":         c.superPause,
+		"trans":              c.trans,
+		"playerpush":         c.playerPush,
+		"statetypeset":       c.stateTypeSet,
+		"angledraw":          c.angleDraw,
+		"envcolor":           c.envColor,
+		"displaytoclipboard": c.displayToClipboard,
+		"appendtoclipboard":  c.appendToClipboard,
 	}
 	return c
 }
@@ -406,6 +408,80 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 	}
 	return flg, nil
 }
+func (c *Compiler) trgAttr(in *string) (int32, error) {
+	flg := int32(0)
+	*in = strings.TrimSpace(*in)
+	i := strings.IndexAny(*in, kuuhaktokigou)
+	var att string
+	if i >= 0 {
+		att = (*in)[:i]
+		*in = strings.TrimSpace((*in)[i:])
+	} else {
+		att = *in
+		*in = ""
+	}
+	for _, a := range att {
+		switch a {
+		case 'S', 's':
+			flg |= int32(ST_S)
+		case 'C', 'c':
+			flg |= int32(ST_C)
+		case 'A', 'a':
+			flg |= int32(ST_A)
+		default:
+			return 0, Error(att + "が不正な属性値です")
+		}
+	}
+	for len(*in) > 0 && (*in)[0] == ',' {
+		oldin := *in
+		*in = strings.TrimSpace((*in)[1:])
+		i := strings.IndexAny(*in, kuuhaktokigou)
+		var att string
+		if i >= 0 {
+			att = (*in)[:i]
+			*in = strings.TrimSpace((*in)[i:])
+		} else {
+			att = *in
+			*in = ""
+		}
+		switch strings.ToLower(att) {
+		case "na":
+			flg |= int32(AT_NA)
+		case "nt":
+			flg |= int32(AT_NT)
+		case "np":
+			flg |= int32(AT_NP)
+		case "sa":
+			flg |= int32(AT_SA)
+		case "st":
+			flg |= int32(AT_ST)
+		case "sp":
+			flg |= int32(AT_SP)
+		case "ha":
+			flg |= int32(AT_HA)
+		case "ht":
+			flg |= int32(AT_HT)
+		case "hp":
+			flg |= int32(AT_HP)
+		case "aa":
+			flg |= int32(AT_AA)
+		case "at":
+			flg |= int32(AT_AT)
+		case "ap":
+			flg |= int32(AT_AP)
+		case "n":
+			flg |= int32(AT_NA | AT_NT | AT_NP)
+		case "s":
+			flg |= int32(AT_SA | AT_ST | AT_SP)
+		case "h", "a":
+			flg |= int32(AT_HA | AT_HT | AT_HP)
+		default:
+			*in = oldin
+			return flg, nil
+		}
+	}
+	return flg, nil
+}
 func (c *Compiler) kakkohiraku(in *string) error {
 	if c.tokenizer(in) != "(" {
 		return Error(c.token + "の次に'('がありません")
@@ -657,15 +733,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		return bv, nil
 	}
-	if !sys.ignoreMostErrors {
-		defer func() { c.usiroOp = false }()
-	}
 	_var := func(sys, f bool) error {
 		bv1, err := c.oneArg(out, in, rd, false)
 		if err != nil {
 			return err
 		}
 		var oc OpCode
+		c.token = c.tokenizer(in)
 		set, _else := c.token == ":=", false
 		if !bv1.IsNone() && bv1.ToI() >= 0 {
 			switch [2]bool{sys, f} {
@@ -748,6 +822,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		if not {
 			out.append(OC_blnot)
+		}
+		return nil
+	}
+	eqne2 := func(f func(not bool) error) error {
+		not, err := c.kyuushiki(in)
+		if err != nil {
+			return err
+		}
+		if err := f(not); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -889,21 +973,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "var":
-		if err := _var(false, false); err != nil {
-			return bvNone(), err
-		}
+		return bvNone(), _var(false, false)
 	case "fvar":
-		if err := _var(false, true); err != nil {
-			return bvNone(), err
-		}
+		return bvNone(), _var(false, true)
 	case "sysvar":
-		if err := _var(true, false); err != nil {
-			return bvNone(), err
-		}
+		return bvNone(), _var(true, false)
 	case "sysfvar":
-		if err := _var(true, true); err != nil {
-			return bvNone(), err
-		}
+		return bvNone(), _var(true, true)
 	case "ifelse", "cond":
 		cond := c.token == "cond"
 		if err := c.kakkohiraku(in); err != nil {
@@ -971,10 +1047,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				bv = bv3
 			}
 		}
-	case "time":
+	case "time", "statetime":
 		out.append(OC_time)
 	case "alive":
 		out.append(OC_alive)
+	case "ctrl":
+		out.append(OC_ctrl)
 	case "random":
 		out.append(OC_random)
 	case "roundstate":
@@ -1005,8 +1083,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "animtime":
 		out.append(OC_animtime)
 	case "animelem":
-		if _, err = c.kyuushiki(in); err != nil {
+		if not, err := c.kyuushiki(in); err != nil {
 			return bvNone(), err
+		} else if not && !sys.ignoreMostErrors {
+			return bvNone(), Error("animelemに != は使えません")
 		}
 		if c.token == "-" {
 			return bvNone(), Error("マイナスが付くとエラーです")
@@ -1161,6 +1241,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_bottomedge)
 	case "power":
 		out.append(OC_power)
+	case "roundsexisted":
+		out.append(OC_roundsexisted)
+	case "gametime":
+		out.append(OC_gametime)
+	case "hitfall":
+		out.append(OC_hitfall)
+	case "win":
+		out.append(OC_ex_, OC_ex_win)
 	case "ishelper":
 		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
 			return bvNone(), err
@@ -1171,10 +1259,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_numhelper)
-	case "roundsexisted":
-		out.append(OC_roundsexisted)
 	case "teammode":
 		if err := eqne(func() error {
+			if len(c.token) == 0 {
+				return Error("teammodeの値が指定されていません")
+			}
 			var tm TeamMode
 			switch c.token {
 			case "single":
@@ -1191,10 +1280,90 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
-	case "win":
-		out.append(OC_ex_, OC_ex_win)
-	case "ctrl":
-		out.append(OC_ctrl)
+	case "statetype", "p2statetype":
+		trname := c.token
+		if err := eqne2(func(not bool) error {
+			if len(c.token) == 0 {
+				return Error(trname + "の値が指定されていません")
+			}
+			var st StateType
+			switch c.token[0] {
+			case 's':
+				st = ST_S
+			case 'c':
+				st = ST_C
+			case 'a':
+				st = ST_A
+			case 'l':
+				st = ST_L
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			if trname == "p2statetype" {
+				out.appendI32Op(OC_p2, 2+Btoi(not))
+			}
+			out.append(OC_statetype, OpCode(st))
+			if not {
+				out.append(OC_blnot)
+			}
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "movetype", "p2movetype":
+		trname := c.token
+		if err := eqne2(func(not bool) error {
+			if len(c.token) == 0 {
+				return Error(trname + "の値が指定されていません")
+			}
+			var mt MoveType
+			switch c.token[0] {
+			case 'i':
+				mt = MT_I
+			case 'a':
+				mt = MT_A
+			case 'h':
+				mt = MT_H
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			if trname == "p2movetype" {
+				out.appendI32Op(OC_p2, 2+Btoi(not))
+			}
+			out.append(OC_movetype, OpCode(mt))
+			if not {
+				out.append(OC_blnot)
+			}
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "hitdefattr":
+		hda := func() error {
+			if attr, err := c.trgAttr(in); err != nil {
+				return err
+			} else {
+				out.appendI32Op(OC_hitdefattr, attr)
+			}
+			return nil
+		}
+		if sys.cgi[c.playerNo].ver[0] == 1 {
+			if err := eqne(hda); err != nil {
+				return bvNone(), err
+			}
+		} else {
+			if not, err := c.kyuushiki(in); err != nil {
+				if sys.ignoreMostErrors {
+					out.appendValue(BytecodeBool(false))
+				} else {
+					return bvNone(), err
+				}
+			} else if err := hda(); err != nil {
+				return bvNone(), err
+			} else if not && !sys.ignoreMostErrors {
+				return bvNone(), Error("旧バージョンのためhitdefattrに != は使えません")
+			}
+		}
 	case "abs":
 		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
 			return bvNone(), err
@@ -1355,6 +1524,48 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(in); err != nil {
 			return bvNone(), err
+		}
+	case "const240p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(1))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(1))
+		}
+	case "const480p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(0.5))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(0.5))
+		}
+	case "const720p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(0.25))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(0.25))
 		}
 	case "const":
 		if err := c.kakkohiraku(in); err != nil {
@@ -1580,19 +1791,21 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	if err != nil {
 		return bvNone(), err
 	}
-	for c.token == "!" {
-		c.usiroOp = true
-		if bv.IsNone() {
-			out.append(OC_blnot)
-		} else {
-			out.blnot(&bv)
+	if sys.ignoreMostErrors {
+		for c.token == "!" {
+			c.usiroOp = true
+			if bv.IsNone() {
+				out.append(OC_blnot)
+			} else {
+				out.blnot(&bv)
+			}
+			c.token = c.tokenizer(in)
 		}
-		c.token = c.tokenizer(in)
 	}
 	if len(c.maeOp) == 0 {
 		opp := c.isOperator(c.token)
 		if opp == 0 {
-			if !c.usiroOp && c.token == "(" {
+			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
 				return bvNone(), Error("演算子がありません")
 			}
 			oldtoken, oldin := c.token, *in
@@ -4842,6 +5055,60 @@ func (c *Compiler) envColor(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) displayToClipboardSub(is IniSection,
+	sc *StateControllerBase) error {
+	if err := c.stateParam(is, "params", func(data string) error {
+		bes, err := c.exprs(data, VT_SFalse, 100000)
+		if err != nil {
+			return err
+		}
+		sc.add(displayToClipboard_params, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	b := false
+	if err := c.stateParam(is, "text", func(data string) error {
+		b = true
+		_else := false
+		if len(data) >= 2 && data[0] == '"' {
+			data = data[1:]
+			if i := strings.Index(data, "\""); i >= 0 {
+				data = data[:i]
+			} else {
+				_else = true
+			}
+		} else {
+			_else = true
+		}
+		if _else {
+			return Error("\"で囲まれていません")
+		}
+		sc.add(displayToClipboard_text,
+			sc.iToExp(int32(sys.stringPool[c.playerNo].Add(data))))
+		return nil
+	}); err != nil {
+		return err
+	}
+	if !b {
+		return Error("textが指定されていません")
+	}
+	return nil
+}
+func (c *Compiler) displayToClipboard(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*displayToClipboard)(sc), c.stateSec(is, func() error {
+		return c.displayToClipboardSub(is, sc)
+	})
+	return *ret, err
+}
+func (c *Compiler) appendToClipboard(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*appendToClipboard)(sc), c.stateSec(is, func() error {
+		return c.displayToClipboardSub(is, sc)
+	})
+	return *ret, err
+}
 func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 	var str string
 	fnz := filename
@@ -5133,16 +5400,19 @@ func (c *Compiler) readString(line *string) (string, error) {
 	*line = (*line)[i+1:]
 	return s, nil
 }
-func (c *Compiler) readSentenceLine(line *string) (s string, err error) {
+func (c *Compiler) readSentenceLine(line *string) (s string, assign bool,
+	err error) {
 	c.token = ""
 	offset := 0
 	for {
 		i := strings.IndexAny((*line)[offset:], ";#\"{}")
 		if i < 0 {
+			assign = assign || strings.Index((*line)[offset:], ":=") >= 0
 			s, *line = *line, ""
 			return
 		}
 		i += offset
+		assign = assign || strings.Index((*line)[offset:i], ":=") >= 0
 		switch (*line)[i] {
 		case ';', '{', '}':
 			c.token = (*line)[i : i+1]
@@ -5152,7 +5422,7 @@ func (c *Compiler) readSentenceLine(line *string) (s string, err error) {
 		case '"':
 			tmp := (*line)[i+1:]
 			if _, err := c.readString(&tmp); err != nil {
-				return "", err
+				return "", false, err
 			}
 			offset = len(*line) - len(tmp)
 			continue
@@ -5161,10 +5431,10 @@ func (c *Compiler) readSentenceLine(line *string) (s string, err error) {
 	}
 	return
 }
-func (c *Compiler) readSentence(line *string) (s string, err error) {
-	sen, err := c.readSentenceLine(line)
-	if err != nil {
-		return "", err
+func (c *Compiler) readSentence(line *string) (s string, a bool, err error) {
+
+	if s, a, err = c.readSentenceLine(line); err != nil {
+		return
 	}
 	for c.token == "" {
 		var ok bool
@@ -5172,13 +5442,14 @@ func (c *Compiler) readSentence(line *string) (s string, err error) {
 		if !ok {
 			break
 		}
-		s, err := c.readSentenceLine(line)
-		if err != nil {
-			return "", err
+		if sen, ass, err := c.readSentenceLine(line); err != nil {
+			return "", false, err
+		} else {
+			s += "\n" + sen
+			a = a || ass
 		}
-		sen += "\n" + s
 	}
-	return strings.TrimSpace(sen), nil
+	return strings.TrimSpace(s), a, nil
 }
 func (c *Compiler) statementEnd(line *string) error {
 	c.token = c.tokenizer(line)
@@ -5201,7 +5472,7 @@ func (c *Compiler) readKeyValue(is IniSection, end string,
 	if err := c.needToken(":"); err != nil {
 		return err
 	}
-	data, err := c.readSentence(line)
+	data, _, err := c.readSentence(line)
 	if err != nil {
 		return err
 	}
@@ -5214,7 +5485,7 @@ func (c *Compiler) subBlock(line *string,
 	switch c.token {
 	case "{":
 	case "if":
-		expr, err := c.readSentence(line)
+		expr, _, err := c.readSentence(line)
 		if err != nil {
 			return nil, err
 		}
@@ -5326,7 +5597,35 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 				}
 				c.scan(line)
 				continue
+			} else {
+				otk := c.token
+				expr, assign, err := c.readSentence(line)
+				if err != nil {
+					return err
+				}
+				expr = otk + " " + expr
+				otk = c.token
+				if stex, err := c.fullExpression(&expr, VT_SFalse); err != nil {
+					return err
+				} else {
+					bl.ctrls = append(bl.ctrls, StateExpr(stex))
+				}
+				c.token = otk
+				if err := c.needToken(";"); err != nil {
+					return err
+				}
+				if !assign {
+					return Error("値が利用されない式")
+				}
+				if root {
+					if err := c.statementEnd(line); err != nil {
+						return err
+					}
+				}
+				c.scan(line)
+				continue
 			}
+		case "varset", "varadd":
 		}
 		break
 	}

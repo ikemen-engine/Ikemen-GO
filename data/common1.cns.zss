@@ -6,6 +6,9 @@
 # ignorehitpause{} を含んでいる if も実行される
 # Explod は ignorehitpause を任意に指定できる
 # ignorehitpause persistent(2) if 1 {} ブロックの特性を複数指定 if は最後に
+# VarSet, VarAdd は使えない代わりに := による代入を含む式を書ける
+# 代入式は末尾に ; をつける
+
 
 [Statedef 0; type: S; physics: S;
  sprpriority: 0;]
@@ -15,13 +18,14 @@ if cond(Anim = 5, AnimTime = 0, Anim != 0) {
 if Time = 0 {
     VelSet{y: 0}
 }
-if Time = 4 || abs(vel x) < cond(MajorVersion = 1,
+if Time = 4 || abs(vel x) < ifelse(MajorVersion = 1,
     Const(movement.stand.friction.threshold), 2) {
     VelSet{x: 0}
 }
 if !alive {
     ChangeState{value: 5050; ctrl: 0}
 }
+
 
 [Statedef 10; type: C; physics: C;
  anim: 10;]
@@ -35,6 +39,7 @@ if AnimTime = 0 {
     ChangeState{value: 11}
 }
 
+
 [Statedef 11; type: C; physics: C;
  anim: 11; sprpriority: 0;]
 if Anim = 6 && AnimTime = 0 {
@@ -44,11 +49,13 @@ if abs(vel x) < Const(movement.crouch.friction.threshold) {
     VelSet{x: 0}
 }
 
+
 [Statedef 12; type: S; physics: S;
  anim: 12;]
 if AnimTime = 0 {
     ChangeState{value: 0}
 }
+
 
 [Statedef 20; type: S; physics: S;
  sprpriority: 0;]
@@ -65,5 +72,125 @@ if vel x > 0 {
     if cond(Anim = 5, AnimTime = 0, Anim != 21) {
         ChangeAnim{value: 21}
     }
+}
+
+
+[Statedef 40; type: S; physics: S;
+ anim: 40; ctrl: 0; sprpriority: 1; facep2: 1;]
+if Time = 0 {
+    sysvar(1) := 0;
+}
+if command = "holdback" {
+    sysvar(1) := -1;
+} else if command = "holdfwd" {
+    sysvar(1) := 1;
+}
+if AnimTime = 0 {
+    if sysvar(1) = 0 {
+        VelSet{x: const(velocity.jump.neu.x)}
+    } else if sysvar(1) = 1 {
+        if prevstateno = 100 {
+            VelSet{x: const(velocity.runjump.fwd.x)}
+        } else {
+            VelSet{x: const(velocity.jump.fwd.x)}
+        }
+    } else {
+        VelSet{x: const(velocity.jump.back.x)}
+    }
+    VelSet{y: const(velocity.jump.y)}
+    ChangeState{value: 50; ctrl: 1}
+}
+
+
+[Statedef 45; type: A; physics: N;
+ ctrl: 0; velset: 0, 0;]
+ChangeAnim{value: ifelse(SelfAnimExist(44), 44, 41)}
+if Time = 0 {
+    sysvar(1) := 0;
+}
+if command = "holdback" {
+    sysvar(1) := -1;
+} else if command = "holdfwd" {
+    sysvar(1) := 1;
+}
+if Time = 2 {
+    if sysvar(1) = 0 {
+        VelSet{x: const(velocity.airjump.neu.x)}
+    } else if sysvar(1) = 1 {
+        VelSet{x: const(velocity.airjump.fwd.x)}
+    } else {
+        VelSet{x: const(velocity.airjump.back.x)}
+    }
+    VelSet{y: const(velocity.airjump.y)}
+    ChangeState{value: 50; ctrl: 1}
+}
+
+
+[Statedef 50; type: A; physics: A;]
+if Time = 0 {
+    sysvar(1) := 0;
+    ChangeAnim{value: cond((vel x) = 0, 41, ifelse((vel x) > 0, 42, 43))}
+}
+if Vel y > Const240p(-2) && SelfAnimExist(anim + 3) && anim = [41, 43] {
+    ChangeAnim{value: Anim + 3}
+}
+
+
+[Statedef 51; type: A; physics: A;]
+
+
+[Statedef 52; type: S; physics: S;
+ ctrl: 0; anim: 47;]
+if Time = 0 {
+    VelSet{y: 0}
+    PosSet{y: 0}
+} else if Time = 3 {
+    CtrlSet{value: 1}
+}
+if MajorVersion = 1 && abs(vel x) < Const(movement.stand.friction.threshold){
+    VelSet{x: 0}
+}
+if AnimTime = 0 {
+    ChangeState{value: 0; ctrl: 1}
+}
+
+
+[Statedef 100; type: S; physics: S;
+ anim: 100; sprpriority: 1;]
+VelSet{x: const(velocity.run.fwd.x)}
+AssertSpecial{flag: NoWalk; flag2: NoAutoTurn}
+if command != "holdfwd" {
+    ChangeState{value: 0}
+}
+
+
+[Statedef 105; type: A; physics: A;
+ ctrl: 0; anim: 105; sprpriority: 1;]
+if Time = 0 {
+    VelSet{x: const(velocity.run.back.x); y: const(velocity.run.back.y)}
+}else if Time = 2 {
+    CtrlSet{value: 1}
+}
+if Vel Y > 0 && Pos Y >= 0 {
+    ChangeState{value: 106}
+}
+
+
+[Statedef 106; type: S; physics: S;
+ ctrl: 0; anim: 47;]
+if MajorVersion = 1 && abs(vel x) < Const(movement.stand.friction.threshold) {
+    VelSet{x: 0}
+}
+if Time = 0 {
+    VelSet{y: 0}
+    PosSet{y: 0}
+} else if Time = 2 {
+    if MajorVersion = 1 {
+        MakeDust{pos: 0, 0; spacing: 1}
+    } else {
+        MakeDust{pos: -5, -2; spacing: 1}
+    }
+} else if Time = 7 {
+    ChangeState{value: 0; ctrl: 1}
 }
 

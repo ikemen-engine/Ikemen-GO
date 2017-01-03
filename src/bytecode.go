@@ -953,6 +953,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.time())
 		case OC_alive:
 			sys.bcStack.PushB(c.alive())
+		case OC_ctrl:
+			sys.bcStack.PushB(c.canCtrl())
 		case OC_random:
 			sys.bcStack.PushI(Rand(0, 999))
 		case OC_roundstate:
@@ -1019,17 +1021,28 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.bottomEdge())
 		case OC_power:
 			sys.bcStack.PushI(c.getPower())
+		case OC_roundsexisted:
+			sys.bcStack.PushI(c.roundsExisted())
+		case OC_gametime:
+			sys.bcStack.PushI(sys.gameTime)
+		case OC_hitfall:
+			sys.bcStack.PushB(c.ghv.fallf)
 		case OC_ishelper:
 			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
 		case OC_numhelper:
 			*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
-		case OC_roundsexisted:
-			sys.bcStack.PushI(c.roundsExisted())
 		case OC_teammode:
 			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
 			i++
-		case OC_ctrl:
-			sys.bcStack.PushB(c.canCtrl())
+		case OC_statetype:
+			sys.bcStack.PushB(c.ss.sb.stateType == StateType(be[i]))
+			i++
+		case OC_movetype:
+			sys.bcStack.PushB(c.ss.sb.moveType == MoveType(be[i]))
+			i++
+		case OC_hitdefattr:
+			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
+			i += 4
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
@@ -1456,6 +1469,13 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 	if b.persistentIndex >= 0 {
 		ps[b.persistentIndex] = b.persistent
 	}
+	return false
+}
+
+type StateExpr BytecodeExp
+
+func (se StateExpr) Run(c *Char, _ []int32) (changeState bool) {
+	BytecodeExp(se).run(c)
 	return false
 }
 
@@ -3958,6 +3978,56 @@ func (sc envColor) Run(c *Char, _ []int32) bool {
 			sys.envcol_time = exp[0].evalI(c)
 		case envColor_under:
 			sys.envcol_under = exp[0].evalB(c)
+		}
+		return true
+	})
+	return false
+}
+
+type displayToClipboard StateControllerBase
+
+const (
+	displayToClipboard_params byte = iota
+	displayToClipboard_text
+)
+
+func (sc displayToClipboard) Run(c *Char, _ []int32) bool {
+	params := []interface{}{}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case displayToClipboard_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case displayToClipboard_text:
+			sys.clipboardText[c.ss.sb.playerNo] = nil
+			sys.appendToClipboard(c.ss.sb.playerNo, int(exp[0].evalI(c)), params...)
+		}
+		return true
+	})
+	return false
+}
+
+type appendToClipboard displayToClipboard
+
+func (sc appendToClipboard) Run(c *Char, _ []int32) bool {
+	params := []interface{}{}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case displayToClipboard_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case displayToClipboard_text:
+			sys.appendToClipboard(c.ss.sb.playerNo, int(exp[0].evalI(c)), params...)
 		}
 		return true
 	})
