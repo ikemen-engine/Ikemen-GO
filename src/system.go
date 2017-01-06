@@ -106,7 +106,8 @@ type System struct {
 	loadMutex                   sync.Mutex
 	ignoreMostErrors            bool
 	stringPool                  [MaxSimul * 2]StringPool
-	bcStack                     BytecodeStack
+	bcStack, bcVarStack         BytecodeStack
+	bcVar                       []BytecodeValue
 	workingChar                 *Char
 	specialFlag                 GlobalSpecialFlag
 	afterImageMax               int
@@ -442,7 +443,6 @@ type Loader struct {
 	state    LoaderState
 	loadExit chan LoaderState
 	err      error
-	code     [MaxSimul * 2]*Bytecode
 }
 
 func newLoader() *Loader {
@@ -454,7 +454,7 @@ func (l *Loader) loadChar(pn int) int {
 	nsel := len(sys.sel.selected[pn&1])
 	if sys.tmode[pn&1] == TM_Simul {
 		if pn>>1 >= sys.numSimul[pn&1] {
-			l.code[pn] = nil
+			sys.cgi[pn].states = nil
 			sys.chars[pn] = nil
 			result = 1
 		}
@@ -498,7 +498,7 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].palno = pal
 	}
 	if sys.cgi[pn].sff == nil {
-		if l.code[pn], l.err =
+		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
 			sys.chars[pn] = nil
 			return -1
@@ -515,13 +515,9 @@ func (l *Loader) loadStage() bool {
 	unimplemented()
 	return true
 }
-func (l *Loader) stateCompile() bool {
-	unimplemented()
-	return true
-}
 func (l *Loader) load() {
 	defer func() { l.loadExit <- l.state }()
-	charDone, codeDone, stageDone := make([]bool, len(sys.chars)), false, false
+	charDone, stageDone := make([]bool, len(sys.chars)), false
 	allCharDone := func() bool {
 		for _, b := range charDone {
 			if !b {
@@ -530,7 +526,7 @@ func (l *Loader) load() {
 		}
 		return true
 	}
-	for !codeDone || !stageDone || !allCharDone() {
+	for !stageDone || !allCharDone() {
 		runtime.LockOSThread()
 		for i, b := range charDone {
 			if !b {
@@ -547,7 +543,7 @@ func (l *Loader) load() {
 			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
 				sys.tmode[i] != TM_Simul {
 				for j := i + 2; j < len(sys.chars); j += 2 {
-					sys.chars[j], l.code[j], charDone[j] = nil, nil, true
+					sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
 					sys.cgi[j].wakewakaLength = 0
 				}
 			}
@@ -560,13 +556,6 @@ func (l *Loader) load() {
 			stageDone = true
 		}
 		runtime.UnlockOSThread()
-		if !codeDone && allCharDone() {
-			if !l.stateCompile() {
-				l.state = LS_Error
-				return
-			}
-			codeDone = true
-		}
 		time.Sleep(10 * time.Millisecond)
 		if sys.gameEnd {
 			l.state = LS_Cancel

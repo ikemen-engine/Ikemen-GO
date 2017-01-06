@@ -25,10 +25,13 @@ type Compiler struct {
 	lines    []string
 	i        int
 	linechan chan *string
+	vars     map[string]uint8
+	funcs    map[string]bytecodeFunction
+	funcUsed map[string]bool
 }
 
 func newCompiler() *Compiler {
-	c := &Compiler{}
+	c := &Compiler{funcs: make(map[string]bytecodeFunction)}
 	c.scmap = map[string]scFunc{
 		"hitby":              c.hitBy,
 		"nothitby":           c.notHitBy,
@@ -93,6 +96,14 @@ func newCompiler() *Compiler {
 		"envcolor":           c.envColor,
 		"displaytoclipboard": c.displayToClipboard,
 		"appendtoclipboard":  c.appendToClipboard,
+		"makedust":           c.makeDust,
+		"defencemulset":      c.defenceMulSet,
+		"fallenvshake":       c.fallEnvShake,
+		"hitfalldamage":      c.hitFallDamage,
+		"hitfallvel":         c.hitFallVel,
+		"hitfallset":         c.hitFallSet,
+		"varrangeset":        c.varRangeSet,
+		"remappal":           c.remapPal,
 	}
 	return c
 }
@@ -906,7 +917,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(be2...)
 		return bvNone(), nil
 	case "-":
-		if len(*in) > 0 && (((*in)[0] >= '0' && (*in)[0] <= '9') || (*in)[0] == '.') {
+		if len(*in) > 0 && (((*in)[0] >= '0' && (*in)[0] <= '9') ||
+			(*in)[0] == '.') {
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
@@ -1076,8 +1088,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_canrecover)
 	case "hitshakeover":
 		out.append(OC_hitshakeover)
-	case "matchover":
-		out.append(OC_matchover)
 	case "anim":
 		out.append(OC_anim)
 	case "animtime":
@@ -1157,6 +1167,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error(c.token + "が不正です")
 		}
+	case "camerapos":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_camerapos_x)
+		case "y":
+			out.append(OC_camerapos_y)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -1189,7 +1209,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "x":
 			out.append(OC_ex_, OC_ex_p2bodydist_x)
 		case "y":
-			out.append(OC_ex_, OC_ex_p2bodydist_y)
+			out.append(OC_ex_, OC_ex_p2dist_y)
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
@@ -1247,8 +1267,20 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_gametime)
 	case "hitfall":
 		out.append(OC_hitfall)
+	case "inguarddist":
+		out.append(OC_inguarddist)
+	case "hitover":
+		out.append(OC_hitover)
+	case "facing":
+		out.append(OC_facing)
+	case "palno":
+		out.append(OC_palno)
 	case "win":
 		out.append(OC_ex_, OC_ex_win)
+	case "matchover":
+		out.append(OC_ex_, OC_ex_matchover)
+	case "roundno":
+		out.append(OC_ex_, OC_ex_roundno)
 	case "ishelper":
 		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
 			return bvNone(), err
@@ -1763,9 +1795,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		*in = (*in)[1:]
 	case "majorversion":
 		out.append(OC_ex_, OC_ex_majorversion)
+	case "drawpalno":
+		out.append(OC_ex_, OC_ex_drawpalno)
 	default:
-		println(c.token)
-		unimplemented()
+		if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
+			vi, ok := c.vars[c.token[1:]]
+			if !ok {
+				return bvNone(), Error(c.token + "は定義されていません")
+			}
+			out.append(OC_localvar, OpCode(vi))
+		} else {
+			println(c.token)
+			unimplemented()
+		}
 	}
 	c.token = c.tokenizer(in)
 	return bv, nil
@@ -4719,7 +4761,7 @@ func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if !b {
-			sc.add(screenBound_value, append(sc.iToExp(0), sc.iToExp(0)...))
+			sc.add(screenBound_movecamera, append(sc.iToExp(0), sc.iToExp(0)...))
 		}
 		return nil
 	})
@@ -4914,7 +4956,7 @@ func (c *Compiler) playerPush(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if !b {
-			sc.add(posFreeze_value, sc.iToExp(1))
+			sc.add(playerPush_value, sc.iToExp(1))
 		}
 		return nil
 	})
@@ -5109,7 +5151,156 @@ func (c *Compiler) appendToClipboard(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
+func (c *Compiler) makeDust(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*makeDust)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "spacing", func(data string) error {
+			b = true
+			return c.scAdd(sc, makeDust_spacing, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(makeDust_spacing, sc.iToExp(3))
+		}
+		b = false
+		if err := c.stateParam(is, "pos", func(data string) error {
+			b = true
+			return c.scAdd(sc, makeDust_pos, data, VT_Float, 2)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(makeDust_pos, sc.iToExp(0))
+		}
+		if err := c.paramValue(is, sc, "pos2",
+			makeDust_pos2, VT_Float, 2, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*defenceMulSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "value",
+			defenceMulSet_value, VT_Float, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) fallEnvShake(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*fallEnvShake)(sc), c.stateSec(is, func() error {
+		sc.add(fallEnvShake_, nil)
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) hitFallDamage(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*hitFallDamage)(sc), c.stateSec(is, func() error {
+		sc.add(hitFallDamage_, nil)
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) hitFallVel(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*hitFallVel)(sc), c.stateSec(is, func() error {
+		sc.add(hitFallVel_, nil)
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) hitFallSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*hitFallSet)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			b = true
+			return c.scAdd(sc, hitFallSet_value, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(hitFallSet_value, sc.iToExp(-1))
+		}
+		if err := c.paramValue(is, sc, "xvel",
+			hitFallSet_xvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "yvel",
+			hitFallSet_yvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) varRangeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*varRangeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "first",
+			varRangeSet_first, VT_Int, 1, false); err != nil {
+			return err
+		}
+		last := false
+		if err := c.stateParam(is, "last", func(data string) error {
+			last = true
+			return c.scAdd(sc, varRangeSet_last, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		b := false
+		if err := c.stateParam(is, "value", func(data string) error {
+			b = true
+			if !last {
+				sc.add(varRangeSet_last, sc.iToExp(int32(NumVar-1)))
+			}
+			return c.scAdd(sc, varRangeSet_value, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.stateParam(is, "fvalue", func(data string) error {
+				b = true
+				if !last {
+					sc.add(varRangeSet_last, sc.iToExp(int32(NumFvar-1)))
+				}
+				return c.scAdd(sc, varRangeSet_fvalue, data, VT_Float, 1)
+			}); err != nil {
+				return err
+			}
+			if !b {
+				return Error("valueが指定されていません")
+			}
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) remapPal(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*remapPal)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "source",
+			remapPal_source, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dest",
+			remapPal_dest, VT_Int, 2, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) stateCompile(states map[int32]StateBytecode,
+	filename, def string) error {
 	var str string
 	fnz := filename
 	if err := LoadFile(&filename, def, func(filename string) error {
@@ -5126,7 +5317,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 			str = string(b)
 			return nil
 		}); err == nil {
-			return c.stateCompileZ(bc, fnz, str)
+			return c.stateCompileZ(states, fnz, str)
 		}
 		return err
 	}
@@ -5135,6 +5326,7 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
 	}
 	existInThisFile := make(map[int32]bool)
+	c.vars = make(map[string]uint8)
 	for ; c.i < len(c.lines); c.i++ {
 		line := strings.ToLower(strings.TrimSpace(
 			strings.SplitN(c.lines[c.i], ";", 2)[0]))
@@ -5344,11 +5536,14 @@ func (c *Compiler) stateCompile(bc *Bytecode, filename, def string) error {
 					c.block.ctrls = append(c.block.ctrls, sctrl)
 					sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
 				}
+				if c.block.ignorehitpause {
+					sbc.block.ignorehitpause = c.block.ignorehitpause
+				}
 			}
 		}
 
-		if _, ok := bc.states[n]; !ok {
-			bc.states[n] = *sbc
+		if _, ok := states[n]; !ok {
+			states[n] = *sbc
 		}
 	}
 	return nil
@@ -5462,7 +5657,7 @@ func (c *Compiler) statementEnd(line *string) error {
 func (c *Compiler) readKeyValue(is IniSection, end string,
 	line *string) error {
 	name := c.scan(line)
-	if name == "" {
+	if name == "" || name == ":" {
 		return c.yokisinaiToken()
 	}
 	if name == end {
@@ -5479,9 +5674,102 @@ func (c *Compiler) readKeyValue(is IniSection, end string,
 	is[name] = data
 	return nil
 }
-func (c *Compiler) subBlock(line *string,
-	parent *StateBlock, root bool) (*StateBlock, error) {
+func (c *Compiler) varNameCheck(nm string) (err error) {
+	if (nm[0] < 'a' || nm[0] > 'z') && nm[0] != '_' {
+		return Error("不正な名前: " + nm)
+	}
+	for _, c := range nm[1:] {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '_' {
+			return Error("不正な名前: " + nm)
+		}
+	}
+	return nil
+}
+func (c *Compiler) varNames(end string, line *string) ([]string, error) {
+	names, name := []string{}, c.scan(line)
+	if name != end {
+		for {
+			if name == "" || name == "," || name == end {
+				return nil, c.yokisinaiToken()
+			}
+			if err := c.varNameCheck(name); err != nil {
+				return nil, err
+			}
+			if name != "_" {
+				for _, nm := range names {
+					if nm == name {
+						return nil, Error("同一の名前の使用: " + name)
+					}
+				}
+			}
+			names = append(names, name)
+			c.scan(line)
+			if c.token == "," {
+				name = c.scan(line)
+			} else {
+				if err := c.needToken(end); err != nil {
+					return nil, err
+				}
+				break
+			}
+		}
+	}
+	return names, nil
+}
+func (c *Compiler) inclNumVars(numVars *int32) error {
+	*numVars++
+	if *numVars > 256 {
+		return Error("ローカル変数量の上限 256 を超過")
+	}
+	return nil
+}
+func (c *Compiler) subBlock(line *string, root bool,
+	sbc *StateBytecode, numVars *int32) (*StateBlock, error) {
 	bl := newStateBlock()
+	for {
+		switch c.token {
+		case "ignorehitpause":
+			if bl.ignorehitpause {
+				return nil, c.yokisinaiToken()
+			}
+			bl.ignorehitpause, bl.ctrlsIgnorehitpause = true, true
+			c.scan(line)
+			continue
+		case "persistent":
+			if sbc == nil {
+				return nil, Error("関数内でpersistentは使用できない")
+			}
+			if bl.persistentIndex >= 0 {
+				return nil, c.yokisinaiToken()
+			}
+			c.scan(line)
+			if err := c.needToken("("); err != nil {
+				return nil, err
+			}
+			c.scan(line)
+			var err error
+			if bl.persistent, err = c.integer2(line); err != nil {
+				return nil, err
+			}
+			if c.token == "" {
+				c.scan(line)
+			}
+			if err := c.needToken(")"); err != nil {
+				return nil, err
+			}
+			if bl.persistent == 1 {
+				return nil, Error("persistent(1)は無意味なので禁止")
+			}
+			if bl.persistent <= 0 {
+				bl.persistent = math.MaxInt32
+			}
+			bl.persistentIndex = int32(len(sbc.ctrlsps))
+			sbc.ctrlsps = append(sbc.ctrlsps, 0)
+			c.scan(line)
+			continue
+		}
+		break
+	}
 	switch c.token {
 	case "{":
 	case "if":
@@ -5500,11 +5788,9 @@ func (c *Compiler) subBlock(line *string,
 	default:
 		return nil, c.yokisinaiToken()
 	}
-	if err := c.stateBlock(line, bl, false); err != nil {
+	if err := c.stateBlock(line, bl, false,
+		sbc, &bl.ctrls, numVars); err != nil {
 		return nil, err
-	}
-	if bl.ignorehitpause {
-		parent.ignorehitpause = true
 	}
 	if root {
 		if len(bl.trigger) > 0 {
@@ -5528,7 +5814,8 @@ func (c *Compiler) subBlock(line *string,
 	if len(bl.trigger) > 0 && c.token == "else" {
 		c.scan(line)
 		var err error
-		if bl.elseBlock, err = c.subBlock(line, bl, false); err != nil {
+		if bl.elseBlock, err = c.subBlock(line, root,
+			sbc, numVars); err != nil {
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause {
@@ -5537,7 +5824,85 @@ func (c *Compiler) subBlock(line *string,
 	}
 	return bl, nil
 }
-func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
+func (c *Compiler) callFunc(line *string, root bool,
+	ctrls *[]StateController, ret []uint8) error {
+	var cf callFunction
+	var ok bool
+	cf.bytecodeFunction, ok = c.funcs[c.scan(line)]
+	cf.ret = ret
+	if !ok {
+		if c.token == "" || c.token == "(" {
+			return c.yokisinaiToken()
+		}
+		return Error("未定義の関数: " + c.token)
+	}
+	c.funcUsed[c.token] = true
+	if len(ret) > 0 && len(ret) != int(cf.numRets) {
+		return Error(fmt.Sprintf("代入と返り値の数の不一致: %v = %v",
+			len(ret), cf.numRets))
+	}
+	c.scan(line)
+	if err := c.needToken("("); err != nil {
+		return err
+	}
+	expr, _, err := c.readSentence(line)
+	if err != nil {
+		return err
+	}
+	otk := c.token
+	if cf.numArgs == 0 {
+		c.token = c.tokenizer(&expr)
+		if c.token == "" {
+			c.token = otk
+		}
+		if err := c.needToken(")"); err != nil {
+			return err
+		}
+	} else {
+		for i := 0; i < int(cf.numArgs); i++ {
+			var be BytecodeExp
+			if i < int(cf.numArgs)-1 {
+				if be, err = c.argExpression(&expr, VT_SFalse); err != nil {
+					return err
+				}
+				if c.token == "" {
+					c.token = otk
+				}
+				if err := c.needToken(","); err != nil {
+					return err
+				}
+			} else {
+				if be, err = c.typedExp(c.expBoolOr, &expr, VT_SFalse); err != nil {
+					return err
+				}
+				if c.token == "" {
+					c.token = otk
+				}
+				if err := c.needToken(")"); err != nil {
+					return err
+				}
+			}
+			cf.arg.append(be...)
+		}
+	}
+	if c.token = c.tokenizer(&expr); c.token != "" {
+		return c.yokisinaiToken()
+	}
+	c.token = otk
+	if err := c.needToken(";"); err != nil {
+		return err
+	}
+	if root {
+		if err := c.statementEnd(line); err != nil {
+			return err
+		}
+	}
+	*ctrls = append(*ctrls, cf)
+	c.scan(line)
+	return nil
+}
+func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
+	sbc *StateBytecode, ctrls *[]StateController, numVars *int32) error {
 	c.scan(line)
 	for {
 		switch c.token {
@@ -5551,11 +5916,88 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 				return c.yokisinaiToken()
 			}
 			return nil
-		case "{", "if":
-			if sbl, err := c.subBlock(line, bl, root); err != nil {
+		case "if", "ignorehitpause", "persistent":
+			if sbl, err := c.subBlock(line, root, sbc, numVars); err != nil {
 				return err
 			} else {
-				bl.ctrls = append(bl.ctrls, *sbl)
+				if bl != nil && sbl.ignorehitpause {
+					bl.ignorehitpause = true
+				}
+				*ctrls = append(*ctrls, *sbl)
+			}
+			continue
+		case "call":
+			if err := c.callFunc(line, root, ctrls, nil); err != nil {
+				return err
+			}
+			continue
+		case "let":
+			names, err := c.varNames("=", line)
+			if err != nil {
+				return err
+			}
+			if len(names) == 0 {
+				return c.yokisinaiToken()
+			}
+			varis := make([]uint8, len(names))
+			for i, n := range names {
+				vi, ok := c.vars[n]
+				if !ok {
+					vi = uint8(*numVars)
+					c.vars[n] = vi
+					if err := c.inclNumVars(numVars); err != nil {
+						return err
+					}
+				}
+				varis[i] = vi
+			}
+			switch c.scan(line) {
+			case "call":
+				if err := c.callFunc(line, root, ctrls, varis); err != nil {
+					return err
+				}
+			default:
+				otk := c.token
+				expr, _, err := c.readSentence(line)
+				if err != nil {
+					return err
+				}
+				expr = otk + " " + expr
+				otk = c.token
+				for i, n := range names {
+					var be BytecodeExp
+					if i < len(names)-1 {
+						be, err = c.argExpression(&expr, VT_SFalse)
+						if err != nil {
+							return err
+						}
+						if c.token == "" {
+							c.token = otk
+						}
+						if err := c.needToken(","); err != nil {
+							return err
+						}
+					} else {
+						if be, err = c.fullExpression(&expr, VT_SFalse); err != nil {
+							return err
+						}
+					}
+					if n == "_" {
+						*ctrls = append(*ctrls, StateExpr(be))
+					} else {
+						*ctrls = append(*ctrls, varAssign{vari: varis[i], be: be})
+					}
+				}
+				c.token = otk
+				if err := c.needToken(";"); err != nil {
+					return err
+				}
+				if root {
+					if err := c.statementEnd(line); err != nil {
+						return err
+					}
+				}
+				c.scan(line)
 			}
 			continue
 		default:
@@ -5593,7 +6035,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 				if sctrl, err := scf(is, sc, -1); err != nil {
 					return err
 				} else {
-					bl.ctrls = append(bl.ctrls, sctrl)
+					*ctrls = append(*ctrls, sctrl)
 				}
 				c.scan(line)
 				continue
@@ -5608,7 +6050,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 				if stex, err := c.fullExpression(&expr, VT_SFalse); err != nil {
 					return err
 				} else {
-					bl.ctrls = append(bl.ctrls, StateExpr(stex))
+					*ctrls = append(*ctrls, StateExpr(stex))
 				}
 				c.token = otk
 				if err := c.needToken(";"); err != nil {
@@ -5631,7 +6073,8 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool) error {
 	}
 	return c.yokisinaiToken()
 }
-func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
+func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
+	filename, src string) error {
 	defer func(oime bool) {
 		sys.ignoreMostErrors = oime
 	}(sys.ignoreMostErrors)
@@ -5645,14 +6088,15 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 			return 0
 		}
 		endchan <- true
-		lineNo := c.i + 1
+		lineOffset := 1
 		for {
 			if sp := <-c.linechan; sp != nil && *sp == "\n" {
 				close(endchan)
 				close(c.linechan)
 				c.linechan = nil
-				return lineNo
+				return c.i + lineOffset
 			}
+			lineOffset--
 		}
 	}
 	defer stop()
@@ -5670,20 +6114,17 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 			if i < len(c.lines) {
 				str := strings.TrimSpace(c.lines[i])
 				sp = &str
-			} else {
-				sp = nil
-			}
-			c.linechan <- sp
-			if i < len(c.lines) {
 				c.i = i
 				i++
 			}
+			c.linechan <- sp
 		}
 	}()
 	errmes := func(err error) error {
 		return Error(fmt.Sprintf("%v:%v:\n%v", filename, stop(), err.Error()))
 	}
 	existInThisFile := make(map[int32]bool)
+	c.funcUsed = make(map[string]bool)
 	var line string
 	c.token = ""
 	for {
@@ -5705,6 +6146,9 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 			if err != nil {
 				return errmes(err)
 			}
+			if c.token == "" {
+				c.scan(&line)
+			}
 			if existInThisFile[n] {
 				return errmes(Error(fmt.Sprintf("State %v の多重定義", n)))
 			}
@@ -5721,27 +6165,87 @@ func (c *Compiler) stateCompileZ(bc *Bytecode, filename, src string) error {
 				}
 			}
 			sbc := newStateBytecode(c.playerNo)
+			c.vars = make(map[string]uint8)
 			if err := c.stateDef(is, sbc); err != nil {
 				return errmes(err)
 			}
 			if err := c.statementEnd(&line); err != nil {
 				return errmes(err)
 			}
-			if err := c.stateBlock(&line, &sbc.block, true); err != nil {
+			if err := c.stateBlock(&line, &sbc.block, true,
+				sbc, &sbc.block.ctrls, &sbc.numVars); err != nil {
 				return errmes(err)
 			}
-			if _, ok := bc.states[n]; !ok {
-				bc.states[n] = *sbc
+			if _, ok := states[n]; !ok {
+				states[n] = *sbc
 			}
+		case "function":
+			name := c.scan(&line)
+			if name == "" || name == "(" || name == "]" {
+				return errmes(c.yokisinaiToken())
+			}
+			if err := c.varNameCheck(name); err != nil {
+				return errmes(err)
+			}
+			if c.funcUsed[name] {
+				return errmes(Error(
+					"同じファイル内で定義済み、またはすでに使用している関数の再定義: " + name))
+			}
+			c.scan(&line)
+			if err := c.needToken("("); err != nil {
+				return errmes(err)
+			}
+			fun := bytecodeFunction{}
+			c.vars = make(map[string]uint8)
+			if args, err := c.varNames(")", &line); err != nil {
+				return errmes(err)
+			} else {
+				for _, a := range args {
+					if a != "_" {
+						c.vars[a] = uint8(fun.numVars)
+					}
+					if err := c.inclNumVars(&fun.numVars); err != nil {
+						return errmes(err)
+					}
+				}
+				fun.numArgs = int32(len(args))
+			}
+			if rets, err := c.varNames("]", &line); err != nil {
+				return errmes(err)
+			} else {
+				for _, r := range rets {
+					if r == "_" {
+						return errmes(Error("返り値名が _"))
+					} else if _, ok := c.vars[r]; ok {
+						return errmes(Error("同一の名前の使用: " + r))
+					} else {
+						c.vars[r] = uint8(fun.numVars)
+					}
+					if err := c.inclNumVars(&fun.numVars); err != nil {
+						return errmes(err)
+					}
+				}
+				fun.numRets = int32(len(rets))
+			}
+			if err := c.stateBlock(&line, nil, true,
+				nil, &fun.ctrls, &fun.numVars); err != nil {
+				return errmes(err)
+			}
+			if c.funcUsed[name] {
+				return errmes(Error("内部で使用している関数と同名の関数を定義: " + name))
+			}
+			c.funcs[name] = fun
+			c.funcUsed[name] = true
 		default:
 			return errmes(Error("認識できないセクション名: " + c.token))
 		}
 	}
 	return nil
 }
-func (c *Compiler) Compile(pn int, def string) (*Bytecode, error) {
+func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
+	error) {
 	c.playerNo = pn
-	bc := newBytecode()
+	states := make(map[int32]StateBytecode)
 	str, err := LoadText(def)
 	if err != nil {
 		return nil, err
@@ -5869,18 +6373,18 @@ func (c *Compiler) Compile(pn int, def string) (*Bytecode, error) {
 	sys.stringPool[pn].Clear()
 	for _, s := range st {
 		if len(s) > 0 {
-			if err := c.stateCompile(bc, s, def); err != nil {
+			if err := c.stateCompile(states, s, def); err != nil {
 				return nil, err
 			}
 		}
 	}
-	if err := c.stateCompile(bc, cmd, def); err != nil {
+	if err := c.stateCompile(states, cmd, def); err != nil {
 		return nil, err
 	}
 	if len(stcommon) > 0 {
-		if err := c.stateCompile(bc, stcommon, def); err != nil {
+		if err := c.stateCompile(states, stcommon, def); err != nil {
 			return nil, err
 		}
 	}
-	return bc, nil
+	return states, nil
 }

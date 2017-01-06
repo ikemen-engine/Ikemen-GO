@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"unsafe"
 )
@@ -65,6 +66,7 @@ const (
 	OC_sysvar
 	OC_fvar
 	OC_sysfvar
+	OC_localvar
 	OC_int8
 	OC_int
 	OC_float
@@ -193,7 +195,6 @@ const (
 	OC_hitvel_x
 	OC_hitvel_y
 	OC_roundsexisted
-	OC_matchover
 	OC_parent
 	OC_root
 	OC_helper
@@ -334,7 +335,6 @@ const (
 	OC_ex_p2dist_x OpCode = iota
 	OC_ex_p2dist_y
 	OC_ex_p2bodydist_x
-	OC_ex_p2bodydist_y
 	OC_ex_parentdist_x
 	OC_ex_parentdist_y
 	OC_ex_rootdist_x
@@ -347,12 +347,14 @@ const (
 	OC_ex_loseko
 	OC_ex_losetime
 	OC_ex_drawgame
+	OC_ex_matchover
 	OC_ex_matchno
 	OC_ex_roundno
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
 	OC_ex_timemod
 	OC_ex_majorversion
+	OC_ex_drawpalno
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -492,6 +494,19 @@ func (bs *BytecodeStack) Dup() {
 }
 func (bs *BytecodeStack) Swap() {
 	*bs.Top(), (*bs)[len(*bs)-2] = (*bs)[len(*bs)-2], *bs.Top()
+}
+func (bs *BytecodeStack) Alloc(size int) []BytecodeValue {
+	if len(*bs)+size > cap(*bs) {
+		tmp := *bs
+		*bs = make(BytecodeStack, len(*bs)+size)
+		copy(*bs, tmp)
+	} else {
+		*bs = (*bs)[:len(*bs)+size]
+		for i := len(*bs) - size; i < len(*bs); i++ {
+			(*bs)[i] = bvNone()
+		}
+	}
+	return (*bs)[len(*bs)-size:]
 }
 
 type BytecodeExp []OpCode
@@ -993,12 +1008,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.screenPosX())
 		case OC_screenpos_y:
 			sys.bcStack.PushF(c.screenPosY())
+		case OC_camerapos_x:
+			sys.bcStack.PushF(sys.cameraPos[0])
+		case OC_camerapos_y:
+			sys.bcStack.PushF(sys.cameraPos[1])
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_hitshakeover:
 			sys.bcStack.PushB(c.hitShakeOver())
-		case OC_matchover:
-			sys.bcStack.PushB(sys.matchOver())
 		case OC_frontedgedist:
 			sys.bcStack.PushI(c.frontEdgeDist())
 		case OC_frontedgebodydist:
@@ -1027,6 +1044,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(sys.gameTime)
 		case OC_hitfall:
 			sys.bcStack.PushB(c.ghv.fallf)
+		case OC_inguarddist:
+			sys.bcStack.PushB(c.inguarddist)
+		case OC_hitover:
+			sys.bcStack.PushB(c.hitOver())
+		case OC_facing:
+			sys.bcStack.PushI(int32(c.facing))
+		case OC_palno:
+			sys.bcStack.PushI(c.gi().palno)
 		case OC_ishelper:
 			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
 		case OC_numhelper:
@@ -1057,6 +1082,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			*sys.bcStack.Top() = c.fvarGet(sys.bcStack.Top().ToI())
 		case OC_sysfvar:
 			*sys.bcStack.Top() = c.sysFvarGet(sys.bcStack.Top().ToI())
+		case OC_localvar:
+			*sys.bcStack.Top() = sys.bcVar[uint8(be[i])]
+			i++
 		default:
 			vi := be[i-1]
 			if vi < OC_sysvar0+NumSysVar {
@@ -1064,7 +1092,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			} else if vi < OC_sysfvar0+NumSysFvar {
 				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
 			} else {
-				println(be[i-1])
+				println(fmt.Sprintf("%+v", c.ss), be[i-1])
 				unimplemented()
 			}
 		}
@@ -1114,7 +1142,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
 			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
 		} else {
-			println(be[*i-1])
+			println(fmt.Sprintf("%+v", c.ss), be[*i-1])
 			unimplemented()
 		}
 	}
@@ -1123,29 +1151,29 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 	(*i)++
 	switch be[*i-1] {
 	case OC_const_data_life:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.life)
+		sys.bcStack.PushI(c.gi().data.life)
 	case OC_const_data_power:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.power)
+		sys.bcStack.PushI(c.gi().data.power)
 	case OC_const_data_attack:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.attack)
+		sys.bcStack.PushI(c.gi().data.attack)
 	case OC_const_data_defence:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.defence)
+		sys.bcStack.PushI(c.gi().data.defence)
 	case OC_const_data_fall_defence_mul:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].data.fall.defence_mul)
+		sys.bcStack.PushF(c.gi().data.fall.defence_mul)
 	case OC_const_data_liedown_time:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.liedown.time)
+		sys.bcStack.PushI(c.gi().data.liedown.time)
 	case OC_const_data_airjuggle:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.airjuggle)
+		sys.bcStack.PushI(c.gi().data.airjuggle)
 	case OC_const_data_sparkno:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.sparkno)
+		sys.bcStack.PushI(c.gi().data.sparkno)
 	case OC_const_data_guard_sparkno:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.guard.sparkno)
+		sys.bcStack.PushI(c.gi().data.guard.sparkno)
 	case OC_const_data_ko_echo:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.ko.echo)
+		sys.bcStack.PushI(c.gi().data.ko.echo)
 	case OC_const_data_intpersistindex:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.intpersistindex)
+		sys.bcStack.PushI(c.gi().data.intpersistindex)
 	case OC_const_data_floatpersistindex:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].data.floatpersistindex)
+		sys.bcStack.PushI(c.gi().data.floatpersistindex)
 	case OC_const_size_xscale:
 		sys.bcStack.PushF(c.size.xscale)
 	case OC_const_size_yscale:
@@ -1187,131 +1215,124 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 	case OC_const_size_draw_offset_y:
 		sys.bcStack.PushI(c.size.draw.offset[1])
 	case OC_const_velocity_walk_fwd_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.walk.fwd)
+		sys.bcStack.PushF(c.gi().velocity.walk.fwd)
 	case OC_const_velocity_walk_back_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.walk.back)
+		sys.bcStack.PushF(c.gi().velocity.walk.back)
 	case OC_const_velocity_walk_up_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.walk.up.x)
+		sys.bcStack.PushF(c.gi().velocity.walk.up.x)
 	case OC_const_velocity_walk_down_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.walk.down.x)
+		sys.bcStack.PushF(c.gi().velocity.walk.down.x)
 	case OC_const_velocity_run_fwd_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.fwd[0])
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[0])
 	case OC_const_velocity_run_fwd_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.fwd[1])
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[1])
 	case OC_const_velocity_run_back_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.back[0])
+		sys.bcStack.PushF(c.gi().velocity.run.back[0])
 	case OC_const_velocity_run_back_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.back[1])
+		sys.bcStack.PushF(c.gi().velocity.run.back[1])
 	case OC_const_velocity_run_up_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.up.x)
+		sys.bcStack.PushF(c.gi().velocity.run.up.x)
 	case OC_const_velocity_run_up_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.up.y)
+		sys.bcStack.PushF(c.gi().velocity.run.up.y)
 	case OC_const_velocity_run_down_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.down.x)
+		sys.bcStack.PushF(c.gi().velocity.run.down.x)
 	case OC_const_velocity_run_down_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.run.down.y)
+		sys.bcStack.PushF(c.gi().velocity.run.down.y)
 	case OC_const_velocity_jump_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.neu[1])
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[1])
 	case OC_const_velocity_jump_neu_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.neu[0])
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[0])
 	case OC_const_velocity_jump_back_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.back)
+		sys.bcStack.PushF(c.gi().velocity.jump.back)
 	case OC_const_velocity_jump_fwd_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.fwd)
+		sys.bcStack.PushF(c.gi().velocity.jump.fwd)
 	case OC_const_velocity_jump_up_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.jump.up.x)
 	case OC_const_velocity_jump_down_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.jump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.jump.down.x)
 	case OC_const_velocity_runjump_back_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.back[0])
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[0])
 	case OC_const_velocity_runjump_back_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.back[1])
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[1])
 	case OC_const_velocity_runjump_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.fwd[1])
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[1])
 	case OC_const_velocity_runjump_fwd_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.fwd[0])
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0])
 	case OC_const_velocity_runjump_up_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.runjump.up.x)
 	case OC_const_velocity_runjump_down_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.runjump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.runjump.down.x)
 	case OC_const_velocity_airjump_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.neu[1])
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1])
 	case OC_const_velocity_airjump_neu_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.neu[0])
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[0])
 	case OC_const_velocity_airjump_back_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.back)
+		sys.bcStack.PushF(c.gi().velocity.airjump.back)
 	case OC_const_velocity_airjump_fwd_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.fwd)
+		sys.bcStack.PushF(c.gi().velocity.airjump.fwd)
 	case OC_const_velocity_airjump_up_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.airjump.up.x)
 	case OC_const_velocity_airjump_down_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.airjump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.airjump.down.x)
 	case OC_const_velocity_air_gethit_groundrecover_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.groundrecover[0])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0])
 	case OC_const_velocity_air_gethit_groundrecover_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.groundrecover[1])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[1])
 	case OC_const_velocity_air_gethit_airrecover_mul_x:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].velocity.air.gethit.airrecover.mul[0])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[0])
 	case OC_const_velocity_air_gethit_airrecover_mul_y:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].velocity.air.gethit.airrecover.mul[1])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[1])
 	case OC_const_velocity_air_gethit_airrecover_add_x:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].velocity.air.gethit.airrecover.add[0])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[0])
 	case OC_const_velocity_air_gethit_airrecover_add_y:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].velocity.air.gethit.airrecover.add[1])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[1])
 	case OC_const_velocity_air_gethit_airrecover_back:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.airrecover.back)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.back)
 	case OC_const_velocity_air_gethit_airrecover_fwd:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.airrecover.fwd)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.fwd)
 	case OC_const_velocity_air_gethit_airrecover_up:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.airrecover.up)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.up)
 	case OC_const_velocity_air_gethit_airrecover_down:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].velocity.air.gethit.airrecover.down)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.down)
 	case OC_const_movement_airjump_num:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].movement.airjump.num)
+		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(sys.cgi[c.playerNo].movement.airjump.height)
+		sys.bcStack.PushI(c.gi().movement.airjump.height)
 	case OC_const_movement_yaccel:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.yaccel)
+		sys.bcStack.PushF(c.gi().movement.yaccel)
 	case OC_const_movement_stand_friction:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.stand.friction)
+		sys.bcStack.PushF(c.gi().movement.stand.friction)
 	case OC_const_movement_crouch_friction:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.crouch.friction)
+		sys.bcStack.PushF(c.gi().movement.crouch.friction)
 	case OC_const_movement_stand_friction_threshold:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.stand.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.stand.friction_threshold)
 	case OC_const_movement_crouch_friction_threshold:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.crouch.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.crouch.friction_threshold)
 	case OC_const_movement_air_gethit_groundlevel:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.air.gethit.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundlevel)
 	case OC_const_movement_air_gethit_groundrecover_ground_threshold:
 		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].movement.air.gethit.groundrecover.ground.threshold)
+			c.gi().movement.air.gethit.groundrecover.ground.threshold)
 	case OC_const_movement_air_gethit_groundrecover_groundlevel:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].movement.air.gethit.groundrecover.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundrecover.groundlevel)
 	case OC_const_movement_air_gethit_airrecover_threshold:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].movement.air.gethit.airrecover.threshold)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.threshold)
 	case OC_const_movement_air_gethit_airrecover_yaccel:
-		sys.bcStack.PushF(
-			sys.cgi[c.playerNo].movement.air.gethit.airrecover.yaccel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.yaccel)
 	case OC_const_movement_air_gethit_trip_groundlevel:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.air.gethit.trip.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.trip.groundlevel)
 	case OC_const_movement_down_bounce_offset_x:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.down.bounce.offset[0])
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[0])
 	case OC_const_movement_down_bounce_offset_y:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.down.bounce.offset[1])
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[1])
 	case OC_const_movement_down_bounce_yaccel:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.down.bounce.yaccel)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel)
 	case OC_const_movement_down_bounce_groundlevel:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.down.bounce.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel)
 	case OC_const_movement_down_friction_threshold:
-		sys.bcStack.PushF(sys.cgi[c.playerNo].movement.down.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
 	default:
-		println(be[*i-1])
+		println(fmt.Sprintf("%+v", c.ss), be[*i-1])
 		unimplemented()
 	}
 }
@@ -1319,23 +1340,25 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	(*i)++
 	switch be[*i-1] {
 	case OC_ex_p2dist_x:
-		sys.bcStack.Push(c.p2DistX())
+		sys.bcStack.Push(c.rdDistX(c.p2()))
 	case OC_ex_p2dist_y:
-		sys.bcStack.Push(c.p2DistY())
+		sys.bcStack.Push(c.rdDistY(c.p2()))
 	case OC_ex_p2bodydist_x:
 		sys.bcStack.Push(c.p2BodyDistX())
-	case OC_ex_p2bodydist_y:
-		sys.bcStack.Push(c.p2BodyDistY())
 	case OC_ex_rootdist_x:
-		sys.bcStack.Push(c.rootDistX())
+		sys.bcStack.Push(c.rdDistX(c.root()))
 	case OC_ex_rootdist_y:
-		sys.bcStack.Push(c.rootDistY())
+		sys.bcStack.Push(c.rdDistY(c.root()))
 	case OC_ex_parentdist_x:
-		sys.bcStack.Push(c.parentDistX())
+		sys.bcStack.Push(c.rdDistX(c.parent()))
 	case OC_ex_parentdist_y:
-		sys.bcStack.Push(c.parentDistY())
+		sys.bcStack.Push(c.rdDistY(c.parent()))
 	case OC_ex_win:
 		sys.bcStack.PushB(c.win())
+	case OC_ex_matchover:
+		sys.bcStack.PushB(sys.matchOver())
+	case OC_ex_roundno:
+		sys.bcStack.PushI(sys.round)
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_airtype:
@@ -1399,9 +1422,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase)
 	case OC_ex_majorversion:
-		sys.bcStack.PushI(int32(sys.cgi[sys.workingChar.playerNo].ver[0]))
+		sys.bcStack.PushI(int32(c.gi().ver[0]))
+	case OC_ex_drawpalno:
+		sys.bcStack.PushI(c.gi().drawpalno)
 	default:
-		println(be[*i-1])
+		println(fmt.Sprintf("%+v", c.ss), be[*i-1])
 		unimplemented()
 	}
 }
@@ -1419,7 +1444,62 @@ type StateController interface {
 	Run(c *Char, ps []int32) (changeState bool)
 }
 
-const SCID_trigger byte = 255
+type bytecodeFunction struct {
+	numVars int32
+	numRets int32
+	numArgs int32
+	ctrls   []StateController
+}
+
+func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
+	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
+	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
+	if len(sys.bcStack) != int(bf.numArgs) {
+		println(fmt.Sprintf("%+v", c.ss))
+		unimplemented()
+	}
+	copy(sys.bcVar, sys.bcStack)
+	sys.bcStack.Clear()
+	for _, sc := range bf.ctrls {
+		switch sc.(type) {
+		case StateBlock:
+		default:
+			if c.hitPause() {
+				continue
+			}
+		}
+		if sc.Run(c, nil) {
+			changeState = true
+			break
+		}
+	}
+	if !changeState {
+		if len(ret) > 0 {
+			if len(ret) != int(bf.numRets) {
+				println(fmt.Sprintf("%+v", c.ss))
+				unimplemented()
+			}
+			for i, r := range ret {
+				oldv[r] = sys.bcVar[int(bf.numArgs)+i]
+			}
+		}
+	}
+	sys.bcVar, sys.bcVarStack = oldv, sys.bcVarStack[:oldvslen]
+	return
+}
+
+type callFunction struct {
+	bytecodeFunction
+	arg BytecodeExp
+	ret []uint8
+}
+
+func (cf callFunction) Run(c *Char, _ []int32) (changeState bool) {
+	if len(cf.arg) > 0 {
+		sys.bcStack.Push(cf.arg.run(c))
+	}
+	return cf.run(c, cf.ret)
+}
 
 type StateBlock struct {
 	persistent          int32
@@ -1452,11 +1532,8 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 		return false
 	}
 	for _, sc := range b.ctrls {
-		switch t := sc.(type) {
+		switch sc.(type) {
 		case StateBlock:
-			if !t.ignorehitpause && c.hitPause() {
-				continue
-			}
 		default:
 			if !b.ctrlsIgnorehitpause && c.hitPause() {
 				continue
@@ -1476,6 +1553,16 @@ type StateExpr BytecodeExp
 
 func (se StateExpr) Run(c *Char, _ []int32) (changeState bool) {
 	BytecodeExp(se).run(c)
+	return false
+}
+
+type varAssign struct {
+	vari uint8
+	be   BytecodeExp
+}
+
+func (va varAssign) Run(c *Char, _ []int32) (changeState bool) {
+	sys.bcVar[va.vari] = va.be.run(c)
 	return false
 }
 
@@ -1529,9 +1616,6 @@ func (scb StateControllerBase) run(c *Char,
 			break
 		}
 	}
-	if len(sys.bcStack) != 0 {
-		unimplemented()
-	}
 }
 
 type stateDef StateControllerBase
@@ -1549,7 +1633,7 @@ const (
 	stateDef_poweradd
 )
 
-func (sc stateDef) Run(c *Char, _ []int32) bool {
+func (sc stateDef) Run(c *Char) {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case stateDef_hitcountpersist:
@@ -1567,8 +1651,8 @@ func (sc stateDef) Run(c *Char, _ []int32) bool {
 		case stateDef_sprpriority:
 			c.setSprPriority(exp[0].evalI(c))
 		case stateDef_facep2:
-			if exp[0].evalB(c) {
-				c.faceP2()
+			if exp[0].evalB(c) && c.rdDistX(c.p2()).ToF() < 0 {
+				c.setFacing(-c.facing)
 			}
 		case stateDef_juggle:
 			c.setJuggle(exp[0].evalI(c))
@@ -1589,7 +1673,6 @@ func (sc stateDef) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return false
 }
 
 type hitBy StateControllerBase
@@ -1670,7 +1753,7 @@ const (
 func (sc playSnd) Run(c *Char, _ []int32) bool {
 	f, lw, lp := false, false, false
 	var g, n, ch, vo int32 = -1, 0, -1, 0
-	if sys.cgi[sys.workingChar.ss.sb.playerNo].ver[0] == 1 {
+	if sys.workingChar.stCgi().ver[0] == 1 {
 		vo = 100
 	}
 	var p, fr float32 = 0, 1
@@ -2968,8 +3051,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 }
 func (sc hitDef) Run(c *Char, _ []int32) bool {
 	c.hitdef.clear()
-	c.hitdef.sparkno = ^sys.cgi[c.playerNo].data.sparkno
-	c.hitdef.guard_sparkno = ^sys.cgi[c.playerNo].data.guard.sparkno
+	c.hitdef.sparkno = ^c.gi().data.sparkno
+	c.hitdef.guard_sparkno = ^c.gi().data.guard.sparkno
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		sc.runSub(c, &c.hitdef, id, exp)
 		return true
@@ -3559,7 +3642,7 @@ func (sc lifeAdd) Run(c *Char, _ []int32) bool {
 		case lifeAdd_kill:
 			k = exp[0].evalB(c)
 		case lifeAdd_value:
-			c.lifeAdd(exp[0].evalI(c), k, a)
+			c.lifeAdd(float64(exp[0].evalI(c)), k, a)
 		}
 		return true
 	})
@@ -3853,7 +3936,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 				n = exp[2].evalI(c)
 			}
 			vo := int32(0)
-			if sys.cgi[sys.workingChar.ss.sb.playerNo].ver[0] == 1 {
+			if sys.workingChar.stCgi().ver[0] == 1 {
 				vo = 100
 			}
 			c.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
@@ -4034,14 +4117,215 @@ func (sc appendToClipboard) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type makeDust StateControllerBase
+
+const (
+	makeDust_spacing byte = iota
+	makeDust_pos
+	makeDust_pos2
+)
+
+func (sc makeDust) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case makeDust_spacing:
+			s := Max(1, exp[0].evalI(c))
+			if c.time()%s != s-1 {
+				return false
+			}
+		case makeDust_pos:
+			x, y := exp[0].evalF(c), float32(0)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c)
+			}
+			c.makeDust(x-float32(c.size.draw.offset[0]),
+				y-float32(c.size.draw.offset[1]))
+		case makeDust_pos2:
+			x, y := exp[0].evalF(c), float32(0)
+			if len(exp) > 1 {
+				y = exp[1].evalF(c)
+			}
+			c.makeDust(x-float32(c.size.draw.offset[0]),
+				y-float32(c.size.draw.offset[1]))
+		}
+		return true
+	})
+	return false
+}
+
+type defenceMulSet StateControllerBase
+
+const (
+	defenceMulSet_value byte = iota
+)
+
+func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case defenceMulSet_value:
+			c.defenceMul = float32(c.gi().data.defence) / (exp[0].evalF(c) * 100)
+		}
+		return true
+	})
+	return false
+}
+
+type fallEnvShake StateControllerBase
+
+const (
+	fallEnvShake_ byte = iota
+)
+
+func (sc fallEnvShake) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case fallEnvShake_:
+			sys.envShake = EnvShake{time: c.ghv.fall.envshake_time,
+				freq: c.ghv.fall.envshake_freq * math.Pi / 180,
+				ampl: c.ghv.fall.envshake_ampl, phase: c.ghv.fall.envshake_phase}
+			sys.envShake.setDefPhase()
+		}
+		return true
+	})
+	return false
+}
+
+type hitFallDamage StateControllerBase
+
+const (
+	hitFallDamage_ byte = iota
+)
+
+func (sc hitFallDamage) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitFallDamage_:
+			c.hitFallDamage()
+		}
+		return true
+	})
+	return false
+}
+
+type hitFallVel StateControllerBase
+
+const (
+	hitFallVel_ byte = iota
+)
+
+func (sc hitFallVel) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitFallVel_:
+			c.hitFallVel()
+		}
+		return true
+	})
+	return false
+}
+
+type hitFallSet StateControllerBase
+
+const (
+	hitFallSet_value byte = iota
+	hitFallSet_xvel
+	hitFallSet_yvel
+)
+
+func (sc hitFallSet) Run(c *Char, _ []int32) bool {
+	f, xv, yv := int32(-1), float32(math.NaN()), float32(math.NaN())
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitFallSet_value:
+			f = exp[0].evalI(c)
+			if len(c.ghv.hitBy) == 0 {
+				return false
+			}
+		case hitFallSet_xvel:
+			xv = exp[0].evalF(c)
+		case hitFallSet_yvel:
+			yv = exp[0].evalF(c)
+		}
+		return true
+	})
+	c.hitFallSet(f, xv, yv)
+	return false
+}
+
+type varRangeSet StateControllerBase
+
+const (
+	varRangeSet_first byte = iota
+	varRangeSet_last
+	varRangeSet_value
+	varRangeSet_fvalue
+)
+
+func (sc varRangeSet) Run(c *Char, _ []int32) bool {
+	var first, last int32 = 0, 0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case varRangeSet_first:
+			first = exp[0].evalI(c)
+		case varRangeSet_last:
+			last = exp[0].evalI(c)
+		case varRangeSet_value:
+			v := exp[0].evalI(c)
+			if first >= 0 && last < int32(NumVar) {
+				for i := first; i <= last; i++ {
+					c.ivar[i] = v
+				}
+			}
+		case varRangeSet_fvalue:
+			fv := exp[0].evalF(c)
+			if first >= 0 && last < int32(NumFvar) {
+				for i := first; i <= last; i++ {
+					c.fvar[i] = fv
+				}
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type remapPal StateControllerBase
+
+const (
+	remapPal_source byte = iota
+	remapPal_dest
+)
+
+func (sc remapPal) Run(c *Char, _ []int32) bool {
+	src := [2]int32{-1, -1}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case remapPal_source:
+			src[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				src[1] = exp[1].evalI(c)
+			}
+		case remapPal_dest:
+			dst := [2]int32{exp[0].evalI(c), -1}
+			if len(exp) > 1 {
+				dst[1] = exp[1].evalI(c)
+			}
+			c.remapPal(c.getPalfx(), src, dst)
+		}
+		return true
+	})
+	return false
+}
+
 type StateBytecode struct {
 	stateType StateType
 	moveType  MoveType
 	physics   StateType
 	playerNo  int
-	stateDef  StateController
+	stateDef  stateDef
 	block     StateBlock
 	ctrlsps   []int32
+	numVars   int32
 }
 
 func newStateBytecode(pn int) *StateBytecode {
@@ -4049,9 +4333,19 @@ func newStateBytecode(pn int) *StateBytecode {
 		playerNo: pn}
 	return sb
 }
-
-type Bytecode struct{ states map[int32]StateBytecode }
-
-func newBytecode() *Bytecode {
-	return &Bytecode{states: make(map[int32]StateBytecode)}
+func (sb *StateBytecode) init(c *Char) {
+	for i := range sb.ctrlsps {
+		sb.ctrlsps[i] = 0
+	}
+	sb.stateDef.Run(c)
+}
+func (sb *StateBytecode) run(c *Char) (changeState bool) {
+	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
+	changeState = sb.block.Run(c, sb.ctrlsps)
+	if len(sys.bcStack) != 0 {
+		println(fmt.Sprintf("%+v", c.ss))
+		unimplemented()
+	}
+	sys.bcVarStack.Clear()
+	return
 }

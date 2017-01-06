@@ -26,6 +26,10 @@ const (
 	CSF_angledraw
 	CSF_destroy
 	CSF_ko
+	CSF_frontedge
+	CSF_backedge
+	CSF_frontwidth
+	CSF_backwidth
 )
 
 type GlobalSpecialFlag uint32
@@ -781,6 +785,7 @@ type CharGlobalInfo struct {
 	data             CharData
 	velocity         CharVelocity
 	movement         CharMovement
+	states           map[int32]StateBytecode
 	wakewakaLength   int
 }
 type StateState struct {
@@ -842,59 +847,65 @@ const (
 )
 
 type Char struct {
-	name          string
-	palfx         *PalFX
-	anim          *Animation
-	curFrame      *AnimFrame
-	cmd           []CommandList
-	ss            StateState
-	key           int
-	id            int32
-	helperId      int32
-	helperIndex   int32
-	parentIndex   int32
-	playerNo      int
-	ctrl          bool
-	keyctrl       bool
-	player        bool
-	animPN        int
-	animNo        int32
-	sprpriority   int32
-	juggle        int32
-	recovertime   int32
-	fallTime      int32
-	size          CharSize
-	hitdef        HitDef
-	ghv           GetHitVar
-	ho            [8]HitOverride
-	hoIdx         int
-	mctype        MoveContact
-	mctime        int32
-	specialFlag   CharSpecialFlag
-	pos           [2]float32
-	drawPos       [2]float32
-	oldPos        [2]float32
-	vel           [2]float32
-	facing        float32
-	angle         float32
-	angleScalse   [2]float32
-	ivar          [NumVar + NumSysVar]int32
-	fvar          [NumFvar + NumSysFvar]float32
-	alpha         [2]int32
-	aimg          AfterImage
-	hitPauseTime  int32
-	pauseMovetime int32
-	superMovetime int32
-	standby       bool
-	angleset      bool
-	cs1tmp        bool
-	inguarddist   bool
-	p1facing      float32
-	pushed        bool
-	atktmp        int8
-	hittmp        int8
-	acttmp        int8
-	minus         int8
+	name            string
+	palfx           *PalFX
+	anim            *Animation
+	curFrame        *AnimFrame
+	cmd             []CommandList
+	ss              StateState
+	key             int
+	id              int32
+	helperId        int32
+	helperIndex     int32
+	parentIndex     int32
+	playerNo        int
+	ctrl            bool
+	keyctrl         bool
+	player          bool
+	animPN          int
+	animNo          int32
+	life            int32
+	sprpriority     int32
+	juggle          int32
+	recovertime     int32
+	fallTime        int32
+	size            CharSize
+	width, edge     [2]float32
+	hitdef          HitDef
+	ghv             GetHitVar
+	ho              [8]HitOverride
+	hoIdx           int
+	mctype          MoveContact
+	mctime          int32
+	targetsOfHitdef []int32
+	hitCount        int32
+	uniqHitCount    int32
+	specialFlag     CharSpecialFlag
+	pos             [2]float32
+	drawPos         [2]float32
+	oldPos          [2]float32
+	vel             [2]float32
+	facing          float32
+	angle           float32
+	angleScalse     [2]float32
+	defenceMul      float32
+	ivar            [NumVar + NumSysVar]int32
+	fvar            [NumFvar + NumSysFvar]float32
+	alpha           [2]int32
+	aimg            AfterImage
+	hitPauseTime    int32
+	pauseMovetime   int32
+	superMovetime   int32
+	standby         bool
+	angleset        bool
+	cs1tmp          bool
+	inguarddist     bool
+	p1facing        float32
+	pushed          bool
+	atktmp          int8
+	hittmp          int8
+	acttmp          int8
+	minus           int8
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -951,6 +962,12 @@ func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	unimplemented()
+}
+func (c *Char) gi() *CharGlobalInfo {
+	return &sys.cgi[c.playerNo]
+}
+func (c *Char) stCgi() *CharGlobalInfo {
+	return &sys.cgi[c.ss.sb.playerNo]
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
@@ -1192,7 +1209,7 @@ func (c *Char) load(def string) error {
 	return nil
 }
 func (c *Char) clearHitCount() {
-	unimplemented()
+	c.hitCount, c.uniqHitCount = 0, 0
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
@@ -1205,9 +1222,6 @@ func (c *Char) clearHitDef() {
 }
 func (c *Char) setSprPriority(sprpriority int32) {
 	c.sprpriority = sprpriority
-}
-func (c *Char) faceP2() {
-	unimplemented()
 }
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
@@ -1228,7 +1242,7 @@ func (c *Char) setAnimElem(e int32) {
 	unimplemented()
 }
 func (c *Char) setCtrl(ctrl bool) {
-	unimplemented()
+	c.ctrl = ctrl
 }
 func (c *Char) sf(csf CharSpecialFlag) bool {
 	return c.specialFlag&csf != 0
@@ -1243,8 +1257,7 @@ func (c *Char) time() int32 {
 	return c.ss.time
 }
 func (c *Char) alive() bool {
-	unimplemented()
-	return false
+	return !c.sf(CSF_ko)
 }
 func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
 	p, fr float32, x *float32) {
@@ -1400,7 +1413,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 }
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !proj {
-		unimplemented()
+		c.targetsOfHitdef = nil
 	}
 	if hd.attr&^int32(ST_MASK) == 0 {
 		hd.attr = 0
@@ -1472,36 +1485,52 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	}
 }
 func (c *Char) setFEdge(fe float32) {
-	unimplemented()
+	c.edge[0] = fe
+	c.setSF(CSF_frontedge)
 }
 func (c *Char) setBEdge(be float32) {
-	unimplemented()
+	c.edge[1] = be
+	c.setSF(CSF_backedge)
 }
 func (c *Char) setFWidth(fw float32) {
-	unimplemented()
+	c.width[0] = fw
+	c.setSF(CSF_frontwidth)
 }
 func (c *Char) setBWidth(bw float32) {
-	unimplemented()
+	c.width[1] = bw
+	c.setSF(CSF_backwidth)
 }
 func (c *Char) moveContact() int32 {
-	unimplemented()
+	if c.mctype != MC_Reversed {
+		return Abs(c.mctime)
+	}
 	return 0
 }
 func (c *Char) moveHit() int32 {
-	unimplemented()
+	if c.mctype == MC_Hit {
+		return Abs(c.mctime)
+	}
 	return 0
 }
 func (c *Char) moveGuarded() int32 {
-	unimplemented()
+	if c.mctype == MC_Guarded {
+		return Abs(c.mctime)
+	}
 	return 0
 }
 func (c *Char) moveReversed() int32 {
-	unimplemented()
+	if c.mctype == MC_Reversed {
+		return Abs(c.mctime)
+	}
 	return 0
 }
 func (c *Char) gethitAnimtype() Reaction {
-	unimplemented()
-	return 0
+	if c.ghv.fallf {
+		return c.ghv.fall.animtype
+	} else if c.ss.sb.stateType == ST_A {
+		return c.ghv.airanimtype
+	}
+	return c.ghv.groundanimtype
 }
 func (c *Char) isBound() bool {
 	unimplemented()
@@ -1668,11 +1697,36 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	unimplemented()
 }
-func (c *Char) lifeAdd(add int32, kill, absolute bool) {
-	unimplemented()
+func (c *Char) lifeAdd(add float64, kill, absolute bool) {
+	if add != 0 && c.roundState() != 3 {
+		if !absolute {
+			add /= float64(c.defenceMul)
+		}
+		add = math.Floor(add)
+		max := float64(c.gi().data.life - c.life)
+		if add > max {
+			add = max
+		}
+		min := float64(-c.life)
+		if !kill {
+			min += 1
+		}
+		if add < min {
+			add = min
+		}
+		c.lifeSet(c.life + int32(add))
+	}
 }
-func (c *Char) lifeSet(add int32) {
-	unimplemented()
+func (c *Char) lifeSet(life int32) {
+	if c.life = Max(0, Min(c.gi().data.life, life)); c.life == 0 {
+		if c.player {
+			if c.alive() {
+				unimplemented()
+			} else {
+				c.life = 1
+			}
+		}
+	}
 }
 func (c *Char) powerAdd(add int32) {
 	unimplemented()
@@ -1680,37 +1734,45 @@ func (c *Char) powerAdd(add int32) {
 func (c *Char) powerSet(add int32) {
 	unimplemented()
 }
-func (c *Char) p2DistX() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
+func (c *Char) distX(opp *Char) float32 {
+	return opp.pos[0] - c.pos[0]
 }
-func (c *Char) p2DistY() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
+func (c *Char) bodyDistX(opp *Char) float32 {
+	dist := c.distX(opp)
+	var oppw float32
+	if dist == 0 || (dist < 0) != (opp.facing < 0) {
+		oppw = opp.facing * opp.width[0]
+	} else {
+		oppw = -opp.facing * opp.width[1]
+	}
+	return dist + oppw - c.facing*c.width[0]
+}
+func (c *Char) rdDistX(rd *Char) BytecodeValue {
+	if rd == nil {
+		return BytecodeSF()
+	}
+	dist := c.facing * c.distX(rd)
+	if c.stCgi().ver[0] != 1 {
+		dist = float32(int32(dist))
+	}
+	return BytecodeFloat(dist)
+}
+func (c *Char) rdDistY(rd *Char) BytecodeValue {
+	if rd == nil {
+		return BytecodeSF()
+	}
+	return BytecodeFloat(rd.pos[1] - c.pos[1])
 }
 func (c *Char) p2BodyDistX() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
-}
-func (c *Char) p2BodyDistY() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
-}
-func (c *Char) rootDistX() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
-}
-func (c *Char) rootDistY() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
-}
-func (c *Char) parentDistX() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
-}
-func (c *Char) parentDistY() BytecodeValue {
-	unimplemented()
-	return BytecodeSF()
+	if p2 := c.p2(); p2 == nil {
+		return BytecodeSF()
+	} else {
+		dist := c.facing * c.bodyDistX(p2)
+		if c.stCgi().ver[0] != 1 {
+			dist = float32(int32(dist))
+		}
+		return BytecodeFloat(dist)
+	}
 }
 func (c *Char) hitShakeOver() bool {
 	return c.ghv.hitshaketime <= 0
@@ -1753,7 +1815,6 @@ func (c *Char) backEdge() float32 {
 	}
 	return c.leftEdge()
 }
-
 func (c *Char) leftEdge() float32 {
 	unimplemented()
 	return 0
@@ -1887,4 +1948,74 @@ func (c *Char) win() bool {
 }
 func (c *Char) hitDefAttr(attr int32) bool {
 	return c.ss.sb.moveType == MT_A && c.hitdef.testAttr(attr)
+}
+func (c *Char) makeDust(x, y float32) {
+	if e, i := c.newExplod(); e != nil {
+		e.anim = c.getAnim(120, true)
+		e.sprpriority = math.MaxInt32
+		e.ownpal = true
+		e.offset = [2]float32{x, y}
+		e.setPos(c)
+		c.insertExplod(i)
+	}
+}
+func (c *Char) hitOver() bool {
+	return c.ghv.hittime < 0
+}
+func (c *Char) hitFallDamage() {
+	if c.ss.sb.moveType == MT_H {
+		c.lifeAdd(-float64(c.ghv.fall.damage), c.ghv.fall.kill, false)
+	}
+}
+func (c *Char) hitFallVel() {
+	if c.ss.sb.moveType == MT_H {
+		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
+			c.setXV(c.ghv.fall.xvelocity)
+		}
+		c.setYV(c.ghv.fall.yvelocity)
+	}
+}
+func (c *Char) hitFallSet(f int32, xv, yv float32) {
+	if c.ss.sb.moveType == MT_H {
+		if f >= 0 {
+			c.ghv.fallf = f != 0
+		}
+		if !math.IsNaN(float64(xv)) {
+			c.ghv.fall.xvelocity = xv
+		}
+		if !math.IsNaN(float64(yv)) {
+			c.ghv.fall.yvelocity = yv
+		}
+	}
+}
+func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
+	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
+		return
+	}
+	si, ok := c.gi().sff.palList.PalTable[[2]int16{int16(src[0]), int16(src[1])}]
+	if !ok {
+		return
+	}
+	var di int
+	di, ok = c.gi().sff.palList.PalTable[[2]int16{int16(dst[0]), int16(dst[1])}]
+	if !ok {
+		di = si
+	}
+	if pfx.remap == nil {
+		pfx.remap = c.gi().sff.palList.GetPalMap()
+	}
+	if c.gi().sff.palList.SwapPalMap(&pfx.remap) {
+		c.gi().sff.palList.Remap(si, di)
+		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Ver0 == 1 {
+			spr := c.gi().sff.GetSprite(0, 0)
+			if spr != nil {
+				c.gi().sff.palList.Remap(spr.palidx, di)
+			}
+			spr = c.gi().sff.GetSprite(9000, 0)
+			if spr != nil {
+				c.gi().sff.palList.Remap(spr.palidx, di)
+			}
+		}
+		c.gi().sff.palList.SwapPalMap(&pfx.remap)
+	}
 }
