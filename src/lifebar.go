@@ -123,6 +123,7 @@ type LifeBarFace struct {
 	teammate_face_spr [2]int32
 	teammate_face     []*Sprite
 	teammate_face_lay Layout
+	numko             int32
 }
 
 func newLifeBarFace() *LifeBarFace {

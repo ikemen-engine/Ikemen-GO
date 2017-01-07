@@ -10,14 +10,14 @@ type AnimFrame struct {
 	Time          int32
 	Group, Number int16
 	X, Y          int16
-	Srcalpha      byte
-	Dstalpha      byte
+	SrcAlpha      byte
+	DstAlpha      byte
 	H, V          int8
 	Ex            [][]float32
 }
 
 func newAnimFrame() *AnimFrame {
-	return &AnimFrame{Time: -1, Group: -1, Srcalpha: 255, H: 1, V: 1}
+	return &AnimFrame{Time: -1, Group: -1, SrcAlpha: 255, H: 1, V: 1}
 }
 func ReadAnimFrame(line string) *AnimFrame {
 	if len(line) == 0 || (line[0] < '0' || '9' < line[0]) && line[0] != '-' {
@@ -59,36 +59,36 @@ func ReadAnimFrame(line string) *AnimFrame {
 	a := strings.ToLower(ary[0])
 	switch {
 	case a == "a1":
-		af.Srcalpha, af.Dstalpha = 255, 128
+		af.SrcAlpha, af.DstAlpha = 255, 128
 	case len(a) > 0 && a[0] == 's':
-		af.Srcalpha, af.Dstalpha = 1, 255
+		af.SrcAlpha, af.DstAlpha = 1, 255
 	case len(a) >= 2 && a[:2] == "as":
 		i := strings.IndexAny(a, "d")
 		if i >= 0 {
 			sa := Atoi(a[2:i])
 			if sa <= 0 {
-				af.Srcalpha = 0
+				af.SrcAlpha = 0
 			} else if sa >= 255 {
-				af.Srcalpha = 255
+				af.SrcAlpha = 255
 			} else {
-				af.Srcalpha = byte(sa)
+				af.SrcAlpha = byte(sa)
 			}
 			da := Atoi(a[i+1:])
 			if da <= 0 {
-				af.Dstalpha = 0
+				af.DstAlpha = 0
 			} else if da >= 255 {
-				af.Dstalpha = 255
+				af.DstAlpha = 255
 			} else {
-				af.Dstalpha = byte(da)
+				af.DstAlpha = byte(da)
 			}
-			if af.Srcalpha == 1 && af.Dstalpha == 255 {
-				af.Srcalpha = 0
-			} else if af.Srcalpha == 255 && af.Dstalpha == 1 {
-				af.Dstalpha = 0
+			if af.SrcAlpha == 1 && af.DstAlpha == 255 {
+				af.SrcAlpha = 0
+			} else if af.SrcAlpha == 255 && af.DstAlpha == 1 {
+				af.DstAlpha = 0
 			}
 		}
 	case len(a) > 0 && a[0] == 'a':
-		af.Srcalpha, af.Dstalpha = 255, 1
+		af.SrcAlpha, af.DstAlpha = 255, 1
 	}
 	if len(ary) > 1 {
 		af.Ex = make([][]float32, 3)
@@ -129,14 +129,14 @@ type Animation struct {
 	looptime  int32
 	nazotime  int32
 	mask      int16
-	srcalpha  int16
-	dstalpha  int16
+	srcAlpha  int16
+	dstAlpha  int16
 	newframe  bool
 	loopend   bool
 }
 
 func newAnimation(sff *Sff) *Animation {
-	return &Animation{sff: sff, mask: -1, srcalpha: -1, newframe: true}
+	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true}
 }
 func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	a := newAnimation(sff)
@@ -391,16 +391,16 @@ func (a *Animation) Action() {
 }
 func (a *Animation) alpha() int32 {
 	var sa, da byte
-	if a.srcalpha >= 0 {
-		sa = byte(a.srcalpha)
-		if a.dstalpha < 0 {
-			da = byte((^a.dstalpha + int16(a.frames[a.drawidx].Dstalpha)) >> 1)
+	if a.srcAlpha >= 0 {
+		sa = byte(a.srcAlpha)
+		if a.dstAlpha < 0 {
+			da = byte((^a.dstAlpha + int16(a.frames[a.drawidx].DstAlpha)) >> 1)
 		} else {
-			da = byte(a.dstalpha)
+			da = byte(a.dstAlpha)
 		}
 	} else {
-		sa = a.frames[a.drawidx].Srcalpha
-		da = a.frames[a.drawidx].Dstalpha
+		sa = a.frames[a.drawidx].SrcAlpha
+		da = a.frames[a.drawidx].DstAlpha
 		if sa == 255 && da == 1 {
 			da = 255
 		}
@@ -576,7 +576,7 @@ func (a *Anim) SetColorKey(mask int16) {
 	a.anim.mask = mask
 }
 func (a *Anim) SetAlpha(src, dst int16) {
-	a.anim.srcalpha, a.anim.dstalpha = src, dst
+	a.anim.srcAlpha, a.anim.dstAlpha = src, dst
 }
 func (a *Anim) SetScale(x, y float32) {
 	a.xscl, a.yscl = x, y

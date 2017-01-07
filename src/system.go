@@ -137,6 +137,7 @@ type System struct {
 	envcol_time                 int32
 	envcol_under                bool
 	clipboardText               [MaxSimul * 2][]string
+	stage                       *Stage
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -253,7 +254,7 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 }
 
 type SelectChar struct {
-	def, name            string
+	def, name, sprite    string
 	sportrait, lportrait *Sprite
 }
 type SelectStage struct {
@@ -349,9 +350,10 @@ func (s *Select) AddCahr(def string) {
 		case "info":
 			if info {
 				info = false
-				sc.name = is["displayname"]
-				if len(sc.name) == 0 {
-					sc.name = is["name"]
+				var ok bool
+				sc.name, ok, _ = is.getText("displayname")
+				if !ok {
+					sc.name, _, _ = is.getText("name")
 				}
 			}
 		case "files":
@@ -361,13 +363,14 @@ func (s *Select) AddCahr(def string) {
 			}
 		}
 	}
-	sprcopy := sprite
+	sc.sprite = sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
 		sc.sportrait, err = LoadFromSff(file, 9000, 0)
 		return err
 	})
-	LoadFile(&sprcopy, def, func(file string) error {
+	sprite = sc.sprite
+	LoadFile(&sprite, def, func(file string) error {
 		var err error
 		sc.lportrait, err = LoadFromSff(file, 9000, 1)
 		return err
@@ -395,9 +398,13 @@ func (s *Select) AddStage(def string) error {
 		case "info":
 			if info {
 				info = false
-				ss.name = is["displayname"]
-				if len(ss.name) == 0 {
-					ss.name = is["name"]
+				var ok bool
+				ss.name, ok, _ = is.getText("displayname")
+				if !ok {
+					ss.name, ok, _ = is.getText("name")
+					if !ok {
+						ss.name = def
+					}
 				}
 			}
 		}
@@ -508,12 +515,38 @@ func (l *Loader) loadChar(pn int) int {
 			return -1
 		}
 	}
-	unimplemented()
+	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) {
+		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
+		fa.face = sys.cgi[pn].sff.GetOwnPalSprite(
+			int16(fa.face_spr[0]), int16(fa.face_spr[1]))
+		if sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
+			fa.numko = 0
+			fa.teammate_face = make([]*Sprite, nsel)
+			for i, ci := range idx {
+				sprite := sys.sel.charlist[ci].sprite
+				LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
+					var err error
+					fa.teammate_face[i], err = LoadFromSff(file,
+						int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
+					return err
+				})
+			}
+		}
+	}
 	return 1
 }
 func (l *Loader) loadStage() bool {
-	unimplemented()
-	return true
+	var def string
+	if sys.sel.selectedStageNo == 0 {
+		def = sys.sel.stagelist[Rand(0, int32(len(sys.sel.stagelist))-1)].def
+	} else {
+		def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
+	}
+	if sys.stage != nil && sys.stage.def == def {
+		return true
+	}
+	sys.stage, l.err = LoadStage(def)
+	return l.err == nil
 }
 func (l *Loader) load() {
 	defer func() { l.loadExit <- l.state }()

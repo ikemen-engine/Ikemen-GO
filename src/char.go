@@ -990,11 +990,13 @@ func (c *Char) load(def string) error {
 		case "info":
 			if info {
 				info = false
-				c.name, gi.displayname = is["name"], is["displayname"]
-				if len(gi.displayname) == 0 {
+				c.name, _, _ = is.getText("name")
+				var ok bool
+				gi.displayname, ok, _ = is.getText("displayname")
+				if !ok {
 					gi.displayname = c.name
 				}
-				gi.author = is["author"]
+				gi.author, _, _ = is.getText("author")
 			}
 		case "files":
 			if files {
@@ -1722,9 +1724,9 @@ func (c *Char) lifeSet(life int32) {
 		if c.player {
 			if c.alive() {
 				unimplemented()
-			} else {
-				c.life = 1
 			}
+		} else {
+			c.life = 1
 		}
 	}
 }

@@ -311,7 +311,7 @@ if Time = 0 {
 call HiToLoAndLoToHi();
 
 
-[Function Guardshaking(anim)]
+[Function GuardShaking(anim)]
 ChangeAnim{value: $anim}
 if HitShakeOver {
     ChangeState{value: 151 + 2 * (Command = "holddown")}
@@ -337,7 +337,7 @@ if HitOver {
 
 [Statedef 150; type: S; movetype: H; physics: N;
  velset: 0, 0;]
-call Guardshaking(150);
+call GuardShaking(150);
 
 
 [Statedef 151; type: S; movetype: H; physics: S;
@@ -347,7 +347,7 @@ call GuardKnockedBack(130);
 
 [Statedef 152; type: C; movetype: H; physics: N;
  velset: 0, 0;]
-call Guardshaking(151);
+call GuardShaking(151);
 
 
 [Statedef 153; type: C; movetype: H; physics: C;

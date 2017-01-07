@@ -6201,9 +6201,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 				return errmes(err)
 			} else {
 				for _, a := range args {
-					if a != "_" {
-						c.vars[a] = uint8(fun.numVars)
-					}
+					c.vars[a] = uint8(fun.numVars)
 					if err := c.inclNumVars(&fun.numVars); err != nil {
 						return errmes(err)
 					}

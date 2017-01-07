@@ -293,7 +293,7 @@ func SectionName(sec string) (string, string) {
 	if sec[len(sec)-1] != ']' {
 		return "", ""
 	}
-	sec = sec[1 : len(sec)-1]
+	sec = sec[1:strings.Index(sec, "]")]
 	var name string
 	i := strings.Index(sec, " ")
 	if i >= 0 {
@@ -368,7 +368,9 @@ func (is IniSection) ReadI32(name string, out ...*int32) bool {
 		if i >= len(out) {
 			break
 		}
-		*out[i] = Atoi(s)
+		if s = strings.TrimSpace(s); len(s) > 0 {
+			*out[i] = Atoi(s)
+		}
 	}
 	return true
 }
@@ -381,9 +383,75 @@ func (is IniSection) ReadF32(name string, out ...*float32) bool {
 		if i >= len(out) {
 			break
 		}
-		*out[i] = float32(Atof(s))
+		if s = strings.TrimSpace(s); len(s) > 0 {
+			*out[i] = float32(Atof(s))
+		}
 	}
 	return true
+}
+func (is IniSection) ReadBool(name string, out ...*bool) bool {
+	str := is[name]
+	if len(str) == 0 {
+		return false
+	}
+	for i, s := range strings.Split(str, ",") {
+		if i >= len(out) {
+			break
+		}
+		if s = strings.TrimSpace(s); len(s) > 0 {
+			*out[i] = Atoi(s) != 0
+		}
+	}
+	return true
+}
+func (is IniSection) readI32ForStage(name string, out ...*int32) bool {
+	str := is[name]
+	if len(str) == 0 {
+		return false
+	}
+	for i, s := range strings.Split(str, ",") {
+		if i >= len(out) {
+			break
+		}
+		if s = strings.TrimLeftFunc(s, unicode.IsSpace); len(s) > 0 {
+			*out[i] = Atoi(s)
+		}
+		if strings.IndexFunc(s, unicode.IsSpace) >= 0 {
+			break
+		}
+	}
+	return true
+}
+func (is IniSection) readF32ForStage(name string, out ...*float32) bool {
+	str := is[name]
+	if len(str) == 0 {
+		return false
+	}
+	for i, s := range strings.Split(str, ",") {
+		if i >= len(out) {
+			break
+		}
+		if s = strings.TrimLeftFunc(s, unicode.IsSpace); len(s) > 0 {
+			*out[i] = float32(Atof(s))
+		}
+		if strings.IndexFunc(s, unicode.IsSpace) >= 0 {
+			break
+		}
+	}
+	return true
+}
+func (is IniSection) readI32CsvForStage(name string) (ary []int32) {
+	if str := is[name]; len(str) > 0 {
+		for _, s := range strings.Split(str, ",") {
+			if s = strings.TrimLeftFunc(s, unicode.IsSpace); len(s) > 0 {
+				ary = append(ary, Atoi(s))
+			}
+			if strings.IndexFunc(s, unicode.IsSpace) >= 0 {
+				break
+			}
+		}
+	}
+	return
 }
 func (is IniSection) getText(name string) (str string, ok bool, err error) {
 	str, ok = is[name]
@@ -391,8 +459,7 @@ func (is IniSection) getText(name string) (str string, ok bool, err error) {
 		return
 	}
 	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {
-		err = Error("\"で囲まれていません")
-		return
+		return "", false, Error("\"で囲まれていません")
 	}
 	str = str[1 : len(str)-1]
 	return
@@ -475,13 +542,13 @@ func ReadAnimLayout(pre string, is IniSection,
 	al := newAnimLayout(sff)
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
-		al.anim.frames = make([]AnimFrame, 1)
-		al.anim.frames[0].Group, al.anim.frames[0].Number = I32ToI16(g), I32ToI16(n)
+		al.anim.frames = []AnimFrame{*newAnimFrame()}
+		al.anim.frames[0].Group, al.anim.frames[0].Number =
+			I32ToI16(g), I32ToI16(n)
 		al.anim.mask = 0
 	}
 	if is.ReadI32(pre+"anim", &n) {
-		ani := at.get(n)
-		if ani != nil {
+		if ani := at.get(n); ani != nil {
 			al.anim = *ani
 		}
 	}
