@@ -637,7 +637,7 @@ if Time = 0 {
         VelSet{x: 1}
     }
     FallEnvShake{}
-    SysVar(1) := floor(vel y);
+    SysVar(1) := floor(Vel Y);
     let a = call SelfAnimExistAddMod10(Anim = [5051, 5059] ||
         Anim = [5061, 5069], 5100);
     ChangeAnim{value: $a}

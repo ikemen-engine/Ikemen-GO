@@ -559,8 +559,9 @@ func systemScriptInit(l *lua.LState) {
 			return 1
 		}
 		winp := int32(0)
+		p := make([]*Char, len(sys.chars))
 		sys.roundsExisted = [2]int32{0, 0}
-		mw := [2]int32{0, 0}
+		sys.matchWins = [2]int32{0, 0}
 		for i := range sys.lifebar.wi {
 			sys.lifebar.wi[i].clear()
 		}
@@ -579,20 +580,60 @@ func systemScriptInit(l *lua.LState) {
 			if err := load(); err != nil {
 				return -1, err
 			}
-			unimplemented()
-			if sys.round == 1 {
-				if sys.tmode[1] == TM_Turns {
-					mw[0] = int32(sys.numTurns[1])
-				} else {
-					mw[0] = sys.lifebar.ro.match_wins
-				}
-				if sys.tmode[0] == TM_Turns {
-					mw[1] = int32(sys.numTurns[0])
-				} else {
-					mw[1] = sys.lifebar.ro.match_wins
+			sys.charList.clear()
+			for i := 0; i < len(sys.chars); i += 2 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].id = sys.newCharId()
 				}
 			}
-			unimplemented()
+			for i := 1; i < len(sys.chars); i += 2 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].id = sys.newCharId()
+				}
+			}
+			for i, c := range sys.chars {
+				if len(c) > 0 {
+					p[i] = c[0]
+					sys.charList.add(c[0])
+					if sys.roundsExisted[i&1] == 0 {
+						c[0].loadPallet()
+					}
+					for j, cj := range sys.chars {
+						if i != j && len(cj) > 0 {
+							if len(cj[0].cmd) == 0 {
+								cj[0].cmd = make([]CommandList, len(sys.chars))
+							}
+							cj[0].cmd[i].CopyList(c[0].cmd[i])
+						}
+					}
+				}
+			}
+			if sys.round == 1 {
+				if sys.tmode[1] == TM_Turns {
+					sys.matchWins[0] = int32(sys.numTurns[1])
+				} else {
+					sys.matchWins[0] = sys.lifebar.ro.match_wins
+				}
+				if sys.tmode[0] == TM_Turns {
+					sys.matchWins[1] = int32(sys.numTurns[0])
+				} else {
+					sys.matchWins[1] = sys.lifebar.ro.match_wins
+				}
+			}
+			if sys.fight() {
+				sys.chars = [len(sys.chars)][]*Char{}
+				sys.loaderReset()
+				winp = -2
+			} else if sys.esc {
+				winp = -1
+			} else {
+				w1 := sys.wins[0] >= sys.matchWins[0]
+				w2 := sys.wins[1] >= sys.matchWins[1]
+				winp = 0
+				if w1 != w2 {
+					winp = Btoi(w1) + Btoi(w2)*2
+				}
+			}
 			return winp, nil
 		}
 		if sys.netInput != nil {
@@ -605,10 +646,17 @@ func systemScriptInit(l *lua.LState) {
 				l.RaiseError(err.Error())
 			}
 			if winp < 0 || sys.tmode[0] != TM_Turns && sys.tmode[1] != TM_Turns ||
-				sys.wins[0] >= mw[0] || sys.wins[1] >= mw[1] || sys.gameEnd {
+				sys.wins[0] >= sys.matchWins[0] || sys.wins[1] >= sys.matchWins[1] ||
+				sys.gameEnd {
 				break
 			}
-			unimplemented()
+			for i := 0; i < 2; i++ {
+				if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
+					sys.lifebar.fa[TM_Turns][i].numko++
+					sys.roundsExisted[i] = 0
+				}
+			}
+			sys.loader.reset()
 		}
 		l.Push(lua.LNumber(winp))
 		return 1

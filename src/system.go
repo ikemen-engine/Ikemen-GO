@@ -40,7 +40,8 @@ var sys = System{
 	attack_LifeToPowerMul:  0.7,
 	getHit_LifeToPowerMul:  0.6,
 	superpmap:              *NewPalFX(),
-	super_TargetDefenceMul: 1.5}
+	super_TargetDefenceMul: 1.5,
+	helperMax:              56}
 
 type TeamMode int32
 
@@ -98,6 +99,7 @@ type System struct {
 	draws                       int32
 	loader                      Loader
 	chars                       [MaxSimul * 2][]*Char
+	charList                    CharList
 	cgi                         [MaxSimul * 2]CharGlobalInfo
 	tmode                       [2]TeamMode
 	numSimul                    [2]int
@@ -138,6 +140,8 @@ type System struct {
 	envcol_under                bool
 	clipboardText               [MaxSimul * 2][]string
 	stage                       *Stage
+	helperMax                   int
+	nextCharId                  int32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -251,6 +255,14 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 		s.clipboardText[pn] = append(s.clipboardText[pn],
 			strings.Split(fmt.Sprintf(spl[sn], a...), "\n")...)
 	}
+}
+func (s *System) newCharId() int32 {
+	s.nextCharId++
+	return s.nextCharId - 1
+}
+func (s *System) fight() (reload bool) {
+	unimplemented()
+	return false
 }
 
 type SelectChar struct {
@@ -502,7 +514,7 @@ func (l *Loader) loadChar(pn int) int {
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = pal
+		sys.cgi[pn].palno = sys.cgi[pn].palkeymap[pal-1] + 1
 	}
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =

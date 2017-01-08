@@ -1099,3 +1099,13 @@ func (cl *CommandList) GetState(name string) bool {
 	}
 	return false
 }
+func (cl *CommandList) CopyList(src CommandList) {
+	cl.Names = src.Names
+	cl.Commands = make([][]Command, len(src.Commands))
+	for i, ca := range src.Commands {
+		cl.Commands[i] = make([]Command, len(ca))
+		for j, c := range ca {
+			cl.Commands[i][j] = c
+		}
+	}
+}

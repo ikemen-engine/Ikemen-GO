@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 )
+
+const MaxPalNo = 12
 
 type CharSpecialFlag uint32
 
@@ -776,11 +780,14 @@ type CharGlobalInfo struct {
 	def              string
 	displayname      string
 	author           string
-	palkeymap        [12]int
+	palkeymap        [MaxPalNo]int32
 	sff              *Sff
 	snd              *Snd
 	anim             AnimationTable
 	palno, drawpalno int32
+	pal              [MaxPalNo]string
+	palExist         [MaxPalNo]bool
+	palSelectable    [MaxPalNo]bool
 	ver              [2]uint16
 	data             CharData
 	velocity         CharVelocity
@@ -971,10 +978,10 @@ func (c *Char) stCgi() *CharGlobalInfo {
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.displayname, gi.author, gi.sff, gi.snd = "", "", nil, nil
+	gi.def, gi.displayname, gi.author, gi.sff, gi.snd = def, "", "", nil, nil
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
-		gi.palkeymap[i] = i
+		gi.palkeymap[i] = int32(i)
 	}
 	str, err := LoadText(def)
 	if err != nil {
@@ -982,7 +989,6 @@ func (c *Char) load(def string) error {
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
-	var pal [12]string
 	info, files, keymap := true, true, true
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
@@ -1003,8 +1009,8 @@ func (c *Char) load(def string) error {
 				files = false
 				cns, sprite = is["cns"], is["sprite"]
 				anim, sound = is["anim"], is["sound"]
-				for i := range pal {
-					pal[i] = is[fmt.Sprintf("pal%d", i+1)]
+				for i := range gi.pal {
+					gi.pal[i] = is[fmt.Sprintf("pal%d", i+1)]
 				}
 			}
 		case "palette ":
@@ -1018,7 +1024,7 @@ func (c *Char) load(def string) error {
 						if i32 < 1 || int(i32) > len(gi.palkeymap) {
 							i32 = 1
 						}
-						gi.palkeymap[i] = int(i32) - 1
+						gi.palkeymap[i] = i32 - 1
 					}
 				}
 			}
@@ -1209,6 +1215,123 @@ func (c *Char) load(def string) error {
 		gi.snd = newSnd()
 	}
 	return nil
+}
+func (c *Char) loadPallet() {
+	if c.gi().sff.header.Ver0 == 1 {
+		c.gi().sff.palList.ResetRemap()
+		tmp := 0
+		for i := 0; i < MaxPalNo; i++ {
+			pl := c.gi().sff.palList.Get(i)
+			var f *os.File
+			if LoadFile(&c.gi().pal[i], c.gi().def, func(file string) (err error) {
+				f, err = os.Open(file)
+				return
+			}) == nil {
+				for i := 255; i >= 0; i-- {
+					var rgb [3]byte
+					if binary.Read(f, binary.LittleEndian, rgb[:]) != nil {
+						break
+					}
+					pl[i] = uint32(rgb[0])<<16 | uint32(rgb[1])<<8 | uint32(rgb[2])
+				}
+				if tmp == 0 && i > 0 {
+					copy(c.gi().sff.palList.Get(0), pl)
+				}
+				tmp = i + 1
+				c.gi().palExist[i] = true
+			} else {
+				c.gi().palExist[i] = false
+				if i > 0 {
+					delete(c.gi().sff.palList.PalTable, [2]int16{1, int16(i + 1)})
+				}
+			}
+		}
+		if tmp == 0 {
+			if c.gi().ver[0] == 1 {
+				delete(c.gi().sff.palList.PalTable, [2]int16{1, 1})
+			} else {
+				spr := c.gi().sff.GetSprite(9000, 0)
+				if spr == nil {
+					spr = c.gi().sff.GetSprite(0, 0)
+				}
+				if spr != nil {
+					copy(c.gi().sff.palList.Get(0), c.gi().sff.palList.Get(spr.palidx))
+				}
+			}
+		}
+	} else {
+		for i := 0; i < MaxPalNo; i++ {
+			_, c.gi().palExist[i] =
+				c.gi().sff.palList.PalTable[[2]int16{1, int16(i + 1)}]
+		}
+	}
+	for i := range c.gi().palSelectable {
+		c.gi().palSelectable[i] = false
+	}
+	for i := 0; i < MaxPalNo; i++ {
+		startj := c.gi().palkeymap[i]
+		if !c.gi().palExist[startj] {
+			startj %= 6
+		}
+		j := startj
+		for {
+			if c.gi().palExist[j] {
+				c.gi().palSelectable[j] = true
+				break
+			}
+			j++
+			if j >= MaxPalNo {
+				j = 0
+			}
+			if j == startj {
+				break
+			}
+		}
+	}
+	c.gi().drawpalno = c.gi().palno
+	starti := c.gi().palno - 1
+	if !c.gi().palExist[starti] {
+		starti %= 6
+	}
+	i := starti
+	for {
+		if c.gi().palExist[i] {
+			j := 0
+			for ; j < len(sys.chars); j++ {
+				if j != c.playerNo && len(sys.chars[j]) > 0 && sys.cgi[j].def == c.gi().def &&
+					sys.cgi[j].drawpalno == i+1 {
+					break
+				}
+			}
+			if j >= len(sys.chars) {
+				c.gi().drawpalno = i + 1
+				if !c.gi().palExist[c.gi().palno-1] {
+					c.gi().palno = c.gi().drawpalno
+				}
+				break
+			}
+		}
+		i++
+		if i >= MaxPalNo {
+			i = 0
+		}
+		if i == starti {
+			if !c.gi().palExist[c.gi().palno-1] {
+				i := 0
+				for ; i < len(c.gi().palExist); i++ {
+					if c.gi().palExist[i] {
+						c.gi().palno, c.gi().drawpalno = int32(i+1), int32(i+1)
+						break
+					}
+				}
+				if i >= len(c.gi().palExist) {
+					c.gi().palno, c.gi().palExist[0] = 1, true
+					c.gi().palSelectable[0] = true
+				}
+			}
+			break
+		}
+	}
 }
 func (c *Char) clearHitCount() {
 	c.hitCount, c.uniqHitCount = 0, 0
@@ -2019,5 +2142,27 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 			}
 		}
 		c.gi().sff.palList.SwapPalMap(&pfx.remap)
+	}
+}
+
+type CharList struct {
+	runOrder, drawOrder []*Char
+}
+
+func (cl *CharList) clear() {
+	*cl = CharList{}
+	sys.nextCharId = int32(sys.helperMax)
+}
+func (cl *CharList) add(c *Char) {
+	cl.runOrder = append(cl.runOrder, c)
+	i := 0
+	for ; i < len(cl.drawOrder); i++ {
+		if cl.drawOrder[i] == nil {
+			cl.drawOrder[i] = c
+			break
+		}
+	}
+	if i >= len(cl.drawOrder) {
+		cl.drawOrder = append(cl.drawOrder, c)
 	}
 }

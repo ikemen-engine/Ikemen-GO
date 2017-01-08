@@ -5530,14 +5530,14 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			}
 			if appending {
 				if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
-					c.block.ignorehitpause {
+					!c.block.ignorehitpause {
 					sbc.block.ctrls = append(sbc.block.ctrls, sctrl)
 				} else {
 					c.block.ctrls = append(c.block.ctrls, sctrl)
 					sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
-				}
-				if c.block.ignorehitpause {
-					sbc.block.ignorehitpause = c.block.ignorehitpause
+					if c.block.ignorehitpause {
+						sbc.block.ignorehitpause = c.block.ignorehitpause
+					}
 				}
 			}
 		}
@@ -5723,6 +5723,17 @@ func (c *Compiler) inclNumVars(numVars *int32) error {
 	}
 	return nil
 }
+func (c *Compiler) scanI32(line *string) (int32, error) {
+	t := c.scan(line)
+	if t == "" {
+		return 0, c.yokisinaiToken()
+	}
+	if t == "-" && len(*line) > 0 && (*line)[0] >= '0' && (*line)[0] <= '9' {
+		t += c.scan(line)
+	}
+	v, err := strconv.ParseInt(t, 10, 32)
+	return int32(v), err
+}
 func (c *Compiler) subBlock(line *string, root bool,
 	sbc *StateBytecode, numVars *int32) (*StateBlock, error) {
 	bl := newStateBlock()
@@ -5746,14 +5757,11 @@ func (c *Compiler) subBlock(line *string, root bool,
 			if err := c.needToken("("); err != nil {
 				return nil, err
 			}
-			c.scan(line)
 			var err error
-			if bl.persistent, err = c.integer2(line); err != nil {
+			if bl.persistent, err = c.scanI32(line); err != nil {
 				return nil, err
 			}
-			if c.token == "" {
-				c.scan(line)
-			}
+			c.scan(line)
 			if err := c.needToken(")"); err != nil {
 				return nil, err
 			}
@@ -6141,14 +6149,11 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 		case "":
 			return errmes(c.yokisinaiToken())
 		case "statedef":
-			c.scan(&line)
-			n, err := c.integer2(&line)
+			n, err := c.scanI32(&line)
 			if err != nil {
 				return errmes(err)
 			}
-			if c.token == "" {
-				c.scan(&line)
-			}
+			c.scan(&line)
 			if existInThisFile[n] {
 				return errmes(Error(fmt.Sprintf("State %v の多重定義", n)))
 			}
