@@ -1017,15 +1017,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_hitshakeover:
 			sys.bcStack.PushB(c.hitShakeOver())
 		case OC_frontedgedist:
-			sys.bcStack.PushI(c.frontEdgeDist())
+			sys.bcStack.PushI(int32(c.frontEdgeDist()))
 		case OC_frontedgebodydist:
-			sys.bcStack.PushI(c.frontEdgeBodyDist())
+			sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
 		case OC_frontedge:
 			sys.bcStack.PushF(c.frontEdge())
 		case OC_backedgedist:
-			sys.bcStack.PushI(c.backEdgeDist())
+			sys.bcStack.PushI(int32(c.backEdgeDist()))
 		case OC_backedgebodydist:
-			sys.bcStack.PushI(c.backEdgeBodyDist())
+			sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
 		case OC_backedge:
 			sys.bcStack.PushF(c.backEdge())
 		case OC_leftedge:

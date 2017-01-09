@@ -255,6 +255,14 @@ func readBackGround(is IniSection, link *backGround,
 	}
 	return bg
 }
+func (bg *backGround) reset() {
+	bg.anim.Reset()
+	bg.bga.clear()
+	bg.bga.vel = bg.startv
+	bg.bga.radius = bg.startrad
+	bg.bga.sintime = bg.startsint
+	bg.bga.sinlooptime = bg.startsinlt
+}
 
 type bgCtrl struct {
 	bg           []*backGround
@@ -313,19 +321,61 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 	}
 }
 
-type bgctlActiveCtrlList struct {
-	bgc  []bgCtrl
-	next *bgctlActiveCtrlList
-}
-type bgctlNode struct {
-	next     *bgctlNode
+type bgctNode struct {
 	bgc      []*bgCtrl
 	waitTime int32
 }
 type bgcTimeLine struct {
-	top bgctlNode
-	al  bgctlActiveCtrlList
+	line []bgctNode
+	al   []*bgCtrl
 }
+
+func (bgct *bgcTimeLine) clear() {
+	*bgct = bgcTimeLine{}
+}
+func (bgct *bgcTimeLine) add(bgc *bgCtrl) {
+	if bgc.looptime >= 0 && bgc.endtime > bgc.looptime {
+		bgc.endtime = bgc.looptime
+	}
+	if bgc.starttime < 0 || bgc.starttime > bgc.endtime ||
+		bgc.looptime >= 0 && bgc.starttime >= bgc.looptime {
+		return
+	}
+	wtime := int32(0)
+	if bgc.currenttime != 0 {
+		if bgc.looptime < 0 {
+			return
+		}
+		wtime += bgc.looptime - bgc.currenttime
+	}
+	wtime += bgc.starttime
+	bgc.currenttime = bgc.starttime
+	if wtime < 0 {
+		bgc.currenttime -= wtime
+		wtime = 0
+	}
+	i := 0
+	for ; ; i++ {
+		if i == len(bgct.line) {
+			bgct.line = append(bgct.line,
+				bgctNode{bgc: []*bgCtrl{bgc}, waitTime: wtime})
+			return
+		}
+		if wtime <= bgct.line[i].waitTime {
+			break
+		}
+		wtime -= bgct.line[i].waitTime
+	}
+	if wtime == bgct.line[i].waitTime {
+		bgct.line[i].bgc = append(bgct.line[i].bgc, bgc)
+	} else {
+		tmp := append(bgct.line[:i:i],
+			bgctNode{bgc: []*bgCtrl{bgc}, waitTime: wtime})
+		bgct.line[i].waitTime -= wtime
+		bgct.line = append(tmp, bgct.line...)
+	}
+}
+
 type stageCamera struct {
 	startx         int32
 	boundleft      int32
@@ -596,4 +646,17 @@ func (s *Stage) getBg(id int32) (bg []*backGround) {
 		}
 	}
 	return
+}
+func (s *Stage) reset() {
+	s.bga.clear()
+	for i := range s.bg {
+		s.bg[i].reset()
+	}
+	for i := range s.bgc {
+		s.bgc[i].currenttime = 0
+	}
+	s.bgct.clear()
+	for i := len(s.bgc) - 1; i >= 0; i-- {
+		s.bgct.add(&s.bgc[i])
+	}
 }

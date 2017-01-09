@@ -394,7 +394,7 @@ func systemScriptInit(l *lua.LState) {
 		if tm < 0 || tm > TM_LAST {
 			l.RaiseError("モード番号(%v)が不正です。", tm)
 		}
-		nt := int(numArg(l, 3))
+		nt := int32(numArg(l, 3))
 		if nt < 1 || nt > MaxSimul {
 			l.RaiseError("チーム人数(%v)が不正です。", nt)
 		}
@@ -421,13 +421,13 @@ func systemScriptInit(l *lua.LState) {
 			case TM_Single:
 				ret = 2
 			case TM_Simul:
-				if len(sys.sel.selected[tn-1]) >= sys.numSimul[tn-1] {
+				if len(sys.sel.selected[tn-1]) >= int(sys.numSimul[tn-1]) {
 					ret = 2
 				} else {
 					ret = 1
 				}
 			case TM_Turns:
-				if len(sys.sel.selected[tn-1]) >= sys.numTurns[tn-1] {
+				if len(sys.sel.selected[tn-1]) >= int(sys.numTurns[tn-1]) {
 					ret = 2
 				} else {
 					ret = 1
@@ -442,7 +442,7 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
-		sys.await(60)
+		sys.await(FPS)
 		if sys.gameEnd {
 			l.RaiseError("<game end>")
 		}
@@ -572,7 +572,7 @@ func systemScriptInit(l *lua.LState) {
 				if sys.loader.state == LS_Error {
 					return sys.loader.err
 				}
-				sys.await(60)
+				sys.await(FPS)
 			}
 			return nil
 		}
@@ -619,6 +619,7 @@ func systemScriptInit(l *lua.LState) {
 				} else {
 					sys.matchWins[1] = sys.lifebar.ro.match_wins
 				}
+				sys.stage.reset()
 			}
 			if sys.fight() {
 				sys.chars = [len(sys.chars)][]*Char{}

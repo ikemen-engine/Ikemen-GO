@@ -872,6 +872,9 @@ type Char struct {
 	animPN          int
 	animNo          int32
 	life            int32
+	lifeMax         int32
+	power           int32
+	powerMax        int32
 	sprpriority     int32
 	juggle          int32
 	recovertime     int32
@@ -1051,7 +1054,9 @@ func (c *Char) load(def string) error {
 			if data {
 				data = false
 				is.ReadI32("life", &gi.data.life)
+				c.lifeMax = gi.data.life
 				is.ReadI32("power", &gi.data.power)
+				c.powerMax = gi.data.power
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
 				var i32 int32
@@ -1298,8 +1303,8 @@ func (c *Char) loadPallet() {
 		if c.gi().palExist[i] {
 			j := 0
 			for ; j < len(sys.chars); j++ {
-				if j != c.playerNo && len(sys.chars[j]) > 0 && sys.cgi[j].def == c.gi().def &&
-					sys.cgi[j].drawpalno == i+1 {
+				if j != c.playerNo && len(sys.chars[j]) > 0 &&
+					sys.cgi[j].def == c.gi().def && sys.cgi[j].drawpalno == i+1 {
 					break
 				}
 			}
@@ -1853,11 +1858,24 @@ func (c *Char) lifeSet(life int32) {
 		}
 	}
 }
-func (c *Char) powerAdd(add int32) {
-	unimplemented()
+func (c *Char) setPower(pow int32) {
+	if !sys.roundEnd() {
+		c.power = Max(0, Min(c.powerMax, pow))
+	}
 }
-func (c *Char) powerSet(add int32) {
-	unimplemented()
+func (c *Char) powerAdd(add int32) {
+	if sys.powerShare[c.playerNo&1] {
+		sys.chars[c.playerNo&1][0].setPower(c.getPower() + add)
+	} else {
+		sys.chars[c.playerNo][0].setPower(c.getPower() + add)
+	}
+}
+func (c *Char) powerSet(pow int32) {
+	if sys.powerShare[c.playerNo&1] {
+		sys.chars[c.playerNo&1][0].setPower(pow)
+	} else {
+		sys.chars[c.playerNo][0].setPower(pow)
+	}
 }
 func (c *Char) distX(opp *Char) float32 {
 	return opp.pos[0] - c.pos[0]
@@ -1912,13 +1930,25 @@ func (c *Char) hitVelSetY() {
 		c.setYV(c.ghv.yvel)
 	}
 }
-func (c *Char) frontEdgeDist() int32 {
-	unimplemented()
-	return 0
+func (c *Char) getEdge(base float32, actually bool) float32 {
+	if !actually || c.gi().ver[0] != 1 {
+		switch c.ss.sb.stateType {
+		case ST_A:
+			return base + 1
+		case ST_L:
+			return base + 2
+		}
+	}
+	return base
 }
-func (c *Char) frontEdgeBodyDist() int32 {
-	unimplemented()
-	return 0
+func (c *Char) frontEdgeDist() float32 {
+	if c.facing > 0 {
+		return sys.xmax - c.pos[0]
+	}
+	return c.pos[0] - sys.xmin
+}
+func (c *Char) frontEdgeBodyDist() float32 {
+	return c.frontEdgeDist() - c.getEdge(c.edge[0], false)
 }
 func (c *Char) frontEdge() float32 {
 	if c.facing > 0 {
@@ -1926,13 +1956,14 @@ func (c *Char) frontEdge() float32 {
 	}
 	return c.leftEdge()
 }
-func (c *Char) backEdgeDist() int32 {
-	unimplemented()
-	return 0
+func (c *Char) backEdgeDist() float32 {
+	if c.facing < 0 {
+		return sys.xmax - c.pos[0]
+	}
+	return c.pos[0] - sys.xmin
 }
-func (c *Char) backEdgeBodyDist() int32 {
-	unimplemented()
-	return 0
+func (c *Char) backEdgeBodyDist() float32 {
+	return c.backEdgeDist() - c.getEdge(c.edge[1], false)
 }
 func (c *Char) backEdge() float32 {
 	if c.facing < 0 {
@@ -2029,8 +2060,10 @@ func (c *Char) hitPause() bool {
 	return c.hitPauseTime > 0
 }
 func (c *Char) getPower() int32 {
-	unimplemented()
-	return 0
+	if sys.powerShare[c.playerNo&1] {
+		return sys.chars[c.playerNo&1][0].power
+	}
+	return sys.chars[c.playerNo][0].power
 }
 func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {

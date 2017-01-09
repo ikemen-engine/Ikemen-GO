@@ -6,13 +6,19 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
 	"github.com/yuin/gopher-lua"
+	"io/ioutil"
+	"math"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-const MaxSimul = 4
+const (
+	MaxSimul = 4
+	FPS      = 60
+)
 
 var sys = System{
 	randseed:  int32(time.Now().UnixNano()),
@@ -34,14 +40,17 @@ var sys = System{
 	match:                  1,
 	listenPort:             "7500",
 	loader:                 *newLoader(),
-	numSimul:               [2]int{2, 2},
-	numTurns:               [2]int{2, 2},
+	numSimul:               [2]int32{2, 2},
+	numTurns:               [2]int32{2, 2},
 	afterImageMax:          8,
 	attack_LifeToPowerMul:  0.7,
 	getHit_LifeToPowerMul:  0.6,
 	superpmap:              *NewPalFX(),
 	super_TargetDefenceMul: 1.5,
-	helperMax:              56}
+	helperMax:              56,
+	wincnt:                 wincntMap(make(map[string][]int32)),
+	wincntFileName:         "autolevel.txt",
+	powerShare:             [2]bool{true, true}}
 
 type TeamMode int32
 
@@ -69,6 +78,7 @@ type System struct {
 	lifebarFontScale            float32
 	debugFont                   *Fnt
 	debugScript                 string
+	debugDraw                   bool
 	mixer                       Mixer
 	bgm                         Vorbis
 	audioContext                *openal.Context
@@ -102,8 +112,8 @@ type System struct {
 	charList                    CharList
 	cgi                         [MaxSimul * 2]CharGlobalInfo
 	tmode                       [2]TeamMode
-	numSimul                    [2]int
-	numTurns                    [2]int
+	numSimul                    [2]int32
+	numTurns                    [2]int32
 	esc                         bool
 	loadMutex                   sync.Mutex
 	ignoreMostErrors            bool
@@ -142,6 +152,22 @@ type System struct {
 	stage                       *Stage
 	helperMax                   int
 	nextCharId                  int32
+	wincnt                      wincntMap
+	wincntFileName              string
+	powerShare                  [2]bool
+	boundhigh                   float32
+	screenZoffset               float32
+	tickCount                   int
+	oldTickCount                int
+	tickCountF                  float32
+	lastTick                    float32
+	nextAddTime                 float32
+	oldNextAddTime              float32
+	scale                       float32
+	screenleft                  float32
+	screenright                 float32
+	xmin                        float32
+	xmax                        float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -237,6 +263,9 @@ func (s *System) synchronize() error {
 	}
 	return nil
 }
+func (s *System) roundEnd() bool {
+	return s.intro < -s.lifebar.ro.over_hittime
+}
 func (s *System) matchOver() bool {
 	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
 }
@@ -260,9 +289,225 @@ func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
 }
+func (s *System) resetGblEffect() {
+	s.allPalFX.clear()
+	s.bgPalFX.clear()
+	s.envShake.clear()
+	s.pause, s.pausetime = 0, 0
+	s.super, s.supertime = 0, 0
+	s.superanim = nil
+	s.envcol_time = 0
+	s.specialFlag = 0
+}
+func (s *System) nextRound() {
+	s.resetGblEffect()
+	unimplemented()
+}
+func (s *System) resetFrameTime() {
+	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick = 0, -1, 0, 0
+	s.nextAddTime, s.oldNextAddTime = 1.0/FPS, 1.0/FPS
+}
 func (s *System) fight() (reload bool) {
+	s.gameTime = 0
+	var life, pow [len(s.chars)]int32
+	var ivar [len(s.chars)][]int32
+	var fvar [len(s.chars)][]float32
+	copyVar := func(pn int) {
+		life[pn] = s.chars[pn][0].life
+		pow[pn] = s.chars[pn][0].power
+		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
+			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
+		}
+		copy(ivar[pn], s.chars[pn][0].ivar[:])
+		if len(fvar[pn]) < len(s.chars[pn][0].fvar) {
+			fvar[pn] = make([]float32, len(s.chars[pn][0].fvar))
+		}
+		copy(fvar[pn], s.chars[pn][0].fvar[:])
+	}
+	if err := s.synchronize(); err != nil {
+		println(err)
+	}
+	s.wincnt.init()
+	var level [len(s.chars)]int32
+	for i, p := range s.chars {
+		if len(p) > 0 {
+			p[0].clear2()
+			level[i] = s.wincnt.getLevel(i)
+			if s.powerShare[i&1] {
+				pmax := Max(s.cgi[i&1].data.power, s.cgi[i].data.power)
+				for j := i & 1; j < len(s.chars); j += 2 {
+					if len(s.chars[j]) > 0 {
+						s.chars[j][0].powerMax = pmax
+					}
+				}
+			}
+		}
+	}
+	minlv, maxlv := level[0], level[0]
+	for i, lv := range level[1:] {
+		if len(s.chars[i+1]) > 0 {
+			minlv = Min(minlv, lv)
+			maxlv = Max(maxlv, lv)
+		}
+	}
+	if minlv > 0 {
+		for i := range level {
+			level[i] -= minlv
+		}
+	} else if maxlv < 0 {
+		for i := range level {
+			level[i] -= maxlv
+		}
+	}
+	lvmul := math.Pow(2, 1.0/12)
+	for i, p := range s.chars {
+		if len(p) > 0 {
+			lm := float32(p[0].gi().data.life) * s.lifeMul
+			switch s.tmode[i&1] {
+			case TM_Single:
+				switch s.tmode[(i+1)&1] {
+				case TM_Simul:
+					lm *= s.team1VS2Life
+				case TM_Turns:
+					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] {
+						lm = lm * float32(s.numTurns[(i+1)&1]) /
+							float32(s.matchWins[(i+1)&1])
+					}
+				}
+			case TM_Simul:
+				switch s.tmode[(i+1)&1] {
+				case TM_Simul:
+					if s.numSimul[(i+1)&1] < s.numSimul[i&1] {
+						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
+					}
+				case TM_Turns:
+					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] {
+						lm = lm * float32(s.numTurns[(i+1)&1]) /
+							float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
+					}
+				default:
+					lm /= float32(s.numSimul[i&1])
+				}
+			case TM_Turns:
+				switch s.tmode[(i+1)&1] {
+				case TM_Single:
+					if s.matchWins[i&1] < s.numTurns[i&1] {
+						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
+					}
+				case TM_Simul:
+					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] {
+						lm = lm * s.team1VS2Life *
+							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
+							float32(s.numTurns[i&1])
+					}
+				case TM_Turns:
+					if s.numTurns[(i+1)&1] < s.numTurns[i&1] {
+						lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
+					}
+				}
+			}
+			foo := math.Pow(lvmul, float64(-level[i]))
+			p[0].lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
+			if s.roundsExisted[i&1] > 0 {
+				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
+			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
+				p[0].life = p[0].lifeMax
+				if s.round == 1 {
+					p[0].power = 0
+				}
+			}
+			copyVar(i)
+		}
+	}
+	if s.round == 1 {
+		s.bgm.Open(s.stage.bgmusic)
+	}
+	bl := float32(s.stage.cam.boundleft-s.stage.cam.startx) * s.stage.localscl
+	br := float32(s.stage.cam.boundright-s.stage.cam.startx) * s.stage.localscl
+	if s.stage.cam.verticalfollow > 0 {
+		s.boundhigh = MinF(0, float32(s.stage.cam.boundhigh)*s.stage.localscl+
+			float32(s.gameHeight)-s.stage.drawOffsetY-
+			float32(s.gameWidth)*float32(s.stage.localcoord[1])/
+				float32(s.stage.localcoord[0]))
+	} else {
+		s.boundhigh = 0
+	}
+	xminscl := float32(s.gameWidth) / (float32(s.gameWidth) - bl + br)
+	yminscl := float32(s.gameHeight) / (240 - MinF(0, s.boundhigh))
+	minscl := MaxF(s.zoomMin, MinF(s.zoomMax, MaxF(xminscl, yminscl)))
+	s.screenZoffset = float32(s.stage.zoffset)*s.stage.localscl -
+		s.stage.drawOffsetY + 240 - float32(s.gameWidth)*
+		float32(s.stage.localcoord[1])/float32(s.stage.localcoord[0])
+	oldWins, oldDraws := s.wins, s.draws
+	var x, y, l, r float32
+	var scl, sclmul float32
+	reset := func() {
+		s.wins, s.draws = oldWins, oldDraws
+		for i, p := range s.chars {
+			if len(p) > 0 {
+				p[0].life = life[i]
+				p[0].power = pow[i]
+				copy(p[0].ivar[:], ivar[i])
+				copy(p[0].fvar[:], fvar[i])
+			}
+		}
+		s.resetFrameTime()
+		s.nextRound()
+		x, y, l, r, scl, sclmul = 0, 0, 0, 0, 1, 1
+		s.scale = s.stage.ztopscale
+		s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
+		s.screenright = float32(s.stage.screenright) * s.stage.localscl
+		s.xmin = -(float32(s.gameWidth)/2)/s.scale + s.screenleft
+		s.xmax = (float32(s.gameWidth)/2)/s.scale - s.screenright
+	}
+	reset()
 	unimplemented()
 	return false
+}
+
+type wincntMap map[string][]int32
+
+func (wm *wincntMap) init() {
+	if sys.autolevel {
+		b, err := ioutil.ReadFile(sys.wincntFileName)
+		if err != nil {
+			return
+		}
+		str := string(b)
+		if len(str) < 3 {
+			return
+		}
+		if str[:3] == string('\ufeff') {
+			str = str[3:]
+		}
+		toint := func(strAry []string) (intAry []int32) {
+			for _, s := range strAry {
+				i, _ := strconv.ParseInt(s, 10, 32)
+				intAry = append(intAry, int32(i))
+			}
+			return
+		}
+		for _, l := range strings.Split(str, "\n") {
+			tmp := strings.Split(l, ",")
+			if len(tmp) >= 2 {
+				item := toint(strings.Split(strings.TrimSpace(tmp[1]), " "))
+				if len(item) < MaxPalNo {
+					item = append(item, make([]int32, MaxPalNo-len(item))...)
+				}
+				(*wm)[tmp[0]] = item
+			}
+		}
+	}
+}
+func (wm *wincntMap) getItem(def string) []int32 {
+	lv, _ := (*wm)[def]
+	if len(lv) < MaxPalNo {
+		lv = append(lv, make([]int32, MaxPalNo-len(lv))...)
+	}
+	return lv
+}
+func (wm *wincntMap) getLevel(p int) int32 {
+	return wm.getItem(sys.cgi[p].def)[sys.cgi[p].palno-1]
 }
 
 type SelectChar struct {
@@ -472,7 +717,7 @@ func (l *Loader) loadChar(pn int) int {
 	result := -1
 	nsel := len(sys.sel.selected[pn&1])
 	if sys.tmode[pn&1] == TM_Simul {
-		if pn>>1 >= sys.numSimul[pn&1] {
+		if pn>>1 >= int(sys.numSimul[pn&1]) {
 			sys.cgi[pn].states = nil
 			sys.chars[pn] = nil
 			result = 1
@@ -480,7 +725,7 @@ func (l *Loader) loadChar(pn int) int {
 	} else if pn >= 2 {
 		result = 0
 	}
-	if sys.tmode[pn&1] == TM_Turns && nsel < sys.numTurns[pn&1] {
+	if sys.tmode[pn&1] == TM_Turns && nsel < int(sys.numTurns[pn&1]) {
 		result = 0
 	}
 	memberNo := pn >> 1
