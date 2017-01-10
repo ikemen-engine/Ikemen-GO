@@ -65,6 +65,22 @@ type bgAction struct {
 func (bga *bgAction) clear() {
 	*bga = bgAction{}
 }
+func (bga *bgAction) action() {
+	for i := 0; i < 2; i++ {
+		bga.pos[i] += bga.vel[i]
+		if bga.sinlooptime[i] > 0 {
+			bga.sinoffset[i] = bga.radius[i] * float32(math.Sin(
+				2*math.Pi*float64(bga.sintime[i])/float64(bga.sinlooptime[i])))
+			bga.sintime[i]++
+			if bga.sintime[i] >= bga.sinlooptime[i] {
+				bga.sintime[i] = 0
+			}
+		} else {
+			bga.sinoffset[i] = 0
+		}
+		bga.offset[i] = bga.pos[i] + bga.sinoffset[i]
+	}
+}
 
 type backGround struct {
 	anim         Animation
@@ -320,6 +336,12 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
 }
+func (bgc *bgCtrl) xEnable() bool {
+	return !math.IsNaN(float64(bgc.x))
+}
+func (bgc *bgCtrl) yEnable() bool {
+	return !math.IsNaN(float64(bgc.y))
+}
 
 type bgctNode struct {
 	bgc      []*bgCtrl
@@ -373,6 +395,29 @@ func (bgct *bgcTimeLine) add(bgc *bgCtrl) {
 			bgctNode{bgc: []*bgCtrl{bgc}, waitTime: wtime})
 		bgct.line[i].waitTime -= wtime
 		bgct.line = append(tmp, bgct.line...)
+	}
+}
+func (bgct *bgcTimeLine) step(s *Stage) {
+	if len(bgct.line) > 0 && bgct.line[0].waitTime <= 0 {
+		for _, b := range bgct.line[0].bgc {
+			bgct.al = append(bgct.al, b)
+		}
+		bgct.line = bgct.line[1:]
+	}
+	if len(bgct.line) > 0 {
+		bgct.line[0].waitTime--
+	}
+	var el []*bgCtrl
+	for i := 0; i < len(bgct.al); {
+		s.runBgCtrl(bgct.al[i])
+		if bgct.al[i].currenttime > bgct.al[i].endtime {
+			el = append(el, bgct.al[i])
+			bgct.al = append(bgct.al[:i], bgct.al[i+1:]...)
+		}
+		i++
+	}
+	for _, b := range el {
+		bgct.add(b)
 	}
 }
 
@@ -646,6 +691,136 @@ func (s *Stage) getBg(id int32) (bg []*backGround) {
 		}
 	}
 	return
+}
+func (s *Stage) runBgCtrl(bgc *bgCtrl) {
+	bgc.currenttime++
+	switch bgc._type {
+	case BT_Anim:
+		a := s.at.get(bgc.v[0])
+		if a != nil {
+			for i := range bgc.bg {
+				bgc.bg[i].actionno = bgc.v[0]
+				bgc.bg[i].anim = *a
+			}
+		}
+	case BT_Visible:
+		for i := range bgc.bg {
+			bgc.bg[i].visible = bgc.v[0] != 0
+		}
+	case BT_Enable:
+		for i := range bgc.bg {
+			bgc.bg[i].visible, bgc.bg[i].active = bgc.v[0] != 0, bgc.v[0] != 0
+		}
+	case BT_PosSet:
+		for i := range bgc.bg {
+			if bgc.xEnable() {
+				bgc.bg[i].bga.pos[0] = bgc.x
+			}
+			if bgc.yEnable() {
+				bgc.bg[i].bga.pos[1] = bgc.y
+			}
+		}
+		if bgc.positionlink {
+			if bgc.xEnable() {
+				s.bga.pos[0] = bgc.x
+			}
+			if bgc.yEnable() {
+				s.bga.pos[1] = bgc.y
+			}
+		}
+	case BT_PosAdd:
+		for i := range bgc.bg {
+			if bgc.xEnable() {
+				bgc.bg[i].bga.pos[0] += bgc.x
+			}
+			if bgc.yEnable() {
+				bgc.bg[i].bga.pos[1] += bgc.y
+			}
+		}
+		if bgc.positionlink {
+			if bgc.xEnable() {
+				s.bga.pos[0] += bgc.x
+			}
+			if bgc.yEnable() {
+				s.bga.pos[1] += bgc.y
+			}
+		}
+	case BT_SinX, BT_SinY:
+		ii := Btoi(bgc._type == BT_SinY)
+		if bgc.v[0] == 0 {
+			bgc.v[1] = 0
+		}
+		a := float32(bgc.v[2]) / 360
+		st := int32((a - float32(int32(a))) * float32(bgc.v[1]))
+		if st < 0 {
+			st += Abs(bgc.v[1])
+		}
+		for i := range bgc.bg {
+			bgc.bg[i].bga.radius[ii] = bgc.x
+			bgc.bg[i].bga.sinlooptime[ii] = bgc.v[1]
+			bgc.bg[i].bga.sintime[ii] = st
+		}
+		if bgc.positionlink {
+			s.bga.radius[ii] = bgc.x
+			s.bga.sinlooptime[ii] = bgc.v[1]
+			s.bga.sintime[ii] = st
+		}
+	case BT_VelSet:
+		for i := range bgc.bg {
+			if bgc.xEnable() {
+				bgc.bg[i].bga.vel[0] = bgc.x
+			}
+			if bgc.yEnable() {
+				bgc.bg[i].bga.vel[1] = bgc.y
+			}
+		}
+		if bgc.positionlink {
+			if bgc.xEnable() {
+				s.bga.vel[0] = bgc.x
+			}
+			if bgc.yEnable() {
+				s.bga.vel[1] = bgc.y
+			}
+		}
+	case BT_VelAdd:
+		for i := range bgc.bg {
+			if bgc.xEnable() {
+				bgc.bg[i].bga.vel[0] += bgc.x
+			}
+			if bgc.yEnable() {
+				bgc.bg[i].bga.vel[1] += bgc.y
+			}
+		}
+		if bgc.positionlink {
+			if bgc.xEnable() {
+				s.bga.vel[0] += bgc.x
+			}
+			if bgc.yEnable() {
+				s.bga.vel[1] += bgc.y
+			}
+		}
+	}
+}
+func (s *Stage) action() {
+	s.bgct.step(s)
+	s.bga.action()
+	link, zlink := 0, -1
+	for i, b := range s.bg {
+		s.bg[i].bga.action()
+		if i > 0 && b.positionlink {
+			s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
+			s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
+		} else {
+			link = i
+		}
+		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
+			zlink = i
+			s.bga.offset[1] += b.bga.offset[1]
+		}
+		if b.active {
+			s.bg[i].anim.Action()
+		}
+	}
 }
 func (s *Stage) reset() {
 	s.bga.clear()

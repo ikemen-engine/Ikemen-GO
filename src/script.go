@@ -442,8 +442,8 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
-		sys.await(FPS)
-		if sys.gameEnd {
+		sys.playSound()
+		if !sys.update() {
 			l.RaiseError("<game end>")
 		}
 		return 0
@@ -662,4 +662,18 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(winp))
 		return 1
 	})
+}
+
+// Trigger Script
+
+func triggerScriptInit(l *lua.LState) {
+	sys.debugWC = sys.chars[0][0]
+}
+
+// Debug Script
+
+func debugScriptInit(l *lua.LState, file string) error {
+	scriptCommonInit(l)
+	triggerScriptInit(l)
+	return l.DoFile(file)
 }

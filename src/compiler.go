@@ -1277,6 +1277,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_palno)
 	case "win":
 		out.append(OC_ex_, OC_ex_win)
+	case "lose":
+		out.append(OC_ex_, OC_ex_lose)
 	case "matchover":
 		out.append(OC_ex_, OC_ex_matchover)
 	case "roundno":

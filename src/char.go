@@ -2104,6 +2104,9 @@ func (c *Char) canCtrl() bool {
 func (c *Char) win() bool {
 	return sys.winTeam == c.playerNo&1
 }
+func (c *Char) lose() bool {
+	return sys.winTeam == ^c.playerNo&1
+}
 func (c *Char) hitDefAttr(attr int32) bool {
 	return c.ss.sb.moveType == MT_A && c.hitdef.testAttr(attr)
 }

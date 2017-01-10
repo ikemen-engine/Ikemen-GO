@@ -67,17 +67,40 @@ const (
 	NetError
 )
 
-var keySatate = make(map[glfw.Key]bool)
+type ShortcutKey struct {
+	Key glfw.Key
+	Mod glfw.ModifierKey
+}
 
+func (sk *ShortcutKey) Set(key glfw.Key, shift, ctrl, alt bool) {
+	sk.Key = key
+	sk.Mod = 0
+	if shift {
+		sk.Mod |= glfw.ModShift
+	}
+	if ctrl {
+		sk.Mod |= glfw.ModControl
+	}
+	if alt {
+		sk.Mod |= glfw.ModAlt
+	}
+}
+func (sk *ShortcutKey) CheckDown(k glfw.Key, m glfw.ModifierKey) bool {
+	return k == sk.Key &&
+		^(m^sk.Mod)&(glfw.ModShift|glfw.ModControl|glfw.ModAlt) == sk.Mod
+}
 func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 	action glfw.Action, mk glfw.ModifierKey) {
 	switch action {
 	case glfw.Release:
-		keySatate[key] = false
+		sys.keySatate[key] = false
 	case glfw.Press:
-		keySatate[key] = true
+		sys.keySatate[key] = true
 		sys.esc = sys.esc ||
 			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
+		for k, v := range sys.eventKeys {
+			sys.eventKeys[k] = v || k.CheckDown(key, mk)
+		}
 	}
 }
 
@@ -89,7 +112,7 @@ var joystick = [...]glfw.Joystick{glfw.Joystick1, glfw.Joystick2,
 
 func JoystickState(joy, button int) bool {
 	if joy < 0 {
-		return keySatate[glfw.Key(button)]
+		return sys.keySatate[glfw.Key(button)]
 	}
 	if joy >= len(joystick) {
 		return false
@@ -114,7 +137,20 @@ func JoystickState(joy, button int) bool {
 	return btns[button] != 0
 }
 
-type KeyConfig struct{ Joy, U, D, L, R, A, B, C, X, Y, Z, S int }
+type KeyConfig struct{ Joy, u, d, l, r, a, b, c, x, y, z, s int }
+
+func (kc KeyConfig) U() bool { return JoystickState(kc.Joy, kc.u) }
+func (kc KeyConfig) D() bool { return JoystickState(kc.Joy, kc.d) }
+func (kc KeyConfig) L() bool { return JoystickState(kc.Joy, kc.l) }
+func (kc KeyConfig) R() bool { return JoystickState(kc.Joy, kc.r) }
+func (kc KeyConfig) A() bool { return JoystickState(kc.Joy, kc.a) }
+func (kc KeyConfig) B() bool { return JoystickState(kc.Joy, kc.b) }
+func (kc KeyConfig) C() bool { return JoystickState(kc.Joy, kc.c) }
+func (kc KeyConfig) X() bool { return JoystickState(kc.Joy, kc.x) }
+func (kc KeyConfig) Y() bool { return JoystickState(kc.Joy, kc.y) }
+func (kc KeyConfig) Z() bool { return JoystickState(kc.Joy, kc.z) }
+func (kc KeyConfig) S() bool { return JoystickState(kc.Joy, kc.s) }
+
 type InputBits int32
 
 const (
@@ -134,18 +170,12 @@ const (
 
 func (ib *InputBits) SetInput(in int) {
 	if 0 <= in && in < len(sys.keyConfig) {
-		*ib = InputBits(Btoi(JoystickState(sys.keyConfig[in].Joy,
-			sys.keyConfig[in].U)) |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].D))<<1 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].L))<<2 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].R))<<3 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].A))<<4 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].B))<<5 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].C))<<6 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].X))<<7 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].Y))<<8 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].Z))<<9 |
-			Btoi(JoystickState(sys.keyConfig[in].Joy, sys.keyConfig[in].S))<<10)
+		*ib = InputBits(Btoi(sys.keyConfig[in].U()) |
+			Btoi(sys.keyConfig[in].D())<<1 | Btoi(sys.keyConfig[in].L())<<2 |
+			Btoi(sys.keyConfig[in].R())<<3 | Btoi(sys.keyConfig[in].A())<<4 |
+			Btoi(sys.keyConfig[in].B())<<5 | Btoi(sys.keyConfig[in].C())<<6 |
+			Btoi(sys.keyConfig[in].X())<<7 | Btoi(sys.keyConfig[in].Y())<<8 |
+			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10)
 	}
 }
 
@@ -428,10 +458,27 @@ func (ni *NetInput) Close() { unimplemented() }
 func (ni *NetInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
-func (ni *NetInput) Stop() { unimplemented() }
+func (ni *NetInput) AnyButton() bool {
+	unimplemented()
+	return false
+}
+func (ni *NetInput) Stop() {
+	if sys.esc {
+		ni.End()
+	} else {
+		unimplemented()
+	}
+}
+func (ni *NetInput) End() {
+	unimplemented()
+}
 func (ni *NetInput) Synchronize() error {
 	unimplemented()
 	return nil
+}
+func (ni *NetInput) Updata() bool {
+	unimplemented()
+	return !sys.gameEnd
 }
 
 type FileInput struct{ ib []InputBits }
@@ -440,9 +487,17 @@ func (fi *FileInput) Close() { unimplemented() }
 func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
+func (fi *FileInput) AnyButton() bool {
+	unimplemented()
+	return false
+}
 func (fi *FileInput) Synchronize() error {
 	unimplemented()
 	return nil
+}
+func (fi *FileInput) Updata() bool {
+	unimplemented()
+	return !sys.gameEnd
 }
 
 type AiInput struct {
@@ -1025,17 +1080,17 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 			if in < len(sys.keyConfig) {
 				joy := sys.keyConfig[in].Joy
 				if joy >= -1 {
-					l = JoystickState(joy, sys.keyConfig[in].L)
-					r = JoystickState(joy, sys.keyConfig[in].R)
-					u = JoystickState(joy, sys.keyConfig[in].U)
-					d = JoystickState(joy, sys.keyConfig[in].D)
-					a = JoystickState(joy, sys.keyConfig[in].A)
-					b = JoystickState(joy, sys.keyConfig[in].B)
-					c = JoystickState(joy, sys.keyConfig[in].C)
-					x = JoystickState(joy, sys.keyConfig[in].X)
-					y = JoystickState(joy, sys.keyConfig[in].Y)
-					z = JoystickState(joy, sys.keyConfig[in].Z)
-					s = JoystickState(joy, sys.keyConfig[in].S)
+					l = sys.keyConfig[in].L()
+					r = sys.keyConfig[in].R()
+					u = sys.keyConfig[in].U()
+					d = sys.keyConfig[in].D()
+					a = sys.keyConfig[in].A()
+					b = sys.keyConfig[in].B()
+					c = sys.keyConfig[in].C()
+					x = sys.keyConfig[in].X()
+					y = sys.keyConfig[in].Y()
+					z = sys.keyConfig[in].Z()
+					s = sys.keyConfig[in].S()
 				}
 			}
 		}

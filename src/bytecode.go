@@ -687,7 +687,11 @@ func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() || v2.ToB())
 }
 func (_ BytecodeExp) abs(v1 *BytecodeValue) {
-	v1.v = math.Abs(v1.v)
+	if v1.t == VT_Float {
+		v1.v = math.Abs(v1.v)
+	} else {
+		v1.SetI(Abs(v1.ToI()))
+	}
 }
 func (_ BytecodeExp) exp(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Exp(v1.v)))
@@ -1355,6 +1359,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 		sys.bcStack.Push(c.rdDistY(c.parent()))
 	case OC_ex_win:
 		sys.bcStack.PushB(c.win())
+	case OC_ex_lose:
+		sys.bcStack.PushB(c.lose())
 	case OC_ex_matchover:
 		sys.bcStack.PushB(sys.matchOver())
 	case OC_ex_roundno:
@@ -2569,7 +2575,7 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 	}
 	pf.clear2(true)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		sc.runSub(c, &pf.def, id, exp)
+		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
 	})
 	return false
@@ -2580,7 +2586,7 @@ type allPalFX palFX
 func (sc allPalFX) Run(c *Char, _ []int32) bool {
 	sys.allPalFX.clear()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		palFX(sc).runSub(c, &sys.allPalFX.def, id, exp)
+		palFX(sc).runSub(c, &sys.allPalFX.PalFXDef, id, exp)
 		return true
 	})
 	return false
@@ -2591,7 +2597,7 @@ type bgPalFX palFX
 func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 	sys.bgPalFX.clear()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		palFX(sc).runSub(c, &sys.bgPalFX.def, id, exp)
+		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
 		return true
 	})
 	return false
