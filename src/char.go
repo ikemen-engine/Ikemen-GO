@@ -10,6 +10,14 @@ import (
 
 const MaxPalNo = 12
 
+type SystemCharFlag uint32
+
+const (
+	SCF_ko SystemCharFlag = 1 << iota
+	SCF_ctrl
+	SCF_standby
+)
+
 type CharSpecialFlag uint32
 
 const (
@@ -29,7 +37,6 @@ const (
 	CSF_playerpush
 	CSF_angledraw
 	CSF_destroy
-	CSF_ko
 	CSF_frontedge
 	CSF_backedge
 	CSF_frontwidth
@@ -853,6 +860,27 @@ const (
 	HMF_F
 )
 
+type CharSystemVar struct {
+	airJumpCount  int32
+	hitCount      int32
+	uniqHitCount  int32
+	pauseMovetime int32
+	superMovetime int32
+	bindTime      int32
+	bindToId      int32
+	hitPauseTime  int32
+	angle         float32
+	angleScalse   [2]float32
+	alpha         [2]int32
+	recovertime   int32
+	systemFlag    SystemCharFlag
+	sprpriority   int32
+	getcombo      int32
+	veloff        float32
+	width, edge   [2]float32
+	attackMul     float32
+	defenceMul    float32
+}
 type Char struct {
 	name            string
 	palfx           *PalFX
@@ -866,7 +894,6 @@ type Char struct {
 	helperIndex     int32
 	parentIndex     int32
 	playerNo        int
-	ctrl            bool
 	keyctrl         bool
 	player          bool
 	animPN          int
@@ -875,47 +902,37 @@ type Char struct {
 	lifeMax         int32
 	power           int32
 	powerMax        int32
-	sprpriority     int32
 	juggle          int32
-	recovertime     int32
 	fallTime        int32
 	size            CharSize
-	width, edge     [2]float32
 	hitdef          HitDef
 	ghv             GetHitVar
 	ho              [8]HitOverride
 	hoIdx           int
 	mctype          MoveContact
 	mctime          int32
+	targets         []int32
 	targetsOfHitdef []int32
-	hitCount        int32
-	uniqHitCount    int32
+	enemyNear       [2][]*Char
 	specialFlag     CharSpecialFlag
 	pos             [2]float32
 	drawPos         [2]float32
 	oldPos          [2]float32
 	vel             [2]float32
 	facing          float32
-	angle           float32
-	angleScalse     [2]float32
-	defenceMul      float32
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
-	alpha           [2]int32
-	aimg            AfterImage
-	hitPauseTime    int32
-	pauseMovetime   int32
-	superMovetime   int32
-	standby         bool
-	angleset        bool
-	cs1tmp          bool
-	inguarddist     bool
-	p1facing        float32
-	pushed          bool
-	atktmp          int8
-	hittmp          int8
-	acttmp          int8
-	minus           int8
+	CharSystemVar
+	aimg        AfterImage
+	p1facing    float32
+	angleset    bool
+	cs1tmp      bool
+	inguarddist bool
+	pushed      bool
+	atktmp      int8
+	hittmp      int8
+	acttmp      int8
+	minus       int8
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -968,10 +985,30 @@ func (c *Char) clear1() {
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
 }
+func (c *Char) enemyNearClear() {
+	c.enemyNear[0] = c.enemyNear[0][:0]
+	c.enemyNear[1] = c.enemyNear[1][:0]
+}
 func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
-	unimplemented()
+	c.CharSystemVar = CharSystemVar{bindToId: -1, angleScalse: [2]float32{1, 1},
+		alpha: [2]int32{255, 0}, width: [2]float32{c.defFW(), c.defBW()},
+		attackMul:  float32(c.gi().data.attack) / 100,
+		defenceMul: float32(c.gi().data.defence) / 100}
+	c.oldPos, c.drawPos = c.pos, c.pos
+	if c.helperIndex == 0 {
+		if sys.roundsExisted[c.playerNo&1] > 0 {
+			c.palfx.clear()
+		} else {
+			c.palfx = newPalFX()
+		}
+	} else {
+		c.palfx = nil
+	}
+	c.aimg.timegap = -1
+	c.enemyNearClear()
+	c.targets = c.targets[:0]
 }
 func (c *Char) gi() *CharGlobalInfo {
 	return &sys.cgi[c.playerNo]
@@ -1372,7 +1409,20 @@ func (c *Char) setAnimElem(e int32) {
 	unimplemented()
 }
 func (c *Char) setCtrl(ctrl bool) {
-	c.ctrl = ctrl
+	if ctrl {
+		c.setSCF(SCF_ctrl)
+	} else {
+		c.unsetSCF(SCF_ctrl)
+	}
+}
+func (c *Char) scf(scf SystemCharFlag) bool {
+	return c.systemFlag&scf != 0
+}
+func (c *Char) setSCF(scf SystemCharFlag) {
+	c.systemFlag |= scf
+}
+func (c *Char) unsetSCF(scf SystemCharFlag) {
+	c.systemFlag &^= scf
 }
 func (c *Char) sf(csf CharSpecialFlag) bool {
 	return c.specialFlag&csf != 0
@@ -1387,7 +1437,7 @@ func (c *Char) time() int32 {
 	return c.ss.time
 }
 func (c *Char) alive() bool {
-	return !c.sf(CSF_ko)
+	return !c.scf(SCF_ko)
 }
 func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
 	p, fr float32, x *float32) {
@@ -1543,7 +1593,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 }
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !proj {
-		c.targetsOfHitdef = nil
+		c.targetsOfHitdef = c.targetsOfHitdef[:0]
 	}
 	if hd.attr&^int32(ST_MASK) == 0 {
 		hd.attr = 0
@@ -1941,6 +1991,18 @@ func (c *Char) getEdge(base float32, actually bool) float32 {
 	}
 	return base
 }
+func (c *Char) defFW() float32 {
+	if c.ss.sb.stateType == ST_A {
+		return float32(c.size.air.front)
+	}
+	return float32(c.size.ground.front)
+}
+func (c *Char) defBW() float32 {
+	if c.ss.sb.stateType == ST_A {
+		return float32(c.size.air.back)
+	}
+	return float32(c.size.ground.back)
+}
 func (c *Char) frontEdgeDist() float32 {
 	if c.facing > 0 {
 		return sys.xmax - c.pos[0]
@@ -2048,7 +2110,7 @@ func (c *Char) getPalfx() *PalFX {
 		return c.palfx
 	}
 	if c.parentIndex < 0 {
-		c.palfx = NewPalFX()
+		c.palfx = newPalFX()
 		return c.palfx
 	}
 	return sys.chars[c.playerNo][c.parentIndex].getPalfx()
@@ -2099,7 +2161,7 @@ func (c *Char) ctrlOver() bool {
 		sys.intro < -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) canCtrl() bool {
-	return c.ctrl && !c.sf(CSF_ko) && !c.ctrlOver()
+	return c.scf(SCF_ctrl) && !c.scf(SCF_ko) && !c.ctrlOver()
 }
 func (c *Char) win() bool {
 	return sys.winTeam == c.playerNo&1
@@ -2187,7 +2249,7 @@ type CharList struct {
 
 func (cl *CharList) clear() {
 	*cl = CharList{}
-	sys.nextCharId = int32(sys.helperMax)
+	sys.nextCharId = sys.helperMax
 }
 func (cl *CharList) add(c *Char) {
 	cl.runOrder = append(cl.runOrder, c)

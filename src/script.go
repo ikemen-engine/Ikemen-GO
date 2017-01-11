@@ -525,19 +525,19 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
-		sys.zoomEnable = boolArg(l, 1)
+		sys.cam.ZoomEnable = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setZoomMin", func(l *lua.LState) int {
-		sys.zoomMin = float32(numArg(l, 1))
+		sys.cam.ZoomMin = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomMax", func(l *lua.LState) int {
-		sys.zoomMax = float32(numArg(l, 1))
+		sys.cam.ZoomMax = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomSpeed", func(l *lua.LState) int {
-		sys.zoomSpeed = float32(numArg(l, 1))
+		sys.cam.ZoomSpeed = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "resetRemapInput", func(l *lua.LState) int {

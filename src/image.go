@@ -59,7 +59,7 @@ type PalFX struct {
 	eColor     float32
 }
 
-func NewPalFX() *PalFX { return &PalFX{} }
+func newPalFX() *PalFX { return &PalFX{} }
 func (pfx *PalFX) clear2(nt bool) {
 	pfx.PalFXDef = PalFXDef{color: 1, mul: [3]int32{256, 256, 256}}
 	pfx.negType = nt

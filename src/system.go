@@ -31,23 +31,22 @@ var sys = System{
 	roundTime:  -1,
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
-	zoomMin:           1, zoomMax: 1, zoomSpeed: 1,
-	lifebarFontScale: 1,
-	mixer:            *newMixer(),
-	bgm:              *newVorbis(),
-	sounds:           newSounds(),
-	allPalFX:         *NewPalFX(),
-	bgPalFX:          *NewPalFX(),
-	sel:              *newSelect(),
-	keySatate:        make(map[glfw.Key]bool),
-	match:            1,
-	listenPort:       "7500",
-	loader:           *newLoader(),
-	numSimul:         [2]int32{2, 2}, numTurns: [2]int32{2, 2},
+	lifebarFontScale:  1,
+	mixer:             *newMixer(),
+	bgm:               *newVorbis(),
+	sounds:            newSounds(),
+	allPalFX:          *newPalFX(),
+	bgPalFX:           *newPalFX(),
+	sel:               *newSelect(),
+	keySatate:         make(map[glfw.Key]bool),
+	match:             1,
+	listenPort:        "7500",
+	loader:            *newLoader(),
+	numSimul:          [2]int32{2, 2}, numTurns: [2]int32{2, 2},
 	afterImageMax:          8,
 	attack_LifeToPowerMul:  0.7,
 	getHit_LifeToPowerMul:  0.6,
-	superpmap:              *NewPalFX(),
+	superpmap:              *newPalFX(),
 	super_TargetDefenceMul: 1.5,
 	helperMax:              56,
 	wincnt:                 wincntMap(make(map[string][]int32)),
@@ -55,7 +54,10 @@ var sys = System{
 	powerShare:             [2]bool{true, true},
 	eventKeys:              make(map[ShortcutKey]bool),
 	hotkeys:                make(map[ShortcutKey]string),
-	commandLine:            make(chan string)}
+	commandLine:            make(chan string),
+	cam:                    *newCamera(),
+	playerIdCache:          make(map[int32]*Char),
+}
 
 type TeamMode int32
 
@@ -67,120 +69,120 @@ const (
 )
 
 type System struct {
-	randseed                    int32
-	scrrect                     [4]int32
-	gameWidth, gameHeight       int32
-	widthScale, heightScale     float32
-	window                      *glfw.Window
-	gameEnd, frameSkip          bool
-	redrawWait                  struct{ nextTime, lastDraw time.Time }
-	brightness                  int32
-	introTime, roundTime        int32
-	lifeMul, team1VS2Life       float32
-	turnsRecoveryRate           float32
-	zoomEnable                  bool
-	zoomMin, zoomMax, zoomSpeed float32
-	lifebarFontScale            float32
-	debugFont                   *Fnt
-	debugScript                 string
-	debugDraw                   bool
-	mixer                       Mixer
-	bgm                         Vorbis
-	audioContext                *openal.Context
-	nullSndBuf                  [audioOutLen * 2]int16
-	sounds                      Sounds
-	allPalFX, bgPalFX           PalFX
-	lifebar                     Lifebar
-	sel                         Select
-	keySatate                   map[glfw.Key]bool
-	netInput                    *NetInput
-	fileInput                   *FileInput
-	aiInput                     [MaxSimul * 2]AiInput
-	keyConfig                   []KeyConfig
-	com                         [MaxSimul * 2]int32
-	autolevel                   bool
-	home                        int
-	gameTime                    int32
-	match                       int32
-	inputRemap                  [MaxSimul * 2]int
-	listenPort                  string
-	round                       int32
-	intro                       int32
-	time                        int32
-	winTeam                     int
-	matchWins, wins             [2]int32
-	roundsExisted               [2]int32
-	draws                       int32
-	loader                      Loader
-	chars                       [MaxSimul * 2][]*Char
-	charList                    CharList
-	cgi                         [MaxSimul * 2]CharGlobalInfo
-	tmode                       [2]TeamMode
-	numSimul, numTurns          [2]int32
-	esc                         bool
-	loadMutex                   sync.Mutex
-	ignoreMostErrors            bool
-	stringPool                  [MaxSimul * 2]StringPool
-	bcStack, bcVarStack         BytecodeStack
-	bcVar                       []BytecodeValue
-	workingChar                 *Char
-	specialFlag                 GlobalSpecialFlag
-	afterImageMax               int
-	attack_LifeToPowerMul       float32
-	getHit_LifeToPowerMul       float32
-	cameraPos                   [2]float32
-	envShake                    EnvShake
-	pause                       int32
-	pausetime                   int32
-	pausebg                     bool
-	pauseendcmdbuftime          int32
-	pauseplayer                 int
-	super                       int32
-	supertime                   int32
-	superpausebg                bool
-	superendcmdbuftime          int32
-	superplayer                 int
-	superdarken                 bool
-	superanim                   *Animation
-	superpmap                   PalFX
-	superpos                    [2]float32
-	superfacing                 float32
-	superp2defmul               float32
-	superunhittable             bool
-	super_TargetDefenceMul      float32
-	envcol                      [3]int32
-	envcol_time                 int32
-	envcol_under                bool
-	clipboardText               [MaxSimul * 2][]string
-	stage                       *Stage
-	helperMax                   int
-	nextCharId                  int32
-	wincnt                      wincntMap
-	wincntFileName              string
-	powerShare                  [2]bool
-	boundhigh                   float32
-	screenZoffset               float32
-	tickCount                   int
-	oldTickCount                int
-	tickCountF                  float32
-	lastTick                    float32
-	nextAddTime                 float32
-	oldNextAddTime              float32
-	scale                       float32
-	screenleft                  float32
-	screenright                 float32
-	xmin, xmax                  float32
-	winskipped                  bool
-	step                        bool
-	roundResetFlg               bool
-	reloadFlg                   bool
-	eventKeys                   map[ShortcutKey]bool
-	hotkeys                     map[ShortcutKey]string
-	turbo                       float32
-	commandLine                 chan string
-	drawScale                   float32
-	zoomPos                     [2]float32
-	debugWC                     *Char
+	randseed                int32
+	scrrect                 [4]int32
+	gameWidth, gameHeight   int32
+	widthScale, heightScale float32
+	window                  *glfw.Window
+	gameEnd, frameSkip      bool
+	redrawWait              struct{ nextTime, lastDraw time.Time }
+	brightness              int32
+	introTime, roundTime    int32
+	lifeMul, team1VS2Life   float32
+	turnsRecoveryRate       float32
+	lifebarFontScale        float32
+	debugFont               *Fnt
+	debugScript             string
+	debugDraw               bool
+	mixer                   Mixer
+	bgm                     Vorbis
+	audioContext            *openal.Context
+	nullSndBuf              [audioOutLen * 2]int16
+	sounds                  Sounds
+	allPalFX, bgPalFX       PalFX
+	lifebar                 Lifebar
+	sel                     Select
+	keySatate               map[glfw.Key]bool
+	netInput                *NetInput
+	fileInput               *FileInput
+	aiInput                 [MaxSimul * 2]AiInput
+	keyConfig               []KeyConfig
+	com                     [MaxSimul * 2]int32
+	autolevel               bool
+	home                    int
+	gameTime                int32
+	match                   int32
+	inputRemap              [MaxSimul * 2]int
+	listenPort              string
+	round                   int32
+	intro                   int32
+	time                    int32
+	winTeam                 int
+	winType                 [2]WinType
+	matchWins, wins         [2]int32
+	roundsExisted           [2]int32
+	draws                   int32
+	loader                  Loader
+	chars                   [MaxSimul * 2][]*Char
+	charList                CharList
+	cgi                     [MaxSimul * 2]CharGlobalInfo
+	tmode                   [2]TeamMode
+	numSimul, numTurns      [2]int32
+	esc                     bool
+	loadMutex               sync.Mutex
+	ignoreMostErrors        bool
+	stringPool              [MaxSimul * 2]StringPool
+	bcStack, bcVarStack     BytecodeStack
+	bcVar                   []BytecodeValue
+	workingChar             *Char
+	specialFlag             GlobalSpecialFlag
+	afterImageMax           int
+	attack_LifeToPowerMul   float32
+	getHit_LifeToPowerMul   float32
+	envShake                EnvShake
+	pause                   int32
+	pausetime               int32
+	pausebg                 bool
+	pauseendcmdbuftime      int32
+	pauseplayer             int
+	super                   int32
+	supertime               int32
+	superpausebg            bool
+	superendcmdbuftime      int32
+	superplayer             int
+	superdarken             bool
+	superanim               *Animation
+	superpmap               PalFX
+	superpos                [2]float32
+	superfacing             float32
+	superp2defmul           float32
+	superunhittable         bool
+	super_TargetDefenceMul  float32
+	envcol                  [3]int32
+	envcol_time             int32
+	envcol_under            bool
+	clipboardText           [MaxSimul * 2][]string
+	stage                   *Stage
+	helperMax               int32
+	nextCharId              int32
+	wincnt                  wincntMap
+	wincntFileName          string
+	powerShare              [2]bool
+	tickCount               int
+	oldTickCount            int
+	tickCountF              float32
+	lastTick                float32
+	nextAddTime             float32
+	oldNextAddTime          float32
+	screenleft              float32
+	screenright             float32
+	xmin, xmax              float32
+	winskipped              bool
+	step                    bool
+	roundResetFlg           bool
+	reloadFlg               bool
+	eventKeys               map[ShortcutKey]bool
+	hotkeys                 map[ShortcutKey]string
+	turbo                   float32
+	commandLine             chan string
+	drawScale               float32
+	zoomPos                 [2]float32
+	debugWC                 *Char
+	cam                     Camera
+	finish                  FinishType
+	playerIdCache           map[int32]*Char
+	waitdown                int32
+	shuttertime             int32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -372,9 +374,45 @@ func (s *System) resetGblEffect() {
 	s.envcol_time = 0
 	s.specialFlag = 0
 }
+func (s *System) clearPlayerIdCache() {
+	for k := range s.playerIdCache {
+		delete(s.playerIdCache, k)
+	}
+}
+func (s *System) screenCoordUpdate(scl, x, y float32) {
+	s.cam.Update(scl, x, y)
+	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
+	s.screenright = float32(s.stage.screenright) * s.stage.localscl
+}
 func (s *System) nextRound() {
 	s.resetGblEffect()
-	unimplemented()
+	s.lifebar.reset()
+	s.finish = FT_NotYet
+	s.winTeam = -1
+	s.winType[0], s.winType[0] = WT_N, WT_N
+	s.cam.ResetZoomdelay()
+	s.clearPlayerIdCache()
+	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
+	s.shuttertime = 0
+	s.winskipped = false
+	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
+	s.time = s.roundTime
+	s.nextCharId = s.helperMax
+	if s.stage.resetbg {
+		s.stage.reset()
+	}
+	s.screenCoordUpdate(1, 0, 0)
+	for i, p := range s.chars {
+		if len(p) > 0 {
+			s.nextCharId = Max(s.nextCharId, p[0].id+1)
+			unimplemented()
+		}
+	}
+	for _, p := range s.chars {
+		if len(p) > 0 {
+			unimplemented()
+		}
+	}
 }
 func (s *System) tickFrame() bool {
 	return s.oldTickCount < s.tickCount
@@ -611,37 +649,7 @@ func (s *System) fight() (reload bool) {
 	if s.round == 1 {
 		s.bgm.Open(s.stage.bgmusic)
 	}
-	bl := float32(s.stage.cam.boundleft-s.stage.cam.startx) * s.stage.localscl
-	br := float32(s.stage.cam.boundright-s.stage.cam.startx) * s.stage.localscl
-	halfWidth := float32(s.gameWidth) / 2
-	xbound := func(scl, x float32) float32 {
-		return MaxF(bl-halfWidth+halfWidth/scl,
-			MinF(br+halfWidth-halfWidth/scl, x))
-	}
-	ybound := func(scl, y float32) float32 {
-		if s.stage.cam.verticalfollow <= 0 {
-			return 0
-		} else {
-			tmp := MaxF(0, 240-s.screenZoffset)
-			return MaxF(0, s.boundhigh) + MinF(0, tmp*(1/scl-1),
-				MaxF(s.boundhigh-240+MaxF(float32(s.gameHeight)/scl,
-					tmp+s.screenZoffset/scl), y+240*(1-MinF(1, scl))))
-		}
-	}
-	if s.stage.cam.verticalfollow > 0 {
-		s.boundhigh = MinF(0, float32(s.stage.cam.boundhigh)*s.stage.localscl+
-			float32(s.gameHeight)-s.stage.drawOffsetY-
-			float32(s.gameWidth)*float32(s.stage.localcoord[1])/
-				float32(s.stage.localcoord[0]))
-	} else {
-		s.boundhigh = 0
-	}
-	xminscl := float32(s.gameWidth) / (float32(s.gameWidth) - bl + br)
-	yminscl := float32(s.gameHeight) / (240 - MinF(0, s.boundhigh))
-	minscl := MaxF(s.zoomMin, MinF(s.zoomMax, MaxF(xminscl, yminscl)))
-	s.screenZoffset = float32(s.stage.zoffset)*s.stage.localscl -
-		s.stage.drawOffsetY + 240 - float32(s.gameWidth)*
-		float32(s.stage.localcoord[1])/float32(s.stage.localcoord[0])
+	s.cam.Init()
 	oldWins, oldDraws := s.wins, s.draws
 	var x, y, newx, newy, l, r float32
 	var scl, sclmul float32
@@ -658,11 +666,11 @@ func (s *System) fight() (reload bool) {
 		s.resetFrameTime()
 		s.nextRound()
 		x, y, newx, newy, l, r, scl, sclmul = 0, 0, 0, 0, 0, 0, 1, 1
-		s.scale = s.stage.ztopscale
+		s.cam.Update(scl, x, y)
 		s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
 		s.screenright = float32(s.stage.screenright) * s.stage.localscl
-		s.xmin = -halfWidth/s.scale + s.screenleft
-		s.xmax = halfWidth/s.scale - s.screenright
+		s.xmin = -(float32(sys.gameWidth)/2)/s.cam.Scale + s.screenleft
+		s.xmax = (float32(sys.gameWidth)/2)/s.cam.Scale - s.screenright
 	}
 	reset()
 	for !s.esc {
@@ -724,22 +732,17 @@ func (s *System) fight() (reload bool) {
 		if s.turbo < 1 {
 			sclmul = float32(math.Pow(float64(sclmul), float64(s.turbo)))
 		}
-		scl *= sclmul
-		if s.zoomEnable {
-			scl = MaxF(minscl, MinF(s.zoomMax, scl))
-		} else {
-			scl = 1
-		}
-		tmp := halfWidth / scl
+		scl = s.cam.ScaleBound(scl * sclmul)
+		tmp := (float32(sys.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
 			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
 		}
-		x = xbound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
-		if !s.zoomEnable {
+		x = s.cam.XBound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
+		if !s.cam.ZoomEnable {
 			// Pos X の誤差が出ないように精度を落とす
 			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 		}
-		y = ybound(scl, newy)
+		y = s.cam.YBound(scl, newy)
 		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
 			(s.pause <= 0 || !s.pausebg) {
 			s.stage.action()
@@ -758,8 +761,8 @@ func (s *System) fight() (reload bool) {
 			if !math.IsNaN(float64(s.drawScale)) &&
 				!math.IsNaN(float64(s.zoomPos[0])) &&
 				!math.IsNaN(float64(s.zoomPos[1])) {
-				dscl = MaxF(minscl, s.drawScale/s.stage.ztopscale)
-				dx = xbound(dscl, x+s.zoomPos[0]*(dscl-scl)/dscl)
+				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
+				dx = s.cam.XBound(dscl, x+s.zoomPos[0]*(dscl-scl)/dscl)
 				dy = y + s.zoomPos[1]
 			}
 			s.draw(dx, dy, dscl)

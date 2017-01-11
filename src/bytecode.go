@@ -1005,7 +1005,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_vel_y:
 			sys.bcStack.PushF(c.vel[1])
 		case OC_pos_x:
-			sys.bcStack.PushF(c.pos[0] - sys.cameraPos[0])
+			sys.bcStack.PushF(c.pos[0] - sys.cam.Pos[0])
 		case OC_pos_y:
 			sys.bcStack.PushF(c.pos[1])
 		case OC_screenpos_x:
@@ -1013,9 +1013,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_screenpos_y:
 			sys.bcStack.PushF(c.screenPosY())
 		case OC_camerapos_x:
-			sys.bcStack.PushF(sys.cameraPos[0])
+			sys.bcStack.PushF(sys.cam.Pos[0])
 		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cameraPos[1])
+			sys.bcStack.PushF(sys.cam.Pos[1])
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_hitshakeover:
@@ -1864,7 +1864,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 				if sn >= 0 {
 					c.changeState(sn, -1, -1)
 				}
-				p.standby = false
+				p.unsetSCF(SCF_standby)
 				p.changeState(psn, -1, -1)
 				ret = true
 			} else {
@@ -1886,7 +1886,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagOut_:
-			c.standby = true
+			c.setSCF(SCF_standby)
 		}
 		return true
 	})
@@ -2571,7 +2571,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 func (sc palFX) Run(c *Char, _ []int32) bool {
 	pf := c.palfx
 	if pf == nil {
-		pf = NewPalFX()
+		pf = newPalFX()
 	}
 	pf.clear2(true)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {

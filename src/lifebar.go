@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+type FinishType int32
+
+const (
+	FT_NotYet FinishType = iota
+	FT_KO
+	FT_DKO
+	FT_TO
+	FT_TODraw
+)
+
 type WinType int32
 
 const (
@@ -587,4 +597,25 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	return l, nil
+}
+func (l *Lifebar) reset() {
+	for _, hb := range l.hb {
+		for i := range hb {
+			hb[i].reset()
+		}
+	}
+	for i := range l.pb {
+		l.pb[i].reset()
+	}
+	for _, nm := range l.nm {
+		for i := range nm {
+			nm[i].reset()
+		}
+	}
+	for i := range l.wi {
+		l.wi[i].reset()
+	}
+	l.ti.reset()
+	l.co.reset()
+	l.ro.reset()
 }
