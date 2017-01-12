@@ -18,7 +18,7 @@ type stageCamera struct {
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
-		localcoord: [2]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
+		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1}
 }
 
@@ -42,6 +42,9 @@ func newCamera() *Camera {
 func (c *Camera) Init() {
 	c.boundL = float32(c.boundleft-c.startx) * c.localscl
 	c.boundR = float32(c.boundright-c.startx) * c.localscl
+	c.halfWidth = float32(sys.gameWidth) / 2
+	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
+	c.XMin = c.boundR + c.halfWidth/c.BaseScale()
 	if c.verticalfollow > 0 {
 		c.boundH = MinF(0, float32(c.boundhigh)*c.localscl+
 			float32(sys.gameHeight)-c.drawOffsetY-
@@ -59,7 +62,6 @@ func (c *Camera) Init() {
 	c.screenZoff = float32(c.zoffset)*c.localscl -
 		c.drawOffsetY + 240 - float32(sys.gameWidth)*
 		float32(c.localcoord[1])/float32(c.localcoord[0])
-	c.halfWidth = float32(sys.gameWidth) / 2
 }
 func (c *Camera) Update(scl, x, y float32) {
 	c.Scale = c.BaseScale() * scl
@@ -71,8 +73,6 @@ func (c *Camera) Update(scl, x, y float32) {
 		c.Offset[i] = sys.stage.bga.offset[i] * sys.stage.localscl *
 			sys.stage.scale[i] * scl
 	}
-	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
-	c.XMin = c.boundR + c.halfWidth/c.BaseScale()
 	c.ScreenPos[0] = x - c.halfWidth/c.Scale - c.Offset[0]
 	c.ScreenPos[1] = y - (c.GroundLevel()-float32(sys.gameHeight-240)*scl)/
 		c.Scale - c.Offset[1]

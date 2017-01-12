@@ -20,11 +20,12 @@ import (
 const (
 	MaxSimul = 4
 	FPS      = 60
+	P1P3Dist = 25
 )
 
 var sys = System{
 	randseed:  int32(time.Now().UnixNano()),
-	scrrect:   [4]int32{0, 0, 320, 240},
+	scrrect:   [...]int32{0, 0, 320, 240},
 	gameWidth: 320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
 	brightness: 256,
@@ -42,7 +43,7 @@ var sys = System{
 	match:             1,
 	listenPort:        "7500",
 	loader:            *newLoader(),
-	numSimul:          [2]int32{2, 2}, numTurns: [2]int32{2, 2},
+	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
 	afterImageMax:          8,
 	attack_LifeToPowerMul:  0.7,
 	getHit_LifeToPowerMul:  0.6,
@@ -51,7 +52,7 @@ var sys = System{
 	helperMax:              56,
 	wincnt:                 wincntMap(make(map[string][]int32)),
 	wincntFileName:         "autolevel.txt",
-	powerShare:             [2]bool{true, true},
+	powerShare:             [...]bool{true, true},
 	eventKeys:              make(map[ShortcutKey]bool),
 	hotkeys:                make(map[ShortcutKey]string),
 	commandLine:            make(chan string),
@@ -183,6 +184,18 @@ type System struct {
 	playerIdCache           map[int32]*Char
 	waitdown                int32
 	shuttertime             int32
+	projs                   [MaxSimul * 2][]Projectile
+	explods                 [MaxSimul * 2][]Explod
+	explDrawlist            [MaxSimul * 2][]int
+	topexplDrawlist         [MaxSimul * 2][]int
+	changeStateNest         int32
+	sprites                 []*SprData
+	topSprites              []*SprData
+	shadows                 []*ShadowSprite
+	drawc1                  ClsnRect
+	drawc2                  ClsnRect
+	drawc2sp                ClsnRect
+	drawwh                  ClsnRect
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -295,7 +308,7 @@ func (s *System) resetRemapInput() {
 	}
 }
 func (s *System) loaderReset() {
-	s.round, s.wins, s.roundsExisted = 1, [2]int32{0, 0}, [2]int32{0, 0}
+	s.round, s.wins, s.roundsExisted = 1, [2]int32{}, [2]int32{}
 	s.loader.reset()
 }
 func (s *System) loadStart() {
@@ -379,10 +392,22 @@ func (s *System) clearPlayerIdCache() {
 		delete(s.playerIdCache, k)
 	}
 }
-func (s *System) screenCoordUpdate(scl, x, y float32) {
-	s.cam.Update(scl, x, y)
-	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
-	s.screenright = float32(s.stage.screenright) * s.stage.localscl
+func (s *System) playerClear(pn int) {
+	if len(s.chars[pn]) > 0 {
+		helpers := s.chars[pn][1:]
+		for i, h := range helpers {
+			helpers[i].destroy()
+			helpers[i].sounds = h.sounds[:0]
+		}
+		p := s.chars[pn][0]
+		p.children = p.children[:0]
+		p.targets = p.targets[:0]
+		p.sounds = p.sounds[:0]
+	}
+	s.projs[pn] = s.projs[pn][:0]
+	s.explods[pn] = s.explods[pn][:0]
+	s.explDrawlist[pn] = s.explDrawlist[pn][:0]
+	s.topexplDrawlist[pn] = s.topexplDrawlist[pn][:0]
 }
 func (s *System) nextRound() {
 	s.resetGblEffect()
@@ -401,16 +426,32 @@ func (s *System) nextRound() {
 	if s.stage.resetbg {
 		s.stage.reset()
 	}
-	s.screenCoordUpdate(1, 0, 0)
+	s.cam.Update(1, 0, 0)
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			s.nextCharId = Max(s.nextCharId, p[0].id+1)
-			unimplemented()
+			s.playerClear(i)
+			p[0].posReset()
+			p[0].setCtrl(false)
+			p[0].clear2()
+			p[0].varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
+			p[0].fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
+			for j := range p[0].cmd {
+				p[0].cmd[j].BufReset()
+			}
+			if s.roundsExisted[i&1] == 0 {
+				s.cgi[i].sff.palList.ResetRemap()
+				if s.cgi[i].sff.header.Ver0 == 1 {
+					p[0].remapPal(p[0].getPalfx(),
+						[...]int32{1, 1}, [...]int32{1, s.cgi[i].drawpalno})
+				}
+			}
+			s.cgi[i].clearPCTime()
 		}
 	}
 	for _, p := range s.chars {
 		if len(p) > 0 {
-			unimplemented()
+			p[0].selfState(5900, 0, 0)
 		}
 	}
 }
@@ -447,6 +488,14 @@ func (s *System) resetFrameTime() {
 }
 func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	sclmul float32) {
+	s.sprites = s.sprites[:0]
+	s.topSprites = s.topSprites[:0]
+	s.shadows = s.shadows[:0]
+	s.drawc1 = s.drawc1[:0]
+	s.drawc2 = s.drawc2[:0]
+	s.drawc2sp = s.drawc2sp[:0]
+	s.drawwh = s.drawwh[:0]
+	s.cam.Update(scl, *x, *y)
 	unimplemented()
 	return 0, 0, 1
 }
@@ -650,6 +699,8 @@ func (s *System) fight() (reload bool) {
 		s.bgm.Open(s.stage.bgmusic)
 	}
 	s.cam.Init()
+	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
+	s.screenright = float32(s.stage.screenright) * s.stage.localscl
 	oldWins, oldDraws := s.wins, s.draws
 	var x, y, newx, newy, l, r float32
 	var scl, sclmul float32
@@ -667,10 +718,8 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		x, y, newx, newy, l, r, scl, sclmul = 0, 0, 0, 0, 0, 0, 1, 1
 		s.cam.Update(scl, x, y)
-		s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
-		s.screenright = float32(s.stage.screenright) * s.stage.localscl
-		s.xmin = -(float32(sys.gameWidth)/2)/s.cam.Scale + s.screenleft
-		s.xmax = (float32(sys.gameWidth)/2)/s.cam.Scale - s.screenright
+		s.xmin = -(float32(s.gameWidth)/2)/s.cam.Scale + s.screenleft
+		s.xmax = (float32(s.gameWidth)/2)/s.cam.Scale - s.screenright
 	}
 	reset()
 	for !s.esc {
@@ -733,7 +782,7 @@ func (s *System) fight() (reload bool) {
 			sclmul = float32(math.Pow(float64(sclmul), float64(s.turbo)))
 		}
 		scl = s.cam.ScaleBound(scl * sclmul)
-		tmp := (float32(sys.gameWidth) / 2) / scl
+		tmp := (float32(s.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
 			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
 		}
@@ -841,8 +890,8 @@ type Select struct {
 }
 
 func newSelect() *Select {
-	return &Select{columns: 5, rows: 2, randomscl: [2]float32{1, 1},
-		cellsize: [2]float32{29, 29}, cellscale: [2]float32{1, 1},
+	return &Select{columns: 5, rows: 2, randomscl: [...]float32{1, 1},
+		cellsize: [...]float32{29, 29}, cellscale: [...]float32{1, 1},
 		selectedStageNo: -1}
 }
 func (s *Select) GetCharNo(i int) int {
@@ -992,7 +1041,7 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 		pl = int(Rand(1, 12))
 	}
 	sys.loadMutex.Lock()
-	s.selected[tn] = append(s.selected[tn], [2]int{n, pl})
+	s.selected[tn] = append(s.selected[tn], [...]int{n, pl})
 	sys.loadMutex.Unlock()
 	return true
 }

@@ -90,7 +90,7 @@ type PowerBar struct {
 
 func newPowerBar(snd *Snd) (pb *PowerBar) {
 	pb = &PowerBar{snd: snd, counter_font: [3]int32{-1},
-		level_snd: [3][2]int32{{-1}, {-1}, {-1}}}
+		level_snd: [...][2]int32{{-1}, {-1}, {-1}}}
 	return
 }
 func readPowerBar(pre string, is IniSection,
@@ -281,7 +281,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 		&c.counter_font[2])
 	is.ReadI32("counter.shake", &c.counter_shake)
 	c.counter_lay = *ReadLayout("counter.", is)
-	c.counter_lay.offset = [2]float32{0, 0}
+	c.counter_lay.offset = [2]float32{}
 	is.ReadI32("text.font", &c.text_font[0], &c.text_font[1], &c.text_font[2])
 	c.text_text = is["text.text"]
 	c.text_lay = *ReadLayout("text.", is)
@@ -290,7 +290,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 }
 func (c *LifeBarCombo) reset() {
 	c.cur, c.old, c.resttime = [2]int32{}, [2]int32{}, [2]int32{}
-	c.counterX = [2]float32{c.start_x * 2, c.start_x * 2}
+	c.counterX = [...]float32{c.start_x * 2, c.start_x * 2}
 	c.shaketime = [2]int32{}
 }
 
@@ -406,11 +406,11 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &Lifebar{snd: &Snd{}, hb: [3][]*HealthBar{make([]*HealthBar, 2),
+	l := &Lifebar{snd: &Snd{}, hb: [...][]*HealthBar{make([]*HealthBar, 2),
 		make([]*HealthBar, 4), make([]*HealthBar, 2)},
-		fa: [3][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 4),
+		fa: [...][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 4),
 			make([]*LifeBarFace, 2)},
-		nm: [3][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 4),
+		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 4),
 			make([]*LifeBarName, 2)}}
 	sff, fsff, lines, i := &Sff{}, &Sff{}, SplitAndTrim(str, "\n"), 0
 	at := ReadAnimationTable(sff, lines, &i)

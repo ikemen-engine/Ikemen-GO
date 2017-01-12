@@ -1064,10 +1064,10 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
 			i++
 		case OC_statetype:
-			sys.bcStack.PushB(c.ss.sb.stateType == StateType(be[i]))
+			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
 			i++
 		case OC_movetype:
-			sys.bcStack.PushB(c.ss.sb.moveType == MoveType(be[i]))
+			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i]))
 			i++
 		case OC_hitdefattr:
 			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
@@ -2115,7 +2115,7 @@ const (
 func (sc explod) Run(c *Char, _ []int32) bool {
 	var e *Explod
 	var i int
-	rp := [2]int32{-1, 0}
+	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if e == nil {
 			e, i = c.newExplod()
@@ -2240,7 +2240,7 @@ type modifyExplod explod
 func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	eid := int32(-1)
 	var expls []*Explod
-	rp := [2]int32{-1, 0}
+	rp := [...]int32{-1, 0}
 	eachExpl := func(f func(e *Explod)) {
 		for _, e := range expls {
 			f(e)
@@ -2372,7 +2372,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					s = Max(0, Min(255, s))
 					d = Max(0, Min(255, d))
 				}
-				eachExpl(func(e *Explod) { e.alpha = [2]int32{s, d} })
+				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -2625,7 +2625,7 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 	id byte, exp []BytecodeExp) {
 	switch id {
 	case afterImage_trans:
-		ai.alpha = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+		ai.alpha = [...]int32{exp[0].evalI(c), exp[1].evalI(c)}
 	case afterImage_time:
 		ai.time = exp[0].evalI(c)
 	case afterImage_length:
@@ -3124,7 +3124,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
-	rp := [2]int32{-1, 0}
+	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
 			p = c.newProj()
@@ -4012,11 +4012,11 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case stateTypeSet_statetype:
-			c.ss.sb.stateType = StateType(exp[0].evalI(c))
+			c.ss.stateType = StateType(exp[0].evalI(c))
 		case stateTypeSet_movetype:
-			c.ss.sb.moveType = MoveType(exp[0].evalI(c))
+			c.ss.moveType = MoveType(exp[0].evalI(c))
 		case stateTypeSet_physics:
-			c.ss.sb.physics = StateType(exp[0].evalI(c))
+			c.ss.physics = StateType(exp[0].evalI(c))
 		}
 		return true
 	})
@@ -4054,7 +4054,7 @@ const (
 )
 
 func (sc envColor) Run(c *Char, _ []int32) bool {
-	sys.envcol = [3]int32{255, 255, 255}
+	sys.envcol = [...]int32{255, 255, 255}
 	sys.envcol_time = 1
 	sys.envcol_under = false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -4303,7 +4303,7 @@ const (
 )
 
 func (sc remapPal) Run(c *Char, _ []int32) bool {
-	src := [2]int32{-1, -1}
+	src := [...]int32{-1, -1}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case remapPal_source:
@@ -4312,7 +4312,7 @@ func (sc remapPal) Run(c *Char, _ []int32) bool {
 				src[1] = exp[1].evalI(c)
 			}
 		case remapPal_dest:
-			dst := [2]int32{exp[0].evalI(c), -1}
+			dst := [...]int32{exp[0].evalI(c), -1}
 			if len(exp) > 1 {
 				dst[1] = exp[1].evalI(c)
 			}
@@ -4340,6 +4340,15 @@ func newStateBytecode(pn int) *StateBytecode {
 	return sb
 }
 func (sb *StateBytecode) init(c *Char) {
+	if sb.stateType != ST_U {
+		c.ss.stateType = sb.stateType
+	}
+	if sb.moveType != MT_U {
+		c.ss.moveType = sb.moveType
+	}
+	if sb.physics != ST_U {
+		c.ss.physics = sb.physics
+	}
 	for i := range sb.ctrlsps {
 		sb.ctrlsps[i] = 0
 	}

@@ -394,7 +394,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	}
 	if string(buf[:n]) != "WAVE" {
 		return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1,
-			Num: [2]int32{-1, 0}}, nil
+			Num: [...]int32{-1, 0}}, nil
 	}
 	fmtSize, dataSize := uint32(0), uint32(0)
 	w := Wave{}
@@ -525,7 +525,7 @@ func LoadSnd(filename string) (*Snd, error) {
 	return s, nil
 }
 func (s *Snd) Get(group int32, number int32) *Wave {
-	return s.table[[2]int32{group, number}]
+	return s.table[[...]int32{group, number}]
 }
 func (s *Snd) Play(g int32, n int32) bool {
 	c := sys.sounds.GetChannel()
@@ -560,19 +560,19 @@ func (s *Sound) Mix() {
 	}
 }
 
-type Sounds []*Sound
+type Sounds []Sound
 
 func newSounds() (s Sounds) {
-	s = Sounds(make([]*Sound, 16))
+	s = make(Sounds, 16)
 	for i := range s {
-		s[i] = &Sound{volume: 256, freqmul: 1}
+		s[i] = Sound{volume: 256, freqmul: 1}
 	}
 	return
 }
 func (s Sounds) GetChannel() *Sound {
 	for i := range s {
 		if s[i].sound == nil {
-			return s[i]
+			return &s[i]
 		}
 	}
 	return nil

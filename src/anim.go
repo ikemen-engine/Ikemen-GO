@@ -172,7 +172,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 			def1, def2 = true, true
 		case len(line) >= 9 && line[:9] == "loopstart":
 			a.loopstart = int32(len(a.frames))
-		case len(line) >= 4 && line[:4] == "clsn":
+		case len(line) >= 5 && line[:4] == "clsn":
 			ii := strings.Index(line, ":")
 			if ii < 0 {
 				break
@@ -203,11 +203,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 				break
 			}
 			(*i)++
-			n := int32(0)
-			for ; *i < len(lines); (*i)++ {
-				if (n+1)*4 > size {
-					break
-				}
+			for n := int32(0); n < size && *i < len(lines); n++ {
 				line := strings.ToLower(strings.TrimSpace(
 					strings.SplitN(lines[*i], ";", 2)[0]))
 				if len(line) == 0 {
@@ -233,7 +229,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 				}
 				clsn[n*4], clsn[n*4+1], clsn[n*4+2], clsn[n*4+3] =
 					float32(l), float32(t), float32(r), float32(b)
-				n++
+				(*i)++
 			}
 			(*i)--
 		}
@@ -295,8 +291,14 @@ func (a *Animation) Reset() {
 func (a *Animation) AnimTime() int32 {
 	return a.sumtime - a.totaltime
 }
-func (a *Animation) CurFrame() *AnimFrame {
+func (a *Animation) curFrame() *AnimFrame {
 	return &a.frames[a.current]
+}
+func (a *Animation) CurrentFrame() *AnimFrame {
+	if len(a.frames) == 0 {
+		return nil
+	}
+	return a.curFrame()
 }
 func (a *Animation) animSeek(elem int32) {
 	if elem < 0 {
@@ -305,8 +307,8 @@ func (a *Animation) animSeek(elem int32) {
 	foo := true
 	for {
 		a.current = elem
-		for a.CurFrame().Time <= 0 && int(a.current) < len(a.frames) {
-			if int(a.current) == len(a.frames)-1 && a.CurFrame().Time == -1 {
+		for a.curFrame().Time <= 0 && int(a.current) < len(a.frames) {
+			if int(a.current) == len(a.frames)-1 && a.curFrame().Time == -1 {
 				break
 			}
 			a.current++
@@ -343,7 +345,7 @@ func (a *Animation) UpdateSprite() {
 		}
 	}
 	if a.newframe && a.sff != nil {
-		a.spr = a.sff.GetSprite(a.CurFrame().Group, a.CurFrame().Number)
+		a.spr = a.sff.GetSprite(a.curFrame().Group, a.curFrame().Number)
 	}
 	a.newframe, a.drawidx = false, a.current
 }
@@ -360,13 +362,13 @@ func (a *Animation) Action() {
 			for {
 				a.current++
 				if a.totaltime == -1 && int(a.current) == len(a.frames)-1 ||
-					int(a.current) >= len(a.frames) || a.CurFrame().Time > 0 {
+					int(a.current) >= len(a.frames) || a.curFrame().Time > 0 {
 					break
 				}
 			}
 		}
 	}
-	curFrameTime := a.CurFrame().Time
+	curFrameTime := a.curFrame().Time
 	if curFrameTime <= 0 {
 		next()
 	}

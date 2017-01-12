@@ -474,7 +474,7 @@ type Layout struct {
 }
 
 func newLayout() *Layout {
-	return &Layout{facing: 1, vfacing: 1, scale: [2]float32{1, 1}}
+	return &Layout{facing: 1, vfacing: 1, scale: [...]float32{1, 1}}
 }
 func ReadLayout(pre string, is IniSection) *Layout {
 	l := newLayout()

@@ -61,7 +61,7 @@ type PalFX struct {
 
 func newPalFX() *PalFX { return &PalFX{} }
 func (pfx *PalFX) clear2(nt bool) {
-	pfx.PalFXDef = PalFXDef{color: 1, mul: [3]int32{256, 256, 256}}
+	pfx.PalFXDef = PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
 	pfx.negType = nt
 }
 func (pfx *PalFX) clear() {
@@ -957,7 +957,7 @@ func LoadSff(filename string, char bool) (*Sff, error) {
 				idx = i
 			}
 			s.palList.SetSource(i, pal)
-			s.palList.PalTable[[2]int16{gn_[0], gn_[1]}] = idx
+			s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] = idx
 		}
 	}
 	spriteList := make([]*Sprite, int(s.header.NumberOfSprites))
@@ -1000,8 +1000,9 @@ func LoadSff(filename string, char bool) (*Sff, error) {
 				}
 			}
 		}
-		if s.sprites[[2]int16{spriteList[i].Group, spriteList[i].Number}] == nil {
-			s.sprites[[2]int16{spriteList[i].Group, spriteList[i].Number}] =
+		if s.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] ==
+			nil {
+			s.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] =
 				spriteList[i]
 		}
 		if s.header.Ver0 == 1 {
@@ -1016,7 +1017,7 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	if g == -1 {
 		return nil
 	}
-	return s.sprites[[2]int16{g, n}]
+	return s.sprites[[...]int16{g, n}]
 }
 func (s *Sff) GetOwnPalSprite(g, n int16) *Sprite {
 	sp := s.GetSprite(g, n)

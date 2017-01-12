@@ -71,6 +71,34 @@ const (
 	PT_N
 )
 
+type SprData struct {
+	anim   *Animation
+	fx     *PalFX
+	pos    [2]float32
+	scl    [2]float32
+	alpha  [2]int32
+	angle  float32
+	ascl   [2]float32
+	aset   bool
+	oldver bool
+	bright bool
+	screen bool
+}
+type ShadowSprite struct {
+	sd           *SprData
+	color, alpha int32
+	offsetY      float32
+}
+type ClsnRect [][4]float32
+
+func (cr *ClsnRect) Set(clsn []float32, x, y, xs, ys float32) {
+	for i := 0; i+3 < len(clsn); i += 4 {
+		*cr = append(*cr, [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
+			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
+			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1])})
+	}
+}
+
 type CharData struct {
 	life    int32
 	power   int32
@@ -167,12 +195,12 @@ func (cs *CharSize) init() {
 	cs.proj.doscale = 0
 	cs.proj.xscale = 1
 	cs.proj.yscale = 1
-	cs.head.pos = [2]int32{-5, -90}
-	cs.mid.pos = [2]int32{-5, -60}
+	cs.head.pos = [...]int32{-5, -90}
+	cs.mid.pos = [...]int32{-5, -60}
 	cs.shadowoffset = 0
-	cs.draw.offset = [2]int32{0, 0}
+	cs.draw.offset = [...]int32{0, 0}
 	cs.z.width = 3
-	cs.attack.z.width = [2]int32{4, 4}
+	cs.attack.z.width = [...]int32{4, 4}
 }
 
 type CharVelocity struct {
@@ -247,9 +275,9 @@ type CharVelocity struct {
 
 func (cv *CharVelocity) init() {
 	*cv = CharVelocity{}
-	cv.air.gethit.groundrecover = [2]float32{-0.15, -3.5}
-	cv.air.gethit.airrecover.mul = [2]float32{0.5, 0.2}
-	cv.air.gethit.airrecover.add = [2]float32{0.0, -4.5}
+	cv.air.gethit.groundrecover = [...]float32{-0.15, -3.5}
+	cv.air.gethit.airrecover.mul = [...]float32{0.5, 0.2}
+	cv.air.gethit.airrecover.add = [...]float32{0.0, -4.5}
 	cv.air.gethit.airrecover.back = -1.0
 	cv.air.gethit.airrecover.fwd = 0.0
 	cv.air.gethit.airrecover.up = -2.0
@@ -313,7 +341,7 @@ func (cm *CharMovement) init() {
 	cm.air.gethit.airrecover.threshold = -1.0
 	cm.air.gethit.airrecover.yaccel = 0.35
 	cm.air.gethit.trip.groundlevel = 15.0
-	cm.down.bounce.offset = [2]float32{0.0, 20.0}
+	cm.down.bounce.offset = [...]float32{0.0, 20.0}
 	cm.down.bounce.yaccel = 0.4
 	cm.down.bounce.groundlevel = 12.0
 	cm.down.friction_threshold = 0.05
@@ -465,10 +493,10 @@ func (hd *HitDef) clear() {
 	*hd = HitDef{hitflag: int32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
 		animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
 		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
-		hitsound: [2]int32{IErr, -1}, guardsound: [2]int32{IErr, -1},
+		hitsound: [...]int32{IErr, -1}, guardsound: [...]int32{IErr, -1},
 		ground_type: HT_High, air_type: HT_Unknown, air_hittime: 20,
 		yaccel: float32(math.NaN()), guard_velocity: float32(math.NaN()),
-		airguard_velocity: [2]float32{float32(math.NaN()),
+		airguard_velocity: [...]float32{float32(math.NaN()),
 			float32(math.NaN())},
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
@@ -476,16 +504,16 @@ func (hd *HitDef) clear() {
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()), p1sprpriority: 1,
 		p1stateno: -1, p2stateno: -1, forcestand: IErr,
-		down_velocity: [2]float32{float32(math.NaN()), float32(math.NaN())},
-		chainid:       -1, nochainid: [2]int32{-1, -1}, numhits: 1,
+		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
+		chainid:       -1, nochainid: [...]int32{-1, -1}, numhits: 1,
 		hitgetpower: IErr, guardgetpower: IErr, hitgivepower: IErr,
 		guardgivepower: IErr, envshake_freq: 60, envshake_ampl: -4,
 		envshake_phase: float32(math.NaN()),
-		mindist:        [2]float32{float32(math.NaN()), float32(math.NaN())},
-		maxdist:        [2]float32{float32(math.NaN()), float32(math.NaN())},
-		snap:           [2]float32{float32(math.NaN()), float32(math.NaN())},
+		mindist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
+		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
+		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1}
-	hd.palfx.mul, hd.palfx.color = [3]int32{255, 255, 255}, 1
+	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
 func (hd *HitDef) invalidate(stateType StateType) {
@@ -575,7 +603,7 @@ func (ghv *GetHitVar) dropId(id int32) {
 }
 func (ghv *GetHitVar) addId(id, juggle int32) {
 	ghv.dropId(id)
-	ghv.hitBy = append(ghv.hitBy, [2]int32{id, juggle})
+	ghv.hitBy = append(ghv.hitBy, [...]int32{id, juggle})
 }
 
 type HitOverride struct {
@@ -628,15 +656,15 @@ func (ai *AfterImage) clear() {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eColor = 1
 		ai.palfx[0].eInvertall = false
-		ai.palfx[0].eAdd = [3]int32{30, 30, 30}
-		ai.palfx[0].eMul = [3]int32{120, 120, 220}
+		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
+		ai.palfx[0].eMul = [...]int32{120, 120, 220}
 	}
-	ai.postbright = [3]int32{0, 0, 0}
-	ai.add = [3]int32{10, 10, 25}
-	ai.mul = [3]float32{0.65, 0.65, 0.75}
+	ai.postbright = [3]int32{}
+	ai.add = [...]int32{10, 10, 25}
+	ai.mul = [...]float32{0.65, 0.65, 0.75}
 	ai.timegap = 1
 	ai.framegap = 6
-	ai.alpha = [2]int32{-1, 0}
+	ai.alpha = [...]int32{-1, 0}
 	ai.imgidx = 0
 	ai.restgap = 0
 	ai.reccount = 0
@@ -689,7 +717,7 @@ func (ai *AfterImage) setupPalFX() {
 		ai.palfx[i].eAdd[0] = ai.palfx[i-1].eAdd[0] + pb[0]
 		ai.palfx[i].eAdd[1] = ai.palfx[i-1].eAdd[1] + pb[1]
 		ai.palfx[i].eAdd[2] = ai.palfx[i-1].eAdd[2] + pb[2]
-		pb = [3]int32{0, 0, 0}
+		pb = [3]int32{}
 		ai.palfx[i].eMul[0] = int32(float32(ai.palfx[i-1].eMul[0]) * ai.mul[0])
 		ai.palfx[i].eMul[1] = int32(float32(ai.palfx[i-1].eMul[1]) * ai.mul[1])
 		ai.palfx[i].eMul[2] = int32(float32(ai.palfx[i-1].eMul[2]) * ai.mul[2])
@@ -729,9 +757,9 @@ type Explod struct {
 }
 
 func (e *Explod) clear() {
-	*e = Explod{id: IErr, scale: [2]float32{1, 1}, removetime: -2,
+	*e = Explod{id: IErr, scale: [...]float32{1, 1}, removetime: -2,
 		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1,
-		alpha: [2]int32{-1, 0}, playerId: -1, bindId: -1, ignorehitpause: true}
+		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -1, ignorehitpause: true}
 }
 func (e *Explod) setPos(c *Char) {
 	unimplemented()
@@ -776,12 +804,28 @@ type Projectile struct {
 
 func (p *Projectile) clear() {
 	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
-		scale: [2]float32{1, 1}, clsnscale: [2]float32{1, 1}, remove: true,
-		removetime: -1, velmul: [2]float32{1, 1}, hits: 1, priority: 1,
+		scale: [...]float32{1, 1}, clsnscale: [...]float32{1, 1}, remove: true,
+		removetime: -1, velmul: [...]float32{1, 1}, hits: 1, priority: 1,
 		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
-		heightbound: [2]int32{-240, 1}, facing: 1}
+		heightbound: [...]int32{-240, 1}, facing: 1}
 	p.hitdef.clear()
 }
+
+type MoveContact int32
+
+const (
+	MC_Hit MoveContact = iota
+	MC_Guarded
+	MC_Reversed
+)
+
+type ProjContact int32
+
+const (
+	PC_Hit ProjContact = iota
+	PC_Guarded
+	PC_Cancel
+)
 
 type CharGlobalInfo struct {
 	def              string
@@ -801,8 +845,20 @@ type CharGlobalInfo struct {
 	movement         CharMovement
 	states           map[int32]StateBytecode
 	wakewakaLength   int
+	pctype           ProjContact
+	pctime, pcid     int32
 }
+
+func (cgi *CharGlobalInfo) clearPCTime() {
+	cgi.pctype = PC_Hit
+	cgi.pctime = -1
+	cgi.pcid = 0
+}
+
 type StateState struct {
+	stateType       StateType
+	moveType        MoveType
+	physics         StateType
 	ps              []int32
 	wakegawakaranai [][]bool
 	no, prevno      int32
@@ -812,6 +868,7 @@ type StateState struct {
 }
 
 func (ss *StateState) clear() {
+	ss.stateType, ss.moveType, ss.physics = ST_S, MT_I, ST_N
 	ss.ps = nil
 	ss.wakegawakaranai = make([][]bool, len(sys.cgi))
 	for i, v := range ss.wakegawakaranai {
@@ -826,7 +883,7 @@ func (ss *StateState) clear() {
 	ss.no, ss.prevno = 0, 0
 	ss.hitdefContact = false
 	ss.time = 0
-	ss.sb = StateBytecode{stateType: ST_S, moveType: MT_I, physics: ST_N}
+	ss.sb = StateBytecode{}
 }
 func (ss *StateState) clearWw() {
 	for _, v := range ss.wakegawakaranai {
@@ -835,22 +892,6 @@ func (ss *StateState) clearWw() {
 		}
 	}
 }
-
-type MoveContact int32
-
-const (
-	MC_Hit MoveContact = iota
-	MC_Guarded
-	MC_Reversed
-)
-
-type ProjContact int32
-
-const (
-	PC_Hit ProjContact = iota
-	PC_Guarded
-	PC_Cancel
-)
 
 type HMF int32
 
@@ -905,12 +946,14 @@ type Char struct {
 	juggle          int32
 	fallTime        int32
 	size            CharSize
+	clsnScale       [2]float32
 	hitdef          HitDef
 	ghv             GetHitVar
 	ho              [8]HitOverride
 	hoIdx           int
 	mctype          MoveContact
 	mctime          int32
+	children        []int32
 	targets         []int32
 	targetsOfHitdef []int32
 	enemyNear       [2][]*Char
@@ -924,9 +967,10 @@ type Char struct {
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
 	aimg        AfterImage
+	sounds      Sounds
 	p1facing    float32
 	angleset    bool
-	cs1tmp      bool
+	stchtmp     bool
 	inguarddist bool
 	pushed      bool
 	atktmp      int8
@@ -979,7 +1023,7 @@ func (c *Char) clear1() {
 	c.animPN = -1
 	c.animNo = 0
 	c.angleset = false
-	c.cs1tmp = false
+	c.stchtmp = false
 	c.inguarddist = false
 	c.p1facing = 0
 	c.pushed = false
@@ -992,8 +1036,9 @@ func (c *Char) enemyNearClear() {
 func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
-	c.CharSystemVar = CharSystemVar{bindToId: -1, angleScalse: [2]float32{1, 1},
-		alpha: [2]int32{255, 0}, width: [2]float32{c.defFW(), c.defBW()},
+	c.CharSystemVar = CharSystemVar{bindToId: -1,
+		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
+		width:      [...]float32{c.defFW(), c.defBW()},
 		attackMul:  float32(c.gi().data.attack) / 100,
 		defenceMul: float32(c.gi().data.defence) / 100}
 	c.oldPos, c.drawPos = c.pos, c.pos
@@ -1284,13 +1329,13 @@ func (c *Char) loadPallet() {
 			} else {
 				c.gi().palExist[i] = false
 				if i > 0 {
-					delete(c.gi().sff.palList.PalTable, [2]int16{1, int16(i + 1)})
+					delete(c.gi().sff.palList.PalTable, [...]int16{1, int16(i + 1)})
 				}
 			}
 		}
 		if tmp == 0 {
 			if c.gi().ver[0] == 1 {
-				delete(c.gi().sff.palList.PalTable, [2]int16{1, 1})
+				delete(c.gi().sff.palList.PalTable, [...]int16{1, 1})
 			} else {
 				spr := c.gi().sff.GetSprite(9000, 0)
 				if spr == nil {
@@ -1304,7 +1349,7 @@ func (c *Char) loadPallet() {
 	} else {
 		for i := 0; i < MaxPalNo; i++ {
 			_, c.gi().palExist[i] =
-				c.gi().sff.palList.PalTable[[2]int16{1, int16(i + 1)}]
+				c.gi().sff.palList.PalTable[[...]int16{1, int16(i + 1)}]
 		}
 	}
 	for i := range c.gi().palSelectable {
@@ -1400,10 +1445,29 @@ func (c *Char) setYV(yv float32) {
 	c.vel[1] = yv
 }
 func (c *Char) changeAnim(animNo int32) {
-	unimplemented()
+	if a := c.getAnim(animNo, false); a != nil {
+		c.anim = a
+		c.animPN = c.playerNo
+		c.animNo = animNo
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
+			sys.chars[c.animPN][0].size.yscale}
+		if c.hitPause() {
+			c.curFrame = a.CurrentFrame()
+		}
+	}
 }
 func (c *Char) changeAnim2(animNo int32) {
-	unimplemented()
+	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false); a != nil {
+		c.anim = a
+		c.animPN = c.ss.sb.playerNo
+		c.animNo = animNo
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
+			sys.chars[c.animPN][0].size.yscale}
+		a.sff = sys.cgi[c.animPN].sff
+		if c.hitPause() {
+			c.curFrame = a.CurrentFrame()
+		}
+	}
 }
 func (c *Char) setAnimElem(e int32) {
 	unimplemented()
@@ -1443,11 +1507,78 @@ func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
 	p, fr float32, x *float32) {
 	unimplemented()
 }
+func (c *Char) firimuki() {
+	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
+		unimplemented()
+	}
+}
+func (c *Char) enemyExplodsRemove(en int) {
+	remove := func(drawlist *[]int, drop bool) {
+		for i := len(*drawlist) - 1; i >= 0; i-- {
+			ei := (*drawlist)[i]
+			if ei >= 0 && sys.explods[en][ei].bindtime != 0 &&
+				sys.explods[en][ei].bindId == c.id {
+				sys.explods[en][ei].id = IErr
+				if drop {
+					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
+				} else {
+					(*drawlist)[i] = -1
+				}
+			}
+		}
+	}
+	remove(&sys.explDrawlist[en], true)
+	remove(&sys.topexplDrawlist[en], false)
+}
+func (c *Char) stateChange1(no int32, pn int) bool {
+	if sys.changeStateNest >= 2500 {
+		println("2500 loops: " + c.name + ", " + string(c.ss.prevno) + " -> " +
+			string(c.ss.no) + " -> " + string(no))
+		return false
+	}
+	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
+	if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
+		c.enemyExplodsRemove(c.ss.sb.playerNo)
+	}
+	var ok bool
+	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
+		c.ss.sb = StateBytecode{stateType: ST_U, moveType: MT_U, physics: ST_U,
+			playerNo: pn}
+	}
+	c.stchtmp = true
+	return true
+}
+func (c *Char) stateChange2() {
+	if c.stchtmp && !c.hitPause() {
+		c.ss.sb.init(c)
+		c.stchtmp = false
+	}
+}
+func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
+	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) {
+		c.firimuki()
+	}
+	if anim >= 0 {
+		c.changeAnim(anim)
+	}
+	if ctrl >= 0 {
+		c.setCtrl(ctrl != 0)
+	}
+	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 &&
+		c.id >= 0 {
+		for c.stchtmp && sys.changeStateNest < 2500 {
+			c.stateChange2()
+			sys.changeStateNest++
+			c.ss.sb.run(c)
+		}
+		sys.changeStateNest = 0
+	}
+}
 func (c *Char) changeState(no, anim, ctrl int32) {
-	unimplemented()
+	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl)
 }
 func (c *Char) selfState(no, anim, ctrl int32) {
-	unimplemented()
+	c.changeStateEx(no, c.playerNo, anim, ctrl)
 }
 func (c *Char) partner(n int32) *Char {
 	n = Max(0, n)
@@ -1468,10 +1599,17 @@ func (c *Char) partner(n int32) *Char {
 	}
 	return nil
 }
+func (c *Char) destroy() {
+	if c.helperIndex > 0 {
+		return
+	}
+	unimplemented()
+}
 func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if c.helperIndex <= 0 {
 		return false
 	}
+	c.setSF(CSF_destroy)
 	unimplemented()
 	return true
 }
@@ -1513,17 +1651,34 @@ func (c *Char) insertExplod(i int) {
 	c.insertExplodEx(i, -1, 0)
 }
 func (c *Char) getAnim(n int32, ffx bool) *Animation {
-	unimplemented()
-	return nil
+	if ffx {
+		return sys.lifebar.fat.get(n)
+	}
+	return c.gi().anim.get(n)
 }
 func (c *Char) setPosX(x float32) {
 	if c.pos[0] != x {
 		c.pos[0] = x
-		unimplemented()
+		c.enemyNearClear()
+		if c.player {
+			for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
+				for j := range sys.chars[i] {
+					sys.chars[i][j].enemyNearClear()
+				}
+			}
+		}
 	}
 }
 func (c *Char) setPosY(y float32) {
 	c.pos[1] = y
+}
+func (c *Char) posReset() {
+	c.facing = 1 - 2*float32(c.playerNo&1)
+	c.setX(float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
+		sys.stage.localscl - c.facing*float32(c.playerNo>>1)*P1P3Dist)
+	c.setY(0)
+	c.setXV(0)
+	c.setYV(0)
 }
 func (c *Char) setX(x float32) {
 	c.oldPos[0], c.drawPos[0] = x, x
@@ -1707,7 +1862,7 @@ func (c *Char) moveReversed() int32 {
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallf {
 		return c.ghv.fall.animtype
-	} else if c.ss.sb.stateType == ST_A {
+	} else if c.ss.stateType == ST_A {
 		return c.ghv.airanimtype
 	}
 	return c.ghv.groundanimtype
@@ -1971,18 +2126,18 @@ func (c *Char) hitShakeOver() bool {
 	return c.ghv.hitshaketime <= 0
 }
 func (c *Char) hitVelSetX() {
-	if c.ss.sb.moveType == MT_H {
+	if c.ss.moveType == MT_H {
 		c.setXV(c.ghv.xvel)
 	}
 }
 func (c *Char) hitVelSetY() {
-	if c.ss.sb.moveType == MT_H {
+	if c.ss.moveType == MT_H {
 		c.setYV(c.ghv.yvel)
 	}
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
 	if !actually || c.gi().ver[0] != 1 {
-		switch c.ss.sb.stateType {
+		switch c.ss.stateType {
 		case ST_A:
 			return base + 1
 		case ST_L:
@@ -1992,13 +2147,13 @@ func (c *Char) getEdge(base float32, actually bool) float32 {
 	return base
 }
 func (c *Char) defFW() float32 {
-	if c.ss.sb.stateType == ST_A {
+	if c.ss.stateType == ST_A {
 		return float32(c.size.air.front)
 	}
 	return float32(c.size.ground.front)
 }
 func (c *Char) defBW() float32 {
-	if c.ss.sb.stateType == ST_A {
+	if c.ss.stateType == ST_A {
 		return float32(c.size.air.back)
 	}
 	return float32(c.size.ground.back)
@@ -2170,14 +2325,14 @@ func (c *Char) lose() bool {
 	return sys.winTeam == ^c.playerNo&1
 }
 func (c *Char) hitDefAttr(attr int32) bool {
-	return c.ss.sb.moveType == MT_A && c.hitdef.testAttr(attr)
+	return c.ss.moveType == MT_A && c.hitdef.testAttr(attr)
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
 		e.anim = c.getAnim(120, true)
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
-		e.offset = [2]float32{x, y}
+		e.offset = [...]float32{x, y}
 		e.setPos(c)
 		c.insertExplod(i)
 	}
@@ -2186,12 +2341,12 @@ func (c *Char) hitOver() bool {
 	return c.ghv.hittime < 0
 }
 func (c *Char) hitFallDamage() {
-	if c.ss.sb.moveType == MT_H {
+	if c.ss.moveType == MT_H {
 		c.lifeAdd(-float64(c.ghv.fall.damage), c.ghv.fall.kill, false)
 	}
 }
 func (c *Char) hitFallVel() {
-	if c.ss.sb.moveType == MT_H {
+	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
 			c.setXV(c.ghv.fall.xvelocity)
 		}
@@ -2199,7 +2354,7 @@ func (c *Char) hitFallVel() {
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv float32) {
-	if c.ss.sb.moveType == MT_H {
+	if c.ss.moveType == MT_H {
 		if f >= 0 {
 			c.ghv.fallf = f != 0
 		}
@@ -2215,12 +2370,14 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
 		return
 	}
-	si, ok := c.gi().sff.palList.PalTable[[2]int16{int16(src[0]), int16(src[1])}]
+	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
+		int16(src[1])}]
 	if !ok {
 		return
 	}
 	var di int
-	di, ok = c.gi().sff.palList.PalTable[[2]int16{int16(dst[0]), int16(dst[1])}]
+	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
+		int16(dst[1])}]
 	if !ok {
 		di = si
 	}

@@ -108,10 +108,10 @@ type backGround struct {
 }
 
 func newBackGround(sff *Sff) *backGround {
-	return &backGround{anim: *newAnimation(sff), delta: [2]float32{1, 1},
-		xscale: [2]float32{1, 1}, rasterx: [2]float32{1, 1}, yscalestart: 100,
+	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1},
+		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100,
 		actionno: -1, visible: true, active: true,
-		startrect: [4]int32{-32768, -32768, 65535, 65535}}
+		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
 	sff *Sff, at AnimationTable, camstartx float32) *backGround {
@@ -461,7 +461,7 @@ type Stage struct {
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: float32(math.NaN()),
 		rightbound: float32(math.NaN()), screenleft: 15, screenright: 15,
-		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [2]float32{1, 1}}
+		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1}}
 	sys.cam.stageCamera = *newStageCamera()
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080

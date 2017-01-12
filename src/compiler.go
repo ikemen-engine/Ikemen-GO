@@ -753,26 +753,26 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		set, _else := c.token == ":=", false
 		if !bv1.IsNone() && bv1.ToI() >= 0 {
-			switch [2]bool{sys, f} {
-			case [2]bool{false, false}:
+			switch [...]bool{sys, f} {
+			case [...]bool{false, false}:
 				if bv1.ToI() < int32(NumVar) {
 					oc = OC_var0 + OpCode(bv1.ToI()) // OC_st_var0と同じ値
 				} else {
 					_else = true
 				}
-			case [2]bool{false, true}:
+			case [...]bool{false, true}:
 				if bv1.ToI() < int32(NumFvar) {
 					oc = OC_fvar0 + OpCode(bv1.ToI()) // OC_st_fvar0と同じ値
 				} else {
 					_else = true
 				}
-			case [2]bool{true, false}:
+			case [...]bool{true, false}:
 				if bv1.ToI() < int32(NumSysVar) {
 					oc = OC_sysvar0 + OpCode(bv1.ToI()) // OC_st_sysvar0と同じ値
 				} else {
 					_else = true
 				}
-			case [2]bool{true, true}:
+			case [...]bool{true, true}:
 				if bv1.ToI() < int32(NumSysFvar) {
 					oc = OC_sysfvar0 + OpCode(bv1.ToI()) // OC_st_sysfvar0と同じ値
 				} else {
@@ -797,14 +797,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_st_)
 		}
 		if _else {
-			switch [2]bool{sys, f} {
-			case [2]bool{false, false}:
+			switch [...]bool{sys, f} {
+			case [...]bool{false, false}:
 				oc = OC_var
-			case [2]bool{false, true}:
+			case [...]bool{false, true}:
 				oc = OC_fvar
-			case [2]bool{true, false}:
+			case [...]bool{true, false}:
 				oc = OC_sysvar
-			case [2]bool{true, true}:
+			case [...]bool{true, true}:
 				oc = OC_sysfvar
 			}
 			if set {
@@ -6264,7 +6264,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		case "info":
 			if info {
 				info = false
-				sys.cgi[pn].ver = [2]uint16{0, 0}
+				sys.cgi[pn].ver = [2]uint16{}
 				str, ok := is["mugenversion"]
 				if ok {
 					for i, s := range SplitAndTrim(str, ".") {

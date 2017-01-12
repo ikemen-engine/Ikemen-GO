@@ -359,7 +359,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		sys.sel.randomspr = sff.GetOwnPalSprite(int16(numArg(l, 2)),
 			int16(numArg(l, 3)))
-		sys.sel.randomscl = [2]float32{float32(numArg(l, 4)),
+		sys.sel.randomscl = [...]float32{float32(numArg(l, 4)),
 			float32(numArg(l, 5))}
 		return 0
 	})
@@ -369,11 +369,12 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setSelCellSize", func(*lua.LState) int {
-		sys.sel.cellsize = [2]float32{float32(numArg(l, 1)), float32(numArg(l, 2))}
+		sys.sel.cellsize = [...]float32{float32(numArg(l, 1)),
+			float32(numArg(l, 2))}
 		return 0
 	})
 	luaRegister(l, "setSelCellScale", func(*lua.LState) int {
-		sys.sel.cellscale = [2]float32{float32(numArg(l, 1)),
+		sys.sel.cellscale = [...]float32{float32(numArg(l, 1)),
 			float32(numArg(l, 2))}
 		return 0
 	})
@@ -560,8 +561,8 @@ func systemScriptInit(l *lua.LState) {
 		}
 		winp := int32(0)
 		p := make([]*Char, len(sys.chars))
-		sys.roundsExisted = [2]int32{0, 0}
-		sys.matchWins = [2]int32{0, 0}
+		sys.roundsExisted = [2]int32{}
+		sys.matchWins = [2]int32{}
 		for i := range sys.lifebar.wi {
 			sys.lifebar.wi[i].clear()
 		}
