@@ -1510,7 +1510,7 @@ func (cf callFunction) Run(c *Char, _ []int32) (changeState bool) {
 type StateBlock struct {
 	persistent          int32
 	persistentIndex     int32
-	ignorehitpause      bool
+	ignorehitpause      int32
 	ctrlsIgnorehitpause bool
 	trigger             BytecodeExp
 	elseBlock           *StateBlock
@@ -1518,11 +1518,20 @@ type StateBlock struct {
 }
 
 func newStateBlock() *StateBlock {
-	return &StateBlock{persistent: 1, persistentIndex: -1}
+	return &StateBlock{persistent: 1, persistentIndex: -1, ignorehitpause: -2}
 }
 func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
-	if !b.ignorehitpause && c.hitPause() {
-		return false
+	if c.hitPause() {
+		if b.ignorehitpause < -1 {
+			return false
+		}
+		if b.ignorehitpause >= 0 {
+			ww := &c.ss.wakegawakaranai[c.ss.sb.playerNo][b.ignorehitpause]
+			*ww = !*ww
+			if !*ww {
+				return false
+			}
+		}
 	}
 	if b.persistentIndex >= 0 {
 		ps[b.persistentIndex]--

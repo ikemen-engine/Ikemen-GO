@@ -2919,6 +2919,10 @@ func (c *Compiler) changeStateSub(is IniSection,
 		changeState_anim, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if c.block != nil && c.block.ignorehitpause == -1 {
+		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
+		sys.cgi[c.playerNo].wakewakaLength++
+	}
 	return nil
 }
 func (c *Compiler) changeState(is IniSection, sc *StateControllerBase,
@@ -2954,6 +2958,10 @@ func (c *Compiler) tagIn(is IniSection, sc *StateControllerBase,
 		}
 		return nil
 	})
+	if c.block != nil && c.block.ignorehitpause == -1 {
+		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
+		sys.cgi[c.playerNo].wakewakaLength++
+	}
 	return *ret, err
 }
 func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
@@ -2962,6 +2970,10 @@ func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
 		sc.add(tagOut_, nil)
 		return nil
 	})
+	if c.block != nil && c.block.ignorehitpause == -1 {
+		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
+		sys.cgi[c.playerNo].wakewakaLength++
+	}
 	return *ret, err
 }
 func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase,
@@ -5389,8 +5401,9 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						}
 					}
 				case "ignorehitpause":
-					c.block.ignorehitpause = Atoi(data) != 0
-					c.block.ctrlsIgnorehitpause = c.block.ignorehitpause
+					ih := Atoi(data) != 0
+					c.block.ignorehitpause = Btoi(ih) - 2
+					c.block.ctrlsIgnorehitpause = ih
 				case "triggerall":
 					be, err := c.fullExpression(&data, VT_Bool)
 					if err != nil {
@@ -5508,7 +5521,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			c.block.trigger = texp
 			_ihp := int8(-1)
 			if ihp {
-				_ihp = int8(Btoi(c.block.ignorehitpause))
+				_ihp = int8(Btoi(c.block.ignorehitpause >= -1))
 			}
 			sctrl, err := scf(is, sc, _ihp)
 			if err != nil {
@@ -5532,18 +5545,17 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			}
 			if appending {
 				if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
-					!c.block.ignorehitpause {
+					c.block.ignorehitpause < -1 {
 					sbc.block.ctrls = append(sbc.block.ctrls, sctrl)
 				} else {
 					c.block.ctrls = append(c.block.ctrls, sctrl)
 					sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
-					if c.block.ignorehitpause {
+					if c.block.ignorehitpause >= -1 {
 						sbc.block.ignorehitpause = c.block.ignorehitpause
 					}
 				}
 			}
 		}
-
 		if _, ok := states[n]; !ok {
 			states[n] = *sbc
 		}
@@ -5742,10 +5754,10 @@ func (c *Compiler) subBlock(line *string, root bool,
 	for {
 		switch c.token {
 		case "ignorehitpause":
-			if bl.ignorehitpause {
+			if bl.ignorehitpause >= -1 {
 				return nil, c.yokisinaiToken()
 			}
-			bl.ignorehitpause, bl.ctrlsIgnorehitpause = true, true
+			bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
 			c.scan(line)
 			continue
 		case "persistent":
@@ -5828,8 +5840,8 @@ func (c *Compiler) subBlock(line *string, root bool,
 			sbc, numVars); err != nil {
 			return nil, err
 		}
-		if bl.elseBlock.ignorehitpause {
-			bl.ignorehitpause = true
+		if bl.elseBlock.ignorehitpause >= -1 {
+			bl.ignorehitpause = -1
 		}
 	}
 	return bl, nil
@@ -5930,8 +5942,8 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			if sbl, err := c.subBlock(line, root, sbc, numVars); err != nil {
 				return err
 			} else {
-				if bl != nil && sbl.ignorehitpause {
-					bl.ignorehitpause = true
+				if bl != nil && sbl.ignorehitpause >= -1 {
+					bl.ignorehitpause = -1
 				}
 				*ctrls = append(*ctrls, *sbl)
 			}
@@ -6376,6 +6388,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		c.cmdl.Add(*cm)
 	}
 	sys.stringPool[pn].Clear()
+	sys.cgi[pn].wakewakaLength = 0
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, def); err != nil {

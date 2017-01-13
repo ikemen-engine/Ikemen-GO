@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/go-gl/gl/v2.1/gl"
 	"io"
+	"math"
 	"os"
 	"runtime"
 	"unsafe"
@@ -51,6 +52,7 @@ type PalFX struct {
 	PalFXDef
 	remap      []int
 	negType    bool
+	sintime    int32
 	enable     bool
 	eNegType   bool
 	eInvertall bool
@@ -60,23 +62,24 @@ type PalFX struct {
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
-func (pfx *PalFX) clear2(nt bool) {
-	pfx.PalFXDef = PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
-	pfx.negType = nt
+func (pf *PalFX) clear2(nt bool) {
+	pf.PalFXDef = PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
+	pf.negType = nt
+	pf.sintime = 0
 }
-func (pfx *PalFX) clear() {
-	pfx.clear2(false)
+func (pf *PalFX) clear() {
+	pf.clear2(false)
 }
-func (pfx *PalFX) GetFxPal(pal []uint32, neg bool) []uint32 {
-	if pfx == nil || pfx.time == 0 {
+func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
+	if pf == nil || pf.time == 0 {
 		return pal
 	}
 	unimplemented()
 	return nil
 }
-func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
+func (pf *PalFX) getFcPalFx(trans int32) (neg bool, color float32,
 	add, mul [3]float32) {
-	if pfx == nil || pfx.time == 0 {
+	if pf == nil || pf.time == 0 {
 		neg = false
 		color = 1
 		for i := range add {
@@ -88,6 +91,35 @@ func (pfx *PalFX) GetFcPalFx(trans int32) (neg bool, color float32,
 	}
 	unimplemented()
 	return
+}
+func (pf *PalFX) sinAdd(color *[3]int32) {
+	if pf.cycletime > 1 {
+		st := 2 * math.Pi * float64(pf.sintime)
+		if pf.cycletime == 2 {
+			st += math.Pi / 2
+		}
+		sin := math.Sin(st / float64(pf.cycletime))
+		for i := range *color {
+			(*color)[i] += int32(sin * float64(pf.sinadd[i]))
+		}
+	}
+}
+func (pf *PalFX) step() {
+	pf.enable = pf.time != 0
+	if pf.enable {
+		pf.eMul = pf.mul
+		pf.eAdd = pf.add
+		pf.eColor = pf.color
+		pf.eInvertall = pf.invertall
+		pf.eNegType = pf.negType
+		pf.sinAdd(&pf.eAdd)
+		if pf.cycletime > 0 {
+			pf.sintime = (pf.sintime + 1) % pf.cycletime
+		}
+		if pf.time > 0 {
+			pf.time--
+		}
+	}
 }
 
 type PaletteList struct {
@@ -874,7 +906,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		return
 	}
 	if s.rle == -12 {
-		neg, color, padd, pmul := pfx.GetFcPalFx(trans)
+		neg, color, padd, pmul := pfx.getFcPalFx(trans)
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {

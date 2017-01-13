@@ -196,6 +196,7 @@ type System struct {
 	drawc2                  ClsnRect
 	drawc2sp                ClsnRect
 	drawwh                  ClsnRect
+	autoguard               [MaxSimul * 2]bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -433,6 +434,7 @@ func (s *System) nextRound() {
 			s.playerClear(i)
 			p[0].posReset()
 			p[0].setCtrl(false)
+			p[0].clearState()
 			p[0].clear2()
 			p[0].varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
 			p[0].fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
@@ -486,6 +488,59 @@ func (s *System) resetFrameTime() {
 	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick = 0, -1, 0, 0
 	s.nextAddTime, s.oldNextAddTime = 1.0/FPS, 1.0/FPS
 }
+func (s *System) commandUpdate() {
+	for i, p := range s.chars {
+		if len(p) > 0 {
+			r := p[0]
+			act := true
+			if s.super > 0 {
+				act = r.superMovetime != 0
+			} else if s.pause > 0 && r.pauseMovetime == 0 {
+				act = false
+			}
+			if act && !r.sf(CSF_noautoturn) &&
+				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
+				r.furimuki()
+			}
+			if r.cmd[0].Input(r.key, int32(r.facing)) {
+				hp := r.hitPause()
+				buftime := Btoi(hp && r.gi().ver[0] != 1)
+				if s.super > 0 {
+					if !act && s.super <= s.superendcmdbuftime {
+						hp = true
+					}
+				} else if s.pause > 0 {
+					if !act && s.pause <= s.pauseendcmdbuftime {
+						hp = true
+					}
+				}
+				for j := range r.cmd {
+					r.cmd[j].Step(int32(r.facing), r.key < 0, hp, buftime+Btoi(hp))
+				}
+				if r.key < 0 {
+					cc := int32(-1)
+					if r.roundState() == 2 && Rand(0, s.com[i]+16) > 16 {
+						cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
+					}
+					for j := range p {
+						if p[j].helperIndex >= 0 {
+							p[j].cpucmd = cc
+						}
+					}
+				}
+			}
+		}
+	}
+}
+func (s *System) charUpdate(cvmin, cvmax,
+	highest, lowest, leftest, rightest *float32) {
+	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+	unimplemented()
+	if s.tickNextFrame() {
+		unimplemented()
+		s.charList.tick()
+	}
+}
 func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	sclmul float32) {
 	s.sprites = s.sprites[:0]
@@ -496,6 +551,52 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawc2sp = s.drawc2sp[:0]
 	s.drawwh = s.drawwh[:0]
 	s.cam.Update(scl, *x, *y)
+	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
+	leftest, rightest = *x, *x
+	if s.cam.verticalfollow > 0 {
+		lowest = s.cam.ScreenPos[1]
+	}
+	if s.tickFrame() {
+		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
+		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
+			float32(s.gameWidth)/s.cam.Scale - s.screenright
+		if s.xmin > s.xmax {
+			s.xmin = (s.xmin + s.xmax) / 2
+			s.xmax = s.xmin
+		}
+		s.allPalFX.step()
+		s.bgPalFX.step()
+		s.envShake.next()
+		if s.envcol_time > 0 {
+			s.envcol_time--
+		}
+		s.drawScale, s.zoomPos = float32(math.NaN()), [2]float32{}
+		if s.super > 0 {
+			s.super--
+		} else if s.pause > 0 {
+			s.pause--
+		}
+		if s.supertime < 0 {
+			s.supertime = ^s.supertime
+			s.super = s.supertime
+		}
+		if s.pausetime < 0 {
+			s.pausetime = ^s.pausetime
+			s.pause = s.pausetime
+		}
+		if s.super <= 0 && s.pause <= 0 {
+			s.specialFlag = 0
+		} else {
+			s.unsetSF(GSF_roundnotover)
+		}
+		if s.superanim != nil {
+			s.superanim.Action()
+		}
+		s.charList.action(*x, &cvmin, &cvmax,
+			&highest, &lowest, &leftest, &rightest)
+	} else {
+		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
+	}
 	unimplemented()
 	return 0, 0, 1
 }
@@ -718,8 +819,6 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		x, y, newx, newy, l, r, scl, sclmul = 0, 0, 0, 0, 0, 0, 1, 1
 		s.cam.Update(scl, x, y)
-		s.xmin = -(float32(s.gameWidth)/2)/s.cam.Scale + s.screenleft
-		s.xmax = (float32(s.gameWidth)/2)/s.cam.Scale - s.screenright
 	}
 	reset()
 	for !s.esc {

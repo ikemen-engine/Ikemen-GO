@@ -16,6 +16,10 @@ const (
 	SCF_ko SystemCharFlag = 1 << iota
 	SCF_ctrl
 	SCF_standby
+	SCF_guard
+	SCF_airjump
+	SCF_over
+	SCF_ko_round_middle
 )
 
 type CharSpecialFlag uint32
@@ -606,6 +610,9 @@ func (ghv *GetHitVar) addId(id, juggle int32) {
 	ghv.hitBy = append(ghv.hitBy, [...]int32{id, juggle})
 }
 
+type HitBy struct {
+	falg, time int32
+}
 type HitOverride struct {
 	attr     int32
 	stateno  int32
@@ -844,7 +851,7 @@ type CharGlobalInfo struct {
 	velocity         CharVelocity
 	movement         CharMovement
 	states           map[int32]StateBytecode
-	wakewakaLength   int
+	wakewakaLength   int32
 	pctype           ProjContact
 	pctime, pcid     int32
 }
@@ -872,7 +879,7 @@ func (ss *StateState) clear() {
 	ss.ps = nil
 	ss.wakegawakaranai = make([][]bool, len(sys.cgi))
 	for i, v := range ss.wakegawakaranai {
-		if len(v) < sys.cgi[i].wakewakaLength {
+		if len(v) < int(sys.cgi[i].wakewakaLength) {
 			ss.wakegawakaranai[i] = make([]bool, sys.cgi[i].wakewakaLength)
 		} else {
 			for i := range v {
@@ -880,6 +887,7 @@ func (ss *StateState) clear() {
 			}
 		}
 	}
+	ss.clearWw()
 	ss.no, ss.prevno = 0, 0
 	ss.hitdefContact = false
 	ss.time = 0
@@ -949,6 +957,7 @@ type Char struct {
 	clsnScale       [2]float32
 	hitdef          HitDef
 	ghv             GetHitVar
+	hitby           [2]HitBy
 	ho              [8]HitOverride
 	hoIdx           int
 	mctype          MoveContact
@@ -969,6 +978,9 @@ type Char struct {
 	aimg        AfterImage
 	sounds      Sounds
 	p1facing    float32
+	cpucmd      int32
+	attackDist  float32
+	offset      [2]float32
 	angleset    bool
 	stchtmp     bool
 	inguarddist bool
@@ -995,17 +1007,24 @@ func (c *Char) init(n int, idx int32) {
 		c.key ^= -1
 	}
 }
-func (c *Char) clear1() {
-	c.anim = nil
-	c.cmd = nil
-	c.curFrame = nil
+func (c *Char) clearState() {
 	c.ss.clear()
 	c.hitdef.clear()
 	c.ghv.clear()
 	c.ghv.clearOff()
+	c.hitby = [2]HitBy{}
 	for i := range c.ho {
 		c.ho[i].clear()
 	}
+	c.mctype = MC_Hit
+	c.mctime = 0
+	c.fallTime = 0
+}
+func (c *Char) clear1() {
+	c.anim = nil
+	c.cmd = nil
+	c.curFrame = nil
+	c.clearState()
 	c.hoIdx = -1
 	c.mctype, c.mctime = MC_Hit, 0
 	c.fallTime = 0
@@ -1054,6 +1073,7 @@ func (c *Char) clear2() {
 	c.aimg.timegap = -1
 	c.enemyNearClear()
 	c.targets = c.targets[:0]
+	c.cpucmd = -1
 }
 func (c *Char) gi() *CharGlobalInfo {
 	return &sys.cgi[c.playerNo]
@@ -1507,7 +1527,7 @@ func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
 	p, fr float32, x *float32) {
 	unimplemented()
 }
-func (c *Char) firimuki() {
+func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		unimplemented()
 	}
@@ -1556,7 +1576,7 @@ func (c *Char) stateChange2() {
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) {
-		c.firimuki()
+		c.furimuki()
 	}
 	if anim >= 0 {
 		c.changeAnim(anim)
@@ -2399,6 +2419,136 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		c.gi().sff.palList.SwapPalMap(&pfx.remap)
 	}
 }
+func (c *Char) inGuardState() bool {
+	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
+		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
+}
+func (c *Char) action() {
+	if c.minus != 2 || c.sf(CSF_destroy) {
+		return
+	}
+	p := false
+	if c.cmd != nil {
+		if sys.super > 0 {
+			p = c.superMovetime == 0
+		} else if sys.pause > 0 && c.pauseMovetime == 0 {
+			p = true
+		}
+	}
+	c.acttmp = -int8(Btoi(p)) * 2
+	c.unsetSCF(SCF_guard)
+	if !(c.scf(SCF_ko) || c.ctrlOver()) && (c.scf(SCF_ctrl) || c.ss.no == 52) &&
+		c.ss.moveType == MT_I && c.cmd != nil &&
+		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0) &&
+		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
+			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
+			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
+		c.setSCF(SCF_guard)
+	}
+	if !p {
+		if c.palfx != nil {
+			c.palfx.step()
+		}
+		if c.keyctrl && c.cmd != nil {
+			if c.ss.stateType == ST_A {
+				if c.cmd[0].Buffer.U < 0 {
+					c.setSCF(SCF_airjump)
+				}
+			} else {
+				c.airJumpCount = 0
+				c.unsetSCF(SCF_airjump)
+			}
+			if c.canCtrl() && (c.key >= 0 || c.helperIndex == 0) {
+				if !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+					if c.ss.no != 40 {
+						c.changeState(40, -1, -1)
+					}
+				} else if c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
+					c.pos[1] <= float32(c.gi().movement.airjump.height) &&
+					c.airJumpCount < c.gi().movement.airjump.num &&
+					c.cmd[0].Buffer.U > 0 {
+					if c.ss.no != 45 {
+						c.airJumpCount++
+						c.unsetSCF(SCF_airjump)
+						c.changeState(45, -1, -1)
+					}
+				} else {
+					if c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
+						if c.ss.no != 10 {
+							c.changeState(10, -1, -1)
+						}
+					} else if c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
+						if c.ss.no != 12 {
+							c.changeState(12, -1, -1)
+						}
+					} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
+						(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
+							c.cmd[0].Buffer.B > 0) {
+						if c.ss.no != 20 {
+							c.changeState(20, -1, -1)
+						}
+					} else if c.ss.no != 20 &&
+						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+						c.changeState(0, -1, -1)
+					}
+					if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+						!c.inGuardState() {
+						c.changeState(120, -1, -1)
+					}
+				}
+			} else if c.scf(SCF_ctrl) {
+				switch c.ss.no {
+				case 11:
+					c.changeState(12, -1, -1)
+				case 20:
+					c.changeState(0, -1, -1)
+				}
+			}
+		}
+		if !c.hitPause() {
+			if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
+				c.furimuki()
+			}
+			if !sys.roundEnd() {
+				if c.alive() && c.life > 0 {
+					c.unsetSCF(SCF_over | SCF_ko_round_middle)
+				}
+				if c.ss.no == 5150 || c.scf(SCF_over) {
+					c.setSCF(SCF_ko_round_middle)
+				}
+			}
+			if c.ss.no == 5150 {
+				c.setSCF(SCF_over)
+			}
+			c.specialFlag = 0
+			if c.player {
+				if c.alive() || !c.scf(SCF_over) || !c.scf(SCF_ko_round_middle) {
+					c.setSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
+					if (c.alive() || !c.scf(SCF_over)) && c.roundState() > 0 {
+						c.setSF(CSF_playerpush)
+					}
+				}
+			}
+			c.angleScalse = [...]float32{1, 1}
+			c.attackDist = float32(c.size.attack.dist)
+			c.offset = [2]float32{}
+			for i, hb := range c.hitby {
+				if hb.time > 0 {
+					c.hitby[i].time--
+				}
+			}
+			unimplemented()
+		}
+	}
+	unimplemented()
+}
+func (c *Char) update(cvmin, cvmax,
+	highest, lowest, leftest, rightest *float32) {
+	unimplemented()
+}
+func (c *Char) tick() {
+	unimplemented()
+}
 
 type CharList struct {
 	runOrder, drawOrder []*Char
@@ -2419,5 +2569,40 @@ func (cl *CharList) add(c *Char) {
 	}
 	if i >= len(cl.drawOrder) {
 		cl.drawOrder = append(cl.drawOrder, c)
+	}
+}
+func (cl *CharList) action(x float32, cvmin, cvmax,
+	highest, lowest, leftest, rightest *float32) {
+	sys.commandUpdate()
+	for _, c := range cl.runOrder {
+		if c.id < 0 {
+			c.id = ^c.id
+		}
+		if c.ss.moveType == MT_A {
+			c.action()
+		}
+	}
+	for _, c := range cl.runOrder {
+		if c.id < 0 {
+			c.id = ^c.id
+		}
+		c.action()
+	}
+	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
+}
+func (cl *CharList) update(cvmin, cvmax,
+	highest, lowest, leftest, rightest *float32) {
+	for _, c := range cl.runOrder {
+		if c.id >= 0 {
+			c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+		}
+	}
+}
+func (cl *CharList) tick() {
+	sys.gameTime++
+	for _, c := range cl.runOrder {
+		if c.id >= 0 {
+			c.tick()
+		}
 	}
 }
