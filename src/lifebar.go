@@ -319,6 +319,8 @@ type LifeBarRound struct {
 	win_time           int32
 	win_sndtime        int32
 	win, win2, drawn   AnimTextSnd
+	cur                int32
+	wt, swt, dt        [2]int32
 }
 
 func newLifeBarRound(snd *Snd) *LifeBarRound {

@@ -521,7 +521,7 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 		f := float32(bv.v)
 		be.append((*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
 	case VT_Int:
-		if bv.v >= -128 || bv.v <= 127 {
+		if bv.v >= -128 && bv.v <= 127 {
 			be.append(OC_int8, OpCode(bv.v))
 		} else {
 			be.append(OC_int)
@@ -2111,6 +2111,7 @@ const (
 	explod_pausemovetime
 	explod_sprpriority
 	explod_ontop
+	explod_strictontop
 	explod_shadow
 	explod_removeongethit
 	explod_trans
@@ -2201,6 +2202,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.sprpriority = exp[0].evalI(c)
 		case explod_ontop:
 			e.ontop = exp[0].evalB(c)
+		case explod_strictontop:
 			if e.ontop {
 				e.sprpriority = 0
 			}
@@ -2357,6 +2359,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalB(c)
 				eachExpl(func(e *Explod) {
 					e.ontop = t
+				})
+			case explod_strictontop:
+				eachExpl(func(e *Explod) {
 					if e.ontop {
 						e.sprpriority = 0
 					}
@@ -4345,7 +4350,7 @@ type StateBytecode struct {
 
 func newStateBytecode(pn int) *StateBytecode {
 	sb := &StateBytecode{stateType: ST_S, moveType: MT_I, physics: ST_N,
-		playerNo: pn}
+		playerNo: pn, block: *newStateBlock()}
 	return sb
 }
 func (sb *StateBytecode) init(c *Char) {

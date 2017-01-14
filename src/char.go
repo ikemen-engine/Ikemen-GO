@@ -45,6 +45,9 @@ const (
 	CSF_backedge
 	CSF_frontwidth
 	CSF_backwidth
+	CSF_assertspecial CharSpecialFlag = CSF_nostandguard | CSF_nocrouchguard |
+		CSF_noairguard | CSF_noshadow | CSF_invisible | CSF_unguardable |
+		CSF_nojugglecheck | CSF_noautoturn | CSF_nowalk
 )
 
 type GlobalSpecialFlag uint32
@@ -941,7 +944,7 @@ type Char struct {
 	id              int32
 	helperId        int32
 	helperIndex     int32
-	parentIndex     int32
+	parentChar      *Char
 	playerNo        int
 	keyctrl         bool
 	player          bool
@@ -962,7 +965,7 @@ type Char struct {
 	hoIdx           int
 	mctype          MoveContact
 	mctime          int32
-	children        []int32
+	children        []*Char
 	targets         []int32
 	targetsOfHitdef []int32
 	enemyNear       [2][]*Char
@@ -1034,7 +1037,7 @@ func (c *Char) clear1() {
 	c.id = IErr
 	c.helperId = 0
 	c.helperIndex = -1
-	c.parentIndex = IErr
+	c.parentChar = nil
 	c.playerNo = -1
 	c.facing = 1
 	c.keyctrl = false
@@ -1047,6 +1050,21 @@ func (c *Char) clear1() {
 	c.p1facing = 0
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
+}
+func (c *Char) copyParent(p *Char) {
+	c.parentChar = p
+	c.name, c.key, c.size = p.name+"'s helper", p.key, p.size
+	c.life, c.lifeMax, c.power, c.powerMax = p.lifeMax, p.lifeMax, 0, p.powerMax
+	c.clear2()
+}
+func (c *Char) addChild(ch *Char) {
+	for i, chi := range c.children {
+		if chi == nil {
+			c.children[i] = ch
+			return
+		}
+	}
+	c.children = append(c.children, ch)
 }
 func (c *Char) enemyNearClear() {
 	c.enemyNear[0] = c.enemyNear[0][:0]
@@ -1446,7 +1464,11 @@ func (c *Char) clearHitCount() {
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
 	if c.helperIndex == 0 {
-		unimplemented()
+		for i, pr := range sys.projs[c.playerNo] {
+			if pr.id < 0 {
+				sys.projs[c.playerNo][i].id = IErr
+			}
+		}
 	}
 }
 func (c *Char) clearHitDef() {
@@ -1552,8 +1574,8 @@ func (c *Char) enemyExplodsRemove(en int) {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
-		println("2500 loops: " + c.name + ", " + string(c.ss.prevno) + " -> " +
-			string(c.ss.no) + " -> " + string(no))
+		fmt.Printf("2500 loops: %v, %v -> %v -> %v\n",
+			c.name, c.ss.prevno, c.ss.no, no)
 		return false
 	}
 	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
@@ -1562,8 +1584,9 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
-		c.ss.sb = StateBytecode{stateType: ST_U, moveType: MT_U, physics: ST_U,
-			playerNo: pn}
+		fmt.Printf("存在しないステート: P%v:%v\n", pn+1, no)
+		c.ss.sb = *newStateBytecode(pn)
+		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
 	c.stchtmp = true
 	return true
@@ -1633,17 +1656,96 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	unimplemented()
 	return true
 }
-func (c *Char) newHelper() *Char {
-	unimplemented()
-	return nil
+func (c *Char) newHelper() (h *Char) {
+	i := int32(0)
+	for ; int(i) < len(sys.chars[c.playerNo]); i++ {
+		if sys.chars[c.playerNo][i].helperIndex < 0 {
+			h = sys.chars[c.playerNo][i]
+			h.init(c.playerNo, i)
+			break
+		}
+	}
+	if int(i) >= len(sys.chars[c.playerNo]) {
+		if i >= sys.helperMax {
+			return
+		}
+		h = newChar(c.playerNo, i)
+		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
+	}
+	h.id, h.helperId = ^sys.newCharId(), 0
+	h.copyParent(c)
+	c.addChild(h)
+	sys.charList.add(h)
+	return
+}
+func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
+	dstFacing *float32) (p [2]float32) {
+	if facing < 0 {
+		*dstFacing *= -1
+	}
+	switch pt {
+	case PT_P1:
+		p[0] = c.pos[0] + pos[0]*c.facing
+		p[1] = c.pos[1] + pos[1]
+		*dstFacing *= c.facing
+	case PT_P2:
+		if p2 := c.p2(); p2 != nil {
+			p[0] = p2.pos[0] + pos[0]*p2.facing
+			p[1] = p2.pos[1] + pos[1]
+			*dstFacing *= p2.facing
+		}
+	case PT_F, PT_B:
+		p[0] = sys.cam.ScreenPos[0]
+		if c.facing > 0 && pt == PT_F || c.facing < 0 && pt == PT_B {
+			p[0] += float32(sys.gameWidth) / sys.cam.Scale
+		}
+		if c.facing > 0 {
+			p[0] += pos[0]
+		} else {
+			p[0] -= pos[0]
+		}
+		p[1] = pos[1]
+		*dstFacing *= c.facing
+	case PT_L:
+		p[0] = sys.cam.ScreenPos[0] + pos[0]
+		p[1] = pos[1]
+	case PT_R:
+		p[0] = sys.cam.ScreenPos[0] + float32(sys.gameWidth)/sys.cam.Scale + pos[0]
+		p[1] = pos[1]
+	case PT_N:
+		p = pos
+	}
+	return
 }
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	facing int32, ownpal bool) {
-	unimplemented()
+	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing)
+	h.setX(p[0])
+	h.setY(p[1])
+	h.vel = [2]float32{}
+	if ownpal {
+		h.palfx = newPalFX()
+		tmp := c.getPalfx().remap
+		h.palfx.remap = make([]int, len(tmp))
+		copy(h.palfx.remap, tmp)
+	}
+	h.changeStateEx(st, c.playerNo, 0, 1)
 }
 func (c *Char) roundState() int32 {
-	unimplemented()
-	return 0
+	switch {
+	case sys.intro > sys.lifebar.ro.ctrl_time+1:
+		return 0
+	case sys.lifebar.ro.cur == 0:
+		return 1
+	case !sys.roundEnd():
+		return 2
+	case sys.intro < -(sys.lifebar.ro.over_hittime+
+		sys.lifebar.ro.over_waittime) && (sys.chars[c.playerNo][0].scf(SCF_over) ||
+		sys.chars[c.playerNo][0].scf(SCF_ko)):
+		return 4
+	default:
+		return 3
+	}
 }
 func (c *Char) animTime() int32 {
 	unimplemented()
@@ -1727,12 +1829,13 @@ func (c *Char) mulYV(yv float32) {
 	c.vel[1] *= yv
 }
 func (c *Char) parent() *Char {
-	unimplemented()
-	return nil
+	return c.parentChar
 }
 func (c *Char) root() *Char {
-	unimplemented()
-	return nil
+	if c.helperIndex == 0 {
+		return nil
+	}
+	return sys.chars[c.playerNo][0]
 }
 func (c *Char) helper(id int32) *Char {
 	unimplemented()
@@ -1747,16 +1850,18 @@ func (c *Char) enemy(n int32) *Char {
 	return nil
 }
 func (c *Char) enemynear(n int32) *Char {
-	unimplemented()
-	return nil
+	return sys.charList.enemyNear(c, n, false)
 }
 func (c *Char) playerid(id int32) *Char {
 	unimplemented()
 	return nil
 }
 func (c *Char) p2() *Char {
-	unimplemented()
-	return nil
+	p2 := sys.charList.enemyNear(c, 0, true)
+	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
+		return nil
+	}
+	return p2
 }
 func (c *Char) newProj() *Projectile {
 	unimplemented()
@@ -2284,11 +2389,11 @@ func (c *Char) getPalfx() *PalFX {
 	if c.palfx != nil {
 		return c.palfx
 	}
-	if c.parentIndex < 0 {
+	if c.parentChar == nil {
 		c.palfx = newPalFX()
 		return c.palfx
 	}
-	return sys.chars[c.playerNo][c.parentIndex].getPalfx()
+	return c.parentChar.getPalfx()
 }
 func (c *Char) getPalMap() []int {
 	return c.getPalfx().remap
@@ -2537,8 +2642,47 @@ func (c *Char) action() {
 					c.hitby[i].time--
 				}
 			}
-			unimplemented()
+			for i, ho := range c.ho {
+				if ho.time > 0 {
+					c.ho[i].time--
+				}
+			}
+			if sys.super > 0 {
+				if c.superMovetime > 0 {
+					c.superMovetime--
+				}
+			} else if sys.pause > 0 && c.pauseMovetime > 0 {
+				c.pauseMovetime--
+			}
 		}
+		c.unsetSF(CSF_noautoturn)
+		if c.gi().ver[0] == 1 {
+			c.unsetSF(CSF_assertspecial | CSF_angledraw)
+			c.angleScalse = [...]float32{1, 1}
+			c.offset = [2]float32{}
+		}
+		c.minus = -3
+		if c.ss.sb.playerNo == c.playerNo && c.player {
+			if sb, ok := c.gi().states[-3]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -2
+		if c.player {
+			if sb, ok := c.gi().states[-2]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -1
+		if c.keyctrl && c.ss.sb.playerNo == c.playerNo {
+			if sb, ok := c.gi().states[-1]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = 0
+		c.stateChange2()
+		c.ss.sb.run(c)
+		unimplemented()
 	}
 	unimplemented()
 }
@@ -2605,4 +2749,39 @@ func (cl *CharList) tick() {
 			c.tick()
 		}
 	}
+}
+func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
+	if n < 0 {
+		return nil
+	}
+	cache := &c.enemyNear[Btoi(p2)]
+	if int(n) < len(*cache) {
+		return (*cache)[n]
+	}
+	*cache = (*cache)[:0]
+	var add func(*Char, int)
+	add = func(e *Char, idx int) {
+		for i := idx; i <= int(n); i++ {
+			if i >= len(*cache) {
+				*cache = append(*cache, e)
+				return
+			}
+			if p2 && !e.scf(SCF_ko_round_middle) &&
+				(*cache)[i].scf(SCF_ko_round_middle) || (!p2 ||
+				e.scf(SCF_ko_round_middle) == (*cache)[i].scf(SCF_ko_round_middle)) &&
+				AbsF(c.distX(e)) < AbsF(c.distX((*cache)[i])) {
+				add((*cache)[i], i+1)
+				(*cache)[i] = e
+			}
+		}
+	}
+	for _, e := range cl.runOrder {
+		if e.playerNo&1 != c.playerNo&1 {
+			add(e, 0)
+		}
+	}
+	if int(n) >= len(*cache) {
+		return nil
+	}
+	return (*cache)[n]
 }

@@ -231,7 +231,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
 			if err := stdin.Err(); err != nil {
-				println(err)
+				println(err.Error())
 				return
 			}
 			s.commandLine <- stdin.Text()
@@ -625,7 +625,7 @@ func (s *System) fight() (reload bool) {
 	defer dL.Close()
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
-			println(err)
+			println(err.Error())
 		}
 	}
 	debugInput := func() {
@@ -633,7 +633,7 @@ func (s *System) fight() (reload bool) {
 			select {
 			case cl := <-s.commandLine:
 				if err := dL.DoString(cl); err != nil {
-					println(err)
+					println(err.Error())
 				}
 			default:
 			}
@@ -684,8 +684,7 @@ func (s *System) fight() (reload bool) {
 			}
 			put(&y, s.stage.def)
 			if s.debugWC != nil {
-				put(&y, "<P"+string(s.debugWC.playerNo+1)+":"+
-					string(s.debugWC.name)+">")
+				put(&y, fmt.Sprintf("<P%v:%v>", s.debugWC.playerNo+1, s.debugWC.name))
 			}
 			for i, p := range s.chars {
 				if len(p) > 0 {
@@ -698,7 +697,7 @@ func (s *System) fight() (reload bool) {
 		}
 	}
 	if err := s.synchronize(); err != nil {
-		println(err)
+		println(err.Error())
 		s.esc = true
 	}
 	if s.netInput != nil {
@@ -827,7 +826,7 @@ func (s *System) fight() (reload bool) {
 			if v {
 				if scr := s.hotkeys[k]; len(scr) > 0 {
 					if err := dL.DoString(scr); err != nil {
-						println(err)
+						println(err.Error())
 					}
 				}
 			}

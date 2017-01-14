@@ -28,6 +28,7 @@ type Compiler struct {
 	vars     map[string]uint8
 	funcs    map[string]bytecodeFunction
 	funcUsed map[string]bool
+	stateNo  int32
 }
 
 func newCompiler() *Compiler {
@@ -3208,8 +3209,15 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_sprpriority, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "ontop",
-		explod_ontop, VT_Bool, 1, false); err != nil {
+	if err := c.stateParam(is, "ontop", func(data string) error {
+		if err := c.scAdd(sc, explod_ontop, data, VT_Bool, 1); err != nil {
+			return err
+		}
+		if c.block != nil {
+			sc.add(explod_strictontop, nil)
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "shadow",
@@ -5348,11 +5356,11 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			line[1:10] != "statedef " {
 			continue
 		}
-		n := Atoi(line[11:])
-		if existInThisFile[n] {
+		c.stateNo = Atoi(line[10:])
+		if existInThisFile[c.stateNo] {
 			continue
 		}
-		existInThisFile[n] = true
+		existInThisFile[c.stateNo] = true
 		c.i++
 		is, _, err := c.parseSection(nil)
 		if err != nil {
@@ -5388,7 +5396,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						unimplemented()
 					}
 				case "persistent":
-					if n >= 0 {
+					if c.stateNo >= 0 {
 						c.block.persistent = Atoi(data)
 						if c.block.persistent > 128 {
 							c.block.persistent = 1
@@ -5466,12 +5474,10 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				return errmes(Error("trigger1がありません"))
 			}
 			var texp BytecodeExp
-			for i, e := range triggerall {
+			for _, e := range triggerall {
 				texp.append(e...)
-				if i < len(triggerall)-1 {
-					texp.append(OC_jz8, 0)
-					texp.append(OC_pop)
-				}
+				texp.append(OC_jz8, 0)
+				texp.append(OC_pop)
 			}
 			if allUtikiri {
 				if len(texp) > 0 {
@@ -5556,8 +5562,8 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				}
 			}
 		}
-		if _, ok := states[n]; !ok {
-			states[n] = *sbc
+		if _, ok := states[c.stateNo]; !ok {
+			states[c.stateNo] = *sbc
 		}
 	}
 	return nil
@@ -5763,6 +5769,9 @@ func (c *Compiler) subBlock(line *string, root bool,
 		case "persistent":
 			if sbc == nil {
 				return nil, Error("関数内でpersistentは使用できない")
+			}
+			if c.stateNo < 0 {
+				return nil, Error("マイナスステートでpersistentは使用できない")
 			}
 			if bl.persistentIndex >= 0 {
 				return nil, c.yokisinaiToken()
@@ -6163,15 +6172,15 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 		case "":
 			return errmes(c.yokisinaiToken())
 		case "statedef":
-			n, err := c.scanI32(&line)
-			if err != nil {
+			var err error
+			if c.stateNo, err = c.scanI32(&line); err != nil {
 				return errmes(err)
 			}
 			c.scan(&line)
-			if existInThisFile[n] {
-				return errmes(Error(fmt.Sprintf("State %v の多重定義", n)))
+			if existInThisFile[c.stateNo] {
+				return errmes(Error(fmt.Sprintf("State %v の多重定義", c.stateNo)))
 			}
-			existInThisFile[n] = true
+			existInThisFile[c.stateNo] = true
 			is := NewIniSection()
 			for c.token != "]" {
 				switch c.token {
@@ -6195,8 +6204,8 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 				sbc, &sbc.block.ctrls, &sbc.numVars); err != nil {
 				return errmes(err)
 			}
-			if _, ok := states[n]; !ok {
-				states[n] = *sbc
+			if _, ok := states[c.stateNo]; !ok {
+				states[c.stateNo] = *sbc
 			}
 		case "function":
 			name := c.scan(&line)
