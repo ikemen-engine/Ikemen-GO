@@ -1386,7 +1386,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_ctrltime:
 		sys.bcStack.PushI(c.ghv.ctrltime)
 	case OC_ex_gethitvar_recovertime:
-		sys.bcStack.PushI(c.recovertime)
+		sys.bcStack.PushI(c.recoverTime)
 	case OC_ex_gethitvar_xoff:
 		sys.bcStack.PushF(c.ghv.xoff)
 	case OC_ex_gethitvar_yoff:
@@ -2241,7 +2241,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	})
 	if e != nil {
 		e.setPos(c)
-		c.insertExplodEx(i, rp[0], rp[1])
+		c.insertExplodEx(i, rp)
 	}
 	return false
 }
@@ -2274,7 +2274,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 				eachExpl(func(e *Explod) {
 					if e.ownpal {
-						c.remapPalSub(e.palfx, 1, 1, rp[0], rp[1])
+						c.remapPal(e.palfx, [...]int32{1, 1}, rp)
 					}
 				})
 			}
@@ -3299,7 +3299,7 @@ func (sc sprPriority) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case sprPriority_value:
-			c.sprpriority = exp[0].evalI(c)
+			c.setSprPriority(exp[0].evalI(c))
 		}
 		return true
 	})

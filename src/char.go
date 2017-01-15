@@ -774,6 +774,9 @@ func (e *Explod) clear() {
 func (e *Explod) setPos(c *Char) {
 	unimplemented()
 }
+func (e *Explod) matchId(eid, pid int32) bool {
+	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
+}
 
 type Projectile struct {
 	hitdef        HitDef
@@ -920,13 +923,15 @@ type CharSystemVar struct {
 	superMovetime int32
 	bindTime      int32
 	bindToId      int32
+	bindPos       [2]float32
+	bindFacing    float32
 	hitPauseTime  int32
 	angle         float32
 	angleScalse   [2]float32
 	alpha         [2]int32
-	recovertime   int32
+	recoverTime   int32
 	systemFlag    SystemCharFlag
-	sprpriority   int32
+	sprPriority   int32
 	getcombo      int32
 	veloff        float32
 	width, edge   [2]float32
@@ -1475,7 +1480,7 @@ func (c *Char) clearHitDef() {
 	c.hitdef.clear()
 }
 func (c *Char) setSprPriority(sprpriority int32) {
-	c.sprpriority = sprpriority
+	c.sprPriority = sprpriority
 }
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
@@ -1553,24 +1558,6 @@ func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		unimplemented()
 	}
-}
-func (c *Char) enemyExplodsRemove(en int) {
-	remove := func(drawlist *[]int, drop bool) {
-		for i := len(*drawlist) - 1; i >= 0; i-- {
-			ei := (*drawlist)[i]
-			if ei >= 0 && sys.explods[en][ei].bindtime != 0 &&
-				sys.explods[en][ei].bindId == c.id {
-				sys.explods[en][ei].id = IErr
-				if drop {
-					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
-				} else {
-					(*drawlist)[i] = -1
-				}
-			}
-		}
-	}
-	remove(&sys.explDrawlist[en], true)
-	remove(&sys.topexplDrawlist[en], false)
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
@@ -1653,6 +1640,16 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 		return false
 	}
 	c.setSF(CSF_destroy)
+	if removeexplods {
+		c.removeExplod(-1)
+	}
+	if recursive {
+		for _, ch := range c.children {
+			if ch != nil {
+				ch.destroySelf(recursive, removeexplods)
+			}
+		}
+	}
 	unimplemented()
 	return true
 }
@@ -1766,17 +1763,57 @@ func (c *Char) getExplods(id int32) []*Explod {
 func (c *Char) remapPalSub(pfx *PalFX, sg, sn, dg, dn int32) {
 	unimplemented()
 }
-func (c *Char) insertExplodEx(i int, rpg, rpn int32) {
+func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	unimplemented()
 }
 func (c *Char) insertExplod(i int) {
-	c.insertExplodEx(i, -1, 0)
+	c.insertExplodEx(i, [...]int32{-1, 0})
 }
-func (c *Char) getAnim(n int32, ffx bool) *Animation {
-	if ffx {
-		return sys.lifebar.fat.get(n)
+func (c *Char) removeExplod(id int32) {
+	remove := func(drawlist *[]int, drop bool) {
+		for i := len(*drawlist) - 1; i >= 0; i-- {
+			ei := (*drawlist)[i]
+			if ei >= 0 && sys.explods[c.playerNo][ei].matchId(id, c.id) {
+				sys.explods[c.playerNo][ei].id = IErr
+				if drop {
+					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
+				} else {
+					(*drawlist)[i] = -1
+				}
+			}
+		}
 	}
-	return c.gi().anim.get(n)
+	remove(&sys.explDrawlist[c.playerNo], true)
+	remove(&sys.topexplDrawlist[c.playerNo], false)
+}
+func (c *Char) enemyExplodsRemove(en int) {
+	remove := func(drawlist *[]int, drop bool) {
+		for i := len(*drawlist) - 1; i >= 0; i-- {
+			ei := (*drawlist)[i]
+			if ei >= 0 && sys.explods[en][ei].bindtime != 0 &&
+				sys.explods[en][ei].bindId == c.id {
+				sys.explods[en][ei].id = IErr
+				if drop {
+					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
+				} else {
+					(*drawlist)[i] = -1
+				}
+			}
+		}
+	}
+	remove(&sys.explDrawlist[en], true)
+	remove(&sys.topexplDrawlist[en], false)
+}
+func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
+	if ffx {
+		a = sys.lifebar.fat.get(n)
+	} else {
+		a = c.gi().anim.get(n)
+	}
+	if a == nil {
+		fmt.Printf("存在しないアニメ: P%v:%v\n", (c.playerNo+1)*int(1-2*Btoi(ffx)), n)
+	}
+	return
 }
 func (c *Char) setPosX(x float32) {
 	if c.pos[0] != x {
@@ -1993,8 +2030,7 @@ func (c *Char) gethitAnimtype() Reaction {
 	return c.ghv.groundanimtype
 }
 func (c *Char) isBound() bool {
-	unimplemented()
-	return false
+	return c.ghv.idMatch(c.bindToId)
 }
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
@@ -2398,6 +2434,9 @@ func (c *Char) getPalfx() *PalFX {
 func (c *Char) getPalMap() []int {
 	return c.getPalfx().remap
 }
+func (c *Char) pause() bool {
+	return c.acttmp <= -2
+}
 func (c *Char) hitPause() bool {
 	return c.hitPauseTime > 0
 }
@@ -2527,6 +2566,147 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
+}
+func (c *Char) gravity() {
+	c.vel[1] += c.gi().movement.yaccel
+}
+func (c *Char) posUpdate() {
+	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
+		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1]))}
+	for i := range nobind {
+		if nobind[i] {
+			c.oldPos[i], c.drawPos[i] = c.pos[i], c.pos[i]
+		}
+	}
+	if c.sf(CSF_posfreeze) {
+		if nobind[0] {
+			c.setPosX(c.oldPos[0] + c.veloff)
+		}
+	} else {
+		if nobind[0] {
+			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + c.veloff)
+		}
+		if nobind[1] {
+			c.setPosY(c.oldPos[1] + c.vel[1])
+		}
+		switch c.ss.physics {
+		case ST_S:
+			c.vel[0] *= c.gi().movement.stand.friction
+			if AbsF(c.vel[0]) < 1 {
+				c.vel[0] = 0
+			}
+		case ST_C:
+			c.vel[0] *= c.gi().movement.crouch.friction
+		case ST_A:
+			c.gravity()
+		}
+	}
+	c.veloff *= 0.7
+	if AbsF(c.veloff) < 1 {
+		c.veloff = 0
+	}
+}
+func (c *Char) hasTarget(id int32) bool {
+	for _, tid := range c.targets {
+		if tid == id {
+			return true
+		}
+	}
+	return false
+}
+func (c *Char) setBindTime(time int32) {
+	c.bindTime = time
+	if time == 0 {
+		c.bindToId = -1
+	}
+}
+func (c *Char) bind() {
+	if c.bindTime == 0 {
+		return
+	}
+	if bt := sys.charList.get(c.bindToId); bt != nil {
+		if bt.hasTarget(c.id) {
+			if bt.sf(CSF_destroy) {
+				c.selfState(5050, -1, -1)
+				c.setBindTime(0)
+				return
+			}
+			if !math.IsNaN(float64(c.bindPos[0])) {
+				c.setXV(c.facing * bt.facing * bt.vel[0])
+			}
+			if !math.IsNaN(float64(c.bindPos[1])) {
+				c.setYV(bt.vel[1])
+			}
+		}
+		if !math.IsNaN(float64(c.bindPos[0])) {
+			f := bt.facing
+			if AbsF(c.bindFacing) == 2 {
+				f = c.bindFacing / 2
+			}
+			c.setX(bt.pos[0] + f*c.bindPos[0])
+			c.drawPos[0] += bt.drawPos[0] - bt.pos[0]
+			c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
+			c.pushed = c.pushed || bt.pushed
+			c.ghv.xoff = 0
+		}
+		if !math.IsNaN(float64(c.bindPos[1])) {
+			c.setY(bt.pos[1] + c.bindPos[1])
+			c.drawPos[1] += bt.drawPos[1] - bt.pos[1]
+			c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
+			c.ghv.yoff = 0
+		}
+		if AbsF(c.bindFacing) == 1 {
+			if c.bindFacing > 0 {
+				c.setFacing(bt.facing)
+			} else {
+				c.setFacing(-bt.facing)
+			}
+		}
+	} else {
+		c.setBindTime(0)
+		return
+	}
+}
+func (c *Char) xScreenBound() {
+	x := c.pos[0]
+	if c.sf(CSF_screenbound) {
+		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		if c.facing > 0 {
+			min, max = -max, -min
+		}
+		min += sys.xmin
+		max += sys.xmax
+		x = MaxF(min, MinF(max, x))
+	}
+	x = MaxF(sys.stage.leftbound, MinF(sys.stage.rightbound, x))
+	c.setPosX(x)
+}
+func (c *Char) gethitBindClear() {
+	if c.isBound() {
+		c.setBindTime(0)
+	}
+}
+func (c *Char) removeTarget(pid int32) {
+	for i, t := range c.targets {
+		if t == pid {
+			c.targets = append(c.targets[:i], c.targets[i+1:]...)
+			break
+		}
+	}
+}
+func (c *Char) exitTarget(explremove bool) {
+	if c.hittmp >= 0 {
+		for _, hb := range c.ghv.hitBy {
+			if e := sys.charList.get(hb[0]); e != nil {
+				e.removeTarget(c.id)
+				if explremove {
+					c.enemyExplodsRemove(e.playerNo)
+				}
+			}
+		}
+		c.gethitBindClear()
+	}
+	c.ghv.hitBy = c.ghv.hitBy[:0]
 }
 func (c *Char) action() {
 	if c.minus != 2 || c.sf(CSF_destroy) {
@@ -2682,12 +2862,116 @@ func (c *Char) action() {
 		c.minus = 0
 		c.stateChange2()
 		c.ss.sb.run(c)
-		unimplemented()
+		if !c.hitPause() {
+			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() {
+				c.changeState(5120, -1, -1)
+			}
+			for c.ss.no == 140 || c.anim == nil || len(c.anim.frames) == 0 ||
+				c.ss.time >= c.anim.totaltime {
+				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
+					Btoi(c.ss.stateType == ST_A)*51, -1, -1)
+			}
+			for {
+				c.posUpdate()
+				if c.ss.physics != ST_A || c.vel[1] <= 0 || c.pos[1] < 0 ||
+					c.ss.no == 105 {
+					break
+				}
+				c.changeState(52, -1, -1)
+			}
+			c.ss.time++
+			if c.mctime > 0 {
+				c.mctime++
+			}
+			c.setFacing(c.p1facing)
+			c.p1facing = 0
+			if c.anim != nil {
+				c.curFrame = c.anim.CurrentFrame()
+			} else {
+				c.curFrame = nil
+			}
+		}
+		if c.ghv.damage != 0 {
+			if c.ss.moveType == MT_H {
+				c.lifeAdd(-float64(c.ghv.damage), true, true)
+			}
+			c.ghv.damage = 0
+		}
+		if c.helperIndex == 0 && c.gi().pctime >= 0 {
+			c.gi().pctime++
+		}
 	}
-	unimplemented()
+	c.xScreenBound()
+	if !p {
+		for _, tid := range c.targets {
+			if t := sys.charList.get(tid); t != nil && t.bindToId == c.id {
+				t.bind()
+			}
+		}
+	}
+	c.minus = 1
+	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
+		int8(Btoi(c.hitPause()))
+	if !c.hitPause() {
+		if !c.sf(CSF_frontwidth) {
+			c.width[0] = c.defFW()
+		}
+		if !c.sf(CSF_backwidth) {
+			c.width[1] = c.defBW()
+		}
+		if !c.sf(CSF_frontedge) {
+			c.edge[0] = 0
+		}
+		if !c.sf(CSF_backedge) {
+			c.edge[1] = 0
+		}
+	}
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
+	if sys.tickFrame() {
+		if c.sf(CSF_destroy) {
+			c.destroy()
+			return
+		}
+		if c.acttmp > 0 {
+			if c.anim != nil {
+				c.anim.UpdateSprite()
+			}
+			if !c.isBound() {
+				c.bind()
+			}
+			if c.ss.moveType == MT_H {
+				if c.ghv.xoff != 0 {
+					c.setPosX(c.pos[0] + c.ghv.xoff)
+					c.ghv.xoff = 0
+				}
+				if c.ghv.yoff != 0 {
+					c.setPosY(c.pos[1] + c.ghv.yoff)
+					c.ghv.yoff = 0
+				}
+			}
+		}
+		if c.ss.moveType == MT_H {
+			if sys.super <= 0 && sys.pause <= 0 {
+				c.superMovetime, c.pauseMovetime = 0, 0
+			}
+			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
+			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) &&
+				c.ss.time == 1 {
+				c.defenceMul *= c.gi().data.fall.defence_mul
+				c.ghv.fallcount++
+			}
+		}
+		if c.acttmp > 0 && c.ss.moveType != MT_H || c.roundState() == 2 &&
+			c.scf(SCF_ko) && c.scf(SCF_over) {
+			c.exitTarget(true)
+		}
+		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
+			c.hitdef.reversal_attr > 0) && !c.hitPause()))
+		c.hoIdx = -1
+		unimplemented()
+	}
 	unimplemented()
 }
 func (c *Char) tick() {
@@ -2703,6 +2987,7 @@ func (cl *CharList) clear() {
 	sys.nextCharId = sys.helperMax
 }
 func (cl *CharList) add(c *Char) {
+	sys.clearPlayerIdCache()
 	cl.runOrder = append(cl.runOrder, c)
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -2749,6 +3034,22 @@ func (cl *CharList) tick() {
 			c.tick()
 		}
 	}
+}
+func (cl *CharList) get(id int32) *Char {
+	if id < 0 {
+		return nil
+	}
+	if c, ok := sys.playerIdCache[id]; ok {
+		return c
+	}
+	for _, c := range cl.runOrder {
+		if c.id == id {
+			sys.playerIdCache[id] = c
+			return c
+		}
+	}
+	sys.playerIdCache[id] = nil
+	return nil
 }
 func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 	if n < 0 {
