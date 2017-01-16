@@ -45,6 +45,7 @@ const (
 	CSF_backedge
 	CSF_frontwidth
 	CSF_backwidth
+	CSF_gethit
 	CSF_assertspecial CharSpecialFlag = CSF_nostandguard | CSF_nocrouchguard |
 		CSF_noairguard | CSF_noshadow | CSF_invisible | CSF_unguardable |
 		CSF_nojugglecheck | CSF_noautoturn | CSF_nowalk
@@ -822,6 +823,15 @@ func (p *Projectile) clear() {
 		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
 		heightbound: [...]int32{-240, 1}, facing: 1}
 	p.hitdef.clear()
+}
+func (p *Projectile) update(playerNo int) {
+	unimplemented()
+}
+func (p *Projectile) clsn(playerNo int) {
+	unimplemented()
+}
+func (p *Projectile) tick(playerNo int) {
+	unimplemented()
 }
 
 type MoveContact int32
@@ -2373,6 +2383,9 @@ func (c *Char) screenPosY() float32 {
 	unimplemented()
 	return 0
 }
+func (c *Char) height() float32 {
+	return float32(c.size.height)
+}
 func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
 		return BytecodeSF()
@@ -2674,9 +2687,7 @@ func (c *Char) xScreenBound() {
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
-		min += sys.xmin
-		max += sys.xmax
-		x = MaxF(min, MinF(max, x))
+		x = MaxF(min+sys.xmin, MinF(max+sys.xmax, x))
 	}
 	x = MaxF(sys.stage.leftbound, MinF(sys.stage.rightbound, x))
 	c.setPosX(x)
@@ -2707,6 +2718,32 @@ func (c *Char) exitTarget(explremove bool) {
 		c.gethitBindClear()
 	}
 	c.ghv.hitBy = c.ghv.hitBy[:0]
+}
+func (c *Char) offsetX() float32 {
+	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]
+}
+func (c *Char) offsetY() float32 {
+	return float32(c.size.draw.offset[1]) + c.offset[1]
+}
+func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
+	if atk.curFrame == nil || c.curFrame == nil {
+		return false
+	}
+	var clsn1, clsn2 []float32
+	if c1atk {
+		clsn1 = atk.curFrame.Clsn1()
+	} else {
+		clsn1 = atk.curFrame.Clsn2()
+	}
+	if c1slf {
+		clsn2 = c.curFrame.Clsn1()
+	} else {
+		clsn2 = c.curFrame.Clsn2()
+	}
+	return sys.clsnHantei(clsn1, atk.clsnScale,
+		[...]float32{atk.pos[0] + atk.offsetX(), atk.pos[1] + atk.offsetY()},
+		atk.facing, clsn2, c.clsnScale, [...]float32{c.pos[0] + c.offsetX(),
+			c.pos[1] + c.offsetY()}, c.facing)
 }
 func (c *Char) action() {
 	if c.minus != 2 || c.sf(CSF_destroy) {
@@ -2970,9 +3007,75 @@ func (c *Char) update(cvmin, cvmax,
 		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
 			c.hitdef.reversal_attr > 0) && !c.hitPause()))
 		c.hoIdx = -1
-		unimplemented()
+		if c.acttmp > 0 {
+			if c.inGuardState() {
+				c.setSCF(SCF_guard)
+			}
+			if c.ss.moveType == MT_H {
+				if c.ghv.guarded {
+					c.getcombo = 0
+				}
+				if c.ghv.hitshaketime > 0 {
+					c.ghv.hitshaketime--
+				}
+				if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
+					c.ghv.hittime--
+				}
+				if c.ghv.fallf {
+					c.fallTime++
+				}
+			} else {
+				if c.hittmp > 0 {
+					c.hittmp = 0
+				}
+				c.defenceMul = float32(c.gi().data.defence) / 100
+				c.ghv.hittime = -1
+				c.ghv.hitshaketime = 0
+				c.ghv.fallf = false
+				c.ghv.fallcount = 0
+				c.ghv.hitid = -1
+				c.getcombo = 0
+			}
+			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
+				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 {
+				c.makeDust(0, 0)
+			}
+		}
 	}
-	unimplemented()
+	if sys.tickNextFrame() {
+		c.pushed = false
+	}
+	if c.acttmp > 0 {
+		spd := sys.tickInterpola()
+		if c.pushed {
+			spd = 0
+		}
+		if !c.sf(CSF_posfreeze) {
+			for i := 0; i < 2; i++ {
+				c.drawPos[i] = c.pos[i] - (c.pos[i]-c.oldPos[i])*(1-spd)
+			}
+		}
+	}
+	min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+	if c.facing > 0 {
+		min, max = -max, -min
+	}
+	if c.sf(CSF_screenbound) {
+		c.drawPos[0] = MaxF(min+sys.xmin, MinF(max+sys.xmax, c.drawPos[0]))
+	}
+	if c.sf(CSF_movecamera_x) {
+		*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]-min, *leftest))
+		*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]-max, *rightest))
+		if c.acttmp > 0 && !c.sf(CSF_posfreeze) &&
+			(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
+			*cvmin = MinF(*cvmin, c.vel[0]*c.facing)
+			*cvmax = MaxF(*cvmax, c.vel[0]*c.facing)
+		}
+	}
+	if c.sf(CSF_movecamera_y) {
+		*highest = MinF(c.drawPos[1], *highest)
+		*lowest = MinF(0, MaxF(c.drawPos[1], *lowest))
+	}
 }
 func (c *Char) tick() {
 	unimplemented()
@@ -3024,6 +3127,110 @@ func (cl *CharList) update(cvmin, cvmax,
 	for _, c := range cl.runOrder {
 		if c.id >= 0 {
 			c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+		}
+	}
+}
+func (cl *CharList) clsn(getter *Char, proj bool) {
+	var gxmin, gxmax float32
+	if proj {
+		for i, pr := range sys.projs {
+			if i == getter.playerNo || len(sys.projs[0]) == 0 {
+				continue
+			}
+			orgatktmp := sys.chars[i][0].atktmp
+			sys.chars[i][0].atktmp = -1
+			for _, p := range pr {
+				if p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
+					(getter.playerNo&1 != i&1) != (p.hitdef.affectteam > 0) {
+					continue
+				}
+				unimplemented()
+			}
+			sys.chars[i][0].atktmp = orgatktmp
+		}
+	} else {
+		gxmin = getter.getEdge(getter.edge[0], true)
+		gxmax = -getter.getEdge(getter.edge[1], true)
+		if getter.facing > 0 {
+			gxmin, gxmax = -gxmax, -gxmin
+		}
+		gxmin += sys.xmin
+		gxmax += sys.xmax
+		getter.inguarddist = false
+		getter.unsetSF(CSF_gethit)
+		gl, gr := -getter.width[0], getter.width[1]
+		if getter.facing > 0 {
+			gl, gr = -gr, -gl
+		}
+		gl += getter.pos[0]
+		gr += getter.pos[0]
+		getter.enemyNearClear()
+		for _, c := range cl.runOrder {
+			if c.id < 0 {
+				continue
+			}
+			contact := 0
+			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
+				(getter.playerNo&1 != c.playerNo&1) == (c.hitdef.affectteam > 0)) {
+				unimplemented()
+			}
+			if getter.playerNo&1 != c.playerNo&1 && getter.sf(CSF_playerpush) &&
+				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
+				getter.pos[1]-c.pos[1] < getter.height()) &&
+				(c.ss.stateType == ST_A || c.pos[1]-getter.pos[1] < c.height()) {
+				cl, cr := -c.width[0], c.width[1]
+				if c.facing > 0 {
+					cl, cr = -cr, -cl
+				}
+				cl += c.pos[0]
+				cr += c.pos[0]
+				if gl < cr && cl < gr && (contact > 0 ||
+					getter.clsnCheck(c, false, false)) {
+					getter.pushed, c.pushed = true, true
+					tmp := getter.distX(c)
+					if tmp == 0 {
+						if getter.pos[1] > c.pos[1] {
+							tmp = getter.facing
+						} else {
+							tmp = -c.facing
+						}
+					}
+					if tmp > 0 {
+						getter.pos[0] -= (gr - cl) * 0.5
+						c.pos[0] += (gr - cl) * 0.5
+					} else {
+						getter.pos[0] += (cr - gl) * 0.5
+						c.pos[0] -= (cr - gl) * 0.5
+					}
+					if getter.sf(CSF_screenbound) {
+						getter.pos[0] = MaxF(gxmin, MinF(gxmax, getter.pos[0]))
+					}
+					if c.sf(CSF_screenbound) {
+						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+						if c.facing > 0 {
+							l, r = -r, -l
+						}
+						c.pos[0] = MaxF(l+sys.xmin, MinF(r+sys.xmax, c.pos[0]))
+					}
+					getter.pos[0] = MaxF(sys.stage.leftbound, MinF(sys.stage.rightbound,
+						getter.pos[0]))
+					c.pos[0] = MaxF(sys.stage.leftbound, MinF(sys.stage.rightbound,
+						c.pos[0]))
+					getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
+				}
+			}
+		}
+	}
+}
+func (cl *CharList) getHit() {
+	for _, c := range cl.runOrder {
+		if c.id >= 0 {
+			cl.clsn(c, false)
+		}
+	}
+	for _, c := range cl.runOrder {
+		if c.id >= 0 {
+			cl.clsn(c, true)
 		}
 	}
 }

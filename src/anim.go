@@ -114,6 +114,18 @@ func ReadAnimFrame(line string) *AnimFrame {
 	}
 	return af
 }
+func (af *AnimFrame) Clsn1() []float32 {
+	if len(af.Ex) > 0 {
+		return af.Ex[0]
+	}
+	return nil
+}
+func (af *AnimFrame) Clsn2() []float32 {
+	if len(af.Ex) > 1 {
+		return af.Ex[1]
+	}
+	return nil
+}
 
 type Animation struct {
 	sff       *Sff

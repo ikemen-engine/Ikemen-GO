@@ -374,6 +374,32 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 			strings.Split(fmt.Sprintf(spl[sn], a...), "\n")...)
 	}
 }
+func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
+	facing1 float32, clsn2 []float32, scl2, pos2 [2]float32,
+	facing2 float32) bool {
+	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
+		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
+			var l1, r1, l2, r2 float32
+			if facing1 > 0 {
+				l1, r1 = clsn1[i1], clsn1[i1+2]+1
+			} else {
+				l1, r1 = -clsn1[i1+2], -clsn1[i1]+1
+			}
+			if facing2 > 0 {
+				l2, r2 = clsn1[i2], clsn1[i2+2]+1
+			} else {
+				l2, r2 = -clsn1[i2+2], -clsn1[i2]+1
+			}
+			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
+				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
+				clsn1[i1+1]*scl1[1]+pos1[1] < (clsn2[i2+3]+1)*scl2[1]+pos2[1] &&
+				clsn2[i2+1]*scl2[1]+pos2[1] < (clsn1[i1+3]+1)*scl1[1]+pos1[1] {
+				return true
+			}
+		}
+	}
+	return false
+}
 func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
@@ -461,13 +487,13 @@ func (s *System) tickFrame() bool {
 	return s.oldTickCount < s.tickCount
 }
 func (s *System) tickNextFrame() bool {
-	return int(s.tickCountF+s.nextAddTime) < s.tickCount
+	return int(s.tickCountF+s.nextAddTime) > s.tickCount
 }
 func (s *System) tickInterpola() float32 {
 	if s.tickNextFrame() {
 		return 1
 	}
-	return s.tickCountF - s.lastTick + s.lastTick
+	return s.tickCountF - s.lastTick + s.nextAddTime
 }
 func (s *System) addFrameTime(t float32) bool {
 	s.oldTickCount = s.tickCount
@@ -486,7 +512,7 @@ func (s *System) addFrameTime(t float32) bool {
 }
 func (s *System) resetFrameTime() {
 	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick = 0, -1, 0, 0
-	s.nextAddTime, s.oldNextAddTime = 1.0/FPS, 1.0/FPS
+	s.nextAddTime, s.oldNextAddTime = 1, 1
 }
 func (s *System) commandUpdate() {
 	for i, p := range s.chars {
@@ -535,9 +561,29 @@ func (s *System) commandUpdate() {
 func (s *System) charUpdate(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
-	unimplemented()
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id >= 0 {
+				s.projs[i][j].update(i)
+			}
+		}
+	}
 	if s.tickNextFrame() {
-		unimplemented()
+		for i, pr := range s.projs {
+			for j, p := range pr {
+				if p.id >= 0 {
+					s.projs[i][j].clsn(i)
+				}
+			}
+		}
+		s.charList.getHit()
+		for i, pr := range s.projs {
+			for j, p := range pr {
+				if p.id != IErr {
+					s.projs[i][j].tick(i)
+				}
+			}
+		}
 		s.charList.tick()
 	}
 }
