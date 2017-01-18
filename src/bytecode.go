@@ -19,6 +19,7 @@ const (
 	ST_D    = ST_L
 	ST_F    = ST_N
 	ST_P    = ST_U
+	ST_SCA  = ST_S | ST_C | ST_A
 )
 
 type AttackType int32
@@ -33,9 +34,10 @@ const (
 	AT_HA
 	AT_HT
 	AT_HP
-	AT_AA = AT_NA | AT_SA | AT_HA
-	AT_AT = AT_NT | AT_ST | AT_HT
-	AT_AP = AT_NP | AT_SP | AT_HP
+	AT_AA  = AT_NA | AT_SA | AT_HA
+	AT_AT  = AT_NT | AT_ST | AT_HT
+	AT_AP  = AT_NP | AT_SP | AT_HP
+	AT_ALL = AT_AA | AT_AT | AT_AP
 )
 
 type MoveType int32

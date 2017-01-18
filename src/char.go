@@ -45,6 +45,7 @@ const (
 	CSF_backedge
 	CSF_frontwidth
 	CSF_backwidth
+	CSF_trans
 	CSF_gethit
 	CSF_assertspecial CharSpecialFlag = CSF_nostandguard | CSF_nocrouchguard |
 		CSF_noairguard | CSF_noshadow | CSF_invisible | CSF_unguardable |
@@ -79,27 +80,9 @@ const (
 	PT_N
 )
 
-type SprData struct {
-	anim   *Animation
-	fx     *PalFX
-	pos    [2]float32
-	scl    [2]float32
-	alpha  [2]int32
-	angle  float32
-	ascl   [2]float32
-	aset   bool
-	oldver bool
-	bright bool
-	screen bool
-}
-type ShadowSprite struct {
-	sd           *SprData
-	color, alpha int32
-	offsetY      float32
-}
 type ClsnRect [][4]float32
 
-func (cr *ClsnRect) Set(clsn []float32, x, y, xs, ys float32) {
+func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 	for i := 0; i+3 < len(clsn); i += 4 {
 		*cr = append(*cr, [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
 			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
@@ -633,7 +616,7 @@ type aimgImage struct {
 	anim           Animation
 	pos, scl, ascl [2]float32
 	angle          float32
-	angleset, old  bool
+	aset, oldVer   bool
 }
 
 type AfterImage struct {
@@ -647,7 +630,7 @@ type AfterImage struct {
 	alpha      [2]int32
 	palfx      []PalFX
 	imgs       [64]aimgImage
-	imgidx     int
+	imgidx     int32
 	restgap    int32
 	reccount   int32
 }
@@ -734,6 +717,57 @@ func (ai *AfterImage) setupPalFX() {
 		ai.palfx[i].eMul[2] = int32(float32(ai.palfx[i-1].eMul[2]) * ai.mul[2])
 	}
 }
+func (ai *AfterImage) recAfterImg(sd *SprData) {
+	if ai.time == 0 {
+		ai.reccount, ai.timegap = 0, 0
+		return
+	}
+	if ai.time > 0 {
+		ai.time--
+	}
+	if ai.restgap <= 0 {
+		img := &ai.imgs[ai.imgidx]
+		img.anim = *sd.anim
+		if sd.anim.spr != nil {
+			img.anim.spr = newSprite()
+			*img.anim.spr = *sd.anim.spr
+			sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
+			img.anim.spr.Pal = sd.anim.spr.GetPal(&sd.anim.sff.palList)
+			sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
+		}
+		img.pos = sd.pos
+		img.scl = sd.scl
+		img.angle = sd.angle
+		img.ascl = sd.ascl
+		img.aset = sd.aset
+		img.oldVer = sd.oldVer
+		ai.imgidx = (ai.imgidx + 1) & 63
+		if int(ai.reccount) < len(ai.imgs) {
+			ai.reccount++
+		}
+		ai.restgap = ai.timegap
+	}
+	ai.restgap--
+}
+func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
+	if ai.time == 0 || ai.timegap < 1 || ai.timegap > 32767 ||
+		ai.framegap < 1 || ai.framegap > 32767 {
+		ai.time = 0
+		ai.reccount, ai.timegap = 0, 0
+		return
+	}
+	end := Min(sys.afterImageMax,
+		(Min(ai.reccount, ai.length)/ai.framegap)*ai.framegap)
+	for i := ai.framegap; i <= end; i += ai.framegap {
+		img := &ai.imgs[(ai.imgidx-i)&63]
+		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
+			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl, img.aset,
+			false, sd.bright, sd.oldVer}, 0, 0, 0)
+	}
+	if rec {
+		ai.recAfterImg(sd)
+	}
+}
 
 type Explod struct {
 	id             int32
@@ -777,6 +811,38 @@ func (e *Explod) setPos(c *Char) {
 }
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
+}
+func (e *Explod) update(oldVer bool, playerNo int) {
+	if e.anim == nil {
+		e.id = IErr
+	}
+	if e.id == IErr {
+		e.anim = nil
+		return
+	}
+	var c *Char
+	if !e.ignorehitpause || e.removeongethit {
+		c = sys.charList.get(e.playerId)
+	}
+	p := false
+	if sys.super > 0 {
+		p = e.supermovetime >= 0 && e.time >= e.supermovetime
+	} else if sys.pause > 0 {
+		p = e.pausemovetime >= 0 && e.time >= e.pausemovetime
+	}
+	act := !p
+	if act && !e.ignorehitpause {
+		act = c == nil || c.acttmp%2 >= 0
+	}
+	if sys.tickFrame() {
+		if c != nil && e.removeongethit && c.ss.moveType == MT_H ||
+			e.removetime >= 0 && e.time >= e.removetime ||
+			act && e.removetime < -1 && e.anim.loopend {
+			e.id, e.anim = IErr, nil
+			return
+		}
+	}
+	unimplemented()
 }
 
 type Projectile struct {
@@ -833,6 +899,9 @@ func (p *Projectile) clsn(playerNo int) {
 func (p *Projectile) tick(playerNo int) {
 	unimplemented()
 }
+func (p *Projectile) anime(oldVer bool, playerNo int) {
+	unimplemented()
+}
 
 type MoveContact int32
 
@@ -885,7 +954,6 @@ type StateState struct {
 	ps              []int32
 	wakegawakaranai [][]bool
 	no, prevno      int32
-	hitdefContact   bool
 	time            int32
 	sb              StateBytecode
 }
@@ -905,7 +973,6 @@ func (ss *StateState) clear() {
 	}
 	ss.clearWw()
 	ss.no, ss.prevno = 0, 0
-	ss.hitdefContact = false
 	ss.time = 0
 	ss.sb = StateBytecode{}
 }
@@ -993,20 +1060,21 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	aimg        AfterImage
-	sounds      Sounds
-	p1facing    float32
-	cpucmd      int32
-	attackDist  float32
-	offset      [2]float32
-	angleset    bool
-	stchtmp     bool
-	inguarddist bool
-	pushed      bool
-	atktmp      int8
-	hittmp      int8
-	acttmp      int8
-	minus       int8
+	aimg          AfterImage
+	sounds        Sounds
+	p1facing      float32
+	cpucmd        int32
+	attackDist    float32
+	offset        [2]float32
+	angleset      bool
+	stchtmp       bool
+	inguarddist   bool
+	pushed        bool
+	hitdefContact bool
+	atktmp        int8
+	hittmp        int8
+	acttmp        int8
+	minus         int8
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1037,6 +1105,7 @@ func (c *Char) clearState() {
 	c.mctype = MC_Hit
 	c.mctime = 0
 	c.fallTime = 0
+	c.hitdefContact = false
 }
 func (c *Char) clear1() {
 	c.anim = nil
@@ -3078,7 +3147,221 @@ func (c *Char) update(cvmin, cvmax,
 	}
 }
 func (c *Char) tick() {
-	unimplemented()
+	if c.acttmp > 0 && c.anim != nil {
+		c.anim.Action()
+	}
+	if c.bindTime > 0 {
+		if c.isBound() {
+			if bt := sys.charList.get(c.bindToId); bt != nil && !bt.pause() {
+				c.setBindTime(c.bindTime - 1)
+			}
+		} else {
+			if !c.pause() {
+				c.setBindTime(c.bindTime - 1)
+			}
+		}
+	}
+	if c.cmd == nil {
+		c.cmd = sys.chars[c.playerNo][0].cmd
+	}
+	if c.hitdefContact {
+		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
+			c.hitdef.invalidate(c.ss.stateType)
+		}
+		c.hitdefContact = false
+	} else if c.hitdef.lhit {
+		c.hitdef.attr = c.hitdef.attr&^int32(ST_MASK) | int32(c.ss.stateType)
+		c.hitdef.lhit = false
+	}
+	if c.mctime < 0 {
+		c.mctime = 1
+		if c.mctype == MC_Hit {
+			c.juggle = 0
+			c.hitCount += c.hitdef.numhits
+		}
+	}
+	if c.sf(CSF_gethit) {
+		c.ss.moveType = MT_H
+		if c.hitPauseTime > 0 {
+			c.ss.clearWw()
+		}
+		c.hitPauseTime = 0
+		if c.hoIdx >= 0 && c.ho[c.hoIdx].forceair {
+			c.ss.stateType = ST_A
+		}
+		pn := c.playerNo
+		if c.ghv.p2getp1state {
+			pn = c.ghv.playerNo
+		}
+		if c.stchtmp {
+			c.ss.prevno = 0
+		} else if c.ss.stateType == ST_L {
+			c.changeStateEx(5080, pn, -1, 0)
+		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
+			switch c.ss.stateType {
+			case ST_S:
+				c.selfState(150, -1, 0)
+			case ST_C:
+				c.selfState(152, -1, 0)
+			case ST_A:
+				c.selfState(154, -1, 0)
+			}
+		} else if c.ghv._type == HT_Trip {
+			c.changeStateEx(5070, pn, -1, 0)
+		} else {
+			if c.ghv.forcestand && c.ss.stateType == ST_C {
+				c.ss.stateType = ST_S
+			}
+			switch c.ss.stateType {
+			case ST_S:
+				c.changeStateEx(5000, pn, -1, 0)
+			case ST_C:
+				c.changeStateEx(5010, pn, -1, 0)
+			case ST_A:
+				c.changeStateEx(5020, pn, -1, 0)
+			}
+		}
+		if c.hoIdx >= 0 {
+			c.stateChange1(c.ho[c.hoIdx].stateno, c.ho[c.hoIdx].playerNo)
+		}
+	}
+	if !c.pause() {
+		if c.hitPauseTime > 0 {
+			c.hitPauseTime--
+			if c.hitPauseTime == 0 {
+				c.ss.clearWw()
+			}
+		}
+		if c.hitPauseTime <= 0 && c.ss.stateType == ST_L && c.recoverTime > 0 &&
+			c.ss.sb.playerNo == c.playerNo && (c.cmd[0].Buffer.Bb == 1 ||
+			c.cmd[0].Buffer.Db == 1 || c.cmd[0].Buffer.Fb == 1 ||
+			c.cmd[0].Buffer.Ub == 1 || c.cmd[0].Buffer.ab == 1 ||
+			c.cmd[0].Buffer.bb == 1 || c.cmd[0].Buffer.cb == 1 ||
+			c.cmd[0].Buffer.xb == 1 || c.cmd[0].Buffer.yb == 1 ||
+			c.cmd[0].Buffer.zb == 1 || c.cmd[0].Buffer.sb == 1) {
+			c.recoverTime -= Rand(1, (c.recoverTime+1)/2)
+		}
+		if !c.stchtmp {
+			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
+				c.ss.moveType != MT_H && !sys.sf(GSF_noko) {
+				c.ghv.fallf = true
+				c.selfState(5030, -1, -1)
+				c.ss.time = 1
+			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
+				c.selfState(5120, -1, -1)
+			}
+		}
+	}
+	if !c.hitPause() {
+		if c.life <= 0 && !sys.sf(GSF_noko) {
+			if !sys.sf(GSF_nokosnd) && c.alive() {
+				vo := int32(0)
+				if c.gi().ver[0] == 1 {
+					vo = 100
+				}
+				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, &c.pos[0])
+			}
+			c.setSCF(SCF_ko)
+		}
+		if c.ss.moveType != MT_H {
+			c.recoverTime = c.gi().data.liedown.time
+		}
+		if c.ss.no == 5110 && c.recoverTime > 0 && !c.pause() {
+			c.recoverTime--
+		}
+	}
+}
+func (c *Char) cueDraw() {
+	if c.helperIndex < 0 || c.id < 0 {
+		return
+	}
+	if sys.clsnDraw && c.curFrame != nil {
+		x, y := c.pos[0]+c.offsetX(), c.pos[1]+c.offsetY()
+		xs, ys := c.facing*c.clsnScale[0], c.clsnScale[1]
+		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
+			sys.drawc1.Add(clsn, x, y, xs, ys)
+		}
+		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
+			hb, mtk := false, false
+			for _, h := range c.hitby {
+				if h.time != 0 {
+					hb = true
+					mtk = mtk || h.falg&int32(ST_SCA) == 0 || h.falg&int32(AT_ALL) == 0
+				}
+			}
+			if mtk {
+				sys.drawc2mtk.Add(clsn, x, y, xs, ys)
+			} else if hb {
+				sys.drawc2sp.Add(clsn, x, y, xs, ys)
+			} else {
+				sys.drawc2.Add(clsn, x, y, xs, ys)
+			}
+		}
+		if c.sf(CSF_playerpush) {
+			sys.drawwh.Add([]float32{-c.width[1], -c.height(), c.width[0], 0},
+				c.pos[0], c.pos[1], c.facing, 1)
+		}
+	}
+	if c.anim != nil {
+		pos := [...]float32{c.drawPos[0] + c.offsetX(), c.drawPos[1] + c.offsetY()}
+		scl := [...]float32{c.facing * c.size.xscale, c.size.yscale}
+		var agl float32
+		if c.sf(CSF_angledraw) {
+			c.angleset = c.angleset || c.angle != 0
+			if c.angleset {
+				agl = c.angle
+			} else {
+				agl = 360
+			}
+		} else {
+			c.angleset = false
+		}
+		rec := sys.tickNextFrame() && c.acttmp > 0
+		sdf := func() *SprData {
+			sd := &SprData{c.anim, c.getPalfx(), pos,
+				scl, c.alpha, c.sprPriority, agl, c.angleScalse, c.angleset,
+				false, c.playerNo == sys.superplayer, c.gi().ver[0] != 1}
+			if !c.sf(CSF_trans) {
+				sd.alpha[0] = -1
+			}
+			return sd
+		}
+		if c.sf(CSF_invisible) {
+			if rec {
+				c.aimg.recAfterImg(sdf())
+			}
+		} else {
+			if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
+				c.setSF(CSF_trans)
+				c.alpha = [...]int32{255, 0}
+			}
+			sd := sdf()
+			c.aimg.recAndCue(sd, rec)
+			if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
+				sd.pos[0] -= c.facing
+			}
+			var sc, sa int32 = -1, 255
+			if c.sf(CSF_noshadow) {
+				sc = 0
+			}
+			if c.sf(CSF_trans) {
+				sa = c.alpha[0]
+			}
+			sys.sprites.add(sd, sc, sa, 0)
+		}
+	}
+	if sys.tickNextFrame() {
+		if c.roundState() == 4 {
+			c.exitTarget(false)
+		}
+		if sys.supertime < 0 {
+			if c.playerNo&1 != sys.superplayer&1 {
+				c.defenceMul *= sys.superp2defmul
+			}
+			c.minus = 2
+			c.oldPos = c.pos
+		}
+	}
 }
 
 type CharList struct {
@@ -3239,6 +3522,14 @@ func (cl *CharList) tick() {
 	for _, c := range cl.runOrder {
 		if c.id >= 0 {
 			c.tick()
+		}
+	}
+}
+func (cl *CharList) cueDraw() {
+	sys.gameTime++
+	for _, c := range cl.drawOrder {
+		if c != nil {
+			c.cueDraw()
 		}
 	}
 }

@@ -2920,7 +2920,7 @@ func (c *Compiler) changeStateSub(is IniSection,
 		changeState_anim, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if c.block != nil && c.block.ignorehitpause == -1 {
+	if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
 		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
 		sys.cgi[c.playerNo].wakewakaLength++
 	}

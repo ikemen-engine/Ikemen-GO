@@ -45,18 +45,22 @@ func (wt *WinType) SetPerfect() {
 }
 
 type HealthBar struct {
-	pos     [2]int32
-	range_x [2]int32
-	bg0     AnimLayout
-	bg1     AnimLayout
-	bg2     AnimLayout
-	mid     AnimLayout
-	front   AnimLayout
+	pos        [2]int32
+	range_x    [2]int32
+	bg0        AnimLayout
+	bg1        AnimLayout
+	bg2        AnimLayout
+	mid        AnimLayout
+	front      AnimLayout
+	oldlife    float32
+	midlife    float32
+	midlifeMin float32
+	mlifetime  int32
 }
 
 func readHealthBar(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *HealthBar {
-	hb := &HealthBar{}
+	hb := &HealthBar{oldlife: 1, midlife: 1, midlifeMin: 1}
 	is.ReadI32(pre+"pos", &hb.pos[0], &hb.pos[1])
 	is.ReadI32(pre+"range.x", &hb.range_x[0], &hb.range_x[1])
 	hb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at)
@@ -65,6 +69,39 @@ func readHealthBar(pre string, is IniSection,
 	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at)
 	hb.front = *ReadAnimLayout(pre+"front.", is, sff, at)
 	return hb
+}
+func (hb *HealthBar) step(life float32, gethit bool) {
+	if len(hb.mid.anim.frames) > 0 && gethit {
+		if hb.mlifetime > 0 && gethit {
+			hb.mlifetime = 30
+			hb.midlife, hb.midlifeMin = hb.oldlife, hb.oldlife
+		}
+	} else {
+		if hb.mlifetime > 0 {
+			hb.mlifetime--
+		}
+		if len(hb.mid.anim.frames) > 0 && hb.mlifetime <= 0 &&
+			life < hb.midlifeMin {
+			hb.midlifeMin += (life - hb.midlifeMin) *
+				(1 / (12 - (life-hb.midlifeMin)*144))
+		} else {
+			hb.midlifeMin = life
+		}
+		if (len(hb.mid.anim.frames) == 0 || hb.mlifetime <= 0) &&
+			hb.midlife > hb.midlifeMin {
+			hb.midlife += (hb.midlifeMin - hb.midlife) / 8
+		}
+		hb.oldlife = life
+	}
+	mlmin := MaxF(hb.midlifeMin, life)
+	if hb.midlife < mlmin {
+		hb.midlife += (mlmin - hb.midlife) / 2
+	}
+	hb.bg0.Action()
+	hb.bg1.Action()
+	hb.bg2.Action()
+	hb.mid.Action()
+	hb.front.Action()
 }
 func (hb *HealthBar) reset() {
 	hb.bg0.Reset()
@@ -86,6 +123,9 @@ type PowerBar struct {
 	counter_font [3]int32
 	counter_lay  Layout
 	level_snd    [3][2]int32
+	midpower     float32
+	midpowerMin  float32
+	prevLevel    int32
 }
 
 func newPowerBar(snd *Snd) (pb *PowerBar) {
@@ -111,6 +151,28 @@ func readPowerBar(pre string, is IniSection,
 			&pb.level_snd[i][1])
 	}
 	return pb
+}
+func (pb *PowerBar) step(power float32, level int32) {
+	pb.midpower -= 1.0 / 144
+	if power < pb.midpowerMin {
+		pb.midpowerMin += (power - pb.midpowerMin) *
+			(1 / (12 - (power-pb.midpowerMin)*144))
+	} else {
+		pb.midpowerMin = power
+	}
+	if pb.midpower < pb.midpowerMin {
+		pb.midpower = pb.midpowerMin
+	}
+	if level > pb.prevLevel {
+		i := Min(2, level-1)
+		pb.snd.Play(pb.level_snd[i][0], pb.level_snd[i][1])
+	}
+	pb.prevLevel = level
+	pb.bg0.Action()
+	pb.bg1.Action()
+	pb.bg2.Action()
+	pb.mid.Action()
+	pb.front.Action()
 }
 func (pb *PowerBar) reset() {
 	pb.bg0.Reset()
@@ -156,6 +218,11 @@ func readLifeBarFace(pre string, is IniSection,
 	f.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is)
 	return f
 }
+func (f *LifeBarFace) step() {
+	f.bg.Action()
+	f.teammate_bg.Action()
+	f.teammate_ko.Action()
+}
 func (f *LifeBarFace) reset() {
 	f.bg.Reset()
 	f.teammate_bg.Reset()
@@ -182,6 +249,7 @@ func readLifeBarName(pre string, is IniSection,
 	n.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
 	return n
 }
+func (n *LifeBarName) step()  { n.bg.Action() }
 func (n *LifeBarName) reset() { n.bg.Reset() }
 
 type LifeBarWinIcon struct {
@@ -193,7 +261,7 @@ type LifeBarWinIcon struct {
 	icon          [WT_NumTypes]AnimLayout
 	wins          []WinType
 	numWins       int
-	added, addedp *Animation
+	added, addedP *Animation
 }
 
 func newLifeBarWinIcon() *LifeBarWinIcon {
@@ -219,12 +287,27 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	wi.icon[WT_Perfect] = *ReadAnimLayout(pre+"perfect.", is, sff, at)
 	return wi
 }
+func (wi *LifeBarWinIcon) step(numwin int32) {
+	if int(numwin) < len(wi.wins) {
+		wi.wins = wi.wins[:numwin]
+		wi.reset()
+	}
+	for i := range wi.icon {
+		wi.icon[i].Action()
+	}
+	if wi.added != nil {
+		wi.added.Action()
+	}
+	if wi.addedP != nil {
+		wi.addedP.Action()
+	}
+}
 func (wi *LifeBarWinIcon) reset() {
 	for i := range wi.icon {
 		wi.icon[i].Reset()
 	}
 	wi.numWins = len(wi.wins)
-	wi.added, wi.addedp = nil, nil
+	wi.added, wi.addedP = nil, nil
 }
 func (wi *LifeBarWinIcon) clear() { wi.wins = nil }
 
@@ -250,13 +333,14 @@ func readLifeBarTime(is IniSection,
 	is.ReadI32("framespercount", &t.framespercount)
 	return t
 }
+func (t *LifeBarTime) step()  { t.bg.Action() }
 func (t *LifeBarTime) reset() { t.bg.Reset() }
 
 type LifeBarCombo struct {
 	pos           [2]int32
 	start_x       float32
 	counter_font  [3]int32
-	counter_shake int32
+	counter_shake bool
 	counter_lay   Layout
 	text_font     [3]int32
 	text_text     string
@@ -279,7 +363,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	is.ReadF32("start.x", &c.start_x)
 	is.ReadI32("counter.font", &c.counter_font[0], &c.counter_font[1],
 		&c.counter_font[2])
-	is.ReadI32("counter.shake", &c.counter_shake)
+	is.ReadBool("counter.shake", &c.counter_shake)
 	c.counter_lay = *ReadLayout("counter.", is)
 	c.counter_lay.offset = [2]float32{}
 	is.ReadI32("text.font", &c.text_font[0], &c.text_font[1], &c.text_font[2])
@@ -287,6 +371,32 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c.text_lay = *ReadLayout("text.", is)
 	is.ReadI32("displaytime", &c.displaytime)
 	return c
+}
+func (c *LifeBarCombo) step(combo [2]int32) {
+	for i := range c.cur {
+		if c.resttime[i] > 0 {
+			c.counterX[i] -= c.counterX[i] / 8
+		} else {
+			c.counterX[i] -= sys.lifebarFontScale * 4
+			if c.counterX[i] < c.start_x*2 {
+				c.counterX[i] = c.start_x * 2
+			}
+		}
+		if c.shaketime[i] > 0 {
+			c.shaketime[i]--
+		}
+		if AbsF(c.counterX[i]) < 1 {
+			c.resttime[i]--
+		}
+		if combo[i] >= 2 && c.old[i] != combo[i] {
+			c.cur[i] = combo[i]
+			c.resttime[i] = c.displaytime
+			if c.counter_shake {
+				c.shaketime[i] = 15
+			}
+		}
+		c.old[i] = combo[i]
+	}
 }
 func (c *LifeBarCombo) reset() {
 	c.cur, c.old, c.resttime = [2]int32{}, [2]int32{}, [2]int32{}
@@ -600,6 +710,45 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 	}
 	return l, nil
 }
+func (l *Lifebar) step() {
+	for ti, tm := range sys.tmode {
+		for i := ti; i < len(l.hb[tm]); i += 2 {
+			l.hb[tm][i].step(float32(sys.chars[i][0].life)/
+				float32(sys.chars[i][0].lifeMax), (sys.chars[i][0].getcombo != 0 ||
+				sys.chars[i][0].ss.moveType == MT_H) &&
+				!sys.chars[i][0].scf(SCF_over))
+		}
+	}
+	for i := range l.pb {
+		lvi := i
+		if sys.tmode[i] == TM_Simul {
+			lvi += 2
+		}
+		l.pb[i].step(float32(sys.chars[i][0].power)/
+			float32(sys.chars[i][0].powerMax), sys.chars[lvi][0].power/1000)
+	}
+	for ti, tm := range sys.tmode {
+		for i := ti; i < len(l.fa[tm]); i += 2 {
+			l.fa[tm][i].step()
+		}
+	}
+	for ti, tm := range sys.tmode {
+		for i := ti; i < len(l.nm[tm]); i += 2 {
+			l.nm[tm][i].step()
+		}
+	}
+	for i := range l.wi {
+		l.wi[i].step(sys.wins[i])
+	}
+	l.ti.step()
+	cb := [2]int32{}
+	for i, ch := range sys.chars {
+		for _, c := range ch {
+			cb[^i&1] = Min(999, Max(c.getcombo, cb[i&1]))
+		}
+	}
+	l.co.step(cb)
+}
 func (l *Lifebar) reset() {
 	for _, hb := range l.hb {
 		for i := range hb {
@@ -608,6 +757,11 @@ func (l *Lifebar) reset() {
 	}
 	for i := range l.pb {
 		l.pb[i].reset()
+	}
+	for _, fa := range l.fa {
+		for i := range fa {
+			fa[i].reset()
+		}
 	}
 	for _, nm := range l.nm {
 		for i := range nm {

@@ -127,7 +127,7 @@ type System struct {
 	bcVar                   []BytecodeValue
 	workingChar             *Char
 	specialFlag             GlobalSpecialFlag
-	afterImageMax           int
+	afterImageMax           int32
 	attack_LifeToPowerMul   float32
 	getHit_LifeToPowerMul   float32
 	envShake                EnvShake
@@ -189,14 +189,16 @@ type System struct {
 	explDrawlist            [MaxSimul * 2][]int
 	topexplDrawlist         [MaxSimul * 2][]int
 	changeStateNest         int32
-	sprites                 []*SprData
-	topSprites              []*SprData
-	shadows                 []*ShadowSprite
+	sprites                 DrawList
+	topSprites              DrawList
+	shadows                 ShadowList
 	drawc1                  ClsnRect
 	drawc2                  ClsnRect
 	drawc2sp                ClsnRect
+	drawc2mtk               ClsnRect
 	drawwh                  ClsnRect
 	autoguard               [MaxSimul * 2]bool
+	clsnDraw                bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -595,6 +597,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawc1 = s.drawc1[:0]
 	s.drawc2 = s.drawc2[:0]
 	s.drawc2sp = s.drawc2sp[:0]
+	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
@@ -643,6 +646,41 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
+	s.lifebar.step()
+	if s.superanim != nil {
+		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
+			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, [2]float32{}, false,
+			false, true, s.cgi[s.superplayer].ver[0] != 1}, 0, 0, 0)
+		if s.superanim.loopend {
+			s.superanim = nil
+		}
+	}
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id >= 0 {
+				s.projs[i][j].anime(s.cgi[i].ver[0] != 1, i)
+			}
+		}
+	}
+	s.charList.cueDraw()
+	explUpdate := func(edl [len(s.chars)][]int, drop bool) {
+		for i, el := range edl {
+			for j := len(el) - 1; j >= 0; j-- {
+				if el[j] >= 0 {
+					s.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
+					if s.explods[i][el[j]].id == IErr {
+						if drop {
+							edl[i] = append(el[:j], el[j+1:]...)
+						} else {
+							el[j] = -1
+						}
+					}
+				}
+			}
+		}
+	}
+	explUpdate(s.explDrawlist, true)
+	explUpdate(s.topexplDrawlist, false)
 	unimplemented()
 	return 0, 0, 1
 }

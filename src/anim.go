@@ -561,6 +561,74 @@ func (at AnimationTable) get(no int32) *Animation {
 	return ret
 }
 
+type SprData struct {
+	anim     *Animation
+	fx       *PalFX
+	pos      [2]float32
+	scl      [2]float32
+	alpha    [2]int32
+	priority int32
+	angle    float32
+	ascl     [2]float32
+	aset     bool
+	screen   bool
+	bright   bool
+	oldVer   bool
+}
+type ShadowSprite struct {
+	*SprData
+	shadowColor int32
+	shadowAlpha int32
+	offsetY     float32
+}
+type DrawList []*SprData
+
+func (dl *DrawList) add(sd *SprData, sc, salp int32, so float32) {
+	if sys.frameSkip {
+		return
+	}
+	i, start := 0, 0
+	for l := len(*dl); l > 0; {
+		i := start + l>>1
+		if sd.priority <= (*dl)[i].priority {
+			l = i - start
+		} else if i == start {
+			i++
+			l = 0
+		} else {
+			l -= i - start
+			start = i
+		}
+	}
+	*dl = append(*dl, nil)
+	copy((*dl)[i+1:], (*dl)[i:])
+	(*dl)[i] = sd
+	if sc != 0 {
+		sys.shadows.add(&ShadowSprite{sd, sc, salp, so})
+	}
+}
+
+type ShadowList []*ShadowSprite
+
+func (sl *ShadowList) add(ss *ShadowSprite) {
+	i, start := 0, 0
+	for l := len(*sl); l > 0; {
+		i := start + l>>1
+		if ss.priority <= (*sl)[i].priority {
+			l = i - start
+		} else if i == start {
+			i++
+			l = 0
+		} else {
+			l -= i - start
+			start = i
+		}
+	}
+	*sl = append(*sl, nil)
+	copy((*sl)[i+1:], (*sl)[i:])
+	(*sl)[i] = ss
+}
+
 type Anim struct {
 	anim             *Animation
 	window           [4]int32
