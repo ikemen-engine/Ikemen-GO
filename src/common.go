@@ -95,6 +95,9 @@ func AbsF(f float32) float32 {
 	}
 	return f
 }
+func Pow(x, y float32) float32 {
+	return float32(math.Pow(float64(x), float64(y)))
+}
 func IsFinite(f float32) bool {
 	return math.Abs(float64(f)) <= math.MaxFloat64
 }

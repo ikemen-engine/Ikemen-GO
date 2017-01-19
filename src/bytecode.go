@@ -562,12 +562,12 @@ func (_ BytecodeExp) blnot(v *BytecodeValue) {
 }
 func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
-		v1.SetF(float32(math.Pow(float64(v1.ToF()), float64(v2.ToF()))))
+		v1.SetF(Pow(v1.ToF(), v2.ToF()))
 	} else if v2.ToF() < 0 {
 		if sys.cgi[pn].ver[0] == 1 {
-			v1.SetF(float32(math.Pow(float64(v1.ToI()), float64(v2.ToI()))))
+			v1.SetF(Pow(v1.ToF(), v2.ToF()))
 		} else {
-			f := float32(math.Pow(float64(v1.ToI()), float64(v2.ToI())))
+			f := Pow(v1.ToF(), v2.ToF())
 			v1.SetI(*(*int32)(unsafe.Pointer(&f)) << 29)
 		}
 	} else {
@@ -1770,7 +1770,7 @@ const (
 func (sc playSnd) Run(c *Char, _ []int32) bool {
 	f, lw, lp := false, false, false
 	var g, n, ch, vo int32 = -1, 0, -1, 0
-	if sys.workingChar.stCgi().ver[0] == 1 {
+	if c.gi().ver[0] == 1 {
 		vo = 100
 	}
 	var p, fr float32 = 0, 1
@@ -3863,7 +3863,7 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 		t = 0
 	}
 	c.ho[s] = HitOverride{attr: a, stateno: st, time: t, forceair: f,
-		playerNo: sys.workingChar.ss.sb.playerNo}
+		playerNo: c.ss.sb.playerNo}
 	return false
 }
 
@@ -3958,7 +3958,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 				n = exp[2].evalI(c)
 			}
 			vo := int32(0)
-			if sys.workingChar.stCgi().ver[0] == 1 {
+			if c.gi().ver[0] == 1 {
 				vo = 100
 			}
 			c.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,

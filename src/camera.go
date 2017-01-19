@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type stageCamera struct {
 	startx         int32
 	boundleft      int32
@@ -107,4 +109,79 @@ func (c *Camera) GroundLevel() float32 {
 }
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
+}
+func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
+	vmin, vmax float32, pause bool) (sclMul float32) {
+	tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
+	tmp, vx := (leftest+rightest)/2, vmin+vmax
+	if vx == 0 || (vx < 0) == (tmp < 0) {
+		vel := float32(3)
+		if sys.intro > sys.lifebar.ro.ctrl_time+1 {
+			vel = c.halfWidth
+		} else if pause {
+			vel = 2
+		}
+		if tmp < 0 {
+			vx -= vel
+		} else {
+			vx += vel
+		}
+	}
+	vx *= MinF(1, sys.turbo)
+	if vx < 0 {
+		tmp = MaxF(leftest+tension, tmp)
+		if vx < tmp {
+			vx = MinF(0, tmp)
+		}
+	} else {
+		tmp = MinF(rightest-tension, tmp)
+		if vx > tmp {
+			vx = MaxF(0, tmp)
+		}
+	}
+	*x += vx
+	if lowest >= highest {
+		ftension := float32(c.floortension) * c.localscl
+		if ftension < 0 {
+			ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
+			if ftension < 0 {
+				ftension = 0
+			}
+		}
+		if highest < -ftension {
+			*y = (highest + ftension) * Pow(c.verticalfollow,
+				MinF(1, 1/Pow(c.Scale, 4)))
+		} else {
+			*y = 0
+		}
+	}
+	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
+		float32(sys.gameWidth-320)
+	if tmp < 0 {
+		tmp = 0
+	}
+	tmp = MaxF(220/c.Scale, float32(math.Sqrt(float64(Pow(tmp, 2)+
+		Pow(lowest-highest, 2)))))
+	sclMul = tmp * c.Scale / MaxF(c.Scale, (400-80*MaxF(1, c.Scale))*
+		Pow(2, c.ZoomSpeed-2))
+	if sclMul >= 3/Pow(2, c.ZoomSpeed) {
+		sclMul = MaxF(3.0/4, 67.0/64-sclMul*Pow(2, c.ZoomSpeed-6))
+	} else {
+		sclMul = MinF(4.0/3, Pow((Pow(2, c.ZoomSpeed)+3)/Pow(2, c.ZoomSpeed)-
+			sclMul, 64))
+	}
+	if pause {
+		sclMul = 1
+	} else if sclMul > 1 {
+		sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
+		if tmp*sclMul > sys.xmax-sys.xmin {
+			sclMul = (sys.xmax - sys.xmin) / tmp
+		}
+		if sys.tickNextFrame() {
+			c.zoomdelay = MinF(1, c.zoomdelay+1.0/32)
+		}
+	} else {
+		c.zoomdelay = 0
+	}
+	return
 }

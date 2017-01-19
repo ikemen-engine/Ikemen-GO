@@ -485,6 +485,10 @@ func readLifeBarRound(is IniSection,
 	r.drawn = *ReadAnimTextSnd("draw.", is, sff, at)
 	return r
 }
+func (r *LifeBarRound) callFight() {
+	r.fight.Reset()
+	r.cur, r.wt[0], r.swt[0], r.dt[0] = 1, r.fight_time, r.fight_sndtime, 0
+}
 func (r *LifeBarRound) reset() {
 	r.round_default.Reset()
 	for i := range r.round {

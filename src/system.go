@@ -590,7 +590,7 @@ func (s *System) charUpdate(cvmin, cvmax,
 	}
 }
 func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
-	sclmul float32) {
+	sclMul float32) {
 	s.sprites = s.sprites[:0]
 	s.topSprites = s.topSprites[:0]
 	s.shadows = s.shadows[:0]
@@ -681,6 +681,43 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	}
 	explUpdate(s.explDrawlist, true)
 	explUpdate(s.topexplDrawlist, false)
+	leftest -= *x
+	rightest -= *x
+	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
+		cvmin, cvmax, s.super > 0 || s.pause > 0)
+	introSkip := false
+	if s.tickNextFrame() {
+		if s.lifebar.ro.cur < 1 {
+			if s.shuttertime > 0 ||
+				s.anyButton() && s.intro > s.lifebar.ro.ctrl_time {
+				s.shuttertime++
+				if s.shuttertime == 15 {
+					s.resetGblEffect()
+					s.intro = s.lifebar.ro.ctrl_time
+					for i, p := range s.chars {
+						if len(p) > 0 {
+							s.playerClear(i)
+							p[0].selfState(0, -1, 0)
+						}
+					}
+					ox := *x
+					*x = 0
+					leftest = MaxF(float32(Min(s.stage.p[0].startx,
+						s.stage.p[1].startx))*s.stage.localscl,
+						-(float32(s.gameWidth)/2)/s.cam.BaseScale()+s.screenleft) - ox
+					rightest = MinF(float32(Max(s.stage.p[0].startx,
+						s.stage.p[1].startx))*s.stage.localscl,
+						(float32(s.gameWidth)/2)/s.cam.BaseScale()-s.screenright) - ox
+					introSkip = true
+					s.lifebar.ro.callFight()
+				}
+			}
+		} else {
+			if s.shuttertime > 0 {
+				s.shuttertime--
+			}
+		}
+	}
 	unimplemented()
 	return 0, 0, 1
 }
@@ -961,7 +998,7 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 		if s.turbo < 1 {
-			sclmul = float32(math.Pow(float64(sclmul), float64(s.turbo)))
+			sclmul = Pow(sclmul, s.turbo)
 		}
 		scl = s.cam.ScaleBound(scl * sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
