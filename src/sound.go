@@ -8,77 +8,12 @@ import (
 	"io"
 	"math"
 	"os"
-	"time"
 )
 
 const (
 	audioOutLen    = 2048
 	audioFrequency = 48000
 )
-
-func (s *System) audioOpen() {
-	if s.audioContext == nil {
-		device := openal.OpenDevice("")
-		if device == nil {
-			chk(openal.Err())
-		}
-		s.audioContext = device.CreateContext()
-		chk(device.Err())
-		s.audioContext.Activate()
-		go s.soundWrite()
-	}
-}
-func (s *System) soundWrite() {
-	src := NewAudioSource()
-	bgmSrc := NewAudioSource()
-	processed := false
-	for !s.gameEnd {
-		if src.Src.State() != openal.Playing {
-			src.Src.Play()
-		}
-		if bgmSrc.Src.State() != openal.Playing {
-			bgmSrc.Src.Play()
-		}
-		if !processed {
-			time.Sleep(10 * time.Millisecond)
-		}
-		processed = false
-		if src.Src.BuffersProcessed() > 0 {
-			var out []int16
-			select {
-			case out = <-s.mixer.out:
-			default:
-				out = s.nullSndBuf[:]
-			}
-			buf := src.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			src.Src.QueueBuffer(buf)
-			chk(openal.Err())
-			processed = true
-		}
-		if bgmSrc.Src.BuffersProcessed() > 0 {
-			out := s.bgm.read()
-			buf := bgmSrc.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			out = nil
-			bgmSrc.Src.QueueBuffer(buf)
-			chk(openal.Err())
-			processed = true
-		}
-	}
-	bgmSrc.Delete()
-	src.Delete()
-	openal.NullContext.Activate()
-	device := s.audioContext.GetDevice()
-	s.audioContext.Destroy()
-	s.audioContext = nil
-	device.CloseDevice()
-}
-func (s *System) playSound() {
-	if s.mixer.write() {
-		s.sounds.mixSounds()
-	}
-}
 
 type AudioSource struct {
 	Src  openal.Source
@@ -524,15 +459,15 @@ func LoadSnd(filename string) (*Snd, error) {
 	}
 	return s, nil
 }
-func (s *Snd) Get(group int32, number int32) *Wave {
-	return s.table[[...]int32{group, number}]
+func (s *Snd) Get(gn [2]int32) *Wave {
+	return s.table[gn]
 }
-func (s *Snd) Play(g int32, n int32) bool {
+func (s *Snd) Play(gn [2]int32) bool {
 	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
 	}
-	c.sound = s.Get(g, n)
+	c.sound = s.Get(gn)
 	return c.sound != nil
 }
 

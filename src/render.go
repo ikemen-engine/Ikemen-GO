@@ -334,7 +334,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, rcx, rcy, 1, 1, 1, 1)
 	default:
-		src, dst := trans&0xff, trans&0x3fc00>>10
+		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
 			gl.Uniform1fARB(a, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
@@ -447,5 +447,55 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
+	gl.Disable(gl.BLEND)
+}
+func FillRect(rect [4]int32, color uint32, trans int32) {
+	r := float32(color>>16&0xff) / 255
+	g := float32(color>>8&0xff) / 255
+	b := float32(color&0xff) / 255
+	fill := func(a float32) {
+		gl.Begin(gl.QUADS)
+		gl.Color4f(r, g, b, a)
+		gl.Vertex2f(float32(rect[0]), -float32(rect[1]+rect[3]))
+		gl.Vertex2f(float32(rect[0]+rect[2]), -float32(rect[1]+rect[3]))
+		gl.Vertex2f(float32(rect[0]+rect[2]), -float32(rect[1]))
+		gl.Vertex2f(float32(rect[0]), -float32(rect[1]))
+		gl.End()
+	}
+	gl.Enable(gl.BLEND)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	gl.Ortho(0, float64(sys.scrrect[2]), 0, float64(sys.scrrect[3]), -1, 1)
+	gl.MatrixMode(gl.MODELVIEW)
+	gl.PushMatrix()
+	gl.Translated(0, float64(sys.scrrect[3]), 0)
+	if trans == -1 {
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		fill(1)
+	} else if trans == -2 {
+		gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR)
+		fill(1)
+	} else if trans <= 0 {
+	} else if trans < 255 {
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		fill(float32(trans) / 256)
+	} else if trans < 512 {
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		fill(1)
+	} else {
+		src, dst := trans&0xff, trans>>10&0xff
+		if dst < 255 {
+			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+			fill(float32(dst) / 255)
+		}
+		if src > 0 {
+			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+			fill(float32(src) / 255)
+		}
+	}
+	gl.PopMatrix()
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PopMatrix()
 	gl.Disable(gl.BLEND)
 }

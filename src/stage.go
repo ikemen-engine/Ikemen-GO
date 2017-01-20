@@ -806,6 +806,15 @@ func (s *Stage) action() {
 		}
 	}
 }
+func (s *Stage) draw(top bool, x, y, scl float32) {
+	bgscl := float32(1)
+	if s.hires {
+		bgscl = 0.5
+	}
+	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
+	scl2 := s.localscl * scl
+	unimplemented()
+}
 func (s *Stage) reset() {
 	s.bga.clear()
 	for i := range s.bg {

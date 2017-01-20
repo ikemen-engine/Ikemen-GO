@@ -169,7 +169,7 @@ type System struct {
 	screenright             float32
 	xmin, xmax              float32
 	winskipped              bool
-	step                    bool
+	paused, step            bool
 	roundResetFlg           bool
 	reloadFlg               bool
 	eventKeys               map[ShortcutKey]bool
@@ -199,6 +199,7 @@ type System struct {
 	drawwh                  ClsnRect
 	autoguard               [MaxSimul * 2]bool
 	clsnDraw                bool
+	accel                   float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -304,6 +305,74 @@ func (s *System) update() bool {
 		return s.netInput.Updata()
 	}
 	return s.await(FPS)
+}
+func (s *System) audioOpen() {
+	if s.audioContext == nil {
+		device := openal.OpenDevice("")
+		if device == nil {
+			chk(openal.Err())
+		}
+		s.audioContext = device.CreateContext()
+		chk(device.Err())
+		s.audioContext.Activate()
+		go s.soundWrite()
+	}
+}
+func (s *System) soundWrite() {
+	src := NewAudioSource()
+	bgmSrc := NewAudioSource()
+	processed := false
+	for !s.gameEnd {
+		if src.Src.State() != openal.Playing {
+			src.Src.Play()
+		}
+		if bgmSrc.Src.State() != openal.Playing {
+			bgmSrc.Src.Play()
+		}
+		if !processed {
+			time.Sleep(10 * time.Millisecond)
+		}
+		processed = false
+		if src.Src.BuffersProcessed() > 0 {
+			var out []int16
+			select {
+			case out = <-s.mixer.out:
+			default:
+				out = s.nullSndBuf[:]
+			}
+			buf := src.Src.UnqueueBuffer()
+			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
+			src.Src.QueueBuffer(buf)
+			chk(openal.Err())
+			processed = true
+		}
+		if !s.sf(GSF_nomusic) && bgmSrc.Src.BuffersProcessed() > 0 {
+			out := s.bgm.read()
+			buf := bgmSrc.Src.UnqueueBuffer()
+			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
+			out = nil
+			bgmSrc.Src.QueueBuffer(buf)
+			chk(openal.Err())
+			processed = true
+		}
+	}
+	bgmSrc.Delete()
+	src.Delete()
+	openal.NullContext.Activate()
+	device := s.audioContext.GetDevice()
+	s.audioContext.Destroy()
+	s.audioContext = nil
+	device.CloseDevice()
+}
+func (s *System) playSound() {
+	if s.mixer.write() {
+		s.sounds.mixSounds()
+		for _, ch := range s.chars {
+			for _, c := range ch {
+				c.sounds.mixSounds()
+			}
+		}
+	}
 }
 func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
@@ -718,14 +787,162 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	unimplemented()
-	return 0, 0, 1
+	if s.lifebar.ro.act() {
+		if s.intro > s.lifebar.ro.ctrl_time {
+			s.intro--
+			if s.sf(GSF_intro) && s.intro <= s.lifebar.ro.ctrl_time {
+				s.intro = s.lifebar.ro.ctrl_time + 1
+			}
+		} else if s.intro > 0 {
+			if s.intro == s.lifebar.ro.ctrl_time {
+				for _, p := range s.chars {
+					if len(p) > 0 {
+						p[0].posReset()
+					}
+				}
+			}
+			s.intro--
+			if s.intro == 0 {
+				for _, p := range s.chars {
+					if len(p) > 0 {
+						p[0].unsetSCF(SCF_over)
+						if p[0].ss.no == 0 {
+							p[0].setCtrl(true)
+						} else {
+							p[0].selfState(0, -1, 1)
+						}
+					}
+				}
+			}
+		}
+		if s.intro == 0 && s.time > 0 && !s.sf(GSF_timerfreeze) &&
+			(s.super <= 0 || !s.superpausebg) && (s.pause <= 0 || !s.pausebg) {
+			s.time--
+		}
+		fin := func() bool {
+			if s.intro > 0 {
+				return false
+			}
+			ko := [...]bool{true, true}
+			for ii := range ko {
+				for i := ii; i < len(s.chars); i += 2 {
+					if len(s.chars[i]) > 0 && s.chars[i][0].alive() {
+						ko[ii] = false
+						break
+					}
+				}
+				if ko[ii] {
+					i := ii ^ 1
+					for ; i < len(s.chars); i += 2 {
+						if len(s.chars[i]) > 0 && s.chars[i][0].life <
+							s.chars[i][0].lifeMax {
+							break
+						}
+					}
+					if i >= len(s.chars) {
+						s.winType[ii^1].SetPerfect()
+					}
+				}
+			}
+			if s.time == 0 {
+				s.intro = -s.lifebar.ro.over_hittime
+				if !(ko[0] || ko[1]) {
+					s.winType[0], s.winType[1] = WT_T, WT_T
+				}
+			}
+			if s.intro == -s.lifebar.ro.over_hittime && (ko[0] || ko[1]) {
+				if ko[0] && ko[1] {
+					s.finish, s.winTeam = FT_DKO, -1
+				} else {
+					s.finish = FT_KO
+					if ko[0] {
+						s.winTeam = 1
+					} else {
+						s.winTeam = 0
+					}
+				}
+			}
+			return ko[0] || ko[1] || s.time == 0
+		}
+		if s.roundEnd() || fin() {
+			unimplemented()
+		} else if s.intro < 0 {
+			s.intro = 0
+		}
+	}
+	if s.turbo == 0 || s.tickNextFrame() {
+		spd := s.accel
+		if s.paused && !s.step {
+			spd = 0
+		}
+		_else := s.sf(GSF_nokoslow) || s.time == 0
+		if !_else {
+			slowt := -(s.lifebar.ro.over_hittime + (s.lifebar.ro.slow_time+3)>>2)
+			if s.intro >= slowt && s.intro < -s.lifebar.ro.over_hittime {
+				s.turbo = spd * 0.25
+			} else {
+				slowfade := s.lifebar.ro.slow_time * 2 / 5
+				if s.intro >= slowt-slowfade && s.intro < slowt {
+					s.turbo = spd *
+						(0.25 + 0.75*float32(slowt-s.intro)/float32(slowfade))
+				} else {
+					_else = true
+				}
+			}
+		}
+		if _else {
+			s.turbo = spd
+		}
+	}
+	s.playSound()
+	if introSkip {
+		sclMul = 1 / scl
+	}
+	leftest = (leftest - s.screenleft) * s.cam.BaseScale()
+	rightest = (rightest + s.screenright) * s.cam.BaseScale()
+	return
 }
 func (s *System) draw(x, y, scl float32) {
+	ecol := uint32(s.envcol[2]&0xff | s.envcol[1]&0xff<<8 |
+		s.envcol[0]&0xff<<16)
+	ob := s.brightness
+	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
+	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
+	if s.envcol_time == 0 {
+		if s.sf(GSF_nobg) {
+			c := uint32(0)
+			if s.allPalFX.enable {
+				var rgb [3]int32
+				if s.allPalFX.eInvertall {
+					rgb = [...]int32{0xff, 0xff, 0xff}
+				}
+				for i, v := range rgb {
+					rgb[i] = Max(0, Min(0xff,
+						(v+s.allPalFX.eAdd[i])*s.allPalFX.eMul[i]>>8))
+				}
+				c = uint32(rgb[2] | rgb[1]<<8 | rgb[0]<<16)
+			}
+			FillRect(s.scrrect, c, 0xff)
+		} else {
+			if s.stage.debugbg {
+				FillRect(s.scrrect, 0xff00ff, 0xff)
+			}
+			s.stage.draw(false, bgx, bgy, scl)
+		}
+		unimplemented()
+	}
 	unimplemented()
 }
 func (s *System) fight() (reload bool) {
-	s.gameTime = 0
+	s.gameTime, s.paused, s.accel = 0, false, 1
+	defer func() {
+		s.unsetSF(GSF_nomusic)
+		for i, p := range s.chars {
+			if len(p) > 0 {
+				s.playerClear(i)
+			}
+		}
+	}()
 	var life, pow [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32

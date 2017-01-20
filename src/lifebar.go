@@ -165,7 +165,7 @@ func (pb *PowerBar) step(power float32, level int32) {
 	}
 	if level > pb.prevLevel {
 		i := Min(2, level-1)
-		pb.snd.Play(pb.level_snd[i][0], pb.level_snd[i][1])
+		pb.snd.Play(pb.level_snd[i])
 	}
 	pb.prevLevel = level
 	pb.bg0.Action()
@@ -488,6 +488,91 @@ func readLifeBarRound(is IniSection,
 func (r *LifeBarRound) callFight() {
 	r.fight.Reset()
 	r.cur, r.wt[0], r.swt[0], r.dt[0] = 1, r.fight_time, r.fight_sndtime, 0
+}
+func (r *LifeBarRound) act() bool {
+	if sys.intro > r.ctrl_time {
+		r.cur, r.wt[0], r.swt[0], r.dt[0] = 0, r.round_time, r.round_sndtime, 0
+	} else if sys.intro >= 0 || r.cur < 2 {
+		if !sys.tickNextFrame() {
+			return false
+		}
+		switch r.cur {
+		case 0:
+			if r.swt[0] == 0 {
+				if int(sys.round) <= len(r.round) {
+					r.snd.Play(r.round[sys.round-1].snd)
+				} else {
+					r.snd.Play(r.round_default.snd)
+				}
+			}
+			r.swt[0]--
+			if r.wt[0] <= 0 {
+				r.dt[0]++
+				end := false
+				if int(sys.round) <= len(r.round) {
+					r.round[sys.round-1].Action()
+					end = r.round[sys.round-1].End(r.dt[0])
+				} else {
+					r.round_default.Action()
+					end = r.round_default.End(r.dt[0])
+				}
+				if end {
+					r.callFight()
+					return true
+				}
+			}
+			r.wt[0]--
+			return false
+		case 1:
+			if r.swt[0] == 0 {
+				r.snd.Play(r.fight.snd)
+			}
+			r.swt[0]--
+			if r.wt[0] <= 0 {
+				r.dt[0]++
+				r.fight.Action()
+				if r.fight.End(r.dt[0]) {
+					r.cur, r.wt[0], r.swt[0], r.dt[0] = 2, r.ko_time, r.ko_sndtime, 0
+					r.wt[1], r.swt[1], r.dt[1] = r.win_time, r.win_sndtime, 0
+					break
+				}
+			}
+			r.wt[0]--
+		}
+	} else if r.cur == 2 && (sys.finish != FT_NotYet || sys.time == 0) {
+		f := func(ats *AnimTextSnd, t int) {
+			if r.swt[t] == 0 {
+				r.snd.Play(ats.snd)
+			}
+			r.swt[t]--
+			if ats.End(r.dt[t]) {
+				r.wt[t] = 2
+			}
+			if r.wt[t] <= 0 {
+				r.dt[t]++
+				ats.Action()
+			}
+			r.wt[t]--
+		}
+		switch sys.finish {
+		case FT_KO:
+			f(&r.ko, 0)
+		case FT_DKO:
+			f(&r.dko, 0)
+		default:
+			f(&r.to, 0)
+		}
+		if sys.intro < -(r.over_hittime + r.over_waittime + r.over_wintime) {
+			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
+				f(&r.drawn, 1)
+			} else if sys.winTeam >= 0 && sys.tmode[sys.winTeam] == TM_Simul {
+				f(&r.win2, 1)
+			} else {
+				f(&r.win, 1)
+			}
+		}
+	}
+	return sys.tickNextFrame()
 }
 func (r *LifeBarRound) reset() {
 	r.round_default.Reset()
