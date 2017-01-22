@@ -449,6 +449,25 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
+func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
+	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32, trans int32,
+	window *[4]int32, rcx, rcy float32, color uint32) {
+	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+		return
+	}
+	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, window, rcx, &rcy)
+	gl.UseProgramObjectARB(mugenShaderFcS)
+	gl.Uniform3fARB(
+		uniformColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
+		float32(color&0xff)/255)
+	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
+	rmMainSub(uniformFcSA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl,
+		trans, rcx, rcy)
+	gl.UseProgramObjectARB(0)
+	gl.Disable(gl.SCISSOR_TEST)
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Disable(gl.BLEND)
+}
 func FillRect(rect [4]int32, color uint32, trans int32) {
 	r := float32(color>>16&0xff) / 255
 	g := float32(color>>8&0xff) / 255

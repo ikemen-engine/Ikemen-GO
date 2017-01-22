@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -288,6 +289,53 @@ func SplitAndTrim(str, sep string) (ss []string) {
 	}
 	return
 }
+func OldSprintf(f string, a ...interface{}) (s string) {
+	iIdx, numVerbs := []int{}, 0
+	for i := 0; i < len(f); i++ {
+		if f[i] == '%' {
+			i++
+			if i >= len(f) {
+				break
+			}
+			if f[i] == '%' {
+				continue
+			}
+			numVerbs++
+			for ; i < len(f) && (f[i] == ' ' || f[i] == '0' ||
+				f[i] == '-' || f[i] == '+' || f[i] == '#'); i++ {
+			}
+			if i >= len(f) {
+				break
+			}
+			for ; i < len(f) && f[i] >= '0' && f[i] <= '9'; i++ {
+			}
+			if i >= len(f) {
+				break
+			}
+			if f[i] == '.' {
+				for i++; i < len(f) && f[i] >= '0' && f[i] <= '9'; i++ {
+				}
+				if i >= len(f) {
+					break
+				}
+			}
+			if f[i] == 'i' {
+				iIdx = append(iIdx, i)
+			}
+		}
+	}
+	if len(iIdx) > 0 {
+		b := []byte(f)
+		for _, i := range iIdx {
+			b[i] = 'd'
+		}
+		f = string(b)
+	}
+	if len(a) > numVerbs {
+		a = a[:numVerbs]
+	}
+	return fmt.Sprintf(f, a...)
+}
 func SectionName(sec string) (string, string) {
 	if len(sec) == 0 || sec[0] != '[' {
 		return "", ""
@@ -502,6 +550,32 @@ func ReadLayout(pre string, is IniSection) *Layout {
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
 	return l
 }
+func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX) {
+	if l.layerno == ln && s != nil {
+		if l.facing < 0 {
+			x += sys.lifebarFontScale
+		}
+		if l.vfacing < 0 {
+			y += sys.lifebarFontScale
+		}
+		pal := s.Pal
+		if pal != nil {
+			if sys.allPalFX.enable {
+				if fx != nil && fx.enable {
+					synth := *fx
+					synth.synthesize(sys.allPalFX)
+					pal = synth.getFxPal(pal, false)
+				} else {
+					pal = sys.allPalFX.getFxPal(pal, false)
+				}
+			} else if fx != nil && fx.enable {
+				pal = fx.getFxPal(pal, false)
+			}
+		}
+		s.Draw(x+l.offset[0], y+l.offset[1],
+			l.scale[0]*float32(l.facing), l.scale[1]*float32(l.vfacing), pal)
+	}
+}
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	a *Animation) {
 	if l.layerno == ln {
@@ -528,7 +602,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		}
 		f.DrawText(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
-			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, a, b)
+			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a)
 	}
 }
 
@@ -543,6 +617,11 @@ func newAnimLayout(sff *Sff) *AnimLayout {
 func ReadAnimLayout(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *AnimLayout {
 	al := newAnimLayout(sff)
+	al.Read(pre, is, sff, at)
+	return al
+}
+func (al *AnimLayout) Read(pre string, is IniSection,
+	sff *Sff, at AnimationTable) {
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
 		al.anim.frames = []AnimFrame{*newAnimFrame()}
@@ -556,7 +635,6 @@ func ReadAnimLayout(pre string, is IniSection,
 		}
 	}
 	al.lay = *ReadLayout(pre, is)
-	return al
 }
 func (al *AnimLayout) Reset() {
 	al.anim.Reset()
@@ -582,12 +660,18 @@ func newAnimTextSnd(sff *Sff) *AnimTextSnd {
 func ReadAnimTextSnd(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *AnimTextSnd {
 	ats := newAnimTextSnd(sff)
+	ats.Read(pre, is, sff, at)
+	return ats
+}
+func (ats *AnimTextSnd) Read(pre string, is IniSection,
+	sff *Sff, at AnimationTable) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
 	is.ReadI32(pre+"font", &ats.font[0], &ats.font[1], &ats.font[2])
-	ats.text = is[pre+"text"]
-	ats.anim = *ReadAnimLayout(pre, is, sff, at)
+	if tmp, ok := is[pre+"text"]; ok {
+		ats.text = tmp
+	}
+	ats.anim.Read(pre, is, sff, at)
 	is.ReadI32(pre+"displaytime", &ats.displaytime)
-	return ats
 }
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
 func (ats *AnimTextSnd) Action() { ats.anim.Action() }

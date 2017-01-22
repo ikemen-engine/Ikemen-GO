@@ -83,10 +83,29 @@ const (
 type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
+	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
+	y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
+	xs *= sys.cam.Scale
+	ys *= sys.cam.Scale
 	for i := 0; i+3 < len(clsn); i += 4 {
-		*cr = append(*cr, [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
+		rect := [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
 			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
-			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1])})
+			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1])}
+		if xs < 0 {
+			rect[0] = -rect[0] + 320
+		}
+		if ys < 0 {
+			rect[1] *= -1
+		}
+		*cr = append(*cr, rect)
+	}
+}
+func (cr ClsnRect) draw(trans int32) {
+	for _, c := range cr {
+		RenderMugen(*sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
+			(160-c[0])*sys.widthScale, -c[1]*sys.heightScale, &notiling,
+			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0,
+			trans, &sys.scrrect, 160*sys.widthScale, 0)
 	}
 }
 
@@ -598,7 +617,7 @@ func (ghv *GetHitVar) addId(id, juggle int32) {
 }
 
 type HitBy struct {
-	falg, time int32
+	flag, time int32
 }
 type HitOverride struct {
 	attr     int32
@@ -616,7 +635,7 @@ type aimgImage struct {
 	anim           Animation
 	pos, scl, ascl [2]float32
 	angle          float32
-	aset, oldVer   bool
+	oldVer         bool
 }
 
 type AfterImage struct {
@@ -739,7 +758,6 @@ func (ai *AfterImage) recAfterImg(sd *SprData) {
 		img.scl = sd.scl
 		img.angle = sd.angle
 		img.ascl = sd.ascl
-		img.aset = sd.aset
 		img.oldVer = sd.oldVer
 		ai.imgidx = (ai.imgidx + 1) & 63
 		if int(ai.reccount) < len(ai.imgs) {
@@ -761,7 +779,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
-			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl, img.aset,
+			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl,
 			false, sd.bright, sd.oldVer}, 0, 0, 0)
 	}
 	if rec {
@@ -1217,7 +1235,7 @@ func (c *Char) load(def string) error {
 				cns, sprite = is["cns"], is["sprite"]
 				anim, sound = is["anim"], is["sound"]
 				for i := range gi.pal {
-					gi.pal[i] = is[fmt.Sprintf("pal%d", i+1)]
+					gi.pal[i] = is[fmt.Sprintf("pal%v", i+1)]
 				}
 			}
 		case "palette ":
@@ -1441,7 +1459,7 @@ func (c *Char) loadPallet() {
 					if binary.Read(f, binary.LittleEndian, rgb[:]) != nil {
 						break
 					}
-					pl[i] = uint32(rgb[0])<<16 | uint32(rgb[1])<<8 | uint32(rgb[2])
+					pl[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 				}
 				if tmp == 0 && i > 0 {
 					copy(c.gi().sff.palList.Get(0), pl)
@@ -1635,7 +1653,15 @@ func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
 }
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		unimplemented()
+		if int32(c.facing*c.distX(c.p2())) < 0 {
+			switch c.ss.stateType {
+			case ST_S:
+				c.changeAnim(5)
+			case ST_C:
+				c.changeAnim(6)
+			}
+			c.setFacing(-c.facing)
+		}
 	}
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
@@ -1824,12 +1850,16 @@ func (c *Char) roundState() int32 {
 	}
 }
 func (c *Char) animTime() int32 {
-	unimplemented()
+	if c.anim != nil {
+		return c.anim.AnimTime()
+	}
 	return 0
 }
-func (c *Char) animElemTime(e int32) int32 {
-	unimplemented()
-	return 0
+func (c *Char) animElemTime(e int32) BytecodeValue {
+	if e >= 1 && c.anim != nil && int(e) <= len(c.anim.frames) {
+		return BytecodeInt(c.anim.AnimElemTime(e))
+	}
+	return BytecodeSF()
 }
 func (c *Char) newExplod() (*Explod, int) {
 	unimplemented()
@@ -2696,6 +2726,14 @@ func (c *Char) hasTarget(id int32) bool {
 	}
 	return false
 }
+func (c *Char) hasTargetOfHitdef(id int32) bool {
+	for _, tid := range c.targetsOfHitdef {
+		if tid == id {
+			return true
+		}
+	}
+	return false
+}
 func (c *Char) setBindTime(time int32) {
 	c.bindTime = time
 	if time == 0 {
@@ -2813,6 +2851,86 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 		[...]float32{atk.pos[0] + atk.offsetX(), atk.pos[1] + atk.offsetY()},
 		atk.facing, clsn2, c.clsnScale, [...]float32{c.pos[0] + c.offsetX(),
 			c.pos[1] + c.offsetY()}, c.facing)
+}
+func (c *Char) hitCheck(e *Char) bool {
+	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
+}
+func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
+	if sys.super > 0 && sys.superunhittable && c.playerNo == sys.superplayer ||
+		h.chainid >= 0 && c.ghv.hitid != h.chainid {
+		return false
+	}
+	if len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid {
+		for _, nci := range h.nochainid {
+			if nci >= 0 && c.ghv.hitid == nci {
+				return false
+			}
+		}
+	}
+	if h.reversal_attr >= 0 {
+		return c.atktmp != 0 && c.hitdef.attr > 0 &&
+			(c.hitdef.attr&h.reversal_attr&int32(ST_MASK)) != 0 &&
+			(c.hitdef.attr&h.reversal_attr&^int32(ST_MASK)) != 0
+	}
+	if h.attr <= 0 || h.hitflag&int32(c.ss.stateType) == 0 ||
+		h.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
+		h.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
+		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
+		return false
+	}
+	if h.chainid < 0 {
+		var styp int32
+		if st == ST_N {
+			styp = h.attr & int32(ST_MASK)
+		} else {
+			styp = int32(st)
+		}
+		for _, hb := range c.hitby {
+			if hb.time != 0 &&
+				(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
+				return false
+			}
+		}
+	}
+	return true
+}
+func (c *Char) hittable(h *HitDef, e *Char, st StateType,
+	countercheck func(*HitDef) bool) bool {
+	if !c.attrCheck(h, e.id, st) {
+		return false
+	}
+	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L ||
+		c.hitdef.reversal_attr > 0) {
+		switch {
+		case c.hitdef.reversal_attr > 0:
+			if h.reversal_attr > 0 {
+				if countercheck(&c.hitdef) {
+					c.atktmp = -1
+					return e.atktmp < 0
+				}
+				return true
+			}
+		case h.priority < c.hitdef.priority:
+		case h.priority == c.hitdef.priority:
+			switch {
+			case c.hitdef.bothhittype == AT_Dodge:
+			case h.bothhittype != AT_Hit:
+			case c.hitdef.bothhittype == AT_Hit:
+				if (c.hitdef.p1stateno >= 0 || c.hitdef.attr&int32(AT_AT) != 0 &&
+					h.hitonce != 0) && countercheck(&c.hitdef) {
+					c.atktmp = -1
+					return e.atktmp < 0 || Rand(0, 1) == 1
+				}
+				return true
+			default:
+				return true
+			}
+		default:
+			return true
+		}
+		return !countercheck(&c.hitdef)
+	}
+	return true
 }
 func (c *Char) action() {
 	if c.minus != 2 || c.sf(CSF_destroy) {
@@ -3286,7 +3404,7 @@ func (c *Char) cueDraw() {
 			for _, h := range c.hitby {
 				if h.time != 0 {
 					hb = true
-					mtk = mtk || h.falg&int32(ST_SCA) == 0 || h.falg&int32(AT_ALL) == 0
+					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0
 				}
 			}
 			if mtk {
@@ -3320,7 +3438,7 @@ func (c *Char) cueDraw() {
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, agl, c.angleScalse, c.angleset,
-				false, c.playerNo == sys.superplayer, c.gi().ver[0] != 1}
+				c.playerNo == sys.superplayer, c.gi().ver[0] != 1}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
 			}
@@ -3455,7 +3573,21 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.playerNo&1 != c.playerNo&1) == (c.hitdef.affectteam > 0)) {
-				unimplemented()
+				dist := -getter.distX(c) * c.facing
+				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
+					getter.inguarddist = true
+				}
+				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
+					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
+					(getter.hittmp < 2 || c.sf(CSF_nojugglecheck) ||
+						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
+					getter.hittable(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
+						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
+							c.attrCheck(h, getter.id, getter.ss.stateType) &&
+							c.hitCheck(getter)
+					}) {
+					unimplemented()
+				}
 			}
 			if getter.playerNo&1 != c.playerNo&1 && getter.sf(CSF_playerpush) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||

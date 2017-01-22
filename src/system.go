@@ -32,7 +32,7 @@ var sys = System{
 	roundTime:  -1,
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
-	lifebarFontScale:  1,
+	lifebarFontScale:  0.5,
 	mixer:             *newMixer(),
 	bgm:               *newVorbis(),
 	sounds:            newSounds(),
@@ -200,6 +200,8 @@ type System struct {
 	autoguard               [MaxSimul * 2]bool
 	clsnDraw                bool
 	accel                   float32
+	statusDraw              bool
+	clsnSpr                 Sprite
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -229,6 +231,9 @@ func (s *System) init(w, h int32) *lua.LState {
 	for i := range s.stringPool {
 		s.stringPool[i] = *NewStringPool()
 	}
+	s.clsnSpr = *newSprite()
+	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
+	s.clsnSpr.SetPxl([]byte{0})
 	systemScriptInit(l)
 	go func() {
 		stdin := bufio.NewScanner(os.Stdin)
@@ -442,7 +447,7 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 	spl := s.stringPool[pn].List
 	if sn >= 0 && sn < len(spl) {
 		s.clipboardText[pn] = append(s.clipboardText[pn],
-			strings.Split(fmt.Sprintf(spl[sn], a...), "\n")...)
+			strings.Split(OldSprintf(spl[sn], a...), "\n")...)
 	}
 }
 func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
@@ -718,7 +723,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.lifebar.step()
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
-			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, [2]float32{}, false,
+			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, [2]float32{},
 			false, true, s.cgi[s.superplayer].ver[0] != 1}, 0, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil
@@ -908,6 +913,9 @@ func (s *System) draw(x, y, scl float32) {
 	ob := s.brightness
 	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
 	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
+	fade := func(rect [4]int32, alpha int32) {
+		FillRect(rect, 0, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
+	}
 	if s.envcol_time == 0 {
 		if s.sf(GSF_nobg) {
 			c := uint32(0)
@@ -929,12 +937,95 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
-		unimplemented()
+		if !s.sf(GSF_globalnoshadow) {
+			if s.stage.reflection > 0 {
+				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
+			}
+			s.shadows.draw(x, y, scl*s.cam.BaseScale())
+		}
+		off := s.envShake.getOffset()
+		yofs, yofs2 := float32(s.gameHeight), float32(0)
+		if scl > 0 && s.cam.verticalfollow > 0 {
+			yofs = s.cam.screenZoff + float32(s.gameHeight-240)
+			yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
+		}
+		yofs *= 1/scl - 1
+		rect := s.scrrect
+		if off < (yofs-y+s.cam.boundH)*scl {
+			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
+				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+			fade(rect, 255)
+		}
+		if off < (-y+yofs2)*scl {
+			rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
+				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+			rect[1] = s.scrrect[3] - rect[3]
+			fade(rect, 255)
+		}
+		bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
+		xofs := float32(s.gameWidth) * (1/scl - 1) / 2
+		rect = s.scrrect
+		if x-xofs < bl {
+			rect[2] = (int32(math.Ceil(float64((bl-(x-xofs))*scl*
+				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+			fade(rect, 255)
+		}
+		if x+xofs > br {
+			rect[2] = (int32(math.Ceil(float64(((x+xofs)-br)*scl*
+				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+			rect[0] = s.scrrect[2] - rect[2]
+			fade(rect, 255)
+		}
+		s.lifebar.draw(0)
+		s.lifebar.ro.draw(0)
+	} else {
+		FillRect(s.scrrect, ecol, 255)
 	}
-	unimplemented()
+	if s.envcol_time == 0 || s.envcol_under {
+		s.sprites.draw(x, y, scl*s.cam.BaseScale())
+		if s.envcol_time == 0 && !s.sf(GSF_nofg) {
+			s.stage.draw(true, bgx, bgy, scl)
+		}
+	}
+	s.lifebar.draw(1)
+	s.lifebar.ro.draw(1)
+	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
+	s.lifebar.draw(2)
+	s.lifebar.ro.draw(2)
+	tmp := s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
+		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime
+	if sys.intro > s.lifebar.ro.ctrl_time+1 {
+		fade(s.scrrect, 256*(sys.intro-(s.lifebar.ro.ctrl_time+1))/
+			s.lifebar.ro.start_waittime)
+	} else if s.lifebar.ro.over_time >= s.lifebar.ro.start_waittime &&
+		s.intro < -tmp {
+		fade(s.scrrect, 256*(-tmp-s.intro)/s.lifebar.ro.start_waittime)
+	} else if s.clsnDraw {
+		fade(s.scrrect, 0)
+	}
+	if s.shuttertime > 0 {
+		rect := s.scrrect
+		rect[3] = s.shuttertime * ((s.scrrect[3] + 1) >> 1) / 15
+		fade(rect, 255)
+		rect[1] = s.scrrect[3] - rect[3]
+		fade(rect, 255)
+	}
+	s.brightness = ob
+	if s.clsnDraw {
+		s.clsnSpr.Pal[0] = 0xff0000
+		s.drawc1.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0x0000ff
+		s.drawc2.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0x00ff00
+		s.drawc2sp.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0x002000
+		s.drawc2mtk.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0x404040
+		s.drawwh.draw(0x3feff)
+	}
 }
 func (s *System) fight() (reload bool) {
-	s.gameTime, s.paused, s.accel = 0, false, 1
+	s.gameTime, s.paused, s.accel, s.statusDraw = 0, false, 1, true
 	defer func() {
 		s.unsetSF(GSF_nomusic)
 		for i, p := range s.chars {

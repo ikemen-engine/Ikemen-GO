@@ -279,6 +279,56 @@ func (bg *backGround) reset() {
 	bg.bga.sintime = bg.startsint
 	bg.bga.sinlooptime = bg.startsinlt
 }
+func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
+	stgscl [2]float32, shakeY float32) {
+	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
+	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
+	sclx := MaxF(0, scl+(1-scl)*(1-dx))
+	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
+	if sclx != 0 {
+		tmp := 1 / sclx
+		xbs *= MaxF(0, scl+(1-scl)*(1-dx*(xbs/bg.xscale[0]))) * tmp
+		tmp *= MaxF(0, scl+(1-scl)*(1-dx*(xras+1)))
+		xras -= tmp - 1
+		xbs *= tmp
+	}
+	sclx *= lscl[0]
+	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl))) * lclscl
+	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
+		bg.bga.offset[0]
+	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
+	if !sys.cam.ZoomEnable {
+		if bg.rasterx[1] == bg.rasterx[0] &&
+			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
+			x = float32(math.Floor(float64(x/bgscl))) * bgscl
+		}
+		if bg.bga.sinlooptime[1] <= 0 && bg.bga.sinoffset[1] == 0 {
+			y = float32(math.Floor(float64(y/bgscl))) * bgscl
+		}
+	}
+	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
+	x *= bgscl
+	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
+	scly *= stgscl[1]
+	rect := bg.startrect
+	var wscl [2]float32
+	for i := range wscl {
+		wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.windowdelta[i]*bgscl))) *
+			bgscl * lscl[i]
+	}
+	rect[0] = int32(math.Floor(float64((float32(rect[0]) -
+		(pos[0]+bg.camstartx)*bg.windowdelta[0]) * sys.widthScale * wscl[0])))
+	rect[1] = int32(math.Floor(float64(((float32(rect[1])-
+		pos[1]*bg.windowdelta[1])*wscl[1] - shakeY + float32(sys.gameHeight-240)) *
+		sys.heightScale)))
+	rect[2] = int32(math.Ceil(float64(float32(rect[2]) * sys.widthScale *
+		wscl[0])))
+	rect[3] = int32(math.Ceil(float64(float32(rect[3]) * sys.heightScale *
+		wscl[1])))
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl, xbs*bgscl, ys,
+		xras*x/(AbsF(ys)*lscl[1]*float32(bg.anim.spr.Size[1])),
+		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true)
+}
 
 type bgCtrl struct {
 	bg           []*backGround
@@ -391,10 +441,10 @@ func (bgct *bgcTimeLine) add(bgc *bgCtrl) {
 	if wtime == bgct.line[i].waitTime {
 		bgct.line[i].bgc = append(bgct.line[i].bgc, bgc)
 	} else {
-		tmp := append(bgct.line[:i:i],
-			bgctNode{bgc: []*bgCtrl{bgc}, waitTime: wtime})
 		bgct.line[i].waitTime -= wtime
-		bgct.line = append(tmp, bgct.line...)
+		bgct.line = append(bgct.line, bgctNode{})
+		copy(bgct.line[i+1:], bgct.line[i:])
+		bgct.line[i] = bgctNode{bgc: []*bgCtrl{bgc}, waitTime: wtime}
 	}
 }
 func (bgct *bgcTimeLine) step(s *Stage) {
@@ -812,8 +862,55 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		bgscl = 0.5
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
-	scl2 := s.localscl * scl
-	unimplemented()
+	scl2, boundlow := s.localscl*scl, float32(Max(0, sys.cam.boundhigh))
+	if pos[1] > boundlow {
+		yofs += (pos[1] - boundlow) * scl2
+		pos[1] = boundlow
+	} else if pos[1] < float32(sys.cam.boundhigh) {
+		yofs += (pos[1] - float32(sys.cam.boundhigh)) * scl2
+		pos[1] = float32(sys.cam.boundhigh)
+	}
+	if sys.cam.verticalfollow > 0 {
+		if yofs < 0 {
+			tmp := (float32(sys.cam.boundhigh) - pos[1]) * scl2
+			if scl > 1 {
+				tmp += (sys.cam.screenZoff + float32(sys.gameHeight-240)) * (1/scl - 1)
+			} else {
+				tmp += float32(sys.gameHeight) * (1/scl - 1)
+			}
+			if tmp >= 0 {
+			} else if yofs < tmp {
+				yofs -= tmp
+				pos[1] += tmp / scl2
+			} else {
+				pos[1] += yofs / scl2
+				yofs = 0
+			}
+		} else {
+			if -yofs < pos[1]*scl2 {
+				yofs += pos[1] * scl2
+				pos[1] = 0
+			} else {
+				pos[1] += yofs / scl2
+				yofs = 0
+			}
+		}
+	}
+	if !sys.cam.ZoomEnable {
+		for i, p := range pos {
+			pos[i] = float32(math.Ceil(float64(p - 0.5)))
+		}
+	}
+	yofs += (sys.cam.drawOffsetY +
+		float32(sys.cam.localcoord[1]-240)*s.localscl) *
+		Pow(scl, ((360*float32(sys.cam.localcoord[0])+
+			160*float32(sys.cam.localcoord[1]))/float32(sys.cam.localcoord[0])+
+			sys.cam.drawOffsetY)/480)
+	for _, b := range s.bg {
+		if b.visible && b.toplayer == top && b.anim.spr != nil {
+			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs)
+		}
+	}
 }
 func (s *Stage) reset() {
 	s.bga.clear()

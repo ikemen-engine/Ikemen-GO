@@ -985,7 +985,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_animtime:
 			sys.bcStack.PushI(c.animTime())
 		case OC_animelemtime:
-			*sys.bcStack.Top() = BytecodeInt(c.animElemTime(sys.bcStack.Top().ToI()))
+			*sys.bcStack.Top() = c.animElemTime(sys.bcStack.Top().ToI())
 		case OC_animexist:
 			*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
 		case OC_selfanimexist:

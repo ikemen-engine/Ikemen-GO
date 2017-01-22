@@ -121,6 +121,16 @@ func (pf *PalFX) step() {
 		}
 	}
 }
+func (pf *PalFX) synthesize(pfx PalFX) {
+	for i, m := range pfx.eMul {
+		pf.eMul[i] = pf.eMul[i] * m / 256
+	}
+	for i, a := range pfx.eAdd {
+		pf.eAdd[i] += a
+	}
+	pf.eColor *= pfx.eColor
+	pf.eInvertall = pf.eInvertall != pfx.eInvertall
+}
 
 type PaletteList struct {
 	palettes   [][]uint32
@@ -152,8 +162,7 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 	}
 }
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
-	i = len(pl.palettes)
-	p = make([]uint32, 256)
+	i, p = len(pl.palettes), make([]uint32, 256)
 	pl.SetSource(i, p)
 	return
 }
@@ -937,6 +946,9 @@ type Sff struct {
 func newSff() (s *Sff) {
 	s = &Sff{sprites: make(map[[2]int16]*Sprite)}
 	s.palList.init()
+	for i := int16(1); i <= int16(MaxPalNo); i++ {
+		s.palList.PalTable[[...]int16{1, i}], _ = s.palList.NewPal()
+	}
 	return
 }
 func LoadSff(filename string, char bool) (*Sff, error) {
@@ -997,7 +1009,7 @@ func LoadSff(filename string, char bool) (*Sff, error) {
 	shofs := int64(s.header.FirstSpriteHeaderOffset)
 	for i := 0; i < len(spriteList); i++ {
 		f.Seek(shofs, 0)
-		spriteList[i] = &Sprite{}
+		spriteList[i] = newSprite()
 		var xofs, size uint32
 		var indexOfPrevious uint16
 		switch s.header.Ver0 {
@@ -1031,6 +1043,7 @@ func LoadSff(filename string, char bool) (*Sff, error) {
 					return nil, err
 				}
 			}
+			prev = spriteList[i]
 		}
 		if s.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] ==
 			nil {
@@ -1056,10 +1069,8 @@ func (s *Sff) GetOwnPalSprite(g, n int16) *Sprite {
 	if sp == nil {
 		return nil
 	}
-	osp := &Sprite{}
-	*osp = *sp
-	pal := sp.GetPal(&s.palList)
+	osp, pal := *sp, sp.GetPal(&s.palList)
 	osp.Pal = make([]uint32, len(pal))
 	copy(osp.Pal, pal)
-	return osp
+	return &osp
 }
