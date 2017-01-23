@@ -71,7 +71,7 @@ func (m *Mixer) write() bool {
 	m.bufClear()
 	return true
 }
-func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample int, channels int,
+func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 	sampleRate float64, loop bool, volume float32) float64 {
 	fidxadd := sampleRate / audioFrequency
 	if fidxadd > 0 {
@@ -156,7 +156,7 @@ func NewNormalizer() *Normalizer {
 	return &Normalizer{mul: 4, l: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0},
 		r: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0}}
 }
-func (n *Normalizer) Process(l float32, r float32) (float32, float32) {
+func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
 	if lmul < rmul {

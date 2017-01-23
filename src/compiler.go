@@ -6306,7 +6306,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				cmd, stcommon = is["cmd"], is["stcommon"]
 				st[0] = is["st"]
 				for i := 1; i < len(st); i++ {
-					st[i] = is[fmt.Sprintf("st%d", i-1)]
+					st[i] = is[fmt.Sprintf("st%v", i-1)]
 				}
 			}
 		}

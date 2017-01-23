@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +57,7 @@ var sys = System{
 	commandLine:            make(chan string),
 	cam:                    *newCamera(),
 	playerIdCache:          make(map[int32]*Char),
+	mainThreadTask:         make(chan func(), 65536),
 }
 
 type TeamMode int32
@@ -202,6 +202,7 @@ type System struct {
 	accel                   float32
 	statusDraw              bool
 	clsnSpr                 Sprite
+	mainThreadTask          chan func()
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -266,10 +267,22 @@ func (s *System) eventUpdate() bool {
 	s.gameEnd = s.window.ShouldClose()
 	return !s.gameEnd
 }
+func (s *System) runMainThreadTask() {
+	loop := true
+	for loop {
+		select {
+		case f := <-s.mainThreadTask:
+			f()
+		default:
+			loop = false
+		}
+	}
+}
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		s.window.SwapBuffers()
 	}
+	s.runMainThreadTask()
 	now := time.Now()
 	diff := s.redrawWait.nextTime.Sub(now)
 	wait := time.Second / time.Duration(fps)
@@ -1703,7 +1716,6 @@ func (l *Loader) load() {
 		return true
 	}
 	for !stageDone || !allCharDone() {
-		runtime.LockOSThread()
 		for i, b := range charDone {
 			if !b {
 				result := l.loadChar(i)
@@ -1731,7 +1743,6 @@ func (l *Loader) load() {
 			}
 			stageDone = true
 		}
-		runtime.UnlockOSThread()
 		time.Sleep(10 * time.Millisecond)
 		if sys.gameEnd {
 			l.state = LS_Cancel

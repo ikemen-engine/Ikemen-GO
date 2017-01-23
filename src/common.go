@@ -290,17 +290,13 @@ func SplitAndTrim(str, sep string) (ss []string) {
 	return
 }
 func OldSprintf(f string, a ...interface{}) (s string) {
-	iIdx, numVerbs := []int{}, 0
+	iIdx, lIdx, numVerbs := []int{}, []int{}, 0
 	for i := 0; i < len(f); i++ {
 		if f[i] == '%' {
 			i++
 			if i >= len(f) {
 				break
 			}
-			if f[i] == '%' {
-				continue
-			}
-			numVerbs++
 			for ; i < len(f) && (f[i] == ' ' || f[i] == '0' ||
 				f[i] == '-' || f[i] == '+' || f[i] == '#'); i++ {
 			}
@@ -319,15 +315,26 @@ func OldSprintf(f string, a ...interface{}) (s string) {
 					break
 				}
 			}
-			if f[i] == 'i' {
+			if f[i] == 'h' || f[i] == 'l' || f[i] == 'L' {
+				lIdx = append(lIdx, i)
+				i++
+			}
+			if f[i] == '%' {
+				continue
+			}
+			numVerbs++
+			if f[i] == 'i' || f[i] == 'u' {
 				iIdx = append(iIdx, i)
 			}
 		}
 	}
-	if len(iIdx) > 0 {
+	if len(iIdx) > 0 || len(lIdx) > 0 {
 		b := []byte(f)
 		for _, i := range iIdx {
 			b[i] = 'd'
+		}
+		for i := len(lIdx) - 1; i >= 0; i-- {
+			b = append(b[:lIdx[i]], b[lIdx[i]+1:]...)
 		}
 		f = string(b)
 	}

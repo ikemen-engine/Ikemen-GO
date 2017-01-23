@@ -80,7 +80,7 @@ func RenderInit() {
 		}
 		return
 	}
-	link := func(v uintptr, f uintptr) (program uintptr) {
+	link := func(v, f uintptr) (program uintptr) {
 		program = gl.CreateProgramObjectARB()
 		gl.AttachObjectARB(program, v)
 		gl.AttachObjectARB(program, f)
@@ -115,8 +115,7 @@ func RenderInit() {
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
 }
-func kaiten(x *float32, y *float32,
-	angle float64, rcx float32, rcy float32, vscl float32) {
+func kaiten(x, y *float32, angle float64, rcx, rcy, vscl float32) {
 	temp := (*y - rcy) / vscl
 	length := math.Sqrt(float64((*x-rcx)*(*x-rcx) + temp*temp))
 	if *x-rcx == 0 {

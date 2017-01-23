@@ -27,16 +27,16 @@ const (
 
 type Texture uint32
 
-func textureFinalizer(t *Texture) {
-	if *t != 0 {
-		gl.DeleteTextures(1, (*uint32)(t))
-	}
-}
 func NewTexture() (t *Texture) {
 	t = new(Texture)
 	gl.GenTextures(1, (*uint32)(t))
-	runtime.SetFinalizer(t, textureFinalizer)
+	runtime.SetFinalizer(t, (*Texture).finalizer)
 	return
+}
+func (t *Texture) finalizer() {
+	if *t != 0 {
+		gl.DeleteTextures(1, (*uint32)(t))
+	}
 }
 
 type PalFXDef struct {
@@ -277,14 +277,14 @@ type Sprite struct {
 	Group, Number int16
 	Size          [2]uint16
 	Offset        [2]int16
-	palidx, link  int
+	palidx        int
 	rle           int
 }
 
 func newSprite() *Sprite {
-	return &Sprite{palidx: -1, link: -1}
+	return &Sprite{palidx: -1}
 }
-func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
+func LoadFromSff(filename string, g, n int16) (*Sprite, error) {
 	s := newSprite()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -364,7 +364,7 @@ func LoadFromSff(filename string, g int16, n int16) (*Sprite, error) {
 		}
 	}
 	if i == int(h.NumberOfSprites) {
-		return nil, Error(fmt.Sprintf("%d, %d のスプライトが見つかりません", g, n))
+		return nil, Error(fmt.Sprintf("%v, %v のスプライトが見つかりません", g, n))
 	}
 	if h.Ver0 == 1 {
 		s.Pal = pl.Get(s.palidx)
@@ -421,18 +421,20 @@ func (s *Sprite) SetPxl(px []byte) {
 	if int64(len(px)) != int64(s.Size[0])*int64(s.Size[1]) {
 		return
 	}
-	s.Tex = NewTexture()
-	gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE,
-		int32(s.Size[0]), int32(s.Size[1]),
-		0, gl.LUMINANCE, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+	sys.mainThreadTask <- func() {
+		s.Tex = NewTexture()
+		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE,
+			int32(s.Size[0]), int32(s.Size[1]),
+			0, gl.LUMINANCE, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+	}
 }
-func (s *Sprite) readHeader(r io.Reader, ofs *uint32, size *uint32,
+func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32,
 	link *uint16) error {
 	read := func(x interface{}) error {
 		return binary.Read(r, binary.LittleEndian, x)
@@ -1027,7 +1029,6 @@ func LoadSff(filename string, char bool) (*Sff, error) {
 		if size == 0 {
 			if int(indexOfPrevious) < i {
 				spriteList[i].shareCopy(spriteList[int(indexOfPrevious)])
-				spriteList[i].link = int(indexOfPrevious)
 			}
 		} else {
 			switch s.header.Ver0 {
@@ -1065,6 +1066,7 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	return s.sprites[[...]int16{g, n}]
 }
 func (s *Sff) GetOwnPalSprite(g, n int16) *Sprite {
+	sys.runMainThreadTask() // テクスチャを生成
 	sp := s.GetSprite(g, n)
 	if sp == nil {
 		return nil

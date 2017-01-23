@@ -246,8 +246,8 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 		0, 0)
 	return float32(spr.Size[0]) * xscl
 }
-func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank int32,
-	align int32) {
+func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
+	bank, align int32) {
 	if len(txt) == 0 {
 		return
 	}

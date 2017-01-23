@@ -228,7 +228,7 @@ func systemScriptInit(l *lua.LState) {
 		act := strArg(l, 2)
 		anim := NewAnim(s, act)
 		if anim == nil {
-			l.RaiseError("\n%s\n\nデータの読み込みに失敗しました。", act)
+			l.RaiseError("\n%v\n\nデータの読み込みに失敗しました。", act)
 		}
 		l.Push(newUserData(l, anim))
 		return 1
@@ -575,6 +575,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 				sys.await(FPS)
 			}
+			sys.runMainThreadTask()
 			return nil
 		}
 		fight := func() (int32, error) {
