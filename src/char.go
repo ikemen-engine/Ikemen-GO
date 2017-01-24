@@ -802,7 +802,7 @@ type Explod struct {
 	relativef      int32
 	pos            [2]float32
 	facing         float32
-	vfacing        int32
+	vfacing        float32
 	shadow         [3]int32
 	supermovetime  int32
 	pausemovetime  int32
@@ -824,8 +824,67 @@ func (e *Explod) clear() {
 		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1,
 		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -1, ignorehitpause: true}
 }
+func (e *Explod) setX(x float32) {
+	e.pos[0], e.oldPos[0], e.newPos[0] = x, x, x
+}
+func (e *Explod) setY(y float32) {
+	e.pos[1], e.oldPos[1], e.newPos[1] = y, y, y
+}
 func (e *Explod) setPos(c *Char) {
-	unimplemented()
+	pPos := func(c *Char) {
+		e.bindId, e.facing = c.id, c.facing*float32(e.relativef)
+		e.offset[0] *= c.facing
+		e.setX(c.pos[0] + c.offsetX() + e.offset[0])
+		e.setY(c.pos[1] + c.offsetY() + e.offset[1])
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
+	}
+	lPos := func() {
+		e.setX(sys.cam.ScreenPos[0] + e.offset[0]/sys.cam.Scale)
+		e.setY(sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale)
+	}
+	rPos := func() {
+		e.setX(sys.cam.ScreenPos[0] +
+			(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale)
+		e.setY(sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale)
+	}
+	switch e.postype {
+	case PT_P1:
+		pPos(c)
+	case PT_P2:
+		if p2 := c.p2(); p2 != nil {
+			pPos(p2)
+		}
+	case PT_F, PT_B:
+		e.facing = c.facing * float32(e.relativef)
+		// front と back はバインドの都合で left か right になおす
+		if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
+			if e.postype == PT_B {
+				e.offset[0] *= -1
+			}
+			e.postype = PT_R
+			rPos()
+		} else {
+			// explod の postype = front は facing で pos が反転しない
+			if e.postype == PT_F && c.gi().ver[0] != 1 {
+				// 旧バージョンだと front は キャラクターの facing が反映されない
+				e.facing = float32(e.relativef)
+			}
+			e.postype = PT_L
+			lPos()
+		}
+	case PT_L:
+		e.facing = float32(e.relativef)
+		lPos()
+	case PT_R:
+		e.facing = float32(e.relativef)
+		rPos()
+	case PT_N:
+		e.facing = float32(e.relativef)
+		e.setX(e.offset[0])
+		e.setY(e.offset[1])
+	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
@@ -860,7 +919,91 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			return
 		}
 	}
-	unimplemented()
+	screen := false
+	if e.bindtime != 0 {
+		if e.postype >= PT_L {
+			e.pos, screen = e.offset, true
+			if e.postype == PT_L {
+				e.pos[0] -= float32(sys.gameWidth) / 2
+			} else {
+				e.pos[0] += float32(sys.gameWidth) / 2
+			}
+		} else {
+			if c := sys.charList.get(e.bindId); c != nil {
+				e.pos[0] = c.drawPos[0] + c.offsetX() + e.offset[0]
+				e.pos[1] = c.drawPos[1] + c.offsetY() + e.offset[1]
+			} else {
+				e.bindtime = 0
+			}
+		}
+	} else {
+		for i := range e.pos {
+			e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*sys.tickInterpola()
+		}
+	}
+	if sys.tickFrame() && act {
+		e.anim.UpdateSprite()
+	}
+	sprs := &sys.sprites
+	if e.ontop {
+		sprs = &sys.topSprites
+	}
+	var pfx *PalFX
+	if e.anim.sff != sys.lifebar.fsff {
+		pfx = e.palfx
+	} else if !e.ownpal {
+		pfx = &PalFX{}
+		*pfx = *e.palfx
+		pfx.remap = nil
+	}
+	alp := e.alpha
+	if alp[0] < 0 {
+		alp[0] = -1
+	}
+	agl := e.angle
+	if (e.scale[0] < 0) != (e.scale[1] < 0) {
+		agl *= -1
+	}
+	sdwalp := alp[0]
+	if sdwalp < 0 {
+		sdwalp = 256
+	}
+	sprs.add(&SprData{e.anim, pfx, e.pos, [...]float32{e.facing * e.scale[0],
+		e.vfacing * e.scale[1]}, alp, e.sprpriority, agl, [...]float32{1, 1},
+		screen, playerNo == sys.superplayer, oldVer},
+		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0)
+	if sys.tickNextFrame() {
+		if e.bindtime > 0 {
+			e.bindtime--
+			if screen && e.bindtime == 0 {
+				switch e.postype {
+				case PT_L:
+					for i := range e.pos {
+						e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+					}
+				case PT_R:
+					e.pos[0] = sys.cam.ScreenPos[0] +
+						(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
+					e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
+				}
+			}
+		}
+		if act {
+			if e.bindtime == 0 {
+				e.oldPos = e.pos
+				e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
+				e.newPos[1] = e.pos[1] + e.velocity[1]
+				for i := range e.velocity {
+					e.velocity[i] *= e.accel[i]
+				}
+			}
+			e.anim.Action()
+			e.time++
+		} else {
+			e.setX(e.pos[0])
+			e.setY(e.pos[1])
+		}
+	}
 }
 
 type Projectile struct {
@@ -1414,7 +1557,7 @@ func (c *Char) load(def string) error {
 	}
 	if LoadFile(&sprite, def, func(filename string) error {
 		var err error
-		gi.sff, err = LoadSff(filename, false)
+		gi.sff, err = loadSff(filename, false)
 		return err
 	}); err != nil {
 		return err
@@ -1647,9 +1790,70 @@ func (c *Char) time() int32 {
 func (c *Char) alive() bool {
 	return !c.scf(SCF_ko)
 }
-func (c *Char) playSound(f, lw, lp bool, g, n, ch, vo int32,
-	p, fr float32, x *float32) {
-	unimplemented()
+func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
+	ch = Min(255, ch)
+	if ch >= 0 {
+		if lowpriority {
+			if len(c.sounds) > int(ch) && c.sounds[ch].sound != nil {
+				return nil
+			}
+		}
+		if len(c.sounds) < int(ch+1) {
+			c.sounds = append(c.sounds, newSounds(int(ch+1)-len(c.sounds))...)
+		}
+		return &c.sounds[ch]
+	}
+	if len(c.sounds) < 256 {
+		c.sounds = append(c.sounds, newSounds(256-len(c.sounds))...)
+	}
+	for i := 255; i >= 0; i-- {
+		if c.sounds[i].sound == nil {
+			return &c.sounds[i]
+		}
+	}
+	return nil
+}
+func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
+	pan, freqmul float32, _ *float32) {
+	if g < 0 {
+		return
+	}
+	var w *Wave
+	if f {
+		if sys.lifebar.fsnd != nil {
+			w = sys.lifebar.fsnd.Get([...]int32{g, n})
+		}
+	} else {
+		if c.gi().snd != nil {
+			w = c.gi().snd.Get([...]int32{g, n})
+		}
+	}
+	if w == nil {
+		fmt.Print("存在しないサウンド: ")
+		if f {
+			fmt.Print("F:")
+		} else {
+			fmt.Printf("P%v:", c.playerNo+1)
+		}
+		fmt.Printf("%v,%v\n", g, n)
+		return
+	}
+	ch := c.newChannel(chNo, lowpriority)
+	ch.sound, ch.loop, ch.lowpriority, ch.freqmul = w, loop, lowpriority, freqmul
+	vol = Max(-25600, Min(25600, vol))
+	if c.gi().ver[0] == 1 {
+		if f {
+			ch.SetVolume(256)
+		} else {
+			ch.SetVolume(c.gi().data.volume * vol / 100)
+		}
+	} else {
+		if f {
+			ch.SetVolume(vol + 256)
+		} else {
+			ch.SetVolume(c.gi().data.volume + vol)
+		}
+	}
 }
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
@@ -1755,7 +1959,6 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 			}
 		}
 	}
-	unimplemented()
 	return true
 }
 func (c *Char) newHelper() (h *Char) {
@@ -1862,18 +2065,63 @@ func (c *Char) animElemTime(e int32) BytecodeValue {
 	return BytecodeSF()
 }
 func (c *Char) newExplod() (*Explod, int) {
-	unimplemented()
-	return nil, 0
+	explinit := func(expl *Explod) *Explod {
+		expl.clear()
+		expl.id, expl.playerId, expl.palfx = -1, c.id, c.getPalfx()
+		return expl
+	}
+	for i := range sys.explods[c.playerNo] {
+		if sys.explods[c.playerNo][i].id == IErr {
+			return explinit(&sys.explods[c.playerNo][i]), i
+		}
+	}
+	i := len(sys.explods[c.playerNo])
+	if i < sys.explodMax {
+		sys.explods[c.playerNo] = append(sys.explods[c.playerNo], Explod{})
+		return explinit(&sys.explods[c.playerNo][i]), i
+	}
+	return nil, -1
 }
 func (c *Char) getExplods(id int32) []*Explod {
 	unimplemented()
 	return nil
 }
-func (c *Char) remapPalSub(pfx *PalFX, sg, sn, dg, dn int32) {
-	unimplemented()
-}
 func (c *Char) insertExplodEx(i int, rp [2]int32) {
-	unimplemented()
+	e := &sys.explods[c.playerNo][i]
+	if e.anim == nil {
+		e.id = IErr
+		return
+	}
+	e.anim.UpdateSprite()
+	if e.ownpal && e.anim.sff != sys.lifebar.fsff {
+		remap := make([]int, len(e.palfx.remap))
+		copy(remap, e.palfx.remap)
+		e.palfx = newPalFX()
+		e.palfx.remap = remap
+		c.remapPal(e.palfx, [...]int32{1, 1}, rp)
+	}
+	if e.ontop {
+		td := &sys.topexplDrawlist[c.playerNo]
+		for ii, te := range *td {
+			if te < 0 {
+				(*td)[ii] = i
+				return
+			}
+		}
+		*td = append(*td, i)
+	} else {
+		ed := &sys.explDrawlist[c.playerNo]
+		for ii, ex := range *ed {
+			pid := sys.explods[c.playerNo][ex].playerId
+			if pid >= pid && (pid > pid || ex < i) {
+				*ed = append(*ed, 0)
+				copy((*ed)[ii+1:], (*ed)[ii:])
+				(*ed)[ii] = i
+				return
+			}
+		}
+		*ed = append(*ed, i)
+	}
 }
 func (c *Char) insertExplod(i int) {
 	c.insertExplodEx(i, [...]int32{-1, 0})
@@ -3472,26 +3720,24 @@ func (c *Char) cueDraw() {
 		if c.roundState() == 4 {
 			c.exitTarget(false)
 		}
-		if sys.supertime < 0 {
-			if c.playerNo&1 != sys.superplayer&1 {
-				c.defenceMul *= sys.superp2defmul
-			}
-			c.minus = 2
-			c.oldPos = c.pos
+		if sys.supertime < 0 && c.playerNo&1 != sys.superplayer&1 {
+			c.defenceMul *= sys.superp2defmul
 		}
+		c.minus = 2
+		c.oldPos = c.pos
 	}
 }
 
 type CharList struct {
 	runOrder, drawOrder []*Char
+	idMap               map[int32]*Char
 }
 
 func (cl *CharList) clear() {
-	*cl = CharList{}
+	*cl = CharList{idMap: make(map[int32]*Char)}
 	sys.nextCharId = sys.helperMax
 }
 func (cl *CharList) add(c *Char) {
-	sys.clearPlayerIdCache()
 	cl.runOrder = append(cl.runOrder, c)
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -3502,6 +3748,9 @@ func (cl *CharList) add(c *Char) {
 	}
 	if i >= len(cl.drawOrder) {
 		cl.drawOrder = append(cl.drawOrder, c)
+	}
+	if c.id >= 0 {
+		cl.idMap[c.id] = c
 	}
 }
 func (cl *CharList) action(x float32, cvmin, cvmax,
@@ -3669,17 +3918,7 @@ func (cl *CharList) get(id int32) *Char {
 	if id < 0 {
 		return nil
 	}
-	if c, ok := sys.playerIdCache[id]; ok {
-		return c
-	}
-	for _, c := range cl.runOrder {
-		if c.id == id {
-			sys.playerIdCache[id] = c
-			return c
-		}
-	}
-	sys.playerIdCache[id] = nil
-	return nil
+	return cl.idMap[id]
 }
 func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 	if n < 0 {

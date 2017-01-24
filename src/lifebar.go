@@ -742,7 +742,6 @@ func (r *LifeBarRound) act() bool {
 					end = r.round_default.End(r.dt[0])
 				}
 				if end {
-					unimplemented()
 					r.callFight()
 					return true
 				}
@@ -875,6 +874,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 
 type Lifebar struct {
 	fat       AnimationTable
+	fsff      *Sff
 	snd, fsnd *Snd
 	fnt       [10]*Fnt
 	hb        [3][]*HealthBar
@@ -887,18 +887,19 @@ type Lifebar struct {
 	ro        *LifeBarRound
 }
 
-func LoadLifebar(deffile string) (*Lifebar, error) {
+func loadLifebar(deffile string) (*Lifebar, error) {
 	str, err := LoadText(deffile)
 	if err != nil {
 		return nil, err
 	}
-	l := &Lifebar{snd: &Snd{}, hb: [...][]*HealthBar{make([]*HealthBar, 2),
-		make([]*HealthBar, 4), make([]*HealthBar, 2)},
+	l := &Lifebar{fsff: &Sff{}, snd: &Snd{},
+		hb: [...][]*HealthBar{make([]*HealthBar, 2), make([]*HealthBar, 4),
+			make([]*HealthBar, 2)},
 		fa: [...][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 4),
 			make([]*LifeBarFace, 2)},
 		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 4),
 			make([]*LifeBarName, 2)}}
-	sff, fsff, lines, i := &Sff{}, &Sff{}, SplitAndTrim(str, "\n"), 0
+	sff, lines, i := &Sff{}, SplitAndTrim(str, "\n"), 0
 	at := ReadAnimationTable(sff, lines, &i)
 	i = 0
 	filesflg := true
@@ -909,7 +910,7 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 			if filesflg {
 				filesflg = false
 				if is.LoadFile("sff", deffile, func(filename string) error {
-					s, err := LoadSff(filename, false)
+					s, err := loadSff(filename, false)
 					if err != nil {
 						return err
 					}
@@ -929,11 +930,11 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 					return nil, err
 				}
 				if is.LoadFile("fightfx.sff", deffile, func(filename string) error {
-					s, err := LoadSff(filename, false)
+					s, err := loadSff(filename, false)
 					if err != nil {
 						return err
 					}
-					*fsff = *s
+					*l.fsff = *s
 					return nil
 				}); err != nil {
 					return nil, err
@@ -944,7 +945,7 @@ func LoadLifebar(deffile string) (*Lifebar, error) {
 						return err
 					}
 					lines, i := SplitAndTrim(str, "\n"), 0
-					l.fat = ReadAnimationTable(fsff, lines, &i)
+					l.fat = ReadAnimationTable(l.fsff, lines, &i)
 					return nil
 				}); err != nil {
 					return nil, err

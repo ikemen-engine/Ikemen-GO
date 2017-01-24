@@ -34,7 +34,7 @@ var sys = System{
 	lifebarFontScale:  0.5,
 	mixer:             *newMixer(),
 	bgm:               *newVorbis(),
-	sounds:            newSounds(),
+	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	sel:               *newSelect(),
@@ -56,8 +56,8 @@ var sys = System{
 	hotkeys:                make(map[ShortcutKey]string),
 	commandLine:            make(chan string),
 	cam:                    *newCamera(),
-	playerIdCache:          make(map[int32]*Char),
 	mainThreadTask:         make(chan func(), 65536),
+	explodMax:              256,
 }
 
 type TeamMode int32
@@ -181,7 +181,6 @@ type System struct {
 	debugWC                 *Char
 	cam                     Camera
 	finish                  FinishType
-	playerIdCache           map[int32]*Char
 	waitdown                int32
 	shuttertime             int32
 	projs                   [MaxSimul * 2][]Projectile
@@ -203,6 +202,7 @@ type System struct {
 	statusDraw              bool
 	clsnSpr                 Sprite
 	mainThreadTask          chan func()
+	explodMax               int
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -268,13 +268,12 @@ func (s *System) eventUpdate() bool {
 	return !s.gameEnd
 }
 func (s *System) runMainThreadTask() {
-	loop := true
-	for loop {
+	for {
 		select {
 		case f := <-s.mainThreadTask:
 			f()
 		default:
-			loop = false
+			return
 		}
 	}
 }
@@ -503,11 +502,6 @@ func (s *System) resetGblEffect() {
 	s.envcol_time = 0
 	s.specialFlag = 0
 }
-func (s *System) clearPlayerIdCache() {
-	for k := range s.playerIdCache {
-		delete(s.playerIdCache, k)
-	}
-}
 func (s *System) playerClear(pn int) {
 	if len(s.chars[pn]) > 0 {
 		helpers := s.chars[pn][1:]
@@ -532,7 +526,6 @@ func (s *System) nextRound() {
 	s.winTeam = -1
 	s.winType[0], s.winType[0] = WT_N, WT_N
 	s.cam.ResetZoomdelay()
-	s.clearPlayerIdCache()
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.shuttertime = 0
 	s.winskipped = false
@@ -1469,7 +1462,7 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
-func (s *Select) AddCahr(def string) {
+func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
 	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
@@ -1522,13 +1515,13 @@ func (s *Select) AddCahr(def string) {
 	sc.sprite = sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
-		sc.sportrait, err = LoadFromSff(file, 9000, 0)
+		sc.sportrait, err = loadFromSff(file, 9000, 0)
 		return err
 	})
 	sprite = sc.sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
-		sc.lportrait, err = LoadFromSff(file, 9000, 1)
+		sc.lportrait, err = loadFromSff(file, 9000, 1)
 		return err
 	})
 }
@@ -1673,7 +1666,7 @@ func (l *Loader) loadChar(pn int) int {
 	}
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
-		fa.face = sys.cgi[pn].sff.GetOwnPalSprite(
+		fa.face = sys.cgi[pn].sff.getOwnPalSprite(
 			int16(fa.face_spr[0]), int16(fa.face_spr[1]))
 		if sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 			fa.numko = 0
@@ -1682,7 +1675,7 @@ func (l *Loader) loadChar(pn int) int {
 				sprite := sys.sel.charlist[ci].sprite
 				LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
 					var err error
-					fa.teammate_face[i], err = LoadFromSff(file,
+					fa.teammate_face[i], err = loadFromSff(file,
 						int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
 					return err
 				})
@@ -1701,7 +1694,7 @@ func (l *Loader) loadStage() bool {
 	if sys.stage != nil && sys.stage.def == def {
 		return true
 	}
-	sys.stage, l.err = LoadStage(def)
+	sys.stage, l.err = loadStage(def)
 	return l.err == nil
 }
 func (l *Loader) load() {

@@ -536,6 +536,10 @@ func newLayout() *Layout {
 }
 func ReadLayout(pre string, is IniSection) *Layout {
 	l := newLayout()
+	l.Read(pre, is)
+	return l
+}
+func (l *Layout) Read(pre string, is IniSection) {
 	is.ReadF32(pre+"offset", &l.offset[0], &l.offset[1])
 	if str := is[pre+"facing"]; len(str) > 0 {
 		if Atoi(str) < 0 {
@@ -555,7 +559,6 @@ func ReadLayout(pre string, is IniSection) *Layout {
 	is.ReadI32(pre+"layerno", &ln)
 	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
-	return l
 }
 func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX) {
 	if l.layerno == ln && s != nil {
@@ -619,7 +622,7 @@ type AnimLayout struct {
 }
 
 func newAnimLayout(sff *Sff) *AnimLayout {
-	return &AnimLayout{anim: *newAnimation(sff)}
+	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout()}
 }
 func ReadAnimLayout(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *AnimLayout {
@@ -641,7 +644,7 @@ func (al *AnimLayout) Read(pre string, is IniSection,
 			al.anim = *ani
 		}
 	}
-	al.lay = *ReadLayout(pre, is)
+	al.lay.Read(pre, is)
 }
 func (al *AnimLayout) Reset() {
 	al.anim.Reset()
@@ -662,7 +665,8 @@ type AnimTextSnd struct {
 }
 
 func newAnimTextSnd(sff *Sff) *AnimTextSnd {
-	return &AnimTextSnd{snd: [2]int32{-1}, font: [3]int32{-1}, displaytime: -2}
+	return &AnimTextSnd{snd: [2]int32{-1}, font: [3]int32{-1},
+		anim: *newAnimLayout(sff), displaytime: -2}
 }
 func ReadAnimTextSnd(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *AnimTextSnd {

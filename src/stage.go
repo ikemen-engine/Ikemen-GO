@@ -521,7 +521,7 @@ func newStage(def string) *Stage {
 	s.p[0].startx, s.p[1].startx = -70, 70
 	return s
 }
-func LoadStage(def string) (*Stage, error) {
+func loadStage(def string) (*Stage, error) {
 	s := newStage(def)
 	str, err := LoadText(def)
 	if err != nil {
@@ -617,7 +617,7 @@ func LoadStage(def string) (*Stage, error) {
 	}
 	if sec := defmap["bgdef"]; len(sec) > 0 {
 		if sec[0].LoadFile("spr", def, func(filename string) error {
-			sff, err := LoadSff(filename, false)
+			sff, err := loadSff(filename, false)
 			if err != nil {
 				return err
 			}

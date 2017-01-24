@@ -494,11 +494,20 @@ func (s *Sound) Mix() {
 		s.fidx = 0
 	}
 }
+func (s *Sound) SetVolume(vol int32) {
+	if vol < 0 {
+		s.volume = 0
+	} else if vol > 512 {
+		s.volume = 512
+	} else {
+		s.volume = int16(vol)
+	}
+}
 
 type Sounds []Sound
 
-func newSounds() (s Sounds) {
-	s = make(Sounds, 16)
+func newSounds(size int) (s Sounds) {
+	s = make(Sounds, size)
 	for i := range s {
 		s[i] = Sound{volume: 256, freqmul: 1}
 	}

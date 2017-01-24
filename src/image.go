@@ -284,7 +284,7 @@ type Sprite struct {
 func newSprite() *Sprite {
 	return &Sprite{palidx: -1}
 }
-func LoadFromSff(filename string, g, n int16) (*Sprite, error) {
+func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 	s := newSprite()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -953,7 +953,7 @@ func newSff() (s *Sff) {
 	}
 	return
 }
-func LoadSff(filename string, char bool) (*Sff, error) {
+func loadSff(filename string, char bool) (*Sff, error) {
 	s := newSff()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -1065,7 +1065,7 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	}
 	return s.sprites[[...]int16{g, n}]
 }
-func (s *Sff) GetOwnPalSprite(g, n int16) *Sprite {
+func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
 	sys.runMainThreadTask() // テクスチャを生成
 	sp := s.GetSprite(g, n)
 	if sp == nil {

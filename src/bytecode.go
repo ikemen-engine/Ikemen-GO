@@ -1707,9 +1707,11 @@ func (sc hitBy) Run(c *Char, _ []int32) bool {
 		case hitBy_time:
 			time = exp[0].evalI(c)
 		case hitBy_value:
-			unimplemented()
+			c.hitby[0].time = time
+			c.hitby[0].flag = exp[0].evalI(c)
 		case hitBy_value2:
-			unimplemented()
+			c.hitby[1].time = time
+			c.hitby[1].flag = exp[0].evalI(c)
 		}
 		return true
 	})
@@ -1725,9 +1727,11 @@ func (sc notHitBy) Run(c *Char, _ []int32) bool {
 		case hitBy_time:
 			time = exp[0].evalI(c)
 		case hitBy_value:
-			unimplemented()
+			c.hitby[0].time = time
+			c.hitby[0].flag = ^exp[0].evalI(c)
 		case hitBy_value2:
-			unimplemented()
+			c.hitby[1].time = time
+			c.hitby[1].flag = ^exp[0].evalI(c)
 		}
 		return true
 	})

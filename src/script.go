@@ -49,7 +49,7 @@ func newInputDialog() *InputDialog {
 
 func scriptCommonInit(l *lua.LState) {
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
-		sff, err := LoadSff(strArg(l, 1), false)
+		sff, err := loadSff(strArg(l, 1), false)
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
@@ -339,7 +339,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			if len(c) > 0 {
-				sys.sel.AddCahr(c)
+				sys.sel.addCahr(c)
 			}
 		}
 		return 0
@@ -357,7 +357,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, sff)
 		}
-		sys.sel.randomspr = sff.GetOwnPalSprite(int16(numArg(l, 2)),
+		sys.sel.randomspr = sff.getOwnPalSprite(int16(numArg(l, 2)),
 			int16(numArg(l, 3)))
 		sys.sel.randomscl = [...]float32{float32(numArg(l, 4)),
 			float32(numArg(l, 5))}
@@ -494,7 +494,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "loadLifebar", func(l *lua.LState) int {
-		lb, err := LoadLifebar(strArg(l, 1))
+		lb, err := loadLifebar(strArg(l, 1))
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
