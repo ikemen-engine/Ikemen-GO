@@ -570,17 +570,7 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX) {
 		}
 		pal := s.Pal
 		if pal != nil {
-			if sys.allPalFX.enable {
-				if fx != nil && fx.enable {
-					synth := *fx
-					synth.synthesize(sys.allPalFX)
-					pal = synth.getFxPal(pal, false)
-				} else {
-					pal = sys.allPalFX.getFxPal(pal, false)
-				}
-			} else if fx != nil && fx.enable {
-				pal = fx.getFxPal(pal, false)
-			}
+			pal = fx.getFxPal(pal, false)
 		}
 		s.Draw(x+l.offset[0], y+l.offset[1],
 			l.scale[0]*float32(l.facing), l.scale[1]*float32(l.vfacing), pal)

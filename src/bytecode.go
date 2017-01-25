@@ -544,7 +544,7 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 	return true
 }
 func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
-	be.append(OC_int)
+	be.append(op)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
 func (_ BytecodeExp) neg(v *BytecodeValue) {
@@ -1089,7 +1089,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_sysfvar:
 			*sys.bcStack.Top() = c.sysFvarGet(sys.bcStack.Top().ToI())
 		case OC_localvar:
-			*sys.bcStack.Top() = sys.bcVar[uint8(be[i])]
+			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
 			i++
 		default:
 			vi := be[i-1]

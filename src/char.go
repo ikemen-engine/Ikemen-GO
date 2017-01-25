@@ -866,9 +866,9 @@ func (e *Explod) setPos(c *Char) {
 			e.postype = PT_R
 			rPos()
 		} else {
-			// explod の postype = front は facing で pos が反転しない
+			// explod の postype = front はキャラの向きで pos が反転しない
 			if e.postype == PT_F && c.gi().ver[0] != 1 {
-				// 旧バージョンだと front は キャラクターの facing が反映されない
+				// 旧バージョンだと front は キャラの向きが facing に反映されない
 				e.facing = float32(e.relativef)
 			}
 			e.postype = PT_L
@@ -1043,6 +1043,9 @@ type Projectile struct {
 	palfx         *PalFX
 }
 
+func newProjectile() *Projectile {
+	return &Projectile{aimg: *newAfterImage()}
+}
 func (p *Projectile) clear() {
 	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
 		scale: [...]float32{1, 1}, clsnscale: [...]float32{1, 1}, remove: true,
@@ -1050,6 +1053,7 @@ func (p *Projectile) clear() {
 		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
 		heightbound: [...]int32{-240, 1}, facing: 1}
 	p.hitdef.clear()
+	p.aimg.clear()
 }
 func (p *Projectile) update(playerNo int) {
 	unimplemented()
@@ -1113,7 +1117,7 @@ type StateState struct {
 	moveType        MoveType
 	physics         StateType
 	ps              []int32
-	wakegawakaranai [][]bool
+	wakegawakaranai [len(sys.cgi)][]bool
 	no, prevno      int32
 	time            int32
 	sb              StateBytecode
@@ -1122,7 +1126,6 @@ type StateState struct {
 func (ss *StateState) clear() {
 	ss.stateType, ss.moveType, ss.physics = ST_S, MT_I, ST_N
 	ss.ps = nil
-	ss.wakegawakaranai = make([][]bool, len(sys.cgi))
 	for i, v := range ss.wakegawakaranai {
 		if len(v) < int(sys.cgi[i].wakewakaLength) {
 			ss.wakegawakaranai[i] = make([]bool, sys.cgi[i].wakewakaLength)
@@ -1239,7 +1242,7 @@ type Char struct {
 }
 
 func newChar(n int, idx int32) (c *Char) {
-	c = &Char{}
+	c = &Char{aimg: *newAfterImage()}
 	c.init(n, idx)
 	return c
 }
@@ -1617,17 +1620,7 @@ func (c *Char) loadPallet() {
 			}
 		}
 		if tmp == 0 {
-			if c.gi().ver[0] == 1 {
-				delete(c.gi().sff.palList.PalTable, [...]int16{1, 1})
-			} else {
-				spr := c.gi().sff.GetSprite(9000, 0)
-				if spr == nil {
-					spr = c.gi().sff.GetSprite(0, 0)
-				}
-				if spr != nil {
-					copy(c.gi().sff.palList.Get(0), c.gi().sff.palList.Get(spr.palidx))
-				}
-			}
+			delete(c.gi().sff.palList.PalTable, [...]int16{1, 1})
 		}
 	} else {
 		for i := 0; i < MaxPalNo; i++ {
@@ -1757,7 +1750,10 @@ func (c *Char) changeAnim2(animNo int32) {
 	}
 }
 func (c *Char) setAnimElem(e int32) {
-	unimplemented()
+	if c.anim != nil {
+		c.anim.SetAnimElem(e)
+		c.curFrame = c.anim.CurrentFrame()
+	}
 }
 func (c *Char) setCtrl(ctrl bool) {
 	if ctrl {
@@ -1828,7 +1824,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			w = c.gi().snd.Get([...]int32{g, n})
 		}
 	}
-	if w == nil {
+	if w == nil && !(f && sys.ignoreMostErrors) {
 		fmt.Print("存在しないサウンド: ")
 		if f {
 			fmt.Print("F:")
@@ -2167,8 +2163,14 @@ func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
 	} else {
 		a = c.gi().anim.get(n)
 	}
-	if a == nil {
-		fmt.Printf("存在しないアニメ: P%v:%v\n", (c.playerNo+1)*int(1-2*Btoi(ffx)), n)
+	if a == nil && !(ffx && sys.ignoreMostErrors) {
+		fmt.Print("存在しないアニメ: ")
+		if ffx {
+			fmt.Print("F:")
+		} else {
+			fmt.Printf("P%v:", c.playerNo+1)
+		}
+		fmt.Printf("%v\n", n)
 	}
 	return
 }
@@ -2393,7 +2395,24 @@ func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }
 func (c *Char) command(pn, i int) bool {
-	unimplemented()
+	if !c.keyctrl || c.cmd == nil {
+		return false
+	}
+	cl := c.cmd[pn].At(i)
+	if len(cl) > 0 && c.key < 0 {
+		if c.gi().ver[0] == 1 && c.helperIndex != 0 {
+			return false
+		}
+		if c.helperIndex != 0 || len(cl[0].cmd) != 1 || len(cl[0].cmd[0].key) !=
+			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
+			return i == int(c.cpucmd)
+		}
+	}
+	for _, c := range cl {
+		if c.curbuftime > 0 {
+			return true
+		}
+	}
 	return false
 }
 func (c *Char) varGet(i int32) BytecodeValue {
@@ -2746,8 +2765,7 @@ func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
 		return BytecodeSF()
 	}
-	unimplemented()
-	return BytecodeBool(false)
+	return BytecodeBool(c.gi().anim.get(anim.ToI()) != nil)
 }
 func (c *Char) setPauseTime(pausetime, movetime int32) {
 	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
@@ -3338,8 +3356,8 @@ func (c *Char) action() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() {
 				c.changeState(5120, -1, -1)
 			}
-			for c.ss.no == 140 || c.anim == nil || len(c.anim.frames) == 0 ||
-				c.ss.time >= c.anim.totaltime {
+			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
+				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1)
 			}
@@ -3835,7 +3853,19 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							c.attrCheck(h, getter.id, getter.ss.stateType) &&
 							c.hitCheck(getter)
 					}) {
-					unimplemented()
+					if c.ss.moveType == MT_A && dist >= 0 &&
+						dist <= float32(c.hitdef.guard_dist) {
+						getter.inguarddist = true
+					}
+					if c.hitdef.reversal_attr <= 0 {
+						contact = -1
+					}
+					if getter.hitCheck(c) {
+						if contact < 0 {
+							contact = 1
+						}
+						unimplemented()
+					}
 				}
 			}
 			if getter.playerNo&1 != c.playerNo&1 && getter.sf(CSF_playerpush) &&

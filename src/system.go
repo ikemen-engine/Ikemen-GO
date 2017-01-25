@@ -58,6 +58,7 @@ var sys = System{
 	cam:                    *newCamera(),
 	mainThreadTask:         make(chan func(), 65536),
 	explodMax:              256,
+	workpal:                make([]uint32, 256),
 }
 
 type TeamMode int32
@@ -203,6 +204,7 @@ type System struct {
 	clsnSpr                 Sprite
 	mainThreadTask          chan func()
 	explodMax               int
+	workpal                 []uint32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -474,9 +476,9 @@ func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 				l1, r1 = -clsn1[i1+2], -clsn1[i1]+1
 			}
 			if facing2 > 0 {
-				l2, r2 = clsn1[i2], clsn1[i2+2]+1
+				l2, r2 = clsn2[i2], clsn2[i2+2]+1
 			} else {
-				l2, r2 = -clsn1[i2+2], -clsn1[i2]+1
+				l2, r2 = -clsn2[i2+2], -clsn2[i2]+1
 			}
 			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
 				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
@@ -1032,6 +1034,9 @@ func (s *System) draw(x, y, scl float32) {
 }
 func (s *System) fight() (reload bool) {
 	s.gameTime, s.paused, s.accel, s.statusDraw = 0, false, 1, true
+	for i := range s.clipboardText {
+		s.clipboardText[i] = nil
+	}
 	defer func() {
 		s.unsetSF(GSF_nomusic)
 		for i, p := range s.chars {

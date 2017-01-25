@@ -70,16 +70,77 @@ func (pf *PalFX) clear2(nt bool) {
 func (pf *PalFX) clear() {
 	pf.clear2(false)
 }
+func (pf *PalFX) getSynFx() *PalFX {
+	if pf == nil || !pf.enable {
+		return &sys.allPalFX
+	}
+	if !sys.allPalFX.enable {
+		return pf
+	}
+	synth := *pf
+	synth.synthesize(sys.allPalFX)
+	return &synth
+}
 func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
-	if pf == nil || pf.time == 0 {
+	p := pf.getSynFx()
+	if !p.enable {
 		return pal
 	}
-	unimplemented()
-	return nil
+	if !p.eNegType {
+		neg = false
+	}
+	var m, ad, su [3]int32
+	if neg {
+		for i := range m {
+			m[i] = (p.eMul[(i+1)%3] + p.eMul[(i+2)%3]) >> 1
+		}
+	} else {
+		m = p.eMul
+	}
+	a := p.eAdd
+	for i := range a {
+		if neg {
+			a[i] *= -1
+		}
+		if a[i] < 0 {
+			su[i] = -Max(-255, a[i])
+		} else {
+			ad[i] = Min(255, a[i])
+		}
+		m[i] = Max(0, Min(255*256, m[i]))
+		if m[i] > 256 || a[i] < 0 {
+			a[i] = 0
+		} else {
+			a[i] = Min(255*256*256/Max(1, m[i]), a[i])
+			ad[i] = 0
+		}
+	}
+	add := uint32(ad[2]<<16 | ad[1]<<8 | ad[0])
+	sub := uint32(su[2]<<16 | su[1]<<8 | su[0])
+	for i, c := range pal {
+		if p.eInvertall {
+			c = ^c
+		}
+		ac := float32(c&0xff+c>>8&0xff+c>>16&0xff) / 3
+		c = uint32(float32(c&0xff)+(ac-float32(c&0xff))*(1-p.eColor)) |
+			uint32(float32(c>>8&0xff)+(ac-float32(c>>8&0xff))*(1-p.eColor))<<8 |
+			uint32(float32(c>>16&0xff)+(ac-float32(c>>16&0xff))*(1-p.eColor))<<16
+		tmp := ((^c&sub)<<1 + (^c^sub)&0xfefefefe) & 0x01010100
+		msk := tmp - tmp>>8
+		c = ((c + add) - msk) | msk
+		tmp = (c&0xff + uint32(a[0])) * uint32(m[0]) >> 8
+		tmp = (tmp|uint32(Btoi(tmp&0xff00 != 0)<<31>>31))&0xff |
+			(((c>>8&0xff)+uint32(a[1]))*uint32(m[1])>>8)<<8
+		tmp = (tmp|uint32(Btoi(tmp&0xff0000 != 0)<<31>>23))&0xffff |
+			(((c>>16&0xff)+uint32(a[2]))*uint32(m[2])>>8)<<16
+		sys.workpal[i] = tmp | uint32(Btoi(tmp&0xff000000 != 0)<<31>>15)
+	}
+	return sys.workpal
 }
-func (pf *PalFX) getFcPalFx(trans int32) (neg bool, color float32,
+func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
 	add, mul [3]float32) {
-	if pf == nil || pf.time == 0 {
+	p := pf.getSynFx()
+	if !p.enable {
 		neg = false
 		color = 1
 		for i := range add {
@@ -88,8 +149,22 @@ func (pf *PalFX) getFcPalFx(trans int32) (neg bool, color float32,
 		for i := range mul {
 			mul[i] = 1
 		}
+		return
 	}
-	unimplemented()
+	neg = p.eInvertall
+	color = p.color
+	if !p.eNegType {
+		transNeg = false
+	}
+	for i, v := range p.eAdd {
+		add[i] = float32(v) / 255
+		if transNeg {
+			add[i] *= -1
+			mul[i] = float32(p.eMul[(i+1)%3]+p.eMul[(i+2)%3]) / 512
+		} else {
+			mul[i] = float32(p.eMul[i]) / 256
+		}
+	}
 	return
 }
 func (pf *PalFX) sinAdd(color *[3]int32) {
@@ -917,7 +992,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		return
 	}
 	if s.rle == -12 {
-		neg, color, padd, pmul := pfx.getFcPalFx(trans)
+		neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {

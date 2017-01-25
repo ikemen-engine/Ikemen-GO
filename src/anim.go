@@ -326,6 +326,22 @@ func (a *Animation) CurrentFrame() *AnimFrame {
 	}
 	return a.curFrame()
 }
+func (a *Animation) SetAnimElem(elem int32) {
+	a.current = Max(0, elem-1)
+	if int(a.current) >= len(a.frames) {
+		if a.totaltime == -1 {
+			a.current = int32(len(a.frames)) - 1
+		} else {
+			a.current = a.loopstart +
+				(a.current-a.loopstart)%(int32(len(a.frames))-a.loopstart)
+		}
+	}
+	a.drawidx, a.time, a.newframe = a.current, 0, true
+	a.UpdateSprite()
+	a.loopend = false
+	a.sumtime = 0 // AnimElemTime 内で使用
+	a.sumtime = -a.AnimElemTime(a.current + 1)
+}
 func (a *Animation) animSeek(elem int32) {
 	if elem < 0 {
 		elem = 0

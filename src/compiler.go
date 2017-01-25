@@ -5136,9 +5136,8 @@ func (c *Compiler) displayToClipboardSub(is IniSection,
 		b = true
 		_else := false
 		if len(data) >= 2 && data[0] == '"' {
-			data = data[1:]
-			if i := strings.Index(data, "\""); i >= 0 {
-				data = data[:i]
+			if i := strings.Index(data[1:], "\""); i >= 0 {
+				data, _ = strconv.Unquote(data)
 			} else {
 				_else = true
 			}
