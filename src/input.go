@@ -936,7 +936,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 				t = cbuf.LastDirectionTime()
 			}
 			for _, k := range c.cmd[c.cmdi-1].key {
-				if cbuf.State2(k) == t {
+				if Abs(cbuf.State2(k)) == t {
 					return true
 				}
 			}
