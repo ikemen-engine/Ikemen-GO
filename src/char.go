@@ -92,7 +92,7 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
 			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1])}
 		if xs < 0 {
-			rect[0] = -rect[0] + 320
+			rect[0] *= -1
 		}
 		if ys < 0 {
 			rect[1] *= -1
@@ -103,9 +103,9 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		RenderMugen(*sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
-			(160-c[0])*sys.widthScale, -c[1]*sys.heightScale, &notiling,
+			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
 			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0,
-			trans, &sys.scrrect, 160*sys.widthScale, 0)
+			trans, &sys.scrrect, 0, 0)
 	}
 }
 
@@ -727,13 +727,11 @@ func (ai *AfterImage) setupPalFX() {
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
-		ai.palfx[i].eAdd[0] = ai.palfx[i-1].eAdd[0] + pb[0]
-		ai.palfx[i].eAdd[1] = ai.palfx[i-1].eAdd[1] + pb[1]
-		ai.palfx[i].eAdd[2] = ai.palfx[i-1].eAdd[2] + pb[2]
+		for j := range pb {
+			ai.palfx[i].eAdd[j] = ai.palfx[i-1].eAdd[j] + ai.add[j] + pb[j]
+			ai.palfx[i].eMul[j] = int32(float32(ai.palfx[i-1].eMul[j]) * ai.mul[j])
+		}
 		pb = [3]int32{}
-		ai.palfx[i].eMul[0] = int32(float32(ai.palfx[i-1].eMul[0]) * ai.mul[0])
-		ai.palfx[i].eMul[1] = int32(float32(ai.palfx[i-1].eMul[1]) * ai.mul[1])
-		ai.palfx[i].eMul[2] = int32(float32(ai.palfx[i-1].eMul[2]) * ai.mul[2])
 	}
 }
 func (ai *AfterImage) recAfterImg(sd *SprData) {
@@ -938,7 +936,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		}
 	} else {
 		for i := range e.pos {
-			e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*sys.tickInterpola()
+			e.pos[i] = e.newPos[i] -
+				(e.newPos[i]-e.oldPos[i])*(1-sys.tickInterpola())
 		}
 	}
 	if sys.tickFrame() && act {
@@ -994,7 +993,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 				e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
 				e.newPos[1] = e.pos[1] + e.velocity[1]
 				for i := range e.velocity {
-					e.velocity[i] *= e.accel[i]
+					e.velocity[i] += e.accel[i]
 				}
 			}
 			e.anim.Action()
@@ -1172,6 +1171,7 @@ type CharSystemVar struct {
 	alpha         [2]int32
 	recoverTime   int32
 	systemFlag    SystemCharFlag
+	specialFlag   CharSpecialFlag
 	sprPriority   int32
 	getcombo      int32
 	veloff        float32
@@ -1190,7 +1190,7 @@ type Char struct {
 	id              int32
 	helperId        int32
 	helperIndex     int32
-	parentChar      *Char
+	parentIndex     int32
 	playerNo        int
 	keyctrl         bool
 	player          bool
@@ -1215,7 +1215,6 @@ type Char struct {
 	targets         []int32
 	targetsOfHitdef []int32
 	enemyNear       [2][]*Char
-	specialFlag     CharSpecialFlag
 	pos             [2]float32
 	drawPos         [2]float32
 	oldPos          [2]float32
@@ -1230,7 +1229,6 @@ type Char struct {
 	cpucmd        int32
 	attackDist    float32
 	offset        [2]float32
-	angleset      bool
 	stchtmp       bool
 	inguarddist   bool
 	pushed        bool
@@ -1285,14 +1283,13 @@ func (c *Char) clear1() {
 	c.id = IErr
 	c.helperId = 0
 	c.helperIndex = -1
-	c.parentChar = nil
+	c.parentIndex = IErr
 	c.playerNo = -1
 	c.facing = 1
 	c.keyctrl = false
 	c.player = false
 	c.animPN = -1
 	c.animNo = 0
-	c.angleset = false
 	c.stchtmp = false
 	c.inguarddist = false
 	c.p1facing = 0
@@ -1300,7 +1297,7 @@ func (c *Char) clear1() {
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
 }
 func (c *Char) copyParent(p *Char) {
-	c.parentChar = p
+	c.parentIndex = p.helperIndex
 	c.name, c.key, c.size = p.name+"'s helper", p.key, p.size
 	c.life, c.lifeMax, c.power, c.powerMax = p.lifeMax, p.lifeMax, 0, p.powerMax
 	c.clear2()
@@ -1824,7 +1821,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			w = c.gi().snd.Get([...]int32{g, n})
 		}
 	}
-	if w == nil && !(f && sys.ignoreMostErrors) {
+	if w == nil && !sys.ignoreMostErrors {
 		fmt.Print("存在しないサウンド: ")
 		if f {
 			fmt.Print("F:")
@@ -1853,7 +1850,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 }
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if int32(c.facing*c.distX(c.p2())) < 0 {
+		if c.rdDistX(c.p2()).ToF() < 0 {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5)
@@ -1936,9 +1933,31 @@ func (c *Char) partner(n int32) *Char {
 }
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
-		return
+		c.exitTarget(true)
+		c.getcombo = 0
+		for _, tid := range c.targets {
+			if t := sys.charList.get(tid); t != nil {
+				t.gethitBindClear()
+				t.ghv.dropId(c.id)
+			}
+		}
+		if c.parentIndex >= 0 {
+			if p := c.parent(); p != nil {
+				for i, ch := range p.children {
+					if ch == c {
+						p.children[i] = nil
+					}
+				}
+			}
+		}
+		for _, ch := range c.children {
+			if ch != nil {
+				ch.parentIndex *= -1
+			}
+		}
+		sys.charList.delete(c)
+		c.helperIndex = -1
 	}
-	unimplemented()
 }
 func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if c.helperIndex <= 0 {
@@ -2207,7 +2226,7 @@ func (c *Char) setY(y float32) {
 	c.setPosY(y)
 }
 func (c *Char) addX(x float32) {
-	c.setX(c.pos[0] + x)
+	c.setX(c.pos[0] + c.facing*x)
 }
 func (c *Char) addY(y float32) {
 	c.setY(c.pos[1] + y)
@@ -2225,7 +2244,13 @@ func (c *Char) mulYV(yv float32) {
 	c.vel[1] *= yv
 }
 func (c *Char) parent() *Char {
-	return c.parentChar
+	if c.parentIndex == IErr {
+		return nil
+	}
+	if !sys.ignoreMostErrors && c.parentIndex < 0 {
+		fmt.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+	}
+	return sys.chars[c.playerNo][Abs(c.parentIndex)]
 }
 func (c *Char) root() *Char {
 	if c.helperIndex == 0 {
@@ -2592,8 +2617,28 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 func (c *Char) lifeSet(life int32) {
 	if c.life = Max(0, Min(c.gi().data.life, life)); c.life == 0 {
 		if c.player {
-			if c.alive() {
-				unimplemented()
+			if c.alive() && c.helperIndex == 0 {
+				if c.ss.moveType != MT_H {
+					if c.playerNo == c.ss.sb.playerNo {
+						sys.winType[^c.playerNo&1] = WT_Suicide
+					} else if c.playerNo&1 == c.ss.sb.playerNo&1 {
+						sys.winType[^c.playerNo&1] = WT_Teammate
+					}
+				} else if c.playerNo == c.ghv.playerNo {
+					sys.winType[^c.playerNo&1] = WT_Suicide
+				} else if c.ghv.playerNo >= 0 && c.playerNo&1 == c.ss.sb.playerNo&1 {
+					sys.winType[^c.playerNo&1] = WT_Teammate
+				} else if c.ghv.guarded {
+					sys.winType[^c.playerNo&1] = WT_C
+				} else if c.ghv.attr&int32(AT_AH) != 0 {
+					sys.winType[^c.playerNo&1] = WT_H
+				} else if c.ghv.attr&int32(AT_AS) != 0 {
+					sys.winType[^c.playerNo&1] = WT_S
+				} else if c.ghv.attr&int32(AT_AT) != 0 {
+					sys.winType[^c.playerNo&1] = WT_T
+				} else {
+					sys.winType[^c.playerNo&1] = WT_N
+				}
 			}
 		} else {
 			c.life = 1
@@ -2726,28 +2771,34 @@ func (c *Char) backEdge() float32 {
 	return c.leftEdge()
 }
 func (c *Char) leftEdge() float32 {
-	unimplemented()
-	return 0
+	return sys.cam.ScreenPos[0]
 }
 func (c *Char) rightEdge() float32 {
-	unimplemented()
-	return 0
+	return sys.cam.ScreenPos[0] + c.gameWidth()
 }
 func (c *Char) topEdge() float32 {
-	unimplemented()
-	return 0
+	return sys.cam.ScreenPos[1]
 }
 func (c *Char) bottomEdge() float32 {
-	unimplemented()
-	return 0
+	return sys.cam.ScreenPos[1] + c.gameHeight()
+}
+func (c *Char) gameWidth() float32 {
+	return float32(sys.gameWidth) / sys.cam.Scale
+}
+func (c *Char) gameHeight() float32 {
+	return 240 / sys.cam.Scale
+}
+func (c *Char) screenWidth() float32 {
+	return float32(sys.gameWidth)
+}
+func (c *Char) screenHeight() float32 {
+	return 240
 }
 func (c *Char) screenPosX() float32 {
-	unimplemented()
-	return 0
+	return (c.pos[0] - sys.cam.ScreenPos[0]) * sys.cam.Scale
 }
 func (c *Char) screenPosY() float32 {
-	unimplemented()
-	return 0
+	return (c.pos[1] - sys.cam.ScreenPos[1]) * sys.cam.Scale
 }
 func (c *Char) height() float32 {
 	return float32(c.size.height)
@@ -2803,11 +2854,11 @@ func (c *Char) getPalfx() *PalFX {
 	if c.palfx != nil {
 		return c.palfx
 	}
-	if c.parentChar == nil {
-		c.palfx = newPalFX()
-		return c.palfx
+	if p := c.parent(); p != nil {
+		return p.getPalfx()
 	}
-	return c.parentChar.getPalfx()
+	c.palfx = newPalFX()
+	return c.palfx
 }
 func (c *Char) getPalMap() []int {
 	return c.getPalfx().remap
@@ -2846,9 +2897,6 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 }
 func (c *Char) angleSet(a float32) {
 	c.angle = a
-	if a != 0 {
-		c.angleset = true
-	}
 }
 func (c *Char) roundsExisted() int32 {
 	return sys.roundsExisted[c.playerNo&1]
@@ -3133,7 +3181,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 			}
 		}
 	}
-	if h.reversal_attr >= 0 {
+	if h.reversal_attr > 0 {
 		return c.atktmp != 0 && c.hitdef.attr > 0 &&
 			(c.hitdef.attr&h.reversal_attr&int32(ST_MASK)) != 0 &&
 			(c.hitdef.attr&h.reversal_attr&^int32(ST_MASK)) != 0
@@ -3262,7 +3310,7 @@ func (c *Char) action() {
 						if c.ss.no != 20 {
 							c.changeState(20, -1, -1)
 						}
-					} else if c.ss.no != 20 &&
+					} else if c.ss.no == 20 &&
 						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
 						c.changeState(0, -1, -1)
 					}
@@ -3689,21 +3737,17 @@ func (c *Char) cueDraw() {
 	if c.anim != nil {
 		pos := [...]float32{c.drawPos[0] + c.offsetX(), c.drawPos[1] + c.offsetY()}
 		scl := [...]float32{c.facing * c.size.xscale, c.size.yscale}
-		var agl float32
+		agl := float32(0)
 		if c.sf(CSF_angledraw) {
-			c.angleset = c.angleset || c.angle != 0
-			if c.angleset {
-				agl = c.angle
-			} else {
+			agl = c.angle
+			if agl == 0 {
 				agl = 360
 			}
-		} else {
-			c.angleset = false
 		}
 		rec := sys.tickNextFrame() && c.acttmp > 0
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
-				scl, c.alpha, c.sprPriority, agl, c.angleScalse, c.angleset,
+				scl, c.alpha, c.sprPriority, agl, c.angleScalse, false,
 				c.playerNo == sys.superplayer, c.gi().ver[0] != 1}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
@@ -3769,6 +3813,21 @@ func (cl *CharList) add(c *Char) {
 	}
 	if c.id >= 0 {
 		cl.idMap[c.id] = c
+	}
+}
+func (cl *CharList) delete(dc *Char) {
+	for i, c := range cl.runOrder {
+		if c == dc {
+			delete(cl.idMap, c.id)
+			cl.runOrder = append(cl.runOrder[:i], cl.runOrder[i+1:]...)
+			break
+		}
+	}
+	for i, c := range cl.drawOrder {
+		if c == dc {
+			cl.drawOrder[i] = nil
+			break
+		}
 	}
 }
 func (cl *CharList) action(x float32, cvmin, cvmax,

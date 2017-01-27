@@ -1260,6 +1260,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_topedge)
 	case "bottomedge":
 		out.append(OC_bottomedge)
+	case "gamewidth":
+		out.append(OC_gamewidth)
+	case "gameheight":
+		out.append(OC_gameheight)
+	case "screenwidth":
+		out.append(OC_screenwidth)
+	case "screenheight":
+		out.append(OC_screenheight)
 	case "power":
 		out.append(OC_power)
 	case "roundsexisted":
@@ -1365,7 +1373,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if trname == "p2movetype" {
 				out.appendI32Op(OC_p2, 2+Btoi(not))
 			}
-			out.append(OC_movetype, OpCode(mt))
+			out.append(OC_movetype, OpCode(mt>>15))
 			if not {
 				out.append(OC_blnot)
 			}

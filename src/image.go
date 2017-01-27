@@ -89,7 +89,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	if !p.eNegType {
 		neg = false
 	}
-	var m, ad, su [3]int32
+	var m [3]int32
 	if neg {
 		for i := range m {
 			m[i] = (p.eMul[(i+1)%3] + p.eMul[(i+2)%3]) >> 1
@@ -97,26 +97,20 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	} else {
 		m = p.eMul
 	}
-	a := p.eAdd
+	a, sub := p.eAdd, uint32(0)
 	for i := range a {
 		if neg {
 			a[i] *= -1
 		}
+		su := uint32(0)
 		if a[i] < 0 {
-			su[i] = -Max(-255, a[i])
-		} else {
-			ad[i] = Min(255, a[i])
+			su = uint32(-Max(-255, a[i]))
+			a[i] = 0
 		}
 		m[i] = Max(0, Min(255*256, m[i]))
-		if m[i] > 256 || a[i] < 0 {
-			a[i] = 0
-		} else {
-			a[i] = Min(255*256*256/Max(1, m[i]), a[i])
-			ad[i] = 0
-		}
+		a[i] = Min(255*256*256/Max(1, m[i]), a[i])
+		sub |= su << uint(i*8)
 	}
-	add := uint32(ad[2]<<16 | ad[1]<<8 | ad[0])
-	sub := uint32(su[2]<<16 | su[1]<<8 | su[0])
 	for i, c := range pal {
 		if p.eInvertall {
 			c = ^c
@@ -126,14 +120,13 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 			uint32(float32(c>>8&0xff)+(ac-float32(c>>8&0xff))*(1-p.eColor))<<8 |
 			uint32(float32(c>>16&0xff)+(ac-float32(c>>16&0xff))*(1-p.eColor))<<16
 		tmp := ((^c&sub)<<1 + (^c^sub)&0xfefefefe) & 0x01010100
-		msk := tmp - tmp>>8
-		c = ((c + add) - msk) | msk
+		c = (c - sub + tmp) & ^(tmp - tmp>>8)
 		tmp = (c&0xff + uint32(a[0])) * uint32(m[0]) >> 8
-		tmp = (tmp|uint32(Btoi(tmp&0xff00 != 0)<<31>>31))&0xff |
+		tmp = (tmp|uint32(-Btoi(tmp&0xff00 != 0)))&0xff |
 			(((c>>8&0xff)+uint32(a[1]))*uint32(m[1])>>8)<<8
-		tmp = (tmp|uint32(Btoi(tmp&0xff0000 != 0)<<31>>23))&0xffff |
+		tmp = (tmp|uint32(-Btoi(tmp&0xff0000 != 0)<<8))&0xffff |
 			(((c>>16&0xff)+uint32(a[2]))*uint32(m[2])>>8)<<16
-		sys.workpal[i] = tmp | uint32(Btoi(tmp&0xff000000 != 0)<<31>>15)
+		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16)
 	}
 	return sys.workpal
 }

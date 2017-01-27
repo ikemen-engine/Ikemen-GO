@@ -38,6 +38,9 @@ const (
 	AT_AT  = AT_NT | AT_ST | AT_HT
 	AT_AP  = AT_NP | AT_SP | AT_HP
 	AT_ALL = AT_AA | AT_AT | AT_AP
+	AT_AN  = AT_NA | AT_NT | AT_NP
+	AT_AS  = AT_SA | AT_ST | AT_SP
+	AT_AH  = AT_HA | AT_HT | AT_HP
 )
 
 type MoveType int32
@@ -1042,6 +1045,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.topEdge())
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge())
+		case OC_gamewidth:
+			sys.bcStack.PushF(c.gameWidth())
+		case OC_gameheight:
+			sys.bcStack.PushF(c.gameHeight())
+		case OC_screenwidth:
+			sys.bcStack.PushF(c.screenWidth())
+		case OC_screenheight:
+			sys.bcStack.PushF(c.screenHeight())
 		case OC_power:
 			sys.bcStack.PushI(c.getPower())
 		case OC_roundsexisted:
@@ -1069,7 +1080,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
 			i++
 		case OC_movetype:
-			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i]))
+			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
 			i++
 		case OC_hitdefattr:
 			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
@@ -1098,7 +1109,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			} else if vi < OC_sysfvar0+NumSysFvar {
 				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
 			} else {
-				println(fmt.Sprintf("%+v", c.ss), be[i-1])
+				fmt.Printf("%+v %v\n", c.ss, be[i-1])
 				unimplemented()
 			}
 		}
@@ -1148,7 +1159,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
 			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
 		} else {
-			println(fmt.Sprintf("%+v", c.ss), be[*i-1])
+			fmt.Printf("%+v %v\n", c.ss, be[*i-1])
 			unimplemented()
 		}
 	}
@@ -1338,7 +1349,7 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 	case OC_const_movement_down_friction_threshold:
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
 	default:
-		println(fmt.Sprintf("%+v", c.ss), be[*i-1])
+		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
 		unimplemented()
 	}
 }
@@ -1434,7 +1445,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	default:
-		println(fmt.Sprintf("%+v", c.ss), be[*i-1])
+		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
 		unimplemented()
 	}
 }
@@ -1463,7 +1474,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
 	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
 	if len(sys.bcStack) != int(bf.numArgs) {
-		println(fmt.Sprintf("%+v", c.ss))
+		fmt.Printf("%+v\n", c.ss)
 		unimplemented()
 	}
 	copy(sys.bcVar, sys.bcStack)
@@ -1484,7 +1495,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	if !changeState {
 		if len(ret) > 0 {
 			if len(ret) != int(bf.numRets) {
-				println(fmt.Sprintf("%+v", c.ss))
+				fmt.Printf("%+v\n", c.ss)
 				unimplemented()
 			}
 			for i, r := range ret {
@@ -4378,7 +4389,7 @@ func (sb *StateBytecode) run(c *Char) (changeState bool) {
 	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
 	changeState = sb.block.Run(c, sb.ctrlsps)
 	if len(sys.bcStack) != 0 {
-		println(fmt.Sprintf("%+v", c.ss))
+		fmt.Printf("%+v\n", c.ss)
 		unimplemented()
 	}
 	sys.bcVarStack.Clear()

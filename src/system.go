@@ -242,7 +242,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
 			if err := stdin.Err(); err != nil {
-				println(err.Error())
+				fmt.Println(err.Error())
 				return
 			}
 			s.commandLine <- stdin.Text()
@@ -467,6 +467,14 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 	facing1 float32, clsn2 []float32, scl2, pos2 [2]float32,
 	facing2 float32) bool {
+	if scl1[0] < 0 {
+		facing1 *= -1
+		scl1[0] *= -1
+	}
+	if scl2[0] < 0 {
+		facing2 *= -1
+		scl2[0] *= -1
+	}
 	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
 		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
 			var l1, r1, l2, r2 float32
@@ -526,7 +534,7 @@ func (s *System) nextRound() {
 	s.lifebar.reset()
 	s.finish = FT_NotYet
 	s.winTeam = -1
-	s.winType[0], s.winType[0] = WT_N, WT_N
+	s.winType = [...]WinType{WT_N, WT_N}
 	s.cam.ResetZoomdelay()
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.shuttertime = 0
@@ -1020,9 +1028,9 @@ func (s *System) draw(x, y, scl float32) {
 	}
 	s.brightness = ob
 	if s.clsnDraw {
-		s.clsnSpr.Pal[0] = 0xff0000
-		s.drawc1.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0x0000ff
+		s.drawc1.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xff0000
 		s.drawc2.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0x00ff00
 		s.drawc2sp.draw(0x3feff)
@@ -1039,6 +1047,7 @@ func (s *System) fight() (reload bool) {
 	}
 	defer func() {
 		s.unsetSF(GSF_nomusic)
+		s.allPalFX.clear()
 		for i, p := range s.chars {
 			if len(p) > 0 {
 				s.playerClear(i)
@@ -1065,7 +1074,7 @@ func (s *System) fight() (reload bool) {
 	defer dL.Close()
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
-			println(err.Error())
+			fmt.Println(err.Error())
 		}
 	}
 	debugInput := func() {
@@ -1073,15 +1082,15 @@ func (s *System) fight() (reload bool) {
 			select {
 			case cl := <-s.commandLine:
 				if err := dL.DoString(cl); err != nil {
-					println(err.Error())
+					fmt.Println(err.Error())
 				}
 			default:
 			}
 		}
 	}
 	put := func(y *float32, txt string) {
-		tmp := s.allPalFX.time
-		s.allPalFX.time = 0
+		tmp := s.allPalFX.enable
+		s.allPalFX.enable = false
 		for {
 			w, drawTxt := int32(0), ""
 			for i, r := range txt {
@@ -1098,7 +1107,7 @@ func (s *System) fight() (reload bool) {
 			s.debugFont.DrawText(drawTxt, (320-float32(s.gameWidth))/2, *y,
 				1/s.widthScale, 1/s.heightScale, 0, 1)
 		}
-		s.allPalFX.time = tmp
+		s.allPalFX.enable = tmp
 	}
 	drawDebug := func() {
 		if s.debugDraw && s.debugFont != nil {
@@ -1137,7 +1146,7 @@ func (s *System) fight() (reload bool) {
 		}
 	}
 	if err := s.synchronize(); err != nil {
-		println(err.Error())
+		fmt.Println(err.Error())
 		s.esc = true
 	}
 	if s.netInput != nil {
@@ -1266,7 +1275,7 @@ func (s *System) fight() (reload bool) {
 			if v {
 				if scr := s.hotkeys[k]; len(scr) > 0 {
 					if err := dL.DoString(scr); err != nil {
-						println(err.Error())
+						fmt.Println(err.Error())
 					}
 				}
 			}

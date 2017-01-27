@@ -262,10 +262,8 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
 	if bank < 0 || len(f.palettes) <= int(bank) {
 		bank = 0
 	}
-	pal := f.palettes[bank][:]
-	if sys.allPalFX.time != 0 {
-		pal = sys.allPalFX.getFxPal(pal, false)
-	}
+	// nil から呼ぶと allPalFX が適用される
+	pal := (*PalFX)(nil).getFxPal(f.palettes[bank][:], false)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)

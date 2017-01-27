@@ -465,7 +465,7 @@ func (a *Animation) alpha() int32 {
 	}
 	return trans
 }
-func (a *Animation) pal(pfx *PalFX) (p []uint32) {
+func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
@@ -476,7 +476,7 @@ func (a *Animation) pal(pfx *PalFX) (p []uint32) {
 	if len(p) == 0 {
 		return
 	}
-	return
+	return pfx.getFxPal(p, neg)
 }
 func (a *Animation) drawSub1(angle float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
@@ -548,10 +548,11 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
 		x, y = AbsF(xs)*float32(a.spr.Offset[0]), AbsF(ys)*float32(a.spr.Offset[1])
 	}
-	a.spr.glDraw(a.pal(pfx), int32(a.mask), x*sys.widthScale, y*sys.heightScale,
-		&a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale, ys*sys.heightScale,
-		xcs*rxadd*sys.widthScale/sys.heightScale, angle, a.alpha(), window,
-		rcx, rcy, pfx)
+	trans := a.alpha()
+	a.spr.glDraw(a.pal(pfx, trans == -2), int32(a.mask), x*sys.widthScale,
+		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
+		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle,
+		trans, window, rcx, rcy, pfx)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 	pfx *PalFX, old bool, color uint32, alpha int32) {
@@ -766,20 +767,22 @@ func (sl ShadowList) draw(x, y, scl float32) {
 func (sl ShadowList) drawReflection(x, y, scl float32) {
 	for _, s := range sl {
 		if s.alpha[0] < 0 {
-			s.alpha[0] = int32(s.anim.frames[s.anim.drawidx].SrcAlpha)
-			s.alpha[1] = int32(s.anim.frames[s.anim.drawidx].DstAlpha)
-			if s.alpha[0] == 255 && s.alpha[1] == 1 {
-				s.alpha[1] = 255
+			s.anim.srcAlpha = int16(s.anim.frames[s.anim.drawidx].SrcAlpha)
+			s.anim.dstAlpha = int16(s.anim.frames[s.anim.drawidx].DstAlpha)
+			if s.anim.srcAlpha == 255 && s.anim.dstAlpha == 1 {
+				s.anim.dstAlpha = 255
 			}
+		} else {
+			s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
 		}
 		ref := sys.stage.reflection * s.shadowAlpha >> 8
-		s.alpha[0] = int32(float32(s.alpha[0]*ref) / 255)
-		if s.alpha[1] < 0 {
-			s.alpha[1] = 128
+		s.anim.srcAlpha = int16(float32(int32(s.anim.srcAlpha)*ref) / 255)
+		if s.anim.dstAlpha < 0 {
+			s.anim.dstAlpha = 128
 		}
-		s.alpha[1] = Min(255, s.alpha[1]+255-ref)
-		if s.alpha[0] == 1 && s.alpha[1] == 255 {
-			s.alpha[0] = 0
+		s.anim.dstAlpha = int16(Min(255, int32(s.anim.dstAlpha)+255-ref))
+		if s.anim.srcAlpha == 1 && s.anim.dstAlpha == 255 {
+			s.anim.srcAlpha = 0
 		}
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-

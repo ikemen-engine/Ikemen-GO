@@ -73,7 +73,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "commandNew", func(l *lua.LState) int {
-		l.Push(newUserData(l, NewCommandList(&CommandBuffer{})))
+		l.Push(newUserData(l, NewCommandList(newCommandBuffer())))
 		return 1
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
