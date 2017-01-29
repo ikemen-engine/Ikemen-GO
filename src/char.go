@@ -2364,6 +2364,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !math.IsNaN(float64(hd.snap[1])) {
 		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
 	}
+	hd.playerNo = c.ss.sb.playerNo
 }
 func (c *Char) setFEdge(fe float32) {
 	c.edge[0] = fe
@@ -2593,6 +2594,24 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 }
 func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	unimplemented()
+}
+func (c *Char) computeDamage(damage float64, kill, absolute bool,
+	atkmul float32) int32 {
+	if damage == 0 || !absolute && atkmul == 0 {
+		return 0
+	}
+	if !absolute {
+		damage *= float64(atkmul / c.defenceMul)
+	}
+	damage = math.Ceil(damage)
+	min, max := float64(c.life-c.lifeMax), float64(Max(0, c.life-Btoi(!kill)))
+	if damage < min {
+		damage = min
+	}
+	if damage > max {
+		damage = max
+	}
+	return int32(damage)
 }
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
@@ -3032,6 +3051,11 @@ func (c *Char) posUpdate() {
 		c.veloff = 0
 	}
 }
+func (c *Char) addTarget(id int32) {
+	if !c.hasTarget(id) {
+		c.targets = append(c.targets, id)
+	}
+}
 func (c *Char) hasTarget(id int32) bool {
 	for _, tid := range c.targets {
 		if tid == id {
@@ -3053,6 +3077,13 @@ func (c *Char) setBindTime(time int32) {
 	if time == 0 {
 		c.bindToId = -1
 	}
+}
+func (c *Char) setBindToId(to *Char) {
+	c.bindToId = to.id
+	if to.bindToId == c.id {
+		to.setBindTime(0)
+	}
+	c.bindFacing = to.facing * 2
 }
 func (c *Char) bind() {
 	if c.bindTime == 0 {
@@ -3859,6 +3890,499 @@ func (cl *CharList) update(cvmin, cvmax,
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32
+	hit := func(c *Char, hd *HitDef, pos [2]float32,
+		projf float32, hits int32) (hitType int32) {
+		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
+			c.hitdef.lhit = true
+			return 0
+		}
+		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo && func() bool {
+			if getter.sf(CSF_gethit) {
+				return hd.p2stateno >= 0
+			}
+			return getter.acttmp > 0
+		}() || hd.p1stateno >= 0 && (c.sf(CSF_gethit) || c.stchtmp &&
+			c.ss.sb.playerNo != hd.playerNo) {
+			return 0
+		}
+		guard := (proj || !c.sf(CSF_unguardable)) && getter.scf(SCF_guard) &&
+			(!getter.sf(CSF_gethit) || getter.ghv.guarded)
+		if guard && sys.autoguard[getter.playerNo] &&
+			getter.acttmp > 0 && !getter.sf(CSF_gethit) &&
+			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
+			int32(getter.ss.stateType)&hd.guardflag == 0 {
+			if int32(ST_S)&hd.guardflag != 0 && !getter.sf(CSF_nostandguard) {
+				getter.ss.stateType = ST_S
+			} else if int32(ST_C)&hd.guardflag != 0 &&
+				!getter.sf(CSF_nocrouchguard) {
+				getter.ss.stateType = ST_C
+			}
+		}
+		hitType = 1
+		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
+			hitType = 2
+		}
+		if hd.reversal_attr > 0 {
+			hitType *= -1
+		} else if getter.ss.stateType == ST_A {
+			if hd.air_type == HT_None {
+				hitType *= -1
+			}
+		} else if hd.ground_type == HT_None {
+			hitType *= -1
+		}
+		p2s := false
+		if !getter.stchtmp || !getter.sf(CSF_gethit) {
+			_break := false
+			for i, ho := range getter.ho {
+				if ho.time == 0 || ho.attr&hd.attr&^int32(ST_MASK) == 0 {
+					continue
+				}
+				if proj {
+					if ho.attr&hd.attr&int32(ST_MASK) == 0 {
+						continue
+					}
+				} else {
+					if ho.attr&int32(c.ss.stateType) == 0 {
+						continue
+					}
+				}
+				if !proj && Abs(hitType) == 1 &&
+					(hd.p2stateno >= 0 || hd.p1stateno >= 0) {
+					return 0
+				}
+				if ho.stateno >= 0 {
+					getter.hoIdx = i
+					_break = true
+					break
+				}
+			}
+			if !_break {
+				if Abs(hitType) == 1 && hd.p2stateno >= 0 {
+					pn := getter.playerNo
+					if hd.p2getp1state {
+						pn = hd.playerNo
+					}
+					if getter.stateChange1(hd.p2stateno, pn) {
+						getter.setCtrl(false)
+						p2s = true
+						getter.hoIdx = -1
+					}
+				}
+			}
+		}
+		c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
+		if ghvset {
+			if !proj {
+				c.sprPriority = hd.p1sprpriority
+			}
+			getter.sprPriority = hd.p2sprpriority
+			getter.ghv.hitid = hd.id
+			getter.ghv.playerNo = hd.playerNo
+		}
+		byf := c.facing
+		if proj {
+			byf = projf
+		}
+		if !proj && hitType == 1 {
+			if hd.p1getp2facing != 0 {
+				byf = getter.facing
+				if hd.p1getp2facing < 0 {
+					byf *= -1
+				}
+			} else if hd.p1facing < 0 {
+				byf *= -1
+			}
+		}
+		if hitType > 0 {
+			if hitType == 1 && len(getter.sounds) > 0 {
+				getter.sounds[0].sound = nil
+			}
+			if getter.bindToId == c.id {
+				getter.setBindTime(0)
+			}
+			absdamage := int32(0)
+			if ghvset {
+				ghv := &getter.ghv
+				cmb := (getter.ss.moveType == MT_H || getter.sf(CSF_gethit)) &&
+					!ghv.guarded
+				fall, hc, fc, by := ghv.fallf, ghv.hitcount, ghv.fallcount, ghv.hitBy
+				ghv.clear()
+				ghv.hitBy = by
+				ghv.attr = hd.attr
+				ghv.hitid = hd.id
+				ghv.playerNo = hd.playerNo
+				ghv.p2getp1state = hd.p2getp1state
+				ghv.forcestand = hd.forcestand != 0
+				ghv.fall = hd.fall
+				getter.fallTime = 0
+				ghv.yaccel = hd.yaccel
+				if hd.forcenofall {
+					fall = false
+				}
+				ghv.groundtype = hd.ground_type
+				ghv.airtype = hd.air_type
+				if getter.ss.stateType == ST_A {
+					ghv._type = ghv.airtype
+				} else {
+					ghv._type = ghv.groundtype
+				}
+				ghv.airanimtype = hd.air_animtype
+				ghv.groundanimtype = hd.animtype
+				if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
+					ghv.hitshaketime = Max(0, hd.guard_shaketime)
+					ghv.hittime = Max(0, hd.guard_hittime)
+					ghv.slidetime = hd.guard_slidetime
+					ghv.guarded = true
+					if getter.ss.stateType == ST_A {
+						ghv.ctrltime = hd.airguard_ctrltime
+						ghv.xvel = hd.airguard_velocity[0]
+						ghv.yvel = hd.airguard_velocity[1]
+					} else {
+						ghv.ctrltime = hd.guard_ctrltime
+						ghv.xvel = hd.guard_velocity
+						ghv.yvel = hd.ground_velocity[1]
+					}
+					absdamage = hd.guarddamage
+					ghv.hitcount = hc
+				} else {
+					ghv.hitshaketime = Max(0, hd.shaketime)
+					ghv.slidetime = hd.ground_slidetime
+					if getter.ss.stateType == ST_A {
+						ghv.hittime = hd.air_hittime
+						ghv.ctrltime = hd.air_hittime
+						ghv.xvel = hd.air_velocity[0]
+						ghv.yvel = hd.air_velocity[1]
+						ghv.fallf = hd.air_fall
+					} else if getter.ss.stateType == ST_L {
+						ghv.hittime = hd.down_hittime
+						ghv.ctrltime = hd.down_hittime
+						ghv.xvel = hd.down_velocity[0]
+						ghv.yvel = hd.down_velocity[1]
+						if !hd.down_bounce {
+							ghv.fall.xvelocity = float32(math.NaN())
+							ghv.fall.yvelocity = 0
+						}
+					} else {
+						ghv.hittime = hd.ground_hittime
+						ghv.ctrltime = hd.ground_hittime
+						ghv.xvel = hd.ground_velocity[0]
+						ghv.yvel = hd.ground_velocity[1]
+						ghv.fallf = hd.ground_fall
+					}
+					if ghv.hittime < 0 {
+						ghv.hittime = 0
+					}
+					absdamage = hd.hitdamage
+					if cmb {
+						ghv.hitcount = hc + 1
+					} else {
+						ghv.hitcount = 1
+					}
+					ghv.fallcount = fc
+					ghv.fallf = ghv.fallf || fall
+				}
+				byPos := c.pos
+				if proj {
+					for i, p := range pos {
+						byPos[i] += p
+					}
+				}
+				snap := [...]float32{float32(math.NaN()), float32(math.NaN())}
+				if !math.IsNaN(float64(hd.mindist[0])) {
+					if byf < 0 {
+						if getter.pos[0] > byPos[0]-hd.mindist[0] {
+							snap[0] = byPos[0] - hd.mindist[0]
+						}
+					} else {
+						if getter.pos[0] < byPos[0]+hd.mindist[0] {
+							snap[0] = byPos[0] + hd.mindist[0]
+						}
+					}
+				}
+				if !math.IsNaN(float64(hd.maxdist[0])) {
+					if byf < 0 {
+						if getter.pos[0] < byPos[0]-hd.maxdist[0] {
+							snap[0] = byPos[0] - hd.maxdist[0]
+						}
+					} else {
+						if getter.pos[0] > byPos[0]+hd.maxdist[0] {
+							snap[0] = byPos[0] + hd.maxdist[0]
+						}
+					}
+				}
+				if hitType == 1 || getter.ss.stateType == ST_A {
+					if !math.IsNaN(float64(hd.mindist[1])) {
+						if getter.pos[1] < byPos[1]+hd.mindist[1] {
+							snap[1] = byPos[1] + hd.mindist[1]
+						}
+					}
+					if !math.IsNaN(float64(hd.maxdist[1])) {
+						if getter.pos[1] > byPos[1]+hd.maxdist[1] {
+							snap[1] = byPos[1] + hd.maxdist[1]
+						}
+					}
+				}
+				if !math.IsNaN(float64(snap[0])) {
+					ghv.xoff = snap[0] - getter.pos[0]
+				}
+				if !math.IsNaN(float64(snap[1])) {
+					ghv.yoff = snap[1] - getter.pos[1]
+				}
+				if hd.snapt != 0 && getter.hoIdx < 0 {
+					getter.setBindToId(c)
+					getter.setBindTime(hd.snapt + Btoi(hd.snapt > 0 && !c.pause()))
+					getter.bindFacing = 0
+					if !math.IsNaN(float64(snap[0])) {
+						getter.bindPos[0] = hd.mindist[0]
+					} else {
+						getter.bindPos[0] = float32(math.NaN())
+					}
+					if !math.IsNaN(float64(snap[1])) &&
+						(hitType == 1 || getter.ss.stateType == ST_A) {
+						getter.bindPos[1] = hd.mindist[1]
+					} else {
+						getter.bindPos[1] = float32(math.NaN())
+					}
+				}
+			} else if hitType == 1 {
+				absdamage = hd.hitdamage
+			} else {
+				absdamage = hd.guarddamage
+			}
+			if sys.super > 0 {
+				getter.superMovetime =
+					Max(getter.superMovetime, getter.ghv.hitshaketime)
+			} else if sys.pause > 0 {
+				getter.pauseMovetime =
+					Max(getter.pauseMovetime, getter.ghv.hitshaketime)
+			}
+			if !p2s && !getter.sf(CSF_gethit) {
+				getter.stchtmp = false
+			}
+			getter.setSF(CSF_gethit)
+			live, kill := getter.life > 0, hd.kill
+			if hitType == 2 {
+				kill = hd.guard_kill
+			}
+			getter.ghv.damage += getter.computeDamage(
+				float64(absdamage)*float64(hits), kill, false, c.attackMul)
+			if ghvset && getter.ghv.damage >= getter.life {
+				if kill || !live {
+					getter.ghv.fallf = true
+					if getter.ghv.fall.animtype < RA_Back {
+						getter.ghv.fall.animtype = RA_Back
+					}
+					if getter.ss.stateType == ST_A {
+						if getter.ghv.xvel < 0 {
+							getter.ghv.xvel -= 2
+						}
+						if getter.ghv.yvel <= 0 {
+							getter.ghv.yvel -= 2
+							if getter.ghv.yvel > -3 {
+								getter.ghv.yvel = -3
+							}
+						}
+					} else {
+						if getter.ghv.yvel == 0 {
+							getter.ghv.xvel *= 0.66
+						}
+						if getter.ghv.xvel < 0 {
+							getter.ghv.xvel -= -2.5
+						}
+						if getter.ghv.yvel <= 0 {
+							getter.ghv.yvel -= 2
+							if getter.ghv.yvel > -6 {
+								getter.ghv.yvel = -6
+							}
+						}
+					}
+					getter.ghv.damage = getter.life
+				} else {
+					getter.ghv.damage = getter.life - 1
+				}
+			}
+		}
+		hitspark := func(p1, p2 *Char, animNo int32) {
+			ffx := animNo < 0
+			if ffx {
+				animNo *= -1
+			}
+			off := pos
+			if !proj {
+				off[0] = p2.pos[0] - p1.pos[0]
+				if (p1.facing < 0) != (p2.facing < 0) {
+					off[0] += p2.facing * p2.width[0]
+				} else {
+					off[0] -= p2.facing * p2.width[1]
+				}
+			}
+			off[0] *= p1.facing
+			if proj {
+				off[0] += hd.sparkxy[0] * projf * p1.facing
+			} else {
+				off[0] -= hd.sparkxy[0]
+			}
+			off[1] += hd.sparkxy[1]
+			if c.id != p1.id {
+				off[1] += p1.hitdef.sparkxy[1]
+			}
+			if e, i := c.newExplod(); e != nil {
+				e.anim = c.getAnim(animNo, ffx)
+				e.sprpriority = math.MinInt32
+				e.ownpal = true
+				e.offset = off
+				e.supermovetime = -1
+				e.pausemovetime = -1
+				e.setPos(p1)
+				c.insertExplod(i)
+			}
+		}
+		if Abs(hitType) == 1 {
+			if hd.sparkno != IErr {
+				if hd.reversal_attr > 0 {
+					hitspark(getter, c, hd.sparkno)
+				} else {
+					hitspark(c, getter, hd.sparkno)
+				}
+			}
+			if hd.hitsound[0] != IErr {
+				sg := hd.hitsound[0]
+				f := sg < 0
+				if f {
+					sg *= -1
+				}
+				vo := int32(0)
+				if c.gi().ver[0] == 1 {
+					vo = 100
+				}
+				c.playSound(f, false, false, sg, hd.hitsound[1],
+					-1, vo, 0, 1, &getter.pos[0])
+			}
+			if hitType > 0 {
+				c.powerAdd(hd.hitgetpower)
+				if getter.player {
+					getter.powerAdd(hd.hitgivepower)
+				}
+			}
+		} else {
+			if hd.guard_sparkno != IErr {
+				if hd.reversal_attr > 0 {
+					hitspark(getter, c, hd.guard_sparkno)
+				} else {
+					hitspark(c, getter, hd.guard_sparkno)
+				}
+			}
+			if hd.guardsound[0] != IErr {
+				sg := hd.guardsound[0]
+				f := sg < 0
+				if f {
+					sg *= -1
+				}
+				vo := int32(0)
+				if c.gi().ver[0] == 1 {
+					vo = 100
+				}
+				c.playSound(f, false, false, sg, hd.guardsound[1],
+					-1, vo, 0, 1, &getter.pos[0])
+			}
+			if hitType > 0 {
+				c.powerAdd(hd.guardgetpower)
+				if getter.player {
+					getter.powerAdd(hd.guardgivepower)
+				}
+			}
+		}
+		if !ghvset {
+			return
+		}
+		getter.p1facing = 0
+		if getter.hoIdx >= 0 {
+			return
+		}
+		if !proj && hd.hitonce > 0 {
+			c.targetDrop(-1, false)
+		}
+		c.addTarget(getter.id)
+		getter.ghv.addId(c.id, c.gi().data.airjuggle)
+		if Abs(hitType) == 1 {
+			if !proj && (hd.p1getp2facing != 0 || hd.p1facing < 0) &&
+				c.facing != byf {
+				c.p1facing = byf
+			}
+			if hd.p2facing < 0 {
+				getter.p1facing = byf
+			} else if hd.p2facing > 0 {
+				getter.p1facing = -byf
+			} else {
+				getter.p1facing = 0
+			}
+			if hd.p1stateno >= 0 && c.stateChange1(hd.p1stateno, hd.playerNo) {
+				c.setCtrl(false)
+			}
+			if getter.ghv.fallf && !c.sf(CSF_nojugglecheck) {
+				jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
+				if proj {
+					*jug -= hd.air_juggle
+				} else {
+					*jug -= c.juggle
+				}
+			}
+			if hd.palfx.time > 0 && getter.palfx != nil {
+				getter.palfx.clear2(true)
+				getter.palfx.PalFXDef = hd.palfx
+			}
+			if hd.envshake_time > 0 {
+				sys.envShake.time = hd.envshake_time
+				sys.envShake.freq = hd.envshake_freq * float32(math.Pi) / 180
+				sys.envShake.ampl = hd.envshake_ampl
+				sys.envShake.phase = hd.envshake_phase
+				sys.envShake.setDefPhase()
+			}
+			getter.getcombo += hd.numhits * hits
+			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+				(c.facing < 0 && getter.pos[0] <= gxmin ||
+					c.facing > 0 && getter.pos[0] >= gxmax) {
+				switch getter.ss.stateType {
+				case ST_S, ST_C:
+					c.veloff = hd.ground_cornerpush_veloff * c.facing
+				case ST_A:
+					c.veloff = hd.air_cornerpush_veloff * c.facing
+				case ST_L:
+					c.veloff = hd.down_cornerpush_veloff * c.facing
+				}
+			}
+		} else {
+			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+				(c.facing < 0 && getter.pos[0] <= gxmin ||
+					c.facing > 0 && getter.pos[0] >= gxmax) {
+				switch getter.ss.stateType {
+				case ST_S, ST_C:
+					c.veloff = hd.guard_cornerpush_veloff * c.facing
+				case ST_A:
+					c.veloff = hd.airguard_cornerpush_veloff * c.facing
+				}
+			}
+		}
+		if !proj {
+			if c.p1facing != 0 {
+				byf = c.p1facing
+			} else {
+				byf = c.facing
+			}
+		}
+		if (getter.facing < 0) == (byf < 0) {
+			getter.ghv.xvel *= -1
+			if getter.ghv.groundtype == 1 || getter.ghv.groundtype == 2 {
+				getter.ghv.groundtype += 3 - getter.ghv.groundtype*2
+			}
+			if getter.ghv.airtype == 1 || getter.ghv.airtype == 2 {
+				getter.ghv.airtype += 3 - getter.ghv.airtype*2
+			}
+		}
+		return
+	}
 	if proj {
 		for i, pr := range sys.projs {
 			if i == getter.playerNo || len(sys.projs[0]) == 0 {
@@ -3923,7 +4447,47 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						if contact < 0 {
 							contact = 1
 						}
-						unimplemented()
+						if ht := hit(c, &c.hitdef, [2]float32{}, 0, 1); ht != 0 {
+							mvh := ht > 0 || c.hitdef.reversal_attr > 0
+							if Abs(ht) == 1 {
+								if mvh {
+									c.mctype = MC_Hit
+								}
+								if c.hitdef.reversal_attr > 0 {
+									getter.mctype = MC_Reversed
+									getter.mctime = -1
+									getter.hitdefContact = true
+									getter.targetsOfHitdef = append(getter.targetsOfHitdef, c.id)
+									if getter.hittmp == 0 {
+										getter.hittmp = -1
+									}
+									if !getter.sf(CSF_gethit) {
+										getter.hitPauseTime = Max(1, c.hitdef.shaketime+
+											Btoi(c.gi().ver[0] == 1))
+									}
+								}
+								if !c.sf(CSF_gethit) {
+									c.hitPauseTime = Max(1, c.hitdef.pausetime+
+										Btoi(c.gi().ver[0] == 1))
+								}
+								c.uniqHitCount++
+							} else {
+								if mvh {
+									c.mctype = MC_Guarded
+								}
+								if !c.sf(CSF_gethit) {
+									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime+
+										Btoi(c.gi().ver[0] == 1))
+								}
+							}
+							if c.hitdef.hitonce > 0 {
+								c.hitdef.hitonce = -1
+							}
+							if mvh {
+								c.mctime = -1
+							}
+							c.hitdefContact = true
+						}
 					}
 				}
 			}
