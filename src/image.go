@@ -1096,7 +1096,11 @@ func loadSff(filename string, char bool) (*Sff, error) {
 		}
 		if size == 0 {
 			if int(indexOfPrevious) < i {
-				spriteList[i].shareCopy(spriteList[int(indexOfPrevious)])
+				func(dst, src *Sprite) {
+					sys.mainThreadTask <- func() {
+						dst.shareCopy(src)
+					}
+				}(spriteList[i], spriteList[int(indexOfPrevious)])
 			}
 		} else {
 			switch s.header.Ver0 {
