@@ -1284,6 +1284,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_facing)
 	case "palno":
 		out.append(OC_palno)
+	case "numenemy":
+		out.append(OC_numenemy)
+	case "numpartner":
+		out.append(OC_numpartner)
 	case "win":
 		out.append(OC_ex_, OC_ex_win)
 	case "lose":
@@ -6396,6 +6400,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			return nil, Error(cmd + ":\nname = " + is["name"] +
 				"\ncommand = " + is["command"] + "\n" + err.Error())
 		}
+		cm.time, cm.buftime = c.cmdl.DefaultTime, c.cmdl.DefaultBufferTime
 		is.ReadI32("time", &cm.time)
 		var i32 int32
 		if is.ReadI32("buffer.time", &i32) {

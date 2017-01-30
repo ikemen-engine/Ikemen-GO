@@ -1069,6 +1069,10 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.facing))
 		case OC_palno:
 			sys.bcStack.PushI(c.gi().palno)
+		case OC_numenemy:
+			sys.bcStack.PushI(c.numEnemy())
+		case OC_numpartner:
+			sys.bcStack.PushI(c.numPartner())
 		case OC_ishelper:
 			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
 		case OC_numhelper:

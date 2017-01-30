@@ -251,20 +251,21 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	}
 	if len(a.frames) == 0 {
 	} else if a.frames[len(a.frames)-1].Time == -1 {
+		a.totaltime = -1
 	} else {
 		tmp := int32(0)
-		for i := range a.frames {
-			if a.frames[i].Time == -1 {
+		for i, f := range a.frames {
+			if f.Time == -1 {
 				a.totaltime = 0
 				a.looptime = -tmp
 				a.nazotime = 0
 			}
-			a.totaltime += a.frames[i].Time
+			a.totaltime += f.Time
 			if i < int(a.loopstart) {
-				a.nazotime += a.frames[i].Time
-				tmp += a.frames[i].Time
+				a.nazotime += f.Time
+				tmp += f.Time
 			} else {
-				a.looptime += a.frames[i].Time
+				a.looptime += f.Time
 			}
 		}
 		if a.totaltime == -1 {
@@ -410,13 +411,12 @@ func (a *Animation) Action() {
 			}
 		}
 	}
-	curFrameTime := a.curFrame().Time
-	if curFrameTime <= 0 {
+	if a.curFrame().Time <= 0 {
 		next()
 	}
 	if int(a.current) < len(a.frames) {
 		a.time++
-		if a.time >= curFrameTime {
+		if a.time >= a.curFrame().Time {
 			next()
 			if int(a.current) >= len(a.frames) {
 				a.current = a.loopstart

@@ -1740,7 +1740,7 @@ func (c *Char) changeAnim2(animNo int32) {
 		c.animNo = animNo
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
 			sys.chars[c.animPN][0].size.yscale}
-		a.sff = sys.cgi[c.animPN].sff
+		a.sff = sys.cgi[c.playerNo].sff
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
@@ -1831,20 +1831,21 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		fmt.Printf("%v,%v\n", g, n)
 		return
 	}
-	ch := c.newChannel(chNo, lowpriority)
-	ch.sound, ch.loop, ch.lowpriority, ch.freqmul = w, loop, lowpriority, freqmul
-	vol = Max(-25600, Min(25600, vol))
-	if c.gi().ver[0] == 1 {
-		if f {
-			ch.SetVolume(256)
+	if ch := c.newChannel(chNo, lowpriority); ch != nil {
+		ch.sound, ch.loop, ch.freqmul = w, loop, freqmul
+		vol = Max(-25600, Min(25600, vol))
+		if c.gi().ver[0] == 1 {
+			if f {
+				ch.SetVolume(256)
+			} else {
+				ch.SetVolume(c.gi().data.volume * vol / 100)
+			}
 		} else {
-			ch.SetVolume(c.gi().data.volume * vol / 100)
-		}
-	} else {
-		if f {
-			ch.SetVolume(vol + 256)
-		} else {
-			ch.SetVolume(c.gi().data.volume + vol)
+			if f {
+				ch.SetVolume(vol + 256)
+			} else {
+				ch.SetVolume(c.gi().data.volume + vol)
+			}
 		}
 	}
 }
@@ -2267,15 +2268,16 @@ func (c *Char) target(id int32) *Char {
 	return nil
 }
 func (c *Char) enemy(n int32) *Char {
-	unimplemented()
-	return nil
+	if n < 0 || n >= c.numEnemy() {
+		return nil
+	}
+	return sys.chars[n*2+int32(^c.playerNo&1)][0]
 }
 func (c *Char) enemynear(n int32) *Char {
 	return sys.charList.enemyNear(c, n, false)
 }
 func (c *Char) playerid(id int32) *Char {
-	unimplemented()
-	return nil
+	return sys.charList.get(id)
 }
 func (c *Char) p2() *Char {
 	p2 := sys.charList.enemyNear(c, 0, true)
@@ -2553,29 +2555,88 @@ func (c *Char) setFacing(f float32) {
 	if f != 0 {
 		if (c.facing < 0) != (f < 0) {
 			c.facing *= -1
-			c.vel[1] *= -1
+			c.vel[0] *= -1
 			c.ghv.xvel *= -1
 		}
 	}
 }
 func (c *Char) getTarget(id int32) []int32 {
-	unimplemented()
-	return nil
+	if id < 0 {
+		return c.targets
+	}
+	var tg []int32
+	for _, tid := range c.targets {
+		if t := sys.charList.get(tid); t != nil {
+			if t.ghv.hitid == id {
+				tg = append(tg, tid)
+			}
+		}
+	}
+	return tg
 }
 func (c *Char) targetFacing(tar []int32, f int32) {
-	unimplemented()
+	tf := c.facing
+	if f < 0 {
+		tf *= -1
+	}
+	for _, tid := range tar {
+		if t := sys.charList.get(tid); t != nil {
+			t.setFacing(tf)
+		}
+	}
 }
-func (c *Char) targetBind(tar []int32, t int32, x, y float32) {
-	unimplemented()
+func (c *Char) targetBind(tar []int32, time int32, x, y float32) {
+	for _, tid := range tar {
+		if t := sys.charList.get(tid); t != nil {
+			t.setBindToId(c)
+			t.setBindTime(time)
+			t.bindFacing = 0
+			t.bindPos = [...]float32{x, y}
+		}
+	}
 }
-func (c *Char) bindToTarget(tar []int32, t int32, x, y float32, hnf HMF) {
-	unimplemented()
+func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
+	if len(tar) > 0 {
+		if t := sys.charList.get(tar[0]); t != nil {
+			switch hmf {
+			case HMF_M:
+				x += float32(t.size.mid.pos[0])
+				y += float32(t.size.mid.pos[1])
+			case HMF_H:
+				x += float32(t.size.head.pos[0])
+				y += float32(t.size.head.pos[1])
+			}
+			if !math.IsNaN(float64(x)) {
+				c.setX(t.pos[0] + t.facing*x)
+			}
+			if !math.IsNaN(float64(y)) {
+				c.setX(t.pos[1] + x)
+			}
+			c.targetBind(tar[:1], time, c.facing*c.distX(t), t.pos[1]-c.pos[1])
+		}
+	}
 }
 func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.charList.get(tid); t != nil {
+			t.lifeAdd(-float64(t.computeDamage(-float64(add), kill, absolute, 1)),
+				true, true)
+		}
+	}
 }
 func (c *Char) targetState(tar []int32, state int32) {
-	unimplemented()
+	if state >= 0 {
+		pn := c.ss.sb.playerNo
+		if c.minus == -2 {
+			pn = c.playerNo
+		}
+		for _, tid := range tar {
+			if t := sys.charList.get(tid); t != nil {
+				t.setCtrl(false)
+				t.stateChange1(state, pn)
+			}
+		}
+	}
 }
 func (c *Char) targetVelSetX(tar []int32, x float32) {
 	unimplemented()
@@ -2593,7 +2654,38 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 	unimplemented()
 }
 func (c *Char) targetDrop(excludeid int32, keepone bool) {
-	unimplemented()
+	var tg []int32
+	if excludeid < 0 {
+		tg = c.targets
+	} else {
+		for _, tid := range c.targets {
+			if t := sys.charList.get(tid); t != nil {
+				if t.ghv.hitid == excludeid {
+					tg = append(tg, tid)
+				} else {
+					t.gethitBindClear()
+					t.ghv.dropId(c.id)
+				}
+			}
+		}
+	}
+	if (keepone || excludeid < 0) && len(tg) > 0 {
+		c.targets = nil
+		r := -1
+		if keepone && excludeid >= 0 {
+			r = int(Rand(0, int32(len(tg))-1))
+		}
+		for i, tid := range tg {
+			if i == r {
+				c.targets = append(c.targets, tid)
+			} else if t := sys.charList.get(tid); t != nil {
+				t.gethitBindClear()
+				t.ghv.dropId(c.id)
+			}
+		}
+	} else {
+		c.targets = tg
+	}
 }
 func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	atkmul float32) int32 {
@@ -2894,6 +2986,18 @@ func (c *Char) getPower() int32 {
 	}
 	return sys.chars[c.playerNo][0].power
 }
+func (c *Char) numEnemy() int32 {
+	if sys.tmode[^c.playerNo&1] != TM_Simul {
+		return 1
+	}
+	return sys.numSimul[^c.playerNo&1]
+}
+func (c *Char) numPartner() int32 {
+	if sys.tmode[c.playerNo&1] != TM_Simul {
+		return 0
+	}
+	return sys.numSimul[c.playerNo&1] - 1
+}
 func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {
 		return BytecodeSF()
@@ -2932,6 +3036,10 @@ func (c *Char) win() bool {
 }
 func (c *Char) lose() bool {
 	return sys.winTeam == ^c.playerNo&1
+}
+func (c *Char) over() bool {
+	return c.scf(SCF_over) || (c.ctrlOver() && c.scf(SCF_ctrl) &&
+		c.ss.stateType != ST_A && c.ss.physics != ST_A)
 }
 func (c *Char) hitDefAttr(attr int32) bool {
 	return c.ss.moveType == MT_A && c.hitdef.testAttr(attr)
@@ -4207,7 +4315,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		hitspark := func(p1, p2 *Char, animNo int32) {
 			ffx := animNo < 0
 			if ffx {
-				animNo *= -1
+				animNo ^= -1
 			}
 			off := pos
 			if !proj {
@@ -4251,7 +4359,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sg := hd.hitsound[0]
 				f := sg < 0
 				if f {
-					sg *= -1
+					sg ^= -1
 				}
 				vo := int32(0)
 				if c.gi().ver[0] == 1 {
@@ -4278,7 +4386,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sg := hd.guardsound[0]
 				f := sg < 0
 				if f {
-					sg *= -1
+					sg ^= -1
 				}
 				vo := int32(0)
 				if c.gi().ver[0] == 1 {

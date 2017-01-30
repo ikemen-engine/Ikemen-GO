@@ -886,7 +886,129 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			return ko[0] || ko[1] || s.time == 0
 		}
 		if s.roundEnd() || fin() {
-			unimplemented()
+			inclWinCount := func() {
+				w := [...]bool{s.chars[0][0].win(), s.chars[1][0].win()}
+				if !w[0] || !w[1] ||
+					s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
+					s.draws >= s.lifebar.ro.match_maxdrawgames {
+					for i, win := range w {
+						if win {
+							s.wins[i]++
+						}
+					}
+				}
+			}
+			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
+				inclWinCount()
+			}
+			rs4t := -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime)
+			if s.winskipped || !s.sf(GSF_roundnotover) ||
+				s.intro >= rs4t-s.lifebar.ro.over_wintime {
+				s.intro--
+				if s.intro == rs4t-1 {
+					if s.time == 0 {
+						s.intro -= s.lifebar.ro.over_wintime
+					}
+					if s.waitdown > 0 {
+						for _, p := range s.chars {
+							if len(p) > 0 && !p[0].over() {
+								s.intro = rs4t
+							}
+						}
+					}
+				}
+				if s.waitdown <= 0 || s.intro < rs4t-s.lifebar.ro.over_wintime {
+					if s.waitdown >= 0 {
+						if s.finish == FT_NotYet {
+							l := [2]float32{}
+							for i := 0; i < 2; i++ {
+								for j := i; j < len(s.chars); j += 2 {
+									if len(s.chars[j]) > 0 {
+										if s.tmode[i] == TM_Simul {
+											l[i] += (float32(s.chars[j][0].life) /
+												float32(s.numSimul[i])) /
+												float32(s.chars[j][0].lifeMax)
+										} else {
+											l[i] += float32(s.chars[j][0].life) /
+												float32(s.chars[j][0].lifeMax)
+										}
+									}
+								}
+							}
+							if l[0] > l[1] {
+								p := true
+								for i := 0; i < len(s.chars); i += 2 {
+									if len(s.chars[i]) > 0 &&
+										s.chars[i][0].life < s.chars[i][0].lifeMax {
+										p = false
+										break
+									}
+								}
+								if p {
+									s.winType[0].SetPerfect()
+								}
+								s.finish = FT_TO
+								s.winTeam = 0
+							} else if l[0] < l[1] {
+								p := true
+								for i := 1; i < len(s.chars); i += 2 {
+									if len(s.chars[i]) > 0 &&
+										s.chars[i][0].life < s.chars[i][0].lifeMax {
+										p = false
+										break
+									}
+								}
+								if p {
+									s.winType[1].SetPerfect()
+								}
+								s.finish = FT_TO
+								s.winTeam = 1
+							} else {
+								s.finish = FT_TODraw
+								s.winTeam = -1
+							}
+							inclWinCount()
+						}
+						w := [...]bool{s.chars[0][0].win(), s.chars[1][0].win()}
+						if !w[0] || !w[1] ||
+							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
+							s.draws >= s.lifebar.ro.match_maxdrawgames {
+							for i, win := range w {
+								if win {
+									s.lifebar.wi[i].add(s.winType[i])
+								}
+							}
+						} else {
+							s.draws++
+						}
+					}
+					for _, p := range s.chars {
+						if len(p) > 0 {
+							if s.waitdown >= 0 && s.time > 0 && p[0].win() && p[0].alive() &&
+								!s.matchOver() &&
+								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
+								p[0].life += int32((float32(p[0].lifeMax) *
+									float32(s.time) / 60) * s.turnsRecoveryRate)
+								if p[0].life > p[0].lifeMax {
+									p[0].life = p[0].lifeMax
+								}
+							}
+							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() {
+								p[0].setSCF(SCF_over)
+								if p[0].win() {
+									p[0].selfState(180, -1, 1)
+								} else if p[0].lose() {
+									p[0].selfState(170, -1, 1)
+								} else {
+									p[0].selfState(175, -1, 1)
+								}
+							}
+						}
+					}
+					s.waitdown = 0
+				}
+				s.waitdown--
+			}
 		} else if s.intro < 0 {
 			s.intro = 0
 		}
@@ -1010,8 +1132,8 @@ func (s *System) draw(x, y, scl float32) {
 	s.lifebar.ro.draw(2)
 	tmp := s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
 		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime
-	if sys.intro > s.lifebar.ro.ctrl_time+1 {
-		fade(s.scrrect, 256*(sys.intro-(s.lifebar.ro.ctrl_time+1))/
+	if s.intro > s.lifebar.ro.ctrl_time+1 {
+		fade(s.scrrect, 256*(s.intro-(s.lifebar.ro.ctrl_time+1))/
 			s.lifebar.ro.start_waittime)
 	} else if s.lifebar.ro.over_time >= s.lifebar.ro.start_waittime &&
 		s.intro < -tmp {
@@ -1321,8 +1443,8 @@ func (s *System) fight() (reload bool) {
 					} else {
 						s.chars[i][0].life = 0
 					}
-					break
 				}
+				break
 			}
 		}
 		if s.turbo < 1 {

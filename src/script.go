@@ -123,7 +123,7 @@ func scriptCommonInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, s)
 		}
-		s.Play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {

@@ -200,7 +200,7 @@ func (pb *PowerBar) step(power float32, level int32) {
 	}
 	if level > pb.prevLevel {
 		i := Min(2, level-1)
-		pb.snd.Play(pb.level_snd[i])
+		pb.snd.play(pb.level_snd[i])
 	}
 	pb.prevLevel = level
 	pb.bg0.Action()
@@ -394,6 +394,18 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	wi.icon[WT_Perfect] = *ReadAnimLayout(pre+"perfect.", is, sff, at)
 	return wi
 }
+func (wi *LifeBarWinIcon) add(wt WinType) {
+	wi.wins = append(wi.wins, wt)
+	if wt >= WT_PN {
+		wi.addedP = &Animation{}
+		*wi.addedP = wi.icon[WT_Perfect].anim
+		wi.addedP.Reset()
+		wt -= WT_PN
+	}
+	wi.added = &Animation{}
+	*wi.added = wi.icon[wt].anim
+	wi.added.Reset()
+}
 func (wi *LifeBarWinIcon) step(numwin int32) {
 	if int(numwin) < len(wi.wins) {
 		wi.wins = wi.wins[:numwin]
@@ -513,9 +525,8 @@ type LifeBarCombo struct {
 }
 
 func newLifeBarCombo() *LifeBarCombo {
-	return &LifeBarCombo{counter_font: [3]int32{-1},
-		counter_lay: Layout{layerno: 2},
-		text_font:   [3]int32{-1}, text_lay: Layout{layerno: 2}, displaytime: 90}
+	return &LifeBarCombo{counter_font: [3]int32{-1}, text_font: [3]int32{-1},
+		displaytime: 90}
 }
 func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c := newLifeBarCombo()
@@ -524,11 +535,15 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	is.ReadI32("counter.font", &c.counter_font[0], &c.counter_font[1],
 		&c.counter_font[2])
 	is.ReadBool("counter.shake", &c.counter_shake)
-	c.counter_lay = *ReadLayout("counter.", is)
+	c.counter_lay = *newLayout()
+	c.counter_lay.layerno = 2
+	c.counter_lay.Read("counter.", is)
 	c.counter_lay.offset = [2]float32{}
 	is.ReadI32("text.font", &c.text_font[0], &c.text_font[1], &c.text_font[2])
 	c.text_text = is["text.text"]
-	c.text_lay = *ReadLayout("text.", is)
+	c.text_lay = *newLayout()
+	c.text_lay.layerno = 2
+	c.text_lay.Read("text.", is)
 	c.text_lay.scale[0] /= sys.lifebarFontScale
 	c.text_lay.scale[1] /= sys.lifebarFontScale
 	is.ReadI32("displaytime", &c.displaytime)
@@ -586,7 +601,7 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 			if c.start_x <= 0 {
 				x = -c.counterX[i]
 			}
-			x -= float32(c.pos[0]) + 320
+			x += 320 - float32(c.pos[0])
 		}
 		if c.text_font[0] >= 0 && int(c.text_font[0]) < len(f) {
 			if i&1 == 0 {
@@ -674,14 +689,18 @@ func readLifeBarRound(is IniSection,
 	}
 	is.ReadI32("round.time", &r.round_time)
 	is.ReadI32("round.sndtime", &r.round_sndtime)
-	r.round_default = *ReadAnimTextSnd("round.default.", is, sff, at)
+	r.round_default = *newAnimTextSnd(sff)
+	r.round_default.anim.lay.layerno = 2
+	r.round_default.Read("round.default.", is, at)
 	for i := range r.round {
 		r.round[i] = r.round_default
-		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, sff, at)
+		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, at)
 	}
 	is.ReadI32("fight.time", &r.fight_time)
 	is.ReadI32("fight.sndtime", &r.fight_sndtime)
-	r.fight = *ReadAnimTextSnd("fight.", is, sff, at)
+	r.fight = *newAnimTextSnd(sff)
+	r.fight.anim.lay.layerno = 2
+	r.fight.Read("fight.", is, at)
 	if is.ReadI32("ctrl.time", &tmp) {
 		r.ctrl_time = Max(1, tmp)
 	}
@@ -725,9 +744,9 @@ func (r *LifeBarRound) act() bool {
 		case 0:
 			if r.swt[0] == 0 {
 				if int(sys.round) <= len(r.round) {
-					r.snd.Play(r.round[sys.round-1].snd)
+					r.snd.play(r.round[sys.round-1].snd)
 				} else {
-					r.snd.Play(r.round_default.snd)
+					r.snd.play(r.round_default.snd)
 				}
 			}
 			r.swt[0]--
@@ -750,7 +769,7 @@ func (r *LifeBarRound) act() bool {
 			return false
 		case 1:
 			if r.swt[0] == 0 {
-				r.snd.Play(r.fight.snd)
+				r.snd.play(r.fight.snd)
 			}
 			r.swt[0]--
 			if r.wt[0] <= 0 {
@@ -767,7 +786,7 @@ func (r *LifeBarRound) act() bool {
 	} else if r.cur == 2 && (sys.finish != FT_NotYet || sys.time == 0) {
 		f := func(ats *AnimTextSnd, t int) {
 			if r.swt[t] == 0 {
-				r.snd.Play(ats.snd)
+				r.snd.play(ats.snd)
 			}
 			r.swt[t]--
 			if ats.End(r.dt[t]) {
@@ -1119,7 +1138,7 @@ func (l *Lifebar) step() {
 	cb := [2]int32{}
 	for i, ch := range sys.chars {
 		for _, c := range ch {
-			cb[^i&1] = Min(999, Max(c.getcombo, cb[i&1]))
+			cb[^i&1] = Min(999, Max(c.getcombo, cb[^i&1]))
 		}
 	}
 	l.co.step(cb)

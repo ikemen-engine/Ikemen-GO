@@ -87,7 +87,7 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					sam := volume * (float32(wav[iidx]) - 128) / float32(128)
+					sam := volume * (float32(wav[iidx]) - 128) / 128
 					m.buf[i] += sam
 					m.buf[i+1] += sam
 					fidx += fidxadd
@@ -102,8 +102,8 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					m.buf[i] += volume * (float32(wav[iidx]) - 128) / float32(128)
-					m.buf[i+1] += volume * (float32(wav[iidx+1]) - 128) / float32(128)
+					m.buf[i] += volume * (float32(wav[iidx]) - 128) / 128
+					m.buf[i+1] += volume * (float32(wav[iidx+1]) - 128) / 128
 					fidx += fidxadd
 				}
 				return fidx
@@ -119,7 +119,8 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					sam := volume * float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8)
+					sam := volume *
+						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
 					m.buf[i] += sam
 					m.buf[i+1] += sam
 					fidx += fidxadd
@@ -134,10 +135,10 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					m.buf[i] += volume * float32(int(wav[iidx])|
-						int(int8(wav[iidx+1]))<<8)
-					m.buf[i+1] += volume * float32(int(wav[iidx+2])|
-						int(int8(wav[iidx+3]))<<8)
+					m.buf[i] += volume *
+						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
+					m.buf[i+1] += volume *
+						float32(int(wav[iidx+2])|int(int8(wav[iidx+3]))<<8) / (1 << 15)
 					fidx += fidxadd
 				}
 				return fidx
@@ -175,9 +176,9 @@ type NormalizerLR struct {
 }
 
 func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
-	n.katayori = (n.katayori*audioFrequency/110.0 + float64(*sam)) /
+	n.katayori = (n.katayori*audioFrequency/110 + float64(*sam)) /
 		(audioFrequency/110.0 + 1)
-	n.katayori2 = (n.katayori2*audioFrequency/112640.0 + float64(*sam)) /
+	n.katayori2 = (n.katayori2*audioFrequency/112640 + float64(*sam)) /
 		(audioFrequency/112640.0 + 1)
 	s := (n.katayori2 - n.katayori) * bai
 	if math.Abs(s) > 1 {
@@ -304,7 +305,6 @@ type Wave struct {
 	Channels       uint16
 	BytesPerSample uint16
 	Wav            []byte
-	Num            [2]int32
 }
 
 func ReadWave(f *os.File, ofs int64) (*Wave, error) {
@@ -328,8 +328,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "WAVE" {
-		return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1,
-			Num: [...]int32{-1, 0}}, nil
+		return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}, nil
 	}
 	fmtSize, dataSize := uint32(0), uint32(0)
 	w := Wave{}
@@ -462,7 +461,7 @@ func LoadSnd(filename string) (*Snd, error) {
 func (s *Snd) Get(gn [2]int32) *Wave {
 	return s.table[gn]
 }
-func (s *Snd) Play(gn [2]int32) bool {
+func (s *Snd) play(gn [2]int32) bool {
 	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
@@ -472,15 +471,14 @@ func (s *Snd) Play(gn [2]int32) bool {
 }
 
 type Sound struct {
-	sound       *Wave
-	volume      int16
-	loop        bool
-	lowpriority bool
-	freqmul     float32
-	fidx        float64
+	sound   *Wave
+	volume  int16
+	loop    bool
+	freqmul float32
+	fidx    float64
 }
 
-func (s *Sound) Mix() {
+func (s *Sound) mix() {
 	if s.sound == nil {
 		return
 	}
@@ -523,6 +521,6 @@ func (s Sounds) GetChannel() *Sound {
 }
 func (s Sounds) mixSounds() {
 	for i := range s {
-		s[i].Mix()
+		s[i].mix()
 	}
 }

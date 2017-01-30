@@ -27,7 +27,7 @@ const (
 
 type Texture uint32
 
-func NewTexture() (t *Texture) {
+func newTexture() (t *Texture) {
 	t = new(Texture)
 	gl.GenTextures(1, (*uint32)(t))
 	runtime.SetFinalizer(t, (*Texture).finalizer)
@@ -35,7 +35,10 @@ func NewTexture() (t *Texture) {
 }
 func (t *Texture) finalizer() {
 	if *t != 0 {
-		gl.DeleteTextures(1, (*uint32)(t))
+		tex := *t
+		sys.mainThreadTask <- func() {
+			gl.DeleteTextures(1, (*uint32)(&tex))
+		}
 	}
 }
 
@@ -490,7 +493,7 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = NewTexture()
+		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE,
@@ -959,15 +962,17 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 					pp[i] = (*C.png_byte)(&px[i*int(width)*4])
 				}
 				C.png_read_image(png_ptr, &pp[0])
-				s.Tex = NewTexture()
-				gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-				gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-				gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height),
-					0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+				sys.mainThreadTask <- func() {
+					s.Tex = newTexture()
+					gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
+					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+					gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height),
+						0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+				}
 			}
 			C.png_destroy_read_struct(&png_ptr, &info_ptr, nil)
 			return nil
@@ -1096,11 +1101,10 @@ func loadSff(filename string, char bool) (*Sff, error) {
 		}
 		if size == 0 {
 			if int(indexOfPrevious) < i {
-				func(dst, src *Sprite) {
-					sys.mainThreadTask <- func() {
-						dst.shareCopy(src)
-					}
-				}(spriteList[i], spriteList[int(indexOfPrevious)])
+				dst, src := spriteList[i], spriteList[int(indexOfPrevious)]
+				sys.mainThreadTask <- func() {
+					dst.shareCopy(src)
+				}
 			}
 		} else {
 			switch s.header.Ver0 {
