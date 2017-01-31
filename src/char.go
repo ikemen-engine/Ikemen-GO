@@ -4707,7 +4707,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.playerNo&1 != c.playerNo&1 {
+		if e.player && e.playerNo&1 != c.playerNo&1 {
 			add(e, 0)
 		}
 	}

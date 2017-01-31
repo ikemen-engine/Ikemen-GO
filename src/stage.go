@@ -348,6 +348,7 @@ func newBgCtrl() *bgCtrl {
 	return &bgCtrl{looptime: -1, x: float32(math.NaN()), y: float32(math.NaN())}
 }
 func (bgc *bgCtrl) read(is IniSection, idx int) {
+	bgc.idx = idx
 	xy := false
 	switch is["type"] {
 	case "anim":
@@ -450,7 +451,18 @@ func (bgct *bgcTimeLine) add(bgc *bgCtrl) {
 func (bgct *bgcTimeLine) step(s *Stage) {
 	if len(bgct.line) > 0 && bgct.line[0].waitTime <= 0 {
 		for _, b := range bgct.line[0].bgc {
-			bgct.al = append(bgct.al, b)
+			for i, a := range bgct.al {
+				if b.idx < a.idx {
+					bgct.al = append(bgct.al, nil)
+					copy(bgct.al[i+1:], bgct.al[i:])
+					bgct.al[i] = b
+					b = nil
+					break
+				}
+			}
+			if b != nil {
+				bgct.al = append(bgct.al, b)
+			}
 		}
 		bgct.line = bgct.line[1:]
 	}
@@ -463,6 +475,7 @@ func (bgct *bgcTimeLine) step(s *Stage) {
 		if bgct.al[i].currenttime > bgct.al[i].endtime {
 			el = append(el, bgct.al[i])
 			bgct.al = append(bgct.al[:i], bgct.al[i+1:]...)
+			continue
 		}
 		i++
 	}
@@ -489,7 +502,7 @@ type Stage struct {
 	author      string
 	sff         *Sff
 	at          AnimationTable
-	bg          []backGround
+	bg          []*backGround
 	bgc         []bgCtrl
 	bgct        bgcTimeLine
 	bga         bgAction
@@ -599,7 +612,7 @@ func loadStage(def string) (*Stage, error) {
 		if sec[0].readI32ForStage("color", &r, &g, &b) {
 			r, g, b = Max(0, Min(255, r)), Max(0, Min(255, g)), Max(0, Min(255, b))
 		}
-		s.sdw.color = uint32(r<<16 | g<<8 | b)
+		s.sdw.color = uint32(b<<16 | g<<8 | r)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
 		sec[0].ReadBool("reflect", &reflect)
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
@@ -631,15 +644,18 @@ func loadStage(def string) (*Stage, error) {
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
 		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {
-			bglink = &s.bg[len(s.bg)-1]
+			bglink = s.bg[len(s.bg)-1]
 		}
-		s.bg = append(s.bg, *readBackGround(bgsec, bglink,
+		s.bg = append(s.bg, readBackGround(bgsec, bglink,
 			s.sff, s.at, float32(sys.cam.startx)))
 	}
 	var bgcdef bgCtrl
 	i = 0
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
+		if len(name) > 0 && name[len(name)-1] == ' ' {
+			name = name[:len(name)-1]
+		}
 		switch name {
 		case "bgctrldef":
 			bgcdef.bg, bgcdef.looptime = nil, -1
@@ -654,9 +670,7 @@ func loadStage(def string) (*Stage, error) {
 					kishutu[id] = true
 				}
 			} else {
-				for _, b := range s.bg {
-					bgcdef.bg = append(bgcdef.bg, &b)
-				}
+				bgcdef.bg = append(bgcdef.bg, s.bg...)
 			}
 			is.ReadI32("looptime", &bgcdef.looptime)
 		case "bgctrl":
@@ -673,9 +687,7 @@ func loadStage(def string) (*Stage, error) {
 						kishutu[id] = true
 					}
 				} else {
-					for _, b := range s.bg {
-						bgc.bg = append(bgc.bg, &b)
-					}
+					bgc.bg = append(bgc.bg, s.bg...)
 				}
 			}
 			bgc.read(is, len(s.bgc))
@@ -720,7 +732,7 @@ func (s *Stage) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {
 		for _, b := range s.bg {
 			if b.id == id {
-				bg = append(bg, &b)
+				bg = append(bg, b)
 			}
 		}
 	}

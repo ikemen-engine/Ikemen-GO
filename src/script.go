@@ -39,10 +39,47 @@ func userDataError(l *lua.LState, argi int, udtype interface{}) {
 	l.RaiseError("%v番目の引数が%Tではありません。", argi, udtype)
 }
 
-type InputDialog struct{}
+type InputDialog interface {
+	Popup(title string) (ok bool)
+	IsDone() bool
+	GetStr() string
+}
 
-func newInputDialog() *InputDialog {
-	return &InputDialog{}
+func newInputDialog() InputDialog {
+	return newCommandLineInput()
+}
+
+type commandLineInput struct {
+	str  string
+	done bool
+}
+
+func newCommandLineInput() *commandLineInput {
+	return &commandLineInput{done: true}
+}
+func (cli *commandLineInput) Popup(title string) bool {
+	if !cli.done {
+		return false
+	}
+	cli.done = false
+	print(title + ": ")
+	return true
+}
+func (cli *commandLineInput) IsDone() bool {
+	if !cli.done {
+		select {
+		case cli.str = <-sys.commandLine:
+			cli.done = true
+		default:
+		}
+	}
+	return cli.done
+}
+func (cli *commandLineInput) GetStr() string {
+	if !cli.IsDone() {
+		return ""
+	}
+	return cli.str
 }
 
 // Script Common
@@ -116,6 +153,30 @@ func scriptCommonInit(l *lua.LState) {
 	})
 	luaRegister(l, "inputDialogNew", func(l *lua.LState) int {
 		l.Push(newUserData(l, newInputDialog()))
+		return 1
+	})
+	luaRegister(l, "inputDialogPopup", func(l *lua.LState) int {
+		id, ok := toUserData(l, 1).(InputDialog)
+		if !ok {
+			userDataError(l, 1, id)
+		}
+		id.Popup(strArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "inputDialogIsDone", func(l *lua.LState) int {
+		id, ok := toUserData(l, 1).(InputDialog)
+		if !ok {
+			userDataError(l, 1, id)
+		}
+		l.Push(lua.LBool(id.IsDone()))
+		return 1
+	})
+	luaRegister(l, "inputDialogGetStr", func(l *lua.LState) int {
+		id, ok := toUserData(l, 1).(InputDialog)
+		if !ok {
+			userDataError(l, 1, id)
+		}
+		l.Push(lua.LString(id.GetStr()))
 		return 1
 	})
 	luaRegister(l, "sndPlay", func(l *lua.LState) int {
@@ -336,6 +397,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(sys.listenPort))
 		return 1
 	})
+	luaRegister(l, "setListenPort", func(*lua.LState) int {
+		sys.listenPort = strArg(l, 1)
+		return 0
+	})
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			if len(c) > 0 {
@@ -378,6 +443,10 @@ func systemScriptInit(l *lua.LState) {
 			float32(numArg(l, 2))}
 		return 0
 	})
+	luaRegister(l, "numSelCells", func(*lua.LState) int {
+		l.Push(lua.LNumber(len(sys.sel.charlist)))
+		return 1
+	})
 	luaRegister(l, "setStage", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.sel.SetStageNo(int(numArg(l, 1)))))
 		return 1
@@ -409,6 +478,11 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "getCharName", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
 		l.Push(lua.LString(c.name))
+		return 1
+	})
+	luaRegister(l, "getCharFileName", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.def))
 		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
@@ -543,6 +617,15 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "resetRemapInput", func(l *lua.LState) int {
 		sys.resetRemapInput()
+		return 0
+	})
+	luaRegister(l, "remapInput", func(l *lua.LState) int {
+		src, dst := int(numArg(l, 1)), int(numArg(l, 2))
+		if src < 1 || src > len(sys.inputRemap) ||
+			dst < 1 || dst > len(sys.inputRemap) {
+			l.RaiseError("プレイヤー番号(%v, %v)が不正です。", src, dst)
+		}
+		sys.inputRemap[src-1] = dst - 1
 		return 0
 	})
 	luaRegister(l, "loadStart", func(l *lua.LState) int {

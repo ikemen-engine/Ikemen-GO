@@ -298,7 +298,7 @@ func ReadAction(sff *Sff, lines []string, i *int) (no int32, a *Animation) {
 func (a *Animation) Reset() {
 	a.current, a.drawidx = 0, 0
 	a.time, a.sumtime = 0, 0
-	a.newframe, a.loopend = false, false
+	a.newframe, a.loopend = true, false
 	a.spr = nil
 }
 func (a *Animation) AnimTime() int32 {
@@ -576,8 +576,13 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color)
 		}
 	} else {
+		var pal [256]uint32
+		if color != 0 {
+			for i := range pal {
+				pal[i] = color
+			}
+		}
 		draw = func(trans int32) {
-			var pal [256]uint32
 			RenderMugen(*a.spr.Tex, pal[:], int32(a.mask), a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
