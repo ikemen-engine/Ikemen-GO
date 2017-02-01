@@ -1124,6 +1124,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_animelemtime)
+	case "animelemno":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animelemno)
 	case "animexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err

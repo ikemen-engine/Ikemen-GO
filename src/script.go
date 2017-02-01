@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
 	"strings"
 )
@@ -753,6 +754,104 @@ func systemScriptInit(l *lua.LState) {
 
 func triggerScriptInit(l *lua.LState) {
 	sys.debugWC = sys.chars[0][0]
+	luaRegister(l, "player", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		ret := false
+		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+			sys.debugWC = sys.chars[pn-1][0]
+			ret = true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "playerid", func(*lua.LState) int {
+		ret := false
+		if c := sys.charList.get(int32(numArg(l, 1))); c != nil {
+			sys.debugWC = c
+			ret = true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "anim", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animNo))
+		return 1
+	})
+	luaRegister(l, "animOwner", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animPN) + 1)
+		return 1
+	})
+	luaRegister(l, "animelemno", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animElemNo(int32(numArg(l, 1))).ToI()))
+		return 1
+	})
+	luaRegister(l, "id", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.id))
+		return 1
+	})
+	luaRegister(l, "life", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.life))
+		return 1
+	})
+	luaRegister(l, "movetype", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.moveType {
+		case MT_I:
+			s = "I"
+		case MT_A:
+			s = "A"
+		case MT_H:
+			s = "H"
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
+	luaRegister(l, "physics", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.physics {
+		case ST_S:
+			s = "S"
+		case ST_C:
+			s = "C"
+		case ST_A:
+			s = "A"
+		case ST_N:
+			s = "N"
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
+	luaRegister(l, "power", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.power))
+		return 1
+	})
+	luaRegister(l, "stateno", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.ss.no))
+		return 1
+	})
+	luaRegister(l, "stateOwner", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.ss.sb.playerNo + 1))
+		return 1
+	})
+	luaRegister(l, "statetype", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.stateType {
+		case ST_S:
+			s = "S"
+		case ST_C:
+			s = "C"
+		case ST_A:
+			s = "A"
+		case ST_L:
+			s = "L"
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
+	luaRegister(l, "time", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.ss.time))
+		return 1
+	})
 }
 
 // Debug Script
@@ -760,5 +859,26 @@ func triggerScriptInit(l *lua.LState) {
 func debugScriptInit(l *lua.LState, file string) error {
 	scriptCommonInit(l)
 	triggerScriptInit(l)
+	luaRegister(l, "addHotkey", func(*lua.LState) int {
+		l.Push(lua.LBool(func() bool {
+			k := StringToKey(strArg(l, 1))
+			if k == glfw.KeyUnknown {
+				return false
+			}
+			sk := *NewShortcutKey(k, boolArg(l, 2), boolArg(l, 3), boolArg(l, 4))
+			scr := strArg(l, 5)
+			sys.shortcutScripts[sk] = &ShortcutScript{Script: scr}
+			return true
+		}()))
+		return 1
+	})
+	luaRegister(l, "toggleClsnDraw", func(*lua.LState) int {
+		sys.clsnDraw = !sys.clsnDraw
+		return 0
+	})
+	luaRegister(l, "toggleDebugDraw", func(*lua.LState) int {
+		sys.debugDraw = !sys.debugDraw
+		return 0
+	})
 	return l.DoFile(file)
 }

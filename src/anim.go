@@ -318,6 +318,50 @@ func (a *Animation) AnimElemTime(elem int32) int32 {
 	}
 	return t
 }
+func (a *Animation) AnimElemNo(time int32) int32 {
+	if len(a.frames) > 0 {
+		i, oldt := a.current, int32(0)
+		if time <= 0 {
+			time += a.time
+			loop := false
+			for {
+				if time >= 0 {
+					return i + 1
+				}
+				i--
+				if i < 0 || a.current >= a.loopstart && i < a.loopstart {
+					if time == oldt {
+						break
+					}
+					oldt = time
+					loop = true
+					i = int32(len(a.frames)) - 1
+				}
+				time += Max(0, a.frames[i].Time)
+				if loop && i == int32(len(a.frames))-1 && a.frames[i].Time == -1 {
+					return i + 1
+				}
+			}
+		} else {
+			time += a.time
+			for {
+				time -= Max(0, a.frames[i].Time)
+				if time < 0 || i == int32(len(a.frames))-1 && a.frames[i].Time == -1 {
+					return i + 1
+				}
+				i++
+				if i >= int32(len(a.frames)) {
+					if time == oldt {
+						break
+					}
+					oldt = time
+					i = a.loopstart
+				}
+			}
+		}
+	}
+	return int32(len(a.frames))
+}
 func (a *Animation) curFrame() *AnimFrame {
 	return &a.frames[a.current]
 }

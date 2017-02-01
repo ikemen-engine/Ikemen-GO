@@ -1280,7 +1280,7 @@ func (c *Char) clear1() {
 	c.varRangeSet(0, int32(NumVar)-1, 0)
 	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
 	c.key = -1
-	c.id = IErr
+	c.id = -1
 	c.helperId = 0
 	c.helperIndex = -1
 	c.parentIndex = IErr
@@ -1993,7 +1993,7 @@ func (c *Char) newHelper() (h *Char) {
 		h = newChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
-	h.id, h.helperId = ^sys.newCharId(), 0
+	h.id, h.helperId = sys.newCharId(), 0
 	h.copyParent(c)
 	c.addChild(h)
 	sys.charList.add(h)
@@ -2077,6 +2077,12 @@ func (c *Char) animTime() int32 {
 func (c *Char) animElemTime(e int32) BytecodeValue {
 	if e >= 1 && c.anim != nil && int(e) <= len(c.anim.frames) {
 		return BytecodeInt(c.anim.AnimElemTime(e))
+	}
+	return BytecodeSF()
+}
+func (c *Char) animElemNo(time int32) BytecodeValue {
+	if c.anim != nil && time >= -c.anim.sumtime {
+		return BytecodeInt(c.anim.AnimElemNo(time))
 	}
 	return BytecodeSF()
 }
@@ -3843,7 +3849,7 @@ func (c *Char) tick() {
 	}
 }
 func (c *Char) cueDraw() {
-	if c.helperIndex < 0 || c.id < 0 {
+	if c.helperIndex < 0 {
 		return
 	}
 	if sys.clsnDraw && c.curFrame != nil {
@@ -3950,9 +3956,7 @@ func (cl *CharList) add(c *Char) {
 	if i >= len(cl.drawOrder) {
 		cl.drawOrder = append(cl.drawOrder, c)
 	}
-	if c.id >= 0 {
-		cl.idMap[c.id] = c
-	}
+	cl.idMap[c.id] = c
 }
 func (cl *CharList) delete(dc *Char) {
 	for i, c := range cl.runOrder {
@@ -3973,17 +3977,11 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
 	for _, c := range cl.runOrder {
-		if c.id < 0 {
-			c.id = ^c.id
-		}
 		if c.ss.moveType == MT_A {
 			c.action()
 		}
 	}
 	for _, c := range cl.runOrder {
-		if c.id < 0 {
-			c.id = ^c.id
-		}
 		c.action()
 	}
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
@@ -3991,9 +3989,7 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 func (cl *CharList) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	for _, c := range cl.runOrder {
-		if c.id >= 0 {
-			c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
-		}
+		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
@@ -4525,9 +4521,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		gr += getter.pos[0]
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
-			if c.id < 0 {
-				continue
-			}
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.playerNo&1 != c.playerNo&1) == (c.hitdef.affectteam > 0)) {
@@ -4649,22 +4642,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 }
 func (cl *CharList) getHit() {
 	for _, c := range cl.runOrder {
-		if c.id >= 0 {
-			cl.clsn(c, false)
-		}
+		cl.clsn(c, false)
 	}
 	for _, c := range cl.runOrder {
-		if c.id >= 0 {
-			cl.clsn(c, true)
-		}
+		cl.clsn(c, true)
 	}
 }
 func (cl *CharList) tick() {
 	sys.gameTime++
 	for _, c := range cl.runOrder {
-		if c.id >= 0 {
-			c.tick()
-		}
+		c.tick()
 	}
 }
 func (cl *CharList) cueDraw() {

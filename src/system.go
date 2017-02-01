@@ -52,8 +52,6 @@ var sys = System{
 	wincnt:                 wincntMap(make(map[string][]int32)),
 	wincntFileName:         "autolevel.txt",
 	powerShare:             [...]bool{true, true},
-	eventKeys:              make(map[ShortcutKey]bool),
-	hotkeys:                make(map[ShortcutKey]string),
 	commandLine:            make(chan string),
 	cam:                    *newCamera(),
 	mainThreadTask:         make(chan func(), 65536),
@@ -173,8 +171,7 @@ type System struct {
 	paused, step            bool
 	roundResetFlg           bool
 	reloadFlg               bool
-	eventKeys               map[ShortcutKey]bool
-	hotkeys                 map[ShortcutKey]string
+	shortcutScripts         map[ShortcutKey]*ShortcutScript
 	turbo                   float32
 	commandLine             chan string
 	drawScale               float32
@@ -262,8 +259,8 @@ func (s *System) setWindowSize(w, h int32) {
 }
 func (s *System) eventUpdate() bool {
 	s.esc = false
-	for k := range s.eventKeys {
-		s.eventKeys[k] = false
+	for _, v := range s.shortcutScripts {
+		v.Activate = false
 	}
 	glfw.PollEvents()
 	s.gameEnd = s.window.ShouldClose()
@@ -1167,6 +1164,7 @@ func (s *System) fight() (reload bool) {
 	for i := range s.clipboardText {
 		s.clipboardText[i] = nil
 	}
+	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	defer func() {
 		s.unsetSF(GSF_nomusic)
 		s.allPalFX.clear()
@@ -1213,7 +1211,7 @@ func (s *System) fight() (reload bool) {
 	put := func(y *float32, txt string) {
 		tmp := s.allPalFX.enable
 		s.allPalFX.enable = false
-		for {
+		for txt != "" {
 			w, drawTxt := int32(0), ""
 			for i, r := range txt {
 				w += s.debugFont.CharWidth(r) + s.debugFont.Spacing[0]
@@ -1393,12 +1391,10 @@ func (s *System) fight() (reload bool) {
 	reset()
 	for !s.esc {
 		s.step, s.roundResetFlg, s.reloadFlg = false, false, false
-		for k, v := range s.eventKeys {
-			if v {
-				if scr := s.hotkeys[k]; len(scr) > 0 {
-					if err := dL.DoString(scr); err != nil {
-						fmt.Println(err.Error())
-					}
+		for _, v := range s.shortcutScripts {
+			if v.Activate {
+				if err := dL.DoString(v.Script); err != nil {
+					fmt.Println(err.Error())
 				}
 			}
 		}
