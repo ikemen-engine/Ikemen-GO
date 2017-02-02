@@ -758,8 +758,63 @@ func triggerScriptInit(l *lua.LState) {
 		pn := int(numArg(l, 1))
 		ret := false
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			sys.debugWC = sys.chars[pn-1][0]
-			ret = true
+			sys.debugWC, ret = sys.chars[pn-1][0], true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "parent", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.parent(); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "root", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.root(); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "helper", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.helper(int32(numArg(l, 1))); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "target", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.target(int32(numArg(l, 1))); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "partner", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.partner(int32(numArg(l, 1))); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "enemy", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.enemy(int32(numArg(l, 1))); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "enemynear", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.enemynear(int32(numArg(l, 1))); c != nil {
+			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
@@ -767,10 +822,17 @@ func triggerScriptInit(l *lua.LState) {
 	luaRegister(l, "playerid", func(*lua.LState) int {
 		ret := false
 		if c := sys.charList.get(int32(numArg(l, 1))); c != nil {
-			sys.debugWC = c
-			ret = true
+			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
+		return 1
+	})
+	luaRegister(l, "ailevel", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.aiLevel()))
+		return 1
+	})
+	luaRegister(l, "alive", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.alive()))
 		return 1
 	})
 	luaRegister(l, "anim", func(*lua.LState) int {
@@ -783,6 +845,23 @@ func triggerScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "animelemno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animElemNo(int32(numArg(l, 1))).ToI()))
+		return 1
+	})
+	luaRegister(l, "animelemtime", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animElemTime(int32(numArg(l, 1))).ToI()))
+		return 1
+	})
+	luaRegister(l, "animexist", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.animExist(sys.debugWC,
+			BytecodeInt(int32(numArg(l, 1)))).ToB()))
+		return 1
+	})
+	luaRegister(l, "animtime", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animTime()))
+		return 1
+	})
+	luaRegister(l, "authorname", func(*lua.LState) int {
+		l.Push(lua.LString(sys.debugWC.gi().author))
 		return 1
 	})
 	luaRegister(l, "id", func(*lua.LState) int {

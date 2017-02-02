@@ -973,26 +973,28 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Dup()
 		case OC_swap:
 			sys.bcStack.Swap()
-		case OC_time:
-			sys.bcStack.PushI(c.time())
+		case OC_ailevel:
+			sys.bcStack.PushI(c.aiLevel())
 		case OC_alive:
 			sys.bcStack.PushB(c.alive())
+		case OC_anim:
+			sys.bcStack.PushI(c.animNo)
+		case OC_animelemno:
+			*sys.bcStack.Top() = c.animElemNo(sys.bcStack.Top().ToI())
+		case OC_animelemtime:
+			*sys.bcStack.Top() = c.animElemTime(sys.bcStack.Top().ToI())
+		case OC_animexist:
+			*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
+		case OC_animtime:
+			sys.bcStack.PushI(c.animTime())
+		case OC_time:
+			sys.bcStack.PushI(c.time())
 		case OC_ctrl:
 			sys.bcStack.PushB(c.canCtrl())
 		case OC_random:
 			sys.bcStack.PushI(Rand(0, 999))
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
-		case OC_anim:
-			sys.bcStack.PushI(c.animNo)
-		case OC_animtime:
-			sys.bcStack.PushI(c.animTime())
-		case OC_animelemtime:
-			*sys.bcStack.Top() = c.animElemTime(sys.bcStack.Top().ToI())
-		case OC_animelemno:
-			*sys.bcStack.Top() = c.animElemNo(sys.bcStack.Top().ToI())
-		case OC_animexist:
-			*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
 		case OC_selfanimexist:
 			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
 		case OC_stateno:
@@ -1354,6 +1356,11 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel)
 	case OC_const_movement_down_friction_threshold:
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
+	case OC_const_authorname:
+		sys.bcStack.PushB(c.gi().authorLow ==
+			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
 	default:
 		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
 		unimplemented()

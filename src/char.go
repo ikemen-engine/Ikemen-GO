@@ -1087,6 +1087,8 @@ type CharGlobalInfo struct {
 	def              string
 	displayname      string
 	author           string
+	nameLow          string
+	authorLow        string
 	palkeymap        [MaxPalNo]int32
 	sff              *Sff
 	snd              *Snd
@@ -1371,6 +1373,8 @@ func (c *Char) load(def string) error {
 					gi.displayname = c.name
 				}
 				gi.author, _, _ = is.getText("author")
+				gi.authorLow = strings.ToLower(gi.author)
+				gi.nameLow = strings.ToLower(c.name)
 			}
 		case "files":
 			if files {
@@ -1777,11 +1781,113 @@ func (c *Char) setSF(csf CharSpecialFlag) {
 func (c *Char) unsetSF(csf CharSpecialFlag) {
 	c.specialFlag &^= csf
 }
-func (c *Char) time() int32 {
-	return c.ss.time
+func (c *Char) parent() *Char {
+	if c.parentIndex == IErr {
+		return nil
+	}
+	if !sys.ignoreMostErrors && c.parentIndex < 0 {
+		fmt.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+	}
+	return sys.chars[c.playerNo][Abs(c.parentIndex)]
+}
+func (c *Char) root() *Char {
+	if c.helperIndex == 0 {
+		return nil
+	}
+	return sys.chars[c.playerNo][0]
+}
+func (c *Char) helper(id int32) *Char {
+	for _, h := range sys.chars[c.playerNo][1:] {
+		if !h.sf(CSF_destroy) && (id <= 0 || id == h.helperId) {
+			return h
+		}
+	}
+	return nil
+}
+func (c *Char) target(id int32) *Char {
+	for _, tid := range c.targets {
+		if t := sys.charList.get(tid); t != nil && (id < 0 || id == t.ghv.hitid) {
+			return t
+		}
+	}
+	return nil
+}
+func (c *Char) partner(n int32) *Char {
+	n = Max(0, n)
+	if int(n) > len(sys.chars)/2-2 {
+		return nil
+	}
+	var p int
+	if int(n) == c.playerNo>>1 {
+		p = c.playerNo + 2
+	} else {
+		p = c.playerNo&1 + int(n)<<1
+		if int(n) > c.playerNo>>1 {
+			p += 2
+		}
+	}
+	if len(sys.chars[p]) > 0 {
+		return sys.chars[p][0]
+	}
+	return nil
+}
+func (c *Char) enemy(n int32) *Char {
+	if n < 0 || n >= c.numEnemy() {
+		return nil
+	}
+	return sys.chars[n*2+int32(^c.playerNo&1)][0]
+}
+func (c *Char) enemynear(n int32) *Char {
+	return sys.charList.enemyNear(c, n, false)
+}
+func (c *Char) playerid(id int32) *Char {
+	return sys.charList.get(id)
+}
+func (c *Char) p2() *Char {
+	p2 := sys.charList.enemyNear(c, 0, true)
+	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
+		return nil
+	}
+	return p2
+}
+func (c *Char) aiLevel() int32 {
+	if c.helperIndex != 0 && c.gi().ver[0] == 1 {
+		return 0
+	}
+	return sys.com[c.playerNo]
 }
 func (c *Char) alive() bool {
 	return !c.scf(SCF_ko)
+}
+func (c *Char) animElemNo(time int32) BytecodeValue {
+	if c.anim != nil && time >= -c.anim.sumtime {
+		return BytecodeInt(c.anim.AnimElemNo(time))
+	}
+	return BytecodeSF()
+}
+func (c *Char) animElemTime(e int32) BytecodeValue {
+	if e >= 1 && c.anim != nil && int(e) <= len(c.anim.frames) {
+		return BytecodeInt(c.anim.AnimElemTime(e))
+	}
+	return BytecodeSF()
+}
+func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
+	if anim.IsSF() {
+		return BytecodeSF()
+	}
+	if c != wc {
+		return c.selfAnimExist(anim)
+	}
+	return sys.chars[c.ss.sb.playerNo][0].selfAnimExist(anim)
+}
+func (c *Char) animTime() int32 {
+	if c.anim != nil {
+		return c.anim.AnimTime()
+	}
+	return 0
+}
+func (c *Char) time() int32 {
+	return c.ss.time
 }
 func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	ch = Min(255, ch)
@@ -1912,25 +2018,6 @@ func (c *Char) changeState(no, anim, ctrl int32) {
 }
 func (c *Char) selfState(no, anim, ctrl int32) {
 	c.changeStateEx(no, c.playerNo, anim, ctrl)
-}
-func (c *Char) partner(n int32) *Char {
-	n = Max(0, n)
-	if int(n) > len(sys.chars)/2-2 {
-		return nil
-	}
-	var p int
-	if int(n) == c.playerNo>>1 {
-		p = c.playerNo + 2
-	} else {
-		p = c.playerNo&1 + int(n)<<1
-		if int(n) > c.playerNo>>1 {
-			p += 2
-		}
-	}
-	if len(sys.chars[p]) > 0 {
-		return sys.chars[p][0]
-	}
-	return nil
 }
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
@@ -2067,24 +2154,6 @@ func (c *Char) roundState() int32 {
 	default:
 		return 3
 	}
-}
-func (c *Char) animTime() int32 {
-	if c.anim != nil {
-		return c.anim.AnimTime()
-	}
-	return 0
-}
-func (c *Char) animElemTime(e int32) BytecodeValue {
-	if e >= 1 && c.anim != nil && int(e) <= len(c.anim.frames) {
-		return BytecodeInt(c.anim.AnimElemTime(e))
-	}
-	return BytecodeSF()
-}
-func (c *Char) animElemNo(time int32) BytecodeValue {
-	if c.anim != nil && time >= -c.anim.sumtime {
-		return BytecodeInt(c.anim.AnimElemNo(time))
-	}
-	return BytecodeSF()
 }
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
@@ -2249,48 +2318,6 @@ func (c *Char) mulXV(xv float32) {
 }
 func (c *Char) mulYV(yv float32) {
 	c.vel[1] *= yv
-}
-func (c *Char) parent() *Char {
-	if c.parentIndex == IErr {
-		return nil
-	}
-	if !sys.ignoreMostErrors && c.parentIndex < 0 {
-		fmt.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
-	}
-	return sys.chars[c.playerNo][Abs(c.parentIndex)]
-}
-func (c *Char) root() *Char {
-	if c.helperIndex == 0 {
-		return nil
-	}
-	return sys.chars[c.playerNo][0]
-}
-func (c *Char) helper(id int32) *Char {
-	unimplemented()
-	return nil
-}
-func (c *Char) target(id int32) *Char {
-	unimplemented()
-	return nil
-}
-func (c *Char) enemy(n int32) *Char {
-	if n < 0 || n >= c.numEnemy() {
-		return nil
-	}
-	return sys.chars[n*2+int32(^c.playerNo&1)][0]
-}
-func (c *Char) enemynear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, false)
-}
-func (c *Char) playerid(id int32) *Char {
-	return sys.charList.get(id)
-}
-func (c *Char) p2() *Char {
-	p2 := sys.charList.enemyNear(c, 0, true)
-	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
-		return nil
-	}
-	return p2
 }
 func (c *Char) newProj() *Projectile {
 	unimplemented()
@@ -2919,15 +2946,6 @@ func (c *Char) screenPosY() float32 {
 }
 func (c *Char) height() float32 {
 	return float32(c.size.height)
-}
-func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
-	if anim.IsSF() {
-		return BytecodeSF()
-	}
-	if c != wc {
-		return c.selfAnimExist(anim)
-	}
-	return sys.chars[c.ss.sb.playerNo][0].selfAnimExist(anim)
 }
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {

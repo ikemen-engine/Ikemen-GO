@@ -847,6 +847,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		return nil
 	}
+	nameSub := func(opc OpCode) error {
+		return eqne(func() error {
+			quot, i := c.token == "\"", strings.Index(*in, "\"")
+			if !quot || i < 0 {
+				return Error("名前が\"で囲まれていません")
+			}
+			si := sys.stringPool[c.playerNo].Add(strings.ToLower((*in)[:i]))
+			*in = (*in)[i+1:]
+			out.append(OC_const_)
+			out.appendI32Op(opc, int32(si))
+			return nil
+		})
+	}
 	var be1, be2, be3 BytecodeExp
 	var bv1, bv2, bv3 BytecodeValue
 	var n int32
@@ -1060,10 +1073,35 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				bv = bv3
 			}
 		}
-	case "time", "statetime":
-		out.append(OC_time)
+	case "ailevel":
+		out.append(OC_ailevel)
 	case "alive":
 		out.append(OC_alive)
+	case "anim":
+		out.append(OC_anim)
+	case "animelemno":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animelemno)
+	case "animelemtime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animelemtime)
+	case "animexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_animexist)
+	case "animtime":
+		out.append(OC_animtime)
+	case "authorname":
+		if err := nameSub(OC_const_authorname); err != nil {
+			return bvNone(), err
+		}
+	case "time", "statetime":
+		out.append(OC_time)
 	case "ctrl":
 		out.append(OC_ctrl)
 	case "random":
@@ -1089,10 +1127,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_canrecover)
 	case "hitshakeover":
 		out.append(OC_hitshakeover)
-	case "anim":
-		out.append(OC_anim)
-	case "animtime":
-		out.append(OC_animtime)
 	case "animelem":
 		if not, err := c.kyuushiki(in); err != nil {
 			return bvNone(), err
@@ -1119,21 +1153,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		out.append(OC_jsf8, OpCode(len(be)))
 		out.append(be...)
-	case "animelemtime":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_animelemtime)
-	case "animelemno":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_animelemno)
-	case "animexist":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_animexist)
 	case "selfanimexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
