@@ -1,6 +1,7 @@
 package main
 
 // #cgo LDFLAGS: -lpng -lz
+// #include <stdlib.h>
 // #include <png.h>
 import "C"
 import (
@@ -957,11 +958,16 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 					C.png_set_add_alpha(png_ptr, 0xFF, C.PNG_FILLER_AFTER)
 				}
 				px = make([]byte, int(width*height*4))
-				pp := make([]*C.png_byte, int(height))
-				for i := range pp {
-					pp[i] = (*C.png_byte)(&px[i*int(width)*4])
+				var ppb *C.png_byte
+				lines := C.malloc(C.size_t(unsafe.Sizeof(ppb) * uintptr(height)))
+				pp := (**C.png_byte)(lines)
+				for i := 0; i < int(height); i++ {
+					*pp = (*C.png_byte)(&px[i*int(width)*4])
+					pp = (**C.png_byte)(unsafe.Pointer(
+						uintptr(unsafe.Pointer(pp)) + unsafe.Sizeof(ppb)))
 				}
-				C.png_read_image(png_ptr, &pp[0])
+				C.png_read_image(png_ptr, lines)
+				C.free(lines)
 				sys.mainThreadTask <- func() {
 					s.Tex = newTexture()
 					gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
