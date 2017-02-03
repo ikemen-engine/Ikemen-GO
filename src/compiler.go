@@ -849,14 +849,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	}
 	nameSub := func(opc OpCode) error {
 		return eqne(func() error {
-			quot, i := c.token == "\"", strings.Index(*in, "\"")
-			if !quot || i < 0 {
-				return Error("名前が\"で囲まれていません")
+			if err := text(); err != nil {
+				return err
 			}
-			si := sys.stringPool[c.playerNo].Add(strings.ToLower((*in)[:i]))
-			*in = (*in)[i+1:]
 			out.append(OC_const_)
-			out.appendI32Op(opc, int32(si))
+			out.appendI32Op(opc, int32(sys.stringPool[c.playerNo].Add(
+				strings.ToLower(c.token))))
 			return nil
 		})
 	}
@@ -1100,98 +1098,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := nameSub(OC_const_authorname); err != nil {
 			return bvNone(), err
 		}
-	case "time", "statetime":
-		out.append(OC_time)
-	case "ctrl":
-		out.append(OC_ctrl)
-	case "random":
-		out.append(OC_random)
-	case "roundstate":
-		out.append(OC_roundstate)
-	case "stateno":
-		out.append(OC_stateno)
-	case "prevstateno":
-		out.append(OC_prevstateno)
-	case "p2stateno":
-		out.appendI32Op(OC_p2, 1)
-		out.append(OC_stateno)
-	case "movecontact":
-		out.append(OC_movecontact)
-	case "movehit":
-		out.append(OC_movehit)
-	case "moveguarded":
-		out.append(OC_moveguarded)
-	case "movereversed":
-		out.append(OC_movereversed)
-	case "canrecover":
-		out.append(OC_canrecover)
-	case "hitshakeover":
-		out.append(OC_hitshakeover)
-	case "animelem":
-		if not, err := c.kyuushiki(in); err != nil {
-			return bvNone(), err
-		} else if not && !sys.ignoreMostErrors {
-			return bvNone(), Error("animelemに != は使えません")
-		}
-		if c.token == "-" {
-			return bvNone(), Error("マイナスが付くとエラーです")
-		}
-		if n, err = c.integer2(in); err != nil {
-			return bvNone(), err
-		}
-		if n <= 0 {
-			return bvNone(), Error("animelemのは0より大きくなければいけません")
-		}
-		be1.appendValue(BytecodeInt(n))
-		if rd {
-			out.appendI32Op(OC_nordrun, int32(len(be1)))
-		}
-		out.append(be1...)
-		out.append(OC_animelemtime)
-		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_jsf8, OpCode(len(be)))
-		out.append(be...)
-	case "selfanimexist":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_selfanimexist)
-	case "vel":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_vel_x)
-		case "y":
-			out.append(OC_vel_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "pos":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_pos_x)
-		case "y":
-			out.append(OC_pos_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "screenpos":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_screenpos_x)
-		case "y":
-			out.append(OC_screenpos_y)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
+	case "backedge":
+		out.append(OC_backedge)
+	case "backedgebodydist":
+		out.append(OC_backedgebodydist)
+	case "backedgedist":
+		out.append(OC_backedgedist)
+	case "bottomedge":
+		out.append(OC_bottomedge)
 	case "camerapos":
 		c.token = c.tokenizer(in)
 		switch c.token {
@@ -1202,6 +1116,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error(c.token + "が不正です")
 		}
+	case "camerazoom":
+		out.append(OC_camerazoom)
+	case "canrecover":
+		out.append(OC_canrecover)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -1215,428 +1133,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		}); err != nil {
 			return bvNone(), err
-		}
-	case "p2dist":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_ex_, OC_ex_p2dist_x)
-		case "y":
-			out.append(OC_ex_, OC_ex_p2dist_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "p2bodydist":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_ex_, OC_ex_p2bodydist_x)
-		case "y":
-			out.append(OC_ex_, OC_ex_p2dist_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "rootdist":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_ex_, OC_ex_rootdist_x)
-		case "y":
-			out.append(OC_ex_, OC_ex_rootdist_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "parentdist":
-		c.token = c.tokenizer(in)
-		switch c.token {
-		case "x":
-			out.append(OC_ex_, OC_ex_parentdist_x)
-		case "y":
-			out.append(OC_ex_, OC_ex_parentdist_y)
-		case "z":
-			bv = BytecodeFloat(0)
-		default:
-			return bvNone(), Error(c.token + "が不正です")
-		}
-	case "frontedgedist":
-		out.append(OC_frontedgedist)
-	case "frontedgebodydist":
-		out.append(OC_frontedgebodydist)
-	case "frontedge":
-		out.append(OC_frontedge)
-	case "backedgedist":
-		out.append(OC_backedgedist)
-	case "backedgebodydist":
-		out.append(OC_backedgebodydist)
-	case "backedge":
-		out.append(OC_backedge)
-	case "leftedge":
-		out.append(OC_leftedge)
-	case "rightedge":
-		out.append(OC_rightedge)
-	case "topedge":
-		out.append(OC_topedge)
-	case "bottomedge":
-		out.append(OC_bottomedge)
-	case "gamewidth":
-		out.append(OC_gamewidth)
-	case "gameheight":
-		out.append(OC_gameheight)
-	case "screenwidth":
-		out.append(OC_screenwidth)
-	case "screenheight":
-		out.append(OC_screenheight)
-	case "power":
-		out.append(OC_power)
-	case "roundsexisted":
-		out.append(OC_roundsexisted)
-	case "gametime":
-		out.append(OC_gametime)
-	case "hitfall":
-		out.append(OC_hitfall)
-	case "inguarddist":
-		out.append(OC_inguarddist)
-	case "hitover":
-		out.append(OC_hitover)
-	case "facing":
-		out.append(OC_facing)
-	case "palno":
-		out.append(OC_palno)
-	case "numenemy":
-		out.append(OC_numenemy)
-	case "numpartner":
-		out.append(OC_numpartner)
-	case "win":
-		out.append(OC_ex_, OC_ex_win)
-	case "lose":
-		out.append(OC_ex_, OC_ex_lose)
-	case "matchover":
-		out.append(OC_ex_, OC_ex_matchover)
-	case "roundno":
-		out.append(OC_ex_, OC_ex_roundno)
-	case "ishelper":
-		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ishelper)
-	case "numhelper":
-		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_numhelper)
-	case "teammode":
-		if err := eqne(func() error {
-			if len(c.token) == 0 {
-				return Error("teammodeの値が指定されていません")
-			}
-			var tm TeamMode
-			switch c.token {
-			case "single":
-				tm = TM_Single
-			case "simul":
-				tm = TM_Simul
-			case "turns":
-				tm = TM_Turns
-			default:
-				return Error(c.token + "が無効な値です")
-			}
-			out.append(OC_teammode, OpCode(tm))
-			return nil
-		}); err != nil {
-			return bvNone(), err
-		}
-	case "statetype", "p2statetype":
-		trname := c.token
-		if err := eqne2(func(not bool) error {
-			if len(c.token) == 0 {
-				return Error(trname + "の値が指定されていません")
-			}
-			var st StateType
-			switch c.token[0] {
-			case 's':
-				st = ST_S
-			case 'c':
-				st = ST_C
-			case 'a':
-				st = ST_A
-			case 'l':
-				st = ST_L
-			default:
-				return Error(c.token + "が無効な値です")
-			}
-			if trname == "p2statetype" {
-				out.appendI32Op(OC_p2, 2+Btoi(not))
-			}
-			out.append(OC_statetype, OpCode(st))
-			if not {
-				out.append(OC_blnot)
-			}
-			return nil
-		}); err != nil {
-			return bvNone(), err
-		}
-	case "movetype", "p2movetype":
-		trname := c.token
-		if err := eqne2(func(not bool) error {
-			if len(c.token) == 0 {
-				return Error(trname + "の値が指定されていません")
-			}
-			var mt MoveType
-			switch c.token[0] {
-			case 'i':
-				mt = MT_I
-			case 'a':
-				mt = MT_A
-			case 'h':
-				mt = MT_H
-			default:
-				return Error(c.token + "が無効な値です")
-			}
-			if trname == "p2movetype" {
-				out.appendI32Op(OC_p2, 2+Btoi(not))
-			}
-			out.append(OC_movetype, OpCode(mt>>15))
-			if not {
-				out.append(OC_blnot)
-			}
-			return nil
-		}); err != nil {
-			return bvNone(), err
-		}
-	case "hitdefattr":
-		hda := func() error {
-			if attr, err := c.trgAttr(in); err != nil {
-				return err
-			} else {
-				out.appendI32Op(OC_hitdefattr, attr)
-			}
-			return nil
-		}
-		if sys.cgi[c.playerNo].ver[0] == 1 {
-			if err := eqne(hda); err != nil {
-				return bvNone(), err
-			}
-		} else {
-			if not, err := c.kyuushiki(in); err != nil {
-				if sys.ignoreMostErrors {
-					out.appendValue(BytecodeBool(false))
-				} else {
-					return bvNone(), err
-				}
-			} else if err := hda(); err != nil {
-				return bvNone(), err
-			} else if not && !sys.ignoreMostErrors {
-				return bvNone(), Error("旧バージョンのためhitdefattrに != は使えません")
-			}
-		}
-	case "abs":
-		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
-			return bvNone(), err
-		}
-	case "exp":
-		if bv, err = c.mathFunc(out, in, rd, OC_exp, out.exp); err != nil {
-			return bvNone(), err
-		}
-	case "ln":
-		if bv, err = c.mathFunc(out, in, rd, OC_ln, out.ln); err != nil {
-			return bvNone(), err
-		}
-	case "log":
-		if err := c.kakkohiraku(in); err != nil {
-			return bvNone(), err
-		}
-		if bv1, err = c.expBoolOr(&be1, in); err != nil {
-			return bvNone(), err
-		}
-		if c.token != "," {
-			return bvNone(), Error("','がありません")
-		}
-		c.token = c.tokenizer(in)
-		if bv2, err = c.expBoolOr(&be2, in); err != nil {
-			return bvNone(), err
-		}
-		if err := c.kakkotojiru(in); err != nil {
-			return bvNone(), err
-		}
-		if bv1.IsNone() || bv2.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.append(be2...)
-			out.append(OC_log)
-			bv = bvNone()
-		} else {
-			out.log(&bv1, bv2)
-			bv = bv1
-		}
-	case "cos":
-		if bv, err = c.mathFunc(out, in, rd, OC_cos, out.cos); err != nil {
-			return bvNone(), err
-		}
-	case "sin":
-		if bv, err = c.mathFunc(out, in, rd, OC_sin, out.sin); err != nil {
-			return bvNone(), err
-		}
-	case "tan":
-		if bv, err = c.mathFunc(out, in, rd, OC_tan, out.tan); err != nil {
-			return bvNone(), err
-		}
-	case "acos":
-		if bv, err = c.mathFunc(out, in, rd, OC_acos, out.acos); err != nil {
-			return bvNone(), err
-		}
-	case "asin":
-		if bv, err = c.mathFunc(out, in, rd, OC_asin, out.asin); err != nil {
-			return bvNone(), err
-		}
-	case "atan":
-		if bv, err = c.mathFunc(out, in, rd, OC_atan, out.atan); err != nil {
-			return bvNone(), err
-		}
-	case "floor":
-		if bv, err = c.mathFunc(out, in, rd, OC_floor, out.floor); err != nil {
-			return bvNone(), err
-		}
-	case "ceil":
-		if bv, err = c.mathFunc(out, in, rd, OC_ceil, out.ceil); err != nil {
-			return bvNone(), err
-		}
-	case "gethitvar":
-		if err := c.kakkohiraku(in); err != nil {
-			return bvNone(), err
-		}
-		switch c.token {
-		case "xveladd":
-			bv.SetF(0)
-		case "yveladd":
-			bv.SetF(0)
-		case "type":
-			bv.SetI(0)
-		case "zoff":
-			bv.SetF(0)
-		case "fall.envshake.dir":
-			bv.SetI(0)
-		default:
-			out.append(OC_ex_)
-			switch c.token {
-			case "animtype":
-				out.append(OC_ex_gethitvar_animtype)
-			case "airtype":
-				out.append(OC_ex_gethitvar_airtype)
-			case "groundtype":
-				out.append(OC_ex_gethitvar_groundtype)
-			case "damage":
-				out.append(OC_ex_gethitvar_damage)
-			case "hitcount":
-				out.append(OC_ex_gethitvar_hitcount)
-			case "fallcount":
-				out.append(OC_ex_gethitvar_fallcount)
-			case "hitshaketime":
-				out.append(OC_ex_gethitvar_hitshaketime)
-			case "hittime":
-				out.append(OC_ex_gethitvar_hittime)
-			case "slidetime":
-				out.append(OC_ex_gethitvar_slidetime)
-			case "ctrltime":
-				out.append(OC_ex_gethitvar_ctrltime)
-			case "recovertime":
-				out.append(OC_ex_gethitvar_recovertime)
-			case "xoff":
-				out.append(OC_ex_gethitvar_xoff)
-			case "yoff":
-				out.append(OC_ex_gethitvar_yoff)
-			case "xvel":
-				out.append(OC_ex_gethitvar_xvel)
-			case "yvel":
-				out.append(OC_ex_gethitvar_yvel)
-			case "yaccel":
-				out.append(OC_ex_gethitvar_yaccel)
-			case "hitid", "chainid":
-				out.append(OC_ex_gethitvar_chainid)
-			case "guarded":
-				out.append(OC_ex_gethitvar_guarded)
-			case "isbound":
-				out.append(OC_ex_gethitvar_isbound)
-			case "fall":
-				out.append(OC_ex_gethitvar_fall)
-			case "fall.damage":
-				out.append(OC_ex_gethitvar_fall_damage)
-			case "fall.xvel":
-				out.append(OC_ex_gethitvar_fall_xvel)
-			case "fall.yvel":
-				out.append(OC_ex_gethitvar_fall_yvel)
-			case "fall.recover":
-				out.append(OC_ex_gethitvar_fall_recover)
-			case "fall.time":
-				out.append(OC_ex_gethitvar_fall_time)
-			case "fall.recovertime":
-				out.append(OC_ex_gethitvar_fall_recovertime)
-			case "fall.kill":
-				out.append(OC_ex_gethitvar_fall_kill)
-			case "fall.envshake.time":
-				out.append(OC_ex_gethitvar_fall_envshake_time)
-			case "fall.envshake.freq":
-				out.append(OC_ex_gethitvar_fall_envshake_freq)
-			case "fall.envshake.ampl":
-				out.append(OC_ex_gethitvar_fall_envshake_ampl)
-			case "fall.envshake.phase":
-				out.append(OC_ex_gethitvar_fall_envshake_phase)
-			default:
-				return bvNone(), Error(c.token + "が不正です")
-			}
-		}
-		c.token = c.tokenizer(in)
-		if err := c.kakkotojiru(in); err != nil {
-			return bvNone(), err
-		}
-	case "const240p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
-			return bvNone(), err
-		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(1))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(1))
-		}
-	case "const480p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
-			return bvNone(), err
-		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(0.5))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(0.5))
-		}
-	case "const720p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
-			return bvNone(), err
-		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(0.25))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(0.25))
 		}
 	case "const":
 		if err := c.kakkohiraku(in); err != nil {
@@ -1832,6 +1328,621 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), Error(c.token + "の次に')'がありません")
 		}
 		*in = (*in)[1:]
+	case "ctrl":
+		out.append(OC_ctrl)
+	case "drawgame":
+		out.append(OC_ex_, OC_ex_drawgame)
+	case "facing":
+		out.append(OC_facing)
+	case "frontedge":
+		out.append(OC_frontedge)
+	case "frontedgebodydist":
+		out.append(OC_frontedgebodydist)
+	case "frontedgedist":
+		out.append(OC_frontedgedist)
+	case "gameheight":
+		out.append(OC_gameheight)
+	case "gametime":
+		out.append(OC_gametime)
+	case "gamewidth":
+		out.append(OC_gamewidth)
+	case "gethitvar":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		switch c.token {
+		case "xveladd":
+			bv.SetF(0)
+		case "yveladd":
+			bv.SetF(0)
+		case "type":
+			bv.SetI(0)
+		case "zoff":
+			bv.SetF(0)
+		case "fall.envshake.dir":
+			bv.SetI(0)
+		default:
+			out.append(OC_ex_)
+			switch c.token {
+			case "animtype":
+				out.append(OC_ex_gethitvar_animtype)
+			case "airtype":
+				out.append(OC_ex_gethitvar_airtype)
+			case "groundtype":
+				out.append(OC_ex_gethitvar_groundtype)
+			case "damage":
+				out.append(OC_ex_gethitvar_damage)
+			case "hitcount":
+				out.append(OC_ex_gethitvar_hitcount)
+			case "fallcount":
+				out.append(OC_ex_gethitvar_fallcount)
+			case "hitshaketime":
+				out.append(OC_ex_gethitvar_hitshaketime)
+			case "hittime":
+				out.append(OC_ex_gethitvar_hittime)
+			case "slidetime":
+				out.append(OC_ex_gethitvar_slidetime)
+			case "ctrltime":
+				out.append(OC_ex_gethitvar_ctrltime)
+			case "recovertime":
+				out.append(OC_ex_gethitvar_recovertime)
+			case "xoff":
+				out.append(OC_ex_gethitvar_xoff)
+			case "yoff":
+				out.append(OC_ex_gethitvar_yoff)
+			case "xvel":
+				out.append(OC_ex_gethitvar_xvel)
+			case "yvel":
+				out.append(OC_ex_gethitvar_yvel)
+			case "yaccel":
+				out.append(OC_ex_gethitvar_yaccel)
+			case "hitid", "chainid":
+				out.append(OC_ex_gethitvar_chainid)
+			case "guarded":
+				out.append(OC_ex_gethitvar_guarded)
+			case "isbound":
+				out.append(OC_ex_gethitvar_isbound)
+			case "fall":
+				out.append(OC_ex_gethitvar_fall)
+			case "fall.damage":
+				out.append(OC_ex_gethitvar_fall_damage)
+			case "fall.xvel":
+				out.append(OC_ex_gethitvar_fall_xvel)
+			case "fall.yvel":
+				out.append(OC_ex_gethitvar_fall_yvel)
+			case "fall.recover":
+				out.append(OC_ex_gethitvar_fall_recover)
+			case "fall.time":
+				out.append(OC_ex_gethitvar_fall_time)
+			case "fall.recovertime":
+				out.append(OC_ex_gethitvar_fall_recovertime)
+			case "fall.kill":
+				out.append(OC_ex_gethitvar_fall_kill)
+			case "fall.envshake.time":
+				out.append(OC_ex_gethitvar_fall_envshake_time)
+			case "fall.envshake.freq":
+				out.append(OC_ex_gethitvar_fall_envshake_freq)
+			case "fall.envshake.ampl":
+				out.append(OC_ex_gethitvar_fall_envshake_ampl)
+			case "fall.envshake.phase":
+				out.append(OC_ex_gethitvar_fall_envshake_phase)
+			default:
+				return bvNone(), Error(c.token + "が不正です")
+			}
+		}
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
+	case "hitcount":
+		out.append(OC_hitcount)
+	case "hitdefattr":
+		hda := func() error {
+			if attr, err := c.trgAttr(in); err != nil {
+				return err
+			} else {
+				out.appendI32Op(OC_hitdefattr, attr)
+			}
+			return nil
+		}
+		if sys.cgi[c.playerNo].ver[0] == 1 {
+			if err := eqne(hda); err != nil {
+				return bvNone(), err
+			}
+		} else {
+			if not, err := c.kyuushiki(in); err != nil {
+				if sys.ignoreMostErrors {
+					out.appendValue(BytecodeBool(false))
+				} else {
+					return bvNone(), err
+				}
+			} else if err := hda(); err != nil {
+				return bvNone(), err
+			} else if not && !sys.ignoreMostErrors {
+				return bvNone(), Error("旧バージョンのためhitdefattrに != は使えません")
+			}
+		}
+	case "hitfall":
+		out.append(OC_hitfall)
+	case "hitover":
+		out.append(OC_hitover)
+	case "hitpausetime":
+		out.append(OC_hitpausetime)
+	case "hitshakeover":
+		out.append(OC_hitshakeover)
+	case "hitvel":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_hitvel_x)
+		case "y":
+			out.append(OC_hitvel_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "id":
+		out.append(OC_id)
+	case "inguarddist":
+		out.append(OC_inguarddist)
+	case "ishelper":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ishelper)
+	case "ishometeam":
+		out.append(OC_ex_, OC_ex_ishometeam)
+	case "leftedge":
+		out.append(OC_leftedge)
+	case "life":
+		out.append(OC_life)
+	case "lifemax":
+		out.append(OC_lifemax)
+	case "lose":
+		out.append(OC_ex_, OC_ex_lose)
+	case "loseko":
+		out.append(OC_ex_, OC_ex_loseko)
+	case "losetime":
+		out.append(OC_ex_, OC_ex_losetime)
+	case "matchno":
+		out.append(OC_ex_, OC_ex_matchno)
+	case "matchover":
+		out.append(OC_ex_, OC_ex_matchover)
+	case "movecontact":
+		out.append(OC_movecontact)
+	case "moveguarded":
+		out.append(OC_moveguarded)
+	case "movehit":
+		out.append(OC_movehit)
+	case "movereversed":
+		out.append(OC_movereversed)
+	case "movetype", "p2movetype":
+		trname := c.token
+		if err := eqne2(func(not bool) error {
+			if len(c.token) == 0 {
+				return Error(trname + "の値が指定されていません")
+			}
+			var mt MoveType
+			switch c.token[0] {
+			case 'i':
+				mt = MT_I
+			case 'a':
+				mt = MT_A
+			case 'h':
+				mt = MT_H
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			if trname == "p2movetype" {
+				out.appendI32Op(OC_p2, 2+Btoi(not))
+			}
+			out.append(OC_movetype, OpCode(mt>>15))
+			if not {
+				out.append(OC_blnot)
+			}
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "numenemy":
+		out.append(OC_numenemy)
+	case "numexplod":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numexplod)
+	case "numhelper":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numhelper)
+	case "numpartner":
+		out.append(OC_numpartner)
+	case "numproj":
+		out.append(OC_numproj)
+	case "numprojid":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numprojid)
+	case "numtarget":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numtarget)
+	case "palno":
+		out.append(OC_palno)
+	case "pos":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_pos_x)
+		case "y":
+			out.append(OC_pos_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "power":
+		out.append(OC_power)
+	case "powermax":
+		out.append(OC_powermax)
+	case "playeridexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_playeridexist)
+	case "prevstateno":
+		out.append(OC_prevstateno)
+	case "projcanceltime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_projcanceltime)
+	case "projcontacttime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_projcontacttime)
+	case "projguardedtime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_projguardedtime)
+	case "projhittime":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_projhittime)
+	case "random":
+		out.append(OC_random)
+	case "rightedge":
+		out.append(OC_rightedge)
+	case "roundno":
+		out.append(OC_ex_, OC_ex_roundno)
+	case "roundsexisted":
+		out.append(OC_roundsexisted)
+	case "roundstate":
+		out.append(OC_roundstate)
+	case "screenheight":
+		out.append(OC_screenheight)
+	case "screenpos":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_screenpos_x)
+		case "y":
+			out.append(OC_screenpos_y)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "screenwidth":
+		out.append(OC_screenwidth)
+	case "selfanimexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_selfanimexist)
+	case "stateno", "p2stateno":
+		if c.token == "p2stateno" {
+			out.appendI32Op(OC_p2, 1)
+		}
+		out.append(OC_stateno)
+	case "statetype", "p2statetype":
+		trname := c.token
+		if err := eqne2(func(not bool) error {
+			if len(c.token) == 0 {
+				return Error(trname + "の値が指定されていません")
+			}
+			var st StateType
+			switch c.token[0] {
+			case 's':
+				st = ST_S
+			case 'c':
+				st = ST_C
+			case 'a':
+				st = ST_A
+			case 'l':
+				st = ST_L
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			if trname == "p2statetype" {
+				out.appendI32Op(OC_p2, 2+Btoi(not))
+			}
+			out.append(OC_statetype, OpCode(st))
+			if not {
+				out.append(OC_blnot)
+			}
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "stagevar":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		svname := c.token
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
+		var opc OpCode
+		switch svname {
+		case "info.name":
+			opc = OC_const_stagevar_info_name
+		case "info.displayname":
+			opc = OC_const_stagevar_info_displayname
+		case "info.author":
+			opc = OC_const_stagevar_info_author
+		default:
+			return bvNone(), Error(svname + "が不正です")
+		}
+		if err := nameSub(opc); err != nil {
+			return bvNone(), err
+		}
+	case "teammode":
+		if err := eqne(func() error {
+			if len(c.token) == 0 {
+				return Error("teammodeの値が指定されていません")
+			}
+			var tm TeamMode
+			switch c.token {
+			case "single":
+				tm = TM_Single
+			case "simul":
+				tm = TM_Simul
+			case "turns":
+				tm = TM_Turns
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			out.append(OC_teammode, OpCode(tm))
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "teamside":
+		out.append(OC_teamside)
+	case "tickspersecond":
+		out.append(OC_ex_, OC_ex_tickspersecond)
+	case "time", "statetime":
+		out.append(OC_time)
+	case "topedge":
+		out.append(OC_topedge)
+	case "uniqhitcount":
+		out.append(OC_uniqhitcount)
+	case "vel":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_vel_x)
+		case "y":
+			out.append(OC_vel_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "win":
+		out.append(OC_ex_, OC_ex_win)
+	case "winko":
+		out.append(OC_ex_, OC_ex_winko)
+	case "wintime":
+		out.append(OC_ex_, OC_ex_wintime)
+	case "winperfect":
+		out.append(OC_ex_, OC_ex_winperfect)
+	case "animelem":
+		if not, err := c.kyuushiki(in); err != nil {
+			return bvNone(), err
+		} else if not && !sys.ignoreMostErrors {
+			return bvNone(), Error("animelemに != は使えません")
+		}
+		if c.token == "-" {
+			return bvNone(), Error("マイナスが付くとエラーです")
+		}
+		if n, err = c.integer2(in); err != nil {
+			return bvNone(), err
+		}
+		if n <= 0 {
+			return bvNone(), Error("animelemのは0より大きくなければいけません")
+		}
+		be1.appendValue(BytecodeInt(n))
+		if rd {
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
+		}
+		out.append(be1...)
+		out.append(OC_animelemtime)
+		if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_jsf8, OpCode(len(be)))
+		out.append(be...)
+	case "p2dist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_p2dist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_p2dist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "p2bodydist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_p2bodydist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_p2dist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "rootdist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_rootdist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_rootdist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "parentdist":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_parentdist_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_parentdist_y)
+		case "z":
+			bv = BytecodeFloat(0)
+		default:
+			return bvNone(), Error(c.token + "が不正です")
+		}
+	case "abs":
+		if bv, err = c.mathFunc(out, in, rd, OC_abs, out.abs); err != nil {
+			return bvNone(), err
+		}
+	case "exp":
+		if bv, err = c.mathFunc(out, in, rd, OC_exp, out.exp); err != nil {
+			return bvNone(), err
+		}
+	case "ln":
+		if bv, err = c.mathFunc(out, in, rd, OC_ln, out.ln); err != nil {
+			return bvNone(), err
+		}
+	case "log":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("','がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.kakkotojiru(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.append(be2...)
+			out.append(OC_log)
+			bv = bvNone()
+		} else {
+			out.log(&bv1, bv2)
+			bv = bv1
+		}
+	case "cos":
+		if bv, err = c.mathFunc(out, in, rd, OC_cos, out.cos); err != nil {
+			return bvNone(), err
+		}
+	case "sin":
+		if bv, err = c.mathFunc(out, in, rd, OC_sin, out.sin); err != nil {
+			return bvNone(), err
+		}
+	case "tan":
+		if bv, err = c.mathFunc(out, in, rd, OC_tan, out.tan); err != nil {
+			return bvNone(), err
+		}
+	case "acos":
+		if bv, err = c.mathFunc(out, in, rd, OC_acos, out.acos); err != nil {
+			return bvNone(), err
+		}
+	case "asin":
+		if bv, err = c.mathFunc(out, in, rd, OC_asin, out.asin); err != nil {
+			return bvNone(), err
+		}
+	case "atan":
+		if bv, err = c.mathFunc(out, in, rd, OC_atan, out.atan); err != nil {
+			return bvNone(), err
+		}
+	case "floor":
+		if bv, err = c.mathFunc(out, in, rd, OC_floor, out.floor); err != nil {
+			return bvNone(), err
+		}
+	case "ceil":
+		if bv, err = c.mathFunc(out, in, rd, OC_ceil, out.ceil); err != nil {
+			return bvNone(), err
+		}
+	case "const240p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(1))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(1))
+		}
+	case "const480p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(0.5))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(0.5))
+		}
+	case "const720p":
+		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+			return bvNone(), err
+		}
+		if bv.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(BytecodeFloat(0.25))
+			out.append(OC_mul)
+		} else {
+			out.mul(&bv, BytecodeFloat(0.25))
+		}
 	case "majorversion":
 		out.append(OC_ex_, OC_ex_majorversion)
 	case "drawpalno":

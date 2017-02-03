@@ -830,14 +830,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_enemynear:
-			if c = c.enemynear(sys.bcStack.Pop().ToI()); c != nil {
+			if c = c.enemyNear(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_playerid:
-			if c = c.playerid(sys.bcStack.Pop().ToI()); c != nil {
+			if c = sys.playerID(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
@@ -869,10 +869,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			i += 4
 		case OC_float:
 			sys.bcStack.PushF(*(*float32)(unsafe.Pointer(&be[i])))
-			i += 4
-		case OC_command:
-			sys.bcStack.PushB(c.command(sys.workingChar.ss.sb.playerNo,
-				int(*(*int32)(unsafe.Pointer(&be[i])))))
 			i += 4
 		case OC_neg:
 			be.neg(sys.bcStack.Top())
@@ -987,112 +983,156 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
 		case OC_animtime:
 			sys.bcStack.PushI(c.animTime())
-		case OC_time:
-			sys.bcStack.PushI(c.time())
-		case OC_ctrl:
-			sys.bcStack.PushB(c.canCtrl())
-		case OC_random:
-			sys.bcStack.PushI(Rand(0, 999))
-		case OC_roundstate:
-			sys.bcStack.PushI(c.roundState())
-		case OC_selfanimexist:
-			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
-		case OC_stateno:
-			sys.bcStack.PushI(c.ss.no)
-		case OC_prevstateno:
-			sys.bcStack.PushI(c.ss.prevno)
-		case OC_movecontact:
-			sys.bcStack.PushI(c.moveContact())
-		case OC_movehit:
-			sys.bcStack.PushI(c.moveHit())
-		case OC_moveguarded:
-			sys.bcStack.PushI(c.moveGuarded())
-		case OC_movereversed:
-			sys.bcStack.PushI(c.moveReversed())
-		case OC_vel_x:
-			sys.bcStack.PushF(c.vel[0])
-		case OC_vel_y:
-			sys.bcStack.PushF(c.vel[1])
-		case OC_pos_x:
-			sys.bcStack.PushF(c.pos[0] - sys.cam.Pos[0])
-		case OC_pos_y:
-			sys.bcStack.PushF(c.pos[1])
-		case OC_screenpos_x:
-			sys.bcStack.PushF(c.screenPosX())
-		case OC_screenpos_y:
-			sys.bcStack.PushF(c.screenPosY())
+		case OC_backedge:
+			sys.bcStack.PushF(c.backEdge())
+		case OC_backedgebodydist:
+			sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
+		case OC_backedgedist:
+			sys.bcStack.PushI(int32(c.backEdgeDist()))
+		case OC_bottomedge:
+			sys.bcStack.PushF(c.bottomEdge())
 		case OC_camerapos_x:
 			sys.bcStack.PushF(sys.cam.Pos[0])
 		case OC_camerapos_y:
 			sys.bcStack.PushF(sys.cam.Pos[1])
+		case OC_camerazoom:
+			sys.bcStack.PushF(sys.cam.Scale)
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
-		case OC_hitshakeover:
-			sys.bcStack.PushB(c.hitShakeOver())
-		case OC_frontedgedist:
-			sys.bcStack.PushI(int32(c.frontEdgeDist()))
-		case OC_frontedgebodydist:
-			sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
-		case OC_frontedge:
-			sys.bcStack.PushF(c.frontEdge())
-		case OC_backedgedist:
-			sys.bcStack.PushI(int32(c.backEdgeDist()))
-		case OC_backedgebodydist:
-			sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
-		case OC_backedge:
-			sys.bcStack.PushF(c.backEdge())
-		case OC_leftedge:
-			sys.bcStack.PushF(c.leftEdge())
-		case OC_rightedge:
-			sys.bcStack.PushF(c.rightEdge())
-		case OC_topedge:
-			sys.bcStack.PushF(c.topEdge())
-		case OC_bottomedge:
-			sys.bcStack.PushF(c.bottomEdge())
-		case OC_gamewidth:
-			sys.bcStack.PushF(c.gameWidth())
-		case OC_gameheight:
-			sys.bcStack.PushF(c.gameHeight())
-		case OC_screenwidth:
-			sys.bcStack.PushF(c.screenWidth())
-		case OC_screenheight:
-			sys.bcStack.PushF(c.screenHeight())
-		case OC_power:
-			sys.bcStack.PushI(c.getPower())
-		case OC_roundsexisted:
-			sys.bcStack.PushI(c.roundsExisted())
-		case OC_gametime:
-			sys.bcStack.PushI(sys.gameTime)
-		case OC_hitfall:
-			sys.bcStack.PushB(c.ghv.fallf)
-		case OC_inguarddist:
-			sys.bcStack.PushB(c.inguarddist)
-		case OC_hitover:
-			sys.bcStack.PushB(c.hitOver())
+		case OC_command:
+			sys.bcStack.PushB(c.command(sys.workingChar.ss.sb.playerNo,
+				int(*(*int32)(unsafe.Pointer(&be[i])))))
+			i += 4
+		case OC_ctrl:
+			sys.bcStack.PushB(c.ctrl())
 		case OC_facing:
 			sys.bcStack.PushI(int32(c.facing))
-		case OC_palno:
-			sys.bcStack.PushI(c.gi().palno)
-		case OC_numenemy:
-			sys.bcStack.PushI(c.numEnemy())
-		case OC_numpartner:
-			sys.bcStack.PushI(c.numPartner())
-		case OC_ishelper:
-			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
-		case OC_numhelper:
-			*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
-		case OC_teammode:
-			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
-			i++
-		case OC_statetype:
-			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
-			i++
-		case OC_movetype:
-			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
-			i++
+		case OC_frontedge:
+			sys.bcStack.PushF(c.frontEdge())
+		case OC_frontedgebodydist:
+			sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
+		case OC_frontedgedist:
+			sys.bcStack.PushI(int32(c.frontEdgeDist()))
+		case OC_gameheight:
+			sys.bcStack.PushF(c.gameHeight())
+		case OC_gametime:
+			sys.bcStack.PushI(sys.gameTime)
+		case OC_gamewidth:
+			sys.bcStack.PushF(c.gameWidth())
+		case OC_hitcount:
+			sys.bcStack.PushI(c.hitCount)
 		case OC_hitdefattr:
 			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
 			i += 4
+		case OC_hitfall:
+			sys.bcStack.PushB(c.ghv.fallf)
+		case OC_hitover:
+			sys.bcStack.PushB(c.hitOver())
+		case OC_hitpausetime:
+			sys.bcStack.PushI(c.hitPauseTime)
+		case OC_hitshakeover:
+			sys.bcStack.PushB(c.hitShakeOver())
+		case OC_hitvel_x:
+			sys.bcStack.PushF(c.hitVelX())
+		case OC_hitvel_y:
+			sys.bcStack.PushF(c.hitVelY())
+		case OC_id:
+			sys.bcStack.PushI(c.id)
+		case OC_inguarddist:
+			sys.bcStack.PushB(c.inguarddist)
+		case OC_ishelper:
+			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
+		case OC_leftedge:
+			sys.bcStack.PushF(c.leftEdge())
+		case OC_life:
+			sys.bcStack.PushI(c.life)
+		case OC_lifemax:
+			sys.bcStack.PushI(c.lifeMax)
+		case OC_movecontact:
+			sys.bcStack.PushI(c.moveContact())
+		case OC_moveguarded:
+			sys.bcStack.PushI(c.moveGuarded())
+		case OC_movehit:
+			sys.bcStack.PushI(c.moveHit())
+		case OC_movereversed:
+			sys.bcStack.PushI(c.moveReversed())
+		case OC_movetype:
+			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
+			i++
+		case OC_numenemy:
+			sys.bcStack.PushI(c.numEnemy())
+		case OC_numexplod:
+			*sys.bcStack.Top() = c.numExplod(*sys.bcStack.Top())
+		case OC_numhelper:
+			*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
+		case OC_numpartner:
+			sys.bcStack.PushI(c.numPartner())
+		case OC_numproj:
+			sys.bcStack.PushI(c.numProj())
+		case OC_numprojid:
+			*sys.bcStack.Top() = c.numProjID(*sys.bcStack.Top())
+		case OC_numtarget:
+			*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())
+		case OC_palno:
+			sys.bcStack.PushI(c.gi().palno)
+		case OC_pos_x:
+			sys.bcStack.PushF(c.pos[0] - sys.cam.Pos[0])
+		case OC_pos_y:
+			sys.bcStack.PushF(c.pos[1])
+		case OC_power:
+			sys.bcStack.PushI(c.getPower())
+		case OC_powermax:
+			sys.bcStack.PushI(c.powerMax)
+		case OC_playeridexist:
+			*sys.bcStack.Top() = sys.playerIDExist(*sys.bcStack.Top())
+		case OC_prevstateno:
+			sys.bcStack.PushI(c.ss.prevno)
+		case OC_projcanceltime:
+			*sys.bcStack.Top() = c.projCancelTime(*sys.bcStack.Top())
+		case OC_projcontacttime:
+			*sys.bcStack.Top() = c.projContactTime(*sys.bcStack.Top())
+		case OC_projguardedtime:
+			*sys.bcStack.Top() = c.projGuardedTime(*sys.bcStack.Top())
+		case OC_projhittime:
+			*sys.bcStack.Top() = c.projHitTime(*sys.bcStack.Top())
+		case OC_random:
+			sys.bcStack.PushI(Rand(0, 999))
+		case OC_rightedge:
+			sys.bcStack.PushF(c.rightEdge())
+		case OC_roundsexisted:
+			sys.bcStack.PushI(c.roundsExisted())
+		case OC_roundstate:
+			sys.bcStack.PushI(c.roundState())
+		case OC_screenheight:
+			sys.bcStack.PushF(sys.screenHeight())
+		case OC_screenpos_x:
+			sys.bcStack.PushF(c.screenPosX())
+		case OC_screenpos_y:
+			sys.bcStack.PushF(c.screenPosY())
+		case OC_screenwidth:
+			sys.bcStack.PushF(sys.screenWidth())
+		case OC_selfanimexist:
+			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
+		case OC_stateno:
+			sys.bcStack.PushI(c.ss.no)
+		case OC_statetype:
+			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
+			i++
+		case OC_teammode:
+			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
+			i++
+		case OC_teamside:
+			sys.bcStack.PushI(int32(c.playerNo)&1 + 1)
+		case OC_time:
+			sys.bcStack.PushI(c.time())
+		case OC_topedge:
+			sys.bcStack.PushF(c.topEdge())
+		case OC_uniqhitcount:
+			sys.bcStack.PushI(c.uniqHitCount)
+		case OC_vel_x:
+			sys.bcStack.PushF(c.vel[0])
+		case OC_vel_y:
+			sys.bcStack.PushF(c.vel[1])
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
@@ -1361,6 +1401,21 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_stagevar_info_name:
+		sys.bcStack.PushB(sys.stage.nameLow ==
+			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_stagevar_info_displayname:
+		sys.bcStack.PushB(sys.stage.displaynameLow ==
+			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_stagevar_info_author:
+		sys.bcStack.PushB(sys.stage.authorLow ==
+			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
 	default:
 		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
 		unimplemented()
@@ -1369,6 +1424,32 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 func (be BytecodeExp) run_ex(c *Char, i *int) {
 	(*i)++
 	switch be[*i-1] {
+	case OC_ex_drawgame:
+		sys.bcStack.PushB(c.drawgame())
+	case OC_ex_ishometeam:
+		sys.bcStack.PushB(c.playerNo&1 == sys.home)
+	case OC_ex_lose:
+		sys.bcStack.PushB(c.lose())
+	case OC_ex_loseko:
+		sys.bcStack.PushB(c.loseKO())
+	case OC_ex_losetime:
+		sys.bcStack.PushB(c.loseTime())
+	case OC_ex_matchno:
+		sys.bcStack.PushI(sys.match)
+	case OC_ex_matchover:
+		sys.bcStack.PushB(sys.matchOver())
+	case OC_ex_roundno:
+		sys.bcStack.PushI(sys.round)
+	case OC_ex_tickspersecond:
+		sys.bcStack.PushI(FPS)
+	case OC_ex_win:
+		sys.bcStack.PushB(c.win())
+	case OC_ex_winko:
+		sys.bcStack.PushB(c.winKO())
+	case OC_ex_wintime:
+		sys.bcStack.PushB(c.winTime())
+	case OC_ex_winperfect:
+		sys.bcStack.PushB(c.winPerfect())
 	case OC_ex_p2dist_x:
 		sys.bcStack.Push(c.rdDistX(c.p2()))
 	case OC_ex_p2dist_y:
@@ -1383,14 +1464,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 		sys.bcStack.Push(c.rdDistX(c.parent()))
 	case OC_ex_parentdist_y:
 		sys.bcStack.Push(c.rdDistY(c.parent()))
-	case OC_ex_win:
-		sys.bcStack.PushB(c.win())
-	case OC_ex_lose:
-		sys.bcStack.PushB(c.lose())
-	case OC_ex_matchover:
-		sys.bcStack.PushB(sys.matchOver())
-	case OC_ex_roundno:
-		sys.bcStack.PushI(sys.round)
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_airtype:

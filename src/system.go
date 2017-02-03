@@ -428,6 +428,24 @@ func (s *System) anyButton() bool {
 	}
 	return s.anyHardButton()
 }
+func (s *System) playerID(id int32) *Char {
+	return s.charList.get(id)
+}
+func (s *System) matchOver() bool {
+	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
+}
+func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
+	if id.IsSF() {
+		return BytecodeSF()
+	}
+	return BytecodeBool(s.playerID(id.ToI()) != nil)
+}
+func (s *System) screenHeight() float32 {
+	return 240
+}
+func (s *System) screenWidth() float32 {
+	return float32(s.gameWidth)
+}
 func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
@@ -441,9 +459,6 @@ func (s *System) roundOver() bool {
 	}
 	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
 		s.lifebar.ro.over_time)
-}
-func (s *System) matchOver() bool {
-	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
