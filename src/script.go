@@ -196,9 +196,17 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(lua.LBool(sys.esc))
 		return 1
 	})
+	luaRegister(l, "sszRandom", func(l *lua.LState) int {
+		l.Push(lua.LNumber(Random()))
+		return 1
+	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
+	})
+	luaRegister(l, "getRoundTime", func(l *lua.LState) int {
+		l.Push(lua.LNumber(sys.roundTime))
+		return 1
 	})
 	luaRegister(l, "setHomeTeam", func(l *lua.LState) int {
 		tn := int(numArg(l, 1))
@@ -375,6 +383,11 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "enterReplay", func(*lua.LState) int {
+		sys.chars = [len(sys.chars)][]*Char{}
+		sys.fileInput = OpenFileInput(strArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
 		if sys.fileInput != nil {
 			sys.fileInput.Close()
@@ -400,6 +413,12 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setListenPort", func(*lua.LState) int {
 		sys.listenPort = strArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "synchronize", func(*lua.LState) int {
+		if err := sys.synchronize(); err != nil {
+			l.RaiseError(err.Error())
+		}
 		return 0
 	})
 	luaRegister(l, "addChar", func(l *lua.LState) int {
@@ -639,18 +658,6 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "game", func(l *lua.LState) int {
-		if sys.gameEnd {
-			l.Push(lua.LNumber(-1))
-			return 1
-		}
-		winp := int32(0)
-		p := make([]*Char, len(sys.chars))
-		sys.roundsExisted = [2]int32{}
-		sys.matchWins = [2]int32{}
-		for i := range sys.lifebar.wi {
-			sys.lifebar.wi[i].clear()
-		}
-		sys.draws = 0
 		load := func() error {
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
@@ -662,91 +669,107 @@ func systemScriptInit(l *lua.LState) {
 			sys.runMainThreadTask()
 			return nil
 		}
-		fight := func() (int32, error) {
-			if err := load(); err != nil {
-				return -1, err
+		for {
+			if sys.gameEnd {
+				l.Push(lua.LNumber(-1))
+				return 1
 			}
-			sys.charList.clear()
-			for i := 0; i < len(sys.chars); i += 2 {
-				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].id = sys.newCharId()
+			winp := int32(0)
+			p := make([]*Char, len(sys.chars))
+			sys.roundsExisted = [2]int32{}
+			sys.matchWins = [2]int32{}
+			for i := range sys.lifebar.wi {
+				sys.lifebar.wi[i].clear()
+			}
+			sys.draws = 0
+			fight := func() (int32, error) {
+				if err := load(); err != nil {
+					return -1, err
 				}
-			}
-			for i := 1; i < len(sys.chars); i += 2 {
-				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].id = sys.newCharId()
-				}
-			}
-			for i, c := range sys.chars {
-				if len(c) > 0 {
-					p[i] = c[0]
-					sys.charList.add(c[0])
-					if sys.roundsExisted[i&1] == 0 {
-						c[0].loadPallet()
+				sys.charList.clear()
+				for i := 0; i < len(sys.chars); i += 2 {
+					if len(sys.chars[i]) > 0 {
+						sys.chars[i][0].id = sys.newCharId()
 					}
-					for j, cj := range sys.chars {
-						if i != j && len(cj) > 0 {
-							if len(cj[0].cmd) == 0 {
-								cj[0].cmd = make([]CommandList, len(sys.chars))
+				}
+				for i := 1; i < len(sys.chars); i += 2 {
+					if len(sys.chars[i]) > 0 {
+						sys.chars[i][0].id = sys.newCharId()
+					}
+				}
+				for i, c := range sys.chars {
+					if len(c) > 0 {
+						p[i] = c[0]
+						sys.charList.add(c[0])
+						if sys.roundsExisted[i&1] == 0 {
+							c[0].loadPallet()
+						}
+						for j, cj := range sys.chars {
+							if i != j && len(cj) > 0 {
+								if len(cj[0].cmd) == 0 {
+									cj[0].cmd = make([]CommandList, len(sys.chars))
+								}
+								cj[0].cmd[i].CopyList(c[0].cmd[i])
 							}
-							cj[0].cmd[i].CopyList(c[0].cmd[i])
 						}
 					}
 				}
-			}
-			if sys.round == 1 {
-				if sys.tmode[1] == TM_Turns {
-					sys.matchWins[0] = int32(sys.numTurns[1])
+				if sys.round == 1 {
+					if sys.tmode[1] == TM_Turns {
+						sys.matchWins[0] = int32(sys.numTurns[1])
+					} else {
+						sys.matchWins[0] = sys.lifebar.ro.match_wins
+					}
+					if sys.tmode[0] == TM_Turns {
+						sys.matchWins[1] = int32(sys.numTurns[0])
+					} else {
+						sys.matchWins[1] = sys.lifebar.ro.match_wins
+					}
+					sys.stage.reset()
+				}
+				winp := int32(0)
+				if sys.fight() {
+					sys.chars = [len(sys.chars)][]*Char{}
+					sys.loaderReset()
+					winp = -2
+				} else if sys.esc {
+					winp = -1
 				} else {
-					sys.matchWins[0] = sys.lifebar.ro.match_wins
+					w1 := sys.wins[0] >= sys.matchWins[0]
+					w2 := sys.wins[1] >= sys.matchWins[1]
+					if w1 != w2 {
+						winp = Btoi(w1) + Btoi(w2)*2
+					}
 				}
-				if sys.tmode[0] == TM_Turns {
-					sys.matchWins[1] = int32(sys.numTurns[0])
-				} else {
-					sys.matchWins[1] = sys.lifebar.ro.match_wins
-				}
-				sys.stage.reset()
+				return winp, nil
 			}
-			if sys.fight() {
-				sys.chars = [len(sys.chars)][]*Char{}
-				sys.loaderReset()
-				winp = -2
-			} else if sys.esc {
-				winp = -1
-			} else {
-				w1 := sys.wins[0] >= sys.matchWins[0]
-				w2 := sys.wins[1] >= sys.matchWins[1]
-				winp = 0
-				if w1 != w2 {
-					winp = Btoi(w1) + Btoi(w2)*2
-				}
+			if sys.netInput != nil {
+				sys.netInput.Stop()
 			}
-			return winp, nil
+			defer sys.synchronize()
+			for {
+				var err error
+				if winp, err = fight(); err != nil {
+					l.RaiseError(err.Error())
+				}
+				if winp < 0 || sys.tmode[0] != TM_Turns && sys.tmode[1] != TM_Turns ||
+					sys.wins[0] >= sys.matchWins[0] || sys.wins[1] >= sys.matchWins[1] ||
+					sys.gameEnd {
+					break
+				}
+				for i := 0; i < 2; i++ {
+					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
+						sys.lifebar.fa[TM_Turns][i].numko++
+						sys.roundsExisted[i] = 0
+					}
+				}
+				sys.loader.reset()
+			}
+			if winp != -2 {
+				l.Push(lua.LNumber(winp))
+				return 1
+			}
 		}
-		if sys.netInput != nil {
-			sys.netInput.Stop()
-		}
-		defer sys.synchronize()
-		for {
-			var err error
-			if winp, err = fight(); err != nil {
-				l.RaiseError(err.Error())
-			}
-			if winp < 0 || sys.tmode[0] != TM_Turns && sys.tmode[1] != TM_Turns ||
-				sys.wins[0] >= sys.matchWins[0] || sys.wins[1] >= sys.matchWins[1] ||
-				sys.gameEnd {
-				break
-			}
-			for i := 0; i < 2; i++ {
-				if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
-					sys.lifebar.fa[TM_Turns][i].numko++
-					sys.roundsExisted[i] = 0
-				}
-			}
-			sys.loader.reset()
-		}
-		l.Push(lua.LNumber(winp))
-		return 1
 	})
 }
 
@@ -780,16 +803,22 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "helper", func(*lua.LState) int {
-		ret := false
-		if c := sys.debugWC.helper(int32(numArg(l, 1))); c != nil {
+		ret, id := false, int32(0)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		if c := sys.debugWC.helper(id); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
 	})
 	luaRegister(l, "target", func(*lua.LState) int {
-		ret := false
-		if c := sys.debugWC.target(int32(numArg(l, 1))); c != nil {
+		ret, id := false, int32(-1)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		if c := sys.debugWC.target(id); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
@@ -797,23 +826,29 @@ func triggerScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "partner", func(*lua.LState) int {
 		ret := false
-		if c := sys.debugWC.partner(int32(numArg(l, 1))); c != nil {
+		if c := sys.debugWC.partner(0); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
 	})
 	luaRegister(l, "enemy", func(*lua.LState) int {
-		ret := false
-		if c := sys.debugWC.enemy(int32(numArg(l, 1))); c != nil {
+		ret, n := false, int32(0)
+		if l.GetTop() >= 1 {
+			n = int32(numArg(l, 1))
+		}
+		if c := sys.debugWC.enemy(n); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
 	})
 	luaRegister(l, "enemynear", func(*lua.LState) int {
-		ret := false
-		if c := sys.debugWC.enemyNear(int32(numArg(l, 1))); c != nil {
+		ret, n := false, int32(0)
+		if l.GetTop() >= 1 {
+			n = int32(numArg(l, 1))
+		}
+		if c := sys.debugWC.enemyNear(n); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
@@ -1289,8 +1324,11 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ishelper", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.isHelper(
-			BytecodeInt(int32(numArg(l, 1)))).ToB()))
+		id := int32(0)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LBool(sys.debugWC.isHelper(BytecodeInt(id)).ToB()))
 		return 1
 	})
 	luaRegister(l, "ishometeam", func(*lua.LState) int {
@@ -1367,13 +1405,19 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "numexplod", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.numExplod(
-			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		id := int32(-1)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LNumber(sys.debugWC.numExplod(BytecodeInt(id)).ToI()))
 		return 1
 	})
 	luaRegister(l, "numhelper", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.numHelper(
-			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		id := int32(0)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LNumber(sys.debugWC.numHelper(BytecodeInt(id)).ToI()))
 		return 1
 	})
 	luaRegister(l, "numpartner", func(*lua.LState) int {
@@ -1390,8 +1434,11 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "numtarget", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.numTarget(
-			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		id := int32(-1)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LNumber(sys.debugWC.numTarget(BytecodeInt(id)).ToI()))
 		return 1
 	})
 	luaRegister(l, "palno", func(*lua.LState) int {
@@ -1607,6 +1654,28 @@ func triggerScriptInit(l *lua.LState) {
 func debugScriptInit(l *lua.LState, file string) error {
 	scriptCommonInit(l)
 	triggerScriptInit(l)
+	luaRegister(l, "puts", func(*lua.LState) int {
+		println(strArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLife", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.lifeSet(int32(numArg(l, 1)))
+		}
+		return 0
+	})
+	luaRegister(l, "setPower", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.setPower(int32(numArg(l, 1)))
+		}
+		return 0
+	})
+	luaRegister(l, "selfState", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.selfState(int32(numArg(l, 1)), -1, 1)
+		}
+		return 0
+	})
 	luaRegister(l, "addHotkey", func(*lua.LState) int {
 		l.Push(lua.LBool(func() bool {
 			k := StringToKey(strArg(l, 1))
@@ -1626,6 +1695,64 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "toggleDebugDraw", func(*lua.LState) int {
 		sys.debugDraw = !sys.debugDraw
+		return 0
+	})
+	luaRegister(l, "togglePause", func(*lua.LState) int {
+		if sys.netInput == nil {
+			sys.paused = !sys.paused
+		}
+		return 0
+	})
+	luaRegister(l, "step", func(*lua.LState) int {
+		sys.step = true
+		return 0
+	})
+	luaRegister(l, "toggleStatusDraw", func(*lua.LState) int {
+		sys.statusDraw = !sys.statusDraw
+		return 0
+	})
+	luaRegister(l, "roundReset", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.roundResetFlg = true
+		}
+		return 0
+	})
+	luaRegister(l, "reload", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.reloadFlg = true
+		}
+		return 0
+	})
+	luaRegister(l, "setAccel", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.accel = float32(numArg(l, 1))
+		}
+		return 0
+	})
+	luaRegister(l, "setAILevel", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			level := int32(numArg(l, 1))
+			sys.com[sys.debugWC.playerNo] = level
+			for _, c := range sys.chars[sys.debugWC.playerNo] {
+				if level == 0 {
+					c.key = sys.debugWC.playerNo
+				} else {
+					c.key = ^sys.debugWC.playerNo
+				}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "setTime", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.time = int32(numArg(l, 1))
+		}
+		return 0
+	})
+	luaRegister(l, "clear", func(*lua.LState) int {
+		for i := range sys.clipboardText {
+			sys.clipboardText[i] = nil
+		}
 		return 0
 	})
 	return l.DoFile(file)

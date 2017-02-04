@@ -311,9 +311,6 @@ const (
 	OC_const_movement_down_friction_threshold
 	OC_const_name
 	OC_const_authorname
-	OC_const_p2name
-	OC_const_p3name
-	OC_const_p4name
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
@@ -1398,6 +1395,11 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
 	case OC_const_authorname:
 		sys.bcStack.PushB(c.gi().authorLow ==
+			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_name:
+		sys.bcStack.PushB(c.gi().nameLow ==
 			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4

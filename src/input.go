@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/binary"
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"os"
 	"strings"
 )
 
@@ -722,14 +724,27 @@ func (ni *NetInput) Synchronize() error {
 	unimplemented()
 	return nil
 }
-func (ni *NetInput) Updata() bool {
+func (ni *NetInput) Update() bool {
 	unimplemented()
 	return !sys.gameEnd
 }
 
-type FileInput struct{ ib []InputBits }
+type FileInput struct {
+	f  *os.File
+	ib [MaxSimul * 2]InputBits
+}
 
-func (fi *FileInput) Close() { unimplemented() }
+func OpenFileInput(filename string) *FileInput {
+	fi := &FileInput{}
+	fi.f, _ = os.Open(filename)
+	return fi
+}
+func (fi *FileInput) Close() {
+	if fi.f != nil {
+		fi.f.Close()
+		fi.f = nil
+	}
+}
 func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	unimplemented()
 }
@@ -737,12 +752,27 @@ func (fi *FileInput) AnyButton() bool {
 	unimplemented()
 	return false
 }
-func (fi *FileInput) Synchronize() error {
-	unimplemented()
-	return nil
+func (fi *FileInput) Synchronize() {
+	if fi.f != nil {
+		var seed int32
+		if binary.Read(fi.f, binary.LittleEndian, &seed) == nil {
+			Srand(seed)
+			fi.Update()
+		}
+	}
 }
-func (fi *FileInput) Updata() bool {
-	unimplemented()
+func (fi *FileInput) Update() bool {
+	if fi.f == nil {
+		sys.esc = true
+	} else {
+		if sys.oldNextAddTime > 0 &&
+			binary.Read(fi.f, binary.LittleEndian, fi.ib[:]) != nil {
+			sys.esc = true
+		}
+		if sys.esc {
+			fi.Close()
+		}
+	}
 	return !sys.gameEnd
 }
 

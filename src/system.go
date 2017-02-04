@@ -31,7 +31,6 @@ var sys = System{
 	roundTime:  -1,
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
-	lifebarFontScale:  0.5,
 	mixer:             *newMixer(),
 	bgm:               *newVorbis(),
 	sounds:            newSounds(16),
@@ -43,20 +42,14 @@ var sys = System{
 	listenPort:        "7500",
 	loader:            *newLoader(),
 	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
-	afterImageMax:          8,
-	attack_LifeToPowerMul:  0.7,
-	getHit_LifeToPowerMul:  0.6,
-	superpmap:              *newPalFX(),
-	super_TargetDefenceMul: 1.5,
-	helperMax:              56,
-	wincnt:                 wincntMap(make(map[string][]int32)),
-	wincntFileName:         "autolevel.txt",
-	powerShare:             [...]bool{true, true},
-	commandLine:            make(chan string),
-	cam:                    *newCamera(),
-	mainThreadTask:         make(chan func(), 65536),
-	explodMax:              256,
-	workpal:                make([]uint32, 256),
+	superpmap:      *newPalFX(),
+	wincnt:         wincntMap(make(map[string][]int32)),
+	wincntFileName: "autolevel.txt",
+	powerShare:     [...]bool{true, true},
+	commandLine:    make(chan string),
+	cam:            *newCamera(),
+	mainThreadTask: make(chan func(), 65536),
+	workpal:        make([]uint32, 256),
 }
 
 type TeamMode int32
@@ -202,6 +195,7 @@ type System struct {
 	mainThreadTask          chan func()
 	explodMax               int
 	workpal                 []uint32
+	playerProjectileMax     int
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -217,10 +211,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.window.SetKeyCallback(keyCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
-	s.keyConfig = append(s.keyConfig, KeyConfig{-1,
-		int(glfw.KeyUp), int(glfw.KeyDown), int(glfw.KeyLeft), int(glfw.KeyRight),
-		int(glfw.KeyZ), int(glfw.KeyX), int(glfw.KeyC),
-		int(glfw.KeyA), int(glfw.KeyS), int(glfw.KeyD), int(glfw.KeyEnter)})
 	RenderInit()
 	s.audioOpen()
 	l := lua.NewState()
@@ -314,11 +304,11 @@ func (s *System) update() bool {
 		} else {
 			s.await(FPS)
 		}
-		return s.fileInput.Updata()
+		return s.fileInput.Update()
 	}
 	if s.netInput != nil {
 		s.await(FPS)
-		return s.netInput.Updata()
+		return s.netInput.Update()
 	}
 	return s.await(FPS)
 }
@@ -405,7 +395,7 @@ func (s *System) loadStart() {
 }
 func (s *System) synchronize() error {
 	if s.fileInput != nil {
-		return s.fileInput.Synchronize()
+		s.fileInput.Synchronize()
 	} else if s.netInput != nil {
 		return s.netInput.Synchronize()
 	}
@@ -1785,7 +1775,7 @@ func (l *Loader) loadChar(pn int) int {
 	sys.loadMutex.Unlock()
 	cdef := sys.sel.charlist[idx[memberNo]].def
 	var p *Char
-	if len(sys.chars) > 0 && cdef == sys.cgi[pn].def {
+	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.chars[pn][0]
 		p.key = pn
 		if sys.com[pn] != 0 {

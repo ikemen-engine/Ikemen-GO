@@ -1545,6 +1545,18 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+	case "name", "p1name", "p2name", "p3name", "p4name":
+		switch c.token {
+		case "p2name", "p4name":
+			out.appendValue(BytecodeInt(Btoi(c.token == "p4name")))
+			out.appendI32Op(OC_enemy, 6)
+		case "p3name":
+			out.appendValue(BytecodeInt(0))
+			out.appendI32Op(OC_partner, 6)
+		}
+		if err := nameSub(OC_const_name); err != nil {
+			return bvNone(), err
+		}
 	case "numenemy":
 		out.append(OC_numenemy)
 	case "numexplod":
