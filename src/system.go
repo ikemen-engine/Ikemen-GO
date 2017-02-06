@@ -46,6 +46,7 @@ var sys = System{
 	wincnt:         wincntMap(make(map[string][]int32)),
 	wincntFileName: "autolevel.txt",
 	powerShare:     [...]bool{true, true},
+	oldNextAddTime: 1,
 	commandLine:    make(chan string),
 	cam:            *newCamera(),
 	mainThreadTask: make(chan func(), 65536),
@@ -229,7 +230,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
 			if err := stdin.Err(); err != nil {
-				fmt.Println(err.Error())
+				println(err.Error())
 				return
 			}
 			s.commandLine <- stdin.Text()
@@ -319,7 +320,9 @@ func (s *System) audioOpen() {
 			chk(openal.Err())
 		}
 		s.audioContext = device.CreateContext()
-		chk(device.Err())
+		if err := device.Err(); err != nil {
+			println(err.Error())
+		}
 		s.audioContext.Activate()
 		go s.soundWrite()
 	}
@@ -349,7 +352,9 @@ func (s *System) soundWrite() {
 			buf := src.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
 			src.Src.QueueBuffer(buf)
-			chk(openal.Err())
+			if err := openal.Err(); err != nil {
+				println(err.Error())
+			}
 			processed = true
 		}
 		if !s.sf(GSF_nomusic) && bgmSrc.Src.BuffersProcessed() > 0 {
@@ -358,7 +363,9 @@ func (s *System) soundWrite() {
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
 			out = nil
 			bgmSrc.Src.QueueBuffer(buf)
-			chk(openal.Err())
+			if err := openal.Err(); err != nil {
+				println(err.Error())
+			}
 			processed = true
 		}
 	}
@@ -1171,6 +1178,7 @@ func (s *System) fight() (reload bool) {
 	}
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	defer func() {
+		s.oldNextAddTime = 1
 		s.unsetSF(GSF_nomusic)
 		s.allPalFX.clear()
 		for i, p := range s.chars {
@@ -1199,18 +1207,16 @@ func (s *System) fight() (reload bool) {
 	defer dL.Close()
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
-			fmt.Println(err.Error())
+			println(err.Error())
 		}
 	}
 	debugInput := func() {
-		if s.debugDraw && s.debugFont != nil {
-			select {
-			case cl := <-s.commandLine:
-				if err := dL.DoString(cl); err != nil {
-					fmt.Println(err.Error())
-				}
-			default:
+		select {
+		case cl := <-s.commandLine:
+			if err := dL.DoString(cl); err != nil {
+				println(err.Error())
 			}
+		default:
 		}
 	}
 	put := func(y *float32, txt string) {
@@ -1271,7 +1277,7 @@ func (s *System) fight() (reload bool) {
 		}
 	}
 	if err := s.synchronize(); err != nil {
-		fmt.Println(err.Error())
+		println(err.Error())
 		s.esc = true
 	}
 	if s.netInput != nil {
@@ -1399,7 +1405,7 @@ func (s *System) fight() (reload bool) {
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := dL.DoString(v.Script); err != nil {
-					fmt.Println(err.Error())
+					println(err.Error())
 				}
 			}
 		}
@@ -1761,7 +1767,7 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.tmode[pn&1] == TM_Turns {
 		memberNo = int(sys.wins[^pn&1])
 	}
-	if nsel <= memberNo {
+	if result < 0 && nsel <= memberNo {
 		result = 0
 	}
 	if result >= 0 {
@@ -1787,9 +1793,6 @@ func (l *Loader) loadChar(pn int) int {
 	}
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
-	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = sys.cgi[pn].palkeymap[pal-1] + 1
-	}
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
@@ -1800,6 +1803,9 @@ func (l *Loader) loadChar(pn int) int {
 			sys.chars[pn] = nil
 			return -1
 		}
+	}
+	if sys.roundsExisted[pn&1] == 0 {
+		sys.cgi[pn].palno = sys.cgi[pn].palkeymap[pal-1] + 1
 	}
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
@@ -1822,16 +1828,18 @@ func (l *Loader) loadChar(pn int) int {
 	return 1
 }
 func (l *Loader) loadStage() bool {
-	var def string
-	if sys.sel.selectedStageNo == 0 {
-		def = sys.sel.stagelist[Rand(0, int32(len(sys.sel.stagelist))-1)].def
-	} else {
-		def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
+	if sys.round == 1 {
+		var def string
+		if sys.sel.selectedStageNo == 0 {
+			def = sys.sel.stagelist[Rand(0, int32(len(sys.sel.stagelist))-1)].def
+		} else {
+			def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
+		}
+		if sys.stage != nil && sys.stage.def == def {
+			return true
+		}
+		sys.stage, l.err = loadStage(def)
 	}
-	if sys.stage != nil && sys.stage.def == def {
-		return true
-	}
-	sys.stage, l.err = loadStage(def)
 	return l.err == nil
 }
 func (l *Loader) load() {

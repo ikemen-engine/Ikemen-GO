@@ -27,7 +27,9 @@ func NewAudioSource() (s *AudioSource) {
 			audioFrequency)
 	}
 	s.Src.QueueBuffers(s.bufs)
-	chk(openal.Err())
+	if err := openal.Err(); err != nil {
+		println(err.Error())
+	}
 	return
 }
 func (s *AudioSource) Delete() {

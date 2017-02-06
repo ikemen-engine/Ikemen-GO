@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/binary"
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 type CommandKey byte
@@ -62,11 +64,11 @@ const (
 type NetState int
 
 const (
-	NetStop NetState = iota
-	NetPlaying
-	NetEnd
-	NetStoped
-	NetError
+	NS_Stop NetState = iota
+	NS_Playing
+	NS_End
+	NS_Stopped
+	NS_Error
 )
 
 func StringToKey(s string) glfw.Key {
@@ -426,6 +428,16 @@ func (ib *InputBits) SetInput(in int) {
 			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10)
 	}
 }
+func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
+	var b, f bool
+	if facing < 0 {
+		b, f = ib&IB_R != 0, ib&IB_L != 0
+	} else {
+		b, f = ib&IB_L != 0, ib&IB_R != 0
+	}
+	cb.Input(b, ib&IB_D != 0, f, ib&IB_U != 0, ib&IB_A != 0, ib&IB_B != 0,
+		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0)
+}
 
 type CommandKeyRemap struct {
 	a, b, c, x, y, z, s, na, nb, nc, nx, ny, nz, ns CommandKey
@@ -698,34 +710,300 @@ func (__ *CommandBuffer) LastChangeTime() int32 {
 
 type NetBuffer struct {
 	buf              [32]InputBits
-	curT, inpT, senT int
+	curT, inpT, senT int32
 }
-type NetInput struct{ buf []NetBuffer }
 
-func (ni *NetInput) Close() { unimplemented() }
+func (nb *NetBuffer) reset(time int32) {
+	nb.curT, nb.inpT, nb.senT = time, time, time
+}
+func (nb *NetBuffer) localUpdate(in int) {
+	if nb.inpT-nb.curT < 32 {
+		nb.buf[nb.inpT&31].SetInput(in)
+		nb.inpT++
+	}
+}
+func (nb *NetBuffer) input(cb *CommandBuffer, f int32) {
+	if nb.curT < nb.inpT {
+		nb.buf[nb.curT&31].GetInput(cb, f)
+	}
+}
+
+type NetInput struct {
+	ln         *net.TCPListener
+	conn       *net.TCPConn
+	st         NetState
+	sendEnd    chan bool
+	recvEnd    chan bool
+	buf        [MaxSimul * 2]NetBuffer
+	locIn      int
+	remIn      int
+	time       int32
+	stoppedcnt int32
+	delay      int32
+	rep        *os.File
+	host       bool
+}
+
+func NewNetInput(replayfile string) *NetInput {
+	ni := &NetInput{st: NS_Stop,
+		sendEnd: make(chan bool, 1), recvEnd: make(chan bool, 1)}
+	ni.sendEnd <- true
+	ni.recvEnd <- true
+	ni.rep, _ = os.Create(replayfile)
+	return ni
+}
+func (ni *NetInput) Close() {
+	if ni.rep != nil {
+		ni.rep.Close()
+		ni.rep = nil
+	}
+	if ni.ln != nil {
+		ni.ln.Close()
+		ni.ln = nil
+	}
+	if ni.conn != nil {
+		ni.conn.Close()
+	}
+	if ni.sendEnd != nil {
+		<-ni.sendEnd
+		close(ni.sendEnd)
+		ni.sendEnd = nil
+	}
+	if ni.recvEnd != nil {
+		<-ni.recvEnd
+		close(ni.recvEnd)
+		ni.recvEnd = nil
+	}
+	ni.conn = nil
+}
+func (ni *NetInput) GetHostGuestRemap() (host, guest int) {
+	host, guest = -1, -1
+	for i, c := range sys.com {
+		if c == 0 {
+			if host < 0 {
+				host = i
+			} else if guest < 0 {
+				guest = i
+			}
+		}
+	}
+	if host < 0 {
+		host = 0
+	}
+	if guest < 0 {
+		guest = (host + 1) % len(ni.buf)
+	}
+	return
+}
+func (ni *NetInput) Accept(port string) error {
+	if ln, err := net.Listen("tcp", ":"+port); err != nil {
+		return err
+	} else {
+		ni.ln = ln.(*net.TCPListener)
+		ni.host = true
+		ni.locIn, ni.remIn = ni.GetHostGuestRemap()
+		go func() {
+			ln := ni.ln
+			if conn, err := ln.AcceptTCP(); err == nil {
+				ni.conn = conn
+			}
+			ln.Close()
+		}()
+	}
+	return nil
+}
+func (ni *NetInput) Connect(server, port string) {
+	ni.host = false
+	ni.remIn, ni.locIn = ni.GetHostGuestRemap()
+	go func() {
+		if conn, err := net.Dial("tcp", server+":"+port); err == nil {
+			ni.conn = conn.(*net.TCPConn)
+		}
+	}()
+}
+func (ni *NetInput) IsConnected() bool {
+	return ni != nil && ni.conn != nil
+}
 func (ni *NetInput) Input(cb *CommandBuffer, i int, facing int32) {
-	unimplemented()
+	if i >= 0 && i < len(ni.buf) {
+		ni.buf[sys.inputRemap[i]].input(cb, facing)
+	}
 }
 func (ni *NetInput) AnyButton() bool {
-	unimplemented()
+	for _, nb := range ni.buf {
+		if nb.buf[nb.curT&31]&IB_anybutton != 0 {
+			return true
+		}
+	}
 	return false
 }
 func (ni *NetInput) Stop() {
 	if sys.esc {
-		ni.End()
+		ni.end()
 	} else {
-		unimplemented()
+		if ni.st != NS_End && ni.st != NS_Error {
+			ni.st = NS_Stop
+		}
+		<-ni.sendEnd
+		ni.sendEnd <- true
+		<-ni.recvEnd
+		ni.recvEnd <- true
 	}
 }
-func (ni *NetInput) End() {
-	unimplemented()
+func (ni *NetInput) end() {
+	if ni.st != NS_Error {
+		ni.st = NS_End
+	}
+	ni.Close()
+}
+func (ni *NetInput) readI32() (int32, error) {
+	b, i := [4]byte{}, 0
+	for i < len(b) {
+		if n, err := ni.conn.Read(b[i:]); err != nil {
+			return 0, err
+		} else {
+			i += n
+		}
+	}
+	return int32(b[0]) | int32(b[1])<<8 | int32(b[2])<<16 | int32(b[3])<<24, nil
+}
+func (ni *NetInput) writeI32(i32 int32) error {
+	b, i := [...]byte{byte(i32), byte(i32 >> 8),
+		byte(i32 >> 16), byte(i32 >> 24)}, 0
+	for i < len(b) {
+		if n, err := ni.conn.Write(b[i:]); err != nil {
+			return err
+		} else {
+			i += n
+		}
+	}
+	return nil
 }
 func (ni *NetInput) Synchronize() error {
-	unimplemented()
+	if !ni.IsConnected() || ni.st == NS_Error {
+		return Error("接続がありません。")
+	}
+	ni.Stop()
+	var seed int32
+	if ni.host {
+		seed = Random()
+		if err := ni.writeI32(seed); err != nil {
+			return err
+		}
+	} else {
+		var err error
+		if seed, err = ni.readI32(); err != nil {
+			return err
+		}
+	}
+	Srand(seed)
+	binary.Write(ni.rep, binary.LittleEndian, &seed)
+	if err := ni.writeI32(ni.time); err != nil {
+		return err
+	}
+	if tmp, err := ni.readI32(); err != nil {
+		return err
+	} else if tmp != ni.time {
+		return Error("同期エラーです。")
+	}
+	ni.buf[ni.locIn].reset(ni.time)
+	ni.buf[ni.remIn].reset(ni.time)
+	ni.st = NS_Playing
+	<-ni.sendEnd
+	go func(nb *NetBuffer) {
+		defer func() { ni.sendEnd <- true }()
+		for ni.st == NS_Playing {
+			if nb.senT < nb.inpT {
+				if err := ni.writeI32(int32(nb.buf[nb.senT&31])); err != nil {
+					ni.st = NS_Error
+					return
+				}
+				nb.senT++
+			}
+			time.Sleep(time.Millisecond)
+		}
+		ni.writeI32(-1)
+	}(&ni.buf[ni.locIn])
+	<-ni.recvEnd
+	go func(nb *NetBuffer) {
+		defer func() { ni.recvEnd <- true }()
+		for ni.st == NS_Playing {
+			if nb.inpT-nb.curT < 32 {
+				if tmp, err := ni.readI32(); err != nil {
+					ni.st = NS_Error
+					return
+				} else {
+					nb.buf[nb.inpT&31] = InputBits(tmp)
+					if tmp < 0 {
+						ni.st = NS_Stopped
+						return
+					} else {
+						nb.inpT++
+						nb.senT = nb.inpT
+					}
+				}
+			}
+			time.Sleep(time.Millisecond)
+		}
+		for tmp := int32(0); tmp != -1; {
+			var err error
+			if tmp, err = ni.readI32(); err != nil {
+				break
+			}
+		}
+	}(&ni.buf[ni.remIn])
+	ni.Update()
 	return nil
 }
 func (ni *NetInput) Update() bool {
-	unimplemented()
+	if ni.st != NS_Stopped {
+		ni.stoppedcnt = 0
+	}
+	if !sys.gameEnd {
+		switch ni.st {
+		case NS_Stopped:
+			ni.stoppedcnt++
+			if ni.stoppedcnt > 60 {
+				ni.st = NS_End
+				break
+			}
+			fallthrough
+		case NS_Playing:
+			for {
+				foo := Min(ni.buf[ni.locIn].senT, ni.buf[ni.remIn].senT)
+				tmp := ni.buf[ni.remIn].inpT + ni.delay>>3 - ni.buf[ni.locIn].inpT
+				if tmp >= 0 {
+					ni.buf[ni.locIn].localUpdate(0)
+					if ni.delay > 0 {
+						ni.delay--
+					}
+				} else if tmp < -1 {
+					ni.delay += 4
+				}
+				if ni.time >= foo {
+					if sys.esc || !sys.await(FPS) || ni.st != NS_Playing {
+						break
+					}
+					continue
+				}
+				ni.buf[ni.locIn].curT = ni.time
+				ni.buf[ni.remIn].curT = ni.time
+				for _, nb := range ni.buf {
+					binary.Write(ni.rep, binary.LittleEndian, &nb.buf[ni.time&31])
+				}
+				ni.time++
+				if ni.time >= foo {
+					ni.buf[ni.locIn].localUpdate(0)
+				}
+				break
+			}
+		case NS_End, NS_Error:
+			sys.esc = true
+		}
+	}
+	if sys.esc {
+		ni.end()
+	}
 	return !sys.gameEnd
 }
 
@@ -746,10 +1024,16 @@ func (fi *FileInput) Close() {
 	}
 }
 func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
-	unimplemented()
+	if i >= 0 && i < len(fi.ib) {
+		fi.ib[sys.inputRemap[i]].GetInput(cb, facing)
+	}
 }
 func (fi *FileInput) AnyButton() bool {
-	unimplemented()
+	for _, b := range fi.ib {
+		if b&IB_anybutton != 0 {
+			return true
+		}
+	}
 	return false
 }
 func (fi *FileInput) Synchronize() {
@@ -858,19 +1142,24 @@ func (ce *cmdElem) IsDToB(next cmdElem) bool {
 	if next.slash {
 		return false
 	}
+	btn := true
 	for _, k := range ce.key {
-		if k >= CK_a {
-			return false
+		if k < CK_a {
+			btn = false
+			break
 		}
+	}
+	if btn {
+		return false
 	}
 	if len(ce.key) != len(next.key) {
 		return true
 	}
 	for i, k := range ce.key {
-		if k != next.key[i] && ((CK_nB <= k && k <= CK_nUF) ||
-			(CK_nBs <= k && k <= CK_nUFs) ||
-			(CK_nB <= next.key[i] && next.key[i] <= CK_nUF) ||
-			(CK_nBs <= next.key[i] && next.key[i] <= CK_nUFs)) {
+		if k != next.key[i] && ((k < CK_nB || k > CK_nUF) &&
+			(k < CK_nBs || k > CK_nUFs) ||
+			(next.key[i] < CK_nB || next.key[i] > CK_nUF) &&
+				(next.key[i] < CK_nBs || next.key[i] > CK_nUFs)) {
 			return true
 		}
 	}

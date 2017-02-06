@@ -1154,7 +1154,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			} else if vi < OC_sysfvar0+NumSysFvar {
 				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
 			} else {
-				fmt.Printf("%+v %v\n", c.ss, be[i-1])
+				println(fmt.Sprintf("%+v %v", c.ss, be[i-1]))
 				unimplemented()
 			}
 		}
@@ -1204,7 +1204,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
 			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
 		} else {
-			fmt.Printf("%+v %v\n", c.ss, be[*i-1])
+			println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
 			unimplemented()
 		}
 	}
@@ -1419,7 +1419,7 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	default:
-		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
+		println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
 		unimplemented()
 	}
 }
@@ -1533,7 +1533,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	default:
-		fmt.Printf("%+v %v\n", c.ss, be[*i-1])
+		println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
 		unimplemented()
 	}
 }
@@ -1562,7 +1562,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
 	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
 	if len(sys.bcStack) != int(bf.numArgs) {
-		fmt.Printf("%+v\n", c.ss)
+		println(fmt.Sprintf("%+v", c.ss))
 		unimplemented()
 	}
 	copy(sys.bcVar, sys.bcStack)
@@ -1583,7 +1583,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	if !changeState {
 		if len(ret) > 0 {
 			if len(ret) != int(bf.numRets) {
-				fmt.Printf("%+v\n", c.ss)
+				println(fmt.Sprintf("%+v", c.ss))
 				unimplemented()
 			}
 			for i, r := range ret {
@@ -4477,7 +4477,7 @@ func (sb *StateBytecode) run(c *Char) (changeState bool) {
 	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
 	changeState = sb.block.Run(c, sb.ctrlsps)
 	if len(sys.bcStack) != 0 {
-		fmt.Printf("%+v\n", c.ss)
+		println(fmt.Sprintf("%+v", c.ss))
 		unimplemented()
 	}
 	sys.bcVarStack.Clear()

@@ -1786,7 +1786,7 @@ func (c *Char) parent() *Char {
 		return nil
 	}
 	if !sys.ignoreMostErrors && c.parentIndex < 0 {
-		fmt.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+		println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
 }
@@ -2236,13 +2236,13 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		}
 	}
 	if w == nil && !sys.ignoreMostErrors {
-		fmt.Print("存在しないサウンド: ")
+		print("存在しないサウンド: ")
 		if f {
-			fmt.Print("F:")
+			print("F:")
 		} else {
-			fmt.Printf("P%v:", c.playerNo+1)
+			print(fmt.Sprintf("P%v:", c.playerNo+1))
 		}
-		fmt.Printf("%v,%v\n", g, n)
+		println(fmt.Sprintf("%v,%v", g, n))
 		return
 	}
 	if ch := c.newChannel(chNo, lowpriority); ch != nil {
@@ -2278,8 +2278,8 @@ func (c *Char) furimuki() {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
-		fmt.Printf("2500 loops: %v, %v -> %v -> %v\n",
-			c.name, c.ss.prevno, c.ss.no, no)
+		println(fmt.Sprintf("2500 loops: %v, %v -> %v -> %v",
+			c.name, c.ss.prevno, c.ss.no, no))
 		return false
 	}
 	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
@@ -2288,7 +2288,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
-		fmt.Printf("存在しないステート: P%v:%v\n", pn+1, no)
+		println(fmt.Sprintf("存在しないステート: P%v:%v", pn+1, no))
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
@@ -2551,13 +2551,13 @@ func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
 		a = c.gi().anim.get(n)
 	}
 	if a == nil && !(ffx && sys.ignoreMostErrors) {
-		fmt.Print("存在しないアニメ: ")
+		print("存在しないアニメ: ")
 		if ffx {
-			fmt.Print("F:")
+			print("F:")
 		} else {
-			fmt.Printf("P%v:", c.playerNo+1)
+			print(fmt.Sprintf("P%v:", c.playerNo+1))
 		}
-		fmt.Printf("%v\n", n)
+		println(fmt.Sprintf("%v", n))
 	}
 	return
 }
@@ -4792,7 +4792,6 @@ func (cl *CharList) tick() {
 	}
 }
 func (cl *CharList) cueDraw() {
-	sys.gameTime++
 	for _, c := range cl.drawOrder {
 		if c != nil {
 			c.cueDraw()

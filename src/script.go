@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
 	"strings"
@@ -376,6 +377,21 @@ func systemScriptInit(l *lua.LState) {
 		a.Draw()
 		return 0
 	})
+	luaRegister(l, "enterNetPlay", func(*lua.LState) int {
+		if sys.netInput != nil {
+			l.RaiseError("すでに通信中です。")
+		}
+		sys.chars = [len(sys.chars)][]*Char{}
+		sys.netInput = NewNetInput("replay/netplay.replay")
+		if host := strArg(l, 1); host != "" {
+			sys.netInput.Connect(host, sys.listenPort)
+		} else {
+			if err := sys.netInput.Accept(sys.listenPort); err != nil {
+				l.RaiseError(err.Error())
+			}
+		}
+		return 0
+	})
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		if sys.netInput != nil {
 			sys.netInput.Close()
@@ -409,6 +425,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getListenPort", func(*lua.LState) int {
 		l.Push(lua.LString(sys.listenPort))
+		return 1
+	})
+	luaRegister(l, "connected", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.netInput.IsConnected()))
 		return 1
 	})
 	luaRegister(l, "setListenPort", func(*lua.LState) int {
@@ -1655,7 +1675,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	scriptCommonInit(l)
 	triggerScriptInit(l)
 	luaRegister(l, "puts", func(*lua.LState) int {
-		println(strArg(l, 1))
+		fmt.Println(strArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setLife", func(*lua.LState) int {

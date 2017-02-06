@@ -39,10 +39,7 @@ func RenderInit() {
 		"void main(void){" +
 		"vec4 c = texture2D(tex, gl_TexCoord[0].st);" +
 		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
-		"float gcol = (c.r + c.g + c.b) / 3.0;" +
-		"c.r += (gcol - c.r) * gray + add.r;" +
-		"c.g += (gcol - c.g) * gray + add.g;" +
-		"c.b += (gcol - c.b) * gray + add.b;" +
+		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
 		"c.rgb *= mul;" +
 		"c.a *= a;" +
 		"gl_FragColor = c;" +
