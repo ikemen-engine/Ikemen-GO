@@ -1,13 +1,12 @@
 package main
 
-// #cgo LDFLAGS: -lpng -lz
-// #include <stdlib.h>
-// #include <png.h>
-import "C"
 import (
 	"encoding/binary"
 	"fmt"
 	"github.com/go-gl/gl/v2.1/gl"
+	"image"
+	"image/draw"
+	"image/png"
 	"io"
 	"math"
 	"os"
@@ -867,36 +866,6 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				return err
 			}
 		}
-		getIHDR := func() (png_ptr C.png_structp, info_ptr C.png_infop,
-			width, height C.png_uint_32, bit_depth, color_type C.int,
-			ok bool, err error) {
-			png_sig := make([]C.png_byte, 8)
-			if err = binary.Read(f, binary.LittleEndian, png_sig); err != nil {
-				return
-			}
-			if C.png_sig_cmp(&png_sig[0], 0, 8) != 0 {
-				err = Error("png_sig_cmp failed")
-				return
-			}
-			png_ptr = C.png_create_read_struct(C.CString(C.PNG_LIBPNG_VER_STRING),
-				nil, nil, nil)
-			if png_ptr == nil {
-				err = Error("png_create_read_struct failed")
-				return
-			}
-			info_ptr = C.png_create_info_struct(png_ptr)
-			if info_ptr == nil {
-				C.png_destroy_read_struct(&png_ptr, nil, nil)
-				err = Error("png_create_info_struct failed")
-				return
-			}
-			C.png_init_io(png_ptr, C.fdopen(C.int(f.Fd()), C.CString("rb")))
-			C.png_set_sig_bytes(png_ptr, 8)
-			C.png_read_info(png_ptr, info_ptr)
-			ok = C.png_get_IHDR(png_ptr, info_ptr, &width, &height,
-				&bit_depth, &color_type, nil, nil, nil) != 0
-			return
-		}
 		switch format {
 		case 2:
 			px = s.Rle8Decode(px)
@@ -905,82 +874,37 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 		case 4:
 			px = s.Lz5Decode(px)
 		case 10:
-			png_ptr, info_ptr, width, height, bit_depth, color_type, ok, err :=
-				getIHDR()
+			img, err := png.Decode(f)
 			if err != nil {
 				return err
 			}
-			if ok && color_type == C.PNG_COLOR_TYPE_PALETTE && bit_depth <= 8 {
-				px = make([]byte, int(width*height))
-				pp := make([]*C.png_byte, int(height))
-				for i := range pp {
-					pp[i] = (*C.png_byte)(&px[i*int(width)])
-				}
-				C.png_read_image(png_ptr, &pp[0])
-				switch bit_depth {
-				case 1:
-					for y := range pp {
-						for i := width - 1; i >= 0; i-- {
-							p := (*[1 << 30]byte)(unsafe.Pointer(pp[y]))[:width:width]
-							p[i] = p[i>>3] & (1 << uint(i&7)) >> uint(i&7)
-						}
-					}
-				case 2:
-					for y := range pp {
-						for i := width - 1; i >= 0; i-- {
-							p := (*[1 << 30]byte)(unsafe.Pointer(pp[y]))[:width:width]
-							p[i] = p[i>>2] & (3 << uint(i&3*2)) >> uint(i&3*2)
-						}
-					}
-				case 4:
-					for y := range pp {
-						for i := width - 1; i >= 0; i-- {
-							p := (*[1 << 30]byte)(unsafe.Pointer(pp[y]))[:width:width]
-							p[i] = p[i>>1] & (15 << uint(i&1*4)) >> uint(i&1*4)
-						}
-					}
-				}
-			}
-			C.png_destroy_read_struct(&png_ptr, &info_ptr, nil)
-		case 11, 12:
-			s.rle = -12
-			png_ptr, info_ptr, width, height, bit_depth, color_type, ok, err :=
-				getIHDR()
-			if err != nil {
-				return err
-			}
+			pi, ok := img.(*image.Paletted)
 			if ok {
-				if bit_depth > 8 {
-					C.png_set_strip_16(png_ptr)
-				}
-				C.png_set_expand(png_ptr)
-				if color_type&C.PNG_COLOR_MASK_ALPHA == 0 {
-					C.png_set_add_alpha(png_ptr, 0xFF, C.PNG_FILLER_AFTER)
-				}
-				px = make([]byte, int(width*height*4))
-				var ppb *C.png_byte
-				lines := C.malloc(C.size_t(unsafe.Sizeof(ppb) * uintptr(height)))
-				pp := (**C.png_byte)(lines)
-				for i := 0; i < int(height); i++ {
-					*pp = (*C.png_byte)(&px[i*int(width)*4])
-					pp = (**C.png_byte)(unsafe.Pointer(
-						uintptr(unsafe.Pointer(pp)) + unsafe.Sizeof(ppb)))
-				}
-				C.png_read_image(png_ptr, lines)
-				C.free(lines)
-				sys.mainThreadTask <- func() {
-					s.Tex = newTexture()
-					gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-					gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height),
-						0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
-				}
+				px = pi.Pix
 			}
-			C.png_destroy_read_struct(&png_ptr, &info_ptr, nil)
+		case 11, 12:
+			img, err := png.Decode(f)
+			if err != nil {
+				return err
+			}
+			rect := img.Bounds()
+			rgba, ok := img.(*image.RGBA)
+			if !ok {
+				rgba = image.NewRGBA(rect)
+				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
+			}
+			sys.mainThreadTask <- func() {
+				s.Tex = newTexture()
+				gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
+				gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+				gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rect.Max.X-rect.Min.X),
+					int32(rect.Max.Y-rect.Min.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE,
+					unsafe.Pointer(&rgba.Pix[0]))
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+			}
 			return nil
 		default:
 			return Error("不明な形式です")

@@ -79,7 +79,7 @@ func (c *Camera) Update(scl, x, y float32) {
 	c.ScreenPos[1] = y - (c.GroundLevel()-float32(sys.gameHeight-240)*scl)/
 		c.Scale - c.Offset[1]
 	c.Pos[0] = x
-	c.Pos[1] = y + float32(sys.gameHeight-240)
+	c.Pos[1] = y
 }
 func (c *Camera) ScaleBound(scl float32) float32 {
 	if c.ZoomEnable {
