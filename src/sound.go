@@ -503,6 +503,9 @@ func (s *Sound) SetVolume(vol int32) {
 		s.volume = int16(vol)
 	}
 }
+func (s *Sound) SetPan(pan float32, offset *float32) {
+	// 未実装
+}
 
 type Sounds []Sound
 

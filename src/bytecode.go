@@ -1550,6 +1550,11 @@ func (be BytecodeExp) evalB(c *Char) bool {
 type StateController interface {
 	Run(c *Char, ps []int32) (changeState bool)
 }
+type NullStateController struct{}
+
+func (_ NullStateController) Run(_ *Char, _ []int32) bool { return false }
+
+var nullStateController NullStateController
 
 type bytecodeFunction struct {
 	numVars int32
@@ -4164,6 +4169,57 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type angleSet StateControllerBase
+
+const (
+	angleSet_value byte = iota
+)
+
+func (sc angleSet) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case angleSet_value:
+			c.angleSet(exp[0].evalF(c))
+		}
+		return true
+	})
+	return false
+}
+
+type angleAdd StateControllerBase
+
+const (
+	angleAdd_value byte = iota
+)
+
+func (sc angleAdd) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case angleAdd_value:
+			c.angleSet(c.angle + exp[0].evalF(c))
+		}
+		return true
+	})
+	return false
+}
+
+type angleMul StateControllerBase
+
+const (
+	angleMul_value byte = iota
+)
+
+func (sc angleMul) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case angleMul_value:
+			c.angleSet(c.angle * exp[0].evalF(c))
+		}
+		return true
+	})
+	return false
+}
+
 type envColor StateControllerBase
 
 const (
@@ -4272,6 +4328,40 @@ func (sc makeDust) Run(c *Char, _ []int32) bool {
 			}
 			c.makeDust(x-float32(c.size.draw.offset[0]),
 				y-float32(c.size.draw.offset[1]))
+		}
+		return true
+	})
+	return false
+}
+
+type attackDist StateControllerBase
+
+const (
+	attackDist_value byte = iota
+)
+
+func (sc attackDist) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case attackDist_value:
+			c.attackDist = exp[0].evalF(c)
+		}
+		return true
+	})
+	return false
+}
+
+type attackMulSet StateControllerBase
+
+const (
+	attackMulSet_value byte = iota
+)
+
+func (sc attackMulSet) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case attackMulSet_value:
+			c.attackMul = float32(c.gi().data.defence) / 100 * exp[0].evalF(c)
 		}
 		return true
 	})
@@ -4436,6 +4526,224 @@ func (sc remapPal) Run(c *Char, _ []int32) bool {
 				dst[1] = exp[1].evalI(c)
 			}
 			c.remapPal(c.getPalfx(), src, dst)
+		}
+		return true
+	})
+	return false
+}
+
+type stopSnd StateControllerBase
+
+const (
+	stopSnd_channel byte = iota
+)
+
+func (sc stopSnd) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case stopSnd_channel:
+			if ch := Min(255, exp[0].evalI(c)); ch < 0 {
+				sys.stopAllSound()
+			} else if int(ch) < len(c.sounds) {
+				c.sounds[ch].sound = nil
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type sndPan StateControllerBase
+
+const (
+	sndPan_channel byte = iota
+	sndPan_pan
+	sndPan_abspan
+)
+
+func (sc sndPan) Run(c *Char, _ []int32) bool {
+	ch, pan, x := int32(-1), float32(0), &c.pos[0]
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case sndPan_channel:
+			ch = exp[0].evalI(c)
+		case sndPan_pan:
+			pan = exp[0].evalF(c)
+		case sndPan_abspan:
+			pan = exp[0].evalF(c)
+			x = nil
+		}
+		return true
+	})
+	if ch <= 0 && int(ch) < len(c.sounds) {
+		c.sounds[ch].SetPan(pan, x)
+	}
+	return false
+}
+
+type varRandom StateControllerBase
+
+const (
+	varRandom_v byte = iota
+	varRandom_range
+)
+
+func (sc varRandom) Run(c *Char, _ []int32) bool {
+	var v int32
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case varRandom_v:
+			v = exp[0].evalI(c)
+		case varRandom_range:
+			var min, max int32 = 0, exp[0].evalI(c)
+			if len(exp) > 1 {
+				min, max = max, exp[1].evalI(c)
+			}
+			c.varSet(v, RandI(min, max))
+		}
+		return true
+	})
+	return false
+}
+
+type gravity StateControllerBase
+
+const (
+	gravity_ byte = iota
+)
+
+func (sc gravity) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case gravity_:
+			c.gravity()
+		}
+		return true
+	})
+	return false
+}
+
+type bindToParent StateControllerBase
+
+const (
+	bindToParent_time byte = iota
+	bindToParent_facing
+	bindToParent_pos
+)
+
+func (sc bindToParent) Run(c *Char, _ []int32) bool {
+	var p *Char
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if p == nil {
+			if p := c.parent(); p == nil {
+				return false
+			}
+			c.bindTime, c.bindPos = 1, [2]float32{}
+			c.setBindToId(p)
+		}
+		switch id {
+		case bindToParent_time:
+			c.bindTime = exp[0].evalI(c)
+		case bindToParent_facing:
+			if f := exp[0].evalI(c); f < 0 {
+				c.bindFacing = -1
+			} else if f > 0 {
+				c.bindFacing = 1
+			}
+		case bindToParent_pos:
+			c.bindPos[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				c.bindPos[1] = exp[1].evalF(c)
+			}
+		}
+		return true
+	})
+	if c.bindTime == 0 {
+		c.bindToId = -1
+	}
+	return false
+}
+
+type bindToRoot bindToParent
+
+func (sc bindToRoot) Run(c *Char, _ []int32) bool {
+	var r *Char
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if r == nil {
+			if r := c.root(); r == nil {
+				return false
+			}
+			c.bindTime, c.bindPos = 1, [2]float32{}
+			c.setBindToId(r)
+		}
+		switch id {
+		case bindToParent_time:
+			c.bindTime = exp[0].evalI(c)
+		case bindToParent_facing:
+			if f := exp[0].evalI(c); f < 0 {
+				c.bindFacing = -1
+			} else if f > 0 {
+				c.bindFacing = 1
+			}
+		case bindToParent_pos:
+			c.bindPos[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				c.bindPos[1] = exp[1].evalF(c)
+			}
+		}
+		return true
+	})
+	if c.bindTime == 0 {
+		c.bindToId = -1
+	}
+	return false
+}
+
+type removeExplod StateControllerBase
+
+const (
+	removeExplod_id byte = iota
+)
+
+func (sc removeExplod) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case removeExplod_id:
+			c.removeExplod(exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type moveHitReset StateControllerBase
+
+const (
+	moveHitReset_ byte = iota
+)
+
+func (sc moveHitReset) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case moveHitReset_:
+			c.clearMoveHit()
+		}
+		return true
+	})
+	return false
+}
+
+type hitAdd StateControllerBase
+
+const (
+	hitAdd_value byte = iota
+)
+
+func (sc hitAdd) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitAdd_value:
+			c.hitAdd(exp[0].evalI(c))
 		}
 		return true
 	})

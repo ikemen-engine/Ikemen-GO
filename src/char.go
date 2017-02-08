@@ -2221,7 +2221,7 @@ func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	return nil
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	pan, freqmul float32, _ *float32) {
+	_, freqmul float32, _ *float32) {
 	if g < 0 {
 		return
 	}
@@ -2465,9 +2465,13 @@ func (c *Char) newExplod() (*Explod, int) {
 	}
 	return nil, -1
 }
-func (c *Char) getExplods(id int32) []*Explod {
-	unimplemented()
-	return nil
+func (c *Char) getExplods(id int32) (expls []*Explod) {
+	for _, e := range sys.explods[c.playerNo] {
+		if e.matchId(id, c.id) {
+			expls = append(expls, &e)
+		}
+	}
+	return
 }
 func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	e := &sys.explods[c.playerNo][i]
@@ -2610,6 +2614,14 @@ func (c *Char) mulXV(xv float32) {
 }
 func (c *Char) mulYV(yv float32) {
 	c.vel[1] *= yv
+}
+func (c *Char) hitAdd(h int32) {
+	c.hitCount += h
+	for _, tid := range c.targets {
+		if t := sys.playerID(tid); t != nil {
+			t.getcombo += h
+		}
+	}
 }
 func (c *Char) newProj() *Projectile {
 	unimplemented()

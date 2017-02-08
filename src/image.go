@@ -493,6 +493,7 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
+		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -503,6 +504,7 @@ func (s *Sprite) SetPxl(px []byte) {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+		gl.Disable(gl.TEXTURE_2D)
 	}
 }
 func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32,
@@ -894,6 +896,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
 			sys.mainThreadTask <- func() {
+				gl.Enable(gl.TEXTURE_2D)
 				s.Tex = newTexture()
 				gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 				gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -904,6 +907,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+				gl.Disable(gl.TEXTURE_2D)
 			}
 			return nil
 		default:

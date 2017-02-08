@@ -42,15 +42,16 @@ var sys = System{
 	listenPort:        "7500",
 	loader:            *newLoader(),
 	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
-	superpmap:      *newPalFX(),
-	wincnt:         wincntMap(make(map[string][]int32)),
-	wincntFileName: "autolevel.txt",
-	powerShare:     [...]bool{true, true},
-	oldNextAddTime: 1,
-	commandLine:    make(chan string),
-	cam:            *newCamera(),
-	mainThreadTask: make(chan func(), 65536),
-	workpal:        make([]uint32, 256),
+	ignoreMostErrors: true,
+	superpmap:        *newPalFX(),
+	wincnt:           wincntMap(make(map[string][]int32)),
+	wincntFileName:   "autolevel.txt",
+	powerShare:       [...]bool{true, true},
+	oldNextAddTime:   1,
+	commandLine:      make(chan string),
+	cam:              *newCamera(),
+	mainThreadTask:   make(chan func(), 65536),
+	workpal:          make([]uint32, 256),
 }
 
 type TeamMode int32
@@ -521,12 +522,19 @@ func (s *System) resetGblEffect() {
 	s.envcol_time = 0
 	s.specialFlag = 0
 }
+func (s *System) stopAllSound() {
+	for _, p := range s.chars {
+		for _, c := range p {
+			c.sounds = c.sounds[:0]
+		}
+	}
+}
 func (s *System) playerClear(pn int) {
 	if len(s.chars[pn]) > 0 {
 		helpers := s.chars[pn][1:]
-		for i, h := range helpers {
-			helpers[i].destroy()
-			helpers[i].sounds = h.sounds[:0]
+		for _, h := range helpers {
+			h.destroy()
+			h.sounds = h.sounds[:0]
 		}
 		p := s.chars[pn][0]
 		p.children = p.children[:0]
