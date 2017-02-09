@@ -173,8 +173,6 @@ type CharSize struct {
 			dist int32
 		}
 		doscale int32
-		xscale  float32
-		yscale  float32
 	}
 	head struct {
 		pos [2]int32
@@ -203,8 +201,6 @@ func (cs *CharSize) init() {
 	cs.attack.dist = 160
 	cs.proj.attack.dist = 90
 	cs.proj.doscale = 0
-	cs.proj.xscale = 1
-	cs.proj.yscale = 1
 	cs.head.pos = [...]int32{-5, -90}
 	cs.mid.pos = [...]int32{-5, -60}
 	cs.shadowoffset = 0
@@ -1013,7 +1009,7 @@ type Projectile struct {
 	remanim       int32
 	cancelanim    int32
 	scale         [2]float32
-	clsnscale     [2]float32
+	clsnScale     [2]float32
 	remove        bool
 	removetime    int32
 	velocity      [2]float32
@@ -1043,28 +1039,220 @@ type Projectile struct {
 }
 
 func newProjectile() *Projectile {
-	return &Projectile{aimg: *newAfterImage()}
+	p := &Projectile{}
+	p.clear()
+	return p
 }
 func (p *Projectile) clear() {
 	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
-		scale: [...]float32{1, 1}, clsnscale: [...]float32{1, 1}, remove: true,
+		scale: [...]float32{1, 1}, clsnScale: [...]float32{1, 1}, remove: true,
 		removetime: -1, velmul: [...]float32{1, 1}, hits: 1, priority: 1,
 		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
-		heightbound: [...]int32{-240, 1}, facing: 1}
+		heightbound: [...]int32{-240, 1}, facing: 1, aimg: *newAfterImage()}
 	p.hitdef.clear()
-	p.aimg.clear()
+}
+func (p *Projectile) setPos(pos [2]float32) {
+	p.pos, p.oldPos, p.newPos = pos, pos, pos
+}
+func (p *Projectile) paused(playerNo int) bool {
+	if !sys.chars[playerNo][0].pause() {
+		if sys.super > 0 {
+			if p.supermovetime == 0 {
+				return true
+			}
+		} else if sys.pause > 0 {
+			if p.pausemovetime == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 func (p *Projectile) update(playerNo int) {
-	unimplemented()
+	if sys.tickFrame() {
+		rem := true
+		if p.anim >= 0 {
+			if p.hits < 0 && p.remove {
+				if p.hits == -1 {
+					if p.hitanim != p.anim {
+						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, false)
+					}
+				} else if p.cancelanim != p.anim {
+					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, false)
+				}
+			} else if p.pos[0] < sys.xmin-float32(p.edgebound) ||
+				p.pos[1] > sys.xmax+float32(p.edgebound) ||
+				(p.velocity[0]*p.facing < 0 &&
+					p.pos[0] < sys.cam.XMin-float32(p.stagebound)) ||
+				(p.velocity[0]*p.facing > 0 &&
+					p.pos[0] > sys.cam.XMax+float32(p.stagebound)) ||
+				(p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1])) ||
+				(p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0])) ||
+				p.removetime == 0 ||
+				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
+				if p.remanim != p.anim {
+					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, false)
+				}
+			} else {
+				rem = false
+			}
+			if rem {
+				if p.ani != nil {
+					p.ani.UpdateSprite()
+				}
+				p.velocity = p.remvelocity
+				p.accel, p.velmul, p.anim = [2]float32{}, [...]float32{1, 1}, -1
+				if p.hits >= 0 {
+					p.hits = -1
+				}
+			}
+		}
+		if rem {
+			if p.ani != nil && (p.ani.totaltime <= 0 || p.ani.AnimTime() == 0) {
+				p.ani = nil
+			}
+			if p.ani == nil && p.id >= 0 {
+				p.id = ^p.id
+			}
+		}
+	}
+	if p.paused(playerNo) || p.hitpause != 0 {
+		return
+	}
+	if sys.tickFrame() {
+		p.oldPos = p.pos
+		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing,
+			p.pos[1] + p.velocity[1]}
+	}
+	ti := sys.tickInterpola()
+	for i, np := range p.newPos {
+		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+	}
+	if sys.tickNextFrame() {
+		for i := range p.velocity {
+			p.velocity[i] += p.accel[i]
+			p.velocity[i] *= p.velmul[i]
+		}
+		if p.velocity[0] < 0 {
+			p.facing *= -1
+			p.velocity[0] *= -1
+			p.accel[0] *= -1
+		}
+	}
 }
 func (p *Projectile) clsn(playerNo int) {
-	unimplemented()
+	if p.ani == nil || len(p.ani.frames) == 0 {
+		return
+	}
+	cancel := func(prioritypoint *int32, priority int32, hits *int32,
+		oppprioritypoint int32) {
+		if oppprioritypoint > *prioritypoint || *hits <= 0 {
+			*hits = -2
+			return
+		}
+		if oppprioritypoint == *prioritypoint {
+			if *hits <= 1 {
+				*hits = -2
+			} else {
+				*hits = int32(int64(*hits)*3/4 - 1)
+				if *hits <= 0 {
+					(*prioritypoint)--
+				} else {
+					*prioritypoint = priority
+				}
+			}
+		} else {
+			(*prioritypoint)--
+		}
+	}
+	for i := 0; i < playerNo && p.hits >= 0; i++ {
+		for j, pr := range sys.projs[i] {
+			if pr.hits < 0 || pr.id < 0 || pr.hitdef.affectteam != 0 &&
+				(playerNo&1 != i&1) != (pr.hitdef.affectteam > 0 ||
+					pr.ani == nil || len(pr.ani.frames) == 0) {
+				continue
+			}
+			clsn1 := pr.ani.CurrentFrame().Clsn2()
+			clsn2 := p.ani.CurrentFrame().Clsn2()
+			if sys.clsnHantei(clsn1, pr.clsnScale,
+				[...]float32{pr.pos[0], pr.pos[1]}, pr.facing,
+				clsn2, p.clsnScale, [...]float32{p.pos[0], p.pos[1]}, p.facing) {
+				opp, pp := &sys.projs[i][j], p.prioritypoint
+				cancel(&p.prioritypoint, p.priority, &p.hits, opp.prioritypoint)
+				cancel(&opp.prioritypoint, opp.priority, &opp.hits, pp)
+			}
+		}
+	}
 }
 func (p *Projectile) tick(playerNo int) {
-	unimplemented()
+	if p.timemiss < 0 {
+		p.timemiss = ^p.timemiss
+		if p.hits >= 0 {
+			if p.timemiss <= 0 && p.hitpause == 0 {
+				p.hits = -1
+			} else {
+				p.hits--
+				if p.hits <= 0 {
+					p.hits = -1
+				}
+			}
+		}
+		p.hitdef.air_juggle = 0
+	}
+	if p.hits < 0 {
+		p.hitpause = 0
+	}
+	if !p.paused(playerNo) {
+		if p.hitpause <= 0 {
+			if p.removetime > 0 {
+				p.removetime--
+			}
+			if p.timemiss > 0 {
+				p.timemiss--
+			}
+		}
+	}
 }
-func (p *Projectile) anime(oldVer bool, playerNo int) {
-	unimplemented()
+func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
+	notpause := p.hitpause <= 0 && !p.paused(playerNo)
+	if sys.tickFrame() && p.ani != nil && notpause {
+		p.ani.UpdateSprite()
+	}
+	if sys.clsnDraw && p.ani != nil {
+		if frm := p.ani.drawFrame(); frm != nil {
+			xs := p.facing * p.clsnScale[0]
+			if clsn := frm.Clsn1(); len(clsn) > 0 {
+				sys.drawc1.Add(clsn, p.pos[0], p.pos[1], xs, p.clsnScale[1])
+			}
+			if clsn := frm.Clsn2(); len(clsn) > 0 {
+				sys.drawc2.Add(clsn, p.pos[0], p.pos[1], xs, p.clsnScale[1])
+			}
+		}
+	}
+	if sys.tickNextFrame() && (notpause || !p.paused(playerNo)) {
+		if p.ani != nil && notpause {
+			p.ani.Action()
+		}
+		if p.hitpause > 0 {
+			p.hitpause--
+		} else {
+			if p.supermovetime > 0 {
+				p.supermovetime--
+			}
+			if p.pausemovetime > 0 {
+				p.pausemovetime--
+			}
+		}
+	}
+	if p.ani != nil {
+		sd := &SprData{p.ani, p.palfx, p.pos,
+			[...]float32{p.facing * p.scale[0], p.scale[1]}, [2]int32{-1},
+			p.sprpriority, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			sys.cgi[playerNo].ver[0] != 1}
+		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
+		sys.sprites.add(sd,
+			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0)
+	}
 }
 
 type MoveContact int32
@@ -1462,9 +1650,6 @@ func (c *Char) load(def string) error {
 				is.ReadI32("attack.dist", &c.size.attack.dist)
 				is.ReadI32("proj.attack.dist", &c.size.proj.attack.dist)
 				is.ReadI32("proj.doscale", &c.size.proj.doscale)
-				if c.size.proj.doscale != 0 {
-					c.size.proj.xscale, c.size.proj.yscale = c.size.xscale, c.size.yscale
-				}
 				is.ReadI32("head.pos", &c.size.head.pos[0], &c.size.head.pos[1])
 				is.ReadI32("mid.pos", &c.size.mid.pos[0], &c.size.mid.pos[1])
 				is.ReadI32("shadowoffset", &c.size.shadowoffset)
@@ -2624,12 +2809,55 @@ func (c *Char) hitAdd(h int32) {
 	}
 }
 func (c *Char) newProj() *Projectile {
-	unimplemented()
+	for i, p := range sys.projs[c.playerNo] {
+		if p.id < 0 {
+			sys.projs[c.playerNo][i].clear()
+			sys.projs[c.playerNo][i].id = 0
+			sys.projs[c.playerNo][i].palfx = c.getPalfx()
+			return &sys.projs[c.playerNo][i]
+		}
+	}
+	if i := len(sys.projs[c.playerNo]); i < sys.playerProjectileMax {
+		sys.projs[c.playerNo] = append(sys.projs[c.playerNo], *newProjectile())
+		p := &sys.projs[c.playerNo][i]
+		p.id, p.palfx = 0, c.getPalfx()
+		return p
+	}
 	return nil
 }
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	op bool, rpg, rpn int32) {
-	unimplemented()
+	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing))
+	if p.anim < -1 {
+		p.anim = 0
+	}
+	p.ani = c.getAnim(p.anim, false)
+	if p.ani == nil && c.anim != nil {
+		p.ani = &Animation{}
+		*p.ani = *c.anim
+		p.ani.SetAnimElem(1)
+		p.anim = c.animNo
+	}
+	if p.ani != nil {
+		p.ani.UpdateSprite()
+	}
+	if c.size.proj.doscale != 0 {
+		p.scale[0] *= c.size.xscale
+		p.scale[1] *= c.size.yscale
+	}
+	p.clsnScale = c.clsnScale
+	if p.velocity[0] < 0 {
+		p.facing *= -1
+		p.velocity[0] *= -1
+		p.accel[0] *= -1
+	}
+	if op {
+		remap := make([]int, len(p.palfx.remap))
+		copy(remap, p.palfx.remap)
+		p.palfx = newPalFX()
+		p.palfx.remap = remap
+		c.remapPal(p.palfx, [...]int32{1, 1}, [...]int32{rpg, rpn})
+	}
 }
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !proj {
@@ -2928,19 +3156,39 @@ func (c *Char) targetState(tar []int32, state int32) {
 	}
 }
 func (c *Char) targetVelSetX(tar []int32, x float32) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.setXV(x)
+		}
+	}
 }
 func (c *Char) targetVelSetY(tar []int32, y float32) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.setYV(y)
+		}
+	}
 }
 func (c *Char) targetVelAddX(tar []int32, x float32) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.vel[0] += x
+		}
+	}
 }
 func (c *Char) targetVelAddY(tar []int32, y float32) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.vel[1] += y
+		}
+	}
 }
 func (c *Char) targetPowerAdd(tar []int32, power int32) {
-	unimplemented()
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.powerAdd(power)
+		}
+	}
 }
 func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	var tg []int32

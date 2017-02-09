@@ -371,6 +371,12 @@ func (a *Animation) CurrentFrame() *AnimFrame {
 	}
 	return a.curFrame()
 }
+func (a *Animation) drawFrame() *AnimFrame {
+	if len(a.frames) == 0 {
+		return nil
+	}
+	return &a.frames[a.drawidx]
+}
 func (a *Animation) SetAnimElem(elem int32) {
 	a.current = Max(0, elem-1)
 	if int(a.current) >= len(a.frames) {
@@ -657,7 +663,7 @@ func (at AnimationTable) readAction(sff *Sff,
 				return tmp
 			}
 			at[no] = a
-			for len(a.frames) == 0 {
+			if len(a.frames) == 0 {
 				a2 := at.readAction(sff, lines, i)
 				if a2 != nil {
 					*a = *a2
@@ -803,8 +809,8 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			intensity = 0
 		}
 		if comm {
-			color = color&0xff*alpha>>8&0xff | color&0xff00*alpha>>8&0xff00 |
-				color&0xff0000*alpha>>8&0xff0000
+			color = color&0xff*alpha<<8&0xff0000 |
+				color&0xff00*alpha>>8&0xff00 | color&0xff0000*alpha>>24&0xff
 		}
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-

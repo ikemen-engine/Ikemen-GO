@@ -119,6 +119,8 @@ func newCompiler() *Compiler {
 		"removeexplod":       c.removeExplod,
 		"movehitreset":       c.moveHitReset,
 		"hitadd":             c.hitAdd,
+		"offset":             c.offset,
+		"victoryquote":       c.victoryQuote,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -438,7 +440,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 }
 func (c *Compiler) trgAttr(in *string) (int32, error) {
 	flg := int32(0)
-	*in = strings.TrimSpace(*in)
+	*in = c.token + *in
 	i := strings.IndexAny(*in, kuuhaktokigou)
 	var att string
 	if i >= 0 {
@@ -517,7 +519,7 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	c.token = c.tokenizer(in)
 	return nil
 }
-func (c *Compiler) kakkotojiru(in *string) error {
+func (c *Compiler) kakkotojiru() error {
 	if c.token != ")" {
 		return Error(c.token + "の前に')'がありません")
 	}
@@ -728,7 +730,7 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 		if bv, err = c.expBoolOr(&be, in); err != nil {
 			return bvNone(), err
 		}
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 	}
@@ -919,7 +921,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				if bv1, err = c.expBoolOr(&be1, in); err != nil {
 					return bvNone(), err
 				}
-				if err := c.kakkotojiru(in); err != nil {
+				if err := c.kakkotojiru(); err != nil {
 					return bvNone(), err
 				}
 				c.token = c.tokenizer(in)
@@ -1015,7 +1017,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(be1...)
 		}
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 	case "var":
@@ -1048,7 +1050,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if bv3, err = c.expBoolOr(&be3, in); err != nil {
 			return bvNone(), err
 		}
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone() {
@@ -1453,7 +1455,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 		}
 		c.token = c.tokenizer(in)
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 	case "hitcount":
@@ -1517,7 +1519,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_ishometeam)
 	case "leftedge":
 		out.append(OC_leftedge)
-	case "life":
+	case "life", "p2life":
+		if c.token == "p2life" {
+			out.appendI32Op(OC_p2, 1)
+		}
 		out.append(OC_life)
 	case "lifemax":
 		out.append(OC_lifemax)
@@ -1720,7 +1725,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		svname := c.token
 		c.token = c.tokenizer(in)
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 		var opc OpCode
@@ -1915,7 +1920,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
 			return bvNone(), err
 		}
-		if err := c.kakkotojiru(in); err != nil {
+		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
 		if bv1.IsNone() || bv2.IsNone() {
@@ -2044,11 +2049,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(opc)
 			out.appendValue(BytecodeInt(0))
 			out.append(OC_eq)
+			be.append(OC_pop)
 			be.appendValue(BytecodeInt(0))
 			if err = c.kyuushikiSuperDX(&be, in, false); err != nil {
 				return bvNone(), err
 			}
-			out.append(OC_jnz8, OpCode(len(be)))
+			out.append(OC_jz8, OpCode(len(be)))
 			out.append(be...)
 			if n == 0 {
 				out.append(OC_blnot)
@@ -2245,43 +2251,34 @@ func (c *Compiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue,
 	}
 }
 func (c *Compiler) expRange(out *BytecodeExp, in *string,
-	bv *BytecodeValue, opc OpCode) error {
+	bv *BytecodeValue, opc OpCode) (bool, error) {
 	open := c.token
+	oldin := *in
 	c.token = c.tokenizer(in)
 	var be2, be3 BytecodeExp
 	bv2, err := c.expBoolOr(&be2, in)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if c.token != "," {
 		if open != "(" {
-			return Error(",がありません")
+			return false, Error(",がありません")
 		}
-		if err := c.kakkotojiru(in); err != nil {
-			return err
+		if err := c.kakkotojiru(); err != nil {
+			return false, err
 		}
-		c.token = c.tokenizer(in)
-		if bv.IsNone() || bv2.IsNone() {
-			out.appendValue(*bv)
-			out.append(be2...)
-			out.appendValue(bv2)
-			out.append(opc)
-			*bv = bvNone()
-		} else {
-			switch opc {
-			case OC_eq:
-				out.eq(bv, bv2)
-			case OC_ne:
-				out.ne(bv, bv2)
-			}
-		}
-		return nil
+		c.token = open
+		*in = oldin
+		return false, nil
 	}
 	c.token = c.tokenizer(in)
 	bv3, err := c.expBoolOr(&be3, in)
+	if err != nil {
+		return false, err
+	}
 	close := c.token
 	if close != "]" && close != ")" {
-		return Error("]か)がありません")
+		return false, Error("]か)がありません")
 	}
 	c.token = c.tokenizer(in)
 	if bv.IsNone() || bv2.IsNone() || bv3.IsNone() {
@@ -2339,7 +2336,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 			bv.SetB(!bv.ToB())
 		}
 	}
-	return nil
+	return true, nil
 }
 func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 	error) {
@@ -2364,10 +2361,11 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 		switch c.token {
 		case "[", "(":
 			if !c.norange {
-				if err = c.expRange(out, in, &bv, opc); err != nil {
+				if ok, err := c.expRange(out, in, &bv, opc); err != nil {
 					return bvNone(), err
+				} else if ok {
+					break
 				}
-				break
 			}
 			fallthrough
 		default:
@@ -2546,8 +2544,16 @@ func (c *Compiler) argExpression(in *string, vt ValueType) (BytecodeExp,
 	if err != nil {
 		return nil, err
 	}
-	if len(c.token) > 0 && c.token != "," {
-		return nil, Error(c.token + "が不正です")
+	if len(c.token) > 0 {
+		if c.token != "," {
+			return nil, Error(c.token + "が不正です")
+		}
+		oldin := *in
+		if c.tokenizer(in) == "" {
+			c.token = ""
+		} else {
+			*in = oldin
+		}
 	}
 	return be, nil
 }
@@ -2566,7 +2572,7 @@ func (c *Compiler) parseSection(
 	sctrl func(name, data string) error) (IniSection, bool, error) {
 	is := NewIniSection()
 	_type, persistent, ignorehitpause := true, true, true
-	for ; c.i < len(c.lines); (c.i)++ {
+	for ; c.i < len(c.lines); c.i++ {
 		line := strings.TrimSpace(strings.SplitN(c.lines[c.i], ";", 2)[0])
 		if len(line) > 0 && line[0] == '[' {
 			c.i--
@@ -5747,6 +5753,32 @@ func (c *Compiler) hitAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) offset(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*offset)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "x",
+			offset_x, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "y",
+			offset_y, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*victoryQuote)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "value",
+			victoryQuote_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil
@@ -5862,6 +5894,8 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					if len(trigger) < int(tn) {
 						trigger = append(trigger, make([][]BytecodeExp,
 							int(tn)-len(trigger))...)
+					}
+					if len(trexist) < int(tn) {
 						trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
 					}
 					tn--

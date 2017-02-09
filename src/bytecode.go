@@ -1970,8 +1970,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 	ret := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
-			p = c.partner(0)
-			if p == nil {
+			if p = c.partner(0); p == nil {
 				return false
 			}
 		}
@@ -2115,8 +2114,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	var x, y float32 = 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if h == nil {
-			h = c.newHelper()
-			if h == nil {
+			if h = c.newHelper(); h == nil {
 				return false
 			}
 		}
@@ -2238,8 +2236,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if e == nil {
-			e, i = c.newExplod()
-			if e == nil {
+			if e, i = c.newExplod(); e == nil {
 				return false
 			}
 		}
@@ -2525,8 +2522,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	var i int
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if e == nil {
-			e, i = c.newExplod()
-			if e == nil {
+			if e, i = c.newExplod(); e == nil {
 				return false
 			}
 			e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
@@ -3251,11 +3247,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
-			p = c.newProj()
-			if p == nil {
+			if p = c.newProj(); p == nil {
 				return false
 			}
-			p.aimg.clear()
 		}
 		switch id {
 		case projectile_postype:
@@ -4635,7 +4629,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	var p *Char
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
-			if p := c.parent(); p == nil {
+			if p = c.parent(); p == nil {
 				return false
 			}
 			c.bindTime, c.bindPos = 1, [2]float32{}
@@ -4670,7 +4664,7 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	var r *Char
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if r == nil {
-			if r := c.root(); r == nil {
+			if r = c.root(); r == nil {
 				return false
 			}
 			c.bindTime, c.bindPos = 1, [2]float32{}
@@ -4744,6 +4738,43 @@ func (sc hitAdd) Run(c *Char, _ []int32) bool {
 		switch id {
 		case hitAdd_value:
 			c.hitAdd(exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type offset StateControllerBase
+
+const (
+	offset_x byte = iota
+	offset_y
+)
+
+func (sc offset) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case offset_x:
+			c.offset[0] = exp[0].evalF(c)
+		case offset_y:
+			c.offset[1] = exp[0].evalF(c)
+		}
+		return true
+	})
+	return false
+}
+
+type victoryQuote StateControllerBase
+
+const (
+	victoryQuote_value byte = iota
+)
+
+func (sc victoryQuote) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case victoryQuote_value:
+			exp[0].evalI(c)
 		}
 		return true
 	})

@@ -765,7 +765,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
-				s.projs[i][j].anime(s.cgi[i].ver[0] != 1, i)
+				s.projs[i][j].cueDraw(s.cgi[i].ver[0] != 1, i)
 			}
 		}
 	}
