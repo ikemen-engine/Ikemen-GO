@@ -390,7 +390,6 @@ func RenderMugenPal(tex Texture, paltex uint32, mask int32, size [2]uint16,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, window, rcx, &rcy)
-	gl.Enable(gl.TEXTURE_1D)
 	gl.UseProgramObjectARB(mugenShader)
 	gl.Uniform1iARB(uniformPal, 1)
 	gl.Uniform1iARB(uniformMsk, mask)
@@ -399,7 +398,6 @@ func RenderMugenPal(tex Texture, paltex uint32, mask int32, size [2]uint16,
 	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl,
 		trans, rcx, rcy)
 	gl.UseProgramObjectARB(0)
-	gl.Disable(gl.TEXTURE_1D)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
@@ -407,6 +405,7 @@ func RenderMugenPal(tex Texture, paltex uint32, mask int32, size [2]uint16,
 func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32,
 	trans int32, window *[4]int32, rcx, rcy float32) {
+	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)
@@ -419,6 +418,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	RenderMugenPal(tex, paltex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, trans, window, rcx, rcy)
 	gl.DeleteTextures(1, &paltex)
+	gl.Disable(gl.TEXTURE_1D)
 }
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl float32, trans int32,

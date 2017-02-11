@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"strings"
@@ -1434,6 +1434,12 @@ func newChar(n int, idx int32) (c *Char) {
 	c.init(n, idx)
 	return c
 }
+func (c *Char) panic() {
+	if sys.workingState != &c.ss.sb {
+		sys.errLog.Panicf("%+v\n", sys.workingState)
+	}
+	sys.errLog.Panicf("%+v\n", c.ss)
+}
 func (c *Char) init(n int, idx int32) {
 	c.clear1()
 	c.playerNo, c.helperIndex = n, idx
@@ -1603,6 +1609,7 @@ func (c *Char) load(def string) error {
 	gi.data.init()
 	c.size.init()
 	gi.velocity.init()
+	gi.movement.init()
 	data, size, velocity, movement := true, true, true, true
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
@@ -1782,23 +1789,28 @@ func (c *Char) loadPallet() {
 		for i := 0; i < MaxPalNo; i++ {
 			pl := c.gi().sff.palList.Get(i)
 			var f *os.File
-			if LoadFile(&c.gi().pal[i], c.gi().def, func(file string) (err error) {
+			var err error
+			if LoadFile(&c.gi().pal[i], c.gi().def, func(file string) error {
 				f, err = os.Open(file)
-				return
+				return err
 			}) == nil {
 				for i := 255; i >= 0; i-- {
 					var rgb [3]byte
-					if binary.Read(f, binary.LittleEndian, rgb[:]) != nil {
+					if _, err = io.ReadFull(f, rgb[:]); err != nil {
 						break
 					}
 					pl[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 				}
-				if tmp == 0 && i > 0 {
-					copy(c.gi().sff.palList.Get(0), pl)
+				chk(f.Close())
+				if err == nil {
+					if tmp == 0 && i > 0 {
+						copy(c.gi().sff.palList.Get(0), pl)
+					}
+					tmp = i + 1
+					c.gi().palExist[i] = true
 				}
-				tmp = i + 1
-				c.gi().palExist[i] = true
-			} else {
+			}
+			if err != nil {
 				c.gi().palExist[i] = false
 				if i > 0 {
 					delete(c.gi().sff.palList.PalTable, [...]int16{1, int16(i + 1)})
@@ -1971,7 +1983,7 @@ func (c *Char) parent() *Char {
 		return nil
 	}
 	if !sys.ignoreMostErrors && c.parentIndex < 0 {
-		println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+		sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
 }
@@ -2421,13 +2433,13 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		}
 	}
 	if w == nil && !sys.ignoreMostErrors {
-		print("存在しないサウンド: ")
+		str := "存在しないサウンド: "
 		if f {
-			print("F:")
+			str += "F:"
 		} else {
-			print(fmt.Sprintf("P%v:", c.playerNo+1))
+			str += fmt.Sprintf("P%v:", c.playerNo+1)
 		}
-		println(fmt.Sprintf("%v,%v", g, n))
+		sys.errLog.Printf("%v%v,%v\n", str, g, n)
 		return
 	}
 	if ch := c.newChannel(chNo, lowpriority); ch != nil {
@@ -2463,8 +2475,8 @@ func (c *Char) furimuki() {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
-		println(fmt.Sprintf("2500 loops: %v, %v -> %v -> %v",
-			c.name, c.ss.prevno, c.ss.no, no))
+		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
+			c.name, c.ss.prevno, c.ss.no, no)
 		return false
 	}
 	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
@@ -2473,7 +2485,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
-		println(fmt.Sprintf("存在しないステート: P%v:%v", pn+1, no))
+		sys.errLog.Printf("存在しないステート: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
@@ -2651,9 +2663,9 @@ func (c *Char) newExplod() (*Explod, int) {
 	return nil, -1
 }
 func (c *Char) getExplods(id int32) (expls []*Explod) {
-	for _, e := range sys.explods[c.playerNo] {
+	for i, e := range sys.explods[c.playerNo] {
 		if e.matchId(id, c.id) {
-			expls = append(expls, &e)
+			expls = append(expls, &sys.explods[c.playerNo][i])
 		}
 	}
 	return
@@ -2685,7 +2697,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		ed := &sys.explDrawlist[c.playerNo]
 		for ii, ex := range *ed {
 			pid := sys.explods[c.playerNo][ex].playerId
-			if pid >= pid && (pid > pid || ex < i) {
+			if pid >= c.id && (pid > c.id || ex < i) {
 				*ed = append(*ed, 0)
 				copy((*ed)[ii+1:], (*ed)[ii:])
 				(*ed)[ii] = i
@@ -2697,6 +2709,13 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 }
 func (c *Char) insertExplod(i int) {
 	c.insertExplodEx(i, [...]int32{-1, 0})
+}
+func (c *Char) explodBindTime(id, time int32) {
+	for i, e := range sys.explods[c.playerNo] {
+		if e.matchId(id, c.id) {
+			sys.explods[c.playerNo][i].bindtime = time
+		}
+	}
 }
 func (c *Char) removeExplod(id int32) {
 	remove := func(drawlist *[]int, drop bool) {
@@ -2734,19 +2753,22 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.topexplDrawlist[en], false)
 }
 func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
+	if n < 0 {
+		return nil
+	}
 	if ffx {
 		a = sys.lifebar.fat.get(n)
 	} else {
 		a = c.gi().anim.get(n)
 	}
 	if a == nil && !(ffx && sys.ignoreMostErrors) {
-		print("存在しないアニメ: ")
+		str := "存在しないアニメ: "
 		if ffx {
-			print("F:")
+			str += "F:"
 		} else {
-			print(fmt.Sprintf("P%v:", c.playerNo+1))
+			str += fmt.Sprintf("P%v:", c.playerNo+1)
 		}
-		println(fmt.Sprintf("%v", n))
+		sys.errLog.Printf("%v%v\n", str, n)
 	}
 	return
 }
@@ -3688,6 +3710,24 @@ func (c *Char) offsetX() float32 {
 func (c *Char) offsetY() float32 {
 	return float32(c.size.draw.offset[1]) + c.offset[1]
 }
+func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
+	if p.ani == nil || c.curFrame == nil {
+		return false
+	}
+	frm := p.ani.CurrentFrame()
+	if frm == nil {
+		return false
+	}
+	var clsn1, clsn2 []float32
+	if gethit {
+		clsn1, clsn2 = frm.Clsn1(), c.curFrame.Clsn2()
+	} else {
+		clsn1, clsn2 = frm.Clsn2(), c.curFrame.Clsn1()
+	}
+	return sys.clsnHantei(clsn1, p.clsnScale,
+		[...]float32{p.pos[0], p.pos[1]}, p.facing, clsn2, c.clsnScale,
+		[...]float32{c.pos[0] + c.offsetX(), c.pos[1] + c.offsetY()}, c.facing)
+}
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	if atk.curFrame == nil || c.curFrame == nil {
 		return false
@@ -4373,13 +4413,13 @@ func (cl *CharList) delete(dc *Char) {
 func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
-	for _, c := range cl.runOrder {
-		if c.ss.moveType == MT_A {
-			c.action()
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].ss.moveType == MT_A {
+			cl.runOrder[i].action()
 		}
 	}
-	for _, c := range cl.runOrder {
-		c.action()
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].action()
 	}
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
 }
@@ -4481,6 +4521,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.sprPriority = hd.p2sprpriority
 			getter.ghv.hitid = hd.id
 			getter.ghv.playerNo = hd.playerNo
+		}
+		if Abs(hitType) == 1 {
+			if hd.pausetime > 0 {
+				hits = 1
+			}
+		} else if hd.guard_pausetime > 0 {
+			hits = 1
 		}
 		byf := c.facing
 		if proj {
@@ -4886,19 +4933,74 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 	if proj {
 		for i, pr := range sys.projs {
-			if i == getter.playerNo || len(sys.projs[0]) == 0 {
+			if i == getter.playerNo || len(sys.projs[i]) == 0 {
 				continue
 			}
-			orgatktmp := sys.chars[i][0].atktmp
-			sys.chars[i][0].atktmp = -1
-			for _, p := range pr {
+			c := sys.chars[i][0]
+			orgatktmp := c.atktmp
+			c.atktmp = -1
+			for j := range pr {
+				p := &pr[j]
 				if p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
 					(getter.playerNo&1 != i&1) != (p.hitdef.affectteam > 0) {
 					continue
 				}
-				unimplemented()
+				if dist := (getter.pos[0] - p.pos[0]) * p.facing; dist >= 0 &&
+					dist <= float32(c.size.proj.attack.dist) {
+					getter.inguarddist = true
+				}
+				if p.hits == 0 {
+					continue
+				}
+				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
+					(i&1 != getter.playerNo&1) == (getter.hitdef.affectteam > 0)) &&
+					getter.hitdef.hitflag&int32(ST_P) != 0 &&
+					getter.projClsnCheck(p, false) {
+					p.hits = -2
+					sys.cgi[i].pctype = PC_Cancel
+					sys.cgi[i].pctime = 0
+					sys.cgi[i].pcid = p.id
+					getter.hitdefContact = true
+					continue
+				}
+				if !(getter.stchtmp && (getter.sf(CSF_gethit) || getter.acttmp > 0)) &&
+					(c.sf(CSF_nojugglecheck) || getter.ghv.getJuggle(c.id,
+						c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
+					p.misstime <= 0 && p.hitpause <= 0 && getter.hittable(&p.hitdef,
+					c, ST_N, func(h *HitDef) bool { return false }) {
+					orghittmp := getter.hittmp
+					if getter.sf(CSF_gethit) {
+						getter.hittmp = int8(Btoi(getter.ghv.fallf)) + 1
+					}
+					if dist := -getter.distX(c) * c.facing; dist >= 0 &&
+						dist <= float32(p.hitdef.guard_dist) {
+						getter.inguarddist = true
+					}
+					if getter.projClsnCheck(p, true) {
+						hits := p.hits
+						if p.misstime > 0 {
+							hits = 1
+						}
+						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0],
+							p.pos[1] - c.pos[1]}, p.facing, hits); ht != 0 {
+							p.timemiss = ^Max(0, p.misstime)
+							if Abs(ht) == 1 {
+								sys.cgi[i].pctype = PC_Hit
+								sys.cgi[i].pctime = 0
+								sys.cgi[i].pcid = p.id
+								p.hitpause = Max(0, p.hitdef.pausetime)
+							} else {
+								sys.cgi[i].pctype = PC_Guarded
+								sys.cgi[i].pctime = 0
+								sys.cgi[i].pcid = p.id
+								p.hitpause = Max(0, p.hitdef.guard_pausetime)
+							}
+						}
+					}
+					getter.hittmp = orghittmp
+				}
 			}
-			sys.chars[i][0].atktmp = orgatktmp
+			c.atktmp = orgatktmp
 		}
 	} else {
 		gxmin = getter.getEdge(getter.edge[0], true)

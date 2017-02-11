@@ -264,6 +264,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
 	}
 	// nil から呼ぶと allPalFX が適用される
 	pal := (*PalFX)(nil).getFxPal(f.palettes[bank][:], false)
+	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)
@@ -278,6 +279,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
 			xscl*float32(f.Spacing[0])
 	}
 	gl.DeleteTextures(1, &paltex)
+	gl.Disable(gl.TEXTURE_1D)
 }
 
 type TextSprite struct {

@@ -100,6 +100,7 @@ func newCompiler() *Compiler {
 		"envcolor":           c.envColor,
 		"displaytoclipboard": c.displayToClipboard,
 		"appendtoclipboard":  c.appendToClipboard,
+		"clearclipboard":     c.clearClipboard,
 		"makedust":           c.makeDust,
 		"attackdist":         c.attackDist,
 		"attackmulset":       c.attackMulSet,
@@ -117,10 +118,12 @@ func newCompiler() *Compiler {
 		"bindtoparent":       c.bindToParent,
 		"bindtoroot":         c.bindToRoot,
 		"removeexplod":       c.removeExplod,
+		"explodbindtime":     c.explodBindTime,
 		"movehitreset":       c.moveHitReset,
 		"hitadd":             c.hitAdd,
 		"offset":             c.offset,
 		"victoryquote":       c.victoryQuote,
+		"zoom":               c.zoom,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -2013,6 +2016,17 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_majorversion)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
+	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
+		"+", "*", "**", "/", "%":
+		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
+			return bvNone(), Error(c.token + "が不正です")
+		}
+		if rd {
+			out.append(OC_rdreset)
+		}
+		c.maeOp = c.token
+		c.token = c.tokenizer(in)
+		return c.expValue(out, in, false)
 	default:
 		l := len(c.token)
 		if l >= 7 && c.token[:7] == "projhit" || l >= 11 &&
@@ -2067,8 +2081,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			println(c.token)
-			unimplemented()
+			return bvNone(), Error(c.token + "が不正です")
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -2509,7 +2522,7 @@ func (c *Compiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue,
 				out.append(be...)
 				bv = bvNone()
 			} else {
-				out.bland(&bv, bv2)
+				out.blor(&bv, bv2)
 			}
 		} else {
 			break
@@ -5464,6 +5477,14 @@ func (c *Compiler) appendToClipboard(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) clearClipboard(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*clearClipboard)(sc), c.stateSec(is, func() error {
+		sc.add(clearClipboard_, nil)
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) makeDust(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*makeDust)(sc), c.stateSec(is, func() error {
@@ -5734,6 +5755,30 @@ func (c *Compiler) removeExplod(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) explodBindTime(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*explodBindTime)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "id",
+			explodBindTime_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		b := false
+		if err := c.stateParam(is, "time", func(data string) error {
+			b = true
+			return c.scAdd(sc, explodBindTime_time, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			if err := c.paramValue(is, sc, "value",
+				explodBindTime_time, VT_Int, 1, false); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) moveHitReset(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*moveHitReset)(sc), c.stateSec(is, func() error {
@@ -5772,7 +5817,22 @@ func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*victoryQuote)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "value",
-			victoryQuote_value, VT_Int, 1, true); err != nil {
+			victoryQuote_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*zoom)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "pos",
+			zoom_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scale",
+			zoom_scale, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -5854,8 +5914,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					var ok bool
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
-						println(data)
-						unimplemented()
+						return Error(data + "が無効な値です")
 					}
 				case "persistent":
 					if c.stateNo >= 0 {
@@ -5889,7 +5948,10 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				default:
 					tn, ok := readDigit(name[7:])
 					if !ok || tn < 1 || tn > 65536 {
-						errmes(Error("トリガー名 (" + name + ") が不正です"))
+						if sys.ignoreMostErrors {
+							break
+						}
+						return Error("トリガー名 (" + name + ") が不正です")
 					}
 					if len(trigger) < int(tn) {
 						trigger = append(trigger, make([][]BytecodeExp,
@@ -5934,7 +5996,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			if scf == nil {
 				return errmes(Error("typeが指定されていません"))
 			}
-			if len(trexist) == 0 || trexist[0] == 0 {
+			if len(trexist) == 0 || (!allUtikiri && trexist[0] == 0) {
 				return errmes(Error("trigger1がありません"))
 			}
 			var texp BytecodeExp
@@ -5954,6 +6016,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					}
 					var te BytecodeExp
 					if trexist[i] < 0 {
+						te.append(OC_pop)
 						te.appendValue(BytecodeBool(false))
 					}
 					oldlen := len(te)
@@ -5976,12 +6039,16 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						if trexist[i] > 0 {
 							if len(texp) > 0 {
 								texp.appendValue(BytecodeBool(true))
+								texp.append(OC_jmp8, 0)
 							}
 							break
 						}
+						if len(texp) > 0 && (i == len(trigger)-1 || trexist[i+1] == 0) {
+							texp.appendValue(BytecodeBool(false))
+						}
 					} else {
 						texp.append(te...)
-						if i < len(trigger)-1 {
+						if i < len(trigger)-1 && trexist[i+1] != 0 {
 							texp.append(OC_jnz8, 0)
 							texp.append(OC_pop)
 						}
@@ -5998,11 +6065,9 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				return errmes(err)
 			}
 			appending := true
-			if len(texp) == 0 {
-				if allUtikiri {
-					appending = false
-				} else {
-					appending = false
+			if len(c.block.trigger) == 0 {
+				appending = false
+				if !allUtikiri {
 					for _, te := range trexist {
 						if te >= 0 {
 							if te > 0 {
@@ -6566,7 +6631,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-		case "varset", "varadd":
+		case "varset", "varadd", "parentvarset", "parentvaradd":
 		}
 		break
 	}

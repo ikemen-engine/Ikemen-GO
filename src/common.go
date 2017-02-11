@@ -210,13 +210,6 @@ func I32ToU16(i32 int32) uint16 {
 	}
 	return uint16(i32)
 }
-func AsciiToString(ascii []byte) string {
-	buf := make([]rune, len(ascii))
-	for i, a := range ascii {
-		buf[i] = rune(a)
-	}
-	return string(buf)
-}
 func LoadText(filename string) (string, error) {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -224,9 +217,9 @@ func LoadText(filename string) (string, error) {
 	}
 	if len(bytes) >= 3 &&
 		bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
-		return string(bytes[3:]), nil
+		bytes = bytes[3:]
 	}
-	return AsciiToString(bytes), nil
+	return string(bytes), nil
 }
 func FileExist(filename string) string {
 	if _, err := os.Stat(filename); !os.IsNotExist(err) {
@@ -277,7 +270,7 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 		}
 	}
 	if err := load(fp); err != nil {
-		return Error(fp + "\n" + err.Error())
+		return Error(deffile + ":\n" + fp + "\n" + err.Error())
 	}
 	*file = fp
 	return nil
@@ -390,7 +383,6 @@ func ReadIniSection(lines []string, i *int) (
 func (is IniSection) Parse(lines []string, i *int) {
 	for ; *i < len(lines); (*i)++ {
 		if len(lines[*i]) > 0 && lines[*i][0] == '[' {
-			(*i)--
 			break
 		}
 		line := strings.TrimSpace(strings.SplitN(lines[*i], ";", 2)[0])

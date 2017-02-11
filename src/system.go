@@ -8,6 +8,7 @@ import (
 	"github.com/timshannon/go-openal/openal"
 	"github.com/yuin/gopher-lua"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -52,6 +53,7 @@ var sys = System{
 	cam:              *newCamera(),
 	mainThreadTask:   make(chan func(), 65536),
 	workpal:          make([]uint32, 256),
+	errLog:           log.New(os.Stderr, "", 0),
 }
 
 type TeamMode int32
@@ -120,6 +122,7 @@ type System struct {
 	bcStack, bcVarStack     BytecodeStack
 	bcVar                   []BytecodeValue
 	workingChar             *Char
+	workingState            *StateBytecode
 	specialFlag             GlobalSpecialFlag
 	afterImageMax           int32
 	attack_LifeToPowerMul   float32
@@ -198,6 +201,7 @@ type System struct {
 	explodMax               int
 	workpal                 []uint32
 	playerProjectileMax     int
+	errLog                  *log.Logger
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -231,7 +235,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
 			if err := stdin.Err(); err != nil {
-				println(err.Error())
+				s.errLog.Println(err.Error())
 				return
 			}
 			s.commandLine <- stdin.Text()
@@ -322,7 +326,7 @@ func (s *System) audioOpen() {
 		}
 		s.audioContext = device.CreateContext()
 		if err := device.Err(); err != nil {
-			println(err.Error())
+			s.errLog.Println(err.Error())
 		}
 		s.audioContext.Activate()
 		go s.soundWrite()
@@ -354,7 +358,7 @@ func (s *System) soundWrite() {
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
 			src.Src.QueueBuffer(buf)
 			if err := openal.Err(); err != nil {
-				println(err.Error())
+				s.errLog.Println(err.Error())
 			}
 			processed = true
 		}
@@ -365,7 +369,7 @@ func (s *System) soundWrite() {
 			out = nil
 			bgmSrc.Src.QueueBuffer(buf)
 			if err := openal.Err(); err != nil {
-				println(err.Error())
+				s.errLog.Println(err.Error())
 			}
 			processed = true
 		}
@@ -1215,14 +1219,14 @@ func (s *System) fight() (reload bool) {
 	defer dL.Close()
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
-			println(err.Error())
+			s.errLog.Println(err.Error())
 		}
 	}
 	debugInput := func() {
 		select {
 		case cl := <-s.commandLine:
 			if err := dL.DoString(cl); err != nil {
-				println(err.Error())
+				s.errLog.Println(err.Error())
 			}
 		default:
 		}
@@ -1285,7 +1289,7 @@ func (s *System) fight() (reload bool) {
 		}
 	}
 	if err := s.synchronize(); err != nil {
-		println(err.Error())
+		s.errLog.Println(err.Error())
 		s.esc = true
 	}
 	if s.netInput != nil {
@@ -1413,7 +1417,7 @@ func (s *System) fight() (reload bool) {
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := dL.DoString(v.Script); err != nil {
-					println(err.Error())
+					s.errLog.Println(err.Error())
 				}
 			}
 		}
@@ -1722,7 +1726,7 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 			return false
 		}
 		n = int(Rand(0, int32(len(s.charlist))-1))
-		pl = int(Rand(1, 12))
+		pl = int(Rand(1, MaxPalNo))
 	}
 	sys.loadMutex.Lock()
 	s.selected[tn] = append(s.selected[tn], [...]int{n, pl})
@@ -1815,22 +1819,18 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.roundsExisted[pn&1] == 0 {
 		sys.cgi[pn].palno = sys.cgi[pn].palkeymap[pal-1] + 1
 	}
-	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) {
+	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) &&
+		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
-		fa.face = sys.cgi[pn].sff.getOwnPalSprite(
-			int16(fa.face_spr[0]), int16(fa.face_spr[1]))
-		if sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
-			fa.numko = 0
-			fa.teammate_face = make([]*Sprite, nsel)
-			for i, ci := range idx {
-				sprite := sys.sel.charlist[ci].sprite
-				LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
-					var err error
-					fa.teammate_face[i], err = loadFromSff(file,
-						int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
-					return err
-				})
-			}
+		fa.numko, fa.teammate_face = 0, make([]*Sprite, nsel)
+		for i, ci := range idx {
+			sprite := sys.sel.charlist[ci].sprite
+			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
+				var err error
+				fa.teammate_face[i], err = loadFromSff(file,
+					int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
+				return err
+			})
 		}
 	}
 	return 1

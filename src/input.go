@@ -857,25 +857,16 @@ func (ni *NetInput) end() {
 	ni.Close()
 }
 func (ni *NetInput) readI32() (int32, error) {
-	b, i := [4]byte{}, 0
-	for i < len(b) {
-		if n, err := ni.conn.Read(b[i:]); err != nil {
-			return 0, err
-		} else {
-			i += n
-		}
+	b := [4]byte{}
+	if _, err := ni.conn.Read(b[:]); err != nil {
+		return 0, err
 	}
 	return int32(b[0]) | int32(b[1])<<8 | int32(b[2])<<16 | int32(b[3])<<24, nil
 }
 func (ni *NetInput) writeI32(i32 int32) error {
-	b, i := [...]byte{byte(i32), byte(i32 >> 8),
-		byte(i32 >> 16), byte(i32 >> 24)}, 0
-	for i < len(b) {
-		if n, err := ni.conn.Write(b[i:]); err != nil {
-			return err
-		} else {
-			i += n
-		}
+	b := [...]byte{byte(i32), byte(i32 >> 8), byte(i32 >> 16), byte(i32 >> 24)}
+	if _, err := ni.conn.Write(b[:]); err != nil {
+		return err
 	}
 	return nil
 }

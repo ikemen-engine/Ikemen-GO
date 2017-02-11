@@ -686,7 +686,11 @@ func systemScriptInit(l *lua.LState) {
 				}
 				sys.await(FPS)
 			}
-			sys.runMainThreadTask()
+			for i := 0; i < len(sys.lifebar.fa[sys.tmode[i&1]]); i++ {
+				fa := sys.lifebar.fa[sys.tmode[i&1]][i]
+				fa.face = sys.cgi[i].sff.getOwnPalSprite(
+					int16(fa.face_spr[0]), int16(fa.face_spr[1]))
+			}
 			return nil
 		}
 		for {

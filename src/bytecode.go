@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"unsafe"
 )
@@ -997,7 +996,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_command:
-			sys.bcStack.PushB(c.command(sys.workingChar.ss.sb.playerNo,
+			sys.bcStack.PushB(c.command(sys.workingState.playerNo,
 				int(*(*int32)(unsafe.Pointer(&be[i])))))
 			i += 4
 		case OC_ctrl:
@@ -1151,11 +1150,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			vi := be[i-1]
 			if vi < OC_sysvar0+NumSysVar {
 				sys.bcStack.PushI(c.ivar[vi-OC_var0])
-			} else if vi < OC_sysfvar0+NumSysFvar {
-				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
 			} else {
-				println(fmt.Sprintf("%+v %v", c.ss, be[i-1]))
-				unimplemented()
+				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
 			}
 		}
 		c = oc
@@ -1204,8 +1200,8 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
 			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
 		} else {
-			println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
-			unimplemented()
+			sys.errLog.Printf("%v\n", be[*i-1])
+			c.panic()
 		}
 	}
 }
@@ -1395,32 +1391,32 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
 	case OC_const_authorname:
 		sys.bcStack.PushB(c.gi().authorLow ==
-			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_name:
 		sys.bcStack.PushB(c.gi().nameLow ==
-			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_stagevar_info_name:
 		sys.bcStack.PushB(sys.stage.nameLow ==
-			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_stagevar_info_displayname:
 		sys.bcStack.PushB(sys.stage.displaynameLow ==
-			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_stagevar_info_author:
 		sys.bcStack.PushB(sys.stage.authorLow ==
-			sys.stringPool[sys.workingChar.ss.sb.playerNo].List[*(*int32)(
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	default:
-		println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
-		unimplemented()
+		sys.errLog.Printf("%v\n", be[*i-1])
+		c.panic()
 	}
 }
 func (be BytecodeExp) run_ex(c *Char, i *int) {
@@ -1533,8 +1529,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	default:
-		println(fmt.Sprintf("%+v %v", c.ss, be[*i-1]))
-		unimplemented()
+		sys.errLog.Printf("%v\n", be[*i-1])
+		c.panic()
 	}
 }
 func (be BytecodeExp) evalF(c *Char) float32 {
@@ -1567,8 +1563,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
 	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
 	if len(sys.bcStack) != int(bf.numArgs) {
-		println(fmt.Sprintf("%+v", c.ss))
-		unimplemented()
+		c.panic()
 	}
 	copy(sys.bcVar, sys.bcStack)
 	sys.bcStack.Clear()
@@ -1588,8 +1583,7 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	if !changeState {
 		if len(ret) > 0 {
 			if len(ret) != int(bf.numRets) {
-				println(fmt.Sprintf("%+v", c.ss))
-				unimplemented()
+				c.panic()
 			}
 			for i, r := range ret {
 				oldv[r] = sys.bcVar[int(bf.numArgs)+i]
@@ -4262,8 +4256,9 @@ func (sc displayToClipboard) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case displayToClipboard_text:
-			sys.clipboardText[c.ss.sb.playerNo] = nil
-			sys.appendToClipboard(c.ss.sb.playerNo, int(exp[0].evalI(c)), params...)
+			sys.clipboardText[sys.workingState.playerNo] = nil
+			sys.appendToClipboard(sys.workingState.playerNo,
+				int(exp[0].evalI(c)), params...)
 		}
 		return true
 	})
@@ -4285,7 +4280,25 @@ func (sc appendToClipboard) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case displayToClipboard_text:
-			sys.appendToClipboard(c.ss.sb.playerNo, int(exp[0].evalI(c)), params...)
+			sys.appendToClipboard(sys.workingState.playerNo,
+				int(exp[0].evalI(c)), params...)
+		}
+		return true
+	})
+	return false
+}
+
+type clearClipboard StateControllerBase
+
+const (
+	clearClipboard_ byte = iota
+)
+
+func (sc clearClipboard) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case clearClipboard_:
+			sys.clipboardText[sys.workingState.playerNo] = nil
 		}
 		return true
 	})
@@ -4710,6 +4723,28 @@ func (sc removeExplod) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type explodBindTime StateControllerBase
+
+const (
+	explodBindTime_id byte = iota
+	explodBindTime_time
+)
+
+func (sc explodBindTime) Run(c *Char, _ []int32) bool {
+	var eid, time int32 = -1, 0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case explodBindTime_id:
+			eid = exp[0].evalI(c)
+		case explodBindTime_time:
+			time = exp[0].evalI(c)
+		}
+		return true
+	})
+	c.explodBindTime(eid, time)
+	return false
+}
+
 type moveHitReset StateControllerBase
 
 const (
@@ -4781,6 +4816,30 @@ func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type zoom StateControllerBase
+
+const (
+	zoom_pos byte = iota
+	zoom_scale
+)
+
+func (sc zoom) Run(c *Char, _ []int32) bool {
+	sys.drawScale = sys.cam.Scale
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case zoom_pos:
+			sys.zoomPos[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				sys.zoomPos[1] = exp[1].evalF(c)
+			}
+		case zoom_scale:
+			sys.drawScale = exp[0].evalF(c)
+		}
+		return true
+	})
+	return false
+}
+
 type StateBytecode struct {
 	stateType StateType
 	moveType  MoveType
@@ -4814,10 +4873,14 @@ func (sb *StateBytecode) init(c *Char) {
 }
 func (sb *StateBytecode) run(c *Char) (changeState bool) {
 	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
+	sys.workingState = sb
 	changeState = sb.block.Run(c, sb.ctrlsps)
 	if len(sys.bcStack) != 0 {
-		println(fmt.Sprintf("%+v", c.ss))
-		unimplemented()
+		sys.errLog.Println(sys.cgi[sb.playerNo].def)
+		for _, v := range sys.bcStack {
+			sys.errLog.Printf("%+v\n", v)
+		}
+		c.panic()
 	}
 	sys.bcVarStack.Clear()
 	return

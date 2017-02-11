@@ -718,7 +718,7 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so float32) {
 	}
 	i, start := 0, 0
 	for l := len(*dl); l > 0; {
-		i := start + l>>1
+		i = start + l>>1
 		if sd.priority <= (*dl)[i].priority {
 			l = i - start
 		} else if i == start {
@@ -770,7 +770,7 @@ type ShadowList []*ShadowSprite
 func (sl *ShadowList) add(ss *ShadowSprite) {
 	i, start := 0, 0
 	for l := len(*sl); l > 0; {
-		i := start + l>>1
+		i = start + l>>1
 		if ss.priority <= (*sl)[i].priority {
 			l = i - start
 		} else if i == start {
