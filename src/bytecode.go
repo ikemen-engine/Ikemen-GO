@@ -47,8 +47,8 @@ type MoveType int32
 const (
 	MT_I MoveType = 1 << (iota + 15)
 	MT_H
-	MT_A   = MT_I + 1
-	MT_U   = MT_H + 1
+	MT_A
+	MT_U
 	MT_MNS = MT_I
 	MT_PLS = MT_H
 )
@@ -309,6 +309,9 @@ const (
 	OC_const_movement_down_bounce_groundlevel
 	OC_const_movement_down_friction_threshold
 	OC_const_name
+	OC_const_p2name
+	OC_const_p3name
+	OC_const_p4name
 	OC_const_authorname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
@@ -1399,6 +1402,25 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_p2name:
+		p2 := c.p2()
+		sys.bcStack.PushB(p2 != nil && p2.gi().nameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p3name:
+		p3 := c.partner(0)
+		sys.bcStack.PushB(p3 != nil && p3.gi().nameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p4name:
+		p4 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p4 != nil && !(p4.scf(SCF_ko) && p4.scf(SCF_over)) &&
+			p4.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_const_stagevar_info_name:
 		sys.bcStack.PushB(sys.stage.nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1959,15 +1981,13 @@ const (
 )
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
-	var p *Char
+	p := c.partner(0)
+	if p == nil {
+		return false
+	}
 	sn := int32(-1)
 	ret := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if p == nil {
-			if p = c.partner(0); p == nil {
-				return false
-			}
-		}
 		switch id {
 		case tagIn_stateno:
 			sn = exp[0].evalI(c)
@@ -2101,17 +2121,15 @@ const (
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
-	var h *Char
+	h := c.newHelper()
+	if h == nil {
+		return false
+	}
 	pt := PT_P1
 	var f, st int32 = 0, 1
 	op := false
 	var x, y float32 = 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if h == nil {
-			if h = c.newHelper(); h == nil {
-				return false
-			}
-		}
 		switch id {
 		case helper_helpertype:
 			h.player = exp[0].evalB(c)
@@ -2169,9 +2187,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if h != nil {
-		c.helperInit(h, st, pt, x, y, f, op)
-	}
+	c.helperInit(h, st, pt, x, y, f, op)
 	return false
 }
 
@@ -2225,15 +2241,13 @@ const (
 )
 
 func (sc explod) Run(c *Char, _ []int32) bool {
-	var e *Explod
-	var i int
+	e, i := c.newExplod()
+	if e == nil {
+		return false
+	}
+	e.id = 0
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if e == nil {
-			if e, i = c.newExplod(); e == nil {
-				return false
-			}
-		}
 		switch id {
 		case explod_ownpal:
 			e.ownpal = exp[0].evalB(c)
@@ -2340,10 +2354,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if e != nil {
-		e.setPos(c)
-		c.insertExplodEx(i, rp)
-	}
+	e.setPos(c)
+	c.insertExplodEx(i, rp)
 	return false
 }
 
@@ -2512,15 +2524,12 @@ const (
 )
 
 func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
-	var e *Explod
-	var i int
+	e, i := c.newExplod()
+	if e == nil {
+		return false
+	}
+	e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if e == nil {
-			if e, i = c.newExplod(); e == nil {
-				return false
-			}
-			e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
-		}
 		switch id {
 		case gameMakeAnim_pos:
 			e.offset[0] = exp[0].evalF(c)
@@ -2541,12 +2550,10 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if e != nil {
-		e.offset[0] -= float32(c.size.draw.offset[0])
-		e.offset[1] -= float32(c.size.draw.offset[1])
-		e.setPos(c)
-		c.insertExplod(i)
-	}
+	e.offset[0] -= float32(c.size.draw.offset[0])
+	e.offset[1] -= float32(c.size.draw.offset[1])
+	e.setPos(c)
+	c.insertExplod(i)
 	return false
 }
 
@@ -3234,17 +3241,15 @@ const (
 )
 
 func (sc projectile) Run(c *Char, _ []int32) bool {
-	var p *Projectile
+	p := c.newProj()
+	if p == nil {
+		return false
+	}
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if p == nil {
-			if p = c.newProj(); p == nil {
-				return false
-			}
-		}
 		switch id {
 		case projectile_postype:
 			pt = PosType(exp[0].evalI(c))
@@ -3335,19 +3340,17 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if p != nil {
-		c.setHitdefDefault(&c.hitdef, true)
-		if p.remanim == IErr {
-			p.remanim = p.hitanim
-		}
-		if p.cancelanim == IErr {
-			p.cancelanim = p.remanim
-		}
-		if p.aimg.time != 0 {
-			p.aimg.setupPalFX()
-		}
-		c.projInit(p, pt, x, y, op, rp[0], rp[1])
+	c.setHitdefDefault(&c.hitdef, true)
+	if p.remanim == IErr {
+		p.remanim = p.hitanim
 	}
+	if p.cancelanim == IErr {
+		p.cancelanim = p.remanim
+	}
+	if p.aimg.time != 0 {
+		p.aimg.setupPalFX()
+	}
+	c.projInit(p, pt, x, y, op, rp[0], rp[1])
 	return false
 }
 
@@ -4088,6 +4091,7 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	c.setSF(CSF_trans)
 	return false
 }
 
@@ -4639,18 +4643,16 @@ const (
 )
 
 func (sc bindToParent) Run(c *Char, _ []int32) bool {
-	var p *Char
+	p := c.parent()
+	if p == nil {
+		return false
+	}
+	c.bindTime, c.bindPos = 1, [2]float32{}
+	c.setBindToId(p)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if p == nil {
-			if p = c.parent(); p == nil {
-				return false
-			}
-			c.bindTime, c.bindPos = 1, [2]float32{}
-			c.setBindToId(p)
-		}
 		switch id {
 		case bindToParent_time:
-			c.bindTime = exp[0].evalI(c)
+			c.setBindTime(exp[0].evalI(c))
 		case bindToParent_facing:
 			if f := exp[0].evalI(c); f < 0 {
 				c.bindFacing = -1
@@ -4665,27 +4667,22 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if c.bindTime == 0 {
-		c.bindToId = -1
-	}
 	return false
 }
 
 type bindToRoot bindToParent
 
 func (sc bindToRoot) Run(c *Char, _ []int32) bool {
-	var r *Char
+	r := c.root()
+	if r == nil {
+		return false
+	}
+	c.bindTime, c.bindPos = 1, [2]float32{}
+	c.setBindToId(r)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if r == nil {
-			if r = c.root(); r == nil {
-				return false
-			}
-			c.bindTime, c.bindPos = 1, [2]float32{}
-			c.setBindToId(r)
-		}
 		switch id {
 		case bindToParent_time:
-			c.bindTime = exp[0].evalI(c)
+			c.setBindTime(exp[0].evalI(c))
 		case bindToParent_facing:
 			if f := exp[0].evalI(c); f < 0 {
 				c.bindFacing = -1
@@ -4700,9 +4697,6 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if c.bindTime == 0 {
-		c.bindToId = -1
-	}
 	return false
 }
 

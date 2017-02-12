@@ -523,6 +523,7 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	return nil
 }
 func (c *Compiler) kakkotojiru() error {
+	c.usiroOp = true
 	if c.token != ")" {
 		return Error(c.token + "の前に')'がありません")
 	}
@@ -1576,15 +1577,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "name", "p1name", "p2name", "p3name", "p4name":
+		opc := OC_const_name
 		switch c.token {
-		case "p2name", "p4name":
-			out.appendValue(BytecodeInt(Btoi(c.token == "p4name")))
-			out.appendI32Op(OC_enemy, 6)
+		case "p2name":
+			opc = OC_const_p2name
 		case "p3name":
-			out.appendValue(BytecodeInt(0))
-			out.appendI32Op(OC_partner, 6)
+			opc = OC_const_p3name
+		case "p4name":
+			opc = OC_const_p4name
 		}
-		if err := nameSub(OC_const_name); err != nil {
+		if err := nameSub(opc); err != nil {
 			return bvNone(), err
 		}
 	case "numenemy":
@@ -2130,15 +2132,21 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			if _, err := c.expValue(&dummyout, in, false); err != nil {
 				return bvNone(), err
 			}
-			if c.isOperator(c.token) <= 0 {
-				return bvNone(), Error("演算子がありません")
+			if c.usiroOp {
+				if c.isOperator(c.token) <= 0 {
+					return bvNone(), Error("演算子がありません")
+				}
+				if err := c.renzokuEnzansihaError(in); err != nil {
+					return bvNone(), err
+				}
+				oldin = oldin[:len(oldin)-len(*in)]
+				*in = oldtoken + " " + oldin[:strings.LastIndex(oldin, c.token)] +
+					" " + *in
+			} else if opp > 0 {
+				if err := c.renzokuEnzansihaError(in); err != nil {
+					return bvNone(), err
+				}
 			}
-			if err := c.renzokuEnzansihaError(in); err != nil {
-				return bvNone(), err
-			}
-			oldin = oldin[:len(oldin)-len(*in)]
-			*in = oldtoken + " " + oldin[:strings.LastIndex(oldin, c.token)] + " " +
-				*in
 		} else if opp > 0 {
 			if err := c.renzokuEnzansihaError(in); err != nil {
 				return bvNone(), err

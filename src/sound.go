@@ -268,7 +268,7 @@ func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 	for i := range buf[0] {
 		for j := oldbufi + 2; j <= 2*int(v.bufi); j += 2 {
 			l, r := v.normalizer.Process(buf[0][i], buf[o1i][i])
-			out[j], out[j+1] = int16(32767*l), int16(32767*r)
+			out[j], out[j+1] = int16(25000*l), int16(25000*r)
 		}
 		oldbufi = 2 * int(v.bufi)
 		v.bufi = sr * float64(i+1)

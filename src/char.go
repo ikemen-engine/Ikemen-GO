@@ -847,7 +847,7 @@ func (e *Explod) setPos(c *Char) {
 	case PT_P1:
 		pPos(c)
 	case PT_P2:
-		if p2 := c.p2(); p2 != nil {
+		if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
 			pPos(p2)
 		}
 	case PT_F, PT_B:
@@ -1082,12 +1082,12 @@ func (p *Projectile) update(playerNo int) {
 				}
 			} else if p.pos[0] < sys.xmin-float32(p.edgebound) ||
 				p.pos[1] > sys.xmax+float32(p.edgebound) ||
-				(p.velocity[0]*p.facing < 0 &&
-					p.pos[0] < sys.cam.XMin-float32(p.stagebound)) ||
-				(p.velocity[0]*p.facing > 0 &&
-					p.pos[0] > sys.cam.XMax+float32(p.stagebound)) ||
-				(p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1])) ||
-				(p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0])) ||
+				p.velocity[0]*p.facing < 0 &&
+					p.pos[0] < sys.cam.XMin-float32(p.stagebound) ||
+				p.velocity[0]*p.facing > 0 &&
+					p.pos[0] > sys.cam.XMax+float32(p.stagebound) ||
+				p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
+				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
 				p.removetime == 0 ||
 				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
 				if p.remanim != p.anim {
@@ -1632,7 +1632,13 @@ func (c *Char) load(def string) error {
 				}
 				is.ReadI32("airjuggle", &gi.data.airjuggle)
 				is.ReadI32("sparkno", &gi.data.sparkno)
+				if gi.data.sparkno < 0 {
+					gi.data.sparkno = ^IErr
+				}
 				is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
+				if gi.data.guard.sparkno < 0 {
+					gi.data.guard.sparkno = ^IErr
+				}
 				is.ReadI32("ko.echo", &gi.data.ko.echo)
 				if gi.ver[0] == 1 {
 					if is.ReadI32("volumescale", &i32) {
@@ -2462,7 +2468,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 }
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if c.rdDistX(c.p2()).ToF() < 0 {
+		if c.rdDistX(sys.charList.enemyNear(c, 0, true)).ToF() < 0 {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5)
@@ -2602,15 +2608,16 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		p[1] = c.pos[1] + pos[1]
 		*dstFacing *= c.facing
 	case PT_P2:
-		if p2 := c.p2(); p2 != nil {
+		if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
 			p[0] = p2.pos[0] + pos[0]*p2.facing
 			p[1] = p2.pos[1] + pos[1]
 			*dstFacing *= p2.facing
 		}
 	case PT_F, PT_B:
-		p[0] = sys.cam.ScreenPos[0]
 		if c.facing > 0 && pt == PT_F || c.facing < 0 && pt == PT_B {
-			p[0] += float32(sys.gameWidth) / sys.cam.Scale
+			p[0] = c.rightEdge()
+		} else {
+			p[0] = c.leftEdge()
 		}
 		if c.facing > 0 {
 			p[0] += pos[0]
@@ -2620,10 +2627,10 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		p[1] = pos[1]
 		*dstFacing *= c.facing
 	case PT_L:
-		p[0] = sys.cam.ScreenPos[0] + pos[0]
+		p[0] = c.leftEdge() + pos[0]
 		p[1] = pos[1]
 	case PT_R:
-		p[0] = sys.cam.ScreenPos[0] + float32(sys.gameWidth)/sys.cam.Scale + pos[0]
+		p[0] = c.rightEdge() + pos[0]
 		p[1] = pos[1]
 	case PT_N:
 		p = pos
@@ -3149,7 +3156,7 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 				c.setX(t.pos[0] + t.facing*x)
 			}
 			if !math.IsNaN(float64(y)) {
-				c.setX(t.pos[1] + x)
+				c.setY(t.pos[1] + y)
 			}
 			c.targetBind(tar[:1], time, c.facing*c.distX(t), t.pos[1]-c.pos[1])
 		}
@@ -3446,7 +3453,7 @@ func (c *Char) getPalfx() *PalFX {
 	if c.palfx != nil {
 		return c.palfx
 	}
-	if p := c.parent(); p != nil {
+	if p := c.parent(); p != nil && c.parentIndex >= 0 {
 		return p.getPalfx()
 	}
 	c.palfx = newPalFX()
@@ -4425,7 +4432,9 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 }
 func (cl *CharList) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
-	for _, c := range cl.runOrder {
+	ro := make([]*Char, len(cl.runOrder))
+	copy(ro, cl.runOrder)
+	for _, c := range ro {
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}
 }
@@ -4778,6 +4787,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			if e, i := c.newExplod(); e != nil {
 				e.anim = c.getAnim(animNo, ffx)
+				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
 				e.offset = off

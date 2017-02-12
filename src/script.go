@@ -201,6 +201,22 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(lua.LNumber(Random()))
 		return 1
 	})
+	luaRegister(l, "setAutoguard", func(l *lua.LState) int {
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > MaxSimul*2 {
+			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
+		}
+		sys.autoguard[pn-1] = boolArg(l, 2)
+		return 0
+	})
+	luaRegister(l, "setPowerShare", func(l *lua.LState) int {
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("チーム番号(%v)が不正です。", tn)
+		}
+		sys.powerShare[tn-1] = boolArg(l, 2)
+		return 0
+	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0

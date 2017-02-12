@@ -362,11 +362,13 @@ func (s *System) soundWrite() {
 			}
 			processed = true
 		}
-		if !s.sf(GSF_nomusic) && bgmSrc.Src.BuffersProcessed() > 0 {
-			out := s.bgm.read()
+		if bgmSrc.Src.BuffersProcessed() > 0 {
+			out := sys.nullSndBuf[:]
+			if !s.sf(GSF_nomusic) {
+				out = s.bgm.read()
+			}
 			buf := bgmSrc.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			out = nil
 			bgmSrc.Src.QueueBuffer(buf)
 			if err := openal.Err(); err != nil {
 				s.errLog.Println(err.Error())
@@ -774,14 +776,15 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 	}
 	s.charList.cueDraw()
-	explUpdate := func(edl [len(s.chars)][]int, drop bool) {
-		for i, el := range edl {
+	explUpdate := func(edl *[len(s.chars)][]int, drop bool) {
+		for i, el := range *edl {
 			for j := len(el) - 1; j >= 0; j-- {
 				if el[j] >= 0 {
 					s.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
 					if s.explods[i][el[j]].id == IErr {
 						if drop {
-							edl[i] = append(el[:j], el[j+1:]...)
+							el = append(el[:j], el[j+1:]...)
+							(*edl)[i] = el
 						} else {
 							el[j] = -1
 						}
@@ -790,8 +793,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	explUpdate(s.explDrawlist, true)
-	explUpdate(s.topexplDrawlist, false)
+	explUpdate(&s.explDrawlist, true)
+	explUpdate(&s.topexplDrawlist, false)
 	leftest -= *x
 	rightest -= *x
 	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
@@ -1193,6 +1196,7 @@ func (s *System) fight() (reload bool) {
 		s.oldNextAddTime = 1
 		s.unsetSF(GSF_nomusic)
 		s.allPalFX.clear()
+		s.allPalFX.enable = false
 		for i, p := range s.chars {
 			if len(p) > 0 {
 				s.playerClear(i)

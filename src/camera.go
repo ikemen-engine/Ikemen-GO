@@ -46,7 +46,7 @@ func (c *Camera) Init() {
 	c.boundR = float32(c.boundright-c.startx) * c.localscl
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
-	c.XMin = c.boundR + c.halfWidth/c.BaseScale()
+	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
 	if c.verticalfollow > 0 {
 		c.boundH = MinF(0, float32(c.boundhigh)*c.localscl+
 			float32(sys.gameHeight)-c.drawOffsetY-
