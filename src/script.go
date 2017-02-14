@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
+	"runtime"
 	"strings"
 )
 
@@ -112,7 +113,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "commandNew", func(l *lua.LState) int {
-		l.Push(newUserData(l, NewCommandList(newCommandBuffer())))
+		l.Push(newUserData(l, NewCommandList(NewCommandBuffer())))
 		return 1
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
@@ -707,6 +708,7 @@ func systemScriptInit(l *lua.LState) {
 				fa.face = sys.cgi[i].sff.getOwnPalSprite(
 					int16(fa.face_spr[0]), int16(fa.face_spr[1]))
 			}
+			runtime.GC()
 			return nil
 		}
 		for {

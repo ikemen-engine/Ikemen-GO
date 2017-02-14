@@ -455,7 +455,7 @@ type CommandBuffer struct {
 	a, b, c, x, y, z, s        int8
 }
 
-func newCommandBuffer() (c *CommandBuffer) {
+func NewCommandBuffer() (c *CommandBuffer) {
 	c = &CommandBuffer{}
 	c.Reset()
 	return
@@ -1056,7 +1056,7 @@ type AiInput struct {
 }
 
 func (__ *AiInput) Update() {
-	if sys.introTime != 0 {
+	if sys.intro != 0 {
 		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
 		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
 		return
@@ -1595,7 +1595,8 @@ type CommandList struct {
 }
 
 func NewCommandList(cb *CommandBuffer) *CommandList {
-	return &CommandList{Buffer: cb, Names: make(map[string]int)}
+	return &CommandList{Buffer: cb, Names: make(map[string]int),
+		DefaultTime: 15, DefaultBufferTime: 1}
 }
 func (cl *CommandList) Input(i int, facing int32) bool {
 	if cl.Buffer == nil {
@@ -1684,21 +1685,21 @@ func (cl *CommandList) Add(c Command) {
 	i, ok := cl.Names[c.name]
 	if !ok || i < 0 || i >= len(cl.Commands) {
 		i = len(cl.Commands)
-		cl.Commands = append(cl.Commands, []Command{})
+		cl.Commands = append(cl.Commands, nil)
 	}
 	cl.Commands[i] = append(cl.Commands[i], c)
 	cl.Names[c.name] = i
 }
 func (cl *CommandList) At(i int) []Command {
 	if i < 0 || i >= len(cl.Commands) {
-		return []Command{}
+		return nil
 	}
 	return cl.Commands[i]
 }
 func (cl *CommandList) Get(name string) []Command {
 	i, ok := cl.Names[name]
 	if !ok {
-		return []Command{}
+		return nil
 	}
 	return cl.At(i)
 }
@@ -1716,5 +1717,8 @@ func (cl *CommandList) CopyList(src CommandList) {
 	for i, ca := range src.Commands {
 		cl.Commands[i] = make([]Command, len(ca))
 		copy(cl.Commands[i], ca)
+		for j, c := range ca {
+			cl.Commands[i][j].held = make([]bool, len(c.held))
+		}
 	}
 }

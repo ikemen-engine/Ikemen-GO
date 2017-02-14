@@ -5903,8 +5903,10 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		for c.i++; c.i < len(c.lines); c.i++ {
 			line := strings.ToLower(strings.TrimSpace(
 				strings.SplitN(c.lines[c.i], ";", 2)[0]))
-			if len(line) < 7 || line[0] != '[' || line[len(line)-1] != ']' ||
-				line[1:7] != "state " {
+			if line == "" || line[0] != '[' || line[len(line)-1] != ']' {
+				continue
+			}
+			if len(line) < 7 || line[1:7] != "state " {
 				c.i--
 				break
 			}
@@ -6864,7 +6866,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 	if sys.chars[pn][0].cmd == nil {
 		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2)
-		b := newCommandBuffer()
+		b := NewCommandBuffer()
 		for i := range sys.chars[pn][0].cmd {
 			sys.chars[pn][0].cmd[i] = *NewCommandList(b)
 		}

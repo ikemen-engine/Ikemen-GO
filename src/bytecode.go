@@ -212,10 +212,10 @@ const (
 	OC_const_
 	OC_st_
 	OC_ex_
-	OC_var0     OpCode = 0
-	OC_sysvar0  OpCode = 60
-	OC_fvar0    OpCode = 65
-	OC_sysfvar0 OpCode = 105
+	OC_var0     = 0
+	OC_sysvar0  = 60
+	OC_fvar0    = 65
+	OC_sysfvar0 = 105
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -326,14 +326,14 @@ const (
 	OC_st_sysvaradd
 	OC_st_fvaradd
 	OC_st_sysfvaradd
-	OC_st_var0        OpCode = OC_var0
-	OC_st_sysvar0     OpCode = OC_sysvar0
-	OC_st_fvar0       OpCode = OC_fvar0
-	OC_st_sysfvar0    OpCode = OC_sysfvar0
-	OC_st_var0add     OpCode = OC_var + OC_var0
-	OC_st_sysvar0add  OpCode = OC_var + OC_sysvar0
-	OC_st_fvar0add    OpCode = OC_var + OC_fvar0
-	OC_st_sysfvar0add OpCode = OC_var + OC_sysfvar0
+	OC_st_var0        = OC_var0
+	OC_st_sysvar0     = OC_sysvar0
+	OC_st_fvar0       = OC_fvar0
+	OC_st_sysfvar0    = OC_sysfvar0
+	OC_st_var0add     = OC_var + OC_var0
+	OC_st_sysvar0add  = OC_var + OC_sysvar0
+	OC_st_fvar0add    = OC_var + OC_fvar0
+	OC_st_sysfvar0add = OC_var + OC_sysfvar0
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -1648,7 +1648,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			return false
 		}
 		if b.ignorehitpause >= 0 {
-			ww := &c.ss.wakegawakaranai[c.ss.sb.playerNo][b.ignorehitpause]
+			ww := &c.ss.wakegawakaranai[sys.workingState.playerNo][b.ignorehitpause]
 			*ww = !*ww
 			if !*ww {
 				return false
@@ -1732,7 +1732,7 @@ func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
 	for _, e := range exp {
 		l := int32(len(e))
 		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
-		*scb = append(*scb, (*(*[]byte)(unsafe.Pointer(&e)))...)
+		*scb = append(*scb, *(*[]byte)(unsafe.Pointer(&e))...)
 	}
 }
 func (scb StateControllerBase) run(c *Char,
@@ -1742,14 +1742,18 @@ func (scb StateControllerBase) run(c *Char,
 		i++
 		n := scb[i]
 		i++
-		exp := make([]BytecodeExp, n)
+		if cap(sys.workBe) < int(n) {
+			sys.workBe = make([]BytecodeExp, n)
+		} else {
+			sys.workBe = sys.workBe[:n]
+		}
 		for m := 0; m < int(n); m++ {
 			l := *(*int32)(unsafe.Pointer(&scb[i]))
 			i += 4
-			exp[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
+			sys.workBe[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
 			i += int(l)
 		}
-		if !f(id, exp) {
+		if !f(id, sys.workBe) {
 			break
 		}
 	}
@@ -2569,7 +2573,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case posSet_x:
-			c.setX(exp[0].evalF(c))
+			c.setX(sys.cam.Pos[0] + exp[0].evalF(c))
 		case posSet_y:
 			c.setY(exp[0].evalF(c))
 		case posSet_z:
@@ -2657,7 +2661,7 @@ const (
 	palFX_mul
 	palFX_sinadd
 	palFX_invertall
-	palFX_last byte = iota - 1
+	palFX_last = iota - 1
 )
 
 func (sc palFX) runSub(c *Char, pfd *PalFXDef,
@@ -2727,7 +2731,7 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 type afterImage palFX
 
 const (
-	afterImage_trans byte = iota + palFX_last + 1
+	afterImage_trans = iota + palFX_last + 1
 	afterImage_time
 	afterImage_length
 	afterImage_timegap
@@ -2739,7 +2743,7 @@ const (
 	afterImage_palpostbright
 	afterImage_paladd
 	afterImage_palmul
-	afterImage_last byte = iota - 1
+	afterImage_last = iota + palFX_last + 1 - 1
 )
 
 func (sc afterImage) runSub(c *Char, ai *AfterImage,
@@ -2835,7 +2839,7 @@ func (sc afterImageTime) Run(c *Char, _ []int32) bool {
 type hitDef afterImage
 
 const (
-	hitDef_attr byte = iota + afterImage_last + 1
+	hitDef_attr = iota + afterImage_last + 1
 	hitDef_guardflag
 	hitDef_hitflag
 	hitDef_ground_type
@@ -2915,7 +2919,7 @@ const (
 	hitDef_fall_envshake_ampl
 	hitDef_fall_envshake_phase
 	hitDef_fall_envshake_freq
-	hitDef_last byte = iota - 1
+	hitDef_last = iota + afterImage_last + 1 - 1
 )
 
 func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
@@ -3178,6 +3182,7 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 }
 func (sc hitDef) Run(c *Char, _ []int32) bool {
 	c.hitdef.clear()
+	c.hitdef.playerNo = sys.workingState.playerNo
 	c.hitdef.sparkno = ^c.gi().data.sparkno
 	c.hitdef.guard_sparkno = ^c.gi().data.guard.sparkno
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -3191,11 +3196,12 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 type reversalDef hitDef
 
 const (
-	reversalDef_reversal_attr byte = iota + hitDef_last + 1
+	reversalDef_reversal_attr = iota + hitDef_last + 1
 )
 
 func (sc reversalDef) Run(c *Char, _ []int32) bool {
 	c.hitdef.clear()
+	c.hitdef.playerNo = sys.workingState.playerNo
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case reversalDef_reversal_attr:
@@ -3212,7 +3218,7 @@ func (sc reversalDef) Run(c *Char, _ []int32) bool {
 type projectile hitDef
 
 const (
-	projectile_postype byte = iota + hitDef_last + 1
+	projectile_postype = iota + hitDef_last + 1
 	projectile_projid
 	projectile_projremove
 	projectile_projremovetime
@@ -3245,6 +3251,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	if p == nil {
 		return false
 	}
+	p.hitdef.playerNo = sys.workingState.playerNo
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
@@ -3340,7 +3347,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	c.setHitdefDefault(&c.hitdef, true)
+	c.setHitdefDefault(&p.hitdef, true)
 	if p.remanim == IErr {
 		p.remanim = p.hitanim
 	}
@@ -3449,14 +3456,11 @@ const (
 )
 
 func (sc targetFacing) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetFacing_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3480,16 +3484,13 @@ const (
 )
 
 func (sc targetBind) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	t := int32(1)
 	var x, y float32 = 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetBind_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3519,17 +3520,12 @@ const (
 )
 
 func (sc bindToTarget) Run(c *Char, _ []int32) bool {
-	var tar []int32
-	t := int32(1)
-	x, y := float32(0), float32(math.NaN())
-	hmf := HMF_F
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
+	t, x, y, hmf := int32(1), float32(0), float32(math.NaN()), HMF_F
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case bindToTarget_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3563,15 +3559,11 @@ const (
 )
 
 func (sc targetLifeAdd) Run(c *Char, _ []int32) bool {
-	var tar []int32
-	a, k := false, true
+	tar, a, k := c.getTarget(-1), false, true
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetLifeAdd_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3598,14 +3590,11 @@ const (
 )
 
 func (sc targetState) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetState_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3629,14 +3618,11 @@ const (
 )
 
 func (sc targetVelSet) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetVelSet_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3662,14 +3648,11 @@ const (
 )
 
 func (sc targetVelAdd) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetVelAdd_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3694,14 +3677,11 @@ const (
 )
 
 func (sc targetPowerAdd) Run(c *Char, _ []int32) bool {
-	var tar []int32
+	tar := c.getTarget(-1)
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetPowerAdd_id:
 			tar = c.getTarget(exp[0].evalI(c))
@@ -3724,16 +3704,11 @@ const (
 )
 
 func (sc targetDrop) Run(c *Char, _ []int32) bool {
-	var tar []int32
-	eid := int32(-1)
-	ko := true
+	tar, eid, ko := c.getTarget(-1), int32(-1), true
+	if len(tar) == 0 {
+		return false
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if len(tar) == 0 {
-			tar = c.getTarget(-1)
-			if len(tar) == 0 {
-				return false
-			}
-		}
 		switch id {
 		case targetDrop_excludeid:
 			eid = exp[0].evalI(c)
@@ -3962,7 +3937,7 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 		t = 0
 	}
 	c.ho[s] = HitOverride{attr: a, stateno: st, time: t, forceair: f,
-		playerNo: c.ss.sb.playerNo}
+		playerNo: sys.workingState.playerNo}
 	return false
 }
 

@@ -54,6 +54,7 @@ var sys = System{
 	mainThreadTask:   make(chan func(), 65536),
 	workpal:          make([]uint32, 256),
 	errLog:           log.New(os.Stderr, "", 0),
+	audioClose:       make(chan bool, 1),
 }
 
 type TeamMode int32
@@ -74,7 +75,7 @@ type System struct {
 	gameEnd, frameSkip      bool
 	redrawWait              struct{ nextTime, lastDraw time.Time }
 	brightness              int32
-	introTime, roundTime    int32
+	roundTime               int32
 	lifeMul, team1VS2Life   float32
 	turnsRecoveryRate       float32
 	lifebarFontScale        float32
@@ -202,6 +203,9 @@ type System struct {
 	workpal                 []uint32
 	playerProjectileMax     int
 	errLog                  *log.Logger
+	audioClose              chan bool
+	nomusic                 bool
+	workBe                  []BytecodeExp
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -333,6 +337,7 @@ func (s *System) audioOpen() {
 	}
 }
 func (s *System) soundWrite() {
+	defer func() { sys.audioClose <- true }()
 	src := NewAudioSource()
 	bgmSrc := NewAudioSource()
 	processed := false
@@ -364,7 +369,7 @@ func (s *System) soundWrite() {
 		}
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := sys.nullSndBuf[:]
-			if !s.sf(GSF_nomusic) {
+			if !s.nomusic {
 				out = s.bgm.read()
 			}
 			buf := bgmSrc.Src.UnqueueBuffer()
@@ -478,6 +483,9 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 	if sn >= 0 && sn < len(spl) {
 		s.clipboardText[pn] = append(s.clipboardText[pn],
 			strings.Split(OldSprintf(spl[sn], a...), "\n")...)
+		if len(s.clipboardText[pn]) > 10 {
+			s.clipboardText[pn] = s.clipboardText[pn][len(s.clipboardText[pn])-10:]
+		}
 	}
 }
 func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
@@ -756,6 +764,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.charList.action(*x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
+		s.nomusic = s.sf(GSF_nomusic)
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
@@ -1194,7 +1203,7 @@ func (s *System) fight() (reload bool) {
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	defer func() {
 		s.oldNextAddTime = 1
-		s.unsetSF(GSF_nomusic)
+		s.nomusic = false
 		s.allPalFX.clear()
 		s.allPalFX.enable = false
 		for i, p := range s.chars {

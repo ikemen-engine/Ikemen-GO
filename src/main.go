@@ -126,4 +126,8 @@ func main() {
 			panic(err)
 		}
 	}
+	if !sys.gameEnd {
+		sys.gameEnd = true
+	}
+	<-sys.audioClose
 }

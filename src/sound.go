@@ -98,7 +98,7 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 			case 2:
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 2 * int(fidx)
-					if iidx >= len(wav) {
+					if iidx > len(wav)-2 {
 						if !loop {
 							break
 						}
@@ -115,7 +115,7 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 			case 1:
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 2 * int(fidx)
-					if iidx >= len(wav) {
+					if iidx > len(wav)-2 {
 						if !loop {
 							break
 						}
@@ -131,7 +131,7 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 			case 2:
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 4 * int(fidx)
-					if iidx >= len(wav) {
+					if iidx > len(wav)-4 {
 						if !loop {
 							break
 						}

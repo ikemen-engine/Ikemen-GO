@@ -1174,9 +1174,8 @@ func (p *Projectile) clsn(playerNo int) {
 			}
 			clsn1 := pr.ani.CurrentFrame().Clsn2()
 			clsn2 := p.ani.CurrentFrame().Clsn2()
-			if sys.clsnHantei(clsn1, pr.clsnScale,
-				[...]float32{pr.pos[0], pr.pos[1]}, pr.facing,
-				clsn2, p.clsnScale, [...]float32{p.pos[0], p.pos[1]}, p.facing) {
+			if sys.clsnHantei(clsn1, pr.clsnScale, pr.pos, pr.facing,
+				clsn2, p.clsnScale, p.pos, p.facing) {
 				opp, pp := &sys.projs[i][j], p.prioritypoint
 				cancel(&p.prioritypoint, p.priority, &p.hits, opp.prioritypoint)
 				cancel(&opp.prioritypoint, opp.priority, &opp.hits, pp)
@@ -1905,13 +1904,6 @@ func (c *Char) clearHitCount() {
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
-	if c.helperIndex == 0 {
-		for i, pr := range sys.projs[c.playerNo] {
-			if pr.id < 0 {
-				sys.projs[c.playerNo][i].id = IErr
-			}
-		}
-	}
 }
 func (c *Char) clearHitDef() {
 	c.hitdef.clear()
@@ -1988,7 +1980,7 @@ func (c *Char) parent() *Char {
 	if c.parentIndex == IErr {
 		return nil
 	}
-	if !sys.ignoreMostErrors && c.parentIndex < 0 {
+	if c.parentIndex < 0 {
 		sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
@@ -2554,6 +2546,7 @@ func (c *Char) destroy() {
 				ch.parentIndex *= -1
 			}
 		}
+		c.children = c.children[:0]
 		sys.charList.delete(c)
 		c.helperIndex = -1
 	}
@@ -2768,7 +2761,7 @@ func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
 	} else {
 		a = c.gi().anim.get(n)
 	}
-	if a == nil && !(ffx && sys.ignoreMostErrors) {
+	if a == nil && !sys.ignoreMostErrors {
 		str := "存在しないアニメ: "
 		if ffx {
 			str += "F:"
@@ -3277,14 +3270,11 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 			add /= float64(c.defenceMul)
 		}
 		add = math.Floor(add)
-		max := float64(c.gi().data.life - c.life)
+		max := float64(c.lifeMax - c.life)
 		if add > max {
 			add = max
 		}
-		min := float64(-c.life)
-		if !kill {
-			min += 1
-		}
+		min := float64(Btoi(!kill && c.life > 0) - c.life)
 		if add < min {
 			add = min
 		}
@@ -3453,8 +3443,10 @@ func (c *Char) getPalfx() *PalFX {
 	if c.palfx != nil {
 		return c.palfx
 	}
-	if p := c.parent(); p != nil && c.parentIndex >= 0 {
-		return p.getPalfx()
+	if c.parentIndex >= 0 {
+		if p := c.parent(); p != nil {
+			return p.getPalfx()
+		}
 	}
 	c.palfx = newPalFX()
 	return c.palfx
@@ -3731,8 +3723,8 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	} else {
 		clsn1, clsn2 = frm.Clsn2(), c.curFrame.Clsn1()
 	}
-	return sys.clsnHantei(clsn1, p.clsnScale,
-		[...]float32{p.pos[0], p.pos[1]}, p.facing, clsn2, c.clsnScale,
+	return sys.clsnHantei(clsn1, p.clsnScale, p.pos, p.facing,
+		clsn2, c.clsnScale,
 		[...]float32{c.pos[0] + c.offsetX(), c.pos[1] + c.offsetY()}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
@@ -4976,7 +4968,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if !(getter.stchtmp && (getter.sf(CSF_gethit) || getter.acttmp > 0)) &&
 					(c.sf(CSF_nojugglecheck) || getter.ghv.getJuggle(c.id,
 						c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
-					p.misstime <= 0 && p.hitpause <= 0 && getter.hittable(&p.hitdef,
+					p.timemiss <= 0 && p.hitpause <= 0 && getter.hittable(&p.hitdef,
 					c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
 					if getter.sf(CSF_gethit) {
