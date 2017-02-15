@@ -940,11 +940,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					return bvNone(), Error("playeridの次に'('がありません")
 				}
 			}
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(be1)))
+			}
+			out.append(be1...)
 		}
-		if rd {
-			out.appendI32Op(OC_nordrun, int32(len(be1)))
-		}
-		out.append(be1...)
 		if c.token != "," {
 			return bvNone(), Error(",がありません")
 		}
@@ -1933,7 +1933,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_rdreset)
 			}
 			out.append(be1...)
+			out.appendValue(bv1)
 			out.append(be2...)
+			out.appendValue(bv2)
 			out.append(OC_log)
 			bv = bvNone()
 		} else {

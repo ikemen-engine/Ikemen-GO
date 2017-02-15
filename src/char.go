@@ -1168,8 +1168,8 @@ func (p *Projectile) clsn(playerNo int) {
 	for i := 0; i < playerNo && p.hits >= 0; i++ {
 		for j, pr := range sys.projs[i] {
 			if pr.hits < 0 || pr.id < 0 || pr.hitdef.affectteam != 0 &&
-				(playerNo&1 != i&1) != (pr.hitdef.affectteam > 0 ||
-					pr.ani == nil || len(pr.ani.frames) == 0) {
+				(playerNo&1 != i&1) != (pr.hitdef.affectteam > 0) ||
+				pr.ani == nil || len(pr.ani.frames) == 0 {
 				continue
 			}
 			clsn1 := pr.ani.CurrentFrame().Clsn2()
@@ -1179,6 +1179,9 @@ func (p *Projectile) clsn(playerNo int) {
 				opp, pp := &sys.projs[i][j], p.prioritypoint
 				cancel(&p.prioritypoint, p.priority, &p.hits, opp.prioritypoint)
 				cancel(&opp.prioritypoint, opp.priority, &opp.hits, pp)
+				if p.hits < 0 {
+					break
+				}
 			}
 		}
 	}
@@ -2549,6 +2552,7 @@ func (c *Char) destroy() {
 		c.children = c.children[:0]
 		sys.charList.delete(c)
 		c.helperIndex = -1
+		c.setSF(CSF_destroy)
 	}
 }
 func (c *Char) destroySelf(recursive, removeexplods bool) bool {

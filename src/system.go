@@ -337,7 +337,7 @@ func (s *System) audioOpen() {
 	}
 }
 func (s *System) soundWrite() {
-	defer func() { sys.audioClose <- true }()
+	defer func() { s.audioClose <- true }()
 	src := NewAudioSource()
 	bgmSrc := NewAudioSource()
 	processed := false
@@ -368,7 +368,7 @@ func (s *System) soundWrite() {
 			processed = true
 		}
 		if bgmSrc.Src.BuffersProcessed() > 0 {
-			out := sys.nullSndBuf[:]
+			out := s.nullSndBuf[:]
 			if !s.nomusic {
 				out = s.bgm.read()
 			}
@@ -545,8 +545,7 @@ func (s *System) stopAllSound() {
 }
 func (s *System) playerClear(pn int) {
 	if len(s.chars[pn]) > 0 {
-		helpers := s.chars[pn][1:]
-		for _, h := range helpers {
+		for _, h := range s.chars[pn][1:] {
 			h.destroy()
 			h.sounds = h.sounds[:0]
 		}
