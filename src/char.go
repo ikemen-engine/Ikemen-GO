@@ -1081,7 +1081,7 @@ func (p *Projectile) update(playerNo int) {
 					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, false)
 				}
 			} else if p.pos[0] < sys.xmin-float32(p.edgebound) ||
-				p.pos[1] > sys.xmax+float32(p.edgebound) ||
+				p.pos[0] > sys.xmax+float32(p.edgebound) ||
 				p.velocity[0]*p.facing < 0 &&
 					p.pos[0] < sys.cam.XMin-float32(p.stagebound) ||
 				p.velocity[0]*p.facing > 0 &&
