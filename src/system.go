@@ -1210,6 +1210,7 @@ func (s *System) fight() (reload bool) {
 				s.playerClear(i)
 			}
 		}
+		s.wincnt.update()
 	}()
 	var life, pow [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
@@ -1536,7 +1537,7 @@ func (wm *wincntMap) init() {
 		if len(str) < 3 {
 			return
 		}
-		if str[:3] == string('\ufeff') {
+		if str[:3] == "\ufeff" {
 			str = str[3:]
 		}
 		toint := func(strAry []string) (intAry []int32) {
@@ -1558,14 +1559,76 @@ func (wm *wincntMap) init() {
 		}
 	}
 }
-func (wm *wincntMap) getItem(def string) []int32 {
-	lv, _ := (*wm)[def]
+func (wm *wincntMap) update() {
+	winPoint := func(i int) int32 {
+		if sys.tmode[(i+1)&1] == TM_Simul {
+			if sys.tmode[i&1] != TM_Simul {
+				return sys.numSimul[(i+1)&1]
+			} else if sys.numSimul[(i+1)&1] > sys.numSimul[i&1] {
+				return sys.numSimul[(i+1)&1] / sys.numSimul[i&1]
+			}
+		}
+		return 1
+	}
+	win := func(i int) {
+		item := wm.getItem(sys.cgi[i].def)
+		item[sys.cgi[i].palno-1] += winPoint(i)
+		wm.setItem(i, item)
+	}
+	lose := func(i int) {
+		item := wm.getItem(sys.cgi[i].def)
+		item[sys.cgi[i].palno-1] -= winPoint(i)
+		wm.setItem(i, item)
+	}
+	if sys.autolevel && sys.matchOver() {
+		for i, p := range sys.chars {
+			if len(p) > 0 {
+				if p[0].win() {
+					win(i)
+				} else if p[0].lose() {
+					lose(i)
+				}
+			}
+		}
+		var str string
+		for k, v := range *wm {
+			str += k + ","
+			for _, w := range v {
+				str += fmt.Sprintf(" %v", w)
+			}
+			str += "\r\n"
+		}
+		f, err := os.Create(sys.wincntFileName)
+		if err == nil {
+			f.Write([]byte(str))
+			chk(f.Close())
+		}
+	}
+}
+func (wm wincntMap) getItem(def string) []int32 {
+	lv, _ := wm[def]
 	if len(lv) < MaxPalNo {
 		lv = append(lv, make([]int32, MaxPalNo-len(lv))...)
 	}
 	return lv
 }
-func (wm *wincntMap) getLevel(p int) int32 {
+func (wm wincntMap) setItem(pn int, item []int32) {
+	var ave, palcnt int32 = 0, 0
+	for i, v := range item {
+		if sys.cgi[pn].palSelectable[i] {
+			ave += v
+			palcnt++
+		}
+	}
+	ave /= palcnt
+	for i := range item {
+		if !sys.cgi[pn].palSelectable[i] {
+			item[i] = ave
+		}
+	}
+	wm[sys.cgi[pn].def] = item
+}
+func (wm wincntMap) getLevel(p int) int32 {
 	return wm.getItem(sys.cgi[p].def)[sys.cgi[p].palno-1]
 }
 

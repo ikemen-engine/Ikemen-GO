@@ -3286,7 +3286,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	}
 }
 func (c *Char) lifeSet(life int32) {
-	if c.life = Max(0, Min(c.gi().data.life, life)); c.life == 0 {
+	if c.life = Max(0, Min(c.lifeMax, life)); c.life == 0 {
 		if c.player {
 			if c.alive() && c.helperIndex == 0 {
 				if c.ss.moveType != MT_H {

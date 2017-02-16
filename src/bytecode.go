@@ -550,10 +550,10 @@ func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
 func (_ BytecodeExp) neg(v *BytecodeValue) {
-	if v.t == VT_Bool {
-		v.SetI(-v.ToI())
-	} else {
+	if v.t == VT_Float {
 		v.v *= -1
+	} else {
+		v.SetI(-v.ToI())
 	}
 }
 func (_ BytecodeExp) not(v *BytecodeValue) {
@@ -4019,8 +4019,9 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 				sys.superpos[1] += exp[1].evalF(c)
 			}
 		case superPause_p2defmul:
-			if f := c.facing * exp[0].evalF(c); f != 0 {
-				sys.superp2defmul = f
+			sys.superp2defmul = exp[0].evalF(c)
+			if sys.superp2defmul == 0 {
+				sys.superp2defmul = sys.super_TargetDefenceMul
 			}
 		case superPause_poweradd:
 			c.powerAdd(exp[0].evalI(c))
@@ -4347,7 +4348,7 @@ func (sc attackMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case attackMulSet_value:
-			c.attackMul = float32(c.gi().data.defence) / 100 * exp[0].evalF(c)
+			c.attackMul = float32(c.gi().data.attack) / 100 * exp[0].evalF(c)
 		}
 		return true
 	})
