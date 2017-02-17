@@ -1252,7 +1252,7 @@ func triggerScriptInit(l *lua.LState) {
 		case "yoff":
 			ln = lua.LNumber(c.ghv.yoff)
 		case "xvel":
-			ln = lua.LNumber(c.ghv.xvel)
+			ln = lua.LNumber(c.ghv.xvel * c.facing)
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
 		case "yaccel":

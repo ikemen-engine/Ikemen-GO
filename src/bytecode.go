@@ -1511,7 +1511,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_yoff:
 		sys.bcStack.PushF(c.ghv.yoff)
 	case OC_ex_gethitvar_xvel:
-		sys.bcStack.PushF(c.ghv.xvel)
+		sys.bcStack.PushF(c.ghv.xvel * c.facing)
 	case OC_ex_gethitvar_yvel:
 		sys.bcStack.PushF(c.ghv.yvel)
 	case OC_ex_gethitvar_yaccel:
