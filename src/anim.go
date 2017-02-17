@@ -158,7 +158,6 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	def1, def2 := true, true
 	for ; *i < len(lines); (*i)++ {
 		if len(lines[*i]) > 0 && lines[*i][0] == '[' {
-			(*i)--
 			break
 		}
 		line := strings.ToLower(strings.TrimSpace(
@@ -663,11 +662,12 @@ func (at AnimationTable) readAction(sff *Sff,
 				return tmp
 			}
 			at[no] = a
-			if len(a.frames) == 0 {
-				a2 := at.readAction(sff, lines, i)
-				if a2 != nil {
+			for len(a.frames) == 0 && *i < len(lines) {
+				if a2 := at.readAction(sff, lines, i); a2 != nil {
 					*a = *a2
+					break
 				}
+				(*i)++
 			}
 			return a
 		} else {

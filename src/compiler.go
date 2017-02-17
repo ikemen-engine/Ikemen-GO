@@ -3427,9 +3427,6 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_id, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramPostye(is, sc, explod_postype); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "facing",
 		explod_facing, VT_Int, 1, false); err != nil {
 		return err
@@ -3444,6 +3441,9 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "random",
 		explod_random, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramPostye(is, sc, explod_postype); err != nil {
 		return err
 	}
 	f := false

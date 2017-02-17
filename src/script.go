@@ -669,7 +669,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoomSpeed", func(l *lua.LState) int {
-		sys.cam.ZoomSpeed = float32(numArg(l, 1))
+		sys.cam.ZoomSpeed = 12 - float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "resetRemapInput", func(l *lua.LState) int {
@@ -700,6 +700,8 @@ func systemScriptInit(l *lua.LState) {
 			for sys.loader.state != LS_Complete {
 				if sys.loader.state == LS_Error {
 					return sys.loader.err
+				} else if sys.loader.state == LS_Cancel {
+					return nil
 				}
 				sys.await(FPS)
 			}
@@ -727,6 +729,9 @@ func systemScriptInit(l *lua.LState) {
 			fight := func() (int32, error) {
 				if err := load(); err != nil {
 					return -1, err
+				}
+				if sys.loader.state == LS_Cancel {
+					return -1, nil
 				}
 				sys.charList.clear()
 				for i := 0; i < len(sys.chars); i += 2 {

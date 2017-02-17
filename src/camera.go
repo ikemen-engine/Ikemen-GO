@@ -39,7 +39,7 @@ type Camera struct {
 }
 
 func newCamera() *Camera {
-	return &Camera{ZoomMin: 1, ZoomMax: 1, ZoomSpeed: 1}
+	return &Camera{ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Init() {
 	c.boundL = float32(c.boundleft-c.startx) * c.localscl
