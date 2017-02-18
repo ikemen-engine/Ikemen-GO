@@ -24,7 +24,7 @@ type Fnt struct {
 }
 
 func newFnt() *Fnt { return &Fnt{images: make(map[rune]*FntCharImage)} }
-func LoadFnt(filename string) (*Fnt, error) {
+func loadFnt(filename string) (*Fnt, error) {
 	f := newFnt()
 	fp, err := os.Open(filename)
 	if err != nil {
@@ -107,7 +107,6 @@ func LoadFnt(filename string) (*Fnt, error) {
 				ofs := uint16(0)
 				for ; i < len(lines); i++ {
 					if len(lines[i]) > 0 && lines[i][0] == '[' {
-						i--
 						break
 					}
 					cap := re.FindStringSubmatch(strings.SplitN(lines[i], ";", 2)[0])
@@ -200,8 +199,11 @@ func LoadFnt(filename string) (*Fnt, error) {
 					int(spr.Size[0]), int(spr.Size[1]))
 				fci.img[0].SetPxl(px2)
 			} else {
-				fci.img[i].shareCopy(&fci.img[0])
-				fci.img[i].Size[0] = fci.w
+				i, fci := i, fci
+				sys.mainThreadTask <- func() {
+					fci.img[i].shareCopy(&fci.img[0])
+					fci.img[i].Size[0] = fci.w
+				}
 			}
 			fci.img[i].Offset[0], fci.img[i].Offset[1], fci.img[i].Pal = 0, 0, p[:]
 		}

@@ -105,7 +105,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "fontNew", func(l *lua.LState) int {
-		fnt, err := LoadFnt(strArg(l, 1))
+		fnt, err := loadFnt(strArg(l, 1))
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
@@ -460,6 +460,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
+			c = strings.Trim(c, "\r")
 			if len(c) > 0 {
 				sys.sel.addCahr(c)
 			}
@@ -633,7 +634,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "loadDebugFont", func(l *lua.LState) int {
-		f, err := LoadFnt(strArg(l, 1))
+		f, err := loadFnt(strArg(l, 1))
 		if err != nil {
 			l.RaiseError(err.Error())
 		}

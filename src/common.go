@@ -523,11 +523,11 @@ type Layout struct {
 	scale   [2]float32
 }
 
-func newLayout() *Layout {
-	return &Layout{facing: 1, vfacing: 1, scale: [...]float32{1, 1}}
+func newLayout(ln int16) *Layout {
+	return &Layout{facing: 1, vfacing: 1, layerno: ln, scale: [...]float32{1, 1}}
 }
-func ReadLayout(pre string, is IniSection) *Layout {
-	l := newLayout()
+func ReadLayout(pre string, is IniSection, ln int16) *Layout {
+	l := newLayout(ln)
 	l.Read(pre, is)
 	return l
 }
@@ -603,26 +603,29 @@ type AnimLayout struct {
 	lay  Layout
 }
 
-func newAnimLayout(sff *Sff) *AnimLayout {
-	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout()}
+func newAnimLayout(sff *Sff, ln int16) *AnimLayout {
+	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout(ln)}
 }
 func ReadAnimLayout(pre string, is IniSection,
-	sff *Sff, at AnimationTable) *AnimLayout {
-	al := newAnimLayout(sff)
-	al.Read(pre, is, at)
+	sff *Sff, at AnimationTable, ln int16) *AnimLayout {
+	al := newAnimLayout(sff, ln)
+	al.Read(pre, is, at, ln)
 	return al
 }
-func (al *AnimLayout) Read(pre string, is IniSection, at AnimationTable) {
+func (al *AnimLayout) Read(pre string, is IniSection, at AnimationTable,
+	ln int16) {
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
 		al.anim.frames = []AnimFrame{*newAnimFrame()}
 		al.anim.frames[0].Group, al.anim.frames[0].Number =
 			I32ToI16(g), I32ToI16(n)
 		al.anim.mask = 0
+		al.lay = *newLayout(ln)
 	}
 	if is.ReadI32(pre+"anim", &n) {
 		if ani := at.get(n); ani != nil {
 			al.anim = *ani
+			al.lay = *newLayout(ln)
 		}
 	}
 	al.lay.Read(pre, is)
@@ -645,24 +648,29 @@ type AnimTextSnd struct {
 	displaytime int32
 }
 
-func newAnimTextSnd(sff *Sff) *AnimTextSnd {
+func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
 	return &AnimTextSnd{snd: [2]int32{-1}, font: [3]int32{-1},
-		anim: *newAnimLayout(sff), displaytime: -2}
+		anim: *newAnimLayout(sff, ln), displaytime: -2}
 }
 func ReadAnimTextSnd(pre string, is IniSection,
-	sff *Sff, at AnimationTable) *AnimTextSnd {
-	ats := newAnimTextSnd(sff)
-	ats.anim.lay.layerno = 1
-	ats.Read(pre, is, at)
+	sff *Sff, at AnimationTable, ln int16) *AnimTextSnd {
+	ats := newAnimTextSnd(sff, ln)
+	ats.Read(pre, is, at, ln)
 	return ats
 }
-func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable) {
+func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
+	ln int16) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
 	is.ReadI32(pre+"font", &ats.font[0], &ats.font[1], &ats.font[2])
 	if tmp, ok := is[pre+"text"]; ok {
 		ats.text = tmp
+		ats.anim.lay = *newLayout(ln)
+		ats.displaytime = -2
 	}
-	ats.anim.Read(pre, is, at)
+	ats.anim.Read(pre, is, at, ln)
+	if len(ats.anim.anim.frames) > 0 {
+		ats.displaytime = -2
+	}
 	is.ReadI32(pre+"displaytime", &ats.displaytime)
 }
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }

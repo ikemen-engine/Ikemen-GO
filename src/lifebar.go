@@ -64,16 +64,16 @@ func readHealthBar(pre string, is IniSection,
 	hb := &HealthBar{oldlife: 1, midlife: 1, midlifeMin: 1}
 	is.ReadI32(pre+"pos", &hb.pos[0], &hb.pos[1])
 	is.ReadI32(pre+"range.x", &hb.range_x[0], &hb.range_x[1])
-	hb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at)
-	hb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at)
-	hb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at)
-	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at)
-	hb.front = *ReadAnimLayout(pre+"front.", is, sff, at)
+	hb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
+	hb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
+	hb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
+	hb.front = *ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	return hb
 }
 func (hb *HealthBar) step(life float32, gethit bool) {
 	if len(hb.mid.anim.frames) > 0 && gethit {
-		if hb.mlifetime > 0 && gethit {
+		if hb.mlifetime < 30 {
 			hb.mlifetime = 30
 			hb.midlife, hb.midlifeMin = hb.oldlife, hb.oldlife
 		}
@@ -173,14 +173,14 @@ func readPowerBar(pre string, is IniSection,
 	pb := newPowerBar(snd)
 	is.ReadI32(pre+"pos", &pb.pos[0], &pb.pos[1])
 	is.ReadI32(pre+"range.x", &pb.range_x[0], &pb.range_x[1])
-	pb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at)
-	pb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at)
-	pb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at)
-	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at)
-	pb.front = *ReadAnimLayout(pre+"front.", is, sff, at)
+	pb.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
+	pb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
+	pb.bg2 = *ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
+	pb.front = *ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	is.ReadI32(pre+"counter.font", &pb.counter_font[0], &pb.counter_font[1],
 		&pb.counter_font[2])
-	pb.counter_lay = *ReadLayout(pre+"counter.", is)
+	pb.counter_lay = *ReadLayout(pre+"counter.", is, 0)
 	for i := range pb.level_snd {
 		is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
 			&pb.level_snd[i][1])
@@ -277,17 +277,17 @@ func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
 	f := newLifeBarFace()
 	is.ReadI32(pre+"pos", &f.pos[0], &f.pos[1])
-	f.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
+	f.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	is.ReadI32(pre+"face.spr", &f.face_spr[0], &f.face_spr[1])
-	f.face_lay = *ReadLayout(pre+"face.", is)
+	f.face_lay = *ReadLayout(pre+"face.", is, 0)
 	is.ReadI32(pre+"teammate.pos", &f.teammate_pos[0], &f.teammate_pos[1])
 	is.ReadI32(pre+"teammate.spacing", &f.teammate_spacing[0],
 		&f.teammate_spacing[1])
-	f.teammate_bg = *ReadAnimLayout(pre+"teammate.bg.", is, sff, at)
-	f.teammate_ko = *ReadAnimLayout(pre+"teammate.ko.", is, sff, at)
+	f.teammate_bg = *ReadAnimLayout(pre+"teammate.bg.", is, sff, at, 0)
+	f.teammate_ko = *ReadAnimLayout(pre+"teammate.ko.", is, sff, at, 0)
 	is.ReadI32(pre+"teammate.face.spr", &f.teammate_face_spr[0],
 		&f.teammate_face_spr[1])
-	f.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is)
+	f.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is, 0)
 	return f
 }
 func (f *LifeBarFace) step() {
@@ -343,8 +343,8 @@ func readLifeBarName(pre string, is IniSection,
 	is.ReadI32(pre+"pos", &n.pos[0], &n.pos[1])
 	is.ReadI32(pre+"name.font", &n.name_font[0], &n.name_font[1],
 		&n.name_font[2])
-	n.name_lay = *ReadLayout(pre+"name.", is)
-	n.bg = *ReadAnimLayout(pre+"bg.", is, sff, at)
+	n.name_lay = *ReadLayout(pre+"name.", is, 0)
+	n.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	return n
 }
 func (n *LifeBarName) step()  { n.bg.Action() }
@@ -382,16 +382,16 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	is.ReadI32("useiconupto", &wi.useiconupto)
 	is.ReadI32(pre+"counter.font", &wi.counter_font[0], &wi.counter_font[1],
 		&wi.counter_font[2])
-	wi.counter_lay = *ReadLayout(pre+"counter.", is)
-	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at)
-	wi.icon[WT_S] = *ReadAnimLayout(pre+"s.", is, sff, at)
-	wi.icon[WT_H] = *ReadAnimLayout(pre+"h.", is, sff, at)
-	wi.icon[WT_C] = *ReadAnimLayout(pre+"c.", is, sff, at)
-	wi.icon[WT_T] = *ReadAnimLayout(pre+"t.", is, sff, at)
-	wi.icon[WT_Throw] = *ReadAnimLayout(pre+"throw.", is, sff, at)
-	wi.icon[WT_Suicide] = *ReadAnimLayout(pre+"suicide.", is, sff, at)
-	wi.icon[WT_Teammate] = *ReadAnimLayout(pre+"teammate.", is, sff, at)
-	wi.icon[WT_Perfect] = *ReadAnimLayout(pre+"perfect.", is, sff, at)
+	wi.counter_lay = *ReadLayout(pre+"counter.", is, 0)
+	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at, 0)
+	wi.icon[WT_S] = *ReadAnimLayout(pre+"s.", is, sff, at, 0)
+	wi.icon[WT_H] = *ReadAnimLayout(pre+"h.", is, sff, at, 0)
+	wi.icon[WT_C] = *ReadAnimLayout(pre+"c.", is, sff, at, 0)
+	wi.icon[WT_T] = *ReadAnimLayout(pre+"t.", is, sff, at, 0)
+	wi.icon[WT_Throw] = *ReadAnimLayout(pre+"throw.", is, sff, at, 0)
+	wi.icon[WT_Suicide] = *ReadAnimLayout(pre+"suicide.", is, sff, at, 0)
+	wi.icon[WT_Teammate] = *ReadAnimLayout(pre+"teammate.", is, sff, at, 0)
+	wi.icon[WT_Perfect] = *ReadAnimLayout(pre+"perfect.", is, sff, at, 0)
 	return wi
 }
 func (wi *LifeBarWinIcon) add(wt WinType) {
@@ -486,8 +486,8 @@ func readLifeBarTime(is IniSection,
 	is.ReadI32("pos", &t.pos[0], &t.pos[1])
 	is.ReadI32("counter.font", &t.counter_font[0], &t.counter_font[1],
 		&t.counter_font[2])
-	t.counter_lay = *ReadLayout("counter.", is)
-	t.bg = *ReadAnimLayout("bg.", is, sff, at)
+	t.counter_lay = *ReadLayout("counter.", is, 0)
+	t.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	is.ReadI32("framespercount", &t.framespercount)
 	return t
 }
@@ -535,17 +535,11 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	is.ReadI32("counter.font", &c.counter_font[0], &c.counter_font[1],
 		&c.counter_font[2])
 	is.ReadBool("counter.shake", &c.counter_shake)
-	c.counter_lay = *newLayout()
-	c.counter_lay.layerno = 2
-	c.counter_lay.Read("counter.", is)
+	c.counter_lay = *ReadLayout("counter.", is, 2)
 	c.counter_lay.offset = [2]float32{}
 	is.ReadI32("text.font", &c.text_font[0], &c.text_font[1], &c.text_font[2])
 	c.text_text = is["text.text"]
-	c.text_lay = *newLayout()
-	c.text_lay.layerno = 2
-	c.text_lay.Read("text.", is)
-	c.text_lay.scale[0] /= sys.lifebarFontScale
-	c.text_lay.scale[1] /= sys.lifebarFontScale
+	c.text_lay = *ReadLayout("text.", is, 2)
 	is.ReadI32("displaytime", &c.displaytime)
 	return c
 }
@@ -604,6 +598,7 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 			x += 320 - float32(c.pos[0])
 		}
 		if c.text_font[0] >= 0 && int(c.text_font[0]) < len(f) {
+			text := OldSprintf(c.text_text, c.cur[i])
 			if i&1 == 0 {
 				if c.pos[0] != 0 {
 					x += c.text_lay.offset[0] *
@@ -614,25 +609,14 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 				if c.pos[0] == 0 {
 					tmp *= sys.lifebarFontScale
 				}
-				x -= tmp
+				x -= tmp + float32(f[c.text_font[0]].TextWidth(text))*
+					c.text_lay.scale[0]*sys.lifebarFontScale
 			}
-			text := OldSprintf(c.text_text, c.cur[i])
-			var align int32
-			if i&1 == 0 {
-				align = 1
-			} else {
-				align = -1
-			}
-			c.text_lay.DrawText(x/sys.lifebarFontScale,
-				float32(c.pos[1])/sys.lifebarFontScale, sys.lifebarFontScale, layerno,
-				text, f[c.text_font[0]], c.text_font[1], align)
-			if i&1 != 0 {
-				x -= float32(f[c.text_font[0]].TextWidth(text)) *
-					c.text_lay.scale[0] * sys.lifebarFontScale
-			}
+			c.text_lay.DrawText(x, float32(c.pos[1]), 1, layerno,
+				text, f[c.text_font[0]], c.text_font[1], 1)
 		}
 		if c.counter_font[0] >= 0 && int(c.counter_font[0]) < len(f) {
-			z := 1 + float32(c.shaketime[i])*(1/20)*
+			z := 1 + float32(c.shaketime[i])*(1.0/20)*
 				float32(math.Sin(float64(c.shaketime[i])*(math.Pi/2.5)))
 			c.counter_lay.DrawText(x/z, float32(c.pos[1])/z, z, layerno,
 				fmt.Sprintf("%v", c.cur[i]), f[c.counter_font[0]],
@@ -689,26 +673,22 @@ func readLifeBarRound(is IniSection,
 	}
 	is.ReadI32("round.time", &r.round_time)
 	is.ReadI32("round.sndtime", &r.round_sndtime)
-	r.round_default = *newAnimTextSnd(sff)
-	r.round_default.anim.lay.layerno = 2
-	r.round_default.Read("round.default.", is, at)
+	r.round_default = *ReadAnimTextSnd("round.default.", is, sff, at, 2)
 	for i := range r.round {
 		r.round[i] = r.round_default
-		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, at)
+		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, at, 2)
 	}
 	is.ReadI32("fight.time", &r.fight_time)
 	is.ReadI32("fight.sndtime", &r.fight_sndtime)
-	r.fight = *newAnimTextSnd(sff)
-	r.fight.anim.lay.layerno = 2
-	r.fight.Read("fight.", is, at)
+	r.fight = *ReadAnimTextSnd("fight.", is, sff, at, 2)
 	if is.ReadI32("ctrl.time", &tmp) {
 		r.ctrl_time = Max(1, tmp)
 	}
 	is.ReadI32("ko.time", &r.ko_time)
 	is.ReadI32("ko.sndtime", &r.ko_sndtime)
-	r.ko = *ReadAnimTextSnd("ko.", is, sff, at)
-	r.dko = *ReadAnimTextSnd("dko.", is, sff, at)
-	r.to = *ReadAnimTextSnd("to.", is, sff, at)
+	r.ko = *ReadAnimTextSnd("ko.", is, sff, at, 1)
+	r.dko = *ReadAnimTextSnd("dko.", is, sff, at, 1)
+	r.to = *ReadAnimTextSnd("to.", is, sff, at, 1)
 	is.ReadI32("slow.time", &r.slow_time)
 	if is.ReadI32("over.hittime", &tmp) {
 		r.over_hittime = Max(0, tmp)
@@ -724,9 +704,9 @@ func readLifeBarRound(is IniSection,
 	}
 	is.ReadI32("win.time", &r.win_time)
 	is.ReadI32("win.sndtime", &r.win_sndtime)
-	r.win = *ReadAnimTextSnd("win.", is, sff, at)
-	r.win2 = *ReadAnimTextSnd("win2.", is, sff, at)
-	r.drawn = *ReadAnimTextSnd("draw.", is, sff, at)
+	r.win = *ReadAnimTextSnd("win.", is, sff, at, 1)
+	r.win2 = *ReadAnimTextSnd("win2.", is, sff, at, 1)
+	r.drawn = *ReadAnimTextSnd("draw.", is, sff, at, 1)
 	return r
 }
 func (r *LifeBarRound) callFight() {
@@ -978,7 +958,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				for i := range l.fnt {
 					if is.LoadFile(fmt.Sprintf("font%v", i), deffile,
 						func(filename string) error {
-							l.fnt[i], err = LoadFnt(filename)
+							l.fnt[i], err = loadFnt(filename)
 							return err
 						}); err != nil {
 						return nil, err

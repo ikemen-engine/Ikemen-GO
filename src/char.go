@@ -1761,7 +1761,7 @@ func (c *Char) load(def string) error {
 	}
 	if LoadFile(&sprite, def, func(filename string) error {
 		var err error
-		gi.sff, err = loadSff(filename, false)
+		gi.sff, err = loadSff(filename, true)
 		return err
 	}); err != nil {
 		return err
@@ -1983,7 +1983,7 @@ func (c *Char) parent() *Char {
 	if c.parentIndex == IErr {
 		return nil
 	}
-	if c.parentIndex < 0 {
+	if c.parentIndex < 0 && !sys.ignoreMostErrors {
 		sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
