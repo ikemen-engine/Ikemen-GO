@@ -63,28 +63,36 @@ func ReadAnimFrame(line string) *AnimFrame {
 	case len(a) > 0 && a[0] == 's':
 		af.SrcAlpha, af.DstAlpha = 1, 255
 	case len(a) >= 2 && a[:2] == "as":
-		i := strings.IndexAny(a, "d")
-		if i >= 0 {
-			sa := Atoi(a[2:i])
-			if sa <= 0 {
-				af.SrcAlpha = 0
-			} else if sa >= 255 {
+		if len(a) > 2 && a[2] >= '0' && a[2] <= '9' {
+			i, alp := 2, 0
+			for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ {
+				alp = alp*10 + int(a[i]-'0')
+			}
+			alp &= 0x3fff
+			if alp >= 255 {
 				af.SrcAlpha = 255
 			} else {
-				af.SrcAlpha = byte(sa)
+				af.SrcAlpha = byte(alp)
 			}
-			da := Atoi(a[i+1:])
-			if da <= 0 {
-				af.DstAlpha = 0
-			} else if da >= 255 {
-				af.DstAlpha = 255
-			} else {
-				af.DstAlpha = byte(da)
-			}
-			if af.SrcAlpha == 1 && af.DstAlpha == 255 {
-				af.SrcAlpha = 0
-			} else if af.SrcAlpha == 255 && af.DstAlpha == 1 {
-				af.DstAlpha = 0
+			if i < len(a) && a[i] == 'd' {
+				i++
+				if i < len(a) && a[i] >= '0' && a[i] <= '9' {
+					alp = 0
+					for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ {
+						alp = alp*10 + int(a[i]-'0')
+					}
+					alp &= 0x3fff
+					if alp >= 255 {
+						af.DstAlpha = 255
+					} else {
+						af.DstAlpha = byte(alp)
+					}
+					if af.SrcAlpha == 1 && af.DstAlpha == 255 {
+						af.SrcAlpha = 0
+					} else if af.SrcAlpha == 255 && af.DstAlpha == 1 {
+						af.DstAlpha = 0
+					}
+				}
 			}
 		}
 	case len(a) > 0 && a[0] == 'a':

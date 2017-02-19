@@ -2968,11 +2968,11 @@ func (c *Char) setBEdge(be float32) {
 	c.setSF(CSF_backedge)
 }
 func (c *Char) setFWidth(fw float32) {
-	c.width[0] = fw
+	c.width[0] = c.defFW() + fw
 	c.setSF(CSF_frontwidth)
 }
 func (c *Char) setBWidth(bw float32) {
-	c.width[1] = bw
+	c.width[1] = c.defBW() + bw
 	c.setSF(CSF_backwidth)
 }
 func (c *Char) gethitAnimtype() Reaction {
@@ -3982,8 +3982,8 @@ func (c *Char) action() {
 				sb.run(c)
 			}
 		}
-		c.minus = 0
 		c.stateChange2()
+		c.minus = 0
 		c.ss.sb.run(c)
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() {
@@ -4256,7 +4256,7 @@ func (c *Char) tick() {
 			c.cmd[0].Buffer.bb == 1 || c.cmd[0].Buffer.cb == 1 ||
 			c.cmd[0].Buffer.xb == 1 || c.cmd[0].Buffer.yb == 1 ||
 			c.cmd[0].Buffer.zb == 1 || c.cmd[0].Buffer.sb == 1) {
-			c.recoverTime -= Rand(1, (c.recoverTime+1)/2)
+			c.recoverTime -= RandI(1, (c.recoverTime+1)/2)
 		}
 		if !c.stchtmp {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&

@@ -1126,7 +1126,7 @@ func (s *System) draw(x, y, scl float32) {
 				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
 			fade(rect, 255)
 		}
-		if off < (-y+yofs2)*scl {
+		if off > (-y+yofs2)*scl {
 			rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
 				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
 			rect[1] = s.scrrect[3] - rect[3]
@@ -1199,6 +1199,7 @@ func (s *System) fight() (reload bool) {
 	for i := range s.clipboardText {
 		s.clipboardText[i] = nil
 	}
+	s.aiInput = [len(s.aiInput)]AiInput{}
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	defer func() {
 		s.oldNextAddTime = 1
