@@ -496,6 +496,9 @@ func (a *Animation) alpha() int32 {
 		sa = byte(a.srcAlpha)
 		if a.dstAlpha < 0 {
 			da = byte((^a.dstAlpha + int16(a.frames[a.drawidx].DstAlpha)) >> 1)
+			if sa == 1 && da == 255 {
+				sa = 0
+			}
 		} else {
 			da = byte(a.dstAlpha)
 		}
@@ -715,7 +718,7 @@ type SprData struct {
 }
 type DrawList []*SprData
 
-func (dl *DrawList) add(sd *SprData, sc, salp int32, so float32) {
+func (dl *DrawList) add(sd *SprData, sc, salp int32, so, fo float32) {
 	if sys.frameSkip || sd.anim == nil || sd.anim.spr == nil {
 		return
 	}
@@ -741,7 +744,10 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so float32) {
 	copy((*dl)[i+1:], (*dl)[i:])
 	(*dl)[i] = sd
 	if sc != 0 {
-		sys.shadows.add(&ShadowSprite{sd, sc, salp, so})
+		if sd.oldVer {
+			so *= 1.5
+		}
+		sys.shadows.add(&ShadowSprite{sd, sc, salp, so, fo})
 	}
 }
 func (dl DrawList) draw(x, y, scl float32) {
@@ -772,6 +778,7 @@ type ShadowSprite struct {
 	shadowColor int32
 	shadowAlpha int32
 	offsetY     float32
+	fadeOffset  float32
 }
 type ShadowList []*ShadowSprite
 
@@ -798,12 +805,13 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		intensity := sys.stage.sdw.intensity
 		color, alpha := s.shadowColor, s.shadowAlpha
 		fend := float32(sys.stage.sdw.fadeend) * sys.stage.localscl
-		if s.pos[1] < fend {
-			continue
-		}
 		fbgn := float32(sys.stage.sdw.fadebgn) * sys.stage.localscl
-		if s.pos[1] < fbgn {
-			alpha = int32(float32(alpha) * (fend - s.pos[1]) / (fend - fbgn))
+		if fbgn >= fend {
+		} else if s.pos[1] < fend {
+			continue
+		} else if s.pos[1]-s.fadeOffset < fbgn {
+			alpha = int32(float32(alpha) *
+				(fend - (s.pos[1] - s.fadeOffset)) / (fend - fbgn))
 		}
 		comm := true
 		if color < 0 {

@@ -2343,6 +2343,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
 				if len(exp) >= 4 {
 					e.alpha[1] = ^e.alpha[1]
+				} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
+					e.alpha[0] = 0
 				}
 			}
 		case explod_anim:
@@ -2499,9 +2501,13 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.removeongethit = t })
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
-				if len(exp) > 2 {
-					s = Max(0, Min(255, s))
-					d = Max(0, Min(255, d))
+				if len(exp) >= 3 {
+					s, d = Max(0, Min(255, s)), Max(0, Min(255, d))
+					if len(exp) >= 4 {
+						d = ^d
+					} else if s == 1 && d == 255 {
+						s = 0
+					}
 				}
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_angle:
@@ -4062,6 +4068,8 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 				c.alpha[1] = Max(0, Min(255, c.alpha[1]))
 				if len(exp) >= 4 {
 					c.alpha[1] = ^c.alpha[1]
+				} else if c.alpha[0] == 1 && c.alpha[1] == 255 {
+					c.alpha[0] = 0
 				}
 			}
 		}

@@ -774,7 +774,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl,
-			false, sd.bright, sd.oldVer}, 0, 0, 0)
+			false, sd.bright, sd.oldVer}, 0, 0, 0, 0)
 	}
 	if rec {
 		ai.recAfterImg(sd)
@@ -966,7 +966,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	sprs.add(&SprData{e.anim, pfx, e.pos, [...]float32{e.facing * e.scale[0],
 		e.vfacing * e.scale[1]}, alp, e.sprpriority, agl, [...]float32{1, 1},
 		screen, playerNo == sys.superplayer, oldVer},
-		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0)
+		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 		if e.bindtime > 0 {
 			e.bindtime--
@@ -1253,7 +1253,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 			sys.cgi[playerNo].ver[0] != 1}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
 		sys.sprites.add(sd,
-			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0)
+			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
 	}
 }
 
@@ -4360,7 +4360,7 @@ func (c *Char) cueDraw() {
 			if c.sf(CSF_trans) {
 				sa = c.alpha[0]
 			}
-			sys.sprites.add(sd, sc, sa, 0)
+			sys.sprites.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
 		}
 	}
 	if sys.tickNextFrame() {
