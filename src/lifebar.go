@@ -127,7 +127,7 @@ func (hb *HealthBar) draw(layerno int16, life float32) {
 		} else {
 			r[2] = int32(float32(hb.range_x[0]-hb.range_x[1]+1)*life*
 				sys.widthScale + 0.5)
-			r[0] = int32((float32(hb.pos[0]+hb.range_x[0])+
+			r[0] = int32((float32(hb.pos[0]+hb.range_x[0]+1)+
 				float32(sys.gameWidth-320)/2)*sys.widthScale+0.5) - r[2]
 		}
 		return
@@ -233,7 +233,7 @@ func (pb *PowerBar) draw(layerno int16, power float32,
 		} else {
 			r[2] = int32(float32(pb.range_x[0]-pb.range_x[1]+1)*power*
 				sys.widthScale + 0.5)
-			r[0] = int32((float32(pb.pos[0]+pb.range_x[0])+
+			r[0] = int32((float32(pb.pos[0]+pb.range_x[0]+1)+
 				float32(sys.gameWidth-320)/2)*sys.widthScale+0.5) - r[2]
 		}
 		return
