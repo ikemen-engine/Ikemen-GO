@@ -618,7 +618,7 @@ func loadStage(def string) (*Stage, error) {
 		if sec[0].readI32ForStage("color", &r, &g, &b) {
 			r, g, b = Max(0, Min(255, r)), Max(0, Min(255, g)), Max(0, Min(255, b))
 		}
-		s.sdw.color = uint32(b<<16 | g<<8 | r)
+		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
 		sec[0].ReadBool("reflect", &reflect)
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)

@@ -224,6 +224,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	RenderInit()
 	s.audioOpen()
 	l := lua.NewState()
+	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
 	for i := range s.inputRemap {
 		s.inputRemap[i] = i
@@ -1231,9 +1232,12 @@ func (s *System) fight() (reload bool) {
 	s.debugWC = nil
 	dL := lua.NewState()
 	defer dL.Close()
+	var statusLFunc *lua.LFunction
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
 			s.errLog.Println(err.Error())
+		} else {
+			statusLFunc, _ = dL.GetGlobal("status").(*lua.LFunction)
 		}
 	}
 	debugInput := func() {
@@ -1269,16 +1273,18 @@ func (s *System) fight() (reload bool) {
 	drawDebug := func() {
 		if s.debugDraw && s.debugFont != nil {
 			y := 240 - float32(s.gameHeight)
-			if len(s.debugScript) > 0 {
+			if statusLFunc != nil {
 				for i, p := range s.chars {
 					if len(p) > 0 {
-						if dL.CallByParam(lua.P{Fn: dL.GetGlobal("status"), NRet: 1,
+						top := dL.GetTop()
+						if dL.CallByParam(lua.P{Fn: statusLFunc, NRet: 1,
 							Protect: true}, lua.LNumber(i+1)) == nil {
-							s := dL.Get(-1).(lua.LString)
-							if len(s) > 0 {
+							s, ok := dL.Get(-1).(lua.LString)
+							if ok && len(s) > 0 {
 								put(&y, string(s))
 							}
 						}
+						dL.SetTop(top)
 					}
 				}
 			}

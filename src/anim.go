@@ -806,28 +806,23 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		color, alpha := s.shadowColor, s.shadowAlpha
 		fend := float32(sys.stage.sdw.fadeend) * sys.stage.localscl
 		fbgn := float32(sys.stage.sdw.fadebgn) * sys.stage.localscl
-		if fbgn >= fend {
-		} else if s.pos[1] < fend {
+		if fbgn <= fend {
+		} else if s.pos[1]-s.fadeOffset <= fend {
 			continue
 		} else if s.pos[1]-s.fadeOffset < fbgn {
 			alpha = int32(float32(alpha) *
 				(fend - (s.pos[1] - s.fadeOffset)) / (fend - fbgn))
 		}
-		comm := true
 		if color < 0 {
 			color = int32(sys.stage.sdw.color)
 			if alpha < 255 {
 				intensity = intensity * alpha >> 8
-			} else {
-				comm = false
 			}
 		} else {
 			intensity = 0
 		}
-		if comm {
-			color = color&0xff*alpha<<8&0xff0000 |
-				color&0xff00*alpha>>8&0xff00 | color&0xff0000*alpha>>24&0xff
-		}
+		color = color&0xff*alpha<<8&0xff0000 |
+			color&0xff00*alpha>>8&0xff00 | color&0xff0000*alpha>>24&0xff
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
