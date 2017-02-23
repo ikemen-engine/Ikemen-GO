@@ -2512,7 +2512,7 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 		c.setCtrl(ctrl != 0)
 	}
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
-		for c.stchtmp {
+		for c.stchtmp && sys.changeStateNest < 2500 {
 			c.stateChange2()
 			sys.changeStateNest++
 			if !c.ss.sb.run(c) {
