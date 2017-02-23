@@ -6102,7 +6102,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					}
 					sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
 					if c.block.ignorehitpause >= -1 {
-						sbc.block.ignorehitpause = c.block.ignorehitpause
+						sbc.block.ignorehitpause = -1
 					}
 				}
 			}
