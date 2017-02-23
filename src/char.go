@@ -2493,11 +2493,13 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	c.stchtmp = true
 	return true
 }
-func (c *Char) stateChange2() {
+func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
 		c.stchtmp = false
+		return true
 	}
+	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) {
@@ -2509,10 +2511,8 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
 	}
-	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 &&
-		c.id >= 0 {
-		for c.stchtmp && sys.changeStateNest < 2500 {
-			c.stateChange2()
+	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
+		for c.stateChange2() {
 			sys.changeStateNest++
 			c.ss.sb.run(c)
 		}
