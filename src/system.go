@@ -1116,7 +1116,7 @@ func (s *System) draw(x, y, scl float32) {
 		}
 		off := s.envShake.getOffset()
 		yofs, yofs2 := float32(s.gameHeight), float32(0)
-		if scl > 0 && s.cam.verticalfollow > 0 {
+		if scl > 1 && s.cam.verticalfollow > 0 {
 			yofs = s.cam.screenZoff + float32(s.gameHeight-240)
 			yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
 		}

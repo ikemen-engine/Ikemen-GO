@@ -764,12 +764,12 @@ func systemScriptInit(l *lua.LState) {
 				}
 				if sys.round == 1 {
 					if sys.tmode[1] == TM_Turns {
-						sys.matchWins[0] = int32(sys.numTurns[1])
+						sys.matchWins[0] = sys.numTurns[1]
 					} else {
 						sys.matchWins[0] = sys.lifebar.ro.match_wins
 					}
 					if sys.tmode[0] == TM_Turns {
-						sys.matchWins[1] = int32(sys.numTurns[0])
+						sys.matchWins[1] = sys.numTurns[0]
 					} else {
 						sys.matchWins[1] = sys.lifebar.ro.match_wins
 					}
