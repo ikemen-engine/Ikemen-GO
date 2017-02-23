@@ -2515,7 +2515,9 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 		for c.stchtmp {
 			c.stateChange2()
 			sys.changeStateNest++
-			c.ss.sb.run(c)
+			if !c.ss.sb.run(c) {
+				break
+			}
 		}
 		sys.changeStateNest = 0
 	}
