@@ -608,6 +608,7 @@ func (ghv *GetHitVar) dropId(id int32) {
 	}
 }
 func (ghv *GetHitVar) addId(id, juggle int32) {
+	juggle = ghv.getJuggle(id, juggle)
 	ghv.dropId(id)
 	ghv.hitBy = append(ghv.hitBy, [...]int32{id, juggle})
 }
