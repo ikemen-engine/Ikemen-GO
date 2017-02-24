@@ -35,7 +35,10 @@ func newTexture() (t *Texture) {
 }
 func (t *Texture) finalizer() {
 	if *t != 0 {
-		gl.DeleteTextures(1, (*uint32)(t))
+		tex := *t
+		sys.mainThreadTask <- func() {
+			gl.DeleteTextures(1, (*uint32)(&tex))
+		}
 	}
 }
 
