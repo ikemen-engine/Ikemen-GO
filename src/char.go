@@ -3813,6 +3813,8 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 				}
 				return true
 			}
+		case h.reversal_attr > 0:
+			return true
 		case h.priority < c.hitdef.priority:
 		case h.priority == c.hitdef.priority:
 			switch {
