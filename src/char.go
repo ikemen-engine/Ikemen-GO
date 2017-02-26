@@ -4213,7 +4213,7 @@ func (c *Char) tick() {
 			c.ss.stateType = ST_A
 		}
 		pn := c.playerNo
-		if c.ghv.p2getp1state {
+		if c.ghv.p2getp1state && !c.ghv.guarded {
 			pn = c.ghv.playerNo
 		}
 		if c.stchtmp {
