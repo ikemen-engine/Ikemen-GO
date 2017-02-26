@@ -3934,6 +3934,9 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 			st = exp[0].evalI(c)
 		case hitOverride_time:
 			t = exp[0].evalI(c)
+			if t < -1 || t == 0 {
+				t = 1
+			}
 		case hitOverride_forceair:
 			f = exp[0].evalB(c)
 		}
