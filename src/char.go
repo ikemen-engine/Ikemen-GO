@@ -3301,7 +3301,7 @@ func (c *Char) lifeSet(life int32) {
 					}
 				} else if c.playerNo == c.ghv.playerNo {
 					sys.winType[^c.playerNo&1] = WT_Suicide
-				} else if c.ghv.playerNo >= 0 && c.playerNo&1 == c.ss.sb.playerNo&1 {
+				} else if c.ghv.playerNo >= 0 && c.playerNo&1 == c.ghv.playerNo&1 {
 					sys.winType[^c.playerNo&1] = WT_Teammate
 				} else if c.ghv.guarded {
 					sys.winType[^c.playerNo&1] = WT_C
@@ -3310,7 +3310,7 @@ func (c *Char) lifeSet(life int32) {
 				} else if c.ghv.attr&int32(AT_AS) != 0 {
 					sys.winType[^c.playerNo&1] = WT_S
 				} else if c.ghv.attr&int32(AT_AT) != 0 {
-					sys.winType[^c.playerNo&1] = WT_T
+					sys.winType[^c.playerNo&1] = WT_Throw
 				} else {
 					sys.winType[^c.playerNo&1] = WT_N
 				}
