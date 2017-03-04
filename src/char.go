@@ -4748,7 +4748,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							getter.ghv.xvel *= 0.66
 						}
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= -2.5
+							getter.ghv.xvel -= 2.5
 						}
 						if getter.ghv.yvel <= 0 {
 							getter.ghv.yvel -= 2
