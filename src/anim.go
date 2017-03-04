@@ -725,7 +725,11 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, fo float32) {
 	if sd.angle != 0 {
 		for i, as := range sd.ascl {
 			sd.scl[i] *= as
+			if as < 0 {
+				sd.angle *= -1
+			}
 		}
+		sd.ascl = [2]float32{1, 1}
 	}
 	i, start := 0, 0
 	for l := len(*dl); l > 0; {
