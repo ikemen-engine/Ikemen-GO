@@ -560,13 +560,8 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		return
 	}
 	h, v, angle := a.drawSub1(angle)
-	xs *= xcs
-	ys *= ycs
-	if (xs < 0) != (ys < 0) {
-		angle *= -1
-	}
-	xs *= h
-	ys *= v
+	xs *= xcs * h
+	ys *= ycs * v
 	x = xcs*x + xs*float32(a.frames[a.drawidx].X)
 	y = ycs*y + ys*float32(a.frames[a.drawidx].Y)
 	var rcy float32
@@ -622,9 +617,6 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 	h, v, angle := a.drawSub1(angle)
 	x += xscl * h * float32(a.frames[a.drawidx].X)
 	y += yscl * vscl * v * float32(a.frames[a.drawidx].Y)
-	if (xscl < 0) != (yscl < 0) {
-		angle *= -1
-	}
 	var draw func(int32)
 	if a.spr.rle == -12 {
 		draw = func(trans int32) {
@@ -725,11 +717,8 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, fo float32) {
 	if sd.angle != 0 {
 		for i, as := range sd.ascl {
 			sd.scl[i] *= as
-			if as < 0 {
-				sd.angle *= -1
-			}
 		}
-		sd.ascl = [2]float32{1, 1}
+		sd.ascl = [...]float32{1, 1}
 	}
 	i, start := 0, 0
 	for l := len(*dl); l > 0; {

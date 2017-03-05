@@ -957,7 +957,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		alp[0] = -1
 	}
 	agl := e.angle
-	if (e.scale[0] < 0) != (e.scale[1] < 0) {
+	if (e.facing < 0) != (e.vfacing < 0) {
 		agl *= -1
 	}
 	sdwalp := alp[0]
@@ -4333,6 +4333,8 @@ func (c *Char) cueDraw() {
 			agl = c.angle
 			if agl == 0 {
 				agl = 360
+			} else if c.facing < 0 {
+				agl *= -1
 			}
 		}
 		rec := sys.tickNextFrame() && c.acttmp > 0
