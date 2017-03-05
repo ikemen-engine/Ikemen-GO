@@ -819,8 +819,8 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle, &sys.bgPalFX,
-			s.oldVer, uint32(color), intensity)
+			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, -s.angle,
+			&sys.bgPalFX, s.oldVer, uint32(color), intensity)
 	}
 }
 func (sl ShadowList) drawReflection(x, y, scl float32) {
@@ -846,7 +846,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer)
+			-s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer)
 	}
 }
 
