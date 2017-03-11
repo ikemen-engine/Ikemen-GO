@@ -2130,7 +2130,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		return false
 	}
 	pt := PT_P1
-	var f, st int32 = 0, 1
+	var f, st int32 = 1, 0
 	op := false
 	var x, y float32 = 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
