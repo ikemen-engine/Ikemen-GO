@@ -184,12 +184,13 @@ func loadFnt(filename string) (*Fnt, error) {
 			spr.Pal[256-f.colors*(i+1):256-f.colors*i])
 	}
 	copyCharRect := func(dst []byte, dw int, src []byte, x, w, h int) {
+		dw2 := dw
 		if x+dw > w {
-			dw = w - x
+			dw2 = w - x
 		}
-		if dw > 0 {
+		if dw2 > 0 {
 			for i := 0; i < h; i++ {
-				copy(dst[dw*i:dw*(i+1)], src[w*i+x:w*i+x+dw])
+				copy(dst[dw*i:dw*i+dw2], src[w*i+x:w*i+x+dw2])
 			}
 		}
 	}
