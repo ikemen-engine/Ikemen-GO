@@ -2132,7 +2132,7 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.scf(SCF_ko) && !c.ctrlOver()
+	return c.scf(SCF_ctrl) && !c.ctrlOver()
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
