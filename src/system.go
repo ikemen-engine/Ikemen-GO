@@ -651,30 +651,34 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
 				r.furimuki()
 			}
-			if r.cmd[0].Input(r.key, int32(r.facing)) {
-				hp := r.hitPause()
-				buftime := Btoi(hp && r.gi().ver[0] != 1)
-				if s.super > 0 {
-					if !act && s.super <= s.superendcmdbuftime {
-						hp = true
-					}
-				} else if s.pause > 0 {
-					if !act && s.pause <= s.pauseendcmdbuftime {
-						hp = true
-					}
-				}
-				for j := range r.cmd {
-					r.cmd[j].Step(int32(r.facing), r.key < 0, hp, buftime+Btoi(hp))
-				}
-				if r.key < 0 {
-					cc := int32(-1)
-					if r.roundState() == 2 && Rand(0, s.com[i]+16) > 16 {
-						cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
-					}
-					for j := range p {
-						if p[j].helperIndex >= 0 {
-							p[j].cpucmd = cc
+			for _, c := range p {
+				if (c.helperIndex == 0 ||
+					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
+					c.cmd[0].Input(c.key, int32(c.facing)) {
+					hp := c.hitPause()
+					buftime := Btoi(hp && c.gi().ver[0] != 1)
+					if s.super > 0 {
+						if !act && s.super <= s.superendcmdbuftime {
+							hp = true
 						}
+					} else if s.pause > 0 {
+						if !act && s.pause <= s.pauseendcmdbuftime {
+							hp = true
+						}
+					}
+					for j := range c.cmd {
+						c.cmd[j].Step(int32(c.facing), c.key < 0, hp, buftime+Btoi(hp))
+					}
+				}
+			}
+			if r.key < 0 {
+				cc := int32(-1)
+				if r.roundState() == 2 && Rand(0, s.com[i]+16) > 16 {
+					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
+				}
+				for j := range p {
+					if p[j].helperIndex >= 0 {
+						p[j].cpucmd = cc
 					}
 				}
 			}

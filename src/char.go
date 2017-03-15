@@ -2116,6 +2116,9 @@ func (c *Char) command(pn, i int) bool {
 			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
 			return i == int(c.cpucmd)
 		}
+		if c.helperIndex != 0 {
+			return false
+		}
 	}
 	for _, c := range cl {
 		if c.curbuftime > 0 {
@@ -4185,7 +4188,17 @@ func (c *Char) tick() {
 		}
 	}
 	if c.cmd == nil {
-		c.cmd = sys.chars[c.playerNo][0].cmd
+		if c.keyctrl {
+			c.cmd = make([]CommandList, len(sys.chars))
+			c.cmd[0].Buffer = NewCommandBuffer()
+			for i := range c.cmd {
+				c.cmd[i].Buffer = c.cmd[0].Buffer
+				c.cmd[i].CopyList(sys.chars[c.playerNo][0].cmd[i])
+				c.cmd[i].BufReset()
+			}
+		} else {
+			c.cmd = sys.chars[c.playerNo][0].cmd
+		}
 	}
 	if c.hitdefContact {
 		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
