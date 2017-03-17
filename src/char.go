@@ -1439,9 +1439,11 @@ func newChar(n int, idx int32) (c *Char) {
 }
 func (c *Char) panic() {
 	if sys.workingState != &c.ss.sb {
-		sys.errLog.Panicf("%+v\n", sys.workingState)
+		sys.errLog.Panicf("%v\n%v\n%v\n%+v\n", c.gi().def, c.name,
+			sys.cgi[sys.workingState.playerNo].def, sys.workingState)
 	}
-	sys.errLog.Panicf("%+v\n", c.ss)
+	sys.errLog.Panicf("%v\n%v\n%v\n%+v\n", c.gi().def, c.name,
+		sys.cgi[c.ss.sb.playerNo].def, c.ss)
 }
 func (c *Char) init(n int, idx int32) {
 	c.clear1()

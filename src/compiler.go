@@ -811,6 +811,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else {
 			_else = true
 		}
+		if _else {
+			out.appendValue(bv1)
+		}
 		if set {
 			c.token = c.tokenizer(in)
 			var be2 BytecodeExp
@@ -1937,7 +1940,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be2...)
 			out.appendValue(bv2)
 			out.append(OC_log)
-			bv = bvNone()
 		} else {
 			out.log(&bv1, bv2)
 			bv = bv1
@@ -2124,8 +2126,7 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 	}
 	if len(c.maeOp) == 0 {
-		opp := c.isOperator(c.token)
-		if opp == 0 {
+		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
 				return bvNone(), Error("演算子がありません")
 			}
@@ -2144,10 +2145,6 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 				oldin = oldin[:len(oldin)-len(*in)]
 				*in = oldtoken + " " + oldin[:strings.LastIndex(oldin, c.token)] +
 					" " + *in
-			} else if opp > 0 {
-				if err := c.renzokuEnzansihaError(in); err != nil {
-					return bvNone(), err
-				}
 			}
 		} else if opp > 0 {
 			if err := c.renzokuEnzansihaError(in); err != nil {
