@@ -1296,6 +1296,7 @@ type CharGlobalInfo struct {
 	wakewakaLength   int32
 	pctype           ProjContact
 	pctime, pcid     int32
+	unhittable       int32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -3436,7 +3437,7 @@ func (c *Char) setPauseTime(pausetime, movetime int32) {
 		c.pauseMovetime--
 	}
 }
-func (c *Char) setSuperPauseTime(pausetime, movetime int32) {
+func (c *Char) setSuperPauseTime(pausetime, movetime int32, unhittable bool) {
 	if ^pausetime < sys.supertime || c.playerNo != c.ss.sb.playerNo ||
 		sys.superplayer == c.playerNo {
 		sys.supertime = ^pausetime
@@ -3450,6 +3451,9 @@ func (c *Char) setSuperPauseTime(pausetime, movetime int32) {
 		c.superMovetime = 0
 	} else if sys.super > 0 && c.superMovetime > 0 {
 		c.superMovetime--
+	}
+	if unhittable {
+		c.gi().unhittable = pausetime + Btoi(pausetime > 0)
 	}
 }
 func (c *Char) getPalfx() *PalFX {
@@ -3764,8 +3768,7 @@ func (c *Char) hitCheck(e *Char) bool {
 	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
 }
 func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
-	if sys.super > 0 && sys.superunhittable && c.playerNo == sys.superplayer ||
-		h.chainid >= 0 && c.ghv.hitid != h.chainid {
+	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
 		return false
 	}
 	if len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid {
@@ -5178,6 +5181,11 @@ func (cl *CharList) getHit() {
 }
 func (cl *CharList) tick() {
 	sys.gameTime++
+	for i := range sys.cgi {
+		if sys.cgi[i].unhittable > 0 {
+			sys.cgi[i].unhittable--
+		}
+	}
 	for _, c := range cl.runOrder {
 		c.tick()
 	}

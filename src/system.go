@@ -145,7 +145,6 @@ type System struct {
 	superpos                [2]float32
 	superfacing             float32
 	superp2defmul           float32
-	superunhittable         bool
 	super_TargetDefenceMul  float32
 	envcol                  [3]int32
 	envcol_time             int32
@@ -598,6 +597,7 @@ func (s *System) nextRound() {
 				}
 			}
 			s.cgi[i].clearPCTime()
+			s.cgi[i].unhittable = 0
 		}
 	}
 	for _, p := range s.chars {

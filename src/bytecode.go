@@ -3997,10 +3997,11 @@ const (
 
 func (sc superPause) Run(c *Char, _ []int32) bool {
 	var t, mt int32 = 0, 0
+	uh := true
 	sys.superanim, sys.superpmap.remap = c.getAnim(30, true), nil
 	sys.superpos, sys.superfacing = c.pos, c.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
-	sys.superp2defmul, sys.superunhittable = sys.super_TargetDefenceMul, true
+	sys.superp2defmul = sys.super_TargetDefenceMul
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case superPause_time:
@@ -4035,7 +4036,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_poweradd:
 			c.powerAdd(exp[0].evalI(c))
 		case superPause_unhittable:
-			sys.superunhittable = exp[0].evalB(c)
+			uh = exp[0].evalB(c)
 		case superPause_sound:
 			n := int32(0)
 			if len(exp) > 2 {
@@ -4050,7 +4051,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	c.setSuperPauseTime(t, mt)
+	c.setSuperPauseTime(t, mt, uh)
 	return false
 }
 
