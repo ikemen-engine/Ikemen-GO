@@ -3396,7 +3396,7 @@ func (c *Char) hitVelSetY() {
 	}
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
-	if !actually || c.gi().ver[0] != 1 {
+	if !actually || c.stCgi().ver[0] != 1 {
 		switch c.ss.stateType {
 		case ST_A:
 			return base + 1
@@ -4886,6 +4886,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
+		xmi, xma := gxmin+2, gxmax-2
+		if c.stCgi().ver[0] != 1 {
+			xmi += 2
+			xma -= 2
+		}
 		if Abs(hitType) == 1 {
 			if !proj && (hd.p1getp2facing != 0 || hd.p1facing < 0) &&
 				c.facing != byf {
@@ -4922,8 +4927,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			getter.getcombo += hd.numhits * hits
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0] <= gxmin ||
-					c.facing > 0 && getter.pos[0] >= gxmax) {
+				(c.facing < 0 && getter.pos[0] <= xmi ||
+					c.facing > 0 && getter.pos[0] >= xma) {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.veloff = hd.ground_cornerpush_veloff * c.facing
@@ -4935,8 +4940,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		} else {
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0] <= gxmin ||
-					c.facing > 0 && getter.pos[0] >= gxmax) {
+				(c.facing < 0 && getter.pos[0] <= xmi ||
+					c.facing > 0 && getter.pos[0] >= xma) {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.veloff = hd.guard_cornerpush_veloff * c.facing
