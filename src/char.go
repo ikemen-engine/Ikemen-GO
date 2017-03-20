@@ -4071,12 +4071,12 @@ func (c *Char) update(cvmin, cvmax,
 			c.destroy()
 			return
 		}
+		if !c.pause() && !c.isBound() {
+			c.bind()
+		}
 		if c.acttmp > 0 {
 			if c.anim != nil {
 				c.anim.UpdateSprite()
-			}
-			if !c.isBound() {
-				c.bind()
 			}
 			if c.ss.moveType == MT_H {
 				if c.ghv.xoff != 0 {
