@@ -916,7 +916,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	screen := false
 	if e.bindtime != 0 {
-		if e.postype >= PT_L {
+		if e.postype == PT_N {
+			e.pos = e.offset
+		} else if e.postype >= PT_L {
 			e.pos, screen = e.offset, true
 			if e.postype == PT_L {
 				e.pos[0] -= float32(sys.gameWidth) / 2
