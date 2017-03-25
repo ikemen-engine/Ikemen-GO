@@ -391,6 +391,12 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 		ofs += int64(size) + 8
 		f.Seek(ofs, 0)
 	}
+	if fmtSize == 0 {
+		if dataSize > 0 {
+			return nil, Error("fmt がありません")
+		}
+		return nil, nil
+	}
 	return &w, nil
 }
 
