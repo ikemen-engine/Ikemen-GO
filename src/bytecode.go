@@ -4848,9 +4848,7 @@ func (sb *StateBytecode) init(c *Char) {
 	if sb.physics != ST_U {
 		c.ss.physics = sb.physics
 	}
-	for i := range sb.ctrlsps {
-		sb.ctrlsps[i] = 0
-	}
+	sb.ctrlsps = make([]int32, len(sb.ctrlsps))
 	sb.stateDef.Run(c)
 }
 func (sb *StateBytecode) run(c *Char) (changeState bool) {
