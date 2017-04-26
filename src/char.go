@@ -4902,7 +4902,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.p1facing = byf
 			} else if hd.p2facing > 0 {
 				getter.p1facing = -byf
-			} else {
+			}
+			if getter.p1facing == getter.facing {
 				getter.p1facing = 0
 			}
 			if hd.p1stateno >= 0 && c.stateChange1(hd.p1stateno, hd.playerNo) {
