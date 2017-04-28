@@ -1005,7 +1005,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							}
 							inclWinCount()
 						}
-						w := [...]bool{s.chars[0][0].win(), s.chars[1][0].win()}
+						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
 						if !w[0] || !w[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames {
