@@ -5353,17 +5353,8 @@ func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase,
 			angleDraw_value, VT_Float, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "scale", func(data string) error {
-			bes, err := c.exprs(data, VT_Float, 2)
-			if err != nil {
-				return err
-			}
-			if len(bes) < 2 {
-				return Error("scaleの要素が足りません")
-			}
-			sc.add(angleDraw_scale, bes)
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "scale",
+			angleDraw_scale, VT_Float, 2, false); err != nil {
 			return err
 		}
 		return nil

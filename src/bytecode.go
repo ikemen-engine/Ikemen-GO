@@ -4141,8 +4141,10 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 		case angleDraw_value:
 			c.angleSet(exp[0].evalF(c))
 		case angleDraw_scale:
-			c.angleScalse[0] = exp[0].evalF(c)
-			c.angleScalse[1] = exp[1].evalF(c)
+			c.angleScalse[0] *= exp[0].evalF(c)
+			if len(exp) > 1 {
+				c.angleScalse[1] *= exp[1].evalF(c)
+			}
 		}
 		return true
 	})
