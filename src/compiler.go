@@ -4152,11 +4152,11 @@ func (c *Compiler) hitDefSub(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "mindist",
-		hitDef_mindist, VT_Float, 2, false); err != nil {
+		hitDef_mindist, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "maxdist",
-		hitDef_maxdist, VT_Float, 2, false); err != nil {
+		hitDef_maxdist, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "snap",

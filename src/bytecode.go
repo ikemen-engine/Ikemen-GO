@@ -3069,11 +3069,17 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.mindist[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.mindist[1] = exp[1].evalF(c)
+			if len(exp) > 2 {
+				exp[2].run(c)
+			}
 		}
 	case hitDef_maxdist:
 		hd.maxdist[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.maxdist[1] = exp[1].evalF(c)
+			if len(exp) > 2 {
+				exp[2].run(c)
+			}
 		}
 	case hitDef_snap:
 		hd.snap[0] = exp[0].evalF(c)
