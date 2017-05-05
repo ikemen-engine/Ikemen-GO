@@ -1039,6 +1039,8 @@ func loadSff(filename string, char bool) (*Sff, error) {
 				sys.mainThreadTask <- func() {
 					dst.shareCopy(src)
 				}
+			} else {
+				spriteList[i].palidx = 0 // 不正な sff の場合の index out of range 防止
 			}
 		} else {
 			switch s.header.Ver0 {
