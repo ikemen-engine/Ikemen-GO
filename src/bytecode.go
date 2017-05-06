@@ -4857,6 +4857,7 @@ func (sb *StateBytecode) init(c *Char) {
 		c.ss.physics = sb.physics
 	}
 	sb.ctrlsps = make([]int32, len(sb.ctrlsps))
+	sys.workingState = sb
 	sb.stateDef.Run(c)
 }
 func (sb *StateBytecode) run(c *Char) (changeState bool) {
