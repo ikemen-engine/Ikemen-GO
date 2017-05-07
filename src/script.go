@@ -706,7 +706,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 				sys.await(FPS)
 			}
-			for i := 0; i < len(sys.cgi); i++ {
+			for i := range sys.cgi {
 				if i < len(sys.lifebar.fa[sys.tmode[i&1]]) {
 					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
