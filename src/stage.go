@@ -683,6 +683,7 @@ func loadStage(def string) (*Stage, error) {
 			bgc := newBgCtrl()
 			*bgc = bgcdef
 			if ids := is.readI32CsvForStage("ctrlid"); len(ids) > 0 {
+				bgc.bg = nil
 				if len(ids) > 1 || ids[0] != -1 {
 					kishutu := make(map[int32]bool)
 					for _, id := range ids {
