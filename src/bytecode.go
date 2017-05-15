@@ -1073,7 +1073,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_numtarget:
 			*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())
 		case OC_palno:
-			sys.bcStack.PushI(c.gi().palno)
+			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
 			sys.bcStack.PushF(c.pos[0] - sys.cam.Pos[0])
 		case OC_pos_y:

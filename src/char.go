@@ -2306,6 +2306,12 @@ func (c *Char) numTarget(hid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(n)
 }
+func (c *Char) palno() int32 {
+	if c.helperIndex != 0 && c.gi().ver[0] != 1 {
+		return 1
+	}
+	return c.gi().palno
+}
 func (c *Char) getPower() int32 {
 	if sys.powerShare[c.playerNo&1] {
 		return sys.chars[c.playerNo&1][0].power
