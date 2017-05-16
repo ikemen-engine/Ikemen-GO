@@ -350,7 +350,7 @@ func newBgCtrl() *bgCtrl {
 func (bgc *bgCtrl) read(is IniSection, idx int) {
 	bgc.idx = idx
 	xy := false
-	switch is["type"] {
+	switch strings.ToLower(is["type"]) {
 	case "anim":
 		bgc._type = BT_Anim
 	case "visible":
