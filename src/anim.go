@@ -407,7 +407,7 @@ func (a *Animation) animSeek(elem int32) {
 	foo := true
 	for {
 		a.current = elem
-		for a.curFrame().Time <= 0 && int(a.current) < len(a.frames) {
+		for int(a.current) < len(a.frames) && a.curFrame().Time <= 0 {
 			if int(a.current) == len(a.frames)-1 && a.curFrame().Time == -1 {
 				break
 			}
