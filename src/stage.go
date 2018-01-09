@@ -655,7 +655,7 @@ func loadStage(def string) (*Stage, error) {
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
 			s.sff, s.at, float32(sys.cam.startx)))
 	}
-	var bgcdef bgCtrl
+	bgcdef := *newBgCtrl()
 	i = 0
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
