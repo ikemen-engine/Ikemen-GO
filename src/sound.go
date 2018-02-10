@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/jfreymuth/go-vorbis/ogg/vorbis"
-	"github.com/timshannon/go-openal/openal"
 	"io"
 	"math"
 	"os"
+	"path/filepath"
+
+	"github.com/hajimehoshi/go-mp3"
+	"github.com/jfreymuth/go-vorbis/ogg/vorbis"
+	"github.com/timshannon/go-openal/openal"
 )
 
 const (
@@ -15,6 +18,11 @@ const (
 	audioFrequency = 48000
 )
 
+// ------------------------------------------------------------------
+// Audio Source
+
+// AudioSource structure.
+// It contains OpenAl's sound destination and buffer
 type AudioSource struct {
 	Src  openal.Source
 	bufs openal.Buffers
@@ -39,6 +47,9 @@ func (s *AudioSource) Delete() {
 	s.bufs.Delete()
 	s.Src.Delete()
 }
+
+// ------------------------------------------------------------------
+// Mixer
 
 type Mixer struct {
 	buf        [audioOutLen * 2]float32
@@ -150,6 +161,9 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 	return float64(len(wav))
 }
 
+// ------------------------------------------------------------------
+// Normalizer
+
 type Normalizer struct {
 	mul  float64
 	l, r *NormalizerLR
@@ -210,6 +224,9 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 	return bai
 }
 
+// ------------------------------------------------------------------
+// Vorbis
+
 type Vorbis struct {
 	dec        *vorbis.Vorbis
 	fp         *os.File
@@ -222,9 +239,12 @@ type Vorbis struct {
 func newVorbis() *Vorbis {
 	return &Vorbis{openReq: make(chan string, 1), normalizer: NewNormalizer()}
 }
+
+// Opens a file asynchronously
 func (v *Vorbis) Open(file string) {
 	v.openReq <- file
 }
+
 func (v *Vorbis) openFile(file string) bool {
 	v.clear()
 	var err error
@@ -233,6 +253,7 @@ func (v *Vorbis) openFile(file string) bool {
 	}
 	return v.restart()
 }
+
 func (v *Vorbis) restart() bool {
 	if v.fp == nil {
 		return false
@@ -246,6 +267,7 @@ func (v *Vorbis) restart() bool {
 	v.buf = nil
 	return true
 }
+
 func (v *Vorbis) clear() {
 	if v.dec != nil {
 		v.dec = nil
@@ -255,6 +277,7 @@ func (v *Vorbis) clear() {
 		v.fp = nil
 	}
 }
+
 func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 	var o1i int
 	if len(buf) == 1 {
@@ -263,7 +286,13 @@ func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 		o1i = 1
 	}
 	sr := audioFrequency / float64(v.dec.SampleRate())
+	print("sr: ")
+	println(sr)
 	out = make([]int16, 2*(int(float64(len(buf[0])-1)*sr)+1))
+	print("out: ")
+	println(out)
+	print("buf[0]: ")
+	println(buf[0])
 	oldbufi := -2
 	for i := range buf[0] {
 		for j := oldbufi + 2; j <= 2*int(v.bufi); j += 2 {
@@ -276,6 +305,7 @@ func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
 	v.bufi -= float64(int(v.bufi))
 	return
 }
+
 func (v *Vorbis) read() []int16 {
 	select {
 	case file := <-v.openReq:
@@ -286,6 +316,8 @@ func (v *Vorbis) read() []int16 {
 		if len(v.buf) >= audioOutLen*2 {
 			out := v.buf[:audioOutLen*2]
 			v.buf = v.buf[audioOutLen*2:]
+			print("out: ")
+			println(out)
 			return out
 		}
 		for len(v.buf) < audioOutLen*2 && v.dec != nil {
@@ -301,6 +333,96 @@ func (v *Vorbis) read() []int16 {
 	}
 	return sys.nullSndBuf[:]
 }
+
+// ------------------------------------------------------------------
+// Mp3Dec
+
+type Mp3Dec struct {
+	dec *mp3.Decoder
+	fp  *os.File
+	buf []byte
+}
+
+func newMp3Dec() *Mp3Dec {
+	return &Mp3Dec{}
+}
+
+func (mp3Dec *Mp3Dec) Open(filename string) {
+	var err error
+
+	if mp3Dec.fp, err = os.Open(filename); err != nil {
+		return
+	}
+
+	if mp3Dec.dec, err = mp3.NewDecoder(mp3Dec.fp); err != nil {
+		return
+	}
+
+	mp3Dec.buf = make([]byte, audioFrequency/(mp3Dec.dec.SampleRate()))
+
+}
+
+func (mp3Dec *Mp3Dec) read() ([]byte, int) {
+
+	if mp3Dec.dec == nil || mp3Dec.fp == nil {
+		return make([]byte, audioOutLen*2), 48000
+	}
+
+	_, err := mp3Dec.dec.Read(mp3Dec.buf)
+
+	if err == io.EOF {
+		mp3Dec.buf = make([]byte, audioFrequency/(mp3Dec.dec.SampleRate()))
+	}
+
+	return mp3Dec.buf, mp3Dec.dec.SampleRate()
+}
+
+// ------------------------------------------------------------------
+// Bgm
+
+type Bgm struct {
+	filename string
+	vorbis   *Vorbis
+	mp3Dec   *Mp3Dec
+}
+
+func newBgm() *Bgm {
+	return &Bgm{
+		vorbis: newVorbis(),
+		mp3Dec: newMp3Dec(),
+	}
+}
+
+func (bgm *Bgm) IsVorbis() bool {
+	return filepath.Ext(bgm.filename) == ".ogg"
+}
+
+func (bgm *Bgm) IsMp3() bool {
+	return filepath.Ext(bgm.filename) == ".mp3"
+}
+
+func (bgm *Bgm) Open(filename string) {
+	println(filename)
+	bgm.filename = filename
+
+	if bgm.IsVorbis() {
+		bgm.vorbis.Open(filename)
+	} else if bgm.IsMp3() {
+		bgm.mp3Dec.Open(filename)
+	}
+
+}
+
+func (bgm *Bgm) ReadMp3() ([]byte, int) {
+	return bgm.mp3Dec.read()
+}
+
+func (bgm *Bgm) ReadVorbis() []int16 {
+	return bgm.vorbis.read()
+}
+
+// ------------------------------------------------------------------
+// Wave
 
 type Wave struct {
 	SamplesPerSec  uint32
@@ -400,12 +522,18 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	return &w, nil
 }
 
+// ------------------------------------------------------------------
+// Snd
+
 type Snd struct {
 	table     map[[2]int32]*Wave
 	ver, ver2 uint16
 }
 
-func newSnd() *Snd { return &Snd{table: make(map[[2]int32]*Wave)} }
+func newSnd() *Snd {
+	return &Snd{table: make(map[[2]int32]*Wave)}
+}
+
 func LoadSnd(filename string) (*Snd, error) {
 	s := newSnd()
 	f, err := os.Open(filename)
@@ -477,6 +605,9 @@ func (s *Snd) play(gn [2]int32) bool {
 	c.sound = s.Get(gn)
 	return c.sound != nil
 }
+
+// ------------------------------------------------------------------
+// Sound
 
 type Sound struct {
 	sound   *Wave

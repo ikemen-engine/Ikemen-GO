@@ -3,10 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/timshannon/go-openal/openal"
-	"github.com/yuin/gopher-lua"
 	"io/ioutil"
 	"log"
 	"math"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/timshannon/go-openal/openal"
+	"github.com/yuin/gopher-lua"
 )
 
 const (
@@ -33,7 +34,7 @@ var sys = System{
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	mixer:             *newMixer(),
-	bgm:               *newVorbis(),
+	bgm:               *newBgm(),
 	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
@@ -83,7 +84,7 @@ type System struct {
 	debugScript             string
 	debugDraw               bool
 	mixer                   Mixer
-	bgm                     Vorbis
+	bgm                     Bgm
 	audioContext            *openal.Context
 	nullSndBuf              [audioOutLen * 2]int16
 	sounds                  Sounds
@@ -339,6 +340,7 @@ func (s *System) audioOpen() {
 func (s *System) soundWrite() {
 	defer func() { s.audioClose <- true }()
 	src := NewAudioSource()
+	println("SOUND WRITE")
 	bgmSrc := NewAudioSource()
 	processed := false
 	for !s.gameEnd {
@@ -369,11 +371,16 @@ func (s *System) soundWrite() {
 		}
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := s.nullSndBuf[:]
-			if !s.nomusic {
-				out = s.bgm.read()
-			}
 			buf := bgmSrc.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
+			if !s.nomusic {
+				if s.bgm.IsVorbis() {
+					out = s.bgm.ReadVorbis()
+					buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
+				} else {
+					outByte, sampleRate := s.bgm.ReadMp3()
+					buf.SetData(openal.FormatStereo16, outByte, int32(sampleRate))
+				}
+			}
 			bgmSrc.Src.QueueBuffer(buf)
 			if err := openal.Err(); err != nil {
 				s.errLog.Println(err.Error())
