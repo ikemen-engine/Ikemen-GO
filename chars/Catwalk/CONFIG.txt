@@ -1,0 +1,51 @@
+[Statedef 5901];===============================================================================
+type=A;========================================================================================
+;==============================================================================================
+
+
+[State set TIME LIMIT]
+type=varset
+trigger1=1
+fvar(1)=    60.0           ;In seconds. Use -1 for infinite time.
+
+
+[State set BASE SPEED]
+type=varset
+trigger1=1
+fvar(3)=    1.0            ;Pixels per second. Speed at which the command indicators scroll
+                           ;through the screen. Automatically increases with each passing
+                           ;round or when you score high combos.
+
+[State set Use X Y Z]
+type=varset
+trigger1=1
+var(50)=     1             ;Setting this to zero will disable X, Y and Z buttons.
+                           ;Doing so will make the game considerably easier.
+
+
+[State set PENALTIES ON/OFF]
+type=varset
+trigger1=1
+var(52)=     1             ;Setting this to zero will make the game not penalize you for
+                           ;pressing a wrong button.
+
+
+[State set ARROWS POSITION]
+type=varset
+trigger1=1
+var(51)=     0             ;Setting this to non-zero will make the arrows appear on the left
+                           ;side rather than the right. This is useful if you're playing with
+                           ;a gamepad.
+
+[State set KEY LIMIT]
+type=varset
+trigger1=1
+var(53)=     0             ;Setting this to non-zero will limit the commands shown to 3 keys at
+                           ;a time.
+                           ;Useful if you have keyboard issues when pressing four keys.
+
+;==============================================================================================
+[State 5901,end];==============================================================================
+type=changestate;==============================================================================
+trigger1=1;====================================================================================
+value=5902;====================================================================================

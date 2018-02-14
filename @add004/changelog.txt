@@ -1,0 +1,19 @@
+In case someone needs to update add004 to latest version here are all changes that I've done to default ikemen add004 common1.cns code:
+
+1. Changed Partner-Assist key combinations to 2 new keys that exists in ikemen plus (optional)
+trigger1=(root,command="y") && (root,command="a") && ((root,command="holdfwd") || (root,command="holdback"))
+=>
+trigger1=(root,command="v") 
+
+trigger1=(root,command="y") && (root,command="a") && var(51)<1
+=>
+trigger1=(root,command="w") && var(51)<1
+
+2. Enabled key input display in Training mode (optional)
+trigger1=var(51)<1 && (var(7)&128)
+=>
+trigger1=var(51)<1 && (var(7)&128)||Enemy, Name = "Training"
+
+3. Removed [statedef -2] section from the end of file (useless - see next point)
+
+4. [Statedef -1] and [Statedef -2] code that is normally patched into characters has been appended at the end of file under [Statedef -10] and [Statedef -20]

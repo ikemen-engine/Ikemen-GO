@@ -1,0 +1,45 @@
+; ____________________________________
+;| Duck Hunt by Phantom.of.the.Server |
+; ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+;===================<DEFINITION>================
+[Info]
+name        = "Duck Hunt"
+displayname = "Duck Hunt"
+versiondate = 01,12,2010
+mugenversion= 1.0
+author      = "Phantom.of.the.Server"
+pal.defaults= 1
+localcoord  = 320,240
+
+[Files]
+cmd     = Command.cmd
+cns     = Constants.cns
+st      = States.st
+st1     = CONFIG.txt
+stcommon= common1.cns
+sprite  = Sprite.sff
+anim    = Anim.air
+sound   = Sound.snd
+;ai      = ai.ai
+pal1    = Palettes/Default.act
+pal2    = Palettes/Fall.act
+pal3    = Palettes/Winter.act
+pal4    = Palettes/Namek.act
+
+[Palette Keymap]
+a = 1
+b = 2
+c = 3
+x = 4
+y = 5
+z = 6
+a2 = 7
+b2 = 8
+c2 = 9
+x2 = 10
+y2 = 11
+z2 = 12
+
+;[Arcade]
+;intro.storyboard = intro.def
+;ending.storyboard= ending.def

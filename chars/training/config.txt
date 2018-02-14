@@ -1,0 +1,365 @@
+[StateDef -2]
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;トレーニングモードのパラメータの位置を変更できます。
+
+var(0) = 0 ;←この数値を変更してください　;- 上に移動
+　　　　　　　　　　　　　　　　　　　　　;+ 下に移動
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;トレーニングモードのパラメータの表示を変更できます。
+
+var(1) = 1 ;←この数値を変更してください　;0 キャラクターより前
+　　　　　　　　　　　　　　　　　　　　　;1 非表示
+　　　　　　　　　　　　　　　　　　　　　;2 キャラクターより奥
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;ルーラーの表示を変更できます。
+
+var(4) = 1 ;←この数値を変更してください　;0 キャラクターより前
+　　　　　　　　　　　　　　　　　　　　　;1 非表示
+　　　　　　　　　　　　　　　　　　　　　;2 キャラクターより奥
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;ポインタの表示を変更できます。
+
+var(5) = 0 ;←この数値を変更してください　;0 OFF
+　　　　　　　　　　　　　　　　　　　　　;1 自分から相手の前面のぶつかり判定までの距離を表示します
+　　　　　　　　　　　　　　　　　　　　　;2 自分から相手の中心までの距離を表示します
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;受け身の設定を変更できます。
+
+var(6) = 0 ;←この数値を変更してください　;0 オフ
+　　　　　　　　　　　　　　　　　　　　　;1 オン
+　　　　　　　　　　　　　　　　　　　　　;2 ダウン回避　前移動
+　　　　　　　　　　　　　　　　　　　　　;3 ダウン回避　後ろ移動
+
+[State -2]
+type = varset
+trigger1 = 1
+;受け身の設定がオンのときに
+;受け身可能になってから何フレーム目に受け身をするかを変更できます。
+
+var(7) = 0 ;←この数値0～120で変更してください　;入力した数値フレーム後実行
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;ダウン時間の設定を変更できます。
+
+var(2) = 60 ;←この数値0～60で変更してください　;入力した数値フレーム後実行
+
+
+[State -2]
+type = varset
+trigger1 = 1
+;キャラクター起動時の
+;起き上がりの設定を変更できます。
+
+var(3) = 0 ;←この数値を変更してください　;0 オフ
+　　　　　　　　　　　　　　　　　　　　　;1 移動起き上がり　前
+　　　　　　　　　　　　　　　　　　　　　;2 移動起き上がり　後ろ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;ココから下はかまっちゃだめよ☆---------------------------------------------------------------------------------------
+
+[State -2]
+type = Helper
+trigger1 = Roundstate >= 2
+trigger1 = numhelper(20000) = 0
+helpertype = normal
+name = "system"
+ID = 20000
+pos = 0, 0
+postype = p1
+facing = 1
+stateno = 20000
+keyctrl = 0
+ownpal = 1
+supermovetime = 999999
+pausemovetime = 999999
+size.xscale = 1.0
+size.yscale = 1.0
+
+[State -2]
+type = Helper
+trigger1 = Roundstate >= 2
+trigger1 = numhelper(30000) = 0
+helpertype = normal
+name = "ruler"
+ID = 30000
+pos = 0, 0
+postype = p1
+facing = 1
+stateno = 30000
+keyctrl = 0
+ownpal = 1
+supermovetime = 999999
+pausemovetime = 999999
+size.xscale = 1.0
+size.yscale = 1.0
+
+[State -2]
+type = Helper
+trigger1 = Roundstate >= 2
+trigger1 = numhelper(30050) = 0
+helpertype = normal
+name = "pos"
+ID = 30050
+pos = 0, 0
+postype = p1
+facing = 1
+stateno = 30050
+keyctrl = 0
+ownpal = 1
+supermovetime = 999999
+pausemovetime = 999999
+size.xscale = 1.0
+size.yscale = 1.0
+
+[State -2]
+type = varset
+trigger1 = movetype != H
+var(12) = life
+
+[State -2]
+type = varset
+trigger1 = (var(12) - life) != 0
+var(10) = (var(12) - life)
+
+[State -2]
+type = varset
+triggerall = var(11) 
+trigger1 = movetype != H
+var(9) = 0
+
+[State -2]
+type = varset
+trigger1 = movetype = H
+trigger1 = !var(9)
+var(11) = 0
+
+[State -2]
+type = varset
+trigger1 = movetype = H
+var(9) = 1
+
+[State -2]
+type = varadd
+trigger1 = var(9)
+trigger1 = movetype = H
+var(11) = (var(12) - life)
+
+[State -2]
+type = varset
+trigger1 = movetype = H
+var(12) = life
+
+[State -2]
+type = varset
+trigger1 = var(11)>var(13)
+var(13) = var(11)
+
+[State -2]
+type = varset
+trigger1 = movetype = H
+var(14) = gethitvar(hitcount)
+
+[State -2]
+type = varset
+trigger1 = var(14) > var(15)
+trigger1 = movetype = H
+var(15) = var(14)
+
+[State -2, オプション表示]
+type = Helper
+trigger1 = Roundstate >= 2
+trigger1 = numhelper(31000) = 0
+trigger1 = command = "start"
+helpertype = normal
+name = "option"
+ID = 31000
+pos = 0, 0
+postype = p1
+facing = 1
+stateno = 31000
+keyctrl = 1
+ownpal = 1
+supermovetime = 999999
+pausemovetime = 999999
+size.xscale = 1.0
+size.yscale = 1.0
+
+[State -2]
+type = varadd
+trigger1 = CanRecover
+var(23) = 1
+
+[State -2]
+type = varset
+trigger1 = !CanRecover
+var(23) = 0
+
+[State -2]
+type = varset
+trigger1 = var(25)%4 = 1
+trigger1 = p2dist X > 50
+trigger2 = var(25)%4 = 2
+trigger2 = p2dist X < 100 || p2dist x > 150
+trigger3 = var(25)%4 = 3
+trigger3 = BackEdgeBodyDist > 20
+var(26) = 1
+
+[State -2]
+type = varset
+trigger1 = ctrl = 0
+trigger1 = movetype = H
+var(8) = 20
+
+[State 0, 0]
+type = varadd
+trigger1 = ctrl = 1
+trigger1 = var(8) > 0
+var(8) = -1
+
+[State -2]
+type = varadd
+trigger1 = stateno = 5110
+trigger1 = time > 0
+var(30) = 1
+
+[State -2]
+type = varset
+trigger1 = ctrl
+var(30) = 0
+
+[State -2]
+type = varset
+trigger1 = stateno = 5000
+trigger2 = stateno = 5010
+trigger3 = stateno = 5020
+trigger4 = stateno = 150
+trigger5 = stateno = 152
+trigger6 = stateno = 154
+var(31) = 1
+
+[State -2]
+type = varset
+triggerall = time = 0
+trigger1 = stateno = 5000
+trigger2 = stateno = 5010
+trigger3 = stateno = 5020
+trigger4 = stateno = 150
+trigger5 = stateno = 152
+trigger6 = stateno = 154
+var(32) = 0
+
+[State -2]
+type = varadd
+trigger1 = Enemy(0),ctrl = 0
+trigger1 = var(31)
+var(32) = 1
+
+[State -2]
+type = varset
+trigger1 = Enemy(0),ctrl = 1
+var(31) = 0
+
+[State -2]
+type = varset
+trigger1 = stateno = 5000
+trigger2 = stateno = 5010
+trigger3 = stateno = 5020
+trigger4 = stateno = 150
+trigger5 = stateno = 152
+trigger6 = stateno = 154
+;trigger7 = movetype = H
+var(33) = 1
+
+[State -2]
+type = varset
+triggerall = time = 0
+trigger1 = stateno = 5000
+trigger2 = stateno = 5010
+trigger3 = stateno = 5020
+trigger4 = stateno = 150
+trigger5 = stateno = 152
+trigger6 = stateno = 154
+;trigger7 = movetype = H
+var(34) = 0
+
+[State -2]
+type = varadd
+trigger1 = ctrl = 0
+trigger1 = var(33)
+var(34) = 1
+
+[State -2]
+type = varadd
+trigger1 = ctrl = 1
+trigger1 = var(33)
+var(34) = -1
+
+[State -2]
+type = varset
+trigger1 = ctrl = 1
+var(33) = 0
+
+[State -2]
+type = varset
+trigger1 = 1
+var(36) = CanRecover
+
+[State -2]
+type = playsnd
+triggerall = Numhelper(31000) = 0
+trigger1 = command = "y"
+trigger2 = command = "z"
+value = S1,5
+
+[State -2]
+type = AssertSpecial
+trigger1 = 1
+flag = noko
+
+[State -2]
+type = DisplayToClipboard
+trigger1 = 1
+text = "%d,%d,%d"
+params = var(32), var(34), var(34) - var(32)

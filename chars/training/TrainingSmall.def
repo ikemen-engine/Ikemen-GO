@@ -1,0 +1,33 @@
+[Info]
+Name         = "Training Small"
+DisplayName  = "Training Small"
+VersionDate  =
+MugenVersion =
+Author       = "stupa"
+Pal.Defaults =
+
+[Files]
+Cmd     = Training.cmd
+Cns     = small/Training.cns 
+St      = small/Training.cns
+St0     = config.txt
+StCommon = common1.cns
+Sprite  = small/Training.sff
+Anim    = small/Training.air
+Sound   = Training.snd
+
+Pal1 = small/01.act
+Pal2 = small/01.act
+Pal3 = small/01.act
+Pal4 = small/01.act
+Pal5 = small/01.act
+Pal6 = small/01.act
+Pal7 = small/01.act
+Pal8 = small/01.act
+Pal9 = small/01.act
+Pal10 = small/01.act
+Pal11 = small/01.act
+Pal12 = small/01.act
+[Arcade]
+Intro.Storyboard =
+Ending.Storyboard =

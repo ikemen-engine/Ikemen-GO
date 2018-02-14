@@ -1,0 +1,33 @@
+[Info]
+Name         = "Training Medium"
+DisplayName  = "Training Medium"
+VersionDate  =
+MugenVersion =
+Author       = "stupa"
+Pal.Defaults =
+
+[Files]
+Cmd     = Training.cmd
+Cns     = medium/Training.cns 
+St      = medium/Training.cns
+St0     = config.txt
+StCommon = common1.cns
+Sprite  = medium/Training.sff
+Anim    = medium/Training.air
+Sound   = Training.snd
+
+Pal1 = medium/01.act
+Pal2 = medium/01.act
+Pal3 = medium/01.act
+Pal4 = medium/01.act
+Pal5 = medium/01.act
+Pal6 = medium/01.act
+Pal7 = medium/01.act
+Pal8 = medium/01.act
+Pal9 = medium/01.act
+Pal10 = medium/01.act
+Pal11 = medium/01.act
+Pal12 = medium/01.act
+[Arcade]
+Intro.Storyboard =
+Ending.Storyboard =

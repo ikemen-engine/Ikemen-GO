@@ -1,0 +1,33 @@
+[Info]
+Name         = "Training Large"
+DisplayName  = "Training Large"
+VersionDate  =
+MugenVersion =
+Author       = "stupa"
+Pal.Defaults =
+
+[Files]
+Cmd     = Training.cmd
+Cns     = large/Training.cns 
+St      = large/Training.cns
+St0     = config.txt
+StCommon = common1.cns
+Sprite  = large/Training.sff
+Anim    = large/Training.air
+Sound   = Training.snd
+
+Pal1 = large/01.act
+Pal2 = large/01.act
+Pal3 = large/01.act
+Pal4 = large/01.act
+Pal5 = large/01.act
+Pal6 = large/01.act
+Pal7 = large/01.act
+Pal8 = large/01.act
+Pal9 = large/01.act
+Pal10 = large/01.act
+Pal11 = large/01.act
+Pal12 = large/01.act
+[Arcade]
+Intro.Storyboard =
+Ending.Storyboard =

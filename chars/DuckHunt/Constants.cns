@@ -1,0 +1,68 @@
+; ____________________________________
+;| Duck Hunt by Phantom.of.the.Server |
+; ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+;===================<CONSTANTS>================
+
+[Data]
+life = 1000
+power = 3000
+attack = 100
+defence = 100
+fall.defence_up = 50
+liedown.time = 45
+airjuggle = 15
+sparkno = 2
+guard.sparkno = 40
+KO.echo = 0
+volume = 0
+IntPersistIndex = 0
+FloatPersistIndex = 0
+
+[Size]
+xscale = 1
+yscale = 1
+ground.back = 8
+ground.front = 8 
+air.back = 8
+air.front = 8
+height = 22
+attack.dist = 0 
+proj.attack.dist = 0
+proj.doscale = 0
+head.pos = 0, -19
+mid.pos = 0, -8
+shadowoffset = 0
+draw.offset = 0, 0 
+
+[Velocity]
+walk.fwd = 0
+walk.back = 0
+run.fwd = 0, 0
+run.back = 0, 0
+jump.neu = 0, 0
+jump.back = 0
+jump.fwd = 0
+runjump.back = 0, 0
+runjump.fwd = 0, 0
+
+[Movement]
+airjump.num = 0
+airjump.height = 0
+yaccel = 0.5
+stand.friction = 0.85
+crouch.friction = 0.85
+stand.friction.threshold = 1.0
+crouch.friction.threshold = 1.0
+air.gethit.groundlevel = 25
+air.gethit.groundrecover.ground.threshold = -20
+air.gethit.groundrecover.groundlevel = 10
+air.gethit.airrecover.threshold = -1
+air.gethit.airrecover.yaccel = 0.35
+air.gethit.trip.groundlevel = 15
+down.bounce.offset = 0, 20
+down.bounce.yaccel = 0.4
+down.bounce.groundlevel = 12
+down.friction.threshold = 0.5
+
+[Quotes]
+victory1 = "Quack!"

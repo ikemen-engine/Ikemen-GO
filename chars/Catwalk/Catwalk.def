@@ -1,0 +1,51 @@
+; __________________________________
+;| Catwalk by Phantom.of.the.Server |
+; ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+;====================<DEFINITION>====================
+[Info]
+name        = "Catwalk"
+displayname = "Catwalk"
+versiondate = 01,12,2010
+mugenversion= 1.0
+author      = "Phantom.of.the.Server"
+pal.defaults= 1,2,3,4,5,6,7,8,9,10,11,12
+localcoord  = 320,240
+
+[Files]
+cmd     = Command.cmd
+cns     = Constants.cns
+st      = States.st
+st1     = CONFIG.txt
+stcommon= common1.cns
+sprite  = Sprite.sff
+anim    = Anim.air
+sound   = Sound.snd
+;ai      = ai.ai
+pal1    = Palettes/Default.act
+pal2    = Palettes/GreenFill.act
+pal3    = Palettes/RedFill.act
+pal4    = Palettes/TealFill.act
+pal5    = Palettes/YellowFill.act
+pal6    = Palettes/PinkFill.act
+pal7    = Palettes/PurpleFill.act
+pal8    = Palettes/MagentaFill.act
+pal9    = Palettes/OrangeFill.act
+pal12   = Palettes/GreyFill.act
+
+[Palette Keymap]
+a = 1
+b = 2
+c = 3
+x = 4
+y = 5
+z = 6
+a2 = 7
+b2 = 8
+c2 = 9
+x2 = 10
+y2 = 11
+z2 = 12
+
+;[Arcade]
+;intro.storyboard = intro.def
+;ending.storyboard= ending.def

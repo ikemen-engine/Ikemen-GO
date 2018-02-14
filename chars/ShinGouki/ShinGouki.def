@@ -1,0 +1,56 @@
+; _____________________________________
+;| Shin Gouki by Phantom.of.the.Server |
+; ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+;====================<DEFINITION>====================
+[Info]
+name        = "Shin Gouki"
+displayname = "Shin Gouki"
+versiondate = 01,14,2010
+mugenversion= 1.0
+author      = "Phantom.of.the.Server"
+pal.defaults= 4,5,6,1,2,3,10,11,12,7,8,9
+localcoord  = 320,240
+
+[Files]
+cmd     = Command.cmd
+cns     = Constants.cns
+st      = States/System.st
+st1     = States/Normal.st
+st2     = States/Specials.st
+st3     = States/Supers.st
+st4     = States/Helpers.st
+stcommon= common1.cns
+sprite  = Sprite.sff
+anim    = Anim.air
+sound   = Sound.snd
+;ai      = ai.ai
+pal1    = Palettes/Orange.act
+pal2    = Palettes/Teal.act
+pal3    = Palettes/Green.act
+pal4    = Palettes/Purple.act
+pal5    = Palettes/Black.act
+pal6    = Palettes/Red.act
+pal7    = Palettes/Dark.act
+pal8    = Palettes/Goku.act
+pal9    = Palettes/Silent.act
+pal10   = Palettes/SvCGhost.act
+pal11   = Palettes/SFZ.act
+pal12   = Palettes/GoukiCvSGrey.act
+
+[Palette Keymap]
+a = 1
+b = 2
+c = 3
+x = 4
+y = 5
+z = 6
+a2 = 7
+b2 = 8
+c2 = 9
+x2 = 10
+y2 = 11
+z2 = 12
+
+;[Arcade]
+;intro.storyboard = intro.def
+;ending.storyboard = ending.def

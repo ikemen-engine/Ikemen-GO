@@ -1,0 +1,84 @@
+; _____________________________________
+;| Shin Gouki by Phantom.of.the.Server |
+; ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+;===================<CONSTANTS>================
+
+[Data]
+life = 850
+power = 3000
+attack = 100
+defence = 100
+fall.defence_up = 50
+liedown.time = 30
+airjuggle = 15
+sparkno = s6010
+guard.sparkno = s6000
+KO.echo = 0
+volume = 0
+IntPersistIndex = 0
+FloatPersistIndex = 0
+
+[Size]
+xscale = 1
+yscale = 1
+ground.back = 18
+ground.front = 18
+air.back = 18 
+air.front = 18 
+height = 60 
+attack.dist = 160 
+proj.attack.dist = 90
+proj.doscale = 0
+head.pos = 7, -91
+mid.pos = -1, -59
+shadowoffset = 0
+draw.offset = 0, 0 
+
+[Velocity]
+walk.fwd = 4.5
+walk.back = -3.75
+run.fwd = 7, 0
+run.back = -14, 0
+jump.neu = 0, -10
+jump.back = -3.75
+jump.fwd = 3.75
+runjump.back = -6, -8.5
+runjump.fwd = 6, -8.5 
+
+[Movement]
+airjump.num = 0
+airjump.height = 0
+yaccel = 0.5
+stand.friction = 0.85
+crouch.friction = 0.85
+stand.friction.threshold = 1.0
+crouch.friction.threshold = 1.0
+air.gethit.groundlevel = 25
+air.gethit.groundrecover.ground.threshold = -20
+air.gethit.groundrecover.groundlevel = 10
+air.gethit.airrecover.threshold = -1
+air.gethit.airrecover.yaccel = 0.35
+air.gethit.trip.groundlevel = 15
+down.bounce.offset = 0, 20
+down.bounce.yaccel = 0.4
+down.bounce.groundlevel = 12
+down.friction.threshold = 0.5
+
+[Quotes]
+victory1 = "Be gone with you!"
+victory2 = "There are many paths to hell. Which will you choose?"
+victory3 = "I alone have mastered the art of combat!"
+victory4 = "Once you face me, there is no turning back!"
+victory5 = "Open your eyes and look upon the man who has broken you!"
+victory6 = "If you insist on speaking, do so with your fists!"
+victory7 = "The absurdity of your attempt to defeat me is... entertaining."
+victory8 = "A weakling such as yourself doesn't deserve fists to fight with."
+victory9 = "Fade to nothingness! Your weakness disgusts me!"
+victory10 = "It's time for you to experience a thousand deaths in one instant!"
+victory11 = "Shall I dismember you to demonstrate your weakness?"
+victory12 = "To challenge me is to accept death!"
+victory13 = "You are permanently crippled! Accept your defeat!"
+victory14 = "There is no good or evil, only the fight!"
+
+victory50 = "You disappoint me, child."; Ryu
+victory51 = "You do not qualify for a deathmatch!"; Gen

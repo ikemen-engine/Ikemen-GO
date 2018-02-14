@@ -1,0 +1,73 @@
+; Scrolling ending credits
+
+; This storyboard has just one scene. It makes use of a background
+; with associated background controllers to scroll the credits
+; upwards.
+; Overlay anims are used to put the darkening bands at the top
+; and bottom of the screen for a "fading text" effect.
+
+[Info]
+localcoord = 320,240
+
+[SceneDef]
+spr = credits.sff
+startscene = 0         ;Starting scene number (for debugging)
+
+;------------------------------------
+[Scene 0]
+; Fade
+fadeout.time = 90
+fadeout.col = 0,0,0    ;Use 255,255,255 for white-fade
+; Screen color
+clearcolor = 0,0,0
+; BG
+bg.name = BG0
+; Overlay Anims (from 0 to 9)
+layerall.pos = 0,0     ;Default position for all layers
+layer0.anim =  10      ;Anim action number
+layer0.offset = 0,24   ;Position offset
+layer0.starttime = 0   ;Time to start display
+layer1.anim =  11
+layer1.offset = 0,215
+; Music
+bgm = credits.mp3      ;Name of music file to play
+bgm.loop = 0
+; Total time
+end.time = 1600
+
+;------------------------------------
+;BG def for scrolling credit text
+[BG0Def]
+
+[BG0 Credits]
+id = 1
+type = normal
+spriteno = 0,0
+start = 0,240
+window = 0,24, 319,215
+
+;BG controller to stop text from scrolling
+[BG0CtrlDef Credits]
+CtrlID = 1
+looptime = -1
+
+[BG0Ctrl Start scrolling]
+type = VelSet
+time = 0
+y = -1
+
+[BG0Ctrl Stop scrolling]
+type = VelSet
+time = 1270
+y = 0
+
+;------------------------------------
+;Top fade bar
+[Begin Action 10]
+10,0, 0,0, -1, , S
+
+;------------------------------------
+;Bottom fade bar
+[Begin Action 11]
+10,0, 0,0, -1, V, S
+

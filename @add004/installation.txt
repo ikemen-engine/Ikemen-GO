@@ -1,0 +1,7 @@
+1. Copy files from '@add004/data' directory to ikemen data directory
+2. Open screenpack DEF file (data/system.def by default) and change lifebar path under [Files] section to 'data/res/fight_240p.def' (or any other included in add004 if you download whole package)
+3. Start game, go to 'Options' -> 'Gameplay Settings' and change 'Simul Type' setting from 'Simul' to 'Tag'
+
+Characters don't need to be patched in order to work (add004 character's code is added to common.air and common1.cns which work globally).
+
+In future (hopefully) both Simul and Tag modes will be selectable from the 'Team Menu' at the same time. This feature is currently disabled due to my limited understanding of Ikemen GO source code.
