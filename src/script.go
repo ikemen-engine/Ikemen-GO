@@ -346,7 +346,16 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetTile(int32(numArg(l, 2)), int32(numArg(l, 3)))
+		var sx, sy int32 = 0, 0
+		if l.GetTop() >= 4 {
+			sx = int32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				sy = int32(numArg(l, 5))
+			} else {
+				sy = sx
+			}
+		}
+		a.SetTile(int32(numArg(l, 2)), int32(numArg(l, 3)), sx, sy)
 		return 0
 	})
 	luaRegister(l, "animSetColorKey", func(*lua.LState) int {

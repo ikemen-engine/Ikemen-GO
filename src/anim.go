@@ -872,8 +872,8 @@ func (a *Anim) AddPos(x, y float32) {
 	a.x += x
 	a.y += y
 }
-func (a *Anim) SetTile(x, y int32) {
-	a.anim.tile[2], a.anim.tile[3] = x, y
+func (a *Anim) SetTile(x, y, sx, sy int32) {
+	a.anim.tile[2], a.anim.tile[3], a.anim.tile[0], a.anim.tile[1] = x, y, sx, sy
 }
 func (a *Anim) SetColorKey(mask int16) {
 	a.anim.mask = mask
