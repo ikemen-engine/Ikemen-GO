@@ -206,6 +206,7 @@ type System struct {
 	audioClose              chan bool
 	nomusic                 bool
 	workBe                  []BytecodeExp
+	teamLifeShare           bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -1368,7 +1369,7 @@ func (s *System) fight() (reload bool) {
 				case TM_Simul:
 					lm *= s.team1VS2Life
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] {
+					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.matchWins[(i+1)&1])
 					}
@@ -1376,31 +1377,33 @@ func (s *System) fight() (reload bool) {
 			case TM_Simul:
 				switch s.tmode[(i+1)&1] {
 				case TM_Simul:
-					if s.numSimul[(i+1)&1] < s.numSimul[i&1] {
+					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] {
+					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
 					}
 				default:
-					lm /= float32(s.numSimul[i&1])
+					if sys.teamLifeShare {
+						lm /= float32(s.numSimul[i&1])
+					}
 				}
 			case TM_Turns:
 				switch s.tmode[(i+1)&1] {
 				case TM_Single:
-					if s.matchWins[i&1] < s.numTurns[i&1] {
+					if s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
 					}
 				case TM_Simul:
-					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] {
+					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * s.team1VS2Life *
 							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
 							float32(s.numTurns[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numTurns[i&1] {
+					if s.numTurns[(i+1)&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
 					}
 				}

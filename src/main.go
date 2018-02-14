@@ -83,6 +83,7 @@ func main() {
   "AiRamping":true,
   "AutoGuard":false,
   "TeamPowerShare":false,
+  "TeamLifeShare":false,
   "IP":{
   }
 }
@@ -104,6 +105,7 @@ func main() {
 			Buttons  []interface{}
 		}
 		NumTag        int
+		TeamLifeShare bool
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -150,6 +152,7 @@ func main() {
 			}
 		}
 	}
+	sys.teamLifeShare = tmp.TeamLifeShare
 	os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("debug/log.txt")
 	defer closeLog(log)

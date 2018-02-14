@@ -238,6 +238,10 @@ func scriptCommonInit(l *lua.LState) {
 		sys.match = int32(numArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setLifeShare", func(l *lua.LState) int {
+		sys.teamLifeShare = boolArg(l, 1)
+		return 0
+	})
 }
 
 // System Script
