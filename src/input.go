@@ -1305,7 +1305,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				tilde = false
 			case 'x':
 				if tilde {
-					ce.key = append(ce.key, kr.x)
+					ce.key = append(ce.key, kr.nx)
 				} else {
 					ce.key = append(ce.key, kr.x)
 				}
