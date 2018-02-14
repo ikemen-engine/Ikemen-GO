@@ -1729,7 +1729,7 @@ func (s *Select) addCahr(def string) {
 	} else {
 		def += ".def"
 	}
-	if def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0 {
+	if strings.ToLower(def[0 : 6]) != "chars/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
 		def = "chars/" + def
 	}
 	if def = FileExist(def); len(def) == 0 {
