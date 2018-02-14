@@ -315,6 +315,246 @@ func StringToKey(s string) glfw.Key {
 	return glfw.KeyUnknown
 }
 
+func KeyToString(k glfw.Key) string {
+	switch k {
+	case glfw.KeyEnter:
+		return "RETURN"
+	case glfw.KeyEscape:
+		return "ESCAPE"
+	case glfw.KeyBackspace:
+		return "BACKSPACE"
+	case glfw.KeyTab:
+		return "TAB"
+	case glfw.KeySpace:
+		return "SPACE"
+	case glfw.KeyApostrophe:
+		return "QUOTE"
+	case glfw.KeyComma:
+		return "COMMA"
+	case glfw.KeyMinus:
+		return "MINUS"
+	case glfw.KeyPeriod:
+		return "PERIOD"
+	case glfw.KeySlash:
+		return "SLASH"
+	case glfw.Key0:
+		return "0"
+	case glfw.Key1:
+		return "1"
+	case glfw.Key2:
+		return "2"
+	case glfw.Key3:
+		return "3"
+	case glfw.Key4:
+		return "4"
+	case glfw.Key5:
+		return "5"
+	case glfw.Key6:
+		return "6"
+	case glfw.Key7:
+		return "7"
+	case glfw.Key8:
+		return "8"
+	case glfw.Key9:
+		return "9"
+	case glfw.KeySemicolon:
+		return "SEMICOLON"
+	case glfw.KeyEqual:
+		return "EQUALS"
+	case glfw.KeyLeftBracket:
+		return "LEFTBRACKET"
+	case glfw.KeyBackslash:
+		return "BACKSLASH"
+	case glfw.KeyRightBracket:
+		return "RIGHTBRACKET"
+	case glfw.KeyGraveAccent:
+		return "BACKQUOTE"
+	case glfw.KeyA:
+		return "a"
+	case glfw.KeyB:
+		return "b"
+	case glfw.KeyC:
+		return "c"
+	case glfw.KeyD:
+		return "d"
+	case glfw.KeyE:
+		return "e"
+	case glfw.KeyF:
+		return "f"
+	case glfw.KeyG:
+		return "g"
+	case glfw.KeyH:
+		return "h"
+	case glfw.KeyI:
+		return "i"
+	case glfw.KeyJ:
+		return "j"
+	case glfw.KeyK:
+		return "k"
+	case glfw.KeyL:
+		return "l"
+	case glfw.KeyM:
+		return "m"
+	case glfw.KeyN:
+		return "n"
+	case glfw.KeyO:
+		return "o"
+	case glfw.KeyP:
+		return "p"
+	case glfw.KeyQ:
+		return "q"
+	case glfw.KeyR:
+		return "r"
+	case glfw.KeyS:
+		return "s"
+	case glfw.KeyT:
+		return "t"
+	case glfw.KeyU:
+		return "u"
+	case glfw.KeyV:
+		return "v"
+	case glfw.KeyW:
+		return "w"
+	case glfw.KeyX:
+		return "x"
+	case glfw.KeyY:
+		return "y"
+	case glfw.KeyZ:
+		return "z"
+	case glfw.KeyCapsLock:
+		return "CAPSLOCK"
+	case glfw.KeyF1:
+		return "F1"
+	case glfw.KeyF2:
+		return "F2"
+	case glfw.KeyF3:
+		return "F3"
+	case glfw.KeyF4:
+		return "F4"
+	case glfw.KeyF5:
+		return "F5"
+	case glfw.KeyF6:
+		return "F6"
+	case glfw.KeyF7:
+		return "F7"
+	case glfw.KeyF8:
+		return "F8"
+	case glfw.KeyF9:
+		return "F9"
+	case glfw.KeyF10:
+		return "F10"
+	case glfw.KeyF11:
+		return "F11"
+	case glfw.KeyF12:
+		return "F12"
+	case glfw.KeyPrintScreen:
+		return "PRINTSCREEN"
+	case glfw.KeyScrollLock:
+		return "SCROLLLOCK"
+	case glfw.KeyPause:
+		return "PAUSE"
+	case glfw.KeyInsert:
+		return "INSERT"
+	case glfw.KeyHome:
+		return "HOME"
+	case glfw.KeyPageUp:
+		return "PAGEUP"
+	case glfw.KeyDelete:
+		return "DELETE"
+	case glfw.KeyEnd:
+		return "END"
+	case glfw.KeyPageDown:
+		return "PAGEDOWN"
+	case glfw.KeyRight:
+		return "RIGHT"
+	case glfw.KeyLeft:
+		return "LEFT"
+	case glfw.KeyDown:
+		return "DOWN"
+	case glfw.KeyUp:
+		return "UP"
+	case glfw.KeyNumLock:
+		return "NUMLOCKCLEAR"
+	case glfw.KeyKPDivide:
+		return "KP_DIVIDE"
+	case glfw.KeyKPMultiply:
+		return "KP_MULTIPLY"
+	case glfw.KeyKPSubtract:
+		return "KP_MINUS"
+	case glfw.KeyKPAdd:
+		return "KP_PLUS"
+	case glfw.KeyKPEnter:
+		return "KP_ENTER"
+	case glfw.KeyKP1:
+		return "KP_1"
+	case glfw.KeyKP2:
+		return "KP_2"
+	case glfw.KeyKP3:
+		return "KP_3"
+	case glfw.KeyKP4:
+		return "KP_4"
+	case glfw.KeyKP5:
+		return "KP_5"
+	case glfw.KeyKP6:
+		return "KP_6"
+	case glfw.KeyKP7:
+		return "KP_7"
+	case glfw.KeyKP8:
+		return "KP_8"
+	case glfw.KeyKP9:
+		return "KP_9"
+	case glfw.KeyKP0:
+		return "KP_0"
+	case glfw.KeyKPDecimal:
+		return "KP_PERIOD"
+	case glfw.KeyKPEqual:
+		return "KP_EQUALS"
+	case glfw.KeyF13:
+		return "F13"
+	case glfw.KeyF14:
+		return "F14"
+	case glfw.KeyF15:
+		return "F15"
+	case glfw.KeyF16:
+		return "F16"
+	case glfw.KeyF17:
+		return "F17"
+	case glfw.KeyF18:
+		return "F18"
+	case glfw.KeyF19:
+		return "F19"
+	case glfw.KeyF20:
+		return "F20"
+	case glfw.KeyF21:
+		return "F21"
+	case glfw.KeyF22:
+		return "F22"
+	case glfw.KeyF23:
+		return "F23"
+	case glfw.KeyF24:
+		return "F24"
+	case glfw.KeyMenu:
+		return "MENU"
+	case glfw.KeyLeftControl:
+		return "LCTRL"
+	case glfw.KeyLeftShift:
+		return "LSHIFT"
+	case glfw.KeyLeftAlt:
+		return "LALT"
+	case glfw.KeyLeftSuper:
+		return "LGUI"
+	case glfw.KeyRightControl:
+		return "RCTRL"
+	case glfw.KeyRightShift:
+		return "RSHIFT"
+	case glfw.KeyRightAlt:
+		return "RALT"
+	case glfw.KeyRightSuper:
+		return "RGUI"
+	}
+	return ""
+}
+
 type ShortcutScript struct {
 	Activate bool
 	Script   string
@@ -348,14 +588,20 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 	switch action {
 	case glfw.Release:
 		sys.keySatate[key] = false
+		sys.keyInput = glfw.KeyUnknown
+		sys.keyString = ""
 	case glfw.Press:
 		sys.keySatate[key] = true
+		sys.keyInput = key
 		sys.esc = sys.esc ||
 			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			v.Activate = v.Activate || k.Test(key, mk)
 		}
 	}
+}
+func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
+	sys.keyString = string(char)
 }
 
 var joystick = [...]glfw.Joystick{glfw.Joystick1, glfw.Joystick2,

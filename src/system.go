@@ -56,6 +56,8 @@ var sys = System{
 	workpal:          make([]uint32, 256),
 	errLog:           log.New(os.Stderr, "", 0),
 	audioClose:       make(chan bool, 1),
+	keyInput:         glfw.KeyUnknown,
+	keyString:        "",
 }
 
 type TeamMode int32
@@ -210,6 +212,8 @@ type System struct {
 	fullscreen              bool
 	commonAir               string
 	commonCmd               string
+	keyInput                glfw.Key
+	keyString               string
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -228,6 +232,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(err)
 	s.window.MakeContextCurrent()
 	s.window.SetKeyCallback(keyCallback)
+	s.window.SetCharModsCallback(charCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
 	RenderInit()

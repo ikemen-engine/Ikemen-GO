@@ -825,6 +825,31 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 	})
+	luaRegister(l, "getKey", func(*lua.LState) int {
+		s := ""
+		if sys.keyInput != glfw.KeyUnknown {
+			s = KeyToString(sys.keyInput)
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
+	luaRegister(l, "getKeyText", func(*lua.LState) int {
+		s := ""
+		if sys.keyInput != glfw.KeyUnknown {
+			if sys.keyInput == glfw.KeyInsert {
+				s, _ = sys.window.GetClipboardString()
+			} else {
+				s = sys.keyString
+			}
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
+	luaRegister(l, "resetKey", func(*lua.LState) int {
+		sys.keyInput = glfw.KeyUnknown
+		sys.keyString = ""
+		return 0
+	})
 }
 
 // Trigger Script
