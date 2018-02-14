@@ -514,6 +514,16 @@ func (is IniSection) getText(name string) (str string, ok bool, err error) {
 	str = str[1 : len(str)-1]
 	return
 }
+func (is IniSection) getString(name string) (str string, ok bool) {
+	str, ok = is[name]
+	if !ok {
+		return
+	}
+	if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
+		str = str[1 : len(str)-1]
+	}
+	return
+}
 
 type Layout struct {
 	offset  [2]float32

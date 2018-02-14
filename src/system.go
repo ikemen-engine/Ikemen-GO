@@ -1667,11 +1667,11 @@ func (wm wincntMap) getLevel(p int) int32 {
 }
 
 type SelectChar struct {
-	def, name, sprite    string
-	sportrait, lportrait *Sprite
+	def, name, sprite, intro_storyboard, ending_storyboard string
+	sportrait, lportrait, vsportrait, vportrait *Sprite
 }
 type SelectStage struct {
-	def, name string
+	def, name, zoomout, zoomin, bgmusic, bgmvolume string
 }
 type Select struct {
 	columns, rows   int
@@ -1684,12 +1684,17 @@ type Select struct {
 	curStageNo      int
 	selected        [2][][2]int
 	selectedStageNo int
+	sportrait       [2]int16
+	lportrait       [2]int16
+	vsportrait      [2]int16
+	vportrait       [2]int16
 }
 
 func newSelect() *Select {
 	return &Select{columns: 5, rows: 2, randomscl: [...]float32{1, 1},
 		cellsize: [...]float32{29, 29}, cellscale: [...]float32{1, 1},
-		selectedStageNo: -1}
+		selectedStageNo: -1, sportrait: [...]int16{9000, 0}, lportrait: [...]int16{9000, 1},
+		vsportrait: [...]int16{9000, 1}, vportrait: [...]int16{9000, 2}}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -1726,6 +1731,13 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
+func (s *Select) GetStageInfo(n int) (zoomin, zoomout, bgmusic, bgmvolume string) {
+	n %= len(s.stagelist) + 1
+	if n < 0 {
+		n += len(s.stagelist) + 1
+	}
+	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].bgmusic, s.stagelist[n-1].bgmvolume
+}
 func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
@@ -1756,7 +1768,7 @@ func (s *Select) addCahr(def string) {
 		return
 	}
 	sc.def = def
-	lines, i, info, files, sprite := SplitAndTrim(str, "\n"), 0, true, true, ""
+	lines, i, info, files, arcade, sprite := SplitAndTrim(str, "\n"), 0, true, true, true, ""
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
@@ -1774,18 +1786,40 @@ func (s *Select) addCahr(def string) {
 				files = false
 				sprite = is["sprite"]
 			}
+		case "arcade":
+			if arcade {
+				arcade = false
+				sc.intro_storyboard, _ = is.getString("intro.storyboard")
+				sc.ending_storyboard, _ = is.getString("ending.storyboard")
+			}
 		}
 	}
 	sc.sprite = sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
-		sc.sportrait, err = loadFromSff(file, 9000, 0)
+		sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
 		return err
 	})
 	sprite = sc.sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
-		sc.lportrait, err = loadFromSff(file, 9000, 1)
+		sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+		return err
+	})
+	LoadFile(&sprite, def, func(file string) error {
+		var err error
+		sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+		if err != nil {
+			sc.vsportrait = sc.lportrait
+		}
+		return err
+	})
+	LoadFile(&sprite, def, func(file string) error {
+		var err error
+		sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+		if err != nil {
+			sc.vportrait = sc.lportrait
+		}
 		return err
 	})
 }
@@ -1801,7 +1835,7 @@ func (s *Select) AddStage(def string) error {
 	}); err != nil {
 		return err
 	}
-	i, info := 0, true
+	i, info, camera, music := 0, true, true, true
 	s.stagelist = append(s.stagelist, SelectStage{})
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -1818,6 +1852,32 @@ func (s *Select) AddStage(def string) error {
 					if !ok {
 						ss.name = def
 					}
+				}
+			}
+		case "camera":
+			if camera {
+				camera = false
+				var ok bool
+				ss.zoomout, ok = is.getString("zoomout")
+				if !ok {
+					ss.zoomout = ""
+				}
+				ss.zoomin, ok = is.getString("zoomin")
+				if !ok {
+					ss.zoomin = ""
+				}
+			}
+		case "music":
+			if music {
+				music = false
+				var ok bool
+				ss.bgmusic, ok = is.getString("bgmusic")
+				if !ok {
+					ss.bgmusic = "100"
+				}
+				ss.bgmvolume, ok = is.getString("bgmvolume")
+				if !ok {
+					ss.bgmvolume = "100"
 				}
 			}
 		}
