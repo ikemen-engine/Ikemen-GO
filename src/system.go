@@ -208,6 +208,8 @@ type System struct {
 	workBe                  []BytecodeExp
 	teamLifeShare           bool
 	fullscreen              bool
+	commonAir               string
+	commonCmd               string
 }
 
 func (s *System) init(w, h int32) *lua.LState {

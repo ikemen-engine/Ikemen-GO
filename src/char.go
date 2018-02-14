@@ -1777,6 +1777,7 @@ func (c *Char) load(def string) error {
 		if err != nil {
 			return err
 		}
+		str = str + sys.commonAir
 		lines, i := SplitAndTrim(str, "\n"), 0
 		gi.anim = ReadAnimationTable(gi.sff, lines, &i)
 		return nil
@@ -3188,7 +3189,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
 func (c *Char) targetState(tar []int32, state int32) {
 	if state >= 0 {
 		pn := c.ss.sb.playerNo
-		if c.minus == -2 {
+		if c.minus == -2 || c.minus == -20 {
 			pn = c.playerNo
 		}
 		for _, tid := range tar {
@@ -3985,6 +3986,24 @@ func (c *Char) action() {
 			c.unsetSF(CSF_assertspecial | CSF_angledraw)
 			c.angleScalse = [...]float32{1, 1}
 			c.offset = [2]float32{}
+		}
+		c.minus = -30
+		if c.ss.sb.playerNo == c.playerNo && c.player {
+			if sb, ok := c.gi().states[-30]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -20
+		if c.player {
+			if sb, ok := c.gi().states[-20]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -10
+		if c.keyctrl && c.ss.sb.playerNo == c.playerNo {
+			if sb, ok := c.gi().states[-10]; ok {
+				sb.run(c)
+			}
 		}
 		c.minus = -3
 		if c.ss.sb.playerNo == c.playerNo && c.player {

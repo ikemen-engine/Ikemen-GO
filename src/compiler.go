@@ -6849,6 +6849,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		if err != nil {
 			return err
 		}
+		str = str + sys.commonCmd
 		lines, i = SplitAndTrim(str, "\n"), 0
 		return nil
 	}); err != nil {

@@ -64,6 +64,8 @@ func main() {
       }]
   },
   "Motif":"data/system.def",
+  "CommonAir":"data/common.air",
+  "CommonCmd":"data/common.cmd",
   "SimulType":"Simul",
   "LifeMul":100,
   "Team1VS2Life":120,
@@ -108,6 +110,8 @@ func main() {
 		NumTag        int
 		TeamLifeShare bool
 		Fullscreen    bool
+		CommonAir     string
+		CommonCmd     string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -156,6 +160,16 @@ func main() {
 	}
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
+	air, err := ioutil.ReadFile(tmp.CommonAir)
+	if err != nil {
+		fmt.Print(err)
+	}
+	sys.commonAir = string("\n") + string(air)
+	cmd, err := ioutil.ReadFile(tmp.CommonCmd)
+	if err != nil {
+		fmt.Print(err)
+	}
+	sys.commonCmd = string("\n") + string(cmd)
 	os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("debug/log.txt")
 	defer closeLog(log)
