@@ -1,37 +1,11 @@
 
-module(..., package.seeall)
+local randomtest = {}
 
-function strsplit(delimiter, text)
-  local list = {}
-  local pos = 1
-  if string.find('', delimiter, 1) then
-    if string.len(text) == 0 then
-      table.insert(list, text)
-    else
-      for i = 1, string.len(text) do
-        table.insert(list, string.sub(text, i, i))
-      end
-    end
-  else
-    while true do
-      local first, last = string.find(text, delimiter, pos)
-      if first then
-        table.insert(list, string.sub(text, pos, first-1))
-        pos = last+1
-      else
-        table.insert(list, string.sub(text, pos))
-        break
-      end
-    end
-  end
-  return list
-end
-
-function strtrim(s)
+function randomtest.strtrim(s)
   return string.match(s,'^()%s*$') and '' or string.match(s,'^%s*(.*%S)')
 end
 
-function map(func, table)
+function randomtest.map(func, table)
   local dest = {}
   for k, v in pairs(table) do
     dest[k] = func(v)
@@ -40,17 +14,17 @@ function map(func, table)
 end
 
 
-tuyoiBorder = 0
-juuni = 12
-moudeta = {}
-rank = 0
-saikyou = false
-roster = {}
-debugText = ''
-numChars = 0
-nextChar = 1
+local tuyoiBorder = 0
+local juuni = 12
+local moudeta = {}
+local rank = 0
+local saikyou = false
+local roster = {}
+local debugText = ''
+local numChars = 0
+local nextChar = 1
 
-function addMoudeta(rank)
+function randomtest.addMoudeta(rank)
   moudeta[#moudeta + 1] = rank
   local max =
     math.floor(
@@ -59,7 +33,7 @@ function addMoudeta(rank)
     table.remove(moudeta, 1)
   end
 end
-function randRank()
+function randomtest.randRank()
   local r = 0
   while true do
     r = math.random(1, tuyoiBorder + juuni - 2);
@@ -77,15 +51,13 @@ function randRank()
   return r
 end
 
-function eachAllChars(f)
-  for cel = 0, numSelCells()-1 do
-    if getCharFileName(cel) ~= 'randomselect' and getCharName(cel) ~= '' then
-      f(cel)
-    end
+function randomtest.eachAllChars(f)
+  for cel = 1, #main.t_randomChars do
+    f(cel-1)
   end
 end
 
-function rakuBenry()
+function randomtest.rakuBenry()
   local alf = 'autolevel.txt'
   local veljnz = {}
   local winct = {}
@@ -93,7 +65,7 @@ function rakuBenry()
   local fp = io.open(alf, 'r')
   if fp then
     for line in fp:lines() do
-      local tmp = strsplit(',', line)
+      local tmp = main.f_strsplit(',', line)
       if #tmp >= 2 then
         for i = 1, 4 do
           if i == 4 then
@@ -102,13 +74,13 @@ function rakuBenry()
             if string.byte(tmp[1], i) ~= string.byte(buf, i) then break end
           end
         end
-        winct[tmp[1]] = map(tonumber, strsplit(' ', strtrim(tmp[2])))
+        winct[tmp[1]] = randomtest.map(tonumber, main.f_strsplit(' ', randomtest.strtrim(tmp[2])))
       end
     end
     io.close(fp)
   end
   numChars = 0
-  eachAllChars(function(cel)
+  randomtest.eachAllChars(function(cel)
     numChars = numChars + 1
   end)
   local tuyoninzu = math.floor(numChars / (juuni*10))
@@ -125,8 +97,8 @@ function rakuBenry()
   local kai = {}
   local bimyou = {}
   local tuyocnt = 0
-  local ran = randRank()
-  eachAllChars(function(cel)
+  local ran = randomtest.randRank()
+  randomtest.eachAllChars(function(cel)
     if #veljnz < cel*12 then
       for i = #veljnz + 1, cel*12 do
         veljnz[i] = 0
@@ -174,8 +146,8 @@ function rakuBenry()
     for n = 1, 3 do
       if #rand >= tuyoninzu then break end
       rand = {}
-      ran = randRank()
-      eachAllChars(function(cel)
+      ran = randomtest.randRank()
+      randomtest.eachAllChars(function(cel)
         local tmp = 0
         for j = 1, 12 do
           tmp = tmp + veljnz[cel*12 + j]
@@ -187,12 +159,12 @@ function rakuBenry()
     if #rand >= tuyoninzu then
       charAdd(rand, #rand)
       rank = ran
-      addMoudeta(rank)
+      randomtest.addMoudeta(rank)
     elseif tuyocnt >= tuyoninzu then
       charAdd(tsuyoshi, #tsuyoshi)
       rank = tuyoiBorder+juuni-1
     else
-      addMoudeta(tuyoiBorder + (juuni-2) - math.floor(juuni/3))
+      randomtest.addMoudeta(tuyoiBorder + (juuni-2) - math.floor(juuni/3))
       charAdd(kai, #kai)
       rank = -1
     end
@@ -209,7 +181,7 @@ function rakuBenry()
       end
     end
   end
-  eachAllChars(function(cel)
+  randomtest.eachAllChars(function(cel)
     buf = buf .. getCharFileName(cel) .. ','
     for j = 1, 12 do
       buf = buf .. ' ' .. veljnz[cel*12 + j]
@@ -221,7 +193,7 @@ function rakuBenry()
   io.close(alv)
 end
 
-function randSel(pno, winner)
+function randomtest.randSel(pno, winner)
   if winner > 0 and (pno == winner) == not saikyou then return end
   local team
   if rank == 0 or rank == 12 or saikyou then
@@ -234,44 +206,44 @@ function randSel(pno, winner)
   setTeamMode(pno, team, math.random(1, 4))
   local tmp = 0
   while tmp < 2 do
-    tmp = selectChar(pno, roster[nextChar], math.random(1, 12))
+    tmp = selectChar(pno, roster[nextChar], math.random(1, 6))
     nextChar = nextChar + 1
     if nextChar > #roster then nextChar = 1 end
   end
 end
 
-function rosterTxt()
+function randomtest.rosterTxt()
   local str = "Rank: " .. rank .. ' ' .. debugText
   for i = 1, #roster do
     str = str .. '\n' .. getCharFileName(roster[i])
   end
-  dscr = io.open('script/randomroster.txt', 'w')
+  local dscr = io.open('debug/randomtest.txt', 'w')
   dscr:write(str)
   io.close(dscr)
 end
 
 
-function init()
+function randomtest.init()
   for i = 1, 8 do
     setCom(i, 8)
   end
   setAutoLevel(true)
   setMatchNo(1)
   selectStage(0)
-  rakuBenry()
+  randomtest.rakuBenry()
   winner = 0
   wins = 0
-  rosterTxt()
+  randomtest.rosterTxt()
   nextChar = 1
   saikyou = rank == tuyoiBorder+juuni-1
 end
 
-function run()
-  init()
+function randomtest.run()
+  randomtest.init()
   refresh()
   while not esc() do
-    randSel(1, winner)
-    randSel(2, winner)
+    randomtest.randSel(1, winner)
+    randomtest.randSel(2, winner)
     loadStart()
     local oldwinner = winner
     winner = game()
@@ -284,8 +256,10 @@ function run()
     end
     setMatchNo(wins)
     if winner <= 0 or wins >= 20 or wins == oldwins then
-      init()
+      randomtest.init()
     end
     refresh()
   end
 end
+
+return randomtest
