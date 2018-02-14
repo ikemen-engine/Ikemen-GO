@@ -84,6 +84,7 @@ func main() {
   "AutoGuard":false,
   "TeamPowerShare":false,
   "TeamLifeShare":false,
+  "Fullscreen":false,
   "IP":{
   }
 }
@@ -106,6 +107,7 @@ func main() {
 		}
 		NumTag        int
 		TeamLifeShare bool
+		Fullscreen    bool
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -153,6 +155,7 @@ func main() {
 		}
 	}
 	sys.teamLifeShare = tmp.TeamLifeShare
+	sys.fullscreen = tmp.Fullscreen
 	os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("debug/log.txt")
 	defer closeLog(log)

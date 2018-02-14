@@ -207,6 +207,7 @@ type System struct {
 	nomusic                 bool
 	workBe                  []BytecodeExp
 	teamLifeShare           bool
+	fullscreen              bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -215,8 +216,13 @@ func (s *System) init(w, h int32) *lua.LState {
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	s.setWindowSize(w, h)
 	var err error
-	s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-		"Ikemen GO", nil, nil)
+	if s.fullscreen {
+		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
+			"Ikemen GO", glfw.GetPrimaryMonitor(), nil)
+	} else {
+		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
+			"Ikemen GO", nil, nil)
+	}
 	chk(err)
 	s.window.MakeContextCurrent()
 	s.window.SetKeyCallback(keyCallback)
