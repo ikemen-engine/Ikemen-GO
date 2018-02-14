@@ -398,6 +398,14 @@ func systemScriptInit(l *lua.LState) {
 		a.Draw()
 		return 0
 	})
+	luaRegister(l, "animReset", func(*lua.LState) int {
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		a.ResetFrames()
+		return 0
+	})
 	luaRegister(l, "enterNetPlay", func(*lua.LState) int {
 		if sys.netInput != nil {
 			l.RaiseError("すでに通信中です。")

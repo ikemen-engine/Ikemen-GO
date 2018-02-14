@@ -900,3 +900,6 @@ func (a *Anim) Draw() {
 			0, 0, 0, nil, false)
 	}
 }
+func (a *Anim) ResetFrames() {
+	a.anim.Reset()
+}
