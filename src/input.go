@@ -51,6 +51,8 @@ const (
 	CK_y
 	CK_z
 	CK_s
+	CK_v
+	CK_w
 	CK_na
 	CK_nb
 	CK_nc
@@ -58,7 +60,9 @@ const (
 	CK_ny
 	CK_nz
 	CK_ns
-	CK_Last = CK_ns
+	CK_nv
+	CK_nw
+	CK_Last = CK_nw
 )
 
 type NetState int
@@ -387,7 +391,7 @@ func JoystickState(joy, button int) bool {
 	return btns[button] != 0
 }
 
-type KeyConfig struct{ Joy, u, d, l, r, a, b, c, x, y, z, s int }
+type KeyConfig struct{ Joy, u, d, l, r, a, b, c, x, y, z, s, v, w int }
 
 func (kc KeyConfig) U() bool { return JoystickState(kc.Joy, kc.u) }
 func (kc KeyConfig) D() bool { return JoystickState(kc.Joy, kc.d) }
@@ -400,6 +404,8 @@ func (kc KeyConfig) X() bool { return JoystickState(kc.Joy, kc.x) }
 func (kc KeyConfig) Y() bool { return JoystickState(kc.Joy, kc.y) }
 func (kc KeyConfig) Z() bool { return JoystickState(kc.Joy, kc.z) }
 func (kc KeyConfig) S() bool { return JoystickState(kc.Joy, kc.s) }
+func (kc KeyConfig) V() bool { return JoystickState(kc.Joy, kc.v) }
+func (kc KeyConfig) W() bool { return JoystickState(kc.Joy, kc.w) }
 
 type InputBits int32
 
@@ -415,7 +421,9 @@ const (
 	IB_Y
 	IB_Z
 	IB_S
-	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z
+	IB_V
+	IB_W
+	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_V | IB_W
 )
 
 func (ib *InputBits) SetInput(in int) {
@@ -425,7 +433,8 @@ func (ib *InputBits) SetInput(in int) {
 			Btoi(sys.keyConfig[in].R())<<3 | Btoi(sys.keyConfig[in].A())<<4 |
 			Btoi(sys.keyConfig[in].B())<<5 | Btoi(sys.keyConfig[in].C())<<6 |
 			Btoi(sys.keyConfig[in].X())<<7 | Btoi(sys.keyConfig[in].Y())<<8 |
-			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10)
+			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10 |
+			Btoi(sys.keyConfig[in].V())<<11 | Btoi(sys.keyConfig[in].W())<<12)
 	}
 }
 func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
@@ -436,23 +445,23 @@ func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
 		b, f = ib&IB_L != 0, ib&IB_R != 0
 	}
 	cb.Input(b, ib&IB_D != 0, f, ib&IB_U != 0, ib&IB_A != 0, ib&IB_B != 0,
-		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0)
+		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0, ib&IB_V != 0, ib&IB_W != 0)
 }
 
 type CommandKeyRemap struct {
-	a, b, c, x, y, z, s, na, nb, nc, nx, ny, nz, ns CommandKey
+	a, b, c, x, y, z, s, v, w, na, nb, nc, nx, ny, nz, ns, nv, nw CommandKey
 }
 
 func NewCommandKeyRemap() *CommandKeyRemap {
-	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s,
-		CK_na, CK_nb, CK_nc, CK_nx, CK_ny, CK_nz, CK_ns}
+	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_v, CK_w,
+		CK_na, CK_nb, CK_nc, CK_nx, CK_ny, CK_nz, CK_ns, CK_nv, CK_nw}
 }
 
 type CommandBuffer struct {
-	Bb, Db, Fb, Ub             int32
-	ab, bb, cb, xb, yb, zb, sb int32
-	B, D, F, U                 int8
-	a, b, c, x, y, z, s        int8
+	Bb, Db, Fb, Ub                     int32
+	ab, bb, cb, xb, yb, zb, sb, vb, wb int32
+	B, D, F, U                         int8
+	a, b, c, x, y, z, s, v, w          int8
 }
 
 func NewCommandBuffer() (c *CommandBuffer) {
@@ -462,9 +471,9 @@ func NewCommandBuffer() (c *CommandBuffer) {
 }
 func (__ *CommandBuffer) Reset() {
 	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
-		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1}
+		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, v: -1, w: -1}
 }
-func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s bool) {
+func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, v, w bool) {
 	if (B && !F) != (__.B > 0) {
 		__.Bb = 0
 		__.B *= -1
@@ -520,6 +529,16 @@ func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s bool) {
 		__.s *= -1
 	}
 	__.sb += int32(__.s)
+	if v != (__.v > 0) {
+		__.vb = 0
+		__.v *= -1
+	}
+	__.vb += int32(__.v)
+	if w != (__.w > 0) {
+		__.wb = 0
+		__.w *= -1
+	}
+	__.wb += int32(__.w)
 }
 func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 	var B, F bool
@@ -529,7 +548,7 @@ func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 		B, F = ib&IB_L != 0, ib&IB_R != 0
 	}
 	__.Input(B, ib&IB_D != 0, F, ib&IB_U != 0, ib&IB_A != 0, ib&IB_B != 0,
-		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0)
+		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0, ib&IB_V != 0, ib&IB_W != 0)
 }
 func (__ *CommandBuffer) State(ck CommandKey) int32 {
 	switch ck {
@@ -579,6 +598,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return __.zb
 	case CK_s:
 		return __.sb
+	case CK_v:
+		return __.vb
+	case CK_w:
+		return __.wb
 	case CK_nB:
 		return -Min(-Max(__.Db, __.Ub), __.Bb)
 	case CK_nD:
@@ -625,6 +648,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -__.zb
 	case CK_ns:
 		return -__.sb
+	case CK_nv:
+		return -__.vb
+	case CK_nw:
+		return -__.wb
 	}
 	return 0
 }
@@ -705,7 +732,7 @@ func (__ *CommandBuffer) LastDirectionTime() int32 {
 }
 func (__ *CommandBuffer) LastChangeTime() int32 {
 	return Min(__.LastDirectionTime(), Abs(__.ab), Abs(__.bb), Abs(__.cb),
-		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb))
+		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.vb), Abs(__.wb))
 }
 
 type NetBuffer struct {
@@ -1052,13 +1079,14 @@ func (fi *FileInput) Update() bool {
 }
 
 type AiInput struct {
-	dir, dt, at, bt, ct, xt, yt, zt, st int32
+	dir, dt, at, bt, ct, xt, yt, zt, st, vt, wt int32
 }
 
 func (__ *AiInput) Update() {
 	if sys.intro != 0 {
 		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
 		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
+		__.vt, __.wt = 0, 0
 		return
 	}
 	var osu, hanasu int32 = 15, 60
@@ -1083,6 +1111,8 @@ func (__ *AiInput) Update() {
 	dec(&__.xt)
 	dec(&__.yt)
 	dec(&__.zt)
+	dec(&__.vt)
+	dec(&__.wt)
 	osu = 3600
 	dec(&__.st)
 }
@@ -1118,6 +1148,12 @@ func (__ *AiInput) Z() bool {
 }
 func (__ *AiInput) S() bool {
 	return __.st != 0
+}
+func (__ *AiInput) V() bool {
+	return __.vt != 0
+}
+func (__ *AiInput) W() bool {
+	return __.wt != 0
 }
 
 type cmdElem struct {
@@ -1329,6 +1365,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					ce.key = append(ce.key, kr.ns)
 				} else {
 					ce.key = append(ce.key, kr.s)
+				}
+				tilde = false
+			case 'v':
+				if tilde {
+					ce.key = append(ce.key, kr.nv)
+				} else {
+					ce.key = append(ce.key, kr.v)
+				}
+				tilde = false
+			case 'w':
+				if tilde {
+					ce.key = append(ce.key, kr.nw)
+				} else {
+					ce.key = append(ce.key, kr.w)
 				}
 				tilde = false
 			case '$':
@@ -1616,7 +1666,7 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 		_else = true
 	}
 	if _else {
-		var l, r, u, d, a, b, c, x, y, z, s bool
+		var l, r, u, d, a, b, c, x, y, z, s, v, w bool
 		if i < 0 {
 			i = ^i
 			if i < len(sys.aiInput) {
@@ -1631,6 +1681,8 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 				y = sys.aiInput[i].Y()
 				z = sys.aiInput[i].Z()
 				s = sys.aiInput[i].S()
+				v = sys.aiInput[i].V()
+				w = sys.aiInput[i].W()
 			}
 		} else if i < len(sys.inputRemap) {
 			in := sys.inputRemap[i]
@@ -1648,6 +1700,8 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 					y = sys.keyConfig[in].Y()
 					z = sys.keyConfig[in].Z()
 					s = sys.keyConfig[in].S()
+					v = sys.keyConfig[in].V()
+					w = sys.keyConfig[in].W()
 				}
 			}
 		}
@@ -1657,7 +1711,7 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 		} else {
 			B, F = l, r
 		}
-		cl.Buffer.Input(B, d, F, u, a, b, c, x, y, z, s)
+		cl.Buffer.Input(B, d, F, u, a, b, c, x, y, z, s, v, w)
 	}
 	return step
 }

@@ -48,19 +48,19 @@ func main() {
   "System":"script/main.lua",
   "KeyConfig":[{
       "Joystick":-1,
-      "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN"]
+      "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN","q","w"]
     },{
       "Joystick":-1,
-      "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT"]
+      "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
     }],
   "_comment":{
     "_comment":"ジョイスティック (0番) の場合の KeyConfig",
     "KeyConfig":[{
         "Joystick":0,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7"]
+        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
       },{
         "Joystick":1,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7"]
+        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
       }]
   },
   "Motif":"data/system.def",
@@ -143,14 +143,14 @@ func main() {
 					int(b[2].(float64)), int(b[3].(float64)),
 					int(b[4].(float64)), int(b[5].(float64)), int(b[6].(float64)),
 					int(b[7].(float64)), int(b[8].(float64)), int(b[9].(float64)),
-					int(b[10].(float64))})
+					int(b[10].(float64)), int(b[11].(float64)), int(b[12].(float64))})
 			} else {
 				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
 					stoki(b[0].(string)), stoki(b[1].(string)),
 					stoki(b[2].(string)), stoki(b[3].(string)),
 					stoki(b[4].(string)), stoki(b[5].(string)), stoki(b[6].(string)),
 					stoki(b[7].(string)), stoki(b[8].(string)), stoki(b[9].(string)),
-					stoki(b[10].(string))})
+					stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
 			}
 		}
 	}
