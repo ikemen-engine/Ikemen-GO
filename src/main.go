@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
 	"io/ioutil"
@@ -17,6 +18,18 @@ func chk(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+func createLog(p string) *os.File {
+	//fmt.Println("Creating log")
+	f, err := os.Create(p)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+func closeLog(f *os.File) {
+	//fmt.Println("Closing log")
+	f.Close()
 }
 func main() {
 	chk(glfw.Init())
@@ -114,8 +127,12 @@ func main() {
 				stoki(b[10].(string))})
 		}
 	}
+	os.Mkdir("debug", os.ModeSticky|0755)
+	log := createLog("debug/log.txt")
+	defer closeLog(log)
 	l := sys.init(tmp.Width, tmp.Height)
 	if err := l.DoFile(tmp.System); err != nil {
+		fmt.Fprintln(log, err)
 		switch err.(type) {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
