@@ -1791,29 +1791,16 @@ func (s *Select) addCahr(def string) {
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
 		sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
-		return err
-	})
-	sprite = sc.sprite
-	LoadFile(&sprite, def, func(file string) error {
-		var err error
 		sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
-		return err
-	})
-	LoadFile(&sprite, def, func(file string) error {
-		var err error
 		sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
 		if err != nil {
 			sc.vsportrait = sc.lportrait
 		}
-		return err
-	})
-	LoadFile(&sprite, def, func(file string) error {
-		var err error
 		sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
 		if err != nil {
 			sc.vportrait = sc.lportrait
 		}
-		return err
+		return nil
 	})
 }
 func (s *Select) AddStage(def string) error {
