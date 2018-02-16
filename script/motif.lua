@@ -1564,11 +1564,13 @@ for i = 1, #t_dir do
 		end
 		prev_k = k
 		--generate anim data
+		local sizeX, sizeY, offsetX, offsetY = 0, 0, 0, 0
 		if t_bgdef[k].type == 'anim' then
 			anim = main.f_animFromTable(motif.anim[t_bgdef[k].actionno], motif[t_dir[i]].spr_data, t_bgdef[k].start[1], t_bgdef[k].start[2])
 		else --normal, parallax
 			anim = t_bgdef[k].spriteno[1] .. ', ' .. t_bgdef[k].spriteno[2] .. ', ' .. t_bgdef[k].start[1] .. ', ' .. t_bgdef[k].start[2] .. ', ' .. -1
 			anim = animNew(motif[t_dir[i]].spr_data, anim)
+			sizeX, sizeY, offsetX, offsetY = getSpriteInfo(motif[t_dir[i]].spr, t_bgdef[k].spriteno[1], t_bgdef[k].spriteno[2])
 		end
 		if t_bgdef[k].trans == 'add1' then
 			animSetAlpha(anim, 255, 128)
@@ -1591,9 +1593,9 @@ for i = 1, #t_dir do
 		end
 		if t_bgdef[k].tilespacing[2] == nil then t_bgdef[k].tilespacing[2] = t_bgdef[k].tilespacing[1] end
 		if t_bgdef[k].type == 'parallax' then
-			animSetTile(anim, t_bgdef[k].tile[1], 0, t_bgdef[k].tilespacing[1], t_bgdef[k].tilespacing[2])
+			animSetTile(anim, t_bgdef[k].tile[1], 0, t_bgdef[k].tilespacing[1] + sizeX, t_bgdef[k].tilespacing[2] + sizeY)
 		else
-			animSetTile(anim, t_bgdef[k].tile[1], t_bgdef[k].tile[2], t_bgdef[k].tilespacing[1], t_bgdef[k].tilespacing[2])
+			animSetTile(anim, t_bgdef[k].tile[1], t_bgdef[k].tile[2], t_bgdef[k].tilespacing[1] + sizeX, t_bgdef[k].tilespacing[2] + sizeY)
 		end
 		if t_bgdef[k].mask == 1 or t_bgdef[k].type ~= 'normal' or (t_bgdef[k].trans ~= '' and t_bgdef[k].trans ~= 'none') then
 			animSetColorKey(anim, 0)

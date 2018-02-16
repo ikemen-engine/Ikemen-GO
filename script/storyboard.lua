@@ -447,11 +447,13 @@ local function f_parse(path)
 					end
 					prev_k2 = k2
 					--generate anim data
+					local sizeX, sizeY, offsetX, offsetY = 0, 0, 0, 0
 					if t_bgdef[k2].type == 'anim' then
 						anim = main.f_animFromTable(t.anim[t_bgdef[k2].actionno], t.scenedef.spr_data, t_bgdef[k2].start[1], t_bgdef[k2].start[2])
 					else --normal, parallax
 						anim = t_bgdef[k2].spriteno[1] .. ', ' .. t_bgdef[k2].spriteno[2] .. ', ' .. t_bgdef[k2].start[1] .. ', ' .. t_bgdef[k2].start[2] .. ', ' .. -1
 						anim = animNew(t.scenedef.spr_data, anim)
+						sizeX, sizeY, offsetX, offsetY = getSpriteInfo(t.scenedef.spr, t_bgdef[k2].spriteno[1], t_bgdef[k2].spriteno[2])
 					end
 					if t_bgdef[k2].trans == 'add1' then
 						animSetAlpha(anim, 255, 128)
@@ -474,9 +476,9 @@ local function f_parse(path)
 					end
 					if t_bgdef[k2].tilespacing[2] == nil then t_bgdef[k2].tilespacing[2] = t_bgdef[k2].tilespacing[1] end
 					if t_bgdef[k2].type == 'parallax' then
-						animSetTile(anim, t_bgdef[k2].tile[1], 0, t_bgdef[k2].tilespacing[1], t_bgdef[k2].tilespacing[2])
+						animSetTile(anim, t_bgdef[k2].tile[1], 0, t_bgdef[k2].tilespacing[1] + sizeX, t_bgdef[k2].tilespacing[2] + sizeY)
 					else
-						animSetTile(anim, t_bgdef[k2].tile[1], t_bgdef[k2].tile[2], t_bgdef[k2].tilespacing[1], t_bgdef[k2].tilespacing[2])
+						animSetTile(anim, t_bgdef[k2].tile[1], t_bgdef[k2].tile[2], t_bgdef[k2].tilespacing[1] + sizeX, t_bgdef[k2].tilespacing[2] + sizeY)
 					end
 					animSetScale(anim, 320/t.info.localcoord[1], 240/t.info.localcoord[2])
 					if t_bgdef[k2].mask == 1 or t_bgdef[k2].type ~= 'normal' or (t_bgdef[k2].trans ~= '' and t_bgdef[k2].trans ~= 'none') then

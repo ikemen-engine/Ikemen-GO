@@ -1,6 +1,7 @@
 Features planned to be implemented "soon":
 - display winner's Victory portrait instead of Team leader portrait
 - read victory quotes and display them on Victory screen
+- mp3 support
 - Tournament mode
 - Time Attack mode
 - Time Challenge mode
@@ -10,7 +11,6 @@ Features planned to be implemented "soon":
 - global ranking system
 - common1.cns and source code changes related to some of the above features
 - characters unlocking adjustable in select.def [Options] section
-- 'animSetTile' lua function should take into account tilespacing parameters (I've already edited it as well as anim.go SetTile function to send a.anim.tile[0], a.anim.tile[1], but it still ignores sprite size, so the outcome is not correct)
 
 
 Features that we're not able to implement currently, hopefully SUEHIRO (or someone else with good understanding of GO language) will be interested in helping out with this stuff:
