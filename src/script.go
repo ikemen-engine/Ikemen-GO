@@ -949,6 +949,27 @@ func systemScriptInit(l *lua.LState) {
 		sys.keyString = ""
 		return 0
 	})
+	luaRegister(l, "getSpriteInfo", func(*lua.LState) int {
+		var s *Sprite
+		var err error
+		def := strArg(l, 1)
+		err = LoadFile(&def, "", func(file string) error {
+			s, err = loadFromSff(file, int16(numArg(l, 2)), int16(numArg(l, 3)))
+			return err
+		})
+		if err != nil {
+			l.Push(lua.LNumber(0))
+			l.Push(lua.LNumber(0))
+			l.Push(lua.LNumber(0))
+			l.Push(lua.LNumber(0))
+			return 4
+		}
+		l.Push(lua.LNumber(s.Size[0]))
+		l.Push(lua.LNumber(s.Size[1]))
+		l.Push(lua.LNumber(s.Offset[0]))
+		l.Push(lua.LNumber(s.Offset[1]))
+		return 4
+	})
 }
 
 // Trigger Script
