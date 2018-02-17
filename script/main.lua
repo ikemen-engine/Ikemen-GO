@@ -892,6 +892,7 @@ function main.f_addChar(line, row)
 				main.t_selChars[row].displayname = tmp
 				main.t_selChars[row].def = getCharFileName(row - 1)
 				main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
+				main.t_selChars[row].pal = getCharPalettes(row - 1)
 				if tmp ~= 'Training' then
 					tmp = getCharIntro(row - 1)
 					if tmp ~= '' then
@@ -1428,7 +1429,7 @@ function main.f_mainMenu()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1 --P1 controls P2 side of the select screen
 				main.p2SelectMenu = false --P2 character selection disabled
-				main.coinsLeft = config.Coins - 1 --amount of continues
+				main.credits = config.Credits - 1 --amount of continues
 				main.gameMode = t[item].itemname --mode recognized in select screen as 'arcade'
 				textImgSetText(main.txt_mainSelect, t[item].selectname) --message displayed on top of select screen
 				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
@@ -1456,7 +1457,7 @@ function main.f_mainMenu()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true --P2 fighting on P1 side enabled
-				main.coinsLeft = config.Coins - 1
+				main.credits = config.Credits - 1
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
@@ -1467,7 +1468,7 @@ function main.f_mainMenu()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1
 				main.p2SelectMenu = false
-				main.coinsLeft = 0
+				main.credits = 0
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
@@ -1479,7 +1480,7 @@ function main.f_mainMenu()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.coinsLeft = 0
+				main.credits = 0
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
@@ -1756,7 +1757,7 @@ function main.f_netplayMode()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.coinsLeft = config.Coins - 1
+				main.credits = config.Credits - 1
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				select.f_selectAdvance()
@@ -1767,7 +1768,7 @@ function main.f_netplayMode()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.coinsLeft = 0
+				main.credits = 0
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				select.f_selectAdvance()
@@ -1846,7 +1847,7 @@ function main.f_mainExtras()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1
 				main.p2SelectMenu = false
-				main.coinsLeft = 0
+				main.credits = 0
 				main.gameMode = t[item].itemname
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)

@@ -206,7 +206,7 @@ function randomtest.randSel(pno, winner)
   setTeamMode(pno, team, math.random(1, 4))
   local tmp = 0
   while tmp < 2 do
-    tmp = selectChar(pno, roster[nextChar], math.random(1, 6))
+    tmp = selectChar(pno, roster[nextChar], getCharRandomPalette(roster[nextChar]))
     nextChar = nextChar + 1
     if nextChar > #roster then nextChar = 1 end
   end

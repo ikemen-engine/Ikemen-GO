@@ -264,7 +264,7 @@ end
 function select.f_aiLevel()
 	--Offset
 	local offset = 0
-	if config.AiRamping and main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' or main.gameMode == 'survival' or main.gameMode == 'survivalcoop' or main.gameMode == 'netplaysurvivalcoop' then
+	if config.AIRamping and main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' or main.gameMode == 'survival' or main.gameMode == 'survivalcoop' or main.gameMode == 'netplaysurvivalcoop' then
 		offset = t_aiRamp[matchNo] - config.Difficulty
 	end
 	--Player 1
@@ -277,7 +277,7 @@ function select.f_aiLevel()
 		else
 			setCom(1, select.f_difficulty(1, offset))
 		end
-	elseif p1TeamMode == 1 and config.SimulType ~= 'Tag' then --Simul
+	elseif p1TeamMode == 1 and config.SimulMode then --Simul
 		if main.p1In == 1 and not main.aiFight then
 			setCom(1, 0)
 		else
@@ -316,7 +316,7 @@ function select.f_aiLevel()
 		else
 			setCom(2, select.f_difficulty(2, offset))
 		end
-	elseif p2TeamMode == 1 and config.SimulType ~= 'Tag' then --Simul
+	elseif p2TeamMode == 1 and config.SimulMode then --Simul
 		if main.p2In == 2 and not main.aiFight and not main.coop then
 			setCom(2, 0)
 		else
@@ -379,6 +379,29 @@ function select.f_selectStage()
 	end
 	setStage(stageNo)
 	selectStage(stageNo)
+end
+
+function select.f_randomPal(cell)
+	--table with pal numbers already assigned
+	local t = {}
+	for i = 1, #t_p1Selected do
+		if t_p1Selected[i].cel == cell then
+			t[#t + 1] = t_p1Selected[i].pal
+		end
+	end
+	for i = 1, #t_p2Selected do
+		if t_p2Selected[i].cel == cell then
+			t[#t + 1] = t_p2Selected[i].pal
+		end
+	end
+	--table with pal numbers not assigned yet (or all if there are not enough pals for unique appearance of all characters)
+	local t2 = {}
+	for i = 1, #main.t_selChars[cell + 1].pal do
+		if t[main.t_selChars[cell + 1].pal[i]] == nil or #t >= #main.t_selChars[cell + 1].pal then
+			t2[#t2 + 1] = main.t_selChars[cell + 1].pal[i]
+		end
+	end
+	return t2[math.random(1, #t2)]
 end
 
 function select.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spacingX, spacingY, active_font, active_row)
@@ -773,8 +796,8 @@ function select.f_selectAdvance()
 			else
 				matchNo = matchNo + 1
 			end
-		--player lost and doesn't have any coins left
-		elseif main.coinsLeft == 0 then
+		--player lost and doesn't have any credits left
+		elseif main.credits == 0 then
 			--counter
 			looseCnt = looseCnt + 1
 			--victory screen
@@ -854,7 +877,6 @@ function select.f_selectAdvance()
 		--assign enemy team
 		t_p2Selected = {}
 		local shuffle = true
-		local p2Pal = 0
 		for i = 1, p2NumChars do
 			if i == 1 and (main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop') and main.t_selChars[t_p1Selected[1].cel + 1][matchNo] ~= nil then
 				p2Cell = main.t_charDef[main.t_selChars[t_p1Selected[1].cel + 1][matchNo]]
@@ -862,14 +884,13 @@ function select.f_selectAdvance()
 			else
 				p2Cell = t_roster[matchNo * p2NumChars - i + 1]
 			end
-			p2Pal = math.random(1, 6)
 			local updateAnim = true
 			for j = 1, #t_p2Selected do
 				if t_p2Selected[j].cel == p2Cell then
 					updateAnim = false
 				end
 			end
-			t_p2Selected[#t_p2Selected + 1] = {cel = p2Cell, pal = p2Pal, up = updateAnim}
+			t_p2Selected[#t_p2Selected + 1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim}
 			if shuffle then
 				main.f_shuffleTable(t_p2Selected)
 			end
@@ -885,7 +906,7 @@ function select.f_selectAdvance()
 					setTeamMode(2, 0, 1)
 					p2Cell = main.t_charDef[main.t_selChars[t_p2Selected[i].cel + 1].char]
 					t_p2Selected = {}
-					t_p2Selected[1] = {cel = p2Cell, pal = p2Pal, up = true}
+					t_p2Selected[1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = true}
 					restoreTeam = true
 					break
 				end
@@ -1640,7 +1661,7 @@ function select.f_p1SelectMenu()
 			if t[main.p1Char[i]] == nil then
 				t[main.p1Char[i]] = ''
 			end
-			t_p1Selected[i] = {cel = main.p1Char[i], pal = math.random(1, 6)}
+			t_p1Selected[i] = {cel = main.p1Char[i], pal = select.f_randomPal(main.p1Char[i])}
 		end
 		p1SelEnd = true
 		return
@@ -1687,7 +1708,7 @@ function select.f_p2SelectMenu()
 			if t[main.p2Char[i]] == nil then
 				t[main.p2Char[i]] = ''
 			end
-			t_p2Selected[i] = {cel = main.p2Char[i], pal = math.random(1, 6)}
+			t_p2Selected[i] = {cel = main.p2Char[i], pal = select.f_randomPal(main.p2Char[i])}
 		end
 		p2SelEnd = true
 		return
@@ -2280,15 +2301,15 @@ end
 --;===========================================================
 --; CONTINUE SCREEN
 --;===========================================================
-local txt_coins = main.f_createTextImg(
-	motif.font_data[motif.continue_screen.coins_font[1]],
-	motif.continue_screen.coins_font[2],
-	motif.continue_screen.coins_font[3],
+local txt_credits = main.f_createTextImg(
+	motif.font_data[motif.continue_screen.credits_font[1]],
+	motif.continue_screen.credits_font[2],
+	motif.continue_screen.credits_font[3],
 	'',
-	motif.continue_screen.coins_offset[1],
-	motif.continue_screen.coins_offset[2],
-	motif.continue_screen.coins_font_scale[1],
-	motif.continue_screen.coins_font_scale[2]
+	motif.continue_screen.credits_offset[1],
+	motif.continue_screen.credits_offset[2],
+	motif.continue_screen.credits_font_scale[1],
+	motif.continue_screen.credits_font_scale[2]
 )
 
 function select.f_continue()
@@ -2296,8 +2317,8 @@ function select.f_continue()
 	animReset(motif.continue_screen.continue_anim_data)
 	animUpdate(motif.continue_screen.continue_anim_data)
 	continue = false
-	local text = main.f_extractText(motif.continue_screen.coins_text, main.coinsLeft)
-	textImgSetText(txt_coins, text[1])
+	local text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
+	textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
 		--draw clearcolor (disabled to not cover area)
@@ -2311,9 +2332,9 @@ function select.f_continue()
 		elseif motif.continuebgdef.timer < motif.continue_screen.continue_end_skiptime then
 			if commandGetState(main.p1Cmd, 'holds') then
 				continue = true
-				main.coinsLeft = main.coinsLeft - 1
-				text = main.f_extractText(motif.continue_screen.coins_text, main.coinsLeft)
-				textImgSetText(txt_coins, text[1])
+				main.credits = main.credits - 1
+				text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
+				textImgSetText(txt_credits, text[1])
 				main.f_cmdInput()
 				main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm)
 				break
@@ -2370,9 +2391,9 @@ function select.f_continue()
 			playBGM(motif.music.continue_end_bgm)
 			sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_end_snd[1], motif.continue_screen.continue_end_snd[2])
 		end
-		--draw coins text
+		--draw credits text
 		if motif.continuebgdef.timer >= motif.continue_screen.continue_skipstart then --show when counter starts counting down
-			textImgDraw(txt_coins)
+			textImgDraw(txt_credits)
 		end
 		--draw counter
 		animUpdate(motif.continue_screen.continue_anim_data)
