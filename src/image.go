@@ -355,6 +355,35 @@ type Sprite struct {
 func newSprite() *Sprite {
 	return &Sprite{palidx: -1}
 }
+func selectablePalettes(filename string) ([]int32, error) {
+	var pal []int32
+	f, err := os.Open(filename)
+	if err != nil {
+		return pal, err
+	}
+	defer func() { chk(f.Close()) }()
+	h := &SffHeader{}
+	var lofs, tofs uint32
+	if err := h.Read(f, &lofs, &tofs); err != nil {
+		return pal, err
+	}
+	read := func(x interface{}) error {
+		return binary.Read(f, binary.LittleEndian, x)
+	}
+	if h.Ver0 != 1 {
+		for i := 0; i < int(h.NumberOfPalettes); i++ {
+			f.Seek(int64(h.FirstPaletteHeaderOffset)+int64(i*16), 0)
+			var gn_ [3]int16
+			if err := read(gn_[:]); err != nil {
+				return pal, err
+			}
+			if gn_[0] == 1 && gn_[1] <= MaxPalNo {
+				pal = append(pal, int32(gn_[1]))
+			}
+		}
+	}
+	return pal, err
+}
 func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 	s := newSprite()
 	f, err := os.Open(filename)

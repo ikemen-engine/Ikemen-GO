@@ -209,6 +209,7 @@ type System struct {
 	workBe                  []BytecodeExp
 	teamLifeShare           bool
 	fullscreen              bool
+	aiRandomColor           bool
 	commonAir               string
 	commonCmd               string
 	keyInput                glfw.Key
@@ -1661,6 +1662,8 @@ func (wm wincntMap) getLevel(p int) int32 {
 
 type SelectChar struct {
 	def, name, sprite, intro_storyboard, ending_storyboard string
+	pal_defaults []int32
+	pal []int32
 	sportrait, lportrait, vsportrait, vportrait *Sprite
 }
 type SelectStage struct {
@@ -1773,11 +1776,17 @@ func (s *Select) addCahr(def string) {
 				if !ok {
 					sc.name, _, _ = is.getText("name")
 				}
+				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
 			}
 		case "files":
 			if files {
 				files = false
 				sprite = is["sprite"]
+				for i := range sys.cgi[len(s.charlist)-1].palkeymap {
+					if is[fmt.Sprintf("pal%v", i+1)] != "" {
+						sc.pal = append(sc.pal, int32(i+1))
+					}
+				}
 			}
 		case "arcade":
 			if arcade {
@@ -1799,6 +1808,9 @@ func (s *Select) addCahr(def string) {
 		sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
 		if err != nil {
 			sc.vportrait = sc.lportrait
+		}
+		if len(sc.pal) == 0 {
+			sc.pal, _ = selectablePalettes(file)
 		}
 		return nil
 	})

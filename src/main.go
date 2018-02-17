@@ -66,7 +66,7 @@ func main() {
   "Motif":"data/system.def",
   "CommonAir":"data/common.air",
   "CommonCmd":"data/common.cmd",
-  "SimulType":"Simul",
+  "SimulMode":true,
   "LifeMul":100,
   "Team1VS2Life":120,
   "TurnsRecoveryRate":300,
@@ -79,10 +79,11 @@ func main() {
   "NumSimul":4,
   "NumTag":4,
   "Difficulty":8,
-  "Coins":10,
+  "Credits":10,
   "ListenPort":7500,
   "ContSelection":true,
-  "AiRamping":true,
+  "AIRandomColor":true,
+  "AIRamping":true,
   "AutoGuard":false,
   "TeamPowerShare":false,
   "TeamLifeShare":false,
@@ -109,6 +110,7 @@ func main() {
 		}
 		NumTag        int
 		TeamLifeShare bool
+		AIRandomColor bool
 		Fullscreen    bool
 		CommonAir     string
 		CommonCmd     string
@@ -160,6 +162,7 @@ func main() {
 	}
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
+	sys.aiRandomColor = tmp.AIRandomColor
 	air, err := ioutil.ReadFile(tmp.CommonAir)
 	if err != nil {
 		fmt.Print(err)

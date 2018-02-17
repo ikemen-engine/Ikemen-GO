@@ -6,6 +6,7 @@ import (
 	"github.com/yuin/gopher-lua"
 	"runtime"
 	"strings"
+	"math/rand"
 )
 
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
@@ -914,6 +915,35 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "getCharEnding", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
 		l.Push(lua.LString(c.ending_storyboard))
+		return 1
+	})
+	luaRegister(l, "getCharPalettes", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		tbl := l.NewTable()
+		var pal []int32
+		if sys.aiRandomColor {
+			pal = c.pal
+		} else {
+			pal = c.pal_defaults
+		}
+		if len(pal) > 0 {
+			for k, v := range pal {
+				tbl.RawSetInt(k + 1, lua.LNumber(v))
+			}
+		} else {
+			tbl.RawSetInt(1, lua.LNumber(1))
+		}
+		l.Push(tbl)
+		return 1
+	})
+	luaRegister(l, "getCharRandomPalette", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		if len(c.pal) > 0 {
+			n := rand.Int() % len(c.pal)
+			l.Push(lua.LNumber(c.pal[n]))
+		} else {
+			l.Push(lua.LNumber(1))
+		}
 		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
