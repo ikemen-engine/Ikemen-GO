@@ -105,6 +105,7 @@ func loadFnt(filename string) (*Fnt, error) {
 				mapflg = false
 				re := regexp.MustCompile("(\\S+)(?:\\s+(\\S+)(?:\\s+(\\S+))?)?")
 				ofs := uint16(0)
+				w := int32(0)
 				for ; i < len(lines); i++ {
 					if len(lines[i]) > 0 && lines[i][0] == '[' {
 						break
@@ -133,7 +134,12 @@ func loadFnt(filename string) (*Fnt, error) {
 						fci := &FntCharImage{ofs: ofs}
 						f.images[c] = fci
 						if len(cap[3]) > 0 {
-							fci.w = I32ToU16(Atoi(cap[3]))
+							w = Atoi(cap[3])
+							if w < 0 {
+								ofs += I32ToU16(int32(ofs) - w)
+								w = 0 - w
+							}
+							fci.w = I32ToU16(w)
 							ofs += fci.w - f.Size[0]
 						} else {
 							fci.w = f.Size[0]
