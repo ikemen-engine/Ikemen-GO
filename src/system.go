@@ -1782,9 +1782,9 @@ func (s *Select) addCahr(def string) {
 			if files {
 				files = false
 				sprite = is["sprite"]
-				for i := range sys.cgi[len(s.charlist)-1].palkeymap {
-					if is[fmt.Sprintf("pal%v", i+1)] != "" {
-						sc.pal = append(sc.pal, int32(i+1))
+				for i := 1; i <= MaxPalNo; i++ {
+					if is[fmt.Sprintf("pal%v", i)] != "" {
+						sc.pal = append(sc.pal, int32(i))
 					}
 				}
 			}
