@@ -1411,6 +1411,7 @@ for line in file:lines() do
 							end
 						end
 						t.font_data[value] = fontNew(value)
+						wait = true
 					end
 					if pos.font == nil then
 						pos.font = {}
@@ -1449,6 +1450,7 @@ for line in file:lines() do
 			end
 		end
 	end
+	main.loadingRefresh()
 end
 file:close()
 
@@ -1497,8 +1499,11 @@ for i = 1, #t_dir do
 end
 
 motif.files.spr_data = sffNew(motif.files.spr)
+main.loadingRefresh()
 motif.files.snd_data = sndNew(motif.files.snd)
+main.loadingRefresh()
 motif.files.continue_snd_data = sndNew(motif.files.continue_snd)
+main.loadingRefresh()
 
 --fadein / fadeout data
 t_dir = {'title_info', 'select_info', 'vs_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100kumite_results_screen', 'option_info', 'tournament_info', 'continue_screen'}
@@ -1544,6 +1549,7 @@ for i = 1, #t_dir do
 			end
 		end
 		motif[t_dir[i]].spr_data = sffNew(motif[t_dir[i]].spr)
+		main.loadingRefresh()
 	elseif motif[t_dir[i]].spr ~= 'continuebgdef' and motif[t_dir[i]].spr ~= 'tournamentbgdef' then
 		motif[t_dir[i]].spr = motif.files.spr
 		motif[t_dir[i]].spr_data = motif.files.spr_data
@@ -1611,6 +1617,7 @@ for i = 1, #t_dir do
 		end
 		--animUpdate(anim)
 		motif[t_dir[i]].bg_data[k] = anim
+		main.loadingRefresh()
 	end
 end
 
@@ -1707,6 +1714,7 @@ for i = 1, #t_dir do
 	end
 	animSetWindow(t[t_dir[i].s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	--animAddPos(t[t_dir[i].s .. 'data'], 160, 0) --for some reason needed in ikemen (but not in this case)
+	main.loadingRefresh()
 end
 
 t = motif.continue_screen

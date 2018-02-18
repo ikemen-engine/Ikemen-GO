@@ -686,6 +686,7 @@ end
 --; ADVANCE LOOP (ARCADE, TEAM CO-OP, SURVIVAL, SURVIVAL CO-OP, VS 100 KUMITE, BOSS RUSH)
 --;===========================================================
 function select.f_selectAdvance()
+getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 	p1SelX = motif.select_info.p1_cursor_startcell[2]
 	p1SelY = motif.select_info.p1_cursor_startcell[1]
 	p2SelX = motif.select_info.p2_cursor_startcell[2]
@@ -2161,7 +2162,7 @@ function select.f_result(state)
 			textImgSetPos(
 				txt,
 				t.winstext_offset[1] - t.winstext_spacing[1] + i * t.winstext_spacing[1],
-				t.winstext_spacing[2] - t.winstext_spacing[2] + i * t.winstext_spacing[2]
+				t.winstext_offset[2] - t.winstext_spacing[2] + i * t.winstext_spacing[2]
 			)
 			textImgDraw(txt)
 		end

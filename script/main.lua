@@ -804,6 +804,17 @@ function main.f_input(t, info, background, type)
 	return input
 end
 
+main.nextRefresh = os.clock() + 0.02
+function main.loadingRefresh(txt)
+	if os.clock() >= main.nextRefresh then
+		if txt ~= nil then
+			textImgDraw(txt)
+		end
+		refresh()
+		main.nextRefresh = os.clock() + 0.02
+	end
+end
+
 --;===========================================================
 --; LOAD DATA
 --;===========================================================
@@ -866,11 +877,9 @@ local txt_loading = main.f_createTextImg(
 	motif.title_info.loading_font_scale[1],
 	motif.title_info.loading_font_scale[2]
 )
-refresh()
 textImgDraw(txt_loading)
 refresh()
 
-local nextRefresh = os.clock() + 0.02
 function main.f_addChar(line, row)
 	local tmp = ''
 	local order = false
@@ -949,11 +958,7 @@ function main.f_addChar(line, row)
 		end
 		main.t_orderChars[main.t_selChars[row].order][#main.t_orderChars[main.t_selChars[row].order] + 1] = row - 1
 	end
-	if os.clock() >= nextRefresh then
-		textImgDraw(txt_loading)
-		refresh()
-		nextRefresh = os.clock() + 0.02
-	end
+	main.loadingRefresh(txt_loading)
 end
 
 --start_time = os.time()
@@ -1151,7 +1156,10 @@ loadDebugFont(motif.files.debug_font)
 setDebugScript(motif.files.debug_script)
 
 --Assign Lifebar
+textImgDraw(txt_loading)
+refresh()
 loadLifebar(motif.files.fight)
+main.loadingRefresh(txt_loading)
 
 --warnings
 if main.t_charDef.training == nil then
