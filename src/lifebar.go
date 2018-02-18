@@ -965,6 +965,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}
 				}
 			}
+		case "fonts":
+			is.ReadF32("scale", &sys.lifebarFontScale)
 		case "lifebar":
 			if l.hb[0][0] == nil {
 				l.hb[0][0] = readHealthBar("p1.", is, sff, at)
