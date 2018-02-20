@@ -1984,5 +1984,9 @@ func debugScriptInit(l *lua.LState, file string) error {
 		}
 		return 0
 	})
+	luaRegister(l, "getAllowDebugKeys", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.allowDebugKeys))
+		return 1
+	})
 	return l.DoFile(file)
 }

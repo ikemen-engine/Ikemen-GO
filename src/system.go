@@ -210,6 +210,7 @@ type System struct {
 	teamLifeShare           bool
 	fullscreen              bool
 	aiRandomColor           bool
+	allowDebugKeys          bool
 	commonAir               string
 	commonCmd               string
 	keyInput                glfw.Key

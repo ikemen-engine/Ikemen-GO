@@ -88,6 +88,7 @@ func main() {
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
+  "AllowDebugKeys":true,
   "IP":{
   }
 }
@@ -108,10 +109,11 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag        int
-		TeamLifeShare bool
-		AIRandomColor bool
-		Fullscreen    bool
+		NumTag         int
+		TeamLifeShare  bool
+		AIRandomColor  bool
+		Fullscreen     bool
+		AllowDebugKeys bool
 		CommonAir     string
 		CommonCmd     string
 	}{}
@@ -163,6 +165,7 @@ func main() {
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
 	sys.aiRandomColor = tmp.AIRandomColor
+	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)
 	if err != nil {
 		fmt.Print(err)

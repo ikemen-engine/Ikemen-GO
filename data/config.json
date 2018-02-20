@@ -52,6 +52,7 @@
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
+  "AllowDebugKeys":true,
   "IP":{
   }
 }
