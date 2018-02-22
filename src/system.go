@@ -215,6 +215,7 @@ type System struct {
 	commonCmd               string
 	keyInput                glfw.Key
 	keyString               string
+	timerCount              []int32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -1965,6 +1966,8 @@ func (l *Loader) loadChar(pn int) int {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
 	}
+	p.memberNo = memberNo
+	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {

@@ -718,6 +718,8 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "game", func(l *lua.LState) int {
+		tbl := l.NewTable()
+		tbl_chars := l.NewTable()
 		load := func() error {
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
@@ -812,6 +814,29 @@ func systemScriptInit(l *lua.LState) {
 					if w1 != w2 {
 						winp = Btoi(w1) + Btoi(w2)*2
 					}
+					tbl_roundNo := l.NewTable()
+					for _, p := range sys.chars {
+						if len(p) > 0 {
+							tmp := l.NewTable()
+							tmp.RawSetString("name", lua.LString(p[0].name))
+							tmp.RawSetString("memberNo", lua.LNumber(p[0].memberNo))
+							tmp.RawSetString("selectNo", lua.LNumber(p[0].selectNo))
+							tmp.RawSetString("life", lua.LNumber(p[0].life))
+							tmp.RawSetString("lifeMax", lua.LNumber(p[0].lifeMax))
+							tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
+							tmp.RawSetString("aiLevel", lua.LNumber(p[0].aiLevel()))
+							tmp.RawSetString("palno", lua.LNumber(p[0].palno()))
+							tmp.RawSetString("win", lua.LBool(p[0].win()))
+							tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
+							tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
+							tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
+							tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
+							tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
+							tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
+							tbl_roundNo.RawSetInt(p[0].playerNo + 1, tmp)
+						}
+					}
+					tbl_chars.RawSetInt(int(sys.round - 1), tbl_roundNo)
 				}
 				return winp, nil
 			}
@@ -838,10 +863,78 @@ func systemScriptInit(l *lua.LState) {
 				sys.loader.reset()
 			}
 			if winp != -2 {
+				time := int32(0)
+				tbl_time := l.NewTable()
+				for k, v := range sys.timerCount {
+					tbl_time.RawSetInt(k + 1, lua.LNumber(v))
+					time = time + v
+				}
+				tbl.RawSetString("chars", tbl_chars)
+				tbl.RawSetString("time_rounds", tbl_time)
+				tbl.RawSetString("time", lua.LNumber(time))
+				tbl.RawSetString("roundTime", lua.LNumber(sys.roundTime))
+				tbl.RawSetString("winTeam", lua.LNumber(sys.winTeam))
+				tbl.RawSetString("lastRound", lua.LNumber(sys.round - 1))
+				tbl.RawSetString("draws", lua.LNumber(sys.draws))
+				tbl.RawSetString("P1wins", lua.LNumber(sys.wins[0]))
+				tbl.RawSetString("P2wins", lua.LNumber(sys.wins[1]))
+				tbl.RawSetString("P1tmode", lua.LNumber(sys.tmode[0]))
+				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
+				sys.timerCount = []int32{}
 				l.Push(lua.LNumber(winp))
-				return 1
+				l.Push(tbl)
+				return 2
 			}
 		}
+	})
+	luaRegister(l, "getCharVar", func(*lua.LState) int {
+		for _, p := range sys.chars {
+			if len(p) > 0 && p[0].playerNo+1 == int(numArg(l, 1)) {
+				if strArg(l, 2) == "varGet" {
+					l.Push(lua.LNumber(p[0].varGet(int32(numArg(l, 3))).ToI()))
+				} else if strArg(l, 2) == "fvarGet" {
+					l.Push(lua.LNumber(p[0].fvarGet(int32(numArg(l, 3))).ToI()))
+				} else if strArg(l, 2) == "sysVarGet" {
+					l.Push(lua.LNumber(p[0].sysVarGet(int32(numArg(l, 3))).ToI()))
+				} else if strArg(l, 2) == "sysFvarGet" {
+					l.Push(lua.LNumber(p[0].sysFvarGet(int32(numArg(l, 3))).ToI()))
+				}
+				break
+			}
+		}
+		return 1
+	})
+	luaRegister(l, "getCharVictoryQuote", func(*lua.LState) int {
+		v := int(-1)
+		for _, p := range sys.chars {
+			if len(p) > 0 && p[0].playerNo+1 == int(numArg(l, 1)) {
+				if l.GetTop() >= 2 {
+					v = int(numArg(l, 2))
+				} else {
+					v = int(p[0].winquote)
+				}
+				if v < 0 || v >= MaxQuotes {
+					t := []string{}
+					for i, q := range sys.cgi[p[0].playerNo].quotes {
+						if sys.cgi[p[0].playerNo].quotes[i] != "" {
+							t = append(t, q)
+						}
+					}
+					if len(t) > 0 {
+						v = rand.Int() % len(t)
+					} else {
+						v = -1
+					}
+				}
+				if len(sys.cgi[p[0].playerNo].quotes) == MaxQuotes && v != -1 {
+					l.Push(lua.LString(sys.cgi[p[0].playerNo].quotes[v]))
+				} else {
+					l.Push(lua.LString(""))
+				}
+				break
+			}
+		}
+		return 1
 	})
 	luaRegister(l, "setPortrait", func(*lua.LState) int {
 		p := int(numArg(l, 3))

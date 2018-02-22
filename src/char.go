@@ -9,6 +9,7 @@ import (
 )
 
 const MaxPalNo = 12
+const MaxQuotes = 100
 
 type SystemCharFlag uint32
 
@@ -1299,6 +1300,7 @@ type CharGlobalInfo struct {
 	pctype           ProjContact
 	pctime, pcid     int32
 	unhittable       int32
+	quotes           [MaxQuotes]string
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1433,6 +1435,9 @@ type Char struct {
 	hittmp        int8
 	acttmp        int8
 	minus         int8
+	winquote      int32
+	memberNo      int
+	selectNo      int
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1499,6 +1504,7 @@ func (c *Char) clear1() {
 	c.p1facing = 0
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
+	c.winquote = -1
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
@@ -1550,7 +1556,7 @@ func (c *Char) stCgi() *CharGlobalInfo {
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.def, gi.displayname, gi.author, gi.sff, gi.snd = def, "", "", nil, nil
+	gi.def, gi.displayname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
@@ -1618,7 +1624,7 @@ func (c *Char) load(def string) error {
 	c.size.init()
 	gi.velocity.init()
 	gi.movement.init()
-	data, size, velocity, movement := true, true, true, true
+	data, size, velocity, movement, quotes := true, true, true, true, true
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
@@ -1762,6 +1768,15 @@ func (c *Char) load(def string) error {
 					&gi.movement.down.bounce.groundlevel)
 				is.ReadF32("down.friction.threshold",
 					&gi.movement.down.friction_threshold)
+			}
+		case "quotes":
+			if quotes {
+				quotes = false
+				for i := 0; i < MaxQuotes; i++ {
+					if is[fmt.Sprintf("victory%v", i)] != "" {
+						gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
+					}
+				}
 			}
 		}
 	}
@@ -4426,6 +4441,9 @@ func (c *Char) cueDraw() {
 		c.minus = 2
 		c.oldPos = c.pos
 	}
+}
+func (c *Char) victoryQuote(v int32) {
+	c.winquote = v
 }
 
 type CharList struct {

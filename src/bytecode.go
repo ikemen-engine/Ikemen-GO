@@ -4799,7 +4799,7 @@ func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case victoryQuote_value:
-			exp[0].evalI(c)
+			c.victoryQuote(exp[0].evalI(c))
 		}
 		return true
 	})

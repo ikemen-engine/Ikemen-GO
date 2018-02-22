@@ -653,6 +653,7 @@ type LifeBarRound struct {
 	cur                int32
 	wt, swt, dt        [2]int32
 	fnt                []*Fnt
+	timerActive        bool
 }
 
 func newLifeBarRound(snd *Snd, fnt []*Fnt) *LifeBarRound {
@@ -712,6 +713,8 @@ func readLifeBarRound(is IniSection,
 func (r *LifeBarRound) callFight() {
 	r.fight.Reset()
 	r.cur, r.wt[0], r.swt[0], r.dt[0] = 1, r.fight_time, r.fight_sndtime, 0
+	sys.timerCount = append(sys.timerCount, sys.gameTime)
+	r.timerActive = true
 }
 func (r *LifeBarRound) act() bool {
 	if sys.intro > r.ctrl_time {
@@ -764,6 +767,14 @@ func (r *LifeBarRound) act() bool {
 			r.wt[0]--
 		}
 	} else if r.cur == 2 && (sys.finish != FT_NotYet || sys.time == 0) {
+		if r.timerActive {
+			if sys.gameTime - sys.timerCount[sys.round-1] > 0 {
+				sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
+			} else {
+				sys.timerCount[sys.round-1] = 0
+			}
+			r.timerActive = false
+		}
 		f := func(ats *AnimTextSnd, t int) {
 			if r.swt[t] == 0 {
 				r.snd.play(ats.snd)
