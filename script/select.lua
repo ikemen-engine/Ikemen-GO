@@ -62,10 +62,9 @@ local p2FaceOffset = 0
 local p1RowOffset = 0
 local p2RowOffset = 0
 local winner = 0
+local t_gameStats = {}
 local winCnt = 0
 local looseCnt = 0
-local clearTime = 0
-local matchTime = 0
 local p1FaceX = 0
 local p1FaceY = 0
 local p2FaceX = 0
@@ -676,7 +675,7 @@ function select.f_selectSimple()
 		select.f_setZoom()
 		select.f_assignMusic()
 		loadStart()
-		winner = game()
+		winner, t_gameStats = game()
 		main.f_cmdInput()
 		refresh()
 	end
@@ -698,8 +697,6 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 	winner = 0
 	winCnt = 0
 	looseCnt = 0
-	clearTime = 0
-	matchTime = 0
 	main.f_cmdInput()
 	select.f_selectReset()
 	stageEnd = true
@@ -921,12 +918,9 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 		select.f_selectVersus()
 		if esc() then break end
 		select.f_setZoom()
-		matchTime = os.clock()
 		select.f_assignMusic()
 		loadStart()
-		winner = game()
-		matchTime = os.clock() - matchTime
-		clearTime = clearTime + matchTime
+		winner, t_gameStats = game()
 		--restore P2 Team settings if needed
 		if restoreTeam then
 			p2TeamMode = teamMode
@@ -971,7 +965,7 @@ function select.f_selectTournament()
 		select.f_setZoom()
 		select.f_assignMusic()
 		loadStart()
-		winner = game()
+		winner, t_gameStats = game()
 		main.f_cmdInput()
 		refresh()
 	end
@@ -2210,20 +2204,25 @@ function select.f_selectVictory()
 	else
 		main.f_resetBG(motif.victory_screen, motif.victorybgdef, motif.music.victory_bgm)
 	end
-	textImgSetText(txt_p1_winquoteName, main.f_getName(t_p1Selected[1].cel))
-	textImgSetText(txt_p2_winquoteName, main.f_getName(t_p2Selected[1].cel))
 	local winquote = ''
 	local winnerNum = 0
+	local p1Num = t_gameStats.chars[t_gameStats.lastRound][1].selectNo
+	local p2Num = t_gameStats.chars[t_gameStats.lastRound][2].selectNo
 	local txt_winquoteName = ''
 	if winner == 1 then
-		winquote = select.f_winquote()
+		winquote = getCharVictoryQuote(1)
 		txt_winquoteName = txt_p1_winquoteName
-		winnerNum = t_p1Selected[1].cel
-	else--if winner == 2 then
-		winquote = select.f_winquote()
+		winnerNum = p1Num
+	else
+		winquote = getCharVictoryQuote(2)
 		txt_winquoteName = txt_p2_winquoteName
-		winnerNum = t_p2Selected[1].cel
+		winnerNum = p2Num
 	end
+	if winquote == nil or winquote == '' then
+		winquote = motif.victory_screen.winquote_text
+	end
+	textImgSetText(txt_p1_winquoteName, main.f_getName(p1Num))
+	textImgSetText(txt_p2_winquoteName, main.f_getName(p2Num))
 	local i = 0
 	main.f_cmdInput()
 	while true do
@@ -2251,7 +2250,7 @@ function select.f_selectVictory()
 			)
 		else
 			drawVictoryPortrait(
-				t_p1Selected[1].cel,
+				p1Num,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
 				motif.victory_screen.p1_facing,
@@ -2259,7 +2258,7 @@ function select.f_selectVictory()
 				motif.victory_screen.p1_scale[2]
 			)
 			drawVictoryPortrait(
-				t_p2Selected[1].cel,
+				p2Num,
 				motif.victory_screen.p2_offset[1],
 				motif.victory_screen.p2_offset[2],
 				motif.victory_screen.p2_facing,
@@ -2292,11 +2291,6 @@ function select.f_selectVictory()
 		main.f_cmdInput()
 		refresh()
 	end
-end
-
-function select.f_winquote()
-	--in future code that reads data from characters will be added here
-	return motif.victory_screen.winquote_text
 end
 
 --;===========================================================

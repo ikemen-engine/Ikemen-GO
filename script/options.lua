@@ -696,7 +696,6 @@ end
 local t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
-	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_video_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
 	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_video_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
 	{data = textImgNew(), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_video_playerprojectilemax, vardata = textImgNew(), vardisplay = config.PlayerProjectileMax},
 	{data = textImgNew(), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_video_explodmax, vardata = textImgNew(), vardisplay = config.ExplodMax},
@@ -705,6 +704,7 @@ local t_videoCfg = {
 	{data = textImgNew(), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_video_maxzoomout, vardata = textImgNew(), vardisplay = config.ZoomMin},
 	{data = textImgNew(), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_video_maxzoomin, vardata = textImgNew(), vardisplay = config.ZoomMax},
 	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_video_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
+	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_video_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_video_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
@@ -738,21 +738,6 @@ function options.f_videoCfg()
 			t[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
 			modified = 1
 			needReload = 1
-		--Lifebar Font Scale
-		elseif t[item].itemname == 'lifebarfontscale' then
-			if commandGetState(main.p1Cmd, 'r') then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.LifebarFontScale = options.f_precision(config.LifebarFontScale + 0.05, '%.02f')
-				t[item].vardisplay = config.LifebarFontScale
-				modified = 1
-				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.LifebarFontScale > 0.05 then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.LifebarFontScale = options.f_precision(config.LifebarFontScale - 0.05, '%.02f')
-				t[item].vardisplay = config.LifebarFontScale
-				modified = 1
-				needReload = 1
-			end
 		--HelperMax
 		elseif t[item].itemname == 'helpermax' then
 			if commandGetState(main.p1Cmd, 'r') then
@@ -861,6 +846,21 @@ function options.f_videoCfg()
 				config.ZoomSpeed = options.f_precision(config.ZoomSpeed - 0.1, '%.01f')
 				t[item].vardisplay = config.ZoomSpeed
 				modified = 1
+			end
+		--Default Lifebar Font Scale
+		elseif t[item].itemname == 'lifebarfontscale' then
+			if commandGetState(main.p1Cmd, 'r') then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.LifebarFontScale = options.f_precision(config.LifebarFontScale + 0.1, '%.01f')
+				t[item].vardisplay = config.LifebarFontScale
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.LifebarFontScale > 0.1 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.LifebarFontScale = options.f_precision(config.LifebarFontScale - 0.1, '%.01f')
+				t[item].vardisplay = config.LifebarFontScale
+				modified = 1
+				needReload = 1
 			end
 		--AI Palette
 		elseif t[item].itemname == 'airandomcolor' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
