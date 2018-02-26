@@ -216,6 +216,7 @@ type System struct {
 	keyInput                glfw.Key
 	keyString               string
 	timerCount              []int32
+	cmdFlags                map[string]string
 }
 
 func (s *System) init(w, h int32) *lua.LState {

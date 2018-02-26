@@ -936,6 +936,18 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "getCommandLineFlags", func(*lua.LState) int {
+		tbl := l.NewTable()
+		for k, v := range sys.cmdFlags {
+			tbl.RawSetString(k, lua.LString(v))
+		}
+		l.Push(tbl)
+		return 1
+	})
+	luaRegister(l, "getCommandLineValue", func(*lua.LState) int {
+		l.Push(lua.LString(sys.cmdFlags[strArg(l, 1)]))
+		return 1
+	})
 	luaRegister(l, "setPortrait", func(*lua.LState) int {
 		p := int(numArg(l, 3))
 		if p == 1 {
