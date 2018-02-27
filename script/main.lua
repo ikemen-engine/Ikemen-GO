@@ -816,6 +816,101 @@ function main.loadingRefresh(txt)
 end
 
 --;===========================================================
+--; COMMAND LINE QUICK VS
+--;===========================================================
+main.flags = getCommandLineFlags()
+if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
+	--load lifebar
+	local sp = config.Motif
+	if main.flags['-r'] ~= nil then
+		if main.f_fileExists(main.flags['-r']) then
+			sp = main.flags['-r']
+		elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
+			sp = 'data/' .. main.flags['-r'] .. '/system.def'
+		end
+	end
+	local fileDir = sp:match('^(.-)[^/\\]+$')
+	local file = io.open(sp,"r")
+	local s = file:read("*all")
+	file:close()
+	local lifebar = s:match('fight%s*=%s*(.-%.def)%s*')
+	if main.f_fileExists(lifebar) then
+		loadLifebar(lifebar)
+	elseif main.f_fileExists(fileDir .. lifebar) then
+		loadLifebar(fileDir .. lifebar)
+	elseif main.f_fileExists('data/' .. lifebar) then
+		loadLifebar('data/' .. lifebar)
+	else
+		loadLifebar('data/fight.def')
+	end
+	refresh()
+	--add chars
+	local p1NumChars = 0
+	local p2NumChars = 0
+	local t = {}
+	for k, v in pairs(main.flags) do
+		if k:match('^-p[1-8]$') then
+			addChar(v)
+			local num = tonumber(k:match('^-p([1-8])'))
+			local player = 1
+			if num % 2 == 0 then --even value
+				player = 2
+				p2NumChars = p2NumChars + 1
+			else
+				p1NumChars = p1NumChars + 1
+			end
+			local pal = 1
+			if main.flags['-p' .. num .. '.pal'] ~= nil then
+				pal = main.flags['-p' .. num .. '.pal']
+			end
+			local ai = 0
+			if main.flags['-p' .. num .. '.ai'] ~= nil then
+				ai = main.flags['-p' .. num .. '.ai']
+			end
+			t[#t + 1] = {player = player, num = num - 1, pal = tonumber(pal), ai = tonumber(ai)}
+			refresh()
+		end
+	end
+	local p1TeamMode = 0
+	if p1NumChars > 1 then
+		p1TeamMode = 1
+	end
+	local p2TeamMode = 0
+	if p2NumChars > 1 then
+		p2TeamMode = 1
+	end
+	--add stage
+	local stage = 'stages/stage0.def'
+	if main.flags['-s'] ~= nil then
+		if main.f_fileExists(main.flags['-s']) then
+			stage = main.flags['-s']
+		elseif main.f_fileExists('stages/' .. main.flags['-s'] .. '.def') then
+			stage = 'stages/' .. main.flags['-s'] .. '.def'
+		end
+	end
+	addStage(stage)
+	--load data
+	loadDebugFont('font/f-6x9.fnt')
+	setDebugScript('script/debug.lua')
+	setMatchNo(1)
+	selectStart()
+	setStage(0)
+	selectStage(0)
+	setTeamMode(1, p1TeamMode, p1NumChars)
+	setTeamMode(2, p2TeamMode, p2NumChars)
+	for i = 1, #t do
+		selectChar(t[i].player, t[i].num, t[i].pal)
+		setCom(t[i].player, t[i].ai)
+	end
+	local winner, t_gameStats = game()
+	if main.flags['-log'] ~= nil then
+		main.f_printTable(t_gameStats, main.flags['-log'])
+	end
+	--exit ikemen
+	return
+end
+
+--;===========================================================
 --; LOAD DATA
 --;===========================================================
 main.fadeSff = sffNew('data/fade.sff')

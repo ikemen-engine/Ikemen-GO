@@ -1285,8 +1285,16 @@ local motif =
 --; PARSE SCREENPACK
 --;===========================================================
 --here starts proper screenpack DEF file parsing
-local file = io.open(config.Motif, 'r')
-local fileDir, fileName = config.Motif:match('^(.-)([^/\\]+)$')
+local sp = config.Motif
+if main.flags['-r'] ~= nil then
+	if main.f_fileExists(main.flags['-r']) then
+		sp = main.flags['-r']
+	elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
+		sp = 'data/' .. main.flags['-r'] .. '/system.def'
+	end
+end
+local file = io.open(sp, 'r')
+local fileDir, fileName = sp:match('^(.-)([^/\\]+)$')
 local t = {}
 local pos = t
 local def_pos = motif
