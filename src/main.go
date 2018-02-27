@@ -9,7 +9,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"flag"
 	"syscall"
 	"regexp"
 )
@@ -36,42 +35,40 @@ func closeLog(f *os.File) {
 }
 func main() {
 	if len(os.Args[1:]) > 0 {
-		h1 := flag.Bool("h", false, "Help")
-		h2 := flag.Bool("?", false, "Help")
-		flag.Parse()
-		if *h1 || *h2 {
-			modkernel32 := syscall.NewLazyDLL("kernel32.dll")
-			procAllocConsole := modkernel32.NewProc("AllocConsole")
-			syscall.Syscall(procAllocConsole.Addr(), 0, 0, 0, 0)
-			hout, err1 := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE)
-			hin, err2 := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)
-			if err1 != nil || err2 != nil { // nowhere to print the message
-				os.Exit(2)
-			}
-			os.Stdout = os.NewFile(uintptr(hout), "/dev/stdout")
-			os.Stdin = os.NewFile(uintptr(hin), "/dev/stdin")
-			fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
-			fmt.Println(" -h -?               Help")
-			fmt.Println(" -r <sysfile>        Loads motif <sysfile>. eg. -r motifdir or -r motifdir/system.def")
-			fmt.Println("\nQuick VS Options:")
-			fmt.Println(" -p<n> <playername>  Loads player n, eg. -p3 kfm")
-			fmt.Println(" -p<n>.ai 1          Enables AI for player ?, eg. -p1.ai 1")
-			fmt.Println(" -p<n>.color <col>   Set player n's color to <col>")
-			fmt.Println(" -p<n>.life <life>   Sets player n's life to <life>")
-			fmt.Println(" -p<n>.power <power> Sets player n's power to <power>")
-			fmt.Println(" -rounds <num>       Plays for <num> rounds, and then quits")
-			fmt.Println(" -s <stagename>      Loads stage <stagename>")
-			fmt.Println("\nPress ENTER to exit.")
-			var s string
-			fmt.Scanln(&s)
-			os.Exit(0)
-		}
 		sys.cmdFlags = make(map[string]string)
 		key := ""
 		player := 1
 		for _, a := range os.Args[1:] {
 			match, _ := regexp.MatchString("^-", a)
 			if match {
+				help, _ := regexp.MatchString("^-[h%?]", a)
+				if help {
+					modkernel32 := syscall.NewLazyDLL("kernel32.dll")
+					procAllocConsole := modkernel32.NewProc("AllocConsole")
+					syscall.Syscall(procAllocConsole.Addr(), 0, 0, 0, 0)
+					hout, err1 := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE)
+					hin, err2 := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)
+					if err1 != nil || err2 != nil { // nowhere to print the message
+						os.Exit(2)
+					}
+					os.Stdout = os.NewFile(uintptr(hout), "/dev/stdout")
+					os.Stdin = os.NewFile(uintptr(hin), "/dev/stdin")
+					fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
+					fmt.Println(" -h -?               Help")
+					fmt.Println(" -r <sysfile>        Loads motif <sysfile>. eg. -r motifdir or -r motifdir/system.def")
+					fmt.Println("\nQuick VS Options:")
+					fmt.Println(" -p<n> <playername>  Loads player n, eg. -p3 kfm")
+					fmt.Println(" -p<n>.ai 1          Enables AI for player ?, eg. -p1.ai 1")
+					fmt.Println(" -p<n>.color <col>   Set player n's color to <col>")
+					fmt.Println(" -p<n>.life <life>   Sets player n's life to <life>")
+					fmt.Println(" -p<n>.power <power> Sets player n's power to <power>")
+					fmt.Println(" -rounds <num>       Plays for <num> rounds, and then quits")
+					fmt.Println(" -s <stagename>      Loads stage <stagename>")
+					fmt.Println("\nPress ENTER to exit.")
+					var s string
+					fmt.Scanln(&s)
+					os.Exit(0)
+				}
 				sys.cmdFlags[a] = ""
 				key = a
 			} else if key == "" {
