@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/go-gl/gl/v2.1/gl"
 	"math"
 	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 var notiling = [4]int32{0, 0, 0, 0}
@@ -311,22 +312,26 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	case trans == -1:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, rcx, rcy, 1, 1, 1, 1)
 	case trans == -2:
 		gl.Uniform1fARB(a, 1)
-		gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR)
+		gl.BlendFunc(gl.ONE, gl.ONE)
+		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, rcx, rcy, 1, 1, 1, 1)
 	case trans <= 0:
 	case trans < 255:
 		gl.Uniform1fARB(a, float32(trans)/255)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, rcx, rcy, 1, 1, 1, float32(trans)/255)
 	case trans < 512:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, rcx, rcy, 1, 1, 1, 1)
 	default:
@@ -334,12 +339,14 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		if dst < 255 {
 			gl.Uniform1fARB(a, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, rcx, rcy, 1, 1, 1, 1-float32(trans)/255)
 		}
 		if src > 0 {
 			gl.Uniform1fARB(a, float32(src)/255)
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, rcx, rcy, 1, 1, 1, float32(trans)/255)
 		}
