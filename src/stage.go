@@ -105,11 +105,12 @@ type backGround struct {
 	toplayer     bool
 	startrect    [4]int32
 	windowdelta  [2]float32
+	scalestart   [2]float32
 }
 
 func newBackGround(sff *Sff) *backGround {
 	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1},
-		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100,
+		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1},
 		actionno: -1, visible: true, active: true,
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
@@ -161,6 +162,7 @@ func readBackGround(is IniSection, link *backGround,
 	}
 	is.readF32ForStage("start", &bg.start[0], &bg.start[1])
 	is.readF32ForStage("delta", &bg.delta[0], &bg.delta[1])
+	is.readF32ForStage("scalestart", &bg.scalestart[0], &bg.scalestart[1])
 	if t != 1 {
 		if is.ReadI32("mask", &tmp) {
 			if tmp != 0 {
@@ -174,6 +176,14 @@ func readBackGround(is IniSection, link *backGround,
 			bg.anim.mask = 0
 			bg.anim.srcAlpha = 255
 			bg.anim.dstAlpha = 255
+			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
+			if is.readI32ForStage("alpha", &s, &d) {
+				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
+					bg.anim.srcAlpha = 0
+				}
+			}
 		case "add1":
 			bg.anim.mask = 0
 			bg.anim.srcAlpha = 255
@@ -181,14 +191,14 @@ func readBackGround(is IniSection, link *backGround,
 			var s, d int32 = 255, 255
 			if is.readI32ForStage("alpha", &s, &d) {
 				bg.anim.srcAlpha = int16(Min(255, s))
-				bg.anim.dstAlpha = ^int16(Max(0, Min(255, s)))
+				bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
 			}
 		case "addalpha":
 			bg.anim.mask = 0
 			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
 			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Min(255, s))
-				bg.anim.dstAlpha = int16(Max(0, Min(255, s)))
+				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
 				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
 					bg.anim.srcAlpha = 0
 				}
@@ -325,7 +335,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		wscl[0])))
 	rect[3] = int32(math.Ceil(float64(float32(rect[3]) * sys.heightScale *
 		wscl[1])))
-	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl, xbs*bgscl, ys,
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*bg.scalestart[0], xbs*bgscl*bg.scalestart[0], ys*bg.scalestart[1],
 		xras*x/(AbsF(ys)*lscl[1]*float32(bg.anim.spr.Size[1])),
 		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true)
 }
