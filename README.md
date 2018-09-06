@@ -49,6 +49,14 @@ Using Git:
 
 This will create a new folder with Ikemen code.
 
+Move to downloaded folder:
+
+`cd Ikemen-GO-Plus`
+
+Execute get.sh to download Ikemen dependencies (it takes a while):
+
+`./get.sh`
+
 FINALLY, Ikemen can be compiled executing `build.bat` double clicking it or using cmd:
 
 `./build.bat`
@@ -79,11 +87,11 @@ Install OpenAL dependencies:
 
 Download Ikemen GO Plus repository:
 
-`git clone https://github.com/shinlucho/ikemen-plus.git`
+`git clone https://github.com/K4thos/Ikemen-GO-Plus.git`
 
 Move to downloaded folder:
 
-`cd ikemen-plus`
+`cd Ikemen-GO-Plus`
 
 Execute get.sh to download Ikemen dependencies (it takes a while):
 
