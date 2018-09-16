@@ -106,6 +106,7 @@ type backGround struct {
 	startrect    [4]int32
 	windowdelta  [2]float32
 	scalestart   [2]float32
+	scaledelta   [2]float32
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -163,6 +164,7 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("start", &bg.start[0], &bg.start[1])
 	is.readF32ForStage("delta", &bg.delta[0], &bg.delta[1])
 	is.readF32ForStage("scalestart", &bg.scalestart[0], &bg.scalestart[1])
+	is.readF32ForStage("scaledelta", &bg.scaledelta[0], &bg.scaledelta[1])
 	if t != 1 {
 		if is.ReadI32("mask", &tmp) {
 			if tmp != 0 {
@@ -317,6 +319,8 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		}
 	}
 	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
+	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
+	xs := bg.scaledelta[0] * pos[0] * dx
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
 	scly *= stgscl[1]
@@ -335,7 +339,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		wscl[0])))
 	rect[3] = int32(math.Ceil(float64(float32(rect[3]) * sys.heightScale *
 		wscl[1])))
-	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*bg.scalestart[0], xbs*bgscl*bg.scalestart[0], ys*bg.scalestart[1],
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs), xbs*bgscl*(bg.scalestart[0]+xs), ys*(bg.scalestart[1]+ys2),
 		xras*x/(AbsF(ys)*lscl[1]*float32(bg.anim.spr.Size[1])),
 		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true)
 }
@@ -592,6 +596,7 @@ func loadStage(def string) (*Stage, error) {
 		sec[0].ReadI32("tension", &sys.cam.tension)
 		sec[0].ReadI32("floortension", &sys.cam.floortension)
 		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
+		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
 	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)

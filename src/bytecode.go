@@ -4002,7 +4002,7 @@ const (
 )
 
 func (sc superPause) Run(c *Char, _ []int32) bool {
-	var t, mt int32 = 0, 0
+	var t, mt int32 = 30, 0
 	uh := true
 	sys.superanim, sys.superpmap.remap = c.getAnim(30, true), nil
 	sys.superpos, sys.superfacing = c.pos, c.facing
