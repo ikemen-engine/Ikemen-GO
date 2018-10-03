@@ -83,36 +83,41 @@ func (bga *bgAction) action() {
 }
 
 type backGround struct {
-	anim         Animation
-	bga          bgAction
-	id           int32
-	start        [2]float32
-	xofs         float32
-	camstartx    float32
-	delta        [2]float32
-	xscale       [2]float32
-	rasterx      [2]float32
-	yscalestart  float32
-	yscaledelta  float32
-	actionno     int32
-	startv       [2]float32
-	startrad     [2]float32
-	startsint    [2]int32
-	startsinlt   [2]int32
-	visible      bool
-	active       bool
-	positionlink bool
-	toplayer     bool
-	startrect    [4]int32
-	windowdelta  [2]float32
-	scalestart   [2]float32
-	scaledelta   [2]float32
+	anim               Animation
+	bga                bgAction
+	id                 int32
+	start              [2]float32
+	xofs               float32
+	camstartx          float32
+	delta              [2]float32
+	xscale             [2]float32
+	rasterx            [2]float32
+	yscalestart        float32
+	yscaledelta        float32
+	actionno           int32
+	startv             [2]float32
+	startrad           [2]float32
+	startsint          [2]int32
+	startsinlt         [2]int32
+	visible            bool
+	active             bool
+	positionlink       bool
+	toplayer           bool
+	autoresizeparallax bool
+	notmaskwindow      int32
+	startrect          [4]int32
+	windowdelta        [2]float32
+	scalestart         [2]float32
+	scaledelta         [2]float32
+	zoomdelta          [2]float32
+	zoomscaledelta     [2]float32
+	xbottomzoomdelta   float32
 }
 
 func newBackGround(sff *Sff) *backGround {
-	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1},
-		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1},
-		actionno: -1, visible: true, active: true,
+	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1}, zoomdelta: [...]float32{math.MaxFloat32, math.MaxFloat32},
+		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1}, xbottomzoomdelta: math.MaxFloat32,
+		zoomscaledelta: [...]float32{1, 1}, actionno: -1, visible: true, active: true, autoresizeparallax: true,
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
@@ -161,10 +166,17 @@ func readBackGround(is IniSection, link *backGround,
 		bg.startv = link.startv
 		bg.delta = link.delta
 	}
+	is.ReadBool("autoresizeparallax", &bg.autoresizeparallax)
 	is.readF32ForStage("start", &bg.start[0], &bg.start[1])
 	is.readF32ForStage("delta", &bg.delta[0], &bg.delta[1])
 	is.readF32ForStage("scalestart", &bg.scalestart[0], &bg.scalestart[1])
 	is.readF32ForStage("scaledelta", &bg.scaledelta[0], &bg.scaledelta[1])
+	is.readF32ForStage("xbottomzoomdelta", &bg.xbottomzoomdelta)
+	is.readF32ForStage("zoomscaledelta", &bg.zoomscaledelta[0], &bg.zoomscaledelta[1])
+	is.readF32ForStage("zoomdelta", &bg.zoomdelta[0], &bg.zoomdelta[1])
+	if bg.zoomdelta[0] != math.MaxFloat32 && bg.zoomdelta[1] == math.MaxFloat32 {
+		bg.zoomdelta[1] = bg.zoomdelta[0]
+	}
 	if t != 1 {
 		if is.ReadI32("mask", &tmp) {
 			if tmp != 0 {
@@ -250,6 +262,13 @@ func readBackGround(is IniSection, link *backGround,
 		&bg.startrect[2], &bg.startrect[3]) {
 		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
 		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
+		bg.notmaskwindow = 1
+	}
+	if is.readI32ForStage("maskwindow", &bg.startrect[0], &bg.startrect[1],
+		&bg.startrect[2], &bg.startrect[3]) {
+		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
+		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
+		bg.notmaskwindow = 0
 	}
 	is.readF32ForStage("windowdelta", &bg.windowdelta[0], &bg.windowdelta[1])
 	is.ReadI32("id", &bg.id)
@@ -296,16 +315,30 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
 	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
 	sclx := MaxF(0, scl+(1-scl)*(1-dx))
+	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
+	var sclx_recip float32 = 1
 	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
-	if sclx != 0 {
+	if sclx != 0 && bg.autoresizeparallax == true {
 		tmp := 1 / sclx
-		xbs *= MaxF(0, scl+(1-scl)*(1-dx*(xbs/bg.xscale[0]))) * tmp
+		if bg.xbottomzoomdelta != math.MaxFloat32 {
+			xbs *= MaxF(0, scl+(1-scl)*(1-bg.xbottomzoomdelta*(xbs/bg.xscale[0]))) * tmp
+		} else {
+			xbs *= MaxF(0, scl+(1-scl)*(1-dx*(xbs/bg.xscale[0]))) * tmp
+		}
 		tmp *= MaxF(0, scl+(1-scl)*(1-dx*(xras+1)))
 		xras -= tmp - 1
 		xbs *= tmp
 	}
+	if bg.zoomdelta[0] != math.MaxFloat32 {
+		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
+		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
+		if bg.autoresizeparallax == false {
+			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
+		}
+	}
+
+	scly *= lclscl
 	sclx *= lscl[0]
-	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl))) * lclscl
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
@@ -320,27 +353,34 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
-	xs := bg.scaledelta[0] * pos[0] * dx
+	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
+	xs3 := 1 + (1-scl)*(1-bg.zoomscaledelta[0])
+	ys3 := 1 + (1-scl)*(1-bg.zoomscaledelta[1])
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
 	scly *= stgscl[1]
 	rect := bg.startrect
 	var wscl [2]float32
 	for i := range wscl {
-		wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.windowdelta[i]*bgscl))) *
-			bgscl * lscl[i]
+		if bg.zoomdelta[i] != math.MaxFloat32 {
+			wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.zoomdelta[i]))) *
+				bgscl * lscl[i]
+		} else {
+			wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.windowdelta[i]*bgscl))) *
+				bgscl * lscl[i]
+		}
 	}
 	rect[0] = int32(math.Floor(float64((float32(rect[0]) -
-		(pos[0]+bg.camstartx)*bg.windowdelta[0]) * sys.widthScale * wscl[0])))
+		(pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*160*(1/lscl[0]))) * sys.widthScale * wscl[0])))
 	rect[1] = int32(math.Floor(float64(((float32(rect[1])-
-		pos[1]*bg.windowdelta[1])*wscl[1] - shakeY + float32(sys.gameHeight-240)) *
+		pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) *
 		sys.heightScale)))
 	rect[2] = int32(math.Ceil(float64(float32(rect[2]) * sys.widthScale *
 		wscl[0])))
 	rect[3] = int32(math.Ceil(float64(float32(rect[3]) * sys.heightScale *
 		wscl[1])))
-	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs), xbs*bgscl*(bg.scalestart[0]+xs), ys*(bg.scalestart[1]+ys2),
-		xras*x/(AbsF(ys)*lscl[1]*float32(bg.anim.spr.Size[1])),
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*(bg.scalestart[1]+ys2)*ys3,
+		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1]))*sclx_recip,
 		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true)
 }
 
