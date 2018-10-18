@@ -266,8 +266,8 @@ func readBackGround(is IniSection, link *backGround,
 	}
 	if is.readI32ForStage("maskwindow", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
-		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
-		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
+		bg.startrect[2] = Max(0, bg.startrect[2]-bg.startrect[0])
+		bg.startrect[3] = Max(0, bg.startrect[3]-bg.startrect[1])
 		bg.notmaskwindow = 0
 	}
 	is.readF32ForStage("windowdelta", &bg.windowdelta[0], &bg.windowdelta[1])
@@ -370,15 +370,12 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 				bgscl * lscl[i]
 		}
 	}
-	rect[0] = int32(math.Floor(float64((float32(rect[0]) -
-		(pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*160*(1/lscl[0]))) * sys.widthScale * wscl[0])))
-	rect[1] = int32(math.Floor(float64(((float32(rect[1])-
-		pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) *
-		sys.heightScale)))
-	rect[2] = int32(math.Ceil(float64(float32(rect[2]) * sys.widthScale *
-		wscl[0])))
-	rect[3] = int32(math.Ceil(float64(float32(rect[3]) * sys.heightScale *
-		wscl[1])))
+	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*160*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	startrect1 := ((float32(rect[1])-pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) * sys.heightScale
+	rect[0] = int32(math.Floor(float64(startrect0)))
+	rect[1] = int32(math.Floor(float64(startrect1)))
+	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
+	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
 	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*(bg.scalestart[1]+ys2)*ys3,
 		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1]))*sclx_recip,
 		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true)

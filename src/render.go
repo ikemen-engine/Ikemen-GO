@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/go-gl/gl/v2.1/gl"
 	"math"
 	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 var notiling = [4]int32{0, 0, 0, 0}

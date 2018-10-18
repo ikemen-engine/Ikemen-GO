@@ -962,7 +962,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if (e.facing < 0) != (e.vfacing < 0) {
 		agl *= -1
 	}
-	sdwalp := alp[0]
+	sdwalp := 255 - alp[1]
 	if sdwalp < 0 {
 		sdwalp = 256
 	}
@@ -4378,10 +4378,10 @@ func (c *Char) cueDraw() {
 				c.aimg.recAfterImg(sdf())
 			}
 		} else {
-			if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
-				c.setSF(CSF_trans)
-				c.alpha = [...]int32{255, 0}
-			}
+			//if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
+			//	c.setSF(CSF_trans)
+			//	c.alpha = [...]int32{255, 0}
+			//}
 			sd := sdf()
 			c.aimg.recAndCue(sd, rec)
 			if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
@@ -4392,7 +4392,7 @@ func (c *Char) cueDraw() {
 				sc = 0
 			}
 			if c.sf(CSF_trans) {
-				sa = c.alpha[0]
+				sa = 255 - c.alpha[1]
 			}
 			sys.sprites.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
 		}

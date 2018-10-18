@@ -591,7 +591,7 @@ func (a *Animation) alpha() int32 {
 	if a.srcAlpha >= 0 {
 		sa = byte(a.srcAlpha)
 		if a.dstAlpha < 0 {
-			da = byte((^a.dstAlpha + int16(a.frames[a.drawidx].DstAlpha)) >> 1)
+			da = byte((^a.dstAlpha + int16(a.interpolate_blend_dstalpha)) >> 1)
 			if sa == 1 && da == 255 {
 				sa = 0
 			}
@@ -885,6 +885,9 @@ func (sl ShadowList) draw(x, y, scl float32) {
 	for _, s := range sl {
 		intensity := sys.stage.sdw.intensity
 		color, alpha := s.shadowColor, s.shadowAlpha
+		if alpha >= 255 {
+			alpha = int32(255 - s.anim.interpolate_blend_dstalpha)
+		}
 		fend := float32(sys.stage.sdw.fadeend) * sys.stage.localscl
 		fbgn := float32(sys.stage.sdw.fadebgn) * sys.stage.localscl
 		if fbgn <= fend {
