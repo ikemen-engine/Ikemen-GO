@@ -991,9 +991,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge())
 		case OC_camerapos_x:
-			sys.bcStack.PushF(sys.cam.Pos[0])
+			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cam.Pos[1])
+			sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
 		case OC_camerazoom:
 			sys.bcStack.PushF(sys.cam.Scale)
 		case OC_canrecover:
@@ -1032,9 +1032,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_hitshakeover:
 			sys.bcStack.PushB(c.hitShakeOver())
 		case OC_hitvel_x:
-			sys.bcStack.PushF(c.hitVelX())
+			sys.bcStack.PushF(c.hitVelX() * c.localscl / oc.localscl)
 		case OC_hitvel_y:
-			sys.bcStack.PushF(c.hitVelY())
+			sys.bcStack.PushF(c.hitVelY() * c.localscl / oc.localscl)
 		case OC_id:
 			sys.bcStack.PushI(c.id)
 		case OC_inguarddist:
@@ -1075,9 +1075,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
-			sys.bcStack.PushF(c.pos[0] - sys.cam.Pos[0])
+			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
-			sys.bcStack.PushF(c.pos[1])
+			sys.bcStack.PushF(c.pos[1] * c.localscl / oc.localscl)
 		case OC_power:
 			sys.bcStack.PushI(c.getPower())
 		case OC_powermax:
@@ -1103,13 +1103,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
 		case OC_screenheight:
-			sys.bcStack.PushF(sys.screenHeight())
+			sys.bcStack.PushF(sys.screenHeight() / oc.localscl)
 		case OC_screenpos_x:
 			sys.bcStack.PushF(c.screenPosX())
 		case OC_screenpos_y:
 			sys.bcStack.PushF(c.screenPosY())
 		case OC_screenwidth:
-			sys.bcStack.PushF(sys.screenWidth())
+			sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
 		case OC_selfanimexist:
 			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
 		case OC_stateno:
@@ -1129,15 +1129,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_uniqhitcount:
 			sys.bcStack.PushI(c.uniqHitCount)
 		case OC_vel_x:
-			sys.bcStack.PushF(c.vel[0])
+			sys.bcStack.PushF(c.vel[0] * c.localscl / oc.localscl)
 		case OC_vel_y:
-			sys.bcStack.PushF(c.vel[1])
+			sys.bcStack.PushF(c.vel[1] * c.localscl / oc.localscl)
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
-			be.run_const(c, &i)
+			be.run_const(c, &i, oc)
 		case OC_ex_:
-			be.run_ex(c, &i)
+			be.run_ex(c, &i, oc)
 		case OC_var:
 			*sys.bcStack.Top() = c.varGet(sys.bcStack.Top().ToI())
 		case OC_sysvar:
@@ -1208,7 +1208,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		}
 	}
 }
-func (be BytecodeExp) run_const(c *Char, i *int) {
+func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	(*i)++
 	switch be[*i-1] {
 	case OC_const_data_life:
@@ -1240,158 +1240,158 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 	case OC_const_size_yscale:
 		sys.bcStack.PushF(c.size.yscale)
 	case OC_const_size_ground_back:
-		sys.bcStack.PushI(c.size.ground.back)
+		sys.bcStack.PushF(c.size.ground.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_ground_front:
-		sys.bcStack.PushI(c.size.ground.front)
+		sys.bcStack.PushF(c.size.ground.front * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_air_back:
-		sys.bcStack.PushI(c.size.air.back)
+		sys.bcStack.PushF(c.size.air.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_air_front:
-		sys.bcStack.PushI(c.size.air.front)
+		sys.bcStack.PushF(c.size.air.front * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_z_width:
-		sys.bcStack.PushI(c.size.z.width)
+		sys.bcStack.PushF(c.size.z.width * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_height:
-		sys.bcStack.PushI(c.size.height)
+		sys.bcStack.PushF(c.size.height * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_attack_dist:
-		sys.bcStack.PushI(c.size.attack.dist)
+		sys.bcStack.PushF(c.size.attack.dist * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushI(c.size.attack.z.width[1])
+		sys.bcStack.PushF(c.size.attack.z.width[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushI(c.size.attack.z.width[0])
+		sys.bcStack.PushF(c.size.attack.z.width[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_proj_attack_dist:
-		sys.bcStack.PushI(c.size.proj.attack.dist)
+		sys.bcStack.PushF(c.size.proj.attack.dist * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_proj_doscale:
 		sys.bcStack.PushI(c.size.proj.doscale)
 	case OC_const_size_head_pos_x:
-		sys.bcStack.PushI(c.size.head.pos[0])
+		sys.bcStack.PushF(c.size.head.pos[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_head_pos_y:
-		sys.bcStack.PushI(c.size.head.pos[1])
+		sys.bcStack.PushF(c.size.head.pos[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_mid_pos_x:
-		sys.bcStack.PushI(c.size.mid.pos[0])
+		sys.bcStack.PushF(c.size.mid.pos[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_mid_pos_y:
-		sys.bcStack.PushI(c.size.mid.pos[1])
+		sys.bcStack.PushF(c.size.mid.pos[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_shadowoffset:
-		sys.bcStack.PushI(c.size.shadowoffset)
+		sys.bcStack.PushF(c.size.shadowoffset * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_draw_offset_x:
-		sys.bcStack.PushI(c.size.draw.offset[0])
+		sys.bcStack.PushF(c.size.draw.offset[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_size_draw_offset_y:
-		sys.bcStack.PushI(c.size.draw.offset[1])
+		sys.bcStack.PushF(c.size.draw.offset[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_walk_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.fwd)
+		sys.bcStack.PushF(c.gi().velocity.walk.fwd * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_walk_back_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.back)
+		sys.bcStack.PushF(c.gi().velocity.walk.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_walk_up_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.up.x)
+		sys.bcStack.PushF(c.gi().velocity.walk.up.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_walk_down_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.down.x)
+		sys.bcStack.PushF(c.gi().velocity.walk.down.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.run.fwd[0])
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_fwd_y:
-		sys.bcStack.PushF(c.gi().velocity.run.fwd[1])
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_back_x:
-		sys.bcStack.PushF(c.gi().velocity.run.back[0])
+		sys.bcStack.PushF(c.gi().velocity.run.back[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_back_y:
-		sys.bcStack.PushF(c.gi().velocity.run.back[1])
+		sys.bcStack.PushF(c.gi().velocity.run.back[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_up_x:
-		sys.bcStack.PushF(c.gi().velocity.run.up.x)
+		sys.bcStack.PushF(c.gi().velocity.run.up.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_up_y:
-		sys.bcStack.PushF(c.gi().velocity.run.up.y)
+		sys.bcStack.PushF(c.gi().velocity.run.up.y * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_down_x:
-		sys.bcStack.PushF(c.gi().velocity.run.down.x)
+		sys.bcStack.PushF(c.gi().velocity.run.down.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_run_down_y:
-		sys.bcStack.PushF(c.gi().velocity.run.down.y)
+		sys.bcStack.PushF(c.gi().velocity.run.down.y * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_y:
-		sys.bcStack.PushF(c.gi().velocity.jump.neu[1])
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_neu_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.neu[0])
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.back)
+		sys.bcStack.PushF(c.gi().velocity.jump.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.fwd)
+		sys.bcStack.PushF(c.gi().velocity.jump.fwd * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.jump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_jump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.jump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.back[0])
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_back_y:
-		sys.bcStack.PushF(c.gi().velocity.runjump.back[1])
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_y:
-		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[1])
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0])
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.runjump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_runjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.runjump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_y:
-		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1])
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_neu_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.neu[0])
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.back)
+		sys.bcStack.PushF(c.gi().velocity.airjump.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.fwd)
+		sys.bcStack.PushF(c.gi().velocity.airjump.fwd * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.up.x)
+		sys.bcStack.PushF(c.gi().velocity.airjump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_airjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.down.x)
+		sys.bcStack.PushF(c.gi().velocity.airjump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_groundrecover_x:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_groundrecover_y:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[1])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_mul_x:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[0])
 	case OC_const_velocity_air_gethit_airrecover_mul_y:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[1])
 	case OC_const_velocity_air_gethit_airrecover_add_x:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[0])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_add_y:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[1])
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_back:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.back)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.back * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_fwd:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.fwd)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.fwd * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_up:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.up)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.up * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_down:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.down)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.down * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_airjump_num:
 		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(c.gi().movement.airjump.height)
+		sys.bcStack.PushI(int32(float32(c.gi().movement.airjump.height) * (320 / float32(c.localcoord)) / oc.localscl))
 	case OC_const_movement_yaccel:
-		sys.bcStack.PushF(c.gi().movement.yaccel)
+		sys.bcStack.PushF(c.gi().movement.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_stand_friction:
 		sys.bcStack.PushF(c.gi().movement.stand.friction)
 	case OC_const_movement_crouch_friction:
 		sys.bcStack.PushF(c.gi().movement.crouch.friction)
 	case OC_const_movement_stand_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.stand.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.stand.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_crouch_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.crouch.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.crouch.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_groundrecover_ground_threshold:
 		sys.bcStack.PushF(
-			c.gi().movement.air.gethit.groundrecover.ground.threshold)
+			c.gi().movement.air.gethit.groundrecover.ground.threshold * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_groundrecover_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.groundrecover.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundrecover.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_airrecover_threshold:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.threshold)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.threshold * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_airrecover_yaccel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.yaccel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_air_gethit_trip_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.trip.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.trip.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_down_bounce_offset_x:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[0])
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[0] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_down_bounce_offset_y:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[1])
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[1] * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_down_bounce_yaccel:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_down_bounce_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_movement_down_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.down.friction_threshold)
+		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
 	case OC_const_authorname:
 		sys.bcStack.PushB(c.gi().authorLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1441,7 +1441,7 @@ func (be BytecodeExp) run_const(c *Char, i *int) {
 		c.panic()
 	}
 }
-func (be BytecodeExp) run_ex(c *Char, i *int) {
+func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	(*i)++
 	switch be[*i-1] {
 	case OC_ex_drawgame:
@@ -1471,19 +1471,19 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_winperfect:
 		sys.bcStack.PushB(c.winPerfect())
 	case OC_ex_p2dist_x:
-		sys.bcStack.Push(c.rdDistX(c.p2()))
+		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
 	case OC_ex_p2dist_y:
-		sys.bcStack.Push(c.rdDistY(c.p2()))
+		sys.bcStack.Push(c.rdDistY(c.p2(), oc))
 	case OC_ex_p2bodydist_x:
-		sys.bcStack.Push(c.p2BodyDistX())
+		sys.bcStack.Push(c.p2BodyDistX(oc))
 	case OC_ex_rootdist_x:
-		sys.bcStack.Push(c.rdDistX(c.root()))
+		sys.bcStack.Push(c.rdDistX(c.root(), oc))
 	case OC_ex_rootdist_y:
-		sys.bcStack.Push(c.rdDistY(c.root()))
+		sys.bcStack.Push(c.rdDistY(c.root(), oc))
 	case OC_ex_parentdist_x:
-		sys.bcStack.Push(c.rdDistX(c.parent()))
+		sys.bcStack.Push(c.rdDistX(c.parent(), oc))
 	case OC_ex_parentdist_y:
-		sys.bcStack.Push(c.rdDistY(c.parent()))
+		sys.bcStack.Push(c.rdDistY(c.parent(), oc))
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_airtype:
@@ -1507,15 +1507,15 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_recovertime:
 		sys.bcStack.PushI(c.recoverTime)
 	case OC_ex_gethitvar_xoff:
-		sys.bcStack.PushF(c.ghv.xoff)
+		sys.bcStack.PushF(c.ghv.xoff * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_yoff:
-		sys.bcStack.PushF(c.ghv.yoff)
+		sys.bcStack.PushF(c.ghv.yoff * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_xvel:
-		sys.bcStack.PushF(c.ghv.xvel * c.facing)
+		sys.bcStack.PushF(c.ghv.xvel * c.facing * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_yvel:
-		sys.bcStack.PushF(c.ghv.yvel)
+		sys.bcStack.PushF(c.ghv.yvel * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_yaccel:
-		sys.bcStack.PushF(c.ghv.getYaccel())
+		sys.bcStack.PushF(c.ghv.getYaccel(oc) * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_chainid:
 		sys.bcStack.PushI(c.ghv.chainId())
 	case OC_ex_gethitvar_guarded:
@@ -1527,9 +1527,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_fall_damage:
 		sys.bcStack.PushI(c.ghv.fall.damage)
 	case OC_ex_gethitvar_fall_xvel:
-		sys.bcStack.PushF(c.ghv.fall.xvel())
+		sys.bcStack.PushF(c.ghv.fall.xvel() * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_fall_yvel:
-		sys.bcStack.PushF(c.ghv.fall.yvelocity)
+		sys.bcStack.PushF(c.ghv.fall.yvelocity * c.localscl / oc.localscl)
 	case OC_ex_gethitvar_fall_recover:
 		sys.bcStack.PushB(c.ghv.fall.recover)
 	case OC_ex_gethitvar_fall_time:
@@ -1543,9 +1543,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int) {
 	case OC_ex_gethitvar_fall_envshake_freq:
 		sys.bcStack.PushF(c.ghv.fall.envshake_freq)
 	case OC_ex_gethitvar_fall_envshake_ampl:
-		sys.bcStack.PushI(c.ghv.fall.envshake_ampl)
+		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
-		sys.bcStack.PushF(c.ghv.fall.envshake_phase)
+		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
@@ -1792,7 +1792,7 @@ func (sc stateDef) Run(c *Char) {
 		case stateDef_sprpriority:
 			c.setSprPriority(exp[0].evalI(c))
 		case stateDef_facep2:
-			if exp[0].evalB(c) && c.rdDistX(c.p2()).ToF() < 0 {
+			if exp[0].evalB(c) && c.rdDistX(c.p2(), c).ToF() < 0 {
 				c.setFacing(-c.facing)
 			}
 		case stateDef_juggle:
@@ -2148,29 +2148,29 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_size_yscale:
 			h.size.yscale = exp[0].evalF(c)
 		case helper_size_ground_back:
-			h.size.ground.back = exp[0].evalI(c)
+			h.size.ground.back = exp[0].evalF(c)
 		case helper_size_ground_front:
-			h.size.ground.front = exp[0].evalI(c)
+			h.size.ground.front = exp[0].evalF(c)
 		case helper_size_air_back:
-			h.size.air.back = exp[0].evalI(c)
+			h.size.air.back = exp[0].evalF(c)
 		case helper_size_air_front:
-			h.size.air.front = exp[0].evalI(c)
+			h.size.air.front = exp[0].evalF(c)
 		case helper_size_height:
-			h.size.height = exp[0].evalI(c)
+			h.size.height = exp[0].evalF(c)
 		case helper_size_proj_doscale:
 			h.size.proj.doscale = exp[0].evalI(c)
 		case helper_size_head_pos:
-			h.size.head.pos[0] = exp[0].evalI(c)
+			h.size.head.pos[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
-				h.size.head.pos[1] = exp[1].evalI(c)
+				h.size.head.pos[1] = exp[1].evalF(c)
 			}
 		case helper_size_mid_pos:
-			h.size.mid.pos[0] = exp[0].evalI(c)
+			h.size.mid.pos[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
-				h.size.mid.pos[1] = exp[1].evalI(c)
+				h.size.mid.pos[1] = exp[1].evalF(c)
 			}
 		case helper_size_shadowoffset:
-			h.size.shadowoffset = exp[0].evalI(c)
+			h.size.shadowoffset = exp[0].evalF(c)
 		case helper_stateno:
 			st = exp[0].evalI(c)
 		case helper_keyctrl:
@@ -2189,6 +2189,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_supermovetime:
 			h.superMovetime = exp[0].evalI(c)
 		}
+		h.localscl = c.localscl
+		h.localcoord = c.localcoord
 		return true
 	})
 	c.helperInit(h, st, pt, x, y, f, op)
@@ -2242,6 +2244,7 @@ const (
 	explod_yangle
 	explod_xangle
 	explod_ignorehitpause
+	explod_bindid
 )
 
 func (sc explod) Run(c *Char, _ []int32) bool {
@@ -2251,6 +2254,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	}
 	e.id = 0
 	rp := [...]int32{-1, 0}
+	if c.stCgi().ver[1] == 1 && c.stCgi().ver[1] == 1 {
+		e.postype = PT_N
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case explod_ownpal:
@@ -2357,9 +2363,12 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			exp[0].run(c)
 		case explod_ignorehitpause:
 			e.ignorehitpause = exp[0].evalB(c)
+		case explod_bindid:
+			e.bindId = exp[0].evalI(c)
 		}
 		return true
 	})
+	e.localscl = c.localscl
 	e.setPos(c)
 	c.insertExplodEx(i, rp)
 	return false
@@ -2517,6 +2526,8 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				exp[0].run(c)
 			case explod_xangle:
 				exp[0].run(c)
+			case explod_bindid:
+				exp[0].evalI(c)
 			}
 		}
 		return true
@@ -2562,6 +2573,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	})
 	e.offset[0] -= float32(c.size.draw.offset[0])
 	e.offset[1] -= float32(c.size.draw.offset[1])
+	//e.localscl = c.localscl
 	e.setPos(c)
 	c.insertExplod(i)
 	return false
@@ -2579,7 +2591,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case posSet_x:
-			c.setX(sys.cam.Pos[0] + exp[0].evalF(c))
+			c.setX(sys.cam.Pos[0]/c.localscl + exp[0].evalF(c))
 		case posSet_y:
 			c.setY(exp[0].evalF(c))
 		case posSet_z:
@@ -3369,6 +3381,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	if p.aimg.time != 0 {
 		p.aimg.setupPalFX()
 	}
+	p.localscl = c.localscl
 	c.projInit(p, pt, x, y, op, rp[0], rp[1])
 	return false
 }
@@ -3902,9 +3915,9 @@ func (sc envShake) Run(c *Char, _ []int32) bool {
 		case envShake_time:
 			sys.envShake.time = exp[0].evalI(c)
 		case envShake_ampl:
-			sys.envShake.ampl = exp[0].evalI(c)
+			sys.envShake.ampl = int32(float32(exp[0].evalI(c)) * c.localscl)
 		case envShake_phase:
-			sys.envShake.phase = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180)
+			sys.envShake.phase = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180) * c.localscl
 		case envShake_freq:
 			sys.envShake.freq = exp[0].evalF(c)
 		}
@@ -4005,7 +4018,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	var t, mt int32 = 30, 0
 	uh := true
 	sys.superanim, sys.superpmap.remap = c.getAnim(30, true), nil
-	sys.superpos, sys.superfacing = c.pos, c.facing
+	sys.superpos, sys.superfacing = [...]float32{c.pos[0] * c.localscl, c.pos[1] * c.localscl}, c.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
 	sys.superp2defmul = sys.super_TargetDefenceMul
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -4030,9 +4043,9 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case superPause_pos:
-			sys.superpos[0] += c.facing * exp[0].evalF(c)
+			sys.superpos[0] += c.facing * exp[0].evalF(c) * c.localscl
 			if len(exp) > 1 {
-				sys.superpos[1] += exp[1].evalF(c)
+				sys.superpos[1] += exp[1].evalF(c) * c.localscl
 			}
 		case superPause_p2defmul:
 			sys.superp2defmul = exp[0].evalF(c)
@@ -4068,6 +4081,7 @@ const (
 )
 
 func (sc trans) Run(c *Char, _ []int32) bool {
+	c.alpha[1] = 255
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case trans_trans:

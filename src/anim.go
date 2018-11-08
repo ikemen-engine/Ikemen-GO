@@ -650,8 +650,8 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	h, v, angle := a.drawSub1(angle)
 	xs *= xcs * h
 	ys *= ycs * v
-	x = xcs*x + xs*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)
-	y = ycs*y + ys*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)
+	x = xcs*x + xs*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x)
+	y = ycs*y + ys*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y)
 	var rcy float32
 	if angle == 0 {
 		if xs < 0 {

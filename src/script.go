@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/yuin/gopher-lua"
 	"runtime"
 	"strings"
+
+	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/yuin/gopher-lua"
 )
 
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
@@ -1259,7 +1260,7 @@ func triggerScriptInit(l *lua.LState) {
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
 		case "yaccel":
-			ln = lua.LNumber(c.ghv.getYaccel())
+			ln = lua.LNumber(c.ghv.getYaccel(c))
 		case "hitid", "chainid":
 			ln = lua.LNumber(c.ghv.chainId())
 		case "guarded":

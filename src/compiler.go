@@ -3488,6 +3488,10 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_sprpriority, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "bindid",
+		explod_bindid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, "ontop", func(data string) error {
 		if err := c.scAdd(sc, explod_ontop, data, VT_Bool, 1); err != nil {
 			return err
