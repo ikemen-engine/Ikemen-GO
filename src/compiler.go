@@ -2762,6 +2762,26 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 		return nil
 	})
 }
+
+func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
+	id byte) error {
+	return c.stateParam(is, "space", func(data string) error {
+		if len(data) <= 1 {
+			return Error("値が指定されていません")
+		}
+		var sp Space
+		if len(data) >= 2 {
+			if strings.ToLower(data[:2]) == "st" {
+				sp = Space_stage
+			} else if strings.ToLower(data[:2]) == "sc" {
+				sp = Space_screen
+			}
+		}
+		sc.add(id, sc.iToExp(int32(sp)))
+		return nil
+	})
+}
+
 func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 	prefix string, id byte, afterImage bool) error {
 	return c.stateParam(is, prefix+"trans", func(data string) error {
@@ -3441,6 +3461,9 @@ func (c *Compiler) explodSub(is IniSection,
 		return err
 	}
 	if err := c.paramPostye(is, sc, explod_postype); err != nil {
+		return err
+	}
+	if err := c.paramSpace(is, sc, explod_space); err != nil {
 		return err
 	}
 	f := false

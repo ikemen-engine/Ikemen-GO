@@ -80,6 +80,14 @@ const (
 	PT_N
 )
 
+type Space int32
+
+const (
+	Space_none Space = iota
+	Space_stage
+	Space_screen
+)
+
 type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
@@ -775,7 +783,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl,
-			false, sd.bright, sd.oldVer}, 0, 0, 0, 0)
+			false, sd.bright, sd.oldVer, sd.facing}, 0, 0, 0, 0)
 	}
 	if rec {
 		ai.recAfterImg(sd)
@@ -793,6 +801,7 @@ type Explod struct {
 	accel          [2]float32
 	sprpriority    int32
 	postype        PosType
+	space          Space
 	offset         [2]float32
 	relativef      int32
 	pos            [2]float32
@@ -817,7 +826,7 @@ type Explod struct {
 
 func (e *Explod) clear() {
 	*e = Explod{id: IErr, scale: [...]float32{1, 1}, removetime: -2,
-		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1,
+		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1, space: Space_none,
 		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -1, ignorehitpause: true}
 }
 func (e *Explod) setX(x float32) {
@@ -839,47 +848,69 @@ func (e *Explod) setPos(c *Char) {
 	lPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
 	rPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl +
 			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
-	switch e.postype {
-	case PT_P1:
-		pPos(c)
-	case PT_P2:
-		if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
-			pPos(p2)
-		}
-	case PT_F, PT_B:
-		e.facing = c.facing * float32(e.relativef)
-		// front と back はバインドの都合で left か right になおす
-		if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
-			if e.postype == PT_B {
-				e.offset[0] *= -1
+	if e.space >= Space_stage {
+		e.postype = PT_N
+	}
+	if e.space <= Space_none {
+		switch e.postype {
+		case PT_P1:
+			pPos(c)
+		case PT_P2:
+			if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
+				pPos(p2)
 			}
-			e.postype = PT_R
-			rPos()
-		} else {
-			// explod の postype = front はキャラの向きで pos が反転しない
-			if e.postype == PT_F && c.gi().ver[0] != 1 {
+		case PT_F, PT_B:
+			e.facing = c.facing * float32(e.relativef)
+			// front と back はバインドの都合で left か right になおす
+			if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
+				if e.postype == PT_B {
+					e.offset[0] *= -1
+				}
+				e.postype = PT_R
+				rPos()
+			} else {
+				// explod の postype = front はキャラの向きで pos が反転しない
+				//if e.postype == PT_F && c.gi().ver[0] != 1 {
 				// 旧バージョンだと front は キャラの向きが facing に反映されない
+				// 1.1でも反映されてない模様
 				e.facing = float32(e.relativef)
+				//}
+				e.postype = PT_L
+				lPos()
 			}
-			e.postype = PT_L
+		case PT_L:
+			e.facing = float32(e.relativef)
 			lPos()
+		case PT_R:
+			e.facing = float32(e.relativef)
+			rPos()
+		case PT_N:
+			e.facing = float32(e.relativef)
+			e.setX(e.offset[0])
+			e.setY(e.offset[1])
 		}
-	case PT_L:
-		e.facing = float32(e.relativef)
-		lPos()
-	case PT_R:
-		e.facing = float32(e.relativef)
-		rPos()
-	case PT_N:
-		e.facing = float32(e.relativef)
-		e.setX(e.offset[0])
-		e.setY(e.offset[1])
+	} else {
+		switch e.space {
+		case Space_screen:
+			e.facing = float32(e.relativef)
+			lPos()
+		case Space_stage:
+			e.facing = float32(e.relativef)
+			e.setX(e.offset[0])
+			e.setY(e.offset[1])
+		}
 	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
@@ -916,14 +947,21 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		}
 	}
 	screen := false
+	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
+		screen = true
+	}
 	if e.bindtime != 0 {
-		if e.postype == PT_N && e.bindId < 0 {
+		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
+			e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
+		} else if e.postype == PT_N && e.bindId < 0 {
+			e.pos[0] = e.offset[0]
+			e.pos[1] = e.offset[1]
+			e.bindtime = 0
 		} else if e.postype >= PT_L && e.postype != PT_N {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
-			screen = true
 			if e.postype == PT_L {
 				e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
 			} else {
@@ -973,24 +1011,30 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, agl, [...]float32{1, 1},
-		screen, playerNo == sys.superplayer, oldVer},
+		screen, playerNo == sys.superplayer, oldVer, e.facing},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 		if e.bindtime > 0 {
 			e.bindtime--
-			if screen && e.bindtime == 0 {
-				switch e.postype {
-				case PT_L:
-					for i := range e.pos {
-						e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
-					}
-				case PT_R:
-					e.pos[0] = sys.cam.ScreenPos[0] +
-						(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
-					e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
-				}
-			}
 		}
+		//if screen && e.bindtime == 0 {
+		//	if e.space <= Space_none {
+		//		switch e.postype {
+		//		case PT_L:
+		//			for i := range e.pos {
+		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//			}
+		//		case PT_R:
+		//			e.pos[0] = sys.cam.ScreenPos[0] +
+		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
+		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
+		//		}
+		//	} else if e.space == Space_screen {
+		//		for i := range e.pos {
+		//			e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//		}
+		//	}
+		//}
 		if act {
 			if e.bindtime == 0 {
 				e.oldPos = e.pos
@@ -1261,7 +1305,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
-			sys.cgi[playerNo].ver[0] != 1}
+			sys.cgi[playerNo].ver[0] != 1, p.facing}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
 		sys.sprites.add(sd,
 			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
@@ -2443,10 +2487,10 @@ func (c *Char) roundState() int32 {
 	}
 }
 func (c *Char) screenPosX() float32 {
-	return (c.pos[0] - sys.cam.ScreenPos[0]/c.localscl) * sys.cam.Scale
+	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
 }
 func (c *Char) screenPosY() float32 {
-	return (c.pos[1] - sys.cam.ScreenPos[1]/c.localscl) * sys.cam.Scale
+	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
 }
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
@@ -4454,7 +4498,7 @@ func (c *Char) cueDraw() {
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, agl, c.angleScalse, false,
-				c.playerNo == sys.superplayer, c.gi().ver[0] != 1}
+				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
 			}

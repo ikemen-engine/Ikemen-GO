@@ -1105,9 +1105,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_screenheight:
 			sys.bcStack.PushF(sys.screenHeight() / oc.localscl)
 		case OC_screenpos_x:
-			sys.bcStack.PushF(c.screenPosX())
+			sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
 		case OC_screenpos_y:
-			sys.bcStack.PushF(c.screenPosY())
+			sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
 		case OC_screenwidth:
 			sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
 		case OC_selfanimexist:
@@ -2245,6 +2245,7 @@ const (
 	explod_xangle
 	explod_ignorehitpause
 	explod_bindid
+	explod_space
 )
 
 func (sc explod) Run(c *Char, _ []int32) bool {
@@ -2294,6 +2295,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_postype:
 			e.postype = PosType(exp[0].evalI(c))
+		case explod_space:
+			e.space = Space(exp[0].evalI(c))
 		case explod_velocity:
 			e.velocity[0] = exp[0].evalF(c)
 			if len(exp) > 1 {

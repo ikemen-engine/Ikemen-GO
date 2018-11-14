@@ -171,9 +171,10 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		sclMul = MinF(4.0/3, Pow((Pow(2, c.ZoomSpeed)+3)/Pow(2, c.ZoomSpeed)-
 			sclMul, 64))
 	}
-	if pause {
-		sclMul = 1
-	} else if sclMul > 1 {
+	//if pause {
+	//	sclMul = 1
+	//} else if sclMul > 1 {
+	if sclMul > 1 {
 		sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
 		if tmp*sclMul > sys.xmax-sys.xmin {
 			sclMul = (sys.xmax - sys.xmin) / tmp

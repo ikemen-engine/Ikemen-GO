@@ -463,7 +463,7 @@ func (a *Animation) UpdateSprite() {
 			a.time, a.newframe, a.current = 0, true, 0
 		}
 	}
-	if a.newframe && a.sff != nil {
+	if a.newframe && a.sff != nil && a.frames[a.current].Time != 0 {
 		a.spr = a.sff.GetSprite(a.curFrame().Group, a.curFrame().Number)
 	}
 	a.newframe, a.drawidx = false, a.current
@@ -634,20 +634,20 @@ func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
 	}
 	return pfx.getFxPal(p, neg)
 }
-func (a *Animation) drawSub1(angle float32) (h, v, agl float32) {
+func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
 	agl = float32(float64(angle) * math.Pi / 180)
 	h *= a.scale_x
 	v *= a.scale_y
-	agl += a.angle
+	agl += a.angle * facing
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd, angle, rcx float32, pfx *PalFX, old bool) {
+	rxadd, angle, rcx float32, pfx *PalFX, old bool, facing float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
-	h, v, angle := a.drawSub1(angle)
+	h, v, angle := a.drawSub1(angle, facing)
 	xs *= xcs * h
 	ys *= ycs * v
 	x = xcs*x + xs*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x)
@@ -698,11 +698,12 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		trans, window, rcx, rcy, pfx)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
-	pfx *PalFX, old bool, color uint32, alpha int32) {
+	pfx *PalFX, old bool, color uint32, alpha int32, facing float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
-	h, v, angle := a.drawSub1(angle)
+	h, v, angle := a.drawSub1(angle, facing)
+	angle = -angle
 	x += xscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x)
 	y += yscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y)
 	var draw func(int32)
@@ -795,6 +796,7 @@ type SprData struct {
 	screen   bool
 	bright   bool
 	oldVer   bool
+	facing   float32
 }
 type DrawList []*SprData
 
@@ -849,7 +851,7 @@ func (dl DrawList) draw(x, y, scl float32) {
 					(y - s.pos[1])}
 		}
 		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], 0, s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer)
+			s.scl[1], 0, s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
 		sys.brightness = ob
 	}
 }
@@ -910,8 +912,8 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, -s.angle,
-			&sys.bgPalFX, s.oldVer, uint32(color), intensity)
+			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle,
+			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing)
 	}
 }
 func (sl ShadowList) drawReflection(x, y, scl float32) {
@@ -937,7 +939,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			-s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer)
+			-s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
 	}
 }
 
@@ -988,6 +990,6 @@ func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, 0, nil, false)
+			0, 0, 0, nil, false, 1)
 	}
 }
