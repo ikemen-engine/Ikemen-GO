@@ -566,12 +566,7 @@ func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(Pow(v1.ToF(), v2.ToF()))
 	} else if v2.ToF() < 0 {
-		if sys.cgi[pn].ver[0] == 1 {
-			v1.SetF(Pow(v1.ToF(), v2.ToF()))
-		} else {
-			f := Pow(v1.ToF(), v2.ToF())
-			v1.SetI(*(*int32)(unsafe.Pointer(&f)) << 29)
-		}
+		v1.SetF(Pow(v1.ToF(), v2.ToF()))
 	} else {
 		i1, i2, hb := v1.ToI(), v2.ToI(), int32(-1)
 		for uint32(i2)>>uint(hb+1) != 0 {
