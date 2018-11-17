@@ -701,7 +701,7 @@ func loadStage(def string) (*Stage, error) {
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
-		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {
+		if len(s.bg) > 0 && !s.bg[len(s.bg)-1].positionlink {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
