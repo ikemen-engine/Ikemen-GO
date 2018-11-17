@@ -443,7 +443,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 		s.palidx = -1
 		return s, nil
 	}
-	if s.rle != -12 {
+	if s.rle > -11 {
 		read := func(x interface{}) error {
 			return binary.Read(f, binary.LittleEndian, x)
 		}
@@ -484,7 +484,7 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	s.palidx = src.palidx
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
-	if s.Pal != nil || s.rle == -12 {
+	if s.Pal != nil || s.rle <= -11 {
 		return s.Pal
 	}
 	return pl.Get(int(s.palidx))
