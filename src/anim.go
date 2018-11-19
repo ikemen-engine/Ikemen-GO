@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"strconv"
 	"strings"
 )
@@ -116,7 +115,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 				if err != nil {
 					f = 0
 				}
-				af.Ex[2] = append(af.Ex[2], float32(f*math.Pi/180)) // Angle
+				af.Ex[2] = append(af.Ex[2], float32(f)) // Angle
 			}
 		}
 	}
@@ -636,14 +635,14 @@ func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
 }
 func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
-	agl = float32(float64(angle) * math.Pi / 180)
+	agl = angle
 	h *= a.scale_x
 	v *= a.scale_y
 	agl += a.angle * facing
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd, angle, rcx float32, pfx *PalFX, old bool, facing float32) {
+	rxadd, angle, yangle, xangle, rcx float32, pfx *PalFX, old bool, facing float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
@@ -653,7 +652,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	x = xcs*x + xs*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x)
 	y = ycs*y + ys*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y)
 	var rcy float32
-	if angle == 0 {
+	if angle == 0 && yangle == 0 && xangle == 0 {
 		if xs < 0 {
 			x *= -1
 			if old {
@@ -694,10 +693,10 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	trans := a.alpha()
 	a.spr.glDraw(a.pal(pfx, trans == -2), int32(a.mask), x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
-		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle,
+		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle, yangle, xangle,
 		trans, window, rcx, rcy, pfx)
 }
-func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
+func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle float32,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
@@ -713,7 +712,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color)
 		}
 	} else {
@@ -728,7 +727,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale)
 		}
 	}
@@ -792,6 +791,8 @@ type SprData struct {
 	alpha    [2]int32
 	priority int32
 	angle    float32
+	yangle   float32
+	xangle   float32
 	ascl     [2]float32
 	screen   bool
 	bright   bool
@@ -851,7 +852,7 @@ func (dl DrawList) draw(x, y, scl float32) {
 					(y - s.pos[1])}
 		}
 		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], 0, s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
+			s.scl[1], 0, s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
 		sys.brightness = ob
 	}
 }
@@ -912,7 +913,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle,
+			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle, s.yangle, s.xangle,
 			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing)
 	}
 }
@@ -939,7 +940,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			-s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
+			-s.angle, -s.yangle, -s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
 	}
 }
 
@@ -990,6 +991,6 @@ func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, 0, nil, false, 1)
+			0, 0, 0, 0, 0, nil, false, 1)
 	}
 }

@@ -112,7 +112,7 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		RenderMugen(*sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
 			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
-			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0,
+			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0, 0, 0,
 			trans, &sys.scrrect, 0, 0)
 	}
 }
@@ -640,6 +640,8 @@ type aimgImage struct {
 	anim           Animation
 	pos, scl, ascl [2]float32
 	angle          float32
+	yangle         float32
+	xangle         float32
 	oldVer         bool
 }
 
@@ -760,6 +762,8 @@ func (ai *AfterImage) recAfterImg(sd *SprData) {
 		img.pos = sd.pos
 		img.scl = sd.scl
 		img.angle = sd.angle
+		img.yangle = sd.yangle
+		img.xangle = sd.xangle
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
 		ai.imgidx = (ai.imgidx + 1) & 63
@@ -782,7 +786,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
-			img.scl, ai.alpha, sd.priority - 2, img.angle, img.ascl,
+			img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
 			false, sd.bright, sd.oldVer, sd.facing}, 0, 0, 0, 0)
 	}
 	if rec {
@@ -818,6 +822,8 @@ type Explod struct {
 	bindId         int32
 	ignorehitpause bool
 	angle          float32
+	yangle         float32
+	xangle         float32
 	oldPos         [2]float32
 	newPos         [2]float32
 	palfx          *PalFX
@@ -1001,16 +1007,20 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		alp[0] = -1
 	}
 	agl := e.angle
+	yagl := e.yangle
+	xagl := e.xangle
 	if (e.facing < 0) != (e.vfacing < 0) {
 		agl *= -1
+		yagl *= -1
 	}
+
 	sdwalp := 255 - alp[1]
 	if sdwalp < 0 {
 		sdwalp = 256
 	}
 	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
-		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, agl, [...]float32{1, 1},
+		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, agl, yagl, xagl, [...]float32{1, 1},
 		screen, playerNo == sys.superplayer, oldVer, e.facing},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
@@ -1304,7 +1314,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	if p.ani != nil {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
-			p.sprpriority, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			p.sprpriority, 0, 0, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].ver[0] != 1, p.facing}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
 		sys.sprites.add(sd,
@@ -4497,7 +4507,7 @@ func (c *Char) cueDraw() {
 		rec := sys.tickNextFrame() && c.acttmp > 0
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
-				scl, c.alpha, c.sprPriority, agl, c.angleScalse, false,
+				scl, c.alpha, c.sprPriority, agl, 0, 0, c.angleScalse, false,
 				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
@@ -5375,9 +5385,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 				*cache = append(*cache, e)
 				return
 			}
-			if p2 && !e.scf(SCF_ko_round_middle) &&
-				(*cache)[i].scf(SCF_ko_round_middle) || (!p2 ||
-				e.scf(SCF_ko_round_middle) == (*cache)[i].scf(SCF_ko_round_middle)) &&
+			if (p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) &&
 				AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
 				add((*cache)[i], i+1)
 				(*cache)[i] = e

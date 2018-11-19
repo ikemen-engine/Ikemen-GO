@@ -2184,8 +2184,13 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_supermovetime:
 			h.superMovetime = exp[0].evalI(c)
 		}
-		h.localscl = c.localscl
-		h.localcoord = c.localcoord
+		if c.minus == -2 {
+			h.localscl = (320 / float32(c.localcoord))
+			h.localcoord = c.localcoord
+		} else {
+			h.localscl = c.localscl
+			h.localcoord = c.localcoord
+		}
 		return true
 	})
 	c.helperInit(h, st, pt, x, y, f, op)
@@ -2356,9 +2361,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_angle:
 			e.angle = exp[0].evalF(c)
 		case explod_yangle:
-			exp[0].run(c)
+			e.yangle = exp[0].evalF(c)
 		case explod_xangle:
-			exp[0].run(c)
+			e.xangle = exp[0].evalF(c)
 		case explod_ignorehitpause:
 			e.ignorehitpause = exp[0].evalB(c)
 		case explod_bindid:
@@ -2366,7 +2371,11 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	e.localscl = c.localscl
+	if c.minus == -2 {
+		e.localscl = (320 / float32(c.localcoord))
+	} else {
+		e.localscl = c.localscl
+	}
 	e.setPos(c)
 	c.insertExplodEx(i, rp)
 	return false
@@ -2521,11 +2530,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
 			case explod_yangle:
-				exp[0].run(c)
+				ya := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.yangle = ya })
 			case explod_xangle:
-				exp[0].run(c)
+				xa := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.xangle = xa })
 			case explod_bindid:
-				exp[0].evalI(c)
+				b := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.bindId = b })
 			}
 		}
 		return true
@@ -3379,7 +3391,11 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	if p.aimg.time != 0 {
 		p.aimg.setupPalFX()
 	}
-	p.localscl = c.localscl
+	if c.minus == -2 {
+		p.localscl = (320 / float32(c.localcoord))
+	} else {
+		p.localscl = c.localscl
+	}
 	c.projInit(p, pt, x, y, op, rp[0], rp[1])
 	return false
 }

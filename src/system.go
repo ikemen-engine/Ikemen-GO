@@ -776,7 +776,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.lifebar.step()
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
-			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, [2]float32{},
+			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, 0, 0, [2]float32{},
 			false, true, s.cgi[s.superplayer].ver[0] != 1, 1}, 0, 0, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil

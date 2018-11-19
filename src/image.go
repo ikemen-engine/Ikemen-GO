@@ -919,18 +919,18 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	return nil
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
-	xts, xbs, ys, rxadd, agl float32, trans int32, window *[4]int32,
+	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
 	rcx, rcy float32, pfx *PalFX) {
 	if s.Tex == nil {
 		return
 	}
 	if s.rle <= -11 {
 		neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
-		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
+		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {
 		RenderMugen(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-			rxadd, agl, trans, window, rcx, rcy)
+			rxadd, agl, yagl, xagl, trans, window, rcx, rcy)
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
@@ -943,7 +943,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
 		y *= -1
 	}
 	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0,
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0, 0, 0,
 		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
 }
 

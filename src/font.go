@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/binary"
-	"github.com/go-gl/gl/v2.1/gl"
 	"os"
 	"regexp"
 	"strings"
 	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 type FntCharImage struct {
@@ -250,7 +251,7 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	}
 	RenderMugenPal(*spr.Tex, paltex, 0, spr.Size, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-		yscl*sys.heightScale, 1, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
 		0, 0)
 	return float32(spr.Size[0]) * xscl
 }
