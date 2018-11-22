@@ -16,12 +16,13 @@ type stageCamera struct {
 	zoffset        int32
 	ztopscale      float32
 	drawOffsetY    float32
+	mugen_zoomout  float32
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1}
+		mugen_zoomout: 1, ztopscale: 1}
 }
 
 type Camera struct {
@@ -42,8 +43,8 @@ func newCamera() *Camera {
 	return &Camera{ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Init() {
-	c.boundL = float32(c.boundleft-c.startx) * c.localscl
-	c.boundR = float32(c.boundright-c.startx) * c.localscl
+	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.mugen_zoomout)*100*c.mugen_zoomout)*(1/c.mugen_zoomout)*(1/c.mugen_zoomout)*1.6
+	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.mugen_zoomout)*100*c.mugen_zoomout)*(1/c.mugen_zoomout)*(1/c.mugen_zoomout)*1.6
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
@@ -170,9 +171,10 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		sclMul = MinF(4.0/3, Pow((Pow(2, c.ZoomSpeed)+3)/Pow(2, c.ZoomSpeed)-
 			sclMul, 64))
 	}
-	if pause {
-		sclMul = 1
-	} else if sclMul > 1 {
+	//if pause {
+	//	sclMul = 1
+	//} else if sclMul > 1 {
+	if sclMul > 1 {
 		sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
 		if tmp*sclMul > sys.xmax-sys.xmin {
 			sclMul = (sys.xmax - sys.xmin) / tmp

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/go-gl/gl/v2.1/gl"
 	"image"
 	"image/draw"
 	"image/png"
@@ -12,6 +11,8 @@ import (
 	"os"
 	"runtime"
 	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 type TransType int32
@@ -471,7 +472,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 		s.palidx = -1
 		return s, nil
 	}
-	if s.rle != -12 {
+	if s.rle > -11 {
 		read := func(x interface{}) error {
 			return binary.Read(f, binary.LittleEndian, x)
 		}
@@ -512,7 +513,7 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	s.palidx = src.palidx
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
-	if s.Pal != nil || s.rle == -12 {
+	if s.Pal != nil || s.rle <= -11 {
 		return s.Pal
 	}
 	return pl.Get(int(s.palidx))
@@ -934,8 +935,8 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 					unsafe.Pointer(&rgba.Pix[0]))
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 				gl.Disable(gl.TEXTURE_2D)
 			}
 			return nil
@@ -952,7 +953,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	if s.Tex == nil {
 		return
 	}
-	if s.rle == -12 {
+	if s.rle <= -11 {
 		neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)

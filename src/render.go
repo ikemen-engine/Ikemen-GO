@@ -232,10 +232,20 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 		pers = AbsF(xbs) / AbsF(xts)
 	}
 	if agl != 0 {
-		kaiten(&x1, &y1, float64(agl), rcx, rcy, vs)
-		kaiten(&x2, &y2, float64(agl), rcx, rcy, vs)
-		kaiten(&x3, &y3, float64(agl), rcx, rcy, vs)
-		kaiten(&x4, &y4, float64(agl), rcx, rcy, vs)
+		//	kaiten(&x1, &y1, float64(agl), rcx, rcy, vs)
+		//	kaiten(&x2, &y2, float64(agl), rcx, rcy, vs)
+		//	kaiten(&x3, &y3, float64(agl), rcx, rcy, vs)
+		//	kaiten(&x4, &y4, float64(agl), rcx, rcy, vs)
+		if vs != 1 {
+			y1 = rcy + ((y - ys*float32(h)) - rcy)
+			y2 = y1
+			y3 = rcy + (y - rcy)
+			y4 = y3
+		}
+		gl.Translated(float64(rcx), float64(rcy), 0)
+		gl.Scaled(1, float64(vs), 1)
+		gl.Rotated(float64(agl/(math.Pi/180)), 0, 0, 1)
+		gl.Translated(float64(-rcx), float64(-rcy), 0)
 		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers)
 		return
 	}

@@ -3,10 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/timshannon/go-openal/openal"
-	"github.com/yuin/gopher-lua"
 	"io/ioutil"
 	"log"
 	"math"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/timshannon/go-openal/openal"
+	"github.com/yuin/gopher-lua"
 )
 
 const (
@@ -794,7 +795,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
 			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, [2]float32{},
-			false, true, s.cgi[s.superplayer].ver[0] != 1}, 0, 0, 0, 0)
+			false, true, s.cgi[s.superplayer].ver[0] != 1, 1}, 0, 0, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil
 		}
