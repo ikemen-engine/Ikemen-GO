@@ -149,7 +149,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
 		return
 	}
 	neg = p.eInvertall
-	color = p.color
+	color = p.eColor
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -351,6 +351,8 @@ type Sprite struct {
 	Offset        [2]int16
 	palidx        int
 	rle           int
+	paltemp       []uint32
+	PalTex        *Texture
 }
 
 func newSprite() *Sprite {
@@ -924,13 +926,53 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	if s.Tex == nil {
 		return
 	}
+	neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
+	if trans == -2 {
+		padd[0] *= -1
+		padd[1] *= -1
+		padd[2] *= -1
+	}
+
 	if s.rle <= -11 {
-		neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {
-		RenderMugen(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-			rxadd, agl, yagl, xagl, trans, window, rcx, rcy)
+		PalEqual := true
+		if len(pal) != len(s.paltemp) {
+			PalEqual = false
+		} else {
+			for i := range pal {
+				if pal[i] != s.paltemp[i] {
+					PalEqual = false
+					break
+				}
+			}
+		}
+		if PalEqual == true {
+			if s.PalTex == nil {
+				return
+			}
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			RenderMugenPal(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+		} else {
+			gl.Enable(gl.TEXTURE_1D)
+			gl.ActiveTexture(gl.TEXTURE1)
+			s.PalTex = newTexture()
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+				unsafe.Pointer(&pal[0]))
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			tmp := append([]uint32{}, pal...)
+			s.paltemp = tmp
+			RenderMugenPal(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+		}
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {

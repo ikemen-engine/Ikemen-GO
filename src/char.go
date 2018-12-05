@@ -2230,9 +2230,9 @@ func (c *Char) command(pn, i int) bool {
 	}
 	cl := c.cmd[pn].At(i)
 	if len(cl) > 0 && c.key < 0 {
-		if c.gi().ver[0] == 1 && c.helperIndex != 0 {
-			return false
-		}
+		//if c.gi().ver[0] == 1 && c.helperIndex != 0 {
+		//	return false
+		//}
 		if c.helperIndex != 0 || len(cl[0].cmd) != 1 || len(cl[0].cmd[0].key) !=
 			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
 			return i == int(c.cpucmd)

@@ -9,7 +9,7 @@ import (
 
 var notiling = [4]int32{0, 0, 0, 0}
 var mugenShader uintptr
-var uniformA, uniformPal, uniformMsk int32
+var uniformA, uniformPal, uniformMsk, uniformPalNeg, uniformPalGray, uniformPalAdd, uniformPalMul int32
 var mugenShaderFc uintptr
 var uniformFcA, uniformNeg, uniformGray, uniformAdd, uniformMul int32
 var mugenShaderFcS uintptr
@@ -24,12 +24,19 @@ func RenderInit() {
 		"uniform sampler2D tex;" +
 		"uniform sampler1D pal;" +
 		"uniform int msk;" +
+		"uniform bool neg;" +
+		"uniform float gray;" +
+		"uniform vec3 add;" +
+		"uniform vec3 mul;" +
 		"void main(void){" +
 		"float r = texture2D(tex, gl_TexCoord[0].st).r;" +
-		"vec4 c;" +
+		"vec4 c= texture1D(pal, r*0.9961);" +
+		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
+		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
+		"c.rgb *= mul;" +
 		"gl_FragColor =" +
 		"int(255.0*r) == msk ? vec4(0.0)" +
-		": (c = texture1D(pal, r*0.9961), vec4(c.rgb, a));" +
+		": (c , vec4(c.rgb, a));" +
 		"}\x00"
 	fragShaderFc := "uniform float a;" +
 		"uniform sampler2D tex;" +
@@ -97,6 +104,10 @@ func RenderInit() {
 	uniformA = gl.GetUniformLocationARB(mugenShader, gl.Str("a\x00"))
 	uniformPal = gl.GetUniformLocationARB(mugenShader, gl.Str("pal\x00"))
 	uniformMsk = gl.GetUniformLocationARB(mugenShader, gl.Str("msk\x00"))
+	uniformPalNeg = gl.GetUniformLocationARB(mugenShader, gl.Str("neg\x00"))
+	uniformPalGray = gl.GetUniformLocationARB(mugenShader, gl.Str("gray\x00"))
+	uniformPalAdd = gl.GetUniformLocationARB(mugenShader, gl.Str("add\x00"))
+	uniformPalMul = gl.GetUniformLocationARB(mugenShader, gl.Str("mul\x00"))
 	gl.DeleteObjectARB(fragObj)
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFc)
 	mugenShaderFc = link(vertObj, fragObj)
@@ -312,7 +323,8 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 	}
 }
 func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
-	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32, rcx, rcy float32) {
+	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32, rcx, rcy float32, neg bool, color float32,
+	padd, pmul *[3]float32) {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -324,22 +336,26 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	case trans == -1:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
 	case trans == -2:
 		gl.Uniform1fARB(a, 1)
-		gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR)
+		gl.BlendFunc(gl.ONE, gl.ONE)
+		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
 	case trans <= 0:
 	case trans < 255:
 		gl.Uniform1fARB(a, float32(trans)/255)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, 1, 1, 1, float32(trans)/255)
 	case trans < 512:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
 	default:
@@ -348,6 +364,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		if dst < 255 {
 			gl.Uniform1fARB(a, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1-float32(trans)/255)
 			aglOver++
@@ -360,6 +377,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			}
 			gl.Uniform1fARB(a, float32(src)/255)
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, 1, 1, 1, float32(trans)/255)
 		}
@@ -404,20 +422,29 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		(*window)[2], (*window)[3])
 	return
 }
-func RenderMugenPal(tex Texture, paltex uint32, mask int32, size [2]uint16,
+func RenderMugenPal(tex Texture, paltex []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
-	trans int32, window *[4]int32, rcx, rcy float32) {
+	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
+	padd, pmul *[3]float32) {
 	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
+	ineg := int32(0)
+	if neg {
+		ineg = 1
+	}
 	gl.UseProgramObjectARB(mugenShader)
 	gl.Uniform1iARB(uniformPal, 1)
 	gl.Uniform1iARB(uniformMsk, mask)
+	gl.Uniform1iARB(uniformPalNeg, ineg)
+	gl.Uniform1fARB(uniformPalGray, 1-color)
+	gl.Uniform3fARB(uniformPalAdd, (*padd)[0], (*padd)[1], (*padd)[2])
+	gl.Uniform3fARB(uniformPalMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		trans, rcx, rcy)
+		trans, rcx, rcy, neg, color, padd, pmul)
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
@@ -436,8 +463,8 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 		unsafe.Pointer(&pal[0]))
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	RenderMugenPal(tex, paltex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
-		agl, yagl, xagl, trans, window, rcx, rcy)
+	RenderMugenPal(tex, pal, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
+		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
 	gl.DeleteTextures(1, &paltex)
 	gl.Disable(gl.TEXTURE_1D)
 }
@@ -460,7 +487,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.Uniform3fARB(uniformMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		trans, rcx, rcy)
+		trans, rcx, rcy, neg, color, padd, pmul)
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
@@ -479,7 +506,7 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		float32(color&0xff)/255)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcSA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		trans, rcx, rcy)
+		trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)

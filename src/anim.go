@@ -631,7 +631,7 @@ func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
 	if len(p) == 0 {
 		return
 	}
-	return pfx.getFxPal(p, neg)
+	return p //pfx.getFxPal(p, neg)
 }
 func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)

@@ -241,7 +241,7 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	return &fci.img[bank]
 }
 func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
-	paltex uint32) float32 {
+	paltex []uint32) float32 {
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
 	}
@@ -252,7 +252,7 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	RenderMugenPal(*spr.Tex, paltex, 0, spr.Size, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-		0, 0)
+		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
 	return float32(spr.Size[0]) * xscl
 }
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
@@ -284,7 +284,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, c, paltex) +
+		x += f.drawChar(x, y, xscl, yscl, bank, c, pal) +
 			xscl*float32(f.Spacing[0])
 	}
 	gl.DeleteTextures(1, &paltex)
