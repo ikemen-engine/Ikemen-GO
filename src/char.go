@@ -4012,7 +4012,8 @@ func (c *Char) action() {
 	}
 	c.acttmp = -int8(Btoi(p)) * 2
 	c.unsetSCF(SCF_guard)
-	if !(c.scf(SCF_ko) || c.ctrlOver()) && (c.scf(SCF_ctrl) || c.ss.no == 52) &&
+	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
+		(c.scf(SCF_ctrl) || c.ss.no == 52 || c.inGuardState()) &&
 		c.ss.moveType == MT_I && c.cmd != nil &&
 		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0) &&
 		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
