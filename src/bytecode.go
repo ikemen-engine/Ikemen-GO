@@ -2377,20 +2377,28 @@ const (
 func (sc explod) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
-	e, i := crun.newExplod()
+	var e *Explod
+	var i int
+	//e, i := crun.newExplod()
 	rp := [...]int32{-1, 0}
-	if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && e != nil {
-		e.postype = PT_N
-	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if e == nil {
-			return false
-		}
-		switch id {
-		case explod_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-				lclscround = c.localscl / crun.localscl //ここで丸めておかないと誤差が出て数値がずれる場合がある
+			if id == explod_redirectid {
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+					lclscround = c.localscl / crun.localscl
+					e, i = crun.newExplod()
+					if e == nil {
+						return false
+					}
+					e.id = 0
+					if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+						e.postype = PT_N
+					}
+				} else {
+					return false
+				}
+			} else {
 				e, i = crun.newExplod()
 				if e == nil {
 					return false
@@ -2399,9 +2407,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
 					e.postype = PT_N
 				}
-			} else {
-				return false
 			}
+		}
+		switch id {
 		case explod_ownpal:
 			e.ownpal = exp[0].evalB(c)
 		case explod_remappal:
@@ -3559,16 +3567,34 @@ const (
 func (sc projectile) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
-	p := crun.newProj()
-	if p == nil {
-		return false
-	}
-	p.hitdef.playerNo = sys.workingState.playerNo
+	var p *Projectile
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if p == nil {
+			if id == projectile_redirectid {
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+					lclscround = c.localscl / crun.localscl
+					p = crun.newProj()
+					if p == nil {
+						return false
+					}
+					p.hitdef.playerNo = sys.workingState.playerNo
+
+				} else {
+					return false
+				}
+			} else {
+				p = crun.newProj()
+				if p == nil {
+					return false
+				}
+				p.hitdef.playerNo = sys.workingState.playerNo
+			}
+		}
 		switch id {
 		case projectile_postype:
 			pt = PosType(exp[0].evalI(c))
@@ -3651,17 +3677,6 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			rp[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
-			}
-		case projectile_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-				lclscround = c.localscl / crun.localscl
-				p = crun.newProj()
-				if p == nil {
-					return false
-				}
-			} else {
-				return false
 			}
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
