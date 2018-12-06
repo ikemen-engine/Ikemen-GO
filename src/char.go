@@ -934,6 +934,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if !e.ignorehitpause || e.removeongethit {
 		c = sys.playerID(e.playerId)
 	}
+	if sys.tickNextFrame() &&
+		c != nil && e.removeongethit && c.sf(CSF_gethit) {
+		e.id, e.anim = IErr, nil
+		return
+	}
 	p := false
 	if sys.super > 0 {
 		p = e.supermovetime >= 0 && e.time >= e.supermovetime
@@ -945,8 +950,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		act = c == nil || c.acttmp%2 >= 0
 	}
 	if sys.tickFrame() {
-		if c != nil && e.removeongethit && c.sf(CSF_gethit) ||
-			e.removetime >= 0 && e.time >= e.removetime ||
+		if e.removetime >= 0 && e.time >= e.removetime ||
 			act && e.removetime < -1 && e.anim.loopend {
 			e.id, e.anim = IErr, nil
 			return
