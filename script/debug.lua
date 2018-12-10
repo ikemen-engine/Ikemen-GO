@@ -1,27 +1,32 @@
-
-addHotkey('c', true, false, false, 'toggleClsnDraw()')
-addHotkey('d', true, false, false, 'toggleDebugDraw()')
-addHotkey('s', true, false, false, 'changeSpeed()')
-addHotkey('l', true, false, false, 'toggleStatusDraw()')
-addHotkey('1', true, false, false, 'toggleAI(1)')
-addHotkey('2', true, false, false, 'toggleAI(2)')
-addHotkey('3', true, false, false, 'toggleAI(3)')
-addHotkey('4', true, false, false, 'toggleAI(4)')
-addHotkey('F1', false, false, false, 'kill(2);kill(4)')
-addHotkey('F1', true, false, false, 'kill(1);kill(3)')
-addHotkey('F2', false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1)')
-addHotkey('F2', true, false, false, 'kill(1,1);kill(3,1)')
-addHotkey('F2', false, false, true, 'kill(2,1);kill(4,1)')
-addHotkey('F3', false, false, false, 'powMax(1);powMax(2)')
-addHotkey('F4', false, false, false, 'roundReset()')
-addHotkey('F4', false, false, true, 'reload()')
-addHotkey('F5', false, false, false, 'setTime(0)')
-addHotkey(
-  'SPACE', false, false, false,
-  'full(1);full(2);full(3);full(4);setTime(getRoundTime())')
-addHotkey('p', false, false, false, 'togglePause()')
-addHotkey('RETURN', false, false, false, 'step()')
-addHotkey('i', true, false, false, 'stand(1);stand(2);stand(3);stand(4)')
+if getAllowDebugKeys() then
+	addHotkey('c', true, false, false, 'toggleClsnDraw()')
+	addHotkey('d', true, false, false, 'toggleDebugDraw()')
+	addHotkey('s', true, false, false, 'changeSpeed()')
+	addHotkey('l', true, false, false, 'toggleStatusDraw()')
+	addHotkey('1', true, false, false, 'toggleAI(1)')
+	addHotkey('2', true, false, false, 'toggleAI(2)')
+	addHotkey('3', true, false, false, 'toggleAI(3)')
+	addHotkey('4', true, false, false, 'toggleAI(4)')
+	addHotkey('5', true, false, false, 'toggleAI(5)')
+	addHotkey('6', true, false, false, 'toggleAI(6)')
+	addHotkey('7', true, false, false, 'toggleAI(7)')
+	addHotkey('8', true, false, false, 'toggleAI(8)')
+	addHotkey('F1', false, false, false, 'kill(2);kill(4);kill(6);kill(8)')
+	addHotkey('F1', true, false, false, 'kill(1);kill(3);kill(5);kill(7)')
+	addHotkey('F2', false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1);kill(5,1);kill(6,1);kill(7,1);kill(8,1)')
+	addHotkey('F2', true, false, false, 'kill(1,1);kill(3,1);kill(5,1);kill(7,1)')
+	addHotkey('F2', false, false, true, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1)')
+	addHotkey('F3', false, false, false, 'powMax(1);powMax(2)')
+	addHotkey('F4', false, false, false, 'roundReset()')
+	addHotkey('F4', false, false, true, 'reload()')
+	addHotkey('F5', false, false, false, 'setTime(0)')
+	addHotkey(
+	'SPACE', false, false, false,
+	'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime())')
+	addHotkey('i', true, false, false, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
+end
+addHotkey('PAUSE', false, false, false, 'togglePause()')
+addHotkey('SCROLLLOCK', false, false, false, 'step()')
 
 
 speed = 1.0

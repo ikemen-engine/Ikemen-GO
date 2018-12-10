@@ -56,6 +56,8 @@ var sys = System{
 	workpal:          make([]uint32, 256),
 	errLog:           log.New(os.Stderr, "", 0),
 	audioClose:       make(chan bool, 1),
+	keyInput:         glfw.KeyUnknown,
+	keyString:        "",
 }
 
 type TeamMode int32
@@ -206,6 +208,16 @@ type System struct {
 	audioClose              chan bool
 	nomusic                 bool
 	workBe                  []BytecodeExp
+	teamLifeShare           bool
+	fullscreen              bool
+	aiRandomColor           bool
+	allowDebugKeys          bool
+	commonAir               string
+	commonCmd               string
+	keyInput                glfw.Key
+	keyString               string
+	timerCount              []int32
+	cmdFlags                map[string]string
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -214,11 +226,17 @@ func (s *System) init(w, h int32) *lua.LState {
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	s.setWindowSize(w, h)
 	var err error
-	s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-		"Ikemen GO", nil, nil)
+	if s.fullscreen {
+		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
+			"Ikemen GO", glfw.GetPrimaryMonitor(), nil)
+	} else {
+		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
+			"Ikemen GO", nil, nil)
+	}
 	chk(err)
 	s.window.MakeContextCurrent()
 	s.window.SetKeyCallback(keyCallback)
+	s.window.SetCharModsCallback(charCallback)
 	glfw.SwapInterval(1)
 	chk(gl.Init())
 	RenderInit()
@@ -1362,7 +1380,7 @@ func (s *System) fight() (reload bool) {
 				case TM_Simul:
 					lm *= s.team1VS2Life
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] {
+					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.matchWins[(i+1)&1])
 					}
@@ -1370,31 +1388,33 @@ func (s *System) fight() (reload bool) {
 			case TM_Simul:
 				switch s.tmode[(i+1)&1] {
 				case TM_Simul:
-					if s.numSimul[(i+1)&1] < s.numSimul[i&1] {
+					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] {
+					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
 					}
 				default:
-					lm /= float32(s.numSimul[i&1])
+					if sys.teamLifeShare {
+						lm /= float32(s.numSimul[i&1])
+					}
 				}
 			case TM_Turns:
 				switch s.tmode[(i+1)&1] {
 				case TM_Single:
-					if s.matchWins[i&1] < s.numTurns[i&1] {
+					if s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
 					}
 				case TM_Simul:
-					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] {
+					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * s.team1VS2Life *
 							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
 							float32(s.numTurns[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numTurns[i&1] {
+					if s.numTurns[(i+1)&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
 					}
 				}
@@ -1645,11 +1665,13 @@ func (wm wincntMap) getLevel(p int) int32 {
 }
 
 type SelectChar struct {
-	def, name, sprite    string
-	sportrait, lportrait *Sprite
+	def, name, sprite, intro_storyboard, ending_storyboard string
+	pal_defaults                                           []int32
+	pal                                                    []int32
+	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
 type SelectStage struct {
-	def, name string
+	def, name, zoomout, zoomin, bgmusic, bgmvolume string
 }
 type Select struct {
 	columns, rows   int
@@ -1662,12 +1684,17 @@ type Select struct {
 	curStageNo      int
 	selected        [2][][2]int
 	selectedStageNo int
+	sportrait       [2]int16
+	lportrait       [2]int16
+	vsportrait      [2]int16
+	vportrait       [2]int16
 }
 
 func newSelect() *Select {
 	return &Select{columns: 5, rows: 2, randomscl: [...]float32{1, 1},
 		cellsize: [...]float32{29, 29}, cellscale: [...]float32{1, 1},
-		selectedStageNo: -1}
+		selectedStageNo: -1, sportrait: [...]int16{9000, 0}, lportrait: [...]int16{9000, 1},
+		vsportrait: [...]int16{9000, 1}, vportrait: [...]int16{9000, 2}}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -1704,6 +1731,13 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
+func (s *Select) GetStageInfo(n int) (zoomin, zoomout, bgmusic, bgmvolume string) {
+	n %= len(s.stagelist) + 1
+	if n < 0 {
+		n += len(s.stagelist) + 1
+	}
+	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].bgmusic, s.stagelist[n-1].bgmvolume
+}
 func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
@@ -1723,7 +1757,7 @@ func (s *Select) addCahr(def string) {
 	} else {
 		def += ".def"
 	}
-	if def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0 {
+	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
 		def = "chars/" + def
 	}
 	if def = FileExist(def); len(def) == 0 {
@@ -1734,7 +1768,7 @@ func (s *Select) addCahr(def string) {
 		return
 	}
 	sc.def = def
-	lines, i, info, files, sprite := SplitAndTrim(str, "\n"), 0, true, true, ""
+	lines, i, info, files, arcade, sprite := SplitAndTrim(str, "\n"), 0, true, true, true, ""
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
@@ -1746,25 +1780,43 @@ func (s *Select) addCahr(def string) {
 				if !ok {
 					sc.name, _, _ = is.getText("name")
 				}
+				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
 			}
 		case "files":
 			if files {
 				files = false
 				sprite = is["sprite"]
+				for i := 1; i <= MaxPalNo; i++ {
+					if is[fmt.Sprintf("pal%v", i)] != "" {
+						sc.pal = append(sc.pal, int32(i))
+					}
+				}
+			}
+		case "arcade":
+			if arcade {
+				arcade = false
+				sc.intro_storyboard, _ = is.getString("intro.storyboard")
+				sc.ending_storyboard, _ = is.getString("ending.storyboard")
 			}
 		}
 	}
 	sc.sprite = sprite
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
-		sc.sportrait, err = loadFromSff(file, 9000, 0)
-		return err
-	})
-	sprite = sc.sprite
-	LoadFile(&sprite, def, func(file string) error {
-		var err error
-		sc.lportrait, err = loadFromSff(file, 9000, 1)
-		return err
+		sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
+		sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+		sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+		if err != nil {
+			sc.vsportrait = sc.lportrait
+		}
+		sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+		if err != nil {
+			sc.vportrait = sc.lportrait
+		}
+		if len(sc.pal) == 0 {
+			sc.pal, _ = selectablePalettes(file)
+		}
+		return nil
 	})
 }
 func (s *Select) AddStage(def string) error {
@@ -1779,7 +1831,7 @@ func (s *Select) AddStage(def string) error {
 	}); err != nil {
 		return err
 	}
-	i, info := 0, true
+	i, info, camera, music := 0, true, true, true
 	s.stagelist = append(s.stagelist, SelectStage{})
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -1796,6 +1848,32 @@ func (s *Select) AddStage(def string) error {
 					if !ok {
 						ss.name = def
 					}
+				}
+			}
+		case "camera":
+			if camera {
+				camera = false
+				var ok bool
+				ss.zoomout, ok = is.getString("setzoommax")
+				if !ok {
+					ss.zoomout = ""
+				}
+				ss.zoomin, ok = is.getString("setzoommin")
+				if !ok {
+					ss.zoomin = ""
+				}
+			}
+		case "music":
+			if music {
+				music = false
+				var ok bool
+				ss.bgmusic, ok = is.getString("bgmusic")
+				if !ok {
+					ss.bgmusic = "100"
+				}
+				ss.bgmvolume, ok = is.getString("bgmvolume")
+				if !ok {
+					ss.bgmvolume = "100"
 				}
 			}
 		}
@@ -1890,6 +1968,8 @@ func (l *Loader) loadChar(pn int) int {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
 	}
+	p.memberNo = memberNo
+	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {

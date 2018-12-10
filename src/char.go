@@ -9,6 +9,7 @@ import (
 )
 
 const MaxPalNo = 12
+const MaxQuotes = 100
 
 type SystemCharFlag uint32
 
@@ -1365,6 +1366,7 @@ type CharGlobalInfo struct {
 	pctype           ProjContact
 	pctime, pcid     int32
 	unhittable       int32
+	quotes           [MaxQuotes]string
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1502,6 +1504,9 @@ type Char struct {
 	hittmp        int8
 	acttmp        int8
 	minus         int8
+	winquote      int32
+	memberNo      int
+	selectNo      int
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1569,6 +1574,7 @@ func (c *Char) clear1() {
 	c.p1facing = 0
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
+	c.winquote = -1
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
@@ -1620,7 +1626,7 @@ func (c *Char) stCgi() *CharGlobalInfo {
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.def, gi.displayname, gi.author, gi.sff, gi.snd = def, "", "", nil, nil
+	gi.def, gi.displayname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
@@ -1737,16 +1743,27 @@ func (c *Char) load(def string) error {
 	gi.movement.down.bounce.groundlevel /= c.localscl
 	gi.movement.down.friction_threshold /= c.localscl
 
-	data, size, velocity, movement := true, true, true, true
+	data, size, velocity, movement, quotes := true, true, true, true, true
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "data":
 			if data {
 				data = false
-				is.ReadI32("life", &gi.data.life)
+				var tmp int32
+				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.life", c.playerNo+1)])
+				if tmp != 0 {
+					gi.data.life = tmp
+				} else {
+					is.ReadI32("life", &gi.data.life)
+				}
 				c.lifeMax = gi.data.life
-				is.ReadI32("power", &gi.data.power)
+				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.power", c.playerNo+1)])
+				if tmp != 0 {
+					gi.data.power = tmp
+				} else {
+					is.ReadI32("power", &gi.data.power)
+				}
 				c.powerMax = gi.data.power
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
@@ -1883,6 +1900,15 @@ func (c *Char) load(def string) error {
 				is.ReadF32("down.friction.threshold",
 					&gi.movement.down.friction_threshold)
 			}
+		case "quotes":
+			if quotes {
+				quotes = false
+				for i := 0; i < MaxQuotes; i++ {
+					if is[fmt.Sprintf("victory%v", i)] != "" {
+						gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
+					}
+				}
+			}
 		}
 	}
 	if LoadFile(&sprite, def, func(filename string) error {
@@ -1897,6 +1923,7 @@ func (c *Char) load(def string) error {
 		if err != nil {
 			return err
 		}
+		str = str + sys.commonAir
 		lines, i := SplitAndTrim(str, "\n"), 0
 		gi.anim = ReadAnimationTable(gi.sff, lines, &i)
 		return nil
@@ -2624,6 +2651,9 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.pos[1] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
 		c.oldPos = c.pos
 
+		c.vel[0] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
+		c.vel[1] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
+
 		c.ghv.xvel *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
 		c.ghv.yvel *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
 		c.ghv.fall.xvelocity *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
@@ -3323,7 +3353,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
 func (c *Char) targetState(tar []int32, state int32) {
 	if state >= 0 {
 		pn := c.ss.sb.playerNo
-		if c.minus == -2 {
+		if c.minus == -2 || c.minus == -20 {
 			pn = c.playerNo
 		}
 		for _, tid := range tar {
@@ -4132,6 +4162,24 @@ func (c *Char) action() {
 			c.angleScalse = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
+		c.minus = -30
+		if c.ss.sb.playerNo == c.playerNo && c.player {
+			if sb, ok := c.gi().states[-30]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -20
+		if c.player {
+			if sb, ok := c.gi().states[-20]; ok {
+				sb.run(c)
+			}
+		}
+		c.minus = -10
+		if c.keyctrl && c.ss.sb.playerNo == c.playerNo {
+			if sb, ok := c.gi().states[-10]; ok {
+				sb.run(c)
+			}
+		}
 		c.minus = -3
 		if c.ss.sb.playerNo == c.playerNo && c.player {
 			if sb, ok := c.gi().states[-3]; ok {
@@ -4553,6 +4601,9 @@ func (c *Char) cueDraw() {
 		c.minus = 2
 		c.oldPos = c.pos
 	}
+}
+func (c *Char) victoryQuote(v int32) {
+	c.winquote = v
 }
 
 type CharList struct {
@@ -5211,8 +5262,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		if getter.facing > 0 {
 			gxmin, gxmax = -gxmax, -gxmin
 		}
-		gxmin += sys.xmin / getter.localscl
-		gxmax += sys.xmax / getter.localscl
+		gxmin += sys.xmin
+		gxmax += sys.xmax
 		getter.inguarddist = false
 		getter.unsetSF(CSF_gethit)
 		gl, gr := -getter.width[0]*getter.localscl, getter.width[1]*getter.localscl
@@ -5306,6 +5357,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				cr += c.pos[0] * c.localscl
 				if gl < cr && cl < gr && (contact > 0 ||
 					getter.clsnCheck(c, false, false)) {
+					drawposOvrd := true
 					getter.pushed, c.pushed = true, true
 					tmp := getter.distX(c, getter)
 					if tmp == 0 {
@@ -5323,7 +5375,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
 					if getter.sf(CSF_screenbound) {
-						getter.pos[0] = MaxF(gxmin, MinF(gxmax, getter.pos[0]))
+						getter.pos[0] = MaxF(gxmin/getter.localscl, MinF(gxmax/getter.localscl, getter.pos[0]))
+						drawposOvrd = false
 					}
 					if c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
@@ -5336,7 +5389,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0]))
 					c.pos[0] = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl,
 						c.pos[0]))
-					getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
+					if drawposOvrd {
+						getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
+					}
 				}
 			}
 		}

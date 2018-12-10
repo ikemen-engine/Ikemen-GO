@@ -7204,6 +7204,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		if err != nil {
 			return err
 		}
+		str = str + sys.commonCmd
 		lines, i = SplitAndTrim(str, "\n"), 0
 		return nil
 	}); err != nil {
@@ -7241,6 +7242,10 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_c, CK_nc
 					case "s":
 						*k, *nk = CK_s, CK_ns
+					case "v":
+						*k, *nk = CK_v, CK_nv
+					case "w":
+						*k, *nk = CK_w, CK_nw
 					}
 				}
 				rm("x", &ckr.x, &ckr.nx)
@@ -7250,6 +7255,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("b", &ckr.b, &ckr.nb)
 				rm("c", &ckr.c, &ckr.nc)
 				rm("s", &ckr.s, &ckr.ns)
+				rm("v", &ckr.v, &ckr.nv)
+				rm("w", &ckr.w, &ckr.nw)
 			}
 		case "defaults":
 			if defaults {

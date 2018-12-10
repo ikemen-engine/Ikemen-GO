@@ -245,7 +245,7 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 	var fp string
 	*file = strings.Replace(*file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
-	if defdir == "." {
+	if defdir == "." || strings.Contains(*file, ":/") {
 		fp = *file
 	} else if defdir == "/" {
 		fp = "/" + *file
@@ -512,6 +512,16 @@ func (is IniSection) getText(name string) (str string, ok bool, err error) {
 		return "", false, Error("\"で囲まれていません")
 	}
 	str = str[1 : len(str)-1]
+	return
+}
+func (is IniSection) getString(name string) (str string, ok bool) {
+	str, ok = is[name]
+	if !ok {
+		return
+	}
+	if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
+		str = str[1 : len(str)-1]
+	}
 	return
 }
 

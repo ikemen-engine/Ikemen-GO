@@ -95,7 +95,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 			}
 		}
 	case len(a) > 0 && a[0] == 'a':
-		af.SrcAlpha, af.DstAlpha = 255, 1
+		af.SrcAlpha, af.DstAlpha = 255, 255
 	}
 	if len(ary) > 1 {
 		af.Ex = make([][]float32, 3)
@@ -600,9 +600,9 @@ func (a *Animation) alpha() int32 {
 	} else {
 		sa = byte(a.interpolate_blend_srcalpha)
 		da = byte(a.interpolate_blend_dstalpha)
-		if sa == 255 && da == 1 {
-			da = 255
-		}
+		//if sa == 255 && da == 1 {
+		//	da = 255
+		//}
 	}
 	if sa == 1 && da == 255 {
 		return -2
@@ -966,8 +966,8 @@ func (a *Anim) AddPos(x, y float32) {
 	a.x += x
 	a.y += y
 }
-func (a *Anim) SetTile(x, y int32) {
-	a.anim.tile[2], a.anim.tile[3] = x, y
+func (a *Anim) SetTile(x, y, sx, sy int32) {
+	a.anim.tile[2], a.anim.tile[3], a.anim.tile[0], a.anim.tile[1] = x, y, sx, sy
 }
 func (a *Anim) SetColorKey(mask int16) {
 	a.anim.mask = mask
@@ -993,4 +993,7 @@ func (a *Anim) Draw() {
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
 			0, 0, 0, 0, 0, nil, false, 1)
 	}
+}
+func (a *Anim) ResetFrames() {
+	a.anim.Reset()
 }

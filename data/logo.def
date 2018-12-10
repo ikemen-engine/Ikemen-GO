@@ -1,0 +1,23 @@
+[Info]
+localcoord = 320,240
+
+[SceneDef]
+spr = logo.sff
+
+;------------------------------------
+[Scene 0]
+; Fade
+fadein.time = 60
+fadeout.time = 60
+; Screen color
+clearcolor = 255,255,255
+; Overlay Anims (from 0 to 9)
+layerall.pos = 160,120 ;Default position for all layers
+layer0.anim =  0       ;Anim action number
+; Total time
+end.time = 180
+
+;------------------------------------
+;Animation for logo
+[Begin Action 0]
+0,0, 0,0, -1
