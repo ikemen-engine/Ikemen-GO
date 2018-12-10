@@ -3685,6 +3685,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if p == nil {
+		return false
+	}
 	crun.setHitdefDefault(&p.hitdef, true)
 	if p.remanim == IErr {
 		p.remanim = p.hitanim
