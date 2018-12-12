@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/binary"
-	"github.com/go-gl/gl/v2.1/gl"
 	"os"
 	"regexp"
 	"strings"
 	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 type FntCharImage struct {
@@ -76,7 +77,7 @@ func loadFnt(filename string) (*Fnt, error) {
 		if err := read(rgb[:]); err != nil {
 			return nil, err
 		}
-		spr.Pal[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+		spr.Pal[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 	}
 	px = spr.RlePcxDecode(px)
 	fp.Seek(int64(txtDataOffset), 0)

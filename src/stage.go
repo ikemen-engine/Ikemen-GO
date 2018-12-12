@@ -185,46 +185,46 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim.mask = -1
 			}
 		}
-		switch strings.ToLower(is["trans"]) {
-		case "add":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 255
-			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
-				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
-					bg.anim.srcAlpha = 0
-				}
+	}
+	switch strings.ToLower(is["trans"]) {
+	case "add":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 255
+		bg.anim.dstAlpha = 255
+		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
+				bg.anim.srcAlpha = 0
 			}
-		case "add1":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = ^255
-			var s, d int32 = 255, 255
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Min(255, s))
-				bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
-			}
-		case "addalpha":
-			bg.anim.mask = 0
-			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
-				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
-					bg.anim.srcAlpha = 0
-				}
-			}
-		case "sub":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 1
-			bg.anim.dstAlpha = 255
-		case "none":
-			bg.anim.srcAlpha = -1
-			bg.anim.dstAlpha = 0
 		}
+	case "add1":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 255
+		bg.anim.dstAlpha = ^255
+		var s, d int32 = 255, 255
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Min(255, s))
+			bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+		}
+	case "addalpha":
+		bg.anim.mask = 0
+		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
+				bg.anim.srcAlpha = 0
+			}
+		}
+	case "sub":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 1
+		bg.anim.dstAlpha = 255
+	case "none":
+		bg.anim.srcAlpha = -1
+		bg.anim.dstAlpha = 0
 	}
 	if is.readI32ForStage("tile", &bg.anim.tile[2], &bg.anim.tile[3]) {
 		if t == 2 {

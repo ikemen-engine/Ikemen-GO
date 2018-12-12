@@ -34,9 +34,10 @@ func RenderInit() {
 		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
 		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
 		"c.rgb *= mul;" +
+		"c.a *= a;" +
 		"gl_FragColor =" +
 		"int(255.0*r) == msk ? vec4(0.0)" +
-		": (c , vec4(c.rgb, a));" +
+		": (c , vec4(c.rgb, c.a));" +
 		"}\x00"
 	fragShaderFc := "uniform float a;" +
 		"uniform sampler2D tex;" +

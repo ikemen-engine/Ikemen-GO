@@ -1960,7 +1960,7 @@ func (c *Char) loadPallet() {
 					if _, err = io.ReadFull(f, rgb[:]); err != nil {
 						break
 					}
-					pl[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+					pl[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 				}
 				chk(f.Close())
 				if err == nil {
@@ -2776,7 +2776,7 @@ func (c *Char) newHelper() (h *Char) {
 	return
 }
 func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
-	dstFacing *float32, localscl float32) (p [2]float32) {
+	dstFacing *float32, localscl float32, isProj bool) (p [2]float32) {
 	if facing < 0 {
 		*dstFacing *= -1
 	}
@@ -2789,7 +2789,11 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
 			p[0] = p2.pos[0]*p2.localscl/localscl + pos[0]*p2.facing
 			p[1] = p2.pos[1]*p2.localscl/localscl + pos[1]
-			*dstFacing *= p2.facing
+			if isProj {
+				*dstFacing *= c.facing
+			} else {
+				*dstFacing *= p2.facing
+			}
 		}
 	case PT_F, PT_B:
 		if c.facing > 0 && pt == PT_F || c.facing < 0 && pt == PT_B {
@@ -2817,7 +2821,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 }
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	facing int32, ownpal bool) {
-	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl)
+	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
 	h.vel = [2]float32{}
@@ -3034,7 +3038,7 @@ func (c *Char) newProj() *Projectile {
 }
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	op bool, rpg, rpn int32) {
-	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl))
+	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
 	if p.anim < -1 {
 		p.anim = 0
 	}

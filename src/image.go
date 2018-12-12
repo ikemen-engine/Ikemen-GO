@@ -502,7 +502,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 			if err := read(rgba[:]); err != nil {
 				return nil, err
 			}
-			s.Pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
+			s.Pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 		}
 		s.palidx = -1
 	}
@@ -683,7 +683,7 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
 			if err := read(rgb[:]); err != nil {
 				return err
 			}
-			pal[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+			pal[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 		}
 	}
 	s.SetPxl(s.RlePcxDecode(px))
@@ -1077,7 +1077,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 					if err := read(rgba[:]); err != nil {
 						return nil, err
 					}
-					pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
+					pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 				}
 				idx = i
 			}
