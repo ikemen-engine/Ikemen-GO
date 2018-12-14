@@ -562,7 +562,7 @@ func (l *Layout) Read(pre string, is IniSection) {
 	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
 }
-func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX) {
+func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32) {
 	if l.layerno == ln && s != nil {
 		if l.facing < 0 {
 			x += sys.lifebarFontScale
@@ -575,7 +575,7 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX) {
 			pal = fx.getFxPal(pal, false)
 		}
 		s.Draw(x+l.offset[0], y+l.offset[1],
-			l.scale[0]*float32(l.facing), l.scale[1]*float32(l.vfacing), pal)
+			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, pal)
 	}
 }
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,

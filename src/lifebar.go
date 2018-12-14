@@ -268,10 +268,12 @@ type LifeBarFace struct {
 	teammate_face     []*Sprite
 	teammate_face_lay Layout
 	numko             int32
+	scale             float32
+	teammate_scale    []float32
 }
 
 func newLifeBarFace() *LifeBarFace {
-	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
+	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}, scale: 1}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
@@ -309,7 +311,7 @@ func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 		sys.brightness = 256
 	}
 	f.face_lay.DrawSprite(float32(f.pos[0]), float32(f.pos[1]), layerno,
-		f.face, fx)
+		f.face, fx, f.scale)
 	sys.brightness = ob
 	i := int32(len(f.teammate_face)) - 1
 	x := float32(f.teammate_pos[0] + f.teammate_spacing[0]*(i-1))
@@ -317,7 +319,7 @@ func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 	for ; i >= 0; i-- {
 		if i != f.numko {
 			f.teammate_bg.Draw(x, y, layerno)
-			f.teammate_face_lay.DrawSprite(x, y, layerno, f.teammate_face[i], nil)
+			f.teammate_face_lay.DrawSprite(x, y, layerno, f.teammate_face[i], nil, f.teammate_scale[i])
 			if i < f.numko {
 				f.teammate_ko.Draw(x, y, layerno)
 			}
@@ -653,6 +655,7 @@ type LifeBarRound struct {
 	cur                int32
 	wt, swt, dt        [2]int32
 	fnt                []*Fnt
+	timerActive        bool
 }
 
 func newLifeBarRound(snd *Snd, fnt []*Fnt) *LifeBarRound {
@@ -666,7 +669,12 @@ func readLifeBarRound(is IniSection,
 	r := newLifeBarRound(snd, fnt)
 	var tmp int32
 	is.ReadI32("pos", &r.pos[0], &r.pos[1])
-	is.ReadI32("match.wins", &r.match_wins)
+	tmp = Atoi(sys.cmdFlags["-rounds"])
+	if tmp > 0 {
+		r.match_wins = tmp
+	} else {
+		is.ReadI32("match.wins", &r.match_wins)
+	}
 	is.ReadI32("match.maxdrawgames", &r.match_maxdrawgames)
 	if is.ReadI32("start.waittime", &tmp) {
 		r.start_waittime = Max(1, tmp)
@@ -712,6 +720,8 @@ func readLifeBarRound(is IniSection,
 func (r *LifeBarRound) callFight() {
 	r.fight.Reset()
 	r.cur, r.wt[0], r.swt[0], r.dt[0] = 1, r.fight_time, r.fight_sndtime, 0
+	sys.timerCount = append(sys.timerCount, sys.gameTime)
+	r.timerActive = true
 }
 func (r *LifeBarRound) act() bool {
 	if sys.intro > r.ctrl_time {
@@ -764,6 +774,14 @@ func (r *LifeBarRound) act() bool {
 			r.wt[0]--
 		}
 	} else if r.cur == 2 && (sys.finish != FT_NotYet || sys.time == 0) {
+		if r.timerActive {
+			if sys.gameTime-sys.timerCount[sys.round-1] > 0 {
+				sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
+			} else {
+				sys.timerCount[sys.round-1] = 0
+			}
+			r.timerActive = false
+		}
 		f := func(ats *AnimTextSnd, t int) {
 			if r.swt[t] == 0 {
 				r.snd.play(ats.snd)
@@ -965,6 +983,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}
 				}
 			}
+		case "fonts":
+			is.ReadF32("scale", &sys.lifebarFontScale)
 		case "lifebar":
 			if l.hb[0][0] == nil {
 				l.hb[0][0] = readHealthBar("p1.", is, sff, at)

@@ -1668,6 +1668,7 @@ type SelectChar struct {
 	def, name, sprite, intro_storyboard, ending_storyboard string
 	pal_defaults                                           []int32
 	pal                                                    []int32
+	portrait_scale                                         float32
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
 type SelectStage struct {
@@ -1781,6 +1782,13 @@ func (s *Select) addCahr(def string) {
 					sc.name, _, _ = is.getText("name")
 				}
 				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
+				ok = is.ReadF32("localcoord", &sc.portrait_scale)
+				if !ok {
+					sc.portrait_scale = 1
+				} else {
+					sc.portrait_scale = (320 / sc.portrait_scale)
+				}
+				is.ReadF32("portraitscale", &sc.portrait_scale)
 			}
 		case "files":
 			if files {
@@ -1989,13 +1997,14 @@ func (l *Loader) loadChar(pn int) int {
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) &&
 		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
-		fa.numko, fa.teammate_face = 0, make([]*Sprite, nsel)
+		fa.numko, fa.teammate_face, fa.teammate_scale = 0, make([]*Sprite, nsel), make([]float32, nsel)
 		for i, ci := range idx {
 			sprite := sys.sel.charlist[ci].sprite
 			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
 				var err error
 				fa.teammate_face[i], err = loadFromSff(file,
 					int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
+				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
 				return err
 			})
 		}

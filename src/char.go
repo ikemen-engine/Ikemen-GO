@@ -1367,6 +1367,7 @@ type CharGlobalInfo struct {
 	pctime, pcid     int32
 	unhittable       int32
 	quotes           [MaxQuotes]string
+	portraitscale    float32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1657,6 +1658,8 @@ func (c *Char) load(def string) error {
 				gi.nameLow = strings.ToLower(c.name)
 				is.ReadI32("localcoord", &c.localcoord)
 				c.localscl = 320 / float32(c.localcoord)
+				gi.portraitscale = c.localscl
+				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
 		case "files":
 			if files {

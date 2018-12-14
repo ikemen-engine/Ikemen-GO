@@ -1077,6 +1077,9 @@ func loadSff(filename string, char bool) (*Sff, error) {
 					if err := read(rgba[:]); err != nil {
 						return nil, err
 					}
+					if s.header.Ver2 == 0 {
+						rgba[3] = 255
+					}
 					pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 				}
 				idx = i
