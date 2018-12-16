@@ -98,6 +98,7 @@ type System struct {
 	fileInput               *FileInput
 	aiInput                 [MaxSimul * 2]AiInput
 	keyConfig               []KeyConfig
+	JoystickConfig          []KeyConfig
 	com                     [MaxSimul * 2]int32
 	autolevel               bool
 	home                    int
@@ -441,6 +442,11 @@ func (s *System) synchronize() error {
 }
 func (s *System) anyHardButton() bool {
 	for _, kc := range s.keyConfig {
+		if kc.A() || kc.B() || kc.C() || kc.X() || kc.Y() || kc.Z() {
+			return true
+		}
+	}
+	for _, kc := range s.JoystickConfig {
 		if kc.A() || kc.B() || kc.C() || kc.X() || kc.Y() || kc.Z() {
 			return true
 		}

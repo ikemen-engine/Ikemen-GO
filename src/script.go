@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
-
 	"math/rand"
+	"runtime"
+	"strconv"
+	"strings"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
@@ -1085,6 +1085,32 @@ func systemScriptInit(l *lua.LState) {
 		if sys.keyInput != glfw.KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
+
+		for j := 0; j < 2; j++ {
+			if glfw.JoystickPresent(joystick[j]) {
+				axes := glfw.GetJoystickAxes(joystick[j])
+				btns := glfw.GetJoystickButtons(joystick[j])
+				for i := range axes {
+					if i > 3 && len(axes) == 6 && len(btns) == 14 { //Xboxコントローラー判定（glfwがバージョンアップすればもっとちゃんと判別できるようになるはず）
+						if axes[i] > 0 {
+							s = strconv.Itoa(-i*2 - 1)
+						}
+					} else {
+						if axes[i] < -0.2 {
+							s = strconv.Itoa(-i*2 - 1)
+						} else if axes[i] > 0.2 {
+							s = strconv.Itoa(-i*2 - 2)
+						}
+					}
+				}
+				for i := range btns {
+					if btns[i] > 0 {
+						s = strconv.Itoa(i)
+					}
+				}
+			}
+		}
+
 		l.Push(lua.LString(s))
 		return 1
 	})

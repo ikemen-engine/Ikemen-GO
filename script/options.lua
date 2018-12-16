@@ -87,32 +87,32 @@ function options.f_keyDefault()
 	config.KeyConfig[2].Buttons[11] = 'RSHIFT'
 	config.KeyConfig[2].Buttons[12] = 'LEFTBRACKET'
 	config.KeyConfig[2].Buttons[13] = 'RIGHTBRACKET'
-	config._comment.KeyConfig[1].Buttons[1] = '-7'
-	config._comment.KeyConfig[1].Buttons[2] = '-8'
-	config._comment.KeyConfig[1].Buttons[3] = '-5'
-	config._comment.KeyConfig[1].Buttons[4] = '-6'
-	config._comment.KeyConfig[1].Buttons[5] = '0'
-	config._comment.KeyConfig[1].Buttons[6] = '1'
-	config._comment.KeyConfig[1].Buttons[7] = '4'
-	config._comment.KeyConfig[1].Buttons[8] = '2'
-	config._comment.KeyConfig[1].Buttons[9] = '3'
-	config._comment.KeyConfig[1].Buttons[10] = '5'
-	config._comment.KeyConfig[1].Buttons[11] = '7'
-	config._comment.KeyConfig[1].Buttons[12] = '6'
-	config._comment.KeyConfig[1].Buttons[13] = '8'
-	config._comment.KeyConfig[2].Buttons[1] = '-7'
-	config._comment.KeyConfig[2].Buttons[2] = '-8'
-	config._comment.KeyConfig[2].Buttons[3] = '-5'
-	config._comment.KeyConfig[2].Buttons[4] = '-6'
-	config._comment.KeyConfig[2].Buttons[5] = '0'
-	config._comment.KeyConfig[2].Buttons[6] = '1'
-	config._comment.KeyConfig[2].Buttons[7] = '4'
-	config._comment.KeyConfig[2].Buttons[8] = '2'
-	config._comment.KeyConfig[2].Buttons[9] = '3'
-	config._comment.KeyConfig[2].Buttons[10] = '5'
-	config._comment.KeyConfig[2].Buttons[11] = '7'
-	config._comment.KeyConfig[2].Buttons[12] = '6'
-	config._comment.KeyConfig[2].Buttons[13] = '8'
+	config.JoystickConfig[1].Buttons[1] = '-7'
+	config.JoystickConfig[1].Buttons[2] = '-8'
+	config.JoystickConfig[1].Buttons[3] = '-5'
+	config.JoystickConfig[1].Buttons[4] = '-6'
+	config.JoystickConfig[1].Buttons[5] = '0'
+	config.JoystickConfig[1].Buttons[6] = '1'
+	config.JoystickConfig[1].Buttons[7] = '4'
+	config.JoystickConfig[1].Buttons[8] = '2'
+	config.JoystickConfig[1].Buttons[9] = '3'
+	config.JoystickConfig[1].Buttons[10] = '5'
+	config.JoystickConfig[1].Buttons[11] = '7'
+	config.JoystickConfig[1].Buttons[12] = '6'
+	config.JoystickConfig[1].Buttons[13] = '8'
+	config.JoystickConfig[2].Buttons[1] = '-7'
+	config.JoystickConfig[2].Buttons[2] = '-8'
+	config.JoystickConfig[2].Buttons[3] = '-5'
+	config.JoystickConfig[2].Buttons[4] = '-6'
+	config.JoystickConfig[2].Buttons[5] = '0'
+	config.JoystickConfig[2].Buttons[6] = '1'
+	config.JoystickConfig[2].Buttons[7] = '4'
+	config.JoystickConfig[2].Buttons[8] = '2'
+	config.JoystickConfig[2].Buttons[9] = '3'
+	config.JoystickConfig[2].Buttons[10] = '5'
+	config.JoystickConfig[2].Buttons[11] = '7'
+	config.JoystickConfig[2].Buttons[12] = '6'
+	config.JoystickConfig[2].Buttons[13] = '8'
 end
 
 function options.f_menuCommon1(cursorPosY, moveTxt, item, t)
@@ -1049,7 +1049,7 @@ function options.f_keyCfg(playerNo, controller)
 		if controller == -1 then
 			t_keyCfg[i].vardisplay = config.KeyConfig[playerNo].Buttons[i]
 		else
-			t_keyCfg[i].vardisplay = config._comment.KeyConfig[playerNo].Buttons[i]
+			t_keyCfg[i].vardisplay = config.JoystickConfig[playerNo].Buttons[i]
 		end
 	end
 	while true do
@@ -1072,7 +1072,7 @@ function options.f_keyCfg(playerNo, controller)
 					if controller == -1 then
 						config.KeyConfig[playerNo].Buttons[item] = key
 					else
-						config._comment.KeyConfig[playerNo].Buttons[item] = key
+						config.JoystickConfig[playerNo].Buttons[item] = key
 					end
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])

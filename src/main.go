@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -103,16 +104,13 @@ func main() {
       "Joystick":-1,
       "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
     }],
-  "_comment":{
-    "_comment":"ジョイスティック (0番) の場合の KeyConfig",
-    "KeyConfig":[{
-        "Joystick":0,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-      },{
-        "Joystick":1,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-      }]
-  },
+  "JoystickConfig":[{
+      "Joystick":0,
+      "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
+    },{
+      "Joystick":1,
+      "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
+	}],
   "Motif":"data/system.def",
   "CommonAir":"data/common.air",
   "CommonCmd":"data/common.cmd",
@@ -159,6 +157,10 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
+		JoystickConfig []struct {
+			Joystick int
+			Buttons  []interface{}
+		}
 		NumTag         int
 		TeamLifeShare  bool
 		AIRandomColor  bool
@@ -192,23 +194,32 @@ func main() {
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
+	Atoi := func(key string) int {
+		var i int
+		i, _ = strconv.Atoi(key)
+		return i
+	}
 	for a := 0; a < tmp.NumTag; a++ {
 		for _, kc := range tmp.KeyConfig {
 			b := kc.Buttons
-			if kc.Joystick >= 0 {
-				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
-					int(b[0].(float64)), int(b[1].(float64)),
-					int(b[2].(float64)), int(b[3].(float64)),
-					int(b[4].(float64)), int(b[5].(float64)), int(b[6].(float64)),
-					int(b[7].(float64)), int(b[8].(float64)), int(b[9].(float64)),
-					int(b[10].(float64)), int(b[11].(float64)), int(b[12].(float64))})
-			} else {
+			if kc.Joystick < 0 {
 				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
 					stoki(b[0].(string)), stoki(b[1].(string)),
 					stoki(b[2].(string)), stoki(b[3].(string)),
 					stoki(b[4].(string)), stoki(b[5].(string)), stoki(b[6].(string)),
 					stoki(b[7].(string)), stoki(b[8].(string)), stoki(b[9].(string)),
 					stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
+			}
+		}
+		for _, jc := range tmp.JoystickConfig {
+			b := jc.Buttons
+			if jc.Joystick >= 0 {
+				sys.JoystickConfig = append(sys.JoystickConfig, KeyConfig{jc.Joystick,
+					Atoi(b[0].(string)), Atoi(b[1].(string)),
+					Atoi(b[2].(string)), Atoi(b[3].(string)),
+					Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
+					Atoi(b[7].(string)), Atoi(b[8].(string)), Atoi(b[9].(string)),
+					Atoi(b[10].(string)), Atoi(b[11].(string)), Atoi(b[12].(string))})
 			}
 		}
 	}

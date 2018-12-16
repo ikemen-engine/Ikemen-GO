@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/binary"
-	"github.com/go-gl/glfw/v3.2/glfw"
 	"net"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
 type CommandKey byte
@@ -51,6 +52,8 @@ const (
 	CK_y
 	CK_z
 	CK_s
+	CK_v
+	CK_w
 	CK_na
 	CK_nb
 	CK_nc
@@ -58,7 +61,9 @@ const (
 	CK_ny
 	CK_nz
 	CK_ns
-	CK_Last = CK_ns
+	CK_nv
+	CK_nw
+	CK_Last = CK_nw
 )
 
 type NetState int
@@ -311,6 +316,246 @@ func StringToKey(s string) glfw.Key {
 	return glfw.KeyUnknown
 }
 
+func KeyToString(k glfw.Key) string {
+	switch k {
+	case glfw.KeyEnter:
+		return "RETURN"
+	case glfw.KeyEscape:
+		return "ESCAPE"
+	case glfw.KeyBackspace:
+		return "BACKSPACE"
+	case glfw.KeyTab:
+		return "TAB"
+	case glfw.KeySpace:
+		return "SPACE"
+	case glfw.KeyApostrophe:
+		return "QUOTE"
+	case glfw.KeyComma:
+		return "COMMA"
+	case glfw.KeyMinus:
+		return "MINUS"
+	case glfw.KeyPeriod:
+		return "PERIOD"
+	case glfw.KeySlash:
+		return "SLASH"
+	case glfw.Key0:
+		return "0"
+	case glfw.Key1:
+		return "1"
+	case glfw.Key2:
+		return "2"
+	case glfw.Key3:
+		return "3"
+	case glfw.Key4:
+		return "4"
+	case glfw.Key5:
+		return "5"
+	case glfw.Key6:
+		return "6"
+	case glfw.Key7:
+		return "7"
+	case glfw.Key8:
+		return "8"
+	case glfw.Key9:
+		return "9"
+	case glfw.KeySemicolon:
+		return "SEMICOLON"
+	case glfw.KeyEqual:
+		return "EQUALS"
+	case glfw.KeyLeftBracket:
+		return "LEFTBRACKET"
+	case glfw.KeyBackslash:
+		return "BACKSLASH"
+	case glfw.KeyRightBracket:
+		return "RIGHTBRACKET"
+	case glfw.KeyGraveAccent:
+		return "BACKQUOTE"
+	case glfw.KeyA:
+		return "a"
+	case glfw.KeyB:
+		return "b"
+	case glfw.KeyC:
+		return "c"
+	case glfw.KeyD:
+		return "d"
+	case glfw.KeyE:
+		return "e"
+	case glfw.KeyF:
+		return "f"
+	case glfw.KeyG:
+		return "g"
+	case glfw.KeyH:
+		return "h"
+	case glfw.KeyI:
+		return "i"
+	case glfw.KeyJ:
+		return "j"
+	case glfw.KeyK:
+		return "k"
+	case glfw.KeyL:
+		return "l"
+	case glfw.KeyM:
+		return "m"
+	case glfw.KeyN:
+		return "n"
+	case glfw.KeyO:
+		return "o"
+	case glfw.KeyP:
+		return "p"
+	case glfw.KeyQ:
+		return "q"
+	case glfw.KeyR:
+		return "r"
+	case glfw.KeyS:
+		return "s"
+	case glfw.KeyT:
+		return "t"
+	case glfw.KeyU:
+		return "u"
+	case glfw.KeyV:
+		return "v"
+	case glfw.KeyW:
+		return "w"
+	case glfw.KeyX:
+		return "x"
+	case glfw.KeyY:
+		return "y"
+	case glfw.KeyZ:
+		return "z"
+	case glfw.KeyCapsLock:
+		return "CAPSLOCK"
+	case glfw.KeyF1:
+		return "F1"
+	case glfw.KeyF2:
+		return "F2"
+	case glfw.KeyF3:
+		return "F3"
+	case glfw.KeyF4:
+		return "F4"
+	case glfw.KeyF5:
+		return "F5"
+	case glfw.KeyF6:
+		return "F6"
+	case glfw.KeyF7:
+		return "F7"
+	case glfw.KeyF8:
+		return "F8"
+	case glfw.KeyF9:
+		return "F9"
+	case glfw.KeyF10:
+		return "F10"
+	case glfw.KeyF11:
+		return "F11"
+	case glfw.KeyF12:
+		return "F12"
+	case glfw.KeyPrintScreen:
+		return "PRINTSCREEN"
+	case glfw.KeyScrollLock:
+		return "SCROLLLOCK"
+	case glfw.KeyPause:
+		return "PAUSE"
+	case glfw.KeyInsert:
+		return "INSERT"
+	case glfw.KeyHome:
+		return "HOME"
+	case glfw.KeyPageUp:
+		return "PAGEUP"
+	case glfw.KeyDelete:
+		return "DELETE"
+	case glfw.KeyEnd:
+		return "END"
+	case glfw.KeyPageDown:
+		return "PAGEDOWN"
+	case glfw.KeyRight:
+		return "RIGHT"
+	case glfw.KeyLeft:
+		return "LEFT"
+	case glfw.KeyDown:
+		return "DOWN"
+	case glfw.KeyUp:
+		return "UP"
+	case glfw.KeyNumLock:
+		return "NUMLOCKCLEAR"
+	case glfw.KeyKPDivide:
+		return "KP_DIVIDE"
+	case glfw.KeyKPMultiply:
+		return "KP_MULTIPLY"
+	case glfw.KeyKPSubtract:
+		return "KP_MINUS"
+	case glfw.KeyKPAdd:
+		return "KP_PLUS"
+	case glfw.KeyKPEnter:
+		return "KP_ENTER"
+	case glfw.KeyKP1:
+		return "KP_1"
+	case glfw.KeyKP2:
+		return "KP_2"
+	case glfw.KeyKP3:
+		return "KP_3"
+	case glfw.KeyKP4:
+		return "KP_4"
+	case glfw.KeyKP5:
+		return "KP_5"
+	case glfw.KeyKP6:
+		return "KP_6"
+	case glfw.KeyKP7:
+		return "KP_7"
+	case glfw.KeyKP8:
+		return "KP_8"
+	case glfw.KeyKP9:
+		return "KP_9"
+	case glfw.KeyKP0:
+		return "KP_0"
+	case glfw.KeyKPDecimal:
+		return "KP_PERIOD"
+	case glfw.KeyKPEqual:
+		return "KP_EQUALS"
+	case glfw.KeyF13:
+		return "F13"
+	case glfw.KeyF14:
+		return "F14"
+	case glfw.KeyF15:
+		return "F15"
+	case glfw.KeyF16:
+		return "F16"
+	case glfw.KeyF17:
+		return "F17"
+	case glfw.KeyF18:
+		return "F18"
+	case glfw.KeyF19:
+		return "F19"
+	case glfw.KeyF20:
+		return "F20"
+	case glfw.KeyF21:
+		return "F21"
+	case glfw.KeyF22:
+		return "F22"
+	case glfw.KeyF23:
+		return "F23"
+	case glfw.KeyF24:
+		return "F24"
+	case glfw.KeyMenu:
+		return "MENU"
+	case glfw.KeyLeftControl:
+		return "LCTRL"
+	case glfw.KeyLeftShift:
+		return "LSHIFT"
+	case glfw.KeyLeftAlt:
+		return "LALT"
+	case glfw.KeyLeftSuper:
+		return "LGUI"
+	case glfw.KeyRightControl:
+		return "RCTRL"
+	case glfw.KeyRightShift:
+		return "RSHIFT"
+	case glfw.KeyRightAlt:
+		return "RALT"
+	case glfw.KeyRightSuper:
+		return "RGUI"
+	}
+	return ""
+}
+
 type ShortcutScript struct {
 	Activate bool
 	Script   string
@@ -344,14 +589,20 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 	switch action {
 	case glfw.Release:
 		sys.keySatate[key] = false
+		sys.keyInput = glfw.KeyUnknown
+		sys.keyString = ""
 	case glfw.Press:
 		sys.keySatate[key] = true
+		sys.keyInput = key
 		sys.esc = sys.esc ||
 			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			v.Activate = v.Activate || k.Test(key, mk)
 		}
 	}
+}
+func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
+	sys.keyString = string(char)
 }
 
 var joystick = [...]glfw.Joystick{glfw.Joystick1, glfw.Joystick2,
@@ -367,27 +618,30 @@ func JoystickState(joy, button int) bool {
 	if joy >= len(joystick) {
 		return false
 	}
+	btns := glfw.GetJoystickButtons(joystick[joy])
 	if button < 0 {
 		button = -button - 1
 		axes := glfw.GetJoystickAxes(joystick[joy])
 		if len(axes)*2 <= button {
 			return false
 		}
+		if (button == 8 || button == 10) && len(axes) == 6 && len(btns) == 14 { //XboxコントローラーのLRトリガー判定（glfwがバージョンアップすればもっとちゃんと判別できるようになるはず）
+			return axes[button/2] > 0
+		}
 		switch button & 1 {
 		case 0:
-			return axes[button/2] < -0.1
+			return axes[button/2] < -0.2
 		case 1:
-			return axes[button/2] > 0.1
+			return axes[button/2] > 0.2
 		}
 	}
-	btns := glfw.GetJoystickButtons(joystick[joy])
 	if len(btns) <= button {
 		return false
 	}
 	return btns[button] != 0
 }
 
-type KeyConfig struct{ Joy, u, d, l, r, a, b, c, x, y, z, s int }
+type KeyConfig struct{ Joy, u, d, l, r, a, b, c, x, y, z, s, v, w int }
 
 func (kc KeyConfig) U() bool { return JoystickState(kc.Joy, kc.u) }
 func (kc KeyConfig) D() bool { return JoystickState(kc.Joy, kc.d) }
@@ -400,6 +654,8 @@ func (kc KeyConfig) X() bool { return JoystickState(kc.Joy, kc.x) }
 func (kc KeyConfig) Y() bool { return JoystickState(kc.Joy, kc.y) }
 func (kc KeyConfig) Z() bool { return JoystickState(kc.Joy, kc.z) }
 func (kc KeyConfig) S() bool { return JoystickState(kc.Joy, kc.s) }
+func (kc KeyConfig) V() bool { return JoystickState(kc.Joy, kc.v) }
+func (kc KeyConfig) W() bool { return JoystickState(kc.Joy, kc.w) }
 
 type InputBits int32
 
@@ -415,7 +671,9 @@ const (
 	IB_Y
 	IB_Z
 	IB_S
-	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z
+	IB_V
+	IB_W
+	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_V | IB_W
 )
 
 func (ib *InputBits) SetInput(in int) {
@@ -425,7 +683,8 @@ func (ib *InputBits) SetInput(in int) {
 			Btoi(sys.keyConfig[in].R())<<3 | Btoi(sys.keyConfig[in].A())<<4 |
 			Btoi(sys.keyConfig[in].B())<<5 | Btoi(sys.keyConfig[in].C())<<6 |
 			Btoi(sys.keyConfig[in].X())<<7 | Btoi(sys.keyConfig[in].Y())<<8 |
-			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10)
+			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10 |
+			Btoi(sys.keyConfig[in].V())<<11 | Btoi(sys.keyConfig[in].W())<<12)
 	}
 }
 func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
@@ -436,23 +695,23 @@ func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
 		b, f = ib&IB_L != 0, ib&IB_R != 0
 	}
 	cb.Input(b, ib&IB_D != 0, f, ib&IB_U != 0, ib&IB_A != 0, ib&IB_B != 0,
-		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0)
+		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0, ib&IB_V != 0, ib&IB_W != 0)
 }
 
 type CommandKeyRemap struct {
-	a, b, c, x, y, z, s, na, nb, nc, nx, ny, nz, ns CommandKey
+	a, b, c, x, y, z, s, v, w, na, nb, nc, nx, ny, nz, ns, nv, nw CommandKey
 }
 
 func NewCommandKeyRemap() *CommandKeyRemap {
-	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s,
-		CK_na, CK_nb, CK_nc, CK_nx, CK_ny, CK_nz, CK_ns}
+	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_v, CK_w,
+		CK_na, CK_nb, CK_nc, CK_nx, CK_ny, CK_nz, CK_ns, CK_nv, CK_nw}
 }
 
 type CommandBuffer struct {
-	Bb, Db, Fb, Ub             int32
-	ab, bb, cb, xb, yb, zb, sb int32
-	B, D, F, U                 int8
-	a, b, c, x, y, z, s        int8
+	Bb, Db, Fb, Ub                     int32
+	ab, bb, cb, xb, yb, zb, sb, vb, wb int32
+	B, D, F, U                         int8
+	a, b, c, x, y, z, s, v, w          int8
 }
 
 func NewCommandBuffer() (c *CommandBuffer) {
@@ -462,9 +721,9 @@ func NewCommandBuffer() (c *CommandBuffer) {
 }
 func (__ *CommandBuffer) Reset() {
 	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
-		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1}
+		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, v: -1, w: -1}
 }
-func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s bool) {
+func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, v, w bool) {
 	if (B && !F) != (__.B > 0) {
 		__.Bb = 0
 		__.B *= -1
@@ -520,6 +779,16 @@ func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s bool) {
 		__.s *= -1
 	}
 	__.sb += int32(__.s)
+	if v != (__.v > 0) {
+		__.vb = 0
+		__.v *= -1
+	}
+	__.vb += int32(__.v)
+	if w != (__.w > 0) {
+		__.wb = 0
+		__.w *= -1
+	}
+	__.wb += int32(__.w)
 }
 func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 	var B, F bool
@@ -529,7 +798,7 @@ func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 		B, F = ib&IB_L != 0, ib&IB_R != 0
 	}
 	__.Input(B, ib&IB_D != 0, F, ib&IB_U != 0, ib&IB_A != 0, ib&IB_B != 0,
-		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0)
+		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0, ib&IB_V != 0, ib&IB_W != 0)
 }
 func (__ *CommandBuffer) State(ck CommandKey) int32 {
 	switch ck {
@@ -579,6 +848,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return __.zb
 	case CK_s:
 		return __.sb
+	case CK_v:
+		return __.vb
+	case CK_w:
+		return __.wb
 	case CK_nB:
 		return -Min(-Max(__.Db, __.Ub), __.Bb)
 	case CK_nD:
@@ -625,6 +898,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -__.zb
 	case CK_ns:
 		return -__.sb
+	case CK_nv:
+		return -__.vb
+	case CK_nw:
+		return -__.wb
 	}
 	return 0
 }
@@ -705,7 +982,7 @@ func (__ *CommandBuffer) LastDirectionTime() int32 {
 }
 func (__ *CommandBuffer) LastChangeTime() int32 {
 	return Min(__.LastDirectionTime(), Abs(__.ab), Abs(__.bb), Abs(__.cb),
-		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb))
+		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.vb), Abs(__.wb))
 }
 
 type NetBuffer struct {
@@ -1052,13 +1329,14 @@ func (fi *FileInput) Update() bool {
 }
 
 type AiInput struct {
-	dir, dt, at, bt, ct, xt, yt, zt, st int32
+	dir, dt, at, bt, ct, xt, yt, zt, st, vt, wt int32
 }
 
 func (__ *AiInput) Update() {
 	if sys.intro != 0 {
 		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
 		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
+		__.vt, __.wt = 0, 0
 		return
 	}
 	var osu, hanasu int32 = 15, 60
@@ -1083,6 +1361,8 @@ func (__ *AiInput) Update() {
 	dec(&__.xt)
 	dec(&__.yt)
 	dec(&__.zt)
+	dec(&__.vt)
+	dec(&__.wt)
 	osu = 3600
 	dec(&__.st)
 }
@@ -1118,6 +1398,12 @@ func (__ *AiInput) Z() bool {
 }
 func (__ *AiInput) S() bool {
 	return __.st != 0
+}
+func (__ *AiInput) V() bool {
+	return __.vt != 0
+}
+func (__ *AiInput) W() bool {
+	return __.wt != 0
 }
 
 type cmdElem struct {
@@ -1305,7 +1591,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				tilde = false
 			case 'x':
 				if tilde {
-					ce.key = append(ce.key, kr.x)
+					ce.key = append(ce.key, kr.nx)
 				} else {
 					ce.key = append(ce.key, kr.x)
 				}
@@ -1329,6 +1615,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					ce.key = append(ce.key, kr.ns)
 				} else {
 					ce.key = append(ce.key, kr.s)
+				}
+				tilde = false
+			case 'v':
+				if tilde {
+					ce.key = append(ce.key, kr.nv)
+				} else {
+					ce.key = append(ce.key, kr.v)
+				}
+				tilde = false
+			case 'w':
+				if tilde {
+					ce.key = append(ce.key, kr.nw)
+				} else {
+					ce.key = append(ce.key, kr.w)
 				}
 				tilde = false
 			case '$':
@@ -1616,7 +1916,7 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 		_else = true
 	}
 	if _else {
-		var l, r, u, d, a, b, c, x, y, z, s bool
+		var l, r, u, d, a, b, c, x, y, z, s, v, w bool
 		if i < 0 {
 			i = ^i
 			if i < len(sys.aiInput) {
@@ -1631,12 +1931,14 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 				y = sys.aiInput[i].Y()
 				z = sys.aiInput[i].Z()
 				s = sys.aiInput[i].S()
+				v = sys.aiInput[i].V()
+				w = sys.aiInput[i].W()
 			}
 		} else if i < len(sys.inputRemap) {
 			in := sys.inputRemap[i]
 			if in < len(sys.keyConfig) {
 				joy := sys.keyConfig[in].Joy
-				if joy >= -1 {
+				if joy == -1 {
 					l = sys.keyConfig[in].L()
 					r = sys.keyConfig[in].R()
 					u = sys.keyConfig[in].U()
@@ -1648,6 +1950,52 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 					y = sys.keyConfig[in].Y()
 					z = sys.keyConfig[in].Z()
 					s = sys.keyConfig[in].S()
+					v = sys.keyConfig[in].V()
+					w = sys.keyConfig[in].W()
+				}
+			}
+			if in < len(sys.JoystickConfig) {
+				joyS := sys.JoystickConfig[in].Joy
+				if joyS >= 0 {
+					if l == false {
+						l = sys.JoystickConfig[in].L()
+					}
+					if r == false {
+						r = sys.JoystickConfig[in].R()
+					}
+					if u == false {
+						u = sys.JoystickConfig[in].U()
+					}
+					if d == false {
+						d = sys.JoystickConfig[in].D()
+					}
+					if a == false {
+						a = sys.JoystickConfig[in].A()
+					}
+					if b == false {
+						b = sys.JoystickConfig[in].B()
+					}
+					if c == false {
+						c = sys.JoystickConfig[in].C()
+					}
+					if x == false {
+						x = sys.JoystickConfig[in].X()
+					}
+					if y == false {
+						y = sys.JoystickConfig[in].Y()
+					}
+					if z == false {
+						z = sys.JoystickConfig[in].Z()
+					}
+					if s == false {
+						s = sys.JoystickConfig[in].S()
+					}
+					if v == false {
+						v = sys.JoystickConfig[in].V()
+					}
+					if w == false {
+						w = sys.JoystickConfig[in].W()
+					}
 				}
 			}
 		}
@@ -1657,7 +2005,7 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 		} else {
 			B, F = l, r
 		}
-		cl.Buffer.Input(B, d, F, u, a, b, c, x, y, z, s)
+		cl.Buffer.Input(B, d, F, u, a, b, c, x, y, z, s, v, w)
 	}
 	return step
 }
