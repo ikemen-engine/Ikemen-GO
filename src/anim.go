@@ -539,6 +539,9 @@ func (a *Animation) UpdateSprite() {
 			if a.drawidx+1 == i {
 				a.interpolate_blend_srcalpha += (float32(a.frames[a.drawidx+1].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
 				a.interpolate_blend_dstalpha += (float32(a.frames[a.drawidx+1].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
+				if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
+					a.interpolate_blend_srcalpha = 0
+				}
 				break
 			}
 		}
@@ -600,9 +603,6 @@ func (a *Animation) alpha() int32 {
 	} else {
 		sa = byte(a.interpolate_blend_srcalpha)
 		da = byte(a.interpolate_blend_dstalpha)
-		if sa == 1 && da == 255 {
-			sa = 0
-		}
 	}
 	if sa == 1 && da == 255 {
 		return -2
