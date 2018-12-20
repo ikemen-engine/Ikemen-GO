@@ -1212,15 +1212,15 @@ func (s *System) draw(x, y, scl float32) {
 	}
 	s.brightness = ob
 	if s.clsnDraw {
-		s.clsnSpr.Pal[0] = 0x0000ff
+		s.clsnSpr.Pal[0] = 0xff0000ff
 		s.drawc1.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0xff0000
+		s.clsnSpr.Pal[0] = 0xffff0000
 		s.drawc2.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0x00ff00
+		s.clsnSpr.Pal[0] = 0xff00ff00
 		s.drawc2sp.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0x002000
+		s.clsnSpr.Pal[0] = 0xff002000
 		s.drawc2mtk.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0x404040
+		s.clsnSpr.Pal[0] = 0xff404040
 		s.drawwh.draw(0x3feff)
 	}
 }

@@ -812,8 +812,16 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 		a := s.at.get(bgc.v[0])
 		if a != nil {
 			for i := range bgc.bg {
+				masktemp := bgc.bg[i].anim.mask
+				srcAlphatemp := bgc.bg[i].anim.srcAlpha
+				dstAlphatemp := bgc.bg[i].anim.dstAlpha
+				tiletmp := bgc.bg[i].anim.tile
 				bgc.bg[i].actionno = bgc.v[0]
 				bgc.bg[i].anim = *a
+				bgc.bg[i].anim.tile = tiletmp
+				bgc.bg[i].anim.dstAlpha = dstAlphatemp
+				bgc.bg[i].anim.srcAlpha = srcAlphatemp
+				bgc.bg[i].anim.mask = masktemp
 			}
 		}
 	case BT_Visible:

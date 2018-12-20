@@ -600,9 +600,9 @@ func (a *Animation) alpha() int32 {
 	} else {
 		sa = byte(a.interpolate_blend_srcalpha)
 		da = byte(a.interpolate_blend_dstalpha)
-		//if sa == 255 && da == 1 {
-		//	da = 255
-		//}
+		if sa == 1 && da == 255 {
+			sa = 0
+		}
 	}
 	if sa == 1 && da == 255 {
 		return -2
