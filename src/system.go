@@ -1981,6 +1981,9 @@ func (l *Loader) loadChar(pn int) int {
 	} else {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
+		if len(sys.chars[pn]) > 0 {
+			p.power = sys.chars[pn][0].power
+		}
 	}
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]

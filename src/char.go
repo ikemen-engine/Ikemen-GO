@@ -5448,12 +5448,14 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 	var add func(*Char, int)
 	add = func(e *Char, idx int) {
 		for i := idx; i <= int(n); i++ {
+			if p2 && e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex > 0 {
+				return
+			}
 			if i >= len(*cache) {
 				*cache = append(*cache, e)
 				return
 			}
-			if (p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) &&
-				AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
+			if AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
 				add((*cache)[i], i+1)
 				(*cache)[i] = e
 			}

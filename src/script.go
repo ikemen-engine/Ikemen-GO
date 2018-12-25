@@ -621,7 +621,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal)
+				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -641,11 +641,11 @@ func systemScriptInit(l *lua.LState) {
 						if c.sportrait != nil {
 							c.sportrait.Draw(x+float32(i)*sys.sel.cellsize[0],
 								y+float32(j)*sys.sel.cellsize[1], sys.sel.cellscale[0]*c.portrait_scale,
-								sys.sel.cellscale[1]*c.portrait_scale, c.sportrait.Pal)
+								sys.sel.cellscale[1]*c.portrait_scale, c.sportrait.Pal, nil)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
 								y+float32(j)*sys.sel.cellsize[1], sys.sel.randomscl[0],
-								sys.sel.randomscl[1], sys.sel.randomspr.Pal)
+								sys.sel.randomscl[1], sys.sel.randomspr.Pal, nil)
 						}
 					}
 				}
@@ -986,7 +986,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.sportrait.Draw(x, y, xscl, yscl, c.sportrait.Pal)
+				c.sportrait.Draw(x, y, xscl, yscl, c.sportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -1007,7 +1007,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vsportrait.Draw(x, y, xscl, yscl, c.vsportrait.Pal)
+				c.vsportrait.Draw(x, y, xscl, yscl, c.vsportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -1028,7 +1028,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vportrait.Draw(x, y, xscl, yscl, c.vportrait.Pal)
+				c.vportrait.Draw(x, y, xscl, yscl, c.vportrait.Pal, nil)
 			}
 		}
 		return 0
