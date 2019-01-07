@@ -207,7 +207,7 @@ func scriptCommonInit(l *lua.LState) {
 	})
 	luaRegister(l, "setAutoguard", func(l *lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2 {
+		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
 		sys.autoguard[pn-1] = boolArg(l, 2)
@@ -454,7 +454,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setCom", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2 {
+		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
 		sys.com[pn-1] = Max(0, int32(numArg(l, 2)))
@@ -1713,7 +1713,7 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ishometeam", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.playerNo&1 == sys.home))
+		l.Push(lua.LBool(sys.debugWC.teamside == sys.home))
 		return 1
 	})
 	luaRegister(l, "leftedge", func(*lua.LState) int {

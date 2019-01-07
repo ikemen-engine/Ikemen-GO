@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	MaxSimul = 4
-	FPS      = 60
-	P1P3Dist = 25
+	MaxSimul        = 4
+	MaxAttachedChar = 2
+	FPS             = 60
+	P1P3Dist        = 25
 )
 
 var sys = System{
@@ -96,15 +97,15 @@ type System struct {
 	keySatate               map[glfw.Key]bool
 	netInput                *NetInput
 	fileInput               *FileInput
-	aiInput                 [MaxSimul * 2]AiInput
+	aiInput                 [MaxSimul*2 + MaxAttachedChar]AiInput
 	keyConfig               []KeyConfig
 	JoystickConfig          []KeyConfig
-	com                     [MaxSimul * 2]int32
+	com                     [MaxSimul*2 + MaxAttachedChar]int32
 	autolevel               bool
 	home                    int
 	gameTime                int32
 	match                   int32
-	inputRemap              [MaxSimul * 2]int
+	inputRemap              [MaxSimul*2 + MaxAttachedChar]int
 	listenPort              string
 	round                   int32
 	intro                   int32
@@ -115,15 +116,15 @@ type System struct {
 	roundsExisted           [2]int32
 	draws                   int32
 	loader                  Loader
-	chars                   [MaxSimul * 2][]*Char
+	chars                   [MaxSimul*2 + MaxAttachedChar][]*Char
 	charList                CharList
-	cgi                     [MaxSimul * 2]CharGlobalInfo
+	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
 	numSimul, numTurns      [2]int32
 	esc                     bool
 	loadMutex               sync.Mutex
 	ignoreMostErrors        bool
-	stringPool              [MaxSimul * 2]StringPool
+	stringPool              [MaxSimul*2 + MaxAttachedChar]StringPool
 	bcStack, bcVarStack     BytecodeStack
 	bcVar                   []BytecodeValue
 	workingChar             *Char
@@ -153,7 +154,7 @@ type System struct {
 	envcol                  [3]int32
 	envcol_time             int32
 	envcol_under            bool
-	clipboardText           [MaxSimul * 2][]string
+	clipboardText           [MaxSimul*2 + MaxAttachedChar][]string
 	stage                   *Stage
 	helperMax               int32
 	nextCharId              int32
@@ -183,10 +184,10 @@ type System struct {
 	finish                  FinishType
 	waitdown                int32
 	shuttertime             int32
-	projs                   [MaxSimul * 2][]Projectile
-	explods                 [MaxSimul * 2][]Explod
-	explDrawlist            [MaxSimul * 2][]int
-	topexplDrawlist         [MaxSimul * 2][]int
+	projs                   [MaxSimul*2 + MaxAttachedChar][]Projectile
+	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
+	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
+	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
 	changeStateNest         int32
 	sprites                 DrawList
 	topSprites              DrawList
@@ -196,7 +197,7 @@ type System struct {
 	drawc2sp                ClsnRect
 	drawc2mtk               ClsnRect
 	drawwh                  ClsnRect
-	autoguard               [MaxSimul * 2]bool
+	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
 	clsnDraw                bool
 	accel                   float32
 	statusDraw              bool
@@ -910,7 +911,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			ko := [...]bool{true, true}
 			for ii := range ko {
 				for i := ii; i < len(s.chars); i += 2 {
-					if len(s.chars[i]) > 0 && s.chars[i][0].alive() {
+					if len(s.chars[i]) > 0 && s.chars[i][0].alive() && s.chars[i][0].teamside < 2 {
 						ko[ii] = false
 						break
 					}
@@ -1679,7 +1680,7 @@ type SelectChar struct {
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
 type SelectStage struct {
-	def, name, zoomout, zoomin, bgmusic, bgmvolume string
+	def, name, zoomout, zoomin, bgmusic, bgmvolume, attachedchardef string
 }
 type Select struct {
 	columns, rows   int
@@ -1869,6 +1870,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
+				ss.attachedchardef, ok = is.getString("attachedchar")
 			}
 		case "camera":
 			if camera {
@@ -1993,6 +1995,7 @@ func (l *Loader) loadChar(pn int) int {
 	}
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
+	p.teamside = p.playerNo & 1
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {
@@ -2026,13 +2029,53 @@ func (l *Loader) loadChar(pn int) int {
 	}
 	return 1
 }
+
+func (l *Loader) loadAttachedChar(atcpn int, def string) int {
+	pn := atcpn + MaxSimul*2
+	cdef := def
+	var p *Char
+	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
+		p = sys.chars[pn][0]
+		p.key = -pn
+	} else {
+		p = newChar(pn, 0)
+		sys.cgi[pn].sff = nil
+		if len(sys.chars[pn]) > 0 {
+			p.power = sys.chars[pn][0].power
+		}
+	}
+	p.memberNo = -atcpn
+	p.selectNo = -atcpn
+	p.teamside = 2
+	sys.com[pn] = 8
+	sys.chars[pn] = make([]*Char, 1)
+	sys.chars[pn][0] = p
+	if sys.cgi[pn].sff == nil {
+		if sys.cgi[pn].states, l.err =
+			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
+			sys.chars[pn] = nil
+			return -1
+		}
+		if l.err = p.load(cdef); l.err != nil {
+			sys.chars[pn] = nil
+			return -1
+		}
+	}
+	if sys.roundsExisted[pn&1] == 0 {
+		sys.cgi[pn].palno = 1
+	}
+	return 1
+}
+
 func (l *Loader) loadStage() bool {
 	if sys.round == 1 {
 		var def string
 		if sys.sel.selectedStageNo == 0 {
-			def = sys.sel.stagelist[Rand(0, int32(len(sys.sel.stagelist))-1)].def
+			randomstageno := Rand(0, int32(len(sys.sel.stagelist))-1)
+			def = sys.sel.stagelist[randomstageno].def
 		} else {
 			def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
+			l.loadAttachedChar(0, sys.sel.stagelist[sys.sel.selectedStageNo-1].attachedchardef)
 		}
 		if sys.stage != nil && sys.stage.def == def {
 			return true

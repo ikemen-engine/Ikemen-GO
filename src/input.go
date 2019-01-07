@@ -1011,7 +1011,7 @@ type NetInput struct {
 	st         NetState
 	sendEnd    chan bool
 	recvEnd    chan bool
-	buf        [MaxSimul * 2]NetBuffer
+	buf        [MaxSimul*2 + MaxAttachedChar]NetBuffer
 	locIn      int
 	remIn      int
 	time       int32

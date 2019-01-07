@@ -4088,6 +4088,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "teamside",
+		hitDef_teamside, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "id",
 		hitDef_id, VT_Int, 1, false); err != nil {
 		return err
@@ -7211,7 +7215,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		return nil, err
 	}
 	if sys.chars[pn][0].cmd == nil {
-		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2)
+		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
 		b := NewCommandBuffer()
 		for i := range sys.chars[pn][0].cmd {
 			sys.chars[pn][0].cmd[i] = *NewCommandList(b)

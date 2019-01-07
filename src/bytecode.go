@@ -1121,10 +1121,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
 			i++
 		case OC_teammode:
-			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
+			if c.teamside == 2 {
+				sys.bcStack.PushB(TM_Single == TeamMode(be[i]))
+			} else {
+				sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
+			}
 			i++
 		case OC_teamside:
-			sys.bcStack.PushI(int32(c.playerNo)&1 + 1)
+			sys.bcStack.PushI(int32(c.teamside) + 1)
 		case OC_time:
 			sys.bcStack.PushI(c.time())
 		case OC_topedge:
@@ -1450,7 +1454,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_drawgame:
 		sys.bcStack.PushB(c.drawgame())
 	case OC_ex_ishometeam:
-		sys.bcStack.PushB(c.playerNo&1 == sys.home)
+		sys.bcStack.PushB(c.teamside == sys.home)
 	case OC_ex_lose:
 		sys.bcStack.PushB(c.lose())
 	case OC_ex_loseko:
@@ -3139,6 +3143,7 @@ const (
 	hitDef_air_animtype
 	hitDef_fall_animtype
 	hitDef_affectteam
+	hitDef_teamside
 	hitDef_id
 	hitDef_chainid
 	hitDef_nochainid
@@ -3234,6 +3239,15 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.animtype = Reaction(exp[0].evalI(c))
 	case hitDef_affectteam:
 		hd.affectteam = exp[0].evalI(c)
+	case hitDef_teamside:
+		n := exp[0].evalI(c)
+		if n > 3 {
+			hd.teamside = 3
+		} else if n < 1 {
+			hd.teamside = 1
+		} else {
+			hd.teamside = int(n)
+		}
 	case hitDef_id:
 		hd.id = Max(0, exp[0].evalI(c))
 	case hitDef_chainid:

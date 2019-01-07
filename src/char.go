@@ -428,6 +428,7 @@ type HitDef struct {
 	hitflag                    int32
 	guardflag                  int32
 	affectteam                 int32
+	teamside                   int
 	animtype                   Reaction
 	air_animtype               Reaction
 	priority                   int32
@@ -1235,8 +1236,8 @@ func (p *Projectile) clsn(playerNo int) {
 	}
 	for i := 0; i < playerNo && p.hits >= 0; i++ {
 		for j, pr := range sys.projs[i] {
-			if pr.hits < 0 || pr.id < 0 || pr.hitdef.affectteam != 0 &&
-				(playerNo&1 != i&1) != (pr.hitdef.affectteam > 0) ||
+			if pr.hits < 0 || pr.id < 0 || (pr.hitdef.affectteam != 0 &&
+				(p.hitdef.teamside-1 != pr.hitdef.teamside-1) != (pr.hitdef.affectteam > 0)) ||
 				pr.ani == nil || len(pr.ani.frames) == 0 {
 				continue
 			}
@@ -1457,6 +1458,7 @@ type Char struct {
 	helperIndex     int32
 	parentIndex     int32
 	playerNo        int
+	teamside        int
 	keyctrl         bool
 	player          bool
 	animPN          int
@@ -1579,7 +1581,7 @@ func (c *Char) clear1() {
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
-	c.name, c.key, c.size = p.name+"'s helper", p.key, p.size
+	c.name, c.key, c.size, c.teamside = p.name+"'s helper", p.key, p.size, p.teamside
 	c.life, c.lifeMax, c.power, c.powerMax = p.lifeMax, p.lifeMax, 0, p.powerMax
 	c.clear2()
 }
@@ -2180,7 +2182,7 @@ func (c *Char) partner(n int32) *Char {
 			p += 2
 		}
 	}
-	if len(sys.chars[p]) > 0 {
+	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
 		return sys.chars[p][0]
 	}
 	return nil
@@ -2188,6 +2190,9 @@ func (c *Char) partner(n int32) *Char {
 func (c *Char) enemy(n int32) *Char {
 	if n < 0 || n >= c.numEnemy() {
 		return nil
+	}
+	if c.teamside == 3-1 {
+		return sys.chars[n][0]
 	}
 	return sys.chars[n*2+int32(^c.playerNo&1)][0]
 }
@@ -2345,7 +2350,7 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	return sys.winTeam == ^c.playerNo&1
+	return sys.winTeam == ^c.teamside
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
@@ -2381,6 +2386,9 @@ func (c *Char) numEnemy() int32 {
 	if sys.tmode[^c.playerNo&1] != TM_Simul {
 		return 1
 	}
+	if c.teamside == 3-1 {
+		return sys.numSimul[0] + sys.numSimul[1]
+	}
 	return sys.numSimul[^c.playerNo&1]
 }
 func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
@@ -2408,7 +2416,7 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 	return BytecodeInt(n)
 }
 func (c *Char) numPartner() int32 {
-	if sys.tmode[c.playerNo&1] != TM_Simul {
+	if sys.tmode[c.playerNo&1] != TM_Simul || c.teamside >= 2 {
 		return 0
 	}
 	return sys.numSimul[c.playerNo&1] - 1
@@ -2460,7 +2468,7 @@ func (c *Char) palno() int32 {
 	return c.gi().palno
 }
 func (c *Char) getPower() int32 {
-	if sys.powerShare[c.playerNo&1] {
+	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
 		return sys.chars[c.playerNo&1][0].power
 	}
 	return sys.chars[c.playerNo][0].power
@@ -2509,6 +2517,9 @@ func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
 }
 func (c *Char) roundsExisted() int32 {
+	if c.teamside >= 2 {
+		return sys.round - 1
+	}
 	return sys.roundsExisted[c.playerNo&1]
 }
 func (c *Char) roundState() int32 {
@@ -2546,6 +2557,9 @@ func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) win() bool {
+	if c.teamside >= 2 {
+		return false
+	}
 	return sys.winTeam == c.playerNo&1
 }
 func (c *Char) winKO() bool {
@@ -2555,6 +2569,9 @@ func (c *Char) winTime() bool {
 	return c.win() && sys.finish == FT_TO
 }
 func (c *Char) winPerfect() bool {
+	if c.teamside >= 2 {
+		return false
+	}
 	return c.win() && sys.winType[c.playerNo&1] >= WT_PN
 }
 func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
@@ -2979,9 +2996,14 @@ func (c *Char) setPosY(y float32) {
 	c.pos[1] = y
 }
 func (c *Char) posReset() {
-	c.facing = 1 - 2*float32(c.playerNo&1)
-	c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
-		sys.stage.localscl - c.facing*float32(c.playerNo>>1)*P1P3Dist) / c.localscl)
+	if c.teamside >= 2 {
+		c.facing = 1
+		c.setX(0)
+	} else {
+		c.facing = 1 - 2*float32(c.playerNo&1)
+		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
+			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*P1P3Dist) / c.localscl)
+	}
 	c.setY(0)
 	c.setXV(0)
 	c.setYV(0)
@@ -3112,6 +3134,9 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
+	if hd.animtype == RA_Back {
+		hd.animtype = RA_Hard
+	}
 	if hd.air_type == HT_Unknown {
 		if hd.ground_type == HT_Trip {
 			hd.air_type = HT_High
@@ -3142,6 +3167,9 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	}
 	if !math.IsNaN(float64(hd.snap[1])) {
 		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
+	}
+	if hd.teamside == 0 {
+		hd.teamside = c.teamside + 1
 	}
 	hd.playerNo = c.ss.sb.playerNo
 }
@@ -3479,7 +3507,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 }
 func (c *Char) lifeSet(life int32) {
 	if c.life = Max(0, Min(c.lifeMax, life)); c.life == 0 {
-		if c.player {
+		if c.player && c.teamside < 2 {
 			if c.alive() && c.helperIndex == 0 {
 				if c.ss.moveType != MT_H {
 					if c.playerNo == c.ss.sb.playerNo {
@@ -3514,14 +3542,14 @@ func (c *Char) setPower(pow int32) {
 	}
 }
 func (c *Char) powerAdd(add int32) {
-	if sys.powerShare[c.playerNo&1] {
+	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
 		sys.chars[c.playerNo&1][0].setPower(c.getPower() + add)
 	} else {
 		sys.chars[c.playerNo][0].setPower(c.getPower() + add)
 	}
 }
 func (c *Char) powerSet(pow int32) {
-	if sys.powerShare[c.playerNo&1] {
+	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
 		sys.chars[c.playerNo&1][0].setPower(pow)
 	} else {
 		sys.chars[c.playerNo][0].setPower(pow)
@@ -3684,6 +3712,7 @@ func (c *Char) makeDust(x, y float32) {
 func (c *Char) hitFallDamage() {
 	if c.ss.moveType == MT_H {
 		c.lifeAdd(-float64(c.ghv.fall.damage), c.ghv.fall.kill, false)
+		c.ghv.fall.damage = 0
 	}
 }
 func (c *Char) hitFallVel() {
@@ -4600,7 +4629,7 @@ func (c *Char) cueDraw() {
 		if c.roundState() == 4 {
 			c.exitTarget(false)
 		}
-		if sys.supertime < 0 && c.playerNo&1 != sys.superplayer&1 {
+		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
 			c.defenceMul *= sys.superp2defmul
 		}
 		c.minus = 2
@@ -4856,13 +4885,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							ghv.fall.yvelocity = 0
 						}
 					} else {
-						ghv.hittime = hd.ground_hittime
 						ghv.ctrltime = hd.ground_hittime
 						ghv.xvel = hd.ground_velocity[0] * c.localscl / getter.localscl
 						ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 						ghv.fallf = hd.ground_fall
 						if ghv.fallf && ghv.yvel == 0 {
 							ghv.yvel = -0.001 * c.localscl / getter.localscl //新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
+						}
+						if ghv.yvel != 0 {
+							ghv.hittime = hd.air_hittime
+						} else {
+							ghv.hittime = hd.ground_hittime
 						}
 					}
 					if ghv.hittime < 0 {
@@ -5201,7 +5234,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			for j := range pr {
 				p := &pr[j]
 				if p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
-					(getter.playerNo&1 != i&1) != (p.hitdef.affectteam > 0) {
+					(getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) {
 					continue
 				}
 				if dist := (getter.pos[0]*getter.localscl - p.pos[0]*p.localscl) * p.facing; dist >= 0 &&
@@ -5212,7 +5245,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					continue
 				}
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
-					(i&1 != getter.playerNo&1) == (getter.hitdef.affectteam > 0)) &&
+					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
 					getter.projClsnCheck(p, false) {
 					p.hits = -2
@@ -5281,7 +5314,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		for _, c := range cl.runOrder {
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-				(getter.playerNo&1 != c.playerNo&1) == (c.hitdef.affectteam > 0)) {
+				(getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
 					getter.inguarddist = true
@@ -5350,7 +5383,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-			if getter.playerNo&1 != c.playerNo&1 && getter.sf(CSF_playerpush) &&
+			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
 				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) {
@@ -5457,7 +5490,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.playerNo&1 != c.playerNo&1 &&
+		if e.player && e.teamside != c.teamside &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
 		}
