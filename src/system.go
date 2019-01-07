@@ -219,6 +219,7 @@ type System struct {
 	keyString               string
 	timerCount              []int32
 	cmdFlags                map[string]string
+	quickLaunch             bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -1818,14 +1819,19 @@ func (s *Select) addCahr(def string) {
 	LoadFile(&sprite, def, func(file string) error {
 		var err error
 		sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
-		sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
-		sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
-		if err != nil {
-			sc.vsportrait = sc.lportrait
-		}
-		sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
-		if err != nil {
-			sc.vportrait = sc.lportrait
+		if sys.quickLaunch {
+			sc.lportrait = sc.sportrait
+			sc.vsportrait, sc.vportrait = sc.lportrait, sc.lportrait
+		} else {
+			sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+			sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+			if err != nil {
+				sc.vsportrait = sc.lportrait
+			}
+			sc.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+			if err != nil {
+				sc.vportrait = sc.lportrait
+			}
 		}
 		if len(sc.pal) == 0 {
 			sc.pal, _ = selectablePalettes(file)

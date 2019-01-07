@@ -130,7 +130,8 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 			(((c>>8&0xff)+uint32(a[1]))*uint32(m[1])>>8)<<8
 		tmp = (tmp|uint32(-Btoi(tmp&0xff0000 != 0)<<8))&0xffff |
 			(((c>>16&0xff)+uint32(a[2]))*uint32(m[2])>>8)<<16
-		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16)
+		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16) |
+			0xff000000
 	}
 	return sys.workpal
 }
@@ -983,7 +984,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			}
 			gl.ActiveTexture(gl.TEXTURE1)
 			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
-			RenderMugenPal(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
 				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
 			gl.Disable(gl.TEXTURE_1D)
 		} else {
@@ -998,7 +999,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
-			RenderMugenPal(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
 				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
 			gl.Disable(gl.TEXTURE_1D)
 		}

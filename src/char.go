@@ -2264,9 +2264,6 @@ func (c *Char) command(pn, i int) bool {
 	}
 	cl := c.cmd[pn].At(i)
 	if len(cl) > 0 && c.key < 0 {
-		//if c.gi().ver[0] == 1 && c.helperIndex != 0 {
-		//	return false
-		//}
 		if c.helperIndex != 0 || len(cl[0].cmd) != 1 || len(cl[0].cmd[0].key) !=
 			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
 			return i == int(c.cpucmd)
@@ -2649,21 +2646,22 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
 		c.enemyExplodsRemove(c.ss.sb.playerNo)
 	}
-	if c.localscl != 320/float32(sys.chars[pn][0].localcoord) {
-		c.pos[0] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.pos[1] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
+	if newLs := 320 / float32(sys.chars[pn][0].localcoord); c.localscl != newLs {
+		lsRatio := c.localscl / newLs
+		c.pos[0] *= lsRatio
+		c.pos[1] *= lsRatio
 		c.oldPos = c.pos
 
-		c.vel[0] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.vel[1] *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
+		c.vel[0] *= lsRatio
+		c.vel[1] *= lsRatio
 
-		c.ghv.xvel *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.ghv.yvel *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.ghv.fall.xvelocity *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.ghv.fall.yvelocity *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
-		c.ghv.yaccel *= c.localscl / (320 / float32(sys.chars[pn][0].localcoord))
+		c.ghv.xvel *= lsRatio
+		c.ghv.yvel *= lsRatio
+		c.ghv.fall.xvelocity *= lsRatio
+		c.ghv.fall.yvelocity *= lsRatio
+		c.ghv.yaccel *= lsRatio
 
-		c.localscl = (320 / float32(sys.chars[pn][0].localcoord))
+		c.localscl = newLs
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
@@ -5448,9 +5446,6 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 	var add func(*Char, int)
 	add = func(e *Char, idx int) {
 		for i := idx; i <= int(n); i++ {
-			if p2 && e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex > 0 {
-				return
-			}
 			if i >= len(*cache) {
 				*cache = append(*cache, e)
 				return
@@ -5462,7 +5457,8 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.playerNo&1 != c.playerNo&1 {
+		if e.player && e.playerNo&1 != c.playerNo&1 &&
+			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
 		}
 	}

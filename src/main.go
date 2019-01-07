@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/yuin/gopher-lua"
@@ -45,16 +44,6 @@ func main() {
 			if match {
 				help, _ := regexp.MatchString("^-[h%?]", a)
 				if help {
-					modkernel32 := syscall.NewLazyDLL("kernel32.dll")
-					procAllocConsole := modkernel32.NewProc("AllocConsole")
-					syscall.Syscall(procAllocConsole.Addr(), 0, 0, 0, 0)
-					hout, err1 := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE)
-					hin, err2 := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)
-					if err1 != nil || err2 != nil { // nowhere to print the message
-						os.Exit(2)
-					}
-					os.Stdout = os.NewFile(uintptr(hout), "/dev/stdout")
-					os.Stdin = os.NewFile(uintptr(hin), "/dev/stdin")
 					fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
 					fmt.Println(" -h -?               Help")
 					fmt.Println(" -log <logfile>      Records match data to <logfile>")
@@ -110,7 +99,7 @@ func main() {
     },{
       "Joystick":1,
       "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-	}],
+    }],
   "Motif":"data/system.def",
   "CommonAir":"data/common.air",
   "CommonCmd":"data/common.cmd",
@@ -168,6 +157,7 @@ func main() {
 		AllowDebugKeys bool
 		CommonAir      string
 		CommonCmd      string
+		QuickLaunch    bool
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -191,6 +181,7 @@ func main() {
 	sys.getHit_LifeToPowerMul = tmp.GetHit_LifeToPowerMul
 	sys.super_TargetDefenceMul = tmp.Super_TargetDefenceMul
 	sys.lifebarFontScale = tmp.LifebarFontScale
+	sys.quickLaunch = tmp.QuickLaunch
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}

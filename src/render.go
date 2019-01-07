@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
@@ -30,14 +29,14 @@ func RenderInit() {
 		"uniform vec3 mul;" +
 		"void main(void){" +
 		"float r = texture2D(tex, gl_TexCoord[0].st).r;" +
-		"vec4 c= texture1D(pal, r*0.9961);" +
-		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
-		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
-		"c.rgb *= mul;" +
-		"c.a *= a;" +
-		"gl_FragColor =" +
-		"int(255.0*r) == msk ? vec4(0.0)" +
-		": (c , vec4(c.rgb, c.a));" +
+		"if(int(255.0*r) == msk){" +
+		"	gl_FragColor = vec4(0.0);" +
+		"}else{" +
+		"	vec4 c = texture1D(pal, r*0.9961);" +
+		"	if(neg) c.rgb = vec3(1.0) - c.rgb;" +
+		"	c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
+		"	gl_FragColor = vec4(c.rgb * mul, c.a * a);" +
+		"}" +
 		"}\x00"
 	fragShaderFc := "uniform float a;" +
 		"uniform sampler2D tex;" +
@@ -125,28 +124,7 @@ func RenderInit() {
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
 }
-func kaiten(x, y *float32, angle float64, rcx, rcy, vscl float32) {
-	temp := (*y - rcy) / vscl
-	length := math.Sqrt(float64((*x-rcx)*(*x-rcx) + temp*temp))
-	if *x-rcx == 0 {
-		if *y-rcy > 0 {
-			angle += math.Pi / 2
-		} else {
-			angle -= math.Pi / 2
-		}
-		*x = rcx + float32(length*math.Cos(angle))
-		*y = rcy + float32(length*math.Sin(angle))*vscl
-		return
-	}
-	kakudo := math.Atan(float64(temp/(*x-rcx))) + angle
-	if *x-rcx < 0 {
-		kakudo += math.Pi
-	}
-	*x = rcx + float32(length*math.Cos(kakudo))
-	*y = rcy + float32(length*math.Sin(kakudo))*vscl
-}
-func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers float32) {
-	gl.Color4f(r, g, b, a)
+func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, pers float32) {
 	gl.Begin(gl.TRIANGLE_STRIP)
 	gl.TexCoord2f(0, 1)
 	gl.Vertex2f(x1, y1)
@@ -171,7 +149,7 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers float32) {
 	gl.End()
 }
 func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
-	tl *[4]int32, rcx, r, g, b, a, pers float32) {
+	tl *[4]int32, rcx, pers float32) {
 	topdist := xtw + xts*float32((*tl)[0])
 	if AbsF(topdist) >= 0.01 {
 		botdist := xbw + xbs*float32((*tl)[0])
@@ -198,7 +176,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 					(x1d < float32(sys.scrrect[2]) || x2d < float32(sys.scrrect[2])) ||
 					(0 < x3d || 0 < x4d) &&
 						(x3d < float32(sys.scrrect[2]) || x4d < float32(sys.scrrect[2])) {
-					drawQuads(x1d, y1, x2d, y2, x3d, y3, x4d, y4, r, g, b, a, pers)
+					drawQuads(x1d, y1, x2d, y2, x3d, y3, x4d, y4, pers)
 				}
 			}
 		}
@@ -217,7 +195,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 			(x1 < float32(sys.scrrect[2]) || x2 < float32(sys.scrrect[2])) ||
 			(0 < x3 || 0 < x4) &&
 				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
-			drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers)
+			drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, pers)
 		}
 		if (*tl)[2] != 1 && n != 0 {
 			n--
@@ -232,7 +210,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	}
 }
 func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
-	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy, r, g, b, a float32) {
+	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
 	x3, y3 := x+xts*float32(w), rcy+(y-rcy)*vs
@@ -260,7 +238,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 		gl.Rotated(float64(-yagl), 0.0, 1.0, 0.0)
 		gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
 		gl.Translated(float64(-rcx), float64(-rcy), 0)
-		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a, pers)
+		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, pers)
 		return
 	}
 	if (*tl)[3] == 1 && xbs != 0 {
@@ -286,7 +264,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
 				rmTileHSub(x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
 					(x3d-x4d)/float32(w), (x2d-x1d)/float32(w), tl,
-					rcx, r, g, b, a, pers)
+					rcx, pers)
 			}
 		}
 	}
@@ -303,7 +281,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
 				rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
-					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx, r, g, b, a, pers)
+					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx, pers)
 			}
 			if (*tl)[3] != 1 && n != 0 {
 				n--
@@ -339,26 +317,26 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
+			agl, yagl, xagl, rcx, rcy)
 	case trans == -2:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
+			agl, yagl, xagl, rcx, rcy)
 	case trans <= 0:
 	case trans < 255:
 		gl.Uniform1fARB(a, float32(trans)/255)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, 1, 1, 1, float32(trans)/255)
+			agl, yagl, xagl, rcx, rcy)
 	case trans < 512:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1)
+			agl, yagl, xagl, rcx, rcy)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		aglOver := 0
@@ -367,7 +345,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy, 1, 1, 1, 1-float32(trans)/255)
+				agl, yagl, xagl, rcx, rcy)
 			aglOver++
 		}
 		if src > 0 {
@@ -380,7 +358,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy, 1, 1, 1, float32(trans)/255)
+				agl, yagl, xagl, rcx, rcy)
 		}
 	}
 	gl.PopMatrix()
@@ -423,7 +401,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		(*window)[2], (*window)[3])
 	return
 }
-func RenderMugenPal(tex Texture, paltex []uint32, mask int32, size [2]uint16,
+func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32) {
@@ -464,7 +442,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 		unsafe.Pointer(&pal[0]))
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	RenderMugenPal(tex, pal, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
+	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
 	gl.DeleteTextures(1, &paltex)
 	gl.Disable(gl.TEXTURE_1D)

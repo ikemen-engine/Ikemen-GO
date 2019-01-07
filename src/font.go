@@ -106,7 +106,6 @@ func loadFnt(filename string) (*Fnt, error) {
 				mapflg = false
 				re := regexp.MustCompile("(\\S+)(?:\\s+(\\S+)(?:\\s+(\\S+))?)?")
 				ofs := uint16(0)
-				w := int32(0)
 				for ; i < len(lines); i++ {
 					if len(lines[i]) > 0 && lines[i][0] == '[' {
 						break
@@ -135,10 +134,10 @@ func loadFnt(filename string) (*Fnt, error) {
 						fci := &FntCharImage{ofs: ofs}
 						f.images[c] = fci
 						if len(cap[3]) > 0 {
-							w = Atoi(cap[3])
+							w := Atoi(cap[3])
 							if w < 0 {
-								ofs += I32ToU16(int32(ofs) - w)
-								w = 0 - w
+								ofs = I32ToU16(int32(ofs) - w)
+								w = -w
 							}
 							fci.w = I32ToU16(w)
 							ofs += fci.w - f.Size[0]
@@ -246,8 +245,7 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	}
 	return &fci.img[bank]
 }
-func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
-	paltex []uint32) float32 {
+func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune) float32 {
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
 	}
@@ -255,7 +253,7 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	if spr == nil || spr.Tex == nil {
 		return 0
 	}
-	RenderMugenPal(*spr.Tex, paltex, 0, spr.Size, -x*sys.widthScale,
+	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
 		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
@@ -290,8 +288,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32,
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, c, pal) +
-			xscl*float32(f.Spacing[0])
+		x += f.drawChar(x, y, xscl, yscl, bank, c) + xscl*float32(f.Spacing[0])
 	}
 	gl.DeleteTextures(1, &paltex)
 	gl.Disable(gl.TEXTURE_1D)

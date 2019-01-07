@@ -570,10 +570,8 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 		if l.vfacing < 0 {
 			y += sys.lifebarFontScale
 		}
-		pal := s.Pal
-
 		s.Draw(x+l.offset[0], y+l.offset[1],
-			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, pal, fx)
+			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx)
 	}
 }
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,

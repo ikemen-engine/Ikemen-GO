@@ -88,8 +88,6 @@ func ReadAnimFrame(line string) *AnimFrame {
 					}
 					if af.SrcAlpha == 1 && af.DstAlpha == 255 {
 						af.SrcAlpha = 0
-					} else if af.SrcAlpha == 255 && af.DstAlpha == 1 {
-						af.DstAlpha = 0
 					}
 				}
 			}
@@ -535,14 +533,17 @@ func (a *Animation) UpdateSprite() {
 				break
 			}
 		}
-		for _, i := range a.interpolate_blend {
-			if a.drawidx+1 == i {
-				a.interpolate_blend_srcalpha += (float32(a.frames[a.drawidx+1].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
-				a.interpolate_blend_dstalpha += (float32(a.frames[a.drawidx+1].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
-				if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
-					a.interpolate_blend_srcalpha = 0
+		if byte(a.interpolate_blend_srcalpha) != 1 ||
+			byte(a.interpolate_blend_dstalpha) != 255 {
+			for _, i := range a.interpolate_blend {
+				if a.drawidx+1 == i {
+					a.interpolate_blend_srcalpha += (float32(a.frames[a.drawidx+1].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
+					a.interpolate_blend_dstalpha += (float32(a.frames[a.drawidx+1].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
+					if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
+						a.interpolate_blend_srcalpha = 0
+					}
+					break
 				}
-				break
 			}
 		}
 	}
@@ -628,10 +629,7 @@ func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
-	if len(p) == 0 {
-		return
-	}
-	return p //pfx.getFxPal(p, neg)
+	return
 }
 func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
@@ -706,7 +704,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 	x += xscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x)
 	y += yscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y)
 	var draw func(int32)
-	if a.spr.rle == -12 {
+	if a.spr.rle <= -11 {
 		draw = func(trans int32) {
 			RenderMugenFcS(*a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
@@ -717,9 +715,9 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 		}
 	} else {
 		var pal [256]uint32
-		if color != 0 {
+		if color != 0 || alpha > 0 {
 			for i := range pal {
-				pal[i] = color
+				pal[i] = color | 0xff000000
 			}
 		}
 		draw = func(trans int32) {
@@ -731,7 +729,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale)
 		}
 	}
-	if int32(color) > 0 {
+	if color != 0 {
 		draw(-2)
 	}
 	if alpha > 0 {
@@ -922,9 +920,6 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		if s.alpha[0] < 0 {
 			s.anim.srcAlpha = int16(s.anim.interpolate_blend_srcalpha)
 			s.anim.dstAlpha = int16(s.anim.interpolate_blend_dstalpha)
-			if s.anim.srcAlpha == 255 && s.anim.dstAlpha == 1 {
-				s.anim.dstAlpha = 255
-			}
 		} else {
 			s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
 		}

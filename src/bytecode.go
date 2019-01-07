@@ -2728,17 +2728,20 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 					crun = rid
 					e, i = crun.newExplod()
+					if e == nil {
+						return false
+					}
 					e.id = 0
 				} else {
 					return false
 				}
 			} else {
 				e, i = crun.newExplod()
+				if e == nil {
+					return false
+				}
 				e.id = 0
 			}
-		}
-		if e == nil {
-			return false
 		}
 		switch id {
 		case gameMakeAnim_pos:
