@@ -29,7 +29,7 @@ func RenderInit() {
 		"uniform vec3 mul;" +
 		"void main(void){" +
 		"float r = texture2D(tex, gl_TexCoord[0].st).r;" +
-		"if(int(255.0*r) == msk){" +
+		"if(int(255.25*r) == msk){" +
 		"	gl_FragColor = vec4(0.0);" +
 		"}else{" +
 		"	vec4 c = texture1D(pal, r*0.9961);" +
