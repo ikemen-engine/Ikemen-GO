@@ -35,7 +35,7 @@ var sys = System{
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	mixer:             *newMixer(),
-	bgm:               *newVorbis(),
+	bgm:               *newBgm(),
 	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
@@ -87,7 +87,7 @@ type System struct {
 	debugScript             string
 	debugDraw               bool
 	mixer                   Mixer
-	bgm                     Vorbis
+	bgm                     Bgm
 	audioContext            *openal.Context
 	nullSndBuf              [audioOutLen * 2]int16
 	sounds                  Sounds
@@ -392,7 +392,15 @@ func (s *System) soundWrite() {
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := s.nullSndBuf[:]
 			if !s.nomusic {
-				out = s.bgm.read()
+				if s.bgm.IsVorbis() {
+					out = s.bgm.ReadVorbis()
+				} else if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
+					s.bgm.ctrlmp3.Paused = false
+				}
+			} else {
+				if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
+					s.bgm.Mp3Paused()
+				}
 			}
 			buf := bgmSrc.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
