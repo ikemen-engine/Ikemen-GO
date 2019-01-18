@@ -1503,6 +1503,7 @@ type Char struct {
 	inguarddist   bool
 	pushed        bool
 	hitdefContact bool
+	movedY        bool
 	atktmp        int8
 	hittmp        int8
 	acttmp        int8
@@ -2080,6 +2081,9 @@ func (c *Char) setXV(xv float32) {
 }
 func (c *Char) setYV(yv float32) {
 	c.vel[1] = yv
+	if yv != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) changeAnim(animNo int32) {
 	if a := c.getAnim(animNo, false); a != nil {
@@ -2707,6 +2711,7 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
 	}
+	c.movedY = false
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
 			c.stateChange2()
@@ -3015,18 +3020,27 @@ func (c *Char) setX(x float32) {
 func (c *Char) setY(y float32) {
 	c.oldPos[1], c.drawPos[1] = y, y
 	c.setPosY(y)
+	if y != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) addX(x float32) {
 	c.setX(c.pos[0] + c.facing*x)
 }
 func (c *Char) addY(y float32) {
 	c.setY(c.pos[1] + y)
+	if y != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) addXV(xv float32) {
 	c.vel[0] += xv
 }
 func (c *Char) addYV(yv float32) {
 	c.vel[1] += yv
+	if yv != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) mulXV(xv float32) {
 	c.vel[0] *= xv
@@ -4473,7 +4487,11 @@ func (c *Char) tick() {
 		if c.stchtmp {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
-			c.changeStateEx(5080, pn, -1, 0)
+			if c.movedY {
+				c.changeStateEx(5020, pn, -1, 0)
+			} else {
+				c.changeStateEx(5080, pn, -1, 0)
+			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -4879,7 +4897,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = hd.down_hittime
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+						if getter.movedY {
+							ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
+						} else {
+							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+						}
 						if !hd.down_bounce {
 							ghv.fall.xvelocity = float32(math.NaN())
 							ghv.fall.yvelocity = 0

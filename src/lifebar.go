@@ -1189,12 +1189,8 @@ func (l *Lifebar) draw(layerno int16) {
 			l.pb[i].bgDraw(layerno)
 		}
 		for i := range l.pb {
-			lvi := i
-			if sys.tmode[i] == TM_Simul {
-				lvi += 2
-			}
 			l.pb[i].draw(layerno, float32(sys.chars[i][0].power)/
-				float32(sys.chars[i][0].powerMax), sys.chars[lvi][0].power/1000,
+				float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000,
 				l.fnt[:])
 		}
 		for ti, tm := range sys.tmode {
