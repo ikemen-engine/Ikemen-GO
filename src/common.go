@@ -241,21 +241,24 @@ func FileExist(filename string) string {
 	}
 	return ""
 }
-func LoadFile(file *string, deffile string, load func(string) error) error {
+
+//SearchFile returns the directory that file is located
+//This search on deffile directory, then it keep looking on other dirs
+func SearchFile(file string, deffile string) string {
 	var fp string
-	*file = strings.Replace(*file, "\\", "/", -1)
+	file = strings.Replace(file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
-	if defdir == "." || strings.Contains(*file, ":/") {
-		fp = *file
+	if defdir == "." {
+		fp = file
 	} else if defdir == "/" {
-		fp = "/" + *file
+		fp = "/" + file
 	} else {
-		fp = defdir + "/" + *file
+		fp = defdir + "/" + file
 	}
 	if fp = FileExist(fp); len(fp) == 0 {
 		_else := false
 		if defdir != "data" {
-			fp = "data/" + *file
+			fp = "data/" + file
 			if fp = FileExist(fp); len(fp) == 0 {
 				_else = true
 			}
@@ -263,18 +266,25 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 			_else = true
 		}
 		if _else {
-			fp = *file
+			fp = file
 			if fp = FileExist(fp); len(fp) == 0 {
-				fp = *file
+				fp = file
 			}
 		}
 	}
+
+	return fp
+}
+
+func LoadFile(file *string, deffile string, load func(string) error) error {
+	fp := SearchFile(*file, deffile)
 	if err := load(fp); err != nil {
 		return Error(deffile + ":\n" + fp + "\n" + err.Error())
 	}
 	*file = fp
 	return nil
 }
+
 func SplitAndTrim(str, sep string) (ss []string) {
 	ss = strings.Split(str, sep)
 	for i, s := range ss {

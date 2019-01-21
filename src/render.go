@@ -429,6 +429,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
+
 func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32) {
