@@ -4,9 +4,11 @@ IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supp
 ### Links ###
 
 Suehiro repo (Original creator of the engine)
+
 https://osdn.net/users/supersuehiro/pf/ikemen_go/
 
 Ikemen GO Plus, K4thos fork of Ikemen (Some features were borrowed from his repo)
+
 https://github.com/K4thos/Ikemen-GO-Plus
 
 # Building #
