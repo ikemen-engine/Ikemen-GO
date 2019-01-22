@@ -2350,7 +2350,11 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	return sys.winTeam == ^c.teamside
+	if c.roundState() > 2 {
+		return sys.winTeam != c.teamside
+	} else {
+		return false
+	}
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
