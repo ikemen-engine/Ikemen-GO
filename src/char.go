@@ -2564,7 +2564,11 @@ func (c *Char) win() bool {
 	if c.teamside >= 2 {
 		return false
 	}
-	return sys.winTeam == c.playerNo&1
+	if c.roundState() > 2 {
+		return sys.winTeam == c.playerNo&1
+	} else {
+		return false
+	}
 }
 func (c *Char) winKO() bool {
 	return c.win() && sys.finish == FT_KO
@@ -2702,7 +2706,7 @@ func (c *Char) stateChange2() bool {
 	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
-	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) {
+	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.furimuki()
 	}
 	if anim >= 0 {
