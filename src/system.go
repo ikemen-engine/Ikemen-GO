@@ -642,10 +642,11 @@ func (s *System) nextRound() {
 	}
 }
 func (s *System) tickFrame() bool {
-	return s.oldTickCount < s.tickCount
+	return (!s.paused || s.step) && s.oldTickCount < s.tickCount
 }
 func (s *System) tickNextFrame() bool {
-	return int(s.tickCountF+s.nextAddTime) > s.tickCount
+	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
+		!s.paused || s.step || s.oldTickCount >= s.tickCount
 }
 func (s *System) tickInterpola() float32 {
 	if s.tickNextFrame() {
@@ -654,6 +655,10 @@ func (s *System) tickInterpola() float32 {
 	return s.tickCountF - s.lastTick + s.nextAddTime
 }
 func (s *System) addFrameTime(t float32) bool {
+	if s.paused && !s.step && s.oldTickCount < s.tickCount {
+		s.oldNextAddTime = 0
+		return true
+	}
 	s.oldTickCount = s.tickCount
 	if int(s.tickCountF) > s.tickCount {
 		s.tickCount++
@@ -1085,11 +1090,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.intro = 0
 		}
 	}
-	if s.turbo == 0 || s.tickNextFrame() {
+	if s.tickNextFrame() {
 		spd := s.accel
-		if s.paused && !s.step {
-			spd = 0
-		}
 		_else := s.sf(GSF_nokoslow) || s.time == 0
 		if !_else {
 			slowt := -(s.lifebar.ro.over_hittime + (s.lifebar.ro.slow_time+3)>>2)

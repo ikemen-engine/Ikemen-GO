@@ -2354,7 +2354,7 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	return sys.winTeam == ^c.teamside
+	return sys.winTeam == 1^c.teamside
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
@@ -4091,8 +4091,8 @@ func (c *Char) action() {
 	c.acttmp = -int8(Btoi(p)) * 2
 	c.unsetSCF(SCF_guard)
 	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
-		(c.scf(SCF_ctrl) || c.ss.no == 52 || c.inGuardState()) &&
-		c.ss.moveType == MT_I && c.cmd != nil &&
+		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
+			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0) &&
 		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
 			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
@@ -5417,7 +5417,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				cr += c.pos[0] * c.localscl
 				if gl < cr && cl < gr && (contact > 0 ||
 					getter.clsnCheck(c, false, false)) {
-					drawposOvrd := true
 					getter.pushed, c.pushed = true, true
 					tmp := getter.distX(c, getter)
 					if tmp == 0 {
@@ -5436,7 +5435,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					if getter.sf(CSF_screenbound) {
 						getter.pos[0] = MaxF(gxmin/getter.localscl, MinF(gxmax/getter.localscl, getter.pos[0]))
-						drawposOvrd = false
 					}
 					if c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
@@ -5449,9 +5447,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0]))
 					c.pos[0] = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl,
 						c.pos[0]))
-					if drawposOvrd {
-						getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
-					}
+					getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
 				}
 			}
 		}
