@@ -82,9 +82,14 @@ func (c *Camera) Update(scl, x, y float32) {
 	c.Pos[0] = x
 	c.Pos[1] = y
 }
-func (c *Camera) ScaleBound(scl float32) float32 {
+func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
 	if c.ZoomEnable {
-		return MaxF(c.MinScale, MinF(c.ZoomMax, scl))
+		if sys.debugPaused() {
+			sclmul = 1
+		} else if sys.turbo < 1 {
+			sclmul = Pow(sclmul, sys.turbo)
+		}
+		return MaxF(c.MinScale, MinF(c.ZoomMax, scl*sclmul))
 	}
 	return 1
 }
@@ -128,7 +133,9 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 			vx += vel
 		}
 	}
-	if !sys.debugPaused() {
+	if sys.debugPaused() {
+		vx = 0
+	} else {
 		vx *= MinF(1, sys.turbo)
 	}
 	if vx < 0 {

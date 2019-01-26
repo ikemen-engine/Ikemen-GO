@@ -1530,10 +1530,7 @@ func (s *System) fight() (reload bool) {
 				break
 			}
 		}
-		if s.turbo < 1 && !s.debugPaused() {
-			sclmul = Pow(sclmul, s.turbo)
-		}
-		scl = s.cam.ScaleBound(scl * sclmul)
+		scl = s.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
 			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
