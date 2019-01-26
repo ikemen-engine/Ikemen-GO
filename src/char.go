@@ -1189,7 +1189,6 @@ func (p *Projectile) update(playerNo int) {
 		return
 	}
 	if sys.tickFrame() {
-		p.oldPos = p.pos
 		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing,
 			p.pos[1] + p.velocity[1]}
 	}
@@ -1198,6 +1197,7 @@ func (p *Projectile) update(playerNo int) {
 		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
 	}
 	if sys.tickNextFrame() {
+		p.oldPos = p.pos
 		for i := range p.velocity {
 			p.velocity[i] += p.accel[i]
 			p.velocity[i] *= p.velmul[i]
