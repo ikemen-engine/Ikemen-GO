@@ -641,12 +641,13 @@ func (s *System) nextRound() {
 		}
 	}
 }
+func (s *System) debugPaused() bool { return s.paused && !s.step }
 func (s *System) tickFrame() bool {
-	return (!s.paused || s.step) && s.oldTickCount < s.tickCount
+	return !s.debugPaused() && s.oldTickCount < s.tickCount
 }
 func (s *System) tickNextFrame() bool {
 	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
-		!s.paused || s.step || s.oldTickCount >= s.tickCount
+		!s.debugPaused() || s.oldTickCount >= s.tickCount
 }
 func (s *System) tickInterpola() float32 {
 	if s.tickNextFrame() {
@@ -655,7 +656,7 @@ func (s *System) tickInterpola() float32 {
 	return s.tickCountF - s.lastTick + s.nextAddTime
 }
 func (s *System) addFrameTime(t float32) bool {
-	if s.paused && !s.step && s.oldTickCount < s.tickCount {
+	if s.debugPaused() && s.oldTickCount < s.tickCount {
 		s.oldNextAddTime = 0
 		return true
 	}
@@ -1529,7 +1530,7 @@ func (s *System) fight() (reload bool) {
 				break
 			}
 		}
-		if s.turbo < 1 {
+		if s.turbo < 1 && !s.debugPaused() {
 			sclmul = Pow(sclmul, s.turbo)
 		}
 		scl = s.cam.ScaleBound(scl * sclmul)

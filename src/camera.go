@@ -128,7 +128,9 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 			vx += vel
 		}
 	}
-	vx *= MinF(1, sys.turbo)
+	if !sys.debugPaused() {
+		vx *= MinF(1, sys.turbo)
+	}
 	if vx < 0 {
 		tmp = MaxF(leftest+tension, tmp)
 		if vx < tmp {
