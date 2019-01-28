@@ -35,7 +35,7 @@ var sys = System{
 	lifeMul:    1, team1VS2Life: 1,
 	turnsRecoveryRate: 1.0 / 300,
 	mixer:             *newMixer(),
-	bgm:               *newVorbis(),
+	bgm:               *newBgm(),
 	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
@@ -87,7 +87,7 @@ type System struct {
 	debugScript             string
 	debugDraw               bool
 	mixer                   Mixer
-	bgm                     Vorbis
+	bgm                     Bgm
 	audioContext            *openal.Context
 	nullSndBuf              [audioOutLen * 2]int16
 	sounds                  Sounds
@@ -392,7 +392,15 @@ func (s *System) soundWrite() {
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := s.nullSndBuf[:]
 			if !s.nomusic {
-				out = s.bgm.read()
+				if s.bgm.IsVorbis() {
+					out = s.bgm.ReadVorbis()
+				} else if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
+					s.bgm.ctrlmp3.Paused = false
+				}
+			} else {
+				if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
+					s.bgm.Mp3Paused()
+				}
 			}
 			buf := bgmSrc.Src.UnqueueBuffer()
 			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
@@ -633,11 +641,15 @@ func (s *System) nextRound() {
 		}
 	}
 }
+func (s *System) debugPaused() bool {
+	return s.paused && !s.step && s.oldTickCount < s.tickCount
+}
 func (s *System) tickFrame() bool {
-	return s.oldTickCount < s.tickCount
+	return (!s.paused || s.step) && s.oldTickCount < s.tickCount
 }
 func (s *System) tickNextFrame() bool {
-	return int(s.tickCountF+s.nextAddTime) > s.tickCount
+	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
+		!s.paused || s.step || s.oldTickCount >= s.tickCount
 }
 func (s *System) tickInterpola() float32 {
 	if s.tickNextFrame() {
@@ -646,6 +658,10 @@ func (s *System) tickInterpola() float32 {
 	return s.tickCountF - s.lastTick + s.nextAddTime
 }
 func (s *System) addFrameTime(t float32) bool {
+	if s.debugPaused() {
+		s.oldNextAddTime = 0
+		return true
+	}
 	s.oldTickCount = s.tickCount
 	if int(s.tickCountF) > s.tickCount {
 		s.tickCount++
@@ -1077,11 +1093,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.intro = 0
 		}
 	}
-	if s.turbo == 0 || s.tickNextFrame() {
+	if s.tickNextFrame() {
 		spd := s.accel
-		if s.paused && !s.step {
-			spd = 0
-		}
 		_else := s.sf(GSF_nokoslow) || s.time == 0
 		if !_else {
 			slowt := -(s.lifebar.ro.over_hittime + (s.lifebar.ro.slow_time+3)>>2)
@@ -1519,10 +1532,7 @@ func (s *System) fight() (reload bool) {
 				break
 			}
 		}
-		if s.turbo < 1 {
-			sclmul = Pow(sclmul, s.turbo)
-		}
-		scl = s.cam.ScaleBound(scl * sclmul)
+		scl = s.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
 			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))

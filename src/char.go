@@ -1189,7 +1189,6 @@ func (p *Projectile) update(playerNo int) {
 		return
 	}
 	if sys.tickFrame() {
-		p.oldPos = p.pos
 		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing,
 			p.pos[1] + p.velocity[1]}
 	}
@@ -1198,6 +1197,7 @@ func (p *Projectile) update(playerNo int) {
 		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
 	}
 	if sys.tickNextFrame() {
+		p.oldPos = p.pos
 		for i := range p.velocity {
 			p.velocity[i] += p.accel[i]
 			p.velocity[i] *= p.velmul[i]
@@ -1503,6 +1503,7 @@ type Char struct {
 	inguarddist   bool
 	pushed        bool
 	hitdefContact bool
+	movedY        bool
 	atktmp        int8
 	hittmp        int8
 	acttmp        int8
@@ -2080,6 +2081,9 @@ func (c *Char) setXV(xv float32) {
 }
 func (c *Char) setYV(yv float32) {
 	c.vel[1] = yv
+	if yv != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) changeAnim(animNo int32) {
 	if a := c.getAnim(animNo, false); a != nil {
@@ -2718,6 +2722,7 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
 	}
+	c.movedY = false
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
 			c.stateChange2()
@@ -3026,18 +3031,27 @@ func (c *Char) setX(x float32) {
 func (c *Char) setY(y float32) {
 	c.oldPos[1], c.drawPos[1] = y, y
 	c.setPosY(y)
+	if y != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) addX(x float32) {
 	c.setX(c.pos[0] + c.facing*x)
 }
 func (c *Char) addY(y float32) {
 	c.setY(c.pos[1] + y)
+	if y != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) addXV(xv float32) {
 	c.vel[0] += xv
 }
 func (c *Char) addYV(yv float32) {
 	c.vel[1] += yv
+	if yv != 0 {
+		c.movedY = true
+	}
 }
 func (c *Char) mulXV(xv float32) {
 	c.vel[0] *= xv
@@ -4088,8 +4102,8 @@ func (c *Char) action() {
 	c.acttmp = -int8(Btoi(p)) * 2
 	c.unsetSCF(SCF_guard)
 	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
-		(c.scf(SCF_ctrl) || c.ss.no == 52 || c.inGuardState()) &&
-		c.ss.moveType == MT_I && c.cmd != nil &&
+		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
+			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0) &&
 		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
 			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
@@ -4484,7 +4498,11 @@ func (c *Char) tick() {
 		if c.stchtmp {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
-			c.changeStateEx(5080, pn, -1, 0)
+			if c.movedY {
+				c.changeStateEx(5020, pn, -1, 0)
+			} else {
+				c.changeStateEx(5080, pn, -1, 0)
+			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -4890,7 +4908,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = hd.down_hittime
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+						if getter.movedY {
+							ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
+						} else {
+							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+						}
 						if !hd.down_bounce {
 							ghv.fall.xvelocity = float32(math.NaN())
 							ghv.fall.yvelocity = 0
@@ -5406,7 +5428,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				cr += c.pos[0] * c.localscl
 				if gl < cr && cl < gr && (contact > 0 ||
 					getter.clsnCheck(c, false, false)) {
-					drawposOvrd := true
 					getter.pushed, c.pushed = true, true
 					tmp := getter.distX(c, getter)
 					if tmp == 0 {
@@ -5425,7 +5446,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					if getter.sf(CSF_screenbound) {
 						getter.pos[0] = MaxF(gxmin/getter.localscl, MinF(gxmax/getter.localscl, getter.pos[0]))
-						drawposOvrd = false
 					}
 					if c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
@@ -5438,9 +5458,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0]))
 					c.pos[0] = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl,
 						c.pos[0]))
-					if drawposOvrd {
-						getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
-					}
+					getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
 				}
 			}
 		}
