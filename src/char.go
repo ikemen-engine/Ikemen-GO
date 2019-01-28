@@ -2648,6 +2648,8 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		}
 	}
 }
+
+// Furimuki = Turn around
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		if c.rdDistX(sys.charList.enemyNear(c, 0, true), c).ToF() < 0 {
@@ -2661,6 +2663,7 @@ func (c *Char) furimuki() {
 		}
 	}
 }
+
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
 		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
