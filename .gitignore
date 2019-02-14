@@ -3,3 +3,5 @@
 /Ikemen_GO.exe
 /Chars/*
 /.vscode/*
+/debug/*
+data/config.json
