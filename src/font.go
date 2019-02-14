@@ -8,7 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/K4thos/glfont"
-	"github.com/flopp/go-findfont"
+	findfont "github.com/flopp/go-findfont"
 	"github.com/go-gl/gl/v2.1/gl"
 )
 
@@ -53,6 +53,11 @@ func loadFnt(filename string) (*Fnt, error) {
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 	fp, err := os.Open(filename)
+
+	//Check file in "font/"" directory
+	if err != nil {
+		fp, err = os.Open("font/" + filename)
+	}
 
 	//Error opening file
 	if err != nil {
@@ -250,6 +255,12 @@ func loadFntV2(filename string) (*Fnt, error) {
 	f := newFnt()
 
 	content, err := LoadText(filename)
+
+	//Check file in "font/"" directory
+	if err != nil {
+		content, err = LoadText(filename)
+	}
+
 	if err != nil {
 		return nil, err
 	}
