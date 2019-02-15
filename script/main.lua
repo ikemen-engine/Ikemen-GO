@@ -8,6 +8,11 @@ math.randomseed(os.time())
 --; COMMON SECTION
 --;===========================================================
 
+--setLuaSpriteScale(3)
+--setLuaSpriteOffsetX(-53)
+--setLuaSmallPortraitScale(0.75)
+--setLuaBigPortraitScale(0.75)
+
 --One-time load of the json routines
 json = (loadfile 'script/dkjson.lua')()
 

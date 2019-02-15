@@ -1623,8 +1623,11 @@ for i = 1, #t_dir do
 		else
 			animSetColorKey(anim, -1)
 		end
-		--animUpdate(anim)
+		
+		-- Scale non animated sprites
+		animUpdate(anim)
 		motif[t_dir[i]].bg_data[k] = anim
+		
 		main.loadingRefresh()
 	end
 end
