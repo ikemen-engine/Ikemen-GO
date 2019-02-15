@@ -1626,8 +1626,9 @@ for i = 1, #t_dir do
 		
 		-- Scale non animated sprites
 		animUpdate(anim)
-		motif[t_dir[i]].bg_data[k] = anim
+		animSetScale(anim, 1 ,1)
 		
+		motif[t_dir[i]].bg_data[k] = anim
 		main.loadingRefresh()
 	end
 end
