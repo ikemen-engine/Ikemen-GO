@@ -12,6 +12,7 @@ math.randomseed(os.time())
 --setLuaSpriteOffsetX(-53)
 --setLuaSmallPortraitScale(0.75)
 --setLuaBigPortraitScale(0.75)
+main.screenOverscan = 0
 
 --One-time load of the json routines
 json = (loadfile 'script/dkjson.lua')()

@@ -1517,9 +1517,9 @@ main.loadingRefresh()
 t_dir = {'title_info', 'select_info', 'vs_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100kumite_results_screen', 'option_info', 'tournament_info', 'continue_screen'}
 for i = 1, #t_dir do
 	motif[t_dir[i]].fadein_data = main.f_fadeAnim(1, motif[t_dir[i]].fadein_time, motif[t_dir[i]].fadein_col[1], motif[t_dir[i]].fadein_col[2], motif[t_dir[i]].fadein_col[3])
-	animSetWindow(motif[t_dir[i]].fadein_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].fadein_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	motif[t_dir[i]].fadeout_data = main.f_fadeAnim(0, motif[t_dir[i]].fadeout_time, motif[t_dir[i]].fadeout_col[1], motif[t_dir[i]].fadeout_col[2], motif[t_dir[i]].fadeout_col[3])
-	animSetWindow(motif[t_dir[i]].fadeout_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].fadeout_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 --other entries
@@ -1564,7 +1564,7 @@ for i = 1, #t_dir do
 	end
 	--clearcolor data
 	motif[t_dir[i]].bgclearcolor_data = main.f_clearColor(motif[t_dir[i]].bgclearcolor[1], motif[t_dir[i]].bgclearcolor[2], motif[t_dir[i]].bgclearcolor[3])
-	animSetWindow(motif[t_dir[i]].bgclearcolor_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].bgclearcolor_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	--background data
 	motif[t_dir[i]].bg_data = {}
 	local t_bgdef = motif[t_dir[i]].bg
@@ -1610,7 +1610,7 @@ for i = 1, #t_dir do
 				t_bgdef[k].window[4] - t_bgdef[k].window[2] + 1
 			)
 		else
-			animSetWindow(anim, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+			animSetWindow(anim, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 		end
 		if t_bgdef[k].tilespacing[2] == nil then t_bgdef[k].tilespacing[2] = t_bgdef[k].tilespacing[1] end
 		if t_bgdef[k].type == 'parallax' then
@@ -1723,7 +1723,7 @@ for i = 1, #t_dir do
 		t[t_dir[i].s .. 'data'] = animNew(motif.selectbgdef.spr_data, '-1, -1, 0, 0, -1')
 		animUpdate(t[t_dir[i].s .. 'data'])
 	end
-	animSetWindow(t[t_dir[i].s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t[t_dir[i].s .. 'data'], main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	--animAddPos(t[t_dir[i].s .. 'data'], 160, 0) --for some reason needed in ikemen (but not in this case)
 	main.loadingRefresh()
 end
@@ -1738,7 +1738,7 @@ if motif.anim[t.continue_anim] ~= nil then
 		t.continue_scale[1],
 		t.continue_scale[2]
 	)
-	animSetWindow(t.continue_anim_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t.continue_anim_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 if motif.vs_screen.p1_name_active_font == nil then
