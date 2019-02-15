@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
@@ -245,6 +245,22 @@ func scriptCommonInit(l *lua.LState) {
 		sys.teamLifeShare = boolArg(l, 1)
 		return 0
 	})
+
+	// All the lua sprites will be caled by this value
+	luaRegister(l, "setLuaSpriteScale", func(l *lua.LState) int {
+		sys.luaSpriteScale = float64(numArg(l, 1))
+		return 0
+	})
+	// All the lua sprites will add this value to his position Y
+	luaRegister(l, "setLuaSmallPortraitScale", func(l *lua.LState) int {
+		sys.luaSmallPortraitScale = float32(numArg(l, 1))
+		return 0
+	})
+	// All the lua sprites will add this value to his position Y
+	luaRegister(l, "setLuaBigPortraitScale", func(l *lua.LState) int {
+		sys.luaBigPortraitScale = float32(numArg(l, 1))
+		return 0
+	})
 }
 
 // System Script
@@ -296,7 +312,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.x, ts.y = float32(numArg(l, 2)), float32(numArg(l, 3))
+		ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "textImgSetScale", func(*lua.LState) int {
@@ -304,7 +320,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.xscl, ts.yscl = float32(numArg(l, 2)), float32(numArg(l, 3))
+		ts.xscl, ts.yscl = float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "textImgDraw", func(*lua.LState) int {
@@ -333,7 +349,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetPos(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animAddPos", func(*lua.LState) int {
@@ -341,7 +357,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.AddPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.AddPos(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animSetTile", func(*lua.LState) int {
@@ -382,7 +398,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetScale(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animSetWindow", func(*lua.LState) int {
@@ -390,8 +406,8 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetWindow(float32(numArg(l, 2)), float32(numArg(l, 3)),
-			float32(numArg(l, 4)), float32(numArg(l, 5)))
+		a.SetWindow(float32((numArg(l, 2) / sys.luaSpriteScale)), float32(numArg(l, 3)/sys.luaSpriteScale),
+			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animUpdate", func(*lua.LState) int {
@@ -621,7 +637,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal, nil)
+				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -639,13 +655,17 @@ func systemScriptInit(l *lua.LState) {
 					offset++
 					if c != nil {
 						if c.sportrait != nil {
-							c.sportrait.Draw(x+float32(i)*sys.sel.cellsize[0],
-								y+float32(j)*sys.sel.cellsize[1], sys.sel.cellscale[0]*c.portrait_scale,
-								sys.sel.cellscale[1]*c.portrait_scale, c.sportrait.Pal, nil)
+							c.sportrait.Draw((x + float32(i)*sys.sel.cellsize[0]),
+								(y+float32(j)*sys.sel.cellsize[1])/float32(sys.luaSpriteScale),
+								(sys.sel.cellscale[0]*c.portrait_scale)/float32(sys.luaSpriteScale),
+								(sys.sel.cellscale[1]*c.portrait_scale)/float32(sys.luaSpriteScale),
+								c.sportrait.Pal, nil)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
-								y+float32(j)*sys.sel.cellsize[1], sys.sel.randomscl[0],
-								sys.sel.randomscl[1], sys.sel.randomspr.Pal, nil)
+								y+float32(j)*sys.sel.cellsize[1]/float32(sys.luaSpriteScale),
+								sys.sel.randomscl[0]/float32(sys.luaSpriteScale),
+								sys.sel.randomscl[1]/float32(sys.luaSpriteScale),
+								sys.sel.randomspr.Pal, nil)
 						}
 					}
 				}
@@ -986,7 +1006,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.sportrait.Draw(x, y, xscl, yscl, c.sportrait.Pal, nil)
+				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -1007,7 +1027,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vsportrait.Draw(x, y, xscl, yscl, c.vsportrait.Pal, nil)
+				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil)
 			}
 		}
 		return 0
@@ -1028,7 +1048,7 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vportrait.Draw(x, y, xscl, yscl, c.vportrait.Pal, nil)
+				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil)
 			}
 		}
 		return 0

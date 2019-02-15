@@ -15,11 +15,11 @@ import (
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 const (
-	MaxSimul        = 4
+	MaxSimul        = 8
 	MaxAttachedChar = 2
 	FPS             = 60
 	P1P3Dist        = 25
@@ -59,6 +59,11 @@ var sys = System{
 	audioClose:       make(chan bool, 1),
 	keyInput:         glfw.KeyUnknown,
 	keyString:        "",
+	// Localcoord sceenpack
+	luaSpriteScale:        1,
+	luaSmallPortraitScale: 1,
+	luaBigPortraitScale:   1,
+	luaSpriteOffsetX:      0,
 }
 
 type TeamMode int32
@@ -221,6 +226,11 @@ type System struct {
 	timerCount              []int32
 	cmdFlags                map[string]string
 	quickLaunch             bool
+	// Localcoord sceenpack
+	luaSpriteScale        float64
+	luaSmallPortraitScale float32
+	luaBigPortraitScale   float32
+	luaSpriteOffsetX      float64
 }
 
 func (s *System) init(w, h int32) *lua.LState {
