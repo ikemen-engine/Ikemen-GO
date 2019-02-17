@@ -16,6 +16,8 @@ var uniformX1x2x4x3, uniformIsTrapez int32
 var mugenShaderFcS uintptr
 var uniformFcSA, uniformColor int32
 var posattLocation, uvattLocation int32
+var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
+var indices = [4]int32{1, 2, 0, 3}
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -130,6 +132,8 @@ func RenderInit() {
 	mugenShader = link(vertObj, fragObj)
 	posattLocation = gl.GetAttribLocationARB(mugenShader, gl.Str("position\x00"))
 	uvattLocation = gl.GetAttribLocationARB(mugenShader, gl.Str("uv\x00"))
+	gl.EnableVertexAttribArrayARB(uint32(posattLocation))
+	gl.EnableVertexAttribArrayARB(uint32(uvattLocation))
 	uniformA = gl.GetUniformLocationARB(mugenShader, gl.Str("a\x00"))
 	uniformPal = gl.GetUniformLocationARB(mugenShader, gl.Str("pal\x00"))
 	uniformMsk = gl.GetUniformLocationARB(mugenShader, gl.Str("msk\x00"))
@@ -159,20 +163,16 @@ func RenderInit() {
 }
 func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
 	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
-	vertexUv := [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
 	switch renderMode {
 	case 1:
 		gl.Uniform4fARB(uniformPalX1x2x4x3, x1, x2, x4, x3)
 	case 2:
 		gl.Uniform4fARB(uniformX1x2x4x3, x1, x2, x4, x3)
 	}
-	gl.EnableVertexAttribArrayARB(uint32(posattLocation))
-	gl.EnableVertexAttribArrayARB(uint32(uvattLocation))
 	gl.VertexAttribPointerARB(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
 	gl.VertexAttribPointerARB(uint32(uvattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexUv[0]))
 
-	gl.DrawArrays(gl.QUADS, 0, 4)
-	gl.DisableVertexAttribArrayARB(0)
+	gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 }
 func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl *[4]int32, rcx float32, renderMode int32) {
