@@ -1587,9 +1587,9 @@ for i = 1, #t_dir do
 		--generate anim data
 		local sizeX, sizeY, offsetX, offsetY = 0, 0, 0, 0
 		if t_bgdef[k].type == 'anim' then
-			anim = main.f_animFromTable(motif.anim[t_bgdef[k].actionno], motif[t_dir[i]].spr_data, t_bgdef[k].start[1], t_bgdef[k].start[2])
+			anim = main.f_animFromTable(motif.anim[t_bgdef[k].actionno], motif[t_dir[i]].spr_data, (t_bgdef[k].start[1] + main.normalSpriteCenter), t_bgdef[k].start[2])
 		else --normal, parallax
-			anim = t_bgdef[k].spriteno[1] .. ', ' .. t_bgdef[k].spriteno[2] .. ', ' .. t_bgdef[k].start[1] .. ', ' .. t_bgdef[k].start[2] .. ', ' .. -1
+			anim = t_bgdef[k].spriteno[1] .. ', ' .. t_bgdef[k].spriteno[2] .. ', ' .. (t_bgdef[k].start[1] + main.normalSpriteCenter) .. ', ' .. t_bgdef[k].start[2] .. ', ' .. -1
 			anim = animNew(motif[t_dir[i]].spr_data, anim)
 			sizeX, sizeY, offsetX, offsetY = getSpriteInfo(motif[t_dir[i]].spr, t_bgdef[k].spriteno[1], t_bgdef[k].spriteno[2])
 		end

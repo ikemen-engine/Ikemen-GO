@@ -9,6 +9,7 @@ math.randomseed(os.time())
 --;===========================================================
 
 main.screenOverscan = 0
+main.normalSpriteCenter = 0
 require "script/screenpack"
 
 --One-time load of the json routines
