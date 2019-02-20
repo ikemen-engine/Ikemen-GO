@@ -2354,7 +2354,11 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	return sys.winTeam == 1^c.teamside
+	if c.roundState() > 2 {
+		return sys.winTeam != c.teamside
+	} else {
+		return false
+	}
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
@@ -2564,7 +2568,11 @@ func (c *Char) win() bool {
 	if c.teamside >= 2 {
 		return false
 	}
-	return sys.winTeam == c.playerNo&1
+	if c.roundState() > 2 {
+		return sys.winTeam == c.playerNo&1
+	} else {
+		return false
+	}
 }
 func (c *Char) winKO() bool {
 	return c.win() && sys.finish == FT_KO
@@ -2644,6 +2652,8 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		}
 	}
 }
+
+// Furimuki = Turn around
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		if c.rdDistX(sys.charList.enemyNear(c, 0, true), c).ToF() < 0 {
@@ -2702,7 +2712,7 @@ func (c *Char) stateChange2() bool {
 	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
-	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) {
+	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.furimuki()
 	}
 	if anim >= 0 {
