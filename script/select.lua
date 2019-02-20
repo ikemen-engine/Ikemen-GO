@@ -453,7 +453,7 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 	local tmpRow = rowOffset
 	local found = false
 	if commandGetState(cmd, 'u') then
-		for i = 1, motif.select_info.rows do
+		for i = 1, motif.select_info.rows + motif.select_info.rows_scrolling do
 			selY = selY - 1
 			if selY < 0 then
 				if wrappingY then
@@ -469,7 +469,8 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 				faceOffset = faceOffset - motif.select_info.columns
 				rowOffset = rowOffset - 1
 			end
-			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2) or motif.select_info.moveoveremptyboxes == 1 then
+			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2)
+			or motif.select_info.moveoveremptyboxes == 1 then
 				break
 			elseif motif.select_info.searchemptyboxesup ~= 0 then
 				found, selX = select.f_searchEmptyBoxes(motif.select_info.searchemptyboxesup, selX, selY)
@@ -479,7 +480,7 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 			end
 		end
 	elseif commandGetState(cmd, 'd') then
-		for i = 1, motif.select_info.rows do
+		for i = 1, motif.select_info.rows + motif.select_info.rows_scrolling do
 			selY = selY + 1
 			if selY >= motif.select_info.rows + motif.select_info.rows_scrolling then
 				if wrappingY then
@@ -495,7 +496,8 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 				faceOffset = faceOffset + motif.select_info.columns
 				rowOffset = rowOffset + 1
 			end
-			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2) or motif.select_info.moveoveremptyboxes == 1 then
+			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2)
+			or motif.select_info.moveoveremptyboxes == 1 then
 				break
 			elseif motif.select_info.searchemptyboxesdown ~= 0 then
 				found, selX = select.f_searchEmptyBoxes(motif.select_info.searchemptyboxesdown, selX, selY)
@@ -514,7 +516,8 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 					selX = tmpX
 				end
 			end
-			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2) or motif.select_info.moveoveremptyboxes == 1 then
+			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2)
+			or motif.select_info.moveoveremptyboxes == 1 then
 				break
 			end
 		end
@@ -528,21 +531,24 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 					selX = tmpX
 				end
 			end
-			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2) or motif.select_info.moveoveremptyboxes == 1 then
+			if (t_grid[selY + 1][selX + 1].char ~= nil and t_grid[selY + 1][selX + 1].hidden ~= 2)
+			or motif.select_info.moveoveremptyboxes == 1 then
 				break
 			end
 		end
 	end
 	if tmpX ~= selX or tmpY ~= selY then
-		if tmpRow ~= rowOffset then
-			select.f_resetGrid()
-		end
+		--if tmpRow ~= rowOffset then
+		--	select.f_resetGrid()
+		--end
 		sndPlay(motif.files.snd_data, snd[1], snd[2])
 	end
 	return selX, selY, faceOffset, rowOffset
 end
 
 function select.f_searchEmptyBoxes(direction, x, y)
+	local selX = x
+	local selY = y
 	local tmpX = x
 	local found = false
 	if direction > 0 then --right
@@ -582,10 +588,21 @@ function select.f_resetGrid()
 	select.t_drawFace = {}
 	for row = 1, motif.select_info.rows do
 		for col = 1, motif.select_info.columns do
+			--1Pのランセレ表示位置
 			if t_grid[row + p1RowOffset][col].char == 'randomselect' or t_grid[row + p1RowOffset][col].hidden == 3 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
-			elseif t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
+			end
+			--2Pのランセレ表示位置
+			if t_grid[row + p2RowOffset][col].char == 'randomselect' or t_grid[row + p2RowOffset][col].hidden == 3 then
+				select.t_drawFace[#select.t_drawFace + 1] = {d = 11, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+			end
+			--1Pのキャラ表示位置
+			if t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+			end
+			--2Pのキャラ表示位置
+			if t_grid[row + p2RowOffset][col].char ~= nil and t_grid[row + p2RowOffset][col].hidden == 0 then
+				select.t_drawFace[#select.t_drawFace + 1] = {d = 12, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			elseif motif.select_info.showemptyboxes == 1 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			end
@@ -1091,9 +1108,9 @@ function select.f_selectScreen()
 		end
 		if main.p2Faces and motif.select_info.double_select == 1 then --P2 side grid enabled
 			main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2) --draw cell background
-			if select.t_drawFace[i].d == 1 then --draw random cell
+			if select.t_drawFace[i].d == 11 then --draw random cell
 				main.f_animPosDraw(motif.select_info.cell_random_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2)
-			elseif select.t_drawFace[i].d == 2 then --draw face cell
+			elseif select.t_drawFace[i].d == 12 then --draw face cell
 				drawSmallPortrait(select.t_drawFace[i].p2, select.t_drawFace[i].x2, select.t_drawFace[i].y2, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
 			end
 		end
@@ -1664,6 +1681,7 @@ function select.f_p1SelectMenu()
 	elseif not p1SelEnd then
 		--cell movement
 		p1SelX, p1SelY, p1FaceOffset, p1RowOffset = select.f_cellMovement(p1SelX, p1SelY, main.p1Cmd, p1FaceOffset, p1RowOffset, motif.select_info.p1_cursor_move_snd)
+		select.f_resetGrid()
 		p1Cell = p1SelX + motif.select_info.columns * p1SelY
 		--draw active cursor
 		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)
@@ -1715,6 +1733,7 @@ function select.f_p2SelectMenu()
 	elseif not p2SelEnd then
 		--cell movement
 		p2SelX, p2SelY, p2FaceOffset, p2RowOffset = select.f_cellMovement(p2SelX, p2SelY, main.p2Cmd, p2FaceOffset, p2RowOffset, motif.select_info.p2_cursor_move_snd)
+		select.f_resetGrid()
 		p2Cell = p2SelX + motif.select_info.columns * p2SelY
 		--draw active cursor
 		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)

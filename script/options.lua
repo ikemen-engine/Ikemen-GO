@@ -1072,7 +1072,7 @@ function options.f_keyCfg(playerNo, controller)
 					if controller == -1 then
 						config.KeyConfig[playerNo].Buttons[item] = key
 					else
-						config.JoystickConfig.KeyConfig[playerNo].Buttons[item] = key
+						config.JoystickConfig[playerNo].Buttons[item] = key
 					end
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
