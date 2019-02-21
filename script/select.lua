@@ -48,6 +48,7 @@ local selScreenEnd = false
 local stageEnd = false
 local coopEnd = false
 local restoreTeam = false
+local resetgrid = false
 local teamMode = 0
 local numChars = 0
 local p1NumChars = 0
@@ -538,8 +539,9 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 		end
 	end
 	if tmpX ~= selX or tmpY ~= selY then
+		resetgrid = true
 		--if tmpRow ~= rowOffset then
-		--	select.f_resetGrid()
+			--select.f_resetGrid()
 		--end
 		sndPlay(motif.files.snd_data, snd[1], snd[2])
 	end
@@ -1679,13 +1681,16 @@ function select.f_p1SelectMenu()
 		return
 	--manual selection
 	elseif not p1SelEnd then
+		resetgrid = false
 		--cell movement
 		p1SelX, p1SelY, p1FaceOffset, p1RowOffset = select.f_cellMovement(p1SelX, p1SelY, main.p1Cmd, p1FaceOffset, p1RowOffset, motif.select_info.p1_cursor_move_snd)
-		select.f_resetGrid()
 		p1Cell = p1SelX + motif.select_info.columns * p1SelY
 		--draw active cursor
 		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)
 		local cursorY = p1FaceY + (p1SelY - p1RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing)
+		if resetgrid == true then
+			select.f_resetGrid()
+		end
 		if main.t_selChars[p1Cell + 1].hidden ~= 1 then
 			main.f_animPosDraw(motif.select_info.p1_cursor_active_data, cursorX, cursorY)
 		end
@@ -1731,13 +1736,16 @@ function select.f_p2SelectMenu()
 		return
 	--manual selection
 	elseif not p2SelEnd then
+		resetgrid = false
 		--cell movement
 		p2SelX, p2SelY, p2FaceOffset, p2RowOffset = select.f_cellMovement(p2SelX, p2SelY, main.p2Cmd, p2FaceOffset, p2RowOffset, motif.select_info.p2_cursor_move_snd)
-		select.f_resetGrid()
 		p2Cell = p2SelX + motif.select_info.columns * p2SelY
 		--draw active cursor
 		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)
 		local cursorY = p2FaceY + (p2SelY - p2RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing)
+		if resetgrid == true then
+			select.f_resetGrid()
+		end
 		main.f_animPosDraw(motif.select_info.p2_cursor_active_data, cursorX, cursorY)
 		--cell selected
 		if main.f_btnPalNo(main.p2Cmd) > 0 and main.t_selChars[p2Cell + 1].char ~= nil and main.t_selChars[p2Cell + 1].hidden ~= 2 and #main.t_randomChars > 0 then
