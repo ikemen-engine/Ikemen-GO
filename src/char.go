@@ -2354,11 +2354,7 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	if c.roundState() > 2 {
-		return sys.winTeam != c.teamside
-	} else {
-		return false
-	}
+	return sys.winTeam == 1^c.teamside
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
@@ -2568,11 +2564,7 @@ func (c *Char) win() bool {
 	if c.teamside >= 2 {
 		return false
 	}
-	if c.roundState() > 2 {
-		return sys.winTeam == c.playerNo&1
-	} else {
-		return false
-	}
+	return sys.winTeam == c.playerNo&1
 }
 func (c *Char) winKO() bool {
 	return c.win() && sys.finish == FT_KO

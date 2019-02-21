@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/timshannon/go-openal/openal"
@@ -23,6 +25,7 @@ const (
 	MaxAttachedChar = 2
 	FPS             = 60
 	P1P3Dist        = 25
+	Mp3SampleRate   = 44100
 )
 
 var sys = System{
@@ -254,6 +257,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(gl.Init())
 	RenderInit()
 	s.audioOpen()
+	sr := beep.SampleRate(Mp3SampleRate)
+	speaker.Init(sr, sr.N(time.Second/10))
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
