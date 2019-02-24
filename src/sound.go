@@ -12,6 +12,7 @@ import (
 	"github.com/timshannon/go-openal/openal"
 
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 )
@@ -352,6 +353,10 @@ func (bgm *Bgm) IsMp3() bool {
 	return filepath.Ext(bgm.filename) == ".mp3"
 }
 
+func (bgm *Bgm) IsFLAC() bool {
+	return filepath.Ext(bgm.filename) == ".flac"
+}
+
 func (bgm *Bgm) Open(filename string) {
 	if filepath.Base(bgm.filename) != filepath.Base(filename) {
 		bgm.filename = filename
@@ -361,7 +366,10 @@ func (bgm *Bgm) Open(filename string) {
 			bgm.vorbis.Open(filename)
 		} else if bgm.IsMp3() {
 			bgm.ReadMp3()
+		} else if bgm.IsFLAC() {
+			bgm.ReadFLAC()
 		}
+
 	}
 }
 
@@ -376,6 +384,19 @@ func (bgm *Bgm) ReadMp3() {
 	speaker.Play(bgm.ctrlmp3)
 	return
 }
+
+func (bgm *Bgm) ReadFLAC() {
+	f, _ := os.Open(bgm.filename)
+	s, _, err := flac.Decode(f)
+	if err != nil {
+		return
+	}
+	streamer := beep.Loop(-1, s)
+	bgm.ctrlmp3 = &beep.Ctrl{Streamer: streamer}
+	speaker.Play(bgm.ctrlmp3)
+	return
+}
+
 func (bgm *Bgm) Mp3Paused() {
 	speaker.Lock()
 	bgm.ctrlmp3.Paused = true
