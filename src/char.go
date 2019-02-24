@@ -2845,11 +2845,20 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 	case PT_L:
 		p[0] = c.leftEdge()*c.localscl/localscl + pos[0]
 		p[1] = pos[1]
+		if isProj {
+			*dstFacing *= c.facing
+		}
 	case PT_R:
 		p[0] = c.rightEdge()*c.localscl/localscl + pos[0]
 		p[1] = pos[1]
+		if isProj {
+			*dstFacing *= c.facing
+		}
 	case PT_N:
 		p = pos
+		if isProj {
+			*dstFacing *= c.facing
+		}
 	}
 	return
 }
@@ -3863,14 +3872,17 @@ func (c *Char) setBindTime(time int32) {
 	c.bindTime = time
 	if time == 0 {
 		c.bindToId = -1
+		c.bindFacing = 0
 	}
 }
 func (c *Char) setBindToId(to *Char) {
 	c.bindToId = to.id
+	if c.bindFacing == 0 {
+		c.bindFacing = to.facing * 2
+	}
 	if to.bindToId == c.id {
 		to.setBindTime(0)
 	}
-	c.bindFacing = to.facing * 2
 }
 func (c *Char) bind() {
 	if c.bindTime == 0 {

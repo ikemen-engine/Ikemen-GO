@@ -378,7 +378,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
 	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*(bg.scalestart[1]+ys2)*ys3,
 		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1]))*sclx_recip,
-		+0, 0, 0, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1)
+		+0, 0, 0, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1, false)
 }
 
 type bgCtrl struct {
@@ -624,17 +624,6 @@ func loadStage(def string) (*Stage, error) {
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
 	}
-	if sec := defmap["camera"]; len(sec) > 0 {
-		sec[0].ReadI32("startx", &sys.cam.startx)
-		sec[0].ReadI32("boundleft", &sys.cam.boundleft)
-		sec[0].ReadI32("boundright", &sys.cam.boundright)
-		sec[0].ReadI32("boundhigh", &sys.cam.boundhigh)
-		sec[0].ReadF32("verticalfollow", &sys.cam.verticalfollow)
-		sec[0].ReadI32("tension", &sys.cam.tension)
-		sec[0].ReadI32("floortension", &sys.cam.floortension)
-		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
-		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
-	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
 		sec[0].ReadI32("p1starty", &s.p[0].starty)
@@ -667,6 +656,23 @@ func loadStage(def string) (*Stage, error) {
 		if s.scale[1] != 1 {
 			s.scale[1] *= 2
 		}
+	}
+	var boundlow int32
+	if sec := defmap["camera"]; len(sec) > 0 {
+		sec[0].ReadI32("startx", &sys.cam.startx)
+		sec[0].ReadI32("boundleft", &sys.cam.boundleft)
+		sec[0].ReadI32("boundright", &sys.cam.boundright)
+		sec[0].ReadI32("boundhigh", &sys.cam.boundhigh)
+		sec[0].ReadF32("verticalfollow", &sys.cam.verticalfollow)
+		sec[0].ReadI32("tension", &sys.cam.tension)
+		sec[0].ReadI32("floortension", &sys.cam.floortension)
+		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
+		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
+		var tmp int32
+		if sec[0].ReadI32("tensionhigh", &tmp) {
+			sys.cam.floortension = int32(240/(float32(sys.gameWidth)/float32(sys.cam.localcoord[0]))) - tmp
+		}
+		sec[0].ReadI32("boundlow", &boundlow)
 	}
 	reflect := true
 	if sec := defmap["shadow"]; len(sec) > 0 {
@@ -793,6 +799,7 @@ func loadStage(def string) (*Stage, error) {
 			MinF(float32(sys.cam.localcoord[1])*s.localscl*0.5*
 				(ratio1/ratio2-1), float32(Max(0, sys.cam.overdrawlow)))
 	}
+	sys.cam.drawOffsetY += float32(boundlow) * s.localscl
 	return s, nil
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {

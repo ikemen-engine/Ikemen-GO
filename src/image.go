@@ -1087,6 +1087,16 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			}
 			s.palList.SetSource(i, pal)
 			s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] = idx
+			if i <= MaxPalNo &&
+				s.palList.PalTable[[...]int16{1, int16(i + 1)}] == s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] &&
+				gn_[0] != 1 && gn_[1] != int16(i+1) {
+				delete(s.palList.PalTable, [...]int16{1, int16(i + 1)}) //余計なパレットを削除
+			}
+			if i <= MaxPalNo && i+1 == int(s.header.NumberOfPalettes) {
+				for j := i + 1; j < MaxPalNo; j++ {
+					delete(s.palList.PalTable, [...]int16{1, int16(j + 1)}) //余計なパレットを削除
+				}
+			}
 		}
 	}
 	spriteList := make([]*Sprite, int(s.header.NumberOfSprites))

@@ -7,7 +7,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/jfreymuth/go-vorbis/ogg/vorbis"
 	"github.com/timshannon/go-openal/openal"
@@ -368,13 +367,12 @@ func (bgm *Bgm) Open(filename string) {
 
 func (bgm *Bgm) ReadMp3() {
 	f, _ := os.Open(bgm.filename)
-	s, format, err := mp3.Decode(f)
+	s, _, err := mp3.Decode(f)
 	if err != nil {
 		return
 	}
 	streamer := beep.Loop(-1, s)
 	bgm.ctrlmp3 = &beep.Ctrl{Streamer: streamer}
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/20))
 	speaker.Play(bgm.ctrlmp3)
 	return
 }

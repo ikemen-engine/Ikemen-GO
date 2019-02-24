@@ -248,7 +248,7 @@ func SearchFile(file string, deffile string) string {
 	var fp string
 	file = strings.Replace(file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
-	if defdir == "." {
+	if defdir == "." || strings.Contains(file, ":/") {
 		fp = file
 	} else if defdir == "/" {
 		fp = "/" + file
@@ -596,7 +596,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
 			l.scale[1]*float32(l.vfacing),
-			0, 0, 0, 0, float32(sys.gameWidth-320)/2, nil, false, 1)
+			0, 0, 0, 0, float32(sys.gameWidth-320)/2, nil, false, 1, false)
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
