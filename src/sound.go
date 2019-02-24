@@ -359,9 +359,9 @@ func (bgm *Bgm) Open(filename string) {
 
 		if bgm.IsVorbis() {
 			bgm.vorbis.Open(filename)
-		}// else if bgm.IsMp3() {
-		//	bgm.ReadMp3()
-		//}
+		} else if bgm.IsMp3() {
+			bgm.ReadMp3()
+		}
 	}
 }
 
