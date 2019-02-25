@@ -1124,17 +1124,17 @@ func (p *Projectile) setPos(pos [2]float32) {
 	p.pos, p.oldPos, p.newPos = pos, pos, pos
 }
 func (p *Projectile) paused(playerNo int) bool {
-	if !sys.chars[playerNo][0].pause() {
-		if sys.super > 0 {
-			if p.supermovetime == 0 {
-				return true
-			}
-		} else if sys.pause > 0 {
-			if p.pausemovetime == 0 {
-				return true
-			}
+	//if !sys.chars[playerNo][0].pause() {
+	if sys.super > 0 {
+		if p.supermovetime == 0 {
+			return true
+		}
+	} else if sys.pause > 0 {
+		if p.pausemovetime == 0 {
+			return true
 		}
 	}
+	//}
 	return false
 }
 func (p *Projectile) update(playerNo int) {
@@ -2854,7 +2854,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 	return
 }
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
-	facing int32, ownpal bool) {
+	facing int32, ownpal bool, rp [2]int32) {
 	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
@@ -2864,6 +2864,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		tmp := c.getPalfx().remap
 		h.palfx.remap = make([]int, len(tmp))
 		copy(h.palfx.remap, tmp)
+		c.forceRemapPal(h.palfx, rp)
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1)
 }
@@ -2905,7 +2906,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		copy(remap, e.palfx.remap)
 		e.palfx = newPalFX()
 		e.palfx.remap = remap
-		c.remapPal(e.palfx, [...]int32{1, 1}, rp)
+		c.forceRemapPal(e.palfx, rp)
 	}
 	if e.ontop {
 		td := &sys.topexplDrawlist[c.playerNo]
@@ -3115,7 +3116,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		copy(remap, p.palfx.remap)
 		p.palfx = newPalFX()
 		p.palfx.remap = remap
-		c.remapPal(p.palfx, [...]int32{1, 1}, [...]int32{rpg, rpn})
+		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})
 	}
 }
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
@@ -3792,6 +3793,22 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 			}
 		}
 		c.gi().sff.palList.SwapPalMap(&pfx.remap)
+	}
+}
+func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
+	if dst[0] < 0 || dst[1] < 0 {
+		return
+	}
+	di, ok := c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
+		int16(dst[1])}]
+	if !ok {
+		return
+	}
+	if pfx.remap == nil {
+		pfx.remap = c.gi().sff.palList.GetPalMap()
+	}
+	for i := range pfx.remap {
+		pfx.remap[i] = di
 	}
 }
 func (c *Char) inGuardState() bool {
@@ -5039,12 +5056,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					if getter.ss.stateType == ST_A {
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2 / c.localscl * getter.localscl
+							getter.ghv.xvel -= 2 * getter.localscl
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 / c.localscl * getter.localscl
-							if getter.ghv.yvel > -3 {
-								getter.ghv.yvel = -3 / c.localscl * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl
+							if getter.ghv.yvel > -3*getter.localscl {
+								getter.ghv.yvel = -3 * getter.localscl
 							}
 						}
 					} else {
@@ -5052,12 +5069,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							getter.ghv.xvel *= 0.66
 						}
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2.5 / c.localscl * getter.localscl
+							getter.ghv.xvel -= 2.5 * getter.localscl
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 / c.localscl * getter.localscl
-							if getter.ghv.yvel > -6 {
-								getter.ghv.yvel = -6 / c.localscl * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl
+							if getter.ghv.yvel > -6*getter.localscl {
+								getter.ghv.yvel = -6 * getter.localscl
 							}
 						}
 					}

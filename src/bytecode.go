@@ -2220,6 +2220,7 @@ const (
 	helper_pausemovetime
 	helper_supermovetime
 	helper_redirectid
+	helper_remappal
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -2230,6 +2231,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	var f, st int32 = 1, 0
 	op := false
 	var x, y float32 = 0, 0
+	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if h == nil {
 			if id == helper_redirectid {
@@ -2301,6 +2303,11 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			h.pauseMovetime = exp[0].evalI(c)
 		case helper_supermovetime:
 			h.superMovetime = exp[0].evalI(c)
+		case helper_remappal:
+			rp[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c)
+			}
 		}
 		return true
 	})
@@ -2314,7 +2321,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		h.localscl = crun.localscl
 		h.localcoord = crun.localcoord
 	}
-	crun.helperInit(h, st, pt, x, y, f, op)
+	crun.helperInit(h, st, pt, x, y, f, op, rp)
 	return false
 }
 
@@ -4591,7 +4598,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	crun := c
 	var t, mt int32 = 30, 0
 	uh := true
-	sys.superanim, sys.superpmap.remap = crun.getAnim(30, true), nil
+	sys.superanim, sys.superpmap.remap = crun.getAnim(100, true), nil
 	sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
 	sys.superp2defmul = sys.super_TargetDefenceMul
