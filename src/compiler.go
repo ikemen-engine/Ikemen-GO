@@ -3471,6 +3471,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			helper_supermovetime, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "remappal",
+			helper_remappal, VT_Int, 2, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
