@@ -124,6 +124,10 @@ local function f_play(t)
 end
 
 local function f_parse(path)
+	-- Intro haves his own localcoord function
+	-- So we disable it
+	main.SetDefaultScale()
+	
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {}
@@ -533,6 +537,11 @@ local function f_parse(path)
 		end
 	end
 	--t.ctrldef = nil
+	
+	-- Finished loading intro
+	-- Re-enabled custom scaling
+	main.SetScaleValues()
+	
 	return t
 end
 

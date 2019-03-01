@@ -11,6 +11,7 @@ math.randomseed(os.time())
 main.screenOverscan = 0
 main.normalSpriteCenter = 0
 require "script/screenpack"
+main.SetScaleValues()
 
 --One-time load of the json routines
 json = (loadfile 'script/dkjson.lua')()
