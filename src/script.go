@@ -313,13 +313,15 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.text = strArg(l, 2)
 		return 0
-	})
+	})  
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)
 		}
+		if boolArg(l, 3) {
 		ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetScale", func(*lua.LState) int {

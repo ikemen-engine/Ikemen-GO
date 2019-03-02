@@ -75,8 +75,8 @@ func RenderInit() {
 		"texcoord[0] = left / (left + right);" + // ここまで
 		"}" +
 		"vec4 c = texture2D(tex, texcoord);" +
-		"if(neg) c.rgb = vec3(1.0) - c.rgb;" +
-		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
+		"if(neg) c.rgb = vec3(1.0 * c.a) - c.rgb;" +
+		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add * c.a;" +
 		"c.rgb *= mul;" +
 		"c.a *= a;" +
 		"gl_FragColor = c;" +
@@ -359,7 +359,11 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			agl, yagl, xagl, rcx, rcy)
 	case trans < 512:
 		gl.Uniform1fARB(a, 1)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		if renderMode == 1 {
+			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		} else {
+			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy)
