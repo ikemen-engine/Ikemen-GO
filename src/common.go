@@ -656,6 +656,11 @@ func (al *AnimLayout) Draw(x, y float32, layerno int16) {
 	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim)
 }
 
+// Allow to set a custom scale with the draw (For lifebar localcoord)
+func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
+	al.lay.DrawAnim(&sys.scrrect, x, y, scale, layerno, &al.anim)
+}
+
 type AnimTextSnd struct {
 	snd         [2]int32
 	font        [3]int32

@@ -67,6 +67,7 @@ var sys = System{
 	luaSmallPortraitScale: 1,
 	luaBigPortraitScale:   1,
 	luaSpriteOffsetX:      0,
+	LifebarScale:          1,
 }
 
 type TeamMode int32
@@ -234,6 +235,8 @@ type System struct {
 	luaSmallPortraitScale float32
 	luaBigPortraitScale   float32
 	luaSpriteOffsetX      float64
+
+	LifebarScale float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {

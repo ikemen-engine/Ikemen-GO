@@ -112,9 +112,9 @@ func (hb *HealthBar) reset() {
 	hb.front.Reset()
 }
 func (hb *HealthBar) bgDraw(layerno int16) {
-	hb.bg0.Draw(float32(hb.pos[0]), float32(hb.pos[1]), layerno)
-	hb.bg1.Draw(float32(hb.pos[0]), float32(hb.pos[1]), layerno)
-	hb.bg2.Draw(float32(hb.pos[0]), float32(hb.pos[1]), layerno)
+	hb.bg0.DrawScaled(float32(hb.pos[0]), float32(hb.pos[1]), layerno, sys.LifebarScale)
+	hb.bg1.DrawScaled(float32(hb.pos[0]), float32(hb.pos[1]), layerno, sys.LifebarScale)
+	hb.bg2.DrawScaled(float32(hb.pos[0]), float32(hb.pos[1]), layerno, sys.LifebarScale)
 }
 func (hb *HealthBar) draw(layerno int16, life float32) {
 	width := func(life float32) (r [4]int32) {
@@ -217,9 +217,9 @@ func (pb *PowerBar) reset() {
 	pb.front.Reset()
 }
 func (pb *PowerBar) bgDraw(layerno int16) {
-	pb.bg0.Draw(float32(pb.pos[0]), float32(pb.pos[1]), layerno)
-	pb.bg1.Draw(float32(pb.pos[0]), float32(pb.pos[1]), layerno)
-	pb.bg2.Draw(float32(pb.pos[0]), float32(pb.pos[1]), layerno)
+	pb.bg0.DrawScaled(float32(pb.pos[0]), float32(pb.pos[1]), layerno, sys.LifebarScale)
+	pb.bg1.DrawScaled(float32(pb.pos[0]), float32(pb.pos[1]), layerno, sys.LifebarScale)
+	pb.bg2.DrawScaled(float32(pb.pos[0]), float32(pb.pos[1]), layerno, sys.LifebarScale)
 }
 func (pb *PowerBar) draw(layerno int16, power float32,
 	level int32, f []*Fnt) {
@@ -303,7 +303,7 @@ func (f *LifeBarFace) reset() {
 	f.teammate_ko.Reset()
 }
 func (f *LifeBarFace) bgDraw(layerno int16) {
-	f.bg.Draw(float32(f.pos[0]), float32(f.pos[1]), layerno)
+	f.bg.DrawScaled(float32(f.pos[0]), float32(f.pos[1]), layerno, sys.LifebarScale)
 }
 func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 	ob := sys.brightness
@@ -352,7 +352,7 @@ func readLifeBarName(pre string, is IniSection,
 func (n *LifeBarName) step()  { n.bg.Action() }
 func (n *LifeBarName) reset() { n.bg.Reset() }
 func (n *LifeBarName) bgDraw(layerno int16) {
-	n.bg.Draw(float32(n.pos[0]), float32(n.pos[1]), layerno)
+	n.bg.DrawScaled(float32(n.pos[0]), float32(n.pos[1]), layerno, sys.LifebarScale)
 }
 func (n *LifeBarName) draw(layerno int16, f []*Fnt, name string) {
 	if n.name_font[0] >= 0 && int(n.name_font[0]) < len(f) {
@@ -496,7 +496,7 @@ func readLifeBarTime(is IniSection,
 func (t *LifeBarTime) step()  { t.bg.Action() }
 func (t *LifeBarTime) reset() { t.bg.Reset() }
 func (t *LifeBarTime) bgDraw(layerno int16) {
-	t.bg.Draw(float32(t.pos[0]), float32(t.pos[1]), layerno)
+	t.bg.DrawScaled(float32(t.pos[0]), float32(t.pos[1]), layerno, sys.LifebarScale)
 }
 func (t *LifeBarTime) draw(layerno int16, f []*Fnt) {
 	if t.framespercount > 0 &&
