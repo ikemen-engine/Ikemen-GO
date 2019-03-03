@@ -256,6 +256,13 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim.tile[0] += int32(spr.Size[0])
 				bg.anim.tile[1] += int32(spr.Size[1])
 			}
+		} else {
+			if bg.anim.tile[0] == 0 {
+				bg.anim.tile[2] = 0
+			}
+			if bg.anim.tile[1] == 0 {
+				bg.anim.tile[3] = 0
+			}
 		}
 	}
 	if is.readI32ForStage("window", &bg.startrect[0], &bg.startrect[1],

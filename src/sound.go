@@ -375,24 +375,26 @@ func (bgm *Bgm) Open(filename string) {
 
 func (bgm *Bgm) ReadMp3() {
 	f, _ := os.Open(bgm.filename)
-	s, _, err := mp3.Decode(f)
+	s, format, err := mp3.Decode(f)
 	if err != nil {
 		return
 	}
 	streamer := beep.Loop(-1, s)
-	bgm.ctrlmp3 = &beep.Ctrl{Streamer: streamer}
+	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
+	bgm.ctrlmp3 = &beep.Ctrl{Streamer: resample}
 	speaker.Play(bgm.ctrlmp3)
 	return
 }
 
 func (bgm *Bgm) ReadFLAC() {
 	f, _ := os.Open(bgm.filename)
-	s, _, err := flac.Decode(f)
+	s, format, err := flac.Decode(f)
 	if err != nil {
 		return
 	}
 	streamer := beep.Loop(-1, s)
-	bgm.ctrlmp3 = &beep.Ctrl{Streamer: streamer}
+	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
+	bgm.ctrlmp3 = &beep.Ctrl{Streamer: resample}
 	speaker.Play(bgm.ctrlmp3)
 	return
 }
