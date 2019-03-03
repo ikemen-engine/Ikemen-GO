@@ -19,6 +19,8 @@ main.normalSpriteCenter = 0
 main.SP_Localcoord43[0] = 320
 main.LB_Localcoord43[0] = 240
 
+main.SP_Center = 0
+
 end
 
 function main.CalculateLocalcoordValues()
@@ -49,7 +51,7 @@ function main.SetScaleValues()
 	setLuaSpriteOffsetX(main.SP_Localcoord_X_Dif)
 	setLuaSmallPortraitScale(main.SP_Localcoord43[0] / main.SP_Localcoord[0])
 	setLuaBigPortraitScale(main.SP_Localcoord43[0] / main.SP_Localcoord[0])
-	main.normalSpriteCenter = main.SP_Localcoord[0] - main.SP_Localcoord43[0]
+	main.normalSpriteCenter = main.SP_Center
 	main.screenOverscan = 0
 end
 
