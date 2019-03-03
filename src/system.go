@@ -28,6 +28,7 @@ const (
 	Mp3SampleRate   = 44100
 )
 
+// System vars are accessed globally through the program
 var sys = System{
 	randseed:  int32(time.Now().UnixNano()),
 	scrrect:   [...]int32{0, 0, 320, 240},
@@ -67,7 +68,8 @@ var sys = System{
 	luaSmallPortraitScale: 1,
 	luaBigPortraitScale:   1,
 	luaSpriteOffsetX:      0,
-	LifebarScale:          1,
+	lifebarScale:          1,
+	lifebarOffsetX:        0,
 }
 
 type TeamMode int32
@@ -236,7 +238,8 @@ type System struct {
 	luaBigPortraitScale   float32
 	luaSpriteOffsetX      float64
 
-	LifebarScale float32
+	lifebarScale   float32
+	lifebarOffsetX float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {

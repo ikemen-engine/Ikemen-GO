@@ -696,6 +696,7 @@ func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 }
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
 func (ats *AnimTextSnd) Action() { ats.anim.Action() }
+
 func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.Draw(x, y, layerno)
@@ -705,6 +706,18 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 			f[ats.font[0]], ats.font[1], ats.font[2])
 	}
 }
+
+// Draw but with a scaled setting used for lifebar localcoord
+func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
+	if len(ats.anim.anim.frames) > 0 {
+		ats.anim.DrawScaled(x, y, layerno, scale)
+	} else if ats.font[0] >= 0 && int(ats.font[0]) < len(f) &&
+		len(ats.text) > 0 {
+		ats.anim.lay.DrawText(x, y, scale, layerno, ats.text,
+			f[ats.font[0]], ats.font[1], ats.font[2])
+	}
+}
+
 func (ats *AnimTextSnd) NoSound() bool { return ats.snd[0] < 0 }
 func (ats *AnimTextSnd) NoDisplay() bool {
 	return len(ats.anim.anim.frames) == 0 &&

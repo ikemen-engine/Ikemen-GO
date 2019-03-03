@@ -269,9 +269,13 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 
-	// Screenpack localcoord support
+	// Lifebar localcoord support
 	luaRegister(l, "setLuaLifebarScale", func(l *lua.LState) int {
-		sys.LifebarScale = float32(numArg(l, 1))
+		sys.lifebarScale = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLifebarOffsetX", func(l *lua.LState) int {
+		sys.lifebarOffsetX = float32(numArg(l, 1))
 		return 0
 	})
 }
@@ -325,9 +329,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		if boolArg(l, 3) {
-			ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
-		}
+		ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "textImgSetScale", func(*lua.LState) int {
