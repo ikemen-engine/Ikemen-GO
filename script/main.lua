@@ -8,9 +8,11 @@ math.randomseed(os.time())
 --; COMMON SECTION
 --;===========================================================
 
-main.screenOverscan = 0
-main.normalSpriteCenter = 0
 require "script/screenpack"
+main.IntLocalcoordValues()
+require "script/localcoord"
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
 main.SetScaleValues()
 
 --One-time load of the json routines
@@ -24,15 +26,6 @@ file:close()
 main.p1In = 1
 main.p2In = 1
 --main.inputDialog = inputDialogNew()
-
-function main.SetDefaultScale()
-	setLuaSpriteScale(1)
-	setLuaSpriteOffsetX(0)
-	setLuaSmallPortraitScale(1)
-	setLuaBigPortraitScale(1)
-	main.normalSpriteCenter = 0
-	main.screenOverscan = 0
-end
 
 function main.f_setCommand(c)
 	commandAdd(c, 'u', '$U')
@@ -2125,3 +2118,7 @@ end
 --;===========================================================
 
 main.f_mainMenu()
+
+
+-- Debug Info
+main.f_printTable(main, "debug/t_main.txt")
