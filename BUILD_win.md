@@ -48,7 +48,7 @@ From that file, inside include folder, extract AL folder to the
 
 Also from that .zip file, inside libs folder, libOpenAL32.dll.a file should be extracted to
 
-`<insert msys64 install folder here>/mingw64/lib directory`.
+`<insert msys64 install folder here>/mingw64/lib` directory.
 
 --------------------------------------------------------------------------------------------------------------------------------------------
 
