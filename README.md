@@ -17,7 +17,6 @@ Building on Linux
 
 https://github.com/Windblade-GR01/Ikemen_GO/blob/master/Build_linux.md
 
-
-Windows
+Building on Windows
 
 https://github.com/Windblade-GR01/Ikemen_GO/blob/master/BUILD_win.md
