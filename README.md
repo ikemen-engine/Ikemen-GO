@@ -13,15 +13,16 @@ https://github.com/K4thos/Ikemen-GO-Plus
 
 # Building #
 
-Building on Linux
+Building on Linux.
 
 https://github.com/Windblade-GR01/Ikemen_GO/blob/master/Build_linux.md
 
-Building on Windows
+Building on Windows.
 
 https://github.com/Windblade-GR01/Ikemen_GO/blob/master/BUILD_win.md
 
 # Dowload #
 
 The precompiled binaries for windows are in the release section.
+
 https://github.com/Windblade-GR01/Ikemen_GO/releases
