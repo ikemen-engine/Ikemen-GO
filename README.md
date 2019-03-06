@@ -21,7 +21,7 @@ Building on Windows.
 
 https://github.com/Windblade-GR01/Ikemen_GO/blob/master/BUILD_win.md
 
-# Dowload #
+# Download #
 
 The precompiled binaries for windows are in the release section.
 
