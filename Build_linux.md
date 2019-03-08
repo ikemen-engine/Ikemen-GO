@@ -20,7 +20,7 @@ Install OpenAL dependencies:
 
 Download Ikemen GO Plus repository:
 
-`git clone https://github.com/K4thos/Ikemen-GO-Plus.git`
+`git clone https://github.com/Windblade-GR01/Ikemen_GO.git`
 
 Move to downloaded folder:
 
