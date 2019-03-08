@@ -24,7 +24,7 @@ Download Ikemen GO Plus repository:
 
 Move to downloaded folder:
 
-`cd Ikemen-GO-Plus`
+`cd Ikemen_GO`
 
 Execute get.sh to download Ikemen dependencies (it takes a while):
 
