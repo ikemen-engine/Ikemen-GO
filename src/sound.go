@@ -3,18 +3,17 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"path/filepath"
 
-	"github.com/jfreymuth/go-vorbis/ogg/vorbis"
 	"github.com/timshannon/go-openal/openal"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/vorbis"
 )
 
 const (
@@ -229,148 +228,50 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 }
 
 // ------------------------------------------------------------------
-// Vorbis
-
-type Vorbis struct {
-	dec        *vorbis.Vorbis
-	fp         *os.File
-	buf        []int16
-	bufi       float64
-	openReq    chan string
-	normalizer *Normalizer
-}
-
-func newVorbis() *Vorbis {
-	return &Vorbis{openReq: make(chan string, 1), normalizer: NewNormalizer()}
-}
-
-// Opens a file asynchronously
-func (v *Vorbis) Open(file string) {
-	v.openReq <- file
-}
-
-func (v *Vorbis) openFile(file string) bool {
-	v.clear()
-	var err error
-	if v.fp, err = os.Open(file); err != nil {
-		return false
-	}
-	return v.restart()
-}
-
-func (v *Vorbis) restart() bool {
-	if v.fp == nil {
-		return false
-	}
-	_, err := v.fp.Seek(0, 0)
-	chk(err)
-	if v.dec, err = vorbis.Open(v.fp); err != nil {
-		v.clear()
-		return false
-	}
-	v.buf = nil
-	return true
-}
-
-func (v *Vorbis) clear() {
-	if v.dec != nil {
-		v.dec = nil
-	}
-	if v.fp != nil {
-		chk(v.fp.Close())
-		v.fp = nil
-	}
-}
-
-func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
-	var o1i int
-	if len(buf) == 1 {
-		o1i = 0
-	} else {
-		o1i = 1
-	}
-	sr := audioFrequency / float64(v.dec.SampleRate())
-	out = make([]int16, 2*(int(float64(len(buf[0])-1)*sr)+1))
-	oldbufi := -2
-	for i := range buf[0] {
-		for j := oldbufi + 2; j <= 2*int(v.bufi); j += 2 {
-			l, r := v.normalizer.Process(buf[0][i], buf[o1i][i])
-			out[j], out[j+1] = int16(25000*l), int16(25000*r)
-		}
-		oldbufi = 2 * int(v.bufi)
-		v.bufi = sr * float64(i+1)
-	}
-	v.bufi -= float64(int(v.bufi))
-	return
-}
-
-func (v *Vorbis) read() []int16 {
-	select {
-	case file := <-v.openReq:
-		v.openFile(file)
-	default:
-	}
-	for v.dec != nil {
-		if len(v.buf) >= audioOutLen*2 {
-			out := v.buf[:audioOutLen*2]
-			v.buf = v.buf[audioOutLen*2:]
-			return out
-		}
-		for len(v.buf) < audioOutLen*2 && v.dec != nil {
-			sam, err := v.dec.DecodePacket()
-			if err == io.EOF {
-				v.restart()
-				continue
-			} else {
-				chk(err)
-			}
-			v.buf = append(v.buf, v.samToAudioOut(sam)...)
-		}
-	}
-	return sys.nullSndBuf[:]
-}
-
-// ------------------------------------------------------------------
 // Bgm
 
 type Bgm struct {
 	filename string
-	vorbis   *Vorbis
-	ctrlmp3  *beep.Ctrl
+	ctrl     *beep.Ctrl
 }
 
 func newBgm() *Bgm {
-	return &Bgm{
-		vorbis: newVorbis(),
-	}
+	return &Bgm{}
 }
 
 func (bgm *Bgm) IsVorbis() bool {
-	return filepath.Ext(bgm.filename) == ".ogg"
+	return bgm.IsFormat(".ogg")
 }
 
 func (bgm *Bgm) IsMp3() bool {
-	return filepath.Ext(bgm.filename) == ".mp3"
+	return bgm.IsFormat(".mp3")
 }
 
 func (bgm *Bgm) IsFLAC() bool {
-	return filepath.Ext(bgm.filename) == ".flac"
+	return bgm.IsFormat(".flac")
+}
+
+func (bgm *Bgm) IsFormat(extension string) bool {
+	return filepath.Ext(bgm.filename) == extension
 }
 
 func (bgm *Bgm) Open(filename string) {
-	if filepath.Base(bgm.filename) != filepath.Base(filename) {
-		bgm.filename = filename
-		speaker.Clear()
 
-		if bgm.IsVorbis() {
-			bgm.vorbis.Open(filename)
-		} else if bgm.IsMp3() {
-			bgm.ReadMp3()
-		} else if bgm.IsFLAC() {
-			bgm.ReadFLAC()
-		}
-
+	if filepath.Base(bgm.filename) == filepath.Base(filename) {
+		return
 	}
+
+	bgm.filename = filename
+	speaker.Clear()
+
+	if bgm.IsVorbis() {
+		bgm.ReadVorbis()
+	} else if bgm.IsMp3() {
+		bgm.ReadMp3()
+	} else if bgm.IsFLAC() {
+		bgm.ReadFLAC()
+	}
+
 }
 
 func (bgm *Bgm) ReadMp3() {
@@ -379,11 +280,7 @@ func (bgm *Bgm) ReadMp3() {
 	if err != nil {
 		return
 	}
-	streamer := beep.Loop(-1, s)
-	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
-	bgm.ctrlmp3 = &beep.Ctrl{Streamer: resample}
-	speaker.Play(bgm.ctrlmp3)
-	return
+	bgm.ReadFormat(s, format)
 }
 
 func (bgm *Bgm) ReadFLAC() {
@@ -392,21 +289,30 @@ func (bgm *Bgm) ReadFLAC() {
 	if err != nil {
 		return
 	}
-	streamer := beep.Loop(-1, s)
-	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
-	bgm.ctrlmp3 = &beep.Ctrl{Streamer: resample}
-	speaker.Play(bgm.ctrlmp3)
-	return
+	bgm.ReadFormat(s, format)
 }
 
-func (bgm *Bgm) Mp3Paused() {
+func (bgm *Bgm) ReadVorbis() {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := vorbis.Decode(f)
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(s, format)
+}
+
+func (bgm *Bgm) ReadFormat(s beep.StreamSeekCloser, format beep.Format) {
+	streamer := beep.Loop(-1, s)
+	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
+	bgm.ctrl = &beep.Ctrl{Streamer: resample}
+	speaker.Play(bgm.ctrl)
+}
+
+func (bgm *Bgm) Pause() {
 	speaker.Lock()
-	bgm.ctrlmp3.Paused = true
+	bgm.ctrl.Paused = true
 	speaker.Unlock()
 	return
-}
-func (bgm *Bgm) ReadVorbis() []int16 {
-	return bgm.vorbis.read()
 }
 
 // ------------------------------------------------------------------
