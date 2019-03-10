@@ -413,14 +413,12 @@ func (s *System) soundWrite() {
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := s.nullSndBuf[:]
 			if !s.nomusic {
-				if s.bgm.IsVorbis() {
-					out = s.bgm.ReadVorbis()
-				} else if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
-					s.bgm.ctrlmp3.Paused = false
+				if s.bgm.ctrl != nil {
+					s.bgm.ctrl.Paused = false
 				}
 			} else {
-				if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
-					s.bgm.Mp3Paused()
+				if s.bgm.ctrl != nil {
+					s.bgm.Pause()
 				}
 			}
 			buf := bgmSrc.Src.UnqueueBuffer()
