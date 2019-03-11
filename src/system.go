@@ -186,6 +186,7 @@ type System struct {
 	turbo                   float32
 	commandLine             chan string
 	drawScale               float32
+	zoomlag                 float32
 	zoomPos                 [2]float32
 	debugWC                 *Char
 	cam                     Camera
@@ -1577,8 +1578,10 @@ func (s *System) fight() (reload bool) {
 				!math.IsNaN(float64(s.zoomPos[0])) &&
 				!math.IsNaN(float64(s.zoomPos[1])) {
 				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPos[0]*(dscl-scl)/dscl)
+				dx = s.cam.XBound(dscl, x+s.zoomPos[0]/scl*s.drawScale)
 				dy = y + s.zoomPos[1]
+			} else {
+				s.zoomlag = 1
 			}
 			s.draw(dx, dy, dscl)
 			drawDebug()

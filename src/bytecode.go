@@ -5667,21 +5667,26 @@ type zoom StateControllerBase
 const (
 	zoom_pos byte = iota
 	zoom_scale
+	zoom_lag
 	zoom_redirectid
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
 	crun := c
 	sys.drawScale = sys.cam.Scale
+	var zoomscale float32
+	zoompos := [2]float32{0, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
-			sys.zoomPos[0] = exp[0].evalF(c) / sys.cam.Scale
+			zoompos[0] = exp[0].evalF(c) * c.localscl / sys.cam.Scale
 			if len(exp) > 1 {
-				sys.zoomPos[1] = exp[1].evalF(c) / sys.cam.Scale
+				zoompos[1] = exp[1].evalF(c) * c.localscl / sys.cam.Scale
 			}
 		case zoom_scale:
-			sys.drawScale = exp[0].evalF(c) * sys.cam.Scale
+			zoomscale = exp[0].evalF(c) * sys.cam.Scale
+		case zoom_lag:
+			sys.zoomlag = exp[0].evalF(c) * sys.zoomlag
 		case zoom_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5691,6 +5696,11 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	zoomscale = (1 - sys.zoomlag) * (zoomscale - sys.drawScale)
+
+	sys.drawScale += zoomscale
+	sys.zoomPos[0] = zoompos[0]
+	sys.zoomPos[1] = zoompos[1]
 	return false
 }
 
