@@ -39,7 +39,7 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
+		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
@@ -67,7 +67,7 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
+		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
@@ -444,7 +444,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 		ineg = 1
 	}
 	isTrapez := int32(0)
-	if AbsF(xts)/AbsF(xbs) != 1 {
+	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
 		isTrapez = 1
 	}
 	gl.UseProgramObjectARB(mugenShader)
@@ -496,7 +496,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 		ineg = 1
 	}
 	isTrapez := int32(0)
-	if AbsF(xts)/AbsF(xbs) != 1 {
+	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
 		isTrapez = 1
 	}
 	gl.Uniform1iARB(uniformNeg, ineg)
