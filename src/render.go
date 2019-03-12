@@ -39,7 +39,7 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
+		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
@@ -67,7 +67,7 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
+		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
