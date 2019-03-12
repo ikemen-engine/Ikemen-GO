@@ -32,6 +32,7 @@ type Fnt struct {
 	palfx     *PalFX
 	alphaSrc  int32
 	alphaDst  int32
+	PalName	  string
 }
 
 func newFnt() *Fnt {
@@ -53,6 +54,8 @@ func loadFnt(filename string) (*Fnt, error) {
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 	fp, err := os.Open("font/" + filename)
+
+	f.PalName = filename
 
 	//Check file in "font/"" directory
 	if err != nil {
@@ -256,6 +259,8 @@ func loadFntV2(filename string) (*Fnt, error) {
 	f := newFnt()
 
 	content, err := LoadText("font/" + filename)
+
+	f.PalName = filename
 
 	//Check file in "font/"" directory
 	if err != nil {
@@ -492,7 +497,12 @@ func (f *Fnt) DrawText(
 		bank = 0
 	}
 
-	pal := f.palfx.getFxPal(f.palettes[bank][:], false)
+	var pal []uint32
+	if len(f.palettes) == 0 {
+		panic(Error("Error font palletes are empty" + "\r\n" + "Font = " + f.PalName))
+	} else {
+		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
+	}
 	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
