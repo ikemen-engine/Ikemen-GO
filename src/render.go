@@ -39,12 +39,12 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
+		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
 		"right = (right - gl_FragCoord.x);" +
-		"texcoord[0] = left / (left + right);" + // ここまで
+		"texcoord[0] = left / (left + right);" + // ここまで / To this point
 		"}" +
 		"float r = texture2D(tex, texcoord).r;" +
 		"if(int(255.25*r) == msk){" +
@@ -67,12 +67,12 @@ func RenderInit() {
 		"void main(void){" +
 		"vec2 texcoord = gl_TexCoord[0].st;" +
 		"if(isTrapez){" +
-		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算
+		"float y = 1 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
 		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
 		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
 		"left = (gl_FragCoord.x - left);" +
 		"right = (right - gl_FragCoord.x);" +
-		"texcoord[0] = left / (left + right);" + // ここまで
+		"texcoord[0] = left / (left + right);" + // ここまで / To this point
 		"}" +
 		"vec4 c = texture2D(tex, texcoord);" +
 		"if(neg) c.rgb = vec3(1.0 * c.a) - c.rgb;" +
@@ -110,7 +110,7 @@ func RenderInit() {
 		gl.GetObjectParameterivARB(shader, gl.OBJECT_COMPILE_STATUS_ARB, &ok)
 		if ok == 0 {
 			chk(errLog(shader))
-			panic(Error("コンパイルエラー"))
+			panic(Error("コンパイルエラー / Compile error"))
 		}
 		return
 	}
@@ -123,7 +123,7 @@ func RenderInit() {
 		gl.GetObjectParameterivARB(program, gl.OBJECT_LINK_STATUS_ARB, &ok)
 		if ok == 0 {
 			chk(errLog(program))
-			panic(Error("リンクエラー"))
+			panic(Error("リンクエラー / Link error"))
 		}
 		return
 	}

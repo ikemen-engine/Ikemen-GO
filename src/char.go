@@ -1445,6 +1445,7 @@ type CharSystemVar struct {
 	attackMul     float32
 	defenceMul    float32
 }
+
 type Char struct {
 	name            string
 	palfx           *PalFX
@@ -4911,7 +4912,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
 						ghv.xvel = hd.guard_velocity * c.localscl / getter.localscl
-						ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
+						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 					}
 					absdamage = hd.guarddamage
 					ghv.hitcount = hc
