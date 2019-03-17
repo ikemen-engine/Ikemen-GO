@@ -1332,18 +1332,19 @@ type AiInput struct {
 	dir, dt, at, bt, ct, xt, yt, zt, st, vt, wt int32
 }
 
-func (__ *AiInput) Update() {
+func (__ *AiInput) Update(level float32) {
 	if sys.intro != 0 {
 		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
 		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
 		__.vt, __.wt = 0, 0
 		return
 	}
-	var osu, hanasu int32 = 15, 60
+	var osu, hanasu int32 = 30, 60
 	dec := func(t *int32) bool {
 		(*t)--
 		if *t <= 0 {
-			if Rand(1, osu) == 1 {
+			// TODO: Balance AI Scaling
+			if int32(RandF32(1, float32(osu)-level/3)) == 1 {
 				*t = Rand(1, hanasu)
 				return true
 			}
@@ -1722,6 +1723,8 @@ func (c *Command) Clear() {
 		c.held[i] = false
 	}
 }
+
+// AI level stuff here
 func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 	holdTemp *[CK_Last + 1]bool) bool {
 	anyHeld, notHeld := false, 0
@@ -1849,6 +1852,8 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 	}
 	return true
 }
+
+// AI level stuff here
 func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	if !hitpause && c.curbuftime > 0 {
 		c.curbuftime--
@@ -1898,13 +1903,13 @@ func NewCommandList(cb *CommandBuffer) *CommandList {
 	return &CommandList{Buffer: cb, Names: make(map[string]int),
 		DefaultTime: 15, DefaultBufferTime: 1}
 }
-func (cl *CommandList) Input(i int, facing int32) bool {
+func (cl *CommandList) Input(i int, facing int32, aiLevel float32) bool {
 	if cl.Buffer == nil {
 		return false
 	}
 	step := cl.Buffer.Bb != 0
 	if i < 0 && ^i < len(sys.aiInput) {
-		sys.aiInput[^i].Update() // 乱数を使うので同期がずれないようここで
+		sys.aiInput[^i].Update(aiLevel) // 乱数を使うので同期がずれないようここで / Here we use random numbers so we can not get out of sync
 	}
 	_else := i < 0
 	if _else {
@@ -2009,6 +2014,8 @@ func (cl *CommandList) Input(i int, facing int32) bool {
 	}
 	return step
 }
+
+// AI level stuff here
 func (cl *CommandList) Step(facing int32, ai, hitpause bool,
 	buftime int32) {
 	if cl.Buffer != nil {

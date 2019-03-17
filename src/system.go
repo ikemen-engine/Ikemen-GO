@@ -717,7 +717,7 @@ func (s *System) commandUpdate() {
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
-					c.cmd[0].Input(c.key, int32(c.facing)) {
+					c.cmd[0].Input(c.key, int32(c.facing), float32(sys.com[i])) {
 					hp := c.hitPause()
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
@@ -736,8 +736,12 @@ func (s *System) commandUpdate() {
 			}
 			if r.key < 0 {
 				cc := int32(-1)
-				if r.roundState() == 2 && Rand(0, s.com[i]+16) > 16 {
+				// AI Scaling
+				// TODO: Balance AI Scaling
+				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/3+16) > 16 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
+				} else {
+					cc = -1
 				}
 				for j := range p {
 					if p[j].helperIndex >= 0 {
