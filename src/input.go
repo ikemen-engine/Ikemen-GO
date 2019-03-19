@@ -1339,12 +1339,12 @@ func (__ *AiInput) Update(level float32) {
 		__.vt, __.wt = 0, 0
 		return
 	}
-	var osu, hanasu int32 = 30, 60
+	var osu, hanasu int32 = 15, 60
 	dec := func(t *int32) bool {
 		(*t)--
 		if *t <= 0 {
 			// TODO: Balance AI Scaling
-			if int32(RandF32(1, float32(osu)-level/3)) == 1 {
+			if Rand(1, osu) == 1 {
 				*t = Rand(1, hanasu)
 				return true
 			}
@@ -1355,7 +1355,7 @@ func (__ *AiInput) Update(level float32) {
 	if dec(&__.dt) {
 		__.dir = Rand(0, 7)
 	}
-	osu, hanasu = 30, 30
+	osu, hanasu = int32(-11.25*level+165), 30
 	dec(&__.at)
 	dec(&__.bt)
 	dec(&__.ct)

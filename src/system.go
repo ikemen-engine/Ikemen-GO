@@ -738,7 +738,7 @@ func (s *System) commandUpdate() {
 				cc := int32(-1)
 				// AI Scaling
 				// TODO: Balance AI Scaling
-				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/3+16) > 16 {
+				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/2+32) > 32 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
 				} else {
 					cc = -1
