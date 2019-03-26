@@ -144,7 +144,7 @@ func scriptCommonInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		if cl.Input(int(numArg(l, 2))-1, 1) {
+		if cl.Input(int(numArg(l, 2))-1, 1, 0) {
 			cl.Step(1, false, false, 0)
 		}
 		return 0
@@ -268,6 +268,16 @@ func scriptCommonInit(l *lua.LState) {
 		sys.luaBigPortraitScale = float32(numArg(l, 1))
 		return 0
 	})
+
+	// Lifebar localcoord support
+	luaRegister(l, "setLuaLifebarScale", func(l *lua.LState) int {
+		sys.lifebarScale = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLifebarOffsetX", func(l *lua.LState) int {
+		sys.lifebarOffsetX = float32(numArg(l, 1))
+		return 0
+	})
 }
 
 // System Script
@@ -313,14 +323,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.text = strArg(l, 2)
 		return 0
-	})  
+	})
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)
 		}
 		if boolArg(l, 3) {
-		ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
+			ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
 		}
 		return 0
 	})

@@ -25,6 +25,11 @@ func Random() int32 {
 }
 func Srand(s int32)             { sys.randseed = s }
 func Rand(min, max int32) int32 { return min + Random()/(IMax/(max-min+1)+1) }
+
+func RandF32(min, max float32) float32 {
+	return min + float32(Random())/(float32(IMax)/(max-min+1.0)+1.0)
+}
+
 func RandI(x, y int32) int32 {
 	if y < x {
 		if uint32(x-y) > uint32(IMax) {
@@ -656,6 +661,11 @@ func (al *AnimLayout) Draw(x, y float32, layerno int16) {
 	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim)
 }
 
+// Allow to set a custom scale with the draw (For lifebar localcoord)
+func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
+	al.lay.DrawAnim(&sys.scrrect, x, y, scale, layerno, &al.anim)
+}
+
 type AnimTextSnd struct {
 	snd         [2]int32
 	font        [3]int32
@@ -691,6 +701,7 @@ func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 }
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
 func (ats *AnimTextSnd) Action() { ats.anim.Action() }
+
 func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.Draw(x, y, layerno)
@@ -700,6 +711,18 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 			f[ats.font[0]], ats.font[1], ats.font[2])
 	}
 }
+
+// Draw but with a scaled setting used for lifebar localcoord
+func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
+	if len(ats.anim.anim.frames) > 0 {
+		ats.anim.DrawScaled(x, y, layerno, scale)
+	} else if ats.font[0] >= 0 && int(ats.font[0]) < len(f) &&
+		len(ats.text) > 0 {
+		ats.anim.lay.DrawText(x, y, scale, layerno, ats.text,
+			f[ats.font[0]], ats.font[1], ats.font[2])
+	}
+}
+
 func (ats *AnimTextSnd) NoSound() bool { return ats.snd[0] < 0 }
 func (ats *AnimTextSnd) NoDisplay() bool {
 	return len(ats.anim.anim.frames) == 0 &&

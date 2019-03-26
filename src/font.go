@@ -32,6 +32,7 @@ type Fnt struct {
 	palfx     *PalFX
 	alphaSrc  int32
 	alphaDst  int32
+	PalName	  string
 }
 
 func newFnt() *Fnt {
@@ -52,11 +53,14 @@ func loadFnt(filename string) (*Fnt, error) {
 
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
-	fp, err := os.Open(filename)
+	fp, err := os.Open("font/" + filename)
+
+	f.PalName = filename
 
 	//Check file in "font/"" directory
 	if err != nil {
-		fp, err = os.Open("font/" + filename)
+		err = nil
+		fp, err = os.Open(filename)
 	}
 
 	//Error opening file
@@ -254,10 +258,13 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	content, err := LoadText(filename)
+	content, err := LoadText("font/" + filename)
+
+	f.PalName = filename
 
 	//Check file in "font/"" directory
 	if err != nil {
+		err = nil
 		content, err = LoadText(filename)
 	}
 
@@ -346,6 +353,12 @@ func loadFntTtf(f *Fnt, fontfile string, filename string) {
 		panic(err)
 	}
 	f.ttf = ttf
+
+	//Create Ttf palettes
+	f.palettes = make([][256]uint32, 1)
+	for i := 0; i < 256; i++ {
+		f.palettes[0][i] = 0
+	}
 }
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
@@ -490,7 +503,13 @@ func (f *Fnt) DrawText(
 		bank = 0
 	}
 
-	pal := f.palfx.getFxPal(f.palettes[bank][:], false)
+	var pal []uint32
+	if len(f.palettes) == 0 {
+		panic(Error("Error font palletes are empty" + "\r\n" + "Font = " + f.PalName))
+	} else {
+		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
+	}
+
 	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
@@ -538,7 +557,7 @@ func NewTextSprite() *TextSprite {
 
 func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
 	if ts.fnt.Type == "truetype" {
-		//ts.fnt.ttf.SetColor(r, g, b, a)
+		ts.fnt.ttf.SetColor(r, g, b, 1)
 	} else {
 		ts.fnt.SetColor(r, g, b, alphaSrc, alphaDst)
 	}
@@ -547,7 +566,7 @@ func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			//ts.fnt.ttf.Printf(ts.x, ts.y, ts.yscl, ts.align, ts.text) //x, y, scale, align, string, printf args
+			ts.fnt.ttf.Printf(ts.x, ts.y, ts.yscl, ts.align, false, ts.text) //x, y, scale, align, string, printf args
 		} else {
 			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
 		}

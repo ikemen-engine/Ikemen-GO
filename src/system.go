@@ -28,6 +28,7 @@ const (
 	Mp3SampleRate   = 44100
 )
 
+// System vars are accessed globally through the program
 var sys = System{
 	randseed:  int32(time.Now().UnixNano()),
 	scrrect:   [...]int32{0, 0, 320, 240},
@@ -67,6 +68,8 @@ var sys = System{
 	luaSmallPortraitScale: 1,
 	luaBigPortraitScale:   1,
 	luaSpriteOffsetX:      0,
+	lifebarScale:          1,
+	lifebarOffsetX:        0,
 }
 
 type TeamMode int32
@@ -235,6 +238,9 @@ type System struct {
 	luaSmallPortraitScale float32
 	luaBigPortraitScale   float32
 	luaSpriteOffsetX      float64
+
+	lifebarScale   float32
+	lifebarOffsetX float32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -408,14 +414,12 @@ func (s *System) soundWrite() {
 		if bgmSrc.Src.BuffersProcessed() > 0 {
 			out := s.nullSndBuf[:]
 			if !s.nomusic {
-				if s.bgm.IsVorbis() {
-					out = s.bgm.ReadVorbis()
-				} else if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
-					s.bgm.ctrlmp3.Paused = false
+				if s.bgm.ctrl != nil {
+					s.bgm.ctrl.Paused = false
 				}
 			} else {
-				if s.bgm.IsMp3() && s.bgm.ctrlmp3 != nil {
-					s.bgm.Mp3Paused()
+				if s.bgm.ctrl != nil {
+					s.bgm.Pause()
 				}
 			}
 			buf := bgmSrc.Src.UnqueueBuffer()
@@ -713,7 +717,7 @@ func (s *System) commandUpdate() {
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
-					c.cmd[0].Input(c.key, int32(c.facing)) {
+					c.cmd[0].Input(c.key, int32(c.facing), float32(sys.com[i])) {
 					hp := c.hitPause()
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
@@ -732,8 +736,12 @@ func (s *System) commandUpdate() {
 			}
 			if r.key < 0 {
 				cc := int32(-1)
-				if r.roundState() == 2 && Rand(0, s.com[i]+16) > 16 {
+				// AI Scaling
+				// TODO: Balance AI Scaling
+				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/2+32) > 32 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
+				} else {
+					cc = -1
 				}
 				for j := range p {
 					if p[j].helperIndex >= 0 {
