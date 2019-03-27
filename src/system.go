@@ -190,6 +190,10 @@ type System struct {
 	commandLine             chan string
 	drawScale               float32
 	zoomlag                 float32
+	zoomScale               float32
+	zoomPosXLag             float32
+	zoomPosYLag             float32
+	enableZoomstate         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
 	cam                     Camera
@@ -811,7 +815,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		if s.envcol_time > 0 {
 			s.envcol_time--
 		}
-		s.drawScale, s.zoomPos = float32(math.NaN()), [2]float32{}
+		s.enableZoomstate = false
 		if s.super > 0 {
 			s.super--
 		} else if s.pause > 0 {
@@ -1582,14 +1586,22 @@ func (s *System) fight() (reload bool) {
 		}
 		if !s.frameSkip {
 			dx, dy, dscl := x, y, scl
-			if !math.IsNaN(float64(s.drawScale)) &&
-				!math.IsNaN(float64(s.zoomPos[0])) &&
-				!math.IsNaN(float64(s.zoomPos[1])) {
+			if s.enableZoomstate {
+				if !s.debugPaused() {
+					s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
+					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
+					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
+				}
 				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPos[0]/scl*s.drawScale)
-				dy = y + s.zoomPos[1]
+				dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				dy = y + s.zoomPosYLag
 			} else {
-				s.zoomlag = 1
+				s.zoomlag = 0
+				s.zoomPosXLag = 0
+				s.zoomPosYLag = 0
+				s.zoomScale = 1
+				s.zoomPos = [2]float32{0, 0}
+				s.drawScale = s.cam.Scale
 			}
 			s.draw(dx, dy, dscl)
 			drawDebug()
