@@ -1,6 +1,0 @@
-docker run --rm -e OS=linux -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash get.sh' 
-docker run --rm -e OS=linux -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash build.sh' 
-docker run --rm -e OS=windows -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash get.sh' 
-docker run --rm -e OS=windows -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash build.sh' 
-docker run --rm -e OS=mac -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash get.sh' 
-docker run --rm -e OS=mac -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code && bash build.sh' 
