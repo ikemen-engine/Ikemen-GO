@@ -24,7 +24,7 @@ config = json.decode(file:read("*all"))
 file:close()
 
 main.p1In = 1
-main.p2In = 1
+main.p2In = 2
 --main.inputDialog = inputDialogNew()
 
 function main.f_setCommand(c)
@@ -1396,15 +1396,15 @@ function main.f_default()
 	main.p2SelectMenu = true --P2 character selection enabled
 	main.versusScreen = true --versus screen enabled
 	main.p1In = 1 --P1 controls P1 side of the select screen
-	main.p2In = 0 --P2 controls in the select screen disabled
+	main.p2In = 2 --P2 controls P2 side of the select screen
 	main.gameMode = '' --additional variable used to distinguish modes in select screen
 end
 
 function main.f_menuCommon1(cursorPosY, moveTxt, item, t)
-	if commandGetState(main.p1Cmd, 'u') then
+	if commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item - 1
-	elseif commandGetState(main.p1Cmd, 'd') then
+	elseif commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item + 1
 	end
@@ -1419,9 +1419,9 @@ function main.f_menuCommon1(cursorPosY, moveTxt, item, t)
 	elseif item > #t then
 		item = 1
 		cursorPosY = 1
-	elseif commandGetState(main.p1Cmd, 'u') and cursorPosY > 1 then
+	elseif (commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') ) and cursorPosY > 1 then
 		cursorPosY = cursorPosY - 1
-	elseif commandGetState(main.p1Cmd, 'd') and cursorPosY < motif.title_info.menu_window_visibleitems then
+	elseif (commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') ) and cursorPosY < motif.title_info.menu_window_visibleitems then
 		cursorPosY = cursorPosY + 1
 	end
 	if cursorPosY == motif.title_info.menu_window_visibleitems then
