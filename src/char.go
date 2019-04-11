@@ -5194,7 +5194,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
-		xmi, xma := gxmin+2, gxmax-2
+		//xmi, xma := gxmin+2, gxmax-2
+		var xmi, xma float32
+		xmi += sys.xmin + 2
+		xma += sys.xmax - 2
 		if c.stCgi().ver[0] != 1 {
 			xmi += 2
 			xma -= 2

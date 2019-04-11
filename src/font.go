@@ -32,7 +32,7 @@ type Fnt struct {
 	palfx     *PalFX
 	alphaSrc  int32
 	alphaDst  int32
-	PalName	  string
+	PalName   string
 }
 
 func newFnt() *Fnt {
@@ -457,7 +457,7 @@ func (f *Fnt) drawChar(
 	x, y, xscl, yscl float32,
 	bank int32,
 	c rune,
-	paltex uint32,
+	pal []uint32,
 ) float32 {
 
 	if c == ' ' {
@@ -471,10 +471,17 @@ func (f *Fnt) drawChar(
 
 	//trans := f.calculateTrans()
 
-	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
-		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	if pal != nil {
+		RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
+			-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+			yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+			0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	} else {
+		RenderMugenFc(*spr.Tex, spr.Size, -x*sys.widthScale,
+			-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+			yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+			0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	}
 
 	return float32(spr.Size[0]) * xscl
 }
@@ -504,30 +511,27 @@ func (f *Fnt) DrawText(
 	}
 
 	var pal []uint32
-	if len(f.palettes) == 0 {
-		panic(Error("Error font palletes are empty" + "\r\n" + "Font = " + f.PalName))
-	} else {
-		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
-	}
-
-	gl.Enable(gl.TEXTURE_1D)
-	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
-	gl.GenTextures(1, &paltex)
-	gl.BindTexture(gl.TEXTURE_1D, paltex)
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage1D(
-		gl.TEXTURE_1D,
-		0,
-		gl.RGBA,
-		256,
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		unsafe.Pointer(&pal[0]),
-	)
-	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	if len(f.palettes) != 0 {
+		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
+		gl.Enable(gl.TEXTURE_1D)
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.GenTextures(1, &paltex)
+		gl.BindTexture(gl.TEXTURE_1D, paltex)
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		gl.TexImage1D(
+			gl.TEXTURE_1D,
+			0,
+			gl.RGBA,
+			256,
+			0,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			unsafe.Pointer(&pal[0]),
+		)
+		gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	}
 
 	for _, c := range txt {
 		x += f.drawChar(
@@ -537,7 +541,7 @@ func (f *Fnt) DrawText(
 			yscl,
 			bank,
 			c,
-			paltex,
+			pal,
 		) + xscl*float32(f.Spacing[0])
 	}
 	gl.DeleteTextures(1, &paltex)
