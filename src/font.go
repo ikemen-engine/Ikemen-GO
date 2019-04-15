@@ -5,11 +5,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"unsafe"
 
 	"github.com/K4thos/glfont"
 	findfont "github.com/flopp/go-findfont"
-	"github.com/go-gl/gl/v2.1/gl"
 )
 
 // FntCharImage stores sprite and position
@@ -471,17 +469,22 @@ func (f *Fnt) drawChar(
 
 	//trans := f.calculateTrans()
 
-	if pal != nil {
-		RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
-			-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-			yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-			0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
-	} else {
-		RenderMugenFc(*spr.Tex, spr.Size, -x*sys.widthScale,
-			-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-			yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-			0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
-	}
+	spr.glDraw(pal, 0, -x*sys.widthScale,
+		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+		yscl*sys.heightScale, 0, 0, 0, 0,
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
+
+	//if pal != nil {
+	//	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
+	//		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+	//		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+	//		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	//} else {
+	//	RenderMugenFc(*spr.Tex, spr.Size, -x*sys.widthScale,
+	//		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
+	//		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
+	//		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	//}
 
 	return float32(spr.Size[0]) * xscl
 }
@@ -511,26 +514,26 @@ func (f *Fnt) DrawText(
 	}
 
 	var pal []uint32
-	var paltex uint32
+	//var paltex uint32
 	if len(f.palettes) != 0 {
 		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
-		gl.Enable(gl.TEXTURE_1D)
-		gl.ActiveTexture(gl.TEXTURE1)
-		gl.GenTextures(1, &paltex)
-		gl.BindTexture(gl.TEXTURE_1D, paltex)
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		gl.TexImage1D(
-			gl.TEXTURE_1D,
-			0,
-			gl.RGBA,
-			256,
-			0,
-			gl.RGBA,
-			gl.UNSIGNED_BYTE,
-			unsafe.Pointer(&pal[0]),
-		)
-		gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		//gl.Enable(gl.TEXTURE_1D)
+		//gl.ActiveTexture(gl.TEXTURE1)
+		//gl.GenTextures(1, &paltex)
+		//gl.BindTexture(gl.TEXTURE_1D, paltex)
+		//gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		//gl.TexImage1D(
+		//	gl.TEXTURE_1D,
+		//	0,
+		//	gl.RGBA,
+		//	256,
+		//	0,
+		//	gl.RGBA,
+		//	gl.UNSIGNED_BYTE,
+		//	unsafe.Pointer(&pal[0]),
+		//)
+		//gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		//gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	}
 
 	for _, c := range txt {
@@ -544,8 +547,8 @@ func (f *Fnt) DrawText(
 			pal,
 		) + xscl*float32(f.Spacing[0])
 	}
-	gl.DeleteTextures(1, &paltex)
-	gl.Disable(gl.TEXTURE_1D)
+	//gl.DeleteTextures(1, &paltex)
+	//gl.Disable(gl.TEXTURE_1D)
 }
 
 type TextSprite struct {
