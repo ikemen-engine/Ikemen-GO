@@ -155,7 +155,10 @@ local txt_title = main.f_createTextImg(
 	motif.option_info.title_offset[1],
 	motif.option_info.title_offset[2],
 	motif.option_info.title_font_scale[1],
-	motif.option_info.title_font_scale[2]
+	motif.option_info.title_font_scale[2],
+	motif.option_info.title_font[4],
+	motif.option_info.title_font[5],
+	motif.option_info.title_font[6]
 )
 function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	--draw clearcolor
@@ -198,7 +201,10 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.option_info.menu_pos[1],
 					motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
 					motif.option_info.menu_item_active_font_scale[1],
-					motif.option_info.menu_item_active_font_scale[2]
+					motif.option_info.menu_item_active_font_scale[2],
+					motif.option_info.menu_item_active_font[4],
+					motif.option_info.menu_item_active_font[5],
+					motif.option_info.menu_item_active_font[6]
 				))
 				if t[i].vardata ~= nil then
 					textImgDraw(main.f_updateTextImg(
@@ -210,7 +216,10 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 						motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
 						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
 						motif.option_info.menu_item_value_active_font_scale[1],
-						motif.option_info.menu_item_value_active_font_scale[2]
+						motif.option_info.menu_item_value_active_font_scale[2],
+						motif.option_info.menu_item_value_active_font[4],
+						motif.option_info.menu_item_value_active_font[5],
+						motif.option_info.menu_item_value_active_font[6]
 					))
 				end
 			else
@@ -223,7 +232,10 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.option_info.menu_pos[1],
 					motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
 					motif.option_info.menu_item_font_scale[1],
-					motif.option_info.menu_item_font_scale[2]
+					motif.option_info.menu_item_font_scale[2],
+					motif.option_info.menu_item_font[4],
+					motif.option_info.menu_item_font[5],
+					motif.option_info.menu_item_font[6]
 				))
 				if t[i].vardata ~= nil then
 					textImgDraw(main.f_updateTextImg(
@@ -235,7 +247,10 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 						motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
 						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
 						motif.option_info.menu_item_value_font_scale[1],
-						motif.option_info.menu_item_value_font_scale[2]
+						motif.option_info.menu_item_value_font_scale[2],
+						motif.option_info.menu_item_value_font[4],
+						motif.option_info.menu_item_value_font[5],
+						motif.option_info.menu_item_value_font[6]
 					))
 				end
 			end

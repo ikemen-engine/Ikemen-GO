@@ -322,10 +322,10 @@ func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 	y := float32(f.teammate_pos[1] + f.teammate_spacing[1]*(i-1))
 	for ; i >= 0; i-- {
 		if i != f.numko {
-			f.teammate_bg.Draw(x, y, layerno)
-			f.teammate_face_lay.DrawSprite(x, y, layerno, f.teammate_face[i], nil, f.teammate_scale[i])
+			f.teammate_bg.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+			f.teammate_face_lay.DrawSprite((x+sys.lifebarOffsetX)*sys.lifebarScale, y*sys.lifebarScale, layerno, f.teammate_face[i], nil, f.teammate_scale[i])
 			if i < f.numko {
-				f.teammate_ko.Draw(x, y, layerno)
+				f.teammate_ko.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
 			}
 			x -= float32(f.teammate_spacing[0])
 			y -= float32(f.teammate_spacing[1])
@@ -618,13 +618,13 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 				x -= tmp + float32(f[c.text_font[0]].TextWidth(text))*
 					c.text_lay.scale[0]*sys.lifebarFontScale
 			}
-			c.text_lay.DrawText(x, float32(c.pos[1]), 1, layerno,
+			c.text_lay.DrawText(x+sys.lifebarOffsetX, float32(c.pos[1]), sys.lifebarScale, layerno,
 				text, f[c.text_font[0]], c.text_font[1], 1)
 		}
 		if c.counter_font[0] >= 0 && int(c.counter_font[0]) < len(f) {
 			z := 1 + float32(c.shaketime[i])*(1.0/20)*
 				float32(math.Sin(float64(c.shaketime[i])*(math.Pi/2.5)))
-			c.counter_lay.DrawText(x/z, float32(c.pos[1])/z, z, layerno,
+			c.counter_lay.DrawText((x+sys.lifebarOffsetX)/z, float32(c.pos[1])/z, z*sys.lifebarScale, layerno,
 				fmt.Sprintf("%v", c.cur[i]), f[c.counter_font[0]],
 				c.counter_font[1], -1)
 		}

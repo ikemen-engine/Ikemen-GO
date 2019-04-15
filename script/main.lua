@@ -89,13 +89,16 @@ function main.f_textImgPosDraw(ti, x, y, align)
 end
 
 --shortcut for creating new text with several parameters
-function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY)
+function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, colorR, colorG, colorB)
 	local ti = textImgNew()
 	if font ~= nil then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
+		if colorR ~= nil and colorG ~= nil and colorB ~= nil then
+			textImgSetColor(ti, colorR, colorG, colorB)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
@@ -104,12 +107,15 @@ function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY)
 end
 
 --shortcut for updating text with several parameters
-function main.f_updateTextImg(animName, font, bank, align, text, x, y, scaleX, scaleY)
+function main.f_updateTextImg(animName, font, bank, align, text, x, y, scaleX, scaleY, colorR, colorG, colorB)
 	if font ~= nil then
 		textImgSetFont(animName, font)
 		textImgSetBank(animName, bank)
 		textImgSetAlign(animName, align)
 		textImgSetText(animName, text)
+		if colorR ~= nil and colorG ~= nil and colorB ~= nil then
+			textImgSetColor(animName, colorR, colorG, colorB)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(animName, x, y)
 		textImgSetScale(animName, scaleX, scaleY)
@@ -259,14 +265,14 @@ end
 
 --randomizes table content
 function main.f_shuffleTable(t)
-    local rand = math.random
-    assert(t, "main.f_shuffleTable() expected a table, got nil")
-    local iterations = #t
-    local j
-    for i = iterations, 2, -1 do
-        j = rand(i)
-        t[i], t[j] = t[j], t[i]
-    end
+	local rand = math.random
+	assert(t, "main.f_shuffleTable() expected a table, got nil")
+	local iterations = #t
+	local j
+	for i = iterations, 2, -1 do
+		j = rand(i)
+		t[i], t[j] = t[j], t[i]
+	end
 end
 
 --iterate over the table in order
@@ -279,19 +285,19 @@ end
 --    print(k,v)
 --end
 function main.f_sortKeys(t, order)
-    -- collect the keys
-    local keys = {}
-    for k in pairs(t) do keys[#keys + 1] = k end
-    -- if order function given, sort it by passing the table and keys a, b,
-    -- otherwise just sort the keys 
-    if order then
+	-- collect the keys
+	local keys = {}
+	for k in pairs(t) do keys[#keys + 1] = k end
+	-- if order function given, sort it by passing the table and keys a, b,
+	-- otherwise just sort the keys 
+	if order then
 		table.sort(keys, function(a,b) return order(t, a, b) end)
-    else
+	else
 		table.sort(keys)
-    end
-    -- return the iterator function
-    local i = 0
-    return function()
+	end
+	-- return the iterator function
+	local i = 0
+	return function()
 		i = i + 1
 		if keys[i] then
 			return keys[i], t[keys[i]]
@@ -681,12 +687,12 @@ end
 
 --return table with reversed keys
 function main.f_reversedTable(t)
-    local reversedTable = {}
-    local itemCount = #t
-    for k, v in ipairs(t) do
-        reversedTable[itemCount + 1 - k] = v
-    end
-    return reversedTable
+	local reversedTable = {}
+	local itemCount = #t
+	for k, v in ipairs(t) do
+		reversedTable[itemCount + 1 - k] = v
+	end
+	return reversedTable
 end
 
 --return table without rows disabled in screenpack
@@ -734,7 +740,10 @@ function main.f_warning(t, info, background, font_info, title, box)
 				font_info.text_pos[1],
 				font_info.text_pos[2] - font_info.text_spacing[2] + i * font_info.text_spacing[2],
 				font_info.text_font_scale[1],
-				font_info.text_font_scale[2]
+				font_info.text_font_scale[2],
+				font_info.text_font[4],
+				font_info.text_font[5],
+				font_info.text_font[6]
 			)
 			textImgDraw(txt_warning)
 		end
@@ -798,7 +807,10 @@ function main.f_input(t, info, background, type)
 				motif.warning_info.text_pos[1],
 				motif.warning_info.text_pos[2] - motif.warning_info.text_spacing[2] + i * motif.warning_info.text_spacing[2],
 				motif.warning_info.text_font_scale[1],
-				motif.warning_info.text_font_scale[2]
+				motif.warning_info.text_font_scale[2],
+				motif.warning_info.text_font[4],
+				motif.warning_info.text_font[5],
+				motif.warning_info.text_font[6]
 			)
 			textImgDraw(txt_input)
 		end
@@ -953,7 +965,10 @@ main.txt_warningTitle = main.f_createTextImg(
 	motif.warning_info.title_pos[1],
 	motif.warning_info.title_pos[2],
 	motif.warning_info.title_font_scale[1],
-	motif.warning_info.title_font_scale[2]
+	motif.warning_info.title_font_scale[2],
+	motif.warning_info.title_font[4],
+	motif.warning_info.title_font[5],
+	motif.warning_info.title_font[6]
 )
 
 local footerBox = animNew(main.fadeSff, '0,2, 0,0, -1')
@@ -977,7 +992,10 @@ local txt_loading = main.f_createTextImg(
 	motif.title_info.loading_offset[1],
 	motif.title_info.loading_offset[2],
 	motif.title_info.loading_font_scale[1],
-	motif.title_info.loading_font_scale[2]
+	motif.title_info.loading_font_scale[2],
+	motif.title_info.loading_font[4],
+	motif.title_info.loading_font[5],
+	motif.title_info.loading_font[6]
 )
 textImgDraw(txt_loading)
 refresh()
@@ -1306,7 +1324,10 @@ local txt_titleFooter1 = main.f_createTextImg(
 	motif.title_info.footer1_offset[1],
 	motif.title_info.footer1_offset[2],
 	motif.title_info.footer1_font_scale[1],
-	motif.title_info.footer1_font_scale[2]
+	motif.title_info.footer1_font_scale[2],
+	motif.title_info.footer1_font[4],
+	motif.title_info.footer1_font[5],
+	motif.title_info.footer1_font[6]
 )
 local txt_titleFooter2 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer2_font[1]],
@@ -1316,7 +1337,10 @@ local txt_titleFooter2 = main.f_createTextImg(
 	motif.title_info.footer2_offset[1],
 	motif.title_info.footer2_offset[2],
 	motif.title_info.footer2_font_scale[1],
-	motif.title_info.footer2_font_scale[2]
+	motif.title_info.footer2_font_scale[2],
+	motif.title_info.footer2_font[4],
+	motif.title_info.footer2_font[5],
+	motif.title_info.footer2_font[6]
 )
 local txt_titleFooter3 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer3_font[1]],
@@ -1326,7 +1350,10 @@ local txt_titleFooter3 = main.f_createTextImg(
 	motif.title_info.footer3_offset[1],
 	motif.title_info.footer3_offset[2],
 	motif.title_info.footer3_font_scale[1],
-	motif.title_info.footer3_font_scale[2]
+	motif.title_info.footer3_font_scale[2],
+	motif.title_info.footer3_font[4],
+	motif.title_info.footer3_font[5],
+	motif.title_info.footer3_font[6]
 )
 local txt_infoboxTitle = main.f_createTextImg(
 	motif.font_data[motif.infobox.title_font[1]],
@@ -1336,7 +1363,10 @@ local txt_infoboxTitle = main.f_createTextImg(
 	motif.infobox.title_pos[1],
 	motif.infobox.title_pos[2],
 	motif.infobox.title_font_scale[1],
-	motif.infobox.title_font_scale[2]
+	motif.infobox.title_font_scale[2],
+	motif.infobox.title_font[4],
+	motif.infobox.title_font[5],
+	motif.infobox.title_font[6]
 )
 main.txt_mainSelect = main.f_createTextImg(
 	motif.font_data[motif.select_info.title_font[1]],
@@ -1346,7 +1376,10 @@ main.txt_mainSelect = main.f_createTextImg(
 	motif.select_info.title_offset[1],
 	motif.select_info.title_offset[2],
 	motif.select_info.title_font_scale[1],
-	motif.select_info.title_font_scale[2]
+	motif.select_info.title_font_scale[2],
+	motif.select_info.title_font[4],
+	motif.select_info.title_font[5],
+	motif.select_info.title_font[6]
 )
 
 --itemname: names used to distinguish modes in lua code (keep it as it is)
@@ -1457,7 +1490,10 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.title_info.menu_pos[1],
 					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
 					motif.title_info.menu_item_active_font_scale[1],
-					motif.title_info.menu_item_active_font_scale[2]
+					motif.title_info.menu_item_active_font_scale[2],
+					motif.title_info.menu_item_active_font[4],
+					motif.title_info.menu_item_active_font[5],
+					motif.title_info.menu_item_active_font[6]
 				))
 			else
 				textImgDraw(main.f_updateTextImg(
@@ -1469,7 +1505,10 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.title_info.menu_pos[1],
 					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
 					motif.title_info.menu_item_font_scale[1],
-					motif.title_info.menu_item_font_scale[2]
+					motif.title_info.menu_item_font_scale[2],
+					motif.title_info.menu_item_font[4],
+					motif.title_info.menu_item_font[5],
+					motif.title_info.menu_item_font[6]
 				))
 			end
 		end
@@ -1657,7 +1696,10 @@ local txt_connection = main.f_createTextImg(
 	motif.title_info.connecting_offset[1],
 	motif.title_info.connecting_offset[2],
 	motif.title_info.connecting_font_scale[1],
-	motif.title_info.connecting_font_scale[2]
+	motif.title_info.connecting_font_scale[2],
+	motif.title_info.connecting_font[4],
+	motif.title_info.connecting_font[5],
+	motif.title_info.connecting_font[6]
 )
 function main.f_connect(server, t)
 	local cancel = false
