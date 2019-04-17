@@ -1,0 +1,137 @@
+<project>
+    <shortName>Ikemen</shortName>
+    <fullName>Ikemen</fullName>
+    <version>0.1</version>
+    <readmeFile>README.md</readmeFile>
+    <licenseFile>LICENSE.txt</licenseFile>
+    <componentList>
+        <component>
+            <name>default</name>
+            <description>Default Component</description>
+            <canBeEdited>1</canBeEdited>
+            <selected>1</selected>
+            <show>1</show>
+            <folderList>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfiles</name>
+                    <platforms>all</platforms>
+                    <shortcutList>
+                        <shortcut>
+                            <comment>Uninstall</comment>
+                            <exec>${installdir}/${uninstallerName}</exec>
+                            <icon></icon>
+                            <name>Uninstall ${product_fullname}</name>
+                            <path>${installdir}</path>
+                            <platforms>all</platforms>
+                            <runAsAdmin>0</runAsAdmin>
+                            <runInTerminal>0</runInTerminal>
+                            <windowsExec>${installdir}/${uninstallerName}.exe</windowsExec>
+                            <windowsExecArgs></windowsExecArgs>
+                            <windowsIcon></windowsIcon>
+                            <windowsPath>${installdir}</windowsPath>
+                        </shortcut>
+                    </shortcutList>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfileslinux</name>
+                    <platforms>linux</platforms>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfileswindows</name>
+                    <platforms>windows</platforms>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfilesosx</name>
+                    <platforms>osx</platforms>
+                    <distributionFileList>
+                        <distributionDirectory>
+                            <origin>data</origin>
+                        </distributionDirectory>
+                        <distributionDirectory>
+                            <origin>script</origin>
+                        </distributionDirectory>
+                        <distributionFile>
+                            <origin>LICENSE.txt</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>README.md</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>Ikemen_GO</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>post_install.sh</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                </folder>
+                <folder>
+                    <description>bundle</description>
+                    <destination>${user_home_directory}</destination>
+                    <name>install</name>
+                    <platforms>all</platforms>
+                </folder>
+            </folderList>
+            <startMenuShortcutList>
+                <startMenuShortcut>
+                    <comment>Uninstall ${product_fullname}</comment>
+                    <name>Uninstall ${product_fullname}</name>
+                    <runAsAdmin>0</runAsAdmin>
+                    <runInTerminal>0</runInTerminal>
+                    <windowsExec>${installdir}/${uninstallerName}.exe</windowsExec>
+                    <windowsExecArgs></windowsExecArgs>
+                    <windowsIcon></windowsIcon>
+                    <windowsPath>${installdir}/</windowsPath>
+                </startMenuShortcut>
+            </startMenuShortcutList>
+        </component>
+    </componentList>
+    <preBuildActionList>
+        <copyFile>
+            <destination>/Volumes/data/devel/Ikemen_GO/Ikemen_GO</destination>
+            <origin>/Volumes/data/devel/Ikemen_GO/Ikemen_GO_mac</origin>
+        </copyFile>
+    </preBuildActionList>
+    <postInstallationActionList>
+        <httpGet>
+            <filename>${installdir}/Ikemen_Mugen_Files.zip</filename>
+            <url>http://download1481.mediafire.com/zp7ssz5az7ig/i2u70ordfjqj186/Ikemen+Mugen+Files.zip</url>
+        </httpGet>
+        <runProgram>
+            <program>${installdir}/post_install.sh</program>
+            <programArguments>${installdir}</programArguments>
+            <workingDirectory>${installdir}</workingDirectory>
+        </runProgram>
+    </postInstallationActionList>
+    <enableRollback>1</enableRollback>
+    <enableTimestamp>1</enableTimestamp>
+    <saveRelativePaths>1</saveRelativePaths>
+    <vendor>Ikemen community</vendor>
+    <parameterList>
+        <directoryParameter>
+            <name>installdir</name>
+            <description>Installer.Parameter.installdir.description</description>
+            <explanation>Installer.Parameter.installdir.explanation</explanation>
+            <value></value>
+            <default>${user_home_directory}/${project.shortName}</default>
+            <allowEmptyValue>0</allowEmptyValue>
+            <cliOptionName>prefix</cliOptionName>
+            <mustBeWritable>1</mustBeWritable>
+            <mustExist>0</mustExist>
+            <width>30</width>
+        </directoryParameter>
+    </parameterList>
+    <platformOptionsList>
+        <platformOptions>
+            <platform>osx</platform>
+        </platformOptions>
+    </platformOptionsList>
+</project>
+

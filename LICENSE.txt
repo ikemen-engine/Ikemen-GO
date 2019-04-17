@@ -5,6 +5,7 @@ Modified work Copyright (c) 2018 K4thos
 Modified work Copyright (c) 2018 ShinLucho
 Modified work Copyright (c) 2018 NeatUnsou
 Modified work Copyright (c) 2019 Windblade
+Modified work Copyright (c) 2019 Dan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

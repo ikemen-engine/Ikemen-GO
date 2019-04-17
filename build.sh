@@ -26,3 +26,4 @@ else
 fi;
 
 go build -o $BINARY_NAME ./src
+chmod +x $BINARY_NAME
