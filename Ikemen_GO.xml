@@ -1,9 +1,9 @@
 <project>
     <shortName>Ikemen</shortName>
-    <fullName>Ikemen</fullName>
+    <fullName>Ikemen_GO_Plus</fullName>
     <version>0.1</version>
-    <readmeFile>README.md</readmeFile>
-    <licenseFile>LICENSE.txt</licenseFile>
+    <readmeFile>${build_project_directory}/README.md</readmeFile>
+    <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
     <componentList>
         <component>
             <name>default</name>
@@ -107,6 +107,7 @@
         <runProgram>
             <program>${installdir}/post_install.sh</program>
             <programArguments>${installdir}</programArguments>
+            <useMSDOSPath>0</useMSDOSPath>
             <workingDirectory>${installdir}</workingDirectory>
         </runProgram>
     </postInstallationActionList>
