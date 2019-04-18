@@ -1,7 +1,7 @@
 <project>
-    <shortName>Ikemen</shortName>
+    <shortName>IkemenGOPlus</shortName>
     <fullName>Ikemen_GO_Plus</fullName>
-    <version>0.1</version>
+    <version>0.6</version>
     <readmeFile>${build_project_directory}/README.md</readmeFile>
     <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
     <componentList>
@@ -17,6 +17,20 @@
                     <destination>${installdir}</destination>
                     <name>programfiles</name>
                     <platforms>all</platforms>
+                    <distributionFileList>
+                        <distributionDirectory>
+                            <origin>data</origin>
+                        </distributionDirectory>
+                        <distributionDirectory>
+                            <origin>script</origin>
+                        </distributionDirectory>
+                        <distributionFile>
+                            <origin>LICENSE.txt</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>README.md</origin>
+                        </distributionFile>
+                    </distributionFileList>
                     <shortcutList>
                         <shortcut>
                             <comment>Uninstall</comment>
@@ -39,12 +53,25 @@
                     <destination>${installdir}</destination>
                     <name>programfileslinux</name>
                     <platforms>linux</platforms>
+                    <distributionFileList>
+                        <distributionFile>
+                            <origin>Ikemen_GO_linux</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>Ikemen_GO.command</origin>
+                        </distributionFile>
+                    </distributionFileList>
                 </folder>
                 <folder>
                     <description>Program Files</description>
                     <destination>${installdir}</destination>
                     <name>programfileswindows</name>
                     <platforms>windows</platforms>
+                    <distributionFileList>
+                        <distributionFile>
+                            <origin>Ikemen_GO.exe</origin>
+                        </distributionFile>
+                    </distributionFileList>
                 </folder>
                 <folder>
                     <description>Program Files</description>
@@ -52,23 +79,11 @@
                     <name>programfilesosx</name>
                     <platforms>osx</platforms>
                     <distributionFileList>
-                        <distributionDirectory>
-                            <origin>data</origin>
-                        </distributionDirectory>
-                        <distributionDirectory>
-                            <origin>script</origin>
-                        </distributionDirectory>
                         <distributionFile>
-                            <origin>LICENSE.txt</origin>
+                            <origin>Ikemen_GO_mac</origin>
                         </distributionFile>
                         <distributionFile>
-                            <origin>README.md</origin>
-                        </distributionFile>
-                        <distributionFile>
-                            <origin>Ikemen_GO</origin>
-                        </distributionFile>
-                        <distributionFile>
-                            <origin>post_install.sh</origin>
+                            <origin>Ikemen_GO.command</origin>
                         </distributionFile>
                     </distributionFileList>
                 </folder>
@@ -93,28 +108,37 @@
             </startMenuShortcutList>
         </component>
     </componentList>
-    <preBuildActionList>
-        <copyFile>
-            <destination>/Volumes/data/devel/Ikemen_GO/Ikemen_GO</destination>
-            <origin>/Volumes/data/devel/Ikemen_GO/Ikemen_GO_mac</origin>
-        </copyFile>
-    </preBuildActionList>
     <postInstallationActionList>
         <httpGet>
+            <explanation>Downloading Mugen dependencies that cannot be packed together due to different licensing.</explanation>
             <filename>${installdir}/Ikemen_Mugen_Files.zip</filename>
-            <url>http://download1481.mediafire.com/zp7ssz5az7ig/i2u70ordfjqj186/Ikemen+Mugen+Files.zip</url>
+            <progressText>Downloading Mugen dependencies</progressText>
+            <show>0</show>
+            <url>http://download2263.mediafire.com/aq5999315w2g/52o0t9e478ax2m7/Ikemen_Mugen_Files.zip</url>
         </httpGet>
-        <runProgram>
-            <program>${installdir}/post_install.sh</program>
-            <programArguments>${installdir}</programArguments>
-            <useMSDOSPath>0</useMSDOSPath>
-            <workingDirectory>${installdir}</workingDirectory>
-        </runProgram>
+        <unzip>
+            <abortOnError>0</abortOnError>
+            <addToUninstaller>0</addToUninstaller>
+            <destinationDirectory>${installdir}</destinationDirectory>
+            <explanation>Extracting downloaded dependencies</explanation>
+            <progressText>Extracting downloaded dependencies</progressText>
+            <show>0</show>
+            <showMessageOnError>0</showMessageOnError>
+            <zipFile>${installdir}/Ikemen_Mugen_Files.zip</zipFile>
+        </unzip>
+        <copyFile>
+            <destination>${installdir}</destination>
+            <origin>${installdir}/Ikemen Mugen Files/*</origin>
+        </copyFile>
+        <deleteFile>
+            <path>${installdir}/Ikemen Mugen Files</path>
+        </deleteFile>
     </postInstallationActionList>
     <enableRollback>1</enableRollback>
     <enableTimestamp>1</enableTimestamp>
+    <outputDirectory>${build_project_directory}</outputDirectory>
     <saveRelativePaths>1</saveRelativePaths>
-    <vendor>Ikemen community</vendor>
+    <vendor>Ikemen GO Plus community</vendor>
     <parameterList>
         <directoryParameter>
             <name>installdir</name>
