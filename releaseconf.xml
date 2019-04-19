@@ -1,7 +1,7 @@
 <project>
     <shortName>IkemenGOPlus</shortName>
     <fullName>Ikemen_GO_Plus</fullName>
-    <version>0.6</version>
+    <version>0.1</version>
     <readmeFile>${build_project_directory}/README.md</readmeFile>
     <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
     <componentList>
@@ -114,7 +114,7 @@
             <filename>${installdir}/Ikemen_Mugen_Files.zip</filename>
             <progressText>Downloading Mugen dependencies</progressText>
             <show>0</show>
-            <url>http://download2263.mediafire.com/aq5999315w2g/52o0t9e478ax2m7/Ikemen_Mugen_Files.zip</url>
+            <url>https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna</url>
         </httpGet>
         <unzip>
             <abortOnError>0</abortOnError>
@@ -135,6 +135,7 @@
         </deleteFile>
     </postInstallationActionList>
     <enableRollback>1</enableRollback>
+    <enableSslSupport>1</enableSslSupport>
     <enableTimestamp>1</enableTimestamp>
     <outputDirectory>${build_project_directory}</outputDirectory>
     <saveRelativePaths>1</saveRelativePaths>

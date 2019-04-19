@@ -10,3 +10,4 @@
 /debug/*
 data/config.json
 .idea/*
+releaseconf.xml.backup
