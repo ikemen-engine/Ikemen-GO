@@ -2,7 +2,7 @@
 IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
 
 ## Installing
-Installation bundles for windows, mac and linux are provided in the [releases](releases) section.
+Installation bundles for windows, mac and linux are provided in the releases section.
 Download, execute, follow the wizard instructions.
 
 
@@ -29,7 +29,7 @@ Check the insturctions [here](Build_mac.md)
 Check the instructions [here](Build_linux.md)
 
 ### Debugging
-Download the Mugen dependencies and add them to Ikemen_GO source dir. Then use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
+Download the [Mugen dependencies](https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna) and unpack them into the Ikemen_GO source dir. Then, use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
 
 ### Cross-compiling binaries with docker (linux/windows/mac)
 The easiest way to compile binaries for other platforms is with docker.
@@ -42,7 +42,7 @@ Open a terminal, go to Ikemen source dir folder and then run the script build_do
 Look inside the script for details on how it works.
 
 ### Preparing for release
-Before generating the install bundle, first make sure the binaries for Ikemen_GO are properly generated. 
+Before generating the install bundle, first make sure that the binaries for Ikemen_GO are properly generated. 
 Download and install [InstallBuilder](https://installbuilder.bitrock.com).
 Once finished, open the program, then open the file releaseconf.xml.
 Click in Build.
