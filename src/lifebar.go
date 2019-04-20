@@ -580,12 +580,14 @@ func (c *LifeBarCombo) reset() {
 	c.counterX = [...]float32{c.start_x * 2, c.start_x * 2}
 	c.shaketime = [2]int32{}
 }
+
 func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 	haba := func(n int32) float32 {
 		if c.counter_font[0] < 0 || int(c.counter_font[0]) >= len(f) {
 			return 0
 		}
-		return float32(f[c.counter_font[0]].TextWidth(fmt.Sprintf("%v", n)))
+		return float32(f[c.counter_font[0]].TextWidth(fmt.Sprintf("%v", n)))*
+					c.text_lay.scale[0]
 	}
 	for i := range c.cur {
 		if c.resttime[i] <= 0 && c.counterX[i] == c.start_x*2 {
