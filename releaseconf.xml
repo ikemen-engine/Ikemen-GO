@@ -1,0 +1,163 @@
+<project>
+    <shortName>IkemenGOPlus</shortName>
+    <fullName>Ikemen GO Plus</fullName>
+    <version>0.1</version>
+    <readmeFile>${build_project_directory}/README.md</readmeFile>
+    <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
+    <componentList>
+        <component>
+            <name>default</name>
+            <description>Default Component</description>
+            <canBeEdited>1</canBeEdited>
+            <selected>1</selected>
+            <show>1</show>
+            <folderList>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfiles</name>
+                    <platforms>all</platforms>
+                    <distributionFileList>
+                        <distributionDirectory>
+                            <origin>data</origin>
+                        </distributionDirectory>
+                        <distributionDirectory>
+                            <origin>script</origin>
+                        </distributionDirectory>
+                        <distributionFile>
+                            <origin>LICENSE.txt</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>README.md</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                    <shortcutList>
+                        <shortcut>
+                            <comment>Uninstall</comment>
+                            <exec>${installdir}/${uninstallerName}</exec>
+                            <icon></icon>
+                            <name>Uninstall ${product_fullname}</name>
+                            <path>${installdir}</path>
+                            <platforms>all</platforms>
+                            <runAsAdmin>0</runAsAdmin>
+                            <runInTerminal>0</runInTerminal>
+                            <windowsExec>${installdir}/${uninstallerName}.exe</windowsExec>
+                            <windowsExecArgs></windowsExecArgs>
+                            <windowsIcon></windowsIcon>
+                            <windowsPath>${installdir}</windowsPath>
+                        </shortcut>
+                    </shortcutList>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfileslinux</name>
+                    <platforms>linux</platforms>
+                    <distributionFileList>
+                        <distributionFile>
+                            <origin>Ikemen_GO_linux</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>Ikemen_GO.command</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfileswindows</name>
+                    <platforms>windows</platforms>
+                    <distributionFileList>
+                        <distributionFile>
+                            <origin>Ikemen_GO.exe</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfilesosx</name>
+                    <platforms>osx</platforms>
+                    <distributionFileList>
+                        <distributionFile>
+                            <origin>Ikemen_GO_mac</origin>
+                        </distributionFile>
+                        <distributionFile>
+                            <origin>Ikemen_GO.command</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                </folder>
+                <folder>
+                    <description>bundle</description>
+                    <destination>${user_home_directory}</destination>
+                    <name>install</name>
+                    <platforms>all</platforms>
+                </folder>
+            </folderList>
+            <startMenuShortcutList>
+                <startMenuShortcut>
+                    <comment>Uninstall ${product_fullname}</comment>
+                    <name>Uninstall ${product_fullname}</name>
+                    <runAsAdmin>0</runAsAdmin>
+                    <runInTerminal>0</runInTerminal>
+                    <windowsExec>${installdir}/${uninstallerName}.exe</windowsExec>
+                    <windowsExecArgs></windowsExecArgs>
+                    <windowsIcon></windowsIcon>
+                    <windowsPath>${installdir}/</windowsPath>
+                </startMenuShortcut>
+            </startMenuShortcutList>
+        </component>
+    </componentList>
+    <postInstallationActionList>
+        <httpGet>
+            <explanation>Downloading Mugen dependencies that cannot be packed together due to different licensing.</explanation>
+            <filename>${installdir}/Ikemen_Mugen_Files.zip</filename>
+            <progressText>Downloading Mugen dependencies</progressText>
+            <show>0</show>
+            <url>https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna</url>
+        </httpGet>
+        <unzip>
+            <abortOnError>0</abortOnError>
+            <addToUninstaller>0</addToUninstaller>
+            <destinationDirectory>${installdir}</destinationDirectory>
+            <explanation>Extracting downloaded dependencies</explanation>
+            <progressText>Extracting downloaded dependencies</progressText>
+            <show>0</show>
+            <showMessageOnError>0</showMessageOnError>
+            <zipFile>${installdir}/Ikemen_Mugen_Files.zip</zipFile>
+        </unzip>
+        <copyFile>
+            <destination>${installdir}</destination>
+            <origin>${installdir}/Ikemen Mugen Files/*</origin>
+        </copyFile>
+        <deleteFile>
+            <path>${installdir}/Ikemen Mugen Files</path>
+        </deleteFile>
+    </postInstallationActionList>
+    <enableRollback>1</enableRollback>
+    <enableSslSupport>1</enableSslSupport>
+    <enableTimestamp>1</enableTimestamp>
+    <outputDirectory>${build_project_directory}</outputDirectory>
+    <saveRelativePaths>1</saveRelativePaths>
+    <vendor>Ikemen GO Plus community</vendor>
+    <parameterList>
+        <directoryParameter>
+            <name>installdir</name>
+            <description>Installer.Parameter.installdir.description</description>
+            <explanation>Installer.Parameter.installdir.explanation</explanation>
+            <value></value>
+            <default>${user_home_directory}/${project.shortName}</default>
+            <allowEmptyValue>0</allowEmptyValue>
+            <cliOptionName>prefix</cliOptionName>
+            <mustBeWritable>1</mustBeWritable>
+            <mustExist>0</mustExist>
+            <width>30</width>
+        </directoryParameter>
+    </parameterList>
+    <platformOptionsList>
+        <platformOptions>
+            <platform>osx</platform>
+        </platformOptions>
+    </platformOptionsList>
+</project>
+

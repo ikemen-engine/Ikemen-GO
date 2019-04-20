@@ -1,8 +1,13 @@
 # Ikemen
 /[Gg]o/*
 /Ikemen_GO.exe
+/Ikemen_GO_mac
+/Ikemen_GO_linux
+/Ikemen_GO
+/Ikemen_GO.xml.backup
 /Chars/*
 /.vscode/*
 /debug/*
 data/config.json
-/.idea/*
+.idea/*
+releaseconf.xml.backup
