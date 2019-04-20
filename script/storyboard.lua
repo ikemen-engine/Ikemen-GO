@@ -527,7 +527,10 @@ local function f_parse(path)
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
 					320/t.info.localcoord[1],
-					240/t.info.localcoord[2]
+					240/t.info.localcoord[2],
+					t.scenedef.font[t_layer[k2].font][4],
+					t.scenedef.font[t_layer[k2].font][5],
+					t.scenedef.font[t_layer[k2].font][6]
 				)
 			end
 			--endtime

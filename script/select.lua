@@ -425,7 +425,10 @@ function select.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spac
 				x + (i - 1) * spacingX,
 				offsetY + (i - 1) * spacingY,
 				scaleX,
-				scaleY
+				scaleY,
+				f[4],
+				f[5],
+				f[6]
 			)
 			textImgDraw(data)
 		end
@@ -1011,11 +1014,36 @@ end
 --;===========================================================
 --; SELECT SCREEN
 --;===========================================================
-local txt_p1Name = main.f_createTextImg(motif.font_data[motif.select_info.p1_name_font[1]], motif.select_info.p1_name_font[2], motif.select_info.p1_name_font[3], '', 0, 0, motif.select_info.p1_name_font_scale[1], motif.select_info.p1_name_font_scale[2])
+local txt_p1Name = main.f_createTextImg(
+	motif.font_data[motif.select_info.p1_name_font[1]],
+	motif.select_info.p1_name_font[2],
+	motif.select_info.p1_name_font[3],
+	'',
+	0,
+	0,
+	motif.select_info.p1_name_font_scale[1],
+	motif.select_info.p1_name_font_scale[2],
+	motif.select_info.p1_name_font[4],
+	motif.select_info.p1_name_font[5],
+	motif.select_info.p1_name_font[6]
+)
+
 local p1RandomCount = 0
 local p1RandomPortrait = 0
 if #main.t_randomChars > 0 then p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)] end
-local txt_p2Name = main.f_createTextImg(motif.font_data[motif.select_info.p2_name_font[1]], motif.select_info.p2_name_font[2], motif.select_info.p2_name_font[3], '', 0, 0, motif.select_info.p2_name_font_scale[1], motif.select_info.p2_name_font_scale[2])
+local txt_p2Name = main.f_createTextImg(
+	motif.font_data[motif.select_info.p2_name_font[1]], 
+	motif.select_info.p2_name_font[2], 
+	motif.select_info.p2_name_font[3], 
+	'', 
+	0, 
+	0, 
+	motif.select_info.p2_name_font_scale[1],
+	motif.select_info.p2_name_font_scale[2],
+	motif.select_info.p2_name_font[4],
+	motif.select_info.p2_name_font[5],
+	motif.select_info.p2_name_font[6]
+)
 local p2RandomCount = 0
 local p2RandomPortrait = 0
 if #main.t_randomChars > 0 then p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)] end
@@ -1223,7 +1251,10 @@ local txt_p1TeamSelfTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_selftitle_offset[1],
 	motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_selftitle_offset[2],
 	motif.select_info.p1_teammenu_selftitle_font_scale[1],
-	motif.select_info.p1_teammenu_selftitle_font_scale[2]
+	motif.select_info.p1_teammenu_selftitle_font_scale[2],
+	motif.select_info.p1_teammenu_selftitle_font[4],
+	motif.select_info.p1_teammenu_selftitle_font[5],
+	motif.select_info.p1_teammenu_selftitle_font[6]
 )
 local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.font_data[motif.select_info.p1_teammenu_enemytitle_font[1]],
@@ -1233,7 +1264,10 @@ local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_enemytitle_offset[1],
 	motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_enemytitle_offset[2],
 	motif.select_info.p1_teammenu_enemytitle_font_scale[1],
-	motif.select_info.p1_teammenu_enemytitle_font_scale[2]
+	motif.select_info.p1_teammenu_enemytitle_font_scale[2],
+	motif.select_info.p1_teammenu_enemytitle_font[4],
+	motif.select_info.p1_teammenu_enemytitle_font[5],
+	motif.select_info.p1_teammenu_enemytitle_font[6]
 )
 local t_p1TeamMenu = {
 	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
@@ -1341,7 +1375,10 @@ function select.f_p1TeamMenu()
 					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
 					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
 					motif.select_info[p1TeamActiveFont .. '_scale'][1],
-					motif.select_info[p1TeamActiveFont .. '_scale'][2]
+					motif.select_info[p1TeamActiveFont .. '_scale'][2],
+					motif.select_info[p1TeamActiveFont][4],
+					motif.select_info[p1TeamActiveFont][5],
+					motif.select_info[p1TeamActiveFont][6]
 				))
 			else
 				--Draw team not active font
@@ -1354,7 +1391,10 @@ function select.f_p1TeamMenu()
 					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
 					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
 					motif.select_info.p1_teammenu_item_font_scale[1],
-					motif.select_info.p1_teammenu_item_font_scale[2]
+					motif.select_info.p1_teammenu_item_font_scale[2],
+					motif.select_info.p1_teammenu_item_font[4],
+					motif.select_info.p1_teammenu_item_font[5],
+					motif.select_info.p1_teammenu_item_font[6]
 				))
 			end
 			--Draw team icons
@@ -1442,7 +1482,10 @@ local txt_p2TeamSelfTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_selftitle_offset[1],
 	motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_selftitle_offset[2],
 	motif.select_info.p2_teammenu_selftitle_font_scale[1],
-	motif.select_info.p2_teammenu_selftitle_font_scale[2]
+	motif.select_info.p2_teammenu_selftitle_font_scale[2],
+	motif.select_info.p2_teammenu_selftitle_font[4],
+	motif.select_info.p2_teammenu_selftitle_font[5],
+	motif.select_info.p2_teammenu_selftitle_font[6]
 )
 local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.font_data[motif.select_info.p2_teammenu_enemytitle_font[1]],
@@ -1452,7 +1495,10 @@ local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_enemytitle_offset[1],
 	motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_enemytitle_offset[2],
 	motif.select_info.p2_teammenu_enemytitle_font_scale[1],
-	motif.select_info.p2_teammenu_enemytitle_font_scale[2]
+	motif.select_info.p2_teammenu_enemytitle_font_scale[2],
+	motif.select_info.p2_teammenu_enemytitle_font[4],
+	motif.select_info.p2_teammenu_enemytitle_font[5],
+	motif.select_info.p2_teammenu_enemytitle_font[6]
 )
 local t_p2TeamMenu = {
 	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
@@ -1571,7 +1617,10 @@ function select.f_p2TeamMenu()
 					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
 					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
 					motif.select_info[p2TeamActiveFont .. '_scale'][1],
-					motif.select_info[p2TeamActiveFont .. '_scale'][2]
+					motif.select_info[p2TeamActiveFont .. '_scale'][2],
+					motif.select_info[p2TeamActiveFont][4],
+					motif.select_info[p2TeamActiveFont][5],
+					motif.select_info[p2TeamActiveFont][6]
 				))
 			else
 				--Draw team not active font
@@ -1584,7 +1633,10 @@ function select.f_p2TeamMenu()
 					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
 					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
 					motif.select_info.p2_teammenu_item_font_scale[1],
-					motif.select_info.p2_teammenu_item_font_scale[2]
+					motif.select_info.p2_teammenu_item_font_scale[2],
+					motif.select_info.p2_teammenu_item_font[4],
+					motif.select_info.p2_teammenu_item_font[5],
+					motif.select_info.p2_teammenu_item_font[6]
 				))
 			end
 			--Draw team icons
@@ -1831,7 +1883,10 @@ function select.f_stageMenu()
 			motif.select_info.stage_pos[1] + (i - 1) * motif.select_info.stage_text_spacing[1],
 			motif.select_info.stage_pos[2] + (i - 1) * motif.select_info.stage_text_spacing[2],
 			motif.select_info[stageActiveFont .. '_scale'][1],
-			motif.select_info[stageActiveFont .. '_scale'][2]
+			motif.select_info[stageActiveFont .. '_scale'][2],
+			motif.select_info[stageActiveFont][4],
+			motif.select_info[stageActiveFont][5],
+			motif.select_info[stageActiveFont][6]
 		))
 	end
 end
@@ -1839,9 +1894,45 @@ end
 --;===========================================================
 --; VERSUS SCREEN
 --;===========================================================
-local txt_p1NameVS = main.f_createTextImg(motif.font_data[motif.vs_screen.p1_name_font[1]], motif.vs_screen.p1_name_font[2], motif.vs_screen.p1_name_font[3], '', 0, 0, motif.vs_screen.p1_name_font_scale[1], motif.vs_screen.p1_name_font_scale[2])
-local txt_p2NameVS = main.f_createTextImg(motif.font_data[motif.vs_screen.p2_name_font[1]], motif.vs_screen.p2_name_font[2], motif.vs_screen.p2_name_font[3], '', 0, 0, motif.vs_screen.p2_name_font_scale[1], motif.vs_screen.p2_name_font_scale[2])
-local txt_matchNo = main.f_createTextImg(motif.font_data[motif.vs_screen.match_font[1]], motif.vs_screen.match_font[2], motif.vs_screen.match_font[3], '', motif.vs_screen.match_offset[1], motif.vs_screen.match_offset[2], motif.vs_screen.match_font_scale[1], motif.vs_screen.match_font_scale[2])
+local txt_p1NameVS = main.f_createTextImg(
+	motif.font_data[motif.vs_screen.p1_name_font[1]], 
+	motif.vs_screen.p1_name_font[2], 
+	motif.vs_screen.p1_name_font[3], 
+	'', 
+	0, 
+	0, 
+	motif.vs_screen.p1_name_font_scale[1], 
+	motif.vs_screen.p1_name_font_scale[2],
+	motif.vs_screen.p1_name_font[4], 
+	motif.vs_screen.p1_name_font[5], 
+	motif.vs_screen.p1_name_font[6]
+)
+local txt_p2NameVS = main.f_createTextImg(
+	motif.font_data[motif.vs_screen.p2_name_font[1]], 
+	motif.vs_screen.p2_name_font[2], 
+	motif.vs_screen.p2_name_font[3], 
+	'', 
+	0, 
+	0, 
+	motif.vs_screen.p2_name_font_scale[1], 
+	motif.vs_screen.p2_name_font_scale[2],
+	motif.vs_screen.p2_name_font[4], 
+	motif.vs_screen.p2_name_font[5], 
+	motif.vs_screen.p2_name_font[6]
+)
+local txt_matchNo = main.f_createTextImg(
+	motif.font_data[motif.vs_screen.match_font[1]], 
+	motif.vs_screen.match_font[2], 
+	motif.vs_screen.match_font[3], 
+	'', 
+	motif.vs_screen.match_offset[1], 
+	motif.vs_screen.match_offset[2], 
+	motif.vs_screen.match_font_scale[1], 
+	motif.vs_screen.match_font_scale[2],
+	motif.vs_screen.match_font[4], 
+	motif.vs_screen.match_font[5], 
+	motif.vs_screen.match_font[6]
+)
 
 function select.f_selectVersus()
 	local text = main.f_extractText(motif.vs_screen.match_text, matchNo)
@@ -2128,7 +2219,10 @@ local txt_resultSurvival = main.f_createTextImg(
 	motif.survival_results_screen.winstext_offset[1],
 	motif.survival_results_screen.winstext_offset[2],
 	motif.survival_results_screen.winstext_font_scale[1],
-	motif.survival_results_screen.winstext_font_scale[2]
+	motif.survival_results_screen.winstext_font_scale[2],
+	motif.survival_results_screen.winstext_font[4],
+	motif.survival_results_screen.winstext_font[5],
+	motif.survival_results_screen.winstext_font[6]
 )
 local txt_resultVS100 = main.f_createTextImg(
 	motif.font_data[motif.vs100kumite_results_screen.winstext_font[1]],
@@ -2138,7 +2232,10 @@ local txt_resultVS100 = main.f_createTextImg(
 	motif.vs100kumite_results_screen.winstext_offset[1],
 	motif.vs100kumite_results_screen.winstext_offset[2],
 	motif.vs100kumite_results_screen.winstext_font_scale[1],
-	motif.vs100kumite_results_screen.winstext_font_scale[2]
+	motif.vs100kumite_results_screen.winstext_font_scale[2],
+	motif.survival_results_screen.winstext_font[4],
+	motif.survival_results_screen.winstext_font[5],
+	motif.survival_results_screen.winstext_font[6]
 )
 
 function select.f_result(state)
@@ -2200,7 +2297,19 @@ end
 --;===========================================================
 --; VICTORY SCREEN
 --;===========================================================
-local txt_winquote = main.f_createTextImg(motif.font_data[motif.victory_screen.winquote_font[1]], motif.victory_screen.winquote_font[2], motif.victory_screen.winquote_font[3], '', 0, 0, motif.victory_screen.winquote_font_scale[1], motif.victory_screen.winquote_font_scale[2])
+local txt_winquote = main.f_createTextImg(
+	motif.font_data[motif.victory_screen.winquote_font[1]], 
+	motif.victory_screen.winquote_font[2], 
+	motif.victory_screen.winquote_font[3], 
+	'', 
+	0, 
+	0, 
+	motif.victory_screen.winquote_font_scale[1], 
+	motif.victory_screen.winquote_font_scale[2],
+	motif.victory_screen.winquote_font[4],
+	motif.victory_screen.winquote_font[5],
+	motif.victory_screen.winquote_font[6]
+)
 local txt_p1_winquoteName = main.f_createTextImg(
 	motif.font_data[motif.victory_screen.p1_name_font[1]],
 	motif.victory_screen.p1_name_font[2],
@@ -2209,7 +2318,10 @@ local txt_p1_winquoteName = main.f_createTextImg(
 	motif.victory_screen.p1_name_offset[1],
 	motif.victory_screen.p1_name_offset[2],
 	motif.victory_screen.p1_name_font_scale[1],
-	motif.victory_screen.p1_name_font_scale[2]
+	motif.victory_screen.p1_name_font_scale[2],
+	motif.victory_screen.p1_name_font[4],
+	motif.victory_screen.p1_name_font[5],
+	motif.victory_screen.p1_name_font[6]
 )
 local txt_p2_winquoteName = main.f_createTextImg(
 	motif.font_data[motif.victory_screen.p2_name_font[1]],
@@ -2219,7 +2331,10 @@ local txt_p2_winquoteName = main.f_createTextImg(
 	motif.victory_screen.p2_name_offset[1],
 	motif.victory_screen.p2_name_offset[2],
 	motif.victory_screen.p2_name_font_scale[1],
-	motif.victory_screen.p2_name_font_scale[2]
+	motif.victory_screen.p2_name_font_scale[2],
+	motif.victory_screen.p2_name_font[4],
+	motif.victory_screen.p2_name_font[5],
+	motif.victory_screen.p2_name_font[6]
 )
 
 function select.f_selectVictory()
@@ -2328,7 +2443,10 @@ local txt_credits = main.f_createTextImg(
 	motif.continue_screen.credits_offset[1],
 	motif.continue_screen.credits_offset[2],
 	motif.continue_screen.credits_font_scale[1],
-	motif.continue_screen.credits_font_scale[2]
+	motif.continue_screen.credits_font_scale[2],
+	motif.continue_screen.credits_font[4],
+    motif.continue_screen.credits_font[5],
+    motif.continue_screen.credits_font[6]
 )
 
 function select.f_continue()
