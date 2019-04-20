@@ -1,6 +1,6 @@
 <project>
     <shortName>IkemenGOPlus</shortName>
-    <fullName>Ikemen_GO_Plus</fullName>
+    <fullName>Ikemen GO Plus</fullName>
     <version>0.1</version>
     <readmeFile>${build_project_directory}/README.md</readmeFile>
     <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
