@@ -522,6 +522,9 @@ func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	return pl.Get(int(s.palidx))
 }
 func (s *Sprite) SetPxl(px []byte) {
+	if len(px) == 0 {
+		return
+	}
 	if int64(len(px)) != int64(s.Size[0])*int64(s.Size[1]) {
 		return
 	}

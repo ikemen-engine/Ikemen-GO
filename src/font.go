@@ -413,7 +413,11 @@ func (f *Fnt) TextWidth(txt string) (w int32) {
 }
 
 func (f *Fnt) SetColor(r, g, b, alphaSrc, alphaDst float32) {
-
+    if f.Type == "truetype" {
+        f.ttf.SetColor(r, g, b, 1)
+        return
+    }
+    
 	rNormalized := Max(0, Min(255, int32(r)))
 	gNormalized := Max(0, Min(255, int32(g)))
 	bNormalized := Max(0, Min(255, int32(b)))
@@ -487,6 +491,19 @@ func (f *Fnt) drawChar(
 	//}
 
 	return float32(spr.Size[0]) * xscl
+}
+
+func (f *Fnt) Print(txt string,
+                    x, y, xscl, yscl float32,
+                    bank, align int32,
+) {
+    if !sys.frameSkip{
+        if f.Type == "truetype" {
+            f.ttf.Printf(x, y, yscl, align, false, txt) //x, y, scale, align, string, printf args
+        } else {
+            f.DrawText(txt, x, y, xscl, yscl, bank, align)
+        }
+    }
 }
 
 //DrawText prints on screen a specified text with the current font sprites

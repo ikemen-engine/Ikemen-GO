@@ -324,6 +324,14 @@ func systemScriptInit(l *lua.LState) {
 		ts.text = strArg(l, 2)
 		return 0
 	})
+    luaRegister(l, "textImgSetColor", func(*lua.LState) int {
+        ts, ok := toUserData(l, 1).(*TextSprite)
+        if !ok {
+            userDataError(l, 1, ts)
+        }
+        ts.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
+        return 0
+    })
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {

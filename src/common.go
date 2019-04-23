@@ -613,7 +613,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		if l.vfacing < 0 {
 			y += sys.lifebarFontScale
 		}
-		f.DrawText(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
+		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a)
 	}
