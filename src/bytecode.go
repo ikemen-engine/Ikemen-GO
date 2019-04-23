@@ -359,6 +359,7 @@ const (
 	OC_ex_timemod
 	OC_ex_majorversion
 	OC_ex_drawpalno
+	OC_ex_maparray
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -1557,6 +1558,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
+	case OC_ex_maparray:
+		sys.bcStack.PushI(c.gi().mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5697,6 +5701,37 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	})
 	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
 	sys.zoomPos[1] = zoompos[1]
+	return false
+}
+
+type mapSet StateControllerBase
+
+const (
+	mapSet_mapArray byte = iota
+	mapSet_value
+	mapSet_redirectid
+)
+
+func (sc mapSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	var s string
+	var value int32
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case mapSet_mapArray:
+			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case mapSet_value:
+			value = exp[0].evalI(c)
+		case mapSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	crun.mapSet(s, value)
 	return false
 }
 

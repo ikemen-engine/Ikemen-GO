@@ -124,6 +124,7 @@ func newCompiler() *Compiler {
 		"offset":             c.offset,
 		"victoryquote":       c.victoryQuote,
 		"zoom":               c.zoom,
+		"mapset":             c.mapSet,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -2022,6 +2023,17 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_majorversion)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
+	case "map":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(
+			strings.ToLower(c.token))))
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(); err != nil {
+			return bvNone(), err
+		}
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
@@ -6204,6 +6216,32 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+
+func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			mapSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "map", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil

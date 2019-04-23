@@ -1369,6 +1369,7 @@ type CharGlobalInfo struct {
 	unhittable       int32
 	quotes           [MaxQuotes]string
 	portraitscale    float32
+	mapArray         map[string]int32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1636,13 +1637,14 @@ func (c *Char) load(def string) error {
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
 	}
+	gi.mapArray = make(map[string]int32)
 	str, err := LoadText(def)
 	if err != nil {
 		return err
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
-	info, files, keymap := true, true, true
+	info, files, keymap, mapArray := true, true, true, true
 	c.localcoord = 320
 	c.localscl = 1
 	for i < len(lines) {
@@ -1687,6 +1689,15 @@ func (c *Char) load(def string) error {
 						}
 						gi.palkeymap[i] = i32 - 1
 					}
+				}
+			}
+		case "map":
+			if mapArray {
+				mapArray = false
+				for key, value := range is {
+					keylow := strings.ToLower(key)
+					intValue := Atoi(value)
+					gi.mapArray[keylow] = intValue
 				}
 			}
 		}
@@ -3811,6 +3822,13 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	for i := range pfx.remap {
 		pfx.remap[i] = di
 	}
+}
+func (c *Char) mapSet(s string, Value int32) {
+	if s == "" {
+		return
+	}
+	key := strings.ToLower(s)
+	c.gi().mapArray[key] = Value
 }
 func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
