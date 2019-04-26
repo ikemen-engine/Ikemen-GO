@@ -228,8 +228,8 @@ func main() {
 		fmt.Print(err)
 	}
 	sys.commonCmd = string("\n") + string(cmd)
-	os.Mkdir("debug", os.ModeSticky|0755)
-	log := createLog("debug/log.txt")
+	//os.Mkdir("debug", os.ModeSticky|0755)
+	log := createLog("Ikemen.txt")
 	defer closeLog(log)
 	l := sys.init(tmp.Width, tmp.Height)
 	if err := l.DoFile(tmp.System); err != nil {
