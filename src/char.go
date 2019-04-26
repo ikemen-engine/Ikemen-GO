@@ -4893,9 +4893,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv := &getter.ghv
 				cmb := (getter.ss.moveType == MT_H || getter.sf(CSF_gethit)) &&
 					!ghv.guarded
-				fall, hc, fc, by := ghv.fallf, ghv.hitcount, ghv.fallcount, ghv.hitBy
+				fall, hc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.fallcount, ghv.hitBy, ghv.damage
 				ghv.clear()
 				ghv.hitBy = by
+				ghv.damage = dmg
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
@@ -5252,7 +5253,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.time = hd.envshake_time
 				sys.envShake.freq = hd.envshake_freq * float32(math.Pi) / 180
 				sys.envShake.ampl = int32(float32(hd.envshake_ampl) * c.localscl)
-				sys.envShake.phase = hd.envshake_phase * c.localscl
+				sys.envShake.phase = hd.envshake_phase
 				sys.envShake.setDefPhase()
 			}
 			getter.getcombo += hd.numhits * hits
@@ -5300,7 +5301,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 	if proj {
 		for i, pr := range sys.projs {
-			if i == getter.playerNo || len(sys.projs[i]) == 0 {
+			if i == getter.playerNo && getter.helperIndex == 0 || len(sys.projs[i]) == 0 {
 				continue
 			}
 			c := sys.chars[i][0]

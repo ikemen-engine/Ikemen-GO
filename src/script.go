@@ -324,14 +324,14 @@ func systemScriptInit(l *lua.LState) {
 		ts.text = strArg(l, 2)
 		return 0
 	})
-    luaRegister(l, "textImgSetColor", func(*lua.LState) int {
-        ts, ok := toUserData(l, 1).(*TextSprite)
-        if !ok {
-            userDataError(l, 1, ts)
-        }
-        ts.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
-        return 0
-    })
+	luaRegister(l, "textImgSetColor", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
+		return 0
+	})
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
@@ -1132,13 +1132,12 @@ func systemScriptInit(l *lua.LState) {
 		if sys.keyInput != glfw.KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
-
 		for j := 0; j < 2; j++ {
 			if glfw.JoystickPresent(joystick[j]) {
 				axes := glfw.GetJoystickAxes(joystick[j])
 				btns := glfw.GetJoystickButtons(joystick[j])
 				for i := range axes {
-					if i > 3 && len(axes) == 6 && len(btns) == 14 { //Xboxコントローラー判定（glfwがバージョンアップすればもっとちゃんと判別できるようになるはず）
+					if glfw.GetJoystickName(joystick[j]) == "Xbox 360 Controller" { //Xbox360コントローラー判定
 						if axes[i] > 0 {
 							s = strconv.Itoa(-i*2 - 1)
 						}
