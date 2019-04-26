@@ -672,7 +672,7 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 				x = -c.counterX[i]
 			}
 			if c.teamMode == false {
-				x += 320*sys.lifebarScale - float32(c.pos[i][0])
+				x += 320 / sys.lifebarScale - sys.lifebarOffsetX * 2 - float32(c.pos[i][0])
 			} else {
 				x += float32(c.pos[i][0])
 			}
