@@ -70,6 +70,8 @@ var sys = System{
 	luaSpriteOffsetX:      0,
 	lifebarScale:          1,
 	lifebarOffsetX:        0,
+	
+	PostProcessingShader: 0,
 }
 
 type TeamMode int32
@@ -245,6 +247,8 @@ type System struct {
 
 	lifebarScale   float32
 	lifebarOffsetX float32
+	
+	PostProcessingShader int32
 }
 
 func (s *System) init(w, h int32) *lua.LState {
@@ -326,7 +330,12 @@ func (s *System) runMainThreadTask() {
 }
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
+		// Render the finished frame
+		unbindFB()
 		s.window.SwapBuffers()
+		
+		// Begin the next frame
+		bindFB()
 	}
 	s.runMainThreadTask()
 	now := time.Now()
@@ -349,10 +358,6 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {
-		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))
-		gl.Clear(gl.COLOR_BUFFER_BIT)
-	}
 	return !s.gameEnd
 }
 func (s *System) update() bool {
