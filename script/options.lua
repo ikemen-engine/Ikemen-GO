@@ -708,6 +708,11 @@ end
 --;===========================================================
 --; VIDEO SETTINGS
 --;===========================================================
+local t_shaderNames = {}
+t_shaderNames[0] = "No shader"
+t_shaderNames[1] = "hqx2"
+t_shaderNames[2] = "hqx4"
+
 local t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
@@ -721,6 +726,7 @@ local t_videoCfg = {
 	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_video_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
 	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_video_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_video_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)},
+	{data = textImgNew(), itemname = 'postprocessingshader', displayname = "Shader", vardata = textImgNew(), vardisplay = t_shaderNames[config.PostProcessingShader]},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 t_videoCfg = main.f_cleanTable(t_videoCfg)
@@ -887,7 +893,22 @@ function options.f_videoCfg()
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)
 			modified = 1
-		--Back
+			
+		-- Postprocessing
+		elseif t[item].itemname == 'postprocessingshader' then
+			if commandGetState(main.p1Cmd, 'r') and config.PostProcessingShader < #t_shaderNames then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.PostProcessingShader = config.PostProcessingShader + 1
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.PostProcessingShader > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.PostProcessingShader = config.PostProcessingShader - 1
+				modified = 1
+				needReload = 1
+			end
+			t[item].vardisplay = t_shaderNames[config.PostProcessingShader]
+			--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			break

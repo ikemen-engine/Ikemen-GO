@@ -122,6 +122,7 @@ func main() {
   "AIRandomColor":true,
   "AIRamping":true,
   "AutoGuard":false,
+  "PostProcessingShader": 0,
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
@@ -155,6 +156,7 @@ func main() {
 		AIRandomColor  bool
 		Fullscreen     bool
 		AllowDebugKeys bool
+		PostProcessingShader int32
 		CommonAir      string
 		CommonCmd      string
 		QuickLaunch    bool
@@ -216,6 +218,7 @@ func main() {
 	}
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
+	sys.PostProcessingShader = tmp.PostProcessingShader
 	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)
