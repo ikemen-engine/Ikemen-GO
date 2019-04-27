@@ -358,6 +358,10 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
+	if !s.frameSkip {	
+		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))	
+		gl.Clear(gl.COLOR_BUFFER_BIT)	
+	}
 	return !s.gameEnd
 }
 func (s *System) update() bool {

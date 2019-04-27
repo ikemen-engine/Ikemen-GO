@@ -127,6 +127,7 @@ func main() {
   "TeamLifeShare":false,
   "Fullscreen":false,
   "AllowDebugKeys":true,
+  "PostProcessingShader":0,
   "IP":{
   }
 }
