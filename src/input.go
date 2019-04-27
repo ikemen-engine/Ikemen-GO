@@ -625,7 +625,7 @@ func JoystickState(joy, button int) bool {
 		if len(axes)*2 <= button {
 			return false
 		}
-		if (button == 8 || button == 10) && len(axes) == 6 && len(btns) == 14 { //XboxコントローラーのLRトリガー判定（glfwがバージョンアップすればもっとちゃんと判別できるようになるはず）
+		if (button == 8 || button == 10) && glfw.GetJoystickName(joystick[joy]) == "Xbox 360 Controller" { //Xbox360コントローラーのLRトリガー判定
 			return axes[button/2] > 0
 		}
 		switch button & 1 {
