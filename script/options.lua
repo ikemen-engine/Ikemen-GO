@@ -710,8 +710,9 @@ end
 --;===========================================================
 local t_shaderNames = {}
 t_shaderNames[0] = "No shader"
-t_shaderNames[1] = "hqx2"
-t_shaderNames[2] = "hqx4"
+t_shaderNames[1] = "hq2x"
+t_shaderNames[2] = "hq4x"
+t_shaderNames[3] = "scanline"
 
 local t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},

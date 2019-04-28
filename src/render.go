@@ -27,7 +27,7 @@ var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect [3]uintptr
+var postShaderSelect [4]uintptr
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -178,24 +178,31 @@ func RenderInit() {
 	gl.DeleteObjectARB(fragObj)
 	
 	// [1]: hqx2 shader
-	vertObj = compile(gl.VERTEX_SHADER, hqx2VertShader)
-	fragObj = compile(gl.FRAGMENT_SHADER, hqx2FragShader)
+	vertObj = compile(gl.VERTEX_SHADER, hq2xVertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, hq2xFragShader)
 	postShaderSelect[1] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
 	
 	// [2]: hqx4 shader
-	vertObj = compile(gl.VERTEX_SHADER, hqx4VertShader)
-	fragObj = compile(gl.FRAGMENT_SHADER, hqx4FragShader)
+	vertObj = compile(gl.VERTEX_SHADER, hq4xVertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, hq4xFragShader)
 	postShaderSelect[2] = link(vertObj, fragObj)
+	gl.DeleteObjectARB(vertObj)
+	gl.DeleteObjectARB(fragObj)
+    
+    // [3]: bicubic shader
+    vertObj = compile(gl.VERTEX_SHADER, scanlineVertShader)
+    fragObj = compile(gl.FRAGMENT_SHADER, scanlineFragShader)
+    postShaderSelect[3] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
 	
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &fbo_texture)
 	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
@@ -677,7 +684,7 @@ void main(void) {
 	gl_FragColor = texture2D(Texture, gl_TexCoord[0].xy);
 }` + "\x00"
 
-var hqx2VertShader string = `
+var hq2xVertShader string = `
 attribute vec2 VertCoord;
 uniform vec2 TextureSize;
 
@@ -705,7 +712,7 @@ void main()
 	gl_TexCoord[4].zw = gl_TexCoord[0].xy - dx;
 }` + "\x00"
 
-var hqx2FragShader string = `
+var hq2xFragShader string = `
 uniform sampler2D Texture;
 
 const float mx = 0.325;      // start smoothing wt.
@@ -752,21 +759,20 @@ const float mx = 0.325;      // start smoothing wt.
 }` + "\x00"
 
 
-var hqx4VertShader string = `
+var hq4xVertShader string = `
 attribute vec2 VertCoord;
 uniform vec2 TextureSize;
 
 void main()
 {
-	vec2 TexCoord = (VertCoord + 1.0) / 2.0;
-
-	float x = 0.001;
-    float y = 0.001;
+	float x = 1.0/TextureSize;
+    float y = 1.0/TextureSize;
 	
 	vec2 dg1 = vec2( x,y);  vec2 dg2 = vec2(-x,y);
 	vec2 sd1 = dg1*0.5;     vec2 sd2 = dg2*0.5;
 	vec2 ddx = vec2(x,0.0); vec2 ddy = vec2(0.0,y);
 	
+	vec2 TexCoord = (VertCoord + 1.0) / 2.0;
 	gl_Position = vec4(VertCoord, 0.0, 1.0);
 	
 	gl_TexCoord[0].xy = TexCoord;
@@ -784,7 +790,7 @@ void main()
 	gl_TexCoord[4].zw = gl_TexCoord[0].xy - ddx;
 }` + "\x00"
 
-var hqx4FragShader string = `
+var hq4xFragShader string = `
 uniform sampler2D Texture;
 
 const float mx = 1.00;      // start smoothing wt.
@@ -838,3 +844,29 @@ void main()
 		gl_FragColor.xyz=(w1*(i1+i3)+w2*(i2+i4)+w3*(s1+s3)+w4*(s2+s4)+c)/(2.0*(w1+w2+w3+w4)+1.0);
 		gl_FragColor.a = 1.0;
 }` + "\x00"
+
+var scanlineVertShader = `
+uniform vec2 TextureSize;
+attribute vec2 VertCoord;
+
+void main(void) {
+	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	gl_TexCoord[0].xy = (VertCoord + 1.0) / 2.0;
+}
+` + "\x00"
+
+var scanlineFragShader = `
+uniform sampler2D Texture;
+uniform vec2 TextureSize;
+
+void main(void) {
+    vec4 rgb = texture2D(Texture, gl_TexCoord[0].xy);
+    vec4 intens ;
+    if (fract(gl_FragCoord.y * (0.5*4.0/3.0)) > 0.5)
+        intens = vec4(0);
+    else
+        intens = smoothstep(0.2,0.8,rgb) + normalize(vec4(rgb.xyz, 1.0));
+    float level = (4.0-gl_TexCoord[0].z) * 0.19;
+    gl_FragColor = intens * (0.5-level) + rgb * 1.1 ;
+}
+` + "\x00"
