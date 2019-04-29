@@ -1645,8 +1645,8 @@ func (c *Char) load(def string) error {
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
 	info, files, keymap, mapArray := true, true, true, true
-	c.localcoord = 320
-	c.localscl = 1
+	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
+	c.localscl = 320 / float32(c.localcoord)
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -1662,8 +1662,11 @@ func (c *Char) load(def string) error {
 				gi.author, _, _ = is.getText("author")
 				gi.authorLow = strings.ToLower(gi.author)
 				gi.nameLow = strings.ToLower(c.name)
-				is.ReadI32("localcoord", &c.localcoord)
-				c.localscl = 320 / float32(c.localcoord)
+				ok = is.ReadI32("localcoord", &c.localcoord)
+				if ok {
+					c.localcoord = int32(float32(c.localcoord) / (float32(sys.gameWidth) / 320))
+					c.localscl = 320 / float32(c.localcoord)
+				}
 				gi.portraitscale = c.localscl
 				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
@@ -5258,8 +5261,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			getter.getcombo += hd.numhits * hits
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0] <= xmi ||
-					c.facing > 0 && getter.pos[0] >= xma) {
+				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
+					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.veloff = hd.ground_cornerpush_veloff * c.facing
@@ -5271,8 +5274,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		} else {
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0] <= xmi ||
-					c.facing > 0 && getter.pos[0] >= xma) {
+				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
+					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.veloff = hd.guard_cornerpush_veloff * c.facing
