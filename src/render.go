@@ -19,6 +19,16 @@ var posattLocation, uvattLocation int32
 var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
 var indices = [4]int32{1, 2, 0, 3}
 
+// Post-processing
+var fbo, fbo_texture, rbo_depth uint32
+var postShader uintptr
+var postVertAttrib int32
+var postTexUniform int32
+var postTexSizeUniform int32
+var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
+
+var postShaderSelect [3]uintptr
+
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
 		"attribute vec2 uv;" +
@@ -158,7 +168,75 @@ func RenderInit() {
 	uniformColor = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("color\x00"))
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
+	
+	// Compile postprocessing shaders
+	// [0]: ident shader(no postprocessing)
+	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
+	postShaderSelect[0] = link(vertObj, fragObj)
+	gl.DeleteObjectARB(vertObj)
+	gl.DeleteObjectARB(fragObj)
+	
+	// [1]: hqx2 shader
+	vertObj = compile(gl.VERTEX_SHADER, hqx2VertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, hqx2FragShader)
+	postShaderSelect[1] = link(vertObj, fragObj)
+	gl.DeleteObjectARB(vertObj)
+	gl.DeleteObjectARB(fragObj)
+	
+	// [2]: hqx4 shader
+	vertObj = compile(gl.VERTEX_SHADER, hqx4VertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, hqx4FragShader)
+	postShaderSelect[2] = link(vertObj, fragObj)
+	gl.DeleteObjectARB(vertObj)
+	gl.DeleteObjectARB(fragObj)
+	
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.GenTextures(1, &fbo_texture)
+	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+	
+	gl.GenRenderbuffers(1, &rbo_depth)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, rbo_depth)
+	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
+	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+	
+	gl.GenFramebuffers(1, &fbo)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_texture, 0)
+	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
+
+func bindFB() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
+}
+
+func unbindFB() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0);
+	
+	postShader = postShaderSelect[sys.PostProcessingShader]
+	
+	postVertAttrib = gl.GetAttribLocationARB(postShader, gl.Str("VertCoord\x00"))
+	postTexUniform = gl.GetUniformLocationARB(postShader, gl.Str("Texture\x00"))
+	postTexSizeUniform = gl.GetUniformLocationARB(postShader, gl.Str("TextureSize\x00"))
+	
+	gl.Clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+	gl.UseProgramObjectARB(postShader)
+	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
+	gl.Uniform1iARB(postTexUniform, 0)
+	gl.Uniform2fARB(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	gl.EnableVertexAttribArrayARB(uint32(postVertAttrib))
+	gl.VertexAttribPointerARB(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	gl.UseProgramObjectARB(0)
+}
+
 func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
 	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
 	switch renderMode {
@@ -581,3 +659,182 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.PopMatrix()
 	gl.Disable(gl.BLEND)
 }
+
+var identVertShader string = `
+attribute vec2 VertCoord;
+uniform vec2 TextureSize;
+
+void main()
+{
+	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	gl_TexCoord[0].xy = (VertCoord + 1.0) / 2.0;
+}` + "\x00"
+
+var identFragShader string = `
+uniform sampler2D Texture;
+
+void main(void) {
+	gl_FragColor = texture2D(Texture, gl_TexCoord[0].xy);
+}` + "\x00"
+
+var hqx2VertShader string = `
+attribute vec2 VertCoord;
+uniform vec2 TextureSize;
+
+void main()
+{
+	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	
+	vec2 TexCoord = (VertCoord + 1.0) / 2.0;
+
+	float x = 0.5 * (1.0 / TextureSize.x);
+    float y = 0.5 * (1.0 / TextureSize.y);
+    vec2 dg1 = vec2( x, y);
+    vec2 dg2 = vec2(-x, y);
+    vec2 dx = vec2(x, 0.0);
+	vec2 dy = vec2(0.0, y);
+	
+	gl_TexCoord[0].xy = TexCoord;
+    gl_TexCoord[1].xy = gl_TexCoord[0].xy - dg1;
+    gl_TexCoord[1].zw = gl_TexCoord[0].xy - dy;
+    gl_TexCoord[2].xy = gl_TexCoord[0].xy - dg2;
+    gl_TexCoord[2].zw = gl_TexCoord[0].xy + dx;
+    gl_TexCoord[3].xy = gl_TexCoord[0].xy + dg1;
+    gl_TexCoord[3].zw = gl_TexCoord[0].xy + dy;
+    gl_TexCoord[4].xy = gl_TexCoord[0].xy + dg2;
+	gl_TexCoord[4].zw = gl_TexCoord[0].xy - dx;
+}` + "\x00"
+
+var hqx2FragShader string = `
+uniform sampler2D Texture;
+
+const float mx = 0.325;      // start smoothing wt.
+  const float k = -0.250;      // wt. decrease factor
+  const float max_w = 0.25;    // max filter weigth
+  const float min_w =-0.05;    // min filter weigth
+  const float lum_add = 0.25;  // effects smoothing
+
+  void main() {
+    vec3 c00 = texture2D(Texture, gl_TexCoord[1].xy).xyz;
+    vec3 c10 = texture2D(Texture, gl_TexCoord[1].zw).xyz;
+    vec3 c20 = texture2D(Texture, gl_TexCoord[2].xy).xyz;
+    vec3 c01 = texture2D(Texture, gl_TexCoord[4].zw).xyz;
+    vec3 c11 = texture2D(Texture, gl_TexCoord[0].xy).xyz;
+    vec3 c21 = texture2D(Texture, gl_TexCoord[2].zw).xyz;
+    vec3 c02 = texture2D(Texture, gl_TexCoord[4].xy).xyz;
+    vec3 c12 = texture2D(Texture, gl_TexCoord[3].zw).xyz;
+    vec3 c22 = texture2D(Texture, gl_TexCoord[3].xy).xyz;
+    vec3 dt = vec3(1.0, 1.0, 1.0);
+
+    float md1 = dot(abs(c00 - c22), dt);
+    float md2 = dot(abs(c02 - c20), dt);
+
+    float w1 = dot(abs(c22 - c11), dt) * md2;
+    float w2 = dot(abs(c02 - c11), dt) * md1;
+    float w3 = dot(abs(c00 - c11), dt) * md2;
+    float w4 = dot(abs(c20 - c11), dt) * md1;
+
+    float t1 = w1 + w3;
+    float t2 = w2 + w4;
+    float ww = max(t1, t2) + 0.0001;
+
+    c11 = (w1 * c00 + w2 * c20 + w3 * c22 + w4 * c02 + ww * c11) / (t1 + t2 + ww);
+
+    float lc1 = k / (0.12 * dot(c10 + c12 + c11, dt) + lum_add);
+    float lc2 = k / (0.12 * dot(c01 + c21 + c11, dt) + lum_add);
+
+    w1 = clamp(lc1 * dot(abs(c11 - c10), dt) + mx, min_w, max_w);
+    w2 = clamp(lc2 * dot(abs(c11 - c21), dt) + mx, min_w, max_w);
+    w3 = clamp(lc1 * dot(abs(c11 - c12), dt) + mx, min_w, max_w);
+    w4 = clamp(lc2 * dot(abs(c11 - c01), dt) + mx, min_w, max_w);
+
+	gl_FragColor.xyz = w1 * c10 + w2 * c21 + w3 * c12 + w4 * c01 + (1.0 - w1 - w2 - w3 - w4) * c11;
+}` + "\x00"
+
+
+var hqx4VertShader string = `
+attribute vec2 VertCoord;
+uniform vec2 TextureSize;
+
+void main()
+{
+	vec2 TexCoord = (VertCoord + 1.0) / 2.0;
+
+	float x = 0.001;
+    float y = 0.001;
+	
+	vec2 dg1 = vec2( x,y);  vec2 dg2 = vec2(-x,y);
+	vec2 sd1 = dg1*0.5;     vec2 sd2 = dg2*0.5;
+	vec2 ddx = vec2(x,0.0); vec2 ddy = vec2(0.0,y);
+	
+	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	
+	gl_TexCoord[0].xy = TexCoord;
+	gl_TexCoord[1].xy = gl_TexCoord[0].xy - sd1;
+	gl_TexCoord[2].xy = gl_TexCoord[0].xy - sd2;
+	gl_TexCoord[3].xy = gl_TexCoord[0].xy + sd1;
+	gl_TexCoord[4].xy = gl_TexCoord[0].xy + sd2;
+	gl_TexCoord[5].xy = gl_TexCoord[0].xy - dg1;
+	gl_TexCoord[6].xy = gl_TexCoord[0].xy + dg1;
+	gl_TexCoord[5].zw = gl_TexCoord[0].xy - dg2;
+	gl_TexCoord[6].zw = gl_TexCoord[0].xy + dg2;
+	gl_TexCoord[1].zw = gl_TexCoord[0].xy - ddy;
+	gl_TexCoord[2].zw = gl_TexCoord[0].xy + ddx;
+	gl_TexCoord[3].zw = gl_TexCoord[0].xy + ddy;
+	gl_TexCoord[4].zw = gl_TexCoord[0].xy - ddx;
+}` + "\x00"
+
+var hqx4FragShader string = `
+uniform sampler2D Texture;
+
+const float mx = 1.00;      // start smoothing wt.
+const float k = -1.10;      // wt. decrease factor
+const float max_w = 0.75;   // max filter weigth
+const float min_w = 0.03;   // min filter weigth
+const float lum_add = 0.33; // effects smoothing
+
+void main()
+{
+		vec3 c  = texture2D(Texture, gl_TexCoord[0].xy).xyz;
+		vec3 i1 = texture2D(Texture, gl_TexCoord[1].xy).xyz;
+		vec3 i2 = texture2D(Texture, gl_TexCoord[2].xy).xyz;
+		vec3 i3 = texture2D(Texture, gl_TexCoord[3].xy).xyz;
+		vec3 i4 = texture2D(Texture, gl_TexCoord[4].xy).xyz;
+		vec3 o1 = texture2D(Texture, gl_TexCoord[5].xy).xyz;
+		vec3 o3 = texture2D(Texture, gl_TexCoord[6].xy).xyz;
+		vec3 o2 = texture2D(Texture, gl_TexCoord[5].zw).xyz;
+		vec3 o4 = texture2D(Texture, gl_TexCoord[6].zw).xyz;
+		vec3 s1 = texture2D(Texture, gl_TexCoord[1].zw).xyz;
+		vec3 s2 = texture2D(Texture, gl_TexCoord[2].zw).xyz;
+		vec3 s3 = texture2D(Texture, gl_TexCoord[3].zw).xyz;
+		vec3 s4 = texture2D(Texture, gl_TexCoord[4].zw).xyz;
+		vec3 dt = vec3(1.0,1.0,1.0);
+
+		float ko1=dot(abs(o1-c),dt);
+		float ko2=dot(abs(o2-c),dt);
+		float ko3=dot(abs(o3-c),dt);
+		float ko4=dot(abs(o4-c),dt);
+
+		float k1=min(dot(abs(i1-i3),dt),max(ko1,ko3));
+		float k2=min(dot(abs(i2-i4),dt),max(ko2,ko4));
+
+		float w1 = k2; if(ko3<ko1) w1*=ko3/ko1;
+		float w2 = k1; if(ko4<ko2) w2*=ko4/ko2;
+		float w3 = k2; if(ko1<ko3) w3*=ko1/ko3;
+		float w4 = k1; if(ko2<ko4) w4*=ko2/ko4;
+
+		c=(w1*o1+w2*o2+w3*o3+w4*o4+0.001*c)/(w1+w2+w3+w4+0.001);
+
+		w1 = k*dot(abs(i1-c)+abs(i3-c),dt)/(0.125*dot(i1+i3,dt)+lum_add);
+		w2 = k*dot(abs(i2-c)+abs(i4-c),dt)/(0.125*dot(i2+i4,dt)+lum_add);
+		w3 = k*dot(abs(s1-c)+abs(s3-c),dt)/(0.125*dot(s1+s3,dt)+lum_add);
+		w4 = k*dot(abs(s2-c)+abs(s4-c),dt)/(0.125*dot(s2+s4,dt)+lum_add);
+
+		w1 = clamp(w1+mx,min_w,max_w);
+		w2 = clamp(w2+mx,min_w,max_w);
+		w3 = clamp(w3+mx,min_w,max_w);
+		w4 = clamp(w4+mx,min_w,max_w);
+
+		gl_FragColor.xyz=(w1*(i1+i3)+w2*(i2+i4)+w3*(s1+s3)+w4*(s2+s4)+c)/(2.0*(w1+w2+w3+w4)+1.0);
+		gl_FragColor.a = 1.0;
+}` + "\x00"
