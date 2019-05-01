@@ -1559,7 +1559,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	case OC_ex_maparray:
-		sys.bcStack.PushI(c.gi().mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		sys.bcStack.PushI(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
@@ -2225,6 +2225,7 @@ const (
 	helper_supermovetime
 	helper_redirectid
 	helper_remappal
+	helper_extendsmap
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -2233,7 +2234,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	var h *Char
 	pt := PT_P1
 	var f, st int32 = 1, 0
-	op := false
+	op, extmap := false, false
 	var x, y float32 = 0, 0
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -2312,6 +2313,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
+		case helper_extendsmap:
+			extmap = exp[0].evalB(c)
 		}
 		return true
 	})
@@ -2325,7 +2328,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		h.localscl = crun.localscl
 		h.localcoord = crun.localcoord
 	}
-	crun.helperInit(h, st, pt, x, y, f, op, rp)
+	crun.helperInit(h, st, pt, x, y, f, op, rp, extmap)
 	return false
 }
 

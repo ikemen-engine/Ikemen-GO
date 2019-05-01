@@ -1369,7 +1369,6 @@ type CharGlobalInfo struct {
 	unhittable       int32
 	quotes           [MaxQuotes]string
 	portraitscale    float32
-	mapArray         map[string]int32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1495,6 +1494,7 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
+	mapArray      map[string]int32
 	aimg          AfterImage
 	sounds        Sounds
 	p1facing      float32
@@ -1534,6 +1534,8 @@ func (c *Char) init(n int, idx int32) {
 	c.animPN = c.playerNo
 	if c.helperIndex == 0 {
 		c.keyctrl, c.player = true, true
+	} else {
+		c.mapArray = make(map[string]int32)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -1637,7 +1639,7 @@ func (c *Char) load(def string) error {
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
 	}
-	gi.mapArray = make(map[string]int32)
+	c.mapArray = make(map[string]int32)
 	str, err := LoadText(def)
 	if err != nil {
 		return err
@@ -1647,6 +1649,7 @@ func (c *Char) load(def string) error {
 	info, files, keymap, mapArray := true, true, true, true
 	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
 	c.localscl = 320 / float32(c.localcoord)
+	gi.portraitscale = 1
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -1664,10 +1667,10 @@ func (c *Char) load(def string) error {
 				gi.nameLow = strings.ToLower(c.name)
 				ok = is.ReadI32("localcoord", &c.localcoord)
 				if ok {
+					gi.portraitscale = 320 / float32(c.localcoord)
 					c.localcoord = int32(float32(c.localcoord) / (float32(sys.gameWidth) / 320))
 					c.localscl = 320 / float32(c.localcoord)
 				}
-				gi.portraitscale = c.localscl
 				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
 		case "files":
@@ -1700,7 +1703,7 @@ func (c *Char) load(def string) error {
 				for key, value := range is {
 					keylow := strings.ToLower(key)
 					intValue := Atoi(value)
-					gi.mapArray[keylow] = intValue
+					c.mapArray[keylow] = intValue
 				}
 			}
 		}
@@ -2869,7 +2872,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 	return
 }
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
-	facing int32, ownpal bool, rp [2]int32) {
+	facing int32, ownpal bool, rp [2]int32, extmap bool) {
 	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
@@ -2880,6 +2883,11 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		h.palfx.remap = make([]int, len(tmp))
 		copy(h.palfx.remap, tmp)
 		c.forceRemapPal(h.palfx, rp)
+	}
+	if extmap {
+		for key, value := range c.mapArray {
+			h.mapArray[key] = value
+		}
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1)
 }
@@ -3831,7 +3839,7 @@ func (c *Char) mapSet(s string, Value int32) {
 		return
 	}
 	key := strings.ToLower(s)
-	c.gi().mapArray[key] = Value
+	c.mapArray[key] = Value
 }
 func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
