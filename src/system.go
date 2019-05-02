@@ -70,7 +70,7 @@ var sys = System{
 	luaSpriteOffsetX:      0,
 	lifebarScale:          1,
 	lifebarOffsetX:        0,
-	
+
 	PostProcessingShader: 0,
 }
 
@@ -247,7 +247,7 @@ type System struct {
 
 	lifebarScale   float32
 	lifebarOffsetX float32
-	
+
 	PostProcessingShader int32
 }
 
@@ -333,7 +333,7 @@ func (s *System) await(fps int) bool {
 		// Render the finished frame
 		unbindFB()
 		s.window.SwapBuffers()
-		
+
 		// Begin the next frame
 		bindFB()
 	}
@@ -358,9 +358,9 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {	
-		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))	
-		gl.Clear(gl.COLOR_BUFFER_BIT)	
+	if !s.frameSkip {
+		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))
+		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 	return !s.gameEnd
 }
@@ -682,7 +682,7 @@ func (s *System) tickFrame() bool {
 }
 func (s *System) tickNextFrame() bool {
 	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
-		!s.paused || s.step || s.oldTickCount >= s.tickCount
+		(!s.paused || s.step || s.oldTickCount >= s.tickCount)
 }
 func (s *System) tickInterpola() float32 {
 	if s.tickNextFrame() {
@@ -1490,9 +1490,9 @@ func (s *System) fight() (reload bool) {
 			copyVar(i)
 		}
 	}
-	if s.round == 1 {
-		s.bgm.Open(s.stage.bgmusic)
-	}
+	//if s.round == 1 {//luaから流すので必要ない
+	//	s.bgm.Open(s.stage.bgmusic)
+	//}
 	s.cam.Init()
 	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
 	s.screenright = float32(s.stage.screenright) * s.stage.localscl
