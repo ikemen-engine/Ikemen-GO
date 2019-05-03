@@ -2308,7 +2308,7 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.ctrlOver()
+	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby)
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
@@ -4024,7 +4024,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil {
+	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) {
 		return false
 	}
 	var clsn1, clsn2 []float32
@@ -4049,7 +4049,7 @@ func (c *Char) hitCheck(e *Char) bool {
 	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
 }
 func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
-	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
+	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid || c.scf(SCF_standby) {
 		return false
 	}
 	if len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid {
@@ -4088,7 +4088,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 }
 func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, e.id, st) {
+	if !c.attrCheck(h, e.id, st) || c.scf(SCF_standby) {
 		return false
 	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L ||
@@ -4669,7 +4669,7 @@ func (c *Char) cueDraw() {
 			}
 			return sd
 		}
-		if c.sf(CSF_invisible) {
+		if c.sf(CSF_invisible) || c.scf(SCF_standby) {
 			if rec {
 				c.aimg.recAfterImg(sdf())
 			}
@@ -5459,7 +5459,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
+			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
 				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) {
@@ -5562,7 +5562,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.teamside != c.teamside &&
+		if e.player && e.teamside != c.teamside && e.scf(SCF_standby) == false &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
 		}
