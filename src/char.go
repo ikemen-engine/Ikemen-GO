@@ -2572,6 +2572,13 @@ func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	}
 	return BytecodeBool(c.gi().anim.get(anim.ToI()) != nil)
 }
+func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
+	if stateno.IsSF() {
+		return BytecodeSF()
+	}
+	_, ok := c.gi().states[stateno.ToI()]
+	return BytecodeBool(ok)
+}
 func (c *Char) time() int32 {
 	return c.ss.time
 }
@@ -2746,8 +2753,14 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 func (c *Char) changeState(no, anim, ctrl int32) {
 	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl)
 }
-func (c *Char) selfState(no, anim, ctrl int32) {
-	c.changeStateEx(no, c.playerNo, anim, ctrl)
+func (c *Char) selfState(no, anim, readplayerid, ctrl int32) {
+	var playerno int
+	if readplayerid >= 0 {
+		playerno = int(readplayerid)
+	} else {
+		playerno = c.playerNo
+	}
+	c.changeStateEx(no, playerno, anim, ctrl)
 }
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
@@ -3929,7 +3942,7 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				c.selfState(5050, -1, -1)
+				c.selfState(5050, -1, -1, -1)
 				c.setBindTime(0)
 				return
 			}
@@ -4556,11 +4569,11 @@ func (c *Char) tick() {
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.selfState(150, -1, 0)
+				c.selfState(150, -1, -1, 0)
 			case ST_C:
-				c.selfState(152, -1, 0)
+				c.selfState(152, -1, -1, 0)
 			case ST_A:
-				c.selfState(154, -1, 0)
+				c.selfState(154, -1, -1, 0)
 			}
 		} else if c.ghv._type == HT_Trip {
 			c.changeStateEx(5070, pn, -1, 0)
@@ -4601,10 +4614,10 @@ func (c *Char) tick() {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
 				c.ss.moveType != MT_H && !sys.sf(GSF_noko) {
 				c.ghv.fallf = true
-				c.selfState(5030, -1, -1)
+				c.selfState(5030, -1, -1, -1)
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
-				c.selfState(5120, -1, -1)
+				c.selfState(5120, -1, -1, -1)
 			}
 		}
 	}

@@ -360,6 +360,7 @@ const (
 	OC_ex_majorversion
 	OC_ex_drawpalno
 	OC_ex_maparray
+	OC_ex_selfstatenoexist
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -1561,6 +1562,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_maparray:
 		sys.bcStack.PushI(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
+	case OC_ex_selfstatenoexist:
+		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -1982,6 +1985,7 @@ const (
 	changeState_value byte = iota
 	changeState_ctrl
 	changeState_anim
+	changeState_readplayerid
 	changeState_redirectid
 )
 
@@ -2013,7 +2017,7 @@ type selfState changeState
 
 func (sc selfState) Run(c *Char, _ []int32) bool {
 	crun := c
-	var v, a, ctrl int32 = -1, -1, -1
+	var v, a, r, ctrl int32 = -1, -1, -1, -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -2022,6 +2026,12 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 			ctrl = exp[0].evalI(c)
 		case changeState_anim:
 			a = exp[0].evalI(c)
+		case changeState_readplayerid:
+			if rpid := sys.playerID(exp[0].evalI(c)); rpid != nil {
+				r = int32(rpid.playerNo)
+			} else {
+				return false
+			}
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2031,7 +2041,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.selfState(v, a, ctrl)
+	crun.selfState(v, a, r, ctrl)
 	return true
 }
 

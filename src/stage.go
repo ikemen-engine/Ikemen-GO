@@ -117,7 +117,7 @@ type backGround struct {
 func newBackGround(sff *Sff) *backGround {
 	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1}, zoomdelta: [...]float32{math.MaxFloat32, math.MaxFloat32},
 		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1}, xbottomzoomdelta: math.MaxFloat32,
-		zoomscaledelta: [...]float32{1, 1}, actionno: -1, visible: true, active: true, autoresizeparallax: true,
+		zoomscaledelta: [...]float32{math.MaxFloat32, math.MaxFloat32}, actionno: -1, visible: true, active: true, autoresizeparallax: true,
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
@@ -173,6 +173,9 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("scaledelta", &bg.scaledelta[0], &bg.scaledelta[1])
 	is.readF32ForStage("xbottomzoomdelta", &bg.xbottomzoomdelta)
 	is.readF32ForStage("zoomscaledelta", &bg.zoomscaledelta[0], &bg.zoomscaledelta[1])
+	//if bg.zoomscaledelta[0] != math.MaxFloat32 && bg.zoomscaledelta[1] == math.MaxFloat32 {
+	//	bg.zoomscaledelta[1] = bg.zoomscaledelta[0]
+	//}
 	is.readF32ForStage("zoomdelta", &bg.zoomdelta[0], &bg.zoomdelta[1])
 	if bg.zoomdelta[0] != math.MaxFloat32 && bg.zoomdelta[1] == math.MaxFloat32 {
 		bg.zoomdelta[1] = bg.zoomdelta[0]
@@ -343,6 +346,13 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
 		}
 	}
+	var xs3, ys3 float32 = 1, 1
+	if bg.zoomscaledelta[0] != math.MaxFloat32 {
+		xs3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[0])) / sclx)
+	}
+	if bg.zoomscaledelta[1] != math.MaxFloat32 {
+		ys3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[1])) / scly)
+	}
 
 	scly *= lclscl
 	sclx *= lscl[0]
@@ -361,8 +371,6 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
-	xs3 := 1 + (1-scl)*(1-bg.zoomscaledelta[0])
-	ys3 := 1 + (1-scl)*(1-bg.zoomscaledelta[1])
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
 	scly *= stgscl[1]
