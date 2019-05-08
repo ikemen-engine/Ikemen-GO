@@ -2107,7 +2107,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.selfState(int32(numArg(l, 1)), -1, 1)
+			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1)
 		}
 		return 0
 	})

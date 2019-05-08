@@ -670,7 +670,7 @@ func (s *System) nextRound() {
 	}
 	for _, p := range s.chars {
 		if len(p) > 0 {
-			p[0].selfState(5900, 0, 0)
+			p[0].selfState(5900, 0, -1, 0)
 		}
 	}
 }
@@ -904,7 +904,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					for i, p := range s.chars {
 						if len(p) > 0 {
 							s.playerClear(i)
-							p[0].selfState(0, -1, 0)
+							p[0].selfState(0, -1, -1, 0)
 						}
 					}
 					ox := *x
@@ -947,7 +947,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 						if p[0].ss.no == 0 {
 							p[0].setCtrl(true)
 						} else {
-							p[0].selfState(0, -1, 1)
+							p[0].selfState(0, -1, -1, 1)
 						}
 					}
 				}
@@ -1113,11 +1113,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() {
 								p[0].setSCF(SCF_over)
 								if p[0].win() {
-									p[0].selfState(180, -1, 1)
+									p[0].selfState(180, -1, -1, 1)
 								} else if p[0].lose() {
-									p[0].selfState(170, -1, 1)
+									p[0].selfState(170, -1, -1, 1)
 								} else {
-									p[0].selfState(175, -1, 1)
+									p[0].selfState(175, -1, -1, 1)
 								}
 							}
 						}

@@ -2036,6 +2036,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
+	case "selfstatenoexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_selfstatenoexist)
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
@@ -3259,6 +3264,10 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "anim",
 		changeState_anim, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "readplayerid",
+		changeState_readplayerid, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
