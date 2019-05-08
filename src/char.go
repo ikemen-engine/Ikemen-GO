@@ -2405,7 +2405,7 @@ func (c *Char) moveReversed() int32 {
 	return 0
 }
 func (c *Char) numEnemy() int32 {
-	if sys.tmode[^c.playerNo&1] != TM_Simul {
+	if sys.tmode[^c.playerNo&1] != TM_Simul && sys.tmode[^c.playerNo&1] != TM_Tag {
 		return 1
 	}
 	if c.teamside == 3-1 {
@@ -2438,7 +2438,7 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 	return BytecodeInt(n)
 }
 func (c *Char) numPartner() int32 {
-	if sys.tmode[c.playerNo&1] != TM_Simul || c.teamside >= 2 {
+	if (sys.tmode[c.playerNo&1] != TM_Simul && sys.tmode[c.playerNo&1] != TM_Tag) || c.teamside >= 2 {
 		return 0
 	}
 	return sys.numSimul[c.playerNo&1] - 1
@@ -4060,7 +4060,7 @@ func (c *Char) hitCheck(e *Char) bool {
 	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
 }
 func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
-	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid || c.scf(SCF_standby) {
+	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
 		return false
 	}
 	if len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid {
@@ -4099,7 +4099,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 }
 func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, e.id, st) || c.scf(SCF_standby) {
+	if !c.attrCheck(h, e.id, st) {
 		return false
 	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L ||

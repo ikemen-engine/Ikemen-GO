@@ -1764,6 +1764,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				tm = TM_Simul
 			case "turns":
 				tm = TM_Turns
+			case "tag":
+				tm = TM_Tag
 			default:
 				return Error(c.token + "が無効な値です")
 			}

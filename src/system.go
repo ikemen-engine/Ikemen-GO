@@ -80,7 +80,8 @@ const (
 	TM_Single TeamMode = iota
 	TM_Simul
 	TM_Turns
-	TM_LAST = TM_Turns
+	TM_Tag
+	TM_LAST = TM_Tag
 )
 
 type System struct {
@@ -247,7 +248,7 @@ type System struct {
 
 	lifebarScale   float32
 	lifebarOffsetX float32
-	
+
 	PostProcessingShader int32
 }
 
@@ -357,9 +358,9 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {	
-		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))	
-		gl.Clear(gl.COLOR_BUFFER_BIT)	
+	if !s.frameSkip {
+		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))
+		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 	return !s.gameEnd
 }
@@ -1040,7 +1041,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							for i := 0; i < 2; i++ {
 								for j := i; j < len(s.chars); j += 2 {
 									if len(s.chars[j]) > 0 {
-										if s.tmode[i] == TM_Simul {
+										if s.tmode[i] == TM_Simul || s.tmode[i] == TM_Tag {
 											l[i] += (float32(s.chars[j][0].life) /
 												float32(s.numSimul[i])) /
 												float32(s.chars[j][0].lifeMax)
@@ -1434,7 +1435,7 @@ func (s *System) fight() (reload bool) {
 			switch s.tmode[i&1] {
 			case TM_Single:
 				switch s.tmode[(i+1)&1] {
-				case TM_Simul:
+				case TM_Simul, TM_Tag:
 					lm *= s.team1VS2Life
 				case TM_Turns:
 					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && sys.teamLifeShare {
@@ -1442,9 +1443,9 @@ func (s *System) fight() (reload bool) {
 							float32(s.matchWins[(i+1)&1])
 					}
 				}
-			case TM_Simul:
+			case TM_Simul, TM_Tag:
 				switch s.tmode[(i+1)&1] {
-				case TM_Simul:
+				case TM_Simul, TM_Tag:
 					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
 					}
@@ -1464,7 +1465,7 @@ func (s *System) fight() (reload bool) {
 					if s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
 					}
-				case TM_Simul:
+				case TM_Simul, TM_Tag:
 					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && sys.teamLifeShare {
 						lm = lm * s.team1VS2Life *
 							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
@@ -1657,8 +1658,8 @@ func (wm *wincntMap) init() {
 }
 func (wm *wincntMap) update() {
 	winPoint := func(i int) int32 {
-		if sys.tmode[(i+1)&1] == TM_Simul {
-			if sys.tmode[i&1] != TM_Simul {
+		if sys.tmode[(i+1)&1] == TM_Simul || sys.tmode[(i+1)&1] == TM_Tag {
+			if sys.tmode[i&1] != TM_Simul && sys.tmode[i&1] != TM_Tag {
 				return sys.numSimul[(i+1)&1]
 			} else if sys.numSimul[(i+1)&1] > sys.numSimul[i&1] {
 				return sys.numSimul[(i+1)&1] / sys.numSimul[i&1]
@@ -2006,7 +2007,7 @@ func (l *Loader) loadChar(pn int) int {
 	sys.loadMutex.Lock()
 	result := -1
 	nsel := len(sys.sel.selected[pn&1])
-	if sys.tmode[pn&1] == TM_Simul {
+	if sys.tmode[pn&1] == TM_Simul || sys.tmode[pn&1] == TM_Tag {
 		if pn>>1 >= int(sys.numSimul[pn&1]) {
 			sys.cgi[pn].states = nil
 			sys.chars[pn] = nil
@@ -2165,7 +2166,7 @@ func (l *Loader) load() {
 		}
 		for i := 0; i < 2; i++ {
 			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
-				sys.tmode[i] != TM_Simul {
+				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
 				for j := i + 2; j < len(sys.chars); j += 2 {
 					sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
 					sys.cgi[j].wakewakaLength = 0
