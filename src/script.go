@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -91,6 +92,12 @@ func (cli *commandLineInput) GetStr() string {
 // Script Common
 
 func scriptCommonInit(l *lua.LState) {
+	// A bind to GO's SetGCPercent. A negative percentage disables garbage collection.
+	luaRegister(l, "SetGCPercent", func(*lua.LState) int {
+		debug.SetGCPercent(int(numArg(l, 1)))
+		return 1
+	})
+	//----------------------------------------------------------------
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
 		sff, err := loadSff(strArg(l, 1), false)
 		if err != nil {

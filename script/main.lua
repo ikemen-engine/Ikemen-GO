@@ -1,4 +1,6 @@
-
+-- Disable GC during the initial load so it does not crash.
+SetGCPercent(-1)
+-------------------------------------------------------------
 main = {}
 
 refresh()
@@ -2158,6 +2160,10 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
+
+-- Now that everithig is loaded we can enable GC back.
+SetGCPercent(100)
+-------------------------------------------------------------
 
 main.f_mainMenu()
 
