@@ -1223,6 +1223,56 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			}
 		}
 	}
+	i = 0
+	//Load again to fill empty spaces of TAG (For retrocompatibility)
+	for i < len(lines) {
+		is, name, subname := ReadIniSection(lines, &i)
+		switch name {
+		case "simul ":
+			subname = strings.ToLower(subname)
+			switch {
+			case len(subname) >= 7 && subname[:7] == "lifebar":
+				if l.hb[3][0] == nil {
+					l.hb[3][0] = readHealthBar("p1.", is, sff, at)
+				}
+				if l.hb[3][1] == nil {
+					l.hb[3][1] = readHealthBar("p2.", is, sff, at)
+				}
+				if l.hb[3][2] == nil {
+					l.hb[3][2] = readHealthBar("p3.", is, sff, at)
+				}
+				if l.hb[3][3] == nil {
+					l.hb[3][3] = readHealthBar("p4.", is, sff, at)
+				}
+			case len(subname) >= 4 && subname[:4] == "face":
+				if l.fa[3][0] == nil {
+					l.fa[3][0] = readLifeBarFace("p1.", is, sff, at)
+				}
+				if l.fa[3][1] == nil {
+					l.fa[3][1] = readLifeBarFace("p2.", is, sff, at)
+				}
+				if l.fa[3][2] == nil {
+					l.fa[3][2] = readLifeBarFace("p3.", is, sff, at)
+				}
+				if l.fa[3][3] == nil {
+					l.fa[3][3] = readLifeBarFace("p4.", is, sff, at)
+				}
+			case len(subname) >= 4 && subname[:4] == "name":
+				if l.nm[3][0] == nil {
+					l.nm[3][0] = readLifeBarName("p1.", is, sff, at)
+				}
+				if l.nm[3][1] == nil {
+					l.nm[3][1] = readLifeBarName("p2.", is, sff, at)
+				}
+				if l.nm[3][2] == nil {
+					l.nm[3][2] = readLifeBarName("p3.", is, sff, at)
+				}
+				if l.nm[3][3] == nil {
+					l.nm[3][3] = readLifeBarName("p4.", is, sff, at)
+				}
+			}
+		}
+	}
 	return l, nil
 }
 func (l *Lifebar) step() {
