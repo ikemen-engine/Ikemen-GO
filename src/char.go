@@ -2314,7 +2314,7 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.ctrlOver()
+	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby)
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
@@ -2405,7 +2405,7 @@ func (c *Char) moveReversed() int32 {
 	return 0
 }
 func (c *Char) numEnemy() int32 {
-	if sys.tmode[^c.playerNo&1] != TM_Simul {
+	if sys.tmode[^c.playerNo&1] != TM_Simul && sys.tmode[^c.playerNo&1] != TM_Tag {
 		return 1
 	}
 	if c.teamside == 3-1 {
@@ -2438,7 +2438,7 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 	return BytecodeInt(n)
 }
 func (c *Char) numPartner() int32 {
-	if sys.tmode[c.playerNo&1] != TM_Simul || c.teamside >= 2 {
+	if (sys.tmode[c.playerNo&1] != TM_Simul && sys.tmode[c.playerNo&1] != TM_Tag) || c.teamside >= 2 {
 		return 0
 	}
 	return sys.numSimul[c.playerNo&1] - 1
@@ -4048,7 +4048,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil {
+	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) {
 		return false
 	}
 	var clsn1, clsn2 []float32
@@ -4693,7 +4693,7 @@ func (c *Char) cueDraw() {
 			}
 			return sd
 		}
-		if c.sf(CSF_invisible) {
+		if c.sf(CSF_invisible) || c.scf(SCF_standby) {
 			if rec {
 				c.aimg.recAfterImg(sdf())
 			}
@@ -5483,7 +5483,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
+			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
 				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) {
@@ -5586,7 +5586,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.teamside != c.teamside &&
+		if e.player && e.teamside != c.teamside && e.scf(SCF_standby) == false &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
 		}

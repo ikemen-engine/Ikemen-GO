@@ -2058,6 +2058,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 	crun := c
 	sn := int32(-1)
 	ret := false
+	c.unsetSCF(SCF_standby)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:

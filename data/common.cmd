@@ -1,7 +1,7 @@
 
 [Command]
-name = "v"
-command = v
+name = "d"
+command = d
 time = 1
 
 [Command]

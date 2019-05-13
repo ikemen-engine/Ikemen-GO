@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -91,6 +92,12 @@ func (cli *commandLineInput) GetStr() string {
 // Script Common
 
 func scriptCommonInit(l *lua.LState) {
+	// A bind to GO's SetGCPercent. A negative percentage disables garbage collection.
+	luaRegister(l, "SetGCPercent", func(*lua.LState) int {
+		debug.SetGCPercent(int(numArg(l, 1)))
+		return 1
+	})
+	//----------------------------------------------------------------
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
 		sff, err := loadSff(strArg(l, 1), false)
 		if err != nil {
@@ -583,19 +590,19 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", tn)
+			l.RaiseError("The team number (%v) is invalid. / チーム番号(%v)が不正です。", tn)
 		}
 		tm := TeamMode(numArg(l, 2))
 		if tm < 0 || tm > TM_LAST {
-			l.RaiseError("モード番号(%v)が不正です。", tm)
+			l.RaiseError("The mode number (%v) is invalid. / モード番号(%v)が不正です。", tm)
 		}
 		nt := int32(numArg(l, 3))
 		if nt < 1 || nt > MaxSimul {
-			l.RaiseError("チーム人数(%v)が不正です。", nt)
+			l.RaiseError("The team number (% v) is incorrect. / チーム人数(%v)が不正です。", nt)
 		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
 		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
-		if tm == TM_Simul && nt == 1 {
+		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
 		}
 		return 0
@@ -628,6 +635,12 @@ func systemScriptInit(l *lua.LState) {
 				}
 			case TM_Turns:
 				if len(sys.sel.selected[tn-1]) >= int(sys.numTurns[tn-1]) {
+					ret = 2
+				} else {
+					ret = 1
+				}
+			case TM_Tag:
+				if len(sys.sel.selected[tn-1]) >= int(sys.numSimul[tn-1]) {
 					ret = 2
 				} else {
 					ret = 1
@@ -2022,6 +2035,8 @@ func triggerScriptInit(l *lua.LState) {
 			s = "simul"
 		case TM_Turns:
 			s = "turns"
+		case TM_Tag:
+			s = "tag"
 		}
 		l.Push(lua.LString(s))
 		return 1

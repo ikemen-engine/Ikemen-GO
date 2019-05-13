@@ -1764,6 +1764,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				tm = TM_Simul
 			case "turns":
 				tm = TM_Turns
+			case "tag":
+				tm = TM_Tag
 			default:
 				return Error(c.token + "が無効な値です")
 			}
@@ -7307,6 +7309,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_s, CK_ns
 					case "v":
 						*k, *nk = CK_v, CK_nv
+					case "d":
+						*k, *nk = CK_v, CK_nv
 					case "w":
 						*k, *nk = CK_w, CK_nw
 					}
@@ -7319,6 +7323,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("c", &ckr.c, &ckr.nc)
 				rm("s", &ckr.s, &ckr.ns)
 				rm("v", &ckr.v, &ckr.nv)
+				rm("d", &ckr.v, &ckr.nv)
 				rm("w", &ckr.w, &ckr.nw)
 			}
 		case "defaults":
