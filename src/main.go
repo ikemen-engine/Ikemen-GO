@@ -162,7 +162,10 @@ func main() {
 		QuickLaunch    bool
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
-	const configFile = "data/config.json"
+    configFile := sys.cmdFlags["-config"]
+    if configFile == "" {
+        configFile = "data/config.json"
+    }
 	if bytes, err := ioutil.ReadFile(configFile); err != nil {
 		f, err := os.Create(configFile)
 		chk(err)

@@ -27,7 +27,7 @@ var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect [4]uintptr
+var postShaderSelect [5]uintptr
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -191,13 +191,20 @@ func RenderInit() {
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
     
-    // [3]: bicubic shader
+    // [3]: scanline shader
     vertObj = compile(gl.VERTEX_SHADER, scanlineVertShader)
     fragObj = compile(gl.FRAGMENT_SHADER, scanlineFragShader)
     postShaderSelect[3] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
-	
+    
+    // [4]: 2xsai shader
+	vertObj = compile(gl.VERTEX_SHADER, sai2xVertShader)
+    fragObj = compile(gl.FRAGMENT_SHADER, sai2xFragShader)
+    postShaderSelect[4] = link(vertObj, fragObj)
+    gl.DeleteObjectARB(vertObj)
+    gl.DeleteObjectARB(fragObj)
+    
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &fbo_texture)
 	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
@@ -868,5 +875,45 @@ void main(void) {
         intens = smoothstep(0.2,0.8,rgb) + normalize(vec4(rgb.xyz, 1.0));
     float level = (4.0-gl_TexCoord[0].z) * 0.19;
     gl_FragColor = intens * (0.5-level) + rgb * 1.1 ;
+}
+` + "\x00"
+
+var sai2xVertShader = `
+uniform vec2 TextureSize;
+attribute vec2 VertCoord;
+
+void main(void) {
+    gl_Position = vec4(VertCoord, 0.0, 1.0);
+	gl_TexCoord[0].xy = (VertCoord + 1.0) / 2.0 * 1.0001;
+}
+` + "\x00"
+
+var sai2xFragShader = `
+uniform sampler2D Texture;
+uniform vec2 TextureSize;
+
+void main(void) {
+    vec2 texsize = TextureSize/2.6;
+    
+    float dx     = pow(texsize.x, -1.0) * 0.25;
+    float dy     = pow(texsize.y, -1.0) * 0.25;
+    vec3 dt = vec3(1.0, 1.0, 1.0);
+    
+    vec2 vTexCoord = gl_TexCoord[0].xy;
+    vec2 UL =    vTexCoord + vec2(-dx, -dy);
+    vec2 UR =    vTexCoord + vec2( dx, -dy);
+    vec2 DL =    vTexCoord + vec2(-dx,  dy);
+    vec2 DR =    vTexCoord + vec2( dx,  dy);
+
+    
+    vec3 c00 = texture2D(Texture, UL).xyz;
+    vec3 c20 = texture2D(Texture, UR).xyz;
+    vec3 c02 = texture2D(Texture, DL).xyz;
+    vec3 c22 = texture2D(Texture, DR).xyz;
+    
+    float m1 = dot(abs(c00 - c22), dt) + 0.001;
+    float m2 = dot(abs(c02 - c20), dt) + 0.001;
+
+    gl_FragColor = vec4((m1*(c02 + c20) + m2*(c22 + c00))/(2.0*(m1 + m2)), 1.0);
 }
 ` + "\x00"

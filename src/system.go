@@ -333,7 +333,7 @@ func (s *System) await(fps int) bool {
 		// Render the finished frame
 		unbindFB()
 		s.window.SwapBuffers()
-		
+
 		// Begin the next frame
 		bindFB()
 	}
