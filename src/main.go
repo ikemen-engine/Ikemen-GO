@@ -79,6 +79,9 @@ func main() {
   "PlayerProjectileMax":256,
   "ExplodMax":512,
   "AfterImageMax":128,
+  "MasterVolume":100,
+  "WavVolume":100,
+  "BgmVolume":100,
   "Attack.LifeToPowerMul":0.7,
   "GetHit.LifeToPowerMul":0.6,
   "Width":640,
@@ -126,6 +129,7 @@ func main() {
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
+  "AudioDucking":false,
   "AllowDebugKeys":true,
   "PostProcessingShader":0,
   "IP":{
@@ -137,6 +141,9 @@ func main() {
 		PlayerProjectileMax    int
 		ExplodMax              int
 		AfterImageMax          int32
+		MasterVolume           int
+		WavVolume              int
+		BgmVolume              int
 		Attack_LifeToPowerMul  float32 `json:"Attack.LifeToPowerMul"`
 		GetHit_LifeToPowerMul  float32 `json:"GetHit.LifeToPowerMul"`
 		Width                  int32
@@ -152,15 +159,16 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag         int
-		TeamLifeShare  bool
-		AIRandomColor  bool
-		Fullscreen     bool
-		AllowDebugKeys bool
+		NumTag               int
+		TeamLifeShare        bool
+		AIRandomColor        bool
+		Fullscreen           bool
+		AudioDucking         bool
+		AllowDebugKeys       bool
 		PostProcessingShader int32
-		CommonAir      string
-		CommonCmd      string
-		QuickLaunch    bool
+		CommonAir            string
+		CommonCmd            string
+		QuickLaunch          bool
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -185,6 +193,10 @@ func main() {
 	sys.super_TargetDefenceMul = tmp.Super_TargetDefenceMul
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.quickLaunch = tmp.QuickLaunch
+	sys.masterVolume = tmp.MasterVolume
+	sys.wavVolume = tmp.WavVolume
+	sys.bgmVolume = tmp.BgmVolume
+	sys.AudioDucking = tmp.AudioDucking
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}

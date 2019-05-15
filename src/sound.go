@@ -10,6 +10,7 @@ import (
 	"github.com/timshannon/go-openal/openal"
 
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
@@ -179,13 +180,17 @@ func NewNormalizer() *Normalizer {
 func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
-	if lmul < rmul {
-		n.mul = lmul
+	if sys.AudioDucking {
+		if lmul < rmul {
+			n.mul = lmul
+		} else {
+			n.mul = rmul
+		}
+		if n.mul > 16 {
+			n.mul = 16
+		}
 	} else {
-		n.mul = rmul
-	}
-	if n.mul > 16 {
-		n.mul = 16
+		n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
 	}
 	return l, r
 }
@@ -303,6 +308,8 @@ func (bgm *Bgm) ReadVorbis() {
 
 func (bgm *Bgm) ReadFormat(s beep.StreamSeekCloser, format beep.Format) {
 	streamer := beep.Loop(-1, s)
+	volume := -5 + float64(sys.bgmVolume)*0.05*(float64(sys.masterVolume)/100)
+	streamer = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
 	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
 	bgm.ctrl = &beep.Ctrl{Streamer: resample}
 	speaker.Play(bgm.ctrl)

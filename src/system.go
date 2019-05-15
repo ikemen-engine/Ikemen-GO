@@ -240,6 +240,10 @@ type System struct {
 	timerCount              []int32
 	cmdFlags                map[string]string
 	quickLaunch             bool
+	masterVolume            int
+	wavVolume               int
+	bgmVolume               int
+	AudioDucking            bool
 	// Localcoord sceenpack
 	luaSpriteScale        float64
 	luaSmallPortraitScale float32
