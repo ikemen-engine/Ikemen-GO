@@ -308,7 +308,7 @@ func (bgm *Bgm) ReadVorbis() {
 
 func (bgm *Bgm) ReadFormat(s beep.StreamSeekCloser, format beep.Format) {
 	streamer := beep.Loop(-1, s)
-	volume := -5 + float64(sys.bgmVolume)*0.05*(float64(sys.masterVolume)/100)
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)
 	streamer = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
 	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
 	bgm.ctrl = &beep.Ctrl{Streamer: resample}

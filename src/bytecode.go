@@ -1929,6 +1929,7 @@ const (
 	playSnd_pan
 	playSnd_abspan
 	playSnd_volume
+	playSnd_volumescale
 	playSnd_freqmul
 	playSnd_loop
 	playSnd_redirectid
@@ -1937,10 +1938,7 @@ const (
 func (sc playSnd) Run(c *Char, _ []int32) bool {
 	crun := c
 	f, lw, lp := false, false, false
-	var g, n, ch, vo int32 = -1, 0, -1, 0
-	if c.gi().ver[0] == 1 {
-		vo = 100
-	}
+	var g, n, ch, vo int32 = -1, 0, -1, 100
 	var p, fr float32 = 0, 1
 	x := &c.pos[0]
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -1961,6 +1959,8 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			x = nil
 			p = exp[0].evalF(c)
 		case playSnd_volume:
+			vo = vo + exp[0].evalI(c)*(25/64)
+		case playSnd_volumescale:
 			vo = exp[0].evalI(c)
 		case playSnd_freqmul:
 			fr = exp[0].evalF(c)
@@ -4660,10 +4660,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			if len(exp) > 2 {
 				n = exp[2].evalI(c)
 			}
-			vo := int32(0)
-			if c.gi().ver[0] == 1 {
-				vo = 100
-			}
+			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
 				vo, 0, 1, &crun.pos[0])
 		case superPause_redirectid:
