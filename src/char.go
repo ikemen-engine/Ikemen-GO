@@ -1808,12 +1808,11 @@ func (c *Char) load(def string) error {
 					gi.data.guard.sparkno = ^IErr
 				}
 				is.ReadI32("ko.echo", &gi.data.ko.echo)
-				if gi.ver[0] == 1 {
-					if is.ReadI32("volumescale", &i32) {
-						gi.data.volume = i32 * 64 / 25
-					}
-				} else if is.ReadI32("volume", &i32) {
-					gi.data.volume = i32 + 256
+				if is.ReadI32("volume", &i32) {
+					gi.data.volume = i32/2 + 256
+				}
+				if is.ReadI32("volumescale", &i32) {
+					gi.data.volume = i32 * 64 / 25
 				}
 				is.ReadI32("intpersistindex", &gi.data.intpersistindex)
 				is.ReadI32("floatpersistindex", &gi.data.floatpersistindex)
@@ -2654,19 +2653,19 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	if ch := c.newChannel(chNo, lowpriority); ch != nil {
 		ch.sound, ch.loop, ch.freqmul = w, loop, freqmul
 		vol = Max(-25600, Min(25600, vol))
-		if c.gi().ver[0] == 1 {
-			if f {
-				ch.SetVolume(256)
-			} else {
-				ch.SetVolume(c.gi().data.volume * vol / 100)
-			}
+		//if c.gi().ver[0] == 1 {
+		if f {
+			ch.SetVolume(256)
 		} else {
-			if f {
-				ch.SetVolume(vol + 256)
-			} else {
-				ch.SetVolume(c.gi().data.volume + vol)
-			}
+			ch.SetVolume(c.gi().data.volume * vol / 100)
 		}
+		//} else {
+		//	if f {
+		//		ch.SetVolume(vol + 256)
+		//	} else {
+		//		ch.SetVolume(c.gi().data.volume + vol)
+		//	}
+		//}
 	}
 }
 
@@ -4624,10 +4623,7 @@ func (c *Char) tick() {
 	if !c.hitPause() {
 		if c.life <= 0 && !sys.sf(GSF_noko) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
-				vo := int32(0)
-				if c.gi().ver[0] == 1 {
-					vo = 100
-				}
+				vo := int32(100)
 				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, &c.pos[0])
 			}
 			c.setSCF(SCF_ko)
@@ -5184,10 +5180,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if f {
 					sg ^= -1
 				}
-				vo := int32(0)
-				if c.gi().ver[0] == 1 {
-					vo = 100
-				}
+				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.hitsound[1],
 					-1, vo, 0, 1, &getter.pos[0])
 			}
@@ -5211,10 +5204,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if f {
 					sg ^= -1
 				}
-				vo := int32(0)
-				if c.gi().ver[0] == 1 {
-					vo = 100
-				}
+				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.guardsound[1],
 					-1, vo, 0, 1, &getter.pos[0])
 			}

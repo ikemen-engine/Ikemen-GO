@@ -679,6 +679,20 @@ func systemScriptInit(l *lua.LState) {
 				}
 				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil)
 			}
+			//QuickLaunch用キャラセレポートレイト読み込み
+			if c.sportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					c.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
+					if err != nil {
+						return nil
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
+			}
 		}
 		return 0
 	})
@@ -1069,6 +1083,26 @@ func systemScriptInit(l *lua.LState) {
 				}
 				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil)
 			}
+			//QuickLaunch用キャラセレポートレイト読み込み
+			if c.lportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+					c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+					if err != nil {
+						c.vsportrait = c.lportrait
+					}
+					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+					if err != nil {
+						c.vportrait = c.lportrait
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
+
+			}
 		}
 		return 0
 	})
@@ -1089,6 +1123,29 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil)
+			}
+			if c.vportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					if c.lportrait == nil {
+						c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+					}
+					if c.vsportrait == nil && c.lportrait != nil {
+						c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+						if err != nil {
+							c.vsportrait = c.lportrait
+						}
+					}
+					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+					if err != nil && c.lportrait != nil {
+						c.vportrait = c.lportrait
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
+
 			}
 		}
 		return 0

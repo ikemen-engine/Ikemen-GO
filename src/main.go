@@ -79,9 +79,9 @@ func main() {
   "PlayerProjectileMax":256,
   "ExplodMax":512,
   "AfterImageMax":128,
-  "MasterVolume":100,
-  "WavVolume":100,
-  "BgmVolume":100,
+  "MasterVolume":80,
+  "WavVolume":80,
+  "BgmVolume":80,
   "Attack.LifeToPowerMul":0.7,
   "GetHit.LifeToPowerMul":0.6,
   "Width":640,
@@ -129,7 +129,8 @@ func main() {
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
-  "AudioDucking":false,
+	"AudioDucking":false,
+	"QuickLaunch":0,
   "AllowDebugKeys":true,
   "PostProcessingShader":0,
   "IP":{
@@ -168,7 +169,7 @@ func main() {
 		PostProcessingShader int32
 		CommonAir            string
 		CommonCmd            string
-		QuickLaunch          bool
+		QuickLaunch          int
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"

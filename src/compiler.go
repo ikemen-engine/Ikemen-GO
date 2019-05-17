@@ -3226,14 +3226,12 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 			playSnd_abspan, VT_Float, 1, false); err != nil {
 			return err
 		}
-		var volname string
-		if sys.cgi[c.playerNo].ver[0] == 1 {
-			volname = "volumescale"
-		} else {
-			volname = "volume"
-		}
-		if err := c.paramValue(is, sc, volname,
+		if err := c.paramValue(is, sc, "volume",
 			playSnd_volume, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "volumescale",
+			playSnd_volumescale, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "freqmul",
