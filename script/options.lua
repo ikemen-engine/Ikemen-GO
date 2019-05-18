@@ -649,7 +649,7 @@ function options.f_gameplayCfg()
 			modified = 1
 		--Turns Limit
 		elseif t[item].itemname == 'numturns' then
-			if commandGetState(main.p1Cmd, 'r') and config.NumTurns < 4 then
+			if commandGetState(main.p1Cmd, 'r') and config.NumTurns < 8 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTurns = config.NumTurns + 1
 				t[item].vardisplay = config.NumTurns

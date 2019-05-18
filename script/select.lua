@@ -277,7 +277,7 @@ function select.f_aiLevel()
 		else
 			setCom(1, select.f_difficulty(1, offset))
 		end
-	elseif p1TeamMode == 1 then--and config.SimulMode then --Simul
+	elseif p1TeamMode == 1 and config.SimulMode then --Simul
 		if main.p1In == 1 and not main.aiFight then
 			setCom(1, 0)
 		else
@@ -286,6 +286,17 @@ function select.f_aiLevel()
 		for i = 3, p1NumChars * 2 do
 			if i % 2 ~= 0 then --odd value
 				setCom(i, select.f_difficulty(i, offset))
+			end
+		end
+	-- Legcy TAG
+	elseif p1TeamMode == 1 and config.SimulMode == false then
+		for i = 1, p1NumChars * 2 do
+			if i % 2 ~= 0 then --odd value
+				if main.p1In == 1 and not main.aiFight then
+					setCom(i, 0)
+				else
+					setCom(i, select.f_difficulty(i, offset))
+				end
 			end
 		end
 	elseif p1TeamMode == 2 then --Turns
@@ -316,7 +327,7 @@ function select.f_aiLevel()
 		else
 			setCom(2, select.f_difficulty(2, offset))
 		end
-	elseif p2TeamMode == 1 then--and config.SimulMode then --Simul
+	elseif p2TeamMode == 1 and config.SimulMode then --Simul
 		if main.p2In == 2 and not main.aiFight and not main.coop then
 			setCom(2, 0)
 		else
@@ -325,6 +336,17 @@ function select.f_aiLevel()
 		for i = 4, p2NumChars * 2 do
 			if i % 2 == 0 then --even value
 				setCom(i, select.f_difficulty(i, offset))
+			end
+		end
+	-- Legcy TAG
+	elseif p2TeamMode == 1 and config.SimulMode == false then --Tag
+		for i = 2, p2NumChars * 2 do
+			if i % 2 == 0 then --even value
+				if main.p2In == 2 and not main.aiFight and not main.coop then
+					setCom(i, 0)
+				else
+					setCom(i, select.f_difficulty(i, offset))
+				end
 			end
 		end
 	elseif p2TeamMode == 2 then --Turns
@@ -1269,13 +1291,29 @@ local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_enemytitle_font[5],
 	motif.select_info.p1_teammenu_enemytitle_font[6]
 )
-local t_p1TeamMenu = {
-	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-	{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-	{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-	{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag},
-}
+
+-- Legacy TAG check
+if config.SimulMode then
+	temptag789TeamMenu = {
+		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
+		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
+		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
+		{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag}
+	}
+else
+	temptag789TeamMenu = {
+		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
+		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag},
+		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns}
+	}
+end
+
+-- Set tag mode
+local t_p1TeamMenu = temptag789TeamMenu
 t_p1TeamMenu = main.f_cleanTable(t_p1TeamMenu)
+
+-- Clear temp variable
+temptag789TeamMenu = nil
 
 local p1TeamActiveCount = 0
 local p1TeamActiveFont = 'p1_teammenu_item_active_font'
@@ -1500,13 +1538,29 @@ local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_enemytitle_font[5],
 	motif.select_info.p2_teammenu_enemytitle_font[6]
 )
-local t_p2TeamMenu = {
-	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-	{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-	{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-	{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag},
-}
+
+-- Legacy TAG check
+if config.SimulMode then
+	temptag789TeamMenu = {
+		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
+		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
+		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
+		{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag}
+	}
+else
+	temptag789TeamMenu = {
+		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
+		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag},
+		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns}
+	}
+end
+
+-- Set tag mode
+local t_p2TeamMenu = temptag789TeamMenu
 t_p2TeamMenu = main.f_cleanTable(t_p2TeamMenu)
+
+-- Clear temp variable
+temptag789TeamMenu = nil
 
 local p2TeamActiveCount = 0
 local p2TeamActiveFont = 'p2_teammenu_item_active_font'
