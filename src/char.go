@@ -583,7 +583,7 @@ func (ghv *GetHitVar) clearOff() {
 }
 func (ghv GetHitVar) getYaccel(c *Char) float32 {
 	if math.IsNaN(float64(ghv.yaccel)) {
-		return 0.35 / c.localscl
+		return 0.35 / (c.localscl * (320 / float32(sys.gameWidth)))
 	}
 	return ghv.yaccel
 }
@@ -1720,52 +1720,54 @@ func (c *Char) load(def string) error {
 	}
 	gi.data.init()
 	c.size.init()
-	c.size.ground.back = c.size.ground.back / c.localscl
-	c.size.ground.front = c.size.ground.front / c.localscl
-	c.size.air.back = c.size.air.back / c.localscl
-	c.size.air.front = c.size.air.front / c.localscl
-	c.size.height = c.size.height / c.localscl
-	c.size.attack.dist = c.size.attack.dist / c.localscl
-	c.size.proj.attack.dist = c.size.proj.attack.dist / c.localscl
-	c.size.head.pos[0] = c.size.head.pos[0] / c.localscl
-	c.size.head.pos[1] = c.size.head.pos[1] / c.localscl
-	c.size.mid.pos[0] = c.size.mid.pos[0] / c.localscl
-	c.size.mid.pos[1] = c.size.mid.pos[1] / c.localscl
-	c.size.shadowoffset = c.size.shadowoffset / c.localscl
-	c.size.draw.offset[0] = c.size.draw.offset[0] / c.localscl
-	c.size.draw.offset[1] = c.size.draw.offset[1] / c.localscl
-	c.size.z.width = c.size.z.width / c.localscl
-	c.size.attack.z.width[0] = c.size.attack.z.width[0] / c.localscl
-	c.size.attack.z.width[1] = c.size.attack.z.width[1] / c.localscl
+	originLs := c.localscl * (320 / float32(sys.gameWidth))
+
+	c.size.ground.back = c.size.ground.back / originLs
+	c.size.ground.front = c.size.ground.front / originLs
+	c.size.air.back = c.size.air.back / originLs
+	c.size.air.front = c.size.air.front / originLs
+	c.size.height = c.size.height / originLs
+	c.size.attack.dist = c.size.attack.dist / originLs
+	c.size.proj.attack.dist = c.size.proj.attack.dist / originLs
+	c.size.head.pos[0] = c.size.head.pos[0] / originLs
+	c.size.head.pos[1] = c.size.head.pos[1] / originLs
+	c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
+	c.size.mid.pos[1] = c.size.mid.pos[1] / originLs
+	c.size.shadowoffset = c.size.shadowoffset / originLs
+	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
+	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
+	c.size.z.width = c.size.z.width / originLs
+	c.size.attack.z.width[0] = c.size.attack.z.width[0] / originLs
+	c.size.attack.z.width[1] = c.size.attack.z.width[1] / originLs
 
 	gi.velocity.init()
 
-	gi.velocity.air.gethit.groundrecover[0] /= c.localscl
-	gi.velocity.air.gethit.groundrecover[1] /= c.localscl
-	gi.velocity.air.gethit.airrecover.add[0] /= c.localscl
-	gi.velocity.air.gethit.airrecover.add[1] /= c.localscl
-	gi.velocity.air.gethit.airrecover.back /= c.localscl
-	gi.velocity.air.gethit.airrecover.fwd /= c.localscl
-	gi.velocity.air.gethit.airrecover.up /= c.localscl
-	gi.velocity.air.gethit.airrecover.down /= c.localscl
+	gi.velocity.air.gethit.groundrecover[0] /= originLs
+	gi.velocity.air.gethit.groundrecover[1] /= originLs
+	gi.velocity.air.gethit.airrecover.add[0] /= originLs
+	gi.velocity.air.gethit.airrecover.add[1] /= originLs
+	gi.velocity.air.gethit.airrecover.back /= originLs
+	gi.velocity.air.gethit.airrecover.fwd /= originLs
+	gi.velocity.air.gethit.airrecover.up /= originLs
+	gi.velocity.air.gethit.airrecover.down /= originLs
 
 	gi.movement.init()
 
-	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / c.localscl)
-	gi.movement.yaccel /= c.localscl
-	gi.movement.stand.friction_threshold /= c.localscl
-	gi.movement.crouch.friction_threshold /= c.localscl
-	gi.movement.air.gethit.groundlevel /= c.localscl
-	gi.movement.air.gethit.groundrecover.ground.threshold /= c.localscl
-	gi.movement.air.gethit.groundrecover.groundlevel /= c.localscl
-	gi.movement.air.gethit.airrecover.threshold /= c.localscl
-	gi.movement.air.gethit.airrecover.yaccel /= c.localscl
-	gi.movement.air.gethit.trip.groundlevel /= c.localscl
-	gi.movement.down.bounce.offset[0] /= c.localscl
-	gi.movement.down.bounce.offset[1] /= c.localscl
-	gi.movement.down.bounce.yaccel /= c.localscl
-	gi.movement.down.bounce.groundlevel /= c.localscl
-	gi.movement.down.friction_threshold /= c.localscl
+	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
+	gi.movement.yaccel /= originLs
+	gi.movement.stand.friction_threshold /= originLs
+	gi.movement.crouch.friction_threshold /= originLs
+	gi.movement.air.gethit.groundlevel /= originLs
+	gi.movement.air.gethit.groundrecover.ground.threshold /= originLs
+	gi.movement.air.gethit.groundrecover.groundlevel /= originLs
+	gi.movement.air.gethit.airrecover.threshold /= originLs
+	gi.movement.air.gethit.airrecover.yaccel /= originLs
+	gi.movement.air.gethit.trip.groundlevel /= originLs
+	gi.movement.down.bounce.offset[0] /= originLs
+	gi.movement.down.bounce.offset[1] /= originLs
+	gi.movement.down.bounce.yaccel /= originLs
+	gi.movement.down.bounce.groundlevel /= originLs
+	gi.movement.down.friction_threshold /= originLs
 
 	data, size, velocity, movement, quotes := true, true, true, true, true
 	for i < len(lines) {
@@ -5096,12 +5098,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					if getter.ss.stateType == ST_A {
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2 * getter.localscl
+							getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl
-							if getter.ghv.yvel > -3*getter.localscl {
-								getter.ghv.yvel = -3 * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+							if getter.ghv.yvel > -3*getter.localscl*(320/float32(sys.gameWidth)) {
+								getter.ghv.yvel = -3 * getter.localscl * (320 / float32(sys.gameWidth))
 							}
 						}
 					} else {
@@ -5109,12 +5111,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							getter.ghv.xvel *= 0.66
 						}
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2.5 * getter.localscl
+							getter.ghv.xvel -= 2.5 * getter.localscl * (320 / float32(sys.gameWidth))
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl
-							if getter.ghv.yvel > -6*getter.localscl {
-								getter.ghv.yvel = -6 * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+							if getter.ghv.yvel > -6*getter.localscl*(320/float32(sys.gameWidth)) {
+								getter.ghv.yvel = -6 * getter.localscl * (320 / float32(sys.gameWidth))
 							}
 						}
 					}
