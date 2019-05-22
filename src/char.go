@@ -1070,41 +1070,42 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 }
 
 type Projectile struct {
-	hitdef        HitDef
-	id            int32
-	anim          int32
-	hitanim       int32
-	remanim       int32
-	cancelanim    int32
-	scale         [2]float32
-	clsnScale     [2]float32
-	remove        bool
-	removetime    int32
-	velocity      [2]float32
-	remvelocity   [2]float32
-	accel         [2]float32
-	velmul        [2]float32
-	hits          int32
-	misstime      int32
-	priority      int32
-	prioritypoint int32
-	sprpriority   int32
-	edgebound     int32
-	stagebound    int32
-	heightbound   [2]int32
-	pos           [2]float32
-	facing        float32
-	shadow        [3]int32
-	supermovetime int32
-	pausemovetime int32
-	ani           *Animation
-	timemiss      int32
-	hitpause      int32
-	oldPos        [2]float32
-	newPos        [2]float32
-	aimg          AfterImage
-	palfx         *PalFX
-	localscl      float32
+	hitdef          HitDef
+	id              int32
+	anim            int32
+	hitanim         int32
+	remanim         int32
+	cancelanim      int32
+	scale           [2]float32
+	clsnScale       [2]float32
+	remove          bool
+	removetime      int32
+	velocity        [2]float32
+	remvelocity     [2]float32
+	accel           [2]float32
+	velmul          [2]float32
+	hits            int32
+	misstime        int32
+	priority        int32
+	prioritypoint   int32
+	sprpriority     int32
+	edgebound       int32
+	stagebound      int32
+	heightbound     [2]int32
+	pos             [2]float32
+	facing          float32
+	shadow          [3]int32
+	supermovetime   int32
+	pausemovetime   int32
+	ani             *Animation
+	timemiss        int32
+	hitpause        int32
+	oldPos          [2]float32
+	newPos          [2]float32
+	aimg            AfterImage
+	palfx           *PalFX
+	localscl        float32
+	parentAttackmul float32
 }
 
 func newProjectile() *Projectile {
@@ -1138,7 +1139,7 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
-	if sys.tickFrame() {
+	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		rem := true
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
@@ -3125,6 +3126,7 @@ func (c *Char) newProj() *Projectile {
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	op bool, rpg, rpn int32) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
+	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
 		p.anim = 0
 	}
@@ -4792,7 +4794,7 @@ func (cl *CharList) update(cvmin, cvmax,
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32
 	hit := func(c *Char, hd *HitDef, pos [2]float32,
-		projf float32, hits int32) (hitType int32) {
+		projf, attackMul float32, hits int32) (hitType int32) {
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
 			c.hitdef.lhit = true
 			return 0
@@ -5089,7 +5091,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				kill = hd.guard_kill
 			}
 			getter.ghv.damage += getter.computeDamage(
-				float64(absdamage)*float64(hits), kill, false, c.attackMul)
+				float64(absdamage)*float64(hits), kill, false, attackMul)
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
 					getter.ghv.fallf = true
@@ -5366,7 +5368,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							hits = 1
 						}
 						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*c.localscl/p.localscl,
-							p.pos[1] - c.pos[1]*c.localscl/p.localscl}, p.facing, hits); ht != 0 {
+							p.pos[1] - c.pos[1]*c.localscl/p.localscl}, p.facing, p.parentAttackmul, hits); ht != 0 {
 							p.timemiss = ^Max(0, p.misstime)
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
@@ -5431,7 +5433,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						if contact < 0 {
 							contact = 1
 						}
-						if ht := hit(c, &c.hitdef, [2]float32{}, 0, 1); ht != 0 {
+						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
 								if mvh {
