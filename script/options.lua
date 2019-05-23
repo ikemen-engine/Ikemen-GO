@@ -130,9 +130,15 @@ function options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 	if commandGetState(main.p1Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 		item = item - 1
+		if t[item] ~= nil and t[item].itemname == 'empty' then
+			item = item - 1
+		end
 	elseif commandGetState(main.p1Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 		item = item + 1
+		if t[item] ~= nil and t[item].itemname == 'empty' then
+			item = item + 1
+		end
 	end
 	--cursor position calculation
 	if item < 1 then
@@ -147,8 +153,14 @@ function options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		cursorPosY = 1
 	elseif commandGetState(main.p1Cmd, 'u') and cursorPosY > 1 then
 		cursorPosY = cursorPosY - 1
+		if t[cursorPosY] ~= nil and t[cursorPosY].itemname == 'empty' then
+			cursorPosY = cursorPosY - 1
+		end
 	elseif commandGetState(main.p1Cmd, 'd') and cursorPosY < motif.option_info.menu_window_visibleitems then
 		cursorPosY = cursorPosY + 1
+		if t[cursorPosY] ~= nil and t[cursorPosY].itemname == 'empty' then
+			cursorPosY = cursorPosY + 1
+		end
 	end
 	if cursorPosY == motif.option_info.menu_window_visibleitems then
 		moveTxt = (item - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_item_spacing[2]
@@ -301,8 +313,11 @@ local t_mainCfg = {
 	{data = textImgNew(), itemname = 'inputsettings', displayname = motif.option_info.menu_itemname_main_input},
 	{data = textImgNew(), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
 	{data = textImgNew(), itemname = 'enginesettings', displayname = motif.option_info.menu_itemname_main_engine},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
+	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)},
 	{data = textImgNew(), itemname = 'portchange', displayname = motif.option_info.menu_itemname_main_port, vardata = textImgNew(), vardisplay = getListenPort()},
 	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_main_default},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'save', displayname = motif.option_info.menu_itemname_main_save},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_main_back},
 }
@@ -333,6 +348,16 @@ function options.f_mainCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			end
 			t[item].vardisplay = getListenPort()
+			modified = 1
+		-- Quick Launch
+		elseif t[item].itemname == 'quicklaunch' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.QuickLaunch == 1 then
+				config.QuickLaunch = 0
+			else
+				config.QuickLaunch = 1
+			end
+			t[item].vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)
 			modified = 1
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Arcade Settings
@@ -429,6 +454,7 @@ local t_arcadeCfg = {
 	{data = textImgNew(), itemname = 'credits', displayname = motif.option_info.menu_itemname_arcade_credits, vardata = textImgNew(), vardisplay = config.Credits},
 	{data = textImgNew(), itemname = 'charchange', displayname = motif.option_info.menu_itemname_arcade_charchange, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ContSelection)},
 	{data = textImgNew(), itemname = 'airamping', displayname = motif.option_info.menu_itemname_arcade_airamping, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRamping)},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_arcade_back},
 }
 t_arcadeCfg = main.f_cleanTable(t_arcadeCfg)
@@ -538,6 +564,7 @@ local t_gameplayCfg = {
 	{data = textImgNew(), itemname = 'turnsrecoveryrate', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoveryrate, vardata = textImgNew(), vardisplay = config.TurnsRecoveryRate},
 	{data = textImgNew(), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
 	{data = textImgNew(), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'advancedGameplaySettings', displayname = motif.option_info.menu_itemname_gameplay_advanced},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
@@ -647,9 +674,11 @@ local t_advGameplayCfg = {
 	{data = textImgNew(), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = textImgNew(), vardisplay = config['Attack.LifeToPowerMul']},
 	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
 	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = config.NumTurns},
 	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = config.NumSimul},
 	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = config.NumTag},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
 t_advGameplayCfg = main.f_cleanTable(t_advGameplayCfg)
@@ -843,6 +872,7 @@ local t_videoCfg = {
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_video_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)},
 	{data = textImgNew(), itemname = 'postprocessingshader', displayname = "Shader", vardata = textImgNew(), vardisplay = t_shaderNames[config.PostProcessingShader]},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 t_videoCfg = main.f_cleanTable(t_videoCfg)
@@ -926,6 +956,7 @@ local t_resCfg = {
 	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_res_1920x1080},
 	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_res_2560x1440},
 	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_res_3840x2160},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_res_custom},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_res_back},
 }
@@ -994,17 +1025,19 @@ end
 --; ENGINE SETTINGS
 --;===========================================================
 local t_engineCfg = {
+	{data = textImgNew(), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_gameplay_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_video_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
 	{data = textImgNew(), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_video_playerprojectilemax, vardata = textImgNew(), vardisplay = config.PlayerProjectileMax},
 	{data = textImgNew(), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_video_explodmax, vardata = textImgNew(), vardisplay = config.ExplodMax},
 	{data = textImgNew(), itemname = 'afterimagemax', displayname = motif.option_info.menu_itemname_video_afterimagemax, vardata = textImgNew(), vardisplay = config.AfterImageMax},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'zoomactive', displayname = motif.option_info.menu_itemname_video_zoomactive, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ZoomActive)},
 	{data = textImgNew(), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_video_maxzoomout, vardata = textImgNew(), vardisplay = config.ZoomMin},
 	{data = textImgNew(), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_video_maxzoomin, vardata = textImgNew(), vardisplay = config.ZoomMax},
 	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_video_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
-	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_gameplay_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
-	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)},
-	{data = textImgNew(), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 t_engineCfg = main.f_cleanTable(t_engineCfg)
@@ -1142,17 +1175,6 @@ function options.f_engineCfg()
 			t[item].vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)
 			modified = 1
 			needReload = 1
-		-- Quick Launch
-		elseif t[item].itemname == 'quicklaunch' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.QuickLaunch == 1 then
-				config.QuickLaunch = 0
-			else
-				config.QuickLaunch = 1
-			end
-			t[item].vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)
-			modified = 1
-			needReload = 1
 		-- Allow Debug Keys
 		elseif t[item].itemname == 'allowdebugkeys' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
@@ -1181,6 +1203,7 @@ local t_inputCfg = {
 	{data = textImgNew(), itemname = 'p1gamepad', displayname = motif.option_info.menu_itemname_input_p1gamepad},
 	{data = textImgNew(), itemname = 'p2keyboard', displayname = motif.option_info.menu_itemname_input_p2keyboard},
 	{data = textImgNew(), itemname = 'p2gamepad', displayname = motif.option_info.menu_itemname_input_p2gamepad},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_input_default},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_input_back},
 }
@@ -1250,6 +1273,7 @@ local t_keyCfg = {
 	{data = textImgNew(), itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = textImgNew(), vardisplay = ''},
 	{data = textImgNew(), itemname = 'v', displayname = motif.option_info.menu_itemname_key_v, vardata = textImgNew(), vardisplay = ''},
 	{data = textImgNew(), itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = textImgNew(), vardisplay = ''},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_key_back},
 }
 t_keyCfg = main.f_cleanTable(t_keyCfg)
@@ -1310,6 +1334,8 @@ local t_audioCfg = {
 	{data = textImgNew(), itemname = 'mastervolume', displayname = motif.option_info.menu_itemname_audio_mastervolume, vardata = textImgNew(), vardisplay = config.MasterVolume .. '%'},
 	{data = textImgNew(), itemname = 'bgmvolume', displayname = motif.option_info.menu_itemname_audio_bgmvolume, vardata = textImgNew(), vardisplay = config.BgmVolume .. '%'},
 	{data = textImgNew(), itemname = 'sfxvolume', displayname = motif.option_info.menu_itemname_audio_sfxvolume, vardata = textImgNew(), vardisplay = config.WavVolume .. '%'},
+	{data = textImgNew(), itemname = 'audioducking', displayname = motif.option_info.menu_itemname_audio_audioducking, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 t_audioCfg = main.f_cleanTable(t_audioCfg)
@@ -1372,6 +1398,17 @@ function options.f_audioCfg()
 				modified = 1
 				needReload = 1
 			end
+		-- Allow Debug Keys
+		elseif t[item].itemname == 'audioducking' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AudioDucking then
+				config.AudioDucking = false
+			else
+				config.AudioDucking = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
+			modified = 1
+			needReload = 1
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
