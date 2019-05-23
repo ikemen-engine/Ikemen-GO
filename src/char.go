@@ -583,7 +583,7 @@ func (ghv *GetHitVar) clearOff() {
 }
 func (ghv GetHitVar) getYaccel(c *Char) float32 {
 	if math.IsNaN(float64(ghv.yaccel)) {
-		return 0.35 / c.localscl
+		return 0.35 / (c.localscl * (320 / float32(sys.gameWidth)))
 	}
 	return ghv.yaccel
 }
@@ -1070,41 +1070,42 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 }
 
 type Projectile struct {
-	hitdef        HitDef
-	id            int32
-	anim          int32
-	hitanim       int32
-	remanim       int32
-	cancelanim    int32
-	scale         [2]float32
-	clsnScale     [2]float32
-	remove        bool
-	removetime    int32
-	velocity      [2]float32
-	remvelocity   [2]float32
-	accel         [2]float32
-	velmul        [2]float32
-	hits          int32
-	misstime      int32
-	priority      int32
-	prioritypoint int32
-	sprpriority   int32
-	edgebound     int32
-	stagebound    int32
-	heightbound   [2]int32
-	pos           [2]float32
-	facing        float32
-	shadow        [3]int32
-	supermovetime int32
-	pausemovetime int32
-	ani           *Animation
-	timemiss      int32
-	hitpause      int32
-	oldPos        [2]float32
-	newPos        [2]float32
-	aimg          AfterImage
-	palfx         *PalFX
-	localscl      float32
+	hitdef          HitDef
+	id              int32
+	anim            int32
+	hitanim         int32
+	remanim         int32
+	cancelanim      int32
+	scale           [2]float32
+	clsnScale       [2]float32
+	remove          bool
+	removetime      int32
+	velocity        [2]float32
+	remvelocity     [2]float32
+	accel           [2]float32
+	velmul          [2]float32
+	hits            int32
+	misstime        int32
+	priority        int32
+	prioritypoint   int32
+	sprpriority     int32
+	edgebound       int32
+	stagebound      int32
+	heightbound     [2]int32
+	pos             [2]float32
+	facing          float32
+	shadow          [3]int32
+	supermovetime   int32
+	pausemovetime   int32
+	ani             *Animation
+	timemiss        int32
+	hitpause        int32
+	oldPos          [2]float32
+	newPos          [2]float32
+	aimg            AfterImage
+	palfx           *PalFX
+	localscl        float32
+	parentAttackmul float32
 }
 
 func newProjectile() *Projectile {
@@ -1138,7 +1139,7 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
-	if sys.tickFrame() {
+	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		rem := true
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
@@ -1720,52 +1721,54 @@ func (c *Char) load(def string) error {
 	}
 	gi.data.init()
 	c.size.init()
-	c.size.ground.back = c.size.ground.back / c.localscl
-	c.size.ground.front = c.size.ground.front / c.localscl
-	c.size.air.back = c.size.air.back / c.localscl
-	c.size.air.front = c.size.air.front / c.localscl
-	c.size.height = c.size.height / c.localscl
-	c.size.attack.dist = c.size.attack.dist / c.localscl
-	c.size.proj.attack.dist = c.size.proj.attack.dist / c.localscl
-	c.size.head.pos[0] = c.size.head.pos[0] / c.localscl
-	c.size.head.pos[1] = c.size.head.pos[1] / c.localscl
-	c.size.mid.pos[0] = c.size.mid.pos[0] / c.localscl
-	c.size.mid.pos[1] = c.size.mid.pos[1] / c.localscl
-	c.size.shadowoffset = c.size.shadowoffset / c.localscl
-	c.size.draw.offset[0] = c.size.draw.offset[0] / c.localscl
-	c.size.draw.offset[1] = c.size.draw.offset[1] / c.localscl
-	c.size.z.width = c.size.z.width / c.localscl
-	c.size.attack.z.width[0] = c.size.attack.z.width[0] / c.localscl
-	c.size.attack.z.width[1] = c.size.attack.z.width[1] / c.localscl
+	originLs := c.localscl * (320 / float32(sys.gameWidth))
+
+	c.size.ground.back = c.size.ground.back / originLs
+	c.size.ground.front = c.size.ground.front / originLs
+	c.size.air.back = c.size.air.back / originLs
+	c.size.air.front = c.size.air.front / originLs
+	c.size.height = c.size.height / originLs
+	c.size.attack.dist = c.size.attack.dist / originLs
+	c.size.proj.attack.dist = c.size.proj.attack.dist / originLs
+	c.size.head.pos[0] = c.size.head.pos[0] / originLs
+	c.size.head.pos[1] = c.size.head.pos[1] / originLs
+	c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
+	c.size.mid.pos[1] = c.size.mid.pos[1] / originLs
+	c.size.shadowoffset = c.size.shadowoffset / originLs
+	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
+	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
+	c.size.z.width = c.size.z.width / originLs
+	c.size.attack.z.width[0] = c.size.attack.z.width[0] / originLs
+	c.size.attack.z.width[1] = c.size.attack.z.width[1] / originLs
 
 	gi.velocity.init()
 
-	gi.velocity.air.gethit.groundrecover[0] /= c.localscl
-	gi.velocity.air.gethit.groundrecover[1] /= c.localscl
-	gi.velocity.air.gethit.airrecover.add[0] /= c.localscl
-	gi.velocity.air.gethit.airrecover.add[1] /= c.localscl
-	gi.velocity.air.gethit.airrecover.back /= c.localscl
-	gi.velocity.air.gethit.airrecover.fwd /= c.localscl
-	gi.velocity.air.gethit.airrecover.up /= c.localscl
-	gi.velocity.air.gethit.airrecover.down /= c.localscl
+	gi.velocity.air.gethit.groundrecover[0] /= originLs
+	gi.velocity.air.gethit.groundrecover[1] /= originLs
+	gi.velocity.air.gethit.airrecover.add[0] /= originLs
+	gi.velocity.air.gethit.airrecover.add[1] /= originLs
+	gi.velocity.air.gethit.airrecover.back /= originLs
+	gi.velocity.air.gethit.airrecover.fwd /= originLs
+	gi.velocity.air.gethit.airrecover.up /= originLs
+	gi.velocity.air.gethit.airrecover.down /= originLs
 
 	gi.movement.init()
 
-	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / c.localscl)
-	gi.movement.yaccel /= c.localscl
-	gi.movement.stand.friction_threshold /= c.localscl
-	gi.movement.crouch.friction_threshold /= c.localscl
-	gi.movement.air.gethit.groundlevel /= c.localscl
-	gi.movement.air.gethit.groundrecover.ground.threshold /= c.localscl
-	gi.movement.air.gethit.groundrecover.groundlevel /= c.localscl
-	gi.movement.air.gethit.airrecover.threshold /= c.localscl
-	gi.movement.air.gethit.airrecover.yaccel /= c.localscl
-	gi.movement.air.gethit.trip.groundlevel /= c.localscl
-	gi.movement.down.bounce.offset[0] /= c.localscl
-	gi.movement.down.bounce.offset[1] /= c.localscl
-	gi.movement.down.bounce.yaccel /= c.localscl
-	gi.movement.down.bounce.groundlevel /= c.localscl
-	gi.movement.down.friction_threshold /= c.localscl
+	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
+	gi.movement.yaccel /= originLs
+	gi.movement.stand.friction_threshold /= originLs
+	gi.movement.crouch.friction_threshold /= originLs
+	gi.movement.air.gethit.groundlevel /= originLs
+	gi.movement.air.gethit.groundrecover.ground.threshold /= originLs
+	gi.movement.air.gethit.groundrecover.groundlevel /= originLs
+	gi.movement.air.gethit.airrecover.threshold /= originLs
+	gi.movement.air.gethit.airrecover.yaccel /= originLs
+	gi.movement.air.gethit.trip.groundlevel /= originLs
+	gi.movement.down.bounce.offset[0] /= originLs
+	gi.movement.down.bounce.offset[1] /= originLs
+	gi.movement.down.bounce.yaccel /= originLs
+	gi.movement.down.bounce.groundlevel /= originLs
+	gi.movement.down.friction_threshold /= originLs
 
 	data, size, velocity, movement, quotes := true, true, true, true, true
 	for i < len(lines) {
@@ -3123,6 +3126,7 @@ func (c *Char) newProj() *Projectile {
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	op bool, rpg, rpn int32) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
+	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
 		p.anim = 0
 	}
@@ -4790,7 +4794,7 @@ func (cl *CharList) update(cvmin, cvmax,
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32
 	hit := func(c *Char, hd *HitDef, pos [2]float32,
-		projf float32, hits int32) (hitType int32) {
+		projf, attackMul float32, hits int32) (hitType int32) {
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
 			c.hitdef.lhit = true
 			return 0
@@ -5087,7 +5091,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				kill = hd.guard_kill
 			}
 			getter.ghv.damage += getter.computeDamage(
-				float64(absdamage)*float64(hits), kill, false, c.attackMul)
+				float64(absdamage)*float64(hits), kill, false, attackMul)
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
 					getter.ghv.fallf = true
@@ -5096,12 +5100,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					if getter.ss.stateType == ST_A {
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2 * getter.localscl
+							getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl
-							if getter.ghv.yvel > -3*getter.localscl {
-								getter.ghv.yvel = -3 * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+							if getter.ghv.yvel > -3*getter.localscl*(320/float32(sys.gameWidth)) {
+								getter.ghv.yvel = -3 * getter.localscl * (320 / float32(sys.gameWidth))
 							}
 						}
 					} else {
@@ -5109,12 +5113,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							getter.ghv.xvel *= 0.66
 						}
 						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2.5 * getter.localscl
+							getter.ghv.xvel -= 2.5 * getter.localscl * (320 / float32(sys.gameWidth))
 						}
 						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl
-							if getter.ghv.yvel > -6*getter.localscl {
-								getter.ghv.yvel = -6 * getter.localscl
+							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+							if getter.ghv.yvel > -6*getter.localscl*(320/float32(sys.gameWidth)) {
+								getter.ghv.yvel = -6 * getter.localscl * (320 / float32(sys.gameWidth))
 							}
 						}
 					}
@@ -5364,7 +5368,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							hits = 1
 						}
 						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*c.localscl/p.localscl,
-							p.pos[1] - c.pos[1]*c.localscl/p.localscl}, p.facing, hits); ht != 0 {
+							p.pos[1] - c.pos[1]*c.localscl/p.localscl}, p.facing, p.parentAttackmul, hits); ht != 0 {
 							p.timemiss = ^Max(0, p.misstime)
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
@@ -5429,7 +5433,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						if contact < 0 {
 							contact = 1
 						}
-						if ht := hit(c, &c.hitdef, [2]float32{}, 0, 1); ht != 0 {
+						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
 								if mvh {

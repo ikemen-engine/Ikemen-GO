@@ -173,9 +173,6 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("scaledelta", &bg.scaledelta[0], &bg.scaledelta[1])
 	is.readF32ForStage("xbottomzoomdelta", &bg.xbottomzoomdelta)
 	is.readF32ForStage("zoomscaledelta", &bg.zoomscaledelta[0], &bg.zoomscaledelta[1])
-	//if bg.zoomscaledelta[0] != math.MaxFloat32 && bg.zoomscaledelta[1] == math.MaxFloat32 {
-	//	bg.zoomscaledelta[1] = bg.zoomscaledelta[0]
-	//}
 	is.readF32ForStage("zoomdelta", &bg.zoomdelta[0], &bg.zoomdelta[1])
 	if bg.zoomdelta[0] != math.MaxFloat32 && bg.zoomdelta[1] == math.MaxFloat32 {
 		bg.zoomdelta[1] = bg.zoomdelta[0]
@@ -368,8 +365,8 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			y = float32(math.Floor(float64(y/bgscl))) * bgscl
 		}
 	}
-	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
+	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
@@ -385,14 +382,14 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 				bgscl * lscl[i]
 		}
 	}
-	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*160*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
 	startrect1 := ((float32(rect[1])-pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) * sys.heightScale
 	rect[0] = int32(math.Floor(float64(startrect0)))
 	rect[1] = int32(math.Floor(float64(startrect1)))
 	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
-	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*(bg.scalestart[1]+ys2)*ys3,
-		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1]))*sclx_recip,
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
+		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
 		+0, 0, 0, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1, false)
 }
 
