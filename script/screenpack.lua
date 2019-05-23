@@ -32,7 +32,7 @@ function main.CalculateLocalcoordValues()
 		main.SP_Localcoord43[0] = (main.SP_Localcoord[0] / 4) * 3
 	end
 	
-	if main.SP_Localcoord[0] >= main.SP_Localcoord[1] then
+	if main.LB_Localcoord[0] >= main.LB_Localcoord[1] then
 		main.LB_Localcoord43[0] = (main.LB_Localcoord[1] / 3) * 4
 	else
 		main.LB_Localcoord43[0] = (main.LB_Localcoord[0] / 4) * 3

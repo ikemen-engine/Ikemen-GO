@@ -36,6 +36,17 @@ function options.f_boolDisplay(bool, t, f)
 	end
 end
 
+--return string depending on int
+function options.f_intDisplay(bool, t, f)
+	t = t or motif.option_info.menu_itemname_yes
+	f = f or motif.option_info.menu_itemname_no
+	if bool == 1 then
+		return t
+	else
+		return f
+	end
+end
+
 --return correct precision
 function options.f_precision(v, decimal)
 	return tonumber(string.format(decimal, v))
@@ -285,11 +296,14 @@ end
 --;===========================================================
 local t_mainCfg = {
 	{data = textImgNew(), itemname = 'arcadesettings', displayname = motif.option_info.menu_itemname_main_arcade},
-	{data = textImgNew(), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
 	{data = textImgNew(), itemname = 'videosettings', displayname = motif.option_info.menu_itemname_main_video},
+	{data = textImgNew(), itemname = 'audiosettings', displayname = motif.option_info.menu_itemname_main_audio},
 	{data = textImgNew(), itemname = 'inputsettings', displayname = motif.option_info.menu_itemname_main_input},
+	{data = textImgNew(), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
+	{data = textImgNew(), itemname = 'enginesettings', displayname = motif.option_info.menu_itemname_main_engine},
 	{data = textImgNew(), itemname = 'portchange', displayname = motif.option_info.menu_itemname_main_port, vardata = textImgNew(), vardisplay = getListenPort()},
 	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_main_default},
+	{data = textImgNew(), itemname = 'save', displayname = motif.option_info.menu_itemname_main_save},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_main_back},
 }
 t_mainCfg = main.f_cleanTable(t_mainCfg)
@@ -333,6 +347,13 @@ function options.f_mainCfg()
 			elseif t[item].itemname == 'videosettings' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				options.f_videoCfg()
+			elseif t[item].itemname == 'audiosettings' then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+				options.f_audioCfg()
+			--Engine Settings
+				elseif t[item].itemname == 'enginesettings' then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+				options.f_engineCfg()
 			--Input Settings
 			elseif t[item].itemname == 'inputsettings' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
@@ -379,12 +400,17 @@ function options.f_mainCfg()
 				roundsNum = 2
 				modified = 1
 				needReload = 1
-			--Back
-			elseif t[item].itemname == 'back' then
+			-- Save
+			elseif t[item].itemname == 'save' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				if modified == 1 then
 					options.f_saveCfg()
 				end
+				main.f_resetBG(motif.title_info, motif.titlebgdef)
+				break
+			-- Back
+			elseif t[item].itemname == 'back' then
+				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				main.f_resetBG(motif.title_info, motif.titlebgdef)
 				break
 			end
@@ -418,6 +444,7 @@ function options.f_arcadeCfg()
 		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
 		--Rounds to Win
 		elseif t[item].itemname == 'roundstowin' then
@@ -494,6 +521,7 @@ function options.f_arcadeCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
 		end
 		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
@@ -506,17 +534,11 @@ end
 local t_gameplayCfg = {
 	{data = textImgNew(), itemname = 'lifemul', displayname = motif.option_info.menu_itemname_gameplay_lifemul, vardata = textImgNew(), vardisplay = config.LifeMul .. '%'},
 	{data = textImgNew(), itemname = 'autoguard', displayname = motif.option_info.menu_itemname_gameplay_autoguard, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AutoGuard)},
-    {data = textImgNew(), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = textImgNew(), vardisplay = config['Attack.LifeToPowerMul']},
-	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
-	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
 	{data = textImgNew(), itemname = 'team1vs2life', displayname = motif.option_info.menu_itemname_gameplay_team1vs2life, vardata = textImgNew(), vardisplay = config.Team1VS2Life},
 	{data = textImgNew(), itemname = 'turnsrecoveryrate', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoveryrate, vardata = textImgNew(), vardisplay = config.TurnsRecoveryRate},
 	{data = textImgNew(), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
 	{data = textImgNew(), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
-	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = config.NumTurns},
-	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = config.NumSimul},
-	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = config.NumTag},
-	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_gameplay_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_gameplay_simulmode_simul, motif.option_info.menu_itemname_gameplay_simulmode_tag)},
+	{data = textImgNew(), itemname = 'advancedGameplaySettings', displayname = motif.option_info.menu_itemname_gameplay_advanced},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
 t_gameplayCfg = main.f_cleanTable(t_gameplayCfg)
@@ -532,6 +554,118 @@ function options.f_gameplayCfg()
 		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
+		--Life
+		elseif t[item].itemname == 'lifemul' then
+			if commandGetState(main.p1Cmd, 'r') and config.LifeMul < 300 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.LifeMul = config.LifeMul + 10
+				t[item].vardisplay = config.LifeMul .. '%'
+				modified = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.LifeMul > 10 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.LifeMul = config.LifeMul - 10
+				t[item].vardisplay = config.LifeMul .. '%'
+				modified = 1
+			end
+		--Auto-Guard
+		elseif t[item].itemname == 'autoguard' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AutoGuard then
+				config.AutoGuard = false
+			else
+				config.AutoGuard = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.AutoGuard)
+			modified = 1
+		--1P Vs Team Life
+		elseif t[item].itemname == 'team1vs2life' then
+			if commandGetState(main.p1Cmd, 'r') and config.Team1VS2Life < 3000 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.Team1VS2Life = config.Team1VS2Life + 10
+				t[item].vardisplay = config.Team1VS2Life
+				modified = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.Team1VS2Life > 10 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.Team1VS2Life = config.Team1VS2Life - 10
+				t[item].vardisplay = config.Team1VS2Life
+				modified = 1
+			end
+		--Turns HP Recovery
+		elseif t[item].itemname == 'turnsrecoveryrate' then
+			if commandGetState(main.p1Cmd, 'r') and config.TurnsRecoveryRate < 3000 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.TurnsRecoveryRate = config.TurnsRecoveryRate + 10
+				t[item].vardisplay = config.TurnsRecoveryRate
+				modified = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.TurnsRecoveryRate > 10 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.TurnsRecoveryRate = config.TurnsRecoveryRate - 10
+				t[item].vardisplay = config.TurnsRecoveryRate
+				modified = 1
+			end
+		--Team Power Share
+		elseif t[item].itemname == 'teampowershare' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.TeamPowerShare then
+				config.TeamPowerShare = false
+			else
+				config.TeamPowerShare = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.TeamPowerShare)
+			modified = 1
+		--Team Life Share
+		elseif t[item].itemname == 'teamlifeshare' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.TeamLifeShare then
+				config.TeamLifeShare = false
+			else
+				config.TeamLifeShare = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.TeamLifeShare)
+			modified = 1
+		-- Advanced settings
+		elseif t[item].itemname == 'advancedGameplaySettings' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+			options.f_advGameplayCfg()
+		--Back
+		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
+		end
+		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
+	end
+end
+
+
+--;===========================================================
+--; ADVANCED GAMEPLAY SETTINGS
+--;===========================================================
+local t_advGameplayCfg = {
+	{data = textImgNew(), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = textImgNew(), vardisplay = config['Attack.LifeToPowerMul']},
+	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
+	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
+	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = config.NumTurns},
+	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = config.NumSimul},
+	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = config.NumTag},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
+}
+t_advGameplayCfg = main.f_cleanTable(t_advGameplayCfg)
+
+function options.f_advGameplayCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = t_advGameplayCfg
+	textImgSetText(txt_title, motif.option_info.title_text_advgameplay)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
 			break
 		--Life
 		elseif t[item].itemname == 'lifemul' then
@@ -686,19 +820,10 @@ function options.f_gameplayCfg()
 				t[item].vardisplay = config.NumTag
 				modified = 1
 			end
-		--Assist Mode
-		elseif t[item].itemname == 'simulmode' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.SimulMode then
-				config.SimulMode = false
-			else
-				config.SimulMode = true
-			end
-			t[item].vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_gameplay_simulmode_simul, motif.option_info.menu_itemname_gameplay_simulmode_tag)
-			modified = 1
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
 			break
 		end
 		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
@@ -716,15 +841,6 @@ t_shaderNames[2] = "hqx4"
 local t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
-	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_video_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
-	{data = textImgNew(), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_video_playerprojectilemax, vardata = textImgNew(), vardisplay = config.PlayerProjectileMax},
-	{data = textImgNew(), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_video_explodmax, vardata = textImgNew(), vardisplay = config.ExplodMax},
-	{data = textImgNew(), itemname = 'afterimagemax', displayname = motif.option_info.menu_itemname_video_afterimagemax, vardata = textImgNew(), vardisplay = config.AfterImageMax},
-	{data = textImgNew(), itemname = 'zoomactive', displayname = motif.option_info.menu_itemname_video_zoomactive, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ZoomActive)},
-	{data = textImgNew(), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_video_maxzoomout, vardata = textImgNew(), vardisplay = config.ZoomMin},
-	{data = textImgNew(), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_video_maxzoomin, vardata = textImgNew(), vardisplay = config.ZoomMax},
-	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_video_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
-	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_video_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_video_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)},
 	{data = textImgNew(), itemname = 'postprocessingshader', displayname = "Shader", vardata = textImgNew(), vardisplay = t_shaderNames[config.PostProcessingShader]},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
@@ -742,6 +858,7 @@ function options.f_videoCfg()
 		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
 		--Resolution
 		elseif t[item].itemname == 'resolution' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
@@ -759,6 +876,152 @@ function options.f_videoCfg()
 			t[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
 			modified = 1
 			needReload = 1
+		--AI Palette
+		elseif t[item].itemname == 'airandomcolor' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AIRandomColor then
+				config.AIRandomColor = false
+			else
+				config.AIRandomColor = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)
+			modified = 1
+		-- Postprocessing
+		elseif t[item].itemname == 'postprocessingshader' then
+			if commandGetState(main.p1Cmd, 'r') and config.PostProcessingShader < #t_shaderNames then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.PostProcessingShader = config.PostProcessingShader + 1
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.PostProcessingShader > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.PostProcessingShader = config.PostProcessingShader - 1
+				modified = 1
+				needReload = 1
+			end
+			t[item].vardisplay = t_shaderNames[config.PostProcessingShader]
+		-- Back
+		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
+		end
+		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
+	end
+end
+
+--;===========================================================
+--; RESOLUTION SETTINGS
+--;===========================================================
+local t_resCfg = {
+	{data = textImgNew(), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_res_320x240},
+	{data = textImgNew(), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_res_640x480},
+	{data = textImgNew(), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_res_1280x960},
+	{data = textImgNew(), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_res_1600x1200},
+	{data = textImgNew(), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_res_960x720},
+	{data = textImgNew(), x = 1200, y = 900, displayname = motif.option_info.menu_itemname_res_1200x900},
+	{data = textImgNew(), x = 1440, y = 1080, displayname = motif.option_info.menu_itemname_res_1440x1080},
+	{data = textImgNew(), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_res_1280x720},
+	{data = textImgNew(), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_res_1600x900},
+	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_res_1920x1080},
+	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_res_2560x1440},
+	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_res_3840x2160},
+	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_res_custom},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_res_back},
+}
+t_resCfg = main.f_cleanTable(t_resCfg)
+
+function options.f_resCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = t_resCfg
+	textImgSetText(txt_title, motif.option_info.title_text_res)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_video)
+			break
+		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
+			--Back
+			if t[item].itemname == 'back' then
+				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				textImgSetText(txt_title, motif.option_info.title_text_video)
+				break
+			--Custom
+			elseif t[item].itemname == 'custom' then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				local width = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_reswidth), motif.option_info, motif.optionbgdef, 'string'))
+				if width ~= nil then
+					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+					local height = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_resheight), motif.option_info, motif.optionbgdef, 'string'))
+					if height ~= nil then
+						config.Width = width
+						config.Height = height
+						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+						if (height / 3 * 4) ~= width then
+							main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
+						end
+						modified = 1
+						needReload = 1
+					else
+						sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+					end
+				else
+					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				end
+				break
+			--Resolution
+			else
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+				config.Width = t[item].x
+				config.Height = t[item].y
+				if (config.Height / 3 * 4) ~= config.Width then
+					main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
+				end
+				modified = 1
+				needReload = 1
+				break
+			end
+		end
+		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
+	end
+end
+
+--;===========================================================
+--; ENGINE SETTINGS
+--;===========================================================
+local t_engineCfg = {
+	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_video_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
+	{data = textImgNew(), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_video_playerprojectilemax, vardata = textImgNew(), vardisplay = config.PlayerProjectileMax},
+	{data = textImgNew(), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_video_explodmax, vardata = textImgNew(), vardisplay = config.ExplodMax},
+	{data = textImgNew(), itemname = 'afterimagemax', displayname = motif.option_info.menu_itemname_video_afterimagemax, vardata = textImgNew(), vardisplay = config.AfterImageMax},
+	{data = textImgNew(), itemname = 'zoomactive', displayname = motif.option_info.menu_itemname_video_zoomactive, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ZoomActive)},
+	{data = textImgNew(), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_video_maxzoomout, vardata = textImgNew(), vardisplay = config.ZoomMin},
+	{data = textImgNew(), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_video_maxzoomin, vardata = textImgNew(), vardisplay = config.ZoomMax},
+	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_video_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
+	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_gameplay_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
+	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)},
+	{data = textImgNew(), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
+}
+t_engineCfg = main.f_cleanTable(t_engineCfg)
+
+function options.f_engineCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = t_engineCfg
+	textImgSetText(txt_title, motif.option_info.title_text_engine)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
 		--HelperMax
 		elseif t[item].itemname == 'helpermax' then
 			if commandGetState(main.p1Cmd, 'r') then
@@ -868,128 +1131,43 @@ function options.f_videoCfg()
 				t[item].vardisplay = config.ZoomSpeed
 				modified = 1
 			end
-		--Default Lifebar Font Scale
-		elseif t[item].itemname == 'lifebarfontscale' then
-			if commandGetState(main.p1Cmd, 'r') then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.LifebarFontScale = options.f_precision(config.LifebarFontScale + 0.1, '%.01f')
-				t[item].vardisplay = config.LifebarFontScale
-				modified = 1
-				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.LifebarFontScale > 0.1 then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.LifebarFontScale = options.f_precision(config.LifebarFontScale - 0.1, '%.01f')
-				t[item].vardisplay = config.LifebarFontScale
-				modified = 1
-				needReload = 1
-			end
-		--AI Palette
-		elseif t[item].itemname == 'airandomcolor' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+		-- Leagcy TAG Mode
+		elseif t[item].itemname == 'simulmode' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.AIRandomColor then
-				config.AIRandomColor = false
+			if config.SimulMode then
+				config.SimulMode = false
 			else
-				config.AIRandomColor = true
+				config.SimulMode = true
 			end
-			t[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)
+			t[item].vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)
 			modified = 1
-			
-		-- Postprocessing
-		elseif t[item].itemname == 'postprocessingshader' then
-			if commandGetState(main.p1Cmd, 'r') and config.PostProcessingShader < #t_shaderNames then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PostProcessingShader = config.PostProcessingShader + 1
-				modified = 1
-				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.PostProcessingShader > 0 then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PostProcessingShader = config.PostProcessingShader - 1
-				modified = 1
-				needReload = 1
+			needReload = 1
+		-- Quick Launch
+		elseif t[item].itemname == 'quicklaunch' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.QuickLaunch == 1 then
+				config.QuickLaunch = 0
+			else
+				config.QuickLaunch = 1
 			end
-			t[item].vardisplay = t_shaderNames[config.PostProcessingShader]
-			--Back
+			t[item].vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)
+			modified = 1
+			needReload = 1
+		-- Allow Debug Keys
+		elseif t[item].itemname == 'allowdebugkeys' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AllowDebugKeys then
+				config.AllowDebugKeys = false
+			else
+				config.AllowDebugKeys = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
+			modified = 1
+		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
-		end
-		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; RESOLUTION SETTINGS
---;===========================================================
-local t_resCfg = {
-	{data = textImgNew(), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_res_320x240},
-	{data = textImgNew(), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_res_640x480},
-	{data = textImgNew(), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_res_1280x960},
-	{data = textImgNew(), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_res_1600x1200},
-	{data = textImgNew(), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_res_960x720},
-	{data = textImgNew(), x = 1200, y = 900, displayname = motif.option_info.menu_itemname_res_1200x900},
-	{data = textImgNew(), x = 1440, y = 1080, displayname = motif.option_info.menu_itemname_res_1440x1080},
-	{data = textImgNew(), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_res_1280x720},
-	{data = textImgNew(), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_res_1600x900},
-	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_res_1920x1080},
-	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_res_2560x1440},
-	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_res_3840x2160},
-	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_res_custom},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_res_back},
-}
-t_resCfg = main.f_cleanTable(t_resCfg)
-
-function options.f_resCfg()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_resCfg
-	textImgSetText(txt_title, motif.option_info.title_text_res)
-	while true do
-		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			--Back
-			if t[item].itemname == 'back' then
-				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				break
-			--Custom
-			elseif t[item].itemname == 'custom' then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				local width = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_reswidth), motif.option_info, motif.optionbgdef, 'string'))
-				if width ~= nil then
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					local height = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_resheight), motif.option_info, motif.optionbgdef, 'string'))
-					if height ~= nil then
-						config.Width = width
-						config.Height = height
-						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-						if (height / 3 * 4) ~= width then
-							main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
-						end
-						modified = 1
-						needReload = 1
-					else
-						sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-					end
-				else
-					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				end
-				break
-			--Resolution
-			else
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-				config.Width = t[item].x
-				config.Height = t[item].y
-				if (config.Height / 3 * 4) ~= config.Width then
-					main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
-				end
-				modified = 1
-				needReload = 1
-				break
-			end
 		end
 		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	end
@@ -1019,6 +1197,7 @@ function options.f_inputCfg()
 		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--P1 Keyboard
@@ -1046,6 +1225,7 @@ function options.f_inputCfg()
 			--Back
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				textImgSetText(txt_title, motif.option_info.title_text_main)
 				break
 			end
 		end
@@ -1092,11 +1272,13 @@ function options.f_keyCfg(playerNo, controller)
 		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_input)
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Back
 			if t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				textImgSetText(txt_title, motif.option_info.title_text_input)
 				break
 			--Buttons
 			else
@@ -1116,6 +1298,85 @@ function options.f_keyCfg(playerNo, controller)
 			end
 			modified = 1
 			needReload = 1
+		end
+		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
+	end
+end
+
+--;===========================================================
+--; AUDIO SETTINGS
+--;===========================================================
+local t_audioCfg = {
+	{data = textImgNew(), itemname = 'mastervolume', displayname = motif.option_info.menu_itemname_audio_mastervolume, vardata = textImgNew(), vardisplay = config.MasterVolume .. '%'},
+	{data = textImgNew(), itemname = 'bgmvolume', displayname = motif.option_info.menu_itemname_audio_bgmvolume, vardata = textImgNew(), vardisplay = config.BgmVolume .. '%'},
+	{data = textImgNew(), itemname = 'sfxvolume', displayname = motif.option_info.menu_itemname_audio_sfxvolume, vardata = textImgNew(), vardisplay = config.WavVolume .. '%'},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
+}
+t_audioCfg = main.f_cleanTable(t_audioCfg)
+
+function options.f_audioCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = t_audioCfg
+	textImgSetText(txt_title, motif.option_info.title_text_audio)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommon1(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
+		-- Master Volume
+		elseif t[item].itemname == 'mastervolume' then
+			if commandGetState(main.p1Cmd, 'r') and config.MasterVolume < 200 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.MasterVolume = config.MasterVolume + 1
+				t[item].vardisplay = config.MasterVolume .. '%'
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.MasterVolume > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.MasterVolume = config.MasterVolume - 1
+				t[item].vardisplay = config.MasterVolume .. '%'
+				modified = 1
+				needReload = 1
+			end
+		-- BGM Volume
+		elseif t[item].itemname == 'bgmvolume' then
+			if commandGetState(main.p1Cmd, 'r') and config.BgmVolume < 100 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.BgmVolume = config.BgmVolume + 1
+				t[item].vardisplay = config.BgmVolume .. '%'
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.BgmVolume > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.BgmVolume = config.BgmVolume - 1
+				t[item].vardisplay = config.BgmVolume .. '%'
+				modified = 1
+				needReload = 1
+			end
+		-- SFX Volume
+		elseif t[item].itemname == 'sfxvolume' then
+			if commandGetState(main.p1Cmd, 'r') and config.WavVolume < 100 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.WavVolume = config.WavVolume + 1
+				t[item].vardisplay = config.WavVolume .. '%'
+				modified = 1
+				needReload = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.WavVolume > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.WavVolume = config.WavVolume - 1
+				t[item].vardisplay = config.WavVolume .. '%'
+				modified = 1
+				needReload = 1
+			end
+		--Back
+		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_main)
+			break
 		end
 		options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	end
