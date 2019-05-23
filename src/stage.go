@@ -186,7 +186,7 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim.mask = 0
 			} else {
 				bg.anim.mask = -1
-			}
+	
 		}
 	}
 	switch strings.ToLower(is["trans"]) {

@@ -12,6 +12,8 @@ main.SP_Localcoord[1] = 240
 main.LB_Localcoord[0] = 320
 main.LB_Localcoord[1] = 240
 
+main.LB_ScreenWidth = 320
+main.LB_ScreenDiference = 0
 
 main.screenOverscan = 0
 main.normalSpriteCenter = 0
@@ -24,7 +26,6 @@ main.SP_Center = 0
 end
 
 function main.CalculateLocalcoordValues()
-	
 	if main.SP_Localcoord[0] >= main.SP_Localcoord[1] then
 		main.SP_Localcoord43[0] = (main.SP_Localcoord[1] / 3) * 4
 	else
@@ -38,12 +39,20 @@ function main.CalculateLocalcoordValues()
 	end
 	
 	main.SP_Localcoord_X_Dif = -math.floor( (( main.SP_Localcoord[0] / (main.SP_Localcoord43[0] / 320) ) - 320) / 2 )
+		
+	main.LB_ScreenWidth = config.Width / (config.Height / 240)
+	main.LB_ScreenDiference = (main.LB_ScreenWidth - 320) / (main.LB_ScreenWidth / 320)
 
 end
 
 function main.IntLifebarScale()
-	setLifebarOffsetX((main.LB_Localcoord43[0] - main.LB_Localcoord[0]) / 2)
-	setLuaLifebarScale(320 / main.LB_Localcoord43[0])
+	if config.LocalcoordScalingType == 0 then
+		setLifebarOffsetX( - main.LB_ScreenDiference / 2)
+		setLuaLifebarScale(main.LB_ScreenWidth / main.LB_Localcoord43[0])
+	else
+		setLifebarOffsetX((main.LB_Localcoord43[0] - main.LB_Localcoord[0]) / 2)
+		setLuaLifebarScale(320 / main.LB_Localcoord43[0])
+	end
 end
 
 function main.SetScaleValues()

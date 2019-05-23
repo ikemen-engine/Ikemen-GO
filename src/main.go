@@ -110,7 +110,7 @@ func main() {
   "LifeMul":100,
   "Team1VS2Life":120,
   "TurnsRecoveryRate":300,
-  "ZoomActive":true,
+  "ZoomActive":false,
   "ZoomMin":0.75,
   "ZoomMax":1.1,
   "ZoomSpeed":1,
@@ -125,14 +125,14 @@ func main() {
   "AIRandomColor":true,
   "AIRamping":true,
   "AutoGuard":false,
-  "PostProcessingShader": 0,
   "TeamPowerShare":false,
   "TeamLifeShare":false,
   "Fullscreen":false,
-	"AudioDucking":false,
-	"QuickLaunch":0,
+  "AudioDucking":false,
+  "QuickLaunch":0,
   "AllowDebugKeys":true,
-  "PostProcessingShader":0,
+  "PostProcessingShader": 0,
+  "LocalcoordScalingType": 1,
   "IP":{
   }
 }
@@ -160,16 +160,17 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag               int
-		TeamLifeShare        bool
-		AIRandomColor        bool
-		Fullscreen           bool
-		AudioDucking         bool
-		AllowDebugKeys       bool
-		PostProcessingShader int32
-		CommonAir            string
-		CommonCmd            string
-		QuickLaunch          int
+		NumTag                int
+		TeamLifeShare         bool
+		AIRandomColor         bool
+		Fullscreen            bool
+		AudioDucking          bool
+		AllowDebugKeys        bool
+		PostProcessingShader  int32
+		LocalcoordScalingType int32
+		CommonAir             string
+		CommonCmd             string
+		QuickLaunch           int
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -233,6 +234,7 @@ func main() {
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
 	sys.PostProcessingShader = tmp.PostProcessingShader
+	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
 	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)

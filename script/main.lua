@@ -10,13 +10,6 @@ math.randomseed(os.time())
 --; COMMON SECTION
 --;===========================================================
 
-require "script/screenpack"
-main.IntLocalcoordValues()
-require "script/localcoord"
-main.CalculateLocalcoordValues()
-main.IntLifebarScale()
-main.SetScaleValues()
-
 --One-time load of the json routines
 json = (loadfile 'script/dkjson.lua')()
 
@@ -24,6 +17,14 @@ json = (loadfile 'script/dkjson.lua')()
 local file = io.open("data/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
+
+-- Int localcoord
+require "script/screenpack"
+main.IntLocalcoordValues()
+require "script/localcoord"
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
+main.SetScaleValues()
 
 main.p1In = 1
 main.p2In = 2
