@@ -252,6 +252,7 @@ type System struct {
 
 	lifebarScale   float32
 	lifebarOffsetX float32
+	LocalcoordScalingType int32
 
 	PostProcessingShader int32
 }
