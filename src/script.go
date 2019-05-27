@@ -2099,7 +2099,7 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "teamside", func(*lua.LState) int {
-		l.Push(lua.LNumber(int32(sys.debugWC.playerNo)&1 + 1))
+		l.Push(lua.LNumber(int32(sys.debugWC.teamside) + 1))
 		return 1
 	})
 	luaRegister(l, "tickspersecond", func(*lua.LState) int {

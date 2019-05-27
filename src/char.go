@@ -2552,7 +2552,7 @@ func (c *Char) roundState() int32 {
 		return 0
 	case sys.lifebar.ro.cur == 0:
 		return 1
-	case !sys.roundEnd():
+	case sys.intro >= 0:
 		return 2
 	case sys.intro < -(sys.lifebar.ro.over_hittime+
 		sys.lifebar.ro.over_waittime) && (sys.chars[c.playerNo][0].scf(SCF_over) ||
