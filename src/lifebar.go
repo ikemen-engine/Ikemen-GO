@@ -651,14 +651,13 @@ func (c *LifeBarCombo) reset() {
 func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 	for i := range c.cur {
 		haba := func(n int32) float32 {
-			if c.counter_font[i][0] < 0 || int(c.counter_font[i][0]) >= len(f) {
+			if f[c.counter_font[i][0]] == nil || c.counter_font[i][0] < 0 || int(c.counter_font[i][0]) >= len(f) {
 				return 0
 			}
 			return float32(f[c.counter_font[i][0]].TextWidth(fmt.Sprintf("%v", n))) *
 				c.text_lay[i].scale[0]
 		}
-
-		if c.resttime[i] <= 0 && c.counterX[i] == c.start_x[i]*2 {
+		if c.counter_font[i][0] < 0 || c.resttime[i] <= 0 && c.counterX[i] == c.start_x[i]*2 {
 			continue
 		}
 		var x float32
@@ -695,7 +694,7 @@ func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {
 			c.text_lay[i].DrawText(x+sys.lifebarOffsetX, float32(c.pos[i][1]), sys.lifebarScale, layerno,
 				text, f[c.text_font[i][0]], c.text_font[i][1], 1)
 		}
-		if c.counter_font[i][0] >= 0 && int(c.counter_font[i][0]) < len(f) {
+		if c.counter_font[i][0] >= 0 && f[c.counter_font[i][0]] != nil && int(c.counter_font[i][0]) < len(f) {
 			z := 1 + float32(c.shaketime[i])*(1.0/20)*
 				float32(math.Sin(float64(c.shaketime[i])*(math.Pi/2.5)))
 			c.counter_lay[i].DrawText((x+sys.lifebarOffsetX)/z, float32(c.pos[i][1])/z, z*sys.lifebarScale, layerno,
@@ -851,7 +850,7 @@ func (r *LifeBarRound) act() bool {
 			}
 			r.wt[0]--
 		}
-	} else if r.cur == 2 && (sys.finish != FT_NotYet || sys.time == 0) {
+	} else if r.cur == 2 && (sys.intro < 0) && (sys.finish != FT_NotYet || sys.time == 0) {
 		if r.timerActive {
 			if sys.gameTime-sys.timerCount[sys.round-1] > 0 {
 				sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
@@ -861,14 +860,17 @@ func (r *LifeBarRound) act() bool {
 			r.timerActive = false
 		}
 		f := func(ats *AnimTextSnd, t int) {
-			if r.swt[t] == 0 {
+			if -r.swt[t]-10 == 0 {
 				r.snd.play(ats.snd)
+				r.swt[t]--
 			}
-			r.swt[t]--
+			if sys.tickNextFrame() {
+				r.swt[t]--
+			}
 			if ats.End(r.dt[t]) {
 				r.wt[t] = 2
 			}
-			if r.wt[t] <= 0 {
+			if sys.intro < -r.ko_time-10 {
 				r.dt[t]++
 				ats.Action()
 			}
@@ -932,7 +934,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 			r.fight.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
 		}
 	case 2:
-		if r.wt[0] < 0 {
+		if r.wt[0] < 0 && sys.intro < -r.ko_time-10 {
 			switch sys.finish {
 			case FT_KO:
 				r.ko.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)

@@ -730,7 +730,8 @@ func (ats *AnimTextSnd) NoDisplay() bool {
 }
 func (ats *AnimTextSnd) End(dt int32) bool {
 	if ats.displaytime < 0 {
-		return len(ats.anim.anim.frames) == 0 || ats.anim.anim.loopend
+		return len(ats.anim.anim.frames) == 0 || ats.anim.anim.loopend ||
+			(ats.anim.anim.frames[ats.anim.anim.current].Time == -1 && ats.anim.anim.current == int32(len(ats.anim.anim.frames)-1))
 	}
 	return dt >= ats.displaytime
 }

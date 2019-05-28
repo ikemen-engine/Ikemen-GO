@@ -509,7 +509,7 @@ func (hd *HitDef) clear() {
 	*hd = HitDef{hitflag: int32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
 		animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
 		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
-		hitsound: [...]int32{IErr, -1}, guardsound: [...]int32{IErr, -1},
+		hitsound: [...]int32{IErr, 0}, guardsound: [...]int32{IErr, 0},
 		ground_type: HT_High, air_type: HT_Unknown, air_hittime: 20,
 		yaccel: float32(math.NaN()), guard_velocity: float32(math.NaN()),
 		airguard_velocity: [...]float32{float32(math.NaN()),
@@ -2552,7 +2552,7 @@ func (c *Char) roundState() int32 {
 		return 0
 	case sys.lifebar.ro.cur == 0:
 		return 1
-	case !sys.roundEnd():
+	case sys.intro >= 0:
 		return 2
 	case sys.intro < -(sys.lifebar.ro.over_hittime+
 		sys.lifebar.ro.over_waittime) && (sys.chars[c.playerNo][0].scf(SCF_over) ||
@@ -2655,6 +2655,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	}
 	if ch := c.newChannel(chNo, lowpriority); ch != nil {
 		ch.sound, ch.loop, ch.freqmul = w, loop, freqmul
+		ch.fidx = 0
 		vol = Max(-25600, Min(25600, vol))
 		//if c.gi().ver[0] == 1 {
 		if f {

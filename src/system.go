@@ -250,8 +250,8 @@ type System struct {
 	luaBigPortraitScale   float32
 	luaSpriteOffsetX      float64
 
-	lifebarScale   float32
-	lifebarOffsetX float32
+	lifebarScale          float32
+	lifebarOffsetX        float32
 	LocalcoordScalingType int32
 
 	PostProcessingShader int32
@@ -988,12 +988,12 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 			if s.time == 0 {
-				s.intro = -s.lifebar.ro.over_hittime
+				//s.intro = -s.lifebar.ro.over_hittime
 				if !(ko[0] || ko[1]) {
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == -s.lifebar.ro.over_hittime && (ko[0] || ko[1]) {
+			if s.intro == -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
@@ -1140,7 +1140,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		_else := s.sf(GSF_nokoslow) || s.time == 0
 		if !_else {
 			slowt := -(s.lifebar.ro.over_hittime + (s.lifebar.ro.slow_time+3)>>2)
-			if s.intro >= slowt && s.intro < -s.lifebar.ro.over_hittime {
+			if s.intro >= slowt && s.intro < 0 {
 				s.turbo = spd * 0.25
 			} else {
 				slowfade := s.lifebar.ro.slow_time * 2 / 5
@@ -2137,6 +2137,7 @@ func (l *Loader) loadStage() bool {
 		if sys.sel.selectedStageNo == 0 {
 			randomstageno := Rand(0, int32(len(sys.sel.stagelist))-1)
 			def = sys.sel.stagelist[randomstageno].def
+			l.loadAttachedChar(0, sys.sel.stagelist[randomstageno].attachedchardef)
 		} else {
 			def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
 			l.loadAttachedChar(0, sys.sel.stagelist[sys.sel.selectedStageNo-1].attachedchardef)
