@@ -27,7 +27,7 @@ var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect [3]uintptr
+var postShaderSelect [4]uintptr
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -188,6 +188,13 @@ func RenderInit() {
 	vertObj = compile(gl.VERTEX_SHADER, hqx4VertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, hqx4FragShader)
 	postShaderSelect[2] = link(vertObj, fragObj)
+	gl.DeleteObjectARB(vertObj)
+	gl.DeleteObjectARB(fragObj)
+    
+    // [3]: scanline shader
+	vertObj = compile(gl.VERTEX_SHADER, scanlineVertShader)
+	fragObj = compile(gl.FRAGMENT_SHADER, scanlineFragShader)
+	postShaderSelect[3] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
 	
@@ -838,3 +845,29 @@ void main()
 		gl_FragColor.xyz=(w1*(i1+i3)+w2*(i2+i4)+w3*(s1+s3)+w4*(s2+s4)+c)/(2.0*(w1+w2+w3+w4)+1.0);
 		gl_FragColor.a = 1.0;
 }` + "\x00"
+
+var scanlineVertShader string = `
+uniform vec2 TextureSize;
+attribute vec2 VertCoord;
+
+void main(void) {
+	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	gl_TexCoord[0].xy = (VertCoord + 1.0) / 2.0;
+}
+` + "\x00"
+
+var scanlineFragShader string = `
+uniform sampler2D Texture;
+uniform vec2 TextureSize;
+
+void main(void) {
+    vec4 rgb = texture2D(Texture, gl_TexCoord[0].xy);
+    vec4 intens ;
+    if (fract(gl_FragCoord.y * (0.5*4.0/3.0)) > 0.5)
+        intens = vec4(0);
+    else
+        intens = smoothstep(0.2,0.8,rgb) + normalize(vec4(rgb.xyz, 1.0));
+    float level = (4.0-gl_TexCoord[0].z) * 0.19;
+    gl_FragColor = intens * (0.5-level) + rgb * 1.1 ;
+}
+` + "\x00"
