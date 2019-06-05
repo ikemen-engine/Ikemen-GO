@@ -960,6 +960,7 @@ animSetAlpha(main.infoBox, motif.infobox.background_alpha[1], motif.infobox.back
 animSetWindow(main.infoBox, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 animUpdate(main.infoBox)
 
+
 main.txt_warningTitle = main.f_createTextImg(
 	motif.font_data[motif.warning_info.title_font[1]],
 	motif.warning_info.title_font[2],
@@ -974,6 +975,8 @@ main.txt_warningTitle = main.f_createTextImg(
 	motif.warning_info.title_font[6]
 )
 
+main.SetDefaultScale()
+
 local footerBox = animNew(main.fadeSff, '0,2, 0,0, -1')
 animSetTile(footerBox, 1, 1)
 animSetWindow(
@@ -985,6 +988,8 @@ animSetWindow(
 )
 animSetAlpha(footerBox, motif.title_info.footer_boxbackground_alpha[1], motif.title_info.footer_boxbackground_alpha[2])
 animUpdate(footerBox)
+
+main.SetScaleValues()
 
 --add characters and stages using select.def instead of select.lua
 local txt_loading = main.f_createTextImg(
@@ -1319,6 +1324,10 @@ storyboard = require('script.storyboard')
 --;===========================================================
 --; MAIN MENU
 --;===========================================================
+
+--Disable screenpack scale on the text for showing them corectly.
+main.SetDefaultScale()
+
 local txt_titleFooter1 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer1_font[1]],
 	motif.title_info.footer1_font[2],
@@ -1371,6 +1380,10 @@ local txt_infoboxTitle = main.f_createTextImg(
 	motif.infobox.title_font[5],
 	motif.infobox.title_font[6]
 )
+
+--Enable screenpack scale again.
+main.SetScaleValues()
+
 main.txt_mainSelect = main.f_createTextImg(
 	motif.font_data[motif.select_info.title_font[1]],
 	motif.select_info.title_font[2],
@@ -1573,7 +1586,9 @@ function main.f_mainMenu()
 		if esc() then
 			break
 		elseif getKey() == 'F1' then
+			main.SetDefaultScale()
 			main.f_warning(main.f_extractText(motif.infobox.text), motif.title_info, motif.titlebgdef, motif.infobox, txt_infoboxTitle, main.infoBox)
+			main.SetScaleValues()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			main.f_default()
 			--ARCADE
@@ -1676,8 +1691,12 @@ function main.f_mainMenu()
 			--OPTIONS
 			if t[item].itemname == 'options' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
+				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)				
+				--Disable screenpack scale on the menu text for showing the menu corectly.
+				main.SetDefaultScale()
 				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
+				--Enable screenpack scale again.
+				main.SetScaleValues()
 			end
 			--EXIT
 			if t[item].itemname == 'exit' then

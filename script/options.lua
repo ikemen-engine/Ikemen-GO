@@ -1335,7 +1335,7 @@ local t_audioCfg = {
 	{data = textImgNew(), itemname = 'mastervolume', displayname = motif.option_info.menu_itemname_audio_mastervolume, vardata = textImgNew(), vardisplay = config.MasterVolume .. '%'},
 	{data = textImgNew(), itemname = 'bgmvolume', displayname = motif.option_info.menu_itemname_audio_bgmvolume, vardata = textImgNew(), vardisplay = config.BgmVolume .. '%'},
 	{data = textImgNew(), itemname = 'sfxvolume', displayname = motif.option_info.menu_itemname_audio_sfxvolume, vardata = textImgNew(), vardisplay = config.WavVolume .. '%'},
-	{data = textImgNew(), itemname = 'audioducking', displayname = motif.option_info.menu_itemname_audio_audioducking, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'audioducking', displayname = motif.option_info.menu_itemname_audio_audioducking, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
@@ -1399,7 +1399,7 @@ function options.f_audioCfg()
 				modified = 1
 				needReload = 1
 			end
-		-- Allow Debug Keys
+		-- Audio Ducking
 		elseif t[item].itemname == 'audioducking' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AudioDucking then
