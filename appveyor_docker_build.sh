@@ -19,19 +19,23 @@
 #       $(pwd):/code is source:destination and $(pwd) maps to current directory where the script is called.
 #  -i   : interactive. 
 #  -t   : allocate a pseudo terminal
-#  danielporto/ikemen-dev:latest        : docker image configured with the tooling required to build the binaries.
+#  windblade/ikemen-dev-gacel:latest        : docker image configured with the tooling required to build the binaries.
 #  bash -c 'cd /code && bash -x get.sh' : command called when the container launches. In changes to the code directory
 #  then execute both get and build scripts 
 
 
 echo "Building linux binary..."
-docker run --rm -e OS=linux -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x get.sh' 
-docker run --rm -e OS=linux -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x build.sh' 
-
-echo "Building windows binary..."
-docker run --rm -e OS=windows -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x get.sh' 
-docker run --rm -e OS=windows -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x build.sh' 
+docker run --rm -e OS=linux -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x get.sh' 
+docker run --rm -e OS=linux -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x build.sh' 
 
 echo "Building mac binary..."
-docker run --rm -e OS=mac -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x get.sh' 
-docker run --rm -e OS=mac -v $(pwd):/code -i danielporto/ikemen-dev:latest bash -c 'cd /code && bash -x build.sh' 
+docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x get.sh' 
+docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x build.sh' 
+
+echo "Building windows x64 binary..."
+docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x get.sh' 
+docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x build.sh' 
+
+echo "Building windows x86 binary..."
+docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x get.sh' 
+docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code && bash -x build.sh' 

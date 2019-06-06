@@ -7,7 +7,7 @@ if [ -n "$OS" ];    then
         export GOOS=windows
         export CC=x86_64-w64-mingw32-gcc
         export CXX=x86_64-w64-mingw32-g++
-        BINARY_NAME="Ikemen_GO.exe"; 
+        BINARY_NAME="Ikemen_GO_Win_x64.exe";
 
         ;;
     "mac") 
@@ -19,6 +19,13 @@ if [ -n "$OS" ];    then
         ;;
     "linux") 
         BINARY_NAME="Ikemen_GO_linux"; 
+        ;;
+	"windows32")
+	    export GOOS=windows
+		export GOARCH=386
+        export CC=i686-w64-mingw32-gcc
+        export CXX=i686-w64-mingw32-g++
+        BINARY_NAME="Ikemen_GO_Win_x86.exe"; 
         ;;
     esac 
 else 
