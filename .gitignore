@@ -22,6 +22,7 @@ Ikemen_GO_Linux.zip
 openal-soft-1.19.1-bin.zip
 
 # Executables
+/bin/*
 Ikemen_GO.exe
 Ikemen_GO_mac
 Ikemen_GO_linux

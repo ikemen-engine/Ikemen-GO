@@ -20,13 +20,13 @@ On mac/linux, double click on `Ikemen_GO.command`
 These instructions are for those interested in developing the Ikemen_GO engine. Instructions on contributing with custom stages, fonts, characters and other resources can be found in the community forum.
 
 ### Building on Windows
-Check the instructions [here](BUILD_win.md)
+Check the instructions [here](build/BUILD_win.md)
 
 ### Building on Mac
-Check the insturctions [here](Build_mac.md)
+Check the insturctions [here](build/Build_mac.md)
 
 ### Building on Linux
-Check the instructions [here](Build_linux.md)
+Check the instructions [here](build/Build_linux.md)
 
 ### Debugging
 Download the [Mugen dependencies](https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna) and unpack them into the Ikemen_GO source dir. Then, use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
