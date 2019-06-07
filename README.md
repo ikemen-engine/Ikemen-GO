@@ -1,5 +1,5 @@
 # Ikemen GO
-Itumademo Kanseishinai Eienni Mikansei ENgine Go version aka IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
+IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
 
 ## Installing
 Installation bundles for windows, mac and linux are provided in the releases section.
@@ -64,6 +64,9 @@ Ikemen GO Plus, K4thos fork of Ikemen (Some features were borrowed from his repo
 
 https://github.com/K4thos/Ikemen-GO-Plus
 
+## What I.K.E.M.E.N GO means.
+Ikemen GO is a acrinym of:
+Itumademo Kanseishinai Eienni Mikansei ENgine Go version.
 
 ## License
 [MIT Licence](LICENSE.txt)
