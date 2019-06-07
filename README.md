@@ -1,5 +1,5 @@
 # Ikemen GO
-IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
+Itumademo Kanseishinai Eienni Mikansei ENgine Go version aka IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
 
 ## Installing
 Installation bundles for windows, mac and linux are provided in the releases section.
