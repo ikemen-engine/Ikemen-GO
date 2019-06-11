@@ -44,9 +44,9 @@ http://kcat.strangesoft.net/openal.html
 
 From that file, inside include folder, extract AL folder to the
 
-`<insert MSYS2 install folder here>/mingw64//include` directory.
+`<insert MSYS2 install folder here>/mingw64/include` directory.
 
-Also from that .zip file, inside libs folder, libOpenAL32.dll.a file should be extracted to
+Also from that .zip file, inside libs folder, `libOpenAL32.dll.a` file should be extracted to
 
 `<insert msys64 install folder here>/mingw64/lib` directory.
 
@@ -64,8 +64,15 @@ https://golang.org/
 
 # Part 2: Buildidng the code
 
-Download the repo.
+Step 1: Download the repo.
 
-Run the GET.cmd file
+Step 2: Open the Build folder insisde the `Ikemen_GO` folder.
 
-Run the BUILD.cmd file.
+Step 3: Run the GET.cmd file
+
+Step 4: Run the BUILD.cmd file.
+
+Now you should have a new folder called `bin` inside the `Ikemen_GO` folder you can find the compiled exe there.
+
+PS: If you want to run the engine you can to donwload the mugen font and screenpack files at this [link](https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna),
+they need to be extracted at the `bin` directory.

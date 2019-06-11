@@ -26,6 +26,10 @@ Move to downloaded folder:
 
 `cd Ikemen_GO`
 
+Then, move to the build folder:
+
+`cd build`
+
 Execute get.sh to download Ikemen dependencies (it takes a while):
 
 `./get.sh`
@@ -34,6 +38,11 @@ FINALLY compile:
 
 `./build.sh`
 
-And now, Ikemen can be opened double clicking Ikemen-GO-Plus, or with the terminal:
+The compiled Ikemen GO binary now should be inside the bin folder.
+
+And now, Ikemen can be opened double clicking Ikemen_GO, or with the terminal:
 
 `./Ikemen_GO`
+
+PS: If you want to run the engine you can to donwload the mugen font and screenpack files at this [link](https://drive.google.com/uc?export=download&amp;id=16p6rx_WXyJdqAHU3KPaArYc62lo4FJna),
+they need to be extracted at the `bin` directory.
