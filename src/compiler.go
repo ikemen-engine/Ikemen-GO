@@ -2041,6 +2041,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
+	case "groundangle":
+		out.append(OC_ex_, OC_ex_groundangle)
+	case "stagefrontedge":
+		out.append(OC_ex_, OC_ex_stagefrontedge)
+	case "stagebackedge":
+		out.append(OC_ex_, OC_ex_stagebackedge)
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
@@ -4589,6 +4595,10 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_projscale, VT_Float, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "projangle",
+			projectile_projangle, VT_Float, 1, false); err != nil {
+			return err
+		}
 
 		// hitdef部分
 		if err := c.hitDefSub(is, sc); err != nil {
@@ -4636,6 +4646,26 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platform",
+			projectile_platform, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformwidth",
+			projectile_platformwidth, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformheight",
+			projectile_platformheight, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformangle",
+			projectile_platformangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformfence",
+			projectile_platformfence, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil

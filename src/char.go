@@ -1077,6 +1077,7 @@ type Projectile struct {
 	remanim         int32
 	cancelanim      int32
 	scale           [2]float32
+	angle           float32
 	clsnScale       [2]float32
 	remove          bool
 	removetime      int32
@@ -1106,6 +1107,11 @@ type Projectile struct {
 	palfx           *PalFX
 	localscl        float32
 	parentAttackmul float32
+	platform        bool
+	platformWidth   [2]float32
+	platformHeight  [2]float32
+	platformAngle   float32
+	platformFence   bool
 }
 
 func newProjectile() *Projectile {
@@ -1118,7 +1124,7 @@ func (p *Projectile) clear() {
 		scale: [...]float32{1, 1}, clsnScale: [...]float32{1, 1}, remove: true, localscl: 1,
 		removetime: -1, velmul: [...]float32{1, 1}, hits: 1, priority: 1,
 		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
-		heightbound: [...]int32{-240, 1}, facing: 1, aimg: *newAfterImage()}
+		heightbound: [...]int32{-240, 1}, facing: 1, aimg: *newAfterImage(), platformFence: true}
 	p.hitdef.clear()
 }
 func (p *Projectile) setPos(pos [2]float32) {
@@ -1321,7 +1327,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	if p.ani != nil {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
-			p.sprpriority, 0, 0, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			p.sprpriority, p.facing * p.angle, 0, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].ver[0] != 1, p.facing}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
 		sys.sprites.add(sd,
@@ -1502,6 +1508,8 @@ type Char struct {
 	cpucmd        int32
 	attackDist    float32
 	offset        [2]float32
+	platformPosY  float32
+	groundAngle   float32
 	stchtmp       bool
 	inguarddist   bool
 	pushed        bool
@@ -2581,6 +2589,18 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 	_, ok := c.gi().states[stateno.ToI()]
 	return BytecodeBool(ok)
 }
+func (c *Char) stageFrontEdge() float32 {
+	if c.facing > 0 {
+		return sys.cam.XMax/c.localscl - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl
+}
+func (c *Char) stageBackEdge() float32 {
+	if c.facing < 0 {
+		return sys.cam.XMax/c.localscl - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl
+}
 func (c *Char) time() int32 {
 	return c.ss.time
 }
@@ -3425,17 +3445,17 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 		if t := sys.playerID(tar[0]); t != nil {
 			switch hmf {
 			case HMF_M:
-				x += float32(t.size.mid.pos[0])
-				y += float32(t.size.mid.pos[1])
+				x += t.size.mid.pos[0] * (320 / float32(t.localcoord)) / c.localscl
+				y += t.size.mid.pos[1] * (320 / float32(t.localcoord)) / c.localscl
 			case HMF_H:
-				x += float32(t.size.head.pos[0])
-				y += float32(t.size.head.pos[1])
+				x += t.size.head.pos[0] * (320 / float32(t.localcoord)) / c.localscl
+				y += t.size.head.pos[1] * (320 / float32(t.localcoord)) / c.localscl
 			}
 			if !math.IsNaN(float64(x)) {
-				c.setX(t.pos[0] + t.facing*x)
+				c.setX(t.pos[0]*t.localscl/c.localscl + t.facing*x)
 			}
 			if !math.IsNaN(float64(y)) {
-				c.setY(t.pos[1] + y)
+				c.setY(t.pos[1]*t.localscl/c.localscl + y)
 			}
 			c.targetBind(tar[:1], time, c.facing*c.distX(t, c), (t.pos[1]*t.localscl/c.localscl)-(c.pos[1]*c.localscl/t.localscl))
 		}
@@ -3946,7 +3966,7 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				c.selfState(5050, -1, -1, -1)
+				//c.selfState(5050, -1, -1, -1)
 				c.setBindTime(0)
 				return
 			}
@@ -3997,6 +4017,18 @@ func (c *Char) xScreenBound() {
 	}
 	x = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl, x))
 	c.setPosX(x)
+}
+func (c *Char) xPlatformBound(pxmin, pxmax float32) {
+	x := c.pos[0]
+	if c.ss.stateType != ST_A {
+		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		if c.facing > 0 {
+			min, max = -max, -min
+		}
+		x = MaxF(min+pxmin/c.localscl, MinF(max+pxmax/c.localscl, x))
+	}
+	c.setX(x)
+	c.xScreenBound()
 }
 func (c *Char) gethitBindClear() {
 	if c.isBound() {
@@ -4338,7 +4370,7 @@ func (c *Char) action() {
 			}
 			for {
 				c.posUpdate()
-				if c.ss.physics != ST_A || c.vel[1] <= 0 || c.pos[1] < 0 ||
+				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
 					c.ss.no == 105 {
 					break
 				}
@@ -4432,6 +4464,8 @@ func (c *Char) update(cvmin, cvmax,
 			c.scf(SCF_ko) && c.scf(SCF_over) {
 			c.exitTarget(true)
 		}
+		c.platformPosY = 0
+		c.groundAngle = 0
 		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
 			c.hitdef.reversal_attr > 0) && !c.hitPause()))
 		c.hoIdx = -1
@@ -5320,7 +5354,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 	if proj {
 		for i, pr := range sys.projs {
-			if i == getter.playerNo && getter.helperIndex == 0 || len(sys.projs[i]) == 0 {
+			if len(sys.projs[i]) == 0 {
 				continue
 			}
 			c := sys.chars[i][0]
@@ -5328,13 +5362,46 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.atktmp = -1
 			for j := range pr {
 				p := &pr[j]
-				if p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
+				if (i == getter.playerNo && getter.helperIndex == 0 && p.platform == false) ||
+					p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
 					(getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) {
 					continue
 				}
-				if dist := (getter.pos[0]*getter.localscl - p.pos[0]*p.localscl) * p.facing; dist >= 0 &&
-					dist <= float32(c.size.proj.attack.dist)*c.localscl {
+				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
+				if p.platform == false &&
+					dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
 					getter.inguarddist = true
+				}
+				if p.platform == true {
+					//Platformの足場上空判定
+					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
+						getter.platformPosY*getter.localscl >= (p.pos[1]+p.platformHeight[0])*p.localscl {
+						angleSinValue := float32(math.Sin(float64(p.platformAngle) / 180 * math.Pi))
+						angleCosValue := float32(math.Cos(float64(p.platformAngle) / 180 * math.Pi))
+						oldDist := (getter.oldPos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
+						onPlatform := func(protrude bool) {
+							getter.platformPosY = ((p.pos[1]+p.platformHeight[0]+p.velocity[1])*p.localscl - angleSinValue*(oldDist/angleCosValue)) / getter.localscl
+							getter.groundAngle = p.platformAngle
+							//足場に乗っている状態
+							if getter.ss.stateType != ST_A {
+								getter.pos[0] += p.velocity[0] * p.facing * p.localscl / getter.localscl
+								getter.pos[1] += p.velocity[1] * p.localscl / getter.localscl
+								if protrude {
+									if p.facing > 0 {
+										getter.xPlatformBound((p.pos[0]+p.velocity[0]*2*p.facing+p.platformWidth[0]*angleCosValue*p.facing)*p.localscl, (p.pos[0]-p.velocity[0]*2*p.facing+p.platformWidth[1]*angleCosValue*p.facing)*p.localscl)
+									} else {
+										getter.xPlatformBound((p.pos[0]-p.velocity[0]*2*p.facing+p.platformWidth[1]*angleCosValue*p.facing)*p.localscl, (p.pos[0]+p.velocity[0]*2*p.facing+p.platformWidth[0]*angleCosValue*p.facing)*p.localscl)
+									}
+								}
+							}
+						}
+						if dist >= (p.platformWidth[0]*angleCosValue)*p.localscl && dist <= (p.platformWidth[1]*angleCosValue)*p.localscl {
+							onPlatform(false)
+						} else if p.platformFence && oldDist >= (p.platformWidth[0]*angleCosValue)*p.localscl &&
+							oldDist <= (p.platformWidth[1]*angleCosValue)*p.localscl {
+							onPlatform(true)
+						}
+					}
 				}
 				if p.hits == 0 {
 					continue

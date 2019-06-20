@@ -361,6 +361,9 @@ const (
 	OC_ex_drawpalno
 	OC_ex_maparray
 	OC_ex_selfstatenoexist
+	OC_ex_groundangle
+	OC_ex_stagefrontedge
+	OC_ex_stagebackedge
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -1082,7 +1085,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_pos_x:
 			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
-			sys.bcStack.PushF(c.pos[1] * c.localscl / oc.localscl)
+			sys.bcStack.PushF((c.pos[1] - c.platformPosY) * c.localscl / oc.localscl)
 		case OC_power:
 			sys.bcStack.PushI(c.getPower())
 		case OC_powermax:
@@ -1564,6 +1567,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i += 4
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
+	case OC_ex_groundangle:
+		sys.bcStack.PushF(c.groundAngle)
+	case OC_ex_stagefrontedge:
+		sys.bcStack.PushF(c.stageFrontEdge())
+	case OC_ex_stagebackedge:
+		sys.bcStack.PushF(c.stageBackEdge())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -2820,7 +2829,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			crun.setX(sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*lclscround)
 		case posSet_y:
-			crun.setY(exp[0].evalF(c) * lclscround)
+			crun.setY(exp[0].evalF(c)*lclscround + crun.platformPosY)
 		case posSet_z:
 			exp[0].run(c)
 		case posSet_redirectid:
@@ -3593,6 +3602,7 @@ const (
 	projectile_remvelocity
 	projectile_accel
 	projectile_projscale
+	projectile_projangle
 	projectile_offset
 	projectile_projsprpriority
 	projectile_projstagebound
@@ -3603,6 +3613,11 @@ const (
 	projectile_pausemovetime
 	projectile_ownpal
 	projectile_remappal
+	projectile_platform
+	projectile_platformwidth
+	projectile_platformheight
+	projectile_platformfence
+	projectile_platformangle
 	projectile_redirectid
 )
 
@@ -3691,6 +3706,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				p.scale[1] = exp[1].evalF(c)
 			}
+		case projectile_projangle:
+			p.angle = exp[0].evalF(c)
 		case projectile_offset:
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
@@ -3720,6 +3737,22 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
+		case projectile_platform:
+			p.platform = exp[0].evalB(c)
+		case projectile_platformwidth:
+			p.platformWidth[0] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				p.platformWidth[1] = exp[1].evalF(c) * lclscround
+			}
+		case projectile_platformheight:
+			p.platformHeight[0] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				p.platformHeight[1] = exp[1].evalF(c) * lclscround
+			}
+		case projectile_platformangle:
+			p.platformAngle = exp[0].evalF(c)
+		case projectile_platformfence:
+			p.platformFence = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
 				afterImage(sc).runSub(c, &p.aimg, id, exp)

@@ -616,8 +616,8 @@ if HitOver {
 if MajorVersion = 1 {
     Explod{
         anim: F(60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
-        postype: none;
-        pos: Pos X + camerapos X, 0;
+        postype: p1;
+        pos: 0, 0;
         facing: facing;
         sprpriority: ifelse ($vely <= Const240p(14), -10, 10);
     }
