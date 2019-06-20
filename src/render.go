@@ -20,7 +20,8 @@ var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
 var indices = [4]int32{1, 2, 0, 3}
 
 // Post-processing
-var fbo, fbo_texture, rbo_depth uint32
+var fbo, fbo_texture uint32
+var fbo_f, fbo_f_texture uint32
 var postShader uintptr
 var postVertAttrib int32
 var postTexUniform int32
@@ -168,7 +169,7 @@ func RenderInit() {
 	uniformColor = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("color\x00"))
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
-	
+
 	// Compile postprocessing shaders
 	// [0]: ident shader(no postprocessing)
 	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
@@ -176,47 +177,56 @@ func RenderInit() {
 	postShaderSelect[0] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
-	
+
 	// [1]: hqx2 shader
 	vertObj = compile(gl.VERTEX_SHADER, hqx2VertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, hqx2FragShader)
 	postShaderSelect[1] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
-	
+
 	// [2]: hqx4 shader
 	vertObj = compile(gl.VERTEX_SHADER, hqx4VertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, hqx4FragShader)
 	postShaderSelect[2] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
-    
-    // [3]: scanline shader
+
+	// [3]: scanline shader
 	vertObj = compile(gl.VERTEX_SHADER, scanlineVertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, scanlineFragShader)
 	postShaderSelect[3] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
-	
+
+	gl.Enable(gl.MULTISAMPLE)
+
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &fbo_texture)
-	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, fbo_texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], false)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+
+	gl.GenTextures(1, &fbo_f_texture)
+	gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-	
-	gl.GenRenderbuffers(1, &rbo_depth)
-	gl.BindRenderbuffer(gl.RENDERBUFFER, rbo_depth)
-	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
-	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
-	
+
 	gl.GenFramebuffers(1, &fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_texture, 0)
-	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, fbo_texture, 0)
+
+	gl.GenFramebuffers(1, &fbo_f)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo_f)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture, 0)
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
@@ -225,17 +235,20 @@ func bindFB() {
 }
 
 func unbindFB() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0);
-	
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo_f)
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fbo)
+	gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.LINEAR)
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	postShader = postShaderSelect[sys.PostProcessingShader]
-	
+
 	postVertAttrib = gl.GetAttribLocationARB(postShader, gl.Str("VertCoord\x00"))
 	postTexUniform = gl.GetUniformLocationARB(postShader, gl.Str("Texture\x00"))
 	postTexSizeUniform = gl.GetUniformLocationARB(postShader, gl.Str("TextureSize\x00"))
-	
-	gl.Clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgramObjectARB(postShader)
-	gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
+	gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
 	gl.Uniform1iARB(postTexUniform, 0)
 	gl.Uniform2fARB(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 	gl.EnableVertexAttribArrayARB(uint32(postVertAttrib))
@@ -516,6 +529,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		(*window)[2], (*window)[3])
 	return
 }
+
 func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
@@ -549,6 +563,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
+
 func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32) {
@@ -567,6 +582,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	gl.DeleteTextures(1, &paltex)
 	gl.Disable(gl.TEXTURE_1D)
 }
+
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
@@ -757,7 +773,6 @@ const float mx = 0.325;      // start smoothing wt.
 
 	gl_FragColor.xyz = w1 * c10 + w2 * c21 + w3 * c12 + w4 * c01 + (1.0 - w1 - w2 - w3 - w4) * c11;
 }` + "\x00"
-
 
 var hqx4VertShader string = `
 attribute vec2 VertCoord;
