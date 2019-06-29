@@ -361,7 +361,12 @@ func loadFntTtf(f *Fnt, fontfile string, filename string) {
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
 	fileDir := SearchFile(filename, fontfile)
-	sff, err := loadSff(fileDir, false)
+	sff, err := loadSff("font/"+fileDir, false)
+
+	if err != nil {
+		err = nil
+		sff, err = loadSff(fileDir, false)
+	}
 
 	if err != nil {
 		panic(err)
