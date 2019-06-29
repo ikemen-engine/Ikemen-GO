@@ -19,7 +19,6 @@ if [ -n "$OS" ];    then
         export CC=o64-clang 
         export CXX=o64-clang++
         BINARY_NAME="Ikemen_GO_mac"; 
-		IS_WINDOWS="1"
 		
         ;;
     "linux") 
@@ -31,8 +30,10 @@ if [ -n "$OS" ];    then
 		export GOARCH=386
         export CC=i686-w64-mingw32-gcc
         export CXX=i686-w64-mingw32-g++
-        BINARY_NAME="Ikemen_GO_Win_x86.exe"; 
-        ;;
+        BINARY_NAME="Ikemen_GO_Win_x86.exe";
+		IS_WINDOWS="1"		
+        
+		;;
     esac 
 else 
     BINARY_NAME="Ikemen_GO";  
