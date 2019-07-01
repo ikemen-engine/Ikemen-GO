@@ -125,6 +125,7 @@ func newCompiler() *Compiler {
 		"victoryquote":       c.victoryQuote,
 		"zoom":               c.zoom,
 		"mapset":             c.mapSet,
+		"matchrestart":       c.matchRestart,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -3159,6 +3160,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokoslow)))
 			case "noko":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_noko)))
+			case "roundnotskip":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
 			default:
 				return Error(data + "が無効な値です")
 			}
@@ -6278,6 +6281,90 @@ func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "value",
 			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*matchRestart)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "reload",
+			matchRestart_reload, VT_Bool, MaxSimul*2+MaxAttachedChar, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p1def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p1def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p2def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p2def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p3def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p3def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p4def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p4def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p5def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p5def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p6def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p6def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p7def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p7def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p8def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
 			return err
 		}
 		return nil

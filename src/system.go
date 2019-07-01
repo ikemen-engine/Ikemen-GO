@@ -188,6 +188,7 @@ type System struct {
 	paused, step            bool
 	roundResetFlg           bool
 	reloadFlg               bool
+	reloadCharSlot          [MaxSimul*2 + MaxAttachedChar]bool
 	shortcutScripts         map[ShortcutKey]*ShortcutScript
 	turbo                   float32
 	commandLine             chan string
@@ -533,7 +534,7 @@ func (s *System) roundEnd() bool {
 }
 func (s *System) roundOver() bool {
 	if s.intro < -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime+
-		s.lifebar.ro.over_wintime) && s.tickFrame() && s.anyButton() {
+		s.lifebar.ro.over_wintime) && s.tickFrame() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
 		s.intro = Min(s.intro, -(s.lifebar.ro.over_hittime +
 			s.lifebar.ro.over_waittime + s.lifebar.ro.over_time -
 			s.lifebar.ro.start_waittime))
@@ -847,6 +848,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.specialFlag = 0
 		} else {
 			s.unsetSF(GSF_roundnotover)
+			s.unsetSF(GSF_roundnotskip)
 		}
 		if s.superanim != nil {
 			s.superanim.Action()
@@ -901,7 +903,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if s.tickNextFrame() {
 		if s.lifebar.ro.cur < 1 {
 			if s.shuttertime > 0 ||
-				s.anyButton() && s.intro > s.lifebar.ro.ctrl_time {
+				s.anyButton() && !s.sf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
 				s.shuttertime++
 				if s.shuttertime == 15 {
 					s.resetGblEffect()
@@ -1529,12 +1531,6 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 		}
-		if s.roundResetFlg {
-			reset()
-		}
-		if s.reloadFlg {
-			return true
-		}
 		if s.roundOver() {
 			s.round++
 			for i := range s.roundsExisted {
@@ -1591,6 +1587,12 @@ func (s *System) fight() (reload bool) {
 		}
 		newx, newy = x, y
 		l, r, sclmul = s.action(&newx, &newy, scl)
+		if s.roundResetFlg {
+			reset()
+		}
+		if s.reloadFlg {
+			return true
+		}
 		debugInput()
 		if !s.addFrameTime(s.turbo) {
 			if !s.eventUpdate() {
@@ -1759,6 +1761,7 @@ type Select struct {
 	lportrait       [2]int16
 	vsportrait      [2]int16
 	vportrait       [2]int16
+	cdefOverwrite   [MaxSimul * 2]string
 }
 
 func newSelect() *Select {
@@ -2042,7 +2045,18 @@ func (l *Loader) loadChar(pn int) int {
 		idx[i] = sys.sel.selected[pn&1][i][0]
 	}
 	sys.loadMutex.Unlock()
-	cdef := sys.sel.charlist[idx[memberNo]].def
+	var cdef string
+	var cdefOWnumber int
+	if sys.tmode[pn&1] == TM_Turns {
+		cdefOWnumber = memberNo*2 + pn&1
+	} else {
+		cdefOWnumber = pn
+	}
+	if sys.sel.cdefOverwrite[cdefOWnumber] != "" {
+		cdef = sys.sel.cdefOverwrite[cdefOWnumber]
+	} else {
+		cdef = sys.sel.charlist[idx[memberNo]].def
+	}
 	var p *Char
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.chars[pn][0]
