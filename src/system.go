@@ -1744,7 +1744,7 @@ type SelectChar struct {
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
 type SelectStage struct {
-	def, name, zoomout, zoomin, bgmusic, bgmvolume, attachedchardef string
+	def, name, zoomout, zoomin, bgmusic, bgmvolume string
 }
 type Select struct {
 	columns, rows   int
@@ -1762,6 +1762,7 @@ type Select struct {
 	vsportrait      [2]int16
 	vportrait       [2]int16
 	cdefOverwrite   [MaxSimul * 2]string
+	sdefOverwrite   string
 }
 
 func newSelect() *Select {
@@ -1937,7 +1938,6 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				ss.attachedchardef, ok = is.getString("attachedchar")
 			}
 		case "camera":
 			if camera {
@@ -2151,15 +2151,22 @@ func (l *Loader) loadStage() bool {
 		if sys.sel.selectedStageNo == 0 {
 			randomstageno := Rand(0, int32(len(sys.sel.stagelist))-1)
 			def = sys.sel.stagelist[randomstageno].def
-			l.loadAttachedChar(0, sys.sel.stagelist[randomstageno].attachedchardef)
 		} else {
 			def = sys.sel.stagelist[sys.sel.selectedStageNo-1].def
-			l.loadAttachedChar(0, sys.sel.stagelist[sys.sel.selectedStageNo-1].attachedchardef)
+		}
+		if sys.sel.sdefOverwrite != "" {
+			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def {
+			if sys.stage.attachedchardef != "" {
+				l.loadAttachedChar(0, sys.stage.attachedchardef)
+			}
 			return true
 		}
 		sys.stage, l.err = loadStage(def)
+		if sys.stage.attachedchardef != "" {
+			l.loadAttachedChar(0, sys.stage.attachedchardef)
+		}
 	}
 	return l.err == nil
 }

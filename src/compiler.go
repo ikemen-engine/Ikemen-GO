@@ -6295,6 +6295,15 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 			matchRestart_reload, VT_Bool, MaxSimul*2+MaxAttachedChar, false); err != nil {
 			return err
 		}
+		if err := c.stateParam(is, "stagedef", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_stagedef, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
 		if err := c.stateParam(is, "p1def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("\"で囲まれていません")

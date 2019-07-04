@@ -970,6 +970,7 @@ func systemScriptInit(l *lua.LState) {
 				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
 				sys.timerCount = []int32{}
 				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
+				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				return 2

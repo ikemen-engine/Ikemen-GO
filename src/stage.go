@@ -558,33 +558,34 @@ type stagePlayer struct {
 	startx, starty int32
 }
 type Stage struct {
-	def            string
-	bgmusic        string
-	name           string
-	displayname    string
-	author         string
-	nameLow        string
-	displaynameLow string
-	authorLow      string
-	sff            *Sff
-	at             AnimationTable
-	bg             []*backGround
-	bgc            []bgCtrl
-	bgct           bgcTimeLine
-	bga            bgAction
-	sdw            stageShadow
-	p              [2]stagePlayer
-	leftbound      float32
-	rightbound     float32
-	screenleft     int32
-	screenright    int32
-	zoffsetlink    int32
-	reflection     int32
-	hires          bool
-	resetbg        bool
-	debugbg        bool
-	localscl       float32
-	scale          [2]float32
+	def             string
+	bgmusic         string
+	name            string
+	displayname     string
+	author          string
+	nameLow         string
+	displaynameLow  string
+	authorLow       string
+	attachedchardef string
+	sff             *Sff
+	at              AnimationTable
+	bg              []*backGround
+	bgc             []bgCtrl
+	bgct            bgcTimeLine
+	bga             bgAction
+	sdw             stageShadow
+	p               [2]stagePlayer
+	leftbound       float32
+	rightbound      float32
+	screenleft      int32
+	screenright     int32
+	zoffsetlink     int32
+	reflection      int32
+	hires           bool
+	resetbg         bool
+	debugbg         bool
+	localscl        float32
+	scale           [2]float32
 }
 
 func newStage(def string) *Stage {
@@ -635,6 +636,7 @@ func loadStage(def string) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
+		s.attachedchardef, ok = sec[0].getString("attachedchar")
 	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)

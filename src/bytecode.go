@@ -5784,6 +5784,7 @@ type matchRestart StateControllerBase
 
 const (
 	matchRestart_reload byte = iota
+	matchRestart_stagedef
 	matchRestart_p1def
 	matchRestart_p2def
 	matchRestart_p3def
@@ -5805,6 +5806,13 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 				if sys.reloadCharSlot[i] {
 					reloadFlag = true
 				}
+			}
+		case matchRestart_stagedef:
+			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			if filepath.IsAbs(s) {
+				sys.sel.sdefOverwrite = s
+			} else {
+				sys.sel.sdefOverwrite = filepath.Dir(c.gi().def) + "/" + s
 			}
 		case matchRestart_p1def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
