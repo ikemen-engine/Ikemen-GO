@@ -947,7 +947,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 		if r.wt[1] < 0 {
 			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
 				r.drawn.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			} else if sys.winTeam > 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
+			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				tmp := r.win2.text
 				var inter []interface{}
 				for i := sys.winTeam; i < len(sys.chars); i += 2 {
@@ -958,7 +958,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 				r.win2.text = OldSprintf(tmp, inter...)
 				r.win2.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
 				r.win2.text = tmp
-			} else if sys.winTeam > 0 {
+			} else if sys.winTeam >= 0 {
 				tmp := r.win.text
 				r.win.text = OldSprintf(tmp, sys.cgi[sys.winTeam].displayname)
 				r.win.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
