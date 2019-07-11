@@ -15,6 +15,7 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
+	"github.com/200sc/klangsynthese"
 )
 
 const (
