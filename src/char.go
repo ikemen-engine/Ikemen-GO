@@ -67,6 +67,7 @@ const (
 	GSF_nokosnd
 	GSF_nokoslow
 	GSF_noko
+	GSF_roundnotskip
 )
 
 type PosType int32

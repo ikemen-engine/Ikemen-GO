@@ -886,7 +886,12 @@ func systemScriptInit(l *lua.LState) {
 				}
 				winp := int32(0)
 				if sys.fight() {
-					sys.chars = [len(sys.chars)][]*Char{}
+					for i, b := range sys.reloadCharSlot {
+						if b {
+							sys.chars[i] = []*Char{}
+							b = false
+						}
+					}
 					sys.loaderReset()
 					winp = -2
 				} else if sys.esc {
@@ -964,6 +969,8 @@ func systemScriptInit(l *lua.LState) {
 				tbl.RawSetString("P1tmode", lua.LNumber(sys.tmode[0]))
 				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
 				sys.timerCount = []int32{}
+				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
+				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				return 2
@@ -2219,6 +2226,9 @@ func debugScriptInit(l *lua.LState, file string) error {
 	luaRegister(l, "reload", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
 			sys.reloadFlg = true
+			for i := range sys.reloadCharSlot {
+				sys.reloadCharSlot[i] = true
+			}
 		}
 		return 0
 	})

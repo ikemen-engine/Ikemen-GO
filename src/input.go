@@ -678,13 +678,19 @@ const (
 
 func (ib *InputBits) SetInput(in int) {
 	if 0 <= in && in < len(sys.keyConfig) {
-		*ib = InputBits(Btoi(sys.keyConfig[in].U()) |
-			Btoi(sys.keyConfig[in].D())<<1 | Btoi(sys.keyConfig[in].L())<<2 |
-			Btoi(sys.keyConfig[in].R())<<3 | Btoi(sys.keyConfig[in].A())<<4 |
-			Btoi(sys.keyConfig[in].B())<<5 | Btoi(sys.keyConfig[in].C())<<6 |
-			Btoi(sys.keyConfig[in].X())<<7 | Btoi(sys.keyConfig[in].Y())<<8 |
-			Btoi(sys.keyConfig[in].Z())<<9 | Btoi(sys.keyConfig[in].S())<<10 |
-			Btoi(sys.keyConfig[in].V())<<11 | Btoi(sys.keyConfig[in].W())<<12)
+		*ib = InputBits(Btoi(sys.keyConfig[in].U() || sys.JoystickConfig[in].U()) |
+			Btoi(sys.keyConfig[in].D() || sys.JoystickConfig[in].D())<<1 |
+			Btoi(sys.keyConfig[in].L() || sys.JoystickConfig[in].L())<<2 |
+			Btoi(sys.keyConfig[in].R() || sys.JoystickConfig[in].R())<<3 |
+			Btoi(sys.keyConfig[in].A() || sys.JoystickConfig[in].A())<<4 |
+			Btoi(sys.keyConfig[in].B() || sys.JoystickConfig[in].B())<<5 |
+			Btoi(sys.keyConfig[in].C() || sys.JoystickConfig[in].C())<<6 |
+			Btoi(sys.keyConfig[in].X() || sys.JoystickConfig[in].X())<<7 |
+			Btoi(sys.keyConfig[in].Y() || sys.JoystickConfig[in].Y())<<8 |
+			Btoi(sys.keyConfig[in].Z() || sys.JoystickConfig[in].Z())<<9 |
+			Btoi(sys.keyConfig[in].S() || sys.JoystickConfig[in].S())<<10 |
+			Btoi(sys.keyConfig[in].V() || sys.JoystickConfig[in].V())<<11 |
+			Btoi(sys.keyConfig[in].W() || sys.JoystickConfig[in].W())<<12)
 	}
 }
 func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
