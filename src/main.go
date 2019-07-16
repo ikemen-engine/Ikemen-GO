@@ -90,19 +90,19 @@ func main() {
   "LifebarFontScale":1,
   "System":"script/main.lua",
   "KeyConfig":[{
-      "Joystick":-1,
-      "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN","q","w"]
-    },{
-      "Joystick":-1,
-      "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
-    }],
+	  "Joystick":-1,
+	  "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN","q","w"]
+	},{
+	  "Joystick":-1,
+	  "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
+	}],
   "JoystickConfig":[{
-      "Joystick":0,
-      "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-    },{
-      "Joystick":1,
-      "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-    }],
+	  "Joystick":0,
+	  "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
+	},{
+	  "Joystick":1,
+	  "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
+	}],
   "Motif":"data/system.def",
   "CommonAir":"data/common.air",
   "CommonCmd":"data/common.cmd",
@@ -133,26 +133,27 @@ func main() {
   "AllowDebugKeys":true,
   "PostProcessingShader": 0,
   "LocalcoordScalingType": 1,
+  "MSAA": false,
   "IP":{
   }
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
-		HelperMax              int32
-		PlayerProjectileMax    int
-		ExplodMax              int
-		AfterImageMax          int32
-		MasterVolume           int
-		WavVolume              int
-		BgmVolume              int
-		Attack_LifeToPowerMul  float32 `json:"Attack.LifeToPowerMul"`
-		GetHit_LifeToPowerMul  float32 `json:"GetHit.LifeToPowerMul"`
-		Width                  int32
-		Height                 int32
-		Super_TargetDefenceMul float32 `json:"Super.TargetDefenceMul"`
-		LifebarFontScale       float32
-		System                 string
-		KeyConfig              []struct {
+		HelperMax				int32
+		PlayerProjectileMax		int
+		ExplodMax				int
+		AfterImageMax			int32
+		MasterVolume			int
+		WavVolume				int
+		BgmVolume               int
+		Attack_LifeToPowerMul	float32 `json:"Attack.LifeToPowerMul"`
+		GetHit_LifeToPowerMul	float32 `json:"GetHit.LifeToPowerMul"`
+		Width					int32
+		Height					int32
+		Super_TargetDefenceMul	float32 `json:"Super.TargetDefenceMul"`
+		LifebarFontScale		float32
+		System					string
+		KeyConfig				[]struct {
 			Joystick int
 			Buttons  []interface{}
 		}
@@ -160,17 +161,18 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag                int
-		TeamLifeShare         bool
-		AIRandomColor         bool
-		Fullscreen            bool
-		AudioDucking          bool
-		AllowDebugKeys        bool
-		PostProcessingShader  int32
-		LocalcoordScalingType int32
-		CommonAir             string
-		CommonCmd             string
-		QuickLaunch           int
+		NumTag					int
+		TeamLifeShare			bool
+		AIRandomColor			bool
+		Fullscreen				bool
+		AudioDucking			bool
+		AllowDebugKeys			bool
+		MSAA					bool
+		PostProcessingShader	int32
+		LocalcoordScalingType	int32
+		CommonAir				string
+		CommonCmd				string
+		QuickLaunch				int
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "data/config.json"
@@ -234,6 +236,7 @@ func main() {
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
 	sys.PostProcessingShader = tmp.PostProcessingShader
+	sys.MultisampleAntialiasing = tmp.MSAA
 	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
 	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys

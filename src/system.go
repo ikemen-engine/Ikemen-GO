@@ -64,14 +64,15 @@ var sys = System{
 	keyInput:         glfw.KeyUnknown,
 	keyString:        "",
 	// Localcoord sceenpack
-	luaSpriteScale:        1,
-	luaSmallPortraitScale: 1,
-	luaBigPortraitScale:   1,
-	luaSpriteOffsetX:      0,
-	lifebarScale:          1,
-	lifebarOffsetX:        0,
+	luaSpriteScale:			1,
+	luaSmallPortraitScale:	1,
+	luaBigPortraitScale:	1,
+	luaSpriteOffsetX:		0,
+	lifebarScale:			1,
+	lifebarOffsetX:			0,
 	//Shader vars
-	PostProcessingShader: 0,
+	MultisampleAntialiasing: false,
+	PostProcessingShader:	0,
 }
 
 type TeamMode int32
@@ -256,6 +257,7 @@ type System struct {
 	LocalcoordScalingType int32
 
 	PostProcessingShader int32
+	MultisampleAntialiasing bool
 }
 
 func (s *System) init(w, h int32) *lua.LState {
