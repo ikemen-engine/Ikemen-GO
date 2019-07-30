@@ -90,6 +90,14 @@ const (
 	Space_screen
 )
 
+type SaveData int32
+
+const (
+	SaveData_map SaveData = iota
+	SaveData_var
+	SaveData_fvar
+)
+
 type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {

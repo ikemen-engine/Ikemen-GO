@@ -513,7 +513,9 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	s.Pal = src.Pal
 	s.Tex = src.Tex
 	s.Size = src.Size
-	s.palidx = src.palidx
+	if s.palidx < 0 {
+		s.palidx = src.palidx
+	}
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if s.Pal != nil || s.rle <= -11 {
