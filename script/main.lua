@@ -1785,7 +1785,7 @@ function main.f_mainNetplay()
 				exitNetPlay()
 				exitReplay()
 
-				-- Save reply with a new name
+				-- Save replay with a new name
 				tpmFileRpl1 = io.open("save/replays/netplay.replay","r")
 				tpmFileRpl1C = tpmFileRpl1:read("*all")
 				io.close(tpmFileRpl1)
