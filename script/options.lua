@@ -18,6 +18,7 @@ main.f_printTable(config, "debug/config.txt")
 --; COMMON
 --;===========================================================
 local modified = 0
+local modifiedlifebar = 0
 local needReload = 0
 
 local windowBox = animNew(main.fadeSff, '0,0, 0,0, -1')
@@ -54,16 +55,18 @@ end
 
 function options.f_saveCfg()
 	--Data saving to config.json
-	local file = io.open("data/config.json","w+")
+	local file = io.open("save/config.json","w+")
 	file:write(json.encode(config, {indent = true}))
 	file:close()
 	--Data saving to lifebar
-	s_lifebar = s_lifebar:gsub('match.wins%s*=%s*%d+', 'match.wins = ' .. roundsNum)
-	file = io.open(motif.files.fight,"w+")
-	file:write(s_lifebar)
-	file:close()
-	--Reload lifebar
-	loadLifebar(motif.files.fight)
+	if modifiedlifebar == 1 then
+		s_lifebar = s_lifebar:gsub('match.wins%s*=%s*%d+', 'match.wins = ' .. roundsNum)
+		file = io.open(motif.files.fight,"w+")
+		file:write(s_lifebar)
+		file:close()
+		--Reload lifebar
+		loadLifebar(motif.files.fight)
+	end
 	--Reload game if needed
 	if needReload == 1 then
 		main.f_warning(main.f_extractText(motif.warning_info.text_reload), motif.option_info, motif.optionbgdef)
@@ -478,11 +481,13 @@ function options.f_arcadeCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				roundsNum = roundsNum + 1
 				t[item].vardisplay = roundsNum
+				modifiedlifebar = 1
 				modified = 1
 			elseif commandGetState(main.p1Cmd, 'l') and roundsNum > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				roundsNum = roundsNum - 1
 				t[item].vardisplay = roundsNum
+				modifiedlifebar = 1
 				modified = 1
 			end
 		--Round Time
@@ -871,6 +876,7 @@ t_shaderNames[3] = "scanline"
 local t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
+	{data = textImgNew(), itemname = 'msaa', displayname = motif.option_info.menu_itemname_video_msaa, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_video_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_video_aipalette_random, motif.option_info.menu_itemname_video_aipalette_default)},
 	{data = textImgNew(), itemname = 'postprocessingshader', displayname = "Shader", vardata = textImgNew(), vardisplay = t_shaderNames[config.PostProcessingShader]},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
@@ -905,6 +911,16 @@ function options.f_videoCfg()
 				config.Fullscreen = true
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
+			modified = 1
+			needReload = 1
+		elseif t[item].itemname == 'msaa' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.MSAA then
+				config.MSAA = false
+			else
+				config.MSAA = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
 			modified = 1
 			needReload = 1
 		--AI Palette

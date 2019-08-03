@@ -52,7 +52,7 @@ var sys = System{
 	ignoreMostErrors: true,
 	superpmap:        *newPalFX(),
 	wincnt:           wincntMap(make(map[string][]int32)),
-	wincntFileName:   "autolevel.txt",
+	wincntFileName:   "save/autolevel.save",
 	powerShare:       [...]bool{true, true},
 	oldNextAddTime:   1,
 	commandLine:      make(chan string),

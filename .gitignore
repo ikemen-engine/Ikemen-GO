@@ -12,6 +12,7 @@ releaseconf.xml.backup
 Ikemen.txt
 data/config.json
 /debug/*
+/save/*
 
 # Binaries
 Ikemen_GO_Win.zip

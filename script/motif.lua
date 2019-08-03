@@ -748,6 +748,7 @@ local motif =
 		menu_itemname_gameplay_back = 'Back', --Ikemen feature
 		menu_itemname_video_resolution = 'Resolution', --Ikemen feature
 		menu_itemname_video_fullscreen = 'Fullscreen', --Ikemen feature
+		menu_itemname_video_msaa = 'MSAA', --Ikemen feature
 		menu_itemname_video_helpermax = 'HelperMax', --Ikemen feature
 		menu_itemname_video_playerprojectilemax = 'PlayerProjectileMax', --Ikemen feature
 		menu_itemname_video_explodmax = 'ExplodMax', --Ikemen feature

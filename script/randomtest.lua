@@ -1,3 +1,6 @@
+-- Used for demo mode and generates AI rank data
+-- Demo mode uses AutoLevel a GO function that ranks characters based on his number of loses vs wins
+-- AutoLevel is pallete dependent so if a char has a 12th pallete OP mode that mode can have more rank than his normal one
 
 local randomtest = {}
 
@@ -13,7 +16,7 @@ function randomtest.map(func, table)
   return dest
 end
 
-
+-- Ints variables
 local tuyoiBorder = 0
 local juuni = 12
 local moudeta = {}
@@ -33,6 +36,8 @@ function randomtest.addMoudeta(rank)
     table.remove(moudeta, 1)
   end
 end
+
+
 function randomtest.randRank()
   local r = 0
   while true do
@@ -58,7 +63,7 @@ function randomtest.eachAllChars(f)
 end
 
 function randomtest.rakuBenry()
-  local alf = 'autolevel.txt'
+  local alf = 'save/autolevel.save'
   local veljnz = {}
   local winct = {}
   local buf = '\239\187\191'
@@ -212,17 +217,19 @@ function randomtest.randSel(pno, winner)
   end
 end
 
+-- Writes the ranked AI levels to a save file
+-- This file is not used by AutoLevel
 function randomtest.rosterTxt()
   local str = "Rank: " .. rank .. ' ' .. debugText
   for i = 1, #roster do
     str = str .. '\n' .. getCharFileName(roster[i])
   end
-  local dscr = io.open('debug/randomtest.txt', 'w')
+  local dscr = io.open('save/AI_Rank.save', 'w')
   dscr:write(str)
   io.close(dscr)
 end
 
-
+-- Sets AIs to level 8 (MAX level) and ints AutoLevel
 function randomtest.init()
   for i = 1, 8 do
     setCom(i, 8)
@@ -238,6 +245,7 @@ function randomtest.init()
   saikyou = rank == tuyoiBorder+juuni-1
 end
 
+-- This is executed first
 function randomtest.run()
   randomtest.init()
   refresh()

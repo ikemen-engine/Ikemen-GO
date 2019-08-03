@@ -14,7 +14,7 @@ math.randomseed(os.time())
 json = (loadfile 'script/dkjson.lua')()
 
 -- Data loading from config.json
-local file = io.open("data/config.json","r")
+local file = io.open("save/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
 
@@ -1784,6 +1784,16 @@ function main.f_mainNetplay()
 				main.f_connect("", main.f_extractText(motif.title_info.connecting_host, getListenPort()))
 				exitNetPlay()
 				exitReplay()
+
+				-- Save reply with a new name
+				tpmFileRpl1 = io.open("save/replays/netplay.replay","r")
+				tpmFileRpl1C = tpmFileRpl1:read("*all")
+				io.close(tpmFileRpl1)
+
+				tpmFileRpl2name = os.date("%Y-%m(%b)-%d %I-%M%p-%Ss")
+				tpmFileRpl2 = io.open("save/replays/" .. tpmFileRpl2name .. ".replay","w+")
+				tpmFileRpl2:write(tpmFileRpl1C)
+				io.close(tpmFileRpl2)
 			end
 			--JOIN
 			if t[item].itemname == 'serverjoin' then
@@ -1840,7 +1850,7 @@ function main.f_netplayJoin()
 			end
 			t_netplayJoin = t_tmp
 			t = t_netplayJoin
-			local file = io.open("data/config.json","w+")
+			local file = io.open("save/config.json","w+")
 			file:write(json.encode(config, {indent = true}))
 			file:close()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
@@ -1866,7 +1876,7 @@ function main.f_netplayJoin()
 						end
 						t_netplayJoin = t_tmp
 						t = t_netplayJoin
-						local file = io.open("data/config.json","w+")
+						local file = io.open("save/config.json","w+")
 						file:write(json.encode(config, {indent = true}))
 						file:close()
 					else
@@ -2034,9 +2044,9 @@ function main.f_mainExtras()
 			end
 			--REPLAY
 			if t[item].itemname == 'replay' then
-				if main.f_fileExists('replay/netplay.replay') then
+				if main.f_fileExists('save/replays/netplay.replay') then
 					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-					enterReplay('replay/netplay.replay')
+					enterReplay('save/replays/netplay.replay')
 					synchronize()
 					math.randomseed(sszRandom())
 					main.f_netplayMode()

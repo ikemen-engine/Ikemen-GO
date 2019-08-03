@@ -473,7 +473,7 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("すでに通信中です。")
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
-		sys.netInput = NewNetInput("replay/netplay.replay")
+		sys.netInput = NewNetInput("save/replays/netplay.replay")
 		if host := strArg(l, 1); host != "" {
 			sys.netInput.Connect(host, sys.listenPort)
 		} else {
