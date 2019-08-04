@@ -126,6 +126,8 @@ func newCompiler() *Compiler {
 		"zoom":               c.zoom,
 		"mapset":             c.mapSet,
 		"matchrestart":       c.matchRestart,
+		"savefile":           c.saveFile,
+		"loadfile":           c.loadFile,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -2804,6 +2806,27 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 			}
 		}
 		sc.add(id, sc.iToExp(int32(sp)))
+		return nil
+	})
+}
+
+func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
+	id byte) error {
+	return c.stateParam(is, "savedata", func(data string) error {
+		if len(data) <= 1 {
+			return Error("値が指定されていません")
+		}
+		var sv SaveData
+		if len(data) >= 2 {
+			if strings.ToLower(data[:2]) == "ma" {
+				sv = SaveData_map
+			} else if strings.ToLower(data[:2]) == "va" {
+				sv = SaveData_var
+			} else if strings.ToLower(data[:2]) == "fv" {
+				sv = SaveData_fvar
+			}
+		}
+		sc.add(id, sc.iToExp(int32(sv)))
 		return nil
 	})
 }
@@ -6374,6 +6397,54 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*saveFile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			saveFile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(saveFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramSaveData(is, sc, saveFile_saveData); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*loadFile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			loadFile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(loadFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramSaveData(is, sc, loadFile_saveData); err != nil {
 			return err
 		}
 		return nil

@@ -256,7 +256,7 @@ type System struct {
 	lifebarOffsetX        float32
 	LocalcoordScalingType int32
 
-	PostProcessingShader int32
+	PostProcessingShader    int32
 	MultisampleAntialiasing bool
 }
 

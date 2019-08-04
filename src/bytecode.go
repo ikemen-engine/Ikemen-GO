@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/gob"
 	"math"
+	"os"
 	"path/filepath"
 	"unsafe"
 )
@@ -5878,6 +5880,110 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			sys.reloadFlg = true
 		} else {
 			sys.roundResetFlg = true
+		}
+	}
+	return false
+}
+
+type saveFile StateControllerBase
+
+const (
+	saveFile_path byte = iota
+	saveFile_saveData
+	saveFile_redirectid
+)
+
+func (sc saveFile) Run(c *Char, _ []int32) bool {
+	crun := c
+	var path string
+	var data SaveData
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case saveFile_path:
+			path = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case saveFile_saveData:
+			data = SaveData(exp[0].evalI(c))
+		case saveFile_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	if path != "" {
+		encodeFile, err := os.Create(filepath.Dir(c.gi().def) + "/" + path)
+		if err != nil {
+			panic(err)
+		}
+		defer encodeFile.Close()
+		encoder := gob.NewEncoder(encodeFile)
+		switch data {
+		case SaveData_map:
+			if err := encoder.Encode(crun.mapArray); err != nil {
+				panic(err)
+			}
+		case SaveData_var:
+			if err := encoder.Encode(crun.ivar); err != nil {
+				panic(err)
+			}
+		case SaveData_fvar:
+			if err := encoder.Encode(crun.fvar); err != nil {
+				panic(err)
+			}
+		}
+	}
+	return false
+}
+
+type loadFile StateControllerBase
+
+const (
+	loadFile_path byte = iota
+	loadFile_saveData
+	loadFile_redirectid
+)
+
+func (sc loadFile) Run(c *Char, _ []int32) bool {
+	crun := c
+	var path string
+	var data SaveData
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case loadFile_path:
+			path = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case loadFile_saveData:
+			data = SaveData(exp[0].evalI(c))
+		case loadFile_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	if path != "" {
+		decodeFile, err := os.Open(filepath.Dir(c.gi().def) + "/" + path)
+		if err != nil {
+			panic(err)
+		}
+		defer decodeFile.Close()
+		decoder := gob.NewDecoder(decodeFile)
+		switch data {
+		case SaveData_map:
+			if err := decoder.Decode(&crun.mapArray); err != nil {
+				panic(err)
+			}
+		case SaveData_var:
+			if err := decoder.Decode(&crun.ivar); err != nil {
+				panic(err)
+			}
+		case SaveData_fvar:
+			if err := decoder.Decode(&crun.fvar); err != nil {
+				panic(err)
+			}
 		}
 	}
 	return false
