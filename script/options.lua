@@ -412,6 +412,7 @@ function options.f_mainCfg()
 				config.ZoomSpeed = 1.0
 				config.AIRandomColor = true
 				config.RoundTime = 99
+				config.SingleTeamMode = true
 				config.NumTurns = 4
 				config.NumSimul = 4
 				config.NumTag = 4
@@ -675,14 +676,24 @@ end
 --;===========================================================
 --; ADVANCED GAMEPLAY SETTINGS
 --;===========================================================
+function options.f_checkTeamAmount(arg1, arg2, arg3)
+	ret = arg1
+	if arg1 <= arg2 then
+		ret = arg3
+	end
+
+	return ret
+end
+
 local t_advGameplayCfg = {
 	{data = textImgNew(), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = textImgNew(), vardisplay = config['Attack.LifeToPowerMul']},
 	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
 	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = config.NumTurns},
-	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = config.NumSimul},
-	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = config.NumTag},
+	{data = textImgNew(), itemname = 'singlemode', displayname = motif.option_info.menu_itemname_gameplay_singlemode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)},
+	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
@@ -815,6 +826,17 @@ function options.f_advGameplayCfg()
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.TeamLifeShare)
 			modified = 1
+		-- Singke mode
+		elseif t[item].itemname == 'singlemode' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.SingleTeamMode then
+				config.SingleTeamMode = false
+			else
+				config.SingleTeamMode = true
+			end
+			t[item].vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
+			modified = 1
+			needReload = 1
 		--Turns Limit
 		elseif t[item].itemname == 'numturns' then
 			if commandGetState(main.p1Cmd, 'r') and config.NumTurns < 8 then
@@ -825,34 +847,46 @@ function options.f_advGameplayCfg()
 			elseif commandGetState(main.p1Cmd, 'l') and config.NumTurns > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTurns = config.NumTurns - 1
-				t[item].vardisplay = config.NumTurns
+				t[item].vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)
 				modified = 1
+			end
+			-- Disable check
+			if config.NumTurns < 2 then
+				needReload = 1
 			end
 		--Simul Limit
 		elseif t[item].itemname == 'numsimul' then
-			if commandGetState(main.p1Cmd, 'r') and config.NumSimul < 4 then
+			if commandGetState(main.p1Cmd, 'r') and config.NumSimul < 8 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumSimul = config.NumSimul + 1
 				t[item].vardisplay = config.NumSimul
 				modified = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.NumSimul > 2 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.NumSimul > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumSimul = config.NumSimul - 1
-				t[item].vardisplay = config.NumSimul
+				t[item].vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)
 				modified = 1
+			end
+			-- Disable check
+			if config.NumSimul < 2 then
+				needReload = 1
 			end
 		--Tag Limit
 		elseif t[item].itemname == 'numtag' then
-			if commandGetState(main.p1Cmd, 'r') and config.NumTag < 4 then
+			if commandGetState(main.p1Cmd, 'r') and config.NumTag < 8 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTag = config.NumTag + 1
 				t[item].vardisplay = config.NumTag
 				modified = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.NumTag > 2 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.NumTag > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTag = config.NumTag - 1
-				t[item].vardisplay = config.NumTag
+				t[item].vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)
 				modified = 1
+			end
+			-- Disable check
+			if config.NumTag < 2 then
+				needReload = 1
 			end
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then

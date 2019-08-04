@@ -1292,28 +1292,45 @@ local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_enemytitle_font[6]
 )
 
--- Legacy TAG check
-if config.SimulMode then
-	temptag789TeamMenu = {
-		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-		{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag}
-	}
-else
-	temptag789TeamMenu = {
-		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag},
-		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns}
-	}
+-- Legacy TAG check and mode enabing
+function main.GetTeamMenu()
+	local temptag789TeamMenu = {}
+	local tempPos = 1
+
+	-- Single mode check
+	if config.SingleTeamMode == true then
+		temptag789TeamMenu[1] = {data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single}
+		tempPos = tempPos + 1
+	end
+
+	if config.SimulMode then
+		-- Simul mode check
+		if config.NumSimul > 1 then
+			temptag789TeamMenu[tempPos] = {data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul}
+			tempPos = tempPos + 1
+		end
+		-- Tag mode check
+		if config.NumTag > 1 then
+			temptag789TeamMenu[tempPos] = {data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag}
+			tempPos = tempPos + 1
+		end
+	else
+		-- Legacy Tag mode enable
+		temptag789TeamMenu[tempPos] = {data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag}
+		tempPos = tempPos + 1
+	end
+
+	-- Turns mode check
+	if config.NumTurns > 1 then
+		temptag789TeamMenu[tempPos] = {data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns}
+	end
+
+	return temptag789TeamMenu
 end
 
 -- Set tag mode
-local t_p1TeamMenu = temptag789TeamMenu
+local t_p1TeamMenu = main.GetTeamMenu()
 t_p1TeamMenu = main.f_cleanTable(t_p1TeamMenu)
-
--- Clear temp variable
-temptag789TeamMenu = nil
 
 local p1TeamActiveCount = 0
 local p1TeamActiveFont = 'p1_teammenu_item_active_font'
@@ -1539,28 +1556,9 @@ local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_enemytitle_font[6]
 )
 
--- Legacy TAG check
-if config.SimulMode then
-	temptag789TeamMenu = {
-		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-		{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag}
-	}
-else
-	temptag789TeamMenu = {
-		{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-		{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag},
-		{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns}
-	}
-end
-
 -- Set tag mode
-local t_p2TeamMenu = temptag789TeamMenu
+local t_p2TeamMenu = main.GetTeamMenu()
 t_p2TeamMenu = main.f_cleanTable(t_p2TeamMenu)
-
--- Clear temp variable
-temptag789TeamMenu = nil
 
 local p2TeamActiveCount = 0
 local p2TeamActiveFont = 'p2_teammenu_item_active_font'

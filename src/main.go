@@ -117,6 +117,7 @@ func main() {
   "ZoomMax":1.1,
   "ZoomSpeed":1,
   "RoundTime":99,
+  "SingleTeamMode":true,
   "NumTurns":4,
   "NumSimul":4,
   "NumTag":4,

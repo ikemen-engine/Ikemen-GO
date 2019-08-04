@@ -738,6 +738,7 @@ local motif =
 		menu_itemname_gameplay_turnsrecoveryrate = 'Turns HP Recovery', --Ikemen feature
 		menu_itemname_gameplay_teampowershare = 'Team Power Share', --Ikemen feature
 		menu_itemname_gameplay_teamlifeshare = 'Team Life Share', --Ikemen feature
+		menu_itemname_gameplay_singlemode = 'Single Mode', --Ikemen feature
 		menu_itemname_gameplay_numturns = 'Turns Limit', --Ikemen feature
 		menu_itemname_gameplay_numsimul = 'Simul Limit', --Ikemen feature
 		menu_itemname_gameplay_numtag = 'Tag Limit', --Ikemen features
