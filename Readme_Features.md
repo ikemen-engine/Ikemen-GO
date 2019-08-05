@@ -115,6 +115,14 @@ Returns the distance to the stage edge behind you.
 ### Stagefrontedge
 Returns the distance to the stage edge in front of you.
 
+## Changes to triggers
+
+### TeamMode
+Now Teammode can also return "Tag"
+```ini
+trigger1 = TeamMode = Tag
+```
+
 # Details of additional parameters
 ## Additional parameters for the state controller
 
