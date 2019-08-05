@@ -54,6 +54,9 @@ NOTE: InstallBuilder is free for opensource projects. But you need to [get a lic
 Do not include copyrighted dependencies in the bundle.
 
 
+## Features added since Mugen
+Refer to the document [Readme_Features.md](Readme_Features.md) to see new features added that are not available in Mugen 1.1 and bellow.
+
 ## References
 
 Suehiro repo (Original creator of the engine)
@@ -64,9 +67,10 @@ Ikemen GO Plus, K4thos fork of Ikemen (Some features were borrowed from his repo
 
 https://github.com/K4thos/Ikemen-GO-Plus
 
-## What I.K.E.M.E.N GO means.
-Ikemen GO is a acrinym of:
-Itumademo Kanseishinai Eienni Mikansei ENgine Go version.
+## What I.K.E.M.E.N means.
+Ikemen is a acrinym of:
+
+Itumademo Kanseishinai Eienni Mikansei ENgine
 
 ## License
 [MIT Licence](LICENSE.txt)
