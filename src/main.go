@@ -35,6 +35,8 @@ func closeLog(f *os.File) {
 	f.Close()
 }
 func main() {
+	os.Mkdir("save", os.ModeSticky|0755)
+	os.Mkdir("save/replays", os.ModeSticky|0755)
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
@@ -115,6 +117,7 @@ func main() {
   "ZoomMax":1.1,
   "ZoomSpeed":1,
   "RoundTime":99,
+  "SingleTeamMode":true,
   "NumTurns":4,
   "NumSimul":4,
   "NumTag":4,
@@ -175,7 +178,7 @@ func main() {
 		QuickLaunch				int
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
-	const configFile = "data/config.json"
+	const configFile = "save/config.json"
 	if bytes, err := ioutil.ReadFile(configFile); err != nil {
 		f, err := os.Create(configFile)
 		chk(err)
