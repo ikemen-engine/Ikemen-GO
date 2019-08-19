@@ -6,6 +6,9 @@ import (
 	"math"
 	"os"
 	"strings"
+	"unsafe"
+
+	"github.com/go-gl/gl/v2.1/gl"
 )
 
 const MaxPalNo = 12
@@ -796,6 +799,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 		(Min(ai.reccount, ai.length)/ai.framegap)*ai.framegap)
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
+		ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
 		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 			img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
 			false, sd.bright, sd.oldVer, sd.facing}, 0, 0, 0, 0)
@@ -2010,8 +2014,20 @@ func (c *Char) loadPallet() {
 					if tmp == 0 && i > 0 {
 						copy(c.gi().sff.palList.Get(0), pl)
 					}
-					tmp = i + 1
 					c.gi().palExist[i] = true
+
+					//パレットテクスチャ生成
+					gl.Enable(gl.TEXTURE_1D)
+					c.gi().sff.palList.PalTex[i] = newTexture()
+					gl.BindTexture(gl.TEXTURE_1D, uint32(*c.gi().sff.palList.PalTex[i]))
+					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+					gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+						unsafe.Pointer(&pl[0]))
+					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+					gl.Disable(gl.TEXTURE_1D)
+
+					tmp = i + 1
 				}
 			}
 			if err != nil {
