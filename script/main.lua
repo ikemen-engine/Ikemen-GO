@@ -1072,7 +1072,7 @@ function main.f_addChar(line, row)
 			main.t_selChars[row].stage[#main.t_selChars[row].stage + 1] = c
 		else
 			local param, value = c:match('^(.-)%s*=%s*(.-)$')
-			if param ~= '' and value ~= '' then
+			if param ~= '' and value ~= '' and main.t_selChars[row][param] ~= nil then
 				main.t_selChars[row][param] = tonumber(value)
 			end
 		end
