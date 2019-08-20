@@ -621,11 +621,12 @@ func (a *Animation) alpha() int32 {
 	}
 	return trans
 }
-func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
+func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32, plt *Texture) {
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
 	p = a.spr.GetPal(&a.sff.palList)
+	plt = a.spr.GetPalTex(&a.sff.palList)
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
@@ -692,10 +693,11 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x, y = AbsF(xs)*float32(a.spr.Offset[0]), AbsF(ys)*float32(a.spr.Offset[1])
 	}
 	trans := a.alpha()
-	a.spr.glDraw(a.pal(pfx, trans == -2), int32(a.mask), x*sys.widthScale,
+	pal, paltex := a.pal(pfx, trans == -2)
+	a.spr.glDraw(pal, int32(a.mask), x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
 		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle, yangle, xangle,
-		trans, window, rcx, rcy, pfx)
+		trans, window, rcx, rcy, pfx, paltex)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle float32,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32) {

@@ -209,12 +209,14 @@ type PaletteList struct {
 	palettes   [][]uint32
 	paletteMap []int
 	PalTable   map[[2]int16]int
+	PalTex     []*Texture
 }
 
 func (pl *PaletteList) init() {
 	pl.palettes = nil
 	pl.paletteMap = nil
 	pl.PalTable = make(map[[2]int16]int)
+	pl.PalTex = nil
 }
 func (pl *PaletteList) SetSource(i int, p []uint32) {
 	if i < len(pl.paletteMap) {
@@ -232,6 +234,7 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 			pl.palettes = append(pl.palettes, nil)
 		}
 		pl.palettes = append(pl.palettes, p)
+		pl.PalTex = append(pl.PalTex, nil)
 	}
 }
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
@@ -521,7 +524,14 @@ func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if s.Pal != nil || s.rle <= -11 {
 		return s.Pal
 	}
-	return pl.Get(int(s.palidx))
+	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
+}
+func (s *Sprite) GetPalTex(pl *PaletteList) *Texture {
+	if s.rle <= -11 {
+		return nil
+	}
+
+	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
 }
 func (s *Sprite) SetPxl(px []byte) {
 	if len(px) == 0 {
@@ -957,7 +967,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
-	rcx, rcy float32, pfx *PalFX) {
+	rcx, rcy float32, pfx *PalFX, paltex *Texture) {
 	if s.Tex == nil {
 		return
 	}
@@ -972,6 +982,16 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {
+		//読み込み済みパレットの情報が渡されてるか
+		if paltex != nil {
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+			return
+		}
+		//無い場合暫定の方法でパレットテクスチャ生成
 		PalEqual := true
 		if len(pal) != len(s.paltemp) {
 			PalEqual = false
@@ -1021,7 +1041,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32, fx *PalFX) {
 	}
 	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, fx)
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, fx, nil)
 }
 
 type Sff struct {
@@ -1158,6 +1178,20 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			shofs = int64(xofs)
 		} else {
 			shofs += 28
+		}
+	}
+	//パレットテクスチャ生成
+	sys.mainThreadTask <- func() {
+		for i, v := range s.palList.palettes {
+			gl.Enable(gl.TEXTURE_1D)
+			s.palList.PalTex[i] = newTexture()
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.palList.PalTex[i]))
+			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+				unsafe.Pointer(&v[0]))
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			gl.Disable(gl.TEXTURE_1D)
 		}
 	}
 	return s, nil

@@ -481,7 +481,7 @@ func (f *Fnt) drawChar(
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil, nil)
 
 	//if pal != nil {
 	//	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
