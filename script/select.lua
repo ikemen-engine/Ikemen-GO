@@ -108,7 +108,7 @@ function select.f_setZoom()
 		else
 			zoom = false
 		end
-	elseif main.t_selStages[stageNo].zoom ~= nil then
+	elseif main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo].zoom ~= nil then
 		if main.t_selChars[stageNo].zoom == 1 then
 			zoom = true
 		else
