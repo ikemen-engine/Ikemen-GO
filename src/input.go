@@ -1421,7 +1421,8 @@ type cmdElem struct {
 }
 
 func (ce *cmdElem) IsDirection() bool {
-	return !ce.slash && len(ce.key) == 1 && ce.key[0] < CK_a
+	//ここで~は方向コマンドとして返さない
+	return !ce.slash && len(ce.key) == 1 && ce.key[0] < CK_nBs && (ce.key[0] < CK_nB || ce.key[0] > CK_nUF)
 }
 func (ce *cmdElem) IsDToB(next cmdElem) bool {
 	if next.slash {

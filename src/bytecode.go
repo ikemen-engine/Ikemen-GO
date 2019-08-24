@@ -5966,10 +5966,10 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 	})
 	if path != "" {
 		decodeFile, err := os.Open(filepath.Dir(c.gi().def) + "/" + path)
-		if err != nil {
-			panic(err)
-		}
 		defer decodeFile.Close()
+		if err != nil {
+			return false
+		}
 		decoder := gob.NewDecoder(decodeFile)
 		switch data {
 		case SaveData_map:

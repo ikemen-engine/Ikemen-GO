@@ -7180,7 +7180,12 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			}
 			continue
 		default:
-			if scf, ok := c.scmap[c.token]; ok {
+			scf, ok := c.scmap[c.token]
+			//helperはステコンとリダイレクトの両方で使う名称なのでチェックする
+			if c.token == "helper" && ((*line)[0] == ',' || (*line)[0] == '(') {
+				ok = false
+			}
+			if ok {
 				scname := c.token
 				c.scan(line)
 				if err := c.needToken("{"); err != nil {

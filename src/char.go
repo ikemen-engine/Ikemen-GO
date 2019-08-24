@@ -5283,7 +5283,26 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			return
 		}
 		getter.p1facing = 0
+		invertXvel := func(byf float32) {
+			if !proj {
+				if c.p1facing != 0 {
+					byf = c.p1facing
+				} else {
+					byf = c.facing
+				}
+			}
+			if (getter.facing < 0) == (byf < 0) {
+				getter.ghv.xvel *= -1
+				if getter.ghv.groundtype == 1 || getter.ghv.groundtype == 2 {
+					getter.ghv.groundtype += 3 - getter.ghv.groundtype*2
+				}
+				if getter.ghv.airtype == 1 || getter.ghv.airtype == 2 {
+					getter.ghv.airtype += 3 - getter.ghv.airtype*2
+				}
+			}
+		}
 		if getter.hoIdx >= 0 {
+			invertXvel(byf)
 			return
 		}
 		if !proj && hd.hitonce > 0 {
@@ -5359,22 +5378,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		}
-		if !proj {
-			if c.p1facing != 0 {
-				byf = c.p1facing
-			} else {
-				byf = c.facing
-			}
-		}
-		if (getter.facing < 0) == (byf < 0) {
-			getter.ghv.xvel *= -1
-			if getter.ghv.groundtype == 1 || getter.ghv.groundtype == 2 {
-				getter.ghv.groundtype += 3 - getter.ghv.groundtype*2
-			}
-			if getter.ghv.airtype == 1 || getter.ghv.airtype == 2 {
-				getter.ghv.airtype += 3 - getter.ghv.airtype*2
-			}
-		}
+		invertXvel(byf)
 		return
 	}
 	if proj {
