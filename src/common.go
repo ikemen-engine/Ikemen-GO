@@ -585,8 +585,9 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 		if l.vfacing < 0 {
 			y += sys.lifebarFontScale
 		}
+		paltex := s.PalTex
 		s.Draw(x+l.offset[0], y+l.offset[1],
-			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx)
+			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx, paltex)
 	}
 }
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
@@ -601,7 +602,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
 			l.scale[1]*float32(l.vfacing),
-			0, 0, 0, 0, float32(sys.gameWidth-320)/2, nil, false, 1, false)
+			0, 0, 0, 0, float32(sys.gameWidth-320)/2, nil, false, 1, false, 1)
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,

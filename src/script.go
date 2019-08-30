@@ -677,7 +677,8 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil)
+				paltex := c.lportrait.PalTex
+				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil, paltex)
 			}
 			//QuickLaunch用キャラセレポートレイト読み込み
 			if c.sportrait == nil {
@@ -709,17 +710,19 @@ func systemScriptInit(l *lua.LState) {
 					offset++
 					if c != nil {
 						if c.sportrait != nil {
+							paltex := c.sportrait.PalTex
 							c.sportrait.Draw((x + float32(i)*sys.sel.cellsize[0]),
 								(y+float32(j)*sys.sel.cellsize[1])/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[0]*c.portrait_scale)/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[1]*c.portrait_scale)/float32(sys.luaSpriteScale),
-								c.sportrait.Pal, nil)
+								c.sportrait.Pal, nil, paltex)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
+							paltex := sys.sel.randomspr.PalTex
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
 								y+float32(j)*sys.sel.cellsize[1]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[0]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[1]/float32(sys.luaSpriteScale),
-								sys.sel.randomspr.Pal, nil)
+								sys.sel.randomspr.Pal, nil, paltex)
 						}
 					}
 				}
@@ -1067,7 +1070,8 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil)
+				paltex := c.sportrait.PalTex
+				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex)
 			}
 		}
 		return 0
@@ -1088,7 +1092,8 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil)
+				paltex := c.vsportrait.PalTex
+				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex)
 			}
 			//QuickLaunch用キャラセレポートレイト読み込み
 			if c.lportrait == nil {
@@ -1129,7 +1134,8 @@ func systemScriptInit(l *lua.LState) {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
 				}
-				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil)
+				paltex := c.vportrait.PalTex
+				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil, paltex)
 			}
 			if c.vportrait == nil {
 				LoadFile(&c.sprite, c.def, func(file string) error {
