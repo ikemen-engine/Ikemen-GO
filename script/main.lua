@@ -1106,6 +1106,9 @@ file:close()
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
+	if chars + stages == 90 then
+		SetGCPercent(100)
+	end
 --for line in io.lines("data/select.def") do
 	line = line:lower()
 	if line:match('^%s*%[%s*characters%s*%]') then

@@ -1467,7 +1467,7 @@ for line in file:lines() do
 			end
 		else --only valid lines left are animations
 			line = line:lower()
-			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart')
+			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('^%s*interpolate offset') or line:match('^%s*interpolate angle') or line:match('^%s*interpolate scale') or line:match('^%s*interpolate blend')
 			if value ~= nil then
 				value = value:gsub(',%s*,', ',0,') --add missing values
 				value = value:gsub(',%s*$', '')
