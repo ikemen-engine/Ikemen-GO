@@ -658,7 +658,7 @@ function main.f_drawBG(data, info, layerno, timer)
 end
 
 --reset screenpack data
-function main.f_resetBG(info, bgdef, bgm)
+function main.f_resetBG(info, bgdef, bgm, bgmLoop, bgmVolume, bgmloopstart, bgmloopend)
 	bgm = bgm or nil
 	animReset(info.fadein_data)
 	animUpdate(info.fadein_data)
@@ -684,7 +684,7 @@ function main.f_resetBG(info, bgdef, bgm)
 		end
 	end
 	if bgm ~= nil then
-		playBGM(bgm)
+		playBGM(bgm, true, bgmLoop, bgmVolume, bgmloopstart or "0", bgmloopend or "0")
 	end
 end
 
@@ -1152,7 +1152,7 @@ for line in content:gmatch('[^\r\n]+') do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = c}
-				local zoomout, zoomin, bgmusic, bgmvolume = getStageInfo(row)
+				local zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend  = getStageInfo(row)
 				if zoomout ~= '' then
 					main.t_selStages[row].zoommin = tonumber(zoomout)
 				end
@@ -1161,7 +1161,7 @@ for line in content:gmatch('[^\r\n]+') do
 				end
 				if bgmusic ~= '' then
 					bgmusic = bgmusic:gsub('\\', '/')
-					main.t_selStages[row].music = {[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume)}}
+					main.t_selStages[row].music = {[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume), bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}}
 				end
 				main.t_includeStage[#main.t_includeStage + 1] = row
 				main.t_stageDef[c] = row
@@ -1231,7 +1231,7 @@ for i = 1, #main.t_selChars do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = main.t_selChars[i].stage[j]}
-				local zoomout, zoomin, bgmusic, bgmvolume = getStageInfo(row)
+				local zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend = getStageInfo(row)
 				if zoomout ~= '' then
 					main.t_selStages[row].zoommin = tonumber(zoomout)
 				end
@@ -1241,7 +1241,7 @@ for i = 1, #main.t_selChars do
 				if bgmusic ~= '' then
 					bgmusic = bgmusic:gsub('\\', '/')
 					main.t_selStages[row].music = {}
-					main.t_selStages[row].music[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume)}
+					main.t_selStages[row].music[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume), bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
 				end
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then
 					main.t_includeStage[#main.t_includeStage + 1] = row
@@ -1583,7 +1583,7 @@ function main.f_mainMenu()
 	if motif.files.intro_storyboard ~= '' then
 		storyboard.f_storyboard(motif.files.intro_storyboard)
 	end
-	main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+	main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 	while true do
 		cursorPosY, moveTxt, item = main.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then

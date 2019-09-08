@@ -61,7 +61,7 @@ local function f_play(t)
 				end
 				--play bgm
 				if i == 0 and t.scene[k].bgm ~= nil then
-					playBGM(t.scene[k].bgm)
+					playBGM(t.scene[k].bgm, true, t.scene[k].bgm_loop, t.scene[k].bgm_volume, t.scene[k].bgm_loopstart or "0", t.scene[k].bgm_loopend or "0")
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
@@ -92,10 +92,10 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_data,
 								t.scene[k].layer[k2].text,
 								t.scene[k].layer[k2].text_timer,
-								t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-								t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-								t.scene[k].layer[k2].text_spacing,
-								t.scene[k].layer[k2].text_delay,
+								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
+								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
+								t.scene[k].layer[k2].text_spacing[2],
+								t.scene[k].layer[k2].textdelay,
 								t.scene[k].layer[k2].text_length
 							)
 							end
@@ -120,7 +120,7 @@ local function f_play(t)
 			end
 		end
 	end
-	playBGM('')
+	playBGM('', true, 1, 100, "0", "0")
 end
 
 local function f_parse(path)
@@ -238,6 +238,9 @@ local function f_parse(path)
 					sound = {},
 					--bgm = '',
 					bgm_loop = 0,
+					bgm_volume = 100,
+					bgm_loopstart = nil,
+					bgm_loopend = nil,
 					--window = {0, 0, 0, 0},
 					bg_name = ''
 				}
@@ -281,9 +284,9 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 1, nil, nil, nil},
+								font = {1, 0, 0, nil, nil, nil},
 								text_spacing = {0, 15}, --Ikemen feature
-								text_delay = 2, --Ikemen feature
+								textdelay = 2,
 								text_length = 50, --Ikemen feature
 								text_timer = 0, --Ikemen feature
 								offset = {0, 0},
@@ -396,8 +399,12 @@ local function f_parse(path)
 				elseif main.f_fileExists('font/' .. t.scenedef.font[k]) then
 					t.scenedef.font[k] = 'font/' .. t.scenedef.font[k]
 				end
+				t.scenedef.font_data[k] = fontNew(t.scenedef.font[k])
+				t.scenedef.font[k] = {}
+				t.scenedef.font[k][1] = k
+				t.scenedef.font[k][2] = 0
+				t.scenedef.font[k][3] = 0
 			end
-			t.scenedef.font_data[k] = fontNew(t.scenedef.font[k])
 		end
 	end
 	--loop through scenes
@@ -435,7 +442,7 @@ local function f_parse(path)
 			local t_bgdef = t[t.scene[k].bg_name .. 'def']
 			local prev_k2 = ''
 			for k2, v2 in pairs(t_bgdef) do --loop through table keys
-				if t_bgdef[k2].type ~= nil then
+				if type(k2) == "number" and t_bgdef[k2].type ~= nil then
 					t_bgdef[k2].type = t_bgdef[k2].type:lower()
 					--mugen ignores delta = 0 (defaults to 1)
 					if t_bgdef[k2].delta[1] == 0 then t_bgdef[k2].delta[1] = 1 end
@@ -520,17 +527,17 @@ local function f_parse(path)
 			--text
 			if t_layer[k2].text ~= '' then
 				t.scene[k].layer[k2].text_data = main.f_createTextImg(
-					t.scenedef.font_data[t.scenedef.font[t_layer[k2].font][1]],
-					t.scenedef.font[t_layer[k2].font][2],
-					t.scenedef.font[t_layer[k2].font][3],
+					t.scenedef.font_data[t.scenedef.font[t_layer[k2].font[1]][1]],
+					t_layer[k2].font[2],
+					t_layer[k2].font[3],
 					t_layer[k2].text,
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
 					320/t.info.localcoord[1],
 					240/t.info.localcoord[2],
-					t.scenedef.font[t_layer[k2].font][4],
-					t.scenedef.font[t_layer[k2].font][5],
-					t.scenedef.font[t_layer[k2].font][6]
+					t_layer[k2].font[4],
+					t_layer[k2].font[5],
+					t_layer[k2].font[6]
 				)
 			end
 			--endtime

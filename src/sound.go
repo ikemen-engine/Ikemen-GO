@@ -236,8 +236,18 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 // Bgm
 
 type Bgm struct {
-	filename string
-	ctrl     *beep.Ctrl
+	filename            string
+	bgmLoopStart        int
+	bgmLoopEnd          int
+	defaultFilename     string
+	defaultBgmVolume    int
+	defaultbgmLoopStart int
+	defaultbgmLoopEnd   int
+	sampleRate          beep.SampleRate
+	streamer            beep.StreamSeekCloser
+	ctrl                *beep.Ctrl
+	resampler           *beep.Resampler
+	volume              *effects.Volume
 }
 
 func newBgm() *Bgm {
@@ -260,58 +270,71 @@ func (bgm *Bgm) IsFormat(extension string) bool {
 	return filepath.Ext(bgm.filename) == extension
 }
 
-func (bgm *Bgm) Open(filename string) {
-
+func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
 	if filepath.Base(bgm.filename) == filepath.Base(filename) {
 		return
 	}
-
 	bgm.filename = filename
+	bgm.bgmLoopStart = bgmLoopStart
+	bgm.bgmLoopEnd = bgmLoopEnd
+	if isDefaultBGM {
+		bgm.defaultFilename = filename
+		bgm.defaultBgmVolume = bgmVolume
+		bgm.defaultbgmLoopStart = bgmLoopStart
+		bgm.defaultbgmLoopEnd = bgmLoopEnd
+	}
 	speaker.Clear()
 
 	if bgm.IsVorbis() {
-		bgm.ReadVorbis()
+		bgm.ReadVorbis(loop, bgmVolume)
 	} else if bgm.IsMp3() {
-		bgm.ReadMp3()
+		bgm.ReadMp3(loop, bgmVolume)
 	} else if bgm.IsFLAC() {
-		bgm.ReadFLAC()
+		bgm.ReadFLAC(loop, bgmVolume)
 	}
 
 }
 
-func (bgm *Bgm) ReadMp3() {
+func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := mp3.Decode(f)
+	bgm.streamer = s
 	if err != nil {
 		return
 	}
-	bgm.ReadFormat(s, format)
+	bgm.ReadFormat(format, loop, bgmVolume)
 }
 
-func (bgm *Bgm) ReadFLAC() {
+func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := flac.Decode(f)
+	bgm.streamer = s
 	if err != nil {
 		return
 	}
-	bgm.ReadFormat(s, format)
+	bgm.ReadFormat(format, loop, bgmVolume)
 }
 
-func (bgm *Bgm) ReadVorbis() {
+func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := vorbis.Decode(f)
+	bgm.streamer = s
 	if err != nil {
 		return
 	}
-	bgm.ReadFormat(s, format)
+	bgm.ReadFormat(format, loop, bgmVolume)
 }
 
-func (bgm *Bgm) ReadFormat(s beep.StreamSeekCloser, format beep.Format) {
-	streamer := beep.Loop(-1, s)
-	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)
-	streamer = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
-	resample := beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), streamer)
-	bgm.ctrl = &beep.Ctrl{Streamer: resample}
+func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
+	loopCount := int(1)
+	if loop > 0 {
+		loopCount = -1
+	}
+	streamer := beep.Loop(loopCount, bgm.streamer)
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
+	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
+	bgm.resampler = beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), bgm.volume)
+	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
 	speaker.Play(bgm.ctrl)
 }
 

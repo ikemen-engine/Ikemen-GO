@@ -406,14 +406,10 @@ func (s *System) audioOpen() {
 func (s *System) soundWrite() {
 	defer func() { s.audioClose <- true }()
 	src := NewAudioSource()
-	bgmSrc := NewAudioSource()
 	processed := false
 	for !s.gameEnd {
 		if src.Src.State() != openal.Playing {
 			src.Src.Play()
-		}
-		if bgmSrc.Src.State() != openal.Playing {
-			bgmSrc.Src.Play()
 		}
 		if !processed {
 			time.Sleep(10 * time.Millisecond)
@@ -434,27 +430,20 @@ func (s *System) soundWrite() {
 			}
 			processed = true
 		}
-		if bgmSrc.Src.BuffersProcessed() > 0 {
-			out := s.nullSndBuf[:]
-			if !s.nomusic {
-				if s.bgm.ctrl != nil {
-					s.bgm.ctrl.Paused = false
-				}
-			} else {
-				if s.bgm.ctrl != nil {
-					s.bgm.Pause()
+		if !s.nomusic {
+			if s.bgm.ctrl != nil {
+				s.bgm.ctrl.Paused = false
+				if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
+					s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
 				}
 			}
-			buf := bgmSrc.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			bgmSrc.Src.QueueBuffer(buf)
-			if err := openal.Err(); err != nil {
-				s.errLog.Println(err.Error())
+		} else {
+			if s.bgm.ctrl != nil {
+				s.bgm.Pause()
 			}
-			processed = true
 		}
+
 	}
-	bgmSrc.Delete()
 	src.Delete()
 	openal.NullContext.Activate()
 	device := s.audioContext.GetDevice()
@@ -1748,7 +1737,7 @@ type SelectChar struct {
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
 type SelectStage struct {
-	def, name, zoomout, zoomin, bgmusic, bgmvolume string
+	def, name, zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend string
 }
 type Select struct {
 	columns, rows   int
@@ -1810,12 +1799,12 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
-func (s *Select) GetStageInfo(n int) (zoomin, zoomout, bgmusic, bgmvolume string) {
+func (s *Select) GetStageInfo(n int) (zoomin, zoomout, bgmusic, bgmvolume, bgmloopstart, bgmloopend string) {
 	n %= len(s.stagelist) + 1
 	if n < 0 {
 		n += len(s.stagelist) + 1
 	}
-	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].bgmusic, s.stagelist[n-1].bgmvolume
+	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].bgmusic, s.stagelist[n-1].bgmvolume, s.stagelist[n-1].bgmloopstart, s.stagelist[n-1].bgmloopend
 }
 func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
@@ -1967,6 +1956,14 @@ func (s *Select) AddStage(def string) error {
 				ss.bgmvolume, ok = is.getString("bgmvolume")
 				if !ok {
 					ss.bgmvolume = "100"
+				}
+				ss.bgmloopstart, ok = is.getString("bgmloopstart")
+				if !ok {
+					ss.bgmloopstart = ""
+				}
+				ss.bgmloopend, ok = is.getString("bgmloopend")
+				if !ok {
+					ss.bgmloopend = ""
 				}
 			}
 		}

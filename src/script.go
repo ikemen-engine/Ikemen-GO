@@ -201,7 +201,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		sys.bgm.Open(strArg(l, 1))
+		sys.bgm.Open(strArg(l, 1), boolArg(l, 2), int(numArg(l, 3)), int(numArg(l, 4)), int(Atoi(strArg(l, 5))), int(Atoi(strArg(l, 6))))
 		return 0
 	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
@@ -1203,12 +1203,14 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
-		a, b, c, d := sys.sel.GetStageInfo(int(numArg(l, 1)))
+		a, b, c, d, e, f := sys.sel.GetStageInfo(int(numArg(l, 1)))
 		l.Push(lua.LString(a))
 		l.Push(lua.LString(b))
 		l.Push(lua.LString(c))
 		l.Push(lua.LString(d))
-		return 4
+		l.Push(lua.LString(e))
+		l.Push(lua.LString(f))
+		return 6
 	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		s := ""
