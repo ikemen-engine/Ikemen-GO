@@ -2558,7 +2558,11 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_ignorehitpause:
 			e.ignorehitpause = exp[0].evalB(c)
 		case explod_bindid:
-			e.bindId = exp[0].evalI(c)
+			bId := exp[0].evalI(c)
+			if bId == -1 {
+				bId = crun.id
+			}
+			e.bindId = bId
 		}
 		return true
 	})
@@ -2739,8 +2743,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
 			case explod_bindid:
-				b := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.bindId = b })
+				bId := exp[0].evalI(c)
+				if bId == -1 {
+					bId = crun.id
+				}
+				eachExpl(func(e *Explod) { e.bindId = bId })
 			}
 		}
 		return true
@@ -3550,6 +3557,12 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 		sc.runSub(c, &crun.hitdef, id, exp)
 		return true
 	})
+	//winmugenでHitdefのattrが投げ属性で自分側pausetimeが1以上の時、毎フレーム実行されなくなる
+	if crun.hitdef.attr&int32(AT_AT) != 0 && crun.moveContact() == 1 &&
+		c.gi().ver[0] != 1 && crun.hitdef.pausetime > 0 {
+		crun.hitdef.attr = 0
+		return false
+	}
 	crun.setHitdefDefault(&crun.hitdef, false)
 	return false
 }
@@ -5966,10 +5979,10 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 	})
 	if path != "" {
 		decodeFile, err := os.Open(filepath.Dir(c.gi().def) + "/" + path)
-		if err != nil {
-			panic(err)
-		}
 		defer decodeFile.Close()
+		if err != nil {
+			return false
+		}
 		decoder := gob.NewDecoder(decodeFile)
 		switch data {
 		case SaveData_map:

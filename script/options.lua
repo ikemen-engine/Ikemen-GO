@@ -309,6 +309,11 @@ end
 --;===========================================================
 --; MAIN LOOP
 --;===========================================================
+local t_quicklaunchNames = {}
+t_quicklaunchNames[0] = "Disabled"
+t_quicklaunchNames[1] = "Level1"
+t_quicklaunchNames[2] = "Level2"
+
 local t_mainCfg = {
 	{data = textImgNew(), itemname = 'arcadesettings', displayname = motif.option_info.menu_itemname_main_arcade},
 	{data = textImgNew(), itemname = 'videosettings', displayname = motif.option_info.menu_itemname_main_video},
@@ -317,7 +322,7 @@ local t_mainCfg = {
 	{data = textImgNew(), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
 	{data = textImgNew(), itemname = 'enginesettings', displayname = motif.option_info.menu_itemname_main_engine},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)},
+	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = t_quicklaunchNames[config.QuickLaunch]},
 	{data = textImgNew(), itemname = 'portchange', displayname = motif.option_info.menu_itemname_main_port, vardata = textImgNew(), vardisplay = getListenPort()},
 	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_main_default},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
@@ -355,12 +360,14 @@ function options.f_mainCfg()
 		-- Quick Launch
 		elseif t[item].itemname == 'quicklaunch' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.QuickLaunch == 1 then
-				config.QuickLaunch = 0
-			else
-				config.QuickLaunch = 1
+			if commandGetState(main.p1Cmd, 'r') and config.QuickLaunch < #t_quicklaunchNames then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.QuickLaunch = config.QuickLaunch + 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.QuickLaunch > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.QuickLaunch = config.QuickLaunch - 1
 			end
-			t[item].vardisplay = options.f_intDisplay(config.QuickLaunch, motif.option_info.menu_itemname_yes, motif.option_info.menu_itemname_no)
+			t[item].vardisplay = t_quicklaunchNames[config.QuickLaunch]
 			modified = 1
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Arcade Settings

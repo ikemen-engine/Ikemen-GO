@@ -374,22 +374,33 @@ end
 
 function select.f_assignMusic()
 	local track = ''
+	local trackVolume = 100
+	local tracloopstart,tracloopend = nil
 	if main.stageMenu then
 		if main.t_selStages[stageNo].music ~= nil then
 			track = math.random(1, #main.t_selStages[stageNo].music)
+			trackVolume = main.t_selStages[stageNo].music[track].bgmvolume
+			trackloopstart = main.t_selStages[stageNo].music[track].bgmloopstart
+			trackloopend = main.t_selStages[stageNo].music[track].bgmloopend
 			track = main.t_selStages[stageNo].music[track].bgmusic
 		end
 	else
 		if main.t_selChars[t_p2Selected[1].cel + 1].music ~= nil then
 			track = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].music)
+			trackVolume = main.t_selChars[t_p2Selected[1].cel + 1].music[track].bgmvolume
+			trackloopstart = main.t_selChars[t_p2Selected[1].cel + 1].music[track].bgmloopstart
+			trackloopend = main.t_selChars[t_p2Selected[1].cel + 1].music[track].bgmloopend
 			track = main.t_selChars[t_p2Selected[1].cel + 1].music[track].bgmusic
 		elseif main.t_selStages[stageNo].music ~= nil then
 			track = math.random(1, #main.t_selStages[stageNo].music)
+			trackVolume = main.t_selStages[stageNo].music[track].bgmvolume
+			trackloopstart = main.t_selStages[stageNo].music[track].bgmloopstart
+			trackloopend = main.t_selStages[stageNo].music[track].bgmloopend
 			track = main.t_selStages[stageNo].music[track].bgmusic
 		end
 		stageEnd = true
 	end
-	playBGM(track)
+	playBGM(track, true, 1, trackVolume, trackloopstart or "0", trackloopend or "0")
 end
 
 function select.f_selectStage()
@@ -618,12 +629,13 @@ function select.f_resetGrid()
 			--1Pのランダムセル表示位置 / 1P random cell display position
 			if t_grid[row + p1RowOffset][col].char == 'randomselect' or t_grid[row + p1RowOffset][col].hidden == 3 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
-			--2Pのランダムセル表示位置 / 2P random cell display position
-			elseif t_grid[row + p2RowOffset][col].char == 'randomselect' or t_grid[row + p2RowOffset][col].hidden == 3 then
-				select.t_drawFace[#select.t_drawFace + 1] = {d = 11, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			--1Pのキャラ表示位置 / 1P character display position
 			elseif t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+			end
+			--2Pのランダムセル表示位置 / 2P random cell display position
+			if t_grid[row + p2RowOffset][col].char == 'randomselect' or t_grid[row + p2RowOffset][col].hidden == 3 then
+				select.t_drawFace[#select.t_drawFace + 1] = {d = 11, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}		
 			--2Pのキャラ表示位置 / 2P character display position
 			elseif t_grid[row + p2RowOffset][col].char ~= nil and t_grid[row + p2RowOffset][col].hidden == 0 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 12, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
@@ -696,13 +708,13 @@ function select.f_selectSimple()
 	stageList = 0
 	main.f_cmdInput()
 	while true do
-		main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm)
+		main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		select.f_selectReset()
 		selectStart()
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			end
 			select.f_selectScreen()
@@ -742,12 +754,12 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 	select.f_selectReset()
 	stageEnd = true
 	while true do
-		main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm)
+		main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		selectStart()
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			end
 			select.f_selectScreen()
@@ -788,7 +800,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			if motif.files.intro_storyboard ~= '' then
 				storyboard.f_storyboard(motif.files.intro_storyboard)
 			end
-			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			return
 		--player won (also if lost in VS 100 Kumite)
 		elseif winner == 1 or main.gameMode == '100kumite' then
@@ -829,7 +841,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 				if motif.files.intro_storyboard ~= '' then
 					storyboard.f_storyboard(motif.files.intro_storyboard)
 				end
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			--next match available
 			else
@@ -855,7 +867,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			if motif.files.intro_storyboard ~= '' then
 				storyboard.f_storyboard(motif.files.intro_storyboard)
 			end
-			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			return
 		--player lost but can continue
 		else
@@ -876,7 +888,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 				if motif.files.intro_storyboard ~= '' then
 					storyboard.f_storyboard(motif.files.intro_storyboard)
 				end
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			end
 			if config.ContSelection then --true if 'Char change at Continue' option is enabled
@@ -893,14 +905,14 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 				while not selScreenEnd do
 					if esc() then
 						sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-						main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+						main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 						return
 					end
 					select.f_selectScreen()
 				end
 			elseif esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			end
 		end
@@ -991,12 +1003,12 @@ function select.f_selectTournament()
 	stageList = 0
 	main.f_cmdInput()
 	while true do
-		main.f_resetBG(motif.tournament_info, motif.tournamentbgdef, motif.music.tournament_bgm)
+		main.f_resetBG(motif.tournament_info, motif.tournamentbgdef, motif.music.tournament_bgm, motif.music.tournament_bgm_loop, motif.music.tournament_bgm_volume, motif.music.tournament_bgm_loopstart, motif.music.tournament_bgm_loopend)
 		select.f_selectReset()
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				return
 			end
 			select.f_selectTournamentScreen()
@@ -1991,7 +2003,7 @@ function select.f_selectVersus()
 	textImgSetText(txt_matchNo, text[1])
 	local delay = 0
 	local minTime = 15 --let's reserve few extra ticks in case selectChar function needs time to load data, also prevents sound from being interrupted
-	main.f_resetBG(motif.vs_screen, motif.versusbgdef, motif.music.vs_bgm)
+	main.f_resetBG(motif.vs_screen, motif.versusbgdef, motif.music.vs_bgm, motif.music.vs_bgm_loop, motif.music.vs_bgm_volume, motif.music.vs_bgm_loopstart, motif.music.vs_bgm_loopend)
 	if not main.versusScreen then
 		delay = minTime
 		select.f_selectChar(1, t_p1Selected)
@@ -2037,7 +2049,7 @@ function select.f_selectVersus()
 		while true do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+				main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				break
 			elseif p1Confirmed and p2Confirmed then
 				if orderTime == -1 and main.f_btnPalNo(main.p1Cmd) > 0 and delay > motif.versusbgdef.timer + minTime then
@@ -2308,15 +2320,15 @@ function select.f_result(state)
 	else
 		return
 	end
-	main.f_resetBG(t, motif.resultsbgdef, motif.music.results_bgm)
+	main.f_resetBG(t, motif.resultsbgdef, motif.music.results_bgm, motif.music.results_bgm_loop, motif.music.results_bgm_volume, motif.music.results_bgm_loopstart, motif.music.results_bgm_loopend)
 	main.f_cmdInput()
 	while true do
 		if esc() or main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			break
 		elseif motif.resultsbgdef.timer >= t.show_time then
 			--add fadeout code here
-			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+			main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			break
 		end
 		--draw clearcolor
@@ -2393,7 +2405,7 @@ function select.f_selectVictory()
 	if motif.music.victory_bgm == '' then
 		main.f_resetBG(motif.victory_screen, motif.victorybgdef)
 	else
-		main.f_resetBG(motif.victory_screen, motif.victorybgdef, motif.music.victory_bgm)
+		main.f_resetBG(motif.victory_screen, motif.victorybgdef, motif.music.victory_bgm, motif.music.victory_bgm_loop, motif.music.victory_bgm_volume, motif.music.victory_bgm_loopstart, motif.music.victory_bgm_loopend)
 	end
 	local winquote = ''
 	local winnerNum = 0
@@ -2502,11 +2514,7 @@ local txt_credits = main.f_createTextImg(
 )
 
 function select.f_continue()
-	main.f_resetBG(motif.continue_screen, motif.continuebgdef, motif.music.continue_bgm)
-	animReset(motif.continue_screen.continue_anim_data)
-	animUpdate(motif.continue_screen.continue_anim_data)
 	continue = false
-	local text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
 	textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
@@ -2525,7 +2533,7 @@ function select.f_continue()
 				text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
 				textImgSetText(txt_credits, text[1])
 				main.f_cmdInput()
-				main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm)
+				main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 				break
 			elseif main.f_btnPalNo(main.p1Cmd) > 0 and motif.continuebgdef.timer >= motif.continue_screen.continue_starttime + motif.continue_screen.continue_skipstart then
 				local cnt = 0
@@ -2577,7 +2585,7 @@ function select.f_continue()
 				sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_0_snd[1], motif.continue_screen.continue_0_snd[2])
 			end
 		elseif motif.continuebgdef.timer == motif.continue_screen.continue_end_skiptime then
-			playBGM(motif.music.continue_end_bgm)
+			playBGM(motif.music.continue_end_bgm, true, motif.music.continue_end_loop, motif.music.continue_end_volume, motif.music.continue_end_loopstart or "0", motif.music.continue_end_loopend or "0")
 			sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_end_snd[1], motif.continue_screen.continue_end_snd[2])
 		end
 		--draw credits text
