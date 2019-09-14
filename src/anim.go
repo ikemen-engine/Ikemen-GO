@@ -484,66 +484,68 @@ func (a *Animation) UpdateSprite() {
 			}
 		}
 	}
-	if int(a.drawidx) < len(a.frames)-1 {
-		for _, i := range a.interpolate_offset {
-			if a.drawidx+1 == i {
-				a.interpolate_offset_x = float32(a.frames[a.drawidx+1].X-a.frames[a.drawidx].X) / float32(a.curFrame().Time) * float32(a.time)
-				a.interpolate_offset_y = float32(a.frames[a.drawidx+1].Y-a.frames[a.drawidx].Y) / float32(a.curFrame().Time) * float32(a.time)
-				break
-			}
+	nextDrawidx := a.drawidx + 1
+	if int(a.drawidx) >= len(a.frames)-1 {
+		nextDrawidx = a.loopstart
+	}
+	for _, i := range a.interpolate_offset {
+		if nextDrawidx == i {
+			a.interpolate_offset_x = float32(a.frames[nextDrawidx].X-a.frames[a.drawidx].X) / float32(a.curFrame().Time) * float32(a.time)
+			a.interpolate_offset_y = float32(a.frames[nextDrawidx].Y-a.frames[a.drawidx].Y) / float32(a.curFrame().Time) * float32(a.time)
+			break
 		}
-		for _, i := range a.interpolate_scale {
-			if a.drawidx+1 == i {
-				var drawframe_scale_x, nextframe_scale_x, drawframe_scale_y, nextframe_scale_y float32 = 1, 1, 1, 1
-				if len(a.frames[a.drawidx].Ex) > 2 {
-					if len(a.frames[a.drawidx].Ex[2]) > 0 {
-						drawframe_scale_x = a.frames[a.drawidx].Ex[2][0]
-					}
-					if len(a.frames[a.drawidx].Ex[2]) > 1 {
-						drawframe_scale_y = a.frames[a.drawidx].Ex[2][1]
-					}
+	}
+	for _, i := range a.interpolate_scale {
+		if nextDrawidx == i {
+			var drawframe_scale_x, nextframe_scale_x, drawframe_scale_y, nextframe_scale_y float32 = 1, 1, 1, 1
+			if len(a.frames[a.drawidx].Ex) > 2 {
+				if len(a.frames[a.drawidx].Ex[2]) > 0 {
+					drawframe_scale_x = a.frames[a.drawidx].Ex[2][0]
 				}
-				if len(a.frames[a.drawidx+1].Ex) > 2 {
-					if len(a.frames[a.drawidx+1].Ex[2]) > 0 {
-						nextframe_scale_x = a.frames[a.drawidx+1].Ex[2][0]
-					}
-					if len(a.frames[a.drawidx+1].Ex[2]) > 1 {
-						nextframe_scale_y = a.frames[a.drawidx+1].Ex[2][1]
-					}
+				if len(a.frames[a.drawidx].Ex[2]) > 1 {
+					drawframe_scale_y = a.frames[a.drawidx].Ex[2][1]
 				}
-				a.scale_x += (nextframe_scale_x - drawframe_scale_x) / float32(a.curFrame().Time) * float32(a.time)
-				a.scale_y += (nextframe_scale_y - drawframe_scale_y) / float32(a.curFrame().Time) * float32(a.time)
-				break
 			}
-		}
-		for _, i := range a.interpolate_angle {
-			if a.drawidx+1 == i {
-				var drawframe_angle, nextframe_angle float32 = 0, 0
-				if len(a.frames[a.drawidx].Ex) > 2 {
-					if len(a.frames[a.drawidx].Ex[2]) > 2 {
-						drawframe_angle = a.frames[a.drawidx].Ex[2][2]
-					}
+			if len(a.frames[nextDrawidx].Ex) > 2 {
+				if len(a.frames[nextDrawidx].Ex[2]) > 0 {
+					nextframe_scale_x = a.frames[nextDrawidx].Ex[2][0]
 				}
-				if len(a.frames[a.drawidx+1].Ex) > 2 {
-					if len(a.frames[a.drawidx+1].Ex[2]) > 2 {
-						nextframe_angle = a.frames[a.drawidx+1].Ex[2][2]
-					}
+				if len(a.frames[nextDrawidx].Ex[2]) > 1 {
+					nextframe_scale_y = a.frames[nextDrawidx].Ex[2][1]
 				}
-				a.angle += (nextframe_angle - drawframe_angle) / float32(a.curFrame().Time) * float32(a.time)
-				break
 			}
+			a.scale_x += (nextframe_scale_x - drawframe_scale_x) / float32(a.curFrame().Time) * float32(a.time)
+			a.scale_y += (nextframe_scale_y - drawframe_scale_y) / float32(a.curFrame().Time) * float32(a.time)
+			break
 		}
-		if byte(a.interpolate_blend_srcalpha) != 1 ||
-			byte(a.interpolate_blend_dstalpha) != 255 {
-			for _, i := range a.interpolate_blend {
-				if a.drawidx+1 == i {
-					a.interpolate_blend_srcalpha += (float32(a.frames[a.drawidx+1].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
-					a.interpolate_blend_dstalpha += (float32(a.frames[a.drawidx+1].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
-					if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
-						a.interpolate_blend_srcalpha = 0
-					}
-					break
+	}
+	for _, i := range a.interpolate_angle {
+		if nextDrawidx == i {
+			var drawframe_angle, nextframe_angle float32 = 0, 0
+			if len(a.frames[a.drawidx].Ex) > 2 {
+				if len(a.frames[a.drawidx].Ex[2]) > 2 {
+					drawframe_angle = a.frames[a.drawidx].Ex[2][2]
 				}
+			}
+			if len(a.frames[nextDrawidx].Ex) > 2 {
+				if len(a.frames[nextDrawidx].Ex[2]) > 2 {
+					nextframe_angle = a.frames[nextDrawidx].Ex[2][2]
+				}
+			}
+			a.angle += (nextframe_angle - drawframe_angle) / float32(a.curFrame().Time) * float32(a.time)
+			break
+		}
+	}
+	if byte(a.interpolate_blend_srcalpha) != 1 ||
+		byte(a.interpolate_blend_dstalpha) != 255 {
+		for _, i := range a.interpolate_blend {
+			if nextDrawidx == i {
+				a.interpolate_blend_srcalpha += (float32(a.frames[nextDrawidx].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
+				a.interpolate_blend_dstalpha += (float32(a.frames[nextDrawidx].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
+				if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
+					a.interpolate_blend_srcalpha = 0
+				}
+				break
 			}
 		}
 	}

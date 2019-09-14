@@ -190,7 +190,7 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	--draw clearcolor
 	animDraw(motif.optionbgdef.bgclearcolor_data)
 	--draw layerno = 0 backgrounds
-	main.f_drawBG(motif.optionbgdef.bg_data, motif.optionbgdef.bg, 0, motif.optionbgdef.timer)
+	main.f_drawBG(motif.optionbgdef.bg_data, motif.optionbgdef.bg, 0, motif.optionbgdef.timer, {320,240})
 	--draw menu box
 	if motif.option_info.menu_boxbackground_visible == 1 then
 		if #t > motif.option_info.menu_window_visibleitems and moveTxt == (#t - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_item_spacing[2] then
@@ -295,7 +295,7 @@ function options.f_menuCommon2(cursorPosY, moveTxt, item, t)
 		animDraw(main.cursorBox)
 	end
 	--draw layerno = 1 backgrounds
-	main.f_drawBG(motif.optionbgdef.bg_data, motif.optionbgdef.bg, 1, motif.optionbgdef.timer)
+	main.f_drawBG(motif.optionbgdef.bg_data, motif.optionbgdef.bg, 1, motif.optionbgdef.timer, {320,240})
 	--draw fadein
 	animDraw(motif.option_info.fadein_data)
 	animUpdate(motif.option_info.fadein_data)

@@ -1031,10 +1031,10 @@ function select.f_selectTournamentScreen()
 	--draw clearcolor
 	animDraw(motif.tournamentbgdef.bgclearcolor_data)
 	--draw layerno = 0 backgrounds
-	main.f_drawBG(motif.tournamentbgdef.bg_data, motif.tournamentbgdef.bg, 0, motif.tournamentbgdef.timer)
+	main.f_drawBG(motif.tournamentbgdef.bg_data, motif.tournamentbgdef.bg, 0, motif.tournamentbgdef.timer, {320,240})
 	
 	--draw layerno = 1 backgrounds
-	main.f_drawBG(motif.tournamentbgdef.bg_data, motif.tournamentbgdef.bg, 1, motif.tournamentbgdef.timer)
+	main.f_drawBG(motif.tournamentbgdef.bg_data, motif.tournamentbgdef.bg, 1, motif.tournamentbgdef.timer, {320,240})
 	--draw fadein
 	animDraw(motif.tournament_info.fadein_data)
 	animUpdate(motif.tournament_info.fadein_data)
@@ -1086,7 +1086,7 @@ function select.f_selectScreen()
 	--draw clearcolor
 	animDraw(motif.selectbgdef.bgclearcolor_data)
 	--draw layerno = 0 backgrounds
-	main.f_drawBG(motif.selectbgdef.bg_data, motif.selectbgdef.bg, 0, motif.selectbgdef.timer)
+	main.f_drawBG(motif.selectbgdef.bg_data, motif.selectbgdef.bg, 0, motif.selectbgdef.timer, {320,240})
 	--draw title
 	textImgDraw(main.txt_mainSelect)
 	if p1Cell then
@@ -1263,7 +1263,7 @@ function select.f_selectScreen()
 		end
 	end
 	--draw layerno = 1 backgrounds
-	main.f_drawBG(motif.selectbgdef.bg_data, motif.selectbgdef.bg, 1, motif.selectbgdef.timer)
+	main.f_drawBG(motif.selectbgdef.bg_data, motif.selectbgdef.bg, 1, motif.selectbgdef.timer, {320,240})
 	--draw fadein
 	animDraw(motif.select_info.fadein_data)
 	animUpdate(motif.select_info.fadein_data)
@@ -2195,7 +2195,7 @@ function select.f_selectVersus()
 			--draw clearcolor
 			animDraw(motif.versusbgdef.bgclearcolor_data)
 			--draw layerno = 0 backgrounds
-			main.f_drawBG(motif.versusbgdef.bg_data, motif.versusbgdef.bg, 0, motif.versusbgdef.timer)
+			main.f_drawBG(motif.versusbgdef.bg_data, motif.versusbgdef.bg, 0, motif.versusbgdef.timer, {320,240})
 			--draw portraits
 			select.f_drawPortrait(
 				t_p1Selected,
@@ -2253,7 +2253,7 @@ function select.f_selectVersus()
 				textImgDraw(txt_matchNo)
 			end
 			--draw layerno = 1 backgrounds
-			main.f_drawBG(motif.versusbgdef.bg_data, motif.versusbgdef.bg, 1, motif.versusbgdef.timer)
+			main.f_drawBG(motif.versusbgdef.bg_data, motif.versusbgdef.bg, 1, motif.versusbgdef.timer, {320,240})
 			--draw fadein
 			animDraw(motif.vs_screen.fadein_data)
 			animUpdate(motif.vs_screen.fadein_data)
@@ -2334,7 +2334,7 @@ function select.f_result(state)
 		--draw clearcolor
 		--animDraw(motif.resultsbgdef.bgclearcolor_data) --disabled to not cover game screen
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(motif.resultsbgdef.bg_data, motif.resultsbgdef.bg, 0, motif.resultsbgdef.timer)
+		main.f_drawBG(motif.resultsbgdef.bg_data, motif.resultsbgdef.bg, 0, motif.resultsbgdef.timer, {320,240})
 		--draw text
 		for i = 1, #t_resultText do
 			textImgSetText(txt, t_resultText[i])
@@ -2346,7 +2346,7 @@ function select.f_result(state)
 			textImgDraw(txt)
 		end
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(motif.resultsbgdef.bg_data, motif.resultsbgdef.bg, 1, motif.resultsbgdef.timer)
+		main.f_drawBG(motif.resultsbgdef.bg_data, motif.resultsbgdef.bg, 1, motif.resultsbgdef.timer, {320,240})
 		--draw fadein
 		animDraw(t.fadein_data)
 		animUpdate(t.fadein_data)
@@ -2440,7 +2440,7 @@ function select.f_selectVictory()
 		--draw clearcolor
 		animDraw(motif.victorybgdef.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(motif.victorybgdef.bg_data, motif.victorybgdef.bg, 0, motif.victorybgdef.timer)
+		main.f_drawBG(motif.victorybgdef.bg_data, motif.victorybgdef.bg, 0, motif.victorybgdef.timer, {320,240})
 		--draw portraits
 		if motif.victory_screen.p2_display == 0 then
 			drawVictoryPortrait(
@@ -2484,7 +2484,7 @@ function select.f_selectVictory()
 			motif.victory_screen.winquote_length
 		)
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(motif.victorybgdef.bg_data, motif.victorybgdef.bg, 1, motif.victorybgdef.timer)
+		main.f_drawBG(motif.victorybgdef.bg_data, motif.victorybgdef.bg, 1, motif.victorybgdef.timer, {320,240})
 		--draw fadein
 		animDraw(motif.victory_screen.fadein_data)
 		animUpdate(motif.victory_screen.fadein_data)
@@ -2525,7 +2525,7 @@ function select.f_continue()
 		--draw clearcolor (disabled to not cover area)
 		--animDraw(motif.continuebgdef.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(motif.continuebgdef.bg_data, motif.continuebgdef.bg, 0, motif.continuebgdef.timer)
+		main.f_drawBG(motif.continuebgdef.bg_data, motif.continuebgdef.bg, 0, motif.continuebgdef.timer, {320,240})
 		--continue screen state
 		if esc() or motif.continuebgdef.timer > motif.continue_screen.endtime then
 			main.f_cmdInput()
@@ -2600,7 +2600,7 @@ function select.f_continue()
 		animUpdate(motif.continue_screen.continue_anim_data)
 		animDraw(motif.continue_screen.continue_anim_data)
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(motif.continuebgdef.bg_data, motif.continuebgdef.bg, 1, motif.continuebgdef.timer)
+		main.f_drawBG(motif.continuebgdef.bg_data, motif.continuebgdef.bg, 1, motif.continuebgdef.timer, {320,240})
 		--draw fadein
 		animDraw(motif.continue_screen.fadein_data)
 		animUpdate(motif.continue_screen.fadein_data)

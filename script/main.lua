@@ -569,7 +569,7 @@ function main.f_ctrlBG(t_bg, t_ctrl)
 end
 
 --draw background layers
-function main.f_drawBG(data, info, layerno, timer)
+function main.f_drawBG(data, info, layerno, timer, localcoord)
 	timer = timer or 0
 	--loop through all backgrounds
 	for i = 1, #data do
@@ -605,34 +605,38 @@ function main.f_drawBG(data, info, layerno, timer)
 							info[i].ctrl_flags.enabled = t.value
 						elseif k == 'velset' or k == 'posset' then
 							if t.x ~= nil then
-								info[i].ctrl_flags.velx = 0 - info[i].velocity[1] + t.x
+								info[i].ctrl_flags.velx = 0 - info[i].velocity[1] + t.x * 320/localcoord[1]
 							end
 							if t.y ~= nil then
-								info[i].ctrl_flags.vely = 0 - info[i].velocity[2] + t.y
+								info[i].ctrl_flags.vely = 0 - info[i].velocity[2] + t.y * 240/localcoord[2]
 							end
-						elseif k == 'veladd' or k == 'posadd' then
+						elseif k == 'veladd'  then --or k == 'posadd' then
 							if t.x ~= nil then
-								info[i].ctrl_flags.velx = info[i].ctrl_flags.velx + t.x
+								info[i].ctrl_flags.velx = info[i].ctrl_flags.velx + t.x * 320/localcoord[1]
 							end
 							if t.y ~= nil then
-								info[i].ctrl_flags.vely = info[i].ctrl_flags.vely + t.y
+								info[i].ctrl_flags.vely = info[i].ctrl_flags.vely + t.y * 240/localcoord[2]
 							end
+						elseif k == 'posadd' then
+							if t.x ~= nil then x = t.x * 320/localcoord[1] end
+							if t.y ~= nil then y = t.y * 240/localcoord[2] end
+							animAddPos(data[i], x, y)
 						--[[elseif k == 'posset' then
 							if t.x ~= nil then
-								x = t.x
+								x = t.x * 320/localcoord[1]
 							else
 								x = info[i].start[1]
 							end
-							if t.y == nil then
-								y = t.y
+							if t.y ~= nil then
+								y = t.y * 240/localcoord[2]
 							else
 								y = info[i].start[2]
 							end
 							animSetPos(data[i], x, y)
 							animAddPos(data[i], 160, 0) --for some reason needed in ikemen
 						elseif k == 'posadd' then
-							if t.x ~= nil then x = t.x end
-							if t.y ~= nil then y = t.y end
+							if t.x ~= nil then x = t.x * 320/localcoord[1] end
+							if t.y ~= nil then y = t.y * 240/localcoord[2] end
 							animAddPos(data[i], x, y)]]
 						--elseif k == 'anim' then --not supported yet
 						--elseif k == 'sinx' then --not supported yet
@@ -725,9 +729,9 @@ function main.f_warning(t, info, background, font_info, title, box)
 		--draw clearcolor
 		animDraw(background.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 0, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 0, background.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 1, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 1, background.timer, {320,240})
 		--draw menu box
 		animDraw(box)
 		--draw title
@@ -794,9 +798,9 @@ function main.f_input(t, info, background, type)
 		--draw clearcolor
 		animDraw(background.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 0, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 0, background.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 1, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 1, background.timer, {320,240})
 		--draw menu box
 		animDraw(main.warningBox)
 		--draw text
@@ -1106,7 +1110,7 @@ file:close()
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
-	if chars + stages == 90 then
+	if chars + stages == 100 then
 		SetGCPercent(100)
 	end
 --for line in io.lines("data/select.def") do
@@ -1488,7 +1492,7 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	--draw clearcolor
 	animDraw(motif.titlebgdef.bgclearcolor_data)
 	--draw layerno = 0 backgrounds
-	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer)
+	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer, {320,240})
 	--draw menu items
 	local items_shown = item + motif.title_info.menu_window_visibleitems - cursorPosY
 	if motif.title_info.menu_window_margins_y[2] ~= 0 and items_shown < #t then
@@ -1545,7 +1549,7 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 		animDraw(main.cursorBox)
 	end
 	--draw layerno = 1 backgrounds
-	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer)
+	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer, {320,240})
 	--footer draw
 	if motif.title_info.footer_boxbackground_visible == 1 then
 		animDraw(footerBox)
@@ -1738,9 +1742,9 @@ function main.f_connect(server, t)
 		--draw clearcolor
 		animDraw(motif.titlebgdef.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer)
+		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer)
+		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer, {320,240})
 		--draw menu box
 		animDraw(main.warningBox)
 		--draw text
