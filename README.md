@@ -29,7 +29,7 @@ Check the insturctions [here](build/Build_mac.md)
 Check the instructions [here](build/Build_linux.md)
 
 ### Debugging
-Download the [Mugen dependencies](https://drive.google.com/file/d/1YCp5LYq-v1LSCFiq7a4RxLmJHdwZ4b0s/view) and unpack them into the Ikemen_GO source dir. Then, use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
+Download the [Mugen dependencies](https://github.com/Windblade-GR01/Ikemen_GO-Elecbyte-Screenpack) and unpack them into the Ikemen_GO source dir. Then, use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
 
 ### Cross-compiling binaries with docker (linux/windows/mac)
 The easiest way to compile binaries for other platforms is with docker.

@@ -44,5 +44,5 @@ And now, Ikemen can be opened double clicking Ikemen_GO, or with the terminal:
 
 `./Ikemen_GO`
 
-PS: If you want to run the engine you can to donwload the mugen font and screenpack files at this [link](https://drive.google.com/file/d/1YCp5LYq-v1LSCFiq7a4RxLmJHdwZ4b0s/view),
+PS: If you want to run the engine you can to donwload the mugen font and screenpack files at this [link](https://github.com/Windblade-GR01/Ikemen_GO-Elecbyte-Screenpack),
 they need to be extracted at the `bin` directory.
