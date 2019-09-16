@@ -54,7 +54,7 @@ local function f_play(t)
 		if k >= t.scenedef.startscene then
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if esc() or main.f_btnPalNo(main.p1Cmd) > 0 then
+				if esc() or main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
 					refresh()
 					return
@@ -75,7 +75,7 @@ local function f_play(t)
 				animDraw(t.scene[k].clearcolor_data)
 				--draw layerno = 0 backgrounds
 				if t.scene[k].bg_name ~= '' then
-					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 0, i)
+					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 0, i, t.info.localcoord)
 				end
 				--loop through layers in order
 				for k2, v2 in main.f_sortKeys(t.scene[k].layer) do
@@ -103,7 +103,7 @@ local function f_play(t)
 				end
 				--draw layerno = 1 backgrounds
 				if t.scene[k].bg_name ~= '' then
-					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 1, i)
+					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 1, i, t.info.localcoord)
 				end
 				--fadein
 				if i <= t.scene[k].fadein_time then
@@ -114,6 +114,13 @@ local function f_play(t)
 				if i >= t.scene[k].end_time - t.scene[k].fadeout_time then
 					animDraw(t.scene[k].fadeout_data)
 					animUpdate(t.scene[k].fadeout_data)
+				end
+				if main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton <= 0 then
+					main.f_cmdInput()
+					refresh()
+					do
+						break
+					end
 				end
 				main.f_cmdInput()
 				refresh()
@@ -146,7 +153,7 @@ local function f_parse(path)
 	local t_default =
 	{
 		info = {localcoord = {320, 240}},
-		scenedef = {spr = '', snd = '', font = {[1] = 'font/f-6x9.fnt'}, font_height = {}, startscene = 0, font_data = {}},
+		scenedef = {spr = '', snd = '', font = {[1] = 'font/f-6x9.fnt'}, font_height = {}, startscene = 0, skipbutton = 1, font_data = {}},
 		scene = {},
 		ctrldef = {}
 	}
@@ -160,6 +167,9 @@ local function f_parse(path)
 			if row:match('.+ctrldef') then --matched ctrldef start
 				bgctrl = row
 				bgctrl_match = bgctrl:match('^(.-ctrl)def')
+				if t.ctrldef[bgdef .. 'def'][bgctrl] ~= nil then --Ctrldef名の重複を避ける
+					bgctrl = bgctrl..tostring(os.clock())
+				end
 				t.ctrldef[bgdef .. 'def'][bgctrl] = {}
 				t.ctrldef[bgdef .. 'def'][bgctrl].ctrl = {}
 				pos = t.ctrldef[bgdef .. 'def'][bgctrl]
@@ -225,6 +235,7 @@ local function f_parse(path)
 				t.scene[row] = {}
 				pos = t.scene[row]
 				pos.layer = {}
+				pos.sound = {}
 				t_default.scene[row] =
 				{
 					end_time = 0,
@@ -477,10 +488,10 @@ local function f_parse(path)
 					if t_bgdef[k2].window ~= nil then
 						animSetWindow(
 							anim,
-							t_bgdef[k2].window[1],
-							t_bgdef[k2].window[2],
-							t_bgdef[k2].window[3] - t_bgdef[k2].window[1] + 1,
-							t_bgdef[k2].window[4] - t_bgdef[k2].window[2] + 1
+							t_bgdef[k2].window[1] * 320/t.info.localcoord[1],
+							t_bgdef[k2].window[2] * 240/t.info.localcoord[2],
+							(t_bgdef[k2].window[3] - t_bgdef[k2].window[1] + 1)* 320/t.info.localcoord[1],
+							(t_bgdef[k2].window[4] - t_bgdef[k2].window[2] + 1) * 240/t.info.localcoord[2]
 						)
 					else
 						animSetWindow(anim, 0, 0, t.info.localcoord[1], t.info.localcoord[2])
