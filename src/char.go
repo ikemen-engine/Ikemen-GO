@@ -1537,6 +1537,7 @@ type Char struct {
 	winquote      int32
 	memberNo      int
 	selectNo      int
+	comboExtraFrameWindow int32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -4518,6 +4519,7 @@ func (c *Char) update(cvmin, cvmax,
 				if c.ghv.fallf {
 					c.fallTime++
 				}
+				c.comboExtraFrameWindow = sys.comboExtraFrameWindow
 			} else {
 				if c.hittmp > 0 {
 					c.hittmp = 0
@@ -4528,7 +4530,11 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = -1
-				c.getcombo = 0
+				if c.comboExtraFrameWindow <= 0 {
+					c.getcombo = 0
+				} else {
+					c.comboExtraFrameWindow--
+				}
 			}
 			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 {

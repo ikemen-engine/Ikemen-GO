@@ -63,6 +63,7 @@ var sys = System{
 	audioClose:       make(chan bool, 1),
 	keyInput:         glfw.KeyUnknown,
 	keyString:        "",
+	comboExtraFrameWindow:	1,
 	// Localcoord sceenpack
 	luaSpriteScale:			1,
 	luaSmallPortraitScale:	1,
@@ -148,6 +149,7 @@ type System struct {
 	afterImageMax           int32
 	attack_LifeToPowerMul   float32
 	getHit_LifeToPowerMul   float32
+	comboExtraFrameWindow	int32
 	envShake                EnvShake
 	pause                   int32
 	pausetime               int32
