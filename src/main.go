@@ -134,6 +134,7 @@ func main() {
   "AudioDucking":false,
   "QuickLaunch":0,
   "AllowDebugKeys":true,
+  "ComboExtraFrameWindow": 1,
   "PostProcessingShader": 0,
   "LocalcoordScalingType": 1,
   "MSAA": false,
@@ -167,6 +168,7 @@ func main() {
 		NumTag					int
 		TeamLifeShare			bool
 		AIRandomColor			bool
+		ComboExtraFrameWindow	int32
 		Fullscreen				bool
 		AudioDucking			bool
 		AllowDebugKeys			bool
@@ -198,6 +200,7 @@ func main() {
 	sys.attack_LifeToPowerMul = tmp.Attack_LifeToPowerMul
 	sys.getHit_LifeToPowerMul = tmp.GetHit_LifeToPowerMul
 	sys.super_TargetDefenceMul = tmp.Super_TargetDefenceMul
+	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.quickLaunch = tmp.QuickLaunch
 	sys.masterVolume = tmp.MasterVolume
