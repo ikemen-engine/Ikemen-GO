@@ -2447,8 +2447,7 @@ function select.f_selectVictory()
 				winnerNum,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 		else
@@ -2456,16 +2455,14 @@ function select.f_selectVictory()
 				p1Num,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 			drawVictoryPortrait(
 				p2Num,
 				motif.victory_screen.p2_offset[1],
 				motif.victory_screen.p2_offset[2],
-				motif.victory_screen.p2_facing,
-				motif.victory_screen.p2_scale[1],
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1],
 				motif.victory_screen.p2_scale[2]
 			)
 		end
@@ -2589,7 +2586,7 @@ function select.f_continue()
 				sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_0_snd[1], motif.continue_screen.continue_0_snd[2])
 			end
 		elseif motif.continuebgdef.timer == motif.continue_screen.continue_end_skiptime then
-			playBGM(motif.music.continue_end_bgm, true, motif.music.continue_end_loop, motif.music.continue_end_volume, motif.music.continue_end_loopstart or "0", motif.music.continue_end_loopend or "0")
+			playBGM(motif.music.continue_end_bgm, true, motif.music.continue_end_bgm_loop, motif.music.continue_end_bgm_volume, motif.music.continue_end_bgm_loopstart or "0", motif.music.continue_end_bgm_loopend or "0")
 			sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_end_snd[1], motif.continue_screen.continue_end_snd[2])
 		end
 		--draw credits text
