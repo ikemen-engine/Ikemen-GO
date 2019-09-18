@@ -2515,7 +2515,7 @@ local txt_credits = main.f_createTextImg(
 
 function select.f_continue()
 	continue = false
-	textImgSetText(txt_credits, text[1])
+	--textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
 		--draw clearcolor (disabled to not cover area)
