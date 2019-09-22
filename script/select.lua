@@ -2518,6 +2518,7 @@ local txt_credits = main.f_createTextImg(
 
 function select.f_continue()
 	continue = false
+	playBGM(motif.music.continue_bgm, true, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart or "0", motif.music.continue_bgm_loopend or "0")
 	--textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
@@ -2588,7 +2589,7 @@ function select.f_continue()
 				sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_0_snd[1], motif.continue_screen.continue_0_snd[2])
 			end
 		elseif motif.continuebgdef.timer == motif.continue_screen.continue_end_skiptime then
-			playBGM(motif.music.continue_end_bgm, true, motif.music.continue_end_loop, motif.music.continue_end_volume, motif.music.continue_end_loopstart or "0", motif.music.continue_end_loopend or "0")
+			playBGM(motif.music.continue_end_bgm, true, motif.music.continue_end_bgm_loop, motif.music.continue_end_bgm_volume, motif.music.continue_end_bgm_loopstart or "0", motif.music.continue_end_bgm_loopend or "0")
 			sndPlay(motif.files.continue_snd_data, motif.continue_screen.continue_end_snd[1], motif.continue_screen.continue_end_snd[2])
 		end
 		--draw credits text
