@@ -626,24 +626,32 @@ function select.f_resetGrid()
 	select.t_drawFace = {}
 	for row = 1, motif.select_info.rows do
 		for col = 1, motif.select_info.columns do
+			-- Note to anyone editing this function:
+			-- The "elseif" chain is important if a "end" is added in the middle it could break the character icon display.
+			
 			--1Pのランダムセル表示位置 / 1P random cell display position
 			if t_grid[row + p1RowOffset][col].char == 'randomselect' or t_grid[row + p1RowOffset][col].hidden == 3 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			--1Pのキャラ表示位置 / 1P character display position
 			elseif t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+			elseif motif.select_info.showemptyboxes == 1 then
+				select.t_drawFace[#select.t_drawFace + 1] = {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			end
+			
 			--2Pのランダムセル表示位置 / 2P random cell display position
 			if t_grid[row + p2RowOffset][col].char == 'randomselect' or t_grid[row + p2RowOffset][col].hidden == 3 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 11, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}		
 			--2Pのキャラ表示位置 / 2P character display position
 			elseif t_grid[row + p2RowOffset][col].char ~= nil and t_grid[row + p2RowOffset][col].hidden == 0 then
 				select.t_drawFace[#select.t_drawFace + 1] = {d = 12, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+			-- Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
-				select.t_drawFace[#select.t_drawFace + 1] = {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+				select.t_drawFace[#select.t_drawFace + 1] = {d = 10, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
 			end
 		end
 	end
+	main.f_printTable(select.t_drawFace, "debug/t_drawFace.txt")
 end
 
 function select.f_selectReset()
@@ -1161,14 +1169,23 @@ function select.f_selectScreen()
 	end
 	--draw cell art (slow for large rosters, this will be likely moved to 'drawFace' function in future)
 	for i = 1, #select.t_drawFace do
-		main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1) --draw cell background
+		-- Let's check if is on the P1 side before drawing the background.
+		if select.t_drawFace[i].d == 1 or select.t_drawFace[i].d == 2 or select.t_drawFace[i].d == 0 then
+			main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1) --draw cell background
+		end
+		
 		if select.t_drawFace[i].d == 1 then --draw random cell
 			main.f_animPosDraw(motif.select_info.cell_random_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1)
 		elseif select.t_drawFace[i].d == 2 then --draw face cell
 			drawSmallPortrait(select.t_drawFace[i].p1, select.t_drawFace[i].x1, select.t_drawFace[i].y1, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
 		end
-		if main.p2Faces and motif.select_info.double_select == 1 then --P2 side grid enabled
-			main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2) --draw cell background
+		--P2 side grid enabled
+		if main.p2Faces and motif.select_info.double_select == 1 then
+			-- Let's check if is on the P2 side before drawing the background.
+			if select.t_drawFace[i].d == 11 or select.t_drawFace[i].d == 12 or select.t_drawFace[i].d == 10 then 
+				main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2) --draw cell background
+			end
+
 			if select.t_drawFace[i].d == 11 then --draw random cell
 				main.f_animPosDraw(motif.select_info.cell_random_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2)
 			elseif select.t_drawFace[i].d == 12 then --draw face cell
@@ -2511,12 +2528,9 @@ local txt_credits = main.f_createTextImg(
 )
 
 function select.f_continue()
-	main.f_resetBG(motif.continue_screen, motif.continuebgdef, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
-	animReset(motif.continue_screen.continue_anim_data)
-	animUpdate(motif.continue_screen.continue_anim_data)
 	continue = false
-	local text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
-	textImgSetText(txt_credits, text[1])
+	playBGM(motif.music.continue_bgm, true, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart or "0", motif.music.continue_bgm_loopend or "0")
+	--textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
 		--draw clearcolor (disabled to not cover area)
