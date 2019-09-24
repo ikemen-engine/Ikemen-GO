@@ -2,10 +2,13 @@
 IKEMEN Go is a remake of the IKEMEN (open source fighting games engine that supports M.U.G.E.N resources) in Google’s Programming Language “Go”.
 
 ## Installing
-Installation bundles for windows, mac and linux are provided in the releases section.
-Download, execute, follow the wizard instructions.
+For now automated build from AppVeyor can be found at:
 
-If you need to install OpenAL dependencies, for windows, look at https://www.openal.org/downloads. For other platforms,
+https://ci.appveyor.com/project/Windblade-GR01/ikemen-go
+
+Inside the artifacts tab. Installation bundles will be provided in the future.
+
+If you need to install OpenAL dependencies, for windows, look at https://kcat.strangesoft.net/openal.html. For other platforms,
 use the respective package manager.
 
 ## Running
