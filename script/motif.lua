@@ -1409,7 +1409,7 @@ for line in file:lines() do
 		if param ~= nil then
 			param = param:gsub('[%. ]', '_') --change param . and space to _
 			param = param:lower() --lowercase param
-			if value ~= nil then  -- Let's chech if it's even a valid param
+			if value ~= nil and def_pos ~= nil then -- Let's chech if it's even a valid param
 				if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
 					value = '0'
 				end
