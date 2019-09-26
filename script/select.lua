@@ -2464,8 +2464,7 @@ function select.f_selectVictory()
 				winnerNum,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 		else
@@ -2473,16 +2472,14 @@ function select.f_selectVictory()
 				p1Num,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 			drawVictoryPortrait(
 				p2Num,
 				motif.victory_screen.p2_offset[1],
 				motif.victory_screen.p2_offset[2],
-				motif.victory_screen.p2_facing,
-				motif.victory_screen.p2_scale[1],
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1],
 				motif.victory_screen.p2_scale[2]
 			)
 		end
@@ -2531,9 +2528,12 @@ local txt_credits = main.f_createTextImg(
 )
 
 function select.f_continue()
+	main.f_resetBG(motif.continue_screen, motif.continuebgdef, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
+	animReset(motif.continue_screen.continue_anim_data)
+	animUpdate(motif.continue_screen.continue_anim_data)
 	continue = false
-	playBGM(motif.music.continue_bgm, true, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart or "0", motif.music.continue_bgm_loopend or "0")
-	--textImgSetText(txt_credits, text[1])
+	local text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
+	textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
 		--draw clearcolor (disabled to not cover area)

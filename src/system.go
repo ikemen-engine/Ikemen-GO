@@ -49,31 +49,31 @@ var sys = System{
 	listenPort:        "7500",
 	loader:            *newLoader(),
 	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
-	ignoreMostErrors: true,
-	superpmap:        *newPalFX(),
-	wincnt:           wincntMap(make(map[string][]int32)),
-	wincntFileName:   "save/autolevel.save",
-	powerShare:       [...]bool{true, true},
-	oldNextAddTime:   1,
-	commandLine:      make(chan string),
-	cam:              *newCamera(),
-	mainThreadTask:   make(chan func(), 65536),
-	workpal:          make([]uint32, 256),
-	errLog:           log.New(os.Stderr, "", 0),
-	audioClose:       make(chan bool, 1),
-	keyInput:         glfw.KeyUnknown,
-	keyString:        "",
-	comboExtraFrameWindow:	1,
+	ignoreMostErrors:      true,
+	superpmap:             *newPalFX(),
+	wincnt:                wincntMap(make(map[string][]int32)),
+	wincntFileName:        "save/autolevel.save",
+	powerShare:            [...]bool{true, true},
+	oldNextAddTime:        1,
+	commandLine:           make(chan string),
+	cam:                   *newCamera(),
+	mainThreadTask:        make(chan func(), 65536),
+	workpal:               make([]uint32, 256),
+	errLog:                log.New(os.Stderr, "", 0),
+	audioClose:            make(chan bool, 1),
+	keyInput:              glfw.KeyUnknown,
+	keyString:             "",
+	comboExtraFrameWindow: 1,
 	// Localcoord sceenpack
-	luaSpriteScale:			1,
-	luaSmallPortraitScale:	1,
-	luaBigPortraitScale:	1,
-	luaSpriteOffsetX:		0,
-	lifebarScale:			1,
-	lifebarOffsetX:			0,
+	luaSpriteScale:        1,
+	luaSmallPortraitScale: 1,
+	luaBigPortraitScale:   1,
+	luaSpriteOffsetX:      0,
+	lifebarScale:          1,
+	lifebarOffsetX:        0,
 	//Shader vars
 	MultisampleAntialiasing: false,
-	PostProcessingShader:	0,
+	PostProcessingShader:    0,
 }
 
 type TeamMode int32
@@ -149,7 +149,7 @@ type System struct {
 	afterImageMax           int32
 	attack_LifeToPowerMul   float32
 	getHit_LifeToPowerMul   float32
-	comboExtraFrameWindow	int32
+	comboExtraFrameWindow   int32
 	envShake                EnvShake
 	pause                   int32
 	pausetime               int32

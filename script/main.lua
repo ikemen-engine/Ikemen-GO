@@ -2121,6 +2121,7 @@ function main.f_bonusExtras()
 			else
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.versusScreen = false
+				main.p2In = 1
 				main.p1TeamMenu = {mode = 0, chars = 1}
 				main.p2TeamMenu = {mode = 0, chars = 1}
 				main.p2Char = {main.t_bonusChars[item]}
