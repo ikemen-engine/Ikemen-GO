@@ -82,6 +82,12 @@ function main.f_animPosDraw(a, x, y)
 	animDraw(a)
 end
 
+-- Check if files exists.
+function main.file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
 --textImgDraw at specified coordinates
 function main.f_textImgPosDraw(ti, x, y, align)
 	align = align or 0
@@ -1227,7 +1233,7 @@ main.t_randomChars = {}
 for i = 1, #main.t_selChars do
 	if main.t_selChars[i].stage ~= nil then
 		for j = 1, #main.t_selChars[i].stage do
-			if main.t_stageDef[main.t_selChars[i].stage[j]] == nil then
+			if main.t_stageDef[main.t_selChars[i].stage[j]] == nil and main.file_exists(main.t_selChars[i].stage[j]) then
 				row = #main.t_selStages + 1
 				addStage(main.t_selChars[i].stage[j])
 				tmp = getStageName(row):match('^["%s]*(.-)["%s]*$') --needed for s-size ikemen
