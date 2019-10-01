@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func init() {
@@ -143,21 +143,21 @@ func main() {
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
-		HelperMax				int32
-		PlayerProjectileMax		int
-		ExplodMax				int
-		AfterImageMax			int32
-		MasterVolume			int
-		WavVolume				int
-		BgmVolume               int
-		Attack_LifeToPowerMul	float32 `json:"Attack.LifeToPowerMul"`
-		GetHit_LifeToPowerMul	float32 `json:"GetHit.LifeToPowerMul"`
-		Width					int32
-		Height					int32
-		Super_TargetDefenceMul	float32 `json:"Super.TargetDefenceMul"`
-		LifebarFontScale		float32
-		System					string
-		KeyConfig				[]struct {
+		HelperMax              int32
+		PlayerProjectileMax    int
+		ExplodMax              int
+		AfterImageMax          int32
+		MasterVolume           int
+		WavVolume              int
+		BgmVolume              int
+		Attack_LifeToPowerMul  float32 `json:"Attack.LifeToPowerMul"`
+		GetHit_LifeToPowerMul  float32 `json:"GetHit.LifeToPowerMul"`
+		Width                  int32
+		Height                 int32
+		Super_TargetDefenceMul float32 `json:"Super.TargetDefenceMul"`
+		LifebarFontScale       float32
+		System                 string
+		KeyConfig              []struct {
 			Joystick int
 			Buttons  []interface{}
 		}
@@ -165,19 +165,19 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag					int
-		TeamLifeShare			bool
-		AIRandomColor			bool
-		ComboExtraFrameWindow	int32
-		Fullscreen				bool
-		AudioDucking			bool
-		AllowDebugKeys			bool
-		MSAA					bool
-		PostProcessingShader	int32
-		LocalcoordScalingType	int32
-		CommonAir				string
-		CommonCmd				string
-		QuickLaunch				int
+		NumTag                int
+		TeamLifeShare         bool
+		AIRandomColor         bool
+		ComboExtraFrameWindow int32
+		Fullscreen            bool
+		AudioDucking          bool
+		AllowDebugKeys        bool
+		MSAA                  bool
+		PostProcessingShader  int32
+		LocalcoordScalingType int32
+		CommonAir             string
+		CommonCmd             string
+		QuickLaunch           int
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"

@@ -2464,8 +2464,7 @@ function select.f_selectVictory()
 				winnerNum,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 		else
@@ -2473,16 +2472,14 @@ function select.f_selectVictory()
 				p1Num,
 				motif.victory_screen.p1_offset[1],
 				motif.victory_screen.p1_offset[2],
-				motif.victory_screen.p1_facing,
-				motif.victory_screen.p1_scale[1],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
 				motif.victory_screen.p1_scale[2]
 			)
 			drawVictoryPortrait(
 				p2Num,
 				motif.victory_screen.p2_offset[1],
 				motif.victory_screen.p2_offset[2],
-				motif.victory_screen.p2_facing,
-				motif.victory_screen.p2_scale[1],
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1],
 				motif.victory_screen.p2_scale[2]
 			)
 		end

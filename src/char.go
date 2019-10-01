@@ -1516,27 +1516,27 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	mapArray      map[string]int32
-	aimg          AfterImage
-	sounds        Sounds
-	p1facing      float32
-	cpucmd        int32
-	attackDist    float32
-	offset        [2]float32
-	platformPosY  float32
-	groundAngle   float32
-	stchtmp       bool
-	inguarddist   bool
-	pushed        bool
-	hitdefContact bool
-	movedY        bool
-	atktmp        int8
-	hittmp        int8
-	acttmp        int8
-	minus         int8
-	winquote      int32
-	memberNo      int
-	selectNo      int
+	mapArray              map[string]int32
+	aimg                  AfterImage
+	sounds                Sounds
+	p1facing              float32
+	cpucmd                int32
+	attackDist            float32
+	offset                [2]float32
+	platformPosY          float32
+	groundAngle           float32
+	stchtmp               bool
+	inguarddist           bool
+	pushed                bool
+	hitdefContact         bool
+	movedY                bool
+	atktmp                int8
+	hittmp                int8
+	acttmp                int8
+	minus                 int8
+	winquote              int32
+	memberNo              int
+	selectNo              int
 	comboExtraFrameWindow int32
 }
 
@@ -5452,6 +5452,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
 					getter.projClsnCheck(p, false) {
+					if getter.hitdef.p1stateno >= 0 && getter.stateChange1(getter.hitdef.p1stateno, getter.hitdef.playerNo) {
+						getter.setCtrl(false)
+					}
 					p.hits = -2
 					sys.cgi[i].pctype = PC_Cancel
 					sys.cgi[i].pctime = 0
