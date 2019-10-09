@@ -663,19 +663,20 @@ type aimgImage struct {
 }
 
 type AfterImage struct {
-	time       int32
-	length     int32
-	postbright [3]int32
-	add        [3]int32
-	mul        [3]float32
-	timegap    int32
-	framegap   int32
-	alpha      [2]int32
-	palfx      []PalFX
-	imgs       [64]aimgImage
-	imgidx     int32
-	restgap    int32
-	reccount   int32
+	time           int32
+	length         int32
+	postbright     [3]int32
+	add            [3]int32
+	mul            [3]float32
+	timegap        int32
+	framegap       int32
+	alpha          [2]int32
+	palfx          []PalFX
+	imgs           [64]aimgImage
+	imgidx         int32
+	restgap        int32
+	reccount       int32
+	ignorehitpause bool
 }
 
 func newAfterImage() *AfterImage {
@@ -700,11 +701,12 @@ func (ai *AfterImage) clear() {
 	ai.add = [...]int32{10, 10, 25}
 	ai.mul = [...]float32{0.65, 0.65, 0.75}
 	ai.timegap = 1
-	ai.framegap = 6
+	ai.framegap = 4
 	ai.alpha = [...]int32{-1, 0}
 	ai.imgidx = 0
 	ai.restgap = 0
 	ai.reccount = 0
+	ai.ignorehitpause = true
 }
 func (ai *AfterImage) setPalColor(color int32) {
 	if len(ai.palfx) > 0 {
@@ -758,12 +760,12 @@ func (ai *AfterImage) setupPalFX() {
 		pb = [3]int32{}
 	}
 }
-func (ai *AfterImage) recAfterImg(sd *SprData) {
+func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 	if ai.time == 0 {
 		ai.reccount, ai.timegap = 0, 0
 		return
 	}
-	if ai.time > 0 {
+	if ai.time > 0 && !hitpause {
 		ai.time--
 	}
 	if ai.restgap <= 0 {
@@ -791,7 +793,7 @@ func (ai *AfterImage) recAfterImg(sd *SprData) {
 	}
 	ai.restgap--
 }
-func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
+func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 	if ai.time == 0 || ai.timegap < 1 || ai.timegap > 32767 ||
 		ai.framegap < 1 || ai.framegap > 32767 {
 		ai.time = 0
@@ -807,8 +809,8 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool) {
 			img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
 			false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl}, 0, 0, 0, 0)
 	}
-	if rec {
-		ai.recAfterImg(sd)
+	if rec || hitpause && ai.ignorehitpause {
+		ai.recAfterImg(sd, hitpause)
 	}
 }
 
@@ -1345,7 +1347,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, p.facing * p.angle, 0, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].ver[0] != 1, p.facing, 1}
-		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause)
+		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false)
 		sys.sprites.add(sd,
 			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
 	}
@@ -4768,7 +4770,7 @@ func (c *Char) cueDraw() {
 		}
 		if c.sf(CSF_invisible) || c.scf(SCF_standby) {
 			if rec {
-				c.aimg.recAfterImg(sdf())
+				c.aimg.recAfterImg(sdf(), c.hitPause())
 			}
 		} else {
 			//if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
@@ -4776,7 +4778,7 @@ func (c *Char) cueDraw() {
 			//	c.alpha = [...]int32{255, 0}
 			//}
 			sd := sdf()
-			c.aimg.recAndCue(sd, rec)
+			c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause())
 			if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
 				sd.pos[0] -= c.facing
 			}

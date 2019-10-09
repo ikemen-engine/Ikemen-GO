@@ -404,12 +404,15 @@ function select.f_assignMusic()
 end
 
 function select.f_selectStage()
-	if main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then
+	if t_p2Selected[1].stageno ~= nil then
+		stageNo = t_p2Selected[1].stageno
+	elseif main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then
 		stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
 		stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
 	else
 		stageNo = main.t_includeStage[math.random(1, #main.t_includeStage)]
 	end
+	t_p2Selected[1].stageno = stageNo
 	setStage(stageNo)
 	selectStage(stageNo)
 end
@@ -760,7 +763,9 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 	looseCnt = 0
 	main.f_cmdInput()
 	select.f_selectReset()
+	t_p2Selected = {}
 	stageEnd = true
+	local t_enemySelected = {}
 	while true do
 		main.f_resetBG(motif.select_info, motif.selectbgdef, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		selectStart()
@@ -780,6 +785,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 				p1NumChars = 2
 				setTeamMode(1, p1TeamMode, p1NumChars)
 				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
 			--generate roster
 			select.f_makeRoster()
@@ -824,6 +830,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 					select.f_selectVictory()
 				end
 			end
+			t_p2Selected = {}
 			--no more matches left
 			if matchNo == lastMatch then
 				--ending
@@ -931,28 +938,32 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 				p1NumChars = 2
 				p2NumChars = numChars
 				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
 		end
 		--assign enemy team
-		t_p2Selected = {}
-		local shuffle = true
-		for i = 1, p2NumChars do
-			if i == 1 and (main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop') and main.t_selChars[t_p1Selected[1].cel + 1][matchNo] ~= nil then
-				p2Cell = main.t_charDef[main.t_selChars[t_p1Selected[1].cel + 1][matchNo]]
-				shuffle = false
-			else
-				p2Cell = t_roster[matchNo * p2NumChars - i + 1]
-			end
-			local updateAnim = true
-			for j = 1, #t_p2Selected do
-				if t_p2Selected[j].cel == p2Cell then
-					updateAnim = false
+		--t_p2Selected = {}
+		if #t_p2Selected == 0 then
+			local shuffle = true
+			for i = 1, p2NumChars do
+				if i == 1 and (main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop') and main.t_selChars[t_p1Selected[1].cel + 1][matchNo] ~= nil then
+					p2Cell = main.t_charDef[main.t_selChars[t_p1Selected[1].cel + 1][matchNo]]
+					shuffle = false
+				else
+					p2Cell = t_roster[matchNo * p2NumChars - i + 1]
+				end
+				local updateAnim = true
+				for j = 1, #t_p2Selected do
+					if t_p2Selected[j].cel == p2Cell then
+						updateAnim = false
+					end
+				end
+				t_p2Selected[#t_p2Selected + 1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim}
+				if shuffle then
+					main.f_shuffleTable(t_p2Selected)
 				end
 			end
-			t_p2Selected[#t_p2Selected + 1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim}
-			if shuffle then
-				main.f_shuffleTable(t_p2Selected)
-			end
+			t_enemySelected = t_p2Selected
 		end
 		--Team conversion to Single match if bonus paramvalue on any opponents is detected
 		if p2NumChars > 1 then
