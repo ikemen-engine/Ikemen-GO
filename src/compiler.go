@@ -3920,7 +3920,7 @@ func (c *Compiler) bgPalFX(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 func (c *Compiler) afterImageSub(is IniSection,
-	sc *StateControllerBase, prefix string) error {
+	sc *StateControllerBase, ihp int8, prefix string) error {
 	if err := c.paramValue(is, sc, "redirectid",
 		afterImage_redirectid, VT_Int, 1, false); err != nil {
 		return err
@@ -3973,12 +3973,15 @@ func (c *Compiler) afterImageSub(is IniSection,
 		afterImage_palmul, VT_Float, 3, false); err != nil {
 		return err
 	}
+	if ihp == 0 {
+		sc.add(afterImage_ignorehitpause, sc.iToExp(0))
+	}
 	return nil
 }
 func (c *Compiler) afterImage(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+	ihp int8) (StateController, error) {
 	ret, err := (*afterImage)(sc), c.stateSec(is, func() error {
-		return c.afterImageSub(is, sc, "")
+		return c.afterImageSub(is, sc, ihp, "")
 	})
 	return *ret, err
 }
@@ -4552,7 +4555,7 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+	ihp int8) (StateController, error) {
 	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			projectile_redirectid, VT_Int, 1, false); err != nil {
@@ -4671,7 +4674,7 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_remappal, VT_Int, 2, false); err != nil {
 			return err
 		}
-		if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
+		if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "platform",

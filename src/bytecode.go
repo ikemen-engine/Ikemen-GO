@@ -3062,6 +3062,7 @@ const (
 	afterImage_palpostbright
 	afterImage_paladd
 	afterImage_palmul
+	afterImage_ignorehitpause
 	afterImage_last = iota + palFX_last + 1 - 1
 	afterImage_redirectid
 )
@@ -3070,7 +3071,7 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 	id byte, exp []BytecodeExp) {
 	switch id {
 	case afterImage_trans:
-		ai.alpha = [...]int32{exp[0].evalI(c), exp[1].evalI(c)}
+		ai.alpha = [...]int32{Max(-256, Min(255, exp[0].evalI(c))), Max(-256, Min(255, exp[1].evalI(c)))}
 	case afterImage_time:
 		ai.time = exp[0].evalI(c)
 	case afterImage_length:
@@ -3123,6 +3124,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 				ai.mul[2] = exp[2].evalF(c)
 			}
 		}
+	case afterImage_ignorehitpause:
+		ai.ignorehitpause = exp[0].evalB(c)
 	}
 }
 func (sc afterImage) Run(c *Char, _ []int32) bool {
@@ -3771,6 +3774,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.platformFence = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
+				p.aimg.clear()
 				afterImage(sc).runSub(c, &p.aimg, id, exp)
 			}
 		}
