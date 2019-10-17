@@ -24,6 +24,7 @@ var fbo, fbo_texture uint32
 
 // Clasic AA
 var rbo_depth uint32
+
 // MSAA
 var fbo_f, fbo_f_texture uint32
 
@@ -221,7 +222,7 @@ func RenderInit() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	
+
 	if sys.MultisampleAntialiasing {
 		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], false)
 	} else {
@@ -274,7 +275,7 @@ func unbindFB() {
 	}
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-	
+
 	postShader = postShaderSelect[sys.PostProcessingShader]
 
 	postVertAttrib = gl.GetAttribLocationARB(postShader, gl.Str("VertCoord\x00"))
@@ -283,7 +284,7 @@ func unbindFB() {
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgramObjectARB(postShader)
-	
+
 	if sys.MultisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
 	} else {

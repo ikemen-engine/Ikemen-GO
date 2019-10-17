@@ -685,7 +685,6 @@ func newAfterImage() *AfterImage {
 		ai.palfx[i].enable, ai.palfx[i].negType = true, true
 	}
 	ai.clear()
-	ai.timegap = 0
 	return ai
 }
 func (ai *AfterImage) clear() {
@@ -765,9 +764,6 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		ai.reccount, ai.timegap = 0, 0
 		return
 	}
-	if ai.time > 0 && !hitpause {
-		ai.time--
-	}
 	if ai.restgap <= 0 {
 		img := &ai.imgs[ai.imgidx]
 		img.anim = *sd.anim
@@ -786,28 +782,29 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
 		ai.imgidx = (ai.imgidx + 1) & 63
-		if int(ai.reccount) < len(ai.imgs) {
-			ai.reccount++
-		}
+		ai.reccount++
 		ai.restgap = ai.timegap
 	}
 	ai.restgap--
 }
 func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
-	if ai.time == 0 || ai.timegap < 1 || ai.timegap > 32767 ||
+	if ai.time == 0 || (ai.reccount*ai.timegap >= ai.timegap*ai.length+ai.time && ai.time > 0) ||
+		ai.timegap < 1 || ai.timegap > 32767 ||
 		ai.framegap < 1 || ai.framegap > 32767 {
 		ai.time = 0
 		ai.reccount, ai.timegap = 0, 0
 		return
 	}
 	end := Min(sys.afterImageMax,
-		(Min(ai.reccount, ai.length)/ai.framegap)*ai.framegap)
+		(Min(Min(ai.reccount, int32(len(ai.imgs))), ai.length)/ai.framegap)*ai.framegap)
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
-		ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
-		sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
-			img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
-			false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl}, 0, 0, 0, 0)
+		if ai.time < 0 || (ai.reccount-i) < ai.time/ai.timegap {
+			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
+			sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
+				img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
+				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl}, 0, 0, 0, 0)
+		}
 	}
 	if rec || hitpause && ai.ignorehitpause {
 		ai.recAfterImg(sd, hitpause)
