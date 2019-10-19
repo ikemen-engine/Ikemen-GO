@@ -3071,7 +3071,17 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 	id byte, exp []BytecodeExp) {
 	switch id {
 	case afterImage_trans:
-		ai.alpha = [...]int32{Max(-256, Min(255, exp[0].evalI(c))), Max(-256, Min(255, exp[1].evalI(c)))}
+		ai.alpha[0] = exp[0].evalI(c)
+		ai.alpha[1] = exp[1].evalI(c)
+		if len(exp) >= 3 {
+			ai.alpha[0] = Max(0, Min(255, ai.alpha[0]))
+			ai.alpha[1] = Max(0, Min(255, ai.alpha[1]))
+			if len(exp) >= 4 {
+				ai.alpha[1] = ^ai.alpha[1]
+			} else if ai.alpha[0] == 1 && ai.alpha[1] == 255 {
+				ai.alpha[0] = 0
+			}
+		}
 	case afterImage_time:
 		ai.time = exp[0].evalI(c)
 	case afterImage_length:
@@ -3774,7 +3784,6 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.platformFence = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
-				p.aimg.clear()
 				afterImage(sc).runSub(c, &p.aimg, id, exp)
 			}
 		}

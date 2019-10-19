@@ -409,7 +409,8 @@ function select.f_selectStage()
 	elseif main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then
 		stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
 		stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
-	else
+	end
+	if stageNo == 0 then
 		stageNo = main.t_includeStage[math.random(1, #main.t_includeStage)]
 	end
 	t_p2Selected[1].stageno = stageNo

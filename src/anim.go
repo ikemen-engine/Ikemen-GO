@@ -596,7 +596,7 @@ func (a *Animation) alpha() int32 {
 	if a.srcAlpha >= 0 {
 		sa = byte(a.srcAlpha)
 		if a.dstAlpha < 0 {
-			da = byte((^a.dstAlpha + int16(a.interpolate_blend_dstalpha)) >> 1)
+			da = byte(^a.dstAlpha >> 1)
 			if sa == 1 && da == 255 {
 				sa = 0
 			}
