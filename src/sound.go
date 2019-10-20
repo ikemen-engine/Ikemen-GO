@@ -297,7 +297,7 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 	} else if bgm.IsFLAC() {
 		bgm.ReadFLAC(loop, bgmVolume)
 	} else if bgm.IsWAVE() {
-		bgm.ReadWave(loop, bgmVolume)	
+		bgm.ReadWav(loop, bgmVolume)	
 	}
 
 }
@@ -332,7 +332,7 @@ func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
 	bgm.ReadFormat(format, loop, bgmVolume)
 }
 
-func (bgm *Bgm) ReadWave(loop int, bgmVolume int) {
+func (bgm *Bgm) ReadWav(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := wav.Decode(f)
 	bgm.streamer = s
