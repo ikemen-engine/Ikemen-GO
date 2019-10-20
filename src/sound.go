@@ -13,6 +13,7 @@ import (
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/wav"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
 )
@@ -266,6 +267,10 @@ func (bgm *Bgm) IsFLAC() bool {
 	return bgm.IsFormat(".flac")
 }
 
+func (bgm *Bgm) IsWAVE() bool {
+	return bgm.IsFormat(".wav")
+}
+
 func (bgm *Bgm) IsFormat(extension string) bool {
 	return filepath.Ext(bgm.filename) == extension
 }
@@ -291,6 +296,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.ReadMp3(loop, bgmVolume)
 	} else if bgm.IsFLAC() {
 		bgm.ReadFLAC(loop, bgmVolume)
+	} else if bgm.IsWAVE() {
+		bgm.ReadWave(loop, bgmVolume)	
 	}
 
 }
@@ -318,6 +325,16 @@ func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := vorbis.Decode(f)
+	bgm.streamer = s
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+func (bgm *Bgm) ReadWave(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := wav.Decode(f)
 	bgm.streamer = s
 	if err != nil {
 		return
