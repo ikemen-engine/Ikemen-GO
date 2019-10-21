@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -13,9 +14,9 @@ import (
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/wav"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
+	"github.com/faiface/beep/wav"
 )
 
 const (
@@ -238,18 +239,21 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 
 type Bgm struct {
 	filename            string
+	bgmVolume           int
 	bgmLoopStart        int
 	bgmLoopEnd          int
 	defaultFilename     string
 	defaultBgmVolume    int
 	defaultbgmLoopStart int
 	defaultbgmLoopEnd   int
+	loop                int
 	sampleRate          beep.SampleRate
 	streamer            beep.StreamSeekCloser
 	ctrl                *beep.Ctrl
 	resampler           *beep.Resampler
 	volume              *effects.Volume
-	format				string
+	format              string
+	tempfile            io.ReadCloser
 }
 
 func newBgm() *Bgm {
@@ -281,6 +285,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		return
 	}
 	bgm.filename = filename
+	bgm.loop = loop
+	bgm.bgmVolume = bgmVolume
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
 	if isDefaultBGM {
@@ -296,7 +302,7 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 	} else if bgm.IsMp3() {
 		bgm.ReadMp3(loop, bgmVolume)
 	} else if bgm.IsFLAC() {
-		bgm.ReadFLAC(loop, bgmVolume)
+		bgm.ConvertFLAC(loop, bgmVolume)
 	} else if bgm.IsWAVE() {
 		bgm.ReadWav(loop, bgmVolume)
 	}
@@ -307,6 +313,7 @@ func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := mp3.Decode(f)
 	bgm.streamer = s
+	bgm.format = "mp3"
 	if err != nil {
 		return
 	}
@@ -316,6 +323,42 @@ func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
 func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := flac.Decode(f)
+	bgm.streamer = s
+	bgm.format = "flac"
+
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+// SCREW THE FLAC.SEEK FUNCTION, IT DOES NOT WORK SO WE ARE GOING TO CONVERT THIS TO WAV
+func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
+	// We open the flac
+	f1, _ := os.Open(bgm.filename)
+	// And create a temp one
+	f2, _ := os.Create("save/tempaudio.wav")
+
+	// Open decode and convert
+	s, format, err := flac.Decode(f1)
+	wav.Encode(f2, s, format)
+ 
+	bgm.filename = "save/tempaudio.wav"
+	//bgm.tempfile = f2
+	bgm.format = "flac"
+
+	s.Close()
+
+	if err != nil {
+		return
+	}
+
+	sys.FLAC_FrameWait = 120
+}
+
+func (bgm *Bgm) PlayMemAudio(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := wav.Decode(f)
 	bgm.streamer = s
 	if err != nil {
 		return
@@ -327,6 +370,7 @@ func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := vorbis.Decode(f)
 	bgm.streamer = s
+	bgm.format = "ogg"
 	if err != nil {
 		return
 	}
@@ -337,6 +381,7 @@ func (bgm *Bgm) ReadWav(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := wav.Decode(f)
 	bgm.streamer = s
+	bgm.format = "wav"
 	if err != nil {
 		return
 	}

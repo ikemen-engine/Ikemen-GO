@@ -64,16 +64,17 @@ var sys = System{
 	keyInput:              glfw.KeyUnknown,
 	keyString:             "",
 	comboExtraFrameWindow: 1,
+	FLAC_FrameWait:       -1,
 	// Localcoord sceenpack
-	luaSpriteScale:			1,
-	luaSmallPortraitScale:	1,
-	luaBigPortraitScale:	1,
-	luaSpriteOffsetX:		0,
-	lifebarScale:			1,
-	lifebarOffsetX:			0,
+	luaSpriteScale:        1,
+	luaSmallPortraitScale: 1,
+	luaBigPortraitScale:   1,
+	luaSpriteOffsetX:      0,
+	lifebarScale:          1,
+	lifebarOffsetX:        0,
 	//Shader vars
 	MultisampleAntialiasing: false,
-	PostProcessingShader:	0,
+	PostProcessingShader:    0,
 }
 
 type TeamMode int32
@@ -248,6 +249,7 @@ type System struct {
 	wavVolume               int
 	bgmVolume               int
 	AudioDucking            bool
+	FLAC_FrameWait          int
 	// Localcoord sceenpack
 	luaSpriteScale        float64
 	luaSmallPortraitScale float32
@@ -445,6 +447,12 @@ func (s *System) soundWrite() {
 			}
 		}
 
+		if s.FLAC_FrameWait >= 0 {
+			if s.FLAC_FrameWait == 0 {
+				s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
+			}
+			s.FLAC_FrameWait--
+		}
 	}
 	src.Delete()
 	openal.NullContext.Activate()
@@ -1380,14 +1388,19 @@ func (s *System) fight() (reload bool) {
 			put(&y, s.stage.def)
 			if s.debugWC != nil {
 				//put(&y, fmt.Sprintf("<P%v:%v>", s.debugWC.playerNo+1, s.debugWC.name))
-				put(&y, fmt.Sprintf("BgmPos: %v", s.bgm.streamer.Position()))
-				if s.bgm.ctrl != nil && s.nomusic == false && s.bgm.streamer != nil {
-					put(&y, fmt.Sprintf("BgmPlayback: enabled"))
+				if s.bgm.streamer != nil {
+					put(&y, fmt.Sprintf("BgmPos: %v", s.bgm.streamer.Position()))
+					put(&y, fmt.Sprintf("BgmLen: %v", s.bgm.streamer.Len()))
+					if s.nomusic == false {
+						put(&y, fmt.Sprintf("BgmPlayback: enabled"))
+					} else {
+						put(&y, fmt.Sprintf("BgmPlayback: disabled"))
+					}
+					put(&y, fmt.Sprintf("BgmLoopEnd: %v", s.bgm.bgmLoopEnd))
+					put(&y, fmt.Sprintf("BgmLoopStart: %v", s.bgm.bgmLoopStart))
 				} else {
 					put(&y, fmt.Sprintf("BgmPlayback: disabled"))
 				}
-				put(&y, fmt.Sprintf("BgmLoopEnd: %v", s.bgm.bgmLoopEnd))
-				put(&y, fmt.Sprintf("BgmLoopStart: %v", s.bgm.bgmLoopStart))
 			}
 			for i, p := range s.chars {
 				if len(p) > 0 {
