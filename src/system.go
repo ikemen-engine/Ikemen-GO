@@ -433,7 +433,7 @@ func (s *System) soundWrite() {
 			processed = true
 		}
 		if !s.nomusic {
-			if s.bgm.ctrl != nil {
+			if s.bgm.ctrl != nil && s.bgm.streamer != nil {
 				s.bgm.ctrl.Paused = false
 				if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
 					s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
@@ -1379,7 +1379,15 @@ func (s *System) fight() (reload bool) {
 			}
 			put(&y, s.stage.def)
 			if s.debugWC != nil {
-				put(&y, fmt.Sprintf("<P%v:%v>", s.debugWC.playerNo+1, s.debugWC.name))
+				//put(&y, fmt.Sprintf("<P%v:%v>", s.debugWC.playerNo+1, s.debugWC.name))
+				put(&y, fmt.Sprintf("BgmPos: %v", s.bgm.streamer.Position()))
+				if s.bgm.ctrl != nil && s.nomusic == false && s.bgm.streamer != nil {
+					put(&y, fmt.Sprintf("BgmPlayback: enabled"))
+				} else {
+					put(&y, fmt.Sprintf("BgmPlayback: disabled"))
+				}
+				put(&y, fmt.Sprintf("BgmLoopEnd: %v", s.bgm.bgmLoopEnd))
+				put(&y, fmt.Sprintf("BgmLoopStart: %v", s.bgm.bgmLoopStart))
 			}
 			for i, p := range s.chars {
 				if len(p) > 0 {

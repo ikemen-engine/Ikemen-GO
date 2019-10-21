@@ -249,6 +249,7 @@ type Bgm struct {
 	ctrl                *beep.Ctrl
 	resampler           *beep.Resampler
 	volume              *effects.Volume
+	format				string
 }
 
 func newBgm() *Bgm {
@@ -297,7 +298,7 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 	} else if bgm.IsFLAC() {
 		bgm.ReadFLAC(loop, bgmVolume)
 	} else if bgm.IsWAVE() {
-		bgm.ReadWav(loop, bgmVolume)	
+		bgm.ReadWav(loop, bgmVolume)
 	}
 
 }
