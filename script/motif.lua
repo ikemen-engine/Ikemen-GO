@@ -615,7 +615,7 @@ local motif =
 	},
 	win_screen =
 	{
-		enabled = 1,
+		enabled = 0,
 		fadein_time = 32,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64,
