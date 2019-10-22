@@ -827,7 +827,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			end
 			--victory screen
 			if main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' then
-				if main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1 then
+				if motif.victory_screen.enabled == 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 					select.f_selectVictory()
 				end
 			end
@@ -869,7 +869,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			looseCnt = looseCnt + 1
 			--victory screen
 			if main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' then
-				if winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
+				if motif.victory_screen.enabled == 1 and winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 					select.f_selectVictory()
 				end
 			end
@@ -890,7 +890,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			--counter
 			looseCnt = looseCnt + 1
 			--victory screen
-			if winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
+			if motif.victory_screen.enabled == 1 and winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 				select.f_selectVictory()
 			end
 			--continue screen
