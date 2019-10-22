@@ -397,9 +397,9 @@ function options.f_mainCfg()
 			elseif t[item].itemname == 'defaultvalues' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.HelperMax = 56
-				config.PlayerProjectileMax = 50
-				config.ExplodMax = 256
-				config.AfterImageMax = 8
+				config.PlayerProjectileMax = 256
+				config.ExplodMax = 512
+				config.AfterImageMax = 128
 				config['Attack.LifeToPowerMul'] = 0.7
 				config['GetHit.LifeToPowerMul'] = 0.6
 				config.Width = 640
