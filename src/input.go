@@ -628,11 +628,17 @@ func JoystickState(joy, button int) bool {
 		if (button == 8 || button == 10) && glfw.GetJoystickName(joystick[joy]) == "Xbox 360 Controller" { //Xbox360コントローラーのLRトリガー判定
 			return axes[button/2] > 0
 		}
+
+		// Ignore trigger axis on PS4 (We already have buttons)
+		if (button >= 6 && button <= 9) && glfw.GetJoystickName(joystick[joy]) == "Wireless Controller" {
+			return false
+		}
+
 		switch button & 1 {
-		case 0:
-			return axes[button/2] < -0.2
-		case 1:
-			return axes[button/2] > 0.2
+			case 0:
+				return axes[button/2] < -0.2
+			case 1:
+				return axes[button/2] > 0.2
 		}
 	}
 	if len(btns) <= button {

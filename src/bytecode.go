@@ -3704,6 +3704,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.hits = exp[0].evalI(c)
 		case projectile_projpriority:
 			p.priority = exp[0].evalI(c)
+			p.priorityPoints = p.priority
 		case projectile_projhitanim:
 			p.hitanim = exp[0].evalI(c)
 		case projectile_projremanim:

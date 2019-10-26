@@ -306,7 +306,9 @@ func (c *Compiler) operator(in *string) error {
 			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error(c.maeOp + "が不正です")
+				return Error(c.maeOp + "が不正です" +
+							" / " +
+							c.maeOp + " is invalid")
 			}
 			*in = c.token + " " + *in
 			c.token = c.maeOp
@@ -326,7 +328,9 @@ func (c *Compiler) integer2(in *string) (int32, error) {
 	}
 	for _, c := range istr {
 		if c < '0' || c > '9' {
-			return 0, Error(istr + "が整数でありません")
+			return 0, Error(istr + "が整数でありません" +
+							" / " +
+							istr + " is not an integer")
 		}
 	}
 	i := Atoi(istr)
@@ -384,7 +388,9 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				(a < 'a' || a > 'z') {
 				return flg, nil
 			}
-			return 0, Error(string(a) + "が無効な値です")
+			return 0, Error(string(a) + "が無効な値です" +
+							" / " +
+							string(a) + " is an invalid value")
 		}
 	}
 	hitdefflg := flg
@@ -431,7 +437,9 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				}
 				return flg, nil
 			}
-			return 0, Error(a + "が無効な値です")
+			return 0, Error(a + "が無効な値です" +
+							" / " +
+							a + " is an invalid value")
 		}
 		if i == 0 {
 			hitdefflg = flg
@@ -466,7 +474,9 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 		case 'A', 'a':
 			flg |= int32(ST_A)
 		default:
-			return 0, Error(att + "が不正な属性値です")
+			return 0, Error(att + "が不正な属性値です" +
+							" / " +
+							att + " is an invalid attribute value")
 		}
 	}
 	for len(*in) > 0 && (*in)[0] == ',' {
@@ -521,7 +531,9 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 }
 func (c *Compiler) kakkohiraku(in *string) error {
 	if c.tokenizer(in) != "(" {
-		return Error(c.token + "の次に'('がありません")
+		return Error(c.token + "の次に'('がありません" +
+						" / " +
+						"Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizer(in)
 	return nil
@@ -529,7 +541,9 @@ func (c *Compiler) kakkohiraku(in *string) error {
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
-		return Error(c.token + "の前に')'がありません")
+		return Error(c.token + "の前に')'がありません" +
+					" / " + 
+					"There is no ')' before " + c.token)
 	}
 	return nil
 }
@@ -549,7 +563,9 @@ func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 				continue
 			}
 		}
-		return false, Error("'='か'!='がありません")
+		return false, Error("'='か'!='がありません" +
+							" / " +
+							"Missing '=' or '! ='")
 	}
 	c.token = c.tokenizer(in)
 	return
@@ -562,7 +578,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "[":
 		minop = OC_ge
 	default:
-		err = Error("'['か'('がありません")
+		err = Error("'['か'('がありません" +
+					" / " +
+					"Missing '[' or '('")
 		return
 	}
 	var intf func(in *string) (int32, error)
@@ -575,7 +593,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 				c.token = c.tokenizer(in)
 			}
 			if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
-				return 0, Error("数字の読み込みエラーです")
+				return 0, Error("数字の読み込みエラーです" +
+								" / " +
+								"Error reading number")
 			}
 			i := Atoi(c.token)
 			if minus {
@@ -598,7 +618,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 		c.token = c.tokenizer(in)
 	}
 	if c.token != "," {
-		err = Error("','がありません")
+		err = Error("','がありません" +
+					" / " +
+					"There is not ','")
 		return
 	}
 	if max, err = intf(in); err != nil {
@@ -618,7 +640,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "]":
 		maxop = OC_le
 	default:
-		err = Error("']'か')'がありません")
+		err = Error("']'か')'がありません" +
+					" / " +
+					"Missing ']' or ')'")
 		return
 	}
 	c.token = c.tokenizer(in)
@@ -666,7 +690,9 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 		case "=":
 		default:
 			if hissu && !comma {
-				return Error("比較演算子がありません")
+				return Error("比較演算子がありません" +
+							" / " +
+							"No comparison operator")
 			}
 			hikaku = false
 		}
@@ -709,7 +735,9 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	n, err := c.integer2(in)
 	if err != nil {
 		if hissu && !hikaku {
-			return Error("比較演算子がありません")
+			return Error("比較演算子がありません"+
+						" / " +
+						"No comparison operator")
 		}
 		if hikaku {
 			return err
@@ -728,7 +756,9 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	mae := c.token
 	if c.token = c.tokenizer(in); c.token != "(" {
 		if len(defval) == 0 || defval[0].IsNone() {
-			return bvNone(), Error(mae + "の次に'('がありません")
+			return bvNone(), Error(mae + "の次に'('がありません" +
+									" / " +
+									"Missing '(' after " + mae)
 		}
 		*in = c.token + " " + *in
 		bv = defval[0]
@@ -853,7 +883,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	text := func() error {
 		i := strings.Index(*in, "\"")
 		if c.token != "\"" || i < 0 {
-			return Error("\"で囲まれていません")
+			return Error("\"で囲まれていません" +
+						" / " +
+						"Not enclosed in \"")
 		}
 		c.token = (*in)[:i]
 		*in = (*in)[i+1:]
@@ -901,7 +933,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var err error
 	switch c.token {
 	case "":
-		return bvNone(), Error("空です")
+		return bvNone(), Error("空です" +
+								" / " +
+								"Empty")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -944,7 +978,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_partner, OC_enemy, OC_enemynear:
 					be1.appendValue(BytecodeInt(0))
 				case OC_playerid:
-					return bvNone(), Error("playeridの次に'('がありません")
+					return bvNone(), Error("playeridの次に'('がありません" +
+											" / " +
+											"There is no '(' after playerid")
 				}
 			}
 			if rd {
@@ -953,7 +989,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be1...)
 		}
 		if c.token != "," {
-			return bvNone(), Error(",がありません")
+			return bvNone(), Error(",がありません" +
+									" / " +
+									"Missing ','" )
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expValue(&be2, in, true); err != nil {
@@ -969,7 +1007,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error(c.token + "が不正です")
+				return bvNone(), Error(c.token + "が不正です" +
+										" / " +
+										c.token + " is invalid")
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -2111,11 +2151,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
 			vi, ok := c.vars[c.token[1:]]
 			if !ok {
-				return bvNone(), Error(c.token + "は定義されていません")
+				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + "Is not defined")
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です"  + " / " + c.token + "It is illegal")
 		}
 	}
 	c.token = c.tokenizer(in)

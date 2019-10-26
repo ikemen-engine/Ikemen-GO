@@ -827,7 +827,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			end
 			--victory screen
 			if main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' then
-				if main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1 then
+				if motif.victory_screen.enabled == 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 					select.f_selectVictory()
 				end
 			end
@@ -869,7 +869,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			looseCnt = looseCnt + 1
 			--victory screen
 			if main.gameMode == 'arcade' or main.gameMode == 'teamcoop' or main.gameMode == 'netplayteamcoop' then
-				if winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
+				if motif.victory_screen.enabled == 1 and winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 					select.f_selectVictory()
 				end
 			end
@@ -890,7 +890,7 @@ getSpriteInfo('chars/kfm/kfm.sff', 0, 1)
 			--counter
 			looseCnt = looseCnt + 1
 			--victory screen
-			if winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
+			if motif.victory_screen.enabled == 1 and winner >= 1 and (main.t_selChars[t_p2Selected[1].cel + 1].winscreen == nil or main.t_selChars[t_p2Selected[1].cel + 1].winscreen == 1) then
 				select.f_selectVictory()
 			end
 			--continue screen
@@ -2540,12 +2540,9 @@ local txt_credits = main.f_createTextImg(
 )
 
 function select.f_continue()
-	main.f_resetBG(motif.continue_screen, motif.continuebgdef, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
-	animReset(motif.continue_screen.continue_anim_data)
-	animUpdate(motif.continue_screen.continue_anim_data)
 	continue = false
-	local text = main.f_extractText(motif.continue_screen.credits_text, main.credits)
-	textImgSetText(txt_credits, text[1])
+	playBGM(motif.music.continue_bgm, true, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart or "0", motif.music.continue_bgm_loopend or "0")
+	--textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
 	while true do
 		--draw clearcolor (disabled to not cover area)

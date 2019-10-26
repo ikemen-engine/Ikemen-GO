@@ -1103,7 +1103,7 @@ type Projectile struct {
 	hits            int32
 	misstime        int32
 	priority        int32
-	prioritypoint   int32
+	priorityPoints   int32
 	sprpriority     int32
 	edgebound       int32
 	stagebound      int32
@@ -1138,7 +1138,7 @@ func (p *Projectile) clear() {
 	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
 		scale: [...]float32{1, 1}, clsnScale: [...]float32{1, 1}, remove: true, localscl: 1,
 		removetime: -1, velmul: [...]float32{1, 1}, hits: 1, priority: 1,
-		prioritypoint: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
+		priorityPoints: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
 		heightbound: [...]int32{-240, 1}, facing: 1, aimg: *newAfterImage(), platformFence: true}
 	p.hitdef.clear()
 }
@@ -1235,27 +1235,19 @@ func (p *Projectile) clsn(playerNo int) {
 	if p.ani == nil || len(p.ani.frames) == 0 {
 		return
 	}
-	cancel := func(prioritypoint *int32, priority int32, hits *int32,
-		oppprioritypoint int32) {
-		if oppprioritypoint > *prioritypoint || *hits <= 0 {
-			*hits = -2
-			return
-		}
-		if oppprioritypoint == *prioritypoint {
-			if *hits <= 1 {
-				*hits = -2
-			} else {
-				*hits = int32(int64(*hits)*3/4 - 1)
-				if *hits <= 0 {
-					(*prioritypoint)--
-				} else {
-					*prioritypoint = priority
-				}
-			}
+
+	cancel := func(priorityPoints *int32, hits *int32, oppPriorityPoints int32) {
+		if *priorityPoints > oppPriorityPoints {
+			(*priorityPoints)--
 		} else {
-			(*prioritypoint)--
+			(*hits)--
+		}
+
+		if *hits <= 0 {
+			*hits = -2
 		}
 	}
+
 	for i := 0; i < playerNo && p.hits >= 0; i++ {
 		for j, pr := range sys.projs[i] {
 			if pr.hits < 0 || pr.id < 0 || (pr.hitdef.affectteam != 0 &&
@@ -1269,9 +1261,11 @@ func (p *Projectile) clsn(playerNo int) {
 				[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
 				clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 				[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
-				opp, pp := &sys.projs[i][j], p.prioritypoint
-				cancel(&p.prioritypoint, p.priority, &p.hits, opp.prioritypoint)
-				cancel(&opp.prioritypoint, opp.priority, &opp.hits, pp)
+				
+				opp, pp := &sys.projs[i][j], p.priorityPoints
+				cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
+				cancel(&opp.priorityPoints, &opp.hits, pp)
+				
 				if p.hits < 0 {
 					break
 				}
