@@ -676,6 +676,7 @@ type AfterImage struct {
 	imgidx         int32
 	restgap        int32
 	reccount       int32
+	timecount      int32
 	ignorehitpause bool
 }
 
@@ -705,6 +706,7 @@ func (ai *AfterImage) clear() {
 	ai.imgidx = 0
 	ai.restgap = 0
 	ai.reccount = 0
+	ai.timecount = 0
 	ai.ignorehitpause = true
 }
 func (ai *AfterImage) setPalColor(color int32) {
@@ -786,20 +788,21 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		ai.restgap = ai.timegap
 	}
 	ai.restgap--
+	ai.timecount++
 }
 func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
-	if ai.time == 0 || (ai.reccount*ai.timegap >= ai.timegap*ai.length+ai.time && ai.time > 0) ||
+	if ai.time == 0 || (ai.timecount >= ai.timegap*ai.length+ai.time-1 && ai.time > 0) ||
 		ai.timegap < 1 || ai.timegap > 32767 ||
 		ai.framegap < 1 || ai.framegap > 32767 {
 		ai.time = 0
-		ai.reccount, ai.timegap = 0, 0
+		ai.reccount, ai.timecount, ai.timegap = 0, 0, 0
 		return
 	}
 	end := Min(sys.afterImageMax,
 		(Min(Min(ai.reccount, int32(len(ai.imgs))), ai.length)/ai.framegap)*ai.framegap)
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
-		if ai.time < 0 || (ai.reccount-i) < ai.time/ai.timegap {
+		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
 			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
 			sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 				img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
@@ -1103,7 +1106,7 @@ type Projectile struct {
 	hits            int32
 	misstime        int32
 	priority        int32
-	priorityPoints   int32
+	priorityPoints  int32
 	sprpriority     int32
 	edgebound       int32
 	stagebound      int32
@@ -1261,11 +1264,11 @@ func (p *Projectile) clsn(playerNo int) {
 				[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
 				clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 				[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
-				
+
 				opp, pp := &sys.projs[i][j], p.priorityPoints
 				cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
 				cancel(&opp.priorityPoints, &opp.hits, pp)
-				
+
 				if p.hits < 0 {
 					break
 				}
@@ -2942,11 +2945,13 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	h.vel = [2]float32{}
 	if ownpal {
 		h.palfx = newPalFX()
-		tmp := c.getPalfx().remap
-		h.palfx.remap = make([]int, len(tmp))
-		copy(h.palfx.remap, tmp)
-		c.forceRemapPal(h.palfx, rp)
+	} else {
+		h.palfx = c.palfx
 	}
+	tmp := c.getPalfx().remap
+	h.palfx.remap = make([]int, len(tmp))
+	copy(h.palfx.remap, tmp)
+	c.forceRemapPal(h.palfx, rp)
 	if extmap {
 		for key, value := range c.mapArray {
 			h.mapArray[key] = value

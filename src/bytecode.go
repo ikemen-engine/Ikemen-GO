@@ -3182,6 +3182,7 @@ func (sc afterImageTime) Run(c *Char, _ []int32) bool {
 		switch id {
 		case afterImageTime_time:
 			crun.aimg.time = exp[0].evalI(c)
+			crun.aimg.timecount = 0
 		}
 		return true
 	})
