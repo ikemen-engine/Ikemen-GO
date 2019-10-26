@@ -1227,10 +1227,13 @@ func systemScriptInit(l *lua.LState) {
 							s = strconv.Itoa(-i*2 - 1)
 						}
 					} else {
-						if axes[i] < -0.2 {
-							s = strconv.Itoa(-i*2 - 1)
-						} else if axes[i] > 0.2 {
-							s = strconv.Itoa(-i*2 - 2)
+						// PS4 Controller support
+						if glfw.GetJoystickName(joystick[j]) != "Wireless Controller" || !(i == 3 || i == 4) {
+							if axes[i] < -0.2 {
+								s = strconv.Itoa(-i*2 - 1)
+							} else if axes[i] > 0.2 {
+								s = strconv.Itoa(-i*2 - 2)
+							}
 						}
 					}
 				}
