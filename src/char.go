@@ -2945,13 +2945,13 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	h.vel = [2]float32{}
 	if ownpal {
 		h.palfx = newPalFX()
+		tmp := c.getPalfx().remap
+		h.palfx.remap = make([]int, len(tmp))
+		copy(h.palfx.remap, tmp)
+		c.forceRemapPal(h.palfx, rp)
 	} else {
 		h.palfx = c.palfx
 	}
-	tmp := c.getPalfx().remap
-	h.palfx.remap = make([]int, len(tmp))
-	copy(h.palfx.remap, tmp)
-	c.forceRemapPal(h.palfx, rp)
 	if extmap {
 		for key, value := range c.mapArray {
 			h.mapArray[key] = value
