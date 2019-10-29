@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io"
+	"image"
 	"bufio"
 	"fmt"
 	"io/ioutil"
@@ -29,7 +31,7 @@ const (
 )
 
 // System vars are accessed globally through the program
-var sys = System{
+var sys = System {
 	randseed:  int32(time.Now().UnixNano()),
 	scrrect:   [...]int32{0, 0, 320, 240},
 	gameWidth: 320, gameHeight: 240,
@@ -251,8 +253,8 @@ type System struct {
 	AudioDucking            bool
 	FLAC_FrameWait          int
 
-	controllerStickSensitivity		float32
-	xinputTriggerSensitivity    	float32
+	controllerStickSensitivity float32
+	xinputTriggerSensitivity   float32
 
 	// Localcoord sceenpack
 	luaSpriteScale        float64
@@ -266,9 +268,15 @@ type System struct {
 
 	PostProcessingShader    int32
 	MultisampleAntialiasing bool
+	
+	// Icon :D
+	windowMainIcon			[]image.Image
+	windowMainIconLocation	[]string
 }
 
+// Initialize stuff, this is called after the config int at main.go
 func (s *System) init(w, h int32) *lua.LState {
+	// Create a GLWF window.
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -304,6 +312,20 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
 	s.clsnSpr.SetPxl([]byte{0})
 	systemScriptInit(l)
+	// So now that we have a windo we add a icon.
+	if len(s.windowMainIconLocation) > 0 {
+		// First we initialize arrays.
+		f := make([]io.ReadCloser, len(s.windowMainIconLocation) )
+		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
+		// And then we load them.
+		for i, iconLocation := range s.windowMainIconLocation {
+			f[i], _ = os.Open(iconLocation)
+			s.windowMainIcon[i], _, err = image.Decode(f[i])
+		}
+		s.window.SetIcon(s.windowMainIcon)
+		chk(err)
+	}
+	// [Icon add end]
 	go func() {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
