@@ -1,3 +1,4 @@
+-------------------------------------------------------------
 -- Disable GC during the initial load so it does not crash.
 SetGCPercent(-1)
 -------------------------------------------------------------
@@ -18,18 +19,11 @@ local file = io.open("save/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
 
--- Int localcoord
-require "script/screenpack"
-main.IntLocalcoordValues()
-require "script/localcoord"
-main.CalculateLocalcoordValues()
-main.IntLifebarScale()
-main.SetScaleValues()
-
 main.p1In = 1
 main.p2In = 2
 --main.inputDialog = inputDialogNew()
 
+-------------------------------------------------------------
 function main.f_setCommand(c)
 	commandAdd(c, 'u', '$U')
 	commandAdd(c, 'd', '$D')
@@ -75,17 +69,101 @@ function main.f_btnPalNo(cmd)
 	return 0
 end
 
+-- Check if files exists.
+function main.file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+--prints "t" table content into "toFile" file
+function main.f_printTable(t, toFile)
+	local toFile = toFile or 'debug/table_print.txt'
+	local txt = ''
+	local print_t_cache = {}
+	local function sub_print_t(t, indent)
+		if print_t_cache[tostring(t)] then
+			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
+		else
+			print_t_cache[tostring(t)] = true
+			if type(t) == 'table' then
+				for pos, val in pairs(t) do
+					if type(val) == 'table' then
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
+						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
+						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
+					elseif type(val) == 'string' then
+						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
+					else
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
+					end
+				end
+			else
+				txt = txt .. indent .. tostring(t) .. '\n'
+			end
+		end
+	end
+	if type(t) == 'table' then
+		txt = txt .. tostring(t) .. ' {' .. '\n'
+		sub_print_t(t, '  ')
+		txt = txt .. '}' .. '\n'
+	else
+		sub_print_t(t, '  ')
+	end
+	local file = io.open(toFile,"w+")
+	if file == nil then return end
+	file:write(txt)
+	file:close()
+end
+
+-- Prints "v" variable into "toFile" file
+function main.f_printVar(v, toFile)
+	local toFile = toFile or 'debug/var_print.txt'
+	local file = io.open(toFile,"w+")
+	file:write(v)
+	file:close()
+end
+
+-- Split strings.
+function main.f_strsplit(delimiter, text)
+	local list = {}
+	local pos = 1
+	if string.find('', delimiter, 1) then
+		if string.len(text) == 0 then
+			table.insert(list, text)
+		else
+			for i = 1, string.len(text) do
+				table.insert(list, string.sub(text, i, i))
+			end
+		end
+	else
+		while true do
+			local first, last = string.find(text, delimiter, pos)
+			if first then
+				table.insert(list, string.sub(text, pos, first - 1))
+				pos = last + 1
+			else
+				table.insert(list, string.sub(text, pos))
+				break
+			end
+		end
+	end
+	return list
+end
+
+-------------------------------------------------------------
+-- Int localcoord
+require "script/screenpack"
+main.IntLocalcoordValues()
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
+main.SetScaleValues()
+-------------------------------------------------------------
+
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y)
 	animSetPos(a, x, y)
 	animUpdate(a)
 	animDraw(a)
-end
-
--- Check if files exists.
-function main.file_exists(name)
-   local f=io.open(name,"r")
-   if f~=nil then io.close(f) return true else return false end
 end
 
 --textImgDraw at specified coordinates
@@ -312,54 +390,6 @@ function main.f_sortKeys(t, order)
 			return keys[i], t[keys[i]]
 		end
 	end
-end
-
---prints "t" table content into "toFile" file
-function main.f_printTable(t, toFile)
-	local toFile = toFile or 'debug/table_print.txt'
-	local txt = ''
-	local print_t_cache = {}
-	local function sub_print_t(t, indent)
-		if print_t_cache[tostring(t)] then
-			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
-		else
-			print_t_cache[tostring(t)] = true
-			if type(t) == 'table' then
-				for pos, val in pairs(t) do
-					if type(val) == 'table' then
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
-						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
-						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
-					elseif type(val) == 'string' then
-						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
-					else
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
-					end
-				end
-			else
-				txt = txt .. indent .. tostring(t) .. '\n'
-			end
-		end
-	end
-	if type(t) == 'table' then
-		txt = txt .. tostring(t) .. ' {' .. '\n'
-		sub_print_t(t, '  ')
-		txt = txt .. '}' .. '\n'
-	else
-		sub_print_t(t, '  ')
-	end
-	local file = io.open(toFile,"w+")
-	if file == nil then return end
-	file:write(txt)
-	file:close()
-end
-
---prints "v" variable into "toFile" file
-function main.f_printVar(v, toFile)
-	local toFile = toFile or 'debug/var_print.txt'
-	local file = io.open(toFile,"w+")
-	file:write(v)
-	file:close()
 end
 
 --remove duplicated string pattern

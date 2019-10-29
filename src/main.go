@@ -105,6 +105,8 @@ func main() {
 	  "Joystick":1,
 	  "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
 	}],
+  "ControllerStickSensitivity": 0.4,
+  "XinputTriggerSensitivity": 0,
   "Motif":"data/system.def",
   "CommonAir":"data/common.air",
   "CommonCmd":"data/common.cmd",
@@ -178,6 +180,8 @@ func main() {
 		CommonAir             string
 		CommonCmd             string
 		QuickLaunch           int
+		ControllerStickSensitivity float32
+		XinputTriggerSensitivity float32
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"
@@ -193,6 +197,8 @@ func main() {
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
+	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.helperMax = tmp.HelperMax
 	sys.playerProjectileMax = tmp.PlayerProjectileMax
 	sys.explodMax = tmp.ExplodMax
@@ -239,6 +245,7 @@ func main() {
 			}
 		}
 	}
+	
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
 	sys.PostProcessingShader = tmp.PostProcessingShader

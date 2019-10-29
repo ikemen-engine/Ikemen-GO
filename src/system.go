@@ -250,6 +250,10 @@ type System struct {
 	bgmVolume               int
 	AudioDucking            bool
 	FLAC_FrameWait          int
+
+	controllerStickSensitivity		float32
+	xinputTriggerSensitivity    	float32
+
 	// Localcoord sceenpack
 	luaSpriteScale        float64
 	luaSmallPortraitScale float32
