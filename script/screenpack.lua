@@ -34,12 +34,11 @@ function main.CalculateLocalcoordValues()
 
 	-- We now have to search for the config file.
 	local motifFileFolder = ""
-	local lbFileName = main.ParseDefFileValue(config.Motif, "files", "fight", false, 85)
+	local lbFileName = main.ParseDefFileValue(config.Motif, "files", "fight", false)
 	-- Get the morif file folder.
 	local tempMFF = main.f_strsplit("/",config.Motif)
 	local i = 1
 	-- We skip the last object on the table (The file iteself) to get only the directory.
-	main.f_printVar(table.getn(tempMFF), "tempMFF_L.txt")
 	while i < table.getn(tempMFF) do
 		motifFileFolder = motifFileFolder .. tempMFF[i] .. "/"
 		i = i + 1
@@ -79,9 +78,9 @@ function main.CalculateLocalcoordValues()
 		
 	main.LB_ScreenWidth = config.Width / (config.Height / 240)
 	main.LB_ScreenDiference = (main.LB_ScreenWidth - 320) / (main.LB_ScreenWidth / 320)
-	setLifebarPortaitScale(main.SP_Localcoord[1] / main.SP_Localcoord43[1])
+	--setLifebarPortaitScale(main.SP_Localcoord[1] / main.SP_Localcoord43[1])
 
-	-- TODO: Check if this calcularion of 'main.SP_Center' is rigth.
+	-- TODO: Check if this calculation of 'main.SP_Center' is rigth.
 	main.SP_Center = main.SP_Localcoord[1] - main.SP_Localcoord43[1]
 end
 
@@ -115,11 +114,8 @@ function main.SetDefaultScale()
 end
 
 -- Edited version of the parser in motif.lua, made to parse only a single value and end once it steps outside [searchBlock]
-function main.ParseDefFileValue(argFile, searchBlock, searchParam, isNumber, test3213)
+function main.ParseDefFileValue(argFile, searchBlock, searchParam, isNumber)
 	-- We use 'arg' inestead of 'config.Motif' because we also want the option to parse the lifebar
-	if test3213 ~= 85 then
-		test3213 = 0
-	end
 	local file = io.open(argFile)
 	local weAreInInfo = 0
 	local ret = {}
@@ -147,10 +143,6 @@ function main.ParseDefFileValue(argFile, searchBlock, searchParam, isNumber, tes
 					param = param:lower() -- lowercase param
 				end
 				if param ~= nil and value ~= nil and param:match(searchParam) then -- param = value pattern matched
-					if test3213 == 85 then
-						main.f_printVar("file: " .. argFile .. "\n".. "line: " .. ipos .. "\n" .. line, "spline.txt")
-					end
-					
 					value = value:gsub('"', '') -- remove brackets from value
 					if value:match('.+,.+') then -- multiple values
 						for i, c in ipairs(main.f_strsplit(',', value)) do -- split value using "," delimiter
