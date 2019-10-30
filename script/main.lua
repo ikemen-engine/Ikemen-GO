@@ -344,7 +344,7 @@ function main.f_getName(cell)
 	tmp = tmp:gsub('^["%s]*(.-)["%s]*$', '%1') --needed for s-size ikemen
 	if main.t_selChars[cell + 1].hidden == 3 then
 		tmp = 'Random'
-	elseif main.t_selChars[cell + 1].hidden == 2 then
+	elseif main.t_selChars[cell + 1].hidden == 2 or main.t_selChars[cell + 1].hidden == 1 then
 		tmp = ''
 	end
 	return tmp
@@ -1117,8 +1117,11 @@ function main.f_addChar(line, row)
 			end
 		end
 	end
-	if main.t_selChars[row].exclude == nil then
+	if main.t_selChars[row].hidden == nil then
 		main.t_selChars[row].hidden = hidden
+	end
+	if main.t_selChars[row].exclude == nil then
+		main.t_selChars[row].exclude = 0
 	end
 	if order then
 		if main.t_orderChars[main.t_selChars[row].order] == nil then
@@ -1252,7 +1255,7 @@ end
 --add Training by stupa if not included in select.def
 if main.t_charDef.training == nil and main.f_fileExists('chars/training/training.def') then
 	chars = chars + 1
-	main.f_addChar('training, exclude = 1', chars)
+	main.f_addChar('training, exclude = 1, order = 0', chars)
 end
 
 --add remaining character parameters
