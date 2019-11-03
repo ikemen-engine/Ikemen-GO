@@ -12,8 +12,6 @@ Git is required for Go-lang's ``get`` command to work. (Used for building)
 
 After installing everithing but Before working on the code you need to run the ``get.cmd`` file inside the ``build`` folder.
 
-Once you have opened the Ikemen GO project folder you need to edit the ``go.gopath`` inside VS code workspace settings (Not global setting) to point to the GO folder inside the project folder.
-
 If you use the portable version you have to set up these environment variables:
 > GOPATH = ``%USERPROFILE%\Go``
 >
