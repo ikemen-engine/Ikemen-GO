@@ -76,70 +76,84 @@ func main() {
 	}
 	chk(glfw.Init())
 	defer glfw.Terminate()
-	defcfg := []byte(strings.Join(strings.Split(`{
-  "HelperMax":56,
-  "PlayerProjectileMax":256,
-  "ExplodMax":512,
-  "AfterImageMax":128,
-  "MasterVolume":80,
-  "WavVolume":80,
-  "BgmVolume":80,
-  "Attack.LifeToPowerMul":0.7,
-  "GetHit.LifeToPowerMul":0.6,
-  "Width":640,
-  "Height":480,
-  "Super.TargetDefenceMul":1.5,
-  "LifebarFontScale":1,
-  "System":"script/main.lua",
-  "KeyConfig":[{
-	  "Joystick":-1,
-	  "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN","q","w"]
-	},{
-	  "Joystick":-1,
-	  "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
-	}],
-  "JoystickConfig":[{
-	  "Joystick":0,
-	  "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-	},{
-	  "Joystick":1,
-	  "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-	}],
-  "Motif":"data/system.def",
-  "CommonAir":"data/common.air",
-  "CommonCmd":"data/common.cmd",
-  "SimulMode":true,
-  "LifeMul":100,
-  "Team1VS2Life":120,
-  "TurnsRecoveryRate":300,
-  "ZoomActive":false,
-  "ZoomMin":0.75,
-  "ZoomMax":1.1,
-  "ZoomSpeed":1,
-  "RoundTime":99,
-  "SingleTeamMode":true,
-  "NumTurns":4,
-  "NumSimul":4,
-  "NumTag":4,
-  "Difficulty":8,
-  "Credits":10,
-  "ListenPort":7500,
-  "ContSelection":true,
-  "AIRandomColor":true,
-  "AIRamping":true,
-  "AutoGuard":false,
-  "TeamPowerShare":false,
-  "TeamLifeShare":false,
-  "Fullscreen":false,
-  "AudioDucking":false,
-  "QuickLaunch":0,
-  "AllowDebugKeys":true,
-  "ComboExtraFrameWindow": 1,
-  "PostProcessingShader": 0,
-  "LocalcoordScalingType": 1,
-  "MSAA": false,
-  "IP":{
-  }
+	defcfg := []byte(strings.Join(strings.Split(
+`{
+	"HelperMax": 56,
+	"PlayerProjectileMax": 256,
+	"ExplodMax": 512,
+	"AfterImageMax": 128,
+	"MasterVolume": 80,
+	"WavVolume": 80,
+	"BgmVolume": 80,
+	"Attack.LifeToPowerMul": 0.7,
+	"GetHit.LifeToPowerMul": 0.6,
+	"Width": 640,
+	"Height": 480,
+	"Super.TargetDefenceMul": 1.5,
+	"LifebarFontScale": 1,
+	"System": "script/main.lua",
+	"KeyConfig": [
+		{
+			"Joystick": -1,
+			"Buttons": ["UP", "DOWN", "LEFT", "RIGHT", "z", "x", "c", "a", "s", "d", "RETURN", "q", "w"]
+		},
+		{
+			"Joystick": -1,
+			"Buttons": ["t", "g", "f", "h", "j", "k", "l", "u", "i", "o", "RSHIFT", "LEFTBRACKET", "RIGHTBRACKET"]
+		}
+	],
+	"JoystickConfig": [
+		{
+			"Joystick": 1,
+			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+		},
+		{
+			"Joystick": 1,
+			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+		}
+	],
+	"ControllerStickSensitivity": 0.4,
+	"XinputTriggerSensitivity": 0,
+	"Motif": "data/system.def",
+	"CommonAir": "data/common.air",
+	"CommonCmd": "data/common.cmd",
+	"SimulMode": true,
+	"LifeMul": 100,
+	"Team1VS2Life": 120,
+	"TurnsRecoveryRate": 300,
+	"ZoomActive": false,
+	"ZoomMin": 0.75,
+	"ZoomMax": 1.1,
+	"ZoomSpeed": 1,
+	"RoundTime": 99,
+	"SingleTeamMode": true,
+	"NumTurns": 4,
+	"NumSimul": 4,
+	"NumTag": 4,
+	"Difficulty": 8,
+	"Credits": 10,
+	"ListenPort": 7500,
+	"IP": {
+		
+	},
+	"ContSelection": true,
+	"AIRandomColor": true,
+	"AIRamping": true,
+	"AutoGuard": false,
+	"TeamPowerShare": false,
+	"TeamLifeShare": false,
+	"Fullscreen": false,
+	"AudioDucking": false,
+	"QuickLaunch": 0,
+	"AllowDebugKeys": true,
+	"ComboExtraFrameWindow": 1,
+	"PostProcessingShader": 0,
+	"LocalcoordScalingType": 1,
+	"MSAA": false,
+	"WindowMainIconLocation": [
+		"script/Icons/16x16.png",
+		"script/Icons/24x24.png"
+	]
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
@@ -165,19 +179,22 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag                int
-		TeamLifeShare         bool
-		AIRandomColor         bool
-		ComboExtraFrameWindow int32
-		Fullscreen            bool
-		AudioDucking          bool
-		AllowDebugKeys        bool
-		MSAA                  bool
-		PostProcessingShader  int32
-		LocalcoordScalingType int32
-		CommonAir             string
-		CommonCmd             string
-		QuickLaunch           int
+		NumTag                     int
+		TeamLifeShare              bool
+		AIRandomColor              bool
+		ComboExtraFrameWindow      int32
+		Fullscreen                 bool
+		AudioDucking               bool
+		AllowDebugKeys             bool
+		MSAA                       bool
+		PostProcessingShader       int32
+		LocalcoordScalingType      int32
+		CommonAir                  string
+		CommonCmd                  string
+		QuickLaunch                int
+		ControllerStickSensitivity float32
+		XinputTriggerSensitivity   float32
+		WindowMainIconLocation     []string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"
@@ -193,6 +210,8 @@ func main() {
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
+	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.helperMax = tmp.HelperMax
 	sys.playerProjectileMax = tmp.PlayerProjectileMax
 	sys.explodMax = tmp.ExplodMax
@@ -203,6 +222,9 @@ func main() {
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.quickLaunch = tmp.QuickLaunch
+	sys.windowMainIconLocation = tmp.WindowMainIconLocation
+	// For debug testing letting this here comented because it could be usefull in the future.
+	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
 	sys.masterVolume = tmp.MasterVolume
 	sys.wavVolume = tmp.WavVolume
 	sys.bgmVolume = tmp.BgmVolume
@@ -239,6 +261,7 @@ func main() {
 			}
 		}
 	}
+	
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
 	sys.PostProcessingShader = tmp.PostProcessingShader
