@@ -1368,7 +1368,7 @@ func (__ *AiInput) Update(level float32) {
 	if dec(&__.dt) {
 		__.dir = Rand(0, 7)
 	}
-	osu, hanasu = int32(-11.25*level+165), 30
+	osu, hanasu = int32((-11.25*level+165)*7), 30
 	dec(&__.at)
 	dec(&__.bt)
 	dec(&__.ct)

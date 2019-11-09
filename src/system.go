@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	MaxSimul        = 8
+	MaxSimul        = 32
 	MaxAttachedChar = 2
 	FPS             = 60
 	P1P3Dist        = 25
@@ -119,7 +119,7 @@ type System struct {
 	aiInput                 [MaxSimul*2 + MaxAttachedChar]AiInput
 	keyConfig               []KeyConfig
 	JoystickConfig          []KeyConfig
-	com                     [MaxSimul*2 + MaxAttachedChar]int32
+	com                     [MaxSimul*2 + MaxAttachedChar]float32
 	autolevel               bool
 	home                    int
 	gameTime                int32
@@ -765,7 +765,7 @@ func (s *System) commandUpdate() {
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
-					c.cmd[0].Input(c.key, int32(c.facing), float32(sys.com[i])) {
+					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
 					hp := c.hitPause()
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
@@ -786,7 +786,7 @@ func (s *System) commandUpdate() {
 				cc := int32(-1)
 				// AI Scaling
 				// TODO: Balance AI Scaling
-				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/2+32) > 32 {
+				if r.roundState() == 2 && RandF32(0, sys.com[i]/2+32) > 32 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
 				} else {
 					cc = -1

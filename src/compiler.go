@@ -1148,6 +1148,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ailevel":
 		out.append(OC_ailevel)
+	case "ailevelf":
+		out.append(OC_ailevelf)
 	case "alive":
 		out.append(OC_alive)
 	case "anim":

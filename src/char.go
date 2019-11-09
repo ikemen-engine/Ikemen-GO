@@ -2267,7 +2267,7 @@ func (c *Char) p2() *Char {
 	}
 	return p2
 }
-func (c *Char) aiLevel() int32 {
+func (c *Char) aiLevel() float32 {
 	if c.helperIndex != 0 && c.gi().ver[0] == 1 {
 		return 0
 	}

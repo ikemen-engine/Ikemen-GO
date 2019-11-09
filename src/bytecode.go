@@ -398,6 +398,7 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+	OC_ailevelf // float version of AILevel
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -972,7 +973,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_swap:
 			sys.bcStack.Swap()
 		case OC_ailevel:
-			sys.bcStack.PushI(c.aiLevel())
+			sys.bcStack.PushI(int32(c.aiLevel()))
+		case OC_ailevelf:
+			sys.bcStack.PushF(c.aiLevel())
 		case OC_alive:
 			sys.bcStack.PushB(c.alive())
 		case OC_anim:

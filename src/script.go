@@ -504,10 +504,16 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setCom", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
+		ailv := float32(numArg(l, 2))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
-		sys.com[pn-1] = Max(0, int32(numArg(l, 2)))
+		if ailv > 0 {
+			sys.com[pn-1] = ailv
+		} else {
+			sys.com[pn-1] = 0
+		}
+	
 		return 0
 	})
 	luaRegister(l, "setAutoLevel", func(*lua.LState) int {
@@ -2251,7 +2257,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "setAILevel", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			level := int32(numArg(l, 1))
+			level := float32(numArg(l, 1))
 			sys.com[sys.debugWC.playerNo] = level
 			for _, c := range sys.chars[sys.debugWC.playerNo] {
 				if level == 0 {
