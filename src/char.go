@@ -1526,6 +1526,7 @@ type Char struct {
 	pushed                bool
 	hitdefContact         bool
 	movedY                bool
+	ownpal                bool
 	atktmp                int8
 	hittmp                int8
 	acttmp                int8
@@ -1593,6 +1594,7 @@ func (c *Char) clear1() {
 	c.helperIndex = -1
 	c.parentIndex = IErr
 	c.playerNo = -1
+	c.ownpal = true
 	c.facing = 1
 	c.keyctrl = false
 	c.player = false
@@ -1604,6 +1606,7 @@ func (c *Char) clear1() {
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
 	c.winquote = -1
+
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
@@ -2352,6 +2355,9 @@ func (c *Char) commandByName(name string) bool {
 	i, ok := c.cmd[c.playerNo].Names[name]
 	return ok && c.command(c.playerNo, i)
 }
+func (c *Char) constp(coordinate, value float32) BytecodeValue {
+	return BytecodeFloat(320 / c.localscl / coordinate * value)
+}
 func (c *Char) ctrl() bool {
 	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby)
 }
@@ -2938,19 +2944,19 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 	return
 }
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
-	facing int32, ownpal bool, rp [2]int32, extmap bool) {
+	facing int32, rp [2]int32, extmap bool) {
 	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
 	h.vel = [2]float32{}
-	if ownpal {
+	if h.ownpal {
 		h.palfx = newPalFX()
 		tmp := c.getPalfx().remap
 		h.palfx.remap = make([]int, len(tmp))
 		copy(h.palfx.remap, tmp)
 		c.forceRemapPal(h.palfx, rp)
 	} else {
-		h.palfx = c.palfx
+		h.palfx = c.getPalfx()
 	}
 	if extmap {
 		for key, value := range c.mapArray {
@@ -5687,6 +5693,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 			if AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
 				add((*cache)[i], i+1)
 				(*cache)[i] = e
+				return
 			}
 		}
 	}

@@ -367,6 +367,9 @@ const (
 	OC_ex_groundangle
 	OC_ex_stagefrontedge
 	OC_ex_stagebackedge
+	OC_ex_const240p
+	OC_ex_const480p
+	OC_ex_const720p
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -715,7 +718,7 @@ func (_ BytecodeExp) log(v1 *BytecodeValue, v2 BytecodeValue) {
 	if v1.v <= 0 || v2.v <= 0 {
 		*v1 = BytecodeSF()
 	} else {
-		v1.SetF(float32(math.Log(v1.v) / math.Log(v2.v)))
+		v1.SetF(float32(math.Log(v2.v) / math.Log(v1.v)))
 	}
 }
 func (_ BytecodeExp) cos(v1 *BytecodeValue) {
@@ -1579,6 +1582,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.stageFrontEdge())
 	case OC_ex_stagebackedge:
 		sys.bcStack.PushF(c.stageBackEdge())
+	case OC_ex_const240p:
+		*sys.bcStack.Top() = c.constp(320, sys.bcStack.Top().ToF())
+	case OC_ex_const480p:
+		*sys.bcStack.Top() = c.constp(640, sys.bcStack.Top().ToF())
+	case OC_ex_const720p:
+		*sys.bcStack.Top() = c.constp(960, sys.bcStack.Top().ToF())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -2260,7 +2269,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	var h *Char
 	pt := PT_P1
 	var f, st int32 = 1, 0
-	op, extmap := false, false
+	extmap := false
 	var x, y float32 = 0, 0
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -2288,7 +2297,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_postype:
 			pt = PosType(exp[0].evalI(c))
 		case helper_ownpal:
-			op = exp[0].evalB(c)
+			h.ownpal = exp[0].evalB(c)
 		case helper_size_xscale:
 			h.size.xscale = exp[0].evalF(c)
 		case helper_size_yscale:
@@ -2354,7 +2363,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		h.localscl = crun.localscl
 		h.localcoord = crun.localcoord
 	}
-	crun.helperInit(h, st, pt, x, y, f, op, rp, extmap)
+	crun.helperInit(h, st, pt, x, y, f, rp, extmap)
 	return false
 }
 
@@ -3004,6 +3013,9 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 }
 func (sc palFX) Run(c *Char, _ []int32) bool {
 	crun := c
+	if !crun.ownpal {
+		return true
+	}
 	pf := crun.palfx
 	if pf == nil {
 		pf = newPalFX()
