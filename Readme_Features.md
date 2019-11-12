@@ -122,6 +122,12 @@ Now Teammode can also return "Tag"
 ```ini
 trigger1 = TeamMode = Tag
 ```
+### AiLevelF
+In Ikemen GO the AI level can be a float value.
+
+``AiLevel`` still returns an integer (For compatibility reasons)
+
+``AiLevelF`` reurns the full float32 number.
 
 # Details of additional parameters
 ## Additional parameters for the state controller
