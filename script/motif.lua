@@ -1622,7 +1622,7 @@ for i = 1, #t_dir do
 			animSetAlpha(anim, 1, 255)
 		end
 		animAddPos(anim, 160, 0) --for some reason needed in ikemen
-		if t_bgdef[k].window ~= nil then
+		if t_bgdef[k].window ~= nil and t_bgdef[k].window[1] ~= nil and t_bgdef[k].window[2] ~= nil and t_bgdef[k].window[3] ~= nil and t_bgdef[k].window[4] ~= nil then
 			animSetWindow(
 				anim,
 				t_bgdef[k].window[1],
