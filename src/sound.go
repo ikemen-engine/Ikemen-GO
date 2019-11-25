@@ -4,12 +4,15 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"gitlab.com/gomidi/midi/mid"
+	"time"
 	"math"
 	"os"
 	"path/filepath"
 
 	"github.com/timshannon/go-openal/openal"
 
+	"github.com/naivesound/tsf"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/flac"
@@ -18,6 +21,17 @@ import (
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
 )
+//  ------------------------------------------------------------------
+// callback for note on messages
+func noteOn(p *mid.Position, channel, key, vel uint8) {
+    fmt.Printf("NoteOn (ch %v: key %v vel: %v)\n", channel, key, vel)
+}
+
+// callback for note off messages
+func noteOff(p *mid.Position, channel, key, vel uint8) {
+    fmt.Printf("NoteOff (ch %v: key %v)\n", channel, key)
+}
+//  ------------------------------------------------------------------
 
 const (
 	audioOutLen    = 2048
@@ -276,6 +290,10 @@ func (bgm *Bgm) IsWAVE() bool {
 	return bgm.IsFormat(".wav")
 }
 
+func (bgm *Bgm) IsMIDI() bool {
+	return bgm.IsFormat(".mid")
+}
+
 func (bgm *Bgm) IsFormat(extension string) bool {
 	return filepath.Ext(bgm.filename) == extension
 }
@@ -305,6 +323,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.ConvertFLAC(loop, bgmVolume)
 	} else if bgm.IsWAVE() {
 		bgm.ReadWav(loop, bgmVolume)
+	} else if bgm.IsMIDI() {
+		bgm.ConvertMIDI(loop, bgmVolume)
 	}
 
 }
@@ -594,6 +614,32 @@ func (s *Snd) play(gn [2]int32) bool {
 }
 
 // ------------------------------------------------------------------
+
+rd := mid.NewReader()
+
+    // set the functions for the messages you are interested in
+    rd.Msg.Channel.NoteOn = noteOn
+    rd.Msg.Channel.NoteOff = noteOff
+
+    // to allow reading and writing concurrently in this example
+    // we need a pipe
+    piperd, pipewr := io.Pipe()
+
+    go func() {
+        wr := mid.NewWriter(pipewr)
+        wr.SetChannel(11) // sets the channel for the next messages
+        wr.NoteOn(120, 50)
+        time.Sleep(time.Second) // let the note ring for 1 sec
+        wr.NoteOff(120)
+        pipewr.Close() // finishes the writing
+    }()
+
+    for {
+        if rd.Read(piperd) == io.EOF {
+            piperd.Close() // finishes the reading
+            break
+        }
+
 // Sound
 
 type Sound struct {
