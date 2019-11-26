@@ -92,6 +92,24 @@ func (cli *commandLineInput) GetStr() string {
 // Script Common
 
 func scriptCommonInit(l *lua.LState) {
+
+
+
+	//Makosoft
+	luaRegister(l, "setTitle", func(*lua.LState) int {
+		sys.window.SetTitle(strArg(l, 1))
+		return 1
+	})
+
+	luaRegister(l, "logError", func(*lua.LState) int {
+		sys.errLog.Println(strArg(l, 1))
+		return 1
+	})
+
+
+
+
+
 	// A bind to GO's SetGCPercent. A negative percentage disables garbage collection.
 	luaRegister(l, "SetGCPercent", func(*lua.LState) int {
 		debug.SetGCPercent(int(numArg(l, 1)))

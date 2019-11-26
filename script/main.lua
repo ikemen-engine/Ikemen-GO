@@ -882,6 +882,20 @@ end
 --;===========================================================
 main.flags = getCommandLineFlags()
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
+
+
+
+	--makosoft
+	if main.flags['-t'] ~= nil then
+		roundTimeLimit = tonumber(main.flags['-t'])
+		setRoundTime(roundTimeLimit * 60)
+	end
+	
+	
+	if main.flags['-title'] ~= nil then
+		setTitle(main.flags['-title'])
+		
+	end
 	--load lifebar
 	local sp = config.Motif
 	if main.flags['-r'] ~= nil then
