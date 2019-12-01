@@ -66,7 +66,7 @@ var sys = System {
 	keyInput:              glfw.KeyUnknown,
 	keyString:             "",
 	comboExtraFrameWindow: 1,
-	FLAC_FrameWait:       -1,
+	//FLAC_FrameWait:       -1,
 	// Localcoord sceenpack
 	luaSpriteScale:        1,
 	luaSmallPortraitScale: 1,
@@ -251,7 +251,7 @@ type System struct {
 	wavVolume               int
 	bgmVolume               int
 	AudioDucking            bool
-	FLAC_FrameWait          int
+	//FLAC_FrameWait          int
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32
@@ -473,12 +473,12 @@ func (s *System) soundWrite() {
 			}
 		}
 
-		if s.FLAC_FrameWait >= 0 {
-			if s.FLAC_FrameWait == 0 {
-				s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
-			}
-			s.FLAC_FrameWait--
-		}
+		//if s.FLAC_FrameWait >= 0 {
+		//	if s.FLAC_FrameWait == 0 {
+		//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
+		//	}
+		//	s.FLAC_FrameWait--
+		//}
 	}
 	src.Delete()
 	openal.NullContext.Activate()
