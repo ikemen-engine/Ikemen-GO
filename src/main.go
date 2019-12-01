@@ -151,8 +151,7 @@ func main() {
 	"LocalcoordScalingType": 1,
 	"MSAA": false,
 	"WindowMainIconLocation": [
-		"script/Icons/16x16.png",
-		"script/Icons/24x24.png"
+		"script/Icons/IkemenCylia.png"
 	]
 }
 `, "\n"), "\r\n"))
