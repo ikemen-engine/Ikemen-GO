@@ -691,8 +691,9 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 		default:
 			if hissu && !comma {
 				return Error("比較演算子がありません" +
-					" / " +
-					"No comparison operator")
+					"\n" +
+					"No comparison operator" +
+					"\n[ECID 1]\n")
 			}
 			hikaku = false
 		}
@@ -736,8 +737,9 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	if err != nil {
 		if hissu && !hikaku {
 			return Error("比較演算子がありません" +
-				" / " +
-				"No comparison operator")
+				"\n" +
+				"No comparison operator" +
+				"\n[ECID 2]\n")
 		}
 		if hikaku {
 			return err
@@ -2171,7 +2173,12 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	if len(c.maeOp) == 0 {
 		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
-				return bvNone(), Error("演算子がありません")
+				return bvNone(), Error("演算子がありません" +
+				"\n" +
+				"No comparison operator" +
+				"\n" + 
+				"Token = '" + c.token + "' String = '" + *in + "'" +
+				"\n[ECID 3]\n")
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
@@ -2180,7 +2187,10 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			}
 			if c.usiroOp {
 				if c.isOperator(c.token) <= 0 {
-					return bvNone(), Error("演算子がありません")
+					return bvNone(), Error("演算子がありません" +
+					"\n" +
+					"No comparison operator" +
+					"\n[ECID 4]\n")
 				}
 				if err := c.renzokuEnzansihaError(in); err != nil {
 					return bvNone(), err

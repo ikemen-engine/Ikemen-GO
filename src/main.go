@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -104,12 +104,12 @@ func main() {
 	],
 	"JoystickConfig": [
 		{
-			"Joystick": 1,
-			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+			"Joystick": 0,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
 		},
 		{
 			"Joystick": 1,
-			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
 		}
 	],
 	"ControllerStickSensitivity": 0.4,

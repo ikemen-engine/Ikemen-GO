@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -1218,23 +1218,29 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(f))
 		return 6
 	})
+	luaRegister(l, "getGamepadName", func(*lua.LState) int {
+		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
+		return 1
+	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
-		for j := 0; j < 2; j++ {
-			if glfw.JoystickPresent(joystick[j]) {
-				axes := glfw.GetJoystickAxes(joystick[j])
-				btns := glfw.GetJoystickButtons(joystick[j])
+		for j := 0; j < 1; j++ {
+			if joystick[j].GetGamepadState != nil {
+				axes := joystick[j].GetAxes()
+				btns := joystick[j].GetButtons()
 				for i := range axes {
-					if glfw.GetJoystickName(joystick[j]) == "Xbox 360 Controller" { //Xbox360コントローラー判定
-						if axes[i] > 0 {
+					if joystick[j].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[j].GetGamepadName(), "XInput") { //Xbox360コントローラー判定
+						if axes[i] > 0.5 {
+							s = strconv.Itoa(-i*2 - 2)
+						} else if axes[i] < -0.5 && i < 4 {
 							s = strconv.Itoa(-i*2 - 1)
 						}
 					} else {
 						// PS4 Controller support
-						if glfw.GetJoystickName(joystick[j]) != "Wireless Controller" || !(i == 3 || i == 4) {
+						if joystick[j].GetGamepadName() != "Wireless Controller" || !(i == 3 || i == 4) {
 							if axes[i] < -0.2 {
 								s = strconv.Itoa(-i*2 - 1)
 							} else if axes[i] > 0.2 {
@@ -1258,7 +1264,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			if sys.keyInput == glfw.KeyInsert {
-				s, _ = sys.window.GetClipboardString()
+				s = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}

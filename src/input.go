@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 type CommandKey byte
@@ -618,19 +618,22 @@ func JoystickState(joy, button int) bool {
 	if joy >= len(joystick) {
 		return false
 	}
-	btns := glfw.GetJoystickButtons(joystick[joy])
+	btns := joystick[joy].GetButtons()
 	if button < 0 {
 		button = -button - 1
-		axes := glfw.GetJoystickAxes(joystick[joy])
+		axes := joystick[joy].GetAxes()
+		
 		if len(axes)*2 <= button {
 			return false
 		}
-		if (button == 8 || button == 10) && glfw.GetJoystickName(joystick[joy]) == "Xbox 360 Controller" { //Xbox360コントローラーのLRトリガー判定
+
+		//Xbox360コントローラーのLRトリガー判定
+		if (button == 9 || button == 11) && (joystick[joy].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[joy].GetGamepadName(), "XInput")) {
 			return axes[button/2] > sys.xinputTriggerSensitivity
 		}
 
 		// Ignore trigger axis on PS4 (We already have buttons)
-		if (button >= 6 && button <= 9) && glfw.GetJoystickName(joystick[joy]) == "Wireless Controller" {
+		if (button >= 6 && button <= 9) && joystick[joy].GetGamepadName() == "Wireless Controller" {
 			return false
 		}
 
