@@ -1,10 +1,10 @@
 package main
 
 import (
-	"io"
-	"image"
 	"bufio"
 	"fmt"
+	"image"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -31,10 +31,13 @@ const (
 )
 
 // System vars are accessed globally through the program
-var sys = System {
-	randseed:  int32(time.Now().UnixNano()),
-	scrrect:   [...]int32{0, 0, 320, 240},
-	gameWidth: 320, gameHeight: 240,
+var sys = System{
+	headless:          false,
+	targetAudioDevice: "",
+	windowTitle:       "Ikemen GO - MakoSoft",
+	randseed:          int32(time.Now().UnixNano()),
+	scrrect:           [...]int32{0, 0, 320, 240},
+	gameWidth:         320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
 	brightness: 256,
 	roundTime:  -1,
@@ -66,7 +69,7 @@ var sys = System {
 	keyInput:              glfw.KeyUnknown,
 	keyString:             "",
 	comboExtraFrameWindow: 1,
-	//FLAC_FrameWait:       -1,
+	FLAC_FrameWait:        -1,
 	// Localcoord sceenpack
 	luaSpriteScale:        1,
 	luaSmallPortraitScale: 1,
@@ -90,6 +93,9 @@ const (
 )
 
 type System struct {
+	headless                bool
+	targetAudioDevice       string
+	windowTitle             string
 	randseed                int32
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
@@ -268,10 +274,10 @@ type System struct {
 
 	PostProcessingShader    int32
 	MultisampleAntialiasing bool
-	
+
 	// Icon :D
-	windowMainIcon			[]image.Image
-	windowMainIconLocation	[]string
+	windowMainIcon         []image.Image
+	windowMainIconLocation []string
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -284,10 +290,10 @@ func (s *System) init(w, h int32) *lua.LState {
 	var err error
 	if s.fullscreen {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", glfw.GetPrimaryMonitor(), nil)
+			s.windowTitle, glfw.GetPrimaryMonitor(), nil)
 	} else {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", nil, nil)
+			s.windowTitle, nil, nil)
 	}
 	chk(err)
 	s.window.MakeContextCurrent()
@@ -315,7 +321,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	// So now that we have a windo we add a icon.
 	if len(s.windowMainIconLocation) > 0 {
 		// First we initialize arrays.
-		f := make([]io.ReadCloser, len(s.windowMainIconLocation) )
+		f := make([]io.ReadCloser, len(s.windowMainIconLocation))
 		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
 		// And then we load them.
 		for i, iconLocation := range s.windowMainIconLocation {
@@ -353,7 +359,10 @@ func (s *System) eventUpdate() bool {
 	for _, v := range s.shortcutScripts {
 		v.Activate = false
 	}
-	glfw.PollEvents()
+	if !s.headless {
+		glfw.PollEvents()
+	}
+
 	s.gameEnd = s.window.ShouldClose()
 	return !s.gameEnd
 }
@@ -368,7 +377,8 @@ func (s *System) runMainThreadTask() {
 	}
 }
 func (s *System) await(fps int) bool {
-	if !s.frameSkip {
+
+	if !s.frameSkip && !sys.headless {
 		// Render the finished frame
 		unbindFB()
 		s.window.SwapBuffers()
@@ -396,7 +406,7 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {
+	if !s.frameSkip && !sys.headless {
 		gl.Viewport(0, 0, int32(s.scrrect[2]), int32(s.scrrect[3]))
 		if s.netInput == nil {
 			gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -420,8 +430,11 @@ func (s *System) update() bool {
 	return s.await(FPS)
 }
 func (s *System) audioOpen() {
+	fmt.Print("audioopen called")
 	if s.audioContext == nil {
-		device := openal.OpenDevice("")
+		fmt.Print("Opening audio device to: ")
+		fmt.Print(s.targetAudioDevice)
+		device := openal.OpenDevice(s.targetAudioDevice)
 		if device == nil {
 			chk(openal.Err())
 		}
@@ -431,6 +444,8 @@ func (s *System) audioOpen() {
 		}
 		s.audioContext.Activate()
 		go s.soundWrite()
+	} else {
+		s.errLog.Println("Cant open audio device it was nil")
 	}
 }
 func (s *System) soundWrite() {

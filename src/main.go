@@ -155,6 +155,7 @@ func main() {
 	]
 }
 `, "\n"), "\r\n"))
+
 	tmp := struct {
 		HelperMax              int32
 		PlayerProjectileMax    int
@@ -195,8 +196,24 @@ func main() {
 		XinputTriggerSensitivity   float32
 		WindowMainIconLocation     []string
 	}{}
+
+	
+
+
+
+	matcfg:= []byte(strings.Join(strings.Split(`{
+		"SoundDevice": "",
+		"Headless": false
+	}`, "\n"), "\r\n"))
+
+	matchConfigStruct := struct {
+		SoundDevice string
+		Headless bool
+	}{}
+
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"
+	const matchConfig  = "data/match_config.json"
 	if bytes, err := ioutil.ReadFile(configFile); err != nil {
 		f, err := os.Create(configFile)
 		chk(err)
@@ -209,6 +226,23 @@ func main() {
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
+
+	if bytes, err := ioutil.ReadFile(matchConfig); err != nil {
+		f, err := os.Create(matchConfig)
+		chk(err)
+		f.Write(matcfg)
+		chk(f.Close())
+	} else {
+		if len(bytes) >= 3 &&
+			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
+			bytes = bytes[3:]
+		}
+		chk(json.Unmarshal(bytes, &matchConfigStruct))
+	}
+
+	fmt.Print("Setting audio device to: " + matchConfigStruct.SoundDevice)
+	sys.targetAudioDevice = matchConfigStruct.SoundDevice
+	sys.headless = matchConfigStruct.Headless
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.helperMax = tmp.HelperMax
