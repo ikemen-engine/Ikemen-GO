@@ -33,10 +33,19 @@ echo "Building mac binary..."
 docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
 
+# We copy the Windres files so we can have a nice icon files
+cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_Cylia_x64.syso'
+
 echo "Building windows x64 binary..."
 docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
 
+# And we delete the x64 and copy the x64 one.
+rm 'src/Ikemen_Cylia_x64.syso'
+cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_Cylia_x64.syso'
+
 echo "Building windows x86 binary..."
 docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev-gacel:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
+
+rm 'src/Ikemen_Cylia_x86.syso'
