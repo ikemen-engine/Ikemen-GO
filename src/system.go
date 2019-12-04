@@ -251,6 +251,7 @@ type System struct {
 	wavVolume               int
 	bgmVolume               int
 	AudioDucking            bool
+	windowTitle             string
 	//FLAC_FrameWait          int
 
 	controllerStickSensitivity float32
@@ -284,10 +285,10 @@ func (s *System) init(w, h int32) *lua.LState {
 	var err error
 	if s.fullscreen {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", glfw.GetPrimaryMonitor(), nil)
+			s.windowTitle, glfw.GetPrimaryMonitor(), nil)
 	} else {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", nil, nil)
+			s.windowTitle, nil, nil)
 	}
 	chk(err)
 	s.window.MakeContextCurrent()

@@ -78,6 +78,7 @@ func main() {
 	defer glfw.Terminate()
 	defcfg := []byte(strings.Join(strings.Split(
 `{
+	"WindowTitle": "Ikemen GO",
 	"HelperMax": 56,
 	"PlayerProjectileMax": 256,
 	"ExplodMax": 512,
@@ -194,6 +195,7 @@ func main() {
 		ControllerStickSensitivity float32
 		XinputTriggerSensitivity   float32
 		WindowMainIconLocation     []string
+		WindowTitle                string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"
@@ -211,6 +213,7 @@ func main() {
 	}
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.windowTitle = tmp.WindowTitle
 	sys.helperMax = tmp.HelperMax
 	sys.playerProjectileMax = tmp.PlayerProjectileMax
 	sys.explodMax = tmp.ExplodMax
