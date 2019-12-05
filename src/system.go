@@ -17,13 +17,13 @@ import (
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/timshannon/go-openal/openal"
 	lua "github.com/yuin/gopher-lua"
 )
 
 const (
-	MaxSimul        = 8
+	MaxSimul        = 32
 	MaxAttachedChar = 2
 	FPS             = 60
 	P1P3Dist        = 25
@@ -66,7 +66,7 @@ var sys = System {
 	keyInput:              glfw.KeyUnknown,
 	keyString:             "",
 	comboExtraFrameWindow: 1,
-	FLAC_FrameWait:       -1,
+	//FLAC_FrameWait:       -1,
 	// Localcoord sceenpack
 	luaSpriteScale:        1,
 	luaSmallPortraitScale: 1,
@@ -119,7 +119,7 @@ type System struct {
 	aiInput                 [MaxSimul*2 + MaxAttachedChar]AiInput
 	keyConfig               []KeyConfig
 	JoystickConfig          []KeyConfig
-	com                     [MaxSimul*2 + MaxAttachedChar]int32
+	com                     [MaxSimul*2 + MaxAttachedChar]float32
 	autolevel               bool
 	home                    int
 	gameTime                int32
@@ -251,7 +251,8 @@ type System struct {
 	wavVolume               int
 	bgmVolume               int
 	AudioDucking            bool
-	FLAC_FrameWait          int
+	windowTitle             string
+	//FLAC_FrameWait          int
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32
@@ -284,10 +285,10 @@ func (s *System) init(w, h int32) *lua.LState {
 	var err error
 	if s.fullscreen {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", glfw.GetPrimaryMonitor(), nil)
+			s.windowTitle, glfw.GetPrimaryMonitor(), nil)
 	} else {
 		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			"Ikemen GO", nil, nil)
+			s.windowTitle, nil, nil)
 	}
 	chk(err)
 	s.window.MakeContextCurrent()
@@ -473,12 +474,12 @@ func (s *System) soundWrite() {
 			}
 		}
 
-		if s.FLAC_FrameWait >= 0 {
-			if s.FLAC_FrameWait == 0 {
-				s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
-			}
-			s.FLAC_FrameWait--
-		}
+		//if s.FLAC_FrameWait >= 0 {
+		//	if s.FLAC_FrameWait == 0 {
+		//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
+		//	}
+		//	s.FLAC_FrameWait--
+		//}
 	}
 	src.Delete()
 	openal.NullContext.Activate()
@@ -765,7 +766,7 @@ func (s *System) commandUpdate() {
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
-					c.cmd[0].Input(c.key, int32(c.facing), float32(sys.com[i])) {
+					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
 					hp := c.hitPause()
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
@@ -786,7 +787,7 @@ func (s *System) commandUpdate() {
 				cc := int32(-1)
 				// AI Scaling
 				// TODO: Balance AI Scaling
-				if r.roundState() == 2 && RandF32(0, float32(sys.com[i])/2+32) > 32 {
+				if r.roundState() == 2 && RandF32(0, sys.com[i]/2+32) > 32 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
 				} else {
 					cc = -1

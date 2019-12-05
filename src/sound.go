@@ -12,7 +12,7 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
-	"github.com/faiface/beep/flac"
+	//"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
@@ -268,9 +268,9 @@ func (bgm *Bgm) IsMp3() bool {
 	return bgm.IsFormat(".mp3")
 }
 
-func (bgm *Bgm) IsFLAC() bool {
-	return bgm.IsFormat(".flac")
-}
+//func (bgm *Bgm) IsFLAC() bool {
+//	return bgm.IsFormat(".flac")
+//}
 
 func (bgm *Bgm) IsWAVE() bool {
 	return bgm.IsFormat(".wav")
@@ -301,8 +301,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.ReadVorbis(loop, bgmVolume)
 	} else if bgm.IsMp3() {
 		bgm.ReadMp3(loop, bgmVolume)
-	} else if bgm.IsFLAC() {
-		bgm.ConvertFLAC(loop, bgmVolume)
+	//} else if bgm.IsFLAC() {
+	//	bgm.ConvertFLAC(loop, bgmVolume)
 	} else if bgm.IsWAVE() {
 		bgm.ReadWav(loop, bgmVolume)
 	}
@@ -320,6 +320,7 @@ func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
 	bgm.ReadFormat(format, loop, bgmVolume)
 }
 
+/*
 func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := flac.Decode(f)
@@ -333,6 +334,7 @@ func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 }
 
 // SCREW THE FLAC.SEEK FUNCTION, IT DOES NOT WORK SO WE ARE GOING TO CONVERT THIS TO WAV
+// Update: Now the flac dependecy broke. (-_-)
 func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
 	// We open the flac
 	f1, _ := os.Open(bgm.filename)
@@ -355,6 +357,7 @@ func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
 
 	sys.FLAC_FrameWait = 120
 }
+*/
 
 func (bgm *Bgm) PlayMemAudio(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)

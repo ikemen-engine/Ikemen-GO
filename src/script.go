@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -285,6 +285,12 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebarOffsetX = float32(numArg(l, 1))
 		return 0
 	})
+
+	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
+		sys.windowTitle = string(strArg(l, 1))
+		sys.window.SetTitle(sys.windowTitle)
+		return 0
+	})
 }
 
 // System Script
@@ -504,10 +510,16 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setCom", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
+		ailv := float32(numArg(l, 2))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
-		sys.com[pn-1] = Max(0, int32(numArg(l, 2)))
+		if ailv > 0 {
+			sys.com[pn-1] = ailv
+		} else {
+			sys.com[pn-1] = 0
+		}
+	
 		return 0
 	})
 	luaRegister(l, "setAutoLevel", func(*lua.LState) int {
@@ -1212,23 +1224,29 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(f))
 		return 6
 	})
+	luaRegister(l, "getGamepadName", func(*lua.LState) int {
+		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
+		return 1
+	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
-		for j := 0; j < 2; j++ {
-			if glfw.JoystickPresent(joystick[j]) {
-				axes := glfw.GetJoystickAxes(joystick[j])
-				btns := glfw.GetJoystickButtons(joystick[j])
+		for j := 0; j < 1; j++ {
+			if joystick[j].GetGamepadState != nil {
+				axes := joystick[j].GetAxes()
+				btns := joystick[j].GetButtons()
 				for i := range axes {
-					if glfw.GetJoystickName(joystick[j]) == "Xbox 360 Controller" { //Xbox360コントローラー判定
-						if axes[i] > 0 {
+					if joystick[j].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[j].GetGamepadName(), "XInput") { //Xbox360コントローラー判定
+						if axes[i] > 0.5 {
+							s = strconv.Itoa(-i*2 - 2)
+						} else if axes[i] < -0.5 && i < 4 {
 							s = strconv.Itoa(-i*2 - 1)
 						}
 					} else {
 						// PS4 Controller support
-						if glfw.GetJoystickName(joystick[j]) != "Wireless Controller" || !(i == 3 || i == 4) {
+						if joystick[j].GetGamepadName() != "Wireless Controller" || !(i == 3 || i == 4) {
 							if axes[i] < -0.2 {
 								s = strconv.Itoa(-i*2 - 1)
 							} else if axes[i] > 0.2 {
@@ -1252,7 +1270,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			if sys.keyInput == glfw.KeyInsert {
-				s, _ = sys.window.GetClipboardString()
+				s = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}
@@ -2251,7 +2269,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "setAILevel", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			level := int32(numArg(l, 1))
+			level := float32(numArg(l, 1))
 			sys.com[sys.debugWC.playerNo] = level
 			for _, c := range sys.chars[sys.debugWC.playerNo] {
 				if level == 0 {

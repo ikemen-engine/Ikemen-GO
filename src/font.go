@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/K4thos/glfont"
+	"github.com/Windblade-GR01/glfont"
 	findfont "github.com/flopp/go-findfont"
 )
 
@@ -351,8 +351,8 @@ func loadFntTtf(f *Fnt, fontfile string, filename string) {
 		panic(err)
 	}
 	f.ttf = ttf
-
-	//Create Ttf palettes
+	
+	//Create Ttf dummy palettes
 	f.palettes = make([][256]uint32, 1)
 	for i := 0; i < 256; i++ {
 		f.palettes[0][i] = 0
@@ -595,7 +595,7 @@ func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.ttf.Printf(ts.x, ts.y, ts.yscl, ts.align, false, ts.text) //x, y, scale, align, string, printf args
+			ts.fnt.ttf.Printf(ts.x, ts.y, (ts.xscl + ts.yscl) / 2, ts.align, true, ts.text) //x, y, scale, align, blend ,string, printf args
 		} else {
 			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
 		}

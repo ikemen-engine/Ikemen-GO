@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -78,6 +78,7 @@ func main() {
 	defer glfw.Terminate()
 	defcfg := []byte(strings.Join(strings.Split(
 `{
+	"WindowTitle": "Ikemen GO",
 	"HelperMax": 56,
 	"PlayerProjectileMax": 256,
 	"ExplodMax": 512,
@@ -104,12 +105,12 @@ func main() {
 	],
 	"JoystickConfig": [
 		{
-			"Joystick": 1,
-			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+			"Joystick": 0,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
 		},
 		{
 			"Joystick": 1,
-			"Buttons": ["-7", "-8", "-5", "-6", "0", "1", "4", "2", "3", "5", "7", "6", "8"]
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
 		}
 	],
 	"ControllerStickSensitivity": 0.4,
@@ -151,8 +152,7 @@ func main() {
 	"LocalcoordScalingType": 1,
 	"MSAA": false,
 	"WindowMainIconLocation": [
-		"script/Icons/16x16.png",
-		"script/Icons/24x24.png"
+		"script/Icons/IkemenCylia.png"
 	]
 }
 `, "\n"), "\r\n"))
@@ -195,6 +195,7 @@ func main() {
 		ControllerStickSensitivity float32
 		XinputTriggerSensitivity   float32
 		WindowMainIconLocation     []string
+		WindowTitle                string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	const configFile = "save/config.json"
@@ -212,6 +213,7 @@ func main() {
 	}
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.windowTitle = tmp.WindowTitle
 	sys.helperMax = tmp.HelperMax
 	sys.playerProjectileMax = tmp.PlayerProjectileMax
 	sys.explodMax = tmp.ExplodMax
