@@ -367,9 +367,6 @@ const (
 	OC_ex_groundangle
 	OC_ex_stagefrontedge
 	OC_ex_stagebackedge
-	OC_ex_const240p
-	OC_ex_const480p
-	OC_ex_const720p
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -401,6 +398,11 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+)
+const (
+	OC_ex_const240p OpCode = iota + 100
+	OC_ex_const480p
+	OC_ex_const720p
 	OC_ailevelf // float version of AILevel
 )
 const (

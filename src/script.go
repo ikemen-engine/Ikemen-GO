@@ -285,6 +285,12 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebarOffsetX = float32(numArg(l, 1))
 		return 0
 	})
+
+	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
+		sys.windowTitle = string(strArg(l, 1))
+		sys.window.SetTitle(sys.windowTitle)
+		return 0
+	})
 }
 
 // System Script
@@ -2291,11 +2297,5 @@ func debugScriptInit(l *lua.LState, file string) error {
 		l.Push(lua.LBool(sys.allowDebugKeys))
 		return 1
 	})
-	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
-		sys.windowTitle = string(strArg(l, 1))
-		sys.window.SetTitle(sys.windowTitle)
-		return 0
-	})
-
 	return l.DoFile(file)
 }
