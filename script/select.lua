@@ -2573,6 +2573,9 @@ local txt_credits = main.f_createTextImg(
 
 function select.f_continue()
 	continue = false
+	motif.continuebgdef.timer = 0
+	main.f_resetBG(motif.continue_screen, motif.continuebgdef)
+	animReset(motif.continue_screen.continue_anim_data)
 	playBGM(motif.music.continue_bgm, true, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart or "0", motif.music.continue_bgm_loopend or "0")
 	--textImgSetText(txt_credits, text[1])
 	main.f_cmdInput()
