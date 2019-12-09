@@ -367,6 +367,9 @@ const (
 	OC_ex_groundangle
 	OC_ex_stagefrontedge
 	OC_ex_stagebackedge
+	OC_ex_const240p
+	OC_ex_const480p
+	OC_ex_const720p
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
@@ -398,12 +401,7 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
-)
-const (
-	OC_ex_const240p OpCode = iota + 100
-	OC_ex_const480p
-	OC_ex_const720p
-	OC_ailevelf // float version of AILevel
+	OC_ex_ailevelf // float version of AILevel
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -979,8 +977,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Swap()
 		case OC_ailevel:
 			sys.bcStack.PushI(int32(c.aiLevel()))
-		case OC_ailevelf:
-			sys.bcStack.PushF(c.aiLevel())
 		case OC_alive:
 			sys.bcStack.PushB(c.alive())
 		case OC_anim:
@@ -1590,6 +1586,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.constp(640, sys.bcStack.Top().ToF())
 	case OC_ex_const720p:
 		*sys.bcStack.Top() = c.constp(960, sys.bcStack.Top().ToF())
+	case OC_ex_ailevelf:
+		sys.bcStack.PushF(c.aiLevel())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

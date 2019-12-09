@@ -698,6 +698,7 @@ func systemScriptInit(l *lua.LState) {
 					var err error
 					c.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
 					if err != nil {
+						c.sportrait = newSprite()
 						return nil
 					}
 					if len(c.pal) == 0 {
@@ -1112,6 +1113,9 @@ func systemScriptInit(l *lua.LState) {
 				LoadFile(&c.sprite, c.def, func(file string) error {
 					var err error
 					c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+					if err != nil {
+						c.lportrait = newSprite()
+					}
 					c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
 					if err != nil {
 						c.vsportrait = c.lportrait
@@ -1119,6 +1123,7 @@ func systemScriptInit(l *lua.LState) {
 					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
 					if err != nil {
 						c.vportrait = c.lportrait
+						return nil
 					}
 					if len(c.pal) == 0 {
 						c.pal, _ = selectablePalettes(file)
