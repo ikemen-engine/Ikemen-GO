@@ -1307,7 +1307,7 @@ for i = 1, #main.t_selChars do
 			main.t_bonusChars[#main.t_bonusChars + 1] = i - 1
 		end
 		--generate table with characters allowed to be random selected
-		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 then
+		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
 			main.t_randomChars[#main.t_randomChars + 1] = i - 1
 		end
 	end

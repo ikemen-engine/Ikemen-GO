@@ -1804,15 +1804,23 @@ type Select struct {
 	lportrait       [2]int16
 	vsportrait      [2]int16
 	vportrait       [2]int16
+	aportrait		map[string]Anim
 	cdefOverwrite   [MaxSimul * 2]string
 	sdefOverwrite   string
 }
 
 func newSelect() *Select {
-	return &Select{columns: 5, rows: 2, randomscl: [...]float32{1, 1},
-		cellsize: [...]float32{29, 29}, cellscale: [...]float32{1, 1},
-		selectedStageNo: -1, sportrait: [...]int16{9000, 0}, lportrait: [...]int16{9000, 1},
-		vsportrait: [...]int16{9000, 1}, vportrait: [...]int16{9000, 2}}
+	return &Select{columns: 5,
+					rows: 2,
+					randomscl: [...]float32{1, 1},
+					cellsize: [...]float32{29, 29},
+					cellscale: [...]float32{1, 1},
+					selectedStageNo: -1,
+					sportrait: [...]int16{9000, 0},
+					lportrait: [...]int16{9000, 1},
+					vsportrait: [...]int16{9000, 1},
+					vportrait: [...]int16{9000, 2},
+					aportrait: make(map[string]Anim)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i

@@ -1365,6 +1365,7 @@ function options.f_keyCfg(playerNo, controller)
 				break
 			--Buttons
 			else
+				main.SetScaleValues()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				local key = main.f_input(main.f_extractText(motif.option_info.input_text_key), motif.option_info, motif.optionbgdef, 'key')
 				if (controller == -1 and key ~= '') or (controller ~= -1 and tonumber(key) ~= nil) then
@@ -1378,6 +1379,7 @@ function options.f_keyCfg(playerNo, controller)
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				end
+				main.SetDefaultScale()
 			end
 			modified = 1
 			needReload = 1
