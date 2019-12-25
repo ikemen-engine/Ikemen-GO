@@ -1267,6 +1267,49 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
 		return 1
 	})
+	luaRegister(l, "getJoystickPresent", func(*lua.LState) int {
+		joy := int(numArg(l, 1))
+		present := glfw.JoystickPresent(joystick[joy])
+		l.Push(lua.LBool(present))
+		return 1
+	})
+	luaRegister(l, "getJoystickKey", func(*lua.LState) int {
+		joy := int(numArg(l, 1))
+		btns := glfw.GetJoystickButtons(joystick[joy])
+		if len(btns) == 0 {
+			return 0
+		}
+		for i := 0; i < len(btns); i++ {
+			if btns[i] == 1 {
+				l.Push(lua.LNumber(i))
+				return 1
+			}
+		}
+		axes := glfw.GetJoystickAxes(joystick[joy])
+		if len(axes) == 0 {
+			return 0
+		}
+		//following code is a mess, there's got to be way to get the correct value differently
+		c := -10
+		for i := 0; i < len(axes); i++ {
+			if axes[i] < -0.9 && axes[i] > -1 {
+				l.Push(lua.LNumber(-i * 2 - 1))
+				return 1
+			}
+			if axes[i] > 1 {
+				l.Push(lua.LNumber(-i * 2 - 2))
+				return 1
+			}
+			if axes[i] == -1 || (axes[i] > -1 && axes[i] < 1 && axes[i] != 0) {
+				c -= 1
+			}
+			if axes[i] == 1 {
+				l.Push(lua.LNumber(c))
+				return 1			
+			}
+		}
+		return 0
+	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
