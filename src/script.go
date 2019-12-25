@@ -297,6 +297,40 @@ func scriptCommonInit(l *lua.LState) {
 
 func systemScriptInit(l *lua.LState) {
 	scriptCommonInit(l)
+	luaRegister(l, "bgNew", func(*lua.LState) int {
+		sff := ""
+		if l.GetTop() >= 3 {
+			sff = strArg(l, 3)
+		}
+		num, err := loadBGDef(strArg(l, 1), strArg(l, 2), sff)
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
+		l.Push(lua.LNumber(num))
+		return 1
+	})
+	luaRegister(l, "bgDraw", func(*lua.LState) int {
+		top := false
+		var x, y, scl float32 = 0, 0, 1
+		if l.GetTop() >= 2 {
+			top = boolArg(l, 2)
+		}
+		if l.GetTop() >= 3 {
+			x = float32(numArg(l, 3))
+		}
+		if l.GetTop() >= 4 {
+			y = float32(numArg(l, 4))
+		}
+		if l.GetTop() >= 5 {
+			scl = float32(numArg(l, 5))
+		}
+		sys.bgdef[int(numArg(l, 1))].draw(top, x, y, scl)
+		return 0
+	})
+	luaRegister(l, "bgReset", func(*lua.LState) int {
+		sys.bgdef[int(numArg(l, 1))].reset()
+		return 0
+	})
 	luaRegister(l, "textImgNew", func(*lua.LState) int {
 		l.Push(newUserData(l, NewTextSprite()))
 		return 1
