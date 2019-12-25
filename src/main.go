@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/yuin/gopher-lua"
 	"io/ioutil"
 	"os"
-	"runtime"
-	"strings"
-	"syscall"
 	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
+
+	"github.com/go-gl/glfw/v3.3/glfw"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func init() {
@@ -34,6 +35,8 @@ func closeLog(f *os.File) {
 	f.Close()
 }
 func main() {
+	os.Mkdir("save", os.ModeSticky|0755)
+	os.Mkdir("save/replays", os.ModeSticky|0755)
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
@@ -43,16 +46,6 @@ func main() {
 			if match {
 				help, _ := regexp.MatchString("^-[h%?]", a)
 				if help {
-					modkernel32 := syscall.NewLazyDLL("kernel32.dll")
-					procAllocConsole := modkernel32.NewProc("AllocConsole")
-					syscall.Syscall(procAllocConsole.Addr(), 0, 0, 0, 0)
-					hout, err1 := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE)
-					hin, err2 := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)
-					if err1 != nil || err2 != nil { // nowhere to print the message
-						os.Exit(2)
-					}
-					os.Stdout = os.NewFile(uintptr(hout), "/dev/stdout")
-					os.Stdin = os.NewFile(uintptr(hin), "/dev/stdin")
 					fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
 					fmt.Println(" -h -?               Help")
 					fmt.Println(" -log <logfile>      Records match data to <logfile>")
@@ -83,63 +76,84 @@ func main() {
 	}
 	chk(glfw.Init())
 	defer glfw.Terminate()
-	defcfg := []byte(strings.Join(strings.Split(`{
-  "HelperMax":56,
-  "PlayerProjectileMax":50,
-  "ExplodMax":256,
-  "AfterImageMax":8,
-  "Attack.LifeToPowerMul":0.7,
-  "GetHit.LifeToPowerMul":0.6,
-  "Width":640,
-  "Height":480,
-  "Super.TargetDefenceMul":1.5,
-  "LifebarFontScale":1,
-  "System":"script/main.lua",
-  "KeyConfig":[{
-      "Joystick":-1,
-      "Buttons":["UP","DOWN","LEFT","RIGHT","z","x","c","a","s","d","RETURN","q","w"]
-    },{
-      "Joystick":-1,
-      "Buttons":["t","g","f","h","j","k","l","u","i","o","RSHIFT","LEFTBRACKET","RIGHTBRACKET"]
-    }],
-  "_comment":{
-    "_comment":"ジョイスティック (0番) の場合の KeyConfig",
-    "KeyConfig":[{
-        "Joystick":0,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-      },{
-        "Joystick":1,
-        "Buttons":["-7","-8","-5","-6","0","1","4","2","3","5","7","6","8"]
-      }]
-  },
-  "Motif":"data/system.def",
-  "CommonAir":"data/common.air",
-  "CommonCmd":"data/common.cmd",
-  "SimulMode":true,
-  "LifeMul":100,
-  "Team1VS2Life":120,
-  "TurnsRecoveryRate":300,
-  "ZoomActive":true,
-  "ZoomMin":0.75,
-  "ZoomMax":1.1,
-  "ZoomSpeed":1,
-  "RoundTime":99,
-  "NumTurns":4,
-  "NumSimul":4,
-  "NumTag":4,
-  "Difficulty":8,
-  "Credits":10,
-  "ListenPort":7500,
-  "ContSelection":true,
-  "AIRandomColor":true,
-  "AIRamping":true,
-  "AutoGuard":false,
-  "TeamPowerShare":false,
-  "TeamLifeShare":false,
-  "Fullscreen":false,
-  "AllowDebugKeys":true,
-  "IP":{
-  }
+	defcfg := []byte(strings.Join(strings.Split(
+`{
+	"WindowTitle": "Ikemen GO",
+	"HelperMax": 56,
+	"PlayerProjectileMax": 256,
+	"ExplodMax": 512,
+	"AfterImageMax": 128,
+	"MasterVolume": 80,
+	"WavVolume": 80,
+	"BgmVolume": 80,
+	"Attack.LifeToPowerMul": 0.7,
+	"GetHit.LifeToPowerMul": 0.6,
+	"Width": 640,
+	"Height": 480,
+	"Super.TargetDefenceMul": 1.5,
+	"LifebarFontScale": 1,
+	"System": "script/main.lua",
+	"KeyConfig": [
+		{
+			"Joystick": -1,
+			"Buttons": ["UP", "DOWN", "LEFT", "RIGHT", "z", "x", "c", "a", "s", "d", "RETURN", "q", "w"]
+		},
+		{
+			"Joystick": -1,
+			"Buttons": ["t", "g", "f", "h", "j", "k", "l", "u", "i", "o", "RSHIFT", "LEFTBRACKET", "RIGHTBRACKET"]
+		}
+	],
+	"JoystickConfig": [
+		{
+			"Joystick": 0,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+		},
+		{
+			"Joystick": 1,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+		}
+	],
+	"ControllerStickSensitivity": 0.4,
+	"XinputTriggerSensitivity": 0,
+	"Motif": "data/system.def",
+	"CommonAir": "data/common.air",
+	"CommonCmd": "data/common.cmd",
+	"SimulMode": true,
+	"LifeMul": 100,
+	"Team1VS2Life": 120,
+	"TurnsRecoveryRate": 300,
+	"ZoomActive": false,
+	"ZoomMin": 0.75,
+	"ZoomMax": 1.1,
+	"ZoomSpeed": 1,
+	"RoundTime": 99,
+	"SingleTeamMode": true,
+	"NumTurns": 4,
+	"NumSimul": 4,
+	"NumTag": 4,
+	"Difficulty": 8,
+	"Credits": 10,
+	"ListenPort": 7500,
+	"IP": {
+		
+	},
+	"ContSelection": true,
+	"AIRandomColor": true,
+	"AIRamping": true,
+	"AutoGuard": false,
+	"TeamPowerShare": false,
+	"TeamLifeShare": false,
+	"Fullscreen": false,
+	"AudioDucking": false,
+	"QuickLaunch": 0,
+	"AllowDebugKeys": true,
+	"ComboExtraFrameWindow": 1,
+	"PostProcessingShader": 0,
+	"LocalcoordScalingType": 1,
+	"MSAA": false,
+	"WindowMainIconLocation": [
+		"script/Icons/IkemenCylia.png"
+	]
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
@@ -147,6 +161,9 @@ func main() {
 		PlayerProjectileMax    int
 		ExplodMax              int
 		AfterImageMax          int32
+		MasterVolume           int
+		WavVolume              int
+		BgmVolume              int
 		Attack_LifeToPowerMul  float32 `json:"Attack.LifeToPowerMul"`
 		GetHit_LifeToPowerMul  float32 `json:"GetHit.LifeToPowerMul"`
 		Width                  int32
@@ -158,16 +175,30 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumTag         int
-		TeamLifeShare  bool
-		AIRandomColor  bool
-		Fullscreen     bool
-		AllowDebugKeys bool
-		CommonAir      string
-		CommonCmd      string
+		JoystickConfig []struct {
+			Joystick int
+			Buttons  []interface{}
+		}
+		NumTag                     int
+		TeamLifeShare              bool
+		AIRandomColor              bool
+		ComboExtraFrameWindow      int32
+		Fullscreen                 bool
+		AudioDucking               bool
+		AllowDebugKeys             bool
+		MSAA                       bool
+		PostProcessingShader       int32
+		LocalcoordScalingType      int32
+		CommonAir                  string
+		CommonCmd                  string
+		QuickLaunch                int
+		ControllerStickSensitivity float32
+		XinputTriggerSensitivity   float32
+		WindowMainIconLocation     []string
+		WindowTitle                string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
-	const configFile = "data/config.json"
+	const configFile = "save/config.json"
 	if bytes, err := ioutil.ReadFile(configFile); err != nil {
 		f, err := os.Create(configFile)
 		chk(err)
@@ -180,6 +211,9 @@ func main() {
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
+	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.windowTitle = tmp.WindowTitle
 	sys.helperMax = tmp.HelperMax
 	sys.playerProjectileMax = tmp.PlayerProjectileMax
 	sys.explodMax = tmp.ExplodMax
@@ -187,21 +221,28 @@ func main() {
 	sys.attack_LifeToPowerMul = tmp.Attack_LifeToPowerMul
 	sys.getHit_LifeToPowerMul = tmp.GetHit_LifeToPowerMul
 	sys.super_TargetDefenceMul = tmp.Super_TargetDefenceMul
+	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	sys.lifebarFontScale = tmp.LifebarFontScale
+	sys.quickLaunch = tmp.QuickLaunch
+	sys.windowMainIconLocation = tmp.WindowMainIconLocation
+	// For debug testing letting this here comented because it could be usefull in the future.
+	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
+	sys.masterVolume = tmp.MasterVolume
+	sys.wavVolume = tmp.WavVolume
+	sys.bgmVolume = tmp.BgmVolume
+	sys.AudioDucking = tmp.AudioDucking
 	stoki := func(key string) int {
 		return int(StringToKey(key))
+	}
+	Atoi := func(key string) int {
+		var i int
+		i, _ = strconv.Atoi(key)
+		return i
 	}
 	for a := 0; a < tmp.NumTag; a++ {
 		for _, kc := range tmp.KeyConfig {
 			b := kc.Buttons
-			if kc.Joystick >= 0 {
-				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
-					int(b[0].(float64)), int(b[1].(float64)),
-					int(b[2].(float64)), int(b[3].(float64)),
-					int(b[4].(float64)), int(b[5].(float64)), int(b[6].(float64)),
-					int(b[7].(float64)), int(b[8].(float64)), int(b[9].(float64)),
-					int(b[10].(float64)), int(b[11].(float64)), int(b[12].(float64))})
-			} else {
+			if kc.Joystick < 0 {
 				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
 					stoki(b[0].(string)), stoki(b[1].(string)),
 					stoki(b[2].(string)), stoki(b[3].(string)),
@@ -210,9 +251,24 @@ func main() {
 					stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
 			}
 		}
+		for _, jc := range tmp.JoystickConfig {
+			b := jc.Buttons
+			if jc.Joystick >= 0 {
+				sys.JoystickConfig = append(sys.JoystickConfig, KeyConfig{jc.Joystick,
+					Atoi(b[0].(string)), Atoi(b[1].(string)),
+					Atoi(b[2].(string)), Atoi(b[3].(string)),
+					Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
+					Atoi(b[7].(string)), Atoi(b[8].(string)), Atoi(b[9].(string)),
+					Atoi(b[10].(string)), Atoi(b[11].(string)), Atoi(b[12].(string))})
+			}
+		}
 	}
+	
 	sys.teamLifeShare = tmp.TeamLifeShare
 	sys.fullscreen = tmp.Fullscreen
+	sys.PostProcessingShader = tmp.PostProcessingShader
+	sys.MultisampleAntialiasing = tmp.MSAA
+	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
 	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)
@@ -225,8 +281,8 @@ func main() {
 		fmt.Print(err)
 	}
 	sys.commonCmd = string("\n") + string(cmd)
-	os.Mkdir("debug", os.ModeSticky|0755)
-	log := createLog("debug/log.txt")
+	//os.Mkdir("debug", os.ModeSticky|0755)
+	log := createLog("Ikemen.txt")
 	defer closeLog(log)
 	l := sys.init(tmp.Width, tmp.Height)
 	if err := l.DoFile(tmp.System); err != nil {

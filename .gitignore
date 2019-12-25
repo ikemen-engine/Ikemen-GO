@@ -1,0 +1,12 @@
+# IDE Files
+.vscode/*
+.idea/*
+
+# Binaries
+bin/*
+
+# Compilation files
+go/*
+src/*.syso
+releaseconf.xml.backup
+Ikemen_GO.xml.backup

@@ -54,14 +54,14 @@ local function f_play(t)
 		if k >= t.scenedef.startscene then
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if esc() or main.f_btnPalNo(main.p1Cmd) > 0 then
+				if esc() or main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
 					refresh()
 					return
 				end
 				--play bgm
 				if i == 0 and t.scene[k].bgm ~= nil then
-					playBGM(t.scene[k].bgm)
+					playBGM(t.scene[k].bgm, true, t.scene[k].bgm_loop, t.scene[k].bgm_volume, t.scene[k].bgm_loopstart or "0", t.scene[k].bgm_loopend or "0")
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
@@ -75,7 +75,7 @@ local function f_play(t)
 				animDraw(t.scene[k].clearcolor_data)
 				--draw layerno = 0 backgrounds
 				if t.scene[k].bg_name ~= '' then
-					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 0, i)
+					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 0, i, t.info.localcoord)
 				end
 				--loop through layers in order
 				for k2, v2 in main.f_sortKeys(t.scene[k].layer) do
@@ -92,10 +92,10 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_data,
 								t.scene[k].layer[k2].text,
 								t.scene[k].layer[k2].text_timer,
-								t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-								t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-								t.scene[k].layer[k2].text_spacing,
-								t.scene[k].layer[k2].text_delay,
+								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
+								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
+								t.scene[k].layer[k2].text_spacing[2],
+								t.scene[k].layer[k2].textdelay,
 								t.scene[k].layer[k2].text_length
 							)
 							end
@@ -103,7 +103,7 @@ local function f_play(t)
 				end
 				--draw layerno = 1 backgrounds
 				if t.scene[k].bg_name ~= '' then
-					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 1, i)
+					main.f_drawBG(t.scene[k].bg_data, t[t.scene[k].bg_name .. 'def'], 1, i, t.info.localcoord)
 				end
 				--fadein
 				if i <= t.scene[k].fadein_time then
@@ -115,15 +115,26 @@ local function f_play(t)
 					animDraw(t.scene[k].fadeout_data)
 					animUpdate(t.scene[k].fadeout_data)
 				end
+				if main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton <= 0 then
+					main.f_cmdInput()
+					refresh()
+					do
+						break
+					end
+				end
 				main.f_cmdInput()
 				refresh()
 			end
 		end
 	end
-	playBGM('')
+	playBGM('', true, 1, 100, "0", "0")
 end
 
 local function f_parse(path)
+	-- Intro haves his own localcoord function
+	-- So we disable it
+	main.SetDefaultScale()
+	
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {}
@@ -142,7 +153,7 @@ local function f_parse(path)
 	local t_default =
 	{
 		info = {localcoord = {320, 240}},
-		scenedef = {spr = '', snd = '', font = {[1] = 'font/f-6x9.fnt'}, font_height = {}, startscene = 0, font_data = {}},
+		scenedef = {spr = '', snd = '', font = {[1] = 'font/f-6x9.fnt'}, font_height = {}, startscene = 0, skipbutton = 1, font_data = {}},
 		scene = {},
 		ctrldef = {}
 	}
@@ -156,6 +167,9 @@ local function f_parse(path)
 			if row:match('.+ctrldef') then --matched ctrldef start
 				bgctrl = row
 				bgctrl_match = bgctrl:match('^(.-ctrl)def')
+				if t.ctrldef[bgdef .. 'def'][bgctrl] ~= nil then --Ctrldef名の重複を避ける
+					bgctrl = bgctrl..tostring(os.clock())
+				end
 				t.ctrldef[bgdef .. 'def'][bgctrl] = {}
 				t.ctrldef[bgdef .. 'def'][bgctrl].ctrl = {}
 				pos = t.ctrldef[bgdef .. 'def'][bgctrl]
@@ -221,6 +235,7 @@ local function f_parse(path)
 				t.scene[row] = {}
 				pos = t.scene[row]
 				pos.layer = {}
+				pos.sound = {}
 				t_default.scene[row] =
 				{
 					end_time = 0,
@@ -234,6 +249,9 @@ local function f_parse(path)
 					sound = {},
 					--bgm = '',
 					bgm_loop = 0,
+					bgm_volume = 100,
+					bgm_loopstart = nil,
+					bgm_loopend = nil,
 					--window = {0, 0, 0, 0},
 					bg_name = ''
 				}
@@ -277,9 +295,9 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 1, nil, nil, nil},
+								font = {1, 0, 0, nil, nil, nil},
 								text_spacing = {0, 15}, --Ikemen feature
-								text_delay = 2, --Ikemen feature
+								textdelay = 2,
 								text_length = 50, --Ikemen feature
 								text_timer = 0, --Ikemen feature
 								offset = {0, 0},
@@ -324,7 +342,7 @@ local function f_parse(path)
 				end
 			else --only valid lines left are animations
 				line = line:lower()
-				local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart')
+				local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('^%s*interpolate offset') or line:match('^%s*interpolate angle') or line:match('^%s*interpolate scale') or line:match('^%s*interpolate blend')
 				if value ~= nil then
 					value = value:gsub(',%s*,', ',0,') --add missing values
 					value = value:gsub(',%s*$', '')
@@ -392,8 +410,12 @@ local function f_parse(path)
 				elseif main.f_fileExists('font/' .. t.scenedef.font[k]) then
 					t.scenedef.font[k] = 'font/' .. t.scenedef.font[k]
 				end
+				t.scenedef.font_data[k] = fontNew(t.scenedef.font[k])
+				t.scenedef.font[k] = {}
+				t.scenedef.font[k][1] = k
+				t.scenedef.font[k][2] = 0
+				t.scenedef.font[k][3] = 0
 			end
-			t.scenedef.font_data[k] = fontNew(t.scenedef.font[k])
 		end
 	end
 	--loop through scenes
@@ -431,7 +453,7 @@ local function f_parse(path)
 			local t_bgdef = t[t.scene[k].bg_name .. 'def']
 			local prev_k2 = ''
 			for k2, v2 in pairs(t_bgdef) do --loop through table keys
-				if t_bgdef[k2].type ~= nil then
+				if type(k2) == "number" and t_bgdef[k2].type ~= nil then
 					t_bgdef[k2].type = t_bgdef[k2].type:lower()
 					--mugen ignores delta = 0 (defaults to 1)
 					if t_bgdef[k2].delta[1] == 0 then t_bgdef[k2].delta[1] = 1 end
@@ -466,10 +488,10 @@ local function f_parse(path)
 					if t_bgdef[k2].window ~= nil then
 						animSetWindow(
 							anim,
-							t_bgdef[k2].window[1],
-							t_bgdef[k2].window[2],
-							t_bgdef[k2].window[3] - t_bgdef[k2].window[1] + 1,
-							t_bgdef[k2].window[4] - t_bgdef[k2].window[2] + 1
+							t_bgdef[k2].window[1] * 320/t.info.localcoord[1],
+							t_bgdef[k2].window[2] * 240/t.info.localcoord[2],
+							(t_bgdef[k2].window[3] - t_bgdef[k2].window[1] + 1)* 320/t.info.localcoord[1],
+							(t_bgdef[k2].window[4] - t_bgdef[k2].window[2] + 1) * 240/t.info.localcoord[2]
 						)
 					else
 						animSetWindow(anim, 0, 0, t.info.localcoord[1], t.info.localcoord[2])
@@ -516,14 +538,17 @@ local function f_parse(path)
 			--text
 			if t_layer[k2].text ~= '' then
 				t.scene[k].layer[k2].text_data = main.f_createTextImg(
-					t.scenedef.font_data[t.scenedef.font[t_layer[k2].font][1]],
-					t.scenedef.font[t_layer[k2].font][2],
-					t.scenedef.font[t_layer[k2].font][3],
+					t.scenedef.font_data[t.scenedef.font[t_layer[k2].font[1]][1]],
+					t_layer[k2].font[2],
+					t_layer[k2].font[3],
 					t_layer[k2].text,
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
 					320/t.info.localcoord[1],
-					240/t.info.localcoord[2]
+					240/t.info.localcoord[2],
+					t_layer[k2].font[4],
+					t_layer[k2].font[5],
+					t_layer[k2].font[6]
 				)
 			end
 			--endtime
@@ -533,6 +558,11 @@ local function f_parse(path)
 		end
 	end
 	--t.ctrldef = nil
+	
+	-- Finished loading intro
+	-- Re-enabled custom scaling
+	main.SetScaleValues()
+	
 	return t
 end
 

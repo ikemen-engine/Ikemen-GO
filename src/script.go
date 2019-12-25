@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"runtime"
+	"runtime/debug"
+	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/yuin/gopher-lua"
-	"math/rand"
+	"github.com/go-gl/glfw/v3.3/glfw"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
@@ -90,6 +92,12 @@ func (cli *commandLineInput) GetStr() string {
 // Script Common
 
 func scriptCommonInit(l *lua.LState) {
+	// A bind to GO's SetGCPercent. A negative percentage disables garbage collection.
+	luaRegister(l, "SetGCPercent", func(*lua.LState) int {
+		debug.SetGCPercent(int(numArg(l, 1)))
+		return 1
+	})
+	//----------------------------------------------------------------
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
 		sff, err := loadSff(strArg(l, 1), false)
 		if err != nil {
@@ -143,7 +151,7 @@ func scriptCommonInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		if cl.Input(int(numArg(l, 2))-1, 1) {
+		if cl.Input(int(numArg(l, 2))-1, 1, 0) {
 			cl.Step(1, false, false, 0)
 		}
 		return 0
@@ -193,7 +201,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		sys.bgm.Open(strArg(l, 1))
+		sys.bgm.Open(strArg(l, 1), boolArg(l, 2), int(numArg(l, 3)), int(numArg(l, 4)), int(Atoi(strArg(l, 5))), int(Atoi(strArg(l, 6))))
 		return 0
 	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
@@ -206,7 +214,7 @@ func scriptCommonInit(l *lua.LState) {
 	})
 	luaRegister(l, "setAutoguard", func(l *lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2 {
+		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
 		sys.autoguard[pn-1] = boolArg(l, 2)
@@ -242,6 +250,45 @@ func scriptCommonInit(l *lua.LState) {
 	})
 	luaRegister(l, "setLifeShare", func(l *lua.LState) int {
 		sys.teamLifeShare = boolArg(l, 1)
+		return 0
+	})
+
+	// All the lua sprites will be caled by this value
+	luaRegister(l, "setLuaSpriteScale", func(l *lua.LState) int {
+		sys.luaSpriteScale = float64(numArg(l, 1))
+		return 0
+	})
+
+	// All the lua sprites will be caled by this value
+	luaRegister(l, "setLuaSpriteOffsetX", func(l *lua.LState) int {
+		sys.luaSpriteOffsetX = float64(numArg(l, 1))
+		return 0
+	})
+
+	// All the lua sprites will add this value to his position Y
+	luaRegister(l, "setLuaSmallPortraitScale", func(l *lua.LState) int {
+		sys.luaSmallPortraitScale = float32(numArg(l, 1))
+		return 0
+	})
+	// All the lua sprites will add this value to his position Y
+	luaRegister(l, "setLuaBigPortraitScale", func(l *lua.LState) int {
+		sys.luaBigPortraitScale = float32(numArg(l, 1))
+		return 0
+	})
+
+	// Lifebar localcoord support
+	luaRegister(l, "setLuaLifebarScale", func(l *lua.LState) int {
+		sys.lifebarScale = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLifebarOffsetX", func(l *lua.LState) int {
+		sys.lifebarOffsetX = float32(numArg(l, 1))
+		return 0
+	})
+
+	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
+		sys.windowTitle = string(strArg(l, 1))
+		sys.window.SetTitle(sys.windowTitle)
 		return 0
 	})
 }
@@ -290,12 +337,22 @@ func systemScriptInit(l *lua.LState) {
 		ts.text = strArg(l, 2)
 		return 0
 	})
+	luaRegister(l, "textImgSetColor", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
+		return 0
+	})
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.x, ts.y = float32(numArg(l, 2)), float32(numArg(l, 3))
+		if boolArg(l, 3) {
+			ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetScale", func(*lua.LState) int {
@@ -303,7 +360,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.xscl, ts.yscl = float32(numArg(l, 2)), float32(numArg(l, 3))
+		ts.xscl, ts.yscl = float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "textImgDraw", func(*lua.LState) int {
@@ -332,7 +389,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetPos(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animAddPos", func(*lua.LState) int {
@@ -340,7 +397,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.AddPos(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.AddPos(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animSetTile", func(*lua.LState) int {
@@ -381,7 +438,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		a.SetScale(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animSetWindow", func(*lua.LState) int {
@@ -389,8 +446,8 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetWindow(float32(numArg(l, 2)), float32(numArg(l, 3)),
-			float32(numArg(l, 4)), float32(numArg(l, 5)))
+		a.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
+			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "animUpdate", func(*lua.LState) int {
@@ -422,7 +479,7 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("すでに通信中です。")
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
-		sys.netInput = NewNetInput("replay/netplay.replay")
+		sys.netInput = NewNetInput("save/replays/netplay.replay")
 		if host := strArg(l, 1); host != "" {
 			sys.netInput.Connect(host, sys.listenPort)
 		} else {
@@ -453,10 +510,16 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setCom", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2 {
+		ailv := float32(numArg(l, 2))
+		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
 		}
-		sys.com[pn-1] = Max(0, int32(numArg(l, 2)))
+		if ailv > 0 {
+			sys.com[pn-1] = ailv
+		} else {
+			sys.com[pn-1] = 0
+		}
+	
 		return 0
 	})
 	luaRegister(l, "setAutoLevel", func(*lua.LState) int {
@@ -539,19 +602,19 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", tn)
+			l.RaiseError("The team number (%v) is invalid. / チーム番号(%v)が不正です。", tn)
 		}
 		tm := TeamMode(numArg(l, 2))
 		if tm < 0 || tm > TM_LAST {
-			l.RaiseError("モード番号(%v)が不正です。", tm)
+			l.RaiseError("The mode number (%v) is invalid. / モード番号(%v)が不正です。", tm)
 		}
 		nt := int32(numArg(l, 3))
 		if nt < 1 || nt > MaxSimul {
-			l.RaiseError("チーム人数(%v)が不正です。", nt)
+			l.RaiseError("The team number (% v) is incorrect. / チーム人数(%v)が不正です。", nt)
 		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
 		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
-		if tm == TM_Simul && nt == 1 {
+		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
 		}
 		return 0
@@ -588,6 +651,12 @@ func systemScriptInit(l *lua.LState) {
 				} else {
 					ret = 1
 				}
+			case TM_Tag:
+				if len(sys.sel.selected[tn-1]) >= int(sys.numSimul[tn-1]) {
+					ret = 2
+				} else {
+					ret = 1
+				}
 			}
 		}
 		l.Push(lua.LNumber(ret))
@@ -616,7 +685,27 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.frameSkip {
 			c := sys.sel.GetChar(n)
 			if c != nil && c.lportrait != nil {
-				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal)
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.lportrait.PalTex
+				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil, paltex)
+			}
+			//QuickLaunch用キャラセレポートレイト読み込み
+			if c.sportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					c.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
+					if err != nil {
+						c.sportrait = newSprite()
+						return nil
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
 			}
 		}
 		return 0
@@ -634,13 +723,19 @@ func systemScriptInit(l *lua.LState) {
 					offset++
 					if c != nil {
 						if c.sportrait != nil {
-							c.sportrait.Draw(x+float32(i)*sys.sel.cellsize[0],
-								y+float32(j)*sys.sel.cellsize[1], sys.sel.cellscale[0],
-								sys.sel.cellscale[1], c.sportrait.Pal)
+							paltex := c.sportrait.PalTex
+							c.sportrait.Draw((x + float32(i)*sys.sel.cellsize[0]),
+								(y+float32(j)*sys.sel.cellsize[1])/float32(sys.luaSpriteScale),
+								(sys.sel.cellscale[0]*c.portrait_scale)/float32(sys.luaSpriteScale),
+								(sys.sel.cellscale[1]*c.portrait_scale)/float32(sys.luaSpriteScale),
+								c.sportrait.Pal, nil, paltex)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
+							paltex := sys.sel.randomspr.PalTex
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
-								y+float32(j)*sys.sel.cellsize[1], sys.sel.randomscl[0],
-								sys.sel.randomscl[1], sys.sel.randomspr.Pal)
+								y+float32(j)*sys.sel.cellsize[1]/float32(sys.luaSpriteScale),
+								sys.sel.randomscl[0]/float32(sys.luaSpriteScale),
+								sys.sel.randomscl[1]/float32(sys.luaSpriteScale),
+								sys.sel.randomspr.Pal, nil, paltex)
 						}
 					}
 				}
@@ -736,7 +831,10 @@ func systemScriptInit(l *lua.LState) {
 					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
 						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
+
+					fa.scale = sys.cgi[i].portraitscale
 				}
+
 			}
 			runtime.GC()
 			return nil
@@ -804,7 +902,12 @@ func systemScriptInit(l *lua.LState) {
 				}
 				winp := int32(0)
 				if sys.fight() {
-					sys.chars = [len(sys.chars)][]*Char{}
+					for i, b := range sys.reloadCharSlot {
+						if b {
+							sys.chars[i] = []*Char{}
+							b = false
+						}
+					}
 					sys.loaderReset()
 					winp = -2
 				} else if sys.esc {
@@ -834,10 +937,10 @@ func systemScriptInit(l *lua.LState) {
 							tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
 							tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 							tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
-							tbl_roundNo.RawSetInt(p[0].playerNo + 1, tmp)
+							tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
 						}
 					}
-					tbl_chars.RawSetInt(int(sys.round - 1), tbl_roundNo)
+					tbl_chars.RawSetInt(int(sys.round-1), tbl_roundNo)
 				}
 				return winp, nil
 			}
@@ -867,7 +970,7 @@ func systemScriptInit(l *lua.LState) {
 				time := int32(0)
 				tbl_time := l.NewTable()
 				for k, v := range sys.timerCount {
-					tbl_time.RawSetInt(k + 1, lua.LNumber(v))
+					tbl_time.RawSetInt(k+1, lua.LNumber(v))
 					time = time + v
 				}
 				tbl.RawSetString("chars", tbl_chars)
@@ -875,13 +978,15 @@ func systemScriptInit(l *lua.LState) {
 				tbl.RawSetString("time", lua.LNumber(time))
 				tbl.RawSetString("roundTime", lua.LNumber(sys.roundTime))
 				tbl.RawSetString("winTeam", lua.LNumber(sys.winTeam))
-				tbl.RawSetString("lastRound", lua.LNumber(sys.round - 1))
+				tbl.RawSetString("lastRound", lua.LNumber(sys.round-1))
 				tbl.RawSetString("draws", lua.LNumber(sys.draws))
 				tbl.RawSetString("P1wins", lua.LNumber(sys.wins[0]))
 				tbl.RawSetString("P2wins", lua.LNumber(sys.wins[1]))
 				tbl.RawSetString("P1tmode", lua.LNumber(sys.tmode[0]))
 				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
 				sys.timerCount = []int32{}
+				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
+				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				return 2
@@ -974,7 +1079,12 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.frameSkip {
 			c := sys.sel.GetChar(n)
 			if c != nil && c.sportrait != nil {
-				c.sportrait.Draw(x, y, xscl, yscl, c.sportrait.Pal)
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.sportrait.PalTex
+				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex)
 			}
 		}
 		return 0
@@ -991,7 +1101,36 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.frameSkip {
 			c := sys.sel.GetChar(n)
 			if c != nil && c.vsportrait != nil {
-				c.vsportrait.Draw(x, y, xscl, yscl, c.vsportrait.Pal)
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.vsportrait.PalTex
+				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex)
+			}
+			//QuickLaunch用キャラセレポートレイト読み込み
+			if c.lportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+					if err != nil {
+						c.lportrait = newSprite()
+					}
+					c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+					if err != nil {
+						c.vsportrait = c.lportrait
+					}
+					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+					if err != nil {
+						c.vportrait = c.lportrait
+						return nil
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
+
 			}
 		}
 		return 0
@@ -1008,7 +1147,35 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.frameSkip {
 			c := sys.sel.GetChar(n)
 			if c != nil && c.vportrait != nil {
-				c.vportrait.Draw(x, y, xscl, yscl, c.vportrait.Pal)
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.vportrait.PalTex
+				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil, paltex)
+			}
+			if c.vportrait == nil {
+				LoadFile(&c.sprite, c.def, func(file string) error {
+					var err error
+					if c.lportrait == nil {
+						c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
+					}
+					if c.vsportrait == nil && c.lportrait != nil {
+						c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
+						if err != nil {
+							c.vsportrait = c.lportrait
+						}
+					}
+					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
+					if err != nil && c.lportrait != nil {
+						c.vportrait = c.lportrait
+					}
+					if len(c.pal) == 0 {
+						c.pal, _ = selectablePalettes(file)
+					}
+					return nil
+				})
+
 			}
 		}
 		return 0
@@ -1034,7 +1201,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		if len(pal) > 0 {
 			for k, v := range pal {
-				tbl.RawSetInt(k + 1, lua.LNumber(v))
+				tbl.RawSetInt(k+1, lua.LNumber(v))
 			}
 		} else {
 			tbl.RawSetInt(1, lua.LNumber(1))
@@ -1053,18 +1220,54 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
-		a, b, c, d := sys.sel.GetStageInfo(int(numArg(l, 1)))
+		a, b, c, d, e, f := sys.sel.GetStageInfo(int(numArg(l, 1)))
 		l.Push(lua.LString(a))
 		l.Push(lua.LString(b))
 		l.Push(lua.LString(c))
 		l.Push(lua.LString(d))
-		return 4
+		l.Push(lua.LString(e))
+		l.Push(lua.LString(f))
+		return 6
+	})
+	luaRegister(l, "getGamepadName", func(*lua.LState) int {
+		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
+		return 1
 	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
+		for j := 0; j < 1; j++ {
+			if joystick[j].GetGamepadState != nil {
+				axes := joystick[j].GetAxes()
+				btns := joystick[j].GetButtons()
+				for i := range axes {
+					if joystick[j].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[j].GetGamepadName(), "XInput") { //Xbox360コントローラー判定
+						if axes[i] > 0.5 {
+							s = strconv.Itoa(-i*2 - 2)
+						} else if axes[i] < -0.5 && i < 4 {
+							s = strconv.Itoa(-i*2 - 1)
+						}
+					} else {
+						// PS4 Controller support
+						if joystick[j].GetGamepadName() != "Wireless Controller" || !(i == 3 || i == 4) {
+							if axes[i] < -0.2 {
+								s = strconv.Itoa(-i*2 - 1)
+							} else if axes[i] > 0.2 {
+								s = strconv.Itoa(-i*2 - 2)
+							}
+						}
+					}
+				}
+				for i := range btns {
+					if btns[i] > 0 {
+						s = strconv.Itoa(i)
+					}
+				}
+			}
+		}
+
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -1072,7 +1275,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			if sys.keyInput == glfw.KeyInsert {
-				s, _ = sys.window.GetClipboardString()
+				s = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}
@@ -1667,7 +1870,7 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ishometeam", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.playerNo&1 == sys.home))
+		l.Push(lua.LBool(sys.debugWC.teamside == sys.home))
 		return 1
 	})
 	luaRegister(l, "leftedge", func(*lua.LState) int {
@@ -1930,12 +2133,14 @@ func triggerScriptInit(l *lua.LState) {
 			s = "simul"
 		case TM_Turns:
 			s = "turns"
+		case TM_Tag:
+			s = "tag"
 		}
 		l.Push(lua.LString(s))
 		return 1
 	})
 	luaRegister(l, "teamside", func(*lua.LState) int {
-		l.Push(lua.LNumber(int32(sys.debugWC.playerNo)&1 + 1))
+		l.Push(lua.LNumber(int32(sys.debugWC.teamside) + 1))
 		return 1
 	})
 	luaRegister(l, "tickspersecond", func(*lua.LState) int {
@@ -2007,7 +2212,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.selfState(int32(numArg(l, 1)), -1, 1)
+			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1)
 		}
 		return 0
 	})
@@ -2055,6 +2260,9 @@ func debugScriptInit(l *lua.LState, file string) error {
 	luaRegister(l, "reload", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
 			sys.reloadFlg = true
+			for i := range sys.reloadCharSlot {
+				sys.reloadCharSlot[i] = true
+			}
 		}
 		return 0
 	})
@@ -2066,7 +2274,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "setAILevel", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			level := int32(numArg(l, 1))
+			level := float32(numArg(l, 1))
 			sys.com[sys.debugWC.playerNo] = level
 			for _, c := range sys.chars[sys.debugWC.playerNo] {
 				if level == 0 {

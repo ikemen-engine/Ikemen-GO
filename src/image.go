@@ -130,7 +130,8 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 			(((c>>8&0xff)+uint32(a[1]))*uint32(m[1])>>8)<<8
 		tmp = (tmp|uint32(-Btoi(tmp&0xff0000 != 0)<<8))&0xffff |
 			(((c>>16&0xff)+uint32(a[2]))*uint32(m[2])>>8)<<16
-		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16)
+		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16) |
+			0xff000000
 	}
 	return sys.workpal
 }
@@ -149,7 +150,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
 		return
 	}
 	neg = p.eInvertall
-	color = p.color
+	color = p.eColor
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -208,12 +209,14 @@ type PaletteList struct {
 	palettes   [][]uint32
 	paletteMap []int
 	PalTable   map[[2]int16]int
+	PalTex     []*Texture
 }
 
 func (pl *PaletteList) init() {
 	pl.palettes = nil
 	pl.paletteMap = nil
 	pl.PalTable = make(map[[2]int16]int)
+	pl.PalTex = nil
 }
 func (pl *PaletteList) SetSource(i int, p []uint32) {
 	if i < len(pl.paletteMap) {
@@ -231,6 +234,7 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 			pl.palettes = append(pl.palettes, nil)
 		}
 		pl.palettes = append(pl.palettes, p)
+		pl.PalTex = append(pl.PalTex, nil)
 	}
 }
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
@@ -351,6 +355,8 @@ type Sprite struct {
 	Offset        [2]int16
 	palidx        int
 	rle           int
+	paltemp       []uint32
+	PalTex        *Texture
 }
 
 func newSprite() *Sprite {
@@ -500,7 +506,10 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 			if err := read(rgba[:]); err != nil {
 				return nil, err
 			}
-			s.Pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
+			if h.Ver2 == 0 {
+				rgba[3] = 255
+			}
+			s.Pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 		}
 		s.palidx = -1
 	}
@@ -510,15 +519,27 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	s.Pal = src.Pal
 	s.Tex = src.Tex
 	s.Size = src.Size
-	s.palidx = src.palidx
+	if s.palidx < 0 {
+		s.palidx = src.palidx
+	}
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if s.Pal != nil || s.rle <= -11 {
 		return s.Pal
 	}
-	return pl.Get(int(s.palidx))
+	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
+}
+func (s *Sprite) GetPalTex(pl *PaletteList) *Texture {
+	if s.rle <= -11 {
+		return nil
+	}
+
+	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
 }
 func (s *Sprite) SetPxl(px []byte) {
+	if len(px) == 0 {
+		return
+	}
 	if int64(len(px)) != int64(s.Size[0])*int64(s.Size[1]) {
 		return
 	}
@@ -681,7 +702,7 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
 			if err := read(rgb[:]); err != nil {
 				return err
 			}
-			pal[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+			pal[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 		}
 	}
 	s.SetPxl(s.RlePcxDecode(px))
@@ -948,21 +969,71 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	return nil
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
-	xts, xbs, ys, rxadd, agl float32, trans int32, window *[4]int32,
-	rcx, rcy float32, pfx *PalFX) {
+	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
+	rcx, rcy float32, pfx *PalFX, paltex *Texture) {
 	if s.Tex == nil {
 		return
 	}
+	neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
+	if trans == -2 {
+		padd[0] *= -1
+		padd[1] *= -1
+		padd[2] *= -1
+	}
+
 	if s.rle <= -11 {
-		neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
-		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl,
+		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul)
 	} else {
-		RenderMugen(*s.Tex, pal, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-			rxadd, agl, trans, window, rcx, rcy)
+		//読み込み済みパレットの情報が渡されてるか
+		if paltex != nil {
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+			return
+		}
+		//無い場合暫定の方法でパレットテクスチャ生成
+		PalEqual := true
+		if len(pal) != len(s.paltemp) {
+			PalEqual = false
+		} else {
+			for i := range pal {
+				if pal[i] != s.paltemp[i] {
+					PalEqual = false
+					break
+				}
+			}
+		}
+		if PalEqual == true {
+			if s.PalTex == nil {
+				return
+			}
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+		} else {
+			gl.Enable(gl.TEXTURE_1D)
+			gl.ActiveTexture(gl.TEXTURE1)
+			s.PalTex = newTexture()
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+				unsafe.Pointer(&pal[0]))
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			tmp := append([]uint32{}, pal...)
+			s.paltemp = tmp
+			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			gl.Disable(gl.TEXTURE_1D)
+		}
 	}
 }
-func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
+func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32, fx *PalFX, paltex *Texture) {
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	if xscale < 0 {
@@ -972,8 +1043,8 @@ func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32) {
 		y *= -1
 	}
 	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil)
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0, 0, 0,
+		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, fx, paltex)
 }
 
 type Sff struct {
@@ -1035,12 +1106,25 @@ func loadSff(filename string, char bool) (*Sff, error) {
 					if err := read(rgba[:]); err != nil {
 						return nil, err
 					}
-					pal[i] = uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
+					if s.header.Ver2 == 0 {
+						rgba[3] = 255
+					}
+					pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 				}
 				idx = i
 			}
 			s.palList.SetSource(i, pal)
 			s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] = idx
+			if i <= MaxPalNo &&
+				s.palList.PalTable[[...]int16{1, int16(i + 1)}] == s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] &&
+				gn_[0] != 1 && gn_[1] != int16(i+1) {
+				delete(s.palList.PalTable, [...]int16{1, int16(i + 1)}) //余計なパレットを削除
+			}
+			if i <= MaxPalNo && i+1 == int(s.header.NumberOfPalettes) {
+				for j := i + 1; j < MaxPalNo; j++ {
+					delete(s.palList.PalTable, [...]int16{1, int16(j + 1)}) //余計なパレットを削除
+				}
+			}
 		}
 	}
 	spriteList := make([]*Sprite, int(s.header.NumberOfSprites))
@@ -1097,6 +1181,20 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			shofs = int64(xofs)
 		} else {
 			shofs += 28
+		}
+	}
+	//パレットテクスチャ生成
+	sys.mainThreadTask <- func() {
+		for i, v := range s.palList.palettes {
+			gl.Enable(gl.TEXTURE_1D)
+			s.palList.PalTex[i] = newTexture()
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.palList.PalTex[i]))
+			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+				unsafe.Pointer(&v[0]))
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			gl.Disable(gl.TEXTURE_1D)
 		}
 	}
 	return s, nil

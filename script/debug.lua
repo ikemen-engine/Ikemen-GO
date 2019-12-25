@@ -1,3 +1,12 @@
+--One-time load of the json routines
+json = (loadfile 'script/dkjson.lua')()
+
+-- Data loading from config.json
+local file = io.open("save/config.json","r")
+config = json.decode(file:read("*all"))
+file:close()
+-- This is done to get the AI level config
+
 if getAllowDebugKeys() then
 	addHotkey('c', true, false, false, 'toggleClsnDraw()')
 	addHotkey('d', true, false, false, 'toggleDebugDraw()')
@@ -46,7 +55,7 @@ function toggleAI(p)
     if ailevel() > 0 then
       setAILevel(0)
     else
-      setAILevel(8)
+      setAILevel(config.Difficulty)
     end
     playerid(oldid)
   end

@@ -124,6 +124,10 @@ func newCompiler() *Compiler {
 		"offset":             c.offset,
 		"victoryquote":       c.victoryQuote,
 		"zoom":               c.zoom,
+		"mapset":             c.mapSet,
+		"matchrestart":       c.matchRestart,
+		"savefile":           c.saveFile,
+		"loadfile":           c.loadFile,
 		"forcefeedback":      c.null,
 		"null":               c.null,
 	}
@@ -302,7 +306,9 @@ func (c *Compiler) operator(in *string) error {
 			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error(c.maeOp + "が不正です")
+				return Error(c.maeOp + "が不正です" +
+					" / " +
+					c.maeOp + " is invalid")
 			}
 			*in = c.token + " " + *in
 			c.token = c.maeOp
@@ -322,7 +328,9 @@ func (c *Compiler) integer2(in *string) (int32, error) {
 	}
 	for _, c := range istr {
 		if c < '0' || c > '9' {
-			return 0, Error(istr + "が整数でありません")
+			return 0, Error(istr + "が整数でありません" +
+				" / " +
+				istr + " is not an integer")
 		}
 	}
 	i := Atoi(istr)
@@ -380,7 +388,9 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				(a < 'a' || a > 'z') {
 				return flg, nil
 			}
-			return 0, Error(string(a) + "が無効な値です")
+			return 0, Error(string(a) + "が無効な値です" +
+				" / " +
+				string(a) + " is an invalid value")
 		}
 	}
 	hitdefflg := flg
@@ -427,7 +437,9 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				}
 				return flg, nil
 			}
-			return 0, Error(a + "が無効な値です")
+			return 0, Error(a + "が無効な値です" +
+				" / " +
+				a + " is an invalid value")
 		}
 		if i == 0 {
 			hitdefflg = flg
@@ -462,7 +474,9 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 		case 'A', 'a':
 			flg |= int32(ST_A)
 		default:
-			return 0, Error(att + "が不正な属性値です")
+			return 0, Error(att + "が不正な属性値です" +
+				" / " +
+				att + " is an invalid attribute value")
 		}
 	}
 	for len(*in) > 0 && (*in)[0] == ',' {
@@ -517,7 +531,9 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 }
 func (c *Compiler) kakkohiraku(in *string) error {
 	if c.tokenizer(in) != "(" {
-		return Error(c.token + "の次に'('がありません")
+		return Error(c.token + "の次に'('がありません" +
+			" / " +
+			"Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizer(in)
 	return nil
@@ -525,7 +541,9 @@ func (c *Compiler) kakkohiraku(in *string) error {
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
-		return Error(c.token + "の前に')'がありません")
+		return Error(c.token + "の前に')'がありません" +
+			" / " +
+			"There is no ')' before " + c.token)
 	}
 	return nil
 }
@@ -545,7 +563,9 @@ func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 				continue
 			}
 		}
-		return false, Error("'='か'!='がありません")
+		return false, Error("'='か'!='がありません" +
+			" / " +
+			"Missing '=' or '! ='")
 	}
 	c.token = c.tokenizer(in)
 	return
@@ -558,7 +578,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "[":
 		minop = OC_ge
 	default:
-		err = Error("'['か'('がありません")
+		err = Error("'['か'('がありません" +
+			" / " +
+			"Missing '[' or '('")
 		return
 	}
 	var intf func(in *string) (int32, error)
@@ -571,7 +593,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 				c.token = c.tokenizer(in)
 			}
 			if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
-				return 0, Error("数字の読み込みエラーです")
+				return 0, Error("数字の読み込みエラーです" +
+					" / " +
+					"Error reading number")
 			}
 			i := Atoi(c.token)
 			if minus {
@@ -594,7 +618,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 		c.token = c.tokenizer(in)
 	}
 	if c.token != "," {
-		err = Error("','がありません")
+		err = Error("','がありません" +
+			" / " +
+			"There is not ','")
 		return
 	}
 	if max, err = intf(in); err != nil {
@@ -614,7 +640,9 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "]":
 		maxop = OC_le
 	default:
-		err = Error("']'か')'がありません")
+		err = Error("']'か')'がありません" +
+			" / " +
+			"Missing ']' or ')'")
 		return
 	}
 	c.token = c.tokenizer(in)
@@ -662,7 +690,10 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 		case "=":
 		default:
 			if hissu && !comma {
-				return Error("比較演算子がありません")
+				return Error("比較演算子がありません" +
+					"\n" +
+					"No comparison operator" +
+					"\n[ECID 1]\n")
 			}
 			hikaku = false
 		}
@@ -705,7 +736,10 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	n, err := c.integer2(in)
 	if err != nil {
 		if hissu && !hikaku {
-			return Error("比較演算子がありません")
+			return Error("比較演算子がありません" +
+				"\n" +
+				"No comparison operator" +
+				"\n[ECID 2]\n")
 		}
 		if hikaku {
 			return err
@@ -724,7 +758,9 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	mae := c.token
 	if c.token = c.tokenizer(in); c.token != "(" {
 		if len(defval) == 0 || defval[0].IsNone() {
-			return bvNone(), Error(mae + "の次に'('がありません")
+			return bvNone(), Error(mae + "の次に'('がありません" +
+				" / " +
+				"Missing '(' after " + mae)
 		}
 		*in = c.token + " " + *in
 		bv = defval[0]
@@ -849,7 +885,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	text := func() error {
 		i := strings.Index(*in, "\"")
 		if c.token != "\"" || i < 0 {
-			return Error("\"で囲まれていません")
+			return Error("\"で囲まれていません" +
+				" / " +
+				"Not enclosed in \"")
 		}
 		c.token = (*in)[:i]
 		*in = (*in)[i+1:]
@@ -897,7 +935,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var err error
 	switch c.token {
 	case "":
-		return bvNone(), Error("空です")
+		return bvNone(), Error("空です" +
+			" / " +
+			"Empty")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -940,7 +980,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_partner, OC_enemy, OC_enemynear:
 					be1.appendValue(BytecodeInt(0))
 				case OC_playerid:
-					return bvNone(), Error("playeridの次に'('がありません")
+					return bvNone(), Error("playeridの次に'('がありません" +
+						" / " +
+						"There is no '(' after playerid")
 				}
 			}
 			if rd {
@@ -949,7 +991,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be1...)
 		}
 		if c.token != "," {
-			return bvNone(), Error(",がありません")
+			return bvNone(), Error(",がありません" +
+				" / " +
+				"Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expValue(&be2, in, true); err != nil {
@@ -965,7 +1009,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error(c.token + "が不正です")
+				return bvNone(), Error(c.token + "が不正です" +
+					" / " +
+					c.token + " is invalid")
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -1104,6 +1150,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ailevel":
 		out.append(OC_ailevel)
+	case "ailevelf":
+		out.append(OC_ex_, OC_ex_ailevelf)
 	case "alive":
 		out.append(OC_alive)
 	case "anim":
@@ -1763,6 +1811,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				tm = TM_Simul
 			case "turns":
 				tm = TM_Turns
+			case "tag":
+				tm = TM_Tag
 			default:
 				return Error(c.token + "が無効な値です")
 			}
@@ -1977,51 +2027,46 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "const240p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(1))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(1))
-		}
+		out.append(OC_ex_, OC_ex_const240p)
 	case "const480p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(0.5))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(0.5))
-		}
+		out.append(OC_ex_, OC_ex_const480p)
 	case "const720p":
-		if bv, err = c.oneArg(&be1, in, false, false); err != nil {
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		if bv.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
-			out.append(be1...)
-			out.appendValue(BytecodeFloat(0.25))
-			out.append(OC_mul)
-		} else {
-			out.mul(&bv, BytecodeFloat(0.25))
-		}
+		out.append(OC_ex_, OC_ex_const720p)
 	case "majorversion":
 		out.append(OC_ex_, OC_ex_majorversion)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
+	case "map":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(
+			strings.ToLower(c.token))))
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(); err != nil {
+			return bvNone(), err
+		}
+	case "selfstatenoexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_selfstatenoexist)
+	case "groundangle":
+		out.append(OC_ex_, OC_ex_groundangle)
+	case "stagefrontedge":
+		out.append(OC_ex_, OC_ex_stagefrontedge)
+	case "stagebackedge":
+		out.append(OC_ex_, OC_ex_stagebackedge)
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
@@ -2083,11 +2128,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
 			vi, ok := c.vars[c.token[1:]]
 			if !ok {
-				return bvNone(), Error(c.token + "は定義されていません")
+				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + "Is not defined")
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + "It is illegal")
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -2128,7 +2173,12 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	if len(c.maeOp) == 0 {
 		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
-				return bvNone(), Error("演算子がありません")
+				return bvNone(), Error("演算子がありません" +
+				"\n" +
+				"No comparison operator" +
+				"\n" + 
+				"Token = '" + c.token + "' String = '" + *in + "'" +
+				"\n[ECID 3]\n")
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
@@ -2137,7 +2187,10 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			}
 			if c.usiroOp {
 				if c.isOperator(c.token) <= 0 {
-					return bvNone(), Error("演算子がありません")
+					return bvNone(), Error("演算子がありません" +
+					"\n" +
+					"No comparison operator" +
+					"\n[ECID 4]\n")
 				}
 				if err := c.renzokuEnzansihaError(in); err != nil {
 					return bvNone(), err
@@ -2782,6 +2835,27 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 	})
 }
 
+func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
+	id byte) error {
+	return c.stateParam(is, "savedata", func(data string) error {
+		if len(data) <= 1 {
+			return Error("値が指定されていません")
+		}
+		var sv SaveData
+		if len(data) >= 2 {
+			if strings.ToLower(data[:2]) == "ma" {
+				sv = SaveData_map
+			} else if strings.ToLower(data[:2]) == "va" {
+				sv = SaveData_var
+			} else if strings.ToLower(data[:2]) == "fv" {
+				sv = SaveData_fvar
+			}
+		}
+		sc.add(id, sc.iToExp(int32(sv)))
+		return nil
+	})
+}
+
 func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 	prefix string, id byte, afterImage bool) error {
 	return c.stateParam(is, prefix+"trans", func(data string) error {
@@ -2823,7 +2897,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 		}
 		var exp []BytecodeExp
 		b := false
-		if !afterImage {
+		if !afterImage || sys.cgi[c.playerNo].ver[0] == 1 {
 			if err := c.stateParam(is, prefix+"alpha", func(data string) error {
 				b = true
 				bes, err := c.exprs(data, VT_Int, 2)
@@ -2851,7 +2925,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				}
 				if len(bes) > 1 {
 					exp[1] = bes[1]
-					if tt != TT_alpha && tt != TT_add1 {
+					if tt != TT_alpha && tt != TT_add1 && !(tt == TT_add && sys.cgi[c.playerNo].ver[0] == 1) {
 						exp[1].append(OC_pop)
 					}
 				}
@@ -2860,7 +2934,15 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 					if len(bes) <= 1 {
 						exp[1].appendValue(BytecodeInt(255))
 					}
-				case TT_add, TT_sub:
+				case TT_add:
+					if sys.cgi[c.playerNo].ver[0] == 1 {
+						if len(bes) <= 1 {
+							exp[1].appendValue(BytecodeInt(255))
+						}
+					} else {
+						exp[1].appendValue(BytecodeInt(255))
+					}
+				case TT_sub:
 					exp[1].appendValue(BytecodeInt(255))
 				default:
 					exp[1].appendValue(BytecodeInt(0))
@@ -3058,6 +3140,10 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 func (c *Compiler) hitBy(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitBy)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitBy_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.hitBySub(is, sc)
 	})
 	return *ret, err
@@ -3065,6 +3151,10 @@ func (c *Compiler) hitBy(is IniSection, sc *StateControllerBase,
 func (c *Compiler) notHitBy(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*notHitBy)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitBy_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.hitBySub(is, sc)
 	})
 	return *ret, err
@@ -3072,6 +3162,10 @@ func (c *Compiler) notHitBy(is IniSection, sc *StateControllerBase,
 func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*assertSpecial)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			assertSpecial_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		foo := func(data string) error {
 			switch strings.ToLower(data) {
 			case "nostandguard":
@@ -3114,6 +3208,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokoslow)))
 			case "noko":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_noko)))
+			case "roundnotskip":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
 			default:
 				return Error(data + "が無効な値です")
 			}
@@ -3146,6 +3242,10 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*playSnd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			playSnd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		f := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			f = true
@@ -3183,14 +3283,12 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 			playSnd_abspan, VT_Float, 1, false); err != nil {
 			return err
 		}
-		var volname string
-		if sys.cgi[c.playerNo].ver[0] == 1 {
-			volname = "volumescale"
-		} else {
-			volname = "volume"
-		}
-		if err := c.paramValue(is, sc, volname,
+		if err := c.paramValue(is, sc, "volume",
 			playSnd_volume, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "volumescale",
+			playSnd_volumescale, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "freqmul",
@@ -3207,6 +3305,10 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 }
 func (c *Compiler) changeStateSub(is IniSection,
 	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		changeState_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "value",
 		changeState_value, VT_Int, 1, true); err != nil {
 		return err
@@ -3217,6 +3319,10 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "anim",
 		changeState_anim, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "readplayerid",
+		changeState_readplayerid, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
@@ -3242,6 +3348,10 @@ func (c *Compiler) selfState(is IniSection, sc *StateControllerBase,
 func (c *Compiler) tagIn(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*tagIn)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			tagIn_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "stateno",
 			tagIn_stateno, VT_Int, 1, true); err != nil {
 			return err
@@ -3267,6 +3377,10 @@ func (c *Compiler) tagIn(is IniSection, sc *StateControllerBase,
 func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*tagOut)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			tagOut_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(tagOut_, nil)
 		return nil
 	})
@@ -3279,6 +3393,10 @@ func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
 func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*destroySelf)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			destroySelf_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "recursive",
 			destroySelf_recursive, VT_Bool, 1, false); err != nil {
 			return err
@@ -3293,6 +3411,10 @@ func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase,
 }
 func (c *Compiler) changeAnimSub(is IniSection,
 	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		changeAnim_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "elem",
 		changeAnim_elem, VT_Int, 1, false); err != nil {
 		return err
@@ -3320,6 +3442,10 @@ func (c *Compiler) changeAnim2(is IniSection, sc *StateControllerBase,
 func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*helper)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			helper_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.stateParam(is, "helpertype", func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -3423,6 +3549,14 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			helper_supermovetime, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "remappal",
+			helper_remappal, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "extendsmap",
+			helper_extendsmap, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -3430,6 +3564,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 func (c *Compiler) ctrlSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*ctrlSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			ctrlSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramValue(is, sc, "value", ctrlSet_value, VT_Bool, 1, true)
 	})
 	return *ret, err
@@ -3542,6 +3680,10 @@ func (c *Compiler) explodSub(is IniSection,
 func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 	ihp int8) (StateController, error) {
 	ret, err := (*explod)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			explod_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "ownpal",
 			explod_ownpal, VT_Bool, 1, false); err != nil {
 			return err
@@ -3582,6 +3724,10 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*modifyExplod)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			explod_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
@@ -3604,6 +3750,10 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 func (c *Compiler) gameMakeAnim(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*gameMakeAnim)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			gameMakeAnim_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "pos",
 			gameMakeAnim_pos, VT_Float, 2, false); err != nil {
 			return err
@@ -3662,6 +3812,10 @@ func (c *Compiler) posSetSub(is IniSection,
 func (c *Compiler) posSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*posSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -3669,6 +3823,10 @@ func (c *Compiler) posSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) posAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*posAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -3676,6 +3834,10 @@ func (c *Compiler) posAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) velSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*velSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -3683,6 +3845,10 @@ func (c *Compiler) velSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) velAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*velAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -3690,6 +3856,10 @@ func (c *Compiler) velAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) velMul(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*velMul)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -3752,6 +3922,10 @@ func (c *Compiler) palFXSub(is IniSection,
 func (c *Compiler) palFX(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*palFX)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			palFX_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.palFXSub(is, sc, "")
 	})
 	return *ret, err
@@ -3771,7 +3945,11 @@ func (c *Compiler) bgPalFX(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 func (c *Compiler) afterImageSub(is IniSection,
-	sc *StateControllerBase, prefix string) error {
+	sc *StateControllerBase, ihp int8, prefix string) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		afterImage_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramTrans(is, sc, prefix,
 		afterImage_trans, true); err != nil {
 		return err
@@ -3820,18 +3998,25 @@ func (c *Compiler) afterImageSub(is IniSection,
 		afterImage_palmul, VT_Float, 3, false); err != nil {
 		return err
 	}
+	if ihp == 0 {
+		sc.add(afterImage_ignorehitpause, sc.iToExp(0))
+	}
 	return nil
 }
 func (c *Compiler) afterImage(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+	ihp int8) (StateController, error) {
 	ret, err := (*afterImage)(sc), c.stateSec(is, func() error {
-		return c.afterImageSub(is, sc, "")
+		return c.afterImageSub(is, sc, ihp, "")
 	})
 	return *ret, err
 }
 func (c *Compiler) afterImageTime(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*afterImageTime)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			afterImageTime_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "time", func(data string) error {
 			b = true
@@ -3990,6 +4175,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		sc.add(hitDef_affectteam, sc.iToExp(at))
 		return nil
 	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "teamside",
+		hitDef_teamside, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "id",
@@ -4359,6 +4548,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 func (c *Compiler) hitDef(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitDef)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitDef_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.hitDefSub(is, sc)
 	})
 	return *ret, err
@@ -4368,6 +4561,10 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase,
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
 		var err error
+		if err := c.paramValue(is, sc, "redirectid",
+			reversalDef_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err = c.stateParam(is, "reversal.attr", func(data string) error {
 			attr, err = c.attr(data, false)
 			return err
@@ -4383,8 +4580,12 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+	ihp int8) (StateController, error) {
 	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			projectile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramPostye(is, sc, projectile_postype); err != nil {
 			return err
 		}
@@ -4448,6 +4649,10 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_projscale, VT_Float, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "projangle",
+			projectile_projangle, VT_Float, 1, false); err != nil {
+			return err
+		}
 
 		// hitdef部分
 		if err := c.hitDefSub(is, sc); err != nil {
@@ -4494,7 +4699,27 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_remappal, VT_Int, 2, false); err != nil {
 			return err
 		}
-		if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
+		if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platform",
+			projectile_platform, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformwidth",
+			projectile_platformwidth, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformheight",
+			projectile_platformheight, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformangle",
+			projectile_platformangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "platformfence",
+			projectile_platformfence, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -4504,6 +4729,10 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 func (c *Compiler) width(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*width)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			width_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "edge", func(data string) error {
 			b = true
@@ -4536,6 +4765,10 @@ func (c *Compiler) width(is IniSection, sc *StateControllerBase,
 func (c *Compiler) sprPriority(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*sprPriority)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			sprPriority_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramValue(is, sc, "value",
 			sprPriority_value, VT_Int, 1, false)
 	})
@@ -4791,6 +5024,10 @@ func (c *Compiler) varSetSub(is IniSection,
 func (c *Compiler) varSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.varSetSub(is, sc, OC_rdreset, OC_st_var)
 	})
 	return *ret, err
@@ -4798,6 +5035,10 @@ func (c *Compiler) varSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) varAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.varSetSub(is, sc, OC_rdreset, OC_st_varadd)
 	})
 	return *ret, err
@@ -4805,6 +5046,10 @@ func (c *Compiler) varAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentVarSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.varSetSub(is, sc, OC_parent, OC_st_var)
 	})
 	return *ret, err
@@ -4812,6 +5057,10 @@ func (c *Compiler) parentVarSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentVarAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.varSetSub(is, sc, OC_parent, OC_st_varadd)
 	})
 	return *ret, err
@@ -4819,6 +5068,10 @@ func (c *Compiler) parentVarAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) turn(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*turn)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			turn_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(turn_, nil)
 		return nil
 	})
@@ -4827,6 +5080,10 @@ func (c *Compiler) turn(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetFacing(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetFacing)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetFacing_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetFacing_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4842,6 +5099,10 @@ func (c *Compiler) targetFacing(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetBind(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetBind)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetBind_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetBind_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4861,6 +5122,10 @@ func (c *Compiler) targetBind(is IniSection, sc *StateControllerBase,
 func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*bindToTarget)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			bindToTarget_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			bindToTarget_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4910,6 +5175,10 @@ func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetLifeAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetLifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetLifeAdd_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4933,6 +5202,10 @@ func (c *Compiler) targetLifeAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetState(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetState)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetState_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetState_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4948,6 +5221,10 @@ func (c *Compiler) targetState(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetVelSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetVelSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetVelSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetVelSet_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4967,6 +5244,10 @@ func (c *Compiler) targetVelSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetVelAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetVelAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetVelAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetVelAdd_id, VT_Int, 1, false); err != nil {
 			return err
@@ -4986,6 +5267,10 @@ func (c *Compiler) targetVelAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetPowerAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetPowerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			targetPowerAdd_id, VT_Int, 1, false); err != nil {
 			return err
@@ -5001,6 +5286,10 @@ func (c *Compiler) targetPowerAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) targetDrop(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetDrop)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetDrop_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "excludeid",
 			targetDrop_excludeid, VT_Int, 1, false); err != nil {
 			return err
@@ -5016,6 +5305,10 @@ func (c *Compiler) targetDrop(is IniSection, sc *StateControllerBase,
 func (c *Compiler) lifeAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*lifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			lifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "absolute",
 			lifeAdd_absolute, VT_Bool, 1, false); err != nil {
 			return err
@@ -5035,6 +5328,10 @@ func (c *Compiler) lifeAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) lifeSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*lifeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			lifeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramValue(is, sc, "value", lifeSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
@@ -5042,6 +5339,10 @@ func (c *Compiler) lifeSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) powerAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*powerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			powerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramValue(is, sc, "value", powerAdd_value, VT_Int, 1, true)
 	})
 	return *ret, err
@@ -5049,6 +5350,10 @@ func (c *Compiler) powerAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) powerSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*powerSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			powerSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramValue(is, sc, "value", powerSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
@@ -5056,6 +5361,10 @@ func (c *Compiler) powerSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitVelSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitVelSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitVelSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "x",
 			hitVelSet_x, VT_Bool, 1, false); err != nil {
 			return err
@@ -5071,6 +5380,10 @@ func (c *Compiler) hitVelSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*screenBound)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			screenBound_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			b = true
@@ -5098,6 +5411,10 @@ func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase,
 func (c *Compiler) posFreeze(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*posFreeze)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posFreeze_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			b = true
@@ -5138,6 +5455,10 @@ func (c *Compiler) envShake(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitOverride(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitOverride)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitOverride_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.stateParam(is, "attr", func(data string) error {
 			attr, err := c.attr(data, false)
 			if err != nil {
@@ -5171,6 +5492,10 @@ func (c *Compiler) hitOverride(is IniSection, sc *StateControllerBase,
 func (c *Compiler) pause(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*pause)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			pause_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "time",
 			pause_time, VT_Int, 1, false); err != nil {
 			return err
@@ -5194,6 +5519,10 @@ func (c *Compiler) pause(is IniSection, sc *StateControllerBase,
 func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*superPause)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			superPause_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "time",
 			superPause_time, VT_Int, 1, false); err != nil {
 			return err
@@ -5269,6 +5598,10 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 func (c *Compiler) trans(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*trans)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			trans_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.paramTrans(is, sc, "", trans_trans, false)
 	})
 	return *ret, err
@@ -5276,6 +5609,10 @@ func (c *Compiler) trans(is IniSection, sc *StateControllerBase,
 func (c *Compiler) playerPush(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*playerPush)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			playerPush_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			b = true
@@ -5293,6 +5630,10 @@ func (c *Compiler) playerPush(is IniSection, sc *StateControllerBase,
 func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*stateTypeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			stateTypeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		statetype := func(data string) error {
 			if len(data) == 0 {
 				return Error("値が指定されていません")
@@ -5376,6 +5717,10 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*angleDraw)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			angleDraw_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			angleDraw_value, VT_Float, 1, false); err != nil {
 			return err
@@ -5391,6 +5736,10 @@ func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase,
 func (c *Compiler) angleSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*angleSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			angleSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			angleSet_value, VT_Float, 1, false); err != nil {
 			return err
@@ -5402,6 +5751,10 @@ func (c *Compiler) angleSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) angleAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*angleAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			angleAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			angleAdd_value, VT_Float, 1, false); err != nil {
 			return err
@@ -5413,6 +5766,10 @@ func (c *Compiler) angleAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) angleMul(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*angleMul)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			angleMul_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			angleMul_value, VT_Float, 1, false); err != nil {
 			return err
@@ -5513,6 +5870,10 @@ func (c *Compiler) clearClipboard(is IniSection, sc *StateControllerBase,
 func (c *Compiler) makeDust(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*makeDust)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			makeDust_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "spacing", func(data string) error {
 			b = true
@@ -5544,6 +5905,10 @@ func (c *Compiler) makeDust(is IniSection, sc *StateControllerBase,
 func (c *Compiler) attackDist(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*attackDist)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			attackDist_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			attackDist_value, VT_Float, 1, true); err != nil {
 			return err
@@ -5555,6 +5920,10 @@ func (c *Compiler) attackDist(is IniSection, sc *StateControllerBase,
 func (c *Compiler) attackMulSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*attackMulSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			attackMulSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			attackMulSet_value, VT_Float, 1, true); err != nil {
 			return err
@@ -5566,6 +5935,10 @@ func (c *Compiler) attackMulSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*defenceMulSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			defenceMulSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			defenceMulSet_value, VT_Float, 1, true); err != nil {
 			return err
@@ -5577,6 +5950,10 @@ func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) fallEnvShake(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*fallEnvShake)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			fallEnvShake_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(fallEnvShake_, nil)
 		return nil
 	})
@@ -5585,6 +5962,10 @@ func (c *Compiler) fallEnvShake(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitFallDamage(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitFallDamage)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitFallDamage_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(hitFallDamage_, nil)
 		return nil
 	})
@@ -5593,6 +5974,10 @@ func (c *Compiler) hitFallDamage(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitFallVel(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitFallVel)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitFallVel_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(hitFallVel_, nil)
 		return nil
 	})
@@ -5601,6 +5986,10 @@ func (c *Compiler) hitFallVel(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitFallSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitFallSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitFallSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			b = true
@@ -5626,6 +6015,10 @@ func (c *Compiler) hitFallSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) varRangeSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varRangeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varRangeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "first",
 			varRangeSet_first, VT_Int, 1, false); err != nil {
 			return err
@@ -5668,6 +6061,10 @@ func (c *Compiler) varRangeSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) remapPal(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*remapPal)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			remapPal_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "source",
 			remapPal_source, VT_Int, 2, false); err != nil {
 			return err
@@ -5683,6 +6080,10 @@ func (c *Compiler) remapPal(is IniSection, sc *StateControllerBase,
 func (c *Compiler) stopSnd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*stopSnd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			stopSnd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "channel",
 			stopSnd_channel, VT_Int, 1, true); err != nil {
 			return err
@@ -5694,6 +6095,10 @@ func (c *Compiler) stopSnd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) sndPan(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*sndPan)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			sndPan_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "channel",
 			sndPan_channel, VT_Int, 1, true); err != nil {
 			return err
@@ -5713,6 +6118,10 @@ func (c *Compiler) sndPan(is IniSection, sc *StateControllerBase,
 func (c *Compiler) varRandom(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*varRandom)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varRandom_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "v",
 			varRandom_v, VT_Int, 1, true); err != nil {
 			return err
@@ -5728,6 +6137,10 @@ func (c *Compiler) varRandom(is IniSection, sc *StateControllerBase,
 func (c *Compiler) gravity(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*gravity)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			gravity_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(gravity_, nil)
 		return nil
 	})
@@ -5735,6 +6148,10 @@ func (c *Compiler) gravity(is IniSection, sc *StateControllerBase,
 }
 func (c *Compiler) bindToParentSub(is IniSection,
 	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		bindToParent_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "time",
 		bindToParent_time, VT_Int, 1, false); err != nil {
 		return err
@@ -5766,6 +6183,10 @@ func (c *Compiler) bindToRoot(is IniSection, sc *StateControllerBase,
 func (c *Compiler) removeExplod(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*removeExplod)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			removeExplod_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		b := false
 		if err := c.stateParam(is, "id", func(data string) error {
 			b = true
@@ -5783,6 +6204,10 @@ func (c *Compiler) removeExplod(is IniSection, sc *StateControllerBase,
 func (c *Compiler) explodBindTime(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*explodBindTime)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			explodBindTime_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "id",
 			explodBindTime_id, VT_Int, 1, false); err != nil {
 			return err
@@ -5807,6 +6232,10 @@ func (c *Compiler) explodBindTime(is IniSection, sc *StateControllerBase,
 func (c *Compiler) moveHitReset(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*moveHitReset)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			moveHitReset_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(moveHitReset_, nil)
 		return nil
 	})
@@ -5815,6 +6244,10 @@ func (c *Compiler) moveHitReset(is IniSection, sc *StateControllerBase,
 func (c *Compiler) hitAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*hitAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			hitAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			hitAdd_value, VT_Int, 1, true); err != nil {
 			return err
@@ -5826,6 +6259,10 @@ func (c *Compiler) hitAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) offset(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*offset)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			offset_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "x",
 			offset_x, VT_Float, 1, false); err != nil {
 			return err
@@ -5841,6 +6278,10 @@ func (c *Compiler) offset(is IniSection, sc *StateControllerBase,
 func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*victoryQuote)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			victoryQuote_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			victoryQuote_value, VT_Int, 1, false); err != nil {
 			return err
@@ -5852,6 +6293,10 @@ func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase,
 func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*zoom)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			zoom_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "pos",
 			zoom_pos, VT_Float, 2, false); err != nil {
 			return err
@@ -5860,10 +6305,181 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 			zoom_scale, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "lag",
+			zoom_lag, VT_Float, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
 }
+
+func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			mapSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "map", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*matchRestart)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "reload",
+			matchRestart_reload, VT_Bool, MaxSimul*2+MaxAttachedChar, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "stagedef", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_stagedef, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p1def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p1def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p2def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p2def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p3def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p3def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p4def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p4def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p5def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p5def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p6def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p6def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p7def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p7def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "p8def", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*saveFile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			saveFile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(saveFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramSaveData(is, sc, saveFile_saveData); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*loadFile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			loadFile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(loadFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramSaveData(is, sc, loadFile_saveData); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil
@@ -6592,7 +7208,12 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			}
 			continue
 		default:
-			if scf, ok := c.scmap[c.token]; ok {
+			scf, ok := c.scmap[c.token]
+			//helperはステコンとリダイレクトの両方で使う名称なのでチェックする
+			if c.token == "helper" && ((*line)[0] == ',' || (*line)[0] == '(') {
+				ok = false
+			}
+			if ok {
 				scname := c.token
 				c.scan(line)
 				if err := c.needToken("{"); err != nil {
@@ -6883,7 +7504,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		return nil, err
 	}
 	if sys.chars[pn][0].cmd == nil {
-		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2)
+		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
 		b := NewCommandBuffer()
 		for i := range sys.chars[pn][0].cmd {
 			sys.chars[pn][0].cmd[i] = *NewCommandList(b)
@@ -6916,6 +7537,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_s, CK_ns
 					case "v":
 						*k, *nk = CK_v, CK_nv
+					case "d":
+						*k, *nk = CK_v, CK_nv
 					case "w":
 						*k, *nk = CK_w, CK_nw
 					}
@@ -6928,6 +7551,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("c", &ckr.c, &ckr.nc)
 				rm("s", &ckr.s, &ckr.ns)
 				rm("v", &ckr.v, &ckr.nv)
+				rm("d", &ckr.v, &ckr.nv)
 				rm("w", &ckr.w, &ckr.nw)
 			}
 		case "defaults":

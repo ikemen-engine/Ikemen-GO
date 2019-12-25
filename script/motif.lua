@@ -42,42 +42,44 @@ local motif =
 	{
 		title_bgm = '',
 		title_bgm_volume = 100,
-		title_bgm_loop = 1, --not supported yet
-		title_bgm_loopstart = nil, --not supported yet
-		title_bgm_loopend = nil, --not supported yet
+		title_bgm_loop = 1,
+		title_bgm_loopstart = nil,
+		title_bgm_loopend = nil,
 		select_bgm = '',
 		select_bgm_volume = 100,
-		select_bgm_loop = 1, --not supported yet
-		select_bgm_loopstart = nil, --not supported yet
-		select_bgm_loopend = nil, --not supported yet
+		select_bgm_loop = 1,
+		select_bgm_loopstart = nil,
+		select_bgm_loopend = nil,
 		vs_bgm = '',
 		vs_bgm_volume = 100,
-		vs_bgm_loop = 1, --not supported yet
-		vs_bgm_loopstart = nil, --not supported yet
-		vs_bgm_loopend = nil, --not supported yet
+		vs_bgm_loop = 1,
+		vs_bgm_loopstart = nil,
+		vs_bgm_loopend = nil,
 		victory_bgm = '',
 		victory_bgm_volume = 100,
-		victory_bgm_loop = 1, --not supported yet
-		victory_bgm_loopstart = nil, --not supported yet
-		victory_bgm_loopend = nil, --not supported yet
+		victory_bgm_loop = 1,
+		victory_bgm_loopstart = nil,
+		victory_bgm_loopend = nil,
 		continue_bgm = 'sound/CONTINUE.ogg', --Ikemen feature
-		continue_bgm_volume = 100, --Ikemen feature (not supported yet)
-		continue_bgm_loop = 1, --Ikemen feature (not supported yet)
-		continue_bgm_loopstart = nil, --Ikemen feature (not supported yet)
-		continue_bgm_loopend = nil, --Ikemen feature (not supported yet)
+		continue_bgm_volume = 100, --Ikemen feature
+		continue_bgm_loop = 1, --Ikemen feature
+		continue_bgm_loopstart = nil, --Ikemen feature
+		continue_bgm_loopend = nil, --Ikemen feature
 		continue_end_bgm = 'sound/GAME_OVER.ogg', --Ikemen feature
-		continue_end_volume = 100, --Ikemen feature (not supported yet)
-		continue_end_loop = 0, --Ikemen feature (not supported yet)
-		continue_end_loopstart = nil, --Ikemen feature (not supported yet)
-		continue_end_loopend = nil, --Ikemen feature (not supported yet)
+		continue_end_bgm_volume = 100, --Ikemen feature
+		continue_end_bgm_loop = 0, --Ikemen feature
+		continue_end_bgm_loopstart = nil, --Ikemen feature
+		continue_end_bgm_loopend = nil, --Ikemen feature
 		results_bgm = '', --Ikemen feature
-		results_bgm_loop = 1, --Ikemen feature (not supported yet)
-		results_bgm_loopstart = nil, --Ikemen feature (not supported yet)
-		results_bgm_loopend = nil, --Ikemen feature (not supported yet)
+		results_bgm_volume = 100, --Ikemen feature
+		results_bgm_loop = 1, --Ikemen feature
+		results_bgm_loopstart = nil, --Ikemen feature
+		results_bgm_loopend = nil, --Ikemen feature
 		tournament_bgm = '', --Ikemen feature
-		tournament_bgm_loop = 1, --Ikemen feature (not supported yet)
-		tournament_bgm_loopstart = nil, --Ikemen feature (not supported yet)
-		tournament_bgm_loopend = nil, --Ikemen feature (not supported yet)
+		tournament_bgm_volume = 100, --Ikemen feature
+		tournament_bgm_loop = 1, --Ikemen feature
+		tournament_bgm_loopstart = nil, --Ikemen feature
+		tournament_bgm_loopend = nil, --Ikemen feature
 	},
 	title_info =
 	{
@@ -689,7 +691,10 @@ local motif =
 		title_text_main = 'OPTIONS', --Ikemen feature
 		title_text_arcade = 'ARCADE SETTINGS', --Ikemen feature
 		title_text_gameplay = 'GAMEPLAY SETTINGS', --Ikemen feature
+		title_text_advgameplay = 'ADVANCED GAMEPLAY SETTINGS', --Ikemen feature
 		title_text_video = 'VIDEO SETTINGS', --Ikemen feature
+		title_text_audio = 'AUDIO SETTINGS', --Ikemen feature
+		title_text_engine = 'ENGINE SETTINGS', --Ikemen feature
 		title_text_res = 'RESOLUTION SETTINGS', --Ikemen feature
 		title_text_input = 'INPUT SETTINGS', --Ikemen feature
 		title_text_key = 'KEY SETTINGS', --Ikemen feature
@@ -712,11 +717,13 @@ local motif =
 		menu_boxbackground_alpha = {20, 100}, --Ikemen feature
 		menu_itemname_main_arcade = 'Arcade Settings', --Ikemen feature
 		menu_itemname_main_gameplay = 'Gameplay Settings', --Ikemen feature
+		menu_itemname_main_engine = "Engine Settings", --Ikemen feature
 		menu_itemname_main_video = 'Video Settings', --Ikemen feature
+		menu_itemname_main_audio = 'Audio Settings', --Ikemen feature
 		menu_itemname_main_input = 'Input Settings', --Ikemen feature
 		menu_itemname_main_port = 'Port Change', --Ikemen feature
 		menu_itemname_main_default = 'Default Values', --Ikemen feature
-		menu_itemname_main_back = 'Back', --Ikemen feature
+		menu_itemname_main_back = 'Return Without Saving', --Ikemen feature
 		menu_itemname_arcade_roundstowin = 'Rounds to Win', --Ikemen feature
 		menu_itemname_arcade_roundtime = 'Round Time', --Ikemen feature
 		menu_itemname_arcade_difficulty = 'Difficulty level', --Ikemen feature
@@ -733,15 +740,18 @@ local motif =
 		menu_itemname_gameplay_turnsrecoveryrate = 'Turns HP Recovery', --Ikemen feature
 		menu_itemname_gameplay_teampowershare = 'Team Power Share', --Ikemen feature
 		menu_itemname_gameplay_teamlifeshare = 'Team Life Share', --Ikemen feature
+		menu_itemname_gameplay_singlemode = 'Single Mode', --Ikemen feature
 		menu_itemname_gameplay_numturns = 'Turns Limit', --Ikemen feature
 		menu_itemname_gameplay_numsimul = 'Simul Limit', --Ikemen feature
 		menu_itemname_gameplay_numtag = 'Tag Limit', --Ikemen features
-		menu_itemname_gameplay_simulmode = 'Assist Mode', --Ikemen feature
-		menu_itemname_gameplay_simulmode_simul = 'Simul', --Ikemen feature
-		menu_itemname_gameplay_simulmode_tag = 'Tag', --Ikemen feature
+		menu_itemname_gameplay_simulmode = 'Legacy Tag Mode', --Ikemen feature
+		menu_itemname_gameplay_simulmode_simul = 'Disabled', --Ikemen feature
+		menu_itemname_gameplay_simulmode_tag = 'Enabled', --Ikemen feature
+		menu_itemname_gameplay_advanced = 'Advanced Settings', --Ikemen feature
 		menu_itemname_gameplay_back = 'Back', --Ikemen feature
 		menu_itemname_video_resolution = 'Resolution', --Ikemen feature
 		menu_itemname_video_fullscreen = 'Fullscreen', --Ikemen feature
+		menu_itemname_video_msaa = 'MSAA', --Ikemen feature
 		menu_itemname_video_helpermax = 'HelperMax', --Ikemen feature
 		menu_itemname_video_playerprojectilemax = 'PlayerProjectileMax', --Ikemen feature
 		menu_itemname_video_explodmax = 'ExplodMax', --Ikemen feature
@@ -786,11 +796,20 @@ local motif =
 		menu_itemname_key_y = 'Y', --Ikemen feature
 		menu_itemname_key_z = 'Z', --Ikemen feature
 		menu_itemname_key_start = 'Start', --Ikemen feature
-		menu_itemname_key_v = 'L', --Ikemen feature
-		menu_itemname_key_w = 'R', --Ikemen feature
+		menu_itemname_key_v = 'D', --Ikemen feature
+		menu_itemname_key_w = 'W', --Ikemen feature
 		menu_itemname_key_back = 'Back', --Ikemen feature
 		menu_itemname_yes = 'Yes', --Ikemen feature
 		menu_itemname_no = 'No', --Ikemen feature
+		menu_itemname_main_save = 'Save and Return', --Ikemen feature
+		menu_itemname_enabled = 'Enabled', --Ikemen feature
+		menu_itemname_disabled = 'Disabled', --Ikemen feature
+		menu_itemname_audio_mastervolume = 'Master Volume', --Ikemen feature
+		menu_itemname_audio_sfxvolume = 'SFX Volume', --Ikemen feature
+		menu_itemname_audio_bgmvolume = 'BGM Volume', --Ikemen feature
+		menu_itemname_audio_audioducking = 'Audio Ducking', --Ikemen feature
+		menu_itemname_engine_quicklaunch = 'Quick Launch', --Ikemen feature
+		menu_itemname_engine_allowdebugkeys = 'Debug Keys', --Ikemen feature
 		input_text_port = 'Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		input_text_reswidth = 'Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		input_text_resheight = 'Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
@@ -1390,8 +1409,10 @@ for line in file:lines() do
 		if param ~= nil then
 			param = param:gsub('[%. ]', '_') --change param . and space to _
 			param = param:lower() --lowercase param
-			if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
-				value = '0'
+			if value ~= nil and def_pos ~= nil then -- Let's chech if it's even a valid param
+				if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
+					value = '0'
+				end
 			end
 		end
 		if param ~= nil and value ~= nil then --param = value pattern matched
@@ -1450,7 +1471,7 @@ for line in file:lines() do
 			end
 		else --only valid lines left are animations
 			line = line:lower()
-			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart')
+			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('^%s*interpolate offset') or line:match('^%s*interpolate angle') or line:match('^%s*interpolate scale') or line:match('^%s*interpolate blend')
 			if value ~= nil then
 				value = value:gsub(',%s*,', ',0,') --add missing values
 				value = value:gsub(',%s*$', '')
@@ -1517,9 +1538,9 @@ main.loadingRefresh()
 t_dir = {'title_info', 'select_info', 'vs_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100kumite_results_screen', 'option_info', 'tournament_info', 'continue_screen'}
 for i = 1, #t_dir do
 	motif[t_dir[i]].fadein_data = main.f_fadeAnim(1, motif[t_dir[i]].fadein_time, motif[t_dir[i]].fadein_col[1], motif[t_dir[i]].fadein_col[2], motif[t_dir[i]].fadein_col[3])
-	animSetWindow(motif[t_dir[i]].fadein_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].fadein_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	motif[t_dir[i]].fadeout_data = main.f_fadeAnim(0, motif[t_dir[i]].fadeout_time, motif[t_dir[i]].fadeout_col[1], motif[t_dir[i]].fadeout_col[2], motif[t_dir[i]].fadeout_col[3])
-	animSetWindow(motif[t_dir[i]].fadeout_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].fadeout_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 --other entries
@@ -1564,7 +1585,7 @@ for i = 1, #t_dir do
 	end
 	--clearcolor data
 	motif[t_dir[i]].bgclearcolor_data = main.f_clearColor(motif[t_dir[i]].bgclearcolor[1], motif[t_dir[i]].bgclearcolor[2], motif[t_dir[i]].bgclearcolor[3])
-	animSetWindow(motif[t_dir[i]].bgclearcolor_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(motif[t_dir[i]].bgclearcolor_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	--background data
 	motif[t_dir[i]].bg_data = {}
 	local t_bgdef = motif[t_dir[i]].bg
@@ -1587,9 +1608,9 @@ for i = 1, #t_dir do
 		--generate anim data
 		local sizeX, sizeY, offsetX, offsetY = 0, 0, 0, 0
 		if t_bgdef[k].type == 'anim' then
-			anim = main.f_animFromTable(motif.anim[t_bgdef[k].actionno], motif[t_dir[i]].spr_data, t_bgdef[k].start[1], t_bgdef[k].start[2])
+			anim = main.f_animFromTable(motif.anim[t_bgdef[k].actionno], motif[t_dir[i]].spr_data, (t_bgdef[k].start[1] + main.normalSpriteCenter), t_bgdef[k].start[2])
 		else --normal, parallax
-			anim = t_bgdef[k].spriteno[1] .. ', ' .. t_bgdef[k].spriteno[2] .. ', ' .. t_bgdef[k].start[1] .. ', ' .. t_bgdef[k].start[2] .. ', ' .. -1
+			anim = t_bgdef[k].spriteno[1] .. ', ' .. t_bgdef[k].spriteno[2] .. ', ' .. (t_bgdef[k].start[1] + main.normalSpriteCenter) .. ', ' .. t_bgdef[k].start[2] .. ', ' .. -1
 			anim = animNew(motif[t_dir[i]].spr_data, anim)
 			sizeX, sizeY, offsetX, offsetY = getSpriteInfo(motif[t_dir[i]].spr, t_bgdef[k].spriteno[1], t_bgdef[k].spriteno[2])
 		end
@@ -1601,7 +1622,7 @@ for i = 1, #t_dir do
 			animSetAlpha(anim, 1, 255)
 		end
 		animAddPos(anim, 160, 0) --for some reason needed in ikemen
-		if t_bgdef[k].window ~= nil then
+		if t_bgdef[k].window ~= nil and t_bgdef[k].window[1] ~= nil and t_bgdef[k].window[2] ~= nil and t_bgdef[k].window[3] ~= nil and t_bgdef[k].window[4] ~= nil then
 			animSetWindow(
 				anim,
 				t_bgdef[k].window[1],
@@ -1610,7 +1631,7 @@ for i = 1, #t_dir do
 				t_bgdef[k].window[4] - t_bgdef[k].window[2] + 1
 			)
 		else
-			animSetWindow(anim, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+			animSetWindow(anim, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 		end
 		if t_bgdef[k].tilespacing[2] == nil then t_bgdef[k].tilespacing[2] = t_bgdef[k].tilespacing[1] end
 		if t_bgdef[k].type == 'parallax' then
@@ -1623,7 +1644,11 @@ for i = 1, #t_dir do
 		else
 			animSetColorKey(anim, -1)
 		end
-		--animUpdate(anim)
+		
+		-- Scale non animated sprites
+		animUpdate(anim)
+		animSetScale(anim, 1 ,1)
+		
 		motif[t_dir[i]].bg_data[k] = anim
 		main.loadingRefresh()
 	end
@@ -1720,7 +1745,7 @@ for i = 1, #t_dir do
 		t[t_dir[i].s .. 'data'] = animNew(motif.selectbgdef.spr_data, '-1, -1, 0, 0, -1')
 		animUpdate(t[t_dir[i].s .. 'data'])
 	end
-	animSetWindow(t[t_dir[i].s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t[t_dir[i].s .. 'data'], main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	--animAddPos(t[t_dir[i].s .. 'data'], 160, 0) --for some reason needed in ikemen (but not in this case)
 	main.loadingRefresh()
 end
@@ -1735,7 +1760,7 @@ if motif.anim[t.continue_anim] ~= nil then
 		t.continue_scale[1],
 		t.continue_scale[2]
 	)
-	animSetWindow(t.continue_anim_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t.continue_anim_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 if motif.vs_screen.p1_name_active_font == nil then

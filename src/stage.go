@@ -117,7 +117,7 @@ type backGround struct {
 func newBackGround(sff *Sff) *backGround {
 	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1}, zoomdelta: [...]float32{math.MaxFloat32, math.MaxFloat32},
 		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1}, xbottomzoomdelta: math.MaxFloat32,
-		zoomscaledelta: [...]float32{1, 1}, actionno: -1, visible: true, active: true, autoresizeparallax: true,
+		zoomscaledelta: [...]float32{math.MaxFloat32, math.MaxFloat32}, actionno: -1, visible: true, active: true, autoresizeparallax: true,
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
@@ -185,46 +185,46 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim.mask = -1
 			}
 		}
-		switch strings.ToLower(is["trans"]) {
-		case "add":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 255
-			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
-				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
-					bg.anim.srcAlpha = 0
-				}
+	}
+	switch strings.ToLower(is["trans"]) {
+	case "add":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 255
+		bg.anim.dstAlpha = 255
+		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
+				bg.anim.srcAlpha = 0
 			}
-		case "add1":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = ^255
-			var s, d int32 = 255, 255
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Min(255, s))
-				bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
-			}
-		case "addalpha":
-			bg.anim.mask = 0
-			s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
-			if is.readI32ForStage("alpha", &s, &d) {
-				bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-				bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
-				if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
-					bg.anim.srcAlpha = 0
-				}
-			}
-		case "sub":
-			bg.anim.mask = 0
-			bg.anim.srcAlpha = 1
-			bg.anim.dstAlpha = 255
-		case "none":
-			bg.anim.srcAlpha = -1
-			bg.anim.dstAlpha = 0
 		}
+	case "add1":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 255
+		bg.anim.dstAlpha = ^255
+		var s, d int32 = 255, 255
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Min(255, s))
+			bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+		}
+	case "addalpha":
+		bg.anim.mask = 0
+		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
+		if is.readI32ForStage("alpha", &s, &d) {
+			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
+				bg.anim.srcAlpha = 0
+			}
+		}
+	case "sub":
+		bg.anim.mask = 0
+		bg.anim.srcAlpha = 1
+		bg.anim.dstAlpha = 255
+	case "none":
+		bg.anim.srcAlpha = -1
+		bg.anim.dstAlpha = 0
 	}
 	if is.readI32ForStage("tile", &bg.anim.tile[2], &bg.anim.tile[3]) {
 		if t == 2 {
@@ -255,6 +255,13 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim.frames[0].Group, bg.anim.frames[0].Number); spr != nil {
 				bg.anim.tile[0] += int32(spr.Size[0])
 				bg.anim.tile[1] += int32(spr.Size[1])
+			}
+		} else {
+			if bg.anim.tile[0] == 0 {
+				bg.anim.tile[2] = 0
+			}
+			if bg.anim.tile[1] == 0 {
+				bg.anim.tile[3] = 0
 			}
 		}
 	}
@@ -336,6 +343,13 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
 		}
 	}
+	var xs3, ys3 float32 = 1, 1
+	if bg.zoomscaledelta[0] != math.MaxFloat32 {
+		xs3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[0])) / sclx)
+	}
+	if bg.zoomscaledelta[1] != math.MaxFloat32 {
+		ys3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[1])) / scly)
+	}
 
 	scly *= lclscl
 	sclx *= lscl[0]
@@ -351,11 +365,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			y = float32(math.Floor(float64(y/bgscl))) * bgscl
 		}
 	}
-	ys := (100 - pos[1]*bg.yscaledelta) * bgscl / bg.yscalestart
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
+	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
-	xs3 := 1 + (1-scl)*(1-bg.zoomscaledelta[0])
-	ys3 := 1 + (1-scl)*(1-bg.zoomscaledelta[1])
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
 	scly *= stgscl[1]
@@ -370,15 +382,15 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 				bgscl * lscl[i]
 		}
 	}
-	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*160*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
 	startrect1 := ((float32(rect[1])-pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) * sys.heightScale
 	rect[0] = int32(math.Floor(float64(startrect0)))
 	rect[1] = int32(math.Floor(float64(startrect1)))
 	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
-	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*(bg.scalestart[1]+ys2)*ys3,
-		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1]))*sclx_recip,
-		0, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1)
+	bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
+		xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
+		+0, 0, 0, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1, false, 1)
 }
 
 type bgCtrl struct {
@@ -546,33 +558,34 @@ type stagePlayer struct {
 	startx, starty int32
 }
 type Stage struct {
-	def            string
-	bgmusic        string
-	name           string
-	displayname    string
-	author         string
-	nameLow        string
-	displaynameLow string
-	authorLow      string
-	sff            *Sff
-	at             AnimationTable
-	bg             []*backGround
-	bgc            []bgCtrl
-	bgct           bgcTimeLine
-	bga            bgAction
-	sdw            stageShadow
-	p              [2]stagePlayer
-	leftbound      float32
-	rightbound     float32
-	screenleft     int32
-	screenright    int32
-	zoffsetlink    int32
-	reflection     int32
-	hires          bool
-	resetbg        bool
-	debugbg        bool
-	localscl       float32
-	scale          [2]float32
+	def             string
+	bgmusic         string
+	name            string
+	displayname     string
+	author          string
+	nameLow         string
+	displaynameLow  string
+	authorLow       string
+	attachedchardef string
+	sff             *Sff
+	at              AnimationTable
+	bg              []*backGround
+	bgc             []bgCtrl
+	bgct            bgcTimeLine
+	bga             bgAction
+	sdw             stageShadow
+	p               [2]stagePlayer
+	leftbound       float32
+	rightbound      float32
+	screenleft      int32
+	screenright     int32
+	zoffsetlink     int32
+	reflection      int32
+	hires           bool
+	resetbg         bool
+	debugbg         bool
+	localscl        float32
+	scale           [2]float32
 }
 
 func newStage(def string) *Stage {
@@ -623,17 +636,7 @@ func loadStage(def string) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
-	}
-	if sec := defmap["camera"]; len(sec) > 0 {
-		sec[0].ReadI32("startx", &sys.cam.startx)
-		sec[0].ReadI32("boundleft", &sys.cam.boundleft)
-		sec[0].ReadI32("boundright", &sys.cam.boundright)
-		sec[0].ReadI32("boundhigh", &sys.cam.boundhigh)
-		sec[0].ReadF32("verticalfollow", &sys.cam.verticalfollow)
-		sec[0].ReadI32("tension", &sys.cam.tension)
-		sec[0].ReadI32("floortension", &sys.cam.floortension)
-		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
-		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
+		s.attachedchardef, ok = sec[0].getString("attachedchar")
 	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
@@ -659,6 +662,31 @@ func loadStage(def string) (*Stage, error) {
 			&sys.cam.localcoord[1])
 		sec[0].ReadF32("xscale", &s.scale[0])
 		sec[0].ReadF32("yscale", &s.scale[1])
+	}
+	if s.hires {
+		if s.scale[0] != 1 {
+			s.scale[0] *= 2
+		}
+		if s.scale[1] != 1 {
+			s.scale[1] *= 2
+		}
+	}
+	var boundlow int32
+	if sec := defmap["camera"]; len(sec) > 0 {
+		sec[0].ReadI32("startx", &sys.cam.startx)
+		sec[0].ReadI32("boundleft", &sys.cam.boundleft)
+		sec[0].ReadI32("boundright", &sys.cam.boundright)
+		sec[0].ReadI32("boundhigh", &sys.cam.boundhigh)
+		sec[0].ReadF32("verticalfollow", &sys.cam.verticalfollow)
+		sec[0].ReadI32("tension", &sys.cam.tension)
+		sec[0].ReadI32("floortension", &sys.cam.floortension)
+		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
+		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
+		var tmp int32
+		if sec[0].ReadI32("tensionhigh", &tmp) {
+			sys.cam.floortension = int32(240/(float32(sys.gameWidth)/float32(sys.cam.localcoord[0]))) - tmp
+		}
+		sec[0].ReadI32("boundlow", &boundlow)
 	}
 	reflect := true
 	if sec := defmap["shadow"]; len(sec) > 0 {
@@ -785,6 +813,7 @@ func loadStage(def string) (*Stage, error) {
 			MinF(float32(sys.cam.localcoord[1])*s.localscl*0.5*
 				(ratio1/ratio2-1), float32(Max(0, sys.cam.overdrawlow)))
 	}
+	sys.cam.drawOffsetY += float32(boundlow) * s.localscl
 	return s, nil
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {
@@ -804,8 +833,16 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 		a := s.at.get(bgc.v[0])
 		if a != nil {
 			for i := range bgc.bg {
+				masktemp := bgc.bg[i].anim.mask
+				srcAlphatemp := bgc.bg[i].anim.srcAlpha
+				dstAlphatemp := bgc.bg[i].anim.dstAlpha
+				tiletmp := bgc.bg[i].anim.tile
 				bgc.bg[i].actionno = bgc.v[0]
 				bgc.bg[i].anim = *a
+				bgc.bg[i].anim.tile = tiletmp
+				bgc.bg[i].anim.dstAlpha = dstAlphatemp
+				bgc.bg[i].anim.srcAlpha = srcAlphatemp
+				bgc.bg[i].anim.mask = masktemp
 			}
 		}
 	case BT_Visible:

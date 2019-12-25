@@ -3,11 +3,20 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/jfreymuth/go-vorbis/ogg/vorbis"
-	"github.com/timshannon/go-openal/openal"
 	"io"
 	"math"
 	"os"
+	"path/filepath"
+
+	"github.com/timshannon/go-openal/openal"
+
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
+	//"github.com/faiface/beep/flac"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/vorbis"
+	"github.com/faiface/beep/wav"
 )
 
 const (
@@ -15,6 +24,11 @@ const (
 	audioFrequency = 48000
 )
 
+// ------------------------------------------------------------------
+// Audio Source
+
+// AudioSource structure.
+// It contains OpenAl's sound destination and buffer
 type AudioSource struct {
 	Src  openal.Source
 	bufs openal.Buffers
@@ -39,6 +53,9 @@ func (s *AudioSource) Delete() {
 	s.bufs.Delete()
 	s.Src.Delete()
 }
+
+// ------------------------------------------------------------------
+// Mixer
 
 type Mixer struct {
 	buf        [audioOutLen * 2]float32
@@ -150,6 +167,9 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 	return float64(len(wav))
 }
 
+// ------------------------------------------------------------------
+// Normalizer
+
 type Normalizer struct {
 	mul  float64
 	l, r *NormalizerLR
@@ -162,13 +182,17 @@ func NewNormalizer() *Normalizer {
 func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
-	if lmul < rmul {
-		n.mul = lmul
+	if sys.AudioDucking {
+		if lmul < rmul {
+			n.mul = lmul
+		} else {
+			n.mul = rmul
+		}
+		if n.mul > 16 {
+			n.mul = 16
+		}
 	} else {
-		n.mul = rmul
-	}
-	if n.mul > 16 {
-		n.mul = 16
+		n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
 	}
 	return l, r
 }
@@ -210,97 +234,185 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 	return bai
 }
 
-type Vorbis struct {
-	dec        *vorbis.Vorbis
-	fp         *os.File
-	buf        []int16
-	bufi       float64
-	openReq    chan string
-	normalizer *Normalizer
+// ------------------------------------------------------------------
+// Bgm
+
+type Bgm struct {
+	filename            string
+	bgmVolume           int
+	bgmLoopStart        int
+	bgmLoopEnd          int
+	defaultFilename     string
+	defaultBgmVolume    int
+	defaultbgmLoopStart int
+	defaultbgmLoopEnd   int
+	loop                int
+	sampleRate          beep.SampleRate
+	streamer            beep.StreamSeekCloser
+	ctrl                *beep.Ctrl
+	resampler           *beep.Resampler
+	volume              *effects.Volume
+	format              string
+	tempfile            io.ReadCloser
 }
 
-func newVorbis() *Vorbis {
-	return &Vorbis{openReq: make(chan string, 1), normalizer: NewNormalizer()}
+func newBgm() *Bgm {
+	return &Bgm{}
 }
-func (v *Vorbis) Open(file string) {
-	v.openReq <- file
+
+func (bgm *Bgm) IsVorbis() bool {
+	return bgm.IsFormat(".ogg")
 }
-func (v *Vorbis) openFile(file string) bool {
-	v.clear()
-	var err error
-	if v.fp, err = os.Open(file); err != nil {
-		return false
-	}
-	return v.restart()
+
+func (bgm *Bgm) IsMp3() bool {
+	return bgm.IsFormat(".mp3")
 }
-func (v *Vorbis) restart() bool {
-	if v.fp == nil {
-		return false
-	}
-	_, err := v.fp.Seek(0, 0)
-	chk(err)
-	if v.dec, err = vorbis.Open(v.fp); err != nil {
-		v.clear()
-		return false
-	}
-	v.buf = nil
-	return true
+
+//func (bgm *Bgm) IsFLAC() bool {
+//	return bgm.IsFormat(".flac")
+//}
+
+func (bgm *Bgm) IsWAVE() bool {
+	return bgm.IsFormat(".wav")
 }
-func (v *Vorbis) clear() {
-	if v.dec != nil {
-		v.dec = nil
-	}
-	if v.fp != nil {
-		chk(v.fp.Close())
-		v.fp = nil
-	}
+
+func (bgm *Bgm) IsFormat(extension string) bool {
+	return filepath.Ext(bgm.filename) == extension
 }
-func (v *Vorbis) samToAudioOut(buf [][]float32) (out []int16) {
-	var o1i int
-	if len(buf) == 1 {
-		o1i = 0
-	} else {
-		o1i = 1
+
+func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
+	if filepath.Base(bgm.filename) == filepath.Base(filename) {
+		return
 	}
-	sr := audioFrequency / float64(v.dec.SampleRate())
-	out = make([]int16, 2*(int(float64(len(buf[0])-1)*sr)+1))
-	oldbufi := -2
-	for i := range buf[0] {
-		for j := oldbufi + 2; j <= 2*int(v.bufi); j += 2 {
-			l, r := v.normalizer.Process(buf[0][i], buf[o1i][i])
-			out[j], out[j+1] = int16(25000*l), int16(25000*r)
-		}
-		oldbufi = 2 * int(v.bufi)
-		v.bufi = sr * float64(i+1)
+	bgm.filename = filename
+	bgm.loop = loop
+	bgm.bgmVolume = bgmVolume
+	bgm.bgmLoopStart = bgmLoopStart
+	bgm.bgmLoopEnd = bgmLoopEnd
+	if isDefaultBGM {
+		bgm.defaultFilename = filename
+		bgm.defaultBgmVolume = bgmVolume
+		bgm.defaultbgmLoopStart = bgmLoopStart
+		bgm.defaultbgmLoopEnd = bgmLoopEnd
 	}
-	v.bufi -= float64(int(v.bufi))
+	speaker.Clear()
+
+	if bgm.IsVorbis() {
+		bgm.ReadVorbis(loop, bgmVolume)
+	} else if bgm.IsMp3() {
+		bgm.ReadMp3(loop, bgmVolume)
+	//} else if bgm.IsFLAC() {
+	//	bgm.ConvertFLAC(loop, bgmVolume)
+	} else if bgm.IsWAVE() {
+		bgm.ReadWav(loop, bgmVolume)
+	}
+
+}
+
+func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := mp3.Decode(f)
+	bgm.streamer = s
+	bgm.format = "mp3"
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+/*
+func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := flac.Decode(f)
+	bgm.streamer = s
+	bgm.format = "flac"
+
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+// SCREW THE FLAC.SEEK FUNCTION, IT DOES NOT WORK SO WE ARE GOING TO CONVERT THIS TO WAV
+// Update: Now the flac dependecy broke. (-_-)
+func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
+	// We open the flac
+	f1, _ := os.Open(bgm.filename)
+	// And create a temp one
+	f2, _ := os.Create("save/tempaudio.wav")
+
+	// Open decode and convert
+	s, format, err := flac.Decode(f1)
+	wav.Encode(f2, s, format)
+ 
+	bgm.filename = "save/tempaudio.wav"
+	//bgm.tempfile = f2
+	bgm.format = "flac"
+
+	s.Close()
+
+	if err != nil {
+		return
+	}
+
+	sys.FLAC_FrameWait = 120
+}
+*/
+
+func (bgm *Bgm) PlayMemAudio(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := wav.Decode(f)
+	bgm.streamer = s
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := vorbis.Decode(f)
+	bgm.streamer = s
+	bgm.format = "ogg"
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+func (bgm *Bgm) ReadWav(loop int, bgmVolume int) {
+	f, _ := os.Open(bgm.filename)
+	s, format, err := wav.Decode(f)
+	bgm.streamer = s
+	bgm.format = "wav"
+	if err != nil {
+		return
+	}
+	bgm.ReadFormat(format, loop, bgmVolume)
+}
+
+func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
+	loopCount := int(1)
+	if loop > 0 {
+		loopCount = -1
+	}
+	streamer := beep.Loop(loopCount, bgm.streamer)
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
+	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
+	bgm.resampler = beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), bgm.volume)
+	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
+	speaker.Play(bgm.ctrl)
+}
+
+func (bgm *Bgm) Pause() {
+	speaker.Lock()
+	bgm.ctrl.Paused = true
+	speaker.Unlock()
 	return
 }
-func (v *Vorbis) read() []int16 {
-	select {
-	case file := <-v.openReq:
-		v.openFile(file)
-	default:
-	}
-	for v.dec != nil {
-		if len(v.buf) >= audioOutLen*2 {
-			out := v.buf[:audioOutLen*2]
-			v.buf = v.buf[audioOutLen*2:]
-			return out
-		}
-		for len(v.buf) < audioOutLen*2 && v.dec != nil {
-			sam, err := v.dec.DecodePacket()
-			if err == io.EOF {
-				v.restart()
-				continue
-			} else {
-				chk(err)
-			}
-			v.buf = append(v.buf, v.samToAudioOut(sam)...)
-		}
-	}
-	return sys.nullSndBuf[:]
-}
+
+// ------------------------------------------------------------------
+// Wave
 
 type Wave struct {
 	SamplesPerSec  uint32
@@ -400,12 +512,18 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	return &w, nil
 }
 
+// ------------------------------------------------------------------
+// Snd
+
 type Snd struct {
 	table     map[[2]int32]*Wave
 	ver, ver2 uint16
 }
 
-func newSnd() *Snd { return &Snd{table: make(map[[2]int32]*Wave)} }
+func newSnd() *Snd {
+	return &Snd{table: make(map[[2]int32]*Wave)}
+}
+
 func LoadSnd(filename string) (*Snd, error) {
 	s := newSnd()
 	f, err := os.Open(filename)
@@ -477,6 +595,9 @@ func (s *Snd) play(gn [2]int32) bool {
 	c.sound = s.Get(gn)
 	return c.sound != nil
 }
+
+// ------------------------------------------------------------------
+// Sound
 
 type Sound struct {
 	sound   *Wave

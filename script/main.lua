@@ -1,4 +1,7 @@
-
+-------------------------------------------------------------
+-- Disable GC during the initial load so it does not crash.
+SetGCPercent(-1)
+-------------------------------------------------------------
 main = {}
 
 refresh()
@@ -12,14 +15,15 @@ math.randomseed(os.time())
 json = (loadfile 'script/dkjson.lua')()
 
 -- Data loading from config.json
-local file = io.open("data/config.json","r")
+local file = io.open("save/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
 
 main.p1In = 1
-main.p2In = 1
+main.p2In = 2
 --main.inputDialog = inputDialogNew()
 
+-------------------------------------------------------------
 function main.f_setCommand(c)
 	commandAdd(c, 'u', '$U')
 	commandAdd(c, 'd', '$D')
@@ -65,6 +69,96 @@ function main.f_btnPalNo(cmd)
 	return 0
 end
 
+-- Check if files exists.
+function main.file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+--prints "t" table content into "toFile" file
+function main.f_printTable(t, toFile)
+	local toFile = toFile or 'debug/table_print.txt'
+	local txt = ''
+	local print_t_cache = {}
+	local function sub_print_t(t, indent)
+		if print_t_cache[tostring(t)] then
+			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
+		else
+			print_t_cache[tostring(t)] = true
+			if type(t) == 'table' then
+				for pos, val in pairs(t) do
+					if type(val) == 'table' then
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
+						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
+						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
+					elseif type(val) == 'string' then
+						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
+					else
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
+					end
+				end
+			else
+				txt = txt .. indent .. tostring(t) .. '\n'
+			end
+		end
+	end
+	if type(t) == 'table' then
+		txt = txt .. tostring(t) .. ' {' .. '\n'
+		sub_print_t(t, '  ')
+		txt = txt .. '}' .. '\n'
+	else
+		sub_print_t(t, '  ')
+	end
+	local file = io.open(toFile,"w+")
+	if file == nil then return end
+	file:write(txt)
+	file:close()
+end
+
+-- Prints "v" variable into "toFile" file
+function main.f_printVar(v, toFile)
+	local toFile = toFile or 'debug/var_print.txt'
+	local file = io.open(toFile,"w+")
+	file:write(v)
+	file:close()
+end
+
+-- Split strings.
+function main.f_strsplit(delimiter, text)
+	local list = {}
+	local pos = 1
+	if string.find('', delimiter, 1) then
+		if string.len(text) == 0 then
+			table.insert(list, text)
+		else
+			for i = 1, string.len(text) do
+				table.insert(list, string.sub(text, i, i))
+			end
+		end
+	else
+		while true do
+			local first, last = string.find(text, delimiter, pos)
+			if first then
+				table.insert(list, string.sub(text, pos, first - 1))
+				pos = last + 1
+			else
+				table.insert(list, string.sub(text, pos))
+				break
+			end
+		end
+	end
+	return list
+end
+
+-------------------------------------------------------------
+-- Int localcoord
+require "script/screenpack"
+main.IntLocalcoordValues()
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
+main.SetScaleValues()
+-------------------------------------------------------------
+
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y)
 	animSetPos(a, x, y)
@@ -82,13 +176,16 @@ function main.f_textImgPosDraw(ti, x, y, align)
 end
 
 --shortcut for creating new text with several parameters
-function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY)
+function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, colorR, colorG, colorB)
 	local ti = textImgNew()
 	if font ~= nil then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
+		if colorR ~= nil and colorG ~= nil and colorB ~= nil then
+			textImgSetColor(ti, colorR, colorG, colorB)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
@@ -97,12 +194,15 @@ function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY)
 end
 
 --shortcut for updating text with several parameters
-function main.f_updateTextImg(animName, font, bank, align, text, x, y, scaleX, scaleY)
+function main.f_updateTextImg(animName, font, bank, align, text, x, y, scaleX, scaleY, colorR, colorG, colorB)
 	if font ~= nil then
 		textImgSetFont(animName, font)
 		textImgSetBank(animName, bank)
 		textImgSetAlign(animName, align)
 		textImgSetText(animName, text)
+		if colorR ~= nil and colorG ~= nil and colorB ~= nil then
+			textImgSetColor(animName, colorR, colorG, colorB)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(animName, x, y)
 		textImgSetScale(animName, scaleX, scaleY)
@@ -244,7 +344,7 @@ function main.f_getName(cell)
 	tmp = tmp:gsub('^["%s]*(.-)["%s]*$', '%1') --needed for s-size ikemen
 	if main.t_selChars[cell + 1].hidden == 3 then
 		tmp = 'Random'
-	elseif main.t_selChars[cell + 1].hidden == 2 then
+	elseif main.t_selChars[cell + 1].hidden == 2 or main.t_selChars[cell + 1].hidden == 1 then
 		tmp = ''
 	end
 	return tmp
@@ -252,14 +352,14 @@ end
 
 --randomizes table content
 function main.f_shuffleTable(t)
-    local rand = math.random
-    assert(t, "main.f_shuffleTable() expected a table, got nil")
-    local iterations = #t
-    local j
-    for i = iterations, 2, -1 do
-        j = rand(i)
-        t[i], t[j] = t[j], t[i]
-    end
+	local rand = math.random
+	assert(t, "main.f_shuffleTable() expected a table, got nil")
+	local iterations = #t
+	local j
+	for i = iterations, 2, -1 do
+		j = rand(i)
+		t[i], t[j] = t[j], t[i]
+	end
 end
 
 --iterate over the table in order
@@ -272,72 +372,24 @@ end
 --    print(k,v)
 --end
 function main.f_sortKeys(t, order)
-    -- collect the keys
-    local keys = {}
-    for k in pairs(t) do keys[#keys + 1] = k end
-    -- if order function given, sort it by passing the table and keys a, b,
-    -- otherwise just sort the keys 
-    if order then
+	-- collect the keys
+	local keys = {}
+	for k in pairs(t) do keys[#keys + 1] = k end
+	-- if order function given, sort it by passing the table and keys a, b,
+	-- otherwise just sort the keys 
+	if order then
 		table.sort(keys, function(a,b) return order(t, a, b) end)
-    else
+	else
 		table.sort(keys)
-    end
-    -- return the iterator function
-    local i = 0
-    return function()
+	end
+	-- return the iterator function
+	local i = 0
+	return function()
 		i = i + 1
 		if keys[i] then
 			return keys[i], t[keys[i]]
 		end
 	end
-end
-
---prints "t" table content into "toFile" file
-function main.f_printTable(t, toFile)
-	local toFile = toFile or 'debug/table_print.txt'
-	local txt = ''
-	local print_t_cache = {}
-	local function sub_print_t(t, indent)
-		if print_t_cache[tostring(t)] then
-			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
-		else
-			print_t_cache[tostring(t)] = true
-			if type(t) == 'table' then
-				for pos, val in pairs(t) do
-					if type(val) == 'table' then
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
-						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
-						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
-					elseif type(val) == 'string' then
-						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
-					else
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
-					end
-				end
-			else
-				txt = txt .. indent .. tostring(t) .. '\n'
-			end
-		end
-	end
-	if type(t) == 'table' then
-		txt = txt .. tostring(t) .. ' {' .. '\n'
-		sub_print_t(t, '  ')
-		txt = txt .. '}' .. '\n'
-	else
-		sub_print_t(t, '  ')
-	end
-	local file = io.open(toFile,"w+")
-	if file == nil then return end
-	file:write(txt)
-	file:close()
-end
-
---prints "v" variable into "toFile" file
-function main.f_printVar(v, toFile)
-	local toFile = toFile or 'debug/var_print.txt'
-	local file = io.open(toFile,"w+")
-	file:write(v)
-	file:close()
 end
 
 --remove duplicated string pattern
@@ -553,7 +605,7 @@ function main.f_ctrlBG(t_bg, t_ctrl)
 end
 
 --draw background layers
-function main.f_drawBG(data, info, layerno, timer)
+function main.f_drawBG(data, info, layerno, timer, localcoord)
 	timer = timer or 0
 	--loop through all backgrounds
 	for i = 1, #data do
@@ -589,34 +641,38 @@ function main.f_drawBG(data, info, layerno, timer)
 							info[i].ctrl_flags.enabled = t.value
 						elseif k == 'velset' or k == 'posset' then
 							if t.x ~= nil then
-								info[i].ctrl_flags.velx = 0 - info[i].velocity[1] + t.x
+								info[i].ctrl_flags.velx = 0 - info[i].velocity[1] + t.x * 320/localcoord[1]
 							end
 							if t.y ~= nil then
-								info[i].ctrl_flags.vely = 0 - info[i].velocity[2] + t.y
+								info[i].ctrl_flags.vely = 0 - info[i].velocity[2] + t.y * 240/localcoord[2]
 							end
-						elseif k == 'veladd' or k == 'posadd' then
+						elseif k == 'veladd'  then --or k == 'posadd' then
 							if t.x ~= nil then
-								info[i].ctrl_flags.velx = info[i].ctrl_flags.velx + t.x
+								info[i].ctrl_flags.velx = info[i].ctrl_flags.velx + t.x * 320/localcoord[1]
 							end
 							if t.y ~= nil then
-								info[i].ctrl_flags.vely = info[i].ctrl_flags.vely + t.y
+								info[i].ctrl_flags.vely = info[i].ctrl_flags.vely + t.y * 240/localcoord[2]
 							end
+						elseif k == 'posadd' then
+							if t.x ~= nil then x = t.x * 320/localcoord[1] end
+							if t.y ~= nil then y = t.y * 240/localcoord[2] end
+							animAddPos(data[i], x, y)
 						--[[elseif k == 'posset' then
 							if t.x ~= nil then
-								x = t.x
+								x = t.x * 320/localcoord[1]
 							else
 								x = info[i].start[1]
 							end
-							if t.y == nil then
-								y = t.y
+							if t.y ~= nil then
+								y = t.y * 240/localcoord[2]
 							else
 								y = info[i].start[2]
 							end
 							animSetPos(data[i], x, y)
 							animAddPos(data[i], 160, 0) --for some reason needed in ikemen
 						elseif k == 'posadd' then
-							if t.x ~= nil then x = t.x end
-							if t.y ~= nil then y = t.y end
+							if t.x ~= nil then x = t.x * 320/localcoord[1] end
+							if t.y ~= nil then y = t.y * 240/localcoord[2] end
 							animAddPos(data[i], x, y)]]
 						--elseif k == 'anim' then --not supported yet
 						--elseif k == 'sinx' then --not supported yet
@@ -642,7 +698,7 @@ function main.f_drawBG(data, info, layerno, timer)
 end
 
 --reset screenpack data
-function main.f_resetBG(info, bgdef, bgm)
+function main.f_resetBG(info, bgdef, bgm, bgmLoop, bgmVolume, bgmloopstart, bgmloopend)
 	bgm = bgm or nil
 	animReset(info.fadein_data)
 	animUpdate(info.fadein_data)
@@ -668,18 +724,18 @@ function main.f_resetBG(info, bgdef, bgm)
 		end
 	end
 	if bgm ~= nil then
-		playBGM(bgm)
+		playBGM(bgm, true, bgmLoop, bgmVolume, bgmloopstart or "0", bgmloopend or "0")
 	end
 end
 
 --return table with reversed keys
 function main.f_reversedTable(t)
-    local reversedTable = {}
-    local itemCount = #t
-    for k, v in ipairs(t) do
-        reversedTable[itemCount + 1 - k] = v
-    end
-    return reversedTable
+	local reversedTable = {}
+	local itemCount = #t
+	for k, v in ipairs(t) do
+		reversedTable[itemCount + 1 - k] = v
+	end
+	return reversedTable
 end
 
 --return table without rows disabled in screenpack
@@ -709,9 +765,9 @@ function main.f_warning(t, info, background, font_info, title, box)
 		--draw clearcolor
 		animDraw(background.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 0, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 0, background.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 1, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 1, background.timer, {320,240})
 		--draw menu box
 		animDraw(box)
 		--draw title
@@ -727,7 +783,10 @@ function main.f_warning(t, info, background, font_info, title, box)
 				font_info.text_pos[1],
 				font_info.text_pos[2] - font_info.text_spacing[2] + i * font_info.text_spacing[2],
 				font_info.text_font_scale[1],
-				font_info.text_font_scale[2]
+				font_info.text_font_scale[2],
+				font_info.text_font[4],
+				font_info.text_font[5],
+				font_info.text_font[6]
 			)
 			textImgDraw(txt_warning)
 		end
@@ -775,9 +834,9 @@ function main.f_input(t, info, background, type)
 		--draw clearcolor
 		animDraw(background.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 0, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 0, background.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(background.bg_data, background.bg, 1, background.timer)
+		main.f_drawBG(background.bg_data, background.bg, 1, background.timer, {320,240})
 		--draw menu box
 		animDraw(main.warningBox)
 		--draw text
@@ -791,7 +850,10 @@ function main.f_input(t, info, background, type)
 				motif.warning_info.text_pos[1],
 				motif.warning_info.text_pos[2] - motif.warning_info.text_spacing[2] + i * motif.warning_info.text_spacing[2],
 				motif.warning_info.text_font_scale[1],
-				motif.warning_info.text_font_scale[2]
+				motif.warning_info.text_font_scale[2],
+				motif.warning_info.text_font[4],
+				motif.warning_info.text_font[5],
+				motif.warning_info.text_font[6]
 			)
 			textImgDraw(txt_input)
 		end
@@ -938,6 +1000,7 @@ animSetAlpha(main.infoBox, motif.infobox.background_alpha[1], motif.infobox.back
 animSetWindow(main.infoBox, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 animUpdate(main.infoBox)
 
+
 main.txt_warningTitle = main.f_createTextImg(
 	motif.font_data[motif.warning_info.title_font[1]],
 	motif.warning_info.title_font[2],
@@ -946,8 +1009,13 @@ main.txt_warningTitle = main.f_createTextImg(
 	motif.warning_info.title_pos[1],
 	motif.warning_info.title_pos[2],
 	motif.warning_info.title_font_scale[1],
-	motif.warning_info.title_font_scale[2]
+	motif.warning_info.title_font_scale[2],
+	motif.warning_info.title_font[4],
+	motif.warning_info.title_font[5],
+	motif.warning_info.title_font[6]
 )
+
+main.SetDefaultScale()
 
 local footerBox = animNew(main.fadeSff, '0,2, 0,0, -1')
 animSetTile(footerBox, 1, 1)
@@ -961,6 +1029,8 @@ animSetWindow(
 animSetAlpha(footerBox, motif.title_info.footer_boxbackground_alpha[1], motif.title_info.footer_boxbackground_alpha[2])
 animUpdate(footerBox)
 
+main.SetScaleValues()
+
 --add characters and stages using select.def instead of select.lua
 local txt_loading = main.f_createTextImg(
 	motif.font_data[motif.title_info.loading_font[1]],
@@ -970,7 +1040,10 @@ local txt_loading = main.f_createTextImg(
 	motif.title_info.loading_offset[1],
 	motif.title_info.loading_offset[2],
 	motif.title_info.loading_font_scale[1],
-	motif.title_info.loading_font_scale[2]
+	motif.title_info.loading_font_scale[2],
+	motif.title_info.loading_font[4],
+	motif.title_info.loading_font[5],
+	motif.title_info.loading_font[6]
 )
 textImgDraw(txt_loading)
 refresh()
@@ -1039,13 +1112,16 @@ function main.f_addChar(line, row)
 			main.t_selChars[row].stage[#main.t_selChars[row].stage + 1] = c
 		else
 			local param, value = c:match('^(.-)%s*=%s*(.-)$')
-			if param ~= '' and value ~= '' then
+			if param ~= '' and value ~= '' and param ~= nil and value ~= nil then
 				main.t_selChars[row][param] = tonumber(value)
 			end
 		end
 	end
-	if main.t_selChars[row].exclude == nil then
+	if main.t_selChars[row].hidden == nil then
 		main.t_selChars[row].hidden = hidden
+	end
+	if main.t_selChars[row].exclude == nil then
+		main.t_selChars[row].exclude = 0
 	end
 	if order then
 		if main.t_orderChars[main.t_selChars[row].order] == nil then
@@ -1073,6 +1149,9 @@ file:close()
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
+	if chars + stages == 100 then
+		SetGCPercent(100)
+	end
 --for line in io.lines("data/select.def") do
 	line = line:lower()
 	if line:match('^%s*%[%s*characters%s*%]') then
@@ -1116,7 +1195,7 @@ for line in content:gmatch('[^\r\n]+') do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = c}
-				local zoomout, zoomin, bgmusic, bgmvolume = getStageInfo(row)
+				local zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend  = getStageInfo(row)
 				if zoomout ~= '' then
 					main.t_selStages[row].zoommin = tonumber(zoomout)
 				end
@@ -1125,7 +1204,7 @@ for line in content:gmatch('[^\r\n]+') do
 				end
 				if bgmusic ~= '' then
 					bgmusic = bgmusic:gsub('\\', '/')
-					main.t_selStages[row].music = {[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume)}}
+					main.t_selStages[row].music = {[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume), bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}}
 				end
 				main.t_includeStage[#main.t_includeStage + 1] = row
 				main.t_stageDef[c] = row
@@ -1176,7 +1255,7 @@ end
 --add Training by stupa if not included in select.def
 if main.t_charDef.training == nil and main.f_fileExists('chars/training/training.def') then
 	chars = chars + 1
-	main.f_addChar('training, exclude = 1', chars)
+	main.f_addChar('training, exclude = 1, order = 0', chars)
 end
 
 --add remaining character parameters
@@ -1187,7 +1266,7 @@ main.t_randomChars = {}
 for i = 1, #main.t_selChars do
 	if main.t_selChars[i].stage ~= nil then
 		for j = 1, #main.t_selChars[i].stage do
-			if main.t_stageDef[main.t_selChars[i].stage[j]] == nil then
+			if main.t_stageDef[main.t_selChars[i].stage[j]] == nil and main.file_exists(main.t_selChars[i].stage[j]) then
 				row = #main.t_selStages + 1
 				addStage(main.t_selChars[i].stage[j])
 				tmp = getStageName(row):match('^["%s]*(.-)["%s]*$') --needed for s-size ikemen
@@ -1195,7 +1274,7 @@ for i = 1, #main.t_selChars do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = main.t_selChars[i].stage[j]}
-				local zoomout, zoomin, bgmusic, bgmvolume = getStageInfo(row)
+				local zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend = getStageInfo(row)
 				if zoomout ~= '' then
 					main.t_selStages[row].zoommin = tonumber(zoomout)
 				end
@@ -1205,7 +1284,7 @@ for i = 1, #main.t_selChars do
 				if bgmusic ~= '' then
 					bgmusic = bgmusic:gsub('\\', '/')
 					main.t_selStages[row].music = {}
-					main.t_selStages[row].music[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume)}
+					main.t_selStages[row].music[1] = {bgmusic = bgmusic, bgmvolume = tonumber(bgmvolume), bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
 				end
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then
 					main.t_includeStage[#main.t_includeStage + 1] = row
@@ -1228,7 +1307,7 @@ for i = 1, #main.t_selChars do
 			main.t_bonusChars[#main.t_bonusChars + 1] = i - 1
 		end
 		--generate table with characters allowed to be random selected
-		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 then
+		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
 			main.t_randomChars[#main.t_randomChars + 1] = i - 1
 		end
 	end
@@ -1291,6 +1370,10 @@ storyboard = require('script.storyboard')
 --;===========================================================
 --; MAIN MENU
 --;===========================================================
+
+--Disable screenpack scale on the text for showing them corectly.
+main.SetDefaultScale()
+
 local txt_titleFooter1 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer1_font[1]],
 	motif.title_info.footer1_font[2],
@@ -1299,7 +1382,10 @@ local txt_titleFooter1 = main.f_createTextImg(
 	motif.title_info.footer1_offset[1],
 	motif.title_info.footer1_offset[2],
 	motif.title_info.footer1_font_scale[1],
-	motif.title_info.footer1_font_scale[2]
+	motif.title_info.footer1_font_scale[2],
+	motif.title_info.footer1_font[4],
+	motif.title_info.footer1_font[5],
+	motif.title_info.footer1_font[6]
 )
 local txt_titleFooter2 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer2_font[1]],
@@ -1309,7 +1395,10 @@ local txt_titleFooter2 = main.f_createTextImg(
 	motif.title_info.footer2_offset[1],
 	motif.title_info.footer2_offset[2],
 	motif.title_info.footer2_font_scale[1],
-	motif.title_info.footer2_font_scale[2]
+	motif.title_info.footer2_font_scale[2],
+	motif.title_info.footer2_font[4],
+	motif.title_info.footer2_font[5],
+	motif.title_info.footer2_font[6]
 )
 local txt_titleFooter3 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer3_font[1]],
@@ -1319,7 +1408,10 @@ local txt_titleFooter3 = main.f_createTextImg(
 	motif.title_info.footer3_offset[1],
 	motif.title_info.footer3_offset[2],
 	motif.title_info.footer3_font_scale[1],
-	motif.title_info.footer3_font_scale[2]
+	motif.title_info.footer3_font_scale[2],
+	motif.title_info.footer3_font[4],
+	motif.title_info.footer3_font[5],
+	motif.title_info.footer3_font[6]
 )
 local txt_infoboxTitle = main.f_createTextImg(
 	motif.font_data[motif.infobox.title_font[1]],
@@ -1329,8 +1421,15 @@ local txt_infoboxTitle = main.f_createTextImg(
 	motif.infobox.title_pos[1],
 	motif.infobox.title_pos[2],
 	motif.infobox.title_font_scale[1],
-	motif.infobox.title_font_scale[2]
+	motif.infobox.title_font_scale[2],
+	motif.infobox.title_font[4],
+	motif.infobox.title_font[5],
+	motif.infobox.title_font[6]
 )
+
+--Enable screenpack scale again.
+main.SetScaleValues()
+
 main.txt_mainSelect = main.f_createTextImg(
 	motif.font_data[motif.select_info.title_font[1]],
 	motif.select_info.title_font[2],
@@ -1339,7 +1438,10 @@ main.txt_mainSelect = main.f_createTextImg(
 	motif.select_info.title_offset[1],
 	motif.select_info.title_offset[2],
 	motif.select_info.title_font_scale[1],
-	motif.select_info.title_font_scale[2]
+	motif.select_info.title_font_scale[2],
+	motif.select_info.title_font[4],
+	motif.select_info.title_font[5],
+	motif.select_info.title_font[6]
 )
 
 --itemname: names used to distinguish modes in lua code (keep it as it is)
@@ -1389,15 +1491,15 @@ function main.f_default()
 	main.p2SelectMenu = true --P2 character selection enabled
 	main.versusScreen = true --versus screen enabled
 	main.p1In = 1 --P1 controls P1 side of the select screen
-	main.p2In = 0 --P2 controls in the select screen disabled
+	main.p2In = 2 --P2 controls P2 side of the select screen
 	main.gameMode = '' --additional variable used to distinguish modes in select screen
 end
 
 function main.f_menuCommon1(cursorPosY, moveTxt, item, t)
-	if commandGetState(main.p1Cmd, 'u') then
+	if commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item - 1
-	elseif commandGetState(main.p1Cmd, 'd') then
+	elseif commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item + 1
 	end
@@ -1412,9 +1514,9 @@ function main.f_menuCommon1(cursorPosY, moveTxt, item, t)
 	elseif item > #t then
 		item = 1
 		cursorPosY = 1
-	elseif commandGetState(main.p1Cmd, 'u') and cursorPosY > 1 then
+	elseif (commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') ) and cursorPosY > 1 then
 		cursorPosY = cursorPosY - 1
-	elseif commandGetState(main.p1Cmd, 'd') and cursorPosY < motif.title_info.menu_window_visibleitems then
+	elseif (commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') ) and cursorPosY < motif.title_info.menu_window_visibleitems then
 		cursorPosY = cursorPosY + 1
 	end
 	if cursorPosY == motif.title_info.menu_window_visibleitems then
@@ -1429,7 +1531,7 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 	--draw clearcolor
 	animDraw(motif.titlebgdef.bgclearcolor_data)
 	--draw layerno = 0 backgrounds
-	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer)
+	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer, {320,240})
 	--draw menu items
 	local items_shown = item + motif.title_info.menu_window_visibleitems - cursorPosY
 	if motif.title_info.menu_window_margins_y[2] ~= 0 and items_shown < #t then
@@ -1450,7 +1552,10 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.title_info.menu_pos[1],
 					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
 					motif.title_info.menu_item_active_font_scale[1],
-					motif.title_info.menu_item_active_font_scale[2]
+					motif.title_info.menu_item_active_font_scale[2],
+					motif.title_info.menu_item_active_font[4],
+					motif.title_info.menu_item_active_font[5],
+					motif.title_info.menu_item_active_font[6]
 				))
 			else
 				textImgDraw(main.f_updateTextImg(
@@ -1462,7 +1567,10 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 					motif.title_info.menu_pos[1],
 					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
 					motif.title_info.menu_item_font_scale[1],
-					motif.title_info.menu_item_font_scale[2]
+					motif.title_info.menu_item_font_scale[2],
+					motif.title_info.menu_item_font[4],
+					motif.title_info.menu_item_font[5],
+					motif.title_info.menu_item_font[6]
 				))
 			end
 		end
@@ -1480,7 +1588,7 @@ function main.f_menuCommon2(cursorPosY, moveTxt, item, t)
 		animDraw(main.cursorBox)
 	end
 	--draw layerno = 1 backgrounds
-	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer)
+	main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer, {320,240})
 	--footer draw
 	if motif.title_info.footer_boxbackground_visible == 1 then
 		animDraw(footerBox)
@@ -1518,13 +1626,15 @@ function main.f_mainMenu()
 	if motif.files.intro_storyboard ~= '' then
 		storyboard.f_storyboard(motif.files.intro_storyboard)
 	end
-	main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm)
+	main.f_resetBG(motif.title_info, motif.titlebgdef, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 	while true do
 		cursorPosY, moveTxt, item = main.f_menuCommon1(cursorPosY, moveTxt, item, t)
 		if esc() then
 			break
 		elseif getKey() == 'F1' then
+			main.SetDefaultScale()
 			main.f_warning(main.f_extractText(motif.infobox.text), motif.title_info, motif.titlebgdef, motif.infobox, txt_infoboxTitle, main.infoBox)
+			main.SetScaleValues()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			main.f_default()
 			--ARCADE
@@ -1627,8 +1737,12 @@ function main.f_mainMenu()
 			--OPTIONS
 			if t[item].itemname == 'options' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)
+				main.f_menuFadeOut(cursorPosY, moveTxt, item, t)				
+				--Disable screenpack scale on the menu text for showing the menu corectly.
+				main.SetDefaultScale()
 				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
+				--Enable screenpack scale again.
+				main.SetScaleValues()
 			end
 			--EXIT
 			if t[item].itemname == 'exit' then
@@ -1650,7 +1764,10 @@ local txt_connection = main.f_createTextImg(
 	motif.title_info.connecting_offset[1],
 	motif.title_info.connecting_offset[2],
 	motif.title_info.connecting_font_scale[1],
-	motif.title_info.connecting_font_scale[2]
+	motif.title_info.connecting_font_scale[2],
+	motif.title_info.connecting_font[4],
+	motif.title_info.connecting_font[5],
+	motif.title_info.connecting_font[6]
 )
 function main.f_connect(server, t)
 	local cancel = false
@@ -1664,9 +1781,9 @@ function main.f_connect(server, t)
 		--draw clearcolor
 		animDraw(motif.titlebgdef.bgclearcolor_data)
 		--draw layerno = 0 backgrounds
-		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer)
+		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 0, motif.titlebgdef.timer, {320,240})
 		--draw layerno = 1 backgrounds
-		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer)
+		main.f_drawBG(motif.titlebgdef.bg_data, motif.titlebgdef.bg, 1, motif.titlebgdef.timer, {320,240})
 		--draw menu box
 		animDraw(main.warningBox)
 		--draw text
@@ -1713,6 +1830,16 @@ function main.f_mainNetplay()
 				main.f_connect("", main.f_extractText(motif.title_info.connecting_host, getListenPort()))
 				exitNetPlay()
 				exitReplay()
+
+				-- Save replay with a new name
+				tpmFileRpl1 = io.open("save/replays/netplay.replay","r")
+				tpmFileRpl1C = tpmFileRpl1:read("*all")
+				io.close(tpmFileRpl1)
+
+				tpmFileRpl2name = os.date("%Y-%m(%b)-%d %I-%M%p-%Ss")
+				tpmFileRpl2 = io.open("save/replays/" .. tpmFileRpl2name .. ".replay","w+")
+				tpmFileRpl2:write(tpmFileRpl1C)
+				io.close(tpmFileRpl2)
 			end
 			--JOIN
 			if t[item].itemname == 'serverjoin' then
@@ -1769,7 +1896,7 @@ function main.f_netplayJoin()
 			end
 			t_netplayJoin = t_tmp
 			t = t_netplayJoin
-			local file = io.open("data/config.json","w+")
+			local file = io.open("save/config.json","w+")
 			file:write(json.encode(config, {indent = true}))
 			file:close()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
@@ -1795,7 +1922,7 @@ function main.f_netplayJoin()
 						end
 						t_netplayJoin = t_tmp
 						t = t_netplayJoin
-						local file = io.open("data/config.json","w+")
+						local file = io.open("save/config.json","w+")
 						file:write(json.encode(config, {indent = true}))
 						file:close()
 					else
@@ -1963,9 +2090,9 @@ function main.f_mainExtras()
 			end
 			--REPLAY
 			if t[item].itemname == 'replay' then
-				if main.f_fileExists('replay/netplay.replay') then
+				if main.f_fileExists('save/replays/netplay.replay') then
 					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-					enterReplay('replay/netplay.replay')
+					enterReplay('save/replays/netplay.replay')
 					synchronize()
 					math.randomseed(sszRandom())
 					main.f_netplayMode()
@@ -2027,6 +2154,7 @@ function main.f_bonusExtras()
 			else
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.versusScreen = false
+				main.p2In = 1
 				main.p1TeamMenu = {mode = 0, chars = 1}
 				main.p2TeamMenu = {mode = 0, chars = 1}
 				main.p2Char = {main.t_bonusChars[item]}
@@ -2110,4 +2238,12 @@ end
 --; INITIALIZE LOOPS
 --;===========================================================
 
+-- Now that everithig is loaded we can enable GC back.
+SetGCPercent(100)
+-------------------------------------------------------------
+
 main.f_mainMenu()
+
+
+-- Debug Info
+main.f_printTable(main, "debug/t_main.txt")

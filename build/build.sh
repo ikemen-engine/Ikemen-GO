@@ -1,0 +1,25 @@
+#!/bin/sh
+cd ..
+export GOPATH=$PWD/go
+export CGO_ENABLED=1
+
+case "$OSTYPE" in
+	darwin*)
+		BINARY_NAME="Ikemen_GO_mac"
+	;;
+	linux*) 
+		BINARY_NAME="Ikemen_GO_linux" 
+	;;
+	*)
+		echo "System not recognized";
+		exit 1
+	;;
+esac
+
+mkdir bin
+go build -o ./bin/$BINARY_NAME ./src
+chmod +x ./bin/$BINARY_NAME
+
+cp ./build/Ikemen_GO.command ./bin/Ikemen_GO.command
+cp -r ./script/ ./bin/script/
+cp -r ./data/ ./bin/data/

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"strconv"
 	"strings"
 )
@@ -89,14 +88,12 @@ func ReadAnimFrame(line string) *AnimFrame {
 					}
 					if af.SrcAlpha == 1 && af.DstAlpha == 255 {
 						af.SrcAlpha = 0
-					} else if af.SrcAlpha == 255 && af.DstAlpha == 1 {
-						af.DstAlpha = 0
 					}
 				}
 			}
 		}
 	case len(a) > 0 && a[0] == 'a':
-		af.SrcAlpha, af.DstAlpha = 255, 1
+		af.SrcAlpha, af.DstAlpha = 255, 255
 	}
 	if len(ary) > 1 {
 		af.Ex = make([][]float32, 3)
@@ -116,7 +113,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 				if err != nil {
 					f = 0
 				}
-				af.Ex[2] = append(af.Ex[2], float32(f*math.Pi/180)) // Angle
+				af.Ex[2] = append(af.Ex[2], float32(f)) // Angle
 			}
 		}
 	}
@@ -487,59 +484,67 @@ func (a *Animation) UpdateSprite() {
 			}
 		}
 	}
-	if int(a.drawidx) < len(a.frames)-1 {
-		for _, i := range a.interpolate_offset {
-			if a.drawidx+1 == i {
-				a.interpolate_offset_x = float32(a.frames[a.drawidx+1].X-a.frames[a.drawidx].X) / float32(a.curFrame().Time) * float32(a.time)
-				a.interpolate_offset_y = float32(a.frames[a.drawidx+1].Y-a.frames[a.drawidx].Y) / float32(a.curFrame().Time) * float32(a.time)
-				break
-			}
+	nextDrawidx := a.drawidx + 1
+	if int(a.drawidx) >= len(a.frames)-1 {
+		nextDrawidx = a.loopstart
+	}
+	for _, i := range a.interpolate_offset {
+		if nextDrawidx == i {
+			a.interpolate_offset_x = float32(a.frames[nextDrawidx].X-a.frames[a.drawidx].X) / float32(a.curFrame().Time) * float32(a.time)
+			a.interpolate_offset_y = float32(a.frames[nextDrawidx].Y-a.frames[a.drawidx].Y) / float32(a.curFrame().Time) * float32(a.time)
+			break
 		}
-		for _, i := range a.interpolate_scale {
-			if a.drawidx+1 == i {
-				var drawframe_scale_x, nextframe_scale_x, drawframe_scale_y, nextframe_scale_y float32 = 1, 1, 1, 1
-				if len(a.frames[a.drawidx].Ex) > 2 {
-					if len(a.frames[a.drawidx].Ex[2]) > 0 {
-						drawframe_scale_x = a.frames[a.drawidx].Ex[2][0]
-					}
-					if len(a.frames[a.drawidx].Ex[2]) > 1 {
-						drawframe_scale_y = a.frames[a.drawidx].Ex[2][1]
-					}
+	}
+	for _, i := range a.interpolate_scale {
+		if nextDrawidx == i {
+			var drawframe_scale_x, nextframe_scale_x, drawframe_scale_y, nextframe_scale_y float32 = 1, 1, 1, 1
+			if len(a.frames[a.drawidx].Ex) > 2 {
+				if len(a.frames[a.drawidx].Ex[2]) > 0 {
+					drawframe_scale_x = a.frames[a.drawidx].Ex[2][0]
 				}
-				if len(a.frames[a.drawidx+1].Ex) > 2 {
-					if len(a.frames[a.drawidx+1].Ex[2]) > 0 {
-						nextframe_scale_x = a.frames[a.drawidx+1].Ex[2][0]
-					}
-					if len(a.frames[a.drawidx+1].Ex[2]) > 1 {
-						nextframe_scale_y = a.frames[a.drawidx+1].Ex[2][1]
-					}
+				if len(a.frames[a.drawidx].Ex[2]) > 1 {
+					drawframe_scale_y = a.frames[a.drawidx].Ex[2][1]
 				}
-				a.scale_x += (nextframe_scale_x - drawframe_scale_x) / float32(a.curFrame().Time) * float32(a.time)
-				a.scale_y += (nextframe_scale_y - drawframe_scale_y) / float32(a.curFrame().Time) * float32(a.time)
-				break
 			}
-		}
-		for _, i := range a.interpolate_angle {
-			if a.drawidx+1 == i {
-				var drawframe_angle, nextframe_angle float32 = 0, 0
-				if len(a.frames[a.drawidx].Ex) > 2 {
-					if len(a.frames[a.drawidx].Ex[2]) > 2 {
-						drawframe_angle = a.frames[a.drawidx].Ex[2][2]
-					}
+			if len(a.frames[nextDrawidx].Ex) > 2 {
+				if len(a.frames[nextDrawidx].Ex[2]) > 0 {
+					nextframe_scale_x = a.frames[nextDrawidx].Ex[2][0]
 				}
-				if len(a.frames[a.drawidx+1].Ex) > 2 {
-					if len(a.frames[a.drawidx+1].Ex[2]) > 2 {
-						nextframe_angle = a.frames[a.drawidx+1].Ex[2][2]
-					}
+				if len(a.frames[nextDrawidx].Ex[2]) > 1 {
+					nextframe_scale_y = a.frames[nextDrawidx].Ex[2][1]
 				}
-				a.angle += (nextframe_angle - drawframe_angle) / float32(a.curFrame().Time) * float32(a.time)
-				break
 			}
+			a.scale_x += (nextframe_scale_x - drawframe_scale_x) / float32(a.curFrame().Time) * float32(a.time)
+			a.scale_y += (nextframe_scale_y - drawframe_scale_y) / float32(a.curFrame().Time) * float32(a.time)
+			break
 		}
+	}
+	for _, i := range a.interpolate_angle {
+		if nextDrawidx == i {
+			var drawframe_angle, nextframe_angle float32 = 0, 0
+			if len(a.frames[a.drawidx].Ex) > 2 {
+				if len(a.frames[a.drawidx].Ex[2]) > 2 {
+					drawframe_angle = a.frames[a.drawidx].Ex[2][2]
+				}
+			}
+			if len(a.frames[nextDrawidx].Ex) > 2 {
+				if len(a.frames[nextDrawidx].Ex[2]) > 2 {
+					nextframe_angle = a.frames[nextDrawidx].Ex[2][2]
+				}
+			}
+			a.angle += (nextframe_angle - drawframe_angle) / float32(a.curFrame().Time) * float32(a.time)
+			break
+		}
+	}
+	if byte(a.interpolate_blend_srcalpha) != 1 ||
+		byte(a.interpolate_blend_dstalpha) != 255 {
 		for _, i := range a.interpolate_blend {
-			if a.drawidx+1 == i {
-				a.interpolate_blend_srcalpha += (float32(a.frames[a.drawidx+1].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
-				a.interpolate_blend_dstalpha += (float32(a.frames[a.drawidx+1].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
+			if nextDrawidx == i {
+				a.interpolate_blend_srcalpha += (float32(a.frames[nextDrawidx].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
+				a.interpolate_blend_dstalpha += (float32(a.frames[nextDrawidx].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
+				if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
+					a.interpolate_blend_srcalpha = 0
+				}
 				break
 			}
 		}
@@ -591,7 +596,7 @@ func (a *Animation) alpha() int32 {
 	if a.srcAlpha >= 0 {
 		sa = byte(a.srcAlpha)
 		if a.dstAlpha < 0 {
-			da = byte((^a.dstAlpha + int16(a.interpolate_blend_dstalpha)) >> 1)
+			da = byte(^a.dstAlpha >> 1)
 			if sa == 1 && da == 255 {
 				sa = 0
 			}
@@ -601,9 +606,6 @@ func (a *Animation) alpha() int32 {
 	} else {
 		sa = byte(a.interpolate_blend_srcalpha)
 		da = byte(a.interpolate_blend_dstalpha)
-		if sa == 255 && da == 1 {
-			da = 255
-		}
 	}
 	if sa == 1 && da == 255 {
 		return -2
@@ -621,39 +623,40 @@ func (a *Animation) alpha() int32 {
 	}
 	return trans
 }
-func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32) {
+func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32, plt *Texture) {
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
 	p = a.spr.GetPal(&a.sff.palList)
+	plt = a.spr.GetPalTex(&a.sff.palList)
 	if pfx != nil && len(pfx.remap) > 0 {
 		a.sff.palList.SwapPalMap(&pfx.remap)
 	}
-	if len(p) == 0 {
-		return
-	}
-	return pfx.getFxPal(p, neg)
+	return
 }
 func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	h, v = float32(a.frames[a.drawidx].H), float32(a.frames[a.drawidx].V)
-	agl = float32(float64(angle) * math.Pi / 180)
+	agl = angle
 	h *= a.scale_x
 	v *= a.scale_y
 	agl += a.angle * facing
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd, angle, rcx float32, pfx *PalFX, old bool, facing float32) {
+	rxadd, angle, yangle, xangle, rcx float32, pfx *PalFX, old bool, facing float32, isReflection bool, posLocalscl float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
 	h, v, angle := a.drawSub1(angle, facing)
+	if isReflection {
+		angle = -angle
+	}
 	xs *= xcs * h
 	ys *= ycs * v
-	x = xcs*x + xs*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x)
-	y = ycs*y + ys*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y)
+	x = xcs*x + xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x)
+	y = ycs*y + ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y)
 	var rcy float32
-	if angle == 0 {
+	if angle == 0 && yangle == 0 && xangle == 0 {
 		if xs < 0 {
 			x *= -1
 			if old {
@@ -692,35 +695,36 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x, y = AbsF(xs)*float32(a.spr.Offset[0]), AbsF(ys)*float32(a.spr.Offset[1])
 	}
 	trans := a.alpha()
-	a.spr.glDraw(a.pal(pfx, trans == -2), int32(a.mask), x*sys.widthScale,
+	pal, paltex := a.pal(pfx, trans == -2)
+	a.spr.glDraw(pal, int32(a.mask), x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
-		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle,
-		trans, window, rcx, rcy, pfx)
+		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle, yangle, xangle,
+		trans, window, rcx, rcy, pfx, paltex)
 }
-func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
-	pfx *PalFX, old bool, color uint32, alpha int32, facing float32) {
+func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle float32,
+	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
 	h, v, angle := a.drawSub1(angle, facing)
 	angle = -angle
-	x += xscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x)
-	y += yscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y)
+	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
+	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 	var draw func(int32)
-	if a.spr.rle == -12 {
+	if a.spr.rle <= -11 {
 		draw = func(trans int32) {
 			RenderMugenFcS(*a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color)
 		}
 	} else {
 		var pal [256]uint32
-		if color != 0 {
+		if color != 0 || alpha > 0 {
 			for i := range pal {
-				pal[i] = color
+				pal[i] = color | 0xff000000
 			}
 		}
 		draw = func(trans int32) {
@@ -728,11 +732,11 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle float32,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale)
 		}
 	}
-	if int32(color) > 0 {
+	if color != 0 {
 		draw(-2)
 	}
 	if alpha > 0 {
@@ -785,18 +789,21 @@ func (at AnimationTable) get(no int32) *Animation {
 }
 
 type SprData struct {
-	anim     *Animation
-	fx       *PalFX
-	pos      [2]float32
-	scl      [2]float32
-	alpha    [2]int32
-	priority int32
-	angle    float32
-	ascl     [2]float32
-	screen   bool
-	bright   bool
-	oldVer   bool
-	facing   float32
+	anim        *Animation
+	fx          *PalFX
+	pos         [2]float32
+	scl         [2]float32
+	alpha       [2]int32
+	priority    int32
+	angle       float32
+	yangle      float32
+	xangle      float32
+	ascl        [2]float32
+	screen      bool
+	bright      bool
+	oldVer      bool
+	facing      float32
+	posLocalscl float32
 }
 type DrawList []*SprData
 
@@ -851,7 +858,7 @@ func (dl DrawList) draw(x, y, scl float32) {
 					(y - s.pos[1])}
 		}
 		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], 0, s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
+			s.scl[1], 0, s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl)
 		sys.brightness = ob
 	}
 }
@@ -912,8 +919,8 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle,
-			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing)
+			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle, s.yangle, s.xangle,
+			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl)
 	}
 }
 func (sl ShadowList) drawReflection(x, y, scl float32) {
@@ -921,9 +928,6 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		if s.alpha[0] < 0 {
 			s.anim.srcAlpha = int16(s.anim.interpolate_blend_srcalpha)
 			s.anim.dstAlpha = int16(s.anim.interpolate_blend_dstalpha)
-			if s.anim.srcAlpha == 255 && s.anim.dstAlpha == 1 {
-				s.anim.dstAlpha = 255
-			}
 		} else {
 			s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
 		}
@@ -939,7 +943,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			-s.angle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing)
+			s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl)
 	}
 }
 
@@ -990,7 +994,7 @@ func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, 0, nil, false, 1)
+			0, 0, 0, 0, 0, nil, false, 1, false, 1)
 	}
 }
 func (a *Anim) ResetFrames() {
