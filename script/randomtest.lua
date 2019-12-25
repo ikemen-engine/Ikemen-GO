@@ -1,6 +1,6 @@
 -- Used for demo mode and generates AI rank data
 -- Demo mode uses AutoLevel a GO function that ranks characters based on his number of loses vs wins
--- AutoLevel is pallete dependent so if a char has a 12th pallete OP mode that mode can have more rank than his normal one
+-- AutoLevel is palette dependent so if a char has a 12th palette OP mode that mode can have more rank than his normal one
 
 local randomtest = {}
 
