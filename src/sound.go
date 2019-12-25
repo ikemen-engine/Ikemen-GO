@@ -17,6 +17,11 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
+	"github.com/Wohlstand/libOPNMIDI"
+	"github.com/Wohlstand/libADLMIDI"
+	"github.com/sqweek/fluidsynth"
+	"github.com/naivesound/tsf"
+	
 )
 
 const (
