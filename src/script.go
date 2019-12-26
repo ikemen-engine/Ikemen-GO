@@ -1269,13 +1269,13 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getJoystickPresent", func(*lua.LState) int {
 		joy := int(numArg(l, 1))
-		present := glfw.JoystickPresent(joystick[joy])
+		present := joystick[joy].Present()
 		l.Push(lua.LBool(present))
 		return 1
 	})
 	luaRegister(l, "getJoystickKey", func(*lua.LState) int {
 		joy := int(numArg(l, 1))
-		btns := glfw.GetJoystickButtons(joystick[joy])
+		btns := joystick[joy].GetButtons()
 		if len(btns) == 0 {
 			return 0
 		}
@@ -1285,7 +1285,7 @@ func systemScriptInit(l *lua.LState) {
 				return 1
 			}
 		}
-		axes := glfw.GetJoystickAxes(joystick[joy])
+		axes := joystick[joy].GetAxes()
 		if len(axes) == 0 {
 			return 0
 		}
