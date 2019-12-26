@@ -947,14 +947,21 @@ func systemScriptInit(l *lua.LState) {
 				sys.await(FPS)
 			}
 			for i := range sys.cgi {
-				if i < len(sys.lifebar.fa[sys.tmode[i&1]]) {
-					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
+				ref := sys.tmode[i&1]
+				if sys.tagMode[i&1] {
+					ref = 3
+				}
+				num := len(sys.lifebar.fa[ref])
+				if (sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag) {
+					num = int(sys.numSimul[i&1]) * 2
+				}
+				if i < num {
+					fa := sys.lifebar.fa[ref][i]
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
 						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
 
 					fa.scale = sys.cgi[i].portraitscale
 				}
-
 			}
 			runtime.GC()
 			return nil
@@ -1105,6 +1112,7 @@ func systemScriptInit(l *lua.LState) {
 				tbl.RawSetString("P2wins", lua.LNumber(sys.wins[1]))
 				tbl.RawSetString("P1tmode", lua.LNumber(sys.tmode[0]))
 				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
+				tbl.RawSetString("challenger", lua.LNumber(sys.challenger))
 				sys.timerCount = []int32{}
 				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
 				sys.sel.sdefOverwrite = ""

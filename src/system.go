@@ -281,6 +281,8 @@ type System struct {
 	windowMainIconLocation	[]string
 	
 	captureNum              int
+	challenger              int
+	roundType               [2]RoundType
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -513,7 +515,7 @@ func (s *System) resetRemapInput() {
 	}
 }
 func (s *System) loaderReset() {
-	s.round, s.wins, s.roundsExisted = 1, [2]int32{}, [2]int32{}
+	s.round, s.wins, s.roundsExisted, s.roundType, s.challenger = 1, [2]int32{}, [2]int32{}, [2]RoundType{}, 0
 	s.loader.reset()
 }
 func (s *System) loadStart() {
@@ -1621,6 +1623,17 @@ func (s *System) fight() (reload bool) {
 				}
 				break
 			}
+			if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0] - 1) ||
+				(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins - 1) {
+				s.roundType[0] = RT_Deciding
+			}
+			if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1] - 1) ||
+				(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins - 1) {
+				s.roundType[1] = RT_Deciding
+			}
+			if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
+				s.roundType = [2]RoundType{RT_Final, RT_Final}
+			}
 		}
 		scl = s.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
@@ -1676,6 +1689,20 @@ func (s *System) fight() (reload bool) {
 		}
 		if !s.update() {
 			break
+		}
+		if s.gameMode == "arcade" && s.com[1] > 0 {
+			for i := 1; i < 3; i++ {
+				p := s.inputRemap[i]
+				if s.keyConfig[p].S() {
+					s.challenger = i + 1
+					break
+				}
+			}
+			if s.challenger > 0 && s.lifebar.ch.cnt >= s.lifebar.ch.over_time {
+				s.esc = true
+			}
+		} else if s.gameMode == "demo" && (s.anyButton() || s.gameTime >= s.demoTime) {
+			s.esc = true
 		}
 	}
 	return false
