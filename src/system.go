@@ -258,6 +258,7 @@ type System struct {
 	tagMode                 [2]bool
 	demoTime                int32
 	frameCounter            int32
+	motifDir                string
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32

@@ -1188,6 +1188,10 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "setMotifDir", func(*lua.LState) int {
+		sys.motifDir = strArg(l, 1)
+		return 0
+	})
 	luaRegister(l, "setDemoTime", func(*lua.LState) int {
 		sys.demoTime = int32(numArg(l, 1))
 		return 0
