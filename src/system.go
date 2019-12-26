@@ -254,6 +254,8 @@ type System struct {
 	AudioDucking            bool
 	windowTitle             string
 	//FLAC_FrameWait          int
+	gameMode                string
+	tagMode                 [2]bool
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32

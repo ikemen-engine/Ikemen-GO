@@ -646,10 +646,16 @@ func systemScriptInit(l *lua.LState) {
 		if nt < 1 || nt > MaxSimul {
 			l.RaiseError("The team number (% v) is incorrect. / チーム人数(%v)が不正です。", nt)
 		}
+		st := false
+		if (tm == TM_Simul || tm == TM_Tag) && l.GetTop() >= 4 {
+			st = boolArg(l, 4)
+		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
 		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
+		sys.tagMode[tn-1] = st
 		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
+			sys.tagMode[tn-1] = false
 		}
 		return 0
 	})
@@ -1100,6 +1106,22 @@ func systemScriptInit(l *lua.LState) {
 			sys.sel.vportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
 		}
 		return 0
+	})
+	luaRegister(l, "setGameMode", func(*lua.LState) int {
+		sys.gameMode = strArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "gameMode", func(*lua.LState) int {
+		if l.GetTop() == 0 {
+			l.Push(lua.LString(sys.gameMode))
+			return 1
+		}
+		ret := false
+		if sys.gameMode == strArg(l, 1) {
+			ret = true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
 	})
 	luaRegister(l, "drawSmallPortrait", func(l *lua.LState) int {
 		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
@@ -1775,6 +1797,10 @@ func triggerScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.gameTime))
 		return 1
 	})
+	luaRegister(l, "gamemode", func(*lua.LState) int {
+		l.Push(lua.LString(sys.gameMode))
+		return 1
+	})
 	luaRegister(l, "gamewidth", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.gameWidth()))
 		return 1
@@ -2199,6 +2225,10 @@ func triggerScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "sysvar", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.sysVarGet(int32(numArg(l, 1))).ToI()))
+		return 1
+	})
+	luaRegister(l, "tagmode", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.tagMode[sys.debugWC.playerNo&1]))
 		return 1
 	})
 	luaRegister(l, "teammode", func(*lua.LState) int {
