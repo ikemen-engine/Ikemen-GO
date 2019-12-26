@@ -256,6 +256,8 @@ type System struct {
 	//FLAC_FrameWait          int
 	gameMode                string
 	tagMode                 [2]bool
+	demoTime                int32
+	frameCounter            int32
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32
@@ -411,6 +413,7 @@ func (s *System) await(fps int) bool {
 	return !s.gameEnd
 }
 func (s *System) update() bool {
+	s.frameCounter = s.frameCounter + 1
 	if s.fileInput != nil {
 		if s.anyHardButton() {
 			s.await(FPS * 4)
