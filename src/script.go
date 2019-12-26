@@ -1439,7 +1439,7 @@ func systemScriptInit(l *lua.LState) {
 				axes := joystick[j].GetAxes()
 				btns := joystick[j].GetButtons()
 				for i := range axes {
-					if joystick[j].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[j].GetGamepadName(), "XInput") { //Xbox360コントローラー判定
+					if strings.Contains(joystick[j].GetGamepadName(), "XInput") { //Xbox360コントローラー判定
 						if axes[i] > 0.5 {
 							s = strconv.Itoa(-i*2 - 2)
 						} else if axes[i] < -0.5 && i < 4 {
@@ -1447,7 +1447,7 @@ func systemScriptInit(l *lua.LState) {
 						}
 					} else {
 						// PS4 Controller support
-						if joystick[j].GetGamepadName() != "Wireless Controller" || !(i == 3 || i == 4) {
+						if joystick[j].GetGamepadName() != "PS4 Controller" || !(i == 3 || i == 4) {
 							if axes[i] < -0.2 {
 								s = strconv.Itoa(-i*2 - 1)
 							} else if axes[i] > 0.2 {
