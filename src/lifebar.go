@@ -1610,21 +1610,21 @@ func (l *Lifebar) reset() {
 		l.ref[1][ti] = int(tm)
 		l.ref[2][ti] = int(tm)
 		l.ref[3][ti] = int(tm)
-		if tm == TM_Simul || tm == TM_Tag {
-			if sys.tagMode[ti] && sys.numSimul[ti] == 2 { //Tag 2P
+		if tm == TM_Tag {
+			if sys.numSimul[ti] == 2 { //Tag 2P
 				l.ref[0][ti] = 3
 				l.ref[1][ti] = 3
 				l.ref[2][ti] = 3
 				l.ref[3][ti] = 3
-			} else if sys.tagMode[ti] { //Tag 3P/4P
+			} else { //Tag 3P/4P
 				l.ref[0][ti] = int(sys.numSimul[ti]) + 3
 				l.ref[1][ti] = 3
 				l.ref[2][ti] = 3
 				l.ref[3][ti] = 3
-			} else if sys.numSimul[ti] > 2 { //Simul 3P/4P
-				l.ref[0][ti] = int(sys.numSimul[ti]) + 1
-				l.ref[1][ti] = int(sys.numSimul[ti]) + 1
 			}
+		} else if tm == TM_Simul && sys.numSimul[ti] > 2 { //Simul 3P/4P
+			l.ref[0][ti] = int(sys.numSimul[ti]) + 1
+			l.ref[1][ti] = int(sys.numSimul[ti]) + 1
 		}
 		l.num[0][ti] = len(l.hb[l.ref[0][ti]])
 		l.num[1][ti] = len(l.pb[l.ref[1][ti]])
@@ -1634,7 +1634,7 @@ func (l *Lifebar) reset() {
 			l.num[0][ti] = int(sys.numSimul[ti]) * 2
 			if sys.powerShare[ti] {
 				l.num[1][ti] = 2
-			} else if !sys.tagMode[ti] {
+			} else if tm == TM_Simul {
 				l.num[1][ti] = int(sys.numSimul[ti]) * 2
 			}
 			l.num[2][ti] = int(sys.numSimul[ti]) * 2

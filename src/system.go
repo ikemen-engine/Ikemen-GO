@@ -255,7 +255,6 @@ type System struct {
 	windowTitle             string
 	//FLAC_FrameWait          int
 	gameMode                string
-	tagMode                 [2]bool
 	demoTime                int32
 	frameCounter            int32
 	motifDir                string

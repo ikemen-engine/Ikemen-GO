@@ -726,16 +726,10 @@ func systemScriptInit(l *lua.LState) {
 		if nt < 1 || nt > MaxSimul {
 			l.RaiseError("The team number (% v) is incorrect. / チーム人数(%v)が不正です。", nt)
 		}
-		st := false
-		if (tm == TM_Simul || tm == TM_Tag) && l.GetTop() >= 4 {
-			st = boolArg(l, 4)
-		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
 		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
-		sys.tagMode[tn-1] = st
 		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
-			sys.tagMode[tn-1] = false
 		}
 		return 0
 	})
@@ -947,16 +941,12 @@ func systemScriptInit(l *lua.LState) {
 				sys.await(FPS)
 			}
 			for i := range sys.cgi {
-				ref := sys.tmode[i&1]
-				if sys.tagMode[i&1] {
-					ref = 3
-				}
-				num := len(sys.lifebar.fa[ref])
+				num := len(sys.lifebar.fa[sys.tmode[i&1]])
 				if (sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag) {
 					num = int(sys.numSimul[i&1]) * 2
 				}
 				if i < num {
-					fa := sys.lifebar.fa[ref][i]
+					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
 						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
 
@@ -2322,10 +2312,6 @@ func triggerScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "sysvar", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.sysVarGet(int32(numArg(l, 1))).ToI()))
-		return 1
-	})
-	luaRegister(l, "tagmode", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.tagMode[sys.debugWC.playerNo&1]))
 		return 1
 	})
 	luaRegister(l, "teammode", func(*lua.LState) int {

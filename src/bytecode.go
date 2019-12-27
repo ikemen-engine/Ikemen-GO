@@ -320,7 +320,6 @@ const (
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_gamemode
-	OC_const_tagmode
 )
 const (
 	OC_st_var OpCode = iota + OC_var*2
@@ -1462,8 +1461,6 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
-	case OC_const_tagmode:
-		sys.bcStack.PushB(sys.tagMode[c.playerNo&1])
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

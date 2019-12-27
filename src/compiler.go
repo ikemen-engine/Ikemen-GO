@@ -1425,8 +1425,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := nameSub(OC_const_gamemode); err != nil {
 			return bvNone(), err
 		}
-	case "tagmode":
-		out.append(OC_const_, OC_const_tagmode)
 	case "gametime":
 		out.append(OC_gametime)
 	case "gamewidth":

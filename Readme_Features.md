@@ -118,9 +118,6 @@ Returns the distance to the stage edge behind you.
 ### Stagefrontedge
 Returns the distance to the stage edge in front of you.
 
-### TagMode
-Returns 1 if the current mode of Simul play for the character's team is Tag mode.
-
 ## Changes to triggers
 
 ### TeamMode
