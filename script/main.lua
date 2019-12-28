@@ -798,7 +798,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setTeamMode(2, p2TeamMode, p2NumChars)
 	for i = 1, #t do
 		selectChar(t[i].player, t[i].num, t[i].pal)
-		setCom(t[i].player, t[i].ai)
+		setCom(t[i].num + 1, t[i].ai)
 	end
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
