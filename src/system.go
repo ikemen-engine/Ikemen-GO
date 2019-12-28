@@ -686,6 +686,17 @@ func (s *System) nextRound() {
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
 	s.nextCharId = s.helperMax
+	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0] - 1) ||
+		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins - 1) {
+		s.roundType[0] = RT_Deciding
+	}
+	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1] - 1) ||
+		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins - 1) {
+		s.roundType[1] = RT_Deciding
+	}
+	if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
+		s.roundType = [2]RoundType{RT_Final, RT_Final}
+	}
 	if s.stage.resetbg {
 		s.stage.reset()
 	}
@@ -1621,17 +1632,6 @@ func (s *System) fight() (reload bool) {
 					}
 				}
 				break
-			}
-			if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0] - 1) ||
-				(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins - 1) {
-				s.roundType[0] = RT_Deciding
-			}
-			if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1] - 1) ||
-				(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins - 1) {
-				s.roundType[1] = RT_Deciding
-			}
-			if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
-				s.roundType = [2]RoundType{RT_Final, RT_Final}
 			}
 		}
 		scl = s.cam.ScaleBound(scl, sclmul)
