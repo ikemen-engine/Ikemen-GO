@@ -374,9 +374,12 @@ end
 function select.f_setStage()
 	--stage
 	if not main.stageMenu then
-		if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then
+		if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned to character
 			stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
 			stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
+		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order] ~= nil then --stage assigned to order
+			stageNo = math.random(1, #main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order])
+			stageNo = main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order][stageNo]
 		else
 			stageNo = main.t_includeStage[math.random(1, #main.t_includeStage)]
 		end
@@ -418,6 +421,8 @@ function select.f_setStage()
 	local track = 0
 	local music = ''
 	local volume = 0
+	local loopstart = 0
+	local loopend = 0
 	local t = {'music', 'musicalt', 'musiclife'}
 	for i = 1, #t do
 		if main.stageMenu then
@@ -425,19 +430,25 @@ function select.f_setStage()
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
+				loopstart = main.t_selStages[stageNo][t[i]][track].bgmloopstart
+				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
 			end
 		else
 			if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1][t[i]] ~= nil then
 				track = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1][t[i]])
 				music = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmusic
 				volume = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmvolume
+				loopstart = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopstart
+				loopend = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopend
 			elseif main.t_selStages[stageNo][t[i]] ~= nil then
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
+				loopstart = main.t_selStages[stageNo][t[i]][track].bgmloopstart
+				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
 			end
 		end
-		setStageBGM(music, volume, i - 1)
+		setStageBGM(i - 1, music, volume, loopstart, loopend)
 	end
 end
 

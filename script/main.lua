@@ -122,7 +122,9 @@ function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, 
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
+		if r ~= -1 and g ~= -1 and b ~= -1 then
+			textImgSetColor(ti, r, g, b, src, dst)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
@@ -137,7 +139,9 @@ function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY,
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
+		if r ~= -1 and g ~= -1 and b ~= -1 then
+			textImgSetColor(ti, r, g, b, src, dst)
+		end
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
@@ -854,16 +858,22 @@ refresh()
 function main.f_charParam(t, c)
 	if c:match('music[al]?[li]?[tf]?[e]?%s*=') then
 		c = c:gsub('\\', '/')
-		local bgmvolume = c:match('%s([0-9]+)$')
-		if bgmvolume == nil then
-			bgmvolume = 100
-		else
-			bgmvolume = tonumber(bgmvolume)
-			c = c:gsub('%s*[0-9]+$','')
+		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
+		for i, c in ipairs(main.f_strsplit('%s+', c:match('%s+([0-9%s]+)$'))) do --split using whitespace delimiter
+			if i == 1 then
+				bgmvolume = tonumber(c)
+			elseif i == 2 then
+				bgmloopstart = tonumber(c)
+			elseif i == 3 then
+				bgmloopend = tonumber(c)
+			else
+				break
+			end
 		end
+		c = c:gsub('%s+([0-9%s]+)$', '')
 		local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
-		t[bgtype][#t[bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume}
+		t[bgtype][#t[bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2:lower()
@@ -958,6 +968,7 @@ end
 --start_time = os.time()
 main.t_includeStage = {}
 main.t_orderChars = {}
+main.t_orderStages = {}
 main.t_stageDef = {['random'] = 0}
 main.t_charDef = {}
 local t_exlude = {}
@@ -1018,9 +1029,9 @@ for line in content:gmatch('[^\r\n]+') do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = c}
-				local t_bgmusic, bgmvolume = getStageBGM(row)
+				local _, _, t_bgmusic = getStageInfo(row)
 				for k = 1, #t_bgmusic do
-					if t_bgmusic[k] ~= '' then
+					if t_bgmusic[k].bgmusic ~= '' then
 						if k == 1 then
 							tmp = 'music'
 						elseif k == 2 then
@@ -1028,27 +1039,38 @@ for line in content:gmatch('[^\r\n]+') do
 						else
 							tmp = 'musiclife'
 						end
-						t_bgmusic[k] = t_bgmusic[k]:gsub('\\', '/')
-						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k], bgmvolume = bgmvolume}}
+						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
 					end
 				end
 				main.t_includeStage[#main.t_includeStage + 1] = row
 				main.t_stageDef[c] = row
 			elseif c:match('music[al]?[li]?[tf]?[e]?%s*=') then
 				c = c:gsub('\\', '/')
-				local bgmvolume = c:match('%s([0-9]+)$')
-				if bgmvolume == nil then
-					bgmvolume = 100
-				else
-					bgmvolume = tonumber(bgmvolume)
-					c = c:gsub('%s*[0-9]+$', '')
+				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
+				for i, c in ipairs(main.f_strsplit('%s+', c:match('%s+([0-9%s]+)$'))) do --split using whitespace delimiter
+					if i == 1 then
+						bgmvolume = tonumber(c)
+					elseif i == 2 then
+						bgmloopstart = tonumber(c)
+					elseif i == 3 then
+						bgmloopend = tonumber(c)
+					else
+						break
+					end
 				end
+				c = c:gsub('%s+([0-9%s]+)$', '')
 				local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
-				main.t_selStages[row][bgtype][#main.t_selStages[row][bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume}
+				main.t_selStages[row][bgtype][#main.t_selStages[row][bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				main.t_selStages[row][param] = tonumber(value)
+				if param:match('order') then
+					if main.t_orderStages[main.t_selStages[row].order] == nil then
+						main.t_orderStages[main.t_selStages[row].order] = {}
+					end
+					main.t_orderStages[main.t_selStages[row].order][#main.t_orderStages[main.t_selStages[row].order] + 1] = row
+				end
 			end
 		end
 	elseif section == 3 then --[Options]
@@ -1099,9 +1121,9 @@ for i = 1, #main.t_selChars do
 					break
 				end
 				main.t_selStages[row] = {name = tmp, stage = main.t_selChars[i].stage[j]}
-				local t_bgmusic, bgmvolume = getStageBGM(row)
+				local _, _, t_bgmusic = getStageInfo(row)
 				for k = 1, #t_bgmusic do
-					if t_bgmusic[k] ~= '' then
+					if t_bgmusic[k].bgmusic ~= '' then
 						if k == 1 then
 							tmp = 'music'
 						elseif k == 2 then
@@ -1109,8 +1131,7 @@ for i = 1, #main.t_selChars do
 						else
 							tmp = 'musiclife'
 						end
-						t_bgmusic[k] = t_bgmusic[k]:gsub('\\', '/')
-						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k], bgmvolume = bgmvolume}}
+						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
 					end
 				end
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then
@@ -1145,6 +1166,7 @@ main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
 main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
 main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
 main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
+main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
 main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
 main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
 main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
