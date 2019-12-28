@@ -132,7 +132,7 @@ function select.f_makeRoster()
 				while orderCnt > 0 do --do the following until amount of matches for particular order is reached
 					main.f_shuffleTable(main.t_orderChars[i]) --randomize characters table
 					for j = 1, #main.t_orderChars[i] do --loop through chars associated with that particular order
-						t_roster[#t_roster + 1] = main.t_orderChars[i][j] --and add such character into new table
+						table.insert(t_roster, main.t_orderChars[i][j]) --and add such character into new table
 						orderCnt = orderCnt - 1
 						if orderCnt == 0 then --but only if amount of matches for particular order has not been reached yet
 							break
@@ -166,7 +166,7 @@ function select.f_makeRoster()
 		while cnt > 0 do
 			main.f_shuffleTable(t)
 			for i = 1, #t do
-				t_roster[#t_roster + 1] = t[i]
+				table.insert(t_roster, t[i])
 				cnt = cnt - 1
 				if cnt == 0 then
 					break
@@ -216,12 +216,12 @@ function select.f_aiRamp()
 	end
 	for i = 1, lastMatch do
 		if i - 1 <= start_match then
-			t_aiRamp[#t_aiRamp + 1] = startAI
+			table.insert(t_aiRamp, startAI)
 		elseif i - 1 <= end_match then
 			local curMatch = i - (start_match + 1)
-			t_aiRamp[#t_aiRamp + 1] = math.floor(curMatch * (endAI - startAI) / (end_match - start_match) + startAI)
+			table.insert(t_aiRamp, math.floor(curMatch * (endAI - startAI) / (end_match - start_match) + startAI))
 		else
-			t_aiRamp[#t_aiRamp + 1] = endAI
+			table.insert(t_aiRamp, endAI)
 		end
 	end
 	main.f_printTable(t_aiRamp, 'debug/t_aiRamp.txt')
@@ -457,19 +457,19 @@ function select.f_randomPal(cell)
 	local t = {}
 	for i = 1, #t_p1Selected do
 		if t_p1Selected[i].cel == cell then
-			t[#t + 1] = t_p1Selected[i].pal
+			table.insert(t, t_p1Selected[i].pal)
 		end
 	end
 	for i = 1, #t_p2Selected do
 		if t_p2Selected[i].cel == cell then
-			t[#t + 1] = t_p2Selected[i].pal
+			table.insert(t, t_p2Selected[i].pal)
 		end
 	end
 	--table with pal numbers not assigned yet (or all if there are not enough pals for unique appearance of all characters)
 	local t2 = {}
 	for i = 1, #main.t_selChars[cell + 1].pal do
 		if t[main.t_selChars[cell + 1].pal[i]] == nil or #t >= #main.t_selChars[cell + 1].pal then
-			t2[#t2 + 1] = main.t_selChars[cell + 1].pal[i]
+			table.insert(t2, main.t_selChars[cell + 1].pal[i])
 		end
 	end
 	return t2[math.random(1, #t2)]
@@ -669,11 +669,11 @@ function select.f_resetGrid()
 	for row = 1, motif.select_info.rows do
 		for col = 1, motif.select_info.columns do
 			if t_grid[row + p1RowOffset][col].char == 'randomselect' or t_grid[row + p1RowOffset][col].hidden == 3 then
-				select.t_drawFace[#select.t_drawFace + 1] = {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+				table.insert(select.t_drawFace, {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
 			elseif t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
-				select.t_drawFace[#select.t_drawFace + 1] = {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+				table.insert(select.t_drawFace, {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
 			elseif motif.select_info.showemptyboxes == 1 then
-				select.t_drawFace[#select.t_drawFace + 1] = {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}
+				table.insert(select.t_drawFace, {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
 			end
 		end
 	end
@@ -1012,7 +1012,7 @@ function select.f_selectArcade()
 					updateAnim = false
 				end
 			end
-			t_p2Selected[#t_p2Selected + 1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim}
+			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim})
 			if shuffle then
 				main.f_shuffleTable(t_p2Selected)
 			end
@@ -1241,7 +1241,7 @@ function select.f_selectScreen()
 		end
 		for i = #t_p1Selected, 1, -1 do
 			if motif.select_info.p1_face_num > #t_portrait then
-				t_portrait[#t_portrait + 1] = {cel = t_p1Selected[i].cel}
+				table.insert(t_portrait, {cel = t_p1Selected[i].cel})
 			end
 		end
 		select.f_drawPortrait(
@@ -1276,7 +1276,7 @@ function select.f_selectScreen()
 		end
 		for i = #t_p2Selected, 1, -1 do
 			if motif.select_info.p2_face_num > #t_portrait then
-				t_portrait[#t_portrait + 1] = {cel = t_p2Selected[i].cel}
+				table.insert(t_portrait, {cel = t_p2Selected[i].cel})
 			end
 		end
 		select.f_drawPortrait(
@@ -1961,7 +1961,7 @@ function select.f_p1SelectMenu()
 			if main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
 				selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
 			end
-			t_p1Selected[#t_p1Selected + 1] = {cel = selected, pal = main.f_btnPalNo(main.p1Cmd), cursor = {cursorX, cursorY, p1RowOffset}}
+			table.insert(t_p1Selected, {cel = selected, pal = main.f_btnPalNo(main.p1Cmd), cursor = {cursorX, cursorY, p1RowOffset}})
 			if #t_p1Selected == p1NumChars then
 				if main.p2In == 1 and matchNo == 0 then
 					p2TeamEnd = false
@@ -2010,7 +2010,7 @@ function select.f_p2SelectMenu()
 			if main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
 				selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
 			end
-			t_p2Selected[#t_p2Selected + 1] = {cel = selected, pal = main.f_btnPalNo(main.p2Cmd), cursor = {cursorX, cursorY, p2RowOffset}}
+			table.insert(t_p2Selected, {cel = selected, pal = main.f_btnPalNo(main.p2Cmd), cursor = {cursorX, cursorY, p2RowOffset}})
 			if #t_p2Selected == p2NumChars then
 				p2SelEnd = true
 			end
@@ -2578,14 +2578,14 @@ function select.f_teamOrder(teamNo, allow_ko)
 					selectNo = v.selectNo
 					done = true
 				elseif not v.ko or allow_ko == 1 then --other win team members
-					t[#t + 1] = v.selectNo
+					table.insert(t, v.selectNo)
 				end
 			elseif not done then --first loose team member
 				playerNo = k
 				selectNo = v.selectNo
 				done = true
 			else --other loose team members
-				t[#t + 1] = v.selectNo
+				table.insert(t, v.selectNo)
 			end
 		end
 	end

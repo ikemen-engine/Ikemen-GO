@@ -230,9 +230,9 @@ local function f_parse(path)
 									pos_val[param] = {}
 								end
 								if c == '' then
-									pos_val[param][#pos_val[param] + 1] = 0
+									table.insert(pos_val[param], 0)
 								else
-									pos_val[param][#pos_val[param] + 1] = main.f_dataType(c)
+									table.insert(pos_val[param], main.f_dataType(c))
 								end
 							end
 						else --single value
@@ -246,7 +246,7 @@ local function f_parse(path)
 				if value ~= nil then
 					value = value:gsub(',%s*,', ',0,') --add missing values
 					value = value:gsub(',%s*$', '')
-					pos[#pos + 1] = value
+					table.insert(pos, value)
 				end
 			end
 		end

@@ -1453,14 +1453,14 @@ for line in file:lines() do
 							end
 						end
 						if c == nil or c == '' then
-							pos[param][#pos[param] + 1] = 0
+							table.insert(pos[param], 0)
 						else
-							pos[param][#pos[param] + 1] = main.f_dataType(c)
+							table.insert(pos[param], main.f_dataType(c))
 						end
 					end
 				else --single value
 					if param:match('_itemname_') then
-						pos_sort[#pos_sort + 1] = param:match('_itemname_(.+)$')
+						table.insert(pos_sort, param:match('_itemname_(.+)$'))
 					end
 					pos[param] = main.f_dataType(value)
 				end
@@ -1471,7 +1471,7 @@ for line in file:lines() do
 			if value ~= nil then
 				value = value:gsub(',%s*,', ',0,') --add missing values
 				value = value:gsub(',%s*$', '')
-				pos[#pos + 1] = value
+				table.insert(pos, value)
 			end
 		end
 	end

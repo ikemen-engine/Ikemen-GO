@@ -22,11 +22,11 @@ file:close()
 --Input stuff
 main.t_controllers = {keyboard = {}, gamepad = {}, player = {}}
 for i = 1, #config.KeyConfig do
-	main.t_controllers.player[#main.t_controllers.player + 1] = config.KeyConfig[i].Player
+	table.insert(main.t_controllers.player, config.KeyConfig[i].Player)
 	if config.KeyConfig[i].Joystick == -1 then
-		main.t_controllers.keyboard[#main.t_controllers.keyboard + 1] = i
+		table.insert(main.t_controllers.keyboard, i)
 	else
-		main.t_controllers.gamepad[#main.t_controllers.gamepad + 1] = i
+		table.insert(main.t_controllers.gamepad, i)
 	end
 end
 
@@ -196,7 +196,7 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame)
 	for i = 1, #t do
 		local t_anim = {}
 		for j, c in ipairs(main.f_strsplit(',', t[i])) do --split using "," delimiter
-			t_anim[#t_anim + 1] = c
+			table.insert(t_anim, c)
 		end
 		if #t_anim > 1 then
 			--required parameters
@@ -264,7 +264,7 @@ end
 function main.f_sortKeys(t, order)
     -- collect the keys
     local keys = {}
-    for k in pairs(t) do keys[#keys + 1] = k end
+    for k in pairs(t) do table.insert(keys, k) end
     -- if order function given, sort it by passing the table and keys a, b,
     -- otherwise just sort the keys 
     if order then
@@ -335,7 +335,7 @@ function main.f_uniq(str, pattern, subpattern)
 	local out = {}
 	for s in str:gmatch(pattern) do
 		local s2 = s:match(subpattern)
-		if not main.f_contains(out, s2) then out[#out + 1] = s end
+		if not main.f_contains(out, s2) then table.insert(out, s) end
 	end
 	return table.concat(out)
 end
@@ -374,7 +374,7 @@ function main.f_textRender(data, str, counter, x, y, spacing, delay, limit)
 	local subEnd = math.floor(#str - (#str - counter / delay))
 	local t = {}
 	for line in str:gmatch('([^\r\n]*)[\r\n]?') do
-		t[#t + 1] = line
+		table.insert(t, line)
 	end
 	local lengthCnt = 0
 	for i = 1, #t do
@@ -525,7 +525,7 @@ function main.f_cleanTable(t, t_sort)
 	for i = 1, #t_sort do
 		for j = 1, #t do
 			if t_sort[i] == t[j].itemname and t[j].displayname ~= '' then
-				t_clean[#t_clean + 1] = t[j]
+				table.insert(t_clean, t[j])
 				t_added[t[j].itemname] = 1
 				break
 			end
@@ -534,7 +534,7 @@ function main.f_cleanTable(t, t_sort)
 	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
 	for i = 1, #t do
 		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
-			t_clean[#t_clean + 1] = t[i]
+			table.insert(t_clean, t[i])
 		end
 	end
 	return t_clean
@@ -607,7 +607,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 	controllerNo = controllerNo or 0
 	keyBreak = keyBreak or ''
 	if category == 'string' then
-		t[#t + 1] = ''
+		table.insert(t, '')
 	end
 	local input = ''
 	local btnReleased = 0
@@ -765,7 +765,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
 				ai = main.flags['-p' .. num .. '.ai']
 			end
-			t[#t + 1] = {player = player, num = num - 1, pal = tonumber(pal), ai = tonumber(ai)}
+			table.insert(t, {player = player, num = num - 1, pal = tonumber(pal), ai = tonumber(ai)})
 			refresh()
 		end
 	end
@@ -873,7 +873,7 @@ function main.f_charParam(t, c)
 		c = c:gsub('%s+([0-9%s]+)$', '')
 		local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
-		t[bgtype][#t[bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
+		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2:lower()
@@ -882,7 +882,7 @@ function main.f_charParam(t, c)
 		if t.stage == nil then
 			t.stage = {}
 		end
-		t.stage[#t.stage + 1] = c
+		table.insert(t.stage, c)
 	else
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= '' and value ~= '' then
@@ -910,7 +910,7 @@ function main.f_addChar(line, row)
 				c = c:gsub('\\', '/')
 				c = tostring(c)
 				main.t_selChars[row].arcade[num] = {char = c}
-				t_updateCharRef[#t_updateCharRef + 1] = {main.t_selChars[row].arcade[num]}
+				table.insert(t_updateCharRef, {main.t_selChars[row].arcade[num]})
 			else
 				main.f_charParam(main.t_selChars[row].arcade[num], c)
 			end
@@ -960,7 +960,7 @@ function main.f_addChar(line, row)
 		if main.t_orderChars[main.t_selChars[row].order] == nil then
 			main.t_orderChars[main.t_selChars[row].order] = {}
 		end
-		main.t_orderChars[main.t_selChars[row].order][#main.t_orderChars[main.t_selChars[row].order] + 1] = row - 1
+		table.insert(main.t_orderChars[main.t_selChars[row].order], row - 1)
 	end
 	main.loadingRefresh(txt_loading)
 end
@@ -1009,7 +1009,7 @@ for line in content:gmatch('[^\r\n]+') do
 		section = 3
 	elseif section == 1 then --[Characters]
 		if line:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
-			t_exlude[#t_exlude + 1] = line
+			table.insert(t_exlude, line)
 		else
 			chars = chars + 1
 			main.f_addChar(line, chars)
@@ -1042,7 +1042,7 @@ for line in content:gmatch('[^\r\n]+') do
 						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
 					end
 				end
-				main.t_includeStage[#main.t_includeStage + 1] = row
+				table.insert(main.t_includeStage, row)
 				main.t_stageDef[c] = row
 			elseif c:match('music[al]?[li]?[tf]?[e]?%s*=') then
 				c = c:gsub('\\', '/')
@@ -1061,7 +1061,7 @@ for line in content:gmatch('[^\r\n]+') do
 				c = c:gsub('%s+([0-9%s]+)$', '')
 				local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
-				main.t_selStages[row][bgtype][#main.t_selStages[row][bgtype] + 1] = {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend}
+				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				main.t_selStages[row][param] = tonumber(value)
@@ -1069,7 +1069,7 @@ for line in content:gmatch('[^\r\n]+') do
 					if main.t_orderStages[main.t_selStages[row].order] == nil then
 						main.t_orderStages[main.t_selStages[row].order] = {}
 					end
-					main.t_orderStages[main.t_selStages[row].order][#main.t_orderStages[main.t_selStages[row].order] + 1] = row
+					table.insert(main.t_orderStages[main.t_selStages[row].order], row)
 				end
 			end
 		end
@@ -1135,7 +1135,7 @@ for i = 1, #main.t_selChars do
 					end
 				end
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then
-					main.t_includeStage[#main.t_includeStage + 1] = row
+					table.insert(main.t_includeStage, row)
 				end
 				main.t_selChars[i].stage[j] = row
 				--main.t_stageDef[main.t_selChars[i].stage[j]] = row
@@ -1148,15 +1148,15 @@ for i = 1, #main.t_selChars do
 	if main.t_selChars[i].displayname ~= nil then
 		--generate table for boss rush mode
 		if main.t_selChars[i].boss ~= nil and main.t_selChars[i].boss == 1 then
-			main.t_bossChars[#main.t_bossChars + 1] = i - 1
+			table.insert(main.t_bossChars, i - 1)
 		end
 		--generate table for bonus games mode
 		if main.t_selChars[i].bonus ~= nil and main.t_selChars[i].bonus == 1 then
-			main.t_bonusChars[#main.t_bonusChars + 1] = i - 1
+			table.insert(main.t_bonusChars, i - 1)
 		end
 		--generate table with characters allowed to be random selected
 		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 then
-			main.t_randomChars[#main.t_randomChars + 1] = i - 1
+			table.insert(main.t_randomChars, i - 1)
 		end
 	end
 end
@@ -1791,16 +1791,11 @@ end
 --; NETPLAY JOIN
 --;===========================================================
 local t_netplayJoin = {}
-t_netplayJoin[#t_netplayJoin + 1] = {data = textImgNew(), itemname = 'joinadd', displayname = motif.title_info.menu_itemname_joinadd}
+table.insert(t_netplayJoin, {data = textImgNew(), itemname = 'joinadd', displayname = motif.title_info.menu_itemname_joinadd})
 for k, v in pairs(config.IP) do
-	t_netplayJoin[#t_netplayJoin + 1] = {
-		data = textImgNew(),
-		itemname = k,
-		displayname = k,
-		address = v
-	}
+	table.insert(t_netplayJoin, {data = textImgNew(), itemname = k, displayname = k, address = v})
 end
-t_netplayJoin[#t_netplayJoin + 1] = {data = textImgNew(), itemname = 'joinback', displayname = motif.title_info.menu_itemname_joinback}
+table.insert(t_netplayJoin, {data = textImgNew(), itemname = 'joinback', displayname = motif.title_info.menu_itemname_joinback})
 
 function main.f_netplayJoin()
 	main.f_cmdInput()
@@ -1822,7 +1817,7 @@ function main.f_netplayJoin()
 			t_tmp = {}
 			for i = 1, #t do
 				if i ~= item then
-					t_tmp[#t_tmp + 1] = t[i]
+					table.insert(t_tmp, t[i])
 				end
 			end
 			t_netplayJoin = t_tmp
@@ -2068,7 +2063,7 @@ for i = 1, #main.t_bonusChars do
 	}
 end
 if motif.title_info.menu_itemname_bonusback ~= '' then
-	t_bonusExtras[#t_bonusExtras + 1] = {data = textImgNew(), itemname = 'bonusback', displayname = motif.title_info.menu_itemname_bonusback}
+	table.insert(t_bonusExtras, {data = textImgNew(), itemname = 'bonusback', displayname = motif.title_info.menu_itemname_bonusback})
 end
 
 function main.f_bonusExtras()
