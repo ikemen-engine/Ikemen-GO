@@ -257,7 +257,24 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		sys.bgm.Open(strArg(l, 1), boolArg(l, 2), int(numArg(l, 3)), int(numArg(l, 4)), int(Atoi(strArg(l, 5))), int(Atoi(strArg(l, 6))))
+		isdefault := true
+		var loop, volume, loopstart, loopend int = 1, 100, 0, 0
+		if l.GetTop() >= 2 {
+			isdefault = boolArg(l, 2)
+		}
+		if l.GetTop() >= 3 {
+			loop = int(numArg(l, 3))
+		}
+		if l.GetTop() >= 4 {
+			volume = int(numArg(l, 4))
+		}
+		if l.GetTop() >= 5 {
+			loopstart = int(numArg(l, 5))
+		}
+		if l.GetTop() >= 6 {
+			loopend = int(numArg(l, 6))
+		}
+		sys.bgm.Open(strArg(l, 1), isdefault, loop, volume, loopstart, loopend)
 		return 0
 	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
@@ -1198,6 +1215,26 @@ func systemScriptInit(l *lua.LState) {
 		sys.gameMode = strArg(l, 1)
 		return 0
 	})
+	luaRegister(l, "setStageBGM", func(l *lua.LState) int {
+		k := int(numArg(l, 1))
+		sys.sel.stagebgm[k].bgmusic = strArg(l, 2)
+		if l.GetTop() >= 3 {
+			sys.sel.stagebgm[k].bgmvolume = int32(numArg(l, 3))
+		} else {
+			sys.sel.stagebgm[k].bgmvolume = 100
+		}
+		if l.GetTop() >= 4 {
+			sys.sel.stagebgm[k].bgmloopstart = int32(numArg(l, 4))
+		} else {
+			sys.sel.stagebgm[k].bgmloopstart = 0
+		}
+		if l.GetTop() >= 5 {
+			sys.sel.stagebgm[k].bgmloopend = int32(numArg(l, 5))
+		} else {
+			sys.sel.stagebgm[k].bgmloopend = 0
+		}
+		return 0
+	})
 	luaRegister(l, "gameMode", func(*lua.LState) int {
 		if l.GetTop() == 0 {
 			l.Push(lua.LString(sys.gameMode))
@@ -1363,14 +1400,20 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
-		a, b, c, d, e, f := sys.sel.GetStageInfo(int(numArg(l, 1)))
-		l.Push(lua.LString(a))
-		l.Push(lua.LString(b))
-		l.Push(lua.LString(c))
-		l.Push(lua.LString(d))
-		l.Push(lua.LString(e))
-		l.Push(lua.LString(f))
-		return 6
+		zoomin, zoomout, stagebgm := sys.sel.GetStageInfo(int(numArg(l, 1)))
+		l.Push(lua.LString(zoomin))
+		l.Push(lua.LString(zoomout))
+		tbl := l.NewTable()
+		for k, v := range stagebgm {
+			subt := l.NewTable()
+			subt.RawSetString("bgmusic", lua.LString(v.bgmusic))
+			subt.RawSetString("bgmvolume", lua.LNumber(v.bgmvolume))
+			subt.RawSetString("bgmloopstart", lua.LNumber(v.bgmloopstart))
+			subt.RawSetString("bgmloopend", lua.LNumber(v.bgmloopend))
+			tbl.RawSetInt(k + 1, subt)
+		}
+		l.Push(tbl)
+		return 3
 	})
 	luaRegister(l, "getGamepadName", func(*lua.LState) int {
 		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))

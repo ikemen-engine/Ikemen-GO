@@ -1561,15 +1561,14 @@ func (s *System) fight() (reload bool) {
 			copyVar(i)
 		}
 	}
-	//if s.round == 1 {//luaから流すので必要ない
-	//	s.bgm.Open(s.stage.bgmusic)
-	//}
 	s.cam.Init()
 	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
 	s.screenright = float32(s.stage.screenright) * s.stage.localscl
 	oldWins, oldDraws := s.wins, s.draws
 	var x, y, newx, newy, l, r float32
 	var scl, sclmul float32
+	var bgmbool [2]bool
+	var bgmstate int
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
 		for i, p := range s.chars {
@@ -1582,6 +1581,38 @@ func (s *System) fight() (reload bool) {
 		}
 		s.resetFrameTime()
 		s.nextRound()
+		if s.round == 1 {
+			s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
+		} else if s.sel.stagebgm[1].bgmusic != "" && (s.roundType[0] >= RT_Deciding || s.roundType[1] >= RT_Deciding) {
+			s.bgm.Open(s.sel.stagebgm[1].bgmusic, true, 1, int(s.sel.stagebgm[1].bgmvolume), int(s.sel.stagebgm[1].bgmloopstart), int(s.sel.stagebgm[1].bgmloopend))
+		} else if bgmstate == 2 {
+			s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
+		}
+		bgmbool[0], bgmbool[1], bgmstate = false, false, 0
+		if s.sel.stagebgm[2].bgmusic != "" {
+			if s.stage.bgmlast == 1 {
+				if (s.com[0] == 0 || (s.com[0] > 0 && s.com[1] > 0)) && s.roundType[0] >= RT_Deciding {
+					bgmbool[0] = true
+					bgmstate = 1
+				}
+				if (s.com[1] == 0 || (s.com[0] > 0 && s.com[1] > 0)) && s.roundType[1] >= RT_Deciding {
+					bgmbool[1] = true
+					bgmstate = 1
+				}
+			} else if s.com[0] > 0 && s.com[1] > 0 {
+				bgmbool[0], bgmbool[1] = true, true
+				bgmstate = 1
+			} else {
+				if s.com[0] == 0 {
+					bgmbool[0] = true
+					bgmstate = 1
+				}
+				if s.com[1] == 0 {
+					bgmbool[1] = true
+					bgmstate = 1
+				}
+			}
+		}
 		x, y, newx, newy, l, r, scl, sclmul = 0, 0, 0, 0, 0, 0, 1, 1
 		s.cam.Update(scl, x, y)
 	}
@@ -1688,6 +1719,29 @@ func (s *System) fight() (reload bool) {
 		}
 		if !s.update() {
 			break
+		}
+		if bgmstate == 1 {
+			p1cnt, p2cnt := int32(1), int32(1)
+			if s.tmode[0] == TM_Simul {
+				p1cnt = s.numSimul[0]
+			}
+			if s.tmode[1] == TM_Simul {
+				p2cnt = s.numSimul[1]
+			}
+			for _, p := range s.chars {
+				if len(p) > 0 && float32(p[0].life) / float32(p[0].lifeMax) * 100 <= float32(s.stage.bgmlife) {
+					if p[0].playerNo % 2 == 0 {
+						p1cnt -= 1
+					} else {
+						p2cnt -= 1
+					}
+					if (p1cnt == 0 && bgmbool[0]) || (p2cnt == 0 && bgmbool[1]) {
+						s.bgm.Open(s.sel.stagebgm[2].bgmusic, true, 1, int(s.sel.stagebgm[2].bgmvolume), int(s.sel.stagebgm[2].bgmloopstart), int(s.sel.stagebgm[2].bgmloopend))
+						bgmstate = 2
+						break
+					}
+				}
+			}
 		}
 		if s.gameMode == "arcade" && s.com[1] > 0 {
 			for i := 1; i < 3; i++ {
@@ -1821,8 +1875,14 @@ type SelectChar struct {
 	portrait_scale                                         float32
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
+
+type StageBgm struct {
+	bgmusic                             string
+	bgmvolume, bgmloopstart, bgmloopend int32
+}
 type SelectStage struct {
-	def, name, zoomout, zoomin, bgmusic, bgmvolume, bgmloopstart, bgmloopend string
+	def, name, zoomout, zoomin string
+	stagebgm                   [3]StageBgm
 }
 type Select struct {
 	columns, rows   int
@@ -1842,6 +1902,7 @@ type Select struct {
 	aportrait		map[string]Anim
 	cdefOverwrite   [MaxSimul * 2]string
 	sdefOverwrite   string
+	stagebgm        [3]StageBgm
 }
 
 func newSelect() *Select {
@@ -1892,12 +1953,12 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
-func (s *Select) GetStageInfo(n int) (zoomin, zoomout, bgmusic, bgmvolume, bgmloopstart, bgmloopend string) {
+func (s *Select) GetStageInfo(n int) (string, string, [3]StageBgm) {
 	n %= len(s.stagelist) + 1
 	if n < 0 {
 		n += len(s.stagelist) + 1
 	}
-	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].bgmusic, s.stagelist[n-1].bgmvolume, s.stagelist[n-1].bgmloopstart, s.stagelist[n-1].bgmloopend
+	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].stagebgm
 }
 func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
@@ -2042,21 +2103,26 @@ func (s *Select) AddStage(def string) error {
 			if music {
 				music = false
 				var ok bool
-				ss.bgmusic, ok = is.getString("bgmusic")
-				if !ok {
-					ss.bgmusic = "100"
+				ss.stagebgm[0].bgmusic, ok = is.getString("bgmusic")
+				if ok {
+					ss.stagebgm[0].bgmvolume = 100
+					is.ReadI32("bgmvolume", &ss.stagebgm[0].bgmvolume)
+					is.ReadI32("bgmloopstart", &ss.stagebgm[0].bgmloopstart)
+					is.ReadI32("bgmloopend", &ss.stagebgm[0].bgmloopend)
 				}
-				ss.bgmvolume, ok = is.getString("bgmvolume")
-				if !ok {
-					ss.bgmvolume = "100"
+				ss.stagebgm[1].bgmusic, ok = is.getString("bgmusic.alt")
+				if ok {
+					ss.stagebgm[1].bgmvolume = 100
+					is.ReadI32("bgmvolume.alt", &ss.stagebgm[1].bgmvolume)
+					is.ReadI32("bgmloopstart.alt", &ss.stagebgm[1].bgmloopstart)
+					is.ReadI32("bgmloopend.alt", &ss.stagebgm[1].bgmloopend)
 				}
-				ss.bgmloopstart, ok = is.getString("bgmloopstart")
-				if !ok {
-					ss.bgmloopstart = ""
-				}
-				ss.bgmloopend, ok = is.getString("bgmloopend")
-				if !ok {
-					ss.bgmloopend = ""
+				ss.stagebgm[2].bgmusic, ok = is.getString("bgmusic.life")
+				if ok {
+					ss.stagebgm[2].bgmvolume = 100
+					is.ReadI32("bgmvolume.life", &ss.stagebgm[2].bgmvolume)
+					is.ReadI32("bgmloopstart.life", &ss.stagebgm[2].bgmloopstart)
+					is.ReadI32("bgmloopend.life", &ss.stagebgm[2].bgmloopend)
 				}
 			}
 		}
@@ -2086,6 +2152,7 @@ func (s *Select) ClearSelected() {
 	s.selected = [2][][2]int{}
 	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
+	s.stagebgm = [3]StageBgm{}
 }
 
 type LoaderState int32
