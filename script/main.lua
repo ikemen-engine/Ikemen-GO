@@ -799,7 +799,6 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	main.f_printTable(t, 'debug/t_quickvs.txt')
 	--iterate over the table in -p order ascending
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
-		print(v.character, v.player, v.num)
 		selectChar(v.player, k - 1, v.pal)
 		setCom(v.num, v.ai)
 	end
