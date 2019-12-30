@@ -765,7 +765,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
 				ai = main.flags['-p' .. num .. '.ai']
 			end
-			table.insert(t, {player = player, num = num - 1, pal = tonumber(pal), ai = tonumber(ai)})
+			table.insert(t, {character = v, player = player, num = num, pal = tonumber(pal), ai = tonumber(ai)})
 			refresh()
 		end
 	end
@@ -796,9 +796,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	selectStage(0)
 	setTeamMode(1, p1TeamMode, p1NumChars)
 	setTeamMode(2, p2TeamMode, p2NumChars)
-	for i = 1, #t do
-		selectChar(t[i].player, t[i].num, t[i].pal)
-		setCom(t[i].num + 1, t[i].ai)
+	main.f_printTable(t, 'debug/t_quickvs.txt')
+	--iterate over the table in -p order ascending
+	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
+		print(v.character, v.player, v.num)
+		selectChar(v.player, k - 1, v.pal)
+		setCom(v.num, v.ai)
 	end
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
