@@ -277,7 +277,6 @@ func main() {
 	sys.PostProcessingShader = tmp.PostProcessingShader
 	sys.MultisampleAntialiasing = tmp.MSAA
 	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)
 	if err != nil {

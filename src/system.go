@@ -239,7 +239,6 @@ type System struct {
 	workBe                  []BytecodeExp
 	teamLifeShare           bool
 	fullscreen              bool
-	aiRandomColor           bool
 	allowDebugKeys          bool
 	commonAir               string
 	commonCmd               string
@@ -1870,8 +1869,7 @@ func (wm wincntMap) getLevel(p int) int32 {
 
 type SelectChar struct {
 	def, name, sprite, intro_storyboard, ending_storyboard string
-	pal_defaults                                           []int32
-	pal                                                    []int32
+	pal, pal_defaults, pal_keymap                          []int32
 	portrait_scale                                         float32
 	sportrait, lportrait, vsportrait, vportrait            *Sprite
 }
@@ -1990,9 +1988,9 @@ func (s *Select) addCahr(def string) {
 		return
 	}
 	sc.def = def
-	lines, i, info, files, arcade, sprite := SplitAndTrim(str, "\n"), 0, true, true, true, ""
+	lines, i, info, files, keymap, arcade, sprite := SplitAndTrim(str, "\n"), 0, true, true, true, true, ""
 	for i < len(lines) {
-		is, name, _ := ReadIniSection(lines, &i)
+		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
 		case "info":
 			if info {
@@ -2018,6 +2016,18 @@ func (s *Select) addCahr(def string) {
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
 						sc.pal = append(sc.pal, int32(i))
+					}
+				}
+			}
+		case "palette ":
+			if keymap &&
+				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
+				keymap = false
+				for _, v := range [12]string{"a", "b", "c", "x", "y", "z",
+					"a2", "b2", "c2", "x2", "y2", "z2"} {
+					var i32 int32
+					if is.ReadI32(v, &i32) {
+						sc.pal_keymap = append(sc.pal_keymap, i32)
 					}
 				}
 			}

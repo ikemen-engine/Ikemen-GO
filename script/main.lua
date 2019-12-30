@@ -933,7 +933,7 @@ function main.f_addChar(line, row)
 				main.t_selChars[row].displayname = tmp
 				main.t_selChars[row].def = getCharFileName(row - 1)
 				main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
-				main.t_selChars[row].pal = getCharPalettes(row - 1)
+				main.t_selChars[row].pal, main.t_selChars[row].pal_defaults, main.t_selChars[row].pal_keymap = getCharPalettes(row - 1)
 				if tmp ~= 'Training' then
 					tmp = getCharIntro(row - 1)
 					if tmp ~= '' then

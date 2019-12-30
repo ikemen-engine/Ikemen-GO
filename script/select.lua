@@ -452,27 +452,48 @@ function select.f_setStage()
 	end
 end
 
-function select.f_randomPal(cell)
-	--table with pal numbers already assigned
-	local t = {}
+function select.f_reampPal(cell, num)
+	if main.t_selChars[cell + 1].pal_keymap[num] ~= nil then
+		return main.t_selChars[cell + 1].pal_keymap[num]
+	end
+	return num
+end
+
+function select.f_selectPal(cell)
+	--prepare palette tables
+	local t_assignedVals = {} --values = pal numbers already assigned
+	local t_assignedKeys = {} --keys = pal numbers already assigned
 	for i = 1, #t_p1Selected do
 		if t_p1Selected[i].cel == cell then
-			table.insert(t, t_p1Selected[i].pal)
+			table.insert(t_assignedVals, select.f_reampPal(cell, t_p1Selected[i].pal))
+			t_assignedKeys[t_assignedVals[#t_assignedVals]] = ''
 		end
 	end
 	for i = 1, #t_p2Selected do
 		if t_p2Selected[i].cel == cell then
-			table.insert(t, t_p2Selected[i].pal)
+			table.insert(t_assignedVals, select.f_reampPal(cell, t_p2Selected[i].pal))
+			t_assignedKeys[t_assignedVals[#t_assignedVals]] = ''
 		end
 	end
-	--table with pal numbers not assigned yet (or all if there are not enough pals for unique appearance of all characters)
-	local t2 = {}
-	for i = 1, #main.t_selChars[cell + 1].pal do
-		if t[main.t_selChars[cell + 1].pal[i]] == nil or #t >= #main.t_selChars[cell + 1].pal then
-			table.insert(t2, main.t_selChars[cell + 1].pal[i])
+	--return random palette
+	if config.AIRandomColor then
+		local t_uniqueVals = {} --values = pal numbers not assigned yet (or all if there are not enough pals for unique appearance of all characters)
+		for i = 1, #main.t_selChars[cell + 1].pal do
+			if t_assignedKeys[main.t_selChars[cell + 1].pal[i]] == nil or #t_assignedVals >= #main.t_selChars[cell + 1].pal then
+				table.insert(t_uniqueVals, main.t_selChars[cell + 1].pal[i])
+			end
+		end
+		return t_uniqueVals[math.random(1, #t_uniqueVals)]
+	end
+	--return first available default palette
+	for i = 1, #main.t_selChars[cell + 1].pal_defaults do
+		local d = main.t_selChars[cell + 1].pal_defaults[i]
+		if t_assignedKeys[d] == nil then
+			return select.f_reampPal(cell, d)
 		end
 	end
-	return t2[math.random(1, #t2)]
+	--no free default palettes available, force first default palette
+	return select.f_reampPal(cell, main.t_selChars[cell + 1].pal_defaults[1])
 end
 
 function select.f_remapInput(player, controlChar)
@@ -1012,11 +1033,12 @@ function select.f_selectArcade()
 					updateAnim = false
 				end
 			end
-			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = updateAnim})
+			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = updateAnim})
 			if shuffle then
 				main.f_shuffleTable(t_p2Selected)
 			end
 		end
+		main.f_printTable(t_p2Selected, 'debug/dupa.txt')
 		--Team conversion to Single match if onlyme paramvalue on any opponents is detected
 		if p2NumChars > 1 then
 			for i = 1, #t_p2Selected do
@@ -1030,7 +1052,7 @@ function select.f_selectArcade()
 					setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
 					p2Cell = main.t_charDef[main.t_selChars[t_p2Selected[i].cel + 1].char]
 					t_p2Selected = {}
-					t_p2Selected[1] = {cel = p2Cell, pal = select.f_randomPal(p2Cell), up = true}
+					t_p2Selected[1] = {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = true}
 					restoreTeam = true
 					break
 				end
@@ -1939,7 +1961,7 @@ function select.f_p1SelectMenu()
 			if t[main.p1Char[i]] == nil then
 				t[main.p1Char[i]] = ''
 			end
-			t_p1Selected[i] = {cel = main.p1Char[i], pal = select.f_randomPal(main.p1Char[i])}
+			t_p1Selected[i] = {cel = main.p1Char[i], pal = select.f_selectPal(main.p1Char[i])}
 		end
 		p1SelEnd = true
 		return
@@ -1986,7 +2008,7 @@ function select.f_p2SelectMenu()
 			if t[main.p2Char[i]] == nil then
 				t[main.p2Char[i]] = ''
 			end
-			t_p2Selected[i] = {cel = main.p2Char[i], pal = select.f_randomPal(main.p2Char[i])}
+			t_p2Selected[i] = {cel = main.p2Char[i], pal = select.f_selectPal(main.p2Char[i])}
 		end
 		p2SelEnd = true
 		return

@@ -1372,22 +1372,37 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getCharPalettes", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
+		//palettes
 		tbl := l.NewTable()
-		var pal []int32
-		if sys.aiRandomColor {
-			pal = c.pal
-		} else {
-			pal = c.pal_defaults
-		}
-		if len(pal) > 0 {
-			for k, v := range pal {
+		if len(c.pal) > 0 {
+			for k, v := range c.pal {
 				tbl.RawSetInt(k+1, lua.LNumber(v))
 			}
 		} else {
 			tbl.RawSetInt(1, lua.LNumber(1))
 		}
 		l.Push(tbl)
-		return 1
+		//default palettes
+		tbl = l.NewTable()
+		if len(c.pal_defaults) > 0 {
+			for k, v := range c.pal_defaults {
+				tbl.RawSetInt(k+1, lua.LNumber(v))
+			}
+		} else {
+			tbl.RawSetInt(1, lua.LNumber(1))
+		}
+		l.Push(tbl)
+		//palette keymap
+		tbl = l.NewTable()
+		if len(c.pal_keymap) > 0 {
+			for k, v := range c.pal_keymap {
+				if int32(k + 1) != v { //only actual remaps are relevant
+					tbl.RawSetInt(k+1, lua.LNumber(v))
+				}
+			}
+		}
+		l.Push(tbl)
+		return 3
 	})
 	luaRegister(l, "getCharRandomPalette", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
