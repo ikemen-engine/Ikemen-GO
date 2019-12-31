@@ -1881,6 +1881,10 @@ type StageBgm struct {
 type SelectStage struct {
 	def, name, zoomout, zoomin string
 	stagebgm                   [3]StageBgm
+	stageportrait              *Sprite
+	portrait_scale             float32
+	xscale                     float32
+	yscale                     float32
 }
 type Select struct {
 	columns, rows   int
@@ -1897,6 +1901,7 @@ type Select struct {
 	lportrait       [2]int16
 	vsportrait      [2]int16
 	vportrait       [2]int16
+	stageportrait   [2]int16
 	aportrait		map[string]Anim
 	cdefOverwrite   [MaxSimul * 2]string
 	sdefOverwrite   string
@@ -1914,6 +1919,7 @@ func newSelect() *Select {
 					lportrait: [...]int16{9000, 1},
 					vsportrait: [...]int16{9000, 1},
 					vportrait: [...]int16{9000, 2},
+					stageportrait: [...]int16{9000, 0},
 					aportrait: make(map[string]Anim)}
 }
 func (s *Select) GetCharNo(i int) int {
@@ -1957,6 +1963,16 @@ func (s *Select) GetStageInfo(n int) (string, string, [3]StageBgm) {
 		n += len(s.stagelist) + 1
 	}
 	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].stagebgm
+}
+func (s *Select) GetStage(n int) *SelectStage {
+	if len(s.stagelist) == 0 {
+		return nil
+	}
+	n %= len(s.stagelist) + 1
+	if n < 0 {
+		n += len(s.stagelist) + 1
+	}
+	return &s.stagelist[n-1]
 }
 func (s *Select) addCahr(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
@@ -2077,7 +2093,7 @@ func (s *Select) AddStage(def string) error {
 	}); err != nil {
 		return err
 	}
-	i, info, camera, music := 0, true, true, true
+	i, info, camera, music, bgdef, stageinfo := 0, true, true, true, true, true
 	s.stagelist = append(s.stagelist, SelectStage{})
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -2133,6 +2149,36 @@ func (s *Select) AddStage(def string) error {
 					is.ReadI32("bgmvolume.life", &ss.stagebgm[2].bgmvolume)
 					is.ReadI32("bgmloopstart.life", &ss.stagebgm[2].bgmloopstart)
 					is.ReadI32("bgmloopend.life", &ss.stagebgm[2].bgmloopend)
+				}
+			}
+		case "bgdef":
+			if bgdef {
+				bgdef = false
+				if sys.quickLaunch == 0 {
+					spr := is["spr"]
+					LoadFile(&spr, def, func(file string) error {
+						ss.stageportrait, _ = loadFromSff(file, sys.sel.stageportrait[0], sys.sel.stageportrait[1])
+						return nil
+					})
+				}
+			}
+		case "stageinfo":
+			if stageinfo {
+				stageinfo = false
+				var ok bool
+				ok = is.ReadF32("localcoord", &ss.portrait_scale)
+				if !ok {
+					ss.portrait_scale = 1
+				} else {
+					ss.portrait_scale = (320 / ss.portrait_scale)
+				}
+				ok = is.ReadF32("xscale", &ss.xscale)
+				if !ok {
+					ss.xscale = 1
+				}
+				ok = is.ReadF32("yscale", &ss.yscale)
+				if !ok {
+					ss.yscale = 1
 				}
 			}
 		}

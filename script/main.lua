@@ -821,6 +821,7 @@ setPortrait(motif.select_info.p1_face_spr[1], motif.select_info.p1_face_spr[2], 
 setPortrait(motif.select_info.portrait_spr[1], motif.select_info.portrait_spr[2], 2) --Small portrait
 setPortrait(motif.vs_screen.p1_spr[1], motif.vs_screen.p1_spr[2], 3) --Versus portrait
 setPortrait(motif.victory_screen.p1_spr[1], motif.victory_screen.p1_spr[2], 4) --Victory portrait
+setPortrait(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2], 5) --Stage portrait
 
 main.txt_warningTitle = main.f_createTextImg(
 	motif.font_data[motif.warning_info.title_font[1]],

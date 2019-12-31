@@ -1200,6 +1200,8 @@ func systemScriptInit(l *lua.LState) {
 			sys.sel.vsportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
 		} else if p == 4 {
 			sys.sel.vportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
+		} else if p == 5 {
+			sys.sel.stageportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
 		}
 		return 0
 	})
@@ -1356,6 +1358,30 @@ func systemScriptInit(l *lua.LState) {
 					return nil
 				})
 
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "drawStagePortrait", func(l *lua.LState) int {
+		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
+		var xscl, yscl float32 = 1, 1
+		if l.GetTop() >= 4 {
+			xscl = float32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				yscl = float32(numArg(l, 5))
+			}
+		}
+		if !sys.frameSkip {
+			c := sys.sel.GetStage(n)
+			if c != nil && c.stageportrait != nil {
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				xscl *= c.xscale
+				yscl *= c.yscale
+				paltex := c.stageportrait.PalTex
+				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex)
 			}
 		}
 		return 0

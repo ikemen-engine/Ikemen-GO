@@ -2071,6 +2071,18 @@ function select.f_stageMenu()
 			if stageList > #main.t_includeStage then stageList = 0 end
 		end
 	end
+	if stageList == 0 then --draw random stage portrait loaded from screenpack SFF
+		animUpdate(motif.select_info.stage_portrait_random_data)
+		animDraw(motif.select_info.stage_portrait_random_data)	
+	else --draw stage portrait loaded from stage SFF
+		drawStagePortrait(
+			stageList,
+			motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
+			motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2],
+			--[[motif.select_info.stage_portrait_facing * ]]motif.select_info.stage_portrait_scale[1] * motif.info.portrait_scale[2],
+			motif.select_info.stage_portrait_scale[2] * motif.info.portrait_scale[2]
+		)
+	end
 	if main.f_btnPalNo(main.p1Cmd) > 0 then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
 		if stageList == 0 then

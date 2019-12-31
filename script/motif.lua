@@ -365,6 +365,13 @@ local motif =
 		stage_text = 'Stage %i: %s', --Ikemen feature
 		stage_random_text = 'Stage: Random', --Ikemen feature
 		stage_text_spacing = {0, 14}, --Ikemen feature
+		stage_portrait_spr = {9000, 0}, --Ikemen feature
+		stage_portrait_offset = {0, 0}, --Ikemen feature
+		stage_portrait_scale = {1.0, 1.0}, --Ikemen feature
+		stage_portrait_random_spr = {}, --Ikemen feature
+		--stage_portrait_random_anim = nil, --Ikemen feature
+		stage_portrait_random_offset = {0, 0}, --Ikemen feature
+		stage_portrait_random_scale = {1.0, 1.0}, --Ikemen feature
 		teammenu_move_wrapping = 1,
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
@@ -1606,8 +1613,12 @@ t_dir = {
 	{s = 'p2_teammenu_item_cursor_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_value_icon_',       x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_value_empty_icon_', x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'stage_portrait_random_',        x = t.stage_pos[1] + t.stage_portrait_offset[1],         y = t.stage_pos[2] + t.stage_portrait_offset[2]},
+	
 }
 for i = 1, #t_dir do
+	--if t[t_dir[i].s .. 'offset'] == nil then t[t_dir[i].s .. 'offset'] = {0, 0} end
+	--if t[t_dir[i].s .. 'scale'] == nil then t[t_dir[i].s .. 'scale'] = {1.0, 1.0} end
 	if #t[t_dir[i].s .. 'spr'] > 0 then --create sprite data
 		if #t[t_dir[i].s .. 'spr'] == 1 then --fix values
 			if type(t[t_dir[i].s .. 'spr'][1]) == 'string' then
