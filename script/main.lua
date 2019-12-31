@@ -1157,7 +1157,7 @@ for i = 1, #main.t_selChars do
 			table.insert(main.t_bonusChars, i - 1)
 		end
 		--generate table with characters allowed to be random selected
-		if main.t_selChars[i].hidden ~= nil and main.t_selChars[i].hidden <= 1 then
+		if (main.t_selChars[i].hidden == nil or main.t_selChars[i].hidden <= 1) and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
 			table.insert(main.t_randomChars, i - 1)
 		end
 	end
