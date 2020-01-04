@@ -859,34 +859,40 @@ textImgDraw(txt_loading)
 refresh()
 
 function main.f_charParam(t, c)
-	if c:match('music[al]?[li]?[tf]?[e]?%s*=') then
-		c = c:gsub('\\', '/')
+	if c:match('music[al]?[li]?[tf]?[e]?%s*=') then --music / musicalt / musiclife
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
-		for i, c in ipairs(main.f_strsplit('%s+', c:match('%s+([0-9%s]+)$'))) do --split using whitespace delimiter
-			if i == 1 then
-				bgmvolume = tonumber(c)
-			elseif i == 2 then
-				bgmloopstart = tonumber(c)
-			elseif i == 3 then
-				bgmloopend = tonumber(c)
-			else
-				break
+		c = c:gsub('%s+([0-9%s]+)$', function(m1)
+			for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
+				if i == 1 then
+					bgmvolume = tonumber(c)
+				elseif i == 2 then
+					bgmloopstart = tonumber(c)
+				elseif i == 3 then
+					bgmloopend = tonumber(c)
+				else
+					break
+				end
 			end
-		end
-		c = c:gsub('%s+([0-9%s]+)$', '')
+			return ''
+		end)
+		c = c:gsub('\\', '/')
 		local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
 		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
-	elseif c:match('[0-9]+%s*=%s*[^%s]') then
+	elseif c:match('lifebar%s*=') then --lifebar
+		if t.lifebar == nil then
+			t.lifebar = c:match('=%s*(.-)%s*$')
+		end
+	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2:lower()
-	elseif c:match('%.def') or c:match('^random$') then
+	elseif c:match('%.def') or c:match('^random$') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
 		end
 		table.insert(t.stage, c)
-	else
+	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= '' and value ~= '' then
 			t[param] = tonumber(value)
@@ -897,30 +903,29 @@ function main.f_charParam(t, c)
 	end
 end
 
-local t_updateCharRef = {}
-function main.f_addChar(line, row)
+function main.f_addChar(line, row, playable)
 	local tmp = ''
-	local order = false
-	local hidden = 0
 	main.t_selChars[row] = {}
+	--parse 'rivals' param and get rid of it if exists
 	for num, str in line:gmatch('([0-9]+)%s*=%s*{([^%}]-)}') do
-		if main.t_selChars[row].arcade == nil then
-			main.t_selChars[row].arcade = {}
+		num = tonumber(num)
+		if main.t_selChars[row].rivals == nil then
+			main.t_selChars[row].rivals = {}
 		end
-		for i, c in ipairs(main.f_strsplit(',', str)) do
+		for i, c in ipairs(main.f_strsplit(',', str)) do --split using "," delimiter
 			c = c:match('^%s*(.-)%s*$')
 			if i == 1 then
 				c = c:gsub('\\', '/')
 				c = tostring(c)
-				main.t_selChars[row].arcade[num] = {char = c}
-				table.insert(t_updateCharRef, {main.t_selChars[row].arcade[num]})
+				main.t_selChars[row].rivals[num] = {char = c}
 			else
-				main.f_charParam(main.t_selChars[row].arcade[num], c)
+				main.f_charParam(main.t_selChars[row].rivals[num], c)
 			end
 		end
 		line = line:gsub(',%s*' .. num .. '%s*=%s*{([^%}]-)}', '')
 	end
-	for i, c in ipairs(main.f_strsplit(',', line)) do
+	--parse rest of the line
+	for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 		c = c:match('^%s*(.-)%s*$')
 		if i == 1 then
 			c = c:gsub('\\', '/')
@@ -930,51 +935,91 @@ function main.f_addChar(line, row)
 			if tmp == '' then
 				break
 			end
-			main.t_charDef[c] = row - 1
+			main.t_charDef[c:lower()] = row - 1
 			main.t_selChars[row].char = c
-			if tmp ~= 'Random' then
-				main.t_selChars[row].displayname = tmp
-				main.t_selChars[row].def = getCharFileName(row - 1)
-				main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
-				main.t_selChars[row].pal, main.t_selChars[row].pal_defaults, main.t_selChars[row].pal_keymap = getCharPalettes(row - 1)
-				if tmp ~= 'Training' then
-					tmp = getCharIntro(row - 1)
-					if tmp ~= '' then
-						main.t_selChars[row].intro = main.t_selChars[row].dir .. tmp:gsub('\\', '/')
-					end
-					tmp = getCharEnding(row - 1)
-					if tmp ~= '' then
-						main.t_selChars[row].ending = main.t_selChars[row].dir .. tmp:gsub('\\', '/')
-					end
-					main.t_selChars[row].order = 1
-					order = true
-				end
-			else
+			if tmp == 'Random' then
+				playable = false
 				break
+			end
+			main.t_selChars[row].playable = playable
+			main.t_selChars[row].displayname = tmp
+			main.t_selChars[row].def = getCharFileName(row - 1)
+			main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
+			main.t_selChars[row].pal, main.t_selChars[row].pal_defaults, main.t_selChars[row].pal_keymap = getCharPalettes(row - 1)
+			if playable then
+				tmp = getCharIntro(row - 1)
+				if tmp ~= '' then
+					main.t_selChars[row].intro = main.t_selChars[row].dir .. tmp:gsub('\\', '/')
+				end
+				tmp = getCharEnding(row - 1)
+				if tmp ~= '' then
+					main.t_selChars[row].ending = main.t_selChars[row].dir .. tmp:gsub('\\', '/')
+				end
+				main.t_selChars[row].order = 1
 			end
 		else
 			main.f_charParam(main.t_selChars[row], c)
 		end
 	end
-	if main.t_selChars[row].exclude == nil then
-		main.t_selChars[row].hidden = hidden
+	if main.t_selChars[row].hidden == nil then
+		main.t_selChars[row].hidden = 0
 	end
-	if order then
+	if playable then
+		--order param
 		if main.t_orderChars[main.t_selChars[row].order] == nil then
 			main.t_orderChars[main.t_selChars[row].order] = {}
 		end
 		table.insert(main.t_orderChars[main.t_selChars[row].order], row - 1)
+		--ordersurvival param
+		local num = 1
+		if main.t_selChars[row].ordersurvival ~= nil then
+			num = main.t_selChars[row].ordersurvival
+		end
+		if main.t_orderSurvival[num] == nil then
+			main.t_orderSurvival[num] = {}
+		end
+		table.insert(main.t_orderSurvival[num], row - 1)
 	end
 	main.loadingRefresh(txt_loading)
 end
 
+function main.f_addStage(file)
+	file = file:gsub('\\', '/')
+	--if not main.f_fileExists(file) or file:match('^stages/$') then
+	--	return #main.t_selStages
+	--end
+	addStage(file)
+	local stageNo = #main.t_selStages + 1
+	local tmp = getStageName(stageNo)
+	--if tmp == '' then
+	--	return stageNo
+	--end
+	main.t_stageDef[file:lower()] = stageNo
+	main.t_selStages[stageNo] = {name = tmp, stage = file}
+	local _, _, t_bgmusic = getStageInfo(stageNo)
+	for k = 1, #t_bgmusic do
+		if t_bgmusic[k].bgmusic ~= '' then
+			if k == 1 then
+				tmp = 'music'
+			elseif k == 2 then
+				tmp = 'musicalt'
+			else
+				tmp = 'musiclife'
+			end
+			main.t_selStages[stageNo][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
+		end
+	end
+	return stageNo
+end
+
 --start_time = os.time()
-main.t_includeStage = {}
+main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
 main.t_orderChars = {}
 main.t_orderStages = {}
+main.t_orderSurvival = {}
 main.t_stageDef = {['random'] = 0}
 main.t_charDef = {}
-local t_exlude = {}
+local t_addExluded = {}
 local chars = 0
 local stages = 0
 local tmp = ''
@@ -1012,56 +1057,35 @@ for line in content:gmatch('[^\r\n]+') do
 		section = 3
 	elseif section == 1 then --[Characters]
 		if line:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
-			table.insert(t_exlude, line)
+			table.insert(t_addExluded, line)
 		else
 			chars = chars + 1
-			main.f_addChar(line, chars)
+			main.f_addChar(line, chars, true)
 		end
 	elseif section == 2 then --[ExtraStages]
-		row = #main.t_selStages + 1
-		for i, c in ipairs(main.f_strsplit(',', line)) do
+		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 			c = c:gsub('^%s*(.-)%s*$', '%1')
 			if i == 1 then
-				c = c:gsub('\\', '/')
-				if not main.f_fileExists(c) or c:match('^stages/$') then
-					break
-				end
-				addStage(c)
-				tmp = getStageName(row)
-				if tmp == '' then
-					break
-				end
-				main.t_selStages[row] = {name = tmp, stage = c}
-				local _, _, t_bgmusic = getStageInfo(row)
-				for k = 1, #t_bgmusic do
-					if t_bgmusic[k].bgmusic ~= '' then
-						if k == 1 then
-							tmp = 'music'
-						elseif k == 2 then
-							tmp = 'musicalt'
-						else
-							tmp = 'musiclife'
-						end
-						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
-					end
-				end
-				table.insert(main.t_includeStage, row)
-				main.t_stageDef[c] = row
+				row = main.f_addStage(c)
+				table.insert(main.t_includeStage[1], row)
+				table.insert(main.t_includeStage[2], row)
 			elseif c:match('music[al]?[li]?[tf]?[e]?%s*=') then
-				c = c:gsub('\\', '/')
 				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
-				for i, c in ipairs(main.f_strsplit('%s+', c:match('%s+([0-9%s]+)$'))) do --split using whitespace delimiter
-					if i == 1 then
-						bgmvolume = tonumber(c)
-					elseif i == 2 then
-						bgmloopstart = tonumber(c)
-					elseif i == 3 then
-						bgmloopend = tonumber(c)
-					else
-						break
+				c = c:gsub('%s+([0-9%s]+)$', function(m1)
+					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
+						if i == 1 then
+							bgmvolume = tonumber(c)
+						elseif i == 2 then
+							bgmloopstart = tonumber(c)
+						elseif i == 3 then
+							bgmloopend = tonumber(c)
+						else
+							break
+						end
 					end
-				end
-				c = c:gsub('%s+([0-9%s]+)$', '')
+					return ''
+				end)
+				c = c:gsub('\\', '/')
 				local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
 				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
@@ -1081,7 +1105,7 @@ for line in content:gmatch('[^\r\n]+') do
 			local rowName, line = line:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
 			rowName = rowName:gsub('%.', '_')
 			main.t_selOptions[rowName .. 'maxmatches'] = {}
-			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do
+			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
 				main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
 			end
 		elseif line:match('%.airamp%.') then
@@ -1092,20 +1116,26 @@ for line in content:gmatch('[^\r\n]+') do
 end
 --main.f_printVar(os.difftime(os.time(), start_time))
 
+--add default maxmatches values if config is missing in select.def
+if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
+
 --add excluded characters once all slots are filled
 for i = chars, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.select_info.columns - 1 do
 	chars = chars + 1
 	main.t_selChars[chars] = {}
 	addChar('dummyChar')
 end
-for i = 1, #t_exlude do
+for i = 1, #t_addExluded do
 	chars = chars + 1
-	main.f_addChar(t_exlude[i], chars)
+	main.f_addChar(t_addExluded[i], chars, true)
 end
+
 --add Training by stupa if not included in select.def
 if main.t_charDef.training == nil and main.f_fileExists('chars/training/training.def') then
 	chars = chars + 1
-	main.f_addChar('training, exclude = 1', chars)
+	main.f_addChar('training, exclude = 1', chars, false)
 end
 
 --add remaining character parameters
@@ -1114,36 +1144,48 @@ main.t_bonusChars = {}
 main.t_randomChars = {}
 --for each character loaded
 for i = 1, #main.t_selChars do
-	if main.t_selChars[i].stage ~= nil then
-		for j = 1, #main.t_selChars[i].stage do
-			if main.t_stageDef[main.t_selChars[i].stage[j]] == nil then
-				row = #main.t_selStages + 1
-				addStage(main.t_selChars[i].stage[j])
-				tmp = getStageName(row)
-				if tmp == '' then
-					break
+	--add char_ref entry
+	if main.t_selChars[i].char ~= nil then
+		main.t_selChars[i].char_ref = main.t_charDef[main.t_selChars[i].char:lower()]
+	end
+	--change character 'rivals' param char and stage string file paths to reference values
+	if main.t_selChars[i].rivals ~= nil then
+		for j = 1, #main.t_selChars[i].rivals do
+			--add 'rivals' param character if needed or reference existing one
+			if main.t_selChars[i].rivals[j].char ~= nil then
+				if main.t_charDef[main.t_selChars[i].rivals[j].char:lower()] == nil then --new char
+					chars = chars + 1
+					main.f_addChar(main.t_selChars[i].rivals[j].char .. ', exclude = 1', chars, false)
+					main.t_selChars[i].rivals[j].char_ref = chars
+				else --already added
+					main.t_selChars[i].rivals[j].char_ref = main.t_charDef[main.t_selChars[i].rivals[j].char:lower()]
 				end
-				main.t_selStages[row] = {name = tmp, stage = main.t_selChars[i].stage[j]}
-				local _, _, t_bgmusic = getStageInfo(row)
-				for k = 1, #t_bgmusic do
-					if t_bgmusic[k].bgmusic ~= '' then
-						if k == 1 then
-							tmp = 'music'
-						elseif k == 2 then
-							tmp = 'musicalt'
-						else
-							tmp = 'musiclife'
-						end
-						main.t_selStages[row][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
+			end
+			--add 'rivals' param stages if needed or reference existing ones
+			if main.t_selChars[i].rivals[j].stage ~= nil then
+				for k = 1, #main.t_selChars[i].rivals[j].stage do
+					if main.t_stageDef[main.t_selChars[i].rivals[j].stage[k]:lower()] == nil then
+						main.t_selChars[i].rivals[j].stage[k] = main.f_addStage(main.t_selChars[i].rivals[j].stage[k])
+					else --already added
+						main.t_selChars[i].rivals[j].stage[k] = main.t_stageDef[main.t_selChars[i].rivals[j].stage[k]:lower()]
 					end
 				end
-				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then
-					table.insert(main.t_includeStage, row)
+			end
+		end
+	end
+	--character stage param
+	if main.t_selChars[i].stage ~= nil then
+		for j = 1, #main.t_selChars[i].stage do
+			--add 'stage' param stages if needed or reference existing ones
+			if main.t_stageDef[main.t_selChars[i].stage[j]:lower()] == nil then
+				main.t_selChars[i].stage[j] = main.f_addStage(main.t_selChars[i].stage[j])
+				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then --stage available all the time
+					table.insert(main.t_includeStage[1], main.t_selChars[i].stage[j])
+				elseif main.t_selChars[i].includestage == -1 then --excluded stage that can be still manually selected
+					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				end
-				main.t_selChars[i].stage[j] = row
-				--main.t_stageDef[main.t_selChars[i].stage[j]] = row
-			else
-				main.t_selChars[i].stage[j] = main.t_stageDef[main.t_selChars[i].stage[j]]
+			else --already added
+				main.t_selChars[i].stage[j] = main.t_stageDef[main.t_selChars[i].stage[j]:lower()]
 			end
 		end
 	end
@@ -1158,7 +1200,7 @@ for i = 1, #main.t_selChars do
 			table.insert(main.t_bonusChars, i - 1)
 		end
 		--generate table with characters allowed to be random selected
-		if (main.t_selChars[i].hidden == nil or main.t_selChars[i].hidden <= 1) and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
+		if main.t_selChars[i].playable and (main.t_selChars[i].hidden == nil or main.t_selChars[i].hidden <= 1) and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
 			table.insert(main.t_randomChars, i - 1)
 		end
 	end
@@ -1170,6 +1212,7 @@ main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
 main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
 main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
 main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
+main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
 main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
 main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
 main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
@@ -1187,24 +1230,31 @@ setDebugScript(motif.files.debug_script)
 textImgDraw(txt_loading)
 refresh()
 loadLifebar(motif.files.fight)
+main.currentLifebar = motif.files.fight
 main.loadingRefresh(txt_loading)
 
---warnings
+--print warning if training character is missing
 if main.t_charDef.training == nil then
 	main.f_warning(main.f_extractText(motif.warning_info.text_training), motif.title_info, motif.titlebgdef)
 	os.exit()
 end
 
-if #main.t_includeStage == 0 then
+--print warning if no stages have been added
+if #main.t_includeStage[1] == 0 then
 	main.f_warning(main.f_extractText(motif.warning_info.text_stages), motif.title_info, motif.titlebgdef)
 	os.exit()
 end
 
+--print warning if at least 1 match is not possible with the current maxmatches settings
 for k, v in pairs(main.t_selOptions) do
-	if k:match('maxmatches$') then
+	local mode = k:match('^(.+)maxmatches$')
+	if mode ~= nil then
 		local orderOK = false
 		for i = 1, #main.t_selOptions[k] do
-			if main.t_selOptions[k][i] > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
+			if mode == 'survival' and (main.t_selOptions[k][i] > 0 or main.t_selOptions[k][i] == -1) and main.t_orderSurvival[i] ~= nil and #main.t_orderSurvival[i] > 0 then
+				orderOK = true
+				break
+			elseif main.t_selOptions[k][i] > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
 				orderOK = true
 				break
 			end

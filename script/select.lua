@@ -74,6 +74,8 @@ local p2TeamMode = 0
 local p1Tag = false
 local p2Tag = false
 local lastMatch = 0
+local currentOrder = 0
+local currentRosterIndex = 0
 local stageNo = 0
 local stageList = 0
 local fadeType = 'fadein'
@@ -122,6 +124,7 @@ function select.f_makeRoster()
 			t = main.t_selOptions.teammaxmatches
 		end
 		for i = 1, #t do --for each order number
+			table.insert(t_roster, {})
 			cnt = t[i] * p2NumChars --set amount of matches to get from the table
 			if cnt > 0 and main.t_orderChars[i] ~= nil then --if matches > 0 and there are characters with such order
 				if t[i] > #main.t_orderChars[i] then --if there is not enough chars with particular order reduce amount of matches
@@ -131,8 +134,8 @@ function select.f_makeRoster()
 				end
 				while orderCnt > 0 do --do the following until amount of matches for particular order is reached
 					main.f_shuffleTable(main.t_orderChars[i]) --randomize characters table
-					for j = 1, #main.t_orderChars[i] do --loop through chars associated with that particular order
-						table.insert(t_roster, main.t_orderChars[i][j]) --and add such character into new table
+					for j = 1, #main.t_orderChars[i] do --loop through chars associated with this particular order
+						table.insert(t_roster[i], main.t_orderChars[i][j]) --and add such character into new table
 						orderCnt = orderCnt - 1
 						if orderCnt == 0 then --but only if amount of matches for particular order has not been reached yet
 							break
@@ -141,17 +144,42 @@ function select.f_makeRoster()
 				end
 			end
 		end
-	--Survival / Boss Rush / VS 100 Kumite
-	else
-		if gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
-			t = main.t_randomChars
-			cnt = #t
-			local i = 0
-			while cnt / p2NumChars ~= math.ceil(cnt / p2NumChars) do --not integer
-				i = i + 1
-				cnt = #t + i
+	--Survival
+	elseif gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+		t = main.t_selOptions.survivalmaxmatches
+		for i = 1, #t do --for each order number
+			table.insert(t_roster, {})
+			--set amount of matches to get from the table
+			if t[i] == -1 and main.t_orderSurvival[i] ~= nil then --infinite matches
+				cnt = #main.t_orderSurvival[i] * p2NumChars --get value equal all characters with this order
+			else --finite matches
+				cnt = t[i] * p2NumChars --amount of matches as specified in survival.maxmatches column
 			end
-		elseif gameMode('bossrush') then
+			if cnt > 0 and main.t_orderSurvival[i] ~= nil then --if matches > 0 and there are characters with such order
+				if t[i] > #main.t_orderSurvival[i] or t[i] < 0 then --if there is not enough chars with particular order reduce amount of matches
+					orderCnt = #main.t_orderSurvival[i] * p2NumChars
+				else
+					orderCnt = cnt
+				end
+				while orderCnt > 0 do --do the following until amount of matches for particular order is reached
+					main.f_shuffleTable(main.t_orderSurvival[i]) --randomize characters table
+					for j = 1, #main.t_orderSurvival[i] do --loop through chars associated with this particular order
+						table.insert(t_roster[i], main.t_orderSurvival[i][j]) --and add such character into new table
+						orderCnt = orderCnt - 1
+						if orderCnt == 0 then --but only if amount of matches for particular order has not been reached yet
+							break
+						end
+					end
+				end
+				if t[i] == -1 then --infinity matches against characters with order i, skip the rest
+					break
+				end
+			end
+		end
+	--Boss Rush / VS 100 Kumite
+	else
+		table.insert(t_roster, {})
+		if gameMode('bossrush') then
 			t = main.t_bossChars
 			cnt = #t
 			local i = 0
@@ -166,7 +194,7 @@ function select.f_makeRoster()
 		while cnt > 0 do
 			main.f_shuffleTable(t)
 			for i = 1, #t do
-				table.insert(t_roster, t[i])
+				table.insert(t_roster[1], t[i])
 				cnt = cnt - 1
 				if cnt == 0 then
 					break
@@ -177,12 +205,14 @@ function select.f_makeRoster()
 	main.f_printTable(t_roster, 'debug/t_roster.txt')
 end
 
-function select.f_aiRamp()
+function select.f_aiRamp(currentMatch)
 	local start_match = 0
 	local start_diff = 0
 	local end_match = 0
 	local end_diff = 0
-	t_aiRamp = {}
+	if currentMatch == 1 then
+		t_aiRamp = {}
+	end
 	--Arcade
 	if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') then
 		if p2TeamMode == 0 then --Single
@@ -214,7 +244,7 @@ function select.f_aiRamp()
 	elseif endAI < 1 then
 		endAI = 1
 	end
-	for i = 1, lastMatch do
+	for i = currentMatch, lastMatch do
 		if i - 1 <= start_match then
 			table.insert(t_aiRamp, startAI)
 		elseif i - 1 <= end_match then
@@ -227,14 +257,30 @@ function select.f_aiRamp()
 	main.f_printTable(t_aiRamp, 'debug/t_aiRamp.txt')
 end
 
+function select.f_rivalsMatch(param)
+	if (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop'))
+	and main.t_selChars[t_p1Selected[1].cel + 1].rivals ~= nil and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo] ~= nil then
+		if param == nil then
+			return true
+		else
+			return main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] ~= nil
+		end
+	end
+	return false
+end
+
 function select.f_difficulty(player, offset)
 	local t = {}
-	if player % 2 ~= 0 then --odd value
+	if player % 2 ~= 0 then --odd value (Player1 side)
 		local pos = math.floor(player / 2 + 0.5)
 		t = main.t_selChars[t_p1Selected[pos].cel + 1]
-	else --even value
+	else --even value (Player2 side)
 		local pos = math.floor(player / 2)
-		t = main.t_selChars[t_p2Selected[pos].cel + 1]
+		if pos == 1 and select.f_rivalsMatch('ai') then --player2 team leader and arcade mode and ai rivals param exists
+			t = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo]
+		else
+			t = main.t_selChars[t_p2Selected[pos].cel + 1]
+		end
 	end
 	if t.ai ~= nil then
 		return t.ai
@@ -342,29 +388,35 @@ end
 local lifebar = motif.files.fight
 function select.f_setRounds()
 	--lifebar
-	if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].lifebar ~= nil then
-		lifebar = motif.files.fight:gsub('\\', '/')
-		lifebar = lifebar:lower()
-	else
+	if main.charparam and select.f_rivalsMatch('lifebar') then --lifebar assigned as rivals param
+		lifebar = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].lifebar:gsub('\\', '/')
+	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].lifebar ~= nil then --lifebar assigned as character param
+		lifebar = main.t_selChars[t_p2Selected[1].cel + 1].lifebar:gsub('\\', '/')
+	else --default lifebar
 		lifebar = motif.files.fight
 	end
-	if lifebar ~= motif.files.fight then
+	if lifebar:lower() ~= main.currentLifebar:lower() then
+		main.currentLifebar = lifebar
 		loadLifebar(lifebar)
 	end
 	--round time
 	if gameMode('training') then
 		setRoundTime(-1)
-	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].time ~= nil then
+	elseif main.charparam and select.f_rivalsMatch('time') then --round time assigned as rivals param
+		setRoundTime(main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].time * getFramesPerCount())
+	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].time ~= nil then --round time assigned as character param
 		setRoundTime(main.t_selChars[t_p2Selected[1].cel + 1].time * getFramesPerCount())
-	else
+	else --default round time
 		setRoundTime(config.RoundTime * getFramesPerCount())
 	end
 	--rounds num
-	if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].rounds ~= nil then
+	if main.charparam and select.f_rivalsMatch('rounds') then --round num assigned as rivals param
+		setMatchWins(main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].rounds)
+	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].rounds ~= nil then --round num assigned as character param
 		setMatchWins(main.t_selChars[t_p2Selected[1].cel + 1].rounds)
-	elseif p2TeamMode == 0 then
+	elseif p2TeamMode == 0 then --default rounds num (Single mode)
 		setMatchWins(options.roundsNumSingle)
-	else
+	else --default rounds num (Team mode)
 		setMatchWins(options.roundsNumTeam)
 	end
 	--draws num
@@ -374,14 +426,17 @@ end
 function select.f_setStage()
 	--stage
 	if not main.stageMenu then
-		if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned to character
+		if main.charparam and select.f_rivalsMatch('stage') then --stage assigned as rivals param
+			stageNo = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage)
+			stageNo = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage[stageNo]
+		elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned as character param
 			stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
 			stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
-		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order] ~= nil then --stage assigned to order
+		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order] ~= nil then --stage assigned as stage order param
 			stageNo = math.random(1, #main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order])
 			stageNo = main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order][stageNo]
-		else
-			stageNo = main.t_includeStage[math.random(1, #main.t_includeStage)]
+		else --stage randomly selected
+			stageNo = main.t_includeStage[1][math.random(1, #main.t_includeStage[1])]
 		end
 	end
 	setStage(stageNo)
@@ -391,13 +446,19 @@ function select.f_setStage()
 	local zoomMin = config.ZoomMin
 	local zoomMax = config.ZoomMax
 	local zoomSpeed = config.ZoomSpeed
-	if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].zoom ~= nil then
+	if main.charparam and select.f_rivalsMatch('zoom') then --zoom assigned as rivals param
+		if main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].zoom == 1 then
+			zoom = true
+		else
+			zoom = false
+		end
+	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].zoom ~= nil then --zoom assigned as character param
 		if main.t_selChars[t_p2Selected[1].cel + 1].zoom == 1 then
 			zoom = true
 		else
 			zoom = false
 		end
-	elseif main.t_selStages[stageNo].zoom ~= nil then
+	elseif main.t_selStages[stageNo].zoom ~= nil then --zoom assigned as stage param
 		if main.t_selStages[stageNo].zoom == 1 then
 			zoom = true
 		else
@@ -418,15 +479,15 @@ function select.f_setStage()
 	setZoomMax(zoomMax)
 	setZoomSpeed(zoomSpeed)
 	--music
-	local track = 0
-	local music = ''
-	local volume = 0
-	local loopstart = 0
-	local loopend = 0
 	local t = {'music', 'musicalt', 'musiclife'}
 	for i = 1, #t do
+		local track = 0
+		local music = ''
+		local volume = 100
+		local loopstart = 0
+		local loopend = 0
 		if main.stageMenu then
-			if main.t_selStages[stageNo][t[i]] ~= nil then
+			if main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
@@ -434,13 +495,19 @@ function select.f_setStage()
 				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
 			end
 		else
-			if main.charparam and main.t_selChars[t_p2Selected[1].cel + 1][t[i]] ~= nil then
+			if main.charparam and select.f_rivalsMatch(t[i]) then --music assigned as rivals param
+				track = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]])
+				music = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmusic
+				volume = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmvolume
+				loopstart = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmloopstart
+				loopend = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmloopend
+			elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1][t[i]] ~= nil then --music assigned as character param
 				track = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1][t[i]])
 				music = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmusic
 				volume = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmvolume
 				loopstart = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopstart
 				loopend = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopend
-			elseif main.t_selStages[stageNo][t[i]] ~= nil then
+			elseif main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
@@ -448,7 +515,9 @@ function select.f_setStage()
 				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
 			end
 		end
-		setStageBGM(i - 1, music, volume, loopstart, loopend)
+		if music ~= '' then
+			setStageBGM(i - 1, music, volume, loopstart, loopend)
+		end
 	end
 end
 
@@ -810,12 +879,15 @@ function select.f_selectArranged()
 	p2FaceOffset = 0
 	p1RowOffset = 0
 	p2RowOffset = 0
+	winCnt = 0
+	looseCnt = 0
 	stageList = 0
 	main.f_cmdInput()
+	select.f_selectReset()
 	while true do
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
-		select.f_selectReset()
+		selectStart()
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -825,27 +897,134 @@ function select.f_selectArranged()
 			end
 			select.f_selectScreen()
 		end
-		--coop swap
-		if main.coop then
-			p1TeamMode = 1
-			p1NumChars = 2
-			p1Tag = false
-			setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
-			t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+		--first match
+		if matchNo == 0 then
+			--coop swap
+			if main.coop then
+				p1TeamMode = 1
+				p1NumChars = 2
+				p1Tag = false
+				setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+			end
+			--generate roster
+			select.f_makeRoster()
+			--sum all upcoming matches and set starting order group
+			currentOrder = 0
+			currentRosterIndex = 1
+			lastMatch = 0
+			for i = 1, #t_roster do
+				if #t_roster[i] > 0 then
+					if currentOrder == 0 then
+						currentOrder = i
+					end
+					lastMatch = lastMatch + #t_roster[i] / p2NumChars
+				end
+			end
+			matchNo = 1
+			--generate AI ramping table
+			select.f_aiRamp(1)
+		--player exit the match via ESC in VS 100 Kumite mode
+		elseif winner == -1 and gameMode('100kumite') then
+			--counter
+			looseCnt = looseCnt + 1
+			--result
+			select.f_result()
+			--game over
+			if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
+				storyboard.f_storyboard(motif.game_over_screen.storyboard)
+			end
+			--intro
+			if motif.files.intro_storyboard ~= '' then
+				storyboard.f_storyboard(motif.files.intro_storyboard)
+			end
+			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+			resetRemapInput()
+			return
+		--player won
+		elseif winner == 1 then
+			--counter
+			winCnt = winCnt + 1
+			--last match in the current order group
+			if currentRosterIndex == #t_roster[currentOrder] / p2NumChars then
+				if (gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop')) and main.t_selOptions.survivalmaxmatches[currentOrder] == -1 then --survival mode infinite fights
+					main.f_shuffleTable(t_roster[currentOrder]) --randomize order of the characters you've already beaten
+					local lastMatchRamp = lastMatch + 1
+					lastMatch = lastMatch + #t_roster[currentOrder] / p2NumChars --with these settings the mode should go infinitely
+					select.f_aiRamp(lastMatchRamp) --append new entries to existing AI ramping table
+				else --survival mode finite fights or other modes
+					for i = currentOrder + 1, #t_roster do --find next order group with assigned characters
+						if #t_roster[i] > 0 then
+							currentOrder = i
+							break
+						end
+					end
+				end
+				currentRosterIndex = 0
+			end
+			--no more matches left
+			if matchNo == lastMatch then
+				--result
+				select.f_result()
+				--credits
+				if motif.end_credits.enabled == 1 and motif.end_credits.storyboard ~= '' then
+					storyboard.f_storyboard(motif.end_credits.storyboard)
+				end
+				--game over
+				if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
+					storyboard.f_storyboard(motif.game_over_screen.storyboard)
+				end
+				--intro
+				if motif.files.intro_storyboard ~= '' then
+					storyboard.f_storyboard(motif.files.intro_storyboard)
+				end
+				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+				resetRemapInput()
+				return
+			--next match available
+			else
+				matchNo = matchNo + 1
+				currentRosterIndex = currentRosterIndex + 1
+			end
+		--player lost
+		else
+			--counter
+			looseCnt = looseCnt + 1
+			--result
+			select.f_result()
+			--game over
+			if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
+				storyboard.f_storyboard(motif.game_over_screen.storyboard)
+			end
+			--intro
+			if motif.files.intro_storyboard ~= '' then
+				storyboard.f_storyboard(motif.files.intro_storyboard)
+			end
+			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+			resetRemapInput()
+			return
 		end
-		--generate roster
-			--select.f_makeRoster()
-			--lastMatch = #t_roster / p2NumChars
-			--matchNo = 1
-		--generate AI ramping table
-		select.f_aiRamp()
+		--assign enemy team
+		t_p2Selected = {}
+		local shuffle = true
+		for i = 1, p2NumChars do
+			p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
+			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
+			if shuffle then
+				main.f_shuffleTable(t_p2Selected)
+			end
+		end
 		--fight initialization
+		setMatchNo(matchNo)
 		select.f_remapAI()
 		select.f_setRounds()
+		select.f_setStage()
+		select.f_selectVersus()
+		--if esc() then break end
 		loadStart()
 		winner, t_gameStats = game()
-		--result
-		select.f_result()
+		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+		main.f_setController()
 		main.f_cmdInput()
 		refresh()
 	end
@@ -893,10 +1072,21 @@ function select.f_selectArcade()
 			end
 			--generate roster
 			select.f_makeRoster()
-			lastMatch = #t_roster / p2NumChars
+			--sum all upcoming matches and set starting order group
+			currentOrder = 0
+			currentRosterIndex = 1
+			lastMatch = 0
+			for i = 1, #t_roster do
+				if #t_roster[i] > 0 then
+					if currentOrder == 0 then
+						currentOrder = i
+					end
+					lastMatch = lastMatch + #t_roster[i] / p2NumChars
+				end
+			end
 			matchNo = 1
 			--generate AI ramping table
-			select.f_aiRamp()
+			select.f_aiRamp(1)
 			--intro
 			local tPos = main.t_selChars[t_p1Selected[1].cel + 1]
 			if tPos.intro ~= nil and main.f_fileExists(tPos.intro) then
@@ -906,6 +1096,16 @@ function select.f_selectArcade()
 		elseif winner == 1 then
 			--counter
 			winCnt = winCnt + 1
+			--last match in the current order group
+			if currentRosterIndex == #t_roster[currentOrder] / p2NumChars then
+				for i = currentOrder + 1, #t_roster do --find next order group with assigned characters
+					if #t_roster[i] > 0 then
+						currentOrder = i
+						break
+					end
+				end
+				currentRosterIndex = 0
+			end
 			--victory screen
 			if motif.victory_screen.enabled == 1 then
 				select.f_selectVictory()
@@ -937,6 +1137,7 @@ function select.f_selectArcade()
 			--next match available
 			else
 				matchNo = matchNo + 1
+				currentRosterIndex = currentRosterIndex + 1
 			end
 		--player lost and doesn't have any credits left
 		elseif main.credits == 0 then
@@ -1021,28 +1222,29 @@ function select.f_selectArcade()
 		t_p2Selected = {}
 		local shuffle = true
 		for i = 1, p2NumChars do
-			if i == 1 and main.t_selChars[t_p1Selected[1].cel + 1][matchNo] ~= nil then
-				p2Cell = main.t_charDef[main.t_selChars[t_p1Selected[1].cel + 1][matchNo]]
+			if i == 1 and select.f_rivalsMatch('char_ref') then --enemy assigned as rivals param
+				p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
 				shuffle = false
 			else
-				p2Cell = t_roster[matchNo * p2NumChars - i + 1]
+				p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
 			end
-			local updateAnim = true
-			for j = 1, #t_p2Selected do
-				if t_p2Selected[j].cel == p2Cell then
-					updateAnim = false
-				end
-			end
-			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = updateAnim})
+			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
 			if shuffle then
 				main.f_shuffleTable(t_p2Selected)
 			end
 		end
-		main.f_printTable(t_p2Selected, 'debug/dupa.txt')
 		--Team conversion to Single match if onlyme paramvalue on any opponents is detected
 		if p2NumChars > 1 then
 			for i = 1, #t_p2Selected do
-				if main.t_selChars[t_p2Selected[i].cel + 1].onlyme ~= nil and main.t_selChars[t_p2Selected[i].cel + 1].onlyme == 1 then
+				local onlyme = false
+				if select.f_rivalsMatch('char_ref') and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].onlyme == 1 then --team conversion assigned as rivals param
+					p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
+					onlyme = true
+				elseif main.t_selChars[t_p2Selected[i].cel + 1].onlyme == 1 then --team conversion assigned as character param
+					p2Cell = main.t_selChars[t_p2Selected[i].cel + 1].char_ref
+					onlyme = true
+				end
+				if onlyme then
 					teamMode = p2TeamMode
 					numChars = p2NumChars
 					tag = p2Tag
@@ -1050,7 +1252,6 @@ function select.f_selectArcade()
 					p2NumChars = 1
 					p2Tag = false
 					setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
-					p2Cell = main.t_charDef[main.t_selChars[t_p2Selected[i].cel + 1].char]
 					t_p2Selected = {}
 					t_p2Selected[1] = {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = true}
 					restoreTeam = true
@@ -1121,7 +1322,6 @@ function select.f_selectArcade()
 		end
 		main.f_setController()
 		main.f_cmdInput()
-		--main.f_printTable(_G)
 		refresh()
 	end
 end
@@ -2053,22 +2253,22 @@ function select.f_stageMenu()
 	if commandGetState(main.p1Cmd, 'l') then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_move_snd[1], motif.select_info.stage_move_snd[2])
 		stageList = stageList - 1
-		if stageList < 0 then stageList = #main.t_includeStage end
+		if stageList < 0 then stageList = #main.t_includeStage[2] end
 	elseif commandGetState(main.p1Cmd, 'r') then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_move_snd[1], motif.select_info.stage_move_snd[2])
 		stageList = stageList + 1
-		if stageList > #main.t_includeStage then stageList = 0 end
+		if stageList > #main.t_includeStage[2] then stageList = 0 end
 	elseif commandGetState(main.p1Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_move_snd[1], motif.select_info.stage_move_snd[2])
 		for i = 1, 10 do
 			stageList = stageList - 1
-			if stageList < 0 then stageList = #main.t_includeStage end
+			if stageList < 0 then stageList = #main.t_includeStage[2] end
 		end
 	elseif commandGetState(main.p1Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_move_snd[1], motif.select_info.stage_move_snd[2])
 		for i = 1, 10 do
 			stageList = stageList + 1
-			if stageList > #main.t_includeStage then stageList = 0 end
+			if stageList > #main.t_includeStage[2] then stageList = 0 end
 		end
 	end
 	if stageList == 0 then --draw random stage portrait loaded from screenpack SFF
@@ -2086,9 +2286,9 @@ function select.f_stageMenu()
 	if main.f_btnPalNo(main.p1Cmd) > 0 then
 		sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
 		if stageList == 0 then
-			stageNo = main.t_includeStage[math.random(1, #main.t_includeStage)]
+			stageNo = main.t_includeStage[2][math.random(1, #main.t_includeStage[2])]
 		else
-			stageNo = main.t_includeStage[stageList]
+			stageNo = main.t_includeStage[2][stageList]
 		end
 		stageActiveFont = 'stage_done_font'
 		stageEnd = true
@@ -2108,7 +2308,7 @@ function select.f_stageMenu()
 	if stageList == 0 then
 		t_txt[1] = motif.select_info.stage_random_text
 	else
-		t_txt = main.f_extractText(motif.select_info.stage_text, stageList, getStageName(main.t_includeStage[stageList]))
+		t_txt = main.f_extractText(motif.select_info.stage_text, stageList, getStageName(main.t_includeStage[2][stageList]))
 	end
 	for i = 1, #t_txt do
 		textImgDraw(main.f_updateTextImg(
@@ -2486,7 +2686,9 @@ function select.f_result()
 	local t = {}
 	local t_resultText = {}
 	local txt = ''
-	if gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+	if gameMode('bossrush') then
+		return
+	elseif gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
 		t = motif.survival_results_screen
 		t_resultText = main.f_extractText(t.winstext_text, winCnt)
 		txt = txt_resultSurvival
@@ -2639,7 +2841,13 @@ function select.f_selectVictory()
 			lpn, lsn = select.f_teamOrder(i)
 		end
 	end
-	if wpn == -1 or wsn == -1 or (main.t_selChars[wsn + 1].winscreen ~= nil and main.t_selChars[wsn + 1].winscreen == 0) then
+	if wpn == -1 or wsn == -1 then
+		return
+	elseif main.charparam and select.f_rivalsMatch('winscreen') then --winscreen assigned as rivals param
+		if main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].winscreen == 0 then
+			return
+		end
+	elseif main.charparam and main.t_selChars[wsn + 1].winscreen == 0 then --winscreen assigned as character param
 		return
 	end
 	if motif.music.victory_bgm == '' then

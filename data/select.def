@@ -1,0 +1,309 @@
+;-------------------------------------------------------------------------------
+[Characters]
+ ;How to add characters
+ ;---------------------
+ ;Use the format:
+ ;    charname, stagefilename1, stagefilename2, ...
+ ;
+ ;e.g. For a player with filename "kfm", and stage filename
+ ;"stages/mybg.def" type (without the semicolon):
+ ;    kfm, stages/mybg.def
+ ;IKEMEN feature: There can be more than 1 stage assigned to character. In such
+ ;case stage will be chosen randomly.
+ ;
+ ;If you want to load a different def file, you can enter it as a directory plus
+ ;the def file. This example loads chars/kfm/alt-kfm.def:
+ ;    kfm/alt-kfm.def, stages/mybg.def
+ ;
+ ;If you put "random" as the stagefilename, then a random stage will be selected
+ ;for that player. e.g.
+ ;    kfm, random
+ ;IKEMEN feature: Not really needed since no stage = random anyway.
+ ;
+ ;Optional parameters should follow on the same line, separated by commas.
+ ;Each parameter has the form:
+ ;    paramname = paramvalue
+ ;where paramname is the name of the parameter type, and paramvalue is the value
+ ;(data) that should be assigned to that parameter. The only exception is the
+ ;'rivals' parameter in which paramname is not pre-set and paramvalue needs to
+ ;be additionally enclosed in {} brackets.
+ ;
+ ;The optional parameters are:
+ ;
+ ; - music
+ ;   Set the paramvalue to the music file path that should be used at the start
+ ;   of round when facing this character. Optionally music volume, loopstart and
+ ;   loopend values can follow, separated by spaces. paramvalue overrides stage
+ ;   DEF bgmusic assignment, so you can re-use the same stage with unique music
+ ;   for multiple characters.
+ ;   IKEMEN feature: You can assign multiple music parameters (random selection)
+ ;
+ ; - musicalt
+ ;   IKEMEN feature: Set the paramvalue to the music file path that should be
+ ;   used during conclusion round (round that can end the match) when facing
+ ;   this character. Optionally music volume, loopstart and loopend frame values
+ ;   can follow, separated by spaces. paramvalue overrides stage DEF bgmusicalt
+ ;   assignment. You can assign multiple musicalt parameters (random selection)
+ ;
+ ; - musiclife
+ ;   IKEMEN feature: Set the paramvalue to the music file path that should be
+ ;   used when player's controlled character has (by default) less then 30% life
+ ;   during conclusion round (only affects side that is at risk of being
+ ;   defeated) when facing this character. Further adjustments available via
+ ;   stage DEF file. Optionally music volume, loopstart and loopend frame values
+ ;   can follow, separated by spaces. paramvalue overrides stage DEF bgmusiclife
+ ;   assignment. You can assign multiple musiclife parameters (random selection)
+ ;
+ ; - zoom
+ ;   IKEMEN feature: Set the paramvalue to 0 to avoid stage zoom even if it is
+ ;   enabled globally. Useful for characters that don't work well with zoom (for
+ ;   example bonus characters)
+ ;
+ ; - ai
+ ;   IKEMEN feature: Set the paramvalue between 1 and 8 to force AI Level
+ ;   regardless of difficulty and AI ramping settings.
+ ;
+ ; - winscreen
+ ;   IKEMEN feature: Set the paramvalue to 0 to avoid displaying victory screen
+ ;   after beating this character.
+ ;
+ ; - rounds
+ ;   IKEMEN feature: Set the paramvalue to the number of rounds in order to
+ ;   overwrite rounds number chosen in the settings.
+ ;
+ ; - time
+ ;   IKEMEN feature: Set the paramvalue to the time (in seconds) in order to
+ ;   overwrite round time chosen in the settings.
+ ;
+ ; - lifebar
+ ;   IKEMEN feature: set the paramvalue to the relative path (starting from main
+ ;   ikemen directory) to the lifebar that should be used during match instead
+ ;   of default lifebar assigned to screenpack.
+ ;
+ ; - onlyme
+ ;   IKEMEN feature: Set the paramvalue to 1 to force facing this character
+ ;   individually even in Simul/Tag team modes.
+ ;
+ ; - includestage
+ ;   Set the paramvalue to 0 to avoid including this stage in the stage select
+ ;   list (in VS, training modes, etc). The stage is also blocked from being
+ ;   randomly selected for a match.
+ ;   IKEMEN feature: Setting paramvalue to -1 prevents stage from being randomly
+ ;   selected for a match, while still allowing you to choose it from the stage
+ ;   select list.
+ ;
+ ; - boss
+ ;   IKEMEN feature: Set the paramvalue to 1 to include this character in "Boss
+ ;   Rush" mode.
+ ;
+ ; - bonus
+ ;   IKEMEN feature: Set the paramvalue to 1 to include this character in "Bonus
+ ;   Games" mode.
+ ;
+ ; - exclude
+ ;   IKEMEN feature: Set the paramvalue to 1 to avoid including this character
+ ;   in 'rows' and 'columns' screenpack selection grid. (similar result as
+ ;   hiding unselectable AI only characters in mugen without need to create tons
+ ;   of unnecessary select.def slots to do so). Excluded characters are not
+ ;   added to randomselect pool.
+ ;
+ ; - hidden
+ ;   IKEMEN feature: Set the paramvalue to hide a character:
+ ;   1: cursor can move to this cell, face and face background are not rendered
+ ;      (same result as hiding selectable characters in mugen by placing them
+ ;      outside visible grid, but without need to create lots of unnecessary
+ ;      select.def slots to do so),
+ ;   2: cell can't be selected, art is not rendered (slot is ignored until
+ ;      character is unlocked).
+ ;   3: cell behaves like randomselect slot until character is unlocked.
+ ;   TODO: Unlocking hidden characters is handled via [UnlockContent] section.
+ ;
+ ; - order
+ ;   Set the paramvalue to the ordering priority to give the character in arcade
+ ;   modes. A smaller value means you will fight the character sooner. You will
+ ;   never fight an order 2 character before an order 1 character, and never an
+ ;   order 3 character before an order 2 one. For example, you might want to set
+ ;   your boss character to have order=3. The default order value is 1, if you
+ ;   omit this param. See *.maxmatches under [Options], which limits the number
+ ;   of matches per order priority.
+ ;   IKEMEN feature: Max 30 orders mugen limitation is lifted.
+ ;
+ ; - ordersurvival
+ ;   IKEMEN feature: Set the paramvalue to the ordering priority to give the
+ ;   character in survival modes. The default order value is 1, if you
+ ;   omit this param. It works like 'order' parameter, just for different game
+ ;   modes (survival / survival co-op / netplay survival co-op). To exclude
+ ;   character from showing up in survival modes you can set it to order group
+ ;   outside configured survival.maxmatches range (ordersurvival=0).
+ ;
+ ; - number = {} (rivals)
+ ;   IKEMEN feature: The parameter alters standard arcade order system and other
+ ;   default match settings, allowing to force pre-defined matches along the
+ ;   way. paramname refers to arcade match number (for example 4 = 4th match).
+ ;   paramvalue, enclosed in {} brackets, follows the same syntax as adding a
+ ;   new character with optional stage assignment and accepts following optional
+ ;   char parameters: music, musicalt, musiclife, zoom, ai, winscreen, rounds,
+ ;   time, lifebar, onlyme. If 'onlyme' parameter is not set and you're playing
+ ;   in team mode the referenced character becomes the opposite team leader, and
+ ;   other characters follows order settings. Chars and stages referenced here,
+ ;   if not already present in [Characters] and [ExtraStages] sections as
+ ;   separate entries, won't be selectable in select screen.
+ ;
+ ; - maxmatches
+ ;   IKEMEN feature: This parameter makes the character ignore default
+ ;   *.maxmatches settings under [Options] section and assign different ones
+ ;   instead, allowing you to set up custom maximum number of matches to fight
+ ;   before game ends in arcade mode, as well as order priority. paramvalue is
+ ;   used as a prefix to the original names of these settings, followed by dot,
+ ;   so the new entries added under [Options] section should look like this:
+ ;   'paramvalue.arcade.maxmatches', 'paramvalue.team.maxmatches'.
+ ;
+ ;You can also add a randomize icon to the select screen. To do this, put the
+ ;word "randomselect" on a line of its own, with no extra parameters.
+ ;
+ ;Examples:
+ ; kfm, stages/mybg.def, includestage=0
+ ; kfm, stages/mybg.def, maxmatches=somename
+ ; kfm, stages/mybg.def, 3={SuaveDude, stages/mybg2.def}
+ ; kfm, stages/mybg.def, music=sound/song.mp3, order=3, ai=8, hidden=2
+ ; kfm, stages/mybg.def, stages/mybg2.def, music=sound/song.mp3
+ ;
+ ;Insert your characters below.
+
+kfm, stages/kfm.def
+
+;-------------------------------------------------------------------------------
+[ExtraStages]
+ ;Put extra stages here. They will be available in VS and Watch modes.
+ ;For example, you can insert "stages/mybg.def".
+ ;
+ ;Optional parameters may follow on the same line, separated by commas.
+ ;Each parameter has the form:
+ ;    paramname = paramvalue
+ ;where paramname is the name of the parameter type, and paramvalue is the value
+ ;to assign that parameter. The optional parameters are:
+ ;
+ ; - music
+ ;   IKEMEN feature: Set the paramvalue to the music file path that should be
+ ;   used at the start of round when facing this character. Optionally music
+ ;   volume, loopstart and loopend values can follow, separated by spaces.
+ ;   Tracks will be played randomly from available music pool if bgmusic is also
+ ;   present in the stage DEF file or multiple music parameters have been
+ ;   assigned here.
+ ;
+ ; - musicalt
+ ;   IKEMEN feature: Set the paramvalue to the music file path that should be
+ ;   used during conclusion round (round that can end the match) when facing
+ ;   this character. Optionally music volume, loopstart and loopend frame values
+ ;   can follow, separated by spaces. Tracks will be played randomly from
+ ;   available music pool if bgmusicalt is also present in the stage DEF file or
+ ;   multiple musicalt parameters have been assigned here.
+ ;
+ ; - musiclife
+ ;   IKEMEN feature: Set the paramvalue to the music file path that should be
+ ;   used when player's controlled character has (by default) less then 30% life
+ ;   during conclusion round (only affects side that is at risk of being
+ ;   defeated) when facing this character. Further adjustments available via
+ ;   stage DEF file. Optionally music volume, loopstart and loopend frame values
+ ;   can follow, separated by spaces. Tracks will be played randomly from
+ ;   available music pool if bgmusiclife is also present in the stage DEF file
+ ;   or multiple musiclife parameters have been assigned here.
+ ;
+ ; - order
+ ;   IKEMEN feature: Set the paramvalue to the ordering priority to give the
+ ;   stage in arcade modes. If there is at least 1 stage with assigned order,
+ ;   facing opponent with the exact order paramvalue will result in stage being
+ ;   randomly chosen from a pool of stages with the matching order.
+ ;
+ ; - zoom
+ ;   IKEMEN feature: Set the paramvalue to 0 to avoid stage zoom even if it is
+ ;   enabled globally. And the other way around.
+ ;
+ ; - zoomMin
+ ;   IKEMEN feature: Set the paramvalue to overwrite global maximum zoom out
+ ;   setting for this particular stage.
+ ;
+ ; - zoomMax
+ ;   IKEMEN feature: Set the paramvalue to overwrite global maximum zoom in
+ ;   setting for this particular stage.
+ ;
+ ; - zoomSpeed
+ ;   IKEMEN feature: Set the paramvalue to overwrite global zoom speed setting
+ ;   for this particular stage.
+ ;
+ ;Examples:
+ ; stages/mybg.def, music=sound/song.mp3, music=sound/song2.mp3
+ ; stages/mybg.def, zoom=0, order=3
+ ; stages/mybg.def, zoom=1, zoomMin=0.75, zoomMax=1.1, zoomSpeed=1
+ ;
+ ;Insert your stages below.
+
+stages/kfm.def
+stages/stage0.def
+
+;-------------------------------------------------------------------------------
+[Options]
+ ;Here you set the maximum number of matches to fight before game ends in arcade
+ ;mode. The first number is the number of matches against characters with
+ ;order=1, followed by order=2 and order=3 respectively. For example, for 4,3,1
+ ;you will fight up to 4 randomly-picked characters who have order=1, followed
+ ;by 3 with order=2 and 1 with order=3.
+ ;IKEMEN feature: Max 30 orders mugen limitation is lifted.
+ ;IKEMEN feature: Characters can use individual maxmatches settings (see
+ ;'maxmatches' parameter in [Characters] section)
+
+ ;Maximum number of matches to fight before game ends in team mode.
+arcade.maxmatches = 6,1,1,0,0,0,0,0,0,0
+
+ ;Like arcade.maxmatches, but applies to Team Battle.
+team.maxmatches = 4,1,1,0,0,0,0,0,0,0
+
+ ;IKEMEN feature: Similar to arcade.maxmatches, but applies to survival modes.
+ ;Use -1 value to choose which order number should have unlimited matches.
+ ;By omitting -1 survival mode will end after particular amount of matches set
+ ;below (in such case you can actually "complete" the mode).
+survival.maxmatches = -1,0,0,0,0,0,0,0,0,0
+
+ ;AI ramping
+ ;IKEMEN feature: AI ramping settings has been moved here from mugen.cfg
+ ;You can view AI ramping output for all battles from the last chosen mode via
+ ;debug/t_aiRamp.txt (useful reference also for vanilla mugen).
+
+ ;Arcade mode AI ramping
+ ;For both parameters below, the first number corresponds to the number of
+ ;matches won, and the second number to the AI difficulty offset. The actual
+ ;difficulty is the sum of the AI difficulty level (set in the options menu) and
+ ;the value of the offset at a particular match.
+ ;  AIramp.start = start_match, start_diff
+ ;  AIramp.end   = end_match, end_diff
+ ;The difficulty offset function is a constant value of start_diff from the
+ ;first match until start_match matches have been won. From then the offset
+ ;value increases linearly from start_diff to end_diff. After end_diff matches
+ ;have been won, the offset value is end_diff.
+ ;  e_d            /----------
+ ;               /
+ ;  s_d _______/
+ ;     ^      ^     ^        ^
+ ;   1st_m   s_m   e_m     last_m
+ ;For example, if you have:
+ ;  AIramp.start = 2,0
+ ;  AIramp.end   = 4,2
+ ;For 6 matches at level 4, the difficulty will be (by match):
+ ;  4,4,4,5,6,6
+
+arcade.AIramp.start = 2, 0
+arcade.AIramp.end   = 4, 2
+
+ ;Team Mode AI ramping
+ ;For 4 matches at level 4 and default values, the difficulty will be:
+ ;  4,4,5,6
+
+team.AIramp.start = 1, 0
+team.AIramp.end   = 3, 2
+
+ ;Survival Mode AI ramping
+ ;For 16 matches at level 4 and default values, the difficulty will be:
+ ;  1,1,1,2,2,3,3,4,4,4,5,5,6,6,7,7,8
+
+survival.AIramp.start = 0, -3
+survival.AIramp.end   = 16, 4
