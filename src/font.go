@@ -51,17 +51,13 @@ func loadFnt(filename string) (*Fnt, error) {
 
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
-	fp, err := os.Open("font/" + filename)
+
+	filename = SearchFile(filename, "font/")
+
+	fp, err := os.Open(filename)
 
 	f.PalName = filename
 
-	//Check file in "font/"" directory
-	if err != nil {
-		err = nil
-		fp, err = os.Open(filename)
-	}
-
-	//Error opening file
 	if err != nil {
 		return nil, err
 	}
@@ -256,15 +252,11 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	content, err := LoadText("font/" + filename)
+	filename = SearchFile(filename, "font/")
+
+	content, err := LoadText(filename)
 
 	f.PalName = filename
-
-	//Check file in "font/"" directory
-	if err != nil {
-		err = nil
-		content, err = LoadText(filename)
-	}
 
 	if err != nil {
 		return nil, err

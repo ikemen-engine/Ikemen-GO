@@ -788,7 +788,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	end
 	addStage(stage)
 	--load data
-	loadDebugFont('font/f-6x9.fnt')
+	loadDebugFont('f-6x9.fnt')
 	setDebugScript('script/debug.lua')
 	setMatchNo(1)
 	selectStart()
@@ -885,8 +885,8 @@ function main.f_charParam(t, c)
 		end
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
-		t[tonumber(var1)] = var2:lower()
-	elseif c:match('%.def') or c:match('^random$') then --stage
+		t[tonumber(var1)] = var2
+	elseif c:match('%.[Dd][Ee][Ff]') or c:match('^random$') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
@@ -1035,16 +1035,16 @@ for line in content:gmatch('[^\r\n]+') do
 	if chars + stages == 100 then
 		SetGCPercent(100)
 	end
-	line = line:lower()
-	if line:match('^%s*%[%s*characters%s*%]') then
+	local lineCase = line:lower()
+	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		main.t_selChars = {}
 		row = 0
 		section = 1
-	elseif line:match('^%s*%[%s*extrastages%s*%]') then
+	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
 		main.t_selStages = {}
 		row = 0
 		section = 2
-	elseif line:match('^%s*%[%s*options%s*%]') then
+	elseif lineCase:match('^%s*%[%s*options%s*%]') then
 		main.t_selOptions = {
 			arcadestart = {wins = 0, offset = 0},
 			arcadeend = {wins = 0, offset = 0},
@@ -1056,7 +1056,7 @@ for line in content:gmatch('[^\r\n]+') do
 		row = 0
 		section = 3
 	elseif section == 1 then --[Characters]
-		if line:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
+		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		else
 			chars = chars + 1
@@ -1101,15 +1101,15 @@ for line in content:gmatch('[^\r\n]+') do
 			end
 		end
 	elseif section == 3 then --[Options]
-		if line:match('%.maxmatches%s*=') then
-			local rowName, line = line:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
+		if lineCase:match('%.maxmatches%s*=') then
+			local rowName, line = lineCase:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
 			rowName = rowName:gsub('%.', '_')
 			main.t_selOptions[rowName .. 'maxmatches'] = {}
 			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
 				main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
 			end
-		elseif line:match('%.airamp%.') then
-			local rowName, rowName2, wins, offset = line:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([0-9]+)%s*,%s*([0-9-]+)')
+		elseif lineCase:match('%.airamp%.') then
+			local rowName, rowName2, wins, offset = lineCase:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([0-9]+)%s*,%s*([0-9-]+)')
 			main.t_selOptions[rowName .. rowName2] = {wins = tonumber(wins), offset = tonumber(offset)}
 		end
 	end

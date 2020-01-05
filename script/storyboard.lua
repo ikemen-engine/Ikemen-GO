@@ -119,7 +119,7 @@ local function f_parse(path)
 	local t_default =
 	{
 		info = {localcoord = {320, 240}},
-		scenedef = {spr = '', snd = '', font = {[1] = 'font/f-6x9.fnt'}, font_height = {}, startscene = 0, font_data = {}},
+		scenedef = {spr = '', snd = '', font = {[1] = 'f-6x9.fnt'}, font_height = {}, startscene = 0, font_data = {}},
 		scene = {},
 	}
 	for line in file:lines() do
@@ -127,8 +127,7 @@ local function f_parse(path)
 		if line:match('^%s*%[.-%s*%]%s*$') then --matched [] group
 			line = line:match('^%s*%[(.-)%s*%]%s*$') --match text between []
 			line = line:gsub('[%. ]', '_') --change . and space to _
-			line = line:lower() --lowercase line
-			local row = tostring(line:lower()) --just in case it's a number (not really needed)
+			local row = tostring(line:lower())
 			if row:match('^scene_[0-9]+$') then --matched scene
 				row = tonumber(row:match('^scene_([0-9]+)$'))
 				t.scene[row] = {}
@@ -178,7 +177,6 @@ local function f_parse(path)
 						end
 						pos.font_height[num] = main.f_dataType(value)
 					else
-						value = value:lower()
 						value = value:gsub('\\', '/')
 						if pos.font == nil then
 							pos.font = {}
@@ -280,13 +278,6 @@ local function f_parse(path)
 	--scenedef fonts
 	for k, v in pairs(t.scenedef.font) do --loop through table keys
 		if t.scenedef.font[k] ~= '' then
-			if not t.scenedef.font[k]:match('^data/') then
-				if main.f_fileExists(t.fileDir .. t.scenedef.font[k]) then
-					t.scenedef.font[k] = t.fileDir .. t.scenedef.font[k]
-				elseif main.f_fileExists('font/' .. t.scenedef.font[k]) then
-					t.scenedef.font[k] = 'font/' .. t.scenedef.font[k]
-				end
-			end
 			if t.scenedef.font_height[k] ~= nil then
 				t.scenedef.font_data[k] = fontNew(t.scenedef.font[k], t.scenedef.font_height[k])
 			else
