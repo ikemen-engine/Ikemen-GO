@@ -273,6 +273,9 @@ type System struct {
 	// Icon :D
 	windowMainIcon			[]image.Image
 	windowMainIconLocation	[]string
+	
+	// Used for tracking screenshot filename.
+	captureNum              int
 }
 
 // Initialize stuff, this is called after the config int at main.go
