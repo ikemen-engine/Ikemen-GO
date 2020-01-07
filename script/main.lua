@@ -742,6 +742,16 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 		loadLifebar('data/fight.def')
 	end
 	refresh()
+	--set settings
+	setAutoguard(1, config.AutoGuard)
+	setAutoguard(2, config.AutoGuard)
+	setPowerShare(1, config.TeamPowerShare)
+	setPowerShare(2, config.TeamPowerShare)
+	setLifeShare(config.TeamLifeShare)
+	setRoundTime(config.RoundTime * getFramesPerCount())
+	setLifeMul(config.LifeMul / 100)
+	setTeam1VS2Life(config.Team1VS2Life / 100)
+	setTurnsRecoveryRate(1.0 / config.TurnsRecoveryRate)
 	--add chars
 	local p1NumChars = 0
 	local p2NumChars = 0
@@ -759,14 +769,36 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			end
 			local pal = 1
 			if main.flags['-p' .. num .. '.pal'] ~= nil then
-				pal = main.flags['-p' .. num .. '.pal']
+				pal = tonumber(main.flags['-p' .. num .. '.pal'])
 			end
 			local ai = 0
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
-				ai = main.flags['-p' .. num .. '.ai']
+				ai = tonumber(main.flags['-p' .. num .. '.ai'])
 			end
-			table.insert(t, {character = v, player = player, num = num, pal = tonumber(pal), ai = tonumber(ai)})
+			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, overwrite = {}})
+			if main.flags['-p' .. num .. '.power'] ~= nil then
+				t[#t].overwrite['power'] = tonumber(main.flags['-p' .. num .. '.power'])
+			end
+			if main.flags['-p' .. num .. '.life'] ~= nil then
+				t[#t].overwrite['life'] = tonumber(main.flags['-p' .. num .. '.life'])
+			end
+			if main.flags['-p' .. num .. '.lifeMax'] ~= nil then
+				t[#t].overwrite['lifeMax'] = tonumber(main.flags['-p' .. num .. '.lifeMax'])
+			end
+			if main.flags['-p' .. num .. '.lifeRatio'] ~= nil then
+				t[#t].overwrite['lifeRatio'] = tonumber(main.flags['-p' .. num .. '.lifeRatio'])
+			end
+			if main.flags['-p' .. num .. '.attackRatio'] ~= nil then
+				t[#t].overwrite['attackRatio'] = tonumber(main.flags['-p' .. num .. '.attackRatio'])
+			end
+			if main.flags['-p' .. num .. '.defenceRatio'] ~= nil then
+				t[#t].overwrite['defenceRatio'] = tonumber(main.flags['-p' .. num .. '.defenceRatio'])
+			end
 			refresh()
+		elseif k:match('^-rounds$') then
+			setMatchWins(tonumber(v))
+		elseif k:match('^-draws$') then
+			setMatchMaxDrawGames(tonumber(v))
 		end
 	end
 	local p1TeamMode = 0
@@ -790,8 +822,8 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	--load data
 	loadDebugFont('f-6x9.fnt')
 	setDebugScript('script/debug.lua')
-	setMatchNo(1)
 	selectStart()
+	setMatchNo(1)
 	setStage(0)
 	selectStage(0)
 	setTeamMode(1, p1TeamMode, p1NumChars)
@@ -801,6 +833,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		selectChar(v.player, k - 1, v.pal)
 		setCom(v.num, v.ai)
+		overwriteCharData(v.num, v.overwrite)
 	end
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
