@@ -948,10 +948,24 @@ function select.f_selectArranged()
 			--last match in the current order group
 			if currentRosterIndex == #t_roster[currentOrder] / p2NumChars then
 				if (gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop')) and main.t_selOptions.survivalmaxmatches[currentOrder] == -1 then --survival mode infinite fights
-					main.f_shuffleTable(t_roster[currentOrder]) --randomize order of the characters you've already beaten
+					--randomly rearrange array entries positions of the current order group
+					main.f_shuffleTable(t_roster[currentOrder])
+					--ensure that the next fight won't be against team members we've just fought
+					local t_lastRefs = {}
+					for i = 1, #t_p2Selected do
+						t_lastRefs[t_p2Selected[i].cel] = '' --store last enemy team refs as keys
+					end
+					for i = 1, #t_p2Selected do
+						if t_lastRefs[t_roster[currentOrder][i]] ~= nil then
+							table.remove(t_roster[currentOrder], i) --remove char ref from the given position of an array
+							table.insert(t_roster[currentOrder], t_p2Selected[i].cel) --and inserts it in the last position of the array
+						end
+					end
+					--update variables
 					local lastMatchRamp = lastMatch + 1
-					lastMatch = lastMatch + #t_roster[currentOrder] / p2NumChars --with these settings the mode should go infinitely
-					select.f_aiRamp(lastMatchRamp) --append new entries to existing AI ramping table
+					lastMatch = lastMatch + #t_roster[currentOrder] / p2NumChars --with this value the mode should go infinitely
+					--append new entries to existing AI ramping table
+					select.f_aiRamp(lastMatchRamp)
 				else --survival mode finite fights or other modes
 					for i = currentOrder + 1, #t_roster do --find next order group with assigned characters
 						if #t_roster[i] > 0 then
