@@ -1805,20 +1805,9 @@ func (c *Char) load(def string) error {
 		case "data":
 			if data {
 				data = false
-				var tmp int32
-				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.life", c.playerNo+1)])
-				if tmp != 0 {
-					gi.data.life = tmp
-				} else {
-					is.ReadI32("life", &gi.data.life)
-				}
+				is.ReadI32("life", &gi.data.life)
 				c.lifeMax = gi.data.life
-				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.power", c.playerNo+1)])
-				if tmp != 0 {
-					gi.data.power = tmp
-				} else {
-					is.ReadI32("power", &gi.data.power)
-				}
+				is.ReadI32("power", &gi.data.power)
 				c.powerMax = gi.data.power
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)

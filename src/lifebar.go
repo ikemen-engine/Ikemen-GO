@@ -760,12 +760,7 @@ func readLifeBarRound(is IniSection,
 	r := newLifeBarRound(snd, fnt)
 	var tmp int32
 	is.ReadI32("pos", &r.pos[0], &r.pos[1])
-	tmp = Atoi(sys.cmdFlags["-rounds"])
-	if tmp > 0 {
-		r.match_wins = tmp
-	} else {
-		is.ReadI32("match.wins", &r.match_wins)
-	}
+	is.ReadI32("match.wins", &r.match_wins)
 	is.ReadI32("match.maxdrawgames", &r.match_maxdrawgames)
 	if is.ReadI32("start.waittime", &tmp) {
 		r.start_waittime = Max(1, tmp)
