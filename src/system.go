@@ -281,6 +281,23 @@ type System struct {
 	captureNum              int
 	challenger              int
 	roundType               [2]RoundType
+	ocd                     [MaxSimul*2 + MaxAttachedChar]OverwriteCharData
+}
+
+type OverwriteCharData struct {
+	power        int32
+	life         int32
+	lifeMax      int32
+	lifeRatio    float32
+	attackRatio  float32
+	defenceRatio float32
+}
+func (s *System) resetOverwriteCharData() {
+	for i := range s.ocd {
+		s.ocd[i] = OverwriteCharData{power: 0, life: 0, lifeMax: 0,
+		lifeRatio: 1.0, attackRatio: 1.0, defenceRatio: 1.0}
+	}
+	return
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -1501,7 +1518,12 @@ func (s *System) fight() (reload bool) {
 	lvmul := math.Pow(2, 1.0/12)
 	for i, p := range s.chars {
 		if len(p) > 0 {
-			lm := float32(p[0].gi().data.life) * s.lifeMul
+			var lm float32
+			if p[0].ocd().lifeMax != 0 {
+				lm = float32(p[0].ocd().lifeMax) * p[0].ocd().lifeRatio * s.lifeMul
+			} else {
+				lm = float32(p[0].gi().data.life) * p[0].ocd().lifeRatio * s.lifeMul
+			}
 			switch s.tmode[i&1] {
 			case TM_Single:
 				switch s.tmode[(i+1)&1] {
@@ -1552,9 +1574,13 @@ func (s *System) fight() (reload bool) {
 			if s.roundsExisted[i&1] > 0 {
 				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
-				p[0].life = p[0].lifeMax
+				if p[0].ocd().life != 0 {
+					p[0].life = p[0].ocd().life
+				} else {
+					p[0].life = p[0].lifeMax
+				}
 				if s.round == 1 {
-					p[0].power = 0
+					p[0].power = p[0].ocd().power //p[0].power = 0
 				}
 			}
 			copyVar(i)

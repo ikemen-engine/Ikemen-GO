@@ -1633,8 +1633,8 @@ func (c *Char) clear2() {
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
 		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
 		width:      [...]float32{c.defFW(), c.defBW()},
-		attackMul:  float32(c.gi().data.attack) / 100,
-		defenceMul: float32(c.gi().data.defence) / 100}
+		attackMul:  float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
+		defenceMul: float32(c.gi().data.defence) * c.ocd().defenceRatio / 100}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -1655,6 +1655,9 @@ func (c *Char) gi() *CharGlobalInfo {
 }
 func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
+}
+func (c *Char) ocd() *OverwriteCharData {
+	return &sys.ocd[c.playerNo]
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
@@ -4517,7 +4520,7 @@ func (c *Char) update(cvmin, cvmax,
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.defenceMul = float32(c.gi().data.defence) / 100
+				c.defenceMul = float32(c.gi().data.defence) * c.ocd().defenceRatio / 100
 				c.ghv.hittime = -1
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false

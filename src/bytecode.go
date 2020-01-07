@@ -5147,7 +5147,7 @@ func (sc attackMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case attackMulSet_value:
-			crun.attackMul = float32(crun.gi().data.attack) / 100 * exp[0].evalF(c)
+			crun.attackMul = float32(crun.gi().data.attack) * crun.ocd().attackRatio / 100 * exp[0].evalF(c)
 		case attackMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5172,7 +5172,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.defenceMul = float32(crun.gi().data.defence) / (exp[0].evalF(c) * 100)
+			crun.defenceMul = float32(crun.gi().data.defence) * crun.ocd().defenceRatio / (exp[0].evalF(c) * 100)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

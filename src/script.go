@@ -32,6 +32,9 @@ func numArg(l *lua.LState, argi int) float64 {
 func boolArg(l *lua.LState, argi int) bool {
 	return l.ToBool(argi)
 }
+func tableArg(l *lua.LState, argi int) *lua.LTable {
+	return l.ToTable(argi)
+}
 func newUserData(l *lua.LState, value interface{}) *lua.LUserData {
 	ud := l.NewUserData()
 	ud.Value = value
@@ -942,6 +945,38 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
 		sys.loadStart()
+		sys.resetOverwriteCharData()
+		return 0
+	})
+	luaRegister(l, "overwriteCharData", func(l *lua.LState) int {
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
+			l.RaiseError("The player number (%v) is invalid.", pn)
+		}
+		tbl := tableArg(l, 2)
+		tbl.ForEach(func(key, value lua.LValue) {
+			switch k := key.(type) {
+			case lua.LString:
+				switch string(k) {
+				case "power":
+					sys.ocd[pn-1].power = int32(lua.LVAsNumber(value))
+				case "life":
+					sys.ocd[pn-1].life = int32(lua.LVAsNumber(value))
+				case "lifeMax":
+					sys.ocd[pn-1].lifeMax = int32(lua.LVAsNumber(value))
+				case "lifeRatio":
+					sys.ocd[pn-1].lifeRatio = float32(lua.LVAsNumber(value))
+				case "attackRatio":
+					sys.ocd[pn-1].attackRatio = float32(lua.LVAsNumber(value))
+				case "defenceRatio":
+					sys.ocd[pn-1].defenceRatio = float32(lua.LVAsNumber(value))
+				default:
+					l.RaiseError("The table key (%v) is invalid.", key)
+				}
+			default:
+				l.RaiseError("The table key type (%v) is invalid.", fmt.Sprintf("%T\n", key))
+			}
+		})
 		return 0
 	})
 	luaRegister(l, "game", func(l *lua.LState) int {
