@@ -15,7 +15,7 @@ build_console.bat
 get.bat
 
 # Distribution and debug files
-Ikemen.txt
+Ikemen.log
 Ikemen_GO.exe
 Ikemen_GO.bat
 save/*

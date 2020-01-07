@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
+	"github.com/sqweek/dialog"
 )
 
 func init() {
@@ -289,7 +290,7 @@ func main() {
 	}
 	sys.commonCmd = string("\n") + string(cmd)
 	//os.Mkdir("debug", os.ModeSticky|0755)
-	log := createLog("Ikemen.txt")
+	log := createLog("Ikemen.log")
 	defer closeLog(log)
 	l := sys.init(tmp.Width, tmp.Height)
 	if err := l.DoFile(tmp.System); err != nil {
@@ -298,9 +299,11 @@ func main() {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
 			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
+				dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
 				panic(err)
 			}
 		default:
+			dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
 			panic(err)
 		}
 	}

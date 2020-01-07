@@ -45,3 +45,4 @@ go get -u github.com/hajimehoshi/go-mp3
 go get -u github.com/pkg/errors
 go get -u github.com/jfreymuth/oggvorbis
 go get -u github.com/kbinani/screenshot
+go get -u github.com/sqweek/dialog
