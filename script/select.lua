@@ -47,6 +47,7 @@ local selScreenEnd = false
 local stageEnd = false
 local coopEnd = false
 local restoreTeam = false
+local continueStage = false
 local teamMode = 0
 local numChars = 0
 local tag = false
@@ -258,8 +259,7 @@ function select.f_aiRamp(currentMatch)
 end
 
 function select.f_rivalsMatch(param)
-	if (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop'))
-	and main.t_selChars[t_p1Selected[1].cel + 1].rivals ~= nil and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo] ~= nil then
+	if main.t_selChars[t_p1Selected[1].cel + 1].rivals ~= nil and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo] ~= nil then
 		if param == nil then
 			return true
 		else
@@ -388,9 +388,9 @@ end
 local lifebar = motif.files.fight
 function select.f_setRounds()
 	--lifebar
-	if main.charparam and select.f_rivalsMatch('lifebar') then --lifebar assigned as rivals param
+	if main.t_charparam.lifebar and main.t_charparam.rivals and select.f_rivalsMatch('lifebar') then --lifebar assigned as rivals param
 		lifebar = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].lifebar:gsub('\\', '/')
-	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].lifebar ~= nil then --lifebar assigned as character param
+	elseif main.t_charparam.lifebar and main.t_selChars[t_p2Selected[1].cel + 1].lifebar ~= nil then --lifebar assigned as character param
 		lifebar = main.t_selChars[t_p2Selected[1].cel + 1].lifebar:gsub('\\', '/')
 	else --default lifebar
 		lifebar = motif.files.fight
@@ -402,34 +402,38 @@ function select.f_setRounds()
 	--round time
 	if gameMode('training') then
 		setRoundTime(-1)
-	elseif main.charparam and select.f_rivalsMatch('time') then --round time assigned as rivals param
-		setRoundTime(main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].time * getFramesPerCount())
-	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].time ~= nil then --round time assigned as character param
-		setRoundTime(main.t_selChars[t_p2Selected[1].cel + 1].time * getFramesPerCount())
+	elseif main.t_charparam.time and main.t_charparam.rivals and select.f_rivalsMatch('time') then --round time assigned as rivals param
+		setRoundTime(math.max(-1, main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].time * getFramesPerCount()))
+	elseif main.t_charparam.time and main.t_selChars[t_p2Selected[1].cel + 1].time ~= nil then --round time assigned as character param
+		setRoundTime(math.max(-1, main.t_selChars[t_p2Selected[1].cel + 1].time * getFramesPerCount()))
 	else --default round time
-		setRoundTime(config.RoundTime * getFramesPerCount())
+		setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	end
-	--rounds num
-	if main.charparam and select.f_rivalsMatch('rounds') then --round num assigned as rivals param
-		setMatchWins(main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].rounds)
-	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].rounds ~= nil then --round num assigned as character param
-		setMatchWins(main.t_selChars[t_p2Selected[1].cel + 1].rounds)
-	elseif p2TeamMode == 0 then --default rounds num (Single mode)
-		setMatchWins(options.roundsNumSingle)
-	else --default rounds num (Team mode)
-		setMatchWins(options.roundsNumTeam)
+	--rounds to win
+	if gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') or gameMode('100kumite') then --always 1 round to win in these modes
+		setMatchWins(1)
+		setMatchMaxDrawGames(0)
+	else
+		if main.t_charparam.rounds and main.t_charparam.rivals and select.f_rivalsMatch('rounds') then --round num assigned as rivals param
+			setMatchWins(main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].rounds)
+		elseif main.t_charparam.rounds and main.t_selChars[t_p2Selected[1].cel + 1].rounds ~= nil then --round num assigned as character param
+			setMatchWins(main.t_selChars[t_p2Selected[1].cel + 1].rounds)
+		elseif p2TeamMode == 0 then --default rounds num (Single mode)
+			setMatchWins(options.roundsNumSingle)
+		else --default rounds num (Team mode)
+			setMatchWins(options.roundsNumTeam)
+		end
+		setMatchMaxDrawGames(options.maxDrawGames)
 	end
-	--draws num
-	setMatchMaxDrawGames(options.maxDrawGames)
 end
 
 function select.f_setStage()
 	--stage
-	if not main.stageMenu then
-		if main.charparam and select.f_rivalsMatch('stage') then --stage assigned as rivals param
+	if not main.stageMenu and not continueStage then
+		if main.t_charparam.stage and main.t_charparam.rivals and select.f_rivalsMatch('stage') then --stage assigned as rivals param
 			stageNo = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage)
 			stageNo = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage[stageNo]
-		elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned as character param
+		elseif main.t_charparam.stage and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned as character param
 			stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
 			stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
 		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order] ~= nil then --stage assigned as stage order param
@@ -446,13 +450,13 @@ function select.f_setStage()
 	local zoomMin = config.ZoomMin
 	local zoomMax = config.ZoomMax
 	local zoomSpeed = config.ZoomSpeed
-	if main.charparam and select.f_rivalsMatch('zoom') then --zoom assigned as rivals param
+	if main.t_charparam.zoom and main.t_charparam.rivals and select.f_rivalsMatch('zoom') then --zoom assigned as rivals param
 		if main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].zoom == 1 then
 			zoom = true
 		else
 			zoom = false
 		end
-	elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1].zoom ~= nil then --zoom assigned as character param
+	elseif main.t_charparam.zoom and main.t_selChars[t_p2Selected[1].cel + 1].zoom ~= nil then --zoom assigned as character param
 		if main.t_selChars[t_p2Selected[1].cel + 1].zoom == 1 then
 			zoom = true
 		else
@@ -495,13 +499,13 @@ function select.f_setStage()
 				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
 			end
 		else
-			if main.charparam and select.f_rivalsMatch(t[i]) then --music assigned as rivals param
+			if main.t_charparam.music and main.t_charparam.rivals and select.f_rivalsMatch(t[i]) then --music assigned as rivals param
 				track = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]])
 				music = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmusic
 				volume = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmvolume
 				loopstart = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmloopstart
 				loopend = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmloopend
-			elseif main.charparam and main.t_selChars[t_p2Selected[1].cel + 1][t[i]] ~= nil then --music assigned as character param
+			elseif main.t_charparam.music and main.t_selChars[t_p2Selected[1].cel + 1][t[i]] ~= nil then --music assigned as character param
 				track = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1][t[i]])
 				music = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmusic
 				volume = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmvolume
@@ -810,6 +814,7 @@ function select.f_selectReset()
 	stageEnd = false
 	coopEnd = false
 	restoreTeam = false
+	continueStage = false
 	p1NumChars = 1
 	p2NumChars = 1
 	winner = 0
@@ -1152,6 +1157,7 @@ function select.f_selectArcade()
 			else
 				matchNo = matchNo + 1
 				currentRosterIndex = currentRosterIndex + 1
+				continueStage = false
 			end
 		--player lost and doesn't have any credits left
 		elseif main.credits == 0 then
@@ -1223,6 +1229,7 @@ function select.f_selectArcade()
 				resetRemapInput()
 				return
 			end
+			continueStage = true
 		end
 		--coop swap
 		if main.coop then
@@ -1305,13 +1312,14 @@ function select.f_selectArcade()
 			local p1Cell_sav = nil
 			local p2Cell_sav = nil
 			local matchNo_sav = matchNo
+			local t_charparam_sav = main.t_charparam
+			main.f_resetCharparam()
 			--temp values
 			setHomeTeam(1)
 			main.p2In = 2
 			main.p2SelectMenu = true
 			main.stageMenu = true
 			main.p2Faces = true
-			main.charparam = false
 				--textImgSetText(main.txt_mainSelect, t[item].selectname)
 			main.p1TeamMenu = nil
 			main.p2TeamMenu = nil
@@ -1324,7 +1332,7 @@ function select.f_selectArcade()
 			main.p2SelectMenu = false
 			main.stageMenu = false
 			main.p2Faces = false
-			main.charparam = true
+			main.t_charparam = t_charparam_sav
 			main.p1TeamMenu = p1TeamMenu_sav
 			main.p2TeamMenu = p2TeamMenu_sav
 			setGameMode(gameMode)
@@ -2857,11 +2865,13 @@ function select.f_selectVictory()
 	end
 	if wpn == -1 or wsn == -1 then
 		return
-	elseif main.charparam and select.f_rivalsMatch('winscreen') then --winscreen assigned as rivals param
+	elseif not main.t_charparam.winscreen then
+		return
+	elseif main.t_charparam.rivals and select.f_rivalsMatch('winscreen') then --winscreen assigned as rivals param
 		if main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].winscreen == 0 then
 			return
 		end
-	elseif main.charparam and main.t_selChars[wsn + 1].winscreen == 0 then --winscreen assigned as character param
+	elseif main.t_selChars[wsn + 1].winscreen == 0 then --winscreen assigned as character param
 		return
 	end
 	if motif.music.victory_bgm == '' then

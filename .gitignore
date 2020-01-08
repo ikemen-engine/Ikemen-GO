@@ -24,6 +24,7 @@ chars/*
 font/*
 sound/*
 stages/*
+wip/*
 data/common.snd
 data/common1.cns
 data/credits.def

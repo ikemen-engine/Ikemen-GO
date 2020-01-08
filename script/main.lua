@@ -748,7 +748,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeShare(config.TeamLifeShare)
-	setRoundTime(config.RoundTime * getFramesPerCount())
+	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
@@ -1416,7 +1416,7 @@ function main.f_default()
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeShare(config.TeamLifeShare)
-	setRoundTime(config.RoundTime * getFramesPerCount())
+	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
@@ -1432,12 +1432,27 @@ function main.f_default()
 	main.coop = false --P2 fighting on P1 side disabled
 	main.p2SelectMenu = true --P2 character selection enabled
 	main.versusScreen = true --versus screen enabled
-	main.charparam = false --character parameters disabled
+	main.f_resetCharparam()
 	main.p1In = 1 --P1 controls P1 side of the select screen
 	main.p2In = 0 --P2 controls in the select screen disabled
 	main.p3In = 0 --P3 controls in the select screen disabled
 	main.p4In = 0 --P4 controls in the select screen disabled
 	resetRemapInput()
+end
+
+function main.f_resetCharparam()
+	main.t_charparam = { --default character parameters support
+		stage = false,
+		music = false,
+		zoom = true,
+		ai = false,
+		winscreen = true,
+		rounds = false,
+		time = false,
+		lifebar = true,
+		onlyme = false,
+		rivals = false,
+	}
 end
 
 function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
@@ -1650,7 +1665,13 @@ function main.f_mainMenu()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1 --P1 controls P2 side of the select screen
 				main.p2SelectMenu = false --P2 character selection disabled
-				main.charparam = true --character parameters enabled
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
+				main.t_charparam.rivals = true
 				main.credits = config.Credits - 1 --amount of continues
 				textImgSetText(main.txt_mainSelect, t[item].selectname) --message displayed on top of select screen
 				if t[item].itemname == 'arcade' then
@@ -1668,7 +1689,7 @@ function main.f_mainMenu()
 				main.p2In = 2 --P2 controls P2 side of the select screen
 				main.stageMenu = true --stage selection enabled
 				main.p2Faces = true --additional window with P2 select screen small portraits (faces) enabled
-				main.charparam = false --character parameters disabled
+				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				if t[item].itemname == 'versus' then
 					main.p1TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P1 team mode as Single, 1 Character
@@ -1689,7 +1710,13 @@ function main.f_mainMenu()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true --P2 fighting on P1 side enabled
-				main.charparam = true
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
+				main.t_charparam.rivals = true
 				main.credits = config.Credits - 1
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
@@ -1701,7 +1728,11 @@ function main.f_mainMenu()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1
 				main.p2SelectMenu = false
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('survival')
@@ -1713,7 +1744,11 @@ function main.f_mainMenu()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('survivalcoop')
@@ -1730,6 +1765,7 @@ function main.f_mainMenu()
 				main.p2In = 2
 				main.stageMenu = true
 				main.versusScreen = false --versus screen disabled
+				--uses default main.t_charparam assignment
 				main.p2TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P2 team mode as Single, 1 Character
 				main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
@@ -1744,7 +1780,7 @@ function main.f_mainMenu()
 				main.aiFight = true --AI = config.Difficulty for all characters enabled
 				main.stageMenu = true
 				main.p2Faces = true
-				main.charparam = true
+				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('watch')
@@ -1990,7 +2026,7 @@ function main.f_netplayMode()
 				main.p2In = 2
 				main.stageMenu = true
 				main.p2Faces = true
-				main.charparam = false
+				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				setGameMode('netplayversus')
 				select.f_selectSimple()
@@ -2001,7 +2037,13 @@ function main.f_netplayMode()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
+				main.t_charparam.rivals = true
 				main.credits = config.Credits - 1
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				setGameMode('netplayteamcoop')
@@ -2013,7 +2055,11 @@ function main.f_netplayMode()
 				main.p2In = 2
 				main.p2Faces = true
 				main.coop = true
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				setGameMode('netplaysurvivalcoop')
 				select.f_selectArranged()
@@ -2073,7 +2119,7 @@ function main.f_mainExtras()
 				main.p2In = 1
 				main.stageMenu = true
 				main.p2Faces = true
-				main.charparam = true
+				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('freebattle')
@@ -2084,7 +2130,11 @@ function main.f_mainExtras()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1
 				main.p2SelectMenu = false
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('100kumite')
@@ -2095,7 +2145,11 @@ function main.f_mainExtras()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.p2In = 1
 				main.p2SelectMenu = false
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('bossrush')
@@ -2173,7 +2227,12 @@ function main.f_bonusExtras()
 			else
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.versusScreen = false
-				main.charparam = true
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				main.p1TeamMenu = {mode = 0, chars = 1, tag = false}
 				main.p2TeamMenu = {mode = 0, chars = 1, tag = false}
 				main.p2Char = {main.t_bonusChars[item]}
@@ -2215,7 +2274,12 @@ function main.f_mainTournament()
 			--ROUND OF 32
 			if t[item].itemname == 'tourney32' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
@@ -2224,7 +2288,12 @@ function main.f_mainTournament()
 			--ROUND OF 16
 			if t[item].itemname == 'tourney16' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
@@ -2233,7 +2302,12 @@ function main.f_mainTournament()
 			--QUARTERFINALS
 			if t[item].itemname == 'tourney8' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
@@ -2242,7 +2316,12 @@ function main.f_mainTournament()
 			--SEMIFINALS
 			if t[item].itemname == 'tourney4' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.charparam = false
+				main.t_charparam.stage = true
+				main.t_charparam.music = true
+				main.t_charparam.ai = true
+				main.t_charparam.rounds = true
+				main.t_charparam.time = true
+				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')

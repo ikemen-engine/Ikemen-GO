@@ -34,6 +34,14 @@ function options.f_boolDisplay(bool, t, f)
 	end
 end
 
+--return table entry if provided key exists there, otherwise return default argument
+function options.f_definedDisplay(key, t, default)
+	if t[key] ~= nil then
+		return t[key]
+	end
+	return default
+end
+
 --return correct menu_itemname_controller string
 function options.f_itemnameController(player)
 	local kb = 0
@@ -546,7 +554,7 @@ end
 --; ARCADE SETTINGS
 --;===========================================================
 options.t_arcadeCfg = {
-	{data = textImgNew(), itemname = 'roundtime', displayname = motif.option_info.menu_itemname_arcade_roundtime, vardata = textImgNew(), vardisplay = config.RoundTime},
+	{data = textImgNew(), itemname = 'roundtime', displayname = motif.option_info.menu_itemname_arcade_roundtime, vardata = textImgNew(), vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_itemname_arcade_roundtime_none}, config.RoundTime)},
 	{data = textImgNew(), itemname = 'roundsnumsingle', displayname = motif.option_info.menu_itemname_arcade_roundsnumsingle, vardata = textImgNew(), vardisplay = options.roundsNumSingle},
 	{data = textImgNew(), itemname = 'roundsnumteam', displayname = motif.option_info.menu_itemname_arcade_roundsnumteam, vardata = textImgNew(), vardisplay = options.roundsNumTeam},
 	{data = textImgNew(), itemname = 'maxdrawgames', displayname = motif.option_info.menu_itemname_arcade_maxdrawgames, vardata = textImgNew(), vardisplay = options.maxDrawGames},
@@ -571,17 +579,17 @@ function options.f_arcadeCfg()
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
-		--Round Time
+		--Time Limit
 		elseif t[item].itemname == 'roundtime' then
 			if commandGetState(main.p1Cmd, 'r') and config.RoundTime < 1000 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.RoundTime = config.RoundTime + 1
 				t[item].vardisplay = config.RoundTime
 				modified = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.RoundTime > -2 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.RoundTime > -1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.RoundTime = config.RoundTime - 1
-				t[item].vardisplay = config.RoundTime
+				t[item].vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_itemname_arcade_roundtime_none}, config.RoundTime)
 				modified = 1
 			end
 		--Rounds to Win Single
