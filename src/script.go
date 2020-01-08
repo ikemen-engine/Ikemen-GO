@@ -906,7 +906,8 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setTurnsRecoveryRate", func(l *lua.LState) int {
-		sys.turnsRecoveryRate = float32(numArg(l, 1))
+		sys.turnsRecoveryBase = float32(numArg(l, 1))
+		sys.turnsRecoveryBonus = float32(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {

@@ -39,7 +39,8 @@ var sys = System {
 	brightness: 256,
 	roundTime:  -1,
 	lifeMul:    1, team1VS2Life: 1,
-	turnsRecoveryRate: 1.0 / 300,
+	turnsRecoveryBase: 0.125,
+	turnsRecoveryBonus: 0.275,
 	mixer:             *newMixer(),
 	bgm:               *newBgm(),
 	sounds:            newSounds(16),
@@ -100,7 +101,8 @@ type System struct {
 	brightness              int32
 	roundTime               int32
 	lifeMul, team1VS2Life   float32
-	turnsRecoveryRate       float32
+	turnsRecoveryBase       float32
+	turnsRecoveryBonus      float32
 	lifebarFontScale        float32
 	debugFont               *Fnt
 	debugScript             string
@@ -1175,11 +1177,15 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							if s.waitdown >= 0 && s.time > 0 && p[0].win() && p[0].alive() &&
-								!s.matchOver() &&
+							if s.waitdown >= 0 && p[0].win() && p[0].alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
-								p[0].life += int32((float32(p[0].lifeMax) *
-									float32(s.time) / 60) * s.turnsRecoveryRate)
+								rt := s.roundTime
+								if rt < 0 {
+									rt = 99 * sys.lifebar.ti.framespercount
+								}
+								p[0].life += int32((float32(s.time) + 1) / (float32(rt) + 1) *
+									float32(p[0].lifeMax) * s.turnsRecoveryBonus +
+									float32(p[0].lifeMax) * s.turnsRecoveryBase)
 								if p[0].life > p[0].lifeMax {
 									p[0].life = p[0].lifeMax
 								}

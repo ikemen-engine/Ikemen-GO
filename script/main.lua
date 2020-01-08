@@ -751,7 +751,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setRoundTime(config.RoundTime * getFramesPerCount())
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
-	setTurnsRecoveryRate(1.0 / config.TurnsRecoveryRate)
+	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
 	--add chars
 	local p1NumChars = 0
 	local p2NumChars = 0
@@ -1419,7 +1419,7 @@ function main.f_default()
 	setRoundTime(config.RoundTime * getFramesPerCount())
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
-	setTurnsRecoveryRate(1.0 / config.TurnsRecoveryRate)
+	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
 	setGameMode('')
 	--default values for all modes
 	main.p1Char = nil --no predefined P1 character (assigned via table: {X, Y, (...)})

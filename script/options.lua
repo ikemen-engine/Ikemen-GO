@@ -159,7 +159,8 @@ function options.f_resetTables()
 			gethitpowermul = config['GetHit.LifeToPowerMul'],
 			superdefencemul = config['Super.TargetDefenceMul'],
 			team1vs2life = config.Team1VS2Life,
-			turnsrecoveryrate = config.TurnsRecoveryRate,
+			turnsrecoverybase = config.TurnsRecoveryBase,
+			turnsrecoverybonus = config.TurnsRecoveryBonus,
 			teampowershare = options.f_boolDisplay(config.TeamPowerShare),
 			teamlifeshare = options.f_boolDisplay(config.TeamLifeShare),
 			numturns = config.NumTurns,
@@ -491,7 +492,8 @@ function options.f_mainCfg()
 				config.SimulMode = true
 				config.LifeMul = 100
 				config.Team1VS2Life = 120
-				config.TurnsRecoveryRate = 300
+				config.TurnsRecoveryBase = 27.5
+				config.TurnsRecoveryBonus = 12.5
 				config.ZoomActive = true
 				config.ZoomMin = 0.75
 				config.ZoomMax = 1.0
@@ -693,7 +695,8 @@ options.t_gameplayCfg = {
 	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
 	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
 	{data = textImgNew(), itemname = 'team1vs2life', displayname = motif.option_info.menu_itemname_gameplay_team1vs2life, vardata = textImgNew(), vardisplay = config.Team1VS2Life},
-	{data = textImgNew(), itemname = 'turnsrecoveryrate', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoveryrate, vardata = textImgNew(), vardisplay = config.TurnsRecoveryRate},
+	{data = textImgNew(), itemname = 'turnsrecoverybase', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybase, vardata = textImgNew(), vardisplay = config.TurnsRecoveryBase .. '%'},
+	{data = textImgNew(), itemname = 'turnsrecoverybonus', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybonus, vardata = textImgNew(), vardisplay = config.TurnsRecoveryBonus .. '%'},
 	{data = textImgNew(), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
 	{data = textImgNew(), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
 	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = config.NumTurns},
@@ -798,17 +801,30 @@ function options.f_gameplayCfg()
 				t[item].vardisplay = config.Team1VS2Life
 				modified = 1
 			end
-		--Turns HP Recovery
-		elseif t[item].itemname == 'turnsrecoveryrate' then
-			if commandGetState(main.p1Cmd, 'r') and config.TurnsRecoveryRate < 3000 then
+		--Turns Recovery Base
+		elseif t[item].itemname == 'turnsrecoverybase' then
+			if commandGetState(main.p1Cmd, 'r') and config.TurnsRecoveryBase < 100 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.TurnsRecoveryRate = config.TurnsRecoveryRate + 10
-				t[item].vardisplay = config.TurnsRecoveryRate
+				config.TurnsRecoveryBase = config.TurnsRecoveryBase + 0.5
+				t[item].vardisplay = config.TurnsRecoveryBase .. '%'
 				modified = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.TurnsRecoveryRate > 10 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.TurnsRecoveryBase > 0 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.TurnsRecoveryRate = config.TurnsRecoveryRate - 10
-				t[item].vardisplay = config.TurnsRecoveryRate
+				config.TurnsRecoveryBase = config.TurnsRecoveryBase - 0.5
+				t[item].vardisplay = config.TurnsRecoveryBase .. '%'
+				modified = 1
+			end
+		--Turns Recovery Bonus
+		elseif t[item].itemname == 'turnsrecoverybonus' then
+			if commandGetState(main.p1Cmd, 'r') and config.TurnsRecoveryBonus < 100 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.TurnsRecoveryBonus = config.TurnsRecoveryBonus + 0.5
+				t[item].vardisplay = config.TurnsRecoveryBonus .. '%'
+				modified = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.TurnsRecoveryBonus > 0 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config.TurnsRecoveryBonus = config.TurnsRecoveryBonus - 0.5
+				t[item].vardisplay = config.TurnsRecoveryBonus .. '%'
 				modified = 1
 			end
 		--Team Power Share
