@@ -569,6 +569,65 @@ function select.f_selectPal(cell)
 	return select.f_reampPal(cell, main.t_selChars[cell + 1].pal_defaults[1])
 end
 
+function select.f_overwriteCharData()
+	--for now only survival mode uses this function
+	if not gameMode('survival') and not gameMode('survivalcoop') and not gameMode('netplaysurvivalcoop') then
+		return
+	end
+	--and it's skipped at first match
+	if matchNo <= 1 then
+		return
+	end
+	local lastRound = #t_gameStats.chars
+	local removedNum = 0
+	local p1Count = 0
+	--Turns
+	if p1TeamMode == 2 then
+		local t_p1Keys = {}
+		--for each round in the last match
+		for round = 1, #t_gameStats.chars do
+			--remove character from team if he/she has been defeated
+			if t_gameStats.chars[round][1].ko or t_gameStats.chars[round][1].life <= 0 then
+				table.remove(t_p1Selected, t_gameStats.chars[round][1].memberNo + 1 - removedNum)
+				removedNum = removedNum + 1
+				p1NumChars = p1NumChars - 1
+			--otherwise overwrite character's next match life (done after all rounds have been checked)
+			else --TODO: test if win, winTime, drawgame checks are needed
+				t_p1Keys[t_gameStats.chars[round][1].memberNo] = t_gameStats.chars[round][1].life
+			end
+		end
+		for k, v in pairs(t_p1Keys) do
+			p1Count = p1Count + 1
+			overwriteCharData(p1Count, {['life'] = v})
+		end
+	--Single / Simul / Tag
+	else
+		--for each player data in the last round
+		for player = 1, #t_gameStats.chars[lastRound] do
+			--only check P1 side characters
+			if player % 2 ~= 0 and player <= (p1NumChars + removedNum) * 2 then --odd value, team size check just in case
+				--remove character from team if he/she has been defeated
+				if t_gameStats.chars[lastRound][player].ko or t_gameStats.chars[lastRound][player].life <= 0 then
+					table.remove(t_p1Selected, t_gameStats.chars[lastRound][player].memberNo + 1 - removedNum)
+					removedNum = removedNum + 1
+					p1NumChars = p1NumChars - 1
+				--otherwise overwrite character's next match life
+				else --TODO: test if win, winTime, drawgame checks are needed
+					if p1Count == 0 then
+						p1Count = 1
+					else
+						p1Count = p1Count + 2
+					end
+					overwriteCharData(p1Count, {['life'] = t_gameStats.chars[lastRound][player].life})
+				end
+			end
+		end
+	end
+	if removedNum > 0 then
+		setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+	end
+end
+
 function select.f_remapInput(player, controlChar)
 	for i = 1, #main.t_controllers.player do
 		if main.t_controllers.player[i] == controlChar then
@@ -1035,6 +1094,7 @@ function select.f_selectArranged()
 		end
 		--fight initialization
 		setMatchNo(matchNo)
+		select.f_overwriteCharData()
 		select.f_remapAI()
 		select.f_setRounds()
 		select.f_setStage()

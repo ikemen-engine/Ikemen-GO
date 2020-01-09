@@ -1177,8 +1177,10 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							if s.waitdown >= 0 && p[0].win() && p[0].alive() && !s.matchOver() &&
-								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
+							if s.waitdown >= 0 && p[0].win() && p[0].alive() &&
+								((!s.matchOver() && (s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns)) ||
+								(s.gameMode == "survival" || s.gameMode == "survivalcoop" || 
+								s.gameMode == "netplaysurvivalcoop")) {
 								rt := s.roundTime
 								if rt < 0 {
 									rt = 99 * sys.lifebar.ti.framespercount

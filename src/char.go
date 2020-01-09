@@ -1657,6 +1657,12 @@ func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
 func (c *Char) ocd() *OverwriteCharData {
+	if sys.tmode[c.playerNo&1] == TM_Turns {
+		if c.playerNo&1 == 0 {
+			return &sys.ocd[c.memberNo * 2]
+		}
+		return &sys.ocd[c.memberNo * 2 + 1]
+	}
 	return &sys.ocd[c.playerNo]
 }
 func (c *Char) load(def string) error {
