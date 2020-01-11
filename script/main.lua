@@ -980,6 +980,7 @@ function main.f_addChar(line, row, playable)
 			addChar(c)
 			tmp = getCharName(row - 1)
 			if tmp == '' then
+				playable = false
 				break
 			end
 			main.t_charDef[c:lower()] = row - 1
