@@ -1624,8 +1624,12 @@ function options.f_keyCfg(controller)
 				key = getKey()
 			elseif getKey() == 'SPACE' then
 				key = 'SPACE'
+			elseif getJoystickPresent(config.KeyConfig[num].Joystick) == false then
+				main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
+				configall = false
+				commandBufReset(main.p1Cmd)
 			else
-				local tmp = getJoystickKey(config.KeyConfig[num].Joystick)
+				local tmp = getKey()
 				if tonumber(tmp) == nil then --button released
 					btnReleased = 1
 				elseif btnReleased == 1 then --button pressed after releasing button once

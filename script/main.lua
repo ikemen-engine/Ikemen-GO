@@ -635,7 +635,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 				input = keyBreak
 				break
 			end
-			local tmp = getJoystickKey(controllerNo)
+			local tmp = getKey()
 			if tonumber(tmp) == nil then --button released
 				if btnReleased == 0 then
 					btnReleased = 1
