@@ -126,9 +126,7 @@ function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, 
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
-		if r ~= -1 and g ~= -1 and b ~= -1 then
-			textImgSetColor(ti, r, g, b, src, dst)
-		end
+		textImgSetColor(ti, r, g, b, src, dst)
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
@@ -143,9 +141,7 @@ function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY,
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
 		textImgSetText(ti, text)
-		if r ~= -1 and g ~= -1 and b ~= -1 then
-			textImgSetColor(ti, r, g, b, src, dst)
-		end
+		textImgSetColor(ti, r, g, b, src, dst)
 		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)

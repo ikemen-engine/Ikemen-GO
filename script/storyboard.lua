@@ -211,7 +211,7 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 0, -1, -1, -1, -1, -1},
+								font = {1, 0, 0, 255, 255, 255, 255, 0},
 								text_spacing = {0, 15}, --Ikemen feature
 								text_delay = 2, --Ikemen feature
 								text_length = 50, --Ikemen feature
