@@ -25,6 +25,9 @@ font/*
 sound/*
 stages/*
 wip/*
+data/big
+data/kfm
+data/mugen1
 data/common.snd
 data/common1.cns
 data/credits.def
