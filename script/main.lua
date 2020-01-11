@@ -1,15 +1,16 @@
--------------------------------------------------------------
--- Disable GC during the initial load so it does not crash.
+--;===========================================================
+--; INITIALIZE DATA
+--;===========================================================
+--Disable GC during the initial load so it does not crash
 SetGCPercent(-1)
--------------------------------------------------------------
+
+--nClock = os.clock()
+--print("Elapsed time: " .. os.clock() - nClock)
+
 main = {}
 
 refresh()
 math.randomseed(os.time())
-
---;===========================================================
---; COMMON SECTION
---;===========================================================
 
 --One-time load of the json routines
 json = (loadfile 'script/dkjson.lua')()
@@ -31,9 +32,9 @@ for i = 1, #config.KeyConfig do
 end
 
 main.p1In = 1
-main.p2In = 1
-main.p3In = 1
-main.p4In = 1
+main.p2In = 2
+main.p3In = 3
+main.p4In = 4
 --main.inputDialog = inputDialogNew()
 
 function main.f_setCommand(c)
@@ -67,6 +68,9 @@ main.f_setCommand(main.p3Cmd)
 main.p4Cmd = commandNew()
 main.f_setCommand(main.p4Cmd)
 
+--;===========================================================
+--; COMMON FUNCTIONS
+--;===========================================================
 function main.f_cmdInput()
 	commandInput(main.p1Cmd, main.p1In)
 	commandInput(main.p2Cmd, main.p2In)
@@ -242,14 +246,14 @@ end
 
 --randomizes table content
 function main.f_shuffleTable(t)
-    local rand = math.random
-    assert(t, "main.f_shuffleTable() expected a table, got nil")
-    local iterations = #t
-    local j
-    for i = iterations, 2, -1 do
-        j = rand(i)
-        t[i], t[j] = t[j], t[i]
-    end
+	local rand = math.random
+	assert(t, "main.f_shuffleTable() expected a table, got nil")
+	local iterations = #t
+	local j
+	for i = iterations, 2, -1 do
+		j = rand(i)
+		t[i], t[j] = t[j], t[i]
+	end
 end
 
 --iterate over the table in order
@@ -262,19 +266,19 @@ end
 --    print(k,v)
 --end
 function main.f_sortKeys(t, order)
-    -- collect the keys
-    local keys = {}
-    for k in pairs(t) do table.insert(keys, k) end
-    -- if order function given, sort it by passing the table and keys a, b,
-    -- otherwise just sort the keys 
-    if order then
+	-- collect the keys
+	local keys = {}
+	for k in pairs(t) do table.insert(keys, k) end
+	-- if order function given, sort it by passing the table and keys a, b,
+	-- otherwise just sort the keys 
+	if order then
 		table.sort(keys, function(a,b) return order(t, a, b) end)
-    else
+	else
 		table.sort(keys)
-    end
-    -- return the iterator function
-    local i = 0
-    return function()
+	end
+	-- return the iterator function
+	local i = 0
+	return function()
 		i = i + 1
 		if keys[i] then
 			return keys[i], t[keys[i]]
@@ -509,12 +513,12 @@ end
 
 --return table with reversed keys
 function main.f_reversedTable(t)
-    local reversedTable = {}
-    local itemCount = #t
-    for k, v in ipairs(t) do
-        reversedTable[itemCount + 1 - k] = v
-    end
-    return reversedTable
+	local reversedTable = {}
+	local itemCount = #t
+	for k, v in ipairs(t) do
+		reversedTable[itemCount + 1 - k] = v
+	end
+	return reversedTable
 end
 
 --return table with proper order and without rows disabled in screenpack
@@ -699,6 +703,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 	return input
 end
 
+--refresh screen every 0.02 during initial loading
 main.nextRefresh = os.clock() + 0.02
 function main.loadingRefresh(txt)
 	if os.clock() >= main.nextRefresh then
@@ -709,6 +714,15 @@ function main.loadingRefresh(txt)
 		main.nextRefresh = os.clock() + 0.02
 	end
 end
+
+--;===========================================================
+--; LOCALCOORD
+--;===========================================================
+require('script.screenpack')
+main.IntLocalcoordValues()
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
+main.SetScaleValues()
 
 --;===========================================================
 --; COMMAND LINE QUICK VS
@@ -927,7 +941,7 @@ function main.f_charParam(t, c)
 		table.insert(t.stage, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
-		if param ~= '' and value ~= '' then
+		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
 			t[param] = tonumber(value)
 			if t[param] == nil then
 				t[param] = value
@@ -1045,7 +1059,6 @@ function main.f_addStage(file)
 	return stageNo
 end
 
---start_time = os.time()
 main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
 main.t_orderChars = {}
 main.t_orderStages = {}
@@ -1124,12 +1137,14 @@ for line in content:gmatch('[^\r\n]+') do
 				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
-				main.t_selStages[row][param] = tonumber(value)
-				if param:match('order') then
-					if main.t_orderStages[main.t_selStages[row].order] == nil then
-						main.t_orderStages[main.t_selStages[row].order] = {}
+				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
+					main.t_selStages[row][param] = tonumber(value)
+					if param:match('order') then
+						if main.t_orderStages[main.t_selStages[row].order] == nil then
+							main.t_orderStages[main.t_selStages[row].order] = {}
+						end
+						table.insert(main.t_orderStages[main.t_selStages[row].order], row)
 					end
-					table.insert(main.t_orderStages[main.t_selStages[row].order], row)
 				end
 			end
 		end
@@ -1147,7 +1162,6 @@ for line in content:gmatch('[^\r\n]+') do
 		end
 	end
 end
---main.f_printVar(os.difftime(os.time(), start_time))
 
 --add default maxmatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
@@ -1308,6 +1322,10 @@ storyboard = require('script.storyboard')
 --;===========================================================
 --; MAIN MENU
 --;===========================================================
+
+--Disable screenpack scale on the text for showing them corectly.
+main.SetDefaultScale()
+
 local txt_titleFooter1 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer1_font[1]],
 	motif.title_info.footer1_font[2],
@@ -1368,6 +1386,10 @@ local txt_infoboxTitle = main.f_createTextImg(
 	motif.infobox.title_font[7],
 	motif.infobox.title_font[8]
 )
+
+--Enable screenpack scale again.
+main.SetScaleValues()
+
 main.txt_mainSelect = main.f_createTextImg(
 	motif.font_data[motif.select_info.title_font[1]],
 	motif.select_info.title_font[2],
@@ -1434,7 +1456,7 @@ function main.f_default()
 	main.versusScreen = true --versus screen enabled
 	main.f_resetCharparam()
 	main.p1In = 1 --P1 controls P1 side of the select screen
-	main.p2In = 0 --P2 controls in the select screen disabled
+	main.p2In = 2 --P2 controls P2 side of the select screen
 	main.p3In = 0 --P3 controls in the select screen disabled
 	main.p4In = 0 --P4 controls in the select screen disabled
 	resetRemapInput()
@@ -1456,10 +1478,10 @@ function main.f_resetCharparam()
 end
 
 function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-	if commandGetState(main.p1Cmd, 'u') then
+	if commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item - 1
-	elseif commandGetState(main.p1Cmd, 'd') then
+	elseif commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item + 1
 	end
@@ -1474,9 +1496,9 @@ function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 	elseif item > #t then
 		item = 1
 		cursorPosY = 1
-	elseif commandGetState(main.p1Cmd, 'u') and cursorPosY > 1 then
+	elseif (commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u')) and cursorPosY > 1 then
 		cursorPosY = cursorPosY - 1
-	elseif commandGetState(main.p1Cmd, 'd') and cursorPosY < motif.title_info.menu_window_visibleitems then
+	elseif (commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd')) and cursorPosY < motif.title_info.menu_window_visibleitems then
 		cursorPosY = cursorPosY + 1
 	end
 	if cursorPosY == motif.title_info.menu_window_visibleitems then
@@ -1648,6 +1670,7 @@ function main.f_mainMenu()
 		if esc() then
 			break
 		elseif getKey() == 'F1' then
+			main.SetDefaultScale()
 			main.f_warning(
 				main.f_extractText(motif.infobox.text),
 				motif.title_info,
@@ -1658,6 +1681,7 @@ function main.f_mainMenu()
 				motif.infobox.boxbg_col,
 				motif.infobox.boxbg_alpha
 			)
+			main.SetScaleValues()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			main.f_default()
 			--ARCADE
@@ -1675,8 +1699,8 @@ function main.f_mainMenu()
 				main.credits = config.Credits - 1 --amount of continues
 				textImgSetText(main.txt_mainSelect, t[item].selectname) --message displayed on top of select screen
 				if t[item].itemname == 'arcade' then
-					main.p1TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P1 team mode as Single, 1 Character
-					main.p2TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P2 team mode as Single, 1 Character
+					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
+					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				end
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('arcade')
@@ -1692,8 +1716,8 @@ function main.f_mainMenu()
 				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				if t[item].itemname == 'versus' then
-					main.p1TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P1 team mode as Single, 1 Character
-					main.p2TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P2 team mode as Single, 1 Character
+					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
+					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				end
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
 				setGameMode('versus')
@@ -1766,7 +1790,7 @@ function main.f_mainMenu()
 				main.stageMenu = true
 				main.versusScreen = false --versus screen disabled
 				--uses default main.t_charparam assignment
-				main.p2TeamMenu = {mode = 0, chars = 1, tag = false} --predefined P2 team mode as Single, 1 Character
+				main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
@@ -1795,7 +1819,11 @@ function main.f_mainMenu()
 			if t[item].itemname == 'options' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				--Disable screenpack scale on the menu text for showing the menu corectly.
+				main.SetDefaultScale()
 				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
+				--Enable screenpack scale again.
+				main.SetScaleValues()
 			end
 			--EXIT
 			if t[item].itemname == 'exit' then
@@ -1893,6 +1921,13 @@ function main.f_mainNetplay()
 				main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort()))
 				exitNetPlay()
 				exitReplay()
+				--save replay with a new name
+				local file = io.open("save/replays/netplay.replay", "r")
+				local tpmFile = file:read("*all")
+				io.close(file)
+				file = io.open("save/replays/" .. os.date("%Y-%m(%b)-%d %I-%M%p-%Ss") .. ".replay", "w+")
+				file:write(tpmFile)
+				io.close(file)
 			end
 			--JOIN
 			if t[item].itemname == 'serverjoin' then
@@ -2162,9 +2197,9 @@ function main.f_mainExtras()
 			end
 			--REPLAY
 			if t[item].itemname == 'replay' then
-				if main.f_fileExists('replay/netplay.replay') then
+				if main.f_fileExists('save/replays/netplay.replay') then
 					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-					enterReplay('replay/netplay.replay')
+					enterReplay('save/replays/netplay.replay')
 					synchronize()
 					math.randomseed(sszRandom())
 					main.f_netplayMode()
@@ -2226,6 +2261,7 @@ function main.f_bonusExtras()
 			--BONUS CHAR NAME
 			else
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+				main.p2In = 1
 				main.versusScreen = false
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
@@ -2233,8 +2269,8 @@ function main.f_bonusExtras()
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
-				main.p1TeamMenu = {mode = 0, chars = 1, tag = false}
-				main.p2TeamMenu = {mode = 0, chars = 1, tag = false}
+				main.p1TeamMenu = {mode = 0, chars = 1}
+				main.p2TeamMenu = {mode = 0, chars = 1}
 				main.p2Char = {main.t_bonusChars[item]}
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
@@ -2340,12 +2376,10 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
-
 -- Now that everithig is loaded we can enable GC back.
 SetGCPercent(100)
--------------------------------------------------------------
 
 main.f_mainMenu()
 
 -- Debug Info
-main.f_printTable(main, "debug/t_main.txt")
+--main.f_printTable(main, "debug/t_main.txt")

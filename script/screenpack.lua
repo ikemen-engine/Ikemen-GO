@@ -55,11 +55,11 @@ function main.CalculateLocalcoordValues()
 	tempMFF = nil
 	
 	-- We seach for the file
-	if main.file_exists(motifFileFolder .. lbFileName) then
+	if main.f_fileExists(motifFileFolder .. lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue(motifFileFolder .. lbFileName, "info", "localcoord", true)
-	elseif main.file_exists("data/" .. lbFileName) then
+	elseif main.f_fileExists("data/" .. lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue("data/" .. lbFileName, "info", "localcoord", true)
-	elseif main.file_exists(lbFileName) then
+	elseif main.f_fileExists(lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue(lbFileName, "info", "localcoord", true)
 	else
 		main.LB_Localcoord = main.SP_Localcoord

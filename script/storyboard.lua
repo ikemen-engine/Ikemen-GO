@@ -32,7 +32,7 @@ local function f_play(t)
 			local fadeStart = getFrameCount()
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if esc() or main.f_btnPalNo(main.p1Cmd) > 0 then
+				if (esc() or main.f_btnPalNo(main.p1Cmd) > 0) and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
 					refresh()
 					return
@@ -70,9 +70,9 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_data,
 								t.scene[k].layer[k2].text,
 								t.scene[k].layer[k2].text_timer,
-								t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-								t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-								t.scene[k].layer[k2].text_spacing,
+								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
+								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
+								t.scene[k].layer[k2].text_spacing[2],
 								t.scene[k].layer[k2].text_delay,
 								t.scene[k].layer[k2].text_length
 							)
@@ -96,6 +96,13 @@ local function f_play(t)
 					t.scene[k][fadeType .. '_col'][2],
 					t.scene[k][fadeType .. '_col'][3]
 				)
+				--if main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton <= 0 then
+				--	main.f_cmdInput()
+				--	refresh()
+				--	do
+				--		break
+				--	end
+				--end
 				main.f_cmdInput()
 				refresh()
 			end
@@ -104,6 +111,8 @@ local function f_play(t)
 end
 
 local function f_parse(path)
+	--storyboards use their own localcoord function, so we disable it
+	main.SetDefaultScale()
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {}
@@ -119,7 +128,15 @@ local function f_parse(path)
 	local t_default =
 	{
 		info = {localcoord = {320, 240}},
-		scenedef = {spr = '', snd = '', font = {[1] = 'f-6x9.fnt'}, font_height = {}, startscene = 0, font_data = {}},
+		scenedef = {
+			spr = '',
+			snd = '',
+			font = {[1] = 'f-6x9.fnt'},
+			font_height = {},
+			startscene = 0,
+			skipbutton = 1, --Ikemen feature
+			font_data = {}
+		},
 		scene = {},
 	}
 	for line in file:lines() do
@@ -133,6 +150,7 @@ local function f_parse(path)
 				t.scene[row] = {}
 				pos = t.scene[row]
 				pos.layer = {}
+				pos.sound = {}
 				t_default.scene[row] =
 				{
 					end_time = 0,
@@ -193,7 +211,7 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 1, -1, -1, -1, -1, -1},
+								font = {1, 0, 0, -1, -1, -1, -1, -1},
 								text_spacing = {0, 15}, --Ikemen feature
 								text_delay = 2, --Ikemen feature
 								text_length = 50, --Ikemen feature
@@ -240,7 +258,7 @@ local function f_parse(path)
 				end
 			else --only valid lines left are animations
 				line = line:lower()
-				local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart')
+				local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('^%s*interpolate [oasb][fncl][fgae][sln][ed]t?')
 				if value ~= nil then
 					value = value:gsub(',%s*,', ',0,') --add missing values
 					value = value:gsub(',%s*$', '')
@@ -277,11 +295,11 @@ local function f_parse(path)
 	end
 	--scenedef fonts
 	for k, v in pairs(t.scenedef.font) do --loop through table keys
-		if t.scenedef.font[k] ~= '' then
+		if v ~= '' and t.scenedef.font_data[v] == nil then
 			if t.scenedef.font_height[k] ~= nil then
-				t.scenedef.font_data[k] = fontNew(t.scenedef.font[k], t.scenedef.font_height[k])
+				t.scenedef.font_data[v] = fontNew(v, t.scenedef.font_height[k])
 			else
-				t.scenedef.font_data[k] = fontNew(t.scenedef.font[k])
+				t.scenedef.font_data[v] = fontNew(v)
 			end
 		end
 	end
@@ -334,19 +352,19 @@ local function f_parse(path)
 			--text
 			if t_layer[k2].text ~= '' then
 				t.scene[k].layer[k2].text_data = main.f_createTextImg(
-					t.scenedef.font_data[t.scenedef.font[t_layer[k2].font][1]],
-					t.scenedef.font[t_layer[k2].font][2],
-					t.scenedef.font[t_layer[k2].font][3],
+					t.scenedef.font_data[t_layer[k2].font[1]],
+					t_layer[k2].font[2],
+					t_layer[k2].font[3],
 					t_layer[k2].text,
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
 					320/t.info.localcoord[1],
 					240/t.info.localcoord[2],
-					t.scenedef.font[t_layer[k2].font][4],
-					t.scenedef.font[t_layer[k2].font][5],
-					t.scenedef.font[t_layer[k2].font][6],
-					t.scenedef.font[t_layer[k2].font][7],
-					t.scenedef.font[t_layer[k2].font][8]
+					t_layer[k2].font[4],
+					t_layer[k2].font[5],
+					t_layer[k2].font[6],
+					t_layer[k2].font[7],
+					t_layer[k2].font[8]
 				)
 			end
 			--endtime
@@ -355,6 +373,8 @@ local function f_parse(path)
 			end
 		end
 	end
+	--finished loading storyboard, re-enable custom scaling
+	main.SetScaleValues()
 	return t
 end
 

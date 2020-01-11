@@ -348,8 +348,36 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
 		return 1
 	})
+	luaRegister(l, "setMasterVolume", func(l *lua.LState) int {
+		sys.masterVolume = int(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setBgmVolume", func(l *lua.LState) int {
+		sys.bgmVolume = int(numArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "setWavVolume", func(l *lua.LState) int {
 		sys.wavVolume = int(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setAudioDucking", func(l *lua.LState) int {
+		sys.AudioDucking = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setAttackLifeToPowerMul", func(l *lua.LState) int {
+		sys.attack_LifeToPowerMul = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setGetHitLifeToPowerMul", func(l *lua.LState) int {
+		sys.getHit_LifeToPowerMul = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setSuperTargetDefenceMul", func(l *lua.LState) int {
+		sys.super_TargetDefenceMul = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setAllowDebugKeys", func(l *lua.LState) int {
+		sys.allowDebugKeys = boolArg(l, 1)
 		return 0
 	})
 

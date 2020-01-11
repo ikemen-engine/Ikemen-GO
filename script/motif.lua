@@ -18,24 +18,24 @@ local file = io.open(def, 'r')
 local s_file = file:read("*all")
 file:close()
 local localX, localY = s_file:match('localcoord%s*=%s*(%d+)%s*,%s*(%d+)')
-local scaleX = 1
-local scaleY = 1
+--local scaleX = 1
+--local scaleY = 1
 if localX ~= nil then
 	localX = tonumber(localX)
-	scaleX = localX / 320
+	--scaleX = localX / 320
 else
 	localX = 320
 end
 if localY ~= nil then
 	localY = tonumber(localY)
-	scaleY = localY / 240
+	--scaleY = localY / 240
 else
 	localY = 240
 end
-local coords_fix = 0
-if scaleY > 1 then
-	coords_fix = math.floor(scaleY - 1)
-end
+--local coords_fix = 0
+--if scaleY > 1 then
+--	coords_fix = math.floor(scaleY - 1)
+--end
 
 --;===========================================================
 --; DEFAULT VALUES
@@ -52,7 +52,6 @@ local motif =
 		versiondate = '09,01,2009',
 		mugenversion = '1.0',
 		localcoord = {320, 240},
-		portrait_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0) - for some reason mugen scales portraits with Y localcoord
 	},
 	files =
 	{
@@ -128,29 +127,29 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		loading_offset = {localX - 10 * scaleY, localY - 10 * scaleY}, --Ikemen feature (310, 230)
+		loading_offset = {localX - 10, localY - 10}, --Ikemen feature (310, 230)
 		loading_font = {'f-4x6.def', 7, -1, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		loading_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		loading_font_scale = {1.0, 1.0}, --Ikemen feature
 		loading_text = 'LOADING...', --Ikemen feature
-		footer1_offset = {2 * scaleY, localY}, --Ikemen feature (2, 240)
+		footer1_offset = {2, localY}, --Ikemen feature (2, 240)
 		footer1_font = {'f-4x6.def', 7, 1, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		footer1_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		footer1_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer1_text = 'I.K.E.M.E.N. GO', --Ikemen feature
 		footer2_offset = {localX / 2, localY}, --Ikemen feature (160, 240)
 		footer2_font = {'f-4x6.def', 7, 0, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		footer2_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		footer2_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer2_text = 'Press F1 for info', --Ikemen feature
-		footer3_offset = {localX - 1 * scaleY, localY}, --Ikemen feature (319, 240)
+		footer3_offset = {localX - 1, localY}, --Ikemen feature (319, 240)
 		footer3_font = {'f-4x6.def', 7, -1, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		footer3_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_text = 'Plus v0.9', --Ikemen feature
 		footer_boxbg_visible = 1, --Ikemen feature
-		footer_boxbg_coords = {0, localY - 7 * scaleY, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
+		footer_boxbg_coords = {0, localY - 7, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_boxbg_col = {0, 0, 64}, --Ikemen feature
 		footer_boxbg_alpha = {255, 100}, --Ikemen feature
-		connecting_offset = {10 * scaleY, 40 * scaleY}, --Ikemen feature (10, 40)
+		connecting_offset = {10, 40}, --Ikemen feature
 		connecting_font = {'f-6x9.def', 0, 1, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		connecting_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		connecting_font_scale = {1.0, 1.0}, --Ikemen feature
 		connecting_host_text = 'Waiting for player 2... (%s)', --Ikemen feature
 		connecting_join_text = 'Now connecting... (%s)', --Ikemen feature
 		connecting_boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
@@ -192,7 +191,7 @@ local motif =
 		menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
 		menu_itemname_scoreranking = 'SCORE RANKING', --Ikemen feature (not implemented yet)
 		menu_itemname_replay = 'REPLAY', --Ikemen feature
-		menu_itemname_randomtest = 'RANDOM TEST', --Ikemen feature
+		menu_itemname_randomtest = 'DEMO', --Ikemen feature
 		menu_itemname_extrasback = 'BACK', --Ikemen feature
 		menu_itemname_bonusback = 'BACK', --Ikemen feature
 		menu_itemname_tourney32 = 'ROUND OF 32', --Ikemen feature
@@ -223,14 +222,14 @@ local motif =
 	infobox =
 	{
 		title = '', --Ikemen feature
-		title_pos = {159 * scaleY, 13 * scaleY}, --Ikemen feature (159, 13)
+		title_pos = {159, 13}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, -1, -1, -1, -1, -1}, --Ikemen feature
-		title_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* Ikemen GO Plus source code: https://github.com/K4thos/Ikemen-GO-Plus", --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
-		text_pos = {25 * scaleY, 30 * scaleY}, --Ikemen feature (25, 30)
+		text_pos = {25, 30}, --Ikemen feature
 		text_font = {'f-4x6.def', 7, 1, -1, -1, -1, -1, -1}, --Ikemen feature
-		text_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
-		text_spacing = {0 * scaleY, 10 * scaleY}, --Ikemen feature (0, 10)
+		text_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_spacing = {0, 10}, --Ikemen feature
 		boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -258,7 +257,7 @@ local motif =
 		searchemptyboxesup = 0, --Ikemen feature
 		searchemptyboxesdown = 0, --Ikemen feature
 		cell_size = {27, 27},
-		cell_spacing = 2,
+		cell_spacing = {2, 2}, --Ikemen feature (optionally accepts x, y values instead of a single one for both coordinates)
 		--cell_bg_anim = nil,
 		cell_bg_spr = {},
 		cell_bg_offset = {0, 0},
@@ -492,9 +491,9 @@ local motif =
 		time = 150,
 		time_order = 60, --Ikemen feature
 		match_text = 'Match %i',
-		match_offset = {159 * scaleY, 12 * scaleY}, --(159, 12)
+		match_offset = {159, 12},
 		match_font = {'jg.fnt', 0, 0, -1, -1, -1, -1, -1},
-		match_font_scale = {1.0 * scaleY, 1.0 * scaleY},
+		match_font_scale = {1.0, 1.0},
 		p1_pos = {0, 0},
 		p1_spr = {9000, 1},
 		p1_offset = {0, 0},
@@ -751,33 +750,35 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 10, --check winmugen values
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		title_offset = {159 * scaleY, 19 * scaleY}, --(159, 19)
+		title_offset = {159, 19},
 		title_font = {'f-6x9.def', 0, 0, -1, -1, -1, -1, -1},
-		title_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --(1.0, 1.0)
+		title_font_scale = {1.0, 1.0},
 		title_text_main = 'OPTIONS', --Ikemen feature
 		title_text_arcade = 'ARCADE SETTINGS', --Ikemen feature
 		title_text_gameplay = 'GAMEPLAY SETTINGS', --Ikemen feature
+		title_text_advgameplay = 'ADVANCED SETTINGS', --Ikemen feature
 		title_text_video = 'VIDEO SETTINGS', --Ikemen feature
 		title_text_res = 'RESOLUTION SETTINGS', --Ikemen feature
 		title_text_audio = 'AUDIO SETTINGS', --Ikemen feature
+		title_text_engine = 'ENGINE SETTINGS', --Ikemen feature
 		title_text_input = 'INPUT SETTINGS', --Ikemen feature
 		title_text_key = 'KEY SETTINGS', --Ikemen feature
 		title_text_controller = 'CONTROLLER SETTINGS', --Ikemen feature
-		menu_pos = {85 * scaleY, 33 * scaleY}, --Ikemen feature (85, 33)
+		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 7, 1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_active_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_font = {'f-6x9.def', 7, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_value_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_value_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_active_font = {'f-6x9.def', 0, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_value_active_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_value_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_conflict_font = {'f-6x9.def', 1, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_value_conflict_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
-		menu_item_spacing = {150 * scaleY, 13 * scaleY}, --Ikemen feature (150, 13)
+		menu_item_value_conflict_font_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_spacing = {150, 13}, --Ikemen feature
 		menu_window_visibleitems = 16, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
-		menu_boxcursor_coords = {-5 * scaleY, -10 * scaleY, 154 * scaleY + coords_fix, 2 * scaleY + coords_fix}, --Ikemen feature (-5, -10, 154, 2)
+		menu_boxcursor_coords = {-5, -10, 154, 2}, --Ikemen feature
 		menu_boxcursor_col = {255, 255, 255}, --Ikemen feature
 		menu_boxcursor_alpharange = {10, 40, 2, 255, 255, 0}, --Ikemen feature
 		menu_boxbg_visible = 1, --Ikemen feature
@@ -785,12 +786,15 @@ local motif =
 		menu_boxbg_alpha = {20, 100}, --Ikemen feature
 		menu_itemname_main_arcade = 'Arcade Settings', --Ikemen feature
 		menu_itemname_main_gameplay = 'Gameplay Settings', --Ikemen feature
+		menu_itemname_main_engine = 'Engine Settings', --Ikemen feature
 		menu_itemname_main_video = 'Video Settings', --Ikemen feature
 		menu_itemname_main_audio = 'Audio Settings', --Ikemen feature
 		menu_itemname_main_input = 'Input Settings', --Ikemen feature
+		menu_itemname_main_quicklaunch = 'Quick Launch', --Ikemen feature
 		menu_itemname_main_port = 'Port Change', --Ikemen feature
 		menu_itemname_main_default = 'Default Values', --Ikemen feature
-		menu_itemname_main_back = 'Back', --Ikemen feature
+		menu_itemname_main_save = 'Save and Return', --Ikemen feature
+		menu_itemname_main_back = 'Return Without Saving', --Ikemen feature
 		menu_itemname_arcade_roundtime = 'Time Limit', --Ikemen feature
 		menu_itemname_arcade_roundtime_none = 'None', --Ikemen feature
 		menu_itemname_arcade_roundsnumsingle = 'Rounds to Win Single', --Ikemen feature
@@ -799,39 +803,19 @@ local motif =
 		menu_itemname_arcade_difficulty = 'Difficulty level', --Ikemen feature
 		menu_itemname_arcade_credits = 'Credits', --Ikemen feature
 		menu_itemname_arcade_charchange = 'Char change at Continue', --Ikemen feature
-		menu_itemname_arcade_airamping = 'AI ramping', --Ikemen feature
+		menu_itemname_arcade_airamping = 'AI Ramping', --Ikemen feature
+		menu_itemname_arcade_aipalette = 'AI Palette', --Ikemen feature
+		menu_itemname_arcade_aipalette_random = 'Random', --Ikemen feature
+		menu_itemname_arcade_aipalette_default = 'Default', --Ikemen feature
 		menu_itemname_arcade_back = 'Back', --Ikemen feature
-		menu_itemname_gameplay_lifemul = 'Life', --Ikemen feature
-		menu_itemname_gameplay_autoguard = 'Auto-Guard', --Ikemen feature
-		menu_itemname_gameplay_attackpowermul = 'Attack.LifeToPowerMul', --Ikemen feature
-		menu_itemname_gameplay_gethitpowermul = 'GetHit.LifeToPowerMul', --Ikemen feature
-		menu_itemname_gameplay_superdefencemul = 'Super.TargetDefenceMul', --Ikemen feature
-		menu_itemname_gameplay_team1vs2life = '1P Vs Team Life', --Ikemen feature
-		menu_itemname_gameplay_turnsrecoverybase = 'Turns Recovery Base', --Ikemen feature
-		menu_itemname_gameplay_turnsrecoverybonus = 'Turns Recovery Bonus', --Ikemen feature
-		menu_itemname_gameplay_teampowershare = 'Team Power Share', --Ikemen feature
-		menu_itemname_gameplay_teamlifeshare = 'Team Life Share', --Ikemen feature
-		menu_itemname_gameplay_numturns = 'Turns Limit', --Ikemen feature
-		menu_itemname_gameplay_numsimul = 'Simul Limit', --Ikemen feature
-		menu_itemname_gameplay_numtag = 'Tag Limit', --Ikemen features
-		menu_itemname_gameplay_simulmode = 'Assist Mode (legacy)', --Ikemen feature
-		menu_itemname_gameplay_simulmode_simul = 'Simul', --Ikemen feature
-		menu_itemname_gameplay_simulmode_tag = 'Tag', --Ikemen feature
-		menu_itemname_gameplay_back = 'Back', --Ikemen feature
 		menu_itemname_video_resolution = 'Resolution', --Ikemen feature
 		menu_itemname_video_fullscreen = 'Fullscreen', --Ikemen feature
-		menu_itemname_video_helpermax = 'HelperMax', --Ikemen feature
-		menu_itemname_video_playerprojectilemax = 'PlayerProjectileMax', --Ikemen feature
-		menu_itemname_video_explodmax = 'ExplodMax', --Ikemen feature
-		menu_itemname_video_afterimagemax = 'AfterImageMax', --Ikemen feature
-		menu_itemname_video_zoomactive = 'Zoom Active', --Ikemen feature
-		menu_itemname_video_maxzoomout = 'Default Max Zoom Out', --Ikemen feature
-		menu_itemname_video_maxzoomin = 'Default Max Zoom In', --Ikemen feature
-		menu_itemname_video_zoomspeed = 'Default Zoom Speed', --Ikemen feature
-		menu_itemname_video_lifebarfontscale = 'Default Lifebar Font Scale', --Ikemen feature
-		menu_itemname_video_aipalette = 'AI Palette', --Ikemen feature
-		menu_itemname_video_aipalette_random = 'Random', --Ikemen feature
-		menu_itemname_video_aipalette_default = 'Default', --Ikemen feature
+		menu_itemname_video_msaa = 'MSAA', --Ikemen feature
+		menu_itemname_video_shader = 'Shader', --Ikemen feature
+		menu_itemname_video_shader_none = 'None', --Ikemen feature
+		menu_itemname_video_shader_hqx2 = 'hq2x', --Ikemen feature
+		menu_itemname_video_shader_hqx4 = 'hqx4', --Ikemen feature
+		menu_itemname_video_shader_scanlines = 'scanlines', --Ikemen feature
 		menu_itemname_video_back = 'Back', --Ikemen feature
 		menu_itemname_res_320x240 = '320x240    (4:3 QVGA)', --Ikemen feature
 		menu_itemname_res_640x480 = '640x480    (4:3 VGA)', --Ikemen feature
@@ -845,8 +829,38 @@ local motif =
 		menu_itemname_res_3840x2160 = '3840x2160  (16:9 4K)', --Ikemen feature
 		menu_itemname_res_custom = 'Custom', --Ikemen feature
 		menu_itemname_res_back = 'Back', --Ikemen feature
-		menu_itemname_audio_wavvolume = 'SFX Volume', --Ikemen feature
+		menu_itemname_audio_mastervolume = 'Master Volume', --Ikemen feature
+		menu_itemname_audio_bgmvolume = 'BGM Volume', --Ikemen feature
+		menu_itemname_audio_sfxvolume = 'SFX Volume', --Ikemen feature
+		menu_itemname_audio_audioducking = 'Audio Ducking', --Ikemen feature
 		menu_itemname_audio_back = 'Back', --Ikemen feature
+		menu_itemname_gameplay_lifemul = 'Life', --Ikemen feature
+		menu_itemname_gameplay_autoguard = 'Auto-Guard', --Ikemen feature
+		menu_itemname_gameplay_attackpowermul = 'Attack.LifeToPowerMul', --Ikemen feature
+		menu_itemname_gameplay_gethitpowermul = 'GetHit.LifeToPowerMul', --Ikemen feature
+		menu_itemname_gameplay_superdefencemul = 'Super.TargetDefenceMul', --Ikemen feature
+		menu_itemname_gameplay_team1vs2life = '1P Vs Team Life', --Ikemen feature
+		menu_itemname_gameplay_turnsrecoverybase = 'Turns Recovery Base', --Ikemen feature
+		menu_itemname_gameplay_turnsrecoverybonus = 'Turns Recovery Bonus', --Ikemen feature
+		menu_itemname_gameplay_teampowershare = 'Team Power Share', --Ikemen feature
+		menu_itemname_gameplay_teamlifeshare = 'Team Life Share', --Ikemen feature
+		menu_itemname_gameplay_singlemode = 'Single Mode', --Ikemen feature
+		menu_itemname_gameplay_numturns = 'Turns Limit', --Ikemen feature
+		menu_itemname_gameplay_numsimul = 'Simul Limit', --Ikemen feature
+		menu_itemname_gameplay_numtag = 'Tag Limit', --Ikemen features
+		menu_itemname_gameplay_advanced = 'Advanced Settings', --Ikemen feature
+		menu_itemname_gameplay_back = 'Back', --Ikemen feature
+		menu_itemname_engine_allowdebugkeys = 'Debug Keys', --Ikemen feature
+		menu_itemname_engine_simulmode = 'Legacy Tag Mode', --Ikemen feature
+		menu_itemname_engine_helpermax = 'HelperMax', --Ikemen feature
+		menu_itemname_engine_playerprojectilemax = 'PlayerProjectileMax', --Ikemen feature
+		menu_itemname_engine_explodmax = 'ExplodMax', --Ikemen feature
+		menu_itemname_engine_afterimagemax = 'AfterImageMax', --Ikemen feature
+		menu_itemname_engine_zoomactive = 'Zoom Active', --Ikemen feature
+		menu_itemname_engine_maxzoomout = 'Default Max Zoom Out', --Ikemen feature
+		menu_itemname_engine_maxzoomin = 'Default Max Zoom In', --Ikemen feature
+		menu_itemname_engine_zoomspeed = 'Default Zoom Speed', --Ikemen feature
+		menu_itemname_engine_lifebarfontscale = 'Lifebar Font Scale', --Ikemen feature
 		menu_itemname_input_keyboard = 'Keyboard', --Ikemen feature
 		menu_itemname_input_gamepad = 'Gamepad', --Ikemen feature
 		menu_itemname_input_system = 'System', --Ikemen feature (not used yet)
@@ -870,8 +884,8 @@ local motif =
 		menu_itemname_key_y = 'Y', --Ikemen feature
 		menu_itemname_key_z = 'Z', --Ikemen feature
 		menu_itemname_key_start = 'Start', --Ikemen feature
-		menu_itemname_key_v = 'L', --Ikemen feature
-		menu_itemname_key_w = 'R', --Ikemen feature
+		menu_itemname_key_d = 'D', --Ikemen feature
+		menu_itemname_key_w = 'W', --Ikemen feature
 		menu_itemname_key_back = 'Back', --Ikemen feature
 		menu_itemname_key_next = 'Next', --Ikemen feature
 		menu_itemname_key_previous = 'Previous', --Ikemen feature
@@ -880,13 +894,13 @@ local motif =
 		menu_itemname_controller_disabled = 'Not assigned', --Ikemen feature
 		menu_itemname_controller_back = 'Back', --Ikemen feature
 		menu_item_controller1_font = {'f-6x9.def', 4, 0, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_controller1_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_controller1_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_controller2_font = {'f-6x9.def', 1, 0, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_controller2_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_controller2_font_scale = {1.0, 1.0}, --Ikemen feature (1.0, 1.0)
 		menu_item_info_font = {'f-6x9.def', 5, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_info_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_info_font_scale = {1.0, 1.0}, --Ikemen feature (1.0, 1.0)
 		menu_item_info_active_font = {'f-6x9.def', 5, -1, -1, -1, -1, -1, -1}, --Ikemen feature
-		menu_item_info_active_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		menu_item_info_active_font_scale = {1.0, 1.0}, --Ikemen feature (1.0, 1.0)
 		menu_itemname_info_f1 = '(F1)', --Ikemen feature
 		menu_itemname_info_f2 = '(F2)', --Ikemen feature
 		menu_itemname_info_f3 = '(F3)', --Ikemen feature
@@ -894,14 +908,16 @@ local motif =
 		menu_itemname_info_tab = '(Tab)', --Ikemen feature
 		menu_itemname_info_esc = '(Esc)', --Ikemen feature
 		menu_itemname_info_disable = 'Not used', --Ikemen feature
-		menu_item_p1_pos = {91 * scaleY, 33 * scaleY}, --Ikemen feature (91, 33)
-		menu_item_p2_pos = {230 * scaleY, 33 * scaleY}, --Ikemen feature (230, 33)
-		menu_key_p1_pos = {39 * scaleY, 33 * scaleY}, --Ikemen feature (39, 33)
-		menu_key_p2_pos = {178 * scaleY, 33 * scaleY}, --Ikemen feature (178, 33)
-		menu_key_item_spacing = {101 * scaleY, 13 * scaleY}, --Ikemen feature (101, 13)
-		menu_key_boxcursor_coords = {-5 * scaleY, -10 * scaleY, 106 * scaleY + coords_fix, 2 * scaleY + coords_fix}, --Ikemen feature (-5, -10, 106, 2)
+		menu_item_p1_pos = {91, 33}, --Ikemen feature
+		menu_item_p2_pos = {230, 33}, --Ikemen feature
+		menu_key_p1_pos = {39, 33}, --Ikemen feature
+		menu_key_p2_pos = {178, 33}, --Ikemen feature
+		menu_key_item_spacing = {101, 13}, --Ikemen feature
+		menu_key_boxcursor_coords = {-5, -10, 106, 2}, --Ikemen feature
 		menu_itemname_yes = 'Yes', --Ikemen feature
 		menu_itemname_no = 'No', --Ikemen feature
+		menu_itemname_enabled = 'Enabled', --Ikemen feature
+		menu_itemname_disabled = 'Disabled', --Ikemen feature
 		input_text_port = 'Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		input_text_reswidth = 'Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		input_text_resheight = 'Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
@@ -930,9 +946,9 @@ local motif =
 	warning_info =
 	{
 		title = 'WARNING', --Ikemen feature
-		title_pos = {159 * scaleY, 19 * scaleY}, --Ikemen feature (159, 19)
+		title_pos = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, -1, -1, -1, -1, -1}, --Ikemen feature
-		title_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
+		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_stages = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
 		text_order = "Incorrect 'maxmatches' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
 		text_training = "Training character ('chars/Training/Training.def') not found.\nPress any key to exit the program.", --Ikemen feature
@@ -941,10 +957,10 @@ local motif =
 		text_keys = 'Conflict between button keys detected.\nAll keys should have unique assignment.\nFix the problem before exitting key settings.', --Ikemen feature
 		text_pad = 'Controller not detected.\nCheck if your controller is plugged in.', --Ikemen feature
 		text_simul = 'This is a legacy option that works only if screenpack \nhas not been updated to support both Tag and Simul \nmode selection in select screen.', --Ikemen feature
-		text_pos = {25 * scaleY, 33 * scaleY}, --Ikemen feature (25, 33)
+		text_pos = {25, 33}, --Ikemen feature
 		text_font = {'f-6x9.def', 0, 1, -1, -1, -1, -1, -1}, --Ikemen feature
-		text_font_scale = {1.0 * scaleY, 1.0 * scaleY}, --Ikemen feature (1.0, 1.0)
-		text_spacing = {0 * scaleY, 13 * scaleY}, --Ikemen feature (0, 13)
+		text_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_spacing = {0, 13}, --Ikemen feature
 		boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1421,8 +1437,10 @@ for line in file:lines() do
 		if param ~= nil then
 			param = param:gsub('[%. ]', '_') --change param . and space to _
 			param = param:lower() --lowercase param
-			if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
-				value = '0'
+			if value ~= nil and def_pos ~= nil then --let's check if it's even a valid param
+				if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
+					value = '0'
+				end
 			end
 		end
 		if param ~= nil and value ~= nil then --param = value pattern matched
@@ -1474,7 +1492,7 @@ for line in file:lines() do
 			end
 		else --only valid lines left are animations
 			line = line:lower()
-			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('^%s*interpolate offset') or line:match('^%s*interpolate angle') or line:match('^%s*interpolate scale') or line:match('^%s*interpolate blend')
+			local value = line:match('^%s*([0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+%s*,%s*[0-9%-]+.-)[,%s]*$') or line:match('^%s*loopstart') or line:match('%s*interpolate [oasb][fncl][fgae][sln][ed]t?')
 			if value ~= nil then
 				value = value:gsub(',%s*,', ',0,') --add missing values
 				value = value:gsub(',%s*$', '')
@@ -1489,14 +1507,18 @@ file:close()
 --;===========================================================
 --; FIX REFERENCES, LOAD DATA
 --;===========================================================
---merge tables
-motif = main.f_tableMerge(motif, t)
+--adopt old DEF code to Ikemen features
+if type(motif.select_info.cell_spacing) ~= "table" then
+	motif.select_info.cell_spacing = {motif.select_info.cell_spacing[1], motif.select_info.cell_spacing[1]}
+end
 
---fix values
 if motif.victory_screen.enabled == 0 then
 	motif.victory_screen.cpu_enabled = 0
 	motif.victory_screen.vs_enabled = 0
 end
+
+--merge tables
+motif = main.f_tableMerge(motif, t)
 
 --general paths
 local t_dir = {
@@ -1565,12 +1587,12 @@ for i = 1, #t_dir do
 	main.loadingRefresh()
 end
 
-for i = 1, #motif.files.font do
-	if motif.font_data[motif.files.font[i]] == nil then
-		if motif.files.font_height[i] ~= nil then
-			motif.font_data[motif.files.font[i]] = fontNew(motif.files.font[i], motif.files.font_height[i])
+for k, v in pairs(motif.files.font) do --loop through table keys
+	if v ~= '' and motif.font_data[v] == nil then
+		if motif.files.font_height[k] ~= nil then
+			motif.font_data[v] = fontNew(v, motif.files.font_height[k])
 		else
-			motif.font_data[motif.files.font[i]] = fontNew(motif.files.font[i])
+			motif.font_data[v] = fontNew(v)
 		end
 	end
 	main.loadingRefresh()
@@ -1637,7 +1659,7 @@ for i = 1, #t_dir do
 		t[t_dir[i].s .. 'data'] = animNew(motif.selectbgdef.spr_data, '-1, -1, 0, 0, -1')
 		animUpdate(t[t_dir[i].s .. 'data'])
 	end
-	animSetWindow(t[t_dir[i].s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t[t_dir[i].s .. 'data'], main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 	main.loadingRefresh()
 end
 
@@ -1651,7 +1673,7 @@ if motif.anim[t.continue_anim] ~= nil then
 		t.continue_scale[1],
 		t.continue_scale[2]
 	)
-	animSetWindow(t.continue_anim_data, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t.continue_anim_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 if motif.vs_screen.p1_name_active_font == nil then

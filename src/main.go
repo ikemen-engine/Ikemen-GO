@@ -144,7 +144,7 @@ func main() {
 	"CommonCmd": "data/common.cmd",
 	"SimulMode": true,
 	"LifeMul": 100,
-	"Team1VS2Life": 120,
+	"Team1VS2Life": 100,
 	"turnsRecoveryBase": 12.5,
 	"TurnsRecoveryBonus": 27.5,
 	"ZoomActive": false,

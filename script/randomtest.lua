@@ -231,6 +231,7 @@ end
 
 -- Sets AIs to level 8 (MAX level) and ints AutoLevel
 function randomtest.init()
+  selectStart()
   for i = 1, 8 do
     setCom(i, 8)
   end

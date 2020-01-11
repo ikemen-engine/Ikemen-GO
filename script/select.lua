@@ -8,7 +8,7 @@ setSelColRow(motif.select_info.columns, motif.select_info.rows)
 --setRandomSpr(motif.selectbgdef.spr_data, motif.select_info.cell_random_spr[1], motif.select_info.cell_random_spr[2], motif.select_info.cell_random_scale[1], motif.select_info.cell_random_scale[2])
 --setCellSpr(motif.selectbgdef.spr_data, motif.select_info.cell_bg_spr[1], motif.select_info.cell_bg_spr[2], motif.select_info.cell_bg_scale[1], motif.select_info.cell_bg_scale[2])
 
-setSelCellSize(motif.select_info.cell_size[1] + motif.select_info.cell_spacing, motif.select_info.cell_size[2] + motif.select_info.cell_spacing)
+setSelCellSize(motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1], motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])
 setSelCellScale(motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
 
 --default team count after starting the game
@@ -47,10 +47,10 @@ local selScreenEnd = false
 local stageEnd = false
 local coopEnd = false
 local restoreTeam = false
+local resetgrid = false
 local continueStage = false
 local teamMode = 0
 local numChars = 0
-local tag = false
 local p1NumChars = 0
 local p2NumChars = 0
 local matchNo = 0
@@ -72,8 +72,6 @@ local p2FaceX = 0
 local p2FaceY = 0
 local p1TeamMode = 0
 local p2TeamMode = 0
-local p1Tag = false
-local p2Tag = false
 local lastMatch = 0
 local currentOrder = 0
 local currentRosterIndex = 0
@@ -94,7 +92,7 @@ for i = 1, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.s
 		t_grid[row] = {}
 	end
 	col = #t_grid[row] + 1
-	t_grid[row][col] = {num = i - 1, x = (col - 1) * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing), y = (row - 1) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing)}
+	t_grid[row][col] = {num = i - 1, x = (col - 1) * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]), y = (row - 1) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])}
 	if main.t_selChars[i].char ~= nil then
 		t_grid[row][col].char = main.t_selChars[i].char
 		t_grid[row][col].hidden = main.t_selChars[i].hidden
@@ -306,29 +304,7 @@ function select.f_remapAI()
 		else
 			setCom(1, select.f_difficulty(1, offset))
 		end
-	elseif p1TeamMode == 2 then --Turns
-		for i = 1, p1NumChars * 2 do
-			if i % 2 ~= 0 then --odd value
-				if main.p1In == 1 and not main.aiFight then
-					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
-					setCom(i, 0)
-				else
-					setCom(i, select.f_difficulty(i, offset))
-				end
-			end
-		end
-	elseif p1Tag then --p1TeamMode == 1, Tag
-		for i = 1, p1NumChars * 2 do
-			if i % 2 ~= 0 then --odd value
-				if main.p1In == 1 and not main.aiFight then
-					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
-					setCom(i, 0)
-				else
-					setCom(i, select.f_difficulty(i, offset))
-				end
-			end
-		end
-	else --p1TeamMode == 1, Simul
+	elseif p1TeamMode == 1 and config.SimulMode then --Simul
 		if main.p1In == 1 and not main.aiFight then
 			setCom(1, 0)
 		else
@@ -340,6 +316,28 @@ function select.f_remapAI()
 				setCom(i, select.f_difficulty(i, offset))
 			end
 		end
+	elseif p1TeamMode == 2 then --Turns
+		for i = 1, p1NumChars * 2 do
+			if i % 2 ~= 0 then --odd value
+				if main.p1In == 1 and not main.aiFight then
+					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
+					setCom(i, 0)
+				else
+					setCom(i, select.f_difficulty(i, offset))
+				end
+			end
+		end
+	else --p1TeamMode == 3 or (p1TeamMode == 1 and not config.SimulMode) --Tag
+		for i = 1, p1NumChars * 2 do
+			if i % 2 ~= 0 then --odd value
+				if main.p1In == 1 and not main.aiFight then
+					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
+					setCom(i, 0)
+				else
+					setCom(i, select.f_difficulty(i, offset))
+				end
+			end
+		end
 	end
 	--Player 2
 	if p2TeamMode == 0 then --Single
@@ -347,6 +345,18 @@ function select.f_remapAI()
 			setCom(2, 0)
 		else
 			setCom(2, select.f_difficulty(2, offset))
+		end
+	elseif p2TeamMode == 1 and config.SimulMode then --Simul
+		if main.p2In == 2 and not main.aiFight and not main.coop then
+			setCom(2, 0)
+		else
+			setCom(2, select.f_difficulty(2, offset))
+		end
+		for i = 4, p2NumChars * 2 do
+			if i % 2 == 0 then --even value
+				select.f_remapInput(i, 2) --P4/6/8 character uses P2 controls
+				setCom(i, select.f_difficulty(i, offset))
+			end
 		end
 	elseif p2TeamMode == 2 then --Turns
 		for i = 2, p2NumChars * 2 do
@@ -359,7 +369,7 @@ function select.f_remapAI()
 				end
 			end
 		end
-	elseif p2Tag then --p2TeamMode == 1, Tag
+	else --p2TeamMode == 3 or (p2TeamMode == 1 and not config.SimulMode) --Tag
 		for i = 2, p2NumChars * 2 do
 			if i % 2 == 0 then --even value
 				if main.p2In == 2 and not main.aiFight and not main.coop then
@@ -368,18 +378,6 @@ function select.f_remapAI()
 				else
 					setCom(i, select.f_difficulty(i, offset))
 				end
-			end
-		end
-	else --p2TeamMode == 1, Simul
-		if main.p2In == 2 and not main.aiFight and not main.coop then
-			setCom(2, 0)
-		else
-			setCom(2, select.f_difficulty(2, offset))
-		end
-		for i = 4, p2NumChars * 2 do
-			if i % 2 == 0 then --even value
-				select.f_remapInput(i, 2) --P4/6/8 character uses P2 controls
-				setCom(i, select.f_difficulty(i, offset))
 			end
 		end
 	end
@@ -462,21 +460,23 @@ function select.f_setStage()
 		else
 			zoom = false
 		end
-	elseif main.t_selStages[stageNo].zoom ~= nil then --zoom assigned as stage param
+	elseif main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo].zoom ~= nil then --zoom assigned as stage param
 		if main.t_selStages[stageNo].zoom == 1 then
 			zoom = true
 		else
 			zoom = false
 		end
 	end
-	if main.t_selStages[stageNo].zoommin ~= nil then
-		zoomMin = main.t_selStages[stageNo].zoommin
-	end
-	if main.t_selStages[stageNo].zoommax ~= nil then
-		zoomMax = main.t_selStages[stageNo].zoommax
-	end
-	if main.t_selStages[stageNo].zoomspeed ~= nil then
-		zoomSpeed = main.t_selStages[stageNo].zoomspeed
+	if main.t_selStages[stageNo] ~= nil then
+		if main.t_selStages[stageNo].zoommin ~= nil then
+			zoomMin = main.t_selStages[stageNo].zoommin
+		end
+		if main.t_selStages[stageNo].zoommax ~= nil then
+			zoomMax = main.t_selStages[stageNo].zoommax
+		end
+		if main.t_selStages[stageNo].zoomspeed ~= nil then
+			zoomSpeed = main.t_selStages[stageNo].zoomspeed
+		end
 	end
 	setZoom(zoom)
 	setZoomMin(zoomMin)
@@ -491,7 +491,7 @@ function select.f_setStage()
 		local loopstart = 0
 		local loopend = 0
 		if main.stageMenu then
-			if main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
+			if main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
@@ -511,7 +511,7 @@ function select.f_setStage()
 				volume = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmvolume
 				loopstart = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopstart
 				loopend = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopend
-			elseif main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
+			elseif main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
 				track = math.random(1, #main.t_selStages[stageNo][t[i]])
 				music = main.t_selStages[stageNo][t[i]][track].bgmusic
 				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
@@ -569,6 +569,32 @@ function select.f_selectPal(cell)
 	return select.f_reampPal(cell, main.t_selChars[cell + 1].pal_defaults[1])
 end
 
+--Team modes enabling (also called from withing options screen)
+function select.f_getTeamMenu()
+	local t = {}
+	--Single mode check
+	if config.SingleTeamMode == true then
+		table.insert(t, {data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single})
+	end
+	if config.SimulMode then --Simul mode enabled
+		--Simul mode check
+		if config.NumSimul > 1 then
+			table.insert(t, {data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul})
+		end
+		--Tag mode check
+		if config.NumTag > 1 then
+			table.insert(t, {data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag})
+		end
+	elseif config.NumTag > 1 then --Legacy Tag mode enabled
+		table.insert(t, {data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_tag})
+	end
+	--Turns mode check
+	if config.NumTurns > 1 then
+		table.insert(t, {data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns})
+	end
+	return t
+end
+
 function select.f_overwriteCharData()
 	--for now only survival mode uses this function
 	if not gameMode('survival') and not gameMode('survivalcoop') and not gameMode('netplaysurvivalcoop') then
@@ -624,7 +650,7 @@ function select.f_overwriteCharData()
 		end
 	end
 	if removedNum > 0 then
-		setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+		setTeamMode(1, p1TeamMode, p1NumChars)
 	end
 end
 
@@ -692,7 +718,7 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 	local tmpRow = rowOffset
 	local found = false
 	if commandGetState(cmd, 'u') then
-		for i = 1, motif.select_info.rows do
+		for i = 1, motif.select_info.rows + motif.select_info.rows_scrolling do
 			selY = selY - 1
 			if selY < 0 then
 				if wrappingY then
@@ -718,7 +744,7 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 			end
 		end
 	elseif commandGetState(cmd, 'd') then
-		for i = 1, motif.select_info.rows do
+		for i = 1, motif.select_info.rows + motif.select_info.rows_scrolling do
 			selY = selY + 1
 			if selY >= motif.select_info.rows + motif.select_info.rows_scrolling then
 				if wrappingY then
@@ -773,15 +799,18 @@ function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 		end
 	end
 	if tmpX ~= selX or tmpY ~= selY then
-		if tmpRow ~= rowOffset then
-			select.f_resetGrid()
-		end
+		resetgrid = true
+		--if tmpRow ~= rowOffset then
+			--select.f_resetGrid()
+		--end
 		sndPlay(motif.files.snd_data, snd[1], snd[2])
 	end
 	return selX, selY, faceOffset, rowOffset
 end
 
 function select.f_searchEmptyBoxes(direction, x, y)
+	local selX = x
+	local selY = y
 	local tmpX = x
 	local found = false
 	if direction > 0 then --right
@@ -821,15 +850,33 @@ function select.f_resetGrid()
 	select.t_drawFace = {}
 	for row = 1, motif.select_info.rows do
 		for col = 1, motif.select_info.columns do
+			-- Note to anyone editing this function:
+			-- The "elseif" chain is important if a "end" is added in the middle it could break the character icon display.
+			
+			--1Pのランダムセル表示位置 / 1P random cell display position
 			if t_grid[row + p1RowOffset][col].char == 'randomselect' or t_grid[row + p1RowOffset][col].hidden == 3 then
 				table.insert(select.t_drawFace, {d = 1, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
+			--1Pのキャラ表示位置 / 1P character display position
 			elseif t_grid[row + p1RowOffset][col].char ~= nil and t_grid[row + p1RowOffset][col].hidden == 0 then
 				table.insert(select.t_drawFace, {d = 2, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
+			--Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
 				table.insert(select.t_drawFace, {d = 0, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
 			end
+			
+			--2Pのランダムセル表示位置 / 2P random cell display position
+			if t_grid[row + p2RowOffset][col].char == 'randomselect' or t_grid[row + p2RowOffset][col].hidden == 3 then
+				table.insert(select.t_drawFace, {d = 11, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y}		)
+			--2Pのキャラ表示位置 / 2P character display position
+			elseif t_grid[row + p2RowOffset][col].char ~= nil and t_grid[row + p2RowOffset][col].hidden == 0 then
+				table.insert(select.t_drawFace, {d = 12, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
+			--Empty boxes display position
+			elseif motif.select_info.showemptyboxes == 1 then
+				table.insert(select.t_drawFace, {d = 10, p1 = t_grid[row + p1RowOffset][col].num, p2 = t_grid[row + p2RowOffset][col].num, x1 = p1FaceX + t_grid[row][col].x, x2 = p2FaceX + t_grid[row][col].x, y1 = p1FaceY + t_grid[row][col].y, y2 = p2FaceY + t_grid[row][col].y})
+			end
 		end
 	end
+	main.f_printTable(select.t_drawFace, 'debug/t_drawFace.txt')
 end
 
 function select.f_selectReset()
@@ -948,6 +995,7 @@ function select.f_selectArranged()
 	stageList = 0
 	main.f_cmdInput()
 	select.f_selectReset()
+	local t_enemySelected = {}
 	while true do
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
@@ -967,9 +1015,9 @@ function select.f_selectArranged()
 			if main.coop then
 				p1TeamMode = 1
 				p1NumChars = 2
-				p1Tag = false
-				setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+				setTeamMode(1, p1TeamMode, p1NumChars)
 				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
 			--generate roster
 			select.f_makeRoster()
@@ -1063,6 +1111,7 @@ function select.f_selectArranged()
 			else
 				matchNo = matchNo + 1
 				currentRosterIndex = currentRosterIndex + 1
+				t_p2Selected = {}
 			end
 		--player lost
 		else
@@ -1082,15 +1131,27 @@ function select.f_selectArranged()
 			resetRemapInput()
 			return
 		end
-		--assign enemy team
-		t_p2Selected = {}
-		local shuffle = true
-		for i = 1, p2NumChars do
-			p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
-			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
-			if shuffle then
-				main.f_shuffleTable(t_p2Selected)
+		--coop swap
+		if main.coop then
+			if winner == -1 or winner == 2 then
+				p1NumChars = 2
+				p2NumChars = numChars
+				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
+		end
+		--assign enemy team
+		--t_p2Selected = {}
+		if #t_p2Selected == 0 then
+			local shuffle = true
+			for i = 1, p2NumChars do
+				p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
+				table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
+				if shuffle then
+					main.f_shuffleTable(t_p2Selected)
+				end
+			end
+			t_enemySelected = t_p2Selected
 		end
 		--fight initialization
 		setMatchNo(matchNo)
@@ -1126,6 +1187,7 @@ function select.f_selectArcade()
 	main.f_cmdInput()
 	select.f_selectReset()
 	stageEnd = true
+	local t_enemySelected = {}
 	while true do
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
@@ -1145,9 +1207,9 @@ function select.f_selectArcade()
 			if main.coop then
 				p1TeamMode = 1
 				p1NumChars = 2
-				p1Tag = false
-				setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+				setTeamMode(1, p1TeamMode, p1NumChars)
 				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
 			--generate roster
 			select.f_makeRoster()
@@ -1218,6 +1280,7 @@ function select.f_selectArcade()
 				matchNo = matchNo + 1
 				currentRosterIndex = currentRosterIndex + 1
 				continueStage = false
+				t_p2Selected = {}
 			end
 		--player lost and doesn't have any credits left
 		elseif main.credits == 0 then
@@ -1297,22 +1360,26 @@ function select.f_selectArcade()
 				p1NumChars = 2
 				p2NumChars = numChars
 				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+				t_p2Selected = t_enemySelected
 			end
 		end
 		--assign enemy team
-		t_p2Selected = {}
-		local shuffle = true
-		for i = 1, p2NumChars do
-			if i == 1 and select.f_rivalsMatch('char_ref') then --enemy assigned as rivals param
-				p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
-				shuffle = false
-			else
-				p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
+		--t_p2Selected = {}
+		if #t_p2Selected == 0 then
+			local shuffle = true
+			for i = 1, p2NumChars do
+				if i == 1 and select.f_rivalsMatch('char_ref') then --enemy assigned as rivals param
+					p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
+					shuffle = false
+				else
+					p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
+				end
+				table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
+				if shuffle then
+					main.f_shuffleTable(t_p2Selected)
+				end
 			end
-			table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
-			if shuffle then
-				main.f_shuffleTable(t_p2Selected)
-			end
+			t_enemySelected = t_p2Selected
 		end
 		--Team conversion to Single match if onlyme paramvalue on any opponents is detected
 		if p2NumChars > 1 then
@@ -1328,11 +1395,9 @@ function select.f_selectArcade()
 				if onlyme then
 					teamMode = p2TeamMode
 					numChars = p2NumChars
-					tag = p2Tag
 					p2TeamMode = 0
 					p2NumChars = 1
-					p2Tag = false
-					setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
+					setTeamMode(2, p2TeamMode, p2NumChars)
 					t_p2Selected = {}
 					t_p2Selected[1] = {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = true}
 					restoreTeam = true
@@ -1354,8 +1419,7 @@ function select.f_selectArcade()
 		if restoreTeam then
 			p2TeamMode = teamMode
 			p2NumChars = numChars
-			p2Tag = tag
-			setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
+			setTeamMode(2, p2TeamMode, p2NumChars)
 			restoreTeam = false
 		end
 		--here comes a new challenger
@@ -1553,8 +1617,8 @@ function select.f_selectScreen()
 			motif.select_info.p1_face_offset[1],
 			motif.select_info.p1_face_offset[2],
 			motif.select_info.p1_face_facing,
-			motif.select_info.p1_face_scale[1] * motif.info.portrait_scale[2],
-			motif.select_info.p1_face_scale[2] * motif.info.portrait_scale[2],
+			motif.select_info.p1_face_scale[1],
+			motif.select_info.p1_face_scale[2],
 			motif.select_info.p1_face_spacing[1],
 			motif.select_info.p1_face_spacing[2],
 			#t_portrait,
@@ -1588,8 +1652,8 @@ function select.f_selectScreen()
 			motif.select_info.p2_face_offset[1],
 			motif.select_info.p2_face_offset[2],
 			motif.select_info.p2_face_facing,
-			motif.select_info.p2_face_scale[1] * motif.info.portrait_scale[2],
-			motif.select_info.p2_face_scale[2] * motif.info.portrait_scale[2],
+			motif.select_info.p2_face_scale[1],
+			motif.select_info.p2_face_scale[2],
 			motif.select_info.p2_face_spacing[1],
 			motif.select_info.p2_face_spacing[2],
 			#t_portrait,
@@ -1598,18 +1662,27 @@ function select.f_selectScreen()
 	end
 	--draw cell art (slow for large rosters, this will be likely moved to 'drawFace' function in future)
 	for i = 1, #select.t_drawFace do
-		main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1) --draw cell background
+		-- Let's check if is on the P1 side before drawing the background.
+		if select.t_drawFace[i].d == 1 or select.t_drawFace[i].d == 2 or select.t_drawFace[i].d == 0 then
+			main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1) --draw cell background
+		end
+		
 		if select.t_drawFace[i].d == 1 then --draw random cell
 			main.f_animPosDraw(motif.select_info.cell_random_data, select.t_drawFace[i].x1, select.t_drawFace[i].y1)
 		elseif select.t_drawFace[i].d == 2 then --draw face cell
-			drawSmallPortrait(select.t_drawFace[i].p1, select.t_drawFace[i].x1, select.t_drawFace[i].y1, motif.select_info.portrait_scale[1] * motif.info.portrait_scale[2], motif.select_info.portrait_scale[2] * motif.info.portrait_scale[2])
+			drawSmallPortrait(select.t_drawFace[i].p1, select.t_drawFace[i].x1, select.t_drawFace[i].y1, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
 		end
-		if main.p2Faces and motif.select_info.double_select == 1 then --P2 side grid enabled
-			main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2) --draw cell background
-			if select.t_drawFace[i].d == 1 then --draw random cell
+		--P2 side grid enabled
+		if main.p2Faces and motif.select_info.double_select == 1 then
+			-- Let's check if is on the P2 side before drawing the background.
+			if select.t_drawFace[i].d == 11 or select.t_drawFace[i].d == 12 or select.t_drawFace[i].d == 10 then 
+				main.f_animPosDraw(motif.select_info.cell_bg_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2) --draw cell background
+			end
+
+			if select.t_drawFace[i].d == 11 then --draw random cell
 				main.f_animPosDraw(motif.select_info.cell_random_data, select.t_drawFace[i].x2, select.t_drawFace[i].y2)
-			elseif select.t_drawFace[i].d == 2 then --draw face cell
-				drawSmallPortrait(select.t_drawFace[i].p2, select.t_drawFace[i].x2, select.t_drawFace[i].y2, motif.select_info.portrait_scale[1] * motif.info.portrait_scale[2], motif.select_info.portrait_scale[2] * motif.info.portrait_scale[2])
+			elseif select.t_drawFace[i].d == 12 then --draw face cell
+				drawSmallPortrait(select.t_drawFace[i].p2, select.t_drawFace[i].x2, select.t_drawFace[i].y2, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
 			end
 		end
 	end
@@ -1758,13 +1831,9 @@ local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_enemytitle_font[7],
 	motif.select_info.p1_teammenu_enemytitle_font[8]
 )
-local t_p1TeamMenu = {
-	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-	{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-	{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-	{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag},
-}
-t_p1TeamMenu = main.f_cleanTable(t_p1TeamMenu, main.t_sort.select_info)
+
+select.t_p1TeamMenu = select.f_getTeamMenu()
+select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
 
 local p1TeamActiveCount = 0
 local p1TeamActiveFont = 'p1_teammenu_item_active_font'
@@ -1773,8 +1842,7 @@ function select.f_p1TeamMenu()
 	if main.p1TeamMenu ~= nil then --Predefined team
 		p1TeamMode = main.p1TeamMenu.mode
 		p1NumChars = main.p1TeamMenu.chars
-		p1Tag = main.p1TeamMenu.tag
-		setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+		setTeamMode(1, p1TeamMode, p1NumChars)
 		p1TeamEnd = true
 	else
 		--Calculate team cursor position
@@ -1784,17 +1852,17 @@ function select.f_p1TeamMenu()
 				p1TeamMenu = p1TeamMenu - 1
 			elseif motif.select_info.teammenu_move_wrapping == 1 then
 				sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_move_snd[1], motif.select_info.p1_teammenu_move_snd[2])
-				p1TeamMenu = #t_p1TeamMenu
+				p1TeamMenu = #select.t_p1TeamMenu
 			end
 		elseif commandGetState(main.p1Cmd, 'd') then
-			if p1TeamMenu + 1 <= #t_p1TeamMenu then
+			if p1TeamMenu + 1 <= #select.t_p1TeamMenu then
 				sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_move_snd[1], motif.select_info.p1_teammenu_move_snd[2])
 				p1TeamMenu = p1TeamMenu + 1
 			elseif motif.select_info.teammenu_move_wrapping == 1 then
 				sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_move_snd[1], motif.select_info.p1_teammenu_move_snd[2])
 				p1TeamMenu = 1
 			end
-		elseif t_p1TeamMenu[p1TeamMenu].itemname == 'simul' then
+		elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'simul' then
 			if commandGetState(main.p1Cmd, 'l') then
 				if p1NumSimul - 1 >= 2 then
 					sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_value_snd[1], motif.select_info.p1_teammenu_value_snd[2])
@@ -1806,7 +1874,7 @@ function select.f_p1TeamMenu()
 					p1NumSimul = p1NumSimul + 1
 				end
 			end
-		elseif t_p1TeamMenu[p1TeamMenu].itemname == 'turns' then
+		elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'turns' then
 			if commandGetState(main.p1Cmd, 'l') then
 				if p1NumTurns - 1 >= 1 then
 					sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_value_snd[1], motif.select_info.p1_teammenu_value_snd[2])
@@ -1818,7 +1886,7 @@ function select.f_p1TeamMenu()
 					p1NumTurns = p1NumTurns + 1
 				end
 			end
-		elseif t_p1TeamMenu[p1TeamMenu].itemname == 'tag' then
+		elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'tag' then
 			if commandGetState(main.p1Cmd, 'l') then
 				if p1NumTag - 1 >= 2 then
 					sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_value_snd[1], motif.select_info.p1_teammenu_value_snd[2])
@@ -1844,7 +1912,7 @@ function select.f_p1TeamMenu()
 		animUpdate(motif.select_info.p1_teammenu_selftitle_data)
 		animDraw(motif.select_info.p1_teammenu_selftitle_data)
 		textImgDraw(txt_p1TeamSelfTitle)
-		for i = 1, #t_p1TeamMenu do
+		for i = 1, #select.t_p1TeamMenu do
 			if i == p1TeamMenu then
 				if p1TeamActiveCount < 2 then --delay change
 					p1TeamActiveCount = p1TeamActiveCount + 1
@@ -1857,11 +1925,11 @@ function select.f_p1TeamMenu()
 				end
 				--Draw team active font
 				textImgDraw(main.f_updateTextImg(
-					t_p1TeamMenu[i].data,
+					select.t_p1TeamMenu[i].data,
 					motif.font_data[motif.select_info[p1TeamActiveFont][1]],
 					motif.select_info[p1TeamActiveFont][2],
 					motif.select_info[p1TeamActiveFont][3], --p1_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
-					t_p1TeamMenu[i].displayname,
+					select.t_p1TeamMenu[i].displayname,
 					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
 					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
 					motif.select_info[p1TeamActiveFont .. '_scale'][1],
@@ -1875,11 +1943,11 @@ function select.f_p1TeamMenu()
 			else
 				--Draw team not active font
 				textImgDraw(main.f_updateTextImg(
-					t_p1TeamMenu[i].data,
+					select.t_p1TeamMenu[i].data,
 					motif.font_data[motif.select_info.p1_teammenu_item_font[1]],
 					motif.select_info.p1_teammenu_item_font[2],
 					motif.select_info.p1_teammenu_item_font[3],
-					t_p1TeamMenu[i].displayname,
+					select.t_p1TeamMenu[i].displayname,
 					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
 					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
 					motif.select_info.p1_teammenu_item_font_scale[1],
@@ -1892,7 +1960,7 @@ function select.f_p1TeamMenu()
 				))
 			end
 			--Draw team icons
-			if t_p1TeamMenu[i].itemname == 'simul' then
+			if select.t_p1TeamMenu[i].itemname == 'simul' then
 				for j = 1, config.NumSimul do
 					if j <= p1NumSimul then
 						main.f_animPosDraw(
@@ -1908,7 +1976,7 @@ function select.f_p1TeamMenu()
 						)
 					end
 				end
-			elseif t_p1TeamMenu[i].itemname == 'turns' then
+			elseif select.t_p1TeamMenu[i].itemname == 'turns' then
 				for j = 1, config.NumTurns do
 					if j <= p1NumTurns then
 						main.f_animPosDraw(
@@ -1924,7 +1992,7 @@ function select.f_p1TeamMenu()
 						)
 					end
 				end
-			elseif t_p1TeamMenu[i].itemname == 'tag' then
+			elseif select.t_p1TeamMenu[i].itemname == 'tag' then
 				for j = 1, config.NumTag do
 					if j <= p1NumTag then
 						main.f_animPosDraw(
@@ -1945,28 +2013,20 @@ function select.f_p1TeamMenu()
 		--Confirmed team selection
 		if main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.select_info.p1_teammenu_done_snd[1], motif.select_info.p1_teammenu_done_snd[2])
-			if t_p1TeamMenu[p1TeamMenu].itemname == 'single' then
+			if select.t_p1TeamMenu[p1TeamMenu].itemname == 'single' then
 				p1TeamMode = 0
 				p1NumChars = 1
-				p1Tag = false
-			elseif t_p1TeamMenu[p1TeamMenu].itemname == 'simul' then
+			elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'simul' then
 				p1TeamMode = 1
 				p1NumChars = p1NumSimul
-				if motif.select_info.teammenu_itemname_tag == '' and not config.SimulMode then
-					p1Tag = true
-				else
-					p1Tag = false
-				end
-			elseif t_p1TeamMenu[p1TeamMenu].itemname == 'turns' then
+			elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'turns' then
 				p1TeamMode = 2
 				p1NumChars = p1NumTurns
-				p1Tag = false
-			elseif t_p1TeamMenu[p1TeamMenu].itemname == 'tag' then
-				p1TeamMode = 1
+			elseif select.t_p1TeamMenu[p1TeamMenu].itemname == 'tag' then
+				p1TeamMode = 3
 				p1NumChars = p1NumTag
-				p1Tag = true
 			end
-			setTeamMode(1, p1TeamMode, p1NumChars, p1Tag)
+			setTeamMode(1, p1TeamMode, p1NumChars)
 			p1TeamEnd = true
 			main.f_cmdInput()
 		end
@@ -2006,13 +2066,9 @@ local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_enemytitle_font[7],
 	motif.select_info.p2_teammenu_enemytitle_font[8]
 )
-local t_p2TeamMenu = {
-	{data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single},
-	{data = textImgNew(), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul},
-	{data = textImgNew(), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns},
-	{data = textImgNew(), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag},
-}
-t_p2TeamMenu = main.f_cleanTable(t_p2TeamMenu, main.t_sort.select_info)
+
+select.t_p2TeamMenu = select.f_getTeamMenu()
+select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 
 local p2TeamActiveCount = 0
 local p2TeamActiveFont = 'p2_teammenu_item_active_font'
@@ -2021,8 +2077,7 @@ function select.f_p2TeamMenu()
 	if main.p2TeamMenu ~= nil then --Predefined team
 		p2TeamMode = main.p2TeamMenu.mode
 		p2NumChars = main.p2TeamMenu.chars
-		p2Tag = main.p2TeamMenu.tag
-		setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
+		setTeamMode(2, p2TeamMode, p2NumChars)
 		p2TeamEnd = true
 	else
 		--Command swap
@@ -2037,17 +2092,17 @@ function select.f_p2TeamMenu()
 				p2TeamMenu = p2TeamMenu - 1
 			elseif motif.select_info.teammenu_move_wrapping == 1 then
 				sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_move_snd[1], motif.select_info.p2_teammenu_move_snd[2])
-				p2TeamMenu = #t_p2TeamMenu
+				p2TeamMenu = #select.t_p2TeamMenu
 			end
 		elseif commandGetState(cmd, 'd') then
-			if p2TeamMenu + 1 <= #t_p2TeamMenu then
+			if p2TeamMenu + 1 <= #select.t_p2TeamMenu then
 				sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_move_snd[1], motif.select_info.p2_teammenu_move_snd[2])
 				p2TeamMenu = p2TeamMenu + 1
 			elseif motif.select_info.teammenu_move_wrapping == 1 then
 				sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_move_snd[1], motif.select_info.p2_teammenu_move_snd[2])
 				p2TeamMenu = 1
 			end
-		elseif t_p2TeamMenu[p2TeamMenu].itemname == 'simul' then
+		elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'simul' then
 			if commandGetState(cmd, 'r') then
 				if p2NumSimul - 1 >= 2 then
 					sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_value_snd[1], motif.select_info.p2_teammenu_value_snd[2])
@@ -2059,7 +2114,7 @@ function select.f_p2TeamMenu()
 					p2NumSimul = p2NumSimul + 1
 				end
 			end
-		elseif t_p2TeamMenu[p2TeamMenu].itemname == 'turns' then
+		elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'turns' then
 			if commandGetState(cmd, 'r') then
 				if p2NumTurns - 1 >= 1 then
 					sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_value_snd[1], motif.select_info.p2_teammenu_value_snd[2])
@@ -2071,7 +2126,7 @@ function select.f_p2TeamMenu()
 					p2NumTurns = p2NumTurns + 1
 				end
 			end
-		elseif t_p2TeamMenu[p2TeamMenu].itemname == 'tag' then
+		elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'tag' then
 			if commandGetState(cmd, 'r') then
 				if p2NumTag - 1 >= 2 then
 					sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_value_snd[1], motif.select_info.p2_teammenu_value_snd[2])
@@ -2103,7 +2158,7 @@ function select.f_p2TeamMenu()
 			animDraw(motif.select_info.p2_teammenu_selftitle_data)
 			textImgDraw(txt_p2TeamSelfTitle)
 		end
-		for i = 1, #t_p2TeamMenu do
+		for i = 1, #select.t_p2TeamMenu do
 			if i == p2TeamMenu then
 				if p2TeamActiveCount < 2 then --delay change
 					p2TeamActiveCount = p2TeamActiveCount + 1
@@ -2116,11 +2171,11 @@ function select.f_p2TeamMenu()
 				end
 				--Draw team active font
 				textImgDraw(main.f_updateTextImg(
-					t_p2TeamMenu[i].data,
+					select.t_p2TeamMenu[i].data,
 					motif.font_data[motif.select_info[p2TeamActiveFont][1]],
 					motif.select_info[p2TeamActiveFont][2],
 					motif.select_info[p2TeamActiveFont][3], --p2_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
-					t_p2TeamMenu[i].displayname,
+					select.t_p2TeamMenu[i].displayname,
 					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
 					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
 					motif.select_info[p2TeamActiveFont .. '_scale'][1],
@@ -2134,11 +2189,11 @@ function select.f_p2TeamMenu()
 			else
 				--Draw team not active font
 				textImgDraw(main.f_updateTextImg(
-					t_p2TeamMenu[i].data,
+					select.t_p2TeamMenu[i].data,
 					motif.font_data[motif.select_info.p2_teammenu_item_font[1]],
 					motif.select_info.p2_teammenu_item_font[2],
 					motif.select_info.p2_teammenu_item_font[3],
-					t_p2TeamMenu[i].displayname,
+					select.t_p2TeamMenu[i].displayname,
 					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
 					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
 					motif.select_info.p2_teammenu_item_font_scale[1],
@@ -2151,7 +2206,7 @@ function select.f_p2TeamMenu()
 				))
 			end
 			--Draw team icons
-			if t_p2TeamMenu[i].itemname == 'simul' then
+			if select.t_p2TeamMenu[i].itemname == 'simul' then
 				for j = 1, config.NumSimul do
 					if j <= p2NumSimul then
 						main.f_animPosDraw(
@@ -2167,7 +2222,7 @@ function select.f_p2TeamMenu()
 						)
 					end
 				end
-			elseif t_p2TeamMenu[i].itemname == 'turns' then
+			elseif select.t_p2TeamMenu[i].itemname == 'turns' then
 				for j = 1, config.NumTurns do
 					if j <= p2NumTurns then
 						main.f_animPosDraw(
@@ -2183,7 +2238,7 @@ function select.f_p2TeamMenu()
 						)
 					end
 				end
-			elseif t_p2TeamMenu[i].itemname == 'tag' then
+			elseif select.t_p2TeamMenu[i].itemname == 'tag' then
 				for j = 1, config.NumTag do
 					if j <= p2NumTag then
 						main.f_animPosDraw(
@@ -2204,28 +2259,20 @@ function select.f_p2TeamMenu()
 		--Confirmed team selection
 		if main.f_btnPalNo(cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.select_info.p2_teammenu_done_snd[1], motif.select_info.p2_teammenu_done_snd[2])
-			if t_p2TeamMenu[p2TeamMenu].itemname == 'single' then
+			if select.t_p2TeamMenu[p2TeamMenu].itemname == 'single' then
 				p2TeamMode = 0
 				p2NumChars = 1
-				p2Tag = false
-			elseif t_p2TeamMenu[p2TeamMenu].itemname == 'simul' then
+			elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'simul' then
 				p2TeamMode = 1
 				p2NumChars = p2NumSimul
-				if motif.select_info.teammenu_itemname_tag == '' and not config.SimulMode then
-					p2Tag = true
-				else
-					p2Tag = false
-				end
-			elseif t_p2TeamMenu[p2TeamMenu].itemname == 'turns' then
+			elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'turns' then
 				p2TeamMode = 2
 				p2NumChars = p2NumTurns
-				p2Tag = false
-			elseif t_p2TeamMenu[p2TeamMenu].itemname == 'tag' then
-				p2TeamMode = 1
+			elseif select.t_p2TeamMenu[p2TeamMenu].itemname == 'tag' then
+				p2TeamMode = 3
 				p2NumChars = p2NumTag
-				p2Tag = true
 			end
-			setTeamMode(2, p2TeamMode, p2NumChars, p2Tag)
+			setTeamMode(2, p2TeamMode, p2NumChars)
 			p2TeamEnd = true
 			main.f_cmdInput()
 		end
@@ -2249,12 +2296,16 @@ function select.f_p1SelectMenu()
 		return
 	--manual selection
 	elseif not p1SelEnd then
+		resetgrid = false
 		--cell movement
 		p1SelX, p1SelY, p1FaceOffset, p1RowOffset = select.f_cellMovement(p1SelX, p1SelY, main.p1Cmd, p1FaceOffset, p1RowOffset, motif.select_info.p1_cursor_move_snd)
 		p1Cell = p1SelX + motif.select_info.columns * p1SelY
 		--draw active cursor
-		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)
-		local cursorY = p1FaceY + (p1SelY - p1RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing)
+		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
+		local cursorY = p1FaceY + (p1SelY - p1RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])
+		if resetgrid == true then
+			select.f_resetGrid()
+		end
 		if main.t_selChars[p1Cell + 1].hidden ~= 1 then
 			main.f_animPosDraw(motif.select_info.p1_cursor_active_data, cursorX, cursorY)
 		end
@@ -2300,12 +2351,16 @@ function select.f_p2SelectMenu()
 		return
 	--manual selection
 	elseif not p2SelEnd then
+		resetgrid = false
 		--cell movement
 		p2SelX, p2SelY, p2FaceOffset, p2RowOffset = select.f_cellMovement(p2SelX, p2SelY, main.p2Cmd, p2FaceOffset, p2RowOffset, motif.select_info.p2_cursor_move_snd)
 		p2Cell = p2SelX + motif.select_info.columns * p2SelY
 		--draw active cursor
-		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing)
-		local cursorY = p2FaceY + (p2SelY - p2RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing)
+		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
+		local cursorY = p2FaceY + (p2SelY - p2RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])
+		if resetgrid == true then
+			select.f_resetGrid()
+		end
 		main.f_animPosDraw(motif.select_info.p2_cursor_active_data, cursorX, cursorY)
 		--cell selected
 		if main.f_btnPalNo(main.p2Cmd) > 0 and main.t_selChars[p2Cell + 1].char ~= nil and main.t_selChars[p2Cell + 1].hidden ~= 2 and #main.t_randomChars > 0 then
@@ -2361,8 +2416,8 @@ function select.f_stageMenu()
 			stageList,
 			motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
 			motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2],
-			--[[motif.select_info.stage_portrait_facing * ]]motif.select_info.stage_portrait_scale[1] * motif.info.portrait_scale[2],
-			motif.select_info.stage_portrait_scale[2] * motif.info.portrait_scale[2]
+			--[[motif.select_info.stage_portrait_facing * ]]motif.select_info.stage_portrait_scale[1],
+			motif.select_info.stage_portrait_scale[2]
 		)
 	end
 	if main.f_btnPalNo(main.p1Cmd) > 0 then
@@ -2652,8 +2707,8 @@ function select.f_selectVersus()
 				motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1],
 				motif.vs_screen.p1_pos[2] + motif.vs_screen.p1_offset[2],
 				motif.vs_screen.p1_facing,
-				motif.vs_screen.p1_scale[1] * motif.info.portrait_scale[2],
-				motif.vs_screen.p1_scale[2] * motif.info.portrait_scale[2],
+				motif.vs_screen.p1_scale[1],
+				motif.vs_screen.p1_scale[2],
 				motif.vs_screen.p1_spacing[1],
 				motif.vs_screen.p1_spacing[2],
 				motif.vs_screen.p1_num,
@@ -2664,8 +2719,8 @@ function select.f_selectVersus()
 				motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1],
 				motif.vs_screen.p2_pos[2] + motif.vs_screen.p2_offset[2],
 				motif.vs_screen.p2_facing,
-				motif.vs_screen.p2_scale[1] * motif.info.portrait_scale[2],
-				motif.vs_screen.p2_scale[2] * motif.info.portrait_scale[2],
+				motif.vs_screen.p2_scale[1],
+				motif.vs_screen.p2_scale[2],
 				motif.vs_screen.p2_spacing[1],
 				motif.vs_screen.p2_spacing[2],
 				motif.vs_screen.p2_num,
@@ -2969,8 +3024,8 @@ function select.f_selectVictory()
 				lsn,
 				motif.victory_screen.p2_pos[1] + motif.victory_screen.p2_offset[1],
 				motif.victory_screen.p2_pos[2] + motif.victory_screen.p2_offset[2],
-				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1] * motif.info.portrait_scale[2],
-				motif.victory_screen.p2_scale[2] * motif.info.portrait_scale[2]
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1],
+				motif.victory_screen.p2_scale[2]
 			)
 		end
 		if motif.victory_screen.winner_team_enabled == 1 then
@@ -2979,8 +3034,8 @@ function select.f_selectVictory()
 					t[n],
 					motif.victory_screen['t' .. n .. '_pos'][1] + motif.victory_screen['t' .. n .. '_offset'][1],
 					motif.victory_screen['t' .. n .. '_pos'][2] + motif.victory_screen['t' .. n .. '_offset'][2],
-					motif.victory_screen['t' .. n .. '_facing'] * motif.victory_screen['t' .. n .. '_scale'][1] * motif.info.portrait_scale[2],
-					motif.victory_screen['t' .. n .. '_scale'][2] * motif.info.portrait_scale[2]
+					motif.victory_screen['t' .. n .. '_facing'] * motif.victory_screen['t' .. n .. '_scale'][1],
+					motif.victory_screen['t' .. n .. '_scale'][2]
 				)
 			end
 		end
@@ -2988,8 +3043,8 @@ function select.f_selectVictory()
 			wsn,
 			motif.victory_screen.p1_pos[1] + motif.victory_screen.p1_offset[1],
 			motif.victory_screen.p1_pos[2] + motif.victory_screen.p1_offset[2],
-			motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1] * motif.info.portrait_scale[2],
-			motif.victory_screen.p1_scale[2] * motif.info.portrait_scale[2]
+			motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
+			motif.victory_screen.p1_scale[2]
 		)
 		--draw winner's name
 		textImgDraw(txt_p1_winquoteName)
