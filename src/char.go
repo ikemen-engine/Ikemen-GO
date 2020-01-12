@@ -1366,6 +1366,7 @@ const (
 type CharGlobalInfo struct {
 	def              string
 	displayname      string
+	lifebarname      string
 	author           string
 	nameLow          string
 	authorLow        string
@@ -1667,7 +1668,7 @@ func (c *Char) ocd() *OverwriteCharData {
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.def, gi.displayname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", nil, nil, [MaxQuotes]string{}
+	gi.def, gi.displayname, gi.lifebarname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", "", nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
@@ -1694,6 +1695,10 @@ func (c *Char) load(def string) error {
 				gi.displayname, ok, _ = is.getText("displayname")
 				if !ok {
 					gi.displayname = c.name
+				}
+				gi.lifebarname, ok, _ = is.getText("lifebarname")
+				if !ok {
+					gi.lifebarname = gi.displayname
 				}
 				gi.author, _, _ = is.getText("author")
 				gi.authorLow = strings.ToLower(gi.author)

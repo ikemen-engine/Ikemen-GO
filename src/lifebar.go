@@ -1716,7 +1716,7 @@ func (l *Lifebar) draw(layerno int16) {
 		}
 		for ti, _ := range sys.tmode {
 			for i := ti; i < l.num[3][ti]; i += 2 {
-				l.nm[l.ref[3][ti]][i].draw(layerno, l.fnt[:], sys.cgi[i].displayname)
+				l.nm[l.ref[3][ti]][i].draw(layerno, l.fnt[:], sys.cgi[i].lifebarname)
 			}
 		}
 		l.ti.bgDraw(layerno)
