@@ -295,7 +295,7 @@ function select.f_remapAI()
 	end
 	--Player 1
 	if main.coop then
-		select.f_remapInput(3, 2) --P3 character uses P2 controls
+		remapInput(3, 2) --P3 character uses P2 controls
 		setCom(1, 0)
 		setCom(3, 0)
 	elseif p1TeamMode == 0 then --Single
@@ -312,7 +312,7 @@ function select.f_remapAI()
 		end
 		for i = 3, p1NumChars * 2 do
 			if i % 2 ~= 0 then --odd value
-				select.f_remapInput(i, 1) --P3/5/7 character uses P1 controls
+				remapInput(i, 1) --P3/5/7 character uses P1 controls
 				setCom(i, select.f_difficulty(i, offset))
 			end
 		end
@@ -320,7 +320,7 @@ function select.f_remapAI()
 		for i = 1, p1NumChars * 2 do
 			if i % 2 ~= 0 then --odd value
 				if main.p1In == 1 and not main.aiFight then
-					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
+					remapInput(i, 1) --P1/3/5/7 character uses P1 controls
 					setCom(i, 0)
 				else
 					setCom(i, select.f_difficulty(i, offset))
@@ -331,7 +331,7 @@ function select.f_remapAI()
 		for i = 1, p1NumChars * 2 do
 			if i % 2 ~= 0 then --odd value
 				if main.p1In == 1 and not main.aiFight then
-					select.f_remapInput(i, 1) --P1/3/5/7 character uses P1 controls
+					remapInput(i, 1) --P1/3/5/7 character uses P1 controls
 					setCom(i, 0)
 				else
 					setCom(i, select.f_difficulty(i, offset))
@@ -354,7 +354,7 @@ function select.f_remapAI()
 		end
 		for i = 4, p2NumChars * 2 do
 			if i % 2 == 0 then --even value
-				select.f_remapInput(i, 2) --P4/6/8 character uses P2 controls
+				remapInput(i, 2) --P4/6/8 character uses P2 controls
 				setCom(i, select.f_difficulty(i, offset))
 			end
 		end
@@ -362,7 +362,7 @@ function select.f_remapAI()
 		for i = 2, p2NumChars * 2 do
 			if i % 2 == 0 then --even value
 				if main.p2In == 2 and not main.aiFight and not main.coop then
-					select.f_remapInput(i, 2) --P2/4/6/8 character uses P2 controls
+					remapInput(i, 2) --P2/4/6/8 character uses P2 controls
 					setCom(i, 0)
 				else
 					setCom(i, select.f_difficulty(i, offset))
@@ -373,7 +373,7 @@ function select.f_remapAI()
 		for i = 2, p2NumChars * 2 do
 			if i % 2 == 0 then --even value
 				if main.p2In == 2 and not main.aiFight and not main.coop then
-					select.f_remapInput(i, 2) --P2/4/6/8 character uses P2 controls
+					remapInput(i, 2) --P2/4/6/8 character uses P2 controls
 					setCom(i, 0)
 				else
 					setCom(i, select.f_difficulty(i, offset))
@@ -654,15 +654,6 @@ function select.f_overwriteCharData()
 	end
 end
 
-function select.f_remapInput(player, controlChar)
-	for i = 1, #main.t_controllers.player do
-		if main.t_controllers.player[i] == controlChar then
-			remapInput(player, main.t_controllers.player[i]) 
-			break
-		end
-	end
-end
-
 function select.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spacingX, spacingY, active_font, active_row)
 	for i = 1, #t do
 		local x = offsetX
@@ -926,7 +917,7 @@ function select.f_selectReset()
 	winner = 0
 	matchNo = 0
 	setMatchNo(matchNo)
-	main.f_setController()
+	resetRemapInput()
 end
 
 --;===========================================================
@@ -1164,7 +1155,7 @@ function select.f_selectArranged()
 		loadStart()
 		winner, t_gameStats = game()
 		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
-		main.f_setController()
+		resetRemapInput()
 		main.f_cmdInput()
 		refresh()
 	end
@@ -1466,7 +1457,7 @@ function select.f_selectArcade()
 			p2Cell = p2Cell_sav
 			matchNo = matchNo_sav
 		end
-		main.f_setController()
+		resetRemapInput()
 		main.f_cmdInput()
 		refresh()
 	end

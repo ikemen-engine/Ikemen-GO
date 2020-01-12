@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -97,46 +98,26 @@ func main() {
 	"Super.TargetDefenceMul": 1.5,
 	"LifebarFontScale": 1,
 	"System": "script/main.lua",
-	"KeyConfig": [{
-      "Player": 1,
-      "Joystick": -1,
-      "Buttons": ["UP", "DOWN", "LEFT", "RIGHT", "z", "x", "c", "a", "s", "d", "RETURN", "q", "w"]
-    },
-	{
-      "Player": 2,
-      "Joystick": -1,
-      "Buttons": ["t", "g", "f", "h", "j", "k", "l", "u", "i", "o", "RSHIFT", "LEFTBRACKET", "RIGHTBRACKET"]
-    },
-	{
-      "Player": 0,
-      "Joystick": -1,
-      "Buttons": ["Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used"]
-    },
-	{
-      "Player": 0,
-      "Joystick": -1,
-      "Buttons": ["Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used", "Not used"]
-    },
-	{
-      "Player": 0,
-      "Joystick": 0,
-      "Buttons": [-3, -4, -1, -2, 0, 1, 4, 2, 3, 5, 7, -10, -12]
-    },
-	{
-      "Player": 0,
-      "Joystick": 1,
-      "Buttons": [-3, -4, -1, -2, 0, 1, 4, 2, 3, 5, 7, -10, -12]
-    },
-	{
-      "Player": 0,
-      "Joystick": 2,
-      "Buttons": [-3, -4, -1, -2, 0, 1, 4, 2, 3, 5, 7, -10, -12]
-    },
-	{
-      "Player": 0,
-      "Joystick": 3,
-      "Buttons": [-3, -4, -1, -2, 0, 1, 4, 2, 3, 5, 7, -10, -12]
-    }],
+	"KeyConfig": [
+		{
+			"Joystick": -1,
+			"Buttons": ["UP", "DOWN", "LEFT", "RIGHT", "z", "x", "c", "a", "s", "d", "RETURN", "q", "w"]
+		},
+		{
+			"Joystick": -1,
+			"Buttons": ["t", "g", "f", "h", "j", "k", "l", "u", "i", "o", "RSHIFT", "LEFTBRACKET", "RIGHTBRACKET"]
+		}
+	],
+	"JoystickConfig": [
+		{
+			"Joystick": 0,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+		},
+		{
+			"Joystick": 1,
+			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+		}
+	],
 	"ControllerStickSensitivity": 0.4,
 	"XinputTriggerSensitivity": 0,
 	"Motif": "data/system.def",
@@ -200,10 +181,14 @@ func main() {
 		LifebarFontScale       float32
 		System                 string
 		KeyConfig              []struct {
-			Player   int
 			Joystick int
 			Buttons  []interface{}
 		}
+		JoystickConfig         []struct {
+			Joystick int
+			Buttons  []interface{}
+		}
+		NumSimul                   int
 		NumTag                     int
 		TeamLifeShare              bool
 		AIRandomColor              bool
@@ -259,22 +244,39 @@ func main() {
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
-	for _, kc := range tmp.KeyConfig {
-		b := kc.Buttons
-		if kc.Joystick >= 0 {
-			sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
-				int(b[0].(float64)), int(b[1].(float64)),
-				int(b[2].(float64)), int(b[3].(float64)),
-				int(b[4].(float64)), int(b[5].(float64)), int(b[6].(float64)),
-				int(b[7].(float64)), int(b[8].(float64)), int(b[9].(float64)),
-				int(b[10].(float64)), int(b[11].(float64)), int(b[12].(float64))})
-		} else {
-			sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
-				stoki(b[0].(string)), stoki(b[1].(string)),
-				stoki(b[2].(string)), stoki(b[3].(string)),
-				stoki(b[4].(string)), stoki(b[5].(string)), stoki(b[6].(string)),
-				stoki(b[7].(string)), stoki(b[8].(string)), stoki(b[9].(string)),
-				stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
+	Atoi := func(key string) int {
+		var i int
+		i, _ = strconv.Atoi(key)
+		return i
+	}
+	Max := func(x, y int) int {
+		if x < y {
+			return y
+		}
+		return x
+	}
+	for a := 0; a < Max(tmp.NumSimul, tmp.NumTag); a++ {
+		for _, kc := range tmp.KeyConfig {
+			b := kc.Buttons
+			if kc.Joystick < 0 {
+				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
+					stoki(b[0].(string)), stoki(b[1].(string)),
+					stoki(b[2].(string)), stoki(b[3].(string)),
+					stoki(b[4].(string)), stoki(b[5].(string)), stoki(b[6].(string)),
+					stoki(b[7].(string)), stoki(b[8].(string)), stoki(b[9].(string)),
+					stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
+			}
+		}
+		for _, jc := range tmp.JoystickConfig {
+			b := jc.Buttons
+			if jc.Joystick >= 0 {
+				sys.JoystickConfig = append(sys.JoystickConfig, KeyConfig{jc.Joystick,
+					Atoi(b[0].(string)), Atoi(b[1].(string)),
+					Atoi(b[2].(string)), Atoi(b[3].(string)),
+					Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
+					Atoi(b[7].(string)), Atoi(b[8].(string)), Atoi(b[9].(string)),
+					Atoi(b[10].(string)), Atoi(b[11].(string)), Atoi(b[12].(string))})
+			}
 		}
 	}
 	

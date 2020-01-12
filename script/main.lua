@@ -21,20 +21,8 @@ config = json.decode(file:read("*all"))
 file:close()
 
 --Input stuff
-main.t_controllers = {keyboard = {}, gamepad = {}, player = {}}
-for i = 1, #config.KeyConfig do
-	table.insert(main.t_controllers.player, config.KeyConfig[i].Player)
-	if config.KeyConfig[i].Joystick == -1 then
-		table.insert(main.t_controllers.keyboard, i)
-	else
-		table.insert(main.t_controllers.gamepad, i)
-	end
-end
-
 main.p1In = 1
 main.p2In = 2
-main.p3In = 3
-main.p4In = 4
 --main.inputDialog = inputDialogNew()
 
 function main.f_setCommand(c)
@@ -74,17 +62,6 @@ main.f_setCommand(main.p4Cmd)
 function main.f_cmdInput()
 	commandInput(main.p1Cmd, main.p1In)
 	commandInput(main.p2Cmd, main.p2In)
-	commandInput(main.p3Cmd, main.p3In)
-	commandInput(main.p4Cmd, main.p4In)
-end
-
-function main.f_setController()
-	resetRemapInput()
-	for i = 1, #main.t_controllers.player do
-		if main.t_controllers.player[i] ~= 0 and i ~= main.t_controllers.player[i] then
-			remapInput(main.t_controllers.player[i], i)
-		end
-	end
 end
 
 --returns value depending on button pressed (a = 1; a + start = 7 etc.)
@@ -238,6 +215,19 @@ function main.f_getName(cell)
 		tmp = ''
 	end
 	return tmp
+end
+
+--copy table content into new table
+function main.f_copyTable(t)
+	local t2 = {}
+	for k, v in pairs(t) do
+		if type(v) == "table" then
+			t2[k] = main.f_copyTable(v)
+		else
+			t2[k] = v
+		end
+	end
+	return t2
 end
 
 --randomizes table content
@@ -1263,7 +1253,6 @@ main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
 main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
 main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
 main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
-main.f_printTable(main.t_controllers, "debug/t_controllers.txt")
 main.f_printTable(config, "debug/config.txt")
 
 --Debug stuff
@@ -1454,8 +1443,6 @@ function main.f_default()
 	main.f_resetCharparam()
 	main.p1In = 1 --P1 controls P1 side of the select screen
 	main.p2In = 2 --P2 controls P2 side of the select screen
-	main.p3In = 0 --P3 controls in the select screen disabled
-	main.p4In = 0 --P4 controls in the select screen disabled
 	resetRemapInput()
 end
 

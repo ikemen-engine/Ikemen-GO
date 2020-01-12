@@ -42,29 +42,6 @@ function options.f_definedDisplay(key, t, default)
 	return default
 end
 
---return correct menu_itemname_controller string
-function options.f_itemnameController(player)
-	local kb = 0
-	local pad = 0
-	local itemname = motif.option_info.menu_itemname_controller_disabled
-	for i = 1, #config.KeyConfig do
-		if config.KeyConfig[i].Joystick == -1 then
-			kb = kb + 1
-		else
-			pad = pad + 1
-		end
-		if config.KeyConfig[i].Player == player then
-			if config.KeyConfig[i].Joystick == -1 then
-				itemname = main.f_extractText(motif.option_info.menu_itemname_controller_keyboard, kb)[1]
-			else
-				itemname = main.f_extractText(motif.option_info.menu_itemname_controller_gamepad, pad)[1]
-			end
-			break
-		end
-	end
-	return itemname
-end
-
 --return correct precision
 function options.f_precision(v, decimal)
 	return tonumber(string.format(decimal, v))
@@ -85,61 +62,55 @@ end
 
 --reset key settings
 function options.f_keyDefault()
-	local cnt = 0
 	for i = 1, #config.KeyConfig do
-		config.KeyConfig[i].Player = 0
-		if config.KeyConfig[i].Joystick == -1 then
-			cnt = cnt + 1
-			if cnt == 1 then
-				config.KeyConfig[i].Player = 1
-				config.KeyConfig[i].Buttons[1] = 'UP'
-				config.KeyConfig[i].Buttons[2] = 'DOWN'
-				config.KeyConfig[i].Buttons[3] = 'LEFT'
-				config.KeyConfig[i].Buttons[4] = 'RIGHT'
-				config.KeyConfig[i].Buttons[5] = 'z'
-				config.KeyConfig[i].Buttons[6] = 'x'
-				config.KeyConfig[i].Buttons[7] = 'c'
-				config.KeyConfig[i].Buttons[8] = 'a'
-				config.KeyConfig[i].Buttons[9] = 's'
-				config.KeyConfig[i].Buttons[10] = 'd'
-				config.KeyConfig[i].Buttons[11] = 'RETURN'
-				config.KeyConfig[i].Buttons[12] = 'q'
-				config.KeyConfig[i].Buttons[13] = 'w'
-			elseif cnt == 2 then
-				config.KeyConfig[i].Player = 2
-				config.KeyConfig[i].Buttons[1] = 't'
-				config.KeyConfig[i].Buttons[2] = 'g'
-				config.KeyConfig[i].Buttons[3] = 'f'
-				config.KeyConfig[i].Buttons[4] = 'h'
-				config.KeyConfig[i].Buttons[5] = 'j'
-				config.KeyConfig[i].Buttons[6] = 'k'
-				config.KeyConfig[i].Buttons[7] = 'l'
-				config.KeyConfig[i].Buttons[8] = 'u'
-				config.KeyConfig[i].Buttons[9] = 'i'
-				config.KeyConfig[i].Buttons[10] = 'o'
-				config.KeyConfig[i].Buttons[11] = 'RSHIFT'
-				config.KeyConfig[i].Buttons[12] = 'LEFTBRACKET'
-				config.KeyConfig[i].Buttons[13] = 'RIGHTBRACKET'
-			else
-				for j = 1, #config.KeyConfig[i].Buttons do
-					config.KeyConfig[i].Buttons[j] = motif.option_info.menu_itemname_info_disable
-				end
-			end
+		if i == 1 then
+			config.KeyConfig[i].Buttons[1] = 'UP'
+			config.KeyConfig[i].Buttons[2] = 'DOWN'
+			config.KeyConfig[i].Buttons[3] = 'LEFT'
+			config.KeyConfig[i].Buttons[4] = 'RIGHT'
+			config.KeyConfig[i].Buttons[5] = 'z'
+			config.KeyConfig[i].Buttons[6] = 'x'
+			config.KeyConfig[i].Buttons[7] = 'c'
+			config.KeyConfig[i].Buttons[8] = 'a'
+			config.KeyConfig[i].Buttons[9] = 's'
+			config.KeyConfig[i].Buttons[10] = 'd'
+			config.KeyConfig[i].Buttons[11] = 'RETURN'
+			config.KeyConfig[i].Buttons[12] = 'q'
+			config.KeyConfig[i].Buttons[13] = 'w'
+		elseif i == 2 then
+			config.KeyConfig[i].Buttons[1] = 't'
+			config.KeyConfig[i].Buttons[2] = 'g'
+			config.KeyConfig[i].Buttons[3] = 'f'
+			config.KeyConfig[i].Buttons[4] = 'h'
+			config.KeyConfig[i].Buttons[5] = 'j'
+			config.KeyConfig[i].Buttons[6] = 'k'
+			config.KeyConfig[i].Buttons[7] = 'l'
+			config.KeyConfig[i].Buttons[8] = 'u'
+			config.KeyConfig[i].Buttons[9] = 'i'
+			config.KeyConfig[i].Buttons[10] = 'o'
+			config.KeyConfig[i].Buttons[11] = 'RSHIFT'
+			config.KeyConfig[i].Buttons[12] = 'LEFTBRACKET'
+			config.KeyConfig[i].Buttons[13] = 'RIGHTBRACKET'
 		else
-			config.KeyConfig[i].Buttons[1] = -3
-			config.KeyConfig[i].Buttons[2] = -4
-			config.KeyConfig[i].Buttons[3] = -1
-			config.KeyConfig[i].Buttons[4] = -2
-			config.KeyConfig[i].Buttons[5] = 0
-			config.KeyConfig[i].Buttons[6] = 1
-			config.KeyConfig[i].Buttons[7] = 4
-			config.KeyConfig[i].Buttons[8] = 2
-			config.KeyConfig[i].Buttons[9] = 3
-			config.KeyConfig[i].Buttons[10] = 5
-			config.KeyConfig[i].Buttons[11] = 7
-			config.KeyConfig[i].Buttons[12] = -10
-			config.KeyConfig[i].Buttons[13] = -12
+			for j = 1, #config.KeyConfig[i].Buttons do
+				config.KeyConfig[i].Buttons[j] = tostring(motif.option_info.menu_itemname_info_disable)
+			end
 		end
+	end
+	for i = 1, #config.JoystickConfig do
+		config.JoystickConfig[i].Buttons[1] = '-3'
+		config.JoystickConfig[i].Buttons[2] = '-4'
+		config.JoystickConfig[i].Buttons[3] = '-1'
+		config.JoystickConfig[i].Buttons[4] = '-2'
+		config.JoystickConfig[i].Buttons[5] = '0'
+		config.JoystickConfig[i].Buttons[6] = '1'
+		config.JoystickConfig[i].Buttons[7] = '4'
+		config.JoystickConfig[i].Buttons[8] = '2'
+		config.JoystickConfig[i].Buttons[9] = '3'
+		config.JoystickConfig[i].Buttons[10] = '5'
+		config.JoystickConfig[i].Buttons[11] = '7'
+		config.JoystickConfig[i].Buttons[12] = '-10'
+		config.JoystickConfig[i].Buttons[13] = '-12'
 	end
 	resetRemapInput()
 end
@@ -203,12 +174,6 @@ function options.f_resetTables()
 			maxzoomout = config.ZoomMin,
 			maxzoomin = config.ZoomMax,
 			zoomspeed = config.ZoomSpeed,
-		},
-		t_inputCfg = {
-			p1controller = options.f_itemnameController(1),
-			p2controller = options.f_itemnameController(2),
-			p3controller = options.f_itemnameController(3),
-			p4controller = options.f_itemnameController(4),
 		},
 	}
 	for k1, v1 in pairs(t_displaynameReset) do
@@ -1494,7 +1459,6 @@ function options.f_engineCfg()
 	end
 end
 
-
 --;===========================================================
 --; INPUT SETTINGS
 --;===========================================================
@@ -1502,10 +1466,6 @@ options.t_inputCfg = {
 	{data = textImgNew(), itemname = 'keyboard', displayname = motif.option_info.menu_itemname_input_keyboard},
 	{data = textImgNew(), itemname = 'gamepad', displayname = motif.option_info.menu_itemname_input_gamepad},
 	--{data = textImgNew(), itemname = 'system', displayname = motif.option_info.menu_itemname_input_system},
-	{data = textImgNew(), itemname = 'p1controller', displayname = motif.option_info.menu_itemname_input_p1controller, vardata = textImgNew(), vardisplay = options.f_itemnameController(1)},
-	{data = textImgNew(), itemname = 'p2controller', displayname = motif.option_info.menu_itemname_input_p2controller, vardata = textImgNew(), vardisplay = options.f_itemnameController(2)},
-	{data = textImgNew(), itemname = 'p3controller', displayname = motif.option_info.menu_itemname_input_p3controller, vardata = textImgNew(), vardisplay = options.f_itemnameController(3)},
-	{data = textImgNew(), itemname = 'p4controller', displayname = motif.option_info.menu_itemname_input_p4controller, vardata = textImgNew(), vardisplay = options.f_itemnameController(4)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_input_default},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_input_back},
@@ -1526,29 +1486,21 @@ function options.f_inputCfg()
 			textImgSetText(txt_title, motif.option_info.title_text_main)
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			--Keyboard / Gamepad
-			if t[item].itemname == 'keyboard' or t[item].itemname == 'gamepad' then
+			--Key Config
+			if t[item].itemname == 'keyboard' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				options.f_keyCfg(t[item].itemname)
-			--System (not implemented yet)
+				options.f_keyCfg('KeyConfig', t[item].itemname)
+			--Joystick Config
+			elseif t[item].itemname == 'gamepad' then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				options.f_keyCfg('JoystickConfig', t[item].itemname)
+			--System Keys (not implemented yet)
 			elseif t[item].itemname == 'system' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			--P1-4 Controller
-			elseif t[item].itemname:match('p[1-4]controller') then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				local player = tonumber(t[item].itemname:match('p([1-4])controller'))
-				options.f_controllerCfg(player)
-				t[item].vardisplay = options.f_itemnameController(player)
 			--Default Values
 			elseif t[item].itemname == 'defaultvalues' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				options.f_keyDefault()
-				for i = 1, #t do
-					local player = t[i].itemname:match('p([1-4])controller')
-					if player ~= nil then
-						t[i].vardisplay = options.f_itemnameController(tonumber(player))
-					end
-				end
 				modified = 1
 				needReload = 1
 			--Back
@@ -1581,12 +1533,12 @@ local t_keyCfg = {
 	{data = textImgNew(), itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = textImgNew()},
 	{data = textImgNew(), itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = textImgNew()},
 	{data = textImgNew(), itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'move', displayname = '', infodata = textImgNew(), infodisplay = ''},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = textImgNew(), infodisplay = motif.option_info.menu_itemname_info_esc},
 }
 --t_keyCfg = main.f_cleanTable(t_keyCfg, main.t_sort.option_info)
 
 local txt_keyController = textImgNew()
-function options.f_keyCfg(controller)
+function options.f_keyCfg(cfgType, controller)
 	main.f_cmdInput()
 	local cursorPosY = 2
 	local moveTxt = 0
@@ -1596,39 +1548,43 @@ function options.f_keyCfg(controller)
 	local t_pos = {motif.option_info.menu_key_p1_pos, motif.option_info.menu_key_p2_pos}
 	local configall = false
 	local key = ''
-	local t_keyList = {[-1] = {}, [0] = {}, [1] = {}, [2] = {}, [3] = {}}
-	local t_conflict = {[-1] = false, [0] = false, [1] = false, [2] = false, [3] = false}
-	local conflict = false
+	local t_keyList = {}
+	local t_conflict = {}
 	local btnReleased = 0
-	local side = 1
-	local add = 0
-	local num = main.t_controllers[controller][1]
-	local s_btn = tostring(config.KeyConfig[num].Buttons[item - item_start])
-	local itemname = ''
+	local player = 1
+	local btn = tostring(config[cfgType][player].Buttons[item - item_start])
+	local joyNum = 0
 	textImgSetText(txt_title, motif.option_info.title_text_key)
-	for i = 1, #config.KeyConfig[1].Buttons do
-		for j = 1, #main.t_controllers[controller] do
-			t_keyCfg[i + item_start]['vardisplay' .. j] = config.KeyConfig[main.t_controllers[controller][j]].Buttons[i]
-			if tostring(config.KeyConfig[main.t_controllers[controller][j]].Buttons[i]) ~= tostring(motif.option_info.menu_itemname_info_disable) then
-				if t_keyList[config.KeyConfig[main.t_controllers[controller][j]].Joystick][tostring(config.KeyConfig[main.t_controllers[controller][j]].Buttons[i])] == nil then
-					t_keyList[config.KeyConfig[main.t_controllers[controller][j]].Joystick][tostring(config.KeyConfig[main.t_controllers[controller][j]].Buttons[i])] = 1
+	--count all button assignments on the same controller
+	for i = 1, #config[cfgType] do
+		joyNum = config[cfgType][i].Joystick
+		if t_keyList[joyNum] == nil then
+			t_keyList[joyNum] = {} --creates subtable for each controller (1 for keyboard or at least 2 for gamepads)
+			t_conflict[joyNum] = false --set default conflict flag for each controller
+		end
+		for k, v in pairs(config[cfgType][i].Buttons) do
+			v = tostring(v)
+			t_keyCfg[k + item_start]['vardisplay' .. i] = v --assign vardisplay entry (assigned button name) in t_keyCfg table
+			if v ~= tostring(motif.option_info.menu_itemname_info_disable) then --if button is not disabled
+				if t_keyList[joyNum][v] == nil then
+					t_keyList[joyNum][v] = 1
 				else
-					t_keyList[config.KeyConfig[main.t_controllers[controller][j]].Joystick][tostring(config.KeyConfig[main.t_controllers[controller][j]].Buttons[i])] = t_keyList[config.KeyConfig[main.t_controllers[controller][j]].Joystick][tostring(config.KeyConfig[main.t_controllers[controller][j]].Buttons[i])] + 1
+					t_keyList[joyNum][v] = t_keyList[joyNum][v] + 1
 				end
 			end
 		end
 	end
+	joyNum = config[cfgType][player].Joystick
 	while true do
+		--Config all
 		if configall then
-			if controller == 'keyboard' then
+			if cfgType == 'KeyConfig' then --detect keyboard key
 				key = getKey()
-			elseif getKey() == 'SPACE' then
-				key = 'SPACE'
-			elseif getJoystickPresent(config.KeyConfig[num].Joystick) == false then
+			elseif getJoystickPresent(joyNum) == false then --ensure that gamepad is connected
 				main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
 				configall = false
 				commandBufReset(main.p1Cmd)
-			else
+			else --detect gamepad key
 				local tmp = getKey()
 				if tonumber(tmp) == nil then --button released
 					btnReleased = 1
@@ -1637,45 +1593,52 @@ function options.f_keyCfg(controller)
 					btnReleased = 0
 				end
 			end
+			key = tostring(key)
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				configall = false
 				commandBufReset(main.p1Cmd)
+			--some key detected
 			elseif key ~= '' then
+				--spacebar (disable key)
 				if key == 'SPACE' then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					if t_keyList[config.KeyConfig[num].Joystick][s_btn] ~= nil and t_keyList[config.KeyConfig[num].Joystick][s_btn] > 1 then
-						t_keyList[config.KeyConfig[num].Joystick][s_btn] = t_keyList[config.KeyConfig[num].Joystick][s_btn] - 1
+					--decrease old button count
+					if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+						t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 					else
-						t_keyList[config.KeyConfig[num].Joystick][s_btn] = nil
+						t_keyList[joyNum][btn] = nil
 					end
-					t[item]['vardisplay' .. side + add] = motif.option_info.menu_itemname_info_disable
-					config.KeyConfig[num].Buttons[item - item_start] = motif.option_info.menu_itemname_info_disable
+					--update vardisplay / config data
+					t[item]['vardisplay' .. player] = motif.option_info.menu_itemname_info_disable
+					config[cfgType][player].Buttons[item - item_start] = tostring(motif.option_info.menu_itemname_info_disable)
 					modified = 1
 					needReload = 1
-				elseif controller == 'keyboard' or (controller == 'gamepad' and tonumber(key) ~= nil) then
+				--other keyboard or gamepad key
+				elseif cfgType == 'KeyConfig' or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					if t_keyList[config.KeyConfig[num].Joystick][s_btn] ~= nil and t_keyList[config.KeyConfig[num].Joystick][s_btn] > 1 then
-						t_keyList[config.KeyConfig[num].Joystick][s_btn] = t_keyList[config.KeyConfig[num].Joystick][s_btn] - 1
+					--decrease old button count
+					if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+						t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 					else
-						t_keyList[config.KeyConfig[num].Joystick][s_btn] = nil
+						t_keyList[joyNum][btn] = nil
 					end
-					if t_keyList[config.KeyConfig[num].Joystick][tostring(key)] == nil then
-						t_keyList[config.KeyConfig[num].Joystick][tostring(key)] = 1
+					--increase new button count
+					if t_keyList[joyNum][key] == nil then
+						t_keyList[joyNum][key] = 1
 					else
-						t_keyList[config.KeyConfig[num].Joystick][tostring(key)] = t_keyList[config.KeyConfig[num].Joystick][tostring(key)] + 1
+						t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
 					end
-					t[item]['vardisplay' .. side + add] = key
-					if controller == 'keyboard' then
-						config.KeyConfig[num].Buttons[item - item_start] = tostring(key)
-					else
-						config.KeyConfig[num].Buttons[item - item_start] = tonumber(key)
-					end
+					--update vardisplay / config data
+					t[item]['vardisplay' .. player] = key
+					config[cfgType][player].Buttons[item - item_start] = tostring(key)
 					modified = 1
 					needReload = 1
+				--non gamepad key on gamepad controller
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				end
+				--move to the next position
 				item = item + 1
 				if cursorPosY < motif.option_info.menu_window_visibleitems then
 					cursorPosY = cursorPosY + 1
@@ -1689,6 +1652,7 @@ function options.f_keyCfg(controller)
 			end
 			resetKey()
 			key = ''
+		--move up / down / left / right
 		elseif commandGetState(main.p1Cmd, 'u') then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			item = item - 1
@@ -1697,12 +1661,12 @@ function options.f_keyCfg(controller)
 			item = item + 1
 		elseif commandGetState(main.p1Cmd, 'l') or commandGetState(main.p1Cmd, 'r') then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if side == 1 then
-				side = 2
+			if player == 1 then
+				player = 2
 			else
-				side = 1
+				player = 1
 			end
-			num = main.t_controllers[controller][side + add]
+			joyNum = config[cfgType][player].Joystick
 		end
 		--cursor position calculation
 		if item < item_start then
@@ -1727,40 +1691,21 @@ function options.f_keyCfg(controller)
 		elseif cursorPosY == item_start then
 			moveTxt = (item - item_start) * motif.option_info.menu_item_spacing[2]
 		end
-		s_btn = tostring(config.KeyConfig[num].Buttons[item - item_start])
-		if controller == 'keyboard' then
-			conflict = t_conflict[-1]
-		elseif t_conflict[0] or t_conflict[1] or t_conflict[2] or t_conflict[3] then
-			conflict = true
-		else
-			conflict = false
-		end
+		btn = tostring(config[cfgType][player].Buttons[item - item_start])
 		if configall == false then
-			if esc() and conflict == false then
+			if esc() and not t_conflict[joyNum] then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				textImgSetText(txt_title, motif.option_info.title_text_input)
 				break
 			--Config all
-			elseif (t[item].itemname == 'configall' and main.f_btnPalNo(main.p1Cmd) > 0) or getKey() == 'F1' or getKey() == 'F2' or getKey() == 'F3' or getKey() == 'F4' then
+			elseif (t[item].itemname == 'configall' and main.f_btnPalNo(main.p1Cmd) > 0) or getKey() == 'F1' or getKey() == 'F2' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				if getKey() == 'F1' then
-					add = 0
-					side = 1
-					num = main.t_controllers[controller][side + add]
+					player = 1
 				elseif getKey() == 'F2' then
-					add = 0
-					side = 2
-					num = main.t_controllers[controller][side + add]
-				elseif getKey() == 'F3' then
-					add = 2
-					side = 1
-					num = main.t_controllers[controller][side + add]
-				elseif getKey() == 'F4' then
-					add = 2
-					side = 2
-					num = main.t_controllers[controller][side + add]
+					player = 2
 				end
-				if controller == 'gamepad' and getJoystickPresent(config.KeyConfig[num].Joystick) == false then
+				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
 					main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
 					item = item_start
 					cursorPosY = item_start
@@ -1771,62 +1716,54 @@ function options.f_keyCfg(controller)
 					btnReleased = 0
 					configall = true
 				end
-			--Back / Next / Previous
-			elseif (t[item].itemname == 'move' and main.f_btnPalNo(main.p1Cmd) > 0) or getKey() == 'TAB' then
-				if side == 1 and getKey() ~= 'TAB' then --Back
-					if conflict then
-						main.f_warning(main.f_extractText(motif.warning_info.text_keys), motif.option_info, motif.optionbgdef)
-					else
-						sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-						textImgSetText(txt_title, motif.option_info.title_text_input)
-						break
-					end
-				elseif add == 0 then --Next
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					add = 2
-					num = main.t_controllers[controller][side + add]
-				else --Previous
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					add = 0
-					num = main.t_controllers[controller][side + add]
+			--Back
+			elseif (t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0) then
+				if t_conflict[joyNum] then
+					main.f_warning(main.f_extractText(motif.warning_info.text_keys), motif.option_info, motif.optionbgdef)
+				else
+					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+					textImgSetText(txt_title, motif.option_info.title_text_input)
+					break
 				end
-				resetKey()
-			--Buttons
+			--individual buttons
 			elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				if controller == 'gamepad' and getJoystickPresent(config.KeyConfig[num].Joystick) == false then
+				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
 					main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
 				else
-					key = main.f_input(main.f_extractText(motif.option_info.input_text_key), motif.option_info, motif.optionbgdef, controller, config.KeyConfig[num].Joystick, 'SPACE')
+					key = main.f_input(main.f_extractText(motif.option_info.input_text_key), motif.option_info, motif.optionbgdef, controller, joyNum, 'SPACE')
+					--spacebar (disable key)
 					if key == 'SPACE' then
 						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-						if t_keyList[config.KeyConfig[num].Joystick][s_btn] ~= nil and t_keyList[config.KeyConfig[num].Joystick][s_btn] > 1 then
-							t_keyList[config.KeyConfig[num].Joystick][s_btn] = t_keyList[config.KeyConfig[num].Joystick][s_btn] - 1
+						--decrease old button count
+						if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+							t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 						else
-							t_keyList[config.KeyConfig[num].Joystick][s_btn] = nil
+							t_keyList[joyNum][btn] = nil
 						end
-						t[item]['vardisplay' .. side + add] = motif.option_info.menu_itemname_info_disable
-						config.KeyConfig[num].Buttons[item - item_start] = motif.option_info.menu_itemname_info_disable
+						--update vardisplay / config data
+						t[item]['vardisplay' .. player] = motif.option_info.menu_itemname_info_disable
+						config[cfgType][player].Buttons[item - item_start] = motif.option_info.menu_itemname_info_disable
 						modified = 1
 						needReload = 1
-					elseif (controller == 'keyboard' and key ~= '') or (controller == 'gamepad' and tonumber(key) ~= nil) then
+					--other keyboard or gamepad key
+					elseif (cfgType == 'KeyConfig' and key ~= '') or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
 						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-						if t_keyList[config.KeyConfig[num].Joystick][s_btn] ~= nil and t_keyList[config.KeyConfig[num].Joystick][s_btn] > 1 then
-							t_keyList[config.KeyConfig[num].Joystick][s_btn] = t_keyList[config.KeyConfig[num].Joystick][s_btn] - 1
+						--decrease old button count
+						if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+							t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 						else
-							t_keyList[config.KeyConfig[num].Joystick][s_btn] = nil
+							t_keyList[joyNum][btn] = nil
 						end
-						if t_keyList[config.KeyConfig[num].Joystick][tostring(key)] == nil then
-							t_keyList[config.KeyConfig[num].Joystick][tostring(key)] = 1
+						--increase new button count
+						if t_keyList[joyNum][key] == nil then
+							t_keyList[joyNum][key] = 1
 						else
-							t_keyList[config.KeyConfig[num].Joystick][tostring(key)] = t_keyList[config.KeyConfig[num].Joystick][tostring(key)] + 1
+							t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
 						end
-						t[item]['vardisplay' .. side + add] = key
-						if controller == 'keyboard' then
-							config.KeyConfig[num].Buttons[item - item_start] = tostring(key)
-						else
-							config.KeyConfig[num].Buttons[item - item_start] = tonumber(key)
-						end
+						--update vardisplay / config data
+						t[item]['vardisplay' .. player] = key
+						config[cfgType][player].Buttons[item - item_start] = tostring(key)
 						modified = 1
 						needReload = 1
 					else
@@ -1837,40 +1774,34 @@ function options.f_keyCfg(controller)
 				end
 			end
 		end
+		t_conflict[joyNum] = false
 		--draw clearcolor
 		clearColor(motif.optionbgdef.bgclearcolor[1], motif.optionbgdef.bgclearcolor[2], motif.optionbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.optionbgdef.bg, false)
-		--draw controller itemname, reset conflict
+		--draw player num
 		for i = 1, 2 do
-			if controller == 'keyboard' then
-				t_conflict[-1] = false
-				itemname = main.f_extractText(motif.option_info.menu_itemname_key_keyboard, i + add)[1]
-			else
-				t_conflict[config.KeyConfig[main.t_controllers[controller][i + add]].Joystick] = false
-				itemname = main.f_extractText(motif.option_info.menu_itemname_key_gamepad, i + add)[1]
-			end
 			textImgDraw(main.f_updateTextImg(
 				txt_keyController,
-				motif.font_data[motif.option_info['menu_item_controller' .. i .. '_font'][1]],
-				motif.option_info['menu_item_controller' .. i .. '_font'][2],
-				motif.option_info['menu_item_controller' .. i .. '_font'][3],
-				itemname,
+				motif.font_data[motif.option_info['menu_item_key_p' .. i .. '_font'][1]],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][2],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][3],
+				motif.option_info['menu_itemname_key_p' .. i],
 				motif.option_info['menu_item_p' .. i .. '_pos'][1],
 				motif.option_info['menu_item_p' .. i .. '_pos'][2],
-				motif.option_info['menu_item_controller' .. i .. '_font_scale'][1],
-				motif.option_info['menu_item_controller' .. i .. '_font_scale'][2],
-				motif.option_info['menu_item_controller' .. i .. '_font'][4],
-				motif.option_info['menu_item_controller' .. i .. '_font'][5],
-				motif.option_info['menu_item_controller' .. i .. '_font'][6],
-				motif.option_info['menu_item_controller' .. i .. '_font'][7],
-				motif.option_info['menu_item_controller' .. i .. '_font'][8]
+				motif.option_info['menu_item_key_p' .. i .. '_font_scale'][1],
+				motif.option_info['menu_item_key_p' .. i .. '_font_scale'][2],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][4],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][5],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][6],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][7],
+				motif.option_info['menu_item_key_p' .. i .. '_font'][8]
 			))
 		end
 		--draw menu box
 		if motif.option_info.menu_boxbg_visible == 1 then
 			local coord4 = 0
-			for i = 1, #t_pos do
+			for i = 1, 2 do
 				if #t > motif.option_info.menu_window_visibleitems and moveTxt == (#t - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_key_item_spacing[2] then
 					coord4 = motif.option_info.menu_window_visibleitems * (motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2])
 				else
@@ -1893,35 +1824,16 @@ function options.f_keyCfg(controller)
 		textImgDraw(txt_title)
 		--draw menu items
 		for i = 1, #t do
-			for j = 1, #t_pos do
+			for j = 1, 2 do
 				if i > item - cursorPosY then
 					if t[i].itemname == 'configall' then
-						if add == 0 then --page 1
-							if j == 1 then --left side
-								t[i].infodisplay = motif.option_info.menu_itemname_info_f1
-							else --right side
-								t[i].infodisplay = motif.option_info.menu_itemname_info_f2
-							end
-						else --page 2
-							if j == 1 then --left side
-								t[i].infodisplay = motif.option_info.menu_itemname_info_f3
-							else --right side
-								t[i].infodisplay = motif.option_info.menu_itemname_info_f4
-							end
-						end
-					elseif i == #t then --last row
-						if j == 1 then --left side
-							t[i].displayname = motif.option_info.menu_itemname_key_back
-							t[i].infodisplay = motif.option_info.menu_itemname_info_esc
-						elseif add == 0 then --right side, page 1
-							t[i].displayname = motif.option_info.menu_itemname_key_next
-							t[i].infodisplay = motif.option_info.menu_itemname_info_tab
-						else --right side, page 2
-							t[i].displayname = motif.option_info.menu_itemname_key_previous
-							t[i].infodisplay = motif.option_info.menu_itemname_info_tab
+						if j == 1 then --player1 side (left)
+							t[i].infodisplay = motif.option_info.menu_itemname_info_f1
+						else --player2 side (right)
+							t[i].infodisplay = motif.option_info.menu_itemname_info_f2
 						end
 					end
-					if i == item and j == side then --active item
+					if i == item and j == player then --active item
 						--draw displayname
 						textImgDraw(main.f_updateTextImg(
 							t[i].data,
@@ -1941,13 +1853,13 @@ function options.f_keyCfg(controller)
 						))
 						--draw vardata
 						if t[i].vardata ~= nil then
-							if t_keyList[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick][tostring(t[i]['vardisplay' .. j + add])] ~= nil and t_keyList[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick][tostring(t[i]['vardisplay' .. j + add])] > 1 then
+							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
 								textImgDraw(main.f_updateTextImg(
 									t[i].vardata,
 									motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
 									motif.option_info.menu_item_value_conflict_font[2],
 									motif.option_info.menu_item_value_conflict_font[3],
-									t[i]['vardisplay' .. j + add],
+									t[i]['vardisplay' .. j],
 									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
 									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
 									motif.option_info.menu_item_value_conflict_font_scale[1],
@@ -1958,14 +1870,14 @@ function options.f_keyCfg(controller)
 									motif.option_info.menu_item_value_conflict_font[7],
 									motif.option_info.menu_item_value_conflict_font[8]
 								))
-								t_conflict[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick] = true
+								t_conflict[joyNum] = true
 							else
 								textImgDraw(main.f_updateTextImg(
 									t[i].vardata,
 									motif.font_data[motif.option_info.menu_item_value_active_font[1]],
 									motif.option_info.menu_item_value_active_font[2],
 									motif.option_info.menu_item_value_active_font[3],
-									t[i]['vardisplay' .. j + add],
+									t[i]['vardisplay' .. j],
 									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
 									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
 									motif.option_info.menu_item_value_active_font_scale[1],
@@ -2016,13 +1928,13 @@ function options.f_keyCfg(controller)
 						))
 						--draw vardata
 						if t[i].vardata ~= nil then
-							if t_keyList[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick][tostring(t[i]['vardisplay' .. j + add])] ~= nil and t_keyList[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick][tostring(t[i]['vardisplay' .. j + add])] > 1 then
+							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
 								textImgDraw(main.f_updateTextImg(
 									t[i].vardata,
 									motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
 									motif.option_info.menu_item_value_conflict_font[2],
 									motif.option_info.menu_item_value_conflict_font[3],
-									t[i]['vardisplay' .. j + add],
+									t[i]['vardisplay' .. j],
 									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
 									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
 									motif.option_info.menu_item_value_conflict_font_scale[1],
@@ -2033,14 +1945,14 @@ function options.f_keyCfg(controller)
 									motif.option_info.menu_item_value_conflict_font[7],
 									motif.option_info.menu_item_value_conflict_font[8]
 								))
-								t_conflict[config.KeyConfig[main.t_controllers[controller][j + add]].Joystick] = true
+								t_conflict[joyNum] = true
 							else
 								textImgDraw(main.f_updateTextImg(
 									t[i].vardata,
 									motif.font_data[motif.option_info.menu_item_value_font[1]],
 									motif.option_info.menu_item_value_font[2],
 									motif.option_info.menu_item_value_font[3],
-									t[i]['vardisplay' .. j + add],
+									t[i]['vardisplay' .. j],
 									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
 									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
 									motif.option_info.menu_item_value_font_scale[1],
@@ -2085,8 +1997,8 @@ function options.f_keyCfg(controller)
 				motif.option_info.menu_boxcursor_alpharange[5],
 				motif.option_info.menu_boxcursor_alpharange[6]
 			)
-			for i = 1, #t_pos do
-				if i == side then
+			for i = 1, 2 do
+				if i == player then
 					fillRect(
 						t_pos[i][1] + motif.option_info.menu_key_boxcursor_coords[1],
 						t_pos[i][2] + motif.option_info.menu_key_boxcursor_coords[2] + (cursorPosY - 1) * motif.option_info.menu_key_item_spacing[2],
@@ -2105,77 +2017,6 @@ function options.f_keyCfg(controller)
 		bgDraw(motif.optionbgdef.bg, true)
 		main.f_cmdInput()
 		refresh()
-	end
-end
-
---;===========================================================
---; CONTROLLER SETTINGS
---;===========================================================
-local t_controllerCfg = {
-	{data = textImgNew(), itemname = 'keyboard1', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_keyboard, 1)[1]},
-	{data = textImgNew(), itemname = 'keyboard2', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_keyboard, 2)[1]},
-	{data = textImgNew(), itemname = 'keyboard3', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_keyboard, 3)[1]},
-	{data = textImgNew(), itemname = 'keyboard4', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_keyboard, 4)[1]},
-	{data = textImgNew(), itemname = 'gamepad1', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_gamepad, 1)[1]},
-	{data = textImgNew(), itemname = 'gamepad2', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_gamepad, 2)[1]},
-	{data = textImgNew(), itemname = 'gamepad3', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_gamepad, 3)[1]},
-	{data = textImgNew(), itemname = 'gamepad4', displayname = main.f_extractText(motif.option_info.menu_itemname_controller_gamepad, 4)[1]},
-	{data = textImgNew(), itemname = 'disable', displayname = motif.option_info.menu_itemname_controller_disabled},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_controller_back},
-}
-t_controllerCfg = main.f_cleanTable(t_controllerCfg, main.t_sort.option_info)
-
-function options.f_controllerCfg(player)
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_controllerCfg
-	textImgSetText(txt_title, motif.option_info.title_text_controller)
-	while true do
-		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_input)
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			--Back
-			if t[item].itemname == 'back' then
-				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				textImgSetText(txt_title, motif.option_info.title_text_input)
-				break
-			--Not assigned
-			elseif t[item].itemname == 'disable' then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-				for i = 1, #config.KeyConfig do
-					if config.KeyConfig[i].Player == player then
-						config.KeyConfig[i].Player = 0
-						main.t_controllers.player[i] = 0
-					end
-				end
-				modified = 1
-				textImgSetText(txt_title, motif.option_info.title_text_input)
-				break
-			--Keyboard 1-4 / Gamepad 1-4
-			else
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-				local controller, cnt = t[item].itemname:match('^([^0-9]+)([0-9]+)$')
-				local num = main.t_controllers[controller][tonumber(cnt)]
-				for i = 1, #config.KeyConfig do
-					if i == num then
-						config.KeyConfig[i].Player = player
-						main.t_controllers.player[i] = player
-					elseif config.KeyConfig[i].Player == player then
-						config.KeyConfig[i].Player = 0
-						main.t_controllers.player[i] = 0
-					end
-				end
-				modified = 1
-				textImgSetText(txt_title, motif.option_info.title_text_input)
-				break
-			end
-		end
-		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
 	end
 end
 
