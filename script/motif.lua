@@ -542,10 +542,14 @@ local motif =
 		title_waittime = 600,
 		fight_endtime = 1500,
 		fight_playbgm = 0,
-		fight_stopbgm = 1,
+		fight_stopbgm = 0,
 		fight_bars_display = 0,
 		intro_waitcycles = 1,
 		debuginfo = 0, --not supported yet
+		fadein_time = 50, --Ikemen feature
+		fadein_col = {0, 0, 0}, --Ikemen feature
+		fadeout_time = 50, --Ikemen feature
+		fadeout_col = {0, 0, 0}, --Ikemen feature
 	},
 	continue_screen =
 	{

@@ -421,7 +421,7 @@ function options.f_mainCfg()
 	local item = 1
 	local t = options.t_mainCfg
 	textImgSetText(txt_title, motif.option_info.title_text_main)
-	if motif.music.options_bgm == '' then
+	if motif.music.option_bgm == '' then
 		main.f_menuReset(motif.optionbgdef.bg)
 	else
 		main.f_menuReset(motif.optionbgdef.bg, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
@@ -433,7 +433,7 @@ function options.f_mainCfg()
 			if modified == 1 then
 				options.f_saveCfg()
 			end
-			main.f_menuFadeOut('option_info', cursorPosY, moveTxt, item, t)
+			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 			if motif.music.option_bgm == '' then
 				main.f_menuReset(motif.titlebgdef.bg)
 			else
@@ -547,7 +547,7 @@ function options.f_mainCfg()
 				if modified == 1 then
 					options.f_saveCfg()
 				end
-				main.f_menuFadeOut('option_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				if motif.music.option_bgm == '' then
 					main.f_menuReset(motif.titlebgdef.bg)
 				else
@@ -557,7 +557,7 @@ function options.f_mainCfg()
 			--Back
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				main.f_menuFadeOut('option_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				if motif.music.option_bgm == '' then
 					main.f_menuReset(motif.titlebgdef.bg)
 				else

@@ -1473,7 +1473,7 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 		return
 	end
 	main.f_default()
-	main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+	main.f_menuFade('demo_mode', 'fadeout', cursorPosY, moveTxt, item, t)
 	clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 	if motif.demo_mode.fight_playbgm == 1 or motif.demo_mode.fight_stopbgm == 1 then
 		setStopTitleBGM(true)
@@ -1489,6 +1489,7 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	randomtest.run()
 	setBarsDisplay(true)
 	setStopTitleBGM(true)
+	refresh()
 	--intro
 	if introWaitCycles >= motif.demo_mode.intro_waitcycles then
 		if motif.files.intro_storyboard ~= '' then
@@ -1499,12 +1500,12 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 		introWaitCycles = introWaitCycles + 1
 	end
 	--start title BGM only if it has been interrupted
-	if motif.demo_mode.fight_stopbgm == 0 and motif.demo_mode.fight_playbgm == 0 then
-		main.f_menuReset(motif.titlebgdef.bg)
-	else
+	if motif.demo_mode.fight_stopbgm == 1 or motif.demo_mode.fight_playbgm == 1 or (introWaitCycles == 0 and motif.files.intro_storyboard ~= '') then
 		main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+	else
+		main.f_menuReset(motif.titlebgdef.bg)
 	end
-	refresh()
+	main.f_menuFade('demo_mode', 'fadein', cursorPosY, moveTxt, item, t)
 end
 
 function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
@@ -1543,8 +1544,9 @@ function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 	return cursorPosY, moveTxt, item
 end
 
-function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
+function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 	fadeType = fadeType or 'fadein'
+	fadeData = fadeData or 'title_info'
 	--draw clearcolor
 	clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 	--draw layerno = 0 backgrounds
@@ -1641,10 +1643,10 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 	main.fadeActive = fadeScreen(
 		fadeType,
 		main.fadeStart,
-		motif.title_info[fadeType .. '_time'],
-		motif.title_info[fadeType .. '_col'][1],
-		motif.title_info[fadeType .. '_col'][2],
-		motif.title_info[fadeType .. '_col'][3]
+		motif[fadeData][fadeType .. '_time'],
+		motif[fadeData][fadeType .. '_col'][1],
+		motif[fadeData][fadeType .. '_col'][2],
+		motif[fadeData][fadeType .. '_col'][3]
 	)
 	--frame transition
 	if main.fadeActive then
@@ -1659,13 +1661,15 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 end
 
 main.fadeActive = false
-function main.f_menuFadeOut(screen, cursorPosY, moveTxt, item, t)
+function main.f_menuFade(screen, fadeType, cursorPosY, moveTxt, item, t)
 	main.fadeStart = getFrameCount()
 	while true do
 		if screen == 'title_info' then
-			main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, 'fadeout')
+			main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 		elseif screen == 'option_info' then
-			options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, 'fadeout')
+			options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
+		elseif screen == 'demo_mode' then
+			main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, 'demo_mode')
 		end
 		if not main.fadeActive then
 			break
@@ -1737,7 +1741,7 @@ function main.f_mainMenu()
 					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
 					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				end
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('arcade')
 				select.f_selectArcade() --start f_selectArcade() function from script/select.lua
 			end
@@ -1754,7 +1758,7 @@ function main.f_mainMenu()
 					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
 					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				end
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('versus')
 				select.f_selectSimple() --start f_selectSimple() function from script/select.lua
 			end
@@ -1779,7 +1783,7 @@ function main.f_mainMenu()
 				main.t_charparam.rivals = true
 				main.credits = config.Credits - 1
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('teamcoop')
 				select.f_selectArcade()
 			end
@@ -1795,7 +1799,7 @@ function main.f_mainMenu()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('survival')
 				select.f_selectArranged()
 			end
@@ -1812,7 +1816,7 @@ function main.f_mainMenu()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('survivalcoop')
 				select.f_selectArranged()
 			end
@@ -1831,7 +1835,7 @@ function main.f_mainMenu()
 				main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 				main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('training')
 				select.f_selectSimple()
 			end
@@ -1844,7 +1848,7 @@ function main.f_mainMenu()
 				main.p2Faces = true
 				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('watch')
 				select.f_selectSimple()
 			end
@@ -1856,7 +1860,7 @@ function main.f_mainMenu()
 			--OPTIONS
 			if t[item].itemname == 'options' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				--Disable screenpack scale on the menu text for showing the menu corectly.
 				main.SetDefaultScale()
 				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
@@ -1868,8 +1872,8 @@ function main.f_mainMenu()
 				break
 			end
 		end
-		main.f_demo(cursorPosY, moveTxt, item, t)
 		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
+		main.f_demo(cursorPosY, moveTxt, item, t)
 	end
 end
 
@@ -2197,7 +2201,7 @@ function main.f_mainExtras()
 				main.p2Faces = true
 				--uses default main.t_charparam assignment
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('freebattle')
 				select.f_selectSimple()
 			end
@@ -2213,7 +2217,7 @@ function main.f_mainExtras()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('100kumite')
 				select.f_selectArranged()
 			end
@@ -2229,7 +2233,7 @@ function main.f_mainExtras()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('bossrush')
 				select.f_selectArranged()
 			end
@@ -2253,7 +2257,7 @@ function main.f_mainExtras()
 			--DEMO
 			if t[item].itemname == 'randomtest' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 				setGameMode('randomtest')
 				randomtest.run()
@@ -2319,7 +2323,7 @@ function main.f_bonusExtras()
 				main.p2TeamMenu = {mode = 0, chars = 1}
 				main.p2Char = {main.t_bonusChars[item]}
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('bonus')
 				select.f_selectSimple()
 			end
@@ -2364,7 +2368,7 @@ function main.f_mainTournament()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
 				select.f_selectTournament(32)
 			end
@@ -2379,7 +2383,7 @@ function main.f_mainTournament()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
 				select.f_selectTournament(16)
 			end
@@ -2394,7 +2398,7 @@ function main.f_mainTournament()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
 				select.f_selectTournament(8)
 			end
@@ -2409,7 +2413,7 @@ function main.f_mainTournament()
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
 				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				setGameMode('tournament')
 				select.f_selectTournament(4)
 			end
