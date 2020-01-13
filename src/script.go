@@ -1194,50 +1194,46 @@ func systemScriptInit(l *lua.LState) {
 		}
 	})
 	luaRegister(l, "getCharVar", func(*lua.LState) int {
-		for _, p := range sys.chars {
-			if len(p) > 0 && p[0].playerNo+1 == int(numArg(l, 1)) {
-				if strArg(l, 2) == "varGet" {
-					l.Push(lua.LNumber(p[0].varGet(int32(numArg(l, 3))).ToI()))
-				} else if strArg(l, 2) == "fvarGet" {
-					l.Push(lua.LNumber(p[0].fvarGet(int32(numArg(l, 3))).ToI()))
-				} else if strArg(l, 2) == "sysVarGet" {
-					l.Push(lua.LNumber(p[0].sysVarGet(int32(numArg(l, 3))).ToI()))
-				} else if strArg(l, 2) == "sysFvarGet" {
-					l.Push(lua.LNumber(p[0].sysFvarGet(int32(numArg(l, 3))).ToI()))
-				}
-				break
+		pn := int(numArg(l, 1))
+		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+			if strArg(l, 2) == "varGet" {
+				l.Push(lua.LNumber(sys.chars[pn-1][0].varGet(int32(numArg(l, 3))).ToI()))
+			} else if strArg(l, 2) == "fvarGet" {
+				l.Push(lua.LNumber(sys.chars[pn-1][0].fvarGet(int32(numArg(l, 3))).ToI()))
+			} else if strArg(l, 2) == "sysVarGet" {
+				l.Push(lua.LNumber(sys.chars[pn-1][0].sysVarGet(int32(numArg(l, 3))).ToI()))
+			} else if strArg(l, 2) == "sysFvarGet" {
+				l.Push(lua.LNumber(sys.chars[pn-1][0].sysFvarGet(int32(numArg(l, 3))).ToI()))
 			}
 		}
 		return 1
 	})
 	luaRegister(l, "getCharVictoryQuote", func(*lua.LState) int {
-		v := int(-1)
-		for _, p := range sys.chars {
-			if len(p) > 0 && p[0].playerNo+1 == int(numArg(l, 1)) {
-				if l.GetTop() >= 2 {
-					v = int(numArg(l, 2))
-				} else {
-					v = int(p[0].winquote)
-				}
-				if v < 0 || v >= MaxQuotes {
-					t := []string{}
-					for i, q := range sys.cgi[p[0].playerNo].quotes {
-						if sys.cgi[p[0].playerNo].quotes[i] != "" {
-							t = append(t, q)
-						}
-					}
-					if len(t) > 0 {
-						v = rand.Int() % len(t)
-					} else {
-						v = -1
+		pn := int(numArg(l, 1))
+		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+			v := int(-1)
+			if l.GetTop() >= 2 {
+				v = int(numArg(l, 2))
+			} else {
+				v = int(sys.chars[pn-1][0].winquote)
+			}
+			if v < 0 || v >= MaxQuotes {
+				t := []string{}
+				for i, q := range sys.cgi[sys.chars[pn-1][0].playerNo].quotes {
+					if sys.cgi[sys.chars[pn-1][0].playerNo].quotes[i] != "" {
+						t = append(t, q)
 					}
 				}
-				if len(sys.cgi[p[0].playerNo].quotes) == MaxQuotes && v != -1 {
-					l.Push(lua.LString(sys.cgi[p[0].playerNo].quotes[v]))
+				if len(t) > 0 {
+					v = rand.Int() % len(t)
 				} else {
-					l.Push(lua.LString(""))
+					v = -1
 				}
-				break
+			}
+			if len(sys.cgi[sys.chars[pn-1][0].playerNo].quotes) == MaxQuotes && v != -1 {
+				l.Push(lua.LString(sys.cgi[sys.chars[pn-1][0].playerNo].quotes[v]))
+			} else {
+				l.Push(lua.LString(""))
 			}
 		}
 		return 1
