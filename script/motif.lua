@@ -536,15 +536,15 @@ local motif =
 	},
 	demo_mode =
 	{
-		enabled = 1, --not supported yet
+		enabled = 1,
 		select_enabled = 0, --not supported yet
 		vsscreen_enabled = 0, --not supported yet
-		title_waittime = 600, --not supported yet
-		fight_endtime = 1500, --not supported yet
-		fight_playbgm = 0, --not supported yet
-		fight_stopbgm = 1, --not supported yet
-		fight_bars_display = 0, --not supported yet
-		intro_waitcycles = 1, --not supported yet
+		title_waittime = 600,
+		fight_endtime = 1500,
+		fight_playbgm = 0,
+		fight_stopbgm = 1,
+		fight_bars_display = 0,
+		intro_waitcycles = 1,
 		debuginfo = 0, --not supported yet
 	},
 	continue_screen =

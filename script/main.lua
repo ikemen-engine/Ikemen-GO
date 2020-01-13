@@ -849,7 +849,6 @@ end
 motif = require('script.motif')
 
 setMotifDir(motif.fileDir)
-setDemoTime(motif.demo_mode.fight_endtime)
 setPortrait(motif.select_info.p1_face_spr[1], motif.select_info.p1_face_spr[2], 1) --Big portrait
 setPortrait(motif.select_info.portrait_spr[1], motif.select_info.portrait_spr[2], 2) --Small portrait
 setPortrait(motif.vs_screen.p1_spr[1], motif.vs_screen.p1_spr[2], 3) --Versus portrait
@@ -1415,7 +1414,10 @@ local t_mainMenu = {
 }
 t_mainMenu = main.f_cleanTable(t_mainMenu, main.t_sort.title_info)
 
+local demoFrameCounter = 0
+local introWaitCycles = 0
 function main.f_default()
+	demoFrameCounter = 0
 	setAutoLevel(false) --generate autolevel.txt in game dir
 	setHomeTeam(2) --P2 side considered the home team: http://mugenguild.com/forum/topics/ishometeam-triggers-169132.0.html
 	--settings adjustable via options
@@ -1425,6 +1427,7 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeShare(config.TeamLifeShare)
 	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
+	setDemoTime(motif.demo_mode.fight_endtime / 60 * getFramesPerCount())
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
@@ -1450,7 +1453,7 @@ function main.f_resetCharparam()
 	main.t_charparam = { --default character parameters support
 		stage = false,
 		music = false,
-		zoom = true,
+		zoom = false,
 		ai = false,
 		winscreen = true,
 		rounds = false,
@@ -1461,13 +1464,60 @@ function main.f_resetCharparam()
 	}
 end
 
+function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
+	if motif.demo_mode.enabled == 0 then
+		return
+	end
+	demoFrameCounter = demoFrameCounter + 1
+	if demoFrameCounter < motif.demo_mode.title_waittime then
+		return
+	end
+	main.f_default()
+	main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+	clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
+	if motif.demo_mode.fight_playbgm == 1 or motif.demo_mode.fight_stopbgm == 1 then
+		setStopTitleBGM(true)
+	else
+		setStopTitleBGM(false)
+	end
+	if motif.demo_mode.fight_bars_display == 1 then
+		setBarsDisplay(true)
+	else
+		setBarsDisplay(false)
+	end
+	setGameMode('demo')
+	randomtest.run()
+	setBarsDisplay(true)
+	setStopTitleBGM(true)
+	--intro
+	if introWaitCycles >= motif.demo_mode.intro_waitcycles then
+		if motif.files.intro_storyboard ~= '' then
+			storyboard.f_storyboard(motif.files.intro_storyboard)
+		end
+		introWaitCycles = 0
+	else
+		introWaitCycles = introWaitCycles + 1
+	end
+	--start title BGM only if it has been interrupted
+	if motif.demo_mode.fight_stopbgm == 0 and motif.demo_mode.fight_playbgm == 0 then
+		main.f_menuReset(motif.titlebgdef.bg)
+	else
+		main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+	end
+	refresh()
+end
+
 function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 	if commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item - 1
+		demoFrameCounter = 0
+		introWaitCycles = 0
 	elseif commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item + 1
+		demoFrameCounter = 0
+		introWaitCycles = 0
 	end
 	--cursor position calculation
 	if item < 1 then
@@ -1675,6 +1725,7 @@ function main.f_mainMenu()
 				main.p2SelectMenu = false --P2 character selection disabled
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -1720,6 +1771,7 @@ function main.f_mainMenu()
 				main.coop = true --P2 fighting on P1 side enabled
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -1738,6 +1790,7 @@ function main.f_mainMenu()
 				main.p2SelectMenu = false
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
@@ -1754,6 +1807,7 @@ function main.f_mainMenu()
 				main.coop = true
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
@@ -1814,6 +1868,7 @@ function main.f_mainMenu()
 				break
 			end
 		end
+		main.f_demo(cursorPosY, moveTxt, item, t)
 		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
 	end
 end
@@ -2058,6 +2113,7 @@ function main.f_netplayMode()
 				main.coop = true
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -2076,6 +2132,7 @@ function main.f_netplayMode()
 				main.coop = true
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
@@ -2151,6 +2208,7 @@ function main.f_mainExtras()
 				main.p2SelectMenu = false
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
@@ -2166,6 +2224,7 @@ function main.f_mainExtras()
 				main.p2SelectMenu = false
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.time = true
 				main.t_charparam.onlyme = true
@@ -2191,12 +2250,14 @@ function main.f_mainExtras()
 					exitReplay()
 				end
 			end
-			--RANDOM TEST
+			--DEMO
 			if t[item].itemname == 'randomtest' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.f_menuFadeOut('title_info', cursorPosY, moveTxt, item, t)
+				clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 				setGameMode('randomtest')
 				randomtest.run()
+				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			end
 			--BACK
 			if t[item].itemname == 'extrasback' then
@@ -2249,6 +2310,7 @@ function main.f_bonusExtras()
 				main.versusScreen = false
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -2296,6 +2358,7 @@ function main.f_mainTournament()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -2310,6 +2373,7 @@ function main.f_mainTournament()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -2324,6 +2388,7 @@ function main.f_mainTournament()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true
@@ -2338,6 +2403,7 @@ function main.f_mainTournament()
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.t_charparam.stage = true
 				main.t_charparam.music = true
+				main.t_charparam.zoom = true
 				main.t_charparam.ai = true
 				main.t_charparam.rounds = true
 				main.t_charparam.time = true

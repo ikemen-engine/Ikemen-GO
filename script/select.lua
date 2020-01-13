@@ -425,24 +425,25 @@ function select.f_setRounds()
 	end
 end
 
-function select.f_setStage()
+function select.f_setStage(num)
+	num = num or 0
 	--stage
 	if not main.stageMenu and not continueStage then
 		if main.t_charparam.stage and main.t_charparam.rivals and select.f_rivalsMatch('stage') then --stage assigned as rivals param
-			stageNo = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage)
-			stageNo = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage[stageNo]
+			num = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage)
+			num = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].stage[num]
 		elseif main.t_charparam.stage and main.t_selChars[t_p2Selected[1].cel + 1].stage ~= nil then --stage assigned as character param
-			stageNo = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
-			stageNo = main.t_selChars[t_p2Selected[1].cel + 1].stage[stageNo]
+			num = math.random(1, #main.t_selChars[t_p2Selected[1].cel + 1].stage)
+			num = main.t_selChars[t_p2Selected[1].cel + 1].stage[num]
 		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order] ~= nil then --stage assigned as stage order param
-			stageNo = math.random(1, #main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order])
-			stageNo = main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order][stageNo]
+			num = math.random(1, #main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order])
+			num = main.t_orderStages[main.t_selChars[t_p2Selected[1].cel + 1].order][num]
 		else --stage randomly selected
-			stageNo = main.t_includeStage[1][math.random(1, #main.t_includeStage[1])]
+			num = main.t_includeStage[1][math.random(1, #main.t_includeStage[1])]
 		end
 	end
-	setStage(stageNo)
-	selectStage(stageNo)
+	setStage(num)
+	selectStage(num)
 	--zoom
 	local zoom = config.ZoomActive
 	local zoomMin = config.ZoomMin
@@ -460,22 +461,22 @@ function select.f_setStage()
 		else
 			zoom = false
 		end
-	elseif main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo].zoom ~= nil then --zoom assigned as stage param
-		if main.t_selStages[stageNo].zoom == 1 then
+	elseif main.t_selStages[num] ~= nil and main.t_selStages[num].zoom ~= nil then --zoom assigned as stage param
+		if main.t_selStages[num].zoom == 1 then
 			zoom = true
 		else
 			zoom = false
 		end
 	end
-	if main.t_selStages[stageNo] ~= nil then
-		if main.t_selStages[stageNo].zoommin ~= nil then
-			zoomMin = main.t_selStages[stageNo].zoommin
+	if main.t_selStages[num] ~= nil then
+		if main.t_selStages[num].zoommin ~= nil then
+			zoomMin = main.t_selStages[num].zoommin
 		end
-		if main.t_selStages[stageNo].zoommax ~= nil then
-			zoomMax = main.t_selStages[stageNo].zoommax
+		if main.t_selStages[num].zoommax ~= nil then
+			zoomMax = main.t_selStages[num].zoommax
 		end
-		if main.t_selStages[stageNo].zoomspeed ~= nil then
-			zoomSpeed = main.t_selStages[stageNo].zoomspeed
+		if main.t_selStages[num].zoomspeed ~= nil then
+			zoomSpeed = main.t_selStages[num].zoomspeed
 		end
 	end
 	setZoom(zoom)
@@ -490,15 +491,15 @@ function select.f_setStage()
 		local volume = 100
 		local loopstart = 0
 		local loopend = 0
-		if main.stageMenu then
-			if main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
-				track = math.random(1, #main.t_selStages[stageNo][t[i]])
-				music = main.t_selStages[stageNo][t[i]][track].bgmusic
-				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
-				loopstart = main.t_selStages[stageNo][t[i]][track].bgmloopstart
-				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
+		if main.stageMenu then --game modes with stage selection screen
+			if main.t_selStages[num] ~= nil and main.t_selStages[num][t[i]] ~= nil then --music assigned as stage param
+				track = math.random(1, #main.t_selStages[num][t[i]])
+				music = main.t_selStages[num][t[i]][track].bgmusic
+				volume = main.t_selStages[num][t[i]][track].bgmvolume
+				loopstart = main.t_selStages[num][t[i]][track].bgmloopstart
+				loopend = main.t_selStages[num][t[i]][track].bgmloopend
 			end
-		else
+		elseif not gameMode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
 			if main.t_charparam.music and main.t_charparam.rivals and select.f_rivalsMatch(t[i]) then --music assigned as rivals param
 				track = math.random(1, #main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]])
 				music = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][t[i]][track].bgmusic
@@ -511,18 +512,19 @@ function select.f_setStage()
 				volume = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmvolume
 				loopstart = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopstart
 				loopend = main.t_selChars[t_p2Selected[1].cel + 1][t[i]][track].bgmloopend
-			elseif main.t_selStages[stageNo] ~= nil and main.t_selStages[stageNo][t[i]] ~= nil then --music assigned as stage param
-				track = math.random(1, #main.t_selStages[stageNo][t[i]])
-				music = main.t_selStages[stageNo][t[i]][track].bgmusic
-				volume = main.t_selStages[stageNo][t[i]][track].bgmvolume
-				loopstart = main.t_selStages[stageNo][t[i]][track].bgmloopstart
-				loopend = main.t_selStages[stageNo][t[i]][track].bgmloopend
+			elseif main.t_selStages[num] ~= nil and main.t_selStages[num][t[i]] ~= nil then --music assigned as stage param
+				track = math.random(1, #main.t_selStages[num][t[i]])
+				music = main.t_selStages[num][t[i]][track].bgmusic
+				volume = main.t_selStages[num][t[i]][track].bgmvolume
+				loopstart = main.t_selStages[num][t[i]][track].bgmloopstart
+				loopend = main.t_selStages[num][t[i]][track].bgmloopend
 			end
 		end
 		if music ~= '' then
 			setStageBGM(i - 1, music, volume, loopstart, loopend)
 		end
 	end
+	return num
 end
 
 function select.f_reampPal(cell, num)
@@ -951,7 +953,7 @@ function select.f_selectSimple()
 		--fight initialization
 		select.f_remapAI()
 		select.f_setRounds()
-		select.f_setStage()
+		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
 		if esc() then break end
 		loadStart()
@@ -1149,7 +1151,7 @@ function select.f_selectArranged()
 		select.f_overwriteCharData()
 		select.f_remapAI()
 		select.f_setRounds()
-		select.f_setStage()
+		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
 		--if esc() then break end
 		loadStart()
@@ -1400,7 +1402,7 @@ function select.f_selectArcade()
 		setMatchNo(matchNo)
 		select.f_remapAI()
 		select.f_setRounds()
-		select.f_setStage()
+		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
 		if esc() then break end
 		loadStart()
@@ -1493,7 +1495,7 @@ function select.f_selectTournament(size)
 		--fight initialization
 		select.f_remapAI()
 		select.f_setRounds()
-		select.f_setStage()
+		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
 		loadStart()
 		winner, t_gameStats = game()

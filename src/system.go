@@ -78,6 +78,8 @@ var sys = System {
 	//Shader vars
 	MultisampleAntialiasing: false,
 	PostProcessingShader:    0,
+	barsDisplay:           true,
+	stopTitleBGM:          true,
 }
 
 type TeamMode int32
@@ -284,6 +286,8 @@ type System struct {
 	challenger              int
 	roundType               [2]RoundType
 	ocd                     [MaxSimul*2 + MaxAttachedChar]OverwriteCharData
+	barsDisplay             bool
+	stopTitleBGM            bool
 }
 
 type OverwriteCharData struct {
@@ -1614,15 +1618,17 @@ func (s *System) fight() (reload bool) {
 		}
 		s.resetFrameTime()
 		s.nextRound()
-		if s.round == 1 {
-			s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
-		} else if s.sel.stagebgm[1].bgmusic != "" && (s.roundType[0] >= RT_Deciding || s.roundType[1] >= RT_Deciding) {
-			s.bgm.Open(s.sel.stagebgm[1].bgmusic, true, 1, int(s.sel.stagebgm[1].bgmvolume), int(s.sel.stagebgm[1].bgmloopstart), int(s.sel.stagebgm[1].bgmloopend))
-		} else if bgmstate == 2 {
-			s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
+		if s.stopTitleBGM {
+			if s.round == 1 {
+				s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
+			} else if s.sel.stagebgm[1].bgmusic != "" && (s.roundType[0] >= RT_Deciding || s.roundType[1] >= RT_Deciding) {
+				s.bgm.Open(s.sel.stagebgm[1].bgmusic, true, 1, int(s.sel.stagebgm[1].bgmvolume), int(s.sel.stagebgm[1].bgmloopstart), int(s.sel.stagebgm[1].bgmloopend))
+			} else if bgmstate == 2 {
+				s.bgm.Open(s.sel.stagebgm[0].bgmusic, true, 1, int(s.sel.stagebgm[0].bgmvolume), int(s.sel.stagebgm[0].bgmloopstart), int(s.sel.stagebgm[0].bgmloopend))
+			}
 		}
 		bgmbool[0], bgmbool[1], bgmstate = false, false, 0
-		if s.sel.stagebgm[2].bgmusic != "" {
+		if s.sel.stagebgm[2].bgmusic != "" && s.stopTitleBGM {
 			if s.stage.bgmlast == 1 {
 				if (s.com[0] == 0 || (s.com[0] > 0 && s.com[1] > 0)) && s.roundType[0] >= RT_Deciding {
 					bgmbool[0] = true

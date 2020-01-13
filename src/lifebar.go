@@ -1668,7 +1668,7 @@ func (l *Lifebar) draw(layerno int16) {
 	if !sys.statusDraw {
 		return
 	}
-	if !sys.sf(GSF_nobardisplay) && sys.gameMode != "demo" {
+	if !sys.sf(GSF_nobardisplay) && sys.barsDisplay {
 		for ti, _ := range sys.tmode {
 			for i := ti; i < l.num[0][ti]; i += 2 {
 				l.hb[l.ref[0][ti]][i].bgDraw(layerno)

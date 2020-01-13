@@ -237,7 +237,7 @@ function randomtest.init()
   end
   setAutoLevel(true)
   setMatchNo(1)
-  selectStage(0)
+  select.f_setStage()
   randomtest.rakuBenry()
   winner = 0
   wins = 0

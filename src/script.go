@@ -1277,6 +1277,14 @@ func systemScriptInit(l *lua.LState) {
 		sys.demoTime = int32(numArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setBarsDisplay", func(*lua.LState) int {
+		sys.barsDisplay = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setStopTitleBGM", func(*lua.LState) int {
+		sys.stopTitleBGM = boolArg(l, 1)
+		return 0
+	})
 	luaRegister(l, "setGameMode", func(*lua.LState) int {
 		sys.gameMode = strArg(l, 1)
 		return 0
