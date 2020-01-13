@@ -974,7 +974,6 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
 		sys.loadStart()
-		sys.resetOverwriteCharData()
 		return 0
 	})
 	luaRegister(l, "overwriteCharData", func(l *lua.LState) int {
@@ -1189,6 +1188,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
+				sys.resetOverwriteCharData()
 				return 2
 			}
 		}

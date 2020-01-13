@@ -231,13 +231,11 @@ end
 
 -- Sets AIs to level 8 (MAX level) and ints AutoLevel
 function randomtest.init()
-  selectStart()
   for i = 1, 8 do
     setCom(i, 8)
   end
   setAutoLevel(true)
   setMatchNo(1)
-  select.f_setStage()
   randomtest.rakuBenry()
   winner = 0
   wins = 0
@@ -253,6 +251,7 @@ function randomtest.run()
   while not esc() do
     randomtest.randSel(1, winner)
     randomtest.randSel(2, winner)
+    select.f_setStage()
     loadStart()
     local oldwinner = winner
     winner = game()

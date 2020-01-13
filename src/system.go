@@ -343,6 +343,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.clsnSpr = *newSprite()
 	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
 	s.clsnSpr.SetPxl([]byte{0})
+	s.resetOverwriteCharData()
 	systemScriptInit(l)
 	// So now that we have a windo we add a icon.
 	if len(s.windowMainIconLocation) > 0 {

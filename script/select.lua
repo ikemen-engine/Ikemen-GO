@@ -615,12 +615,12 @@ function select.f_overwriteCharData()
 		--for each round in the last match
 		for round = 1, #t_gameStats.chars do
 			--remove character from team if he/she has been defeated
-			if t_gameStats.chars[round][1].ko or t_gameStats.chars[round][1].life <= 0 then
+			if not t_gameStats.chars[round][1].win or t_gameStats.chars[round][1].ko then
 				table.remove(t_p1Selected, t_gameStats.chars[round][1].memberNo + 1 - removedNum)
 				removedNum = removedNum + 1
 				p1NumChars = p1NumChars - 1
 			--otherwise overwrite character's next match life (done after all rounds have been checked)
-			else --TODO: test if win, winTime, drawgame checks are needed
+			else
 				t_p1Keys[t_gameStats.chars[round][1].memberNo] = t_gameStats.chars[round][1].life
 			end
 		end
@@ -635,12 +635,12 @@ function select.f_overwriteCharData()
 			--only check P1 side characters
 			if player % 2 ~= 0 and player <= (p1NumChars + removedNum) * 2 then --odd value, team size check just in case
 				--remove character from team if he/she has been defeated
-				if t_gameStats.chars[lastRound][player].ko or t_gameStats.chars[lastRound][player].life <= 0 then
+				if not t_gameStats.chars[lastRound][player].win or t_gameStats.chars[lastRound][player].ko then
 					table.remove(t_p1Selected, t_gameStats.chars[lastRound][player].memberNo + 1 - removedNum)
 					removedNum = removedNum + 1
 					p1NumChars = p1NumChars - 1
 				--otherwise overwrite character's next match life
-				else --TODO: test if win, winTime, drawgame checks are needed
+				else
 					if p1Count == 0 then
 						p1Count = 1
 					else
