@@ -63,6 +63,10 @@
  ;   IKEMEN feature: Set the paramvalue between 1 and 8 to force AI Level
  ;   regardless of difficulty and AI ramping settings.
  ;
+ ; - vsscreen
+ ;   IKEMEN feature: Set the paramvalue to 0 to avoid displaying versus screen
+ ;   for this character.
+ ;
  ; - winscreen
  ;   IKEMEN feature: Set the paramvalue to 0 to avoid displaying victory screen
  ;   after beating this character.
@@ -109,10 +113,10 @@
  ;
  ; - hidden
  ;   IKEMEN feature: Set the paramvalue to hide a character:
- ;   1: cursor can move to this cell, face and face background are not rendered
- ;      (same result as hiding selectable characters in mugen by placing them
- ;      outside visible grid, but without need to create lots of unnecessary
- ;      select.def slots to do so),
+ ;   1: cursor can move to this cell, cursor, face and face background are not
+ ;      rendered (same result as hiding selectable characters in mugen by
+ ;      placing them outside visible grid, but without need to create lots of
+ ;      unnecessary select.def slots to do so),
  ;   2: cell can't be selected, art is not rendered (slot is ignored until
  ;      character is unlocked).
  ;   3: cell behaves like randomselect slot until character is unlocked.
@@ -142,12 +146,12 @@
  ;   way. paramname refers to arcade match number (for example 4 = 4th match).
  ;   paramvalue, enclosed in {} brackets, follows the same syntax as adding a
  ;   new character with optional stage assignment and accepts following optional
- ;   char parameters: music, musicalt, musiclife, zoom, ai, winscreen, rounds,
- ;   time, lifebar, onlyme. If 'onlyme' parameter is not set and you're playing
- ;   in team mode the referenced character becomes the opposite team leader, and
- ;   other characters follows order settings. Chars and stages referenced here,
- ;   if not already present in [Characters] and [ExtraStages] sections as
- ;   separate entries, won't be selectable in select screen.
+ ;   char parameters: music, musicalt, musiclife, zoom, ai, vsscreen, winscreen,
+ ;   rounds, time, lifebar, onlyme. If 'onlyme' parameter is not set and you're
+ ;   playing in team mode the referenced character becomes the opposite team
+ ;   leader, and other characters follows order settings. Characters and stages
+ ;   referenced here, if not already present in [Characters] and [ExtraStages]
+ ;   sections as separate entries, won't be selectable in select screen.
  ;
  ; - maxmatches
  ;   IKEMEN feature: This parameter makes the character ignore default

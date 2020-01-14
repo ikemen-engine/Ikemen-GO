@@ -998,6 +998,9 @@ function main.f_addChar(line, row, playable)
 	if main.t_selChars[row].hidden == nil then
 		main.t_selChars[row].hidden = 0
 	end
+	if main.t_selChars[row].char ~= nil then
+		main.t_selChars[row].char_ref = main.t_charDef[main.t_selChars[row].char:lower()]
+	end
 	if playable then
 		--order param
 		if main.t_orderChars[main.t_selChars[row].order] == nil then
@@ -1178,10 +1181,6 @@ main.t_bonusChars = {}
 main.t_randomChars = {}
 --for each character loaded
 for i = 1, #main.t_selChars do
-	--add char_ref entry
-	if main.t_selChars[i].char ~= nil then
-		main.t_selChars[i].char_ref = main.t_charDef[main.t_selChars[i].char:lower()]
-	end
 	--change character 'rivals' param char and stage string file paths to reference values
 	if main.t_selChars[i].rivals ~= nil then
 		for j = 1, #main.t_selChars[i].rivals do
@@ -1190,7 +1189,7 @@ for i = 1, #main.t_selChars do
 				if main.t_charDef[main.t_selChars[i].rivals[j].char:lower()] == nil then --new char
 					chars = chars + 1
 					main.f_addChar(main.t_selChars[i].rivals[j].char .. ', exclude = 1', chars, false)
-					main.t_selChars[i].rivals[j].char_ref = chars
+					main.t_selChars[i].rivals[j].char_ref = chars - 1
 				else --already added
 					main.t_selChars[i].rivals[j].char_ref = main.t_charDef[main.t_selChars[i].rivals[j].char:lower()]
 				end
@@ -1462,6 +1461,7 @@ function main.f_resetCharparam()
 		music = false,
 		zoom = false,
 		ai = false,
+		vsscreen = true,
 		winscreen = true,
 		rounds = false,
 		time = false,

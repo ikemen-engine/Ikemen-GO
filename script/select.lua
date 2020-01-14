@@ -257,12 +257,16 @@ function select.f_aiRamp(currentMatch)
 	main.f_printTable(t_aiRamp, 'debug/t_aiRamp.txt')
 end
 
-function select.f_rivalsMatch(param)
+function select.f_rivalsMatch(param, value)
 	if main.t_selChars[t_p1Selected[1].cel + 1].rivals ~= nil and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo] ~= nil then
-		if param == nil then
+		if param == nil then --only checks if rivals assignment for this match exists at all
 			return true
-		else
-			return main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] ~= nil
+		elseif main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] ~= nil then
+			if value == nil then --check only if param is assigned for this rival
+				return true
+			else --check if param equal value
+				return main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] == value
+			end
 		end
 	end
 	return false
@@ -1370,7 +1374,7 @@ function select.f_selectArcade()
 			if p2NumChars > 1 then
 				for i = 1, #t_p2Selected do
 					local onlyme = false
-					if select.f_rivalsMatch('char_ref') and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].onlyme == 1 then --team conversion assigned as rivals param
+					if select.f_rivalsMatch('char_ref') and select.f_rivalsMatch('onlyme', 1) then --team conversion assigned as rivals param
 						p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
 						onlyme = true
 					elseif main.t_selChars[t_p2Selected[i].cel + 1].onlyme == 1 then --team conversion assigned as character param
@@ -2596,7 +2600,7 @@ function select.f_selectChar(player, t)
 end
 
 function select.f_selectVersus()
-	if not main.versusScreen then
+	if not main.versusScreen or not main.t_charparam.vsscreen or (main.t_charparam.rivals and select.f_rivalsMatch('vsscreen', 0)) or main.t_selChars[t_p1Selected[1].cel + 1].vsscreen == 0 then
 		select.f_selectChar(1, t_p1Selected)
 		select.f_selectChar(2, t_p2Selected)
 		return
@@ -3064,10 +3068,8 @@ function select.f_selectVictory()
 		return
 	elseif not main.t_charparam.winscreen then
 		return
-	elseif main.t_charparam.rivals and select.f_rivalsMatch('winscreen') then --winscreen assigned as rivals param
-		if main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].winscreen == 0 then
-			return
-		end
+	elseif main.t_charparam.rivals and select.f_rivalsMatch('winscreen', 0) then --winscreen assigned as rivals param
+		return
 	elseif main.t_selChars[wsn + 1].winscreen == 0 then --winscreen assigned as character param
 		return
 	end
