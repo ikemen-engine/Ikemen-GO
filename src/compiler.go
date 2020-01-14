@@ -1570,7 +1570,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "inguarddist":
 		out.append(OC_inguarddist)
 	case "ishelper":
-		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(math.MinInt32)); err != nil {
 			return bvNone(), err
 		}
 		out.append(OC_ishelper)

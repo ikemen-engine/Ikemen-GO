@@ -885,7 +885,8 @@ func (r *LifeBarRound) act() bool {
 			if sys.tickNextFrame() {
 				r.swt[t]--
 			}
-			if ats.End(r.dt[t]) {
+			//animが終了したら数値を固定して再度animを再生しないようにする
+			if ats.anim.anim.spr != nil && ats.End(r.dt[t]) {
 				r.wt[t] = 2
 			}
 			if sys.intro < -r.ko_time-10 {
@@ -1015,8 +1016,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 				r.win.text = tmp
 			}
 		}
-		
-		
+
 		if (sys.finish != FT_NotYet || sys.time == 0) && sys.winTeam >= 0 {
 			switch sys.winType[sys.winTeam] {
 			case WT_N, WT_PN:
@@ -1040,22 +1040,21 @@ func (r *LifeBarRound) draw(layerno int16) {
 				r.perfect.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
 			}
 		}
-		
-		
+
 	}
 	sys.brightness = ob
 }
 
 type LifeBarChallenger struct {
-	cnt           int32
-	snd           *Snd
-	pos           [2]int32
-	challenger    AnimTextSnd
-	sndtime       int32
-	over_pause    int32
-	over_time     int32
-	bg            AnimLayout
-	fnt           []*Fnt
+	cnt        int32
+	snd        *Snd
+	pos        [2]int32
+	challenger AnimTextSnd
+	sndtime    int32
+	over_pause int32
+	over_time  int32
+	bg         AnimLayout
+	fnt        []*Fnt
 }
 
 func newLifeBarChallenger(snd *Snd, fnt []*Fnt) *LifeBarChallenger {
@@ -1077,7 +1076,7 @@ func readLifeBarChallenger(is IniSection,
 	ch.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	return ch
 }
-func (ch *LifeBarChallenger) step()  {
+func (ch *LifeBarChallenger) step() {
 	if sys.challenger > 0 {
 		if ch.cnt == ch.sndtime {
 			ch.snd.play(ch.challenger.snd)
@@ -1145,7 +1144,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		"[tag name]": -1, "[challenger]": -1}
 	strc := strings.ToLower(strings.TrimSpace(str))
 	for k, _ := range missing {
-		strc = strings.Replace(strc, ";" + k, "", -1)
+		strc = strings.Replace(strc, ";"+k, "", -1)
 		if strings.Contains(strc, k) {
 			delete(missing, k)
 		} else {

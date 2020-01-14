@@ -2414,7 +2414,7 @@ func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	id := hid.ToI()
-	return BytecodeBool(c.helperIndex != 0 && (id <= 0 || c.helperId == id))
+	return BytecodeBool(c.helperIndex != 0 && (id == math.MinInt32 || c.helperId == id))
 }
 func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
