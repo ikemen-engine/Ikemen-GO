@@ -492,11 +492,11 @@ local motif =
 		p2_teammenu_value_empty_icon_facing = 1,
 		p2_teammenu_value_empty_icon_scale = {1.0, 1.0},
 		p2_teammenu_value_spacing = {-6, 0},
-		timer_enabled = 1, --Ikemen feature
+		timer_enabled = 0, --Ikemen feature
 		timer_offset = {159, 39}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
-		timer_count = 5, --Ikemen feature
+		timer_count = 99, --Ikemen feature
 		timer_framespercount = 60, --Ikemen feature
 		timer_displaytime = 10, --Ikemen feature
 	},
