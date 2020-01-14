@@ -492,6 +492,13 @@ local motif =
 		p2_teammenu_value_empty_icon_facing = 1,
 		p2_teammenu_value_empty_icon_scale = {1.0, 1.0},
 		p2_teammenu_value_spacing = {-6, 0},
+		timer_enabled = 1, --Ikemen feature
+		timer_offset = {159, 39}, --Ikemen feature
+		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		timer_count = 5, --Ikemen feature
+		timer_framespercount = 60, --Ikemen feature
+		timer_displaytime = 10, --Ikemen feature
 	},
 	selectbgdef =
 	{
@@ -973,6 +980,7 @@ local motif =
 		title_pos = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_chars = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
 		text_stages = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
 		text_order = "Incorrect 'maxmatches' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
 		text_training = "Training character ('chars/Training/Training.def') not found.\nPress any key to exit the program.", --Ikemen feature

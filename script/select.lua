@@ -77,6 +77,7 @@ local currentOrder = 0
 local currentRosterIndex = 0
 local stageNo = 0
 local stageList = 0
+local timerSelect = 0
 local fadeType = 'fadein'
 local continue = false
 local challenger = false
@@ -926,6 +927,7 @@ function select.f_selectSimple()
 		fadeType = 'fadein'
 		select.f_selectReset()
 		selectStart()
+		timerSelect = 0
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -978,6 +980,7 @@ function select.f_selectArranged()
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
 		selectStart()
+		timerSelect = 0
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -1170,6 +1173,7 @@ function select.f_selectArcade()
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
 		selectStart()
+		timerSelect = 0
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -1316,6 +1320,7 @@ function select.f_selectArcade()
 					end
 					fadeType = 'fadein'
 					--selectStart()
+					timerSelect = 0
 					selScreenEnd = false
 					while not selScreenEnd do
 						if esc() then
@@ -1537,6 +1542,21 @@ end
 --;===========================================================
 --; SELECT SCREEN
 --;===========================================================
+local txt_timerSelect = main.f_createTextImg(
+	motif.font_data[motif.select_info.timer_font[1]],
+	motif.select_info.timer_font[2],
+	motif.select_info.timer_font[3],
+	'',
+	motif.select_info.timer_offset[1],
+	motif.select_info.timer_offset[2],
+	motif.select_info.timer_font_scale[1],
+	motif.select_info.timer_font_scale[2],
+	motif.select_info.timer_font[4],
+	motif.select_info.timer_font[5],
+	motif.select_info.timer_font[6],
+	motif.select_info.timer_font[7],
+	motif.select_info.timer_font[8]
+)
 local txt_p1Name = main.f_createTextImg(
 	motif.font_data[motif.select_info.p1_name_font[1]],
 	motif.select_info.p1_name_font[2],
@@ -1554,7 +1574,7 @@ local txt_p1Name = main.f_createTextImg(
 )
 local p1RandomCount = 0
 local p1RandomPortrait = 0
-if #main.t_randomChars > 0 then p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)] end
+p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 local txt_p2Name = main.f_createTextImg(
 	motif.font_data[motif.select_info.p2_name_font[1]],
 	motif.select_info.p2_name_font[2],
@@ -1572,7 +1592,7 @@ local txt_p2Name = main.f_createTextImg(
 )
 local p2RandomCount = 0
 local p2RandomPortrait = 0
-if #main.t_randomChars > 0 then p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)] end
+p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 
 function select.f_alignOffset(align)
 	if align == -1 then
@@ -1595,7 +1615,7 @@ function select.f_selectScreen()
 			if main.t_selChars[p1Cell + 1].char == 'randomselect' or main.t_selChars[p1Cell + 1].hidden == 3 then
 				if p1RandomCount < motif.select_info.cell_random_switchtime then
 					p1RandomCount = p1RandomCount + 1
-				elseif #main.t_randomChars > 0 then
+				else
 					p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 					p1RandomCount = 0
 				end
@@ -1628,7 +1648,7 @@ function select.f_selectScreen()
 			if main.t_selChars[p2Cell + 1].char == 'randomselect' or main.t_selChars[p2Cell + 1].hidden == 3 then
 				if p2RandomCount < motif.select_info.cell_random_switchtime then
 					p2RandomCount = p2RandomCount + 1
-				elseif #main.t_randomChars > 0 then
+				else
 					p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 					p2RandomCount = 0
 				end
@@ -1756,6 +1776,21 @@ function select.f_selectScreen()
 			motif.select_info.p2_name_spacing[2]
 		)
 	end
+	--draw timer
+	if motif.select_info.timer_enabled == 1 and p1TeamEnd and (p2TeamEnd or not main.p2SelectMenu) then
+		local num = math.floor((motif.select_info.timer_count * motif.select_info.timer_framespercount - timerSelect + motif.select_info.timer_displaytime) / motif.select_info.timer_framespercount + 0.5)
+		if num <= -1 then
+			timerSelect = -1
+			textImgSetText(txt_timerSelect, 0)
+		else
+			timerSelect = timerSelect + 1
+			textImgSetText(txt_timerSelect, math.max(0, num))
+		end
+		if timerSelect >= motif.select_info.timer_displaytime then
+			textImgDraw(txt_timerSelect)
+		end
+	end
+	--team and character selection complete
 	if p1SelEnd and p2SelEnd and p1TeamEnd and p2TeamEnd then
 		if main.stageMenu and not stageEnd then --Stage select
 			select.f_stageMenu()
@@ -2304,15 +2339,15 @@ function select.f_p1SelectMenu()
 			main.f_animPosDraw(motif.select_info.p1_cursor_active_data, cursorX, cursorY)
 		end
 		--cell selected
-		if main.f_btnPalNo(main.p1Cmd) > 0 and main.t_selChars[p1Cell + 1].char ~= nil and main.t_selChars[p1Cell + 1].hidden ~= 2 and #main.t_randomChars > 0 then
+		if main.f_btnPalNo(main.p1Cmd) > 0 and main.t_selChars[p1Cell + 1].char ~= nil and main.t_selChars[p1Cell + 1].hidden ~= 2 then
 			sndPlay(motif.files.snd_data, motif.select_info.p1_cursor_done_snd[1], motif.select_info.p1_cursor_done_snd[2])
 			local selected = p1Cell
 			if main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
 				selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
 			end
 			table.insert(t_p1Selected, {cel = selected, pal = main.f_btnPalNo(main.p1Cmd), cursor = {cursorX, cursorY, p1RowOffset}})
-			if #t_p1Selected == p1NumChars then
-				if main.p2In == 1 and matchNo == 0 then
+			if #t_p1Selected == p1NumChars then --if all characters have been chosen
+				if main.p2In == 1 and matchNo == 0 then --if player1 is allowed to select p2 characters
 					p2TeamEnd = false
 					p2SelEnd = false
 					--commandBufReset(main.p2Cmd)
@@ -2320,6 +2355,36 @@ function select.f_p1SelectMenu()
 				p1SelEnd = true
 			end
 			main.f_cmdInput()
+		--select screen timer reached 0
+		elseif motif.select_info.timer_enabled == 1 and timerSelect == -1 then
+			sndPlay(motif.files.snd_data, motif.select_info.p1_cursor_done_snd[1], motif.select_info.p1_cursor_done_snd[2])
+			local selected = p1Cell
+			local rand = false
+			for i = #t_p1Selected + 1, p1NumChars do
+				if rand or main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
+					selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
+				end
+				rand = true
+				table.insert(t_p1Selected, {cel = selected, pal = math.random(1, 12), cursor = {cursorX, cursorY, p1RowOffset}})
+			end
+			if main.p2SelectMenu and main.p2In == 1 and matchNo == 0 then --if player1 is allowed to select p2 characters
+				p2TeamMode = p1TeamMode
+				p2NumChars = p1NumChars
+				setTeamMode(2, p2TeamMode, p2NumChars)
+				p2Cell = p1Cell
+				p2SelX = p1SelX
+				p2SelY = p1SelY
+				p2FaceOffset = p1FaceOffset
+				p2RowOffset = p1RowOffset
+				for i = 1, p2NumChars do
+					table.insert(t_p2Selected, {cel = main.t_randomChars[math.random(1, #main.t_randomChars)], pal = math.random(1, 12), cursor = {cursorX, cursorY, p2RowOffset}})
+				end
+			end
+			if main.stageMenu then
+				stageNo = main.t_includeStage[2][math.random(1, #main.t_includeStage[2])]
+				stageEnd = true
+			end
+			p1SelEnd = true
 		end
 	end
 end
@@ -2357,7 +2422,7 @@ function select.f_p2SelectMenu()
 		end
 		main.f_animPosDraw(motif.select_info.p2_cursor_active_data, cursorX, cursorY)
 		--cell selected
-		if main.f_btnPalNo(main.p2Cmd) > 0 and main.t_selChars[p2Cell + 1].char ~= nil and main.t_selChars[p2Cell + 1].hidden ~= 2 and #main.t_randomChars > 0 then
+		if main.f_btnPalNo(main.p2Cmd) > 0 and main.t_selChars[p2Cell + 1].char ~= nil and main.t_selChars[p2Cell + 1].hidden ~= 2 then
 			sndPlay(motif.files.snd_data, motif.select_info.p2_cursor_done_snd[1], motif.select_info.p2_cursor_done_snd[2])
 			local selected = p2Cell
 			if main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
@@ -2368,6 +2433,19 @@ function select.f_p2SelectMenu()
 				p2SelEnd = true
 			end
 			main.f_cmdInput()
+		--select screen timer reached 0
+		elseif motif.select_info.timer_enabled == 1 and timerSelect == -1 then
+			sndPlay(motif.files.snd_data, motif.select_info.p2_cursor_done_snd[1], motif.select_info.p2_cursor_done_snd[2])
+			local selected = p2Cell
+			local rand = false
+			for i = #t_p2Selected + 1, p2NumChars do
+				if rand or main.t_selChars[selected + 1].char == 'randomselect' or main.t_selChars[selected + 1].hidden == 3 then
+					selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
+				end
+				rand = true
+				table.insert(t_p2Selected, {cel = selected, pal = math.random(1, 12), cursor = {cursorX, cursorY, p2RowOffset}})
+			end
+			p2SelEnd = true
 		end
 	end
 end

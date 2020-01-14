@@ -1272,6 +1272,12 @@ if main.t_charDef.training == nil then
 	os.exit()
 end
 
+--print warning if no characters can be randomly chosen
+if #main.t_randomChars == 0 then
+	main.f_warning(main.f_extractText(motif.warning_info.text_chars), motif.title_info, motif.titlebgdef)
+	os.exit()
+end
+
 --print warning if no stages have been added
 if #main.t_includeStage[1] == 0 then
 	main.f_warning(main.f_extractText(motif.warning_info.text_stages), motif.title_info, motif.titlebgdef)
