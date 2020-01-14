@@ -1485,10 +1485,14 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	else
 		setBarsDisplay(false)
 	end
+	if motif.demo_mode.debuginfo == 0 and config.AllowDebugKeys then
+		setAllowDebugKeys(false)
+	end
 	setGameMode('demo')
 	randomtest.run()
 	setBarsDisplay(true)
 	setStopTitleBGM(true)
+	setAllowDebugKeys(config.AllowDebugKeys)
 	refresh()
 	--intro
 	if introWaitCycles >= motif.demo_mode.intro_waitcycles then

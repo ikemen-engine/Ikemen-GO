@@ -377,7 +377,16 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setAllowDebugKeys", func(l *lua.LState) int {
-		sys.allowDebugKeys = boolArg(l, 1)
+		d := boolArg(l, 1)
+		if !d {
+			if sys.clsnDraw {
+				sys.clsnDraw = false
+			}
+			if sys.debugDraw {
+				sys.debugDraw = false
+			}
+		}
+		sys.allowDebugKeys = d
 		return 0
 	})
 
