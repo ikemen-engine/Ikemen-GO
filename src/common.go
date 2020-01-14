@@ -265,7 +265,10 @@ func SearchFile(file string, deffile string) string {
 		if defdir != "data" {
 			fp = "data/" + file
 			if fp = FileExist(fp); len(fp) == 0 {
-				_else = true
+				fp = sys.motifDir + file
+				if fp = FileExist(fp); len(fp) == 0 {
+					_else = true
+				}
 			}
 		} else {
 			_else = true

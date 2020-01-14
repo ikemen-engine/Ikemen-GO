@@ -26,7 +26,16 @@ end
 function main.CalculateLocalcoordValues()
 	-- We load the libar localcoord from the motif file
 	main.SP_Localcoord = main.ParseDefFileValue(config.Motif, "info", "localcoord", true)
-
+	local spOriginTemp = main.ParseDefFileValue(config.Motif, "info", "localcoord_origin", true)
+	local spCenterTemp = main.ParseDefFileValue(config.Motif, "info", "localcoord_center", false)
+	
+	-- We check if we got a valid value
+	if spCenterTemp  == nil then
+		spCenterTemp = "default"
+	else
+		spCenterTemp = spCenterTemp:lower()
+	end
+	
 	-- We check if what we got is valid
 	if main.SP_Localcoord == nil then
 		main.SP_Localcoord = {320, 240}
@@ -46,11 +55,11 @@ function main.CalculateLocalcoordValues()
 	tempMFF = nil
 	
 	-- We seach for the file
-	if main.file_exists(motifFileFolder .. lbFileName) then
+	if main.f_fileExists(motifFileFolder .. lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue(motifFileFolder .. lbFileName, "info", "localcoord", true)
-	elseif main.file_exists("data/" .. lbFileName) then
+	elseif main.f_fileExists("data/" .. lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue("data/" .. lbFileName, "info", "localcoord", true)
-	elseif main.file_exists(lbFileName) then
+	elseif main.f_fileExists(lbFileName) then
 		main.LB_Localcoord = main.ParseDefFileValue(lbFileName, "info", "localcoord", true)
 	else
 		main.LB_Localcoord = main.SP_Localcoord
@@ -80,8 +89,20 @@ function main.CalculateLocalcoordValues()
 	main.LB_ScreenDiference = (main.LB_ScreenWidth - 320) / (main.LB_ScreenWidth / 320)
 	--setLifebarPortaitScale(main.SP_Localcoord[1] / main.SP_Localcoord43[1])
 
-	-- TODO: Check if this calculation of 'main.SP_Center' is rigth.
-	main.SP_Center = main.SP_Localcoord[1] - main.SP_Localcoord43[1]
+	-- Now we load posible values of main.SP_Center
+	if spOriginTemp == nil then
+		if spCenterTemp == "center" then
+			main.SP_Center = main.SP_Localcoord[1] / 2
+		elseif spCenterTemp == "left" then
+			main.SP_Center = 0
+		elseif spCenterTemp == "right" then
+			main.SP_Center = main.SP_Localcoord[1]
+		else
+			main.SP_Center = main.SP_Localcoord[1] - main.SP_Localcoord43[1]
+		end
+	else 
+		main.SP_Center = spOriginTemp
+	end
 end
 
 function main.IntLifebarScale()
@@ -142,7 +163,7 @@ function main.ParseDefFileValue(argFile, searchBlock, searchParam, isNumber)
 					param = param:gsub('[%. ]', '_') -- change param . and space to _
 					param = param:lower() -- lowercase param
 				end
-				if param ~= nil and value ~= nil and param:match(searchParam) then -- param = value pattern matched
+				if param ~= nil and value ~= nil and param == searchParam then -- param = value pattern matched
 					value = value:gsub('"', '') -- remove brackets from value
 					if value:match('.+,.+') then -- multiple values
 						for i, c in ipairs(main.f_strsplit(',', value)) do -- split value using "," delimiter

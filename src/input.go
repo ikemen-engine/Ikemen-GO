@@ -599,6 +599,9 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 		for k, v := range sys.shortcutScripts {
 			v.Activate = v.Activate || k.Test(key, mk)
 		}
+		if key == glfw.KeyF12 {
+			captureScreen()
+		}
 	}
 }
 func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
@@ -628,12 +631,12 @@ func JoystickState(joy, button int) bool {
 		}
 
 		//Xbox360コントローラーのLRトリガー判定
-		if (button == 9 || button == 11) && (joystick[joy].GetGamepadName() == "Xbox 360 Controller" || strings.Contains(joystick[joy].GetGamepadName(), "XInput")) {
+		if (button == 9 || button == 11) && strings.Contains(joystick[joy].GetGamepadName(), "XInput") {
 			return axes[button/2] > sys.xinputTriggerSensitivity
 		}
 
 		// Ignore trigger axis on PS4 (We already have buttons)
-		if (button >= 6 && button <= 9) && joystick[joy].GetGamepadName() == "Wireless Controller" {
+		if (button >= 6 && button <= 9) && joystick[joy].GetGamepadName() == "PS4 Controller" {
 			return false
 		}
 

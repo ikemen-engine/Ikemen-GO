@@ -586,12 +586,15 @@ type Stage struct {
 	debugbg         bool
 	localscl        float32
 	scale           [2]float32
+	bgmlife         int32
+	bgmlast         int32
 }
 
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: float32(math.NaN()),
 		rightbound: float32(math.NaN()), screenleft: 15, screenright: 15,
-		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1}}
+		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1},
+		bgmlife: 30, bgmlast: 0}
 	sys.cam.stageCamera = *newStageCamera()
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
@@ -713,6 +716,8 @@ func loadStage(def string) (*Stage, error) {
 	}
 	if sec := defmap["music"]; len(sec) > 0 {
 		s.bgmusic = sec[0]["bgmusic"]
+		sec[0].ReadI32("bgmlife", &s.bgmlife)
+		sec[0].ReadI32("bgmlast", &s.bgmlast)
 	}
 	if sec := defmap["bgdef"]; len(sec) > 0 {
 		if sec[0].LoadFile("spr", def, func(filename string) error {

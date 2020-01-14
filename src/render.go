@@ -697,25 +697,31 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.Translated(0, float64(sys.scrrect[3]), 0)
 	if trans == -1 {
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		gl.BlendEquation(gl.FUNC_ADD)
 		fill(1)
 	} else if trans == -2 {
 		gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR)
+		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		fill(1)
 	} else if trans <= 0 {
 	} else if trans < 255 {
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		fill(float32(trans) / 256)
 	} else if trans < 512 {
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
 		fill(1)
 	} else {
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+			gl.BlendEquation(gl.FUNC_ADD)
 			fill(float32(dst) / 255)
 		}
 		if src > 0 {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+			gl.BlendEquation(gl.FUNC_ADD)
 			fill(float32(src) / 255)
 		}
 	}

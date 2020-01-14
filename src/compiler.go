@@ -1421,6 +1421,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_frontedgedist)
 	case "gameheight":
 		out.append(OC_gameheight)
+	case "gamemode":
+		if err := nameSub(OC_const_gamemode); err != nil {
+			return bvNone(), err
+		}
 	case "gametime":
 		out.append(OC_gametime)
 	case "gamewidth":

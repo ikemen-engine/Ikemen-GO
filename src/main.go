@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
+	"github.com/sqweek/dialog"
 )
 
 func init() {
@@ -47,17 +48,21 @@ func main() {
 				help, _ := regexp.MatchString("^-[h%?]", a)
 				if help {
 					fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
-					fmt.Println(" -h -?               Help")
-					fmt.Println(" -log <logfile>      Records match data to <logfile>")
-					fmt.Println(" -r <sysfile>        Loads motif <sysfile>. eg. -r motifdir or -r motifdir/system.def")
+					fmt.Println(" -h -?                      Help")
+					fmt.Println(" -log <logfile>             Records match data to <logfile>")
+					fmt.Println(" -r <sysfile>               Loads motif <sysfile>. eg. -r motifdir or -r motifdir/system.def")
 					fmt.Println("\nQuick VS Options:")
-					fmt.Println(" -p<n> <playername>  Loads player n, eg. -p3 kfm")
-					fmt.Println(" -p<n>.ai <level>    Set player n's AI to <level>, eg. -p1.ai 8")
-					fmt.Println(" -p<n>.color <col>   Set player n's color to <col>")
-					fmt.Println(" -p<n>.life <life>   Sets player n's life to <life>")
-					fmt.Println(" -p<n>.power <power> Sets player n's power to <power>")
-					fmt.Println(" -rounds <num>       Plays for <num> rounds, and then quits")
-					fmt.Println(" -s <stagename>      Loads stage <stagename>")
+					fmt.Println(" -p<n> <playername>         Loads player n, eg. -p3 kfm")
+					fmt.Println(" -p<n>.ai <level>           Set player n's AI to <level>, eg. -p1.ai 8")
+					fmt.Println(" -p<n>.color <col>          Set player n's color to <col>")
+					fmt.Println(" -p<n>.power <power>        Sets player n's power to <power>")
+					fmt.Println(" -p<n>.life <life>          Sets player n's life to <life>")
+					fmt.Println(" -p<n>.lifeMax <life>       Sets player n's max life to <life>")
+					fmt.Println(" -p<n>.lifeRatio <ratio>    Sets player n's life ratio to <ratio>")
+					fmt.Println(" -p<n>.attackRatio <ratio>  Sets player n's attack ratio to <ratio>")
+					fmt.Println(" -p<n>.defenceRatio <ratio> Sets player n's defence ratio to <ratio>")
+					fmt.Println(" -rounds <num>              Plays for <num> rounds, and then quits")
+					fmt.Println(" -s <stagename>             Loads stage <stagename>")
 					fmt.Println("\nPress ENTER to exit.")
 					var s string
 					fmt.Scanln(&s)
@@ -120,13 +125,17 @@ func main() {
 	"CommonCmd": "data/common.cmd",
 	"SimulMode": true,
 	"LifeMul": 100,
-	"Team1VS2Life": 120,
-	"TurnsRecoveryRate": 300,
+	"Team1VS2Life": 100,
+	"TurnsRecoveryBase": 12.5,
+	"TurnsRecoveryBonus": 27.5,
 	"ZoomActive": false,
 	"ZoomMin": 0.75,
 	"ZoomMax": 1.1,
 	"ZoomSpeed": 1,
 	"RoundTime": 99,
+	"RoundsNumSingle": -1,
+	"RoundsNumTeam": -1,
+	"MaxDrawGames": -2,
 	"SingleTeamMode": true,
 	"NumTurns": 4,
 	"NumSimul": 4,
@@ -175,10 +184,11 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		JoystickConfig []struct {
+		JoystickConfig         []struct {
 			Joystick int
 			Buttons  []interface{}
 		}
+		NumSimul                   int
 		NumTag                     int
 		TeamLifeShare              bool
 		AIRandomColor              bool
@@ -239,7 +249,13 @@ func main() {
 		i, _ = strconv.Atoi(key)
 		return i
 	}
-	for a := 0; a < tmp.NumTag; a++ {
+	Max := func(x, y int) int {
+		if x < y {
+			return y
+		}
+		return x
+	}
+	for a := 0; a < Max(tmp.NumSimul, tmp.NumTag); a++ {
 		for _, kc := range tmp.KeyConfig {
 			b := kc.Buttons
 			if kc.Joystick < 0 {
@@ -269,7 +285,6 @@ func main() {
 	sys.PostProcessingShader = tmp.PostProcessingShader
 	sys.MultisampleAntialiasing = tmp.MSAA
 	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.aiRandomColor = tmp.AIRandomColor
 	sys.allowDebugKeys = tmp.AllowDebugKeys
 	air, err := ioutil.ReadFile(tmp.CommonAir)
 	if err != nil {
@@ -282,7 +297,7 @@ func main() {
 	}
 	sys.commonCmd = string("\n") + string(cmd)
 	//os.Mkdir("debug", os.ModeSticky|0755)
-	log := createLog("Ikemen.txt")
+	log := createLog("Ikemen.log")
 	defer closeLog(log)
 	l := sys.init(tmp.Width, tmp.Height)
 	if err := l.DoFile(tmp.System); err != nil {
@@ -291,9 +306,11 @@ func main() {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
 			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
+				dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
 				panic(err)
 			}
 		default:
+			dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
 			panic(err)
 		}
 	}

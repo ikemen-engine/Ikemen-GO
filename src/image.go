@@ -13,6 +13,7 @@ import (
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/kbinani/screenshot"
 )
 
 type TransType int32
@@ -1215,4 +1216,36 @@ func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
 	osp.Pal = make([]uint32, len(pal))
 	copy(osp.Pal, pal)
 	return &osp
+}
+func captureScreen() {
+	var err error
+	var img *image.RGBA
+	if sys.fullscreen {
+		img, err = screenshot.CaptureDisplay(0)
+	} else {
+		xpos, ypos := sys.window.GetPos()
+		width, height := sys.window.GetSize()
+		bounds := image.Rect(xpos, ypos, xpos + width, ypos + height)
+		img, err = screenshot.CaptureRect(bounds)
+	}
+	if err != nil {
+		panic(err)
+	}
+	var filename string
+	for i := sys.captureNum; i < 999; i++ {
+		if i < 10 {
+			filename = fmt.Sprintf("ikemen00%d.png", i)
+		} else if i < 100 {
+			filename = fmt.Sprintf("ikemen0%d.png", i)
+		} else {
+			filename = fmt.Sprintf("ikemen%d.png", i)
+		}
+		if _, err := os.Stat(filename); os.IsNotExist(err) {
+			file, _ := os.Create(filename)
+			defer file.Close()
+			png.Encode(file, img)
+			sys.captureNum = i
+			break
+		}
+	}
 }

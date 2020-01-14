@@ -1,6 +1,6 @@
 -- Used for demo mode and generates AI rank data
 -- Demo mode uses AutoLevel a GO function that ranks characters based on his number of loses vs wins
--- AutoLevel is pallete dependent so if a char has a 12th pallete OP mode that mode can have more rank than his normal one
+-- AutoLevel is palette dependent so if a char has a 12th palette OP mode that mode can have more rank than his normal one
 
 local randomtest = {}
 
@@ -236,7 +236,6 @@ function randomtest.init()
   end
   setAutoLevel(true)
   setMatchNo(1)
-  selectStage(0)
   randomtest.rakuBenry()
   winner = 0
   wins = 0
@@ -252,6 +251,7 @@ function randomtest.run()
   while not esc() do
     randomtest.randSel(1, winner)
     randomtest.randSel(2, winner)
+    select.f_setStage()
     loadStart()
     local oldwinner = winner
     winner = game()

@@ -1366,6 +1366,7 @@ const (
 type CharGlobalInfo struct {
 	def              string
 	displayname      string
+	lifebarname      string
 	author           string
 	nameLow          string
 	authorLow        string
@@ -1633,8 +1634,8 @@ func (c *Char) clear2() {
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
 		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
 		width:      [...]float32{c.defFW(), c.defBW()},
-		attackMul:  float32(c.gi().data.attack) / 100,
-		defenceMul: float32(c.gi().data.defence) / 100}
+		attackMul:  float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
+		defenceMul: float32(c.gi().data.defence) * c.ocd().defenceRatio / 100}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -1656,9 +1657,18 @@ func (c *Char) gi() *CharGlobalInfo {
 func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
+func (c *Char) ocd() *OverwriteCharData {
+	if sys.tmode[c.playerNo&1] == TM_Turns {
+		if c.playerNo&1 == 0 {
+			return &sys.ocd[c.memberNo * 2]
+		}
+		return &sys.ocd[c.memberNo * 2 + 1]
+	}
+	return &sys.ocd[c.playerNo]
+}
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.def, gi.displayname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", nil, nil, [MaxQuotes]string{}
+	gi.def, gi.displayname, gi.lifebarname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", "", nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
@@ -1685,6 +1695,10 @@ func (c *Char) load(def string) error {
 				gi.displayname, ok, _ = is.getText("displayname")
 				if !ok {
 					gi.displayname = c.name
+				}
+				gi.lifebarname, ok, _ = is.getText("lifebarname")
+				if !ok {
+					gi.lifebarname = gi.displayname
 				}
 				gi.author, _, _ = is.getText("author")
 				gi.authorLow = strings.ToLower(gi.author)
@@ -1805,20 +1819,9 @@ func (c *Char) load(def string) error {
 		case "data":
 			if data {
 				data = false
-				var tmp int32
-				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.life", c.playerNo+1)])
-				if tmp != 0 {
-					gi.data.life = tmp
-				} else {
-					is.ReadI32("life", &gi.data.life)
-				}
+				is.ReadI32("life", &gi.data.life)
 				c.lifeMax = gi.data.life
-				tmp = Atoi(sys.cmdFlags[fmt.Sprintf("-p%v.power", c.playerNo+1)])
-				if tmp != 0 {
-					gi.data.power = tmp
-				} else {
-					is.ReadI32("power", &gi.data.power)
-				}
+				is.ReadI32("power", &gi.data.power)
 				c.powerMax = gi.data.power
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
@@ -4528,7 +4531,7 @@ func (c *Char) update(cvmin, cvmax,
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.defenceMul = float32(c.gi().data.defence) / 100
+				c.defenceMul = float32(c.gi().data.defence) * c.ocd().defenceRatio / 100
 				c.ghv.hittime = -1
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false
