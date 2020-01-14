@@ -689,21 +689,6 @@ function select.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spac
 	end
 end
 
-function select.f_drawPortrait(t, offsetX, offsetY, facing, scaleX, scaleY, spacingX, spacingY, limit, func)
-	if facing == -1 then offsetX = offsetX + 1 end --fix for wrong offset after flipping sprites
-	for i = #t, 1, -1 do
-		if i <= limit then
-			if func == 'select' then
-				drawPortrait(t[i].cel, offsetX + (i - 1) * spacingX, offsetY + (i - 1) * spacingY, facing * scaleX, scaleY)
-			elseif func == 'versus' then
-				drawVersusPortrait(t[i].cel, offsetX + (i - 1) * spacingX, offsetY + (i - 1) * spacingY, facing  * scaleX, scaleY)
-			elseif func == 'victory' then
-				drawVictoryPortrait(t[i].cel, offsetX + (i - 1) * spacingX, offsetY + (i - 1) * spacingY, facing * scaleX, scaleY)
-			end
-		end
-	end
-end
-
 function select.f_cellMovement(selX, selY, cmd, faceOffset, rowOffset, snd)
 	local tmpX = selX
 	local tmpY = selY
@@ -1589,6 +1574,13 @@ local p2RandomCount = 0
 local p2RandomPortrait = 0
 if #main.t_randomChars > 0 then p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)] end
 
+function select.f_alignOffset(align)
+	if align == -1 then
+		return 1 --fix for wrong offset after flipping sprites
+	end
+	return 0
+end
+
 function select.f_selectScreen()
 	--draw clearcolor
 	clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
@@ -1608,28 +1600,26 @@ function select.f_selectScreen()
 					p1RandomCount = 0
 				end
 				sndPlay(motif.files.snd_data, motif.select_info.p1_random_move_snd[1], motif.select_info.p1_random_move_snd[2])
-				t_portrait[1] = {cel = p1RandomPortrait}
+				t_portrait[1] = p1RandomPortrait
 			elseif main.t_selChars[p1Cell + 1].hidden ~= 2 then
-				t_portrait[1] = {cel = p1Cell}
+				t_portrait[1] = p1Cell
 			end
 		end
 		for i = #t_p1Selected, 1, -1 do
-			if motif.select_info.p1_face_num > #t_portrait then
-				table.insert(t_portrait, {cel = t_p1Selected[i].cel})
+			if #t_portrait < motif.select_info.p1_face_num then
+				table.insert(t_portrait, t_p1Selected[i].cel)
 			end
 		end
-		select.f_drawPortrait(
-			main.f_reversedTable(t_portrait),
-			motif.select_info.p1_face_offset[1],
-			motif.select_info.p1_face_offset[2],
-			motif.select_info.p1_face_facing,
-			motif.select_info.p1_face_scale[1],
-			motif.select_info.p1_face_scale[2],
-			motif.select_info.p1_face_spacing[1],
-			motif.select_info.p1_face_spacing[2],
-			#t_portrait,
-			'select'
-		)
+		t_portrait = main.f_reversedTable(t_portrait)
+		for n = #t_portrait, 1, -1 do
+			drawPortrait(
+				t_portrait[n],
+				motif.select_info.p1_face_offset[1] + motif.select_info['p1_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p1_face_spacing[1] + select.f_alignOffset(motif.select_info.p1_face_facing),
+				motif.select_info.p1_face_offset[2] + motif.select_info['p1_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p1_face_spacing[2],
+				motif.select_info.p1_face_facing * motif.select_info.p1_face_scale[1] * motif.select_info['p1_c' .. n .. '_face_scale'][1],
+				motif.select_info.p1_face_scale[2] * motif.select_info['p1_c' .. n .. '_face_scale'][2]
+			)
+		end
 	end
 	if p2Cell then
 		--draw p2 portrait
@@ -1643,28 +1633,26 @@ function select.f_selectScreen()
 					p2RandomCount = 0
 				end
 				sndPlay(motif.files.snd_data, motif.select_info.p2_random_move_snd[1], motif.select_info.p2_random_move_snd[2])
-				t_portrait[1] = {cel = p2RandomPortrait}
+				t_portrait[1] = p2RandomPortrait
 			elseif main.t_selChars[p2Cell + 1].hidden ~= 2 then
-				t_portrait[1] = {cel = p2Cell}
+				t_portrait[1] = p2Cell
 			end
 		end
 		for i = #t_p2Selected, 1, -1 do
-			if motif.select_info.p2_face_num > #t_portrait then
-				table.insert(t_portrait, {cel = t_p2Selected[i].cel})
+			if #t_portrait < motif.select_info.p2_face_num then
+				table.insert(t_portrait, t_p2Selected[i].cel)
 			end
 		end
-		select.f_drawPortrait(
-			main.f_reversedTable(t_portrait),
-			motif.select_info.p2_face_offset[1],
-			motif.select_info.p2_face_offset[2],
-			motif.select_info.p2_face_facing,
-			motif.select_info.p2_face_scale[1],
-			motif.select_info.p2_face_scale[2],
-			motif.select_info.p2_face_spacing[1],
-			motif.select_info.p2_face_spacing[2],
-			#t_portrait,
-			'select'
-		)
+		t_portrait = main.f_reversedTable(t_portrait)
+		for n = #t_portrait, 1, -1 do
+			drawPortrait(
+				t_portrait[n],
+				motif.select_info.p2_face_offset[1] + motif.select_info['p2_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p2_face_spacing[1] + select.f_alignOffset(motif.select_info.p2_face_facing),
+				motif.select_info.p2_face_offset[2] + motif.select_info['p2_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p2_face_spacing[2],
+				motif.select_info.p2_face_facing * motif.select_info.p2_face_scale[1] * motif.select_info['p2_c' .. n .. '_face_scale'][1],
+				motif.select_info.p2_face_scale[2] * motif.select_info['p2_c' .. n .. '_face_scale'][2]
+			)
+		end
 	end
 	--draw cell art (slow for large rosters, this will be likely moved to 'drawFace' function in future)
 	for i = 1, #select.t_drawFace do
@@ -2707,31 +2695,40 @@ function select.f_selectVersus()
 			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 			--draw layerno = 0 backgrounds
 			bgDraw(motif.versusbgdef.bg, false)
-			--draw portraits
-			select.f_drawPortrait(
-				t_p1Selected,
-				motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1],
-				motif.vs_screen.p1_pos[2] + motif.vs_screen.p1_offset[2],
-				motif.vs_screen.p1_facing,
-				motif.vs_screen.p1_scale[1],
-				motif.vs_screen.p1_scale[2],
-				motif.vs_screen.p1_spacing[1],
-				motif.vs_screen.p1_spacing[2],
-				motif.vs_screen.p1_num,
-				'versus'
-			)
-			select.f_drawPortrait(
-				t_p2Selected,
-				motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1],
-				motif.vs_screen.p2_pos[2] + motif.vs_screen.p2_offset[2],
-				motif.vs_screen.p2_facing,
-				motif.vs_screen.p2_scale[1],
-				motif.vs_screen.p2_scale[2],
-				motif.vs_screen.p2_spacing[1],
-				motif.vs_screen.p2_spacing[2],
-				motif.vs_screen.p2_num,
-				'versus'
-			)
+			--draw p1 portraits
+			local t_portrait = {}
+			for i = #t_p1Selected, 1, -1 do
+				if #t_portrait < motif.vs_screen.p1_num then
+					table.insert(t_portrait, t_p1Selected[i].cel)
+				end
+			end
+			t_portrait = main.f_reversedTable(t_portrait)
+			for n = #t_portrait, 1, -1 do
+				drawPortrait(
+					t_portrait[n],
+					motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1] + motif.vs_screen['p1_c' .. n .. '_offset'][1] + (n - 1) * motif.vs_screen.p1_spacing[1] + select.f_alignOffset(motif.vs_screen.p1_facing),
+					motif.vs_screen.p1_pos[2] + motif.vs_screen.p1_offset[2] + motif.vs_screen['p1_c' .. n .. '_offset'][2] + (n - 1) * motif.vs_screen.p1_spacing[2],
+					motif.vs_screen.p1_facing * motif.vs_screen.p1_scale[1] * motif.vs_screen['p1_c' .. n .. '_scale'][1],
+					motif.vs_screen.p1_scale[2] * motif.vs_screen['p1_c' .. n .. '_scale'][2]
+				)
+			end
+			--draw p2 portraits
+			t_portrait = {}
+			for i = #t_p2Selected, 1, -1 do
+				if #t_portrait < motif.vs_screen.p2_num then
+					table.insert(t_portrait, t_p2Selected[i].cel)
+				end
+			end
+			t_portrait = main.f_reversedTable(t_portrait)
+			for n = #t_portrait, 1, -1 do
+				drawPortrait(
+					t_portrait[n],
+					motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1] + motif.vs_screen['p2_c' .. n .. '_offset'][1] + (n - 1) * motif.vs_screen.p2_spacing[1] + select.f_alignOffset(motif.vs_screen.p2_facing),
+					motif.vs_screen.p2_pos[2] + motif.vs_screen.p2_offset[2] + motif.vs_screen['p2_c' .. n .. '_offset'][2] + (n - 1) * motif.vs_screen.p2_spacing[2],
+					motif.vs_screen.p2_facing * motif.vs_screen.p2_scale[1] * motif.vs_screen['p2_c' .. n .. '_scale'][1],
+					motif.vs_screen.p2_scale[2] * motif.vs_screen['p2_c' .. n .. '_scale'][2]
+				)
+			end
 			--draw names
 			select.f_drawName(
 				t_p1Selected,
@@ -2977,11 +2974,12 @@ function select.f_selectVictory()
 	local lpn = -1
 	local lsn = -1
 	local t = {}
+	local t2 = {}
 	for i = 0, 1 do
 		if i == t_gameStats.winTeam then
 			wpn, wsn, t = select.f_teamOrder(i, motif.victory_screen.winner_teamko_enabled)
 		else
-			lpn, lsn = select.f_teamOrder(i)
+			lpn, lsn, t2 = select.f_teamOrder(i, true)
 		end
 	end
 	if wpn == -1 or wsn == -1 then
@@ -3025,35 +3023,53 @@ function select.f_selectVictory()
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.victorybgdef.bg, false)
 		--draw portraits
-		if motif.victory_screen.looser_enabled == 1 then
+		-- looser team portraits
+		for n = 1, #t2 do
+			if n > motif.victory_screen.p2_num then
+				break
+			end
 			drawVictoryPortrait(
-				lsn,
-				motif.victory_screen.p2_pos[1] + motif.victory_screen.p2_offset[1],
-				motif.victory_screen.p2_pos[2] + motif.victory_screen.p2_offset[2],
-				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1],
-				motif.victory_screen.p2_scale[2]
+				t[n],
+				motif.victory_screen.p2_pos[1] + motif.victory_screen.p2_offset[1] + motif.victory_screen['p2_c' .. n + 1 .. '_offset'][1] + select.f_alignOffset(motif.victory_screen.p2_facing),
+				motif.victory_screen.p2_pos[2] + motif.victory_screen.p2_offset[2] + motif.victory_screen['p2_c' .. n + 1 .. '_offset'][2],
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1] * motif.victory_screen['p2_c' .. n + 1 .. '_scale'][1],
+				motif.victory_screen.p2_scale[2] * motif.victory_screen['p2_c' .. n + 1 .. '_scale'][2]
 			)
 		end
-		if motif.victory_screen.winner_team_enabled == 1 then
-			for n = 1, #t do
-				drawVictoryPortrait(
-					t[n],
-					motif.victory_screen['t' .. n .. '_pos'][1] + motif.victory_screen['t' .. n .. '_offset'][1],
-					motif.victory_screen['t' .. n .. '_pos'][2] + motif.victory_screen['t' .. n .. '_offset'][2],
-					motif.victory_screen['t' .. n .. '_facing'] * motif.victory_screen['t' .. n .. '_scale'][1],
-					motif.victory_screen['t' .. n .. '_scale'][2]
-				)
-			end
+		-- looser portrait
+		if motif.victory_screen.p2_num > 0 then
+			drawVictoryPortrait(
+				lsn,
+				motif.victory_screen.p2_pos[1] + motif.victory_screen.p2_offset[1] + motif.victory_screen.p2_c1_offset[1] + select.f_alignOffset(motif.victory_screen.p2_facing),
+				motif.victory_screen.p2_pos[2] + motif.victory_screen.p2_offset[2] + motif.victory_screen.p2_c1_offset[2],
+				motif.victory_screen.p2_facing * motif.victory_screen.p2_scale[1] * motif.victory_screen.p2_c1_scale[1],
+				motif.victory_screen.p2_scale[2] * motif.victory_screen.p2_c1_scale[2]
+			)
 		end
+		-- winner team portraits
+		for n = 1, #t do
+			if n > motif.victory_screen.p1_num then
+				break
+			end
+			drawVictoryPortrait(
+				t[n],
+				motif.victory_screen.p1_pos[1] + motif.victory_screen.p1_offset[1] + motif.victory_screen['p1_c' .. n + 1 .. '_offset'][1] + select.f_alignOffset(motif.victory_screen.p1_facing),
+				motif.victory_screen.p1_pos[2] + motif.victory_screen.p1_offset[2] + motif.victory_screen['p1_c' .. n + 1 .. '_offset'][2],
+				motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1] * motif.victory_screen['p1_c' .. n + 1 .. '_scale'][1],
+				motif.victory_screen.p1_scale[2] * motif.victory_screen['p1_c' .. n + 1 .. '_scale'][2]
+			)
+		end
+		-- winner portrait
 		drawVictoryPortrait(
 			wsn,
-			motif.victory_screen.p1_pos[1] + motif.victory_screen.p1_offset[1],
-			motif.victory_screen.p1_pos[2] + motif.victory_screen.p1_offset[2],
-			motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1],
-			motif.victory_screen.p1_scale[2]
+			motif.victory_screen.p1_pos[1] + motif.victory_screen.p1_offset[1] + motif.victory_screen.p1_c1_offset[1] + select.f_alignOffset(motif.victory_screen.p1_facing),
+			motif.victory_screen.p1_pos[2] + motif.victory_screen.p1_offset[2] + motif.victory_screen.p1_c1_offset[2],
+			motif.victory_screen.p1_facing * motif.victory_screen.p1_scale[1] * motif.victory_screen.p1_c1_scale[1],
+			motif.victory_screen.p1_scale[2] * motif.victory_screen.p1_c1_scale[2]
 		)
-		--draw winner's name
+		--draw winner name
 		textImgDraw(txt_p1_winquoteName)
+		--draw looser name
 		if motif.victory_screen.looser_name_enabled == 1 then
 			textImgDraw(txt_p2_winquoteName)
 		end
