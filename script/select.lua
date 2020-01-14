@@ -1194,68 +1194,96 @@ function select.f_selectArcade()
 			end
 			select.f_selectScreen()
 		end
-		--first match
-		if matchNo == 0 then
-			--coop swap
-			if main.coop then
-				p1TeamMode = 1
-				p1NumChars = 2
-				setTeamMode(1, p1TeamMode, p1NumChars)
-				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
-				t_p2Selected = t_enemySelected
-			end
-			--generate roster
-			select.f_makeRoster()
-			--sum all upcoming matches and set starting order group
-			currentOrder = 0
-			currentRosterIndex = 1
-			lastMatch = 0
-			for i = 1, #t_roster do
-				if #t_roster[i] > 0 then
-					if currentOrder == 0 then
-						currentOrder = i
-					end
-					lastMatch = lastMatch + #t_roster[i] / p2NumChars
+		--if last match was not against a challenger
+		if not challenger then
+			--first match
+			if matchNo == 0 then
+				--coop swap
+				if main.coop then
+					p1TeamMode = 1
+					p1NumChars = 2
+					setTeamMode(1, p1TeamMode, p1NumChars)
+					t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+					t_p2Selected = t_enemySelected
 				end
-			end
-			matchNo = 1
-			--generate AI ramping table
-			select.f_aiRamp(1)
-			--intro
-			local tPos = main.t_selChars[t_p1Selected[1].cel + 1]
-			if tPos.intro ~= nil and main.f_fileExists(tPos.intro) then
-				storyboard.f_storyboard(tPos.intro)
-			end
-		--player won
-		elseif winner == 1 then
-			--counter
-			winCnt = winCnt + 1
-			--last match in the current order group
-			if currentRosterIndex == #t_roster[currentOrder] / p2NumChars then
-				for i = currentOrder + 1, #t_roster do --find next order group with assigned characters
+				--generate roster
+				select.f_makeRoster()
+				--sum all upcoming matches and set starting order group
+				currentOrder = 0
+				currentRosterIndex = 1
+				lastMatch = 0
+				for i = 1, #t_roster do
 					if #t_roster[i] > 0 then
-						currentOrder = i
-						break
+						if currentOrder == 0 then
+							currentOrder = i
+						end
+						lastMatch = lastMatch + #t_roster[i] / p2NumChars
 					end
 				end
-				currentRosterIndex = 0
-			end
-			--victory screen
-			if motif.victory_screen.enabled == 1 then
-				select.f_selectVictory()
-			end
-			--no more matches left
-			if matchNo == lastMatch then
-				--ending
+				matchNo = 1
+				--generate AI ramping table
+				select.f_aiRamp(1)
+				--intro
 				local tPos = main.t_selChars[t_p1Selected[1].cel + 1]
-				if tPos.ending ~= nil and main.f_fileExists(tPos.ending) then
-					storyboard.f_storyboard(tPos.ending)
-				elseif motif.default_ending.enabled == 1 and motif.default_ending.storyboard ~= '' then
-					storyboard.f_storyboard(motif.default_ending.storyboard)
+				if tPos.intro ~= nil and main.f_fileExists(tPos.intro) then
+					storyboard.f_storyboard(tPos.intro)
 				end
-				--credits
-				if motif.end_credits.enabled == 1 and motif.end_credits.storyboard ~= '' then
-					storyboard.f_storyboard(motif.end_credits.storyboard)
+			--player won
+			elseif winner == 1 then
+				--counter
+				winCnt = winCnt + 1
+				--last match in the current order group
+				if currentRosterIndex == #t_roster[currentOrder] / p2NumChars then
+					for i = currentOrder + 1, #t_roster do --find next order group with assigned characters
+						if #t_roster[i] > 0 then
+							currentOrder = i
+							break
+						end
+					end
+					currentRosterIndex = 0
+				end
+				--victory screen
+				if motif.victory_screen.enabled == 1 then
+					select.f_selectVictory()
+				end
+				--no more matches left
+				if matchNo == lastMatch then
+					--ending
+					local tPos = main.t_selChars[t_p1Selected[1].cel + 1]
+					if tPos.ending ~= nil and main.f_fileExists(tPos.ending) then
+						storyboard.f_storyboard(tPos.ending)
+					elseif motif.default_ending.enabled == 1 and motif.default_ending.storyboard ~= '' then
+						storyboard.f_storyboard(motif.default_ending.storyboard)
+					end
+					--credits
+					if motif.end_credits.enabled == 1 and motif.end_credits.storyboard ~= '' then
+						storyboard.f_storyboard(motif.end_credits.storyboard)
+					end
+					--game over
+					if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
+						storyboard.f_storyboard(motif.game_over_screen.storyboard)
+					end
+					--intro
+					if motif.files.intro_storyboard ~= '' then
+						storyboard.f_storyboard(motif.files.intro_storyboard)
+					end
+					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+					resetRemapInput()
+					return
+				--next match available
+				else
+					matchNo = matchNo + 1
+					currentRosterIndex = currentRosterIndex + 1
+					continueStage = false
+					t_p2Selected = {}
+				end
+			--player lost and doesn't have any credits left
+			elseif main.credits == 0 then
+				--counter
+				looseCnt = looseCnt + 1
+				--victory screen
+				if motif.victory_screen.cpu_enabled == 1 and winner >= 2 then
+					select.f_selectVictory()
 				end
 				--game over
 				if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
@@ -1268,133 +1296,108 @@ function select.f_selectArcade()
 				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				resetRemapInput()
 				return
-			--next match available
+			--player lost but can continue
 			else
-				matchNo = matchNo + 1
-				currentRosterIndex = currentRosterIndex + 1
-				continueStage = false
-				t_p2Selected = {}
-			end
-		--player lost and doesn't have any credits left
-		elseif main.credits == 0 then
-			--counter
-			looseCnt = looseCnt + 1
-			--victory screen
-			if motif.victory_screen.cpu_enabled == 1 and winner >= 2 then
-				select.f_selectVictory()
-			end
-			--game over
-			if motif.game_over_screen.enabled == 1 and motif.game_over_screen.storyboard ~= '' then
-				storyboard.f_storyboard(motif.game_over_screen.storyboard)
-			end
-			--intro
-			if motif.files.intro_storyboard ~= '' then
-				storyboard.f_storyboard(motif.files.intro_storyboard)
-			end
-			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-			resetRemapInput()
-			return
-		--player lost but can continue
-		else
-			--counter
-			looseCnt = looseCnt + 1
-			--victory screen
-			if motif.victory_screen.cpu_enabled == 1 and winner >= 2 then
-				select.f_selectVictory()
-			end
-			--continue screen
-			select.f_continue()
-			if not continue then
-				--game over
-				if motif.continue_screen.external_gameover == 1 and motif.game_over_screen.storyboard ~= '' then
-					storyboard.f_storyboard(motif.game_over_screen.storyboard)
+				--counter
+				looseCnt = looseCnt + 1
+				--victory screen
+				if motif.victory_screen.cpu_enabled == 1 and winner >= 2 then
+					select.f_selectVictory()
 				end
-				--intro
-				if motif.files.intro_storyboard ~= '' then
-					storyboard.f_storyboard(motif.files.intro_storyboard)
-				end
-				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-				resetRemapInput()
-				return
-			end
-			if config.ContSelection then --true if 'Char change at Continue' option is enabled
-				t_p1Selected = {}
-				p1SelEnd = false
-				if main.coop then
-					p1NumChars = 1
-					numChars = p2NumChars
-					p2NumChars = 1
-					t_p2Selected = {}
-					p2SelEnd = false
-				end
-				fadeType = 'fadein'
-				--selectStart()
-				selScreenEnd = false
-				while not selScreenEnd do
-					if esc() then
-						sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-						main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-						resetRemapInput()
-						return
+				--continue screen
+				select.f_continue()
+				if not continue then
+					--game over
+					if motif.continue_screen.external_gameover == 1 and motif.game_over_screen.storyboard ~= '' then
+						storyboard.f_storyboard(motif.game_over_screen.storyboard)
 					end
-					select.f_selectScreen()
+					--intro
+					if motif.files.intro_storyboard ~= '' then
+						storyboard.f_storyboard(motif.files.intro_storyboard)
+					end
+					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+					resetRemapInput()
+					return
 				end
-			elseif esc() then
-				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-				resetRemapInput()
-				return
+				if config.ContSelection then --true if 'Char change at Continue' option is enabled
+					t_p1Selected = {}
+					p1SelEnd = false
+					if main.coop then
+						p1NumChars = 1
+						numChars = p2NumChars
+						p2NumChars = 1
+						t_p2Selected = {}
+						p2SelEnd = false
+					end
+					fadeType = 'fadein'
+					--selectStart()
+					selScreenEnd = false
+					while not selScreenEnd do
+						if esc() then
+							sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
+							main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+							resetRemapInput()
+							return
+						end
+						select.f_selectScreen()
+					end
+				elseif esc() then
+					sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
+					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+					resetRemapInput()
+					return
+				end
+				continueStage = true
 			end
-			continueStage = true
-		end
-		--coop swap
-		if main.coop then
-			if winner == -1 or winner == 2 then
-				p1NumChars = 2
-				p2NumChars = numChars
-				t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
-				t_p2Selected = t_enemySelected
-			end
-		end
-		--assign enemy team
-		--t_p2Selected = {}
-		if #t_p2Selected == 0 then
-			local shuffle = true
-			for i = 1, p2NumChars do
-				if i == 1 and select.f_rivalsMatch('char_ref') then --enemy assigned as rivals param
-					p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
-					shuffle = false
-				else
-					p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
-				end
-				table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
-				if shuffle then
-					main.f_shuffleTable(t_p2Selected)
+			--coop swap
+			if main.coop then
+				if winner == -1 or winner == 2 then
+					p1NumChars = 2
+					p2NumChars = numChars
+					t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
+					t_p2Selected = t_enemySelected
 				end
 			end
-			t_enemySelected = t_p2Selected
-		end
-		--Team conversion to Single match if onlyme paramvalue on any opponents is detected
-		if p2NumChars > 1 then
-			for i = 1, #t_p2Selected do
-				local onlyme = false
-				if select.f_rivalsMatch('char_ref') and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].onlyme == 1 then --team conversion assigned as rivals param
-					p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
-					onlyme = true
-				elseif main.t_selChars[t_p2Selected[i].cel + 1].onlyme == 1 then --team conversion assigned as character param
-					p2Cell = main.t_selChars[t_p2Selected[i].cel + 1].char_ref
-					onlyme = true
+			--assign enemy team
+			--t_p2Selected = {}
+			if #t_p2Selected == 0 then
+				local shuffle = true
+				for i = 1, p2NumChars do
+					if i == 1 and select.f_rivalsMatch('char_ref') then --enemy assigned as rivals param
+						p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
+						shuffle = false
+					else
+						p2Cell = t_roster[currentOrder][currentRosterIndex * p2NumChars - i + 1]
+					end
+					table.insert(t_p2Selected, {cel = p2Cell, pal = select.f_selectPal(p2Cell)})
+					if shuffle then
+						main.f_shuffleTable(t_p2Selected)
+					end
 				end
-				if onlyme then
-					teamMode = p2TeamMode
-					numChars = p2NumChars
-					p2TeamMode = 0
-					p2NumChars = 1
-					setTeamMode(2, p2TeamMode, p2NumChars)
-					t_p2Selected = {}
-					t_p2Selected[1] = {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = true}
-					restoreTeam = true
-					break
+				t_enemySelected = t_p2Selected
+			end
+			--Team conversion to Single match if onlyme paramvalue on any opponents is detected
+			if p2NumChars > 1 then
+				for i = 1, #t_p2Selected do
+					local onlyme = false
+					if select.f_rivalsMatch('char_ref') and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].onlyme == 1 then --team conversion assigned as rivals param
+						p2Cell = main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo].char_ref
+						onlyme = true
+					elseif main.t_selChars[t_p2Selected[i].cel + 1].onlyme == 1 then --team conversion assigned as character param
+						p2Cell = main.t_selChars[t_p2Selected[i].cel + 1].char_ref
+						onlyme = true
+					end
+					if onlyme then
+						teamMode = p2TeamMode
+						numChars = p2NumChars
+						p2TeamMode = 0
+						p2NumChars = 1
+						setTeamMode(2, p2TeamMode, p2NumChars)
+						t_p2Selected = {}
+						t_p2Selected[1] = {cel = p2Cell, pal = select.f_selectPal(p2Cell), up = true}
+						restoreTeam = true
+						break
+					end
 				end
 			end
 		end
@@ -1408,56 +1411,66 @@ function select.f_selectArcade()
 		loadStart()
 		winner, t_gameStats = game()
 		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+		--here comes a new challenger
+		challenger = false
+		if t_gameStats.challenger > 0 then
+			refresh() --needed to clean inputs
+			challenger = true
+			--save values
+			local p2TeamMenu_sav = main.f_copyTable(main.p2TeamMenu)
+			local t_p2Selected_sav = main.f_copyTable(t_p2Selected)
+			local t_charparam_sav = main.f_copyTable(main.t_charparam)
+			local p1Cell_sav = p1Cell
+			local p2Cell_sav = p2Cell
+			local matchNo_sav = matchNo
+			local stageNo_sav = stageNo
+			local p2TeamMode_sav = p2TeamMode
+			local p2NumChars_sav = p2NumChars
+			local gameMode = gameMode()
+			main.f_resetCharparam()
+			--temp values
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
+			setHomeTeam(1)
+			main.p2In = 2
+			main.p2SelectMenu = true
+			main.stageMenu = true
+			main.p2Faces = true
+			main.p1TeamMenu = nil
+			main.p2TeamMenu = nil
+			setGameMode('teamversus')
+			--start challenger match
+			select.f_selectSimple()
+			--reload values
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
+			setHomeTeam(2)
+			main.p2In = 1
+			main.p2SelectMenu = false
+			main.stageMenu = false
+			main.p2Faces = false
+			--move player2 characters into player1 side and remap buttons if needed
+			if winner == 2 then
+				--TODO: when player1 team loose continue playing the arcade mode as player2 team
+			end
+			--restore values
+			main.p2TeamMenu = main.f_copyTable(p2TeamMenu_sav)
+			t_p2Selected = main.f_copyTable(t_p2Selected_sav)
+			main.t_charparam = main.f_copyTable(t_charparam_sav)
+			p1Cell = p1Cell_sav
+			p2Cell = p2Cell_sav
+			matchNo = matchNo_sav
+			stageNo = stageNo_sav
+			p2TeamMode = p2TeamMode_sav
+			p2NumChars = p2NumChars_sav
+			setTeamMode(2, p2TeamMode, p2NumChars)
+			setGameMode(gameMode)
+			continueStage = true
+		end
 		--restore P2 Team settings if needed
 		if restoreTeam then
 			p2TeamMode = teamMode
 			p2NumChars = numChars
 			setTeamMode(2, p2TeamMode, p2NumChars)
 			restoreTeam = false
-		end
-		--here comes a new challenger
-		challenger = false
-		if t_gameStats.challenger > 0 then
-			challenger = true
-			refresh()
-			--save values
-			local p1TeamMenu_sav = main.p1TeamMenu
-			local p2TeamMenu_sav = main.p2TeamMenu
-			local gameMode = gameMode()
-			local t_p1Selected_sav = t_p1Selected
-			local t_p2Selected_sav = t_p2Selected
-			local p1Cell_sav = nil
-			local p2Cell_sav = nil
-			local matchNo_sav = matchNo
-			local t_charparam_sav = main.t_charparam
-			main.f_resetCharparam()
-			--temp values
-			setHomeTeam(1)
-			main.p2In = 2
-			main.p2SelectMenu = true
-			main.stageMenu = true
-			main.p2Faces = true
-				--textImgSetText(main.txt_mainSelect, t[item].selectname)
-			main.p1TeamMenu = nil
-			main.p2TeamMenu = nil
-			setGameMode('teamversus')
-			--start match
-			select.f_selectSimple()
-			--reload values
-			setHomeTeam(2)
-			main.p2In = 1
-			main.p2SelectMenu = false
-			main.stageMenu = false
-			main.p2Faces = false
-			main.t_charparam = t_charparam_sav
-			main.p1TeamMenu = p1TeamMenu_sav
-			main.p2TeamMenu = p2TeamMenu_sav
-			setGameMode(gameMode)
-			t_p1Selected = t_p1Selected_sav
-			t_p2Selected = t_p2Selected_sav
-			p1Cell = p1Cell_sav
-			p2Cell = p2Cell_sav
-			matchNo = matchNo_sav
 		end
 		resetRemapInput()
 		main.f_cmdInput()

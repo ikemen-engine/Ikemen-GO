@@ -219,6 +219,7 @@ end
 
 --copy table content into new table
 function main.f_copyTable(t)
+	t = t or {}
 	local t2 = {}
 	for k, v in pairs(t) do
 		if type(v) == "table" then

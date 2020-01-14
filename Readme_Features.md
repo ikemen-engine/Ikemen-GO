@@ -187,6 +187,9 @@ Since this phenomenon is a correct operation in the specification, a new paramet
 ### Portraitscale
 Specify the display magnification of the portrait to be written to Info (Localcoord-compliant display magnification is overwritten)
 
+### LifebarName
+Name of character to display on lifebar (DisplayName is used by default, if LifebarName is not specified)
+
 # Misc. Info
 
 ### About Zoomdelta on stage
