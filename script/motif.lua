@@ -1541,17 +1541,18 @@ file:close()
 --; FIX REFERENCES, LOAD DATA
 --;===========================================================
 --adopt old DEF code to Ikemen features
-if type(motif.select_info.cell_spacing) ~= "table" then
-	motif.select_info.cell_spacing = {motif.select_info.cell_spacing[1], motif.select_info.cell_spacing[1]}
-end
-
-if motif.victory_screen.enabled == 0 then
-	motif.victory_screen.cpu_enabled = 0
-	motif.victory_screen.vs_enabled = 0
+if type(t.select_info.cell_spacing) ~= "table" then
+	t.select_info.cell_spacing = {t.select_info.cell_spacing, t.select_info.cell_spacing}
 end
 
 --merge tables
 motif = main.f_tableMerge(motif, t)
+
+--fix missing params
+if motif.victory_screen.enabled == 0 then
+	motif.victory_screen.cpu_enabled = 0
+	motif.victory_screen.vs_enabled = 0
+end
 
 --general paths
 local t_dir = {
