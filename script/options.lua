@@ -1258,9 +1258,16 @@ end
 --;===========================================================
 --; ENGINE SETTINGS
 --;===========================================================
+ --;===========================================================
+local t_quicklaunchNames = {}
+t_quicklaunchNames[0] = "Disabled"
+t_quicklaunchNames[1] = "Level1"
+t_quicklaunchNames[2] = "Level2"
+
 options.t_engineCfg = {
 	{data = textImgNew(), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
 	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_engine_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
+	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = t_quicklaunchNames[config.QuickLaunch]},
 	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_engine_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_engine_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
@@ -1311,6 +1318,16 @@ function options.f_engineCfg()
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)
 			main.f_warning(main.f_extractText(motif.warning_info.text_simul), motif.option_info, motif.optionbgdef)
+			modified = 1
+		-- Quick Launch
+		elseif t[item].itemname == 'quicklaunch' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if commandGetState(main.p1Cmd, 'r') and config.QuickLaunch < #t_quicklaunchNames then
+				config.QuickLaunch = config.QuickLaunch + 1
+			elseif commandGetState(main.p1Cmd, 'l') and config.QuickLaunch > 0 then
+				config.QuickLaunch = config.QuickLaunch - 1
+			end
+			t[item].vardisplay = t_quicklaunchNames[config.QuickLaunch]
 			modified = 1
 		--Lifebar Font Scale
 		elseif t[item].itemname == 'lifebarfontscale' then

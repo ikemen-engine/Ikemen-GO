@@ -174,9 +174,9 @@ func loadBGDef(def string, bgname string, sffloc string) (int, error) {
 			s.bgc = append(s.bgc, *bgc)
 		}
 	}
-	//s.localscl = float32(sys.gameWidth) / float32(sys.cam.localcoord[0])
+	s.localscl = 240 / s.localcoord[1]
 	sys.bgdef = append(sys.bgdef, s)
-	return len(sys.bgdef)-1, nil
+	return len(sys.bgdef) - 1, nil
 }
 func (s *BGDef) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {
@@ -318,12 +318,12 @@ func (s *BGDef) draw(top bool, x, y, scl float32) {
 	if !top {
 		s.action()
 	}
-	x, y = x/s.localscl, y/s.localscl
-	bgscl := float32(1)
+	//x, y = x/s.localscl, y/s.localscl
+	bgscl := s.localscl
 	pos := [...]float32{x, y}
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale, 0)
+			b.draw(pos, scl, bgscl, 1, s.scale, 0)
 		}
 	}
 }
