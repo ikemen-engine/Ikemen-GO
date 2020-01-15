@@ -95,6 +95,17 @@ func scriptCommonInit(l *lua.LState) {
 	// A bind to GO's SetGCPercent. A negative percentage disables garbage collection.
 	luaRegister(l, "SetGCPercent", func(*lua.LState) int {
 		debug.SetGCPercent(int(numArg(l, 1)))
+		return 0
+	})
+	//----------------------------------------------------------------
+	// Returns sys.externalShaderNames as a table.
+	// It contains the list of filenames of shader loaded (Without extension)
+	luaRegister(l, "GetShaderNames", func(*lua.LState) int {
+		nameTable := l.NewTable()
+		for _, name := range sys.externalShaderNames {
+			nameTable.Append(lua.LString(name))
+		}
+		l.Push(nameTable)
 		return 1
 	})
 	//----------------------------------------------------------------
