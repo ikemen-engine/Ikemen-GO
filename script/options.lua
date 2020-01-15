@@ -557,6 +557,9 @@ function options.f_mainCfg()
 			--Back
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				if needReload == 1 then
+					main.f_warning(main.f_extractText(motif.warning_info.text_noreload), motif.option_info, motif.optionbgdef)
+				end
 				main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 				if motif.music.option_bgm == '' then
 					main.f_menuReset(motif.titlebgdef.bg)
@@ -921,13 +924,13 @@ function options.f_audioCfg()
 			if commandGetState(main.p1Cmd, 'r') and config.MasterVolume < 200 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.MasterVolume = config.MasterVolume + 1
-				t[item].vardisplay = config.MasterVolume
+				t[item].vardisplay = config.MasterVolume .. '%'
 				setMasterVolume(config.MasterVolume)
 				modified = 1
 			elseif commandGetState(main.p1Cmd, 'l') and config.MasterVolume > 0 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.MasterVolume = config.MasterVolume - 1
-				t[item].vardisplay = config.MasterVolume
+				t[item].vardisplay = config.MasterVolume  .. '%'
 				setMasterVolume(config.MasterVolume)
 				modified = 1
 			end
@@ -936,28 +939,28 @@ function options.f_audioCfg()
 			if commandGetState(main.p1Cmd, 'r') and config.BgmVolume < 100 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.BgmVolume = config.BgmVolume + 1
-				t[item].vardisplay = config.BgmVolume
+				t[item].vardisplay = config.BgmVolume .. '%'
 				setBgmVolume(config.BgmVolume)
 				modified = 1
 			elseif commandGetState(main.p1Cmd, 'l') and config.BgmVolume > 0 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.BgmVolume = config.BgmVolume - 1
-				t[item].vardisplay = config.BgmVolume
+				t[item].vardisplay = config.BgmVolume .. '%'
 				setBgmVolume(config.BgmVolume)
 				modified = 1
 			end
 		--SFX Volume
-		elseif t[item].itemname == 'wavvolume' then
+		elseif t[item].itemname == 'sfxvolume' then
 			if commandGetState(main.p1Cmd, 'r') and config.WavVolume < 100 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.WavVolume = config.WavVolume + 1
-				t[item].vardisplay = config.WavVolume
+				t[item].vardisplay = config.WavVolume .. '%'
 				setWavVolume(config.WavVolume)
 				modified = 1
 			elseif commandGetState(main.p1Cmd, 'l') and config.WavVolume > 0 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.WavVolume = config.WavVolume - 1
-				t[item].vardisplay = config.WavVolume
+				t[item].vardisplay = config.WavVolume .. '%'
 				setWavVolume(config.WavVolume)
 				modified = 1
 			end
@@ -1200,6 +1203,10 @@ function options.f_advGameplayCfg()
 				config.SingleTeamMode = true
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
+			select.t_p1TeamMenu = select.f_getTeamMenu()
+			select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
+			select.t_p2TeamMenu = select.f_getTeamMenu()
+			select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 			modified = 1
 		--Turns Limit
 		elseif t[item].itemname == 'numturns' then
@@ -1212,7 +1219,7 @@ function options.f_advGameplayCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTurns = config.NumTurns - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumTurns < 2 then
+				if config.NumTurns <= 2 then
 					select.t_p1TeamMenu = select.f_getTeamMenu()
 					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
 					select.t_p2TeamMenu = select.f_getTeamMenu()
@@ -1231,13 +1238,14 @@ function options.f_advGameplayCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumSimul = config.NumSimul - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumSimul < 2 then
+				if config.NumSimul <= 2 then
 					select.t_p1TeamMenu = select.f_getTeamMenu()
 					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
 					select.t_p2TeamMenu = select.f_getTeamMenu()
 					select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 				end
 				modified = 1
+				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			end
 		--Tag Limit
 		elseif t[item].itemname == 'numtag' then
@@ -1250,13 +1258,14 @@ function options.f_advGameplayCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTag = config.NumTag - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumTag < 2 then
+				if config.NumTag <= 2 then
 					select.t_p1TeamMenu = select.f_getTeamMenu()
 					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
 					select.t_p2TeamMenu = select.f_getTeamMenu()
 					select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 				end
 				modified = 1
+				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			end
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
@@ -1502,7 +1511,7 @@ function options.f_inputCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				options.f_keyDefault()
 				modified = 1
-				needReload = 1
+				needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
 			--Back
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
@@ -1613,7 +1622,7 @@ function options.f_keyCfg(cfgType, controller)
 					t[item]['vardisplay' .. player] = motif.option_info.menu_itemname_info_disable
 					config[cfgType][player].Buttons[item - item_start] = tostring(motif.option_info.menu_itemname_info_disable)
 					modified = 1
-					needReload = 1
+					needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
 				--other keyboard or gamepad key
 				elseif cfgType == 'KeyConfig' or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
@@ -1633,7 +1642,7 @@ function options.f_keyCfg(cfgType, controller)
 					t[item]['vardisplay' .. player] = key
 					config[cfgType][player].Buttons[item - item_start] = tostring(key)
 					modified = 1
-					needReload = 1
+					needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
 				--non gamepad key on gamepad controller
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
@@ -1745,7 +1754,7 @@ function options.f_keyCfg(cfgType, controller)
 						t[item]['vardisplay' .. player] = motif.option_info.menu_itemname_info_disable
 						config[cfgType][player].Buttons[item - item_start] = motif.option_info.menu_itemname_info_disable
 						modified = 1
-						needReload = 1
+						needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
 					--other keyboard or gamepad key
 					elseif (cfgType == 'KeyConfig' and key ~= '') or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
 						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
@@ -1765,7 +1774,7 @@ function options.f_keyCfg(cfgType, controller)
 						t[item]['vardisplay' .. player] = key
 						config[cfgType][player].Buttons[item - item_start] = tostring(key)
 						modified = 1
-						needReload = 1
+						needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
 					else
 						sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 					end

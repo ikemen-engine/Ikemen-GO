@@ -259,12 +259,12 @@ end
 
 function select.f_rivalsMatch(param, value)
 	if main.t_selChars[t_p1Selected[1].cel + 1].rivals ~= nil and main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo] ~= nil then
-		if param == nil then --only checks if rivals assignment for this match exists at all
+		if param == nil then --check only if rivals assignment for this match exists at all
 			return true
 		elseif main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] ~= nil then
 			if value == nil then --check only if param is assigned for this rival
 				return true
-			else --check if param equal value
+			else --check if param equals value
 				return main.t_selChars[t_p1Selected[1].cel + 1].rivals[matchNo][param] == value
 			end
 		end
@@ -920,6 +920,8 @@ function select.f_selectSimple()
 	p1SelY = motif.select_info.p1_cursor_startcell[1]
 	p2SelX = motif.select_info.p2_cursor_startcell[2]
 	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	p1TeamMenu = 1
+	p2TeamMenu = 1
 	p1FaceOffset = 0
 	p2FaceOffset = 0
 	p1RowOffset = 0
@@ -970,6 +972,8 @@ function select.f_selectArranged()
 	p1SelY = motif.select_info.p1_cursor_startcell[1]
 	p2SelX = motif.select_info.p2_cursor_startcell[2]
 	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	p1TeamMenu = 1
+	p2TeamMenu = 1
 	p1FaceOffset = 0
 	p2FaceOffset = 0
 	p1RowOffset = 0
@@ -1163,6 +1167,8 @@ function select.f_selectArcade()
 	p1SelY = motif.select_info.p1_cursor_startcell[1]
 	p2SelX = motif.select_info.p2_cursor_startcell[2]
 	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	p1TeamMenu = 1
+	p2TeamMenu = 1
 	p1FaceOffset = 0
 	p2FaceOffset = 0
 	p1RowOffset = 0
@@ -1480,6 +1486,8 @@ function select.f_selectTournament(size)
 	p1SelY = motif.select_info.p1_cursor_startcell[1]
 	p2SelX = motif.select_info.p2_cursor_startcell[2]
 	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	p1TeamMenu = 1
+	p2TeamMenu = 1
 	p1FaceOffset = 0
 	p2FaceOffset = 0
 	p1RowOffset = 0
