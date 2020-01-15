@@ -301,8 +301,14 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.window.SetKeyCallback(keyCallback)
 	s.window.SetCharModsCallback(charCallback)
 	glfw.SwapInterval(1)
+	// Intializate OpenGL.
 	chk(gl.Init())
 	
+	// Check if the shader selected is currently avalible.
+	if s.PostProcessingShader < int32(len(s.externalShaderList))+3 {
+		s.PostProcessingShader = 0
+	}
+
 	// Loading of external shader data.
 	// We need to do this before the render initialization at "RenderInit()"
 	// TODO: We need to find a way to load the shader name (Apart from the filename) [Golang code]
