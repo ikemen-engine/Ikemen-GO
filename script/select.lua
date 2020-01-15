@@ -580,7 +580,7 @@ function select.f_selectPal(cell)
 	return select.f_reampPal(cell, main.t_selChars[cell + 1].pal_defaults[1])
 end
 
---Team modes enabling (also called from withing options screen)
+--Team modes enabling based on various factors
 function select.f_getTeamMenu()
 	local t = {}
 	--Single mode check
@@ -2852,7 +2852,7 @@ function select.f_selectVersus()
 			end
 			t_portrait = main.f_reversedTable(t_portrait)
 			for n = #t_portrait, 1, -1 do
-				drawPortrait(
+				drawVersusPortrait(
 					t_portrait[n],
 					motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1] + motif.vs_screen['p1_c' .. n .. '_offset'][1] + (n - 1) * motif.vs_screen.p1_spacing[1] + select.f_alignOffset(motif.vs_screen.p1_facing),
 					motif.vs_screen.p1_pos[2] + motif.vs_screen.p1_offset[2] + motif.vs_screen['p1_c' .. n .. '_offset'][2] + (n - 1) * motif.vs_screen.p1_spacing[2],
@@ -2869,7 +2869,7 @@ function select.f_selectVersus()
 			end
 			t_portrait = main.f_reversedTable(t_portrait)
 			for n = #t_portrait, 1, -1 do
-				drawPortrait(
+				drawVersusPortrait(
 					t_portrait[n],
 					motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1] + motif.vs_screen['p2_c' .. n .. '_offset'][1] + (n - 1) * motif.vs_screen.p2_spacing[1] + select.f_alignOffset(motif.vs_screen.p2_facing),
 					motif.vs_screen.p2_pos[2] + motif.vs_screen.p2_offset[2] + motif.vs_screen['p2_c' .. n .. '_offset'][2] + (n - 1) * motif.vs_screen.p2_spacing[2],
