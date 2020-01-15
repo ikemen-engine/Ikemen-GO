@@ -1203,10 +1203,6 @@ function options.f_advGameplayCfg()
 				config.SingleTeamMode = true
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
-			select.t_p1TeamMenu = select.f_getTeamMenu()
-			select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
-			select.t_p2TeamMenu = select.f_getTeamMenu()
-			select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 			modified = 1
 		--Turns Limit
 		elseif t[item].itemname == 'numturns' then
@@ -1219,12 +1215,6 @@ function options.f_advGameplayCfg()
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTurns = config.NumTurns - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumTurns <= 2 then
-					select.t_p1TeamMenu = select.f_getTeamMenu()
-					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
-					select.t_p2TeamMenu = select.f_getTeamMenu()
-					select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
-				end
 				modified = 1
 			end
 		--Simul Limit
@@ -1234,18 +1224,12 @@ function options.f_advGameplayCfg()
 				config.NumSimul = config.NumSimul + 1
 				t[item].vardisplay = config.NumSimul
 				modified = 1
+				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			elseif commandGetState(main.p1Cmd, 'l') and config.NumSimul > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumSimul = config.NumSimul - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumSimul <= 2 then
-					select.t_p1TeamMenu = select.f_getTeamMenu()
-					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
-					select.t_p2TeamMenu = select.f_getTeamMenu()
-					select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
-				end
 				modified = 1
-				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			end
 		--Tag Limit
 		elseif t[item].itemname == 'numtag' then
@@ -1254,18 +1238,12 @@ function options.f_advGameplayCfg()
 				config.NumTag = config.NumTag + 1
 				t[item].vardisplay = config.NumTag
 				modified = 1
+				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			elseif commandGetState(main.p1Cmd, 'l') and config.NumTag > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTag = config.NumTag - 1
 				t[item].vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)
-				if config.NumTag <= 2 then
-					select.t_p1TeamMenu = select.f_getTeamMenu()
-					select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
-					select.t_p2TeamMenu = select.f_getTeamMenu()
-					select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
-				end
 				modified = 1
-				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
 			end
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then

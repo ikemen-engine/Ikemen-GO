@@ -33,10 +33,14 @@ if motif.select_info.wrapping == 1 then
 	end
 end
 --initialize other local variables
-local t_p1Selected = {}
-local t_p2Selected = {}
 local t_roster = {}
 local t_aiRamp = {}
+local t_p1Selected = {}
+local t_p2Selected = {}
+local t_p1Cursor = {}
+local t_p2Cursor = {}
+local p1RestoreCursor = false
+local p2RestoreCursor = false
 local p1Cell = false
 local p2Cell = false
 local p1TeamEnd = false
@@ -580,7 +584,7 @@ end
 function select.f_getTeamMenu()
 	local t = {}
 	--Single mode check
-	if config.SingleTeamMode == true then
+	if config.SingleTeamMode or (not gameMode('arcade') and not gameMode('versus')) or (gameMode('arcade') and motif.title_info.menu_itemname_arcade == '') or (gameMode('versus') and motif.title_info.menu_itemname_versus == '') then
 		table.insert(t, {data = textImgNew(), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single})
 	end
 	if config.SimulMode then --Simul mode enabled
@@ -863,25 +867,25 @@ function select.f_resetGrid()
 end
 
 function select.startCell()
-	if motif.select_info.p1_cursor_startcell[1] >= motif.select_info.columns then
-		p1SelX = 0
-	else
+	if motif.select_info.p1_cursor_startcell[1] < motif.select_info.columns then
 		p1SelX = motif.select_info.p1_cursor_startcell[1]
-	end
-	if motif.select_info.p2_cursor_startcell[1] >= motif.select_info.columns then
-		p2SelX = 0
 	else
+		p1SelX = 0
+	end
+	if motif.select_info.p2_cursor_startcell[1] < motif.select_info.columns then
 		p2SelX = motif.select_info.p2_cursor_startcell[1]
-	end
-	if motif.select_info.p1_cursor_startcell[2] >= motif.select_info.rows then
-		p1SelY = 0
 	else
+		p2SelX = 0
+	end
+	if motif.select_info.p1_cursor_startcell[2] < motif.select_info.rows then
 		p1SelY = motif.select_info.p1_cursor_startcell[2]
-	end
-	if motif.select_info.p2_cursor_startcell[2] >= motif.select_info.rows then
-		p2SelY = 0
 	else
+		p1SelY = 0
+	end
+	if motif.select_info.p2_cursor_startcell[2] < motif.select_info.rows then
 		p2SelY = motif.select_info.p2_cursor_startcell[2]
+	else
+		p2SelY = 0
 	end
 end
 
@@ -904,6 +908,10 @@ function select.f_selectReset()
 		stageNo = 0
 		stageList = 0
 	end
+	select.t_p1TeamMenu = select.f_getTeamMenu()
+	select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
+	select.t_p2TeamMenu = select.f_getTeamMenu()
+	select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
 	p1Cell = nil
 	p2Cell = nil
 	t_p1Selected = {}
@@ -940,6 +948,10 @@ end
 --;===========================================================
 function select.f_selectSimple()
 	select.startCell()
+	t_p1Cursor = {}
+	t_p2Cursor = {}
+	p1RestoreCursor = false
+	p2RestoreCursor = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -989,6 +1001,10 @@ end
 --;===========================================================
 function select.f_selectArranged()
 	select.startCell()
+	t_p1Cursor = {}
+	t_p2Cursor = {}
+	p1RestoreCursor = false
+	p2RestoreCursor = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1181,6 +1197,10 @@ end
 --;===========================================================
 function select.f_selectArcade()
 	select.startCell()
+	t_p1Cursor = {}
+	t_p2Cursor = {}
+	p1RestoreCursor = false
+	p2RestoreCursor = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1497,6 +1517,10 @@ end
 --;===========================================================
 function select.f_selectTournament(size)
 	select.startCell()
+	t_p1Cursor = {}
+	t_p2Cursor = {}
+	p1RestoreCursor = false
+	p2RestoreCursor = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1815,6 +1839,8 @@ function select.f_selectScreen()
 	end
 	--team and character selection complete
 	if p1SelEnd and p2SelEnd and p1TeamEnd and p2TeamEnd then
+		p1RestoreCursor = true
+		p2RestoreCursor = true
 		if main.stageMenu and not stageEnd then --Stage select
 			select.f_stageMenu()
 		elseif main.coop and not coopEnd then
@@ -1884,13 +1910,13 @@ local txt_p1TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p1_teammenu_enemytitle_font[8]
 )
 
-select.t_p1TeamMenu = select.f_getTeamMenu()
-select.t_p1TeamMenu = main.f_cleanTable(select.t_p1TeamMenu, main.t_sort.select_info)
-
 local p1TeamActiveCount = 0
 local p1TeamActiveFont = 'p1_teammenu_item_active_font'
 
 function select.f_p1TeamMenu()
+	if #t_p1Cursor > 0 then
+		t_p1Cursor = {}
+	end
 	if main.p1TeamMenu ~= nil then --Predefined team
 		p1TeamMode = main.p1TeamMenu.mode
 		p1NumChars = main.p1TeamMenu.chars
@@ -2119,13 +2145,13 @@ local txt_p2TeamEnemyTitle = main.f_createTextImg(
 	motif.select_info.p2_teammenu_enemytitle_font[8]
 )
 
-select.t_p2TeamMenu = select.f_getTeamMenu()
-select.t_p2TeamMenu = main.f_cleanTable(select.t_p2TeamMenu, main.t_sort.select_info)
-
 local p2TeamActiveCount = 0
 local p2TeamActiveFont = 'p2_teammenu_item_active_font'
 
 function select.f_p2TeamMenu()
+	if #t_p2Cursor > 0 then
+		t_p2Cursor = {}
+	end
 	if main.p2TeamMenu ~= nil then --Predefined team
 		p2TeamMode = main.p2TeamMenu.mode
 		p2NumChars = main.p2TeamMenu.chars
@@ -2350,7 +2376,15 @@ function select.f_p1SelectMenu()
 	elseif not p1SelEnd then
 		resetgrid = false
 		--cell movement
-		p1SelX, p1SelY, p1FaceOffset, p1RowOffset = select.f_cellMovement(p1SelX, p1SelY, main.p1Cmd, p1FaceOffset, p1RowOffset, motif.select_info.p1_cursor_move_snd)
+		if p1RestoreCursor and t_p1Cursor[p1NumChars - #t_p1Selected] ~= nil then --restore saved position
+			p1SelX = t_p1Cursor[p1NumChars - #t_p1Selected][1]
+			p1SelY = t_p1Cursor[p1NumChars - #t_p1Selected][2]
+			p1FaceOffset = t_p1Cursor[p1NumChars - #t_p1Selected][3]
+			p1RowOffset = t_p1Cursor[p1NumChars - #t_p1Selected][4]
+			t_p1Cursor[p1NumChars - #t_p1Selected] = nil
+		else --calculate current position
+			p1SelX, p1SelY, p1FaceOffset, p1RowOffset = select.f_cellMovement(p1SelX, p1SelY, main.p1Cmd, p1FaceOffset, p1RowOffset, motif.select_info.p1_cursor_move_snd)
+		end
 		p1Cell = p1SelX + motif.select_info.columns * p1SelY
 		--draw active cursor
 		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
@@ -2369,6 +2403,7 @@ function select.f_p1SelectMenu()
 				selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
 			end
 			table.insert(t_p1Selected, {cel = selected, pal = main.f_btnPalNo(main.p1Cmd), cursor = {cursorX, cursorY, p1RowOffset}})
+			t_p1Cursor[p1NumChars - #t_p1Selected + 1] = {p1SelX, p1SelY, p1FaceOffset, p1RowOffset}
 			if #t_p1Selected == p1NumChars then --if all characters have been chosen
 				if main.p2In == 1 and matchNo == 0 then --if player1 is allowed to select p2 characters
 					p2TeamEnd = false
@@ -2389,6 +2424,7 @@ function select.f_p1SelectMenu()
 				end
 				rand = true
 				table.insert(t_p1Selected, {cel = selected, pal = math.random(1, 12), cursor = {cursorX, cursorY, p1RowOffset}})
+				t_p1Cursor[p1NumChars - #t_p1Selected + 1] = {p1SelX, p1SelY, p1FaceOffset, p1RowOffset}
 			end
 			if main.p2SelectMenu and main.p2In == 1 and matchNo == 0 then --if player1 is allowed to select p2 characters
 				p2TeamMode = p1TeamMode
@@ -2401,6 +2437,7 @@ function select.f_p1SelectMenu()
 				p2RowOffset = p1RowOffset
 				for i = 1, p2NumChars do
 					table.insert(t_p2Selected, {cel = main.t_randomChars[math.random(1, #main.t_randomChars)], pal = math.random(1, 12), cursor = {cursorX, cursorY, p2RowOffset}})
+					t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
 				end
 			end
 			if main.stageMenu then
@@ -2435,7 +2472,15 @@ function select.f_p2SelectMenu()
 	elseif not p2SelEnd then
 		resetgrid = false
 		--cell movement
-		p2SelX, p2SelY, p2FaceOffset, p2RowOffset = select.f_cellMovement(p2SelX, p2SelY, main.p2Cmd, p2FaceOffset, p2RowOffset, motif.select_info.p2_cursor_move_snd)
+		if p2RestoreCursor and t_p2Cursor[p2NumChars - #t_p2Selected] ~= nil then --restore saved position
+			p2SelX = t_p2Cursor[p2NumChars - #t_p2Selected][1]
+			p2SelY = t_p2Cursor[p2NumChars - #t_p2Selected][2]
+			p2FaceOffset = t_p2Cursor[p2NumChars - #t_p2Selected][3]
+			p2RowOffset = t_p2Cursor[p2NumChars - #t_p2Selected][4]
+			t_p2Cursor[p2NumChars - #t_p2Selected] = nil
+		else --calculate current position
+			p2SelX, p2SelY, p2FaceOffset, p2RowOffset = select.f_cellMovement(p2SelX, p2SelY, main.p2Cmd, p2FaceOffset, p2RowOffset, motif.select_info.p2_cursor_move_snd)
+		end
 		p2Cell = p2SelX + motif.select_info.columns * p2SelY
 		--draw active cursor
 		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
@@ -2452,6 +2497,7 @@ function select.f_p2SelectMenu()
 				selected = main.t_randomChars[math.random(1, #main.t_randomChars)]
 			end
 			table.insert(t_p2Selected, {cel = selected, pal = main.f_btnPalNo(main.p2Cmd), cursor = {cursorX, cursorY, p2RowOffset}})
+			t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
 			if #t_p2Selected == p2NumChars then
 				p2SelEnd = true
 			end
@@ -2467,6 +2513,7 @@ function select.f_p2SelectMenu()
 				end
 				rand = true
 				table.insert(t_p2Selected, {cel = selected, pal = math.random(1, 12), cursor = {cursorX, cursorY, p2RowOffset}})
+				t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
 			end
 			p2SelEnd = true
 		end
