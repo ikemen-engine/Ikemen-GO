@@ -158,6 +158,7 @@ func main() {
 	"AllowDebugKeys": true,
 	"ComboExtraFrameWindow": 1,
 	"PostProcessingShader": 0,
+	"ExternalShaders": [],
 	"LocalcoordScalingType": 1,
 	"MSAA": false,
 	"WindowMainIconLocation": [
@@ -198,6 +199,7 @@ func main() {
 		AllowDebugKeys             bool
 		MSAA                       bool
 		PostProcessingShader       int32
+		ExternalShaders            []string
 		LocalcoordScalingType      int32
 		CommonAir                  string
 		CommonCmd                  string
@@ -235,6 +237,7 @@ func main() {
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.quickLaunch = tmp.QuickLaunch
 	sys.windowMainIconLocation = tmp.WindowMainIconLocation
+	sys.externalShaderList = tmp.ExternalShaders
 	// For debug testing letting this here comented because it could be usefull in the future.
 	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
 	sys.masterVolume = tmp.MasterVolume
