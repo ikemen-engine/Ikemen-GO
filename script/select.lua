@@ -862,6 +862,29 @@ function select.f_resetGrid()
 	main.f_printTable(select.t_drawFace, 'debug/t_drawFace.txt')
 end
 
+function select.startCell()
+	if motif.select_info.p1_cursor_startcell[1] >= motif.select_info.columns then
+		p1SelX = 0
+	else
+		p1SelX = motif.select_info.p1_cursor_startcell[1]
+	end
+	if motif.select_info.p2_cursor_startcell[1] >= motif.select_info.columns then
+		p2SelX = 0
+	else
+		p2SelX = motif.select_info.p2_cursor_startcell[1]
+	end
+	if motif.select_info.p1_cursor_startcell[2] >= motif.select_info.rows then
+		p1SelY = 0
+	else
+		p1SelY = motif.select_info.p1_cursor_startcell[2]
+	end
+	if motif.select_info.p2_cursor_startcell[2] >= motif.select_info.rows then
+		p2SelY = 0
+	else
+		p2SelY = motif.select_info.p2_cursor_startcell[2]
+	end
+end
+
 function select.f_selectReset()
 	if main.p2Faces and motif.select_info.double_select == 1 then
 		p1FaceX = motif.select_info.pos_p1_double_select[1]
@@ -916,10 +939,7 @@ end
 --; SIMPLE LOOP (VS MODE, TEAM VERSUS, TRAINING, WATCH, BONUS GAMES)
 --;===========================================================
 function select.f_selectSimple()
-	p1SelX = motif.select_info.p1_cursor_startcell[2]
-	p1SelY = motif.select_info.p1_cursor_startcell[1]
-	p2SelX = motif.select_info.p2_cursor_startcell[2]
-	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	select.startCell()
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -968,10 +988,7 @@ end
 --; ARRANGED LOOP (SURVIVAL, SURVIVAL CO-OP, VS 100 KUMITE, BOSS RUSH)
 --;===========================================================
 function select.f_selectArranged()
-	p1SelX = motif.select_info.p1_cursor_startcell[2]
-	p1SelY = motif.select_info.p1_cursor_startcell[1]
-	p2SelX = motif.select_info.p2_cursor_startcell[2]
-	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	select.startCell()
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1163,10 +1180,7 @@ end
 --; ARCADE LOOP (ARCADE, TEAM ARCADE, TEAM CO-OP)
 --;===========================================================
 function select.f_selectArcade()
-	p1SelX = motif.select_info.p1_cursor_startcell[2]
-	p1SelY = motif.select_info.p1_cursor_startcell[1]
-	p2SelX = motif.select_info.p2_cursor_startcell[2]
-	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	select.startCell()
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1482,10 +1496,7 @@ end
 --; TOURNAMENT LOOP
 --;===========================================================
 function select.f_selectTournament(size)
-	p1SelX = motif.select_info.p1_cursor_startcell[2]
-	p1SelY = motif.select_info.p1_cursor_startcell[1]
-	p2SelX = motif.select_info.p2_cursor_startcell[2]
-	p2SelY = motif.select_info.p2_cursor_startcell[1]
+	select.startCell()
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
