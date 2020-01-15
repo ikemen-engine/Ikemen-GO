@@ -1197,6 +1197,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
+				sys.resetGblEffect()
 				sys.resetOverwriteCharData()
 				return 2
 			}

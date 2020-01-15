@@ -935,6 +935,7 @@ function select.f_selectReset()
 	coopEnd = false
 	restoreTeam = false
 	continueStage = false
+	challenger = false
 	p1NumChars = 1
 	p2NumChars = 1
 	winner = 0
