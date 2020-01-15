@@ -586,7 +586,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 		c.counter_lay[i] = *ReadLayout("counter.", is, 2)
 		c.counter_lay[i].offset = [2]float32{}
 		is.ReadI32("text.font", &c.text_font[i][0], &c.text_font[i][1], &c.text_font[i][2])
-		c.text_text[i] = is["text.text"]
+		c.text_text[i], _ = is.getString("text.text")
 		c.text_lay[i] = *ReadLayout("text.", is, 2)
 		is.ReadI32("displaytime", &c.displaytime[i])
 	}
@@ -601,7 +601,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c.counter_lay[0].offset = [2]float32{}
 	is.ReadI32("team1.text.font", &c.text_font[0][0], &c.text_font[0][1], &c.text_font[0][2])
 	if len(is["team1.text.text"]) > 0 {
-		c.text_text[0] = is["team1.text.text"]
+		c.text_text[0], _ = is.getString("team1.text.text")
 	}
 	c.text_lay[0] = *ReadLayout("team1.text.", is, 2)
 	is.ReadI32("team1.displaytime", &c.displaytime[0])
@@ -618,7 +618,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c.counter_lay[1].offset = [2]float32{}
 	is.ReadI32("team2.text.font", &c.text_font[1][0], &c.text_font[1][1], &c.text_font[1][2])
 	if len(is["team2.text.text"]) > 0 {
-		c.text_text[1] = is["team2.text.text"]
+		c.text_text[1], _ = is.getString("team2.text.text")
 	}
 	c.text_lay[1] = *ReadLayout("team2.text.", is, 2)
 	is.ReadI32("team2.displaytime", &c.displaytime[1])
