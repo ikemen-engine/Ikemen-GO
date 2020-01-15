@@ -1679,7 +1679,7 @@ function select.f_selectScreen()
 		end
 		t_portrait = main.f_reversedTable(t_portrait)
 		for n = #t_portrait, 1, -1 do
-			drawPortrait(
+			drawVersusPortrait(
 				t_portrait[n],
 				motif.select_info.p1_face_offset[1] + motif.select_info['p1_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p1_face_spacing[1] + select.f_alignOffset(motif.select_info.p1_face_facing),
 				motif.select_info.p1_face_offset[2] + motif.select_info['p1_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p1_face_spacing[2],
@@ -1712,7 +1712,7 @@ function select.f_selectScreen()
 		end
 		t_portrait = main.f_reversedTable(t_portrait)
 		for n = #t_portrait, 1, -1 do
-			drawPortrait(
+			drawVersusPortrait(
 				t_portrait[n],
 				motif.select_info.p2_face_offset[1] + motif.select_info['p2_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p2_face_spacing[1] + select.f_alignOffset(motif.select_info.p2_face_facing),
 				motif.select_info.p2_face_offset[2] + motif.select_info['p2_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p2_face_spacing[2],
