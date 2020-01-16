@@ -925,7 +925,7 @@ for i = 1, #t_files do
 	t_files[i]:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 		path = path:gsub('\\', '/')
 		ext = ext:lower()
-		if ext:match('vert') or ext:match('frag') or ext:match('shader') then
+		if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
 			if t_shaders[path .. filename] == nil then
 				table.insert(t_shaderCfg, {data = textImgNew(), itemname = path .. filename, displayname = filename, selected = false})
 				t_shaders[path .. filename] = ''
