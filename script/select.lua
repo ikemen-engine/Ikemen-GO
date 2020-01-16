@@ -935,7 +935,6 @@ function select.f_selectReset()
 	coopEnd = false
 	restoreTeam = false
 	continueStage = false
-	challenger = false
 	p1NumChars = 1
 	p2NumChars = 1
 	winner = 0
@@ -970,8 +969,10 @@ function select.f_selectSimple()
 		while not selScreenEnd do
 			if esc() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
-				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-				resetRemapInput()
+				if not challenger then
+					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+					resetRemapInput()
+				end
 				return
 			end
 			select.f_selectScreen()
@@ -1006,6 +1007,7 @@ function select.f_selectArranged()
 	t_p2Cursor = {}
 	p1RestoreCursor = false
 	p2RestoreCursor = false
+	challenger = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1202,6 +1204,7 @@ function select.f_selectArcade()
 	t_p2Cursor = {}
 	p1RestoreCursor = false
 	p2RestoreCursor = false
+	challenger = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0
@@ -1475,6 +1478,7 @@ function select.f_selectArcade()
 			setGameMode('teamversus')
 			--start challenger match
 			select.f_selectSimple()
+			--if esc() then break end
 			--reload values
 			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
 			setHomeTeam(2)
@@ -1522,6 +1526,7 @@ function select.f_selectTournament(size)
 	t_p2Cursor = {}
 	p1RestoreCursor = false
 	p2RestoreCursor = false
+	challenger = false
 	p1TeamMenu = 1
 	p2TeamMenu = 1
 	p1FaceOffset = 0

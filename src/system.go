@@ -1836,12 +1836,8 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 		if s.gameMode == "arcade" && s.com[1] > 0 {
-			for i := 1; i < 3; i++ {
-				p := s.inputRemap[i]
-				if s.keyConfig[p].S() {
-					s.challenger = i + 1
-					break
-				}
+			if s.keyConfig[1].S() || s.JoystickConfig[1].S() {
+				s.challenger = 2
 			}
 			if s.challenger > 0 && s.lifebar.ch.cnt >= s.lifebar.ch.over_time {
 				s.esc = true
