@@ -732,9 +732,6 @@ type LifeBarRound struct {
 	ko_time            int32
 	ko_sndtime         int32
 	ko, dko, to        AnimTextSnd
-	n, s, h, throw, c  AnimTextSnd
-	t, suicide         AnimTextSnd
-	teammate, perfect  AnimTextSnd
 	slow_time          int32
 	over_waittime      int32
 	over_hittime       int32
@@ -783,15 +780,6 @@ func readLifeBarRound(is IniSection,
 	r.ko = *ReadAnimTextSnd("ko.", is, sff, at, 1)
 	r.dko = *ReadAnimTextSnd("dko.", is, sff, at, 1)
 	r.to = *ReadAnimTextSnd("to.", is, sff, at, 1)
-	r.n = *ReadAnimTextSnd("n.", is, sff, at, 1)
-	r.s = *ReadAnimTextSnd("s.", is, sff, at, 1)
-	r.h = *ReadAnimTextSnd("h.", is, sff, at, 1)
-	r.throw = *ReadAnimTextSnd("throw.", is, sff, at, 1)
-	r.c = *ReadAnimTextSnd("c.", is, sff, at, 1)
-	r.t = *ReadAnimTextSnd("t.", is, sff, at, 1)
-	r.suicide = *ReadAnimTextSnd("suicide.", is, sff, at, 1)
-	r.teammate = *ReadAnimTextSnd("teammate.", is, sff, at, 1)
-	r.perfect = *ReadAnimTextSnd("perfect.", is, sff, at, 1)
 	is.ReadI32("slow.time", &r.slow_time)
 	if is.ReadI32("over.hittime", &tmp) {
 		r.over_hittime = Max(0, tmp)
@@ -885,8 +873,7 @@ func (r *LifeBarRound) act() bool {
 			if sys.tickNextFrame() {
 				r.swt[t]--
 			}
-			//animが終了したら数値を固定して再度animを再生しないようにする
-			if ats.anim.anim.spr != nil && ats.End(r.dt[t]) {
+			if ats.End(r.dt[t]) {
 				r.wt[t] = 2
 			}
 			if sys.intro < -r.ko_time-10 {
@@ -902,29 +889,6 @@ func (r *LifeBarRound) act() bool {
 			f(&r.dko, 0)
 		default:
 			f(&r.to, 0)
-		}
-		if sys.winTeam >= 0 {
-			switch sys.winType[sys.winTeam] {
-			case WT_N, WT_PN:
-				f(&r.n, 0)
-			case WT_S, WT_PS:
-				f(&r.s, 0)
-			case WT_H, WT_PH:
-				f(&r.h, 0)
-			case WT_C, WT_PC:
-				f(&r.c, 0)
-			case WT_T, WT_PT:
-				f(&r.t, 0)
-			case WT_Throw, WT_PThrow:
-				f(&r.throw, 0)
-			case WT_Suicide, WT_PSuicide:
-				f(&r.suicide, 0)
-			case WT_Teammate, WT_PTeammate:
-				f(&r.teammate, 0)
-			}
-			if sys.winType[sys.winTeam] >= WT_Perfect {
-				f(&r.perfect, 0)
-			}
 		}
 		if sys.intro < -(r.over_hittime + r.over_waittime + r.over_wintime) {
 			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
@@ -947,15 +911,6 @@ func (r *LifeBarRound) reset() {
 	r.ko.Reset()
 	r.dko.Reset()
 	r.to.Reset()
-	r.n.Reset()
-	r.s.Reset()
-	r.h.Reset()
-	r.throw.Reset()
-	r.c.Reset()
-	r.t.Reset()
-	r.suicide.Reset()
-	r.teammate.Reset()
-	r.perfect.Reset()
 	r.win.Reset()
 	r.win2.Reset()
 	r.drawn.Reset()
@@ -1016,31 +971,6 @@ func (r *LifeBarRound) draw(layerno int16) {
 				r.win.text = tmp
 			}
 		}
-
-		if (sys.finish != FT_NotYet || sys.time == 0) && sys.winTeam >= 0 {
-			switch sys.winType[sys.winTeam] {
-			case WT_N, WT_PN:
-				r.n.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_S, WT_PS:
-				r.s.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_H, WT_PH:
-				r.h.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_C, WT_PC:
-				r.c.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_T, WT_PT:
-				r.t.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_Throw, WT_PThrow:
-				r.throw.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_Suicide, WT_PSuicide:
-				r.suicide.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			case WT_Teammate, WT_PTeammate:
-				r.teammate.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			}
-			if sys.winType[sys.winTeam] >= WT_Perfect {
-				r.perfect.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
-			}
-		}
-
 	}
 	sys.brightness = ob
 }
