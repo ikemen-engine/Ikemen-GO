@@ -34,10 +34,10 @@ function options.f_boolDisplay(bool, t, f)
 	end
 end
 
---return table entry if provided key exists there, otherwise return default argument
-function options.f_definedDisplay(key, t, default)
+--return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument
+function options.f_definedDisplay(key, t, default, ret)
 	if t[key] ~= nil then
-		return t[key]
+		return ret or t[key]
 	end
 	return default
 end
@@ -136,7 +136,7 @@ function options.f_resetTables()
 			resolution = config.Width .. 'x' .. config.Height,
 			fullscreen = options.f_boolDisplay(config.Fullscreen),
 			msaa = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled),
-			postprocessingshader = options.t_shaderNames[config.PostProcessingShader],
+			externalshaders = options.option_info.menu_itemname_video_externalshaders_none,
 		},
 		t_audioCfg = {
 			mastervolume = config.MasterVolume .. '%',
@@ -278,22 +278,41 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 	for i = 1, #t do
 		if i > item - cursorPosY then
 			if i == item then
-				textImgDraw(main.f_updateTextImg(
-					t[i].data,
-					motif.font_data[motif.option_info.menu_item_active_font[1]],
-					motif.option_info.menu_item_active_font[2],
-					motif.option_info.menu_item_active_font[3],
-					t[i].displayname,
-					motif.option_info.menu_pos[1],
-					motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-					motif.option_info.menu_item_active_font_scale[1],
-					motif.option_info.menu_item_active_font_scale[2],
-					motif.option_info.menu_item_active_font[4],
-					motif.option_info.menu_item_active_font[5],
-					motif.option_info.menu_item_active_font[6],
-					motif.option_info.menu_item_active_font[7],
-					motif.option_info.menu_item_active_font[8]
-				))
+				if t[i].selected then
+					textImgDraw(main.f_updateTextImg(
+						t[i].data,
+						motif.font_data[motif.option_info.menu_item_selected_active_font[1]],
+						motif.option_info.menu_item_selected_active_font[2],
+						motif.option_info.menu_item_selected_active_font[3],
+						t[i].displayname,
+						motif.option_info.menu_pos[1],
+						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						motif.option_info.menu_item_selected_active_font_scale[1],
+						motif.option_info.menu_item_selected_active_font_scale[2],
+						motif.option_info.menu_item_selected_active_font[4],
+						motif.option_info.menu_item_selected_active_font[5],
+						motif.option_info.menu_item_selected_active_font[6],
+						motif.option_info.menu_item_selected_active_font[7],
+						motif.option_info.menu_item_selected_active_font[8]
+					))
+				else
+					textImgDraw(main.f_updateTextImg(
+						t[i].data,
+						motif.font_data[motif.option_info.menu_item_active_font[1]],
+						motif.option_info.menu_item_active_font[2],
+						motif.option_info.menu_item_active_font[3],
+						t[i].displayname,
+						motif.option_info.menu_pos[1],
+						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						motif.option_info.menu_item_active_font_scale[1],
+						motif.option_info.menu_item_active_font_scale[2],
+						motif.option_info.menu_item_active_font[4],
+						motif.option_info.menu_item_active_font[5],
+						motif.option_info.menu_item_active_font[6],
+						motif.option_info.menu_item_active_font[7],
+						motif.option_info.menu_item_active_font[8]
+					))
+				end
 				if t[i].vardata ~= nil then
 					textImgDraw(main.f_updateTextImg(
 						t[i].vardata,
@@ -313,22 +332,41 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 					))
 				end
 			else
-				textImgDraw(main.f_updateTextImg(
-					t[i].data,
-					motif.font_data[motif.option_info.menu_item_font[1]],
-					motif.option_info.menu_item_font[2],
-					motif.option_info.menu_item_font[3],
-					t[i].displayname,
-					motif.option_info.menu_pos[1],
-					motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-					motif.option_info.menu_item_font_scale[1],
-					motif.option_info.menu_item_font_scale[2],
-					motif.option_info.menu_item_font[4],
-					motif.option_info.menu_item_font[5],
-					motif.option_info.menu_item_font[6],
-					motif.option_info.menu_item_font[7],
-					motif.option_info.menu_item_font[8]
-				))
+				if t[i].selected then
+					textImgDraw(main.f_updateTextImg(
+						t[i].data,
+						motif.font_data[motif.option_info.menu_item_selected_font[1]],
+						motif.option_info.menu_item_selected_font[2],
+						motif.option_info.menu_item_selected_font[3],
+						t[i].displayname,
+						motif.option_info.menu_pos[1],
+						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						motif.option_info.menu_item_selected_font_scale[1],
+						motif.option_info.menu_item_selected_font_scale[2],
+						motif.option_info.menu_item_selected_font[4],
+						motif.option_info.menu_item_selected_font[5],
+						motif.option_info.menu_item_selected_font[6],
+						motif.option_info.menu_item_selected_font[7],
+						motif.option_info.menu_item_selected_font[8]
+					))
+				else
+					textImgDraw(main.f_updateTextImg(
+						t[i].data,
+						motif.font_data[motif.option_info.menu_item_font[1]],
+						motif.option_info.menu_item_font[2],
+						motif.option_info.menu_item_font[3],
+						t[i].displayname,
+						motif.option_info.menu_pos[1],
+						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						motif.option_info.menu_item_font_scale[1],
+						motif.option_info.menu_item_font_scale[2],
+						motif.option_info.menu_item_font[4],
+						motif.option_info.menu_item_font[5],
+						motif.option_info.menu_item_font[6],
+						motif.option_info.menu_item_font[7],
+						motif.option_info.menu_item_font[8]
+					))
+				end
 				if t[i].vardata ~= nil then
 					textImgDraw(main.f_updateTextImg(
 						t[i].vardata,
@@ -531,7 +569,7 @@ function options.f_mainCfg()
 				config.QuickLaunch = 0
 				config.AllowDebugKeys = true
 				config.ComboExtraFrameWindow = 1
-				config.PostProcessingShader = 0
+				config.ExternalShaders = {}
 				config.LocalcoordScalingType = 1
 				config.MSAA = false
 				loadLifebar(motif.files.fight)
@@ -541,7 +579,7 @@ function options.f_mainCfg()
 				options.f_resetTables()
 				modified = 1
 				needReload = 1
-			--Save
+			--Save and Return
 			elseif t[item].itemname == 'save' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				if modified == 1 then
@@ -554,7 +592,7 @@ function options.f_mainCfg()
 					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				end
 				break
-			--Back
+			--Return Without Saving
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				if needReload == 1 then
@@ -731,18 +769,11 @@ end
 --;===========================================================
 --; VIDEO SETTINGS
 --;===========================================================
-options.t_shaderNames = {
-	[0] = motif.option_info.menu_itemname_video_shader_none,
-	[1] = motif.option_info.menu_itemname_video_shader_hqx2,
-	[2] = motif.option_info.menu_itemname_video_shader_hqx4,
-	[3] = motif.option_info.menu_itemname_video_shader_scanlines,
-}
-
 options.t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
 	{data = textImgNew(), itemname = 'msaa', displayname = motif.option_info.menu_itemname_video_msaa, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'postprocessingshader', displayname = motif.option_info.menu_itemname_video_shader, vardata = textImgNew(), vardisplay = options.t_shaderNames[config.PostProcessingShader]},
+	{data = textImgNew(), itemname = 'externalshaders', displayname = motif.option_info.menu_itemname_video_externalshaders, vardata = textImgNew(), vardisplay = options.f_definedDisplay(1, config.ExternalShaders, motif.option_info.menu_itemname_disabled, #config.ExternalShaders)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
@@ -788,20 +819,11 @@ function options.f_videoCfg()
 			t[item].vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
 			modified = 1
 			needReload = 1
-		--Shader
-		elseif t[item].itemname == 'postprocessingshader' then
-			if commandGetState(main.p1Cmd, 'r') and config.PostProcessingShader < #options.t_shaderNames then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PostProcessingShader = config.PostProcessingShader + 1
-				modified = 1
-				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.PostProcessingShader > 0 then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PostProcessingShader = config.PostProcessingShader - 1
-				modified = 1
-				needReload = 1
-			end
-			t[item].vardisplay = options.t_shaderNames[config.PostProcessingShader]
+		--Shaders
+		elseif t[item].itemname == 'externalshaders' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			options.f_shaderCfg()
+			t[item].vardisplay = options.f_definedDisplay(1, config.ExternalShaders, motif.option_info.menu_itemname_disabled, #config.ExternalShaders)
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
@@ -816,19 +838,19 @@ end
 --; RESOLUTION SETTINGS
 --;===========================================================
 local t_resCfg = {
-	{data = textImgNew(), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_res_320x240},
-	{data = textImgNew(), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_res_640x480},
-	{data = textImgNew(), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_res_1280x960},
-	{data = textImgNew(), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_res_1600x1200},
-	{data = textImgNew(), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_res_960x720},
-	{data = textImgNew(), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_res_1280x720},
-	{data = textImgNew(), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_res_1600x900},
-	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_res_1920x1080},
-	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_res_2560x1440},
-	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_res_3840x2160},
+	{data = textImgNew(), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_video_res_320x240},
+	{data = textImgNew(), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_video_res_640x480},
+	{data = textImgNew(), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_video_res_1280x960},
+	{data = textImgNew(), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_video_res_1600x1200},
+	{data = textImgNew(), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_video_res_960x720},
+	{data = textImgNew(), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_video_res_1280x720},
+	{data = textImgNew(), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_video_res_1600x900},
+	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_video_res_1920x1080},
+	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_video_res_2560x1440},
+	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_video_res_3840x2160},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_res_custom},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_res_back},
+	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_video_res_custom},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_res_back},
 }
 t_resCfg = main.f_cleanTable(t_resCfg, main.t_sort.option_info)
 
@@ -887,6 +909,90 @@ function options.f_resCfg()
 				needReload = 1
 				textImgSetText(txt_title, motif.option_info.title_text_video)
 				break
+			end
+		end
+		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
+	end
+end
+
+--;===========================================================
+--; SHADER SETTINGS
+--;===========================================================
+local t_shaderCfg = {}
+local t_shaders = {}
+local t_files = GetDirectoryFiles('shaders')
+for i = 1, #t_files do
+	t_files[i]:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
+		path = path:gsub('\\', '/')
+		ext = ext:lower()
+		if ext:match('vert') or ext:match('frag') or ext:match('shader') then
+			if t_shaders[path .. filename] == nil then
+				table.insert(t_shaderCfg, {data = textImgNew(), itemname = path .. filename, displayname = filename, selected = false})
+				t_shaders[path .. filename] = ''
+			end
+		end
+	end)
+end
+table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'disableall', displayname = motif.option_info.menu_itemname_video_externalshaders_disableall})
+table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_externalshaders_back})
+t_shaderCfg = main.f_cleanTable(t_shaderCfg, main.t_sort.option_info)
+
+function options.f_shaderCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = t_shaderCfg
+	textImgSetText(txt_title, motif.option_info.title_text_externalshaders)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_video)
+			break
+		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
+			--Back
+			if t[item].itemname == 'back' then
+				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				textImgSetText(txt_title, motif.option_info.title_text_video)
+				break
+			--Disable all
+			elseif t[item].itemname == 'disableall' then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				if #config.ExternalShaders > 0 then
+					config.ExternalShaders = {}
+					for i = 1, #t do
+						if t[i].selected then
+							t[i].selected = false
+						end
+					end
+					modified = 1
+					needReload = 1
+				end
+				textImgSetText(txt_title, motif.option_info.title_text_video)
+				break
+			--Shader
+			else
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+				local found = false
+				--get rid of shader reference if it exists in config.ExternalShaders
+				for i = 1, #config.ExternalShaders do
+					if config.ExternalShaders[i]:lower() == t[item].itemname:lower() then
+						table.remove(config.ExternalShaders, i)
+						t[item].selected = false
+						found = true
+						break
+					end
+				end
+				--or add it if not
+				if not found then
+					table.insert(config.ExternalShaders, t[item].itemname)
+					t[item].selected = true
+				end
+				modified = 1
+				needReload = 1
+				--textImgSetText(txt_title, motif.option_info.title_text_video)
+				--break
 			end
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)

@@ -8,7 +8,9 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-
+	"os"
+	"path/filepath"
+	
 	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -112,6 +114,19 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(nameTable)
 		return 1
 	})
+	
+	//----------------------------------------------------------------
+	// Generate table listing all files in a given directory
+	luaRegister(l, "GetDirectoryFiles", func(*lua.LState) int {
+		dir := l.NewTable()
+		filepath.Walk(strArg(l, 1), func(path string, info os.FileInfo, err error) error {
+			dir.Append(lua.LString(path))
+			return nil
+		})
+		l.Push(dir)
+		return 1
+	})
+	
 	//----------------------------------------------------------------
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.frameCounter))

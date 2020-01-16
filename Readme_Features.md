@@ -98,7 +98,7 @@ Specify the path of the file to be read in path (Relative to the character folde
 ## Additional triggers
 
 ### GameMode
-Returns current game mode name (arcade / versus / teamcoop / teamversus / survival / survivalcoop / training / watch / netplayversus / netplayteamcoop / netplaysurvivalcoop / freebattle / 100kumite / bossrush / randomtest / bonus / tournament)
+Returns current game mode name (arcade / versus / teamcoop / teamversus / survival / survivalcoop / training / watch / netplayversus / netplayteamcoop / netplaysurvivalcoop / freebattle / 100kumite / bossrush / randomtest / bonus / tournament / demo)
 
 ### Majorversion
 Returns 1 if mugenversion in the def file is 1.0 or higher.
