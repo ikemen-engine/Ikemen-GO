@@ -58,7 +58,7 @@ end
 
 function randomtest.eachAllChars(f)
   for cel = 1, #main.t_randomChars do
-    f(cel-1)
+    f(main.t_randomChars[cel])
   end
 end
 
