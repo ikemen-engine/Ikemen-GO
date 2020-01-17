@@ -245,6 +245,7 @@ local txt_title = main.f_createTextImg(
 	motif.option_info.title_font[6],
 	motif.option_info.title_font[7],
 	motif.option_info.title_font[8]
+	--motif.defaultOptions --title font assignment exists in mugen
 )
 function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 	fadeType = fadeType or 'fadein'
@@ -269,7 +270,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			motif.option_info.menu_boxbg_col[2],
 			motif.option_info.menu_boxbg_col[3],
 			motif.option_info.menu_boxbg_alpha[1],
-			motif.option_info.menu_boxbg_alpha[2]
+			motif.option_info.menu_boxbg_alpha[2],
+			motif.defaultOptions
 		)
 	end
 	--draw title
@@ -293,7 +295,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_selected_active_font[5],
 						motif.option_info.menu_item_selected_active_font[6],
 						motif.option_info.menu_item_selected_active_font[7],
-						motif.option_info.menu_item_selected_active_font[8]
+						motif.option_info.menu_item_selected_active_font[8],
+						motif.defaultOptions
 					))
 				else
 					textImgDraw(main.f_updateTextImg(
@@ -310,7 +313,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_active_font[5],
 						motif.option_info.menu_item_active_font[6],
 						motif.option_info.menu_item_active_font[7],
-						motif.option_info.menu_item_active_font[8]
+						motif.option_info.menu_item_active_font[8],
+						motif.defaultOptions
 					))
 				end
 				if t[i].vardata ~= nil then
@@ -328,7 +332,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_value_active_font[5],
 						motif.option_info.menu_item_value_active_font[6],
 						motif.option_info.menu_item_value_active_font[7],
-						motif.option_info.menu_item_value_active_font[8]
+						motif.option_info.menu_item_value_active_font[8],
+						motif.defaultOptions
 					))
 				end
 			else
@@ -347,7 +352,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_selected_font[5],
 						motif.option_info.menu_item_selected_font[6],
 						motif.option_info.menu_item_selected_font[7],
-						motif.option_info.menu_item_selected_font[8]
+						motif.option_info.menu_item_selected_font[8],
+						motif.defaultOptions
 					))
 				else
 					textImgDraw(main.f_updateTextImg(
@@ -364,7 +370,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_font[5],
 						motif.option_info.menu_item_font[6],
 						motif.option_info.menu_item_font[7],
-						motif.option_info.menu_item_font[8]
+						motif.option_info.menu_item_font[8],
+						motif.defaultOptions
 					))
 				end
 				if t[i].vardata ~= nil then
@@ -382,7 +389,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						motif.option_info.menu_item_value_font[5],
 						motif.option_info.menu_item_value_font[6],
 						motif.option_info.menu_item_value_font[7],
-						motif.option_info.menu_item_value_font[8]
+						motif.option_info.menu_item_value_font[8],
+						motif.defaultOptions
 					))
 				end
 			end
@@ -407,7 +415,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			motif.option_info.menu_boxcursor_col[2],
 			motif.option_info.menu_boxcursor_col[3],
 			src,
-			dst
+			dst,
+			motif.defaultOptions
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -1905,7 +1914,8 @@ function options.f_keyCfg(cfgType, controller)
 				motif.option_info['menu_item_key_p' .. i .. '_font'][5],
 				motif.option_info['menu_item_key_p' .. i .. '_font'][6],
 				motif.option_info['menu_item_key_p' .. i .. '_font'][7],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][8]
+				motif.option_info['menu_item_key_p' .. i .. '_font'][8],
+				motif.defaultOptions
 			))
 		end
 		--draw menu box
@@ -1926,7 +1936,8 @@ function options.f_keyCfg(cfgType, controller)
 					motif.option_info.menu_boxbg_col[2],
 					motif.option_info.menu_boxbg_col[3],
 					motif.option_info.menu_boxbg_alpha[1],
-					motif.option_info.menu_boxbg_alpha[2]
+					motif.option_info.menu_boxbg_alpha[2],
+					motif.defaultOptions
 				)
 			end
 		end
@@ -1959,7 +1970,8 @@ function options.f_keyCfg(cfgType, controller)
 							motif.option_info.menu_item_active_font[5],
 							motif.option_info.menu_item_active_font[6],
 							motif.option_info.menu_item_active_font[7],
-							motif.option_info.menu_item_active_font[8]
+							motif.option_info.menu_item_active_font[8],
+							motif.defaultOptions
 						))
 						--draw vardata
 						if t[i].vardata ~= nil then
@@ -1978,7 +1990,8 @@ function options.f_keyCfg(cfgType, controller)
 									motif.option_info.menu_item_value_conflict_font[5],
 									motif.option_info.menu_item_value_conflict_font[6],
 									motif.option_info.menu_item_value_conflict_font[7],
-									motif.option_info.menu_item_value_conflict_font[8]
+									motif.option_info.menu_item_value_conflict_font[8],
+									motif.defaultOptions
 								))
 								t_conflict[joyNum] = true
 							else
@@ -1996,7 +2009,8 @@ function options.f_keyCfg(cfgType, controller)
 									motif.option_info.menu_item_value_active_font[5],
 									motif.option_info.menu_item_value_active_font[6],
 									motif.option_info.menu_item_value_active_font[7],
-									motif.option_info.menu_item_value_active_font[8]
+									motif.option_info.menu_item_value_active_font[8],
+									motif.defaultOptions
 								))
 							end
 						--draw infodata
@@ -2015,7 +2029,8 @@ function options.f_keyCfg(cfgType, controller)
 								motif.option_info.menu_item_info_active_font[5],
 								motif.option_info.menu_item_info_active_font[6],
 								motif.option_info.menu_item_info_active_font[7],
-								motif.option_info.menu_item_info_active_font[8]
+								motif.option_info.menu_item_info_active_font[8],
+								motif.defaultOptions
 							))
 						end
 					else --inactive item
@@ -2034,7 +2049,8 @@ function options.f_keyCfg(cfgType, controller)
 							motif.option_info.menu_item_font[5],
 							motif.option_info.menu_item_font[6],
 							motif.option_info.menu_item_font[7],
-							motif.option_info.menu_item_font[8]
+							motif.option_info.menu_item_font[8],
+							motif.defaultOptions
 						))
 						--draw vardata
 						if t[i].vardata ~= nil then
@@ -2053,7 +2069,8 @@ function options.f_keyCfg(cfgType, controller)
 									motif.option_info.menu_item_value_conflict_font[5],
 									motif.option_info.menu_item_value_conflict_font[6],
 									motif.option_info.menu_item_value_conflict_font[7],
-									motif.option_info.menu_item_value_conflict_font[8]
+									motif.option_info.menu_item_value_conflict_font[8],
+									motif.defaultOptions
 								))
 								t_conflict[joyNum] = true
 							else
@@ -2071,7 +2088,8 @@ function options.f_keyCfg(cfgType, controller)
 									motif.option_info.menu_item_value_font[5],
 									motif.option_info.menu_item_value_font[6],
 									motif.option_info.menu_item_value_font[7],
-									motif.option_info.menu_item_value_font[8]
+									motif.option_info.menu_item_value_font[8],
+									motif.defaultOptions
 								))
 							end
 						--draw infodata
@@ -2090,7 +2108,8 @@ function options.f_keyCfg(cfgType, controller)
 								motif.option_info.menu_item_info_font[5],
 								motif.option_info.menu_item_info_font[6],
 								motif.option_info.menu_item_info_font[7],
-								motif.option_info.menu_item_info_font[8]
+								motif.option_info.menu_item_info_font[8],
+								motif.defaultOptions
 							))
 						end
 					end
@@ -2118,7 +2137,8 @@ function options.f_keyCfg(cfgType, controller)
 						motif.option_info.menu_boxcursor_col[2],
 						motif.option_info.menu_boxcursor_col[3],
 						src,
-						dst
+						dst,
+						motif.defaultOptions
 					)
 				end
 			end

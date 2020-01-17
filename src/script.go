@@ -144,11 +144,18 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "fillRect", func(l *lua.LState) int {
+		var ws, hs, xc float32 = 1, 1, 0
+		if l.GetTop() >= 10 && boolArg(l, 10) { //auto scaling == true
+			ws, hs = sys.widthScale, sys.heightScale
+			//x correction for non 4:3 aspect ratios
+			xc = float32(sys.scrrect[2]) / (float32(sys.scrrect[3]) / 240)
+			xc = (xc - 320) / (xc / 320) / 2
+		}
 		rect := [4]int32{
-			int32(float32(numArg(l, 1)) * sys.widthScale),
-			int32(float32(numArg(l, 2)) * sys.heightScale),
-			int32(float32(numArg(l, 3)) * sys.widthScale),
-			int32(float32(numArg(l, 4)) * sys.heightScale),
+			int32(float32(numArg(l, 1)) * ws + xc * ws + xc),
+			int32(float32(numArg(l, 2)) * hs),
+			int32(float32(numArg(l, 3)) * ws),
+			int32(float32(numArg(l, 4)) * hs),
 		}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)

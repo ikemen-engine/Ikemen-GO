@@ -127,19 +127,19 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		loading_offset = {localX - 10, localY - 10}, --Ikemen feature (310, 230)
+		loading_offset = {localX - math.floor(10 * localX / 320 + 0.5), localY - 10}, --Ikemen feature (310, 230)
 		loading_font = {'f-4x6.def', 7, -1, 255, 255, 255, 255, 0}, --Ikemen feature
 		loading_font_scale = {1.0, 1.0}, --Ikemen feature
 		loading_text = 'LOADING...', --Ikemen feature
-		footer1_offset = {2, localY}, --Ikemen feature (2, 240)
+		footer1_offset = {math.floor(2 * localX / 320 + 0.5), localY - 2}, --Ikemen feature (2, 238)
 		footer1_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		footer1_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer1_text = 'I.K.E.M.E.N. GO', --Ikemen feature
-		footer2_offset = {localX / 2, localY}, --Ikemen feature (160, 240)
+		footer2_offset = {localX / 2, localY - 2}, --Ikemen feature (160, 238)
 		footer2_font = {'f-4x6.def', 7, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		footer2_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer2_text = 'Press F1 for info', --Ikemen feature
-		footer3_offset = {localX - 1, localY}, --Ikemen feature (319, 240)
+		footer3_offset = {localX - math.floor(2 * localX / 320 + 0.5), localY - 2}, --Ikemen feature (318, 238)
 		footer3_font = {'f-4x6.def', 7, -1, 255, 255, 255, 255, 0}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_text = 'Plus v0.9', --Ikemen feature
@@ -147,12 +147,12 @@ local motif =
 		footer_boxbg_coords = {0, localY - 7, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_boxbg_col = {0, 0, 64}, --Ikemen feature
 		footer_boxbg_alpha = {255, 100}, --Ikemen feature
-		connecting_offset = {10, 40}, --Ikemen feature
+		connecting_offset = {math.floor(10 * localX / 320 + 0.5), 40}, --Ikemen feature
 		connecting_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		connecting_font_scale = {1.0, 1.0}, --Ikemen feature
 		connecting_host_text = 'Waiting for player 2... (%s)', --Ikemen feature
 		connecting_join_text = 'Now connecting... (%s)', --Ikemen feature
-		connecting_boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
+		connecting_boxbg_coords = {0, 0, config.Width, config.Height}, --Ikemen feature (0, 0, 320, 240)
 		connecting_boxbg_col = {0, 0, 0}, --Ikemen feature
 		connecting_boxbg_alpha = {20, 100}, --Ikemen feature
 		input_ip_name_text = 'Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.', --Ikemen feature
@@ -222,15 +222,15 @@ local motif =
 	infobox =
 	{
 		title = '', --Ikemen feature
-		title_pos = {159, 13}, --Ikemen feature
+		title_pos = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* Ikemen GO Plus source code: https://github.com/K4thos/Ikemen-GO-Plus", --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
 		text_pos = {25, 30}, --Ikemen feature
-		text_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0}, --Ikemen feature
+		text_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
-		text_spacing = {0, 10}, --Ikemen feature
-		boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
+		text_spacing = {0, 13}, --Ikemen feature
+		boxbg_coords = {0, 0, config.Width, config.Height}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
 	},
@@ -997,7 +997,7 @@ local motif =
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_spacing = {0, 13}, --Ikemen feature
-		boxbg_coords = {0, 0, localX, localY}, --Ikemen feature (0, 0, 320, 240)
+		boxbg_coords = {0, 0, config.Width, config.Height}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
 	},
@@ -1548,6 +1548,16 @@ if type(t.select_info.cell_spacing) ~= "table" then
 	t.select_info.cell_spacing = {t.select_info.cell_spacing, t.select_info.cell_spacing}
 end
 
+--disable scaling if element should use default values (non-existing in mugen)
+motif.defaultContinue = t.continue_screen == nil or t.continue_screen.continue_anim == nil or t.continue_screen.continue_anim == motif.continue_screen.continue_anim
+motif.defaultWarning = true--t.warning_info == nil or t.warning_info.text_font == nil or t.warning_info.text_font[1] == motif.warning_info.text_font[1]
+motif.defaultOptions = t.option_info == nil or t.option_info.menu_item_font == nil or t.option_info.menu_item_font[1] == motif.option_info.menu_item_font[1]
+motif.defaultConnecting = t.title_info == nil or t.title_info.connecting_font == nil or t.title_info.connecting_font[1] == motif.title_info.connecting_font[1]
+motif.defaultInfobox = t.infobox == nil or t.infobox.text_font == nil or t.infobox.text_font[1] == motif.infobox.text_font[1]
+motif.defaultLoading = false --t.title_info == nil or t.title_info.loading_font == nil or t.title_info.loading_font[1] == motif.title_info.loading_font[1]
+motif.defaultFooter = false --t.title_info == nil or t.title_info.footer1_font == nil or t.title_info.footer1_font[1] == motif.title_info.footer1_font[1]
+motif.defaultLocalcoord = localX == 320 and localY == 240
+
 --merge tables
 motif = main.f_tableMerge(motif, t)
 
@@ -1708,7 +1718,10 @@ if motif.anim[t.continue_anim] ~= nil then
 		t.continue_offset[1],
 		t.continue_offset[2],
 		t.continue_scale[1],
-		t.continue_scale[2]
+		t.continue_scale[2],
+		'0',
+		1,
+		motif.defaultConnecting
 	)
 	animSetWindow(t.continue_anim_data, main.screenOverscan, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end

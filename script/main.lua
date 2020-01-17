@@ -96,7 +96,8 @@ function main.f_textImgPosDraw(ti, x, y, align)
 end
 
 --shortcut for creating new text with several parameters
-function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst)
+function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defaultscale)
+	if defaultscale then main.SetDefaultScale() end
 	local ti = textImgNew()
 	if font ~= nil then
 		textImgSetFont(ti, font)
@@ -108,11 +109,13 @@ function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, 
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
 	end
+	if defaultscale then main.SetScaleValues() end
 	return ti
 end
 
 --shortcut for updating text with several parameters
-function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst)
+function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defaultscale)
+	if defaultscale then main.SetDefaultScale() end
 	if font ~= nil then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
@@ -123,6 +126,7 @@ function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY,
 		textImgSetPos(ti, x, y)
 		textImgSetScale(ti, scaleX, scaleY)
 	end
+	if defaultscale then main.SetScaleValues() end
 	return ti
 end
 
@@ -160,7 +164,7 @@ function main.f_boxcursorAlpha(r1min, r1max, r1step, r2min, r2max, r2step)
 end
 
 --generate anim from table
-function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame)
+function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, defaultscale)
 	x = x or 0
 	y = y or 0
 	scaleX = scaleX or 1.0
@@ -200,9 +204,11 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame)
 		end
 		anim = anim .. '\n'
 	end
+	if defaultscale then main.SetDefaultScale() end
 	local data = animNew(sff, anim)
 	animSetScale(data, scaleX, scaleY)
 	animUpdate(data)
+	if defaultscale then main.SetScaleValues() end
 	return data, length
 end
 
@@ -542,7 +548,8 @@ end
 
 --warning display
 local txt_warning = textImgNew()
-function main.f_warning(t, info, background, font_info, title, coords, col, alpha)
+function main.f_warning(t, info, background, font_info, title, coords, col, alpha, defaultscale)
+	if defaultscale == nil then defaultscale = motif.defaultWarning end
 	font_info = font_info or motif.warning_info
 	title = title or main.txt_warningTitle
 	coords = coords or motif.warning_info.boxbg_coords
@@ -561,7 +568,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		--draw layerno = 1 backgrounds
 		bgDraw(background.bg, true)
 		--draw menu box
-		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2])
+		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false)
 		--draw title
 		textImgDraw(title)
 		--draw text
@@ -580,7 +587,8 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 				font_info.text_font[5],
 				font_info.text_font[6],
 				font_info.text_font[7],
-				font_info.text_font[8]
+				font_info.text_font[8],
+				defaultscale
 			)
 			textImgDraw(txt_warning)
 		end
@@ -661,7 +669,8 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			motif.infobox.boxbg_col[2],
 			motif.infobox.boxbg_col[3],
 			motif.infobox.boxbg_alpha[1],
-			motif.infobox.boxbg_alpha[2]
+			motif.infobox.boxbg_alpha[2],
+			false
 		)
 		--draw text
 		for i = 1, #t do
@@ -679,7 +688,8 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 				motif.infobox.text_font[5],
 				motif.infobox.text_font[6],
 				motif.infobox.text_font[7],
-				motif.infobox.text_font[8]
+				motif.infobox.text_font[8],
+				motif.defaultInfobox
 			)
 			textImgDraw(txt_input)
 		end
@@ -869,7 +879,8 @@ main.txt_warningTitle = main.f_createTextImg(
 	motif.warning_info.title_font[5],
 	motif.warning_info.title_font[6],
 	motif.warning_info.title_font[7],
-	motif.warning_info.title_font[8]
+	motif.warning_info.title_font[8],
+	motif.defaultWarning
 )
 
 --add characters and stages using select.def instead of select.lua
@@ -886,7 +897,8 @@ local txt_loading = main.f_createTextImg(
 	motif.title_info.loading_font[5],
 	motif.title_info.loading_font[6],
 	motif.title_info.loading_font[7],
-	motif.title_info.loading_font[8]
+	motif.title_info.loading_font[8],
+	motif.defaultLoading
 )
 textImgDraw(txt_loading)
 refresh()
@@ -937,6 +949,7 @@ function main.f_charParam(t, c)
 end
 
 function main.f_addChar(line, row, playable)
+	local valid = false
 	local tmp = ''
 	main.t_selChars[row] = {}
 	--parse 'rivals' param and get rid of it if exists
@@ -975,6 +988,7 @@ function main.f_addChar(line, row, playable)
 				playable = false
 				break
 			end
+			valid = true
 			main.t_selChars[row].playable = playable
 			main.t_selChars[row].displayname = tmp
 			main.t_selChars[row].def = getCharFileName(row - 1)
@@ -1018,6 +1032,7 @@ function main.f_addChar(line, row, playable)
 		table.insert(main.t_orderSurvival[num], row - 1)
 	end
 	main.loadingRefresh(txt_loading)
+	return valid
 end
 
 function main.f_addStage(file)
@@ -1188,8 +1203,12 @@ for i = 1, #main.t_selChars do
 			if main.t_selChars[i].rivals[j].char ~= nil then
 				if main.t_charDef[main.t_selChars[i].rivals[j].char:lower()] == nil then --new char
 					chars = chars + 1
-					main.f_addChar(main.t_selChars[i].rivals[j].char .. ', exclude = 1', chars, false)
-					main.t_selChars[i].rivals[j].char_ref = chars - 1
+					if main.f_addChar(main.t_selChars[i].rivals[j].char .. ', exclude = 1', chars, false) then
+						main.t_selChars[i].rivals[j].char_ref = chars - 1
+					else
+						main.t_selChars[i].rivals[j].char = nil
+						--TODO: add warning explaining that rival char reference is not valid
+					end
 				else --already added
 					main.t_selChars[i].rivals[j].char_ref = main.t_charDef[main.t_selChars[i].rivals[j].char:lower()]
 				end
@@ -1314,9 +1333,6 @@ storyboard = require('script.storyboard')
 --; MAIN MENU
 --;===========================================================
 
---Disable screenpack scale on the text for showing them corectly.
-main.SetDefaultScale()
-
 local txt_titleFooter1 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer1_font[1]],
 	motif.title_info.footer1_font[2],
@@ -1330,7 +1346,8 @@ local txt_titleFooter1 = main.f_createTextImg(
 	motif.title_info.footer1_font[5],
 	motif.title_info.footer1_font[6],
 	motif.title_info.footer1_font[7],
-	motif.title_info.footer1_font[8]
+	motif.title_info.footer1_font[8],
+	motif.defaultFooter
 )
 local txt_titleFooter2 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer2_font[1]],
@@ -1345,7 +1362,8 @@ local txt_titleFooter2 = main.f_createTextImg(
 	motif.title_info.footer2_font[5],
 	motif.title_info.footer2_font[6],
 	motif.title_info.footer2_font[7],
-	motif.title_info.footer2_font[8]
+	motif.title_info.footer2_font[8],
+	motif.defaultFooter
 )
 local txt_titleFooter3 = main.f_createTextImg(
 	motif.font_data[motif.title_info.footer3_font[1]],
@@ -1360,7 +1378,8 @@ local txt_titleFooter3 = main.f_createTextImg(
 	motif.title_info.footer3_font[5],
 	motif.title_info.footer3_font[6],
 	motif.title_info.footer3_font[7],
-	motif.title_info.footer3_font[8]
+	motif.title_info.footer3_font[8],
+	motif.defaultFooter
 )
 local txt_infoboxTitle = main.f_createTextImg(
 	motif.font_data[motif.infobox.title_font[1]],
@@ -1375,11 +1394,9 @@ local txt_infoboxTitle = main.f_createTextImg(
 	motif.infobox.title_font[5],
 	motif.infobox.title_font[6],
 	motif.infobox.title_font[7],
-	motif.infobox.title_font[8]
+	motif.infobox.title_font[8],
+	motif.defaultInfobox
 )
-
---Enable screenpack scale again.
-main.SetScaleValues()
 
 main.txt_mainSelect = main.f_createTextImg(
 	motif.font_data[motif.select_info.title_font[1]],
@@ -1628,7 +1645,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.menu_boxcursor_col[2],
 			motif.title_info.menu_boxcursor_col[3],
 			src,
-			dst
+			dst,
+			motif.defaultLocalcoord --for some reason can't be false on winmugen screenpack, no idea why
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -1644,7 +1662,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.footer_boxbg_col[2],
 			motif.title_info.footer_boxbg_col[3],
 			motif.title_info.footer_boxbg_alpha[1],
-			motif.title_info.footer_boxbg_alpha[2]
+			motif.title_info.footer_boxbg_alpha[2],
+			motif.defaultLocalcoord
 		)
 	end
 	textImgDraw(txt_titleFooter1)
@@ -1719,7 +1738,6 @@ function main.f_mainMenu()
 		if esc() then
 			break
 		elseif getKey() == 'F1' then
-			main.SetDefaultScale()
 			main.f_warning(
 				main.f_extractText(motif.infobox.text),
 				motif.title_info,
@@ -1728,9 +1746,9 @@ function main.f_mainMenu()
 				txt_infoboxTitle,
 				motif.infobox.boxbg_coords,
 				motif.infobox.boxbg_col,
-				motif.infobox.boxbg_alpha
+				motif.infobox.boxbg_alpha,
+				motif.defaultInfobox
 			)
-			main.SetScaleValues()
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			main.f_default()
 			--ARCADE
@@ -1872,11 +1890,7 @@ function main.f_mainMenu()
 			if t[item].itemname == 'options' then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				--Disable screenpack scale on the menu text for showing the menu corectly.
-				main.SetDefaultScale()
 				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
-				--Enable screenpack scale again.
-				main.SetScaleValues()
 			end
 			--EXIT
 			if t[item].itemname == 'exit' then
@@ -1891,7 +1905,7 @@ end
 --;===========================================================
 --; NETPLAY MENU
 --;===========================================================
-local txt_connection = main.f_createTextImg(
+local txt_connecting = main.f_createTextImg(
 	motif.font_data[motif.title_info.connecting_font[1]],
 	motif.title_info.connecting_font[2],
 	motif.title_info.connecting_font[3],
@@ -1904,7 +1918,8 @@ local txt_connection = main.f_createTextImg(
 	motif.title_info.connecting_font[5],
 	motif.title_info.connecting_font[6],
 	motif.title_info.connecting_font[7],
-	motif.title_info.connecting_font[8]
+	motif.title_info.connecting_font[8],
+	motif.defaultConnecting
 )
 function main.f_connect(server, t)
 	local cancel = false
@@ -1931,12 +1946,13 @@ function main.f_connect(server, t)
 			motif.title_info.connecting_boxbg_col[2],
 			motif.title_info.connecting_boxbg_col[3],
 			motif.title_info.connecting_boxbg_alpha[1],
-			motif.title_info.connecting_boxbg_alpha[2]
+			motif.title_info.connecting_boxbg_alpha[2],
+			false
 		)
 		--draw text
 		for i = 1, #t do
-			textImgSetText(txt_connection, t[i])
-			textImgDraw(txt_connection)
+			textImgSetText(txt_connecting, t[i])
+			textImgDraw(txt_connecting)
 		end
 		--end loop
 		refresh()

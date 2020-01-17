@@ -867,25 +867,27 @@ function select.f_resetGrid()
 end
 
 function select.startCell()
-	if motif.select_info.p1_cursor_startcell[1] < motif.select_info.columns then
-		p1SelX = motif.select_info.p1_cursor_startcell[1]
-	else
-		p1SelX = 0
-	end
-	if motif.select_info.p2_cursor_startcell[1] < motif.select_info.columns then
-		p2SelX = motif.select_info.p2_cursor_startcell[1]
-	else
-		p2SelX = 0
-	end
-	if motif.select_info.p1_cursor_startcell[2] < motif.select_info.rows then
-		p1SelY = motif.select_info.p1_cursor_startcell[2]
+	--starting row
+	if motif.select_info.p1_cursor_startcell[1] < motif.select_info.rows then
+		p1SelY = motif.select_info.p1_cursor_startcell[1]
 	else
 		p1SelY = 0
 	end
-	if motif.select_info.p2_cursor_startcell[2] < motif.select_info.rows then
-		p2SelY = motif.select_info.p2_cursor_startcell[2]
+	if motif.select_info.p2_cursor_startcell[1] < motif.select_info.rows then
+		p2SelY = motif.select_info.p2_cursor_startcell[1]
 	else
 		p2SelY = 0
+	end
+	--starting column
+	if motif.select_info.p1_cursor_startcell[2] < motif.select_info.columns then
+		p1SelX = motif.select_info.p1_cursor_startcell[2]
+	else
+		p1SelX = 0
+	end
+	if motif.select_info.p2_cursor_startcell[2] < motif.select_info.columns then
+		p2SelX = motif.select_info.p2_cursor_startcell[2]
+	else
+		p2SelX = 0
 	end
 end
 
@@ -3279,6 +3281,7 @@ local txt_credits = main.f_createTextImg(
 	motif.continue_screen.credits_font[6],
 	motif.continue_screen.credits_font[7],
 	motif.continue_screen.credits_font[8]
+	--motif.defaultContinue
 )
 
 function select.f_continue()
