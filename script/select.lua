@@ -2604,8 +2604,8 @@ function select.f_stageMenu()
 			motif.select_info[stageActiveFont][2],
 			motif.select_info[stageActiveFont][3],
 			t_txt[i],
-			motif.select_info.stage_pos[1] + (i - 1) * motif.select_info.stage_text_spacing[1],
-			motif.select_info.stage_pos[2] + (i - 1) * motif.select_info.stage_text_spacing[2],
+			motif.select_info.stage_pos[1],
+			motif.select_info.stage_pos[2] + (motif.font_def[motif.select_info[stageActiveFont][1]].Size[2] + motif.font_def[motif.select_info[stageActiveFont][1]].Spacing[2]) * (i - 1),
 			motif.select_info[stageActiveFont .. '_scale'][1],
 			motif.select_info[stageActiveFont .. '_scale'][2],
 			motif.select_info[stageActiveFont][4],
@@ -3017,8 +3017,8 @@ function select.f_result()
 			textImgSetText(txt, t_resultText[i])
 			textImgSetPos(
 				txt,
-				t.winstext_offset[1] - t.winstext_spacing[1] + i * t.winstext_spacing[1],
-				t.winstext_offset[2] - t.winstext_spacing[2] + i * t.winstext_spacing[2]
+				t.winstext_offset[1],
+				t.winstext_offset[2] + (motif.font_def[t.winstext_font[1]].Size[2] + motif.font_def[t.winstext_font[1]].Spacing[2]) * (i - 1)
 			)
 			textImgDraw(txt)
 		end
@@ -3235,7 +3235,7 @@ function select.f_selectVictory()
 			i,
 			motif.victory_screen.winquote_offset[1],
 			motif.victory_screen.winquote_offset[2],
-			motif.victory_screen.winquote_spacing[2],
+			motif.font_def[motif.victory_screen.winquote_font[1]],
 			motif.victory_screen.winquote_delay,
 			motif.victory_screen.winquote_length
 		)

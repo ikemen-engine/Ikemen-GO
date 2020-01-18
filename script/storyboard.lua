@@ -72,7 +72,7 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_timer,
 								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
 								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
-								t.scene[k].layer[k2].text_spacing[2],
+								t.scenedef.font_def[t.scene[k].layer[k2].font[1]],
 								t.scene[k].layer[k2].text_delay,
 								t.scene[k].layer[k2].text_length
 							)
@@ -133,6 +133,7 @@ local function f_parse(path)
 			snd = '',
 			font = {[1] = 'f-6x9.fnt'},
 			font_height = {},
+			font_def = {}, --Ikemen feature
 			startscene = 0,
 			skipbutton = 1, --Ikemen feature
 			font_data = {}
@@ -212,7 +213,6 @@ local function f_parse(path)
 								anim = -1,
 								text = '',
 								font = {1, 0, 0, 255, 255, 255, 255, 0},
-								text_spacing = {0, 15}, --Ikemen feature
 								text_delay = 2, --Ikemen feature
 								text_length = 50, --Ikemen feature
 								text_timer = 0, --Ikemen feature
@@ -296,11 +296,11 @@ local function f_parse(path)
 	--scenedef fonts
 	for k, v in pairs(t.scenedef.font) do --loop through table keys
 		if v ~= '' and t.scenedef.font_data[v] == nil then
+			t.scenedef.font_data[v] = fontNew(v)
 			if t.scenedef.font_height[k] ~= nil then
-				t.scenedef.font_data[v] = fontNew(v, t.scenedef.font_height[k])
-			else
-				t.scenedef.font_data[v] = fontNew(v)
+				fontSetHeight(t.scenedef.font_data[v], t.scenedef.font_height[k])
 			end
+			t.scenedef.font_def[k] = fontGetDef(t.scenedef.font_data[v])
 		end
 	end
 	--loop through scenes

@@ -70,7 +70,7 @@ local motif =
 			[2] = 'f-6x9.def',
 			[3] = 'jg.fnt',
 		},
-		font_height = {}
+		font_height = {},
 	},
 	ja_files = {}, --not used in Ikemen
 	music =
@@ -229,7 +229,6 @@ local motif =
 		text_pos = {25, 30}, --Ikemen feature
 		text_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
-		text_spacing = {0, 13}, --Ikemen feature
 		boxbg_coords = {0, 0, config.Width, config.Height}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -379,7 +378,6 @@ local motif =
 		stage_done_font_scale = {1.0, 1.0},
 		stage_text = 'Stage %i: %s', --Ikemen feature
 		stage_random_text = 'Stage: Random', --Ikemen feature
-		stage_text_spacing = {0, 14}, --Ikemen feature
 		stage_portrait_spr = {9000, 0}, --Ikemen feature
 		stage_portrait_offset = {0, 0}, --Ikemen feature
 		stage_portrait_scale = {1.0, 1.0}, --Ikemen feature
@@ -713,7 +711,6 @@ local motif =
 		winquote_offset = {20, 192},
 		winquote_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0},
 		winquote_font_scale = {1.0, 1.0},
-		winquote_spacing = {0, 15}, --Ikemen feature
 		winquote_delay = 2, --Ikemen feature
 		winquote_length = 50, --Ikemen feature
 		winquote_window = {18, 171, 301, 228},
@@ -761,7 +758,6 @@ local motif =
 		winstext_offset = {159, 70},
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
 		winstext_font_scale = {1.0, 1.0},
-		winstext_spacing = {0, 15}, --Ikemen feature
 		winstext_displaytime = -1,
 		winstext_layerno = 2,
 		roundstowin = 5,
@@ -778,7 +774,6 @@ local motif =
 		winstext_offset = {159, 70}, --Ikemen feature
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_spacing = {0, 15}, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		roundstowin = 51, --Ikemen feature
@@ -996,7 +991,6 @@ local motif =
 		text_pos = {25, 33}, --Ikemen feature
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
-		text_spacing = {0, 13}, --Ikemen feature
 		boxbg_coords = {0, 0, config.Width, config.Height}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1446,6 +1440,7 @@ local pos_sort = main.t_sort
 local def_pos = motif
 t.anim = {}
 t.font_data = {['f-4x6.def'] = fontNew('f-4x6.def'), ['f-6x9.def'] = fontNew('f-6x9.def'), ['jg.fnt'] = fontNew('jg.fnt')}
+t.font_def = {}
 local fileDir, fileName = motif.def:match('^(.-)([^/\\]+)$')
 t.fileDir = fileDir
 t.fileName = fileName
@@ -1635,14 +1630,16 @@ for i = 1, #t_dir do
 end
 
 for k, v in pairs(motif.files.font) do --loop through table keys
-	if v ~= '' and motif.font_data[v] == nil then
-		if motif.files.font_height[k] ~= nil then
-			motif.font_data[v] = fontNew(v, motif.files.font_height[k])
-		else
+	if v ~= '' then
+		if motif.font_data[v] == nil then
 			motif.font_data[v] = fontNew(v)
+			if motif.files.font_height[k] ~= nil then
+				fontSetHeight(motif.font_data[v], motif.files.font_height[k])
+			end
 		end
+		motif.font_def[v] = fontGetDef(motif.font_data[v])
+		main.loadingRefresh()
 	end
-	main.loadingRefresh()
 end
 
 local function f_facing(var)

@@ -214,6 +214,44 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(newUserData(l, fnt))
 		return 1
 	})
+	luaRegister(l, "fontSetHeight", func(l *lua.LState) int {
+		fnt, ok := toUserData(l, 1).(*Fnt)
+		if !ok {
+			userDataError(l, 1, fnt)
+		}
+		fnt.Size[1] = uint16(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "fontGetDef", func(l *lua.LState) int {
+		fnt, ok := toUserData(l, 1).(*Fnt)
+		if !ok {
+			userDataError(l, 1, fnt)
+		}
+		tbl := l.NewTable()
+		tbl.RawSetString("Type", lua.LString(fnt.Type))
+		subt := l.NewTable()
+		subt.Append(lua.LNumber(fnt.Size[0]))
+		subt.Append(lua.LNumber(fnt.Size[1]))
+		tbl.RawSetString("Size", subt)
+		subt = l.NewTable()
+		subt.Append(lua.LNumber(fnt.Spacing[0]))
+		subt.Append(lua.LNumber(fnt.Spacing[1]))
+		tbl.RawSetString("Spacing", subt)
+		subt = l.NewTable()
+		subt.Append(lua.LNumber(fnt.offset[0]))
+		subt.Append(lua.LNumber(fnt.offset[1]))
+		tbl.RawSetString("offset", subt)
+		l.Push(tbl)
+		return 1
+	})
+	luaRegister(l, "fontGetTextWidth", func(*lua.LState) int {
+		fnt, ok := toUserData(l, 1).(*Fnt)
+		if !ok {
+			userDataError(l, 1, fnt)
+		}
+		l.Push(lua.LNumber(fnt.TextWidth(strArg(l, 2))))
+		return 1
+	})
 	luaRegister(l, "commandNew", func(l *lua.LState) int {
 		l.Push(newUserData(l, NewCommandList(NewCommandBuffer())))
 		return 1

@@ -353,10 +353,10 @@ end
 -- @counter: external counter (values should be increased each frame by 1 starting from 1)
 -- @x: first line X position
 -- @y: first line Y position
--- @spacing: spacing between lines (rendering Y position increase for each line)
+-- @def: font def data needed to figure out y spacing between lines (rendering Y position increase for each line)
 -- @delay (optional): ticks (frames) delay between each letter is rendered, defaults to 0 (all text rendered immediately)
 -- @limit (optional): maximum line length (string wraps when reached), if omitted line wraps only if string contains '\n'
-function main.f_textRender(data, str, counter, x, y, spacing, delay, limit)
+function main.f_textRender(data, str, counter, x, y, font_data, delay, limit)
 	local delay = delay or 0
 	local limit = limit or -1
 	str = tostring(str)
@@ -386,7 +386,7 @@ function main.f_textRender(data, str, counter, x, y, spacing, delay, limit)
 			end
 		end
 		textImgSetText(data, t[i])
-		textImgSetPos(data, x, y + spacing * (i - 1))
+		textImgSetPos(data, x, y + (font_data.Size[2] + font_data.Spacing[2]) * (i - 1))
 		textImgDraw(data)
 	end
 end
@@ -580,7 +580,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 				font_info.text_font[3],
 				t[i],
 				font_info.text_pos[1],
-				font_info.text_pos[2] - font_info.text_spacing[2] + i * font_info.text_spacing[2],
+				font_info.text_pos[2] + (motif.font_def[font_info.text_font[1]].Size[2] + motif.font_def[font_info.text_font[1]].Spacing[2]) * (i - 1),
 				font_info.text_font_scale[1],
 				font_info.text_font_scale[2],
 				font_info.text_font[4],
@@ -681,7 +681,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 				motif.infobox.text_font[3],
 				t[i],
 				motif.infobox.text_pos[1],
-				motif.infobox.text_pos[2] - motif.infobox.text_spacing[2] + i * motif.infobox.text_spacing[2],
+				motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
 				motif.infobox.text_font_scale[1],
 				motif.infobox.text_font_scale[2],
 				motif.infobox.text_font[4],
