@@ -1285,6 +1285,8 @@ func systemScriptInit(l *lua.LState) {
 				l.Push(lua.LNumber(sys.chars[pn-1][0].sysVarGet(int32(numArg(l, 3))).ToI()))
 			} else if strArg(l, 2) == "sysFvarGet" {
 				l.Push(lua.LNumber(sys.chars[pn-1][0].sysFvarGet(int32(numArg(l, 3))).ToI()))
+			} else if strArg(l, 2) == "map" {
+				l.Push(lua.LNumber(sys.chars[pn-1][0].mapArray[(strArg(l, 3))]))
 			}
 		}
 		return 1
