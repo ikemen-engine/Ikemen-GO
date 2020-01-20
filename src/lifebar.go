@@ -766,8 +766,7 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("round.sndtime", &r.round_sndtime)
 	r.round_default = *ReadAnimTextSnd("round.default.", is, sff, at, 2)
 	for i := range r.round {
-		r.round[i] = r.round_default
-		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, at, 2)
+		r.round[i] = *ReadAnimTextSnd(fmt.Sprintf("round%v.", i+1), is, sff, at, 2)
 	}
 	is.ReadI32("fight.time", &r.fight_time)
 	is.ReadI32("fight.sndtime", &r.fight_sndtime)
@@ -818,9 +817,8 @@ func (r *LifeBarRound) act() bool {
 			if r.swt[0] == 0 {
 				if int(sys.round) <= len(r.round) {
 					r.snd.play(r.round[sys.round-1].snd)
-				} else {
-					r.snd.play(r.round_default.snd)
 				}
+				r.snd.play(r.round_default.snd)
 			}
 			r.swt[0]--
 			if r.wt[0] <= 0 {
@@ -828,7 +826,8 @@ func (r *LifeBarRound) act() bool {
 				end := false
 				if int(sys.round) <= len(r.round) {
 					r.round[sys.round-1].Action()
-					end = r.round[sys.round-1].End(r.dt[0])
+					r.round_default.Action()
+					end = r.round[sys.round-1].End(r.dt[0]) && r.round_default.End(r.dt[0])
 				} else {
 					r.round_default.Action()
 					end = r.round_default.End(r.dt[0])
@@ -891,7 +890,7 @@ func (r *LifeBarRound) act() bool {
 			f(&r.to, 0)
 		}
 		if sys.intro < -(r.over_hittime + r.over_waittime + r.over_wintime) {
-			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
+			if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
 				f(&r.drawn, 1)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				f(&r.win2, 1)
@@ -927,13 +926,12 @@ func (r *LifeBarRound) draw(layerno int16) {
 				r.round[sys.round-1].DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
 					layerno, r.fnt, sys.lifebarScale)
 				r.round[sys.round-1].text = tmp
-			} else {
-				tmp := r.round_default.text
-				r.round_default.text = OldSprintf(tmp, sys.round)
-				r.round_default.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
-					layerno, r.fnt, sys.lifebarScale)
-				r.round_default.text = tmp
 			}
+			tmp := r.round_default.text
+			r.round_default.text = OldSprintf(tmp, sys.round)
+			r.round_default.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
+				layerno, r.fnt, sys.lifebarScale)
+			r.round_default.text = tmp
 		}
 	case 1:
 		if r.wt[0] < 0 {
@@ -951,7 +949,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 			}
 		}
 		if r.wt[1] < 0 {
-			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
+			if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
 				r.drawn.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				tmp := r.win2.text
