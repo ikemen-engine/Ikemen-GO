@@ -817,8 +817,9 @@ func (r *LifeBarRound) act() bool {
 			if r.swt[0] == 0 {
 				if int(sys.round) <= len(r.round) {
 					r.snd.play(r.round[sys.round-1].snd)
+				} else {
+					r.snd.play(r.round_default.snd)
 				}
-				r.snd.play(r.round_default.snd)
 			}
 			r.swt[0]--
 			if r.wt[0] <= 0 {
@@ -920,18 +921,18 @@ func (r *LifeBarRound) draw(layerno int16) {
 	switch r.cur {
 	case 0:
 		if r.wt[0] < 0 && sys.intro <= r.ctrl_time {
-			if int(sys.round) <= len(r.round) {
-				tmp := r.round[sys.round-1].text
-				r.round[sys.round-1].text = OldSprintf(tmp, sys.round)
-				r.round[sys.round-1].DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
-					layerno, r.fnt, sys.lifebarScale)
-				r.round[sys.round-1].text = tmp
-			}
 			tmp := r.round_default.text
 			r.round_default.text = OldSprintf(tmp, sys.round)
 			r.round_default.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
 				layerno, r.fnt, sys.lifebarScale)
 			r.round_default.text = tmp
+			if int(sys.round) <= len(r.round) {
+				tmp = r.round[sys.round-1].text
+				r.round[sys.round-1].text = OldSprintf(tmp, sys.round)
+				r.round[sys.round-1].DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
+					layerno, r.fnt, sys.lifebarScale)
+				r.round[sys.round-1].text = tmp
+			}
 		}
 	case 1:
 		if r.wt[0] < 0 {
