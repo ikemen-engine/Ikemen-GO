@@ -214,6 +214,18 @@ In Mugen `round.default.snd` assignment didn't work at all. In Ikemen GO it will
 - `over.pause` (ticks to wait before characters and background is paused)
 - `over.time` (ticks to wait before round ends)
 
+### Ratio mode
+`[Ratio]` section controls the look of ratio level assigned to character (visible only when ratio team mode is selected). This new section supports following parameters:
+- `pX.pos`
+- `pX.offset`
+- `pX.levelY.spr`
+- `pX.levelY.anim`
+- `pX.levelY.layerno`
+- `pX.levelY.scale`
+where:
+'pX' prefix should be replaced with p1 and/or p2
+'levelY' refers to ratio level (use level1, level2, level3, level4)
+
 ### Up to 8 faces / names for simul mode
 Support for `p5`, `p6`, `p7`, `p8` parameters assignment in existing [Simul Face] and [Simul Name] sections.
 
