@@ -492,13 +492,13 @@ func (f *Fnt) drawChar(
 
 func (f *Fnt) Print(txt string,
 	x, y, xscl, yscl float32,
-	bank, align int32,
+	align, bank int32,
 ) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.ttf.Printf(x, y, yscl, align, false, txt) //x, y, scale, align, string, printf args
+			f.DrawTtf(txt, x, y, xscl, yscl, align, false)
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, bank, align)
+			f.DrawText(txt, x, y, xscl, yscl, align, bank)
 		}
 	}
 }
@@ -507,7 +507,7 @@ func (f *Fnt) Print(txt string,
 func (f *Fnt) DrawText(
 	txt string,
 	x, y, xscl, yscl float32,
-	bank, align int32,
+	align, bank int32,
 ) {
 
 	if len(txt) == 0 {
@@ -565,6 +565,23 @@ func (f *Fnt) DrawText(
 	//gl.Disable(gl.TEXTURE_1D)
 }
 
+func (f *Fnt) DrawTtf(
+	txt string,
+	x, y, xscl, yscl float32,
+	align int32,
+	blend bool,
+) {
+
+	if len(txt) == 0 {
+		return
+	}
+
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+
+	f.ttf.Printf(x, y, yscl, align, blend, txt) //x, y, scale, align, string, printf args
+}
+
 type TextSprite struct {
 	text             string
 	fnt              *Fnt
@@ -587,9 +604,9 @@ func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.ttf.Printf(ts.x, ts.y, (ts.xscl + ts.yscl) / 2, ts.align, true, ts.text) //x, y, scale, align, blend ,string, printf args
+			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true)
 		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
+			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, ts.bank)
 		}
 	}
 }
