@@ -468,13 +468,15 @@ end
 
 --check if file exists
 function main.f_fileExists(name)
+	if name == '' then
+		return false
+	end
 	local f = io.open(name,'r')
 	if f ~= nil then
 		io.close(f)
 		return true
-	else
-		return false
 	end
+	return false
 end
 
 --split strings
@@ -786,24 +788,21 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
 				ai = tonumber(main.flags['-p' .. num .. '.ai'])
 			end
-			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, overwrite = {}})
+			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
 			if main.flags['-p' .. num .. '.power'] ~= nil then
-				t[#t].overwrite['power'] = tonumber(main.flags['-p' .. num .. '.power'])
+				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
 			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
-				t[#t].overwrite['life'] = tonumber(main.flags['-p' .. num .. '.life'])
+				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
 			end
 			if main.flags['-p' .. num .. '.lifeMax'] ~= nil then
-				t[#t].overwrite['lifeMax'] = tonumber(main.flags['-p' .. num .. '.lifeMax'])
+				t[#t].override['lifeMax'] = tonumber(main.flags['-p' .. num .. '.lifeMax'])
 			end
 			if main.flags['-p' .. num .. '.lifeRatio'] ~= nil then
-				t[#t].overwrite['lifeRatio'] = tonumber(main.flags['-p' .. num .. '.lifeRatio'])
+				t[#t].override['lifeRatio'] = tonumber(main.flags['-p' .. num .. '.lifeRatio'])
 			end
 			if main.flags['-p' .. num .. '.attackRatio'] ~= nil then
-				t[#t].overwrite['attackRatio'] = tonumber(main.flags['-p' .. num .. '.attackRatio'])
-			end
-			if main.flags['-p' .. num .. '.defenceRatio'] ~= nil then
-				t[#t].overwrite['defenceRatio'] = tonumber(main.flags['-p' .. num .. '.defenceRatio'])
+				t[#t].override['attackRatio'] = tonumber(main.flags['-p' .. num .. '.attackRatio'])
 			end
 			refresh()
 		elseif k:match('^-rounds$') then
@@ -844,7 +843,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		selectChar(v.player, k - 1, v.pal)
 		setCom(v.num, v.ai)
-		overwriteCharData(v.num, v.overwrite)
+		overrideCharData(v.num, v.override)
 	end
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
@@ -1083,9 +1082,9 @@ content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
 --for line in io.lines("data/select.def") do
-	if chars + stages == 100 then
-		SetGCPercent(100)
-	end
+	--if chars + stages == 100 then
+	--	SetGCPercent(100)
+	--end
 	local lineCase = line:lower()
 	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		main.t_selChars = {}
@@ -1103,6 +1102,8 @@ for line in content:gmatch('[^\r\n]+') do
 			teamend = {wins = 0, offset = 0},
 			survivalstart = {wins = 0, offset = 0},
 			survivalend = {wins = 0, offset = 0},
+			ratiostart = {wins = 0, offset = 0},
+			ratioend = {wins = 0, offset = 0},
 		}
 		row = 0
 		section = 3
@@ -1161,6 +1162,25 @@ for line in content:gmatch('[^\r\n]+') do
 			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
 				main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
 			end
+		elseif lineCase:match('%.ratiomatches%s*=') then
+			local rowName, line = lineCase:match('^%s*(.-)%.ratiomatches%s*=%s*(.+)')
+			rowName = rowName:gsub('%.', '_')
+			main.t_selOptions[rowName .. 'ratiomatches'] = {}
+			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
+				local rmin, rmax, order = c:match('^%s*([0-9]+)-?([0-9]*)%s*:%s*([0-9]+)%s*$')
+				rmin = tonumber(rmin)
+				rmax = tonumber(rmax) or rmin
+				order = tonumber(order)
+				if rmin == nil or order == nil or rmin < 1 or rmin > 4 or rmax < 1 or rmax > 4 or rmin > rmax then
+					main.f_warning(main.f_extractText(motif.warning_info.text_ratio), motif.title_info, motif.titlebgdef)
+					main.t_selOptions[rowName .. 'ratiomatches'] = nil
+					break
+				end
+				if rmax == '' then
+					rmax = rmin
+				end
+				table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {['rmin'] = rmin, ['rmax'] = rmax, ['order'] = order})
+			end
 		elseif lineCase:match('%.airamp%.') then
 			local rowName, rowName2, wins, offset = lineCase:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([0-9]+)%s*,%s*([0-9-]+)')
 			main.t_selOptions[rowName .. rowName2] = {wins = tonumber(wins), offset = tonumber(offset)}
@@ -1168,10 +1188,21 @@ for line in content:gmatch('[^\r\n]+') do
 	end
 end
 
---add default maxmatches values if config is missing in select.def
+--add default maxmatches / ratiomatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.arcaderatiomatches == nil then
+	main.t_selOptions.arcaderatiomatches = {
+		{['rmin'] = 1, ['rmax'] = 3, ['order'] = 1},
+		{['rmin'] = 3, ['rmax'] = 3, ['order'] = 1},
+		{['rmin'] = 2, ['rmax'] = 2, ['order'] = 1},
+		{['rmin'] = 2, ['rmax'] = 2, ['order'] = 1},
+		{['rmin'] = 1, ['rmax'] = 1, ['order'] = 2},
+		{['rmin'] = 3, ['rmax'] = 3, ['order'] = 1},
+		{['rmin'] = 1, ['rmax'] = 2, ['order'] = 3}
+	}
+end
 
 --add excluded characters once all slots are filled
 for i = chars, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.select_info.columns - 1 do
@@ -1206,8 +1237,8 @@ for i = 1, #main.t_selChars do
 					if main.f_addChar(main.t_selChars[i].rivals[j].char .. ', exclude = 1', chars, false) then
 						main.t_selChars[i].rivals[j].char_ref = chars - 1
 					else
+						main.f_warning(main.f_extractText(main.t_selChars[i].rivals[j].char .. motif.warning_info.text_rivals), motif.title_info, motif.titlebgdef)
 						main.t_selChars[i].rivals[j].char = nil
-						--TODO: add warning explaining that rival char reference is not valid
 					end
 				else --already added
 					main.t_selChars[i].rivals[j].char_ref = main.t_charDef[main.t_selChars[i].rivals[j].char:lower()]
@@ -1233,6 +1264,7 @@ for i = 1, #main.t_selChars do
 				main.t_selChars[i].stage[j] = main.f_addStage(main.t_selChars[i].stage[j])
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then --stage available all the time
 					table.insert(main.t_includeStage[1], main.t_selChars[i].stage[j])
+					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				elseif main.t_selChars[i].includestage == -1 then --excluded stage that can be still manually selected
 					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				end

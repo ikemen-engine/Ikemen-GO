@@ -1032,6 +1032,39 @@ func (ch *LifeBarChallenger) draw(layerno int16, f []*Fnt) {
 	ch.challenger.Draw(float32(ch.pos[0]), float32(ch.pos[1]), layerno, ch.fnt)
 }
 
+type LifeBarRatio struct {
+	pos    [2]int32
+	offset [2]int32
+	icon   [4]AnimLayout
+}
+
+func newLifeBarRatio() *LifeBarRatio {
+	return &LifeBarRatio{}
+}
+func readLifeBarRatio(pre string, is IniSection,
+	sff *Sff, at AnimationTable) *LifeBarRatio {
+	ra := newLifeBarRatio()
+	is.ReadI32(pre+"pos", &ra.pos[0], &ra.pos[1])
+	is.ReadI32(pre+"offset", &ra.offset[0], &ra.offset[1])
+	ra.icon[0] = *ReadAnimLayout(pre+"level1.", is, sff, at, 0)
+	ra.icon[1] = *ReadAnimLayout(pre+"level2.", is, sff, at, 0)
+	ra.icon[2] = *ReadAnimLayout(pre+"level3.", is, sff, at, 0)
+	ra.icon[3] = *ReadAnimLayout(pre+"level4.", is, sff, at, 0)
+	return ra
+}
+func (ra *LifeBarRatio) step(num int32) {
+	ra.icon[num].Action()
+}
+func (ra *LifeBarRatio) reset() {
+	for i := range ra.icon {
+		ra.icon[i].Reset()
+	}
+}
+func (ra *LifeBarRatio) draw(layerno int16, num int32) {
+	ra.icon[num].DrawScaled(float32(ra.pos[0]+ra.offset[0])+sys.lifebarOffsetX,
+		float32(ra.pos[1]+ra.offset[1]), layerno, sys.lifebarScale)
+}
+
 type Lifebar struct {
 	fat       AnimationTable
 	fsff      *Sff
@@ -1048,6 +1081,7 @@ type Lifebar struct {
 	co        *LifeBarCombo
 	ro        *LifeBarRound
 	ch        *LifeBarChallenger
+	ra        [2]*LifeBarRatio
 }
 
 func loadLifebar(deffile string) (*Lifebar, error) {
@@ -1070,7 +1104,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		"[tag lifebar]": 5, "[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7,
 		"[simul powerbar]": 1, "[turns powerbar]": 2, "[simul_3p powerbar]": 3,
 		"[simul_4p powerbar]": 4, "[tag powerbar]": 5, "[tag face]": -1,
-		"[tag name]": -1, "[challenger]": -1}
+		"[tag name]": -1, "[challenger]": -1, "[ratio]": -1}
 	strc := strings.ToLower(strings.TrimSpace(str))
 	for k, _ := range missing {
 		strc = strings.Replace(strc, ";"+k, "", -1)
@@ -1458,6 +1492,13 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			if l.ch == nil {
 				l.ch = readLifeBarChallenger(is, sff, at, l.snd, l.fnt[:])
 			}
+		case "ratio":
+			if l.ra[0] == nil {
+				l.ra[0] = readLifeBarRatio("p1.", is, sff, at)
+			}
+			if l.ra[1] == nil {
+				l.ra[1] = readLifeBarRatio("p2.", is, sff, at)
+			}
 		}
 	}
 	for k, v := range missing {
@@ -1526,6 +1567,14 @@ func (l *Lifebar) step() {
 	}
 	l.co.step(cb)
 	l.ch.step()
+	for ti, tm := range sys.tmode {
+		if tm == TM_Turns {
+			rl := sys.chars[ti][0].ratioLevel()
+			if rl > 0 {
+				l.ra[ti].step(rl-1)
+			}
+		}
+	}
 }
 func (l *Lifebar) reset() {
 	for ti, tm := range sys.tmode {
@@ -1591,6 +1640,9 @@ func (l *Lifebar) reset() {
 	l.co.reset()
 	l.ro.reset()
 	l.ch.reset()
+	for i := range l.ra {
+		l.ra[i].reset()
+	}
 }
 func (l *Lifebar) draw(layerno int16) {
 	if !sys.statusDraw {
@@ -1657,5 +1709,13 @@ func (l *Lifebar) draw(layerno int16) {
 	if sys.challenger > 0 && l.ch.challenger.displaytime > l.ch.cnt {
 		l.ch.bgDraw(layerno)
 		l.ch.draw(layerno, l.fnt[:])
+	}
+	for ti, tm := range sys.tmode {
+		if tm == TM_Turns {
+			rl := sys.chars[ti][0].ratioLevel()
+			if rl > 0 {
+				l.ra[ti].draw(layerno, rl-1)
+			}
+		}
 	}
 }

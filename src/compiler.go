@@ -1717,6 +1717,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_projhittime)
 	case "random":
 		out.append(OC_random)
+	case "ratiolevel":
+		out.append(OC_const_, OC_const_ratiolevel)
 	case "rightedge":
 		out.append(OC_rightedge)
 	case "roundno":

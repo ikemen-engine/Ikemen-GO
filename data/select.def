@@ -86,7 +86,7 @@
  ;
  ; - onlyme
  ;   IKEMEN feature: Set the paramvalue to 1 to force facing this character
- ;   individually even in Simul/Tag team modes.
+ ;   individually in team modes.
  ;
  ; - includestage
  ;   Set the paramvalue to 0 to avoid including this stage in the stage select
@@ -155,12 +155,11 @@
  ;
  ; - maxmatches
  ;   IKEMEN feature: This parameter makes the character ignore default
- ;   *.maxmatches settings under [Options] section and assign different ones
- ;   instead, allowing you to set up custom maximum number of matches to fight
- ;   before game ends in arcade mode, as well as order priority. paramvalue is
- ;   used as a prefix to the original names of these settings, followed by dot,
- ;   so the new entries added under [Options] section should look like this:
- ;   'paramvalue.arcade.maxmatches', 'paramvalue.team.maxmatches'.
+ ;   *.maxmatches / *.ratiomatches settings under [Options] section and assign
+ ;   different ones instead. paramvalue is used as a prefix to the original
+ ;   names of these settings, followed by dot, so the new entries added under
+ ;   [Options] section should look like this: 'paramvalue.arcade.maxmatches'
+ ;   'paramvalue.arcade.ratiomatches' and so forth.
  ;
  ;You can also add a randomize icon to the select screen. To do this, put the
  ;word "randomselect" on a line of its own, with no extra parameters.
@@ -259,7 +258,7 @@ stages/stage0.def
  ;Maximum number of matches to fight before game ends in team mode.
 arcade.maxmatches = 6,1,1,0,0,0,0,0,0,0
 
- ;Like arcade.maxmatches, but applies to Team Battle.
+ ;Like arcade.maxmatches, but applies to Team Battle (sans 'Ratio').
 team.maxmatches = 4,1,1,0,0,0,0,0,0,0
 
  ;IKEMEN feature: Similar to arcade.maxmatches, but applies to survival modes.
@@ -268,12 +267,27 @@ team.maxmatches = 4,1,1,0,0,0,0,0,0,0
  ;below (in such case you can actually "complete" the mode).
 survival.maxmatches = -1,0,0,0,0,0,0,0,0,0
 
+ ;IKEMEN feature: A 'Ratio' mode allows each team to select up to 3 characters
+ ;and distribute 4 "ratio levels" amongst them, affecting their life and damage
+ ;(ratio 2 is the default to which other ratios are compared, percentages are
+ ;adjustable in options screen).
+ ;Arcade ratio matches ignore '.maxmatches' settings and use custom matches
+ ;assignment instead. Each entry here, separated by commas, represents a single
+ ;match and consists of 2 values/ranges, separated by colon. First number is
+ ;characters count you will face in this match (valid numbers from 1 to 3, or a
+ ;range for random selection, consisting of one number followed by a dash and
+ ;another number), second number, written after colon, refers to character's
+ ;'order' param, that can be used to limit which characters should be randomly
+ ;chosen for the match. For example 2-3:4 entry means a match against team
+ ;consisting of 2 or 3 characters, randomly chosen from characters with order=4.
+arcade.ratiomatches = 1-3:1, 3:1, 2:1, 2:1, 1:2, 3:1, 1-2:3
+
  ;AI ramping
  ;IKEMEN feature: AI ramping settings has been moved here from mugen.cfg
  ;You can view AI ramping output for all battles from the last chosen mode via
  ;debug/t_aiRamp.txt (useful reference also for vanilla mugen).
 
- ;Arcade mode AI ramping
+ ;Arcade mode AI ramping (Singles)
  ;For both parameters below, the first number corresponds to the number of
  ;matches won, and the second number to the AI difficulty offset. The actual
  ;difficulty is the sum of the AI difficulty level (set in the options menu) and
@@ -298,12 +312,19 @@ survival.maxmatches = -1,0,0,0,0,0,0,0,0,0
 arcade.AIramp.start = 2, 0
 arcade.AIramp.end   = 4, 2
 
- ;Team Mode AI ramping
+ ;Team Arcade mode AI ramping (sans 'Ratio')
  ;For 4 matches at level 4 and default values, the difficulty will be:
  ;  4,4,5,6
 
 team.AIramp.start = 1, 0
 team.AIramp.end   = 3, 2
+
+ ;'Ratio' Arcade mode AI ramping
+ ;For 4 matches at level 4 and default values, the difficulty will be:
+ ;  4,4,5,6
+
+ratio.AIramp.start = 1, 0
+ratio.AIramp.end   = 3, 2
 
  ;Survival Mode AI ramping
  ;For 16 matches at level 4 and default values, the difficulty will be:

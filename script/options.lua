@@ -128,7 +128,7 @@ function options.f_resetTables()
 			maxdrawgames = options.maxDrawGames,
 			difficulty = config.Difficulty,
 			credits = config.Credits,
-			charchange = options.f_boolDisplay(config.ContSelection),
+			quickcontinue = options.f_boolDisplay(config.QuickContinue),
 			airamping = options.f_boolDisplay(config.AIRamping),
 			airandomcolor = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_arcade_aipalette_random, motif.option_info.menu_itemname_arcade_aipalette_default),
 		},
@@ -136,7 +136,7 @@ function options.f_resetTables()
 			resolution = config.Width .. 'x' .. config.Height,
 			fullscreen = options.f_boolDisplay(config.Fullscreen),
 			msaa = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled),
-			externalshaders = options.option_info.menu_itemname_video_externalshaders_none,
+			externalshaders = motif.option_info.menu_itemname_disabled,
 		},
 		t_audioCfg = {
 			mastervolume = config.MasterVolume .. '%',
@@ -152,6 +152,16 @@ function options.f_resetTables()
 			turnsrecoverybonus = config.TurnsRecoveryBonus .. '%',
 			teampowershare = options.f_boolDisplay(config.TeamPowerShare),
 			teamlifeshare = options.f_boolDisplay(config.TeamLifeShare),
+		},
+		t_ratioCfg = {
+			ratio1Life = options.f_displayRatio(config.LifeRatio[1]),
+			ratio1Attack = options.f_displayRatio(config.AttackRatio[1]),
+			ratio2Life = options.f_displayRatio(config.LifeRatio[2]),
+			ratio2Attack = options.f_displayRatio(config.AttackRatio[2]),
+			ratio3Life = options.f_displayRatio(config.LifeRatio[3]),
+			ratio3Attack = options.f_displayRatio(config.AttackRatio[3]),
+			ratio4Life = options.f_displayRatio(config.LifeRatio[4]),
+			ratio4Attack = options.f_displayRatio(config.AttackRatio[4]),
 		},
 		t_advGameplayCfg = {
 			attackpowermul = config['Attack.LifeToPowerMul'],
@@ -567,7 +577,7 @@ function options.f_mainCfg()
 				config.Difficulty = 8
 				config.Credits = 10
 				setListenPort(7500)
-				config.ContSelection = true
+				config.QuickContinue = false
 				config.AIRandomColor = true
 				config.AIRamping = true
 				config.AutoGuard = false
@@ -581,6 +591,8 @@ function options.f_mainCfg()
 				config.ExternalShaders = {}
 				config.LocalcoordScalingType = 1
 				config.MSAA = false
+				config.LifeRatio = {0.80, 1.0, 1.17, 1.40}
+				config.AttackRatio = {0.82, 1.0, 1.17, 1.30}
 				loadLifebar(motif.files.fight)
 				options.roundsNumSingle = getMatchWins()
 				options.roundsNumTeam = getMatchWins()
@@ -630,7 +642,7 @@ options.t_arcadeCfg = {
 	{data = textImgNew(), itemname = 'maxdrawgames', displayname = motif.option_info.menu_itemname_arcade_maxdrawgames, vardata = textImgNew(), vardisplay = options.maxDrawGames},
 	{data = textImgNew(), itemname = 'difficulty', displayname = motif.option_info.menu_itemname_arcade_difficulty, vardata = textImgNew(), vardisplay = config.Difficulty},
 	{data = textImgNew(), itemname = 'credits', displayname = motif.option_info.menu_itemname_arcade_credits, vardata = textImgNew(), vardisplay = config.Credits},
-	{data = textImgNew(), itemname = 'charchange', displayname = motif.option_info.menu_itemname_arcade_charchange, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ContSelection)},
+	{data = textImgNew(), itemname = 'quickcontinue', displayname = motif.option_info.menu_itemname_arcade_quickcontinue, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.QuickContinue)},
 	{data = textImgNew(), itemname = 'airamping', displayname = motif.option_info.menu_itemname_arcade_airamping, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRamping)},
 	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_arcade_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_arcade_aipalette_random, motif.option_info.menu_itemname_arcade_aipalette_default)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
@@ -736,14 +748,14 @@ function options.f_arcadeCfg()
 				modified = 1
 			end
 		--Char change at Continue
-		elseif t[item].itemname == 'charchange' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
+		elseif t[item].itemname == 'quickcontinue' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.ContSelection then
-				config.ContSelection = false
+			if config.QuickContinue then
+				config.QuickContinue = false
 			else
-				config.ContSelection = true
+				config.QuickContinue = true
 			end
-			t[item].vardisplay = options.f_boolDisplay(config.ContSelection)
+			t[item].vardisplay = options.f_boolDisplay(config.QuickContinue)
 			modified = 1
 		--AI Ramping
 		elseif t[item].itemname == 'airamping' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
@@ -942,7 +954,10 @@ for i = 1, #t_files do
 		end
 	end)
 end
-table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'disableall', displayname = motif.option_info.menu_itemname_video_externalshaders_disableall})
+if #t_shaderCfg > 0 then
+	table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'empty', displayname = ' '})
+	table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'disableall', displayname = motif.option_info.menu_itemname_video_externalshaders_disableall})
+end
 table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_externalshaders_back})
 t_shaderCfg = main.f_cleanTable(t_shaderCfg, main.t_sort.option_info)
 
@@ -953,6 +968,9 @@ function options.f_shaderCfg()
 	local item = 1
 	local t = t_shaderCfg
 	textImgSetText(txt_title, motif.option_info.title_text_externalshaders)
+	if #t_shaderCfg == 1 then --only 'Back' option exists
+		main.f_warning(main.f_extractText(motif.warning_info.text_shaders), motif.option_info, motif.optionbgdef)
+	end
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
@@ -1112,6 +1130,7 @@ options.t_gameplayCfg = {
 	{data = textImgNew(), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
 	{data = textImgNew(), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
+	{data = textImgNew(), itemname = 'ratioSettings', displayname = motif.option_info.menu_itemname_gameplay_ratio},
 	{data = textImgNew(), itemname = 'advancedGameplaySettings', displayname = motif.option_info.menu_itemname_gameplay_advanced},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
@@ -1212,6 +1231,10 @@ function options.f_gameplayCfg()
 			end
 			t[item].vardisplay = options.f_boolDisplay(config.TeamLifeShare)
 			modified = 1
+		--Ratio Settings
+		elseif t[item].itemname == 'ratioSettings' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+			options.f_ratioCfg()
 		--Advanced Settings
 		elseif t[item].itemname == 'advancedGameplaySettings' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
@@ -1227,10 +1250,73 @@ function options.f_gameplayCfg()
 end
 
 --;===========================================================
+--; RATIO SETTINGS
+--;===========================================================
+function options.f_displayRatio(value)
+	local ret = options.f_precision((value - 1) * 100, '%.01f')
+	if ret >= 0 then
+		return '+' .. ret .. '%'
+	end
+	return ret .. '%'
+end
+
+options.t_ratioCfg = {
+	{data = textImgNew(), itemname = 'ratio1Life', displayname = motif.option_info.menu_itemname_gameplay_ratio1life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[1])},
+	{data = textImgNew(), itemname = 'ratio1Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio1attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[1])},
+	{data = textImgNew(), itemname = 'ratio2Life', displayname = motif.option_info.menu_itemname_gameplay_ratio2life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[2])},
+	{data = textImgNew(), itemname = 'ratio2Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio2attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[2])},
+	{data = textImgNew(), itemname = 'ratio3Life', displayname = motif.option_info.menu_itemname_gameplay_ratio3life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[3])},
+	{data = textImgNew(), itemname = 'ratio3Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio3attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[3])},
+	{data = textImgNew(), itemname = 'ratio4Life', displayname = motif.option_info.menu_itemname_gameplay_ratio4life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[4])},
+	{data = textImgNew(), itemname = 'ratio4Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio4attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[4])},
+	{data = textImgNew(), itemname = 'empty', displayname = ' '},
+	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
+}
+options.t_ratioCfg = main.f_cleanTable(options.t_ratioCfg, main.t_sort.option_info)
+
+function options.f_ratioCfg()
+	main.f_cmdInput()
+	local cursorPosY = 1
+	local moveTxt = 0
+	local item = 1
+	local t = options.t_ratioCfg
+	textImgSetText(txt_title, motif.option_info.title_text_ratio)
+	while true do
+		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
+		if esc() then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			break
+		--Back
+		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			break
+		--Ratio 1-4 Life / Damage
+		else
+			local ratioLevel, ratioType = t[item].itemname:match('^ratio([1-4])(.+)$')
+			ratioLevel = tonumber(ratioLevel)
+			if commandGetState(main.p1Cmd, 'r') then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config[ratioType .. 'Ratio'][ratioLevel] = options.f_precision(config[ratioType .. 'Ratio'][ratioLevel] + 0.01, '%.02f')
+				t[item].vardisplay = options.f_displayRatio(config[ratioType .. 'Ratio'][ratioLevel])
+				modified = 1
+			elseif commandGetState(main.p1Cmd, 'l') and config[ratioType .. 'Ratio'][ratioLevel] > 0.01 then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				config[ratioType .. 'Ratio'][ratioLevel] = options.f_precision(config[ratioType .. 'Ratio'][ratioLevel] - 0.01, '%.02f')
+				t[item].vardisplay = options.f_displayRatio(config[ratioType .. 'Ratio'][ratioLevel])
+				modified = 1
+			end
+		end
+		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
+	end
+end
+
+--;===========================================================
 --; ADVANCED GAMEPLAY SETTINGS
 --;===========================================================
 function options.f_checkTeamAmount(arg1, arg2, arg3)
-	ret = arg1
+	local ret = arg1
 	if arg1 <= arg2 then
 		ret = arg3
 	end
@@ -1373,7 +1459,6 @@ end
 --;===========================================================
 --; ENGINE SETTINGS
 --;===========================================================
- --;===========================================================
 local t_quicklaunchNames = {}
 t_quicklaunchNames[0] = "Disabled"
 t_quicklaunchNames[1] = "Level1"

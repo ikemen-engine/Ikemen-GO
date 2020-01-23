@@ -320,6 +320,7 @@ const (
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_gamemode
+	OC_const_ratiolevel
 )
 const (
 	OC_st_var OpCode = iota + OC_var*2
@@ -1461,6 +1462,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_ratiolevel:
+		sys.bcStack.PushI(c.ratioLevel())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5172,7 +5175,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.defenceMul = float32(crun.gi().data.defence) * crun.ocd().defenceRatio / (exp[0].evalF(c) * 100)
+			crun.defenceMul = float32(crun.gi().data.defence) / (exp[0].evalF(c) * 100)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

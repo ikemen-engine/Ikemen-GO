@@ -291,23 +291,23 @@ type System struct {
 	captureNum              int
 	challenger              int
 	roundType               [2]RoundType
-	ocd                     [MaxSimul*2 + MaxAttachedChar]OverwriteCharData
+	ocd                     [MaxSimul*2 + MaxAttachedChar]OverrideCharData
 	barsDisplay             bool
 	stopTitleBGM            bool
+	ratioLevel              [MaxSimul*2 + MaxAttachedChar]int32
 }
 
-type OverwriteCharData struct {
+type OverrideCharData struct {
 	power        int32
 	life         int32
 	lifeMax      int32
 	lifeRatio    float32
 	attackRatio  float32
-	defenceRatio float32
 }
-func (s *System) resetOverwriteCharData() {
+func (s *System) resetOverrideCharData() {
 	for i := range s.ocd {
-		s.ocd[i] = OverwriteCharData{power: 0, life: 0, lifeMax: 0,
-		lifeRatio: 1.0, attackRatio: 1.0, defenceRatio: 1.0}
+		s.ocd[i] = OverrideCharData{power: 0, life: 0, lifeMax: 0,
+		lifeRatio: 1.0, attackRatio: 1.0}
 	}
 	return
 }
@@ -393,7 +393,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.clsnSpr = *newSprite()
 	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
 	s.clsnSpr.SetPxl([]byte{0})
-	s.resetOverwriteCharData()
+	s.resetOverrideCharData()
 	systemScriptInit(l)
 	// So now that we have a windo we add a icon.
 	if len(s.windowMainIconLocation) > 0 {

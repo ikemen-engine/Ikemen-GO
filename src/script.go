@@ -861,6 +861,15 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "setRatioLevel", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		rn := int32(numArg(l, 2))
+		if rn < 0 || rn > 4 {
+			l.RaiseError("The ratio number (%v) is invalid.", rn)
+		}
+		sys.ratioLevel[pn-1] = rn
+		return 0
+	})
 	luaRegister(l, "getCharName", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
 		l.Push(lua.LString(c.name))
@@ -1056,7 +1065,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.loadStart()
 		return 0
 	})
-	luaRegister(l, "overwriteCharData", func(l *lua.LState) int {
+	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("The player number (%v) is invalid.", pn)
@@ -1076,8 +1085,6 @@ func systemScriptInit(l *lua.LState) {
 					sys.ocd[pn-1].lifeRatio = float32(lua.LVAsNumber(value))
 				case "attackRatio":
 					sys.ocd[pn-1].attackRatio = float32(lua.LVAsNumber(value))
-				case "defenceRatio":
-					sys.ocd[pn-1].defenceRatio = float32(lua.LVAsNumber(value))
 				default:
 					l.RaiseError("The table key (%v) is invalid.", key)
 				}
@@ -1269,7 +1276,8 @@ func systemScriptInit(l *lua.LState) {
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				sys.resetGblEffect()
-				sys.resetOverwriteCharData()
+				sys.resetOverrideCharData()
+				sys.ratioLevel = [MaxSimul*2 + MaxAttachedChar]int32{}
 				return 2
 			}
 		}
@@ -2429,6 +2437,10 @@ func triggerScriptInit(l *lua.LState) {
 	luaRegister(l, "projhittime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.projHitTime(
 			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		return 1
+	})
+	luaRegister(l, "ratiolevel", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.ratioLevel()))
 		return 1
 	})
 	luaRegister(l, "rightedge", func(*lua.LState) int {

@@ -389,7 +389,8 @@ local motif =
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
 		teammenu_itemname_turns = 'Turns', --Ikemen feature
-		teammenu_itemname_tag = 'Tag', --Ikemen feature
+		teammenu_itemname_tag = '', --Ikemen feature (Tag)
+		teammenu_itemname_ratio = '', --Ikemen feature (Ratio)
 		p1_teammenu_pos = {0, 0},
 		--p1_teammenu_bg_anim = nil,
 		p1_teammenu_bg_spr = {},
@@ -440,6 +441,41 @@ local motif =
 		p1_teammenu_value_empty_icon_facing = 1,
 		p1_teammenu_value_empty_icon_scale = {1.0, 1.0},
 		p1_teammenu_value_spacing = {6, 0},
+		--p1_teammenu_ratio1_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio1_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio1_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio1_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio1_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio2_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio2_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio2_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio2_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio2_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio3_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio3_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio3_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio3_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio3_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio4_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio4_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio4_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio4_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio4_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio5_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio5_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio5_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio5_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio5_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio6_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio6_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio6_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio6_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio6_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_ratio7_icon_anim = nil, --Ikemen feature
+		p1_teammenu_ratio7_icon_spr = {}, --Ikemen feature
+		p1_teammenu_ratio7_icon_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_ratio7_icon_facing = 1, --Ikemen feature
+		p1_teammenu_ratio7_icon_scale = {1.0, 1.0}, --Ikemen feature
 		p2_teammenu_pos = {0, 0},
 		--p2_teammenu_bg_anim = nil,
 		p2_teammenu_bg_spr = {},
@@ -490,6 +526,41 @@ local motif =
 		p2_teammenu_value_empty_icon_facing = 1,
 		p2_teammenu_value_empty_icon_scale = {1.0, 1.0},
 		p2_teammenu_value_spacing = {-6, 0},
+		--p2_teammenu_ratio1_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio1_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio1_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio1_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio1_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio2_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio2_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio2_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio2_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio2_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio3_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio3_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio3_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio3_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio3_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio4_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio4_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio4_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio4_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio4_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio5_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio5_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio5_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio5_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio5_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio6_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio6_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio6_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio6_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio6_icon_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_ratio7_icon_anim = nil, --Ikemen feature
+		p2_teammenu_ratio7_icon_spr = {}, --Ikemen feature
+		p2_teammenu_ratio7_icon_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_ratio7_icon_facing = 1, --Ikemen feature
+		p2_teammenu_ratio7_icon_scale = {1.0, 1.0}, --Ikemen feature
 		timer_enabled = 0, --Ikemen feature
 		timer_offset = {159, 39}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
@@ -795,6 +866,7 @@ local motif =
 		title_text_main = 'OPTIONS', --Ikemen feature
 		title_text_arcade = 'ARCADE SETTINGS', --Ikemen feature
 		title_text_gameplay = 'GAMEPLAY SETTINGS', --Ikemen feature
+		title_text_ratio = 'RATIO SETTINGS', --Ikemen feature
 		title_text_advgameplay = 'ADVANCED SETTINGS', --Ikemen feature
 		title_text_video = 'VIDEO SETTINGS', --Ikemen feature
 		title_text_res = 'RESOLUTION SETTINGS', --Ikemen feature
@@ -843,9 +915,9 @@ local motif =
 		menu_itemname_arcade_roundsnumsingle = 'Rounds to Win Single', --Ikemen feature
 		menu_itemname_arcade_roundsnumteam = 'Rounds to Win Simul/Tag', --Ikemen feature
 		menu_itemname_arcade_maxdrawgames = 'Max Draw Games', --Ikemen feature
-		menu_itemname_arcade_difficulty = 'Difficulty level', --Ikemen feature
+		menu_itemname_arcade_difficulty = 'Difficulty Level', --Ikemen feature
 		menu_itemname_arcade_credits = 'Credits', --Ikemen feature
-		menu_itemname_arcade_charchange = 'Char change at Continue', --Ikemen feature
+		menu_itemname_arcade_quickcontinue = 'Quick Continue', --Ikemen feature
 		menu_itemname_arcade_airamping = 'AI Ramping', --Ikemen feature
 		menu_itemname_arcade_aipalette = 'AI Palette', --Ikemen feature
 		menu_itemname_arcade_aipalette_random = 'Random', --Ikemen feature
@@ -889,6 +961,15 @@ local motif =
 		menu_itemname_gameplay_numturns = 'Turns Limit', --Ikemen feature
 		menu_itemname_gameplay_numsimul = 'Simul Limit', --Ikemen feature
 		menu_itemname_gameplay_numtag = 'Tag Limit', --Ikemen features
+		menu_itemname_gameplay_ratio1life = 'Ratio 1 Life', --Ikemen features
+		menu_itemname_gameplay_ratio2life = 'Ratio 2 Life', --Ikemen features
+		menu_itemname_gameplay_ratio3life = 'Ratio 3 Life', --Ikemen features
+		menu_itemname_gameplay_ratio4life = 'Ratio 4 Life', --Ikemen features
+		menu_itemname_gameplay_ratio1attack = 'Ratio 1 Damage', --Ikemen features
+		menu_itemname_gameplay_ratio2attack = 'Ratio 2 Damage', --Ikemen features
+		menu_itemname_gameplay_ratio3attack = 'Ratio 3 Damage', --Ikemen features
+		menu_itemname_gameplay_ratio4attack = 'Ratio 4 Damage', --Ikemen features
+		menu_itemname_gameplay_ratio = 'Ratio Settings', --Ikemen feature
 		menu_itemname_gameplay_advanced = 'Advanced Settings', --Ikemen feature
 		menu_itemname_gameplay_back = 'Back', --Ikemen feature
 		menu_itemname_engine_allowdebugkeys = 'Debug Keys', --Ikemen feature
@@ -981,13 +1062,16 @@ local motif =
 		text_chars = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
 		text_stages = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
 		text_order = "Incorrect 'maxmatches' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
+		text_ratio = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def.", --Ikemen feature
 		text_training = "Training character ('chars/Training/Training.def') not found.\nPress any key to exit the program.", --Ikemen feature
+		text_rivals = " not found.\nCharacter rivals assignment has been nulled.", --Ikemen feature
 		text_reload = 'Some selected options require Ikemen to be restarted.\nPress any key to exit the program.', --Ikemen feature
 		text_noreload = 'Some selected options require Ikemen to be restarted.\nPress any key to continue.', --Ikemen feature
 		text_res = 'Non 4:3 resolutions require stages coded for different\naspect ratio. Change it back to 4:3 if stages look off.', --Ikemen feature
 		text_keys = 'Conflict between button keys detected.\nAll keys should have unique assignment.\nFix the problem before exitting key settings.', --Ikemen feature
 		text_pad = 'Controller not detected.\nCheck if your controller is plugged in.', --Ikemen feature
 		text_simul = 'This is a legacy option that works only if screenpack \nhas not been updated to support both Tag and Simul \nmode selection in select screen.', --Ikemen feature
+		text_shaders = 'No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from "./shaders" directory.', --Ikemen feature
 		text_pos = {25, 33}, --Ikemen feature
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1439,8 +1523,16 @@ local pos = t
 local pos_sort = main.t_sort
 local def_pos = motif
 t.anim = {}
-t.font_data = {['f-4x6.def'] = fontNew('f-4x6.def'), ['f-6x9.def'] = fontNew('f-6x9.def'), ['jg.fnt'] = fontNew('jg.fnt')}
-t.font_def = {}
+t.font_data = {
+	['f-4x6.def'] = fontNew('f-4x6.def'),
+	['f-6x9.def'] = fontNew('f-6x9.def'),
+	['jg.fnt'] = fontNew('jg.fnt')
+}
+t.font_def = {
+	['f-4x6.def'] = fontGetDef(t.font_data['f-4x6.def']),
+	['f-6x9.def'] = fontGetDef(t.font_data['f-6x9.def']),
+	['jg.fnt'] = fontGetDef(t.font_data['jg.fnt'])
+}
 local fileDir, fileName = motif.def:match('^(.-)([^/\\]+)$')
 t.fileDir = fileDir
 t.fileName = fileName
@@ -1664,14 +1756,27 @@ t_dir = {
 	{s = 'p1_teammenu_item_cursor_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
 	{s = 'p1_teammenu_value_icon_',       x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
 	{s = 'p1_teammenu_value_empty_icon_', x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio1_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio2_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio3_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio4_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio5_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio6_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio7_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_bg_',               x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_selftitle_',        x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_enemytitle_',       x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_item_cursor_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_value_icon_',       x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_value_empty_icon_', x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio1_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio2_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio3_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio4_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio5_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio6_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio7_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
 	{s = 'stage_portrait_random_',        x = t.stage_pos[1] + t.stage_portrait_offset[1],         y = t.stage_pos[2] + t.stage_portrait_offset[2]},
-	
 }
 for i = 1, #t_dir do
 	--if t[t_dir[i].s .. 'offset'] == nil then t[t_dir[i].s .. 'offset'] = {0, 0} end

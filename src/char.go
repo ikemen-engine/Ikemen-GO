@@ -1635,7 +1635,7 @@ func (c *Char) clear2() {
 		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
 		width:      [...]float32{c.defFW(), c.defBW()},
 		attackMul:  float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
-		defenceMul: float32(c.gi().data.defence) * c.ocd().defenceRatio / 100}
+		defenceMul: float32(c.gi().data.defence) / 100}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -1657,7 +1657,7 @@ func (c *Char) gi() *CharGlobalInfo {
 func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
-func (c *Char) ocd() *OverwriteCharData {
+func (c *Char) ocd() *OverrideCharData {
 	if sys.tmode[c.playerNo&1] == TM_Turns {
 		if c.playerNo&1 == 0 {
 			return &sys.ocd[c.memberNo * 2]
@@ -2582,6 +2582,12 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
+}
+func (c *Char) ratioLevel() int32 {
+	if c.playerNo&1 == 0 {
+		return sys.ratioLevel[int32(c.memberNo) * 2]
+	}
+	return sys.ratioLevel[int32(c.memberNo) * 2 + 1]
 }
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
@@ -4531,7 +4537,7 @@ func (c *Char) update(cvmin, cvmax,
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.defenceMul = float32(c.gi().data.defence) * c.ocd().defenceRatio / 100
+				c.defenceMul = float32(c.gi().data.defence) / 100
 				c.ghv.hittime = -1
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false

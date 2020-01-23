@@ -60,7 +60,6 @@ func main() {
 					fmt.Println(" -p<n>.lifeMax <life>       Sets player n's max life to <life>")
 					fmt.Println(" -p<n>.lifeRatio <ratio>    Sets player n's life ratio to <ratio>")
 					fmt.Println(" -p<n>.attackRatio <ratio>  Sets player n's attack ratio to <ratio>")
-					fmt.Println(" -p<n>.defenceRatio <ratio> Sets player n's defence ratio to <ratio>")
 					fmt.Println(" -rounds <num>              Plays for <num> rounds, and then quits")
 					fmt.Println(" -s <stagename>             Loads stage <stagename>")
 					fmt.Println("\nPress ENTER to exit.")
@@ -146,7 +145,7 @@ func main() {
 	"IP": {
 		
 	},
-	"ContSelection": true,
+	"QuickContinue": false,
 	"AIRandomColor": true,
 	"AIRamping": true,
 	"AutoGuard": false,
@@ -161,6 +160,8 @@ func main() {
 	"ExternalShaders": [],
 	"LocalcoordScalingType": 1,
 	"MSAA": false,
+	"LifeRatio":[0.80, 1.0, 1.17, 1.40],
+	"AttackRatio":[0.82, 1.0, 1.17, 1.30],
 	"WindowMainIconLocation": [
 		"script/Icons/IkemenCylia.png"
 	]
