@@ -579,7 +579,7 @@ func (f *Fnt) DrawTtf(
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
-	f.ttf.Printf(x, y, yscl, align, blend, txt) //x, y, scale, align, string, printf args
+	f.ttf.Printf(x, y, (xscl + yscl) / 2, align, blend, txt) //x, y, scale, align, string, printf args
 }
 
 type TextSprite struct {
