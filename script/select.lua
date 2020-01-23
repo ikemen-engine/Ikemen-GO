@@ -2039,6 +2039,9 @@ function select.f_p1TeamMenu()
 		--Draw team background
 		animUpdate(motif.select_info.p1_teammenu_bg_data)
 		animDraw(motif.select_info.p1_teammenu_bg_data)
+		--Draw team active element background
+		animUpdate(motif.select_info['p1_teammenu_bg_' .. select.t_p1TeamMenu[p1TeamMenu].itemname .. '_data'])
+		animDraw(motif.select_info['p1_teammenu_bg_' .. select.t_p1TeamMenu[p1TeamMenu].itemname .. '_data'])
 		--Draw team cursor
 		main.f_animPosDraw(
 			motif.select_info.p1_teammenu_item_cursor_data,
@@ -2067,8 +2070,8 @@ function select.f_p1TeamMenu()
 					motif.select_info[p1TeamActiveFont][2],
 					motif.select_info[p1TeamActiveFont][3], --p1_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					select.t_p1TeamMenu[i].displayname,
-					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
-					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
+					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + motif.select_info.p1_teammenu_item_spacing[1] * (i - 1),
+					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + motif.select_info.p1_teammenu_item_spacing[2] * (i - 1),
 					motif.select_info[p1TeamActiveFont .. '_scale'][1],
 					motif.select_info[p1TeamActiveFont .. '_scale'][2],
 					motif.select_info[p1TeamActiveFont][4],
@@ -2085,8 +2088,8 @@ function select.f_p1TeamMenu()
 					motif.select_info.p1_teammenu_item_font[2],
 					motif.select_info.p1_teammenu_item_font[3],
 					select.t_p1TeamMenu[i].displayname,
-					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[1],
-					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p1_teammenu_item_spacing[2],
+					motif.select_info.p1_teammenu_pos[1] + motif.select_info.p1_teammenu_item_offset[1] + motif.select_info.p1_teammenu_item_font_offset[1] + motif.select_info.p1_teammenu_item_spacing[1] * (i - 1),
+					motif.select_info.p1_teammenu_pos[2] + motif.select_info.p1_teammenu_item_offset[2] + motif.select_info.p1_teammenu_item_font_offset[2] + motif.select_info.p1_teammenu_item_spacing[2] * (i - 1),
 					motif.select_info.p1_teammenu_item_font_scale[1],
 					motif.select_info.p1_teammenu_item_font_scale[2],
 					motif.select_info.p1_teammenu_item_font[4],
@@ -2312,6 +2315,9 @@ function select.f_p2TeamMenu()
 		--Draw team background
 		animUpdate(motif.select_info.p2_teammenu_bg_data)
 		animDraw(motif.select_info.p2_teammenu_bg_data)
+		--Draw team active element background
+		animUpdate(motif.select_info['p2_teammenu_bg_' .. select.t_p2TeamMenu[p2TeamMenu].itemname .. '_data'])
+		animDraw(motif.select_info['p2_teammenu_bg_' .. select.t_p2TeamMenu[p2TeamMenu].itemname .. '_data'])
 		--Draw team cursor
 		main.f_animPosDraw(
 			motif.select_info.p2_teammenu_item_cursor_data,
@@ -2346,8 +2352,8 @@ function select.f_p2TeamMenu()
 					motif.select_info[p2TeamActiveFont][2],
 					motif.select_info[p2TeamActiveFont][3], --p2_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					select.t_p2TeamMenu[i].displayname,
-					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
-					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
+					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + motif.select_info.p2_teammenu_item_spacing[1] * (i - 1),
+					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + motif.select_info.p2_teammenu_item_spacing[2] * (i - 1),
 					motif.select_info[p2TeamActiveFont .. '_scale'][1],
 					motif.select_info[p2TeamActiveFont .. '_scale'][2],
 					motif.select_info[p2TeamActiveFont][4],
@@ -2364,8 +2370,8 @@ function select.f_p2TeamMenu()
 					motif.select_info.p2_teammenu_item_font[2],
 					motif.select_info.p2_teammenu_item_font[3],
 					select.t_p2TeamMenu[i].displayname,
-					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[1],
-					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + (i - 1) * motif.select_info.p2_teammenu_item_spacing[2],
+					motif.select_info.p2_teammenu_pos[1] + motif.select_info.p2_teammenu_item_offset[1] + motif.select_info.p2_teammenu_item_font_offset[1] + motif.select_info.p2_teammenu_item_spacing[1] * (i - 1),
+					motif.select_info.p2_teammenu_pos[2] + motif.select_info.p2_teammenu_item_offset[2] + motif.select_info.p2_teammenu_item_font_offset[2] + motif.select_info.p2_teammenu_item_spacing[2] * (i - 1),
 					motif.select_info.p2_teammenu_item_font_scale[1],
 					motif.select_info.p2_teammenu_item_font_scale[2],
 					motif.select_info.p2_teammenu_item_font[4],

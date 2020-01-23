@@ -397,6 +397,31 @@ local motif =
 		p1_teammenu_bg_offset = {0, 0},
 		p1_teammenu_bg_facing = 1,
 		p1_teammenu_bg_scale = {1.0, 1.0},
+		--p1_teammenu_bg_single_anim = nil, --Ikemen feature
+		p1_teammenu_bg_single_spr = {}, --Ikemen feature
+		p1_teammenu_bg_single_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_bg_single_facing = 1, --Ikemen feature
+		p1_teammenu_bg_single_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_simul_anim = nil, --Ikemen feature
+		p1_teammenu_bg_simul_spr = {}, --Ikemen feature
+		p1_teammenu_bg_simul_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_bg_simul_facing = 1, --Ikemen feature
+		p1_teammenu_bg_simul_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_turns_anim = nil, --Ikemen feature
+		p1_teammenu_bg_turns_spr = {}, --Ikemen feature
+		p1_teammenu_bg_turns_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_bg_turns_facing = 1, --Ikemen feature
+		p1_teammenu_bg_turns_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_tag_anim = nil, --Ikemen feature
+		p1_teammenu_bg_tag_spr = {}, --Ikemen feature
+		p1_teammenu_bg_tag_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_bg_tag_facing = 1, --Ikemen feature
+		p1_teammenu_bg_tag_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_ratio_anim = nil, --Ikemen feature
+		p1_teammenu_bg_ratio_spr = {}, --Ikemen feature
+		p1_teammenu_bg_ratio_offset = {0, 0}, --Ikemen feature
+		p1_teammenu_bg_ratio_facing = 1, --Ikemen feature
+		p1_teammenu_bg_ratio_scale = {1.0, 1.0}, --Ikemen feature
 		--p1_teammenu_selftitle_anim = nil,
 		p1_teammenu_selftitle_spr = {},
 		p1_teammenu_selftitle_offset = {0, 0},
@@ -482,6 +507,31 @@ local motif =
 		p2_teammenu_bg_offset = {0, 0},
 		p2_teammenu_bg_facing = 1,
 		p2_teammenu_bg_scale = {1.0, 1.0},
+		--p2_teammenu_bg_single_anim = nil, --Ikemen feature
+		p2_teammenu_bg_single_spr = {}, --Ikemen feature
+		p2_teammenu_bg_single_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_bg_single_facing = 1, --Ikemen feature
+		p2_teammenu_bg_single_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_simul_anim = nil, --Ikemen feature
+		p2_teammenu_bg_simul_spr = {}, --Ikemen feature
+		p2_teammenu_bg_simul_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_bg_simul_facing = 1, --Ikemen feature
+		p2_teammenu_bg_simul_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_turns_anim = nil, --Ikemen feature
+		p2_teammenu_bg_turns_spr = {}, --Ikemen feature
+		p2_teammenu_bg_turns_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_bg_turns_facing = 1, --Ikemen feature
+		p2_teammenu_bg_turns_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_tag_anim = nil, --Ikemen feature
+		p2_teammenu_bg_tag_spr = {}, --Ikemen feature
+		p2_teammenu_bg_tag_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_bg_tag_facing = 1, --Ikemen feature
+		p2_teammenu_bg_tag_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_ratio_anim = nil, --Ikemen feature
+		p2_teammenu_bg_ratio_spr = {}, --Ikemen feature
+		p2_teammenu_bg_ratio_offset = {0, 0}, --Ikemen feature
+		p2_teammenu_bg_ratio_facing = 1, --Ikemen feature
+		p2_teammenu_bg_ratio_scale = {1.0, 1.0}, --Ikemen feature
 		--p2_teammenu_selftitle_anim = nil,
 		p2_teammenu_selftitle_spr = {},
 		p2_teammenu_selftitle_offset = {0, 0},
@@ -1751,6 +1801,11 @@ t_dir = {
 	{s = 'p2_cursor_active_',             x = 0,                                                   y = 0},
 	{s = 'p2_cursor_done_',               x = 0,                                                   y = 0},
 	{s = 'p1_teammenu_bg_',               x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_single_',        x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_simul_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_turns_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_tag_',           x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_ratio_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_selftitle_',        x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_enemytitle_',       x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_item_cursor_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
@@ -1764,6 +1819,11 @@ t_dir = {
 	{s = 'p1_teammenu_ratio6_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
 	{s = 'p1_teammenu_ratio7_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_bg_',               x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_single_',        x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_simul_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_turns_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_tag_',           x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_ratio_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_selftitle_',        x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_enemytitle_',       x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_item_cursor_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
