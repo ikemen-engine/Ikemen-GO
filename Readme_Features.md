@@ -220,7 +220,6 @@ In Mugen `round.default.snd` assignment didn't work at all. In Ikemen GO it will
 - `pX.offset`
 - `pX.levelY.spr`
 - `pX.levelY.anim`
-- `pX.levelY.layerno`
 - `pX.levelY.scale`
 where:
 'pX' prefix should be replaced with p1 and/or p2
