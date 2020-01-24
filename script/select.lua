@@ -123,8 +123,16 @@ function select.f_unifySettings(t, t_chars)
 				infinite = true
 			end
 			for j = 1, num do --iterate up to max amount of matches versus characters with this order
-				if j * p2NumChars > #t_chars[i] and #ret > 0 then --stop the loop if there are not enough characters with this order but only after adding at least 1
-					break
+				if j * p2NumChars > #t_chars[i] then --if there are not enough characters with this order to assign all slots
+					local stop = true
+					for k = (j - 1) * p2NumChars + 1, #t_chars[i] do --loop through characters left for this match, if there is at least 1 available
+						if main.t_selChars[t_chars[i][k] + 1].onlyme == 1 then --and allow appending if any of the remaining characters has 'onlyme' flag set
+							stop = false
+						end
+					end
+					if stop then
+						break
+					end
 				end
 				table.insert(ret, {['rmin'] = p2NumChars, ['rmax'] = p2NumChars, ['order'] = i})
 			end
