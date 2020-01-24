@@ -5749,10 +5749,11 @@ const (
 
 func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 	crun := c
+	var v int32 = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case victoryQuote_value:
-			exp[0].evalI(c)
+			v = exp[0].evalI(c)
 		case victoryQuote_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5762,6 +5763,7 @@ func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.winquote = v
 	return false
 }
 
