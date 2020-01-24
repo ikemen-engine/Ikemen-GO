@@ -492,13 +492,13 @@ func (f *Fnt) drawChar(
 
 func (f *Fnt) Print(txt string,
 	x, y, xscl, yscl float32,
-	align, bank int32,
+	bank, align int32,
 ) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
 			f.DrawTtf(txt, x, y, xscl, yscl, align, false)
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, align, bank)
+			f.DrawText(txt, x, y, xscl, yscl, bank, align)
 		}
 	}
 }
@@ -507,7 +507,7 @@ func (f *Fnt) Print(txt string,
 func (f *Fnt) DrawText(
 	txt string,
 	x, y, xscl, yscl float32,
-	align, bank int32,
+	bank, align int32,
 ) {
 
 	if len(txt) == 0 {
@@ -606,7 +606,7 @@ func (ts *TextSprite) Draw() {
 		if ts.fnt.Type == "truetype" {
 			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true)
 		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, ts.bank)
+			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
 		}
 	}
 }
