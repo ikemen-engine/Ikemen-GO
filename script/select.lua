@@ -596,7 +596,11 @@ function select.f_selectPal(cell)
 				table.insert(t_uniqueVals, main.t_selChars[cell + 1].pal[i])
 			end
 		end
-		return t_uniqueVals[math.random(1, #t_uniqueVals)]
+		if #t_uniqueVals > 0 then --return random unique palette
+			return select.f_reampPal(cell, t_uniqueVals[math.random(1, #t_uniqueVals)])
+		else --no unique palettes available, randomize from all palettes
+			return main.t_selChars[cell + 1].pal[math.random(1, #main.t_selChars[cell + 1].pal)]
+		end
 	end
 	--return first available default palette
 	for i = 1, #main.t_selChars[cell + 1].pal_defaults do
@@ -605,7 +609,7 @@ function select.f_selectPal(cell)
 			return select.f_reampPal(cell, d)
 		end
 	end
-	--no free default palettes available, force first default palette
+	--no default palettes available, force first default palette
 	return select.f_reampPal(cell, main.t_selChars[cell + 1].pal_defaults[1])
 end
 
