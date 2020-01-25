@@ -123,9 +123,9 @@ function select.f_unifySettings(t, t_chars)
 				infinite = true
 			end
 			for j = 1, num do --iterate up to max amount of matches versus characters with this order
-				if j * p2NumChars > #t_chars[i] then --if there are not enough characters with this order to assign all slots
+				if j * p2NumChars > #t_chars[i] --[[and #ret > 0]] then --if there are not enough characters with this order to assign all slots
 					local stop = true
-					for k = (j - 1) * p2NumChars + 1, #t_chars[i] do --loop through characters left for this match, if there is at least 1 available
+					for k = (j - 1) * p2NumChars + 1, #t_chars[i] do --loop through characters left for this match
 						if main.t_selChars[t_chars[i][k] + 1].onlyme == 1 then --and allow appending if any of the remaining characters has 'onlyme' flag set
 							stop = false
 						end
@@ -1172,7 +1172,7 @@ function select.f_selectArranged()
 				looseCnt = looseCnt + 1
 			end
 			--infinite matches flag detected
-			if t_roster[matchNo + 1][1] == -1 then
+			if t_roster[matchNo + 1] ~= nil and t_roster[matchNo + 1][1] == -1 then
 				--remove flag
 				table.remove(t_roster, matchNo + 1)
 				--append entries to existing roster table
