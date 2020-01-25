@@ -271,15 +271,15 @@ survival.maxmatches = -1,0,0,0,0,0,0,0,0,0
  ;and distribute 4 "ratio levels" amongst them, affecting their life and damage
  ;(ratio 2 is the default to which other ratios are compared, percentages are
  ;adjustable in options screen).
- ;Arcade ratio matches ignore '.maxmatches' settings and use custom matches
- ;assignment instead. Each entry here, separated by commas, represents a single
- ;match and consists of 2 values/ranges, separated by colon. First number is
- ;characters count you will face in this match (valid numbers from 1 to 3, or a
- ;range for random selection, consisting of one number followed by a dash and
- ;another number), second number, written after colon, refers to character's
- ;'order' param, that can be used to limit which characters should be randomly
- ;chosen for the match. For example 2-3:4 entry means a match against team
- ;consisting of 2 or 3 characters, randomly chosen from characters with order=4.
+ ;Arcade ratio matches use 'ratiomatches' configuration instead of 'maxmatches'
+ ;settings. Each entry here, separated by commas, represents a single match and
+ ;consists of 2 assignments, separated by colon. Assignment on the left side of
+ ;colon refers to the number of characters you will face in this match (valid
+ ;numbers from 1 to 3, or a random selection range, consisting of one number,
+ ;followed by a dash and another number). Assignment written after colon refers
+ ;to character's order param, that can be used to limit which characters should
+ ;be randomly chosen for this match. For example 2-3:4 entry means a match
+ ;against team of 2 or 3 characters, chosen from characters with order=4.
 arcade.ratiomatches = 1-3:1, 3:1, 2:1, 2:1, 1:2, 3:1, 1-2:3
 
  ;AI ramping

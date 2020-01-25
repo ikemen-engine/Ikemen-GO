@@ -251,7 +251,7 @@ function randomtest.run()
   while not esc() do
     randomtest.randSel(1, winner)
     randomtest.randSel(2, winner)
-    select.f_setStage()
+    start.f_setStage()
     loadStart()
     local oldwinner = winner
     winner = game()

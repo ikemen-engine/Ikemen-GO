@@ -412,17 +412,19 @@ function main.f_wrap(str, limit, indent, indent1)
 	)
 end
 
---Convert DEF string to table (each line = next item; %i, %s swapped with variable values)
-function main.f_extractText(txt, v1, v2, v3, v4)
-	local t = {v1 or '', v2 or '', v3 or '', v4 or ''}
+--Convert DEF string to table
+function main.f_extractText(txt, var1, var2, var3, var4)
+	local t = {var1 or '', var2 or '', var3 or '', var4 or ''}
 	local tmp = ''
-	txt = txt:gsub('%%[is]', '%%')
-	for i, c in ipairs(main.f_strsplit('%%', txt)) do --split string using "%" delimiter
-		if t[i] == '' then
-			c = c:gsub('%s$', '')
+	--replace %s, %i with variables
+	local cnt = 0
+	tmp = txt:gsub('(%%[is])', function(m1)
+		cnt = cnt + 1
+		if t[cnt] ~= nil then
+			return t[cnt]
 		end
-		tmp = tmp .. c .. t[i]
-	end
+	end)
+	--store each line in different row
 	t = {}
 	for i, c in ipairs(main.f_strsplit('\n', tmp)) do --split string using "\n" delimiter
 		t[i] = c
@@ -546,6 +548,11 @@ function main.f_oddRounding(v)
 	else
 		return 0
 	end
+end
+
+--count occurrences of a substring
+function main.f_countSubstring(s1, s2)
+    return select(2, s1:gsub(s2, ""))
 end
 
 --warning display
@@ -882,7 +889,7 @@ main.txt_warningTitle = main.f_createTextImg(
 	motif.defaultWarning
 )
 
---add characters and stages using select.def instead of select.lua
+--add characters and stages using select.def
 local txt_loading = main.f_createTextImg(
 	motif.font_data[motif.title_info.loading_font[1]],
 	motif.title_info.loading_font[2],
@@ -1358,11 +1365,11 @@ end
 --Load additional scripts
 randomtest = require('script.randomtest')
 options = require('script.options')
-select = require('script.select')
+start = require('script.start')
 storyboard = require('script.storyboard')
 
 --;===========================================================
---; MAIN MENU
+--; MENUS
 --;===========================================================
 
 local txt_titleFooter1 = main.f_createTextImg(
@@ -1446,28 +1453,490 @@ main.txt_mainSelect = main.f_createTextImg(
 	motif.select_info.title_font[8]
 )
 
---itemname: names used to distinguish modes in lua code (keep it as it is)
---displayname: names for each of the items in the menu
---selectname: names that will show up in select screen
-local t_mainMenu = {
-	{data = textImgNew(), itemname = 'arcade', displayname = motif.title_info.menu_itemname_arcade, selectname = motif.select_info.title_text_arcade},
-	{data = textImgNew(), itemname = 'versus', displayname = motif.title_info.menu_itemname_versus, selectname = motif.select_info.title_text_versus},
-	{data = textImgNew(), itemname = 'teamarcade', displayname = motif.title_info.menu_itemname_teamarcade, selectname = motif.select_info.title_text_teamarcade},
-	{data = textImgNew(), itemname = 'teamversus', displayname = motif.title_info.menu_itemname_teamversus, selectname = motif.select_info.title_text_teamversus},
-	{data = textImgNew(), itemname = 'online', displayname = motif.title_info.menu_itemname_online},
-	{data = textImgNew(), itemname = 'teamcoop', displayname = motif.title_info.menu_itemname_teamcoop, selectname = motif.select_info.title_text_teamcoop},
-	{data = textImgNew(), itemname = 'survival', displayname = motif.title_info.menu_itemname_survival, selectname = motif.select_info.title_text_survival},
-	{data = textImgNew(), itemname = 'survivalcoop', displayname = motif.title_info.menu_itemname_survivalcoop, selectname = motif.select_info.title_text_survivalcoop},
-	--{data = textImgNew(), itemname = 'storymode', displayname = motif.title_info.menu_itemname_storymode, selectname = motif.select_info.title_text_storymode},
-	--{data = textImgNew(), itemname = 'timeattack', displayname = motif.title_info.menu_itemname_timeattack, selectname = motif.select_info.title_text_timeattack},
-	--{data = textImgNew(), itemname = 'tournament', displayname = motif.title_info.menu_itemname_tournament},
-	{data = textImgNew(), itemname = 'training', displayname = motif.title_info.menu_itemname_training, selectname = motif.select_info.title_text_training},
-	{data = textImgNew(), itemname = 'watch', displayname = motif.title_info.menu_itemname_watch, selectname = motif.select_info.title_text_watch},
-	{data = textImgNew(), itemname = 'extras', displayname = motif.title_info.menu_itemname_extras},
-	{data = textImgNew(), itemname = 'options', displayname = motif.title_info.menu_itemname_options},
-	{data = textImgNew(), itemname = 'exit', displayname = motif.title_info.menu_itemname_exit},
-}
-t_mainMenu = main.f_cleanTable(t_mainMenu, main.t_sort.title_info)
+function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
+	--ARCADE
+	if t[item].itemname == 'arcade' or t[item].itemname == 'teamarcade' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1 --P1 controls P2 side of the select screen
+		main.p2SelectMenu = false --P2 character selection disabled
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.t_charparam.rivals = true
+		main.credits = config.Credits - 1 --amount of continues
+		if t[item].itemname == 'arcade' then
+			main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
+			main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade) --message displayed on top of select screen
+		else --teamarcade
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamarcade)
+		end
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('arcade')
+		start.f_selectArcade() --start f_selectArcade() function from script/start.lua
+	--VS MODE
+	elseif t[item].itemname == 'versus' or t[item].itemname == 'teamversus' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		setHomeTeam(1) --P1 side considered the home team
+		main.p2In = 2 --P2 controls P2 side of the select screen
+		main.stageMenu = true --stage selection enabled
+		main.p2Faces = true --additional window with P2 select screen small portraits (faces) enabled
+		--uses default main.t_charparam assignment
+		if t[item].itemname == 'versus' then
+			main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
+			main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_versus)
+		else --teamversus
+			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
+		end
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('versus')
+		start.f_selectSimple() --start f_selectSimple() function from script/start.lua
+	--TEAM CO-OP
+	elseif t[item].itemname == 'teamcoop' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 2
+		main.p2Faces = true
+		main.coop = true --P2 fighting on P1 side enabled
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.t_charparam.rivals = true
+		main.credits = config.Credits - 1
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamcoop)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('teamcoop')
+		start.f_selectArcade()
+	--SURVIVAL
+	elseif t[item].itemname == 'survival' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.p2SelectMenu = false
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_survival)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('survival')
+		start.f_selectArranged()
+	--SURVIVAL CO-OP
+	elseif t[item].itemname == 'survivalcoop' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 2
+		main.p2Faces = true
+		main.coop = true
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_survivalcoop)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('survivalcoop')
+		start.f_selectArranged()
+	--TRAINING
+	elseif t[item].itemname == 'training' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 2
+		main.stageMenu = true
+		main.versusScreen = false --versus screen disabled
+		--uses default main.t_charparam assignment
+		main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
+		main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_training)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('training')
+		start.f_selectSimple()
+	--WATCH
+	elseif t[item].itemname == 'watch' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.aiFight = true --AI = config.Difficulty for all characters enabled
+		main.stageMenu = true
+		main.p2Faces = true
+		--uses default main.t_charparam assignment
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_watch)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('watch')
+		start.f_selectSimple()
+	--OPTIONS
+	elseif t[item].itemname == 'options' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		options.f_mainCfg() --start f_mainCfg() function from script/options.lua
+	--FREE BATTLE
+	elseif t[item].itemname == 'freebattle' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.stageMenu = true
+		main.p2Faces = true
+		--uses default main.t_charparam assignment
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_freebattle)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('freebattle')
+		start.f_selectSimple()
+	--VS 100 KUMITE
+	elseif t[item].itemname == '100kumite' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.p2SelectMenu = false
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_100kumite)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('100kumite')
+		start.f_selectArranged()
+	--BOSS RUSH
+	elseif t[item].itemname == 'bossrush' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.p2SelectMenu = false
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_bossrush)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('bossrush')
+		start.f_selectArranged()
+	--BONUS CHAR NAME
+	elseif t[item].itemname:match('^bonus_') then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.versusScreen = false
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.p1TeamMenu = {mode = 0, chars = 1}
+		main.p2TeamMenu = {mode = 0, chars = 1}
+		main.p2Char = {main.t_bonusChars[item]}
+		textImgSetText(main.txt_mainSelect, getCharName(main.t_bonusChars[item]))
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('bonus')
+		start.f_selectSimple()
+	--REPLAY
+	elseif t[item].itemname == 'replay' then
+		if main.f_fileExists('save/replays/netplay.replay') then
+			sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+			enterReplay('save/replays/netplay.replay')
+			synchronize()
+			math.randomseed(sszRandom())
+			main.menu.submenu.server.loop()
+			exitNetPlay()
+			exitReplay()
+		end
+	--DEMO
+	elseif t[item].itemname == 'randomtest' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
+		setGameMode('randomtest')
+		randomtest.run()
+		main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+	--TOURNAMENT ROUND OF 32
+	elseif t[item].itemname == 'tournament32' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament32)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('tournament')
+		start.f_selectTournament(32)
+	--TOURNAMENT ROUND OF 16
+	elseif t[item].itemname == 'tournament16' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament16)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('tournament')
+		start.f_selectTournament(16)
+	--TOURNAMENT QUARTERFINALS
+	elseif t[item].itemname == 'tournament8' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament8)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('tournament')
+		start.f_selectTournament(8)
+	--TOURNAMENT SEMIFINALS
+	elseif t[item].itemname == 'tournament4' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament4)
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('tournament')
+		start.f_selectTournament(4)
+	--HOST
+	elseif t[item].itemname == 'serverhost' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort()))
+		exitNetPlay()
+		exitReplay()
+		--save replay with a new name
+		local file = io.open("save/replays/netplay.replay", "r")
+		local tpmFile = file:read("*all")
+		io.close(file)
+		file = io.open("save/replays/" .. os.date("%Y-%m(%b)-%d %I-%M%p-%Ss") .. ".replay", "w+")
+		file:write(tpmFile)
+		io.close(file)
+	--NEW ADDRESS
+	elseif t[item].itemname == 'joinadd' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
+		local name = main.f_input(main.f_extractText(motif.title_info.input_ip_name_text), motif.title_info, motif.titlebgdef, 'string')
+		if name ~= '' then
+			sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
+			local address = main.f_input(main.f_extractText(motif.title_info.input_ip_address_text), motif.title_info, motif.titlebgdef, 'string')
+			if address:match('^[0-9%.]+$') then
+				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+				config.IP[name] = address
+				table.insert(t, #t, {data = textImgNew(), itemname = 'ip_' .. name, displayname = name})
+				local file = io.open("save/config.json","w+")
+				file:write(json.encode(config, {indent = true}))
+				file:close()
+			else
+				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+			end
+		else
+			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+		end
+	--CONNECTION
+	elseif t[item].itemname:match('^ip_') then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname]))
+		exitNetPlay()
+		exitReplay()
+	--ONLINE VERSUS
+	elseif t[item].itemname == 'netplayversus' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		setHomeTeam(1)
+		main.p2In = 2
+		main.stageMenu = true
+		main.p2Faces = true
+		--uses default main.t_charparam assignment
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplayversus)
+		setGameMode('netplayversus')
+		start.f_selectSimple()
+	--ONLINE CO-OP
+	elseif t[item].itemname == 'netplayteamcoop' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 2
+		main.p2Faces = true
+		main.coop = true
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.t_charparam.rivals = true
+		main.credits = config.Credits - 1
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplayteamcoop)
+		setGameMode('netplayteamcoop')
+		start.f_selectArcade()
+	--ONLINE SURVIVAL
+	elseif t[item].itemname == 'netplaysurvivalcoop' then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 2
+		main.p2Faces = true
+		main.coop = true
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplaysurvivalcoop)
+		setGameMode('netplaysurvivalcoop')
+		start.f_selectArranged()
+	--BACK
+	elseif t[item].itemname == 'back' then
+		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+		return false
+	--EXIT
+	elseif t[item].itemname == 'exit' then
+		return false
+	--OPEN SUBMENU
+	elseif #tbl.submenu[t[item].itemname].items > 0 then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		tbl.submenu[t[item].itemname].loop()
+	end
+	return true
+end
+
+function main.f_deleteIP(item, t)
+	if t[item].itemname:match('^ip_') then
+		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+		resetKey()
+		config.IP[t[item].itemname:gsub('^ip_', '')] = nil
+		local file = io.open("save/config.json","w+")
+		file:write(json.encode(config, {indent = true}))
+		file:close()
+		for i = 1, #t do
+			if t[i].itemname == t[item].itemname then
+				table.remove(t, i)
+				break
+			end
+		end
+	end
+end
+
+function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_escsnd, bool_f1, bool_del)
+	return function()
+		main.f_cmdInput()
+		local cursorPosY = 1
+		local moveTxt = 0
+		local item = 1
+		local t = tbl.items
+		if bool_storyboard then
+			if motif.files.logo_storyboard ~= '' then
+				storyboard.f_storyboard(motif.files.logo_storyboard)
+			end
+			if motif.files.intro_storyboard ~= '' then
+				storyboard.f_storyboard(motif.files.intro_storyboard)
+			end
+		end
+		if bool_bgreset then
+			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+		end
+		while true do
+			main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
+			if bool_demo then
+				main.f_demo(cursorPosY, moveTxt, item, t)
+			end
+			cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
+			if esc() then
+				if bool_escsnd then
+					sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+				end
+				break
+			elseif bool_f1 and getKey() == 'F1' then
+				main.f_warning(
+					main.f_extractText(motif.infobox.text),
+					motif.title_info,
+					motif.titlebgdef,
+					motif.infobox,
+					txt_infoboxTitle,
+					motif.infobox.boxbg_coords,
+					motif.infobox.boxbg_col,
+					motif.infobox.boxbg_alpha,
+					motif.defaultInfobox
+				)
+			elseif bool_del and getKey() == 'DELETE' then
+				main.f_deleteIP(item, t)
+				main.f_printTable(t)
+			elseif main.f_btnPalNo(main.p1Cmd) > 0 then
+				main.f_default()
+				if not main.f_itemname(cursorPosY, moveTxt, item, t, tbl) then
+					break
+				end
+			end
+		end
+	end
+end
+
+--dynamically generates all main screen menus and submenus using itemname data stored in main.t_sort table
+main.menu = {['submenu'] = {}, ['items'] = {}}
+main.menu.loop = main.createMenu(main.menu, true, true, true, false, true, false)
+local t_pos = {} --for storing current main.menu table position
+local t_skipGroup = {}
+local lastNum = 0
+for i = 1, #main.t_sort.title_info do
+	for j, c in ipairs(main.f_strsplit('_', main.t_sort.title_info[i])) do --split using "_" delimiter
+		--exceptions for expanding the menu table
+		if motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]] == '' and c ~= 'server' then --items and groups without displayname are skipped
+			t_skipGroup[c] = true
+			break
+		elseif t_skipGroup[c] then --named item but inside a group without displayname
+			break
+		elseif c == 'bossrush' and #main.t_bossChars == 0 then --skip boss rush mode if there are no characters with boss param set to 1
+			break
+		elseif c == 'bonusgames' and #main.t_bonusChars == 0 then --skip bonus mode if there are no characters with bonus param set to 1
+			t_skipGroup[c] = true
+			break
+		end
+		--appending the menu table
+		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
+			if main.menu.submenu[c] == nil then
+				if not main.t_sort.title_info[i]:match(c .. '_') then --
+					table.insert(main.menu.items, {data = textImgNew(), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+				end
+				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
+				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
+			end
+			t_pos = main.menu.submenu[c]
+		else --following strings after the first one
+			if t_pos.submenu[c] == nil then
+				table.insert(t_pos.items, {data = textImgNew(), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}}
+				t_pos.submenu[c].loop = main.createMenu(t_pos.submenu[c], false, false, false, true, true, c == 'serverjoin')
+			end
+			if j > lastNum then
+				t_pos = t_pos.submenu[c]
+			end
+		end
+		lastNum = j
+		--add bonus character names to bonusgames submenu
+		if main.t_sort.title_info[i]:match('_bonusgames_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
+			for k = 1, #main.t_bonusChars do
+				local name = getCharName(main.t_bonusChars[k])
+				table.insert(t_pos.items, {data = textImgNew(), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
+			end
+		end
+		--add IP addresses for serverjoin submenu
+		if main.t_sort.title_info[i]:match('_serverjoin_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
+			for k, v in pairs(config.IP) do
+				table.insert(t_pos.items, {data = textImgNew(), itemname = 'ip_' .. k, displayname = k})
+			end
+		end
+	end
+end
+main.f_printTable(main.menu, 'debug/t_mainMenu.txt')
 
 local demoFrameCounter = 0
 local introWaitCycles = 0
@@ -1752,191 +2221,6 @@ function main.f_menuReset(bgNum, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoope
 	main.fadeStart = getFrameCount()
 end
 
-function main.f_mainMenu()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_mainMenu
-	if motif.files.logo_storyboard ~= '' then
-		storyboard.f_storyboard(motif.files.logo_storyboard)
-	end
-	if motif.files.intro_storyboard ~= '' then
-		storyboard.f_storyboard(motif.files.intro_storyboard)
-	end
-	main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			break
-		elseif getKey() == 'F1' then
-			main.f_warning(
-				main.f_extractText(motif.infobox.text),
-				motif.title_info,
-				motif.titlebgdef,
-				motif.infobox,
-				txt_infoboxTitle,
-				motif.infobox.boxbg_coords,
-				motif.infobox.boxbg_col,
-				motif.infobox.boxbg_alpha,
-				motif.defaultInfobox
-			)
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--ARCADE
-			if t[item].itemname == 'arcade' or t[item].itemname == 'teamarcade' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1 --P1 controls P2 side of the select screen
-				main.p2SelectMenu = false --P2 character selection disabled
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				main.t_charparam.rivals = true
-				main.credits = config.Credits - 1 --amount of continues
-				textImgSetText(main.txt_mainSelect, t[item].selectname) --message displayed on top of select screen
-				if t[item].itemname == 'arcade' then
-					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
-					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-				end
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('arcade')
-				select.f_selectArcade() --start f_selectArcade() function from script/select.lua
-			end
-			--VS MODE
-			if t[item].itemname == 'versus' or t[item].itemname == 'teamversus' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				setHomeTeam(1) --P1 side considered the home team
-				main.p2In = 2 --P2 controls P2 side of the select screen
-				main.stageMenu = true --stage selection enabled
-				main.p2Faces = true --additional window with P2 select screen small portraits (faces) enabled
-				--uses default main.t_charparam assignment
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				if t[item].itemname == 'versus' then
-					main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
-					main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-				end
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('versus')
-				select.f_selectSimple() --start f_selectSimple() function from script/select.lua
-			end
-			--ONLINE
-			if t[item].itemname == 'online' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_mainNetplay()
-			end
-			--TEAM CO-OP
-			if t[item].itemname == 'teamcoop' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 2
-				main.p2Faces = true
-				main.coop = true --P2 fighting on P1 side enabled
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				main.t_charparam.rivals = true
-				main.credits = config.Credits - 1
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('teamcoop')
-				select.f_selectArcade()
-			end
-			--SURVIVAL
-			if t[item].itemname == 'survival' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.p2SelectMenu = false
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('survival')
-				select.f_selectArranged()
-			end
-			--SURVIVAL CO-OP
-			if t[item].itemname == 'survivalcoop' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 2
-				main.p2Faces = true
-				main.coop = true
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('survivalcoop')
-				select.f_selectArranged()
-			end
-			--TOURNAMENT
-			if t[item].itemname == 'tournament' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_mainTournament()
-			end
-			--TRAINING
-			if t[item].itemname == 'training' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 2
-				main.stageMenu = true
-				main.versusScreen = false --versus screen disabled
-				--uses default main.t_charparam assignment
-				main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-				main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('training')
-				select.f_selectSimple()
-			end
-			--WATCH
-			if t[item].itemname == 'watch' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.aiFight = true --AI = config.Difficulty for all characters enabled
-				main.stageMenu = true
-				main.p2Faces = true
-				--uses default main.t_charparam assignment
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('watch')
-				select.f_selectSimple()
-			end
-			--EXTRAS
-			if t[item].itemname == 'extras' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_mainExtras()
-			end
-			--OPTIONS
-			if t[item].itemname == 'options' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				options.f_mainCfg() --start f_mainCfg() function from script/options.lua
-			end
-			--EXIT
-			if t[item].itemname == 'exit' then
-				break
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-		main.f_demo(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; NETPLAY MENU
---;===========================================================
 local txt_connecting = main.f_createTextImg(
 	motif.font_data[motif.title_info.connecting_font[1]],
 	motif.title_info.connecting_font[2],
@@ -1993,496 +2277,7 @@ function main.f_connect(server, t)
 	if not cancel then
 		synchronize()
 		math.randomseed(sszRandom())
-		main.f_netplayMode()
-	end
-end
-
-local t_mainNetplay = {
-	{data = textImgNew(), itemname = 'serverhost', displayname = motif.title_info.menu_itemname_serverhost},
-	{data = textImgNew(), itemname = 'serverjoin', displayname = motif.title_info.menu_itemname_serverjoin},
-	{data = textImgNew(), itemname = 'serverback', displayname = motif.title_info.menu_itemname_serverback},
-}
-t_mainNetplay = main.f_cleanTable(t_mainNetplay, main.t_sort.title_info)
-
-function main.f_mainNetplay()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_mainNetplay
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--HOST
-			if t[item].itemname == 'serverhost' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort()))
-				exitNetPlay()
-				exitReplay()
-				--save replay with a new name
-				local file = io.open("save/replays/netplay.replay", "r")
-				local tpmFile = file:read("*all")
-				io.close(file)
-				file = io.open("save/replays/" .. os.date("%Y-%m(%b)-%d %I-%M%p-%Ss") .. ".replay", "w+")
-				file:write(tpmFile)
-				io.close(file)
-			end
-			--JOIN
-			if t[item].itemname == 'serverjoin' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_netplayJoin()
-			end
-			--BACK
-			if t[item].itemname == 'serverback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; NETPLAY JOIN
---;===========================================================
-local t_netplayJoin = {}
-table.insert(t_netplayJoin, {data = textImgNew(), itemname = 'joinadd', displayname = motif.title_info.menu_itemname_joinadd})
-for k, v in pairs(config.IP) do
-	table.insert(t_netplayJoin, {data = textImgNew(), itemname = k, displayname = k, address = v})
-end
-table.insert(t_netplayJoin, {data = textImgNew(), itemname = 'joinback', displayname = motif.title_info.menu_itemname_joinback})
-
-function main.f_netplayJoin()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_netplayJoin
-	local t_tmp = {}
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		--DELETE ENTRY
-		elseif getKey() == 'DELETE' and item ~= 1 and item ~= #t then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			resetKey()
-			config.IP[t[item].itemname] = nil
-			t_tmp = {}
-			for i = 1, #t do
-				if i ~= item then
-					table.insert(t_tmp, t[i])
-				end
-			end
-			t_netplayJoin = t_tmp
-			t = t_netplayJoin
-			local file = io.open("save/config.json","w+")
-			file:write(json.encode(config, {indent = true}))
-			file:close()
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--NEW ADDRESS
-			if t[item].itemname == 'joinadd' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
-				local name = main.f_input(main.f_extractText(motif.title_info.input_ip_name_text), motif.title_info, motif.titlebgdef, 'string')
-				if name ~= '' then
-					sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
-					local address = main.f_input(main.f_extractText(motif.title_info.input_ip_address_text), motif.title_info, motif.titlebgdef, 'string')
-					if address:match('^[0-9%.]+$') then
-						sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-						config.IP[name] = address
-						t_tmp = {}
-						for i = 1, #t do
-							if i < #t then
-								t_tmp[i] = t[i]
-							else
-								t_tmp[i] = {data = textImgNew(), itemname = name, displayname = name, address = address}
-								t_tmp[i + 1] = t[i]
-							end
-						end
-						t_netplayJoin = t_tmp
-						t = t_netplayJoin
-						local file = io.open("save/config.json","w+")
-						file:write(json.encode(config, {indent = true}))
-						file:close()
-					else
-						sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-					end
-				else
-					sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				end
-			--BACK
-			elseif t[item].itemname == 'joinback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			--CONNECTION
-			else
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_connect(t[item].address, main.f_extractText(motif.title_info.connecting_join_text, t[item].name, t[item].address))
-				exitNetPlay()
-				exitReplay()
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; NETPLAY MODE
---;===========================================================
-local t_netplayMode = {
-	{data = textImgNew(), itemname = 'netplayversus', displayname = motif.title_info.menu_itemname_netplayversus, selectname = motif.select_info.title_text_netplayversus},
-	{data = textImgNew(), itemname = 'netplayteamcoop', displayname = motif.title_info.menu_itemname_netplayteamcoop, selectname = motif.select_info.title_text_netplayteamcoop},
-	{data = textImgNew(), itemname = 'netplaysurvivalcoop', displayname = motif.title_info.menu_itemname_netplaysurvivalcoop, selectname = motif.select_info.title_text_netplaysurvivalcoop},
-	{data = textImgNew(), itemname = 'netplayback', displayname = motif.title_info.menu_itemname_netplayback},
-}
-t_netplayMode = main.f_cleanTable(t_netplayMode, main.t_sort.title_info)
-
-function main.f_netplayMode()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_netplayMode
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--VS MODE
-			if t[item].itemname == 'netplayversus' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				setHomeTeam(1)
-				main.p2In = 2
-				main.stageMenu = true
-				main.p2Faces = true
-				--uses default main.t_charparam assignment
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				setGameMode('netplayversus')
-				select.f_selectSimple()
-			end
-			--TEAM CO-OP
-			if t[item].itemname == 'netplayteamcoop' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 2
-				main.p2Faces = true
-				main.coop = true
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				main.t_charparam.rivals = true
-				main.credits = config.Credits - 1
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				setGameMode('netplayteamcoop')
-				select.f_selectArcade()
-			end
-			--SURVIVAL CO-OP
-			if t[item].itemname == 'netplaysurvivalcoop' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 2
-				main.p2Faces = true
-				main.coop = true
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				setGameMode('netplaysurvivalcoop')
-				select.f_selectArranged()
-			end
-			--BACK
-			if t[item].itemname == 'netplayback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; EXTRAS MENU
---;===========================================================
-local t_mainExtras = {
-	{data = textImgNew(), itemname = 'freebattle', displayname = motif.title_info.menu_itemname_freebattle, selectname = motif.select_info.title_text_freebattle},
-	--{data = textImgNew(), itemname = 'timechallenge', displayname = motif.title_info.menu_itemname_timechallenge, selectname = motif.select_info.title_text_timechallenge},
-	--{data = textImgNew(), itemname = 'scorechallenge', displayname = motif.title_info.menu_itemname_scorechallenge, selectname = motif.select_info.title_text_scorechallenge},
-	{data = textImgNew(), itemname = '100kumite', displayname = motif.title_info.menu_itemname_100kumite, selectname = motif.select_info.title_text_100kumite},
-	{data = textImgNew(), itemname = 'bossrush', displayname = motif.title_info.menu_itemname_bossrush, selectname = motif.select_info.title_text_bossrush},
-	{data = textImgNew(), itemname = 'bonusgames', displayname = motif.title_info.menu_itemname_bonusgames},
-	--{data = textImgNew(), itemname = 'scoreranking', displayname = motif.title_info.menu_itemname_scoreranking},
-	{data = textImgNew(), itemname = 'replay', displayname = motif.title_info.menu_itemname_replay, selectname = motif.select_info.title_text_replay},
-	{data = textImgNew(), itemname = 'randomtest', displayname = motif.title_info.menu_itemname_randomtest},
-	{data = textImgNew(), itemname = 'extrasback', displayname = motif.title_info.menu_itemname_extrasback},
-}
-for i = 1, #t_mainExtras do
-	if t_mainExtras[i].itemname == 'bossrush' and #main.t_bossChars == 0 then
-		t_mainExtras[i].displayname = ''
-	elseif t_mainExtras[i].itemname == 'bonusgames' and #main.t_bonusChars == 0 then
-		t_mainExtras[i].displayname = ''
-	elseif t_mainExtras[i].itemname == 'randomtest' and #main.t_randomChars < 2 then
-		t_mainExtras[i].displayname = ''
-	end
-end
-t_mainExtras = main.f_cleanTable(t_mainExtras, main.t_sort.title_info)
-
-function main.f_mainExtras()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_mainExtras
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--FREE BATTLE
-			if t[item].itemname == 'freebattle' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.stageMenu = true
-				main.p2Faces = true
-				--uses default main.t_charparam assignment
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('freebattle')
-				select.f_selectSimple()
-			end
-			--VS 100 KUMITE
-			if t[item].itemname == '100kumite' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.p2SelectMenu = false
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('100kumite')
-				select.f_selectArranged()
-			end
-			--BOSS RUSH
-			if t[item].itemname == 'bossrush' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.p2SelectMenu = false
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('bossrush')
-				select.f_selectArranged()
-			end
-			--BONUS GAMES
-			if t[item].itemname == 'bonusgames' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_bonusExtras()
-			end
-			--REPLAY
-			if t[item].itemname == 'replay' then
-				if main.f_fileExists('save/replays/netplay.replay') then
-					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-					enterReplay('save/replays/netplay.replay')
-					synchronize()
-					math.randomseed(sszRandom())
-					main.f_netplayMode()
-					exitNetPlay()
-					exitReplay()
-				end
-			end
-			--DEMO
-			if t[item].itemname == 'randomtest' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
-				setGameMode('randomtest')
-				randomtest.run()
-				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-			end
-			--BACK
-			if t[item].itemname == 'extrasback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; BONUS GAMES
---;===========================================================
-local t_bonusExtras = {}
-for i = 1, #main.t_bonusChars do
-	local name = getCharName(main.t_bonusChars[i])
-	t_bonusExtras[i] = {
-		data = textImgNew(),
-		itemname = name,
-		displayname = name:upper(),
-		selectname = name
-	}
-end
-if motif.title_info.menu_itemname_bonusback ~= '' then
-	table.insert(t_bonusExtras, {data = textImgNew(), itemname = 'bonusback', displayname = motif.title_info.menu_itemname_bonusback})
-end
-
-function main.f_bonusExtras()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_bonusExtras
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--BACK
-			if t[item].itemname == 'bonusback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			--BONUS CHAR NAME
-			else
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.p2In = 1
-				main.versusScreen = false
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				main.p1TeamMenu = {mode = 0, chars = 1}
-				main.p2TeamMenu = {mode = 0, chars = 1}
-				main.p2Char = {main.t_bonusChars[item]}
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('bonus')
-				select.f_selectSimple()
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-	end
-end
-
---;===========================================================
---; TOURNAMENT MENU
---;===========================================================
-local t_mainTournament = {
-	{data = textImgNew(), itemname = 'tourney32', displayname = motif.title_info.menu_itemname_tourney32, selectname = motif.select_info.title_text_tourney32},
-	{data = textImgNew(), itemname = 'tourney16', displayname = motif.title_info.menu_itemname_tourney16, selectname = motif.select_info.title_text_tourney16},
-	{data = textImgNew(), itemname = 'tourney8', displayname = motif.title_info.menu_itemname_tourney8, selectname = motif.select_info.title_text_tourney8},
-	{data = textImgNew(), itemname = 'tourney4', displayname = motif.title_info.menu_itemname_tourney4, selectname = motif.select_info.title_text_tourney4},
-	{data = textImgNew(), itemname = 'tourneyback', displayname = motif.title_info.menu_itemname_tourneyback},
-}
-t_mainTournament = main.f_cleanTable(t_mainTournament, main.t_sort.title_info)
-
-function main.f_mainTournament()
-	main.f_cmdInput()
-	local cursorPosY = 1
-	local moveTxt = 0
-	local item = 1
-	local t = t_mainTournament
-	while true do
-		cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-		if esc() then
-			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-			break
-		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-			main.f_default()
-			--ROUND OF 32
-			if t[item].itemname == 'tourney32' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('tournament')
-				select.f_selectTournament(32)
-			end
-			--ROUND OF 16
-			if t[item].itemname == 'tourney16' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('tournament')
-				select.f_selectTournament(16)
-			end
-			--QUARTERFINALS
-			if t[item].itemname == 'tourney8' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('tournament')
-				select.f_selectTournament(8)
-			end
-			--SEMIFINALS
-			if t[item].itemname == 'tourney4' then
-				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-				main.t_charparam.stage = true
-				main.t_charparam.music = true
-				main.t_charparam.zoom = true
-				main.t_charparam.ai = true
-				main.t_charparam.rounds = true
-				main.t_charparam.time = true
-				main.t_charparam.onlyme = true
-				textImgSetText(main.txt_mainSelect, t[item].selectname)
-				main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				setGameMode('tournament')
-				select.f_selectTournament(4)
-			end
-			--BACK
-			if t[item].itemname == 'tourneyback' then
-				sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-				break
-			end
-		end
-		main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
+		main.menu.submenu.server.loop()
 	end
 end
 
@@ -2492,7 +2287,7 @@ end
 -- Now that everithig is loaded we can enable GC back.
 SetGCPercent(100)
 
-main.f_mainMenu()
+main.menu.loop()
 
 -- Debug Info
 --main.f_printTable(main, "debug/t_main.txt")
