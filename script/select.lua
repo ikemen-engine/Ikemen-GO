@@ -1119,6 +1119,9 @@ function select.f_selectArranged()
 	while true do
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
+		if winner == -1 then --player exit the match via ESC
+			select.f_selectReset()
+		end
 		selectStart()
 		timerSelect = 0
 		while not selScreenEnd do
@@ -1147,7 +1150,7 @@ function select.f_selectArranged()
 			--generate AI ramping table
 			select.f_aiRamp(1)
 		--player exit the match via ESC in VS 100 Kumite mode
-		elseif winner == -1 and gameMode('100kumite') then
+		--[[elseif winner == -1 and gameMode('100kumite') then
 			--counter
 			looseCnt = looseCnt + 1
 			--result
@@ -1162,7 +1165,7 @@ function select.f_selectArranged()
 			end
 			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			resetRemapInput()
-			return
+			return]]
 		--player won in any mode or lost/draw in VS 100 Kumite mode
 		elseif winner == 1 or gameMode('100kumite') then
 			--counter
@@ -1243,11 +1246,14 @@ function select.f_selectArranged()
 		select.f_setRounds()
 		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
-		--if esc() then break end
-		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
-		loadStart()
-		winner, t_gameStats = game()
-		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+		if esc() then
+			winner = -1
+		else
+			clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
+			loadStart()
+			winner, t_gameStats = game()
+			main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+		end
 		resetRemapInput()
 		main.f_cmdInput()
 		refresh()
@@ -1279,6 +1285,9 @@ function select.f_selectArcade()
 	while true do
 		main.f_menuReset(motif.selectbgdef.bg, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 		fadeType = 'fadein'
+		if winner == -1 then --player exit the match via ESC
+			select.f_selectReset()
+		end
 		selectStart()
 		timerSelect = 0
 		while not selScreenEnd do
@@ -1404,7 +1413,6 @@ function select.f_selectArcade()
 						p2SelEnd = false
 					end
 					fadeType = 'fadein'
-					--selectStart()
 					timerSelect = 0
 					selScreenEnd = false
 					while not selScreenEnd do
@@ -1426,7 +1434,7 @@ function select.f_selectArcade()
 			end
 			--coop swap
 			if main.coop then
-				if winner == -1 or winner == 2 then
+				if --[[winner == -1 or]] winner == 2 then
 					p1NumChars = 2
 					p2NumChars = numChars
 					t_p1Selected[2] = {cel = t_p2Selected[1].cel, pal = t_p2Selected[1].pal}
@@ -1487,72 +1495,75 @@ function select.f_selectArcade()
 		select.f_setRounds()
 		stageNo = select.f_setStage(stageNo)
 		select.f_selectVersus()
-		if esc() then break end
-		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
-		loadStart()
-		winner, t_gameStats = game()
-		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
-		--here comes a new challenger
-		challenger = false
-		if t_gameStats.challenger > 0 then
-			refresh() --needed to clean inputs
-			challenger = true
-			--save values
-			local p2TeamMenu_sav = main.f_copyTable(main.p2TeamMenu)
-			local t_p2Selected_sav = main.f_copyTable(t_p2Selected)
-			local t_charparam_sav = main.f_copyTable(main.t_charparam)
-			local p1Cell_sav = p1Cell
-			local p2Cell_sav = p2Cell
-			local matchNo_sav = matchNo
-			local stageNo_sav = stageNo
-			local p2TeamMode_sav = p2TeamMode
-			local p2NumChars_sav = p2NumChars
-			local gameMode = gameMode()
-			main.f_resetCharparam()
-			--temp values
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
-			setHomeTeam(1)
-			main.p2In = 2
-			main.p2SelectMenu = true
-			main.stageMenu = true
-			main.p2Faces = true
-			main.p1TeamMenu = nil
-			main.p2TeamMenu = nil
-			setGameMode('teamversus')
-			--start challenger match
-			select.f_selectSimple()
-			--if esc() then break end
-			--reload values
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
-			setHomeTeam(2)
-			main.p2In = 1
-			main.p2SelectMenu = false
-			main.stageMenu = false
-			main.p2Faces = false
-			--move player2 characters into player1 side and remap buttons if needed
-			if winner == 2 then
-				--TODO: when player1 team loose continue playing the arcade mode as player2 team
+		if esc() then
+			winner = -1
+		else
+			clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
+			loadStart()
+			winner, t_gameStats = game()
+			main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+			--here comes a new challenger
+			challenger = false
+			if t_gameStats.challenger > 0 then
+				refresh() --needed to clean inputs
+				challenger = true
+				--save values
+				local p2TeamMenu_sav = main.f_copyTable(main.p2TeamMenu)
+				local t_p2Selected_sav = main.f_copyTable(t_p2Selected)
+				local t_charparam_sav = main.f_copyTable(main.t_charparam)
+				local p1Cell_sav = p1Cell
+				local p2Cell_sav = p2Cell
+				local matchNo_sav = matchNo
+				local stageNo_sav = stageNo
+				local p2TeamMode_sav = p2TeamMode
+				local p2NumChars_sav = p2NumChars
+				local gameMode = gameMode()
+				main.f_resetCharparam()
+				--temp values
+				textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
+				setHomeTeam(1)
+				main.p2In = 2
+				main.p2SelectMenu = true
+				main.stageMenu = true
+				main.p2Faces = true
+				main.p1TeamMenu = nil
+				main.p2TeamMenu = nil
+				setGameMode('teamversus')
+				--start challenger match
+				select.f_selectSimple()
+				--if esc() then break end
+				--reload values
+				textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
+				setHomeTeam(2)
+				main.p2In = 1
+				main.p2SelectMenu = false
+				main.stageMenu = false
+				main.p2Faces = false
+				--move player2 characters into player1 side and remap buttons if needed
+				if winner == 2 then
+					--TODO: when player1 team loose continue playing the arcade mode as player2 team
+				end
+				--restore values
+				main.p2TeamMenu = main.f_copyTable(p2TeamMenu_sav)
+				t_p2Selected = main.f_copyTable(t_p2Selected_sav)
+				main.t_charparam = main.f_copyTable(t_charparam_sav)
+				p1Cell = p1Cell_sav
+				p2Cell = p2Cell_sav
+				matchNo = matchNo_sav
+				stageNo = stageNo_sav
+				p2TeamMode = p2TeamMode_sav
+				p2NumChars = p2NumChars_sav
+				setTeamMode(2, p2TeamMode, p2NumChars)
+				setGameMode(gameMode)
+				continueData = true
 			end
-			--restore values
-			main.p2TeamMenu = main.f_copyTable(p2TeamMenu_sav)
-			t_p2Selected = main.f_copyTable(t_p2Selected_sav)
-			main.t_charparam = main.f_copyTable(t_charparam_sav)
-			p1Cell = p1Cell_sav
-			p2Cell = p2Cell_sav
-			matchNo = matchNo_sav
-			stageNo = stageNo_sav
-			p2TeamMode = p2TeamMode_sav
-			p2NumChars = p2NumChars_sav
-			setTeamMode(2, p2TeamMode, p2NumChars)
-			setGameMode(gameMode)
-			continueData = true
-		end
-		--restore P2 Team settings if needed
-		if restoreTeam then
-			p2TeamMode = teamMode
-			p2NumChars = numChars
-			setTeamMode(2, p2TeamMode, p2NumChars)
-			restoreTeam = false
+			--restore P2 Team settings if needed
+			if restoreTeam then
+				p2TeamMode = teamMode
+				p2NumChars = numChars
+				setTeamMode(2, p2TeamMode, p2NumChars)
+				restoreTeam = false
+			end
 		end
 		resetRemapInput()
 		main.f_cmdInput()
