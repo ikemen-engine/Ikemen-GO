@@ -1309,14 +1309,15 @@ func systemScriptInit(l *lua.LState) {
 				v = int(sys.chars[pn-1][0].winquote)
 			}
 			if v < 0 || v >= MaxQuotes {
-				t := []string{}
+				t := []int{}
 				for i, q := range sys.cgi[sys.chars[pn-1][0].playerNo].quotes {
-					if sys.cgi[sys.chars[pn-1][0].playerNo].quotes[i] != "" {
-						t = append(t, q)
+					if q != "" {
+						t = append(t, i)
 					}
 				}
 				if len(t) > 0 {
 					v = rand.Int() % len(t)
+					v = t[v]
 				} else {
 					v = -1
 				}

@@ -1704,18 +1704,18 @@ func (l *Lifebar) draw(layerno int16) {
 		for i := range l.wi {
 			l.wi[i].draw(layerno, l.fnt[:])
 		}
+		for ti, tm := range sys.tmode {
+			if tm == TM_Turns {
+				rl := sys.chars[ti][0].ratioLevel()
+				if rl > 0 {
+					l.ra[ti].draw(layerno, rl-1)
+				}
+			}
+		}
 	}
 	l.co.draw(layerno, l.fnt[:])
 	if sys.challenger > 0 && l.ch.challenger.displaytime > l.ch.cnt {
 		l.ch.bgDraw(layerno)
 		l.ch.draw(layerno, l.fnt[:])
-	}
-	for ti, tm := range sys.tmode {
-		if tm == TM_Turns {
-			rl := sys.chars[ti][0].ratioLevel()
-			if rl > 0 {
-				l.ra[ti].draw(layerno, rl-1)
-			}
-		}
 	}
 }
