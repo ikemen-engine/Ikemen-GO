@@ -1869,7 +1869,6 @@ function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_esc
 				)
 			elseif bool_del and getKey() == 'DELETE' then
 				main.f_deleteIP(item, t)
-				main.f_printTable(t)
 			elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 				main.f_default()
 				if not main.f_itemname(cursorPosY, moveTxt, item, t, tbl) then
@@ -1903,7 +1902,7 @@ for i = 1, #main.t_sort.title_info do
 		--appending the menu table
 		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
 			if main.menu.submenu[c] == nil then
-				if not main.t_sort.title_info[i]:match(c .. '_') then --
+				if not main.t_sort.title_info[i]:match(c .. '_') then
 					table.insert(main.menu.items, {data = textImgNew(), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				end
 				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
