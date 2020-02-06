@@ -948,7 +948,14 @@ for i = 1, #t_files do
 		ext = ext:lower()
 		if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
 			if t_shaders[path .. filename] == nil then
-				table.insert(t_shaderCfg, {data = textImgNew(), itemname = path .. filename, displayname = filename, selected = false})
+				local selected = false
+				for j = 1, #config.ExternalShaders do
+					if config.ExternalShaders[j]:lower() == path .. filename then
+						selected = true
+						break
+					end
+				end
+				table.insert(t_shaderCfg, {data = textImgNew(), itemname = path .. filename, displayname = filename, selected = selected})
 				t_shaders[path .. filename] = ''
 			end
 		end
