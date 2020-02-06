@@ -950,7 +950,7 @@ for i = 1, #t_files do
 			if t_shaders[path .. filename] == nil then
 				local selected = false
 				for j = 1, #config.ExternalShaders do
-					if config.ExternalShaders[j]:lower() == path .. filename then
+					if config.ExternalShaders[j] == path .. filename then
 						selected = true
 						break
 					end
