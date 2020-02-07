@@ -39,6 +39,14 @@ const (
 	WT_PTeammate
 )
 
+type RoundType int32
+
+const (
+	RT_Normal RoundType = iota
+	RT_Deciding
+	RT_Final
+)
+
 func (wt *WinType) SetPerfect() {
 	if *wt >= WT_N && *wt <= WT_Teammate {
 		*wt += WT_PN - WT_N
@@ -183,8 +191,11 @@ func readPowerBar(pre string, is IniSection,
 		&pb.counter_font[2])
 	pb.counter_lay = *ReadLayout(pre+"counter.", is, 0)
 	for i := range pb.level_snd {
-		is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
-			&pb.level_snd[i][1])
+		if !is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
+			&pb.level_snd[i][1]) {
+			is.ReadI32(fmt.Sprintf("level%v.snd", i+1), &pb.level_snd[i][0],
+				&pb.level_snd[i][1])
+		}
 	}
 	return pb
 }
@@ -575,7 +586,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 		c.counter_lay[i] = *ReadLayout("counter.", is, 2)
 		c.counter_lay[i].offset = [2]float32{}
 		is.ReadI32("text.font", &c.text_font[i][0], &c.text_font[i][1], &c.text_font[i][2])
-		c.text_text[i] = is["text.text"]
+		c.text_text[i], _ = is.getString("text.text")
 		c.text_lay[i] = *ReadLayout("text.", is, 2)
 		is.ReadI32("displaytime", &c.displaytime[i])
 	}
@@ -590,7 +601,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c.counter_lay[0].offset = [2]float32{}
 	is.ReadI32("team1.text.font", &c.text_font[0][0], &c.text_font[0][1], &c.text_font[0][2])
 	if len(is["team1.text.text"]) > 0 {
-		c.text_text[0] = is["team1.text.text"]
+		c.text_text[0], _ = is.getString("team1.text.text")
 	}
 	c.text_lay[0] = *ReadLayout("team1.text.", is, 2)
 	is.ReadI32("team1.displaytime", &c.displaytime[0])
@@ -607,7 +618,7 @@ func readLifeBarCombo(is IniSection) *LifeBarCombo {
 	c.counter_lay[1].offset = [2]float32{}
 	is.ReadI32("team2.text.font", &c.text_font[1][0], &c.text_font[1][1], &c.text_font[1][2])
 	if len(is["team2.text.text"]) > 0 {
-		c.text_text[1] = is["team2.text.text"]
+		c.text_text[1], _ = is.getString("team2.text.text")
 	}
 	c.text_lay[1] = *ReadLayout("team2.text.", is, 2)
 	is.ReadI32("team2.displaytime", &c.displaytime[1])
@@ -746,12 +757,7 @@ func readLifeBarRound(is IniSection,
 	r := newLifeBarRound(snd, fnt)
 	var tmp int32
 	is.ReadI32("pos", &r.pos[0], &r.pos[1])
-	tmp = Atoi(sys.cmdFlags["-rounds"])
-	if tmp > 0 {
-		r.match_wins = tmp
-	} else {
-		is.ReadI32("match.wins", &r.match_wins)
-	}
+	is.ReadI32("match.wins", &r.match_wins)
 	is.ReadI32("match.maxdrawgames", &r.match_maxdrawgames)
 	if is.ReadI32("start.waittime", &tmp) {
 		r.start_waittime = Max(1, tmp)
@@ -760,8 +766,7 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("round.sndtime", &r.round_sndtime)
 	r.round_default = *ReadAnimTextSnd("round.default.", is, sff, at, 2)
 	for i := range r.round {
-		r.round[i] = r.round_default
-		r.round[i].Read(fmt.Sprintf("round%v.", i+1), is, at, 2)
+		r.round[i] = *ReadAnimTextSnd(fmt.Sprintf("round%v.", i+1), is, sff, at, 2)
 	}
 	is.ReadI32("fight.time", &r.fight_time)
 	is.ReadI32("fight.sndtime", &r.fight_sndtime)
@@ -822,7 +827,8 @@ func (r *LifeBarRound) act() bool {
 				end := false
 				if int(sys.round) <= len(r.round) {
 					r.round[sys.round-1].Action()
-					end = r.round[sys.round-1].End(r.dt[0])
+					r.round_default.Action()
+					end = r.round[sys.round-1].End(r.dt[0]) && r.round_default.End(r.dt[0])
 				} else {
 					r.round_default.Action()
 					end = r.round_default.End(r.dt[0])
@@ -885,7 +891,7 @@ func (r *LifeBarRound) act() bool {
 			f(&r.to, 0)
 		}
 		if sys.intro < -(r.over_hittime + r.over_waittime + r.over_wintime) {
-			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
+			if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
 				f(&r.drawn, 1)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				f(&r.win2, 1)
@@ -915,18 +921,17 @@ func (r *LifeBarRound) draw(layerno int16) {
 	switch r.cur {
 	case 0:
 		if r.wt[0] < 0 && sys.intro <= r.ctrl_time {
+			tmp := r.round_default.text
+			r.round_default.text = OldSprintf(tmp, sys.round)
+			r.round_default.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
+				layerno, r.fnt, sys.lifebarScale)
+			r.round_default.text = tmp
 			if int(sys.round) <= len(r.round) {
-				tmp := r.round[sys.round-1].text
+				tmp = r.round[sys.round-1].text
 				r.round[sys.round-1].text = OldSprintf(tmp, sys.round)
 				r.round[sys.round-1].DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
 					layerno, r.fnt, sys.lifebarScale)
 				r.round[sys.round-1].text = tmp
-			} else {
-				tmp := r.round_default.text
-				r.round_default.text = OldSprintf(tmp, sys.round)
-				r.round_default.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]),
-					layerno, r.fnt, sys.lifebarScale)
-				r.round_default.text = tmp
 			}
 		}
 	case 1:
@@ -945,7 +950,7 @@ func (r *LifeBarRound) draw(layerno int16) {
 			}
 		}
 		if r.wt[1] < 0 {
-			if sys.finish == FT_DKO || sys.finish == FT_TODraw {
+			if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
 				r.drawn.DrawScaled(float32(r.pos[0])+sys.lifebarOffsetX, float32(r.pos[1]), layerno, r.fnt, sys.lifebarScale)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				tmp := r.win2.text
@@ -969,19 +974,114 @@ func (r *LifeBarRound) draw(layerno int16) {
 	sys.brightness = ob
 }
 
+type LifeBarChallenger struct {
+	cnt        int32
+	snd        *Snd
+	pos        [2]int32
+	challenger AnimTextSnd
+	sndtime    int32
+	over_pause int32
+	over_time  int32
+	bg         AnimLayout
+	fnt        []*Fnt
+}
+
+func newLifeBarChallenger(snd *Snd, fnt []*Fnt) *LifeBarChallenger {
+	return &LifeBarChallenger{snd: snd, fnt: fnt}
+}
+func readLifeBarChallenger(is IniSection,
+	sff *Sff, at AnimationTable, snd *Snd, fnt []*Fnt) *LifeBarChallenger {
+	ch := newLifeBarChallenger(snd, fnt)
+	is.ReadI32("pos", &ch.pos[0], &ch.pos[1])
+	ch.challenger = *ReadAnimTextSnd("", is, sff, at, 1)
+	is.ReadI32("sndtime", &ch.sndtime)
+	var tmp int32
+	if is.ReadI32("over.pause", &tmp) {
+		ch.over_pause = Max(1, tmp)
+	}
+	if is.ReadI32("over.time", &tmp) {
+		ch.over_time = Max(ch.over_pause+1, tmp)
+	}
+	ch.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
+	return ch
+}
+func (ch *LifeBarChallenger) step() {
+	if sys.challenger > 0 {
+		if ch.cnt == ch.sndtime {
+			ch.snd.play(ch.challenger.snd)
+		}
+		if ch.cnt == ch.over_pause {
+			sys.paused = true
+		}
+		if ch.challenger.displaytime > ch.cnt {
+			ch.challenger.Action()
+			ch.bg.Action()
+		}
+		ch.cnt += 1
+	}
+}
+func (ch *LifeBarChallenger) reset() {
+	ch.cnt = 0
+	ch.challenger.Reset()
+	ch.bg.Reset()
+}
+func (ch *LifeBarChallenger) bgDraw(layerno int16) {
+	ch.bg.Draw(float32(ch.pos[0]), float32(ch.pos[1]), layerno)
+}
+func (ch *LifeBarChallenger) draw(layerno int16, f []*Fnt) {
+	ch.challenger.Draw(float32(ch.pos[0]), float32(ch.pos[1]), layerno, ch.fnt)
+}
+
+type LifeBarRatio struct {
+	pos    [2]int32
+	offset [2]int32
+	icon   [4]AnimLayout
+}
+
+func newLifeBarRatio() *LifeBarRatio {
+	return &LifeBarRatio{}
+}
+func readLifeBarRatio(pre string, is IniSection,
+	sff *Sff, at AnimationTable) *LifeBarRatio {
+	ra := newLifeBarRatio()
+	is.ReadI32(pre+"pos", &ra.pos[0], &ra.pos[1])
+	is.ReadI32(pre+"offset", &ra.offset[0], &ra.offset[1])
+	ra.icon[0] = *ReadAnimLayout(pre+"level1.", is, sff, at, 0)
+	ra.icon[1] = *ReadAnimLayout(pre+"level2.", is, sff, at, 0)
+	ra.icon[2] = *ReadAnimLayout(pre+"level3.", is, sff, at, 0)
+	ra.icon[3] = *ReadAnimLayout(pre+"level4.", is, sff, at, 0)
+	return ra
+}
+func (ra *LifeBarRatio) step(num int32) {
+	ra.icon[num].Action()
+}
+func (ra *LifeBarRatio) reset() {
+	for i := range ra.icon {
+		ra.icon[i].Reset()
+	}
+}
+func (ra *LifeBarRatio) draw(layerno int16, num int32) {
+	ra.icon[num].DrawScaled(float32(ra.pos[0]+ra.offset[0])+sys.lifebarOffsetX,
+		float32(ra.pos[1]+ra.offset[1]), layerno, sys.lifebarScale)
+}
+
 type Lifebar struct {
 	fat       AnimationTable
 	fsff      *Sff
 	snd, fsnd *Snd
 	fnt       [10]*Fnt
-	hb        [4][]*HealthBar
-	pb        [2]*PowerBar
+	ref       [4][2]int
+	num       [4][2]int
+	hb        [8][]*HealthBar
+	pb        [6][]*PowerBar
 	fa        [4][]*LifeBarFace
 	nm        [4][]*LifeBarName
 	wi        [2]*LifeBarWinIcon
 	ti        *LifeBarTime
 	co        *LifeBarCombo
 	ro        *LifeBarRound
+	ch        *LifeBarChallenger
+	ra        [2]*LifeBarRatio
 }
 
 func loadLifebar(deffile string) (*Lifebar, error) {
@@ -991,11 +1091,29 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	}
 	l := &Lifebar{fsff: &Sff{}, snd: &Snd{},
 		hb: [...][]*HealthBar{make([]*HealthBar, 2), make([]*HealthBar, 4),
-			make([]*HealthBar, 2), make([]*HealthBar, 4)},
-		fa: [...][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 4),
-			make([]*LifeBarFace, 2), make([]*LifeBarFace, 4)},
-		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 4),
-			make([]*LifeBarName, 2), make([]*LifeBarName, 4)}}
+			make([]*HealthBar, 2), make([]*HealthBar, 4), make([]*HealthBar, 6),
+			make([]*HealthBar, 8), make([]*HealthBar, 6), make([]*HealthBar, 8)},
+		pb: [...][]*PowerBar{make([]*PowerBar, 2), make([]*PowerBar, 4),
+			make([]*PowerBar, 2), make([]*PowerBar, 2), make([]*PowerBar, 6),
+			make([]*PowerBar, 8)},
+		fa: [...][]*LifeBarFace{make([]*LifeBarFace, 2), make([]*LifeBarFace, 8),
+			make([]*LifeBarFace, 2), make([]*LifeBarFace, 8)},
+		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 8),
+			make([]*LifeBarName, 2), make([]*LifeBarName, 8)}}
+	missing := map[string]int{"[simul_3p lifebar]": 3, "[simul_4p lifebar]": 4,
+		"[tag lifebar]": 5, "[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7,
+		"[simul powerbar]": 1, "[turns powerbar]": 2, "[simul_3p powerbar]": 3,
+		"[simul_4p powerbar]": 4, "[tag powerbar]": 5, "[tag face]": -1,
+		"[tag name]": -1, "[challenger]": -1, "[ratio]": -1}
+	strc := strings.ToLower(strings.TrimSpace(str))
+	for k, _ := range missing {
+		strc = strings.Replace(strc, ";"+k, "", -1)
+		if strings.Contains(strc, k) {
+			delete(missing, k)
+		} else {
+			str += "\n" + k
+		}
+	}
 	sff, lines, i := &Sff{}, SplitAndTrim(str, "\n"), 0
 	at := ReadAnimationTable(sff, lines, &i)
 	i = 0
@@ -1056,6 +1174,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				for i := range l.fnt {
 					if is.LoadFile(fmt.Sprintf("font%v", i), deffile,
 						func(filename string) error {
+							//h := int32(0)
+							//if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
+							//	h = Atoi(is[fmt.Sprintf("font%v.height", i)])
+							//}
+							//l.fnt[i], err = loadFnt(filename, h)
 							l.fnt[i], err = loadFnt(filename)
 							return err
 						}); err != nil {
@@ -1073,11 +1196,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				l.hb[0][1] = readHealthBar("p2.", is, sff, at)
 			}
 		case "powerbar":
-			if l.pb[0] == nil {
-				l.pb[0] = readPowerBar("p1.", is, sff, at, l.snd)
+			if l.pb[0][0] == nil {
+				l.pb[0][0] = readPowerBar("p1.", is, sff, at, l.snd)
 			}
-			if l.pb[1] == nil {
-				l.pb[1] = readPowerBar("p2.", is, sff, at, l.snd)
+			if l.pb[0][1] == nil {
+				l.pb[0][1] = readPowerBar("p2.", is, sff, at, l.snd)
 			}
 		case "face":
 			if l.fa[0][0] == nil {
@@ -1092,49 +1215,6 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			}
 			if l.nm[0][1] == nil {
 				l.nm[0][1] = readLifeBarName("p2.", is, sff, at)
-			}
-		case "tag ":
-			subname = strings.ToLower(subname)
-			switch {
-			case len(subname) >= 7 && subname[:7] == "lifebar":
-				if l.hb[3][0] == nil {
-					l.hb[3][0] = readHealthBar("p1.", is, sff, at)
-				}
-				if l.hb[3][1] == nil {
-					l.hb[3][1] = readHealthBar("p2.", is, sff, at)
-				}
-				if l.hb[3][2] == nil {
-					l.hb[3][2] = readHealthBar("p3.", is, sff, at)
-				}
-				if l.hb[3][3] == nil {
-					l.hb[3][3] = readHealthBar("p4.", is, sff, at)
-				}
-			case len(subname) >= 4 && subname[:4] == "face":
-				if l.fa[3][0] == nil {
-					l.fa[3][0] = readLifeBarFace("p1.", is, sff, at)
-				}
-				if l.fa[3][1] == nil {
-					l.fa[3][1] = readLifeBarFace("p2.", is, sff, at)
-				}
-				if l.fa[3][2] == nil {
-					l.fa[3][2] = readLifeBarFace("p3.", is, sff, at)
-				}
-				if l.fa[3][3] == nil {
-					l.fa[3][3] = readLifeBarFace("p4.", is, sff, at)
-				}
-			case len(subname) >= 4 && subname[:4] == "name":
-				if l.nm[3][0] == nil {
-					l.nm[3][0] = readLifeBarName("p1.", is, sff, at)
-				}
-				if l.nm[3][1] == nil {
-					l.nm[3][1] = readLifeBarName("p2.", is, sff, at)
-				}
-				if l.nm[3][2] == nil {
-					l.nm[3][2] = readLifeBarName("p3.", is, sff, at)
-				}
-				if l.nm[3][3] == nil {
-					l.nm[3][3] = readLifeBarName("p4.", is, sff, at)
-				}
 			}
 		case "simul ":
 			subname = strings.ToLower(subname)
@@ -1152,6 +1232,19 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				if l.hb[1][3] == nil {
 					l.hb[1][3] = readHealthBar("p4.", is, sff, at)
 				}
+			case len(subname) >= 8 && subname[:8] == "powerbar":
+				if l.pb[1][0] == nil {
+					l.pb[1][0] = readPowerBar("p1.", is, sff, at, l.snd)
+				}
+				if l.pb[1][1] == nil {
+					l.pb[1][1] = readPowerBar("p2.", is, sff, at, l.snd)
+				}
+				if l.pb[1][2] == nil {
+					l.pb[1][2] = readPowerBar("p3.", is, sff, at, l.snd)
+				}
+				if l.pb[1][3] == nil {
+					l.pb[1][3] = readPowerBar("p4.", is, sff, at, l.snd)
+				}
 			case len(subname) >= 4 && subname[:4] == "face":
 				if l.fa[1][0] == nil {
 					l.fa[1][0] = readLifeBarFace("p1.", is, sff, at)
@@ -1164,6 +1257,18 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}
 				if l.fa[1][3] == nil {
 					l.fa[1][3] = readLifeBarFace("p4.", is, sff, at)
+				}
+				if l.fa[1][4] == nil {
+					l.fa[1][4] = readLifeBarFace("p5.", is, sff, at)
+				}
+				if l.fa[1][5] == nil {
+					l.fa[1][5] = readLifeBarFace("p6.", is, sff, at)
+				}
+				if l.fa[1][6] == nil {
+					l.fa[1][6] = readLifeBarFace("p7.", is, sff, at)
+				}
+				if l.fa[1][7] == nil {
+					l.fa[1][7] = readLifeBarFace("p8.", is, sff, at)
 				}
 			case len(subname) >= 4 && subname[:4] == "name":
 				if l.nm[1][0] == nil {
@@ -1178,6 +1283,18 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				if l.nm[1][3] == nil {
 					l.nm[1][3] = readLifeBarName("p4.", is, sff, at)
 				}
+				if l.nm[1][4] == nil {
+					l.nm[1][4] = readLifeBarName("p5.", is, sff, at)
+				}
+				if l.nm[1][5] == nil {
+					l.nm[1][5] = readLifeBarName("p6.", is, sff, at)
+				}
+				if l.nm[1][6] == nil {
+					l.nm[1][6] = readLifeBarName("p7.", is, sff, at)
+				}
+				if l.nm[1][7] == nil {
+					l.nm[1][7] = readLifeBarName("p8.", is, sff, at)
+				}
 			}
 		case "turns ":
 			subname = strings.ToLower(subname)
@@ -1188,6 +1305,13 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}
 				if l.hb[2][1] == nil {
 					l.hb[2][1] = readHealthBar("p2.", is, sff, at)
+				}
+			case len(subname) >= 8 && subname[:8] == "powerbar":
+				if l.pb[2][0] == nil {
+					l.pb[2][0] = readPowerBar("p1.", is, sff, at, l.snd)
+				}
+				if l.pb[2][1] == nil {
+					l.pb[2][1] = readPowerBar("p2.", is, sff, at, l.snd)
 				}
 			case len(subname) >= 4 && subname[:4] == "face":
 				if l.fa[2][0] == nil {
@@ -1202,6 +1326,147 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}
 				if l.nm[2][1] == nil {
 					l.nm[2][1] = readLifeBarName("p2.", is, sff, at)
+				}
+			}
+		case "tag ":
+			subname = strings.ToLower(subname)
+			switch {
+			case len(subname) >= 7 && subname[:7] == "lifebar":
+				if l.hb[3][0] == nil {
+					l.hb[3][0] = readHealthBar("p1.", is, sff, at)
+				}
+				if l.hb[3][1] == nil {
+					l.hb[3][1] = readHealthBar("p2.", is, sff, at)
+				}
+				if l.hb[3][2] == nil {
+					l.hb[3][2] = readHealthBar("p3.", is, sff, at)
+				}
+				if l.hb[3][3] == nil {
+					l.hb[3][3] = readHealthBar("p4.", is, sff, at)
+				}
+			case len(subname) >= 8 && subname[:8] == "powerbar":
+				if l.pb[3][0] == nil {
+					l.pb[3][0] = readPowerBar("p1.", is, sff, at, l.snd)
+				}
+				if l.pb[3][1] == nil {
+					l.pb[3][1] = readPowerBar("p2.", is, sff, at, l.snd)
+				}
+			case len(subname) >= 4 && subname[:4] == "face":
+				if l.fa[3][0] == nil {
+					l.fa[3][0] = readLifeBarFace("p1.", is, sff, at)
+				}
+				if l.fa[3][1] == nil {
+					l.fa[3][1] = readLifeBarFace("p2.", is, sff, at)
+				}
+				if l.fa[3][2] == nil {
+					l.fa[3][2] = readLifeBarFace("p3.", is, sff, at)
+				}
+				if l.fa[3][3] == nil {
+					l.fa[3][3] = readLifeBarFace("p4.", is, sff, at)
+				}
+				if l.fa[3][4] == nil {
+					l.fa[3][4] = readLifeBarFace("p5.", is, sff, at)
+				}
+				if l.fa[3][5] == nil {
+					l.fa[3][5] = readLifeBarFace("p6.", is, sff, at)
+				}
+				if l.fa[3][6] == nil {
+					l.fa[3][6] = readLifeBarFace("p7.", is, sff, at)
+				}
+				if l.fa[3][7] == nil {
+					l.fa[3][7] = readLifeBarFace("p8.", is, sff, at)
+				}
+			case len(subname) >= 4 && subname[:4] == "name":
+				if l.nm[3][0] == nil {
+					l.nm[3][0] = readLifeBarName("p1.", is, sff, at)
+				}
+				if l.nm[3][1] == nil {
+					l.nm[3][1] = readLifeBarName("p2.", is, sff, at)
+				}
+				if l.nm[3][2] == nil {
+					l.nm[3][2] = readLifeBarName("p3.", is, sff, at)
+				}
+				if l.nm[3][3] == nil {
+					l.nm[3][3] = readLifeBarName("p4.", is, sff, at)
+				}
+				if l.nm[3][4] == nil {
+					l.nm[3][4] = readLifeBarName("p5.", is, sff, at)
+				}
+				if l.nm[3][5] == nil {
+					l.nm[3][5] = readLifeBarName("p6.", is, sff, at)
+				}
+				if l.nm[3][6] == nil {
+					l.nm[3][6] = readLifeBarName("p7.", is, sff, at)
+				}
+				if l.nm[3][7] == nil {
+					l.nm[3][7] = readLifeBarName("p8.", is, sff, at)
+				}
+			}
+		case "simul_3p ", "simul_4p ", "tag_3p ", "tag_4p ":
+			i := 4
+			switch name {
+			case "simul_4p ":
+				i = 5
+			case "tag_3p ":
+				i = 6
+			case "tag_4p ":
+				i = 7
+			}
+			subname = strings.ToLower(subname)
+			switch {
+			case len(subname) >= 7 && subname[:7] == "lifebar":
+				if l.hb[i][0] == nil {
+					l.hb[i][0] = readHealthBar("p1.", is, sff, at)
+				}
+				if l.hb[i][1] == nil {
+					l.hb[i][1] = readHealthBar("p2.", is, sff, at)
+				}
+				if l.hb[i][2] == nil {
+					l.hb[i][2] = readHealthBar("p3.", is, sff, at)
+				}
+				if l.hb[i][3] == nil {
+					l.hb[i][3] = readHealthBar("p4.", is, sff, at)
+				}
+				if l.hb[i][4] == nil {
+					l.hb[i][4] = readHealthBar("p5.", is, sff, at)
+				}
+				if l.hb[i][5] == nil {
+					l.hb[i][5] = readHealthBar("p6.", is, sff, at)
+				}
+				if i == 5 || i == 7 {
+					if l.hb[i][6] == nil {
+						l.hb[i][6] = readHealthBar("p7.", is, sff, at)
+					}
+					if l.hb[i][7] == nil {
+						l.hb[i][7] = readHealthBar("p8.", is, sff, at)
+					}
+				}
+			case len(subname) >= 8 && subname[:8] == "powerbar":
+				if l.pb[i][0] == nil {
+					l.pb[i][0] = readPowerBar("p1.", is, sff, at, l.snd)
+				}
+				if l.pb[i][1] == nil {
+					l.pb[i][1] = readPowerBar("p2.", is, sff, at, l.snd)
+				}
+				if l.pb[i][2] == nil {
+					l.pb[i][2] = readPowerBar("p3.", is, sff, at, l.snd)
+				}
+				if l.pb[i][3] == nil {
+					l.pb[i][3] = readPowerBar("p4.", is, sff, at, l.snd)
+				}
+				if l.pb[i][4] == nil {
+					l.pb[i][4] = readPowerBar("p5.", is, sff, at, l.snd)
+				}
+				if l.pb[i][5] == nil {
+					l.pb[i][5] = readPowerBar("p6.", is, sff, at, l.snd)
+				}
+				if i == 5 || i == 7 {
+					if l.pb[i][6] == nil {
+						l.pb[i][6] = readPowerBar("p7.", is, sff, at, l.snd)
+					}
+					if l.pb[i][7] == nil {
+						l.pb[i][7] = readPowerBar("p8.", is, sff, at, l.snd)
+					}
 				}
 			}
 		case "winicon":
@@ -1223,85 +1488,71 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			if l.ro == nil {
 				l.ro = readLifeBarRound(is, sff, at, l.snd, l.fnt[:])
 			}
+		case "challenger":
+			if l.ch == nil {
+				l.ch = readLifeBarChallenger(is, sff, at, l.snd, l.fnt[:])
+			}
+		case "ratio":
+			if l.ra[0] == nil {
+				l.ra[0] = readLifeBarRatio("p1.", is, sff, at)
+			}
+			if l.ra[1] == nil {
+				l.ra[1] = readLifeBarRatio("p2.", is, sff, at)
+			}
 		}
 	}
-	i = 0
-	//Load again to fill empty spaces of TAG (For retrocompatibility)
-	for i < len(lines) {
-		is, name, subname := ReadIniSection(lines, &i)
-		switch name {
-		case "simul ":
-			subname = strings.ToLower(subname)
-			switch {
-			case len(subname) >= 7 && subname[:7] == "lifebar":
-				if l.hb[3][0] == nil {
-					l.hb[3][0] = readHealthBar("p1.", is, sff, at)
+	for k, v := range missing {
+		if strings.Contains(k, "lifebar") {
+			for i := 3; i < len(l.hb); i++ {
+				if i == v {
+					for j, d := range l.hb[1] {
+						l.hb[i][j] = d
+					}
 				}
-				if l.hb[3][1] == nil {
-					l.hb[3][1] = readHealthBar("p2.", is, sff, at)
+			}
+		} else if strings.Contains(k, "powerbar") {
+			for i := 1; i < len(l.pb); i++ {
+				if i == v {
+					for j, d := range l.pb[0] {
+						l.pb[i][j] = d
+					}
 				}
-				if l.hb[3][2] == nil {
-					l.hb[3][2] = readHealthBar("p3.", is, sff, at)
-				}
-				if l.hb[3][3] == nil {
-					l.hb[3][3] = readHealthBar("p4.", is, sff, at)
-				}
-			case len(subname) >= 4 && subname[:4] == "face":
-				if l.fa[3][0] == nil {
-					l.fa[3][0] = readLifeBarFace("p1.", is, sff, at)
-				}
-				if l.fa[3][1] == nil {
-					l.fa[3][1] = readLifeBarFace("p2.", is, sff, at)
-				}
-				if l.fa[3][2] == nil {
-					l.fa[3][2] = readLifeBarFace("p3.", is, sff, at)
-				}
-				if l.fa[3][3] == nil {
-					l.fa[3][3] = readLifeBarFace("p4.", is, sff, at)
-				}
-			case len(subname) >= 4 && subname[:4] == "name":
-				if l.nm[3][0] == nil {
-					l.nm[3][0] = readLifeBarName("p1.", is, sff, at)
-				}
-				if l.nm[3][1] == nil {
-					l.nm[3][1] = readLifeBarName("p2.", is, sff, at)
-				}
-				if l.nm[3][2] == nil {
-					l.nm[3][2] = readLifeBarName("p3.", is, sff, at)
-				}
-				if l.nm[3][3] == nil {
-					l.nm[3][3] = readLifeBarName("p4.", is, sff, at)
-				}
+			}
+		} else if strings.Contains(k, "tag face") {
+			for j, d := range l.fa[1] {
+				l.fa[3][j] = d
+			}
+		} else if strings.Contains(k, "tag name") {
+			for j, d := range l.nm[1] {
+				l.nm[3][j] = d
 			}
 		}
 	}
 	return l, nil
 }
 func (l *Lifebar) step() {
-	for ti, tm := range sys.tmode {
-		for i := ti; i < len(l.hb[tm]); i += 2 {
-			l.hb[tm][i].step(float32(sys.chars[i][0].life)/
+	for ti, _ := range sys.tmode {
+		for i := ti; i < l.num[0][ti]; i += 2 {
+			l.hb[l.ref[0][ti]][i].step(float32(sys.chars[i][0].life)/
 				float32(sys.chars[i][0].lifeMax), (sys.chars[i][0].getcombo != 0 ||
 				sys.chars[i][0].ss.moveType == MT_H) &&
 				!sys.chars[i][0].scf(SCF_over))
 		}
 	}
-	for i := range l.pb {
-		lvi := i
-		if sys.tmode[i] == TM_Simul || sys.tmode[i] == TM_Tag {
-			lvi += 2
-		}
-		l.pb[i].step(float32(sys.chars[i][0].power)/
-			float32(sys.chars[i][0].powerMax), sys.chars[lvi][0].power/1000)
-	}
-	for ti, tm := range sys.tmode {
-		for i := ti; i < len(l.fa[tm]); i += 2 {
-			l.fa[tm][i].step()
+	for ti, _ := range sys.tmode {
+		for i := ti; i < l.num[1][ti]; i += 2 {
+			l.pb[l.ref[1][ti]][i].step(float32(sys.chars[i][0].power)/
+				float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000)
 		}
 	}
-	for ti, tm := range sys.tmode {
-		for i := ti; i < len(l.nm[tm]); i += 2 {
-			l.nm[tm][i].step()
+	for ti, _ := range sys.tmode {
+		for i := ti; i < l.num[2][ti]; i += 2 {
+			l.fa[l.ref[2][ti]][i].step()
+		}
+	}
+	for ti, _ := range sys.tmode {
+		for i := ti; i < l.num[3][ti]; i += 2 {
+			l.nm[l.ref[3][ti]][i].step()
 		}
 	}
 	for i := range l.wi {
@@ -1315,15 +1566,62 @@ func (l *Lifebar) step() {
 		}
 	}
 	l.co.step(cb)
+	l.ch.step()
+	for ti, tm := range sys.tmode {
+		if tm == TM_Turns {
+			rl := sys.chars[ti][0].ratioLevel()
+			if rl > 0 {
+				l.ra[ti].step(rl-1)
+			}
+		}
+	}
 }
 func (l *Lifebar) reset() {
+	for ti, tm := range sys.tmode {
+		l.ref[0][ti] = int(tm)
+		l.ref[1][ti] = int(tm)
+		l.ref[2][ti] = int(tm)
+		l.ref[3][ti] = int(tm)
+		if tm == TM_Tag {
+			if sys.numSimul[ti] == 2 { //Tag 2P
+				l.ref[0][ti] = 3
+				l.ref[1][ti] = 3
+				l.ref[2][ti] = 3
+				l.ref[3][ti] = 3
+			} else { //Tag 3P/4P
+				l.ref[0][ti] = int(sys.numSimul[ti]) + 3
+				l.ref[1][ti] = 3
+				l.ref[2][ti] = 3
+				l.ref[3][ti] = 3
+			}
+		} else if tm == TM_Simul && sys.numSimul[ti] > 2 { //Simul 3P/4P
+			l.ref[0][ti] = int(sys.numSimul[ti]) + 1
+			l.ref[1][ti] = int(sys.numSimul[ti]) + 1
+		}
+		l.num[0][ti] = len(l.hb[l.ref[0][ti]])
+		l.num[1][ti] = len(l.pb[l.ref[1][ti]])
+		l.num[2][ti] = len(l.fa[l.ref[2][ti]])
+		l.num[3][ti] = len(l.nm[l.ref[3][ti]])
+		if tm == TM_Simul || tm == TM_Tag {
+			l.num[0][ti] = int(sys.numSimul[ti]) * 2
+			if sys.powerShare[ti] {
+				l.num[1][ti] = 2
+			} else if tm == TM_Simul {
+				l.num[1][ti] = int(sys.numSimul[ti]) * 2
+			}
+			l.num[2][ti] = int(sys.numSimul[ti]) * 2
+			l.num[3][ti] = int(sys.numSimul[ti]) * 2
+		}
+	}
 	for _, hb := range l.hb {
 		for i := range hb {
 			hb[i].reset()
 		}
 	}
-	for i := range l.pb {
-		l.pb[i].reset()
+	for _, pb := range l.pb {
+		for i := range pb {
+			pb[i].reset()
+		}
 	}
 	for _, fa := range l.fa {
 		for i := range fa {
@@ -1341,56 +1639,64 @@ func (l *Lifebar) reset() {
 	l.ti.reset()
 	l.co.reset()
 	l.ro.reset()
+	l.ch.reset()
+	for i := range l.ra {
+		l.ra[i].reset()
+	}
 }
 func (l *Lifebar) draw(layerno int16) {
 	if !sys.statusDraw {
 		return
 	}
-	if !sys.sf(GSF_nobardisplay) {
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.hb[tm]); i += 2 {
-				l.hb[tm][i].bgDraw(layerno)
+	if !sys.sf(GSF_nobardisplay) && sys.barsDisplay {
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[0][ti]; i += 2 {
+				l.hb[l.ref[0][ti]][i].bgDraw(layerno)
 			}
 		}
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.hb[tm]); i += 2 {
-				l.hb[tm][i].draw(layerno, float32(sys.chars[i][0].life)/
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[0][ti]; i += 2 {
+				l.hb[l.ref[0][ti]][i].draw(layerno, float32(sys.chars[i][0].life)/
 					float32(sys.chars[i][0].lifeMax))
 			}
 		}
-		for i := range l.pb {
-			l.pb[i].bgDraw(layerno)
-		}
-		for i := range l.pb {
-			l.pb[i].draw(layerno, float32(sys.chars[i][0].power)/
-				float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000,
-				l.fnt[:])
-		}
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.fa[tm]); i += 2 {
-				l.fa[tm][i].bgDraw(layerno)
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[1][ti]; i += 2 {
+				l.pb[l.ref[1][ti]][i].bgDraw(layerno)
 			}
 		}
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.fa[tm]); i += 2 {
-				if fspr := l.fa[tm][i].face; fspr != nil {
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[1][ti]; i += 2 {
+				l.pb[l.ref[1][ti]][i].draw(layerno, float32(sys.chars[i][0].power)/
+					float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000,
+					l.fnt[:])
+			}
+		}
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[2][ti]; i += 2 {
+				l.fa[l.ref[2][ti]][i].bgDraw(layerno)
+			}
+		}
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[2][ti]; i += 2 {
+				if fspr := l.fa[l.ref[2][ti]][i].face; fspr != nil {
 					pfx := sys.chars[i][0].getPalfx()
 					sys.cgi[i].sff.palList.SwapPalMap(&pfx.remap)
 					fspr.Pal = nil
 					fspr.Pal = fspr.GetPal(&sys.cgi[i].sff.palList)
 					sys.cgi[i].sff.palList.SwapPalMap(&pfx.remap)
-					l.fa[tm][i].draw(layerno, pfx, i == sys.superplayer)
+					l.fa[l.ref[2][ti]][i].draw(layerno, pfx, i == sys.superplayer)
 				}
 			}
 		}
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.nm[tm]); i += 2 {
-				l.nm[tm][i].bgDraw(layerno)
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[3][ti]; i += 2 {
+				l.nm[l.ref[3][ti]][i].bgDraw(layerno)
 			}
 		}
-		for ti, tm := range sys.tmode {
-			for i := ti; i < len(l.nm[tm]); i += 2 {
-				l.nm[tm][i].draw(layerno, l.fnt[:], sys.cgi[i].displayname)
+		for ti, _ := range sys.tmode {
+			for i := ti; i < l.num[3][ti]; i += 2 {
+				l.nm[l.ref[3][ti]][i].draw(layerno, l.fnt[:], sys.cgi[i].lifebarname)
 			}
 		}
 		l.ti.bgDraw(layerno)
@@ -1400,4 +1706,16 @@ func (l *Lifebar) draw(layerno int16) {
 		}
 	}
 	l.co.draw(layerno, l.fnt[:])
+	if sys.challenger > 0 && l.ch.challenger.displaytime > l.ch.cnt {
+		l.ch.bgDraw(layerno)
+		l.ch.draw(layerno, l.fnt[:])
+	}
+	for ti, tm := range sys.tmode {
+		if tm == TM_Turns {
+			rl := sys.chars[ti][0].ratioLevel()
+			if rl > 0 {
+				l.ra[ti].draw(layerno, rl-1)
+			}
+		}
+	}
 }

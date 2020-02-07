@@ -265,7 +265,10 @@ func SearchFile(file string, deffile string) string {
 		if defdir != "data" {
 			fp = "data/" + file
 			if fp = FileExist(fp); len(fp) == 0 {
-				_else = true
+				fp = sys.motifDir + file
+				if fp = FileExist(fp); len(fp) == 0 {
+					_else = true
+				}
 			}
 		} else {
 			_else = true
@@ -689,7 +692,7 @@ func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 	ln int16) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
 	is.ReadI32(pre+"font", &ats.font[0], &ats.font[1], &ats.font[2])
-	if tmp, ok := is[pre+"text"]; ok {
+	if tmp, ok := is.getString(pre+"text") ; ok {
 		ats.text = tmp
 		ats.anim.lay = *newLayout(ln)
 		ats.displaytime = -2

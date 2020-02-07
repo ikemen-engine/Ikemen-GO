@@ -1421,6 +1421,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_frontedgedist)
 	case "gameheight":
 		out.append(OC_gameheight)
+	case "gamemode":
+		if err := nameSub(OC_const_gamemode); err != nil {
+			return bvNone(), err
+		}
 	case "gametime":
 		out.append(OC_gametime)
 	case "gamewidth":
@@ -1566,7 +1570,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "inguarddist":
 		out.append(OC_inguarddist)
 	case "ishelper":
-		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(math.MinInt32)); err != nil {
 			return bvNone(), err
 		}
 		out.append(OC_ishelper)
@@ -1713,6 +1717,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_projhittime)
 	case "random":
 		out.append(OC_random)
+	case "ratiolevel":
+		out.append(OC_const_, OC_const_ratiolevel)
 	case "rightedge":
 		out.append(OC_rightedge)
 	case "roundno":

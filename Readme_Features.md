@@ -97,11 +97,17 @@ Specify the path of the file to be read in path (Relative to the character folde
 
 ## Additional triggers
 
+### GameMode
+Returns current game mode name (arcade / versus / teamcoop / teamversus / survival / survivalcoop / training / watch / netplayversus / netplayteamcoop / netplaysurvivalcoop / freebattle / 100kumite / bossrush / randomtest / bonus / tournament / demo)
+
 ### Majorversion
 Returns 1 if mugenversion in the def file is 1.0 or higher.
 
 ### Map
 See above.
+
+### RatioLevel
+Returns the character's ratio level: from 1 to 4, if the level is set, otherwise it returns 0.
 
 ### Selfstatenoexist
 ```ini
@@ -183,6 +189,62 @@ Since this phenomenon is a correct operation in the specification, a new paramet
 
 ### Portraitscale
 Specify the display magnification of the portrait to be written to Info (Localcoord-compliant display magnification is overwritten)
+
+### LifebarName
+Name of character to display on lifebar (DisplayName is used by default, if LifebarName is not specified)
+
+
+## Additional parameters for lifebar def file
+
+### Default sound for round start
+In Mugen `round.default.snd` assignment didn't work at all. In Ikemen GO it will trigger once there are no more valid 'roundX.snd' sound assignments that match the current round number.
+
+### "Here Comes A New Challenger"
+`[Challenger]` section for visual/sound representation of what should happen when the current arcade match is interrupted by player 2 pressing start button. This new section supports following parameters:
+- `pos`
+- `bg.anim`
+- `bg.layerno`
+- `offset`
+- `font`
+- `text`
+- `layerno`
+- `displaytime`
+- `snd`
+- `sndtime`
+- `over.pause` (ticks to wait before characters and background is paused)
+- `over.time` (ticks to wait before round ends)
+
+### Ratio mode
+`[Ratio]` section controls the look of ratio level assigned to character (visible only when ratio team mode is selected). This new section supports following parameters:
+- `pX.pos`
+- `pX.offset`
+- `pX.levelY.spr`
+- `pX.levelY.anim`
+- `pX.levelY.scale`
+where:
+'pX' prefix should be replaced with p1 and/or p2
+'levelY' refers to ratio level (use level1, level2, level3, level4)
+
+### Up to 8 faces / names for simul mode
+Support for `p5`, `p6`, `p7`, `p8` parameters assignment in existing [Simul Face] and [Simul Name] sections.
+
+### Unique face / name / lifebar / powerbar parameters assignment for Tag mode
+`[Tag Face]`, `[Tag Name]`, `[Tag Lifebar]`, `[Tag Powerbar]` sections can be used to replace vanilla [Simul Face], [Simul Name], [Simul Lifebar], and [Powerbar] parameters when Tag team mode is selected.
+
+### Unique lifebar parameters assignment for larger team sizes
+Lifebar creators can design unique looking lifebar layouts for team modes consisting of 3 and 4 players, using new `[Simul_3P Lifebar]`, `[Simul_4P Lifebar]`, `[Tag_3P Lifebar]`, `[Tag_4P Lifebar]` sections, with priority over [Simul Lifebar] and [Tag Lifebar] sections.
+
+### Unique powerbar parameters assignment
+Lifebar creators can design unique looking lifebar layouts for different team modes and larger team sizes, using new `[Simul Powerbar]`, `[Simul_3P Powerbar]`, `[Simul_4P Powerbar]`, `[Turns Powerbar]` sections, with priority over [Powerbar] section.
+
+### Powerbar sound assignment for each player
+`levelX.snd` parameter from [Powerbar] section now supports `pX.` prefix in order to optionally differentiate sounds among players (or to disable them for particular player) by assigning dummy sound entry).
+
+### Lifebar changing color depending on health
+`pX.front.spr` / `pX.front.anim` can store additional value in the name e.g. pX.front90.spr, which is used to swap the current front spr / animation to this one, if player's life matches the percentage value. There can be multiple frontX spr/anim assignments (no hard limits).
+
+## Additional parameters for screenpacks
+There are MANY new screenpack parameters, but these won't be documented until the engine stabilize feature-wise. Until then everything related to these paramter may change without notice.
 
 # Misc. Info
 

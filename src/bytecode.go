@@ -319,6 +319,8 @@ const (
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
+	OC_const_gamemode
+	OC_const_ratiolevel
 )
 const (
 	OC_st_var OpCode = iota + OC_var*2
@@ -1455,6 +1457,13 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_gamemode:
+		sys.bcStack.PushB(sys.gameMode ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_ratiolevel:
+		sys.bcStack.PushI(c.ratioLevel())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5141,7 +5150,7 @@ func (sc attackMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case attackMulSet_value:
-			crun.attackMul = float32(crun.gi().data.attack) / 100 * exp[0].evalF(c)
+			crun.attackMul = float32(crun.gi().data.attack) * crun.ocd().attackRatio / 100 * exp[0].evalF(c)
 		case attackMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5740,10 +5749,11 @@ const (
 
 func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 	crun := c
+	var v int32 = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case victoryQuote_value:
-			exp[0].evalI(c)
+			v = exp[0].evalI(c)
 		case victoryQuote_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5753,6 +5763,7 @@ func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.winquote = v
 	return false
 }
 

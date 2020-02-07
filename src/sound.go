@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/timshannon/go-openal/openal"
 
@@ -261,23 +262,24 @@ func newBgm() *Bgm {
 }
 
 func (bgm *Bgm) IsVorbis() bool {
-	return bgm.IsFormat(".ogg")
+	return bgm.IsFormat("^\\.[Oo][Gg][Gg]$")
 }
 
 func (bgm *Bgm) IsMp3() bool {
-	return bgm.IsFormat(".mp3")
+	return bgm.IsFormat("^\\.[Mm][Pp]3$")
 }
 
 //func (bgm *Bgm) IsFLAC() bool {
-//	return bgm.IsFormat(".flac")
+//	return bgm.IsFormat("^\\.[Ff][Ll][Aa][Cc]$")
 //}
 
 func (bgm *Bgm) IsWAVE() bool {
-	return bgm.IsFormat(".wav")
+	return bgm.IsFormat("^\\.[Ww][Aa][Vv]$")
 }
 
 func (bgm *Bgm) IsFormat(extension string) bool {
-	return filepath.Ext(bgm.filename) == extension
+	matched, _ := regexp.MatchString(extension, filepath.Ext(bgm.filename))
+	return matched
 }
 
 func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {

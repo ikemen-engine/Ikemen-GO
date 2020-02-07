@@ -1,5 +1,5 @@
-cd ..
-set GOPATH=%cd%/go
+#!/bin/sh
+export GOPATH=$PWD/go
 go get -u github.com/yuin/gopher-lua
 go get -u github.com/go-gl/glfw/v3.3/glfw
 go get -u github.com/go-gl/gl/v2.1/gl
@@ -11,4 +11,5 @@ go get -u github.com/hajimehoshi/oto
 go get -u github.com/hajimehoshi/go-mp3
 go get -u github.com/pkg/errors
 go get -u github.com/jfreymuth/oggvorbis
-PAUSE
+go get -u github.com/kbinani/screenshot
+go get -u github.com/sqweek/dialog

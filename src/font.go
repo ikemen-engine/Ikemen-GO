@@ -51,17 +51,13 @@ func loadFnt(filename string) (*Fnt, error) {
 
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
-	fp, err := os.Open("font/" + filename)
+
+	filename = SearchFile(filename, "font/")
+
+	fp, err := os.Open(filename)
 
 	f.PalName = filename
 
-	//Check file in "font/"" directory
-	if err != nil {
-		err = nil
-		fp, err = os.Open(filename)
-	}
-
-	//Error opening file
 	if err != nil {
 		return nil, err
 	}
@@ -256,15 +252,11 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	content, err := LoadText("font/" + filename)
+	filename = SearchFile(filename, "font/")
+
+	content, err := LoadText(filename)
 
 	f.PalName = filename
-
-	//Check file in "font/"" directory
-	if err != nil {
-		err = nil
-		content, err = LoadText(filename)
-	}
 
 	if err != nil {
 		return nil, err
@@ -361,7 +353,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string) {
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
 	fileDir := SearchFile(filename, fontfile)
-	sff, err := loadSff("font/"+fileDir, false)
+	sff, err := loadSff(fileDir, false)
 
 	if err != nil {
 		err = nil
@@ -504,7 +496,7 @@ func (f *Fnt) Print(txt string,
 ) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.ttf.Printf(x, y, yscl, align, false, txt) //x, y, scale, align, string, printf args
+			f.DrawTtf(txt, x, y, xscl, yscl, align, false)
 		} else {
 			f.DrawText(txt, x, y, xscl, yscl, bank, align)
 		}
@@ -573,6 +565,23 @@ func (f *Fnt) DrawText(
 	//gl.Disable(gl.TEXTURE_1D)
 }
 
+func (f *Fnt) DrawTtf(
+	txt string,
+	x, y, xscl, yscl float32,
+	align int32,
+	blend bool,
+) {
+
+	if len(txt) == 0 {
+		return
+	}
+
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+
+	f.ttf.Printf(x, y, (xscl + yscl) / 2, align, blend, txt) //x, y, scale, align, string, printf args
+}
+
 type TextSprite struct {
 	text             string
 	fnt              *Fnt
@@ -595,7 +604,7 @@ func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.ttf.Printf(ts.x, ts.y, (ts.xscl + ts.yscl) / 2, ts.align, true, ts.text) //x, y, scale, align, blend ,string, printf args
+			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true)
 		} else {
 			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
 		}
