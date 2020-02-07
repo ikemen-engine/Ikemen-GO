@@ -123,7 +123,7 @@ function start.f_unifySettings(t, t_chars)
 				infinite = true
 			end
 			for j = 1, num do --iterate up to max amount of matches versus characters with this order
-				if j * p2NumChars > #t_chars[i] --[[and #ret > 0]] then --if there are not enough characters with this order to assign all slots
+				if j * p2NumChars > #t_chars[i] and #ret > 0 then --if there are not enough characters to fill all slots and at least 1 fight is already assigned
 					local stop = true
 					for k = (j - 1) * p2NumChars + 1, #t_chars[i] do --loop through characters left for this match
 						if main.t_selChars[t_chars[i][k] + 1].onlyme == 1 then --and allow appending if any of the remaining characters has 'onlyme' flag set
@@ -185,12 +185,8 @@ function start.f_makeRoster(t_ret)
 	--Boss Rush
 	elseif gameMode('bossrush') then
 		t_static = {main.t_bossChars}
-		for i = 1, math.floor(#main.t_bossChars / p2NumChars) do --generate ratiomatches style table
+		for i = 1, math.ceil(#main.t_bossChars / p2NumChars) do --generate ratiomatches style table
 			table.insert(t, {['rmin'] = p2NumChars, ['rmax'] = p2NumChars, ['order'] = 1})
-		end
-		local remaining = math.ceil(#main.t_bossChars / p2NumChars) - math.floor(#main.t_bossChars / p2NumChars)
-		if remaining > 0 then --we're adding all bosses, even if equal team count can't be achieved
-			table.insert(t, {['rmin'] = remaining, ['rmax'] = remaining, ['order'] = 1})
 		end
 	--VS 100 Kumite
 	elseif gameMode('100kumite') then
@@ -1489,6 +1485,7 @@ function start.f_selectArcade()
 			end
 		end
 		--fight initialization
+		challenger = false
 		setMatchNo(matchNo)
 		start.f_overrideCharData()
 		start.f_remapAI()
@@ -1502,73 +1499,104 @@ function start.f_selectArcade()
 			loadStart()
 			winner, t_gameStats = game()
 			main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
-		end
-		--here comes a new challenger
-		challenger = false
-		if t_gameStats.challenger > 0 then
-			refresh() --needed to clean inputs
-			challenger = true
-			--save values
-			local p2TeamMenu_sav = main.f_copyTable(main.p2TeamMenu)
-			local t_p2Selected_sav = main.f_copyTable(t_p2Selected)
-			local t_charparam_sav = main.f_copyTable(main.t_charparam)
-			local p1Cell_sav = p1Cell
-			local p2Cell_sav = p2Cell
-			local matchNo_sav = matchNo
-			local stageNo_sav = stageNo
-			local p2TeamMode_sav = p2TeamMode
-			local p2NumChars_sav = p2NumChars
-			local gameMode = gameMode()
-			main.f_resetCharparam()
-			--temp values
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
-			setHomeTeam(1)
-			main.p2In = 2
-			main.p2SelectMenu = true
-			main.stageMenu = true
-			main.p2Faces = true
-			main.p1TeamMenu = nil
-			main.p2TeamMenu = nil
-			setGameMode('teamversus')
-			--start challenger match
-			start.f_selectSimple()
-			--if esc() then break end
-			--reload values
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
-			setHomeTeam(2)
-			main.p2In = 1
-			main.p2SelectMenu = false
-			main.stageMenu = false
-			main.p2Faces = false
-			--move player2 characters into player1 side and remap buttons if needed
-			if winner == 2 then
-				--TODO: when player1 team loose continue playing the arcade mode as player2 team
+			--here comes a new challenger
+			if t_gameStats.challenger > 0 then
+				start.f_challenger()
 			end
-			--restore values
-			main.p2TeamMenu = main.f_copyTable(p2TeamMenu_sav)
-			t_p2Selected = main.f_copyTable(t_p2Selected_sav)
-			main.t_charparam = main.f_copyTable(t_charparam_sav)
-			p1Cell = p1Cell_sav
-			p2Cell = p2Cell_sav
-			matchNo = matchNo_sav
-			stageNo = stageNo_sav
-			p2TeamMode = p2TeamMode_sav
-			p2NumChars = p2NumChars_sav
-			setTeamMode(2, p2TeamMode, p2NumChars)
-			setGameMode(gameMode)
-			continueData = true
-		end
-		--restore P2 Team settings if needed
-		if restoreTeam then
-			p2TeamMode = teamMode
-			p2NumChars = numChars
-			setTeamMode(2, p2TeamMode, p2NumChars)
-			restoreTeam = false
+			--restore P2 Team settings if needed
+			if restoreTeam then
+				p2TeamMode = teamMode
+				p2NumChars = numChars
+				setTeamMode(2, p2TeamMode, p2NumChars)
+				restoreTeam = false
+			end
 		end
 		resetRemapInput()
 		main.f_cmdInput()
 		refresh()
 	end
+end
+
+function start.f_challenger()
+	refresh() --needed to clean inputs
+	challenger = true
+	--save values
+	local t_p1Selected_sav = main.f_copyTable(t_p1Selected)
+	local t_p2Selected_sav = main.f_copyTable(t_p2Selected)
+	local p1TeamMenu_sav = main.f_copyTable(main.p1TeamMenu)
+	local p2TeamMenu_sav = main.f_copyTable(main.p2TeamMenu)
+	local t_charparam_sav = main.f_copyTable(main.t_charparam)
+	local p1Ratio_sav = p1Ratio
+	local p2Ratio_sav = p2Ratio
+	local p1NumRatio_sav = p1NumRatio
+	local p2NumRatio_sav = p2NumRatio
+	local p1Cell_sav = p1Cell
+	local p2Cell_sav = p2Cell
+	local matchNo_sav = matchNo
+	local stageNo_sav = stageNo
+	local restoreTeam_sav = restoreTeam
+	local p1TeamMode_sav = p1TeamMode
+	local p1NumChars_sav = p1NumChars
+	local p2TeamMode_sav = p2TeamMode
+	local p2NumChars_sav = p2NumChars
+	local gameMode = gameMode()
+	--temp mode data
+	textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
+	setHomeTeam(1)
+	main.p2In = 2
+	main.drawScore = {true, true}
+	main.p2SelectMenu = true
+	main.stageMenu = true
+	main.p2Faces = true
+	main.p1TeamMenu = nil
+	main.p2TeamMenu = nil
+	main.f_resetCharparam()
+	setGameMode('teamversus')
+	--start challenger match
+	start.f_selectSimple()
+	--restore mode data
+	textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade)
+	setHomeTeam(2)
+	main.p2In = 1
+	main.drawScore = {true, false}
+	main.p2SelectMenu = false
+	main.stageMenu = false
+	main.p2Faces = false
+	main.p1TeamMenu = p1TeamMenu_sav
+	main.p2TeamMenu = p2TeamMenu_sav
+	main.t_charparam = t_charparam_sav
+	setGameMode(gameMode)
+	if esc() then
+		challenger = false
+		start.f_selectReset()
+		return
+	end
+	if winner == 2 then
+		--TODO: when player1 team loose continue playing the arcade mode as player2 team
+	end
+	--restore values
+	p1TeamEnd = true
+	p2TeamEnd = true
+	p1SelEnd = true
+	p2SelEnd = true
+	t_p1Selected = t_p1Selected_sav
+	t_p2Selected = t_p2Selected_sav
+	p1Ratio = p1Ratio_sav
+	p2Ratio = p2Ratio_sav
+	p1NumRatio = p1NumRatio_sav
+	p2NumRatio = p2NumRatio_sav
+	p1Cell = p1Cell_sav
+	p2Cell = p2Cell_sav
+	matchNo = matchNo_sav
+	stageNo = stageNo_sav
+	restoreTeam = restoreTeam_sav
+	p1TeamMode = p1TeamMode_sav
+	p1NumChars = p1NumChars_sav
+	setTeamMode(1, p1TeamMode, p1NumChars)
+	p2TeamMode = p2TeamMode_sav
+	p2NumChars = p2NumChars_sav
+	setTeamMode(2, p2TeamMode, p2NumChars)
+	continueData = true
 end
 
 --;===========================================================
