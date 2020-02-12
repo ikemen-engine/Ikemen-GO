@@ -9,13 +9,13 @@ SetGCPercent(-1)
 
 main = {}
 text = {}    
-function unpack (t, i)
+function unpack (t, i) --unpacking doesn't work with the text table thing normally, so fixed that
 	i = i or 1
 	n = 0
 	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
   end
 
-function text:create(o)
+function text:create(o) --Creates text (wow)
 	setmetatable(o, self)
 	self.__index = self
 	o.ti=main.f_createTextImg(unpack(o))
@@ -23,7 +23,7 @@ function text:create(o)
 	--for i, k in pairs(o) do print(i,k) end
 	return o
 end
-function text:update(A)
+function text:update(A) --Updates text by changing values in old table (woa)
 	for i, k in pairs(A) do
 		print(i, self[i], k)
 		self[i] = k
@@ -32,9 +32,29 @@ function text:update(A)
 	local ti = self.ti self.ti = nil
 	self.ti = main.f_updateTextImg(ti,unpack(self))
 end
-function text:draw()
+function text:draw() --Draws text (little bit shorter)
 	textImgDraw(self.ti)
 end
+
+--	Text example:
+--local txt_titleFooter1 = text:create( --this creates footer 1
+--	{font=			motif.font_data[motif.title_info.footer1_font[1]],
+--	bank=			motif.title_info.footer1_font[2],
+--	align=			motif.title_info.footer1_font[3],
+--	text=			motif.title_info.footer1_text,
+--	x=				motif.title_info.footer1_offset[1],
+--	y=				motif.title_info.footer1_offset[2],
+--	scaleX=			motif.title_info.footer1_font_scale[1],
+--	scaleY=			motif.title_info.footer1_font_scale[2],
+--	r=				motif.title_info.footer1_font[4],
+--	g=				motif.title_info.footer1_font[5],
+--	b=				motif.title_info.footer1_font[6],
+--	src=			motif.title_info.footer1_font[7],
+--	dst=			motif.title_info.footer1_font[8],
+--	defaultscale=	motif.defaultFooter}
+--)
+--txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
+--txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
 
 refresh()
 math.randomseed(os.time())
