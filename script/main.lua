@@ -15,22 +15,26 @@ function unpack (t, i) --unpacking doesn't work with the text table thing normal
 	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
   end
 
+function tableToArgs(t)
+	local tmp = "" local n = 0
+	for i, k in pairs(t) do
+		n = n + 1
+		if A[i] then self[i] = A end
+		tmp = tmp .. i .." = ".. k .. (n < #t and ", " or "")
+	end
+	return tmp
+end
+
 function text:create(o) --Creates text (wow)
 	setmetatable(o, self)
 	self.__index = self
-	o.ti=main.f_createTextImg(unpack(o))
+	o.ti=main.f_createTextImg(tableToArgs(o))
 	for i, k in pairs(o) do print(i,k) end
 	--for i, k in pairs(o) do print(i,k) end
 	return o
 end
 function text:update(A) --Updates text by changing values in old table (woa)
-	for i, k in pairs(A) do
-		print(i, self[i], k)
-		self[i] = k
-	end
-	print(unpack(self))
-	local ti = self.ti self.ti = nil
-	self.ti = main.f_updateTextImg(ti,unpack(self))
+	self.ti = main.f_updateTextImg(tableToArgs(o))
 end
 function text:draw() --Draws text (little bit shorter)
 	textImgDraw(self.ti)
