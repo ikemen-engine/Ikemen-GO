@@ -8,6 +8,55 @@ SetGCPercent(-1)
 --print("Elapsed time: " .. os.clock() - nClock)
 
 main = {}
+text = {}    
+function unpack (t, i)
+	i = i or 1
+	n = 0
+	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
+  end
+
+function text:create(o)
+	setmetatable(o, self)
+	self.__index = self
+	o.ti=main.f_createTextImg(unpack(o))
+	for i, k in pairs(o) do print(i,k) end
+	--for i, k in pairs(o) do print(i,k) end
+	return o
+end
+function text:update(A)
+	for i, k in pairs(A) do
+		print(i, self[i], k)
+		self[i] = k
+	end
+	print(unpack(self))
+	local ti = self.ti self.ti = nil
+	self.ti = main.f_updateTextImg(ti,unpack(self))
+end
+function text:draw()
+	textImgDraw(self.ti)
+end
+
+--
+--	Text example:
+--local txt_titleFooter1 = text:create( --this creates footer 1
+--	{font=			motif.font_data[motif.title_info.footer1_font[1]],
+--	bank=			motif.title_info.footer1_font[2],
+--	align=			motif.title_info.footer1_font[3],
+--	text=			motif.title_info.footer1_text,
+--	x=				motif.title_info.footer1_offset[1],
+--	y=				motif.title_info.footer1_offset[2],
+--	scaleX=			motif.title_info.footer1_font_scale[1],
+--	scaleY=			motif.title_info.footer1_font_scale[2],
+--	r=				motif.title_info.footer1_font[4],
+--	g=				motif.title_info.footer1_font[5],
+--	b=				motif.title_info.footer1_font[6],
+--	src=			motif.title_info.footer1_font[7],
+--	dst=			motif.title_info.footer1_font[8],
+--	defaultscale=	motif.defaultFooter}
+--)
+
+--txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
+--txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
 
 refresh()
 math.randomseed(os.time())
@@ -608,8 +657,23 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 end
 
 --input display
-local txt_input = textImgNew()
 function main.f_input(t, info, background, category, controllerNo, keyBreak)
+	local txt_input = text:create({
+		font=motif.font_data[motif.infobox.text_font[1]],
+		bank=motif.infobox.text_font[2],
+		align=motif.infobox.text_font[3],
+		text="input",
+		x=motif.infobox.text_pos[1],
+		y=0,
+		scaleX=	motif.infobox.text_font_scale[1],
+		scaleY=	motif.infobox.text_font_scale[2],
+		r=motif.infobox.text_font[4],
+		g=motif.infobox.text_font[5],
+		b=motif.infobox.text_font[6],
+		src=motif.infobox.text_font[7],
+		dst=motif.infobox.text_font[8],
+		defaultscale=motif.defaultInfobox
+	})
 	main.f_cmdInput()
 	category = category or 'string'
 	controllerNo = controllerNo or 0
@@ -683,24 +747,9 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		)
 		--draw text
 		for i = 1, #t do
-			main.f_updateTextImg(
-				txt_input,
-				motif.font_data[motif.infobox.text_font[1]],
-				motif.infobox.text_font[2],
-				motif.infobox.text_font[3],
-				t[i],
-				motif.infobox.text_pos[1],
-				motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
-				motif.infobox.text_font_scale[1],
-				motif.infobox.text_font_scale[2],
-				motif.infobox.text_font[4],
-				motif.infobox.text_font[5],
-				motif.infobox.text_font[6],
-				motif.infobox.text_font[7],
-				motif.infobox.text_font[8],
-				motif.defaultInfobox
-			)
-			textImgDraw(txt_input)
+			local ypos = motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1)
+			txt_input:update({y=ypos,text = t[i]})
+			txt_input:draw()
 		end
 		--end loop
 		main.f_cmdInput()
