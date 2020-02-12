@@ -16,7 +16,10 @@ function unpack (t, i) --unpacking doesn't work with the text table thing normal
   end
 
 function text:create(o) --Creates text (wow)
-	o = {data=o}
+	o = o or {}
+	o = {data={font = o.font or motif.title_info.footer1_font[1],
+	bank = o.bank or 0, align = o.align or 0, text = o.text or '', x = o.x or 0, y = o.y or 0, scaleX = o.scaleX or 0, 
+	scaleY = o.scaleY or 0, r = o.r or 0, g = o.g or 0, b = o.b or 0, src = o.src or 0, dst = o.dst or 0}}
 	setmetatable(o, self)
 	self.__index = self
 	local tmp = o.data
