@@ -22,6 +22,8 @@ function text:create(o) --Creates text (wow)
 	local tmp = o.data
 	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
 	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
+	if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
+
 	o.data.ti=main.f_createTextImg(unpack(o.data))
 	for i, k in pairs(o) do print(i,k) end
 	--for i, k in pairs(o) do print(i,k) end
@@ -29,8 +31,8 @@ function text:create(o) --Creates text (wow)
 end
 function text:update(A) --Updates text by changing values in old table (woa)
 	for i, k in pairs(A) do
-		print(i, self[i], k)
 		self.data[i] = k
+		if i == "font" and type(k) == 'string' then fontNew(k) end 
 	end
 	local tmp = self.data
 	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
@@ -43,7 +45,7 @@ end
 
 --	Text example:
 --local txt_titleFooter1 = text:create( --this creates footer 1
---	{font=			motif.font_data[motif.title_info.footer1_font[1]],
+--	{font=			motif.title_info.footer1_font[1],
 --	bank=			motif.title_info.footer1_font[2],
 --	align=			motif.title_info.footer1_font[3],
 --	text=			motif.title_info.footer1_text,
