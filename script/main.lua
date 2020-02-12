@@ -15,29 +15,30 @@ function unpack (t, i) --unpacking doesn't work with the text table thing normal
 	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
   end
 
-function tableToArgs(t)
-	local tmp = "" local n = 0
-	for i, k in pairs(t) do
-		n = n + 1
-		if A[i] then self[i] = A end
-		tmp = tmp .. i .." = ".. k .. (n < #t and ", " or "")
-	end
-	return tmp
-end
-
 function text:create(o) --Creates text (wow)
+	o = {data=o}
 	setmetatable(o, self)
 	self.__index = self
-	o.ti=main.f_createTextImg(tableToArgs(o))
+	local tmp = o.data
+	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
+	o.data.ti=main.f_createTextImg(unpack(o.data))
 	for i, k in pairs(o) do print(i,k) end
 	--for i, k in pairs(o) do print(i,k) end
 	return o
 end
 function text:update(A) --Updates text by changing values in old table (woa)
-	self.ti = main.f_updateTextImg(tableToArgs(o))
+	for i, k in pairs(A) do
+		print(i, self[i], k)
+		self.data[i] = k
+	end
+	local tmp = self.data
+	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
+	self.data.ti = main.f_updateTextImg(unpack(self.data))
 end
 function text:draw() --Draws text (little bit shorter)
-	textImgDraw(self.ti)
+	textImgDraw(self.data.ti)
 end
 
 --	Text example:
