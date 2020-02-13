@@ -113,6 +113,7 @@ function main.IntLifebarScale()
 		setLifebarOffsetX((main.LB_Localcoord43[1] - main.LB_Localcoord[1]) / 2)
 		setLuaLifebarScale(320 / main.LB_Localcoord43[1])
 	end
+	setLifebarPortraitScale(main.LB_Localcoord[1] / main.LB_Localcoord43[1])
 end
 
 function main.SetScaleValues()

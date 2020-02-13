@@ -75,6 +75,7 @@ var sys = System {
 	luaSpriteOffsetX:      0,
 	lifebarScale:          1,
 	lifebarOffsetX:        0,
+	lifebarPortraitScale:  1,
 	//Shader vars
 	MultisampleAntialiasing: false,
 	PostProcessingShader:    0,
@@ -273,6 +274,7 @@ type System struct {
 
 	lifebarScale          float32
 	lifebarOffsetX        float32
+	lifebarPortraitScale  float32
 	LocalcoordScalingType int32
 
 	//Shader Vars

@@ -351,7 +351,7 @@ func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 		sys.brightness = 256
 	}
 	f.face_lay.DrawSprite((float32(f.pos[0])+sys.lifebarOffsetX)*sys.lifebarScale, float32(f.pos[1])*sys.lifebarScale, layerno,
-		f.face, fx, f.scale)
+		f.face, fx, f.scale*sys.lifebarPortraitScale)
 	sys.brightness = ob
 	i := int32(len(f.teammate_face)) - 1
 	x := float32(f.teammate_pos[0] + f.teammate_spacing[0]*(i-1))
@@ -359,7 +359,7 @@ func (f *LifeBarFace) draw(layerno int16, fx *PalFX, superplayer bool) {
 	for ; i >= 0; i-- {
 		if i != f.numko {
 			f.teammate_bg.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
-			f.teammate_face_lay.DrawSprite((x+sys.lifebarOffsetX)*sys.lifebarScale, y*sys.lifebarScale, layerno, f.teammate_face[i], nil, f.teammate_scale[i])
+			f.teammate_face_lay.DrawSprite((x+sys.lifebarOffsetX)*sys.lifebarScale, y*sys.lifebarScale, layerno, f.teammate_face[i], nil, f.teammate_scale[i]*sys.lifebarPortraitScale)
 			if i < f.numko {
 				f.teammate_ko.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
 			}

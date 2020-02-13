@@ -493,7 +493,12 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebarOffsetX = float32(numArg(l, 1))
 		return 0
 	})
-
+	luaRegister(l, "setLifebarPortraitScale", func(l *lua.LState) int {
+		sys.lifebarPortraitScale = float32(numArg(l, 1))
+		return 0
+	})
+	
+	// TODO: Test if this even function works.
 	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
 		sys.windowTitle = string(strArg(l, 1))
 		sys.window.SetTitle(sys.windowTitle)
