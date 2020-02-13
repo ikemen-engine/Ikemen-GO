@@ -96,7 +96,7 @@ func main() {
 	"Height": 480,
 	"Super.TargetDefenceMul": 1.5,
 	"LifebarFontScale": 1,
-	"System": "script/main.lua",
+	"System": "external/script/main.lua",
 	"KeyConfig": [
 		{
 			"Joystick": -1,
@@ -163,7 +163,7 @@ func main() {
 	"LifeRatio":[0.80, 1.0, 1.17, 1.40],
 	"AttackRatio":[0.82, 1.0, 1.17, 1.30],
 	"WindowMainIconLocation": [
-		"script/Icons/IkemenCylia.png"
+		"external/icons/IkemenCylia.png"
 	]
 }
 `, "\n"), "\r\n"))

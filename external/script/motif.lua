@@ -63,7 +63,7 @@ local motif =
 		select = 'data/select.def',
 		fight = 'data/fight.def',
 		debug_font = 'f-6x9.def', --Ikemen feature
-		debug_script = 'script/debug.lua', --Ikemen feature
+		debug_script = 'external/script/debug.lua', --Ikemen feature
 		font =
 		{
 			[1] = 'f-4x6.def',

@@ -550,7 +550,7 @@ function options.f_mainCfg()
 				config.Height = 480
 				config['Super.TargetDefenceMul'] = 1.5
 				config.LifebarFontScale = 1
-				--config.System = 'script/main.lua'
+				--config.System = 'external/script/main.lua'
 				options.f_keyDefault()
 				--config.ControllerStickSensitivity = 0.4
 				--config.XinputTriggerSensitivity = 0
@@ -941,7 +941,7 @@ end
 --;===========================================================
 local t_shaderCfg = {}
 local t_shaders = {}
-local t_files = GetDirectoryFiles('shaders')
+local t_files = GetDirectoryFiles('external/shaders')
 for i = 1, #t_files do
 	t_files[i]:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 		path = path:gsub('\\', '/')
