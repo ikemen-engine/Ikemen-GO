@@ -781,7 +781,7 @@ end
 --;===========================================================
 --; LOCALCOORD
 --;===========================================================
-require('script.screenpack')
+require('external.script.screenpack')
 main.IntLocalcoordValues()
 main.CalculateLocalcoordValues()
 main.IntLifebarScale()
@@ -895,7 +895,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	addStage(stage)
 	--load data
 	loadDebugFont('f-6x9.fnt')
-	setDebugScript('script/debug.lua')
+	setDebugScript('external/script/debug.lua')
 	selectStart()
 	setMatchNo(1)
 	setStage(0)
@@ -920,7 +920,7 @@ end
 --;===========================================================
 --; LOAD DATA
 --;===========================================================
-motif = require('script.motif')
+motif = require('external.script.motif')
 
 setMotifDir(motif.fileDir)
 setPortrait(motif.select_info.p1_face_spr[1], motif.select_info.p1_face_spr[2], 1) --Big portrait
@@ -1420,10 +1420,10 @@ for k, v in pairs(main.t_selOptions) do
 end
 
 --Load additional scripts
-randomtest = require('script.randomtest')
-options = require('script.options')
-start = require('script.start')
-storyboard = require('script.storyboard')
+randomtest = require('external.script.randomtest')
+options = require('external.script.options')
+start = require('external.script.start')
+storyboard = require('external.script.storyboard')
 
 --;===========================================================
 --; MENUS
