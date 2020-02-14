@@ -19,20 +19,20 @@
 #       $(pwd):/code is source:destination and $(pwd) maps to current directory where the script is called.
 #  -i   : interactive. 
 #  -t   : allocate a pseudo terminal
-#  danielporto/ikemen-dev:latest        : docker image configured with the tooling required to build the binaries.
+#  windblade/ikemen-dev:latest        : docker image configured with the tooling required to build the binaries.
 #  bash -c 'cd /code && bash -x get.sh' : command called when the container launches. In changes to the code directory
 #  then execute both get and build scripts 
 
 cd ..
 
 echo "Building linux binary..."
-docker run --rm -e OS=linux -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
-docker run --rm -e OS=linux -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
+docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
+docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
 
 echo "Building windows binary..."
-docker run --rm -e OS=windows -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
-docker run --rm -e OS=windows -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
+docker run --rm -e OS=windows -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
+docker run --rm -e OS=windows -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
 
 echo "Building mac binary..."
-docker run --rm -e OS=mac -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
-docker run --rm -e OS=mac -v $(pwd):/code -it danielporto/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
+docker run --rm -e OS=mac -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
+docker run --rm -e OS=mac -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
