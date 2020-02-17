@@ -950,7 +950,7 @@ function start.f_resetGrid()
 			end
 		end
 	end
-	main.f_printTable(start.t_drawFace, 'debug/t_drawFace.txt')
+	--main.f_printTable(start.t_drawFace, 'debug/t_drawFace.txt')
 end
 
 --sets correct start cell
