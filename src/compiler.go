@@ -125,6 +125,9 @@ func newCompiler() *Compiler {
 		"victoryquote":       c.victoryQuote,
 		"zoom":               c.zoom,
 		"mapset":             c.mapSet,
+		"mapadd":             c.mapAdd,
+		"parentmapset":       c.parentMapSet,
+		"parentmapadd":       c.parentMapAdd,
 		"matchrestart":       c.matchRestart,
 		"savefile":           c.saveFile,
 		"loadfile":           c.loadFile,
@@ -6320,6 +6323,7 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 
+// TODO: Remove boilderplate from the Map's Compiler.
 func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
@@ -6342,8 +6346,96 @@ func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 		}
 		return nil
 	})
+	c.scAdd(sc, mapSet_type, "0", VT_Int, 1)
+
 	return *ret, err
 }
+
+func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			mapSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "map", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.scAdd(sc, mapSet_type, "1",
+			VT_Int, 1); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "1", VT_Int, 1)
+
+	return *ret, err
+}
+
+func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			mapSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "map", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "2", VT_Int, 1)
+
+	return *ret, err
+}
+
+func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			mapSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "map", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			mapSet_value, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
+
+	return *ret, err
+}
+
 
 func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {

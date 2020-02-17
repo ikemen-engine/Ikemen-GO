@@ -3918,13 +3918,44 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 		pfx.remap[i] = di
 	}
 }
-func (c *Char) mapSet(s string, Value int32) {
+// MapSet() sets a map to a specific value. (Non case dependent) 
+func (c *Char) mapSet(s string, Value int32, scType int32) {
 	if s == "" {
 		return
 	}
 	key := strings.ToLower(s)
-	c.mapArray[key] = Value
+	switch scType {
+		case 0:
+			c.mapArray[key] = Value
+		case 1:
+			c.mapArray[key] += Value
+		case 2:
+			if c.parent() != nil {
+				c.parent().mapArray[key] += Value
+			} else {
+				c.mapArray[key] += c.mapArray[key]
+			}
+		case 3:
+			if c.parent() != nil {
+				c.parent().mapArray[key] += Value
+			} else {
+				c.mapArray[key] += c.mapArray[key]
+			}
+		case 4:
+			if c.root() != nil {
+				c.root().mapArray[key] = Value
+			} else {
+				c.mapArray[key] = c.mapArray[key]
+			}
+		case 5:
+			if c.root() != nil {
+				c.root().mapArray[key] += Value
+			} else {
+				c.mapArray[key] += c.mapArray[key]
+			}
+	}
 }
+
 func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)

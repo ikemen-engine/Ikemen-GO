@@ -5811,18 +5811,22 @@ const (
 	mapSet_mapArray byte = iota
 	mapSet_value
 	mapSet_redirectid
+	mapSet_type
 )
 
 func (sc mapSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	var s string
 	var value int32
+	var scType int32
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case mapSet_mapArray:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case mapSet_value:
 			value = exp[0].evalI(c)
+		case mapSet_type:
+			scType = exp[0].evalI(c)
 		case mapSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5832,7 +5836,7 @@ func (sc mapSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.mapSet(s, value)
+	crun.mapSet(s, value, scType)
 	return false
 }
 
