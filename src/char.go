@@ -3931,27 +3931,27 @@ func (c *Char) mapSet(s string, Value int32, scType int32) {
 			c.mapArray[key] += Value
 		case 2:
 			if c.parent() != nil {
-				c.parent().mapArray[key] += Value
+				c.parent().mapArray[key] = Value
 			} else {
-				c.mapArray[key] += c.mapArray[key]
+				c.mapArray[key] = Value
 			}
 		case 3:
 			if c.parent() != nil {
 				c.parent().mapArray[key] += Value
 			} else {
-				c.mapArray[key] += c.mapArray[key]
+				c.mapArray[key] += Value
 			}
 		case 4:
 			if c.root() != nil {
 				c.root().mapArray[key] = Value
 			} else {
-				c.mapArray[key] = c.mapArray[key]
+				c.mapArray[key] = Value
 			}
 		case 5:
 			if c.root() != nil {
 				c.root().mapArray[key] += Value
 			} else {
-				c.mapArray[key] += c.mapArray[key]
+				c.mapArray[key] += Value
 			}
 	}
 }

@@ -128,6 +128,8 @@ func newCompiler() *Compiler {
 		"mapadd":             c.mapAdd,
 		"parentmapset":       c.parentMapSet,
 		"parentmapadd":       c.parentMapAdd,
+		"rootmapset":         c.rootMapSet,
+		"rootmapadd":         c.rootMapAdd,
 		"matchrestart":       c.matchRestart,
 		"savefile":           c.saveFile,
 		"loadfile":           c.loadFile,
@@ -6327,23 +6329,8 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			mapSet_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "map", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
-			}
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Int, 1, false); err != nil {
-			return err
-		}
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "0", VT_Int, 1)
@@ -6354,27 +6341,8 @@ func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			mapSet_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "map", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
-			}
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.scAdd(sc, mapSet_type, "1",
-			VT_Int, 1); err != nil {
-			return err
-		}
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "1", VT_Int, 1)
@@ -6385,23 +6353,8 @@ func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			mapSet_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "map", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
-			}
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Int, 1, false); err != nil {
-			return err
-		}
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "2", VT_Int, 1)
@@ -6412,6 +6365,41 @@ func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
+
+	return *ret, err
+}
+
+func (c *Compiler) rootMapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "4", VT_Int, 1)
+
+	return *ret, err
+}
+
+func (c *Compiler) rootMapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc)
+		err != nil {return err}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "5", VT_Int, 1)
+
+	return *ret, err
+}
+
+func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) (error) {
+	err := c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
@@ -6431,9 +6419,7 @@ func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
 		}
 		return nil
 	})
-	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
-
-	return *ret, err
+	return err
 }
 
 
@@ -6655,7 +6641,8 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					var ok bool
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
-						return Error(data + "が無効な値です")
+						return Error(data + "が無効な値です" +
+									"\n" + data + " is a invalid state controller")
 					}
 				case "persistent":
 					if c.stateNo >= 0 {
