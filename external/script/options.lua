@@ -589,6 +589,7 @@ function options.f_mainCfg()
 				config.AllowDebugKeys = true
 				config.ComboExtraFrameWindow = 1
 				config.ExternalShaders = {}
+				config.PostProcessingShader = 0
 				config.LocalcoordScalingType = 1
 				config.MSAA = false
 				config.LifeRatio = {0.80, 1.0, 1.17, 1.40}
@@ -790,11 +791,18 @@ end
 --;===========================================================
 --; VIDEO SETTINGS
 --;===========================================================
+local function f_externalShaderName()
+	if config.ExternalShaders[config.PostProcessingShader - 3] ~= nil then
+		return config.ExternalShaders[config.PostProcessingShader - 3]:gsub('^external/shaders/', '')
+	end
+	return motif.option_info.menu_itemname_disabled
+end
+
 options.t_videoCfg = {
 	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
 	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
 	{data = textImgNew(), itemname = 'msaa', displayname = motif.option_info.menu_itemname_video_msaa, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'externalshaders', displayname = motif.option_info.menu_itemname_video_externalshaders, vardata = textImgNew(), vardisplay = options.f_definedDisplay(1, config.ExternalShaders, motif.option_info.menu_itemname_disabled, #config.ExternalShaders)},
+	{data = textImgNew(), itemname = 'externalshaders', displayname = motif.option_info.menu_itemname_video_externalshaders, vardata = textImgNew(), vardisplay = f_externalShaderName()},
 	{data = textImgNew(), itemname = 'empty', displayname = ' '},
 	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
@@ -844,7 +852,8 @@ function options.f_videoCfg()
 		elseif t[item].itemname == 'externalshaders' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			options.f_shaderCfg()
-			t[item].vardisplay = options.f_definedDisplay(1, config.ExternalShaders, motif.option_info.menu_itemname_disabled, #config.ExternalShaders)
+			--t[item].vardisplay = options.f_definedDisplay(1, config.ExternalShaders, motif.option_info.menu_itemname_disabled, #config.ExternalShaders)
+			t[item].vardisplay = f_externalShaderName()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
@@ -1000,6 +1009,7 @@ function options.f_shaderCfg()
 							t[i].selected = false
 						end
 					end
+					config.PostProcessingShader = 0
 					modified = 1
 					needReload = 1
 				end
@@ -1020,13 +1030,24 @@ function options.f_shaderCfg()
 				end
 				--or add it if not
 				if not found then
-					table.insert(config.ExternalShaders, t[item].itemname)
+					--table.insert(config.ExternalShaders, t[item].itemname)
+					for i = 1, #t do
+						if t[i].selected then
+							t[i].selected = false
+						end
+					end
+					config.ExternalShaders[1] = t[item].itemname
 					t[item].selected = true
+				end
+				if #config.ExternalShaders > 0 then
+					config.PostProcessingShader = #config.ExternalShaders + 3
+				else
+					config.PostProcessingShader = 0
 				end
 				modified = 1
 				needReload = 1
-				--textImgSetText(txt_title, motif.option_info.title_text_video)
-				--break
+				textImgSetText(txt_title, motif.option_info.title_text_video)
+				break
 			end
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
