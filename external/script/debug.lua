@@ -113,8 +113,8 @@ function status(p)
   if not player(p) then return false end
   ret =
     string.format(
-      'STA:%s%s%s%6d(%d) ANI:%6d(%d)%2d LIF:%5d POW:%5d TIM:%d',
-      statetype(), movetype(), physics(), stateno(), stateOwner(),
+      'ID:%d STA:%s%s%s%6d(%d) ANI:%6d(%d)%2d LIF:%5d POW:%5d TIM:%d',
+      id(), statetype(), movetype(), physics(), stateno(), stateOwner(),
       anim(), animOwner(), animelemno(0), life(), power(), time())
   playerid(oldid)
   return ret;
