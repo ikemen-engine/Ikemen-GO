@@ -9,40 +9,47 @@ SetGCPercent(-1)
 
 main = {}
 text = {}    
-function unpack (t, i) --unpacking doesn't work with the text table thing normally, so fixed that
-	i = i or 1
-	n = 0
-	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
-  end
-
-function text:create(o) --Creates text (wow)
-	o = o or {}
-	o = {data={font = o.font or motif.title_info.footer1_font[1],
-	bank = o.bank or 0, align = o.align or 0, text = o.text or '', x = o.x or 0, y = o.y or 0, scaleX = o.scaleX or 0, 
-	scaleY = o.scaleY or 0, r = o.r or 0, g = o.g or 0, b = o.b or 0, src = o.src or 0, dst = o.dst or 0}}
+--Creates text
+function text:create(o)
+	local o = o or {}
+	o.data = {
+		font = o.font or '',
+		bank = o.bank or 0,
+		align = o.align or 0,
+		text = o.text or '',
+		x = o.x or 0,
+		y = o.y or 0,
+		scaleX = o.scaleX or 1, 
+		scaleY = o.scaleY or 1,
+		r = o.r or 255,
+		g = o.g or 255,
+		b = o.b or 255,
+		src = o.src or 255,
+		dst = o.dst or 0
+	}
 	setmetatable(o, self)
 	self.__index = self
 	local tmp = o.data
 	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
-	if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
-
-	o.data.ti=main.f_createTextImg(unpack(o.data))
-	for i, k in pairs(o) do print(i,k) end
-	--for i, k in pairs(o) do print(i,k) end
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
+	--if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
+	o.data.ti = main.f_createTextImg(unpack(o.data))
+	--for k, v in pairs(o) do print(k, v) end
 	return o
 end
-function text:update(A) --Updates text by changing values in old table (woa)
-	for i, k in pairs(A) do
-		self.data[i] = k
-		if i == "font" and type(k) == 'string' then fontNew(k) end 
+--Updates text by changing values in old table
+function text:update(t)
+	for k, v in pairs(t) do
+		self.data[k] = v
+		--if k == "font" and type(v) == 'string' then fontNew(v) end 
 	end
 	local tmp = self.data
 	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
 	self.data.ti = main.f_updateTextImg(unpack(self.data))
 end
-function text:draw() --Draws text (little bit shorter)
+--Draws text (little bit shorter)
+function text:draw()
 	textImgDraw(self.data.ti)
 end
 
@@ -902,7 +909,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	selectStage(0)
 	setTeamMode(1, p1TeamMode, p1NumChars)
 	setTeamMode(2, p2TeamMode, p2NumChars)
-	main.f_printTable(t, 'debug/t_quickvs.txt')
+	if main.debugLog then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	--iterate over the table in -p order ascending
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		selectChar(v.player, k - 1, v.pal)
@@ -1355,19 +1362,21 @@ for i = 1, #main.t_selChars do
 end
 
 --Save debug tables
-main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
-main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
-main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
-main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
-main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
-main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
-main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
-main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
-main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
-main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
-main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
-main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
-main.f_printTable(config, "debug/config.txt")
+if main.debugLog then
+	main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
+	main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
+	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
+	main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
+	main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
+	main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
+	main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
+	main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
+	main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
+	main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
+	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
+	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
+	main.f_printTable(config, "debug/config.txt")
+end
 
 --Debug stuff
 loadDebugFont(motif.files.debug_font)
@@ -1992,7 +2001,7 @@ for i = 1, #main.t_sort.title_info do
 		end
 	end
 end
-main.f_printTable(main.menu, 'debug/t_mainMenu.txt')
+if main.debugLog then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 
 local demoFrameCounter = 0
 local introWaitCycles = 0
@@ -2346,4 +2355,4 @@ SetGCPercent(100)
 main.menu.loop()
 
 -- Debug Info
---main.f_printTable(main, "debug/t_main.txt")
+--if main.debugLog then main.f_printTable(main, "debug/t_main.txt") end
