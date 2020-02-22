@@ -181,7 +181,6 @@ type System struct {
 	envcol_under            bool
 	clipboardText           [MaxSimul*2 + MaxAttachedChar][]string
 	stage                   *Stage
-	bgdef                   []*BGDef
 	helperMax               int32
 	nextCharId              int32
 	wincnt                  wincntMap
