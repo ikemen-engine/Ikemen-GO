@@ -8,63 +8,6 @@ SetGCPercent(-1)
 --print("Elapsed time: " .. os.clock() - nClock)
 
 main = {}
-text = {}    
-function unpack (t, i) --unpacking doesn't work with the text table thing normally, so fixed that
-	i = i or 1
-	n = 0
-	for c, k in pairs(t) do n = n + 1 if n == i then return k, unpack(t,i+1) end end
-  end
-
-function text:create(o) --Creates text (wow)
-	o = o or {}
-	o = {data={font = o.font or motif.title_info.footer1_font[1],
-	bank = o.bank or 0, align = o.align or 0, text = o.text or '', x = o.x or 0, y = o.y or 0, scaleX = o.scaleX or 0, 
-	scaleY = o.scaleY or 0, r = o.r or 0, g = o.g or 0, b = o.b or 0, src = o.src or 0, dst = o.dst or 0}}
-	setmetatable(o, self)
-	self.__index = self
-	local tmp = o.data
-	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
-	if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
-
-	o.data.ti=main.f_createTextImg(unpack(o.data))
-	for i, k in pairs(o) do print(i,k) end
-	--for i, k in pairs(o) do print(i,k) end
-	return o
-end
-function text:update(A) --Updates text by changing values in old table (woa)
-	for i, k in pairs(A) do
-		self.data[i] = k
-		if i == "font" and type(k) == 'string' then fontNew(k) end 
-	end
-	local tmp = self.data
-	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY,r=tmp.r,g=tmp.g,b=tmp.b,src=tmp.src,dst=tmp.dst,defaultscale=tmp.defaultscale}
-	self.data.ti = main.f_updateTextImg(unpack(self.data))
-end
-function text:draw() --Draws text (little bit shorter)
-	textImgDraw(self.data.ti)
-end
-
---	Text example:
---local txt_titleFooter1 = text:create( --this creates footer 1
---	{font=			motif.title_info.footer1_font[1],
---	bank=			motif.title_info.footer1_font[2],
---	align=			motif.title_info.footer1_font[3],
---	text=			motif.title_info.footer1_text,
---	x=				motif.title_info.footer1_offset[1],
---	y=				motif.title_info.footer1_offset[2],
---	scaleX=			motif.title_info.footer1_font_scale[1],
---	scaleY=			motif.title_info.footer1_font_scale[2],
---	r=				motif.title_info.footer1_font[4],
---	g=				motif.title_info.footer1_font[5],
---	b=				motif.title_info.footer1_font[6],
---	src=			motif.title_info.footer1_font[7],
---	dst=			motif.title_info.footer1_font[8],
---	defaultscale=	motif.defaultFooter}
---)
---txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
---txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
 
 refresh()
 math.randomseed(os.time())
@@ -116,6 +59,190 @@ main.f_setCommand(main.p4Cmd)
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+
+--check if a file or directory exists in this path
+function main.f_exists(file)
+	local ok, err, code = os.rename(file, file)
+	if not ok then
+		if code == 13 then
+			--permission denied, but it exists
+			return true
+		end
+	end
+	return ok, err
+end
+--check if a directory exists in this path
+function  main.f_isdir(path)
+	-- "/" works on both Unix and Windows
+	return main.f_exists(path .. '/')
+end
+
+main.debugLog = false
+if main.f_isdir('debug') then
+	main.debugLog = true
+end
+
+--check if file exists
+function main.f_fileExists(file)
+	if file == '' then
+		return false
+	end
+	local f = io.open(file,'r')
+	if f ~= nil then
+		io.close(f)
+		return true
+	end
+	return false
+end
+
+--prints "t" table content into "toFile" file
+function main.f_printTable(t, toFile)
+	local toFile = toFile or 'debug/table_print.txt'
+	local txt = ''
+	local print_t_cache = {}
+	local function sub_print_t(t, indent)
+		if print_t_cache[tostring(t)] then
+			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
+		else
+			print_t_cache[tostring(t)] = true
+			if type(t) == 'table' then
+				for pos, val in pairs(t) do
+					if type(val) == 'table' then
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
+						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
+						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
+					elseif type(val) == 'string' then
+						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
+					else
+						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
+					end
+				end
+			else
+				txt = txt .. indent .. tostring(t) .. '\n'
+			end
+		end
+	end
+	if type(t) == 'table' then
+		txt = txt .. tostring(t) .. ' {' .. '\n'
+		sub_print_t(t, '  ')
+		txt = txt .. '}' .. '\n'
+	else
+		sub_print_t(t, '  ')
+	end
+	local file = io.open(toFile,"w+")
+	if file == nil then return end
+	file:write(txt)
+	file:close()
+end
+
+--prints "v" variable into "toFile" file
+function main.f_printVar(v, toFile)
+	local toFile = toFile or 'debug/var_print.txt'
+	local file = io.open(toFile,"w+")
+	file:write(v)
+	file:close()
+end
+
+--unpacking doesn't work with the text table thing normally, so fixed that
+function unpack(t, i)
+	i = i or 1
+	n = 0
+	for c, k in pairs(t) do
+		n = n + 1
+		if n == i then
+			return k, unpack(t, i+1)
+		end
+	end
+end
+
+text = {}
+--Creates text
+function text:create(o)
+	local o = o or {}
+	o.data = {
+		font = o.font or '',
+		bank = o.bank or 0,
+		align = o.align or 0,
+		text = o.text or '',
+		x = o.x or 0,
+		y = o.y or 0,
+		scaleX = o.scaleX or 1, 
+		scaleY = o.scaleY or 1,
+		r = o.r or 255,
+		g = o.g or 255,
+		b = o.b or 255,
+		src = o.src or 255,
+		dst = o.dst or 0
+	}
+	setmetatable(o, self)
+	self.__index = self
+	local tmp = o.data
+	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
+	--if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
+	o.data.ti = main.f_createTextImg(unpack(o.data))
+	--for k, v in pairs(o) do print(k, v) end
+	return o
+end
+--Updates text by changing values in old table
+function text:update(t)
+	for k, v in pairs(t) do
+		self.data[k] = v
+		--if k == "font" and type(v) == 'string' then fontNew(v) end 
+	end
+	local tmp = self.data
+	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
+	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
+	self.data.ti = main.f_updateTextImg(unpack(self.data))
+end
+--Draws text (little bit shorter)
+function text:draw()
+	textImgDraw(self.data.ti)
+end
+
+--shortcut for creating new text with several parameters
+function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
+	if defsc then main.SetDefaultScale() end
+	local ti = textImgNew()
+	if font ~= '' then
+		textImgSetFont(ti, font)
+		textImgSetBank(ti, bank)
+		textImgSetAlign(ti, align)
+		textImgSetText(ti, text)
+		textImgSetColor(ti, r, g, b, src, dst)
+		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
+		textImgSetPos(ti, x, y)
+		textImgSetScale(ti, scaleX, scaleY)
+	end
+	if defsc then main.SetScaleValues() end
+	return ti
+end
+
+--shortcut for updating text with several parameters
+function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
+	if defsc then main.SetDefaultScale() end
+	if font ~= '' then
+		textImgSetFont(ti, font)
+		textImgSetBank(ti, bank)
+		textImgSetAlign(ti, align)
+		textImgSetText(ti, text)
+		textImgSetColor(ti, r, g, b, src, dst)
+		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
+		textImgSetPos(ti, x, y)
+		textImgSetScale(ti, scaleX, scaleY)
+	end
+	if defsc then main.SetScaleValues() end
+	return ti
+end
+
+--animDraw at specified coordinates
+function main.f_animPosDraw(a, x, y)
+	animSetPos(a, x, y)
+	animUpdate(a)
+	animDraw(a)
+end
+
+--makes the input detectable in the current frame
 function main.f_cmdInput()
 	commandInput(main.p1Cmd, main.p1In)
 	commandInput(main.p2Cmd, main.p2In)
@@ -134,57 +261,6 @@ function main.f_btnPalNo(cmd)
 	if commandGetState(cmd, 'v') then return 1 + s end
 	if commandGetState(cmd, 'w') then return 2 + s end
 	return 0
-end
-
---animDraw at specified coordinates
-function main.f_animPosDraw(a, x, y)
-	animSetPos(a, x, y)
-	animUpdate(a)
-	animDraw(a)
-end
-
---textImgDraw at specified coordinates
-function main.f_textImgPosDraw(ti, x, y, align)
-	align = align or 0
-	textImgSetAlign(ti, align)
-	if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-	textImgSetPos(ti, x, y)
-	textImgDraw(ti)
-end
-
---shortcut for creating new text with several parameters
-function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defaultscale)
-	if defaultscale then main.SetDefaultScale() end
-	local ti = textImgNew()
-	if font ~= nil then
-		textImgSetFont(ti, font)
-		textImgSetBank(ti, bank)
-		textImgSetAlign(ti, align)
-		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
-		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-		textImgSetPos(ti, x, y)
-		textImgSetScale(ti, scaleX, scaleY)
-	end
-	if defaultscale then main.SetScaleValues() end
-	return ti
-end
-
---shortcut for updating text with several parameters
-function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defaultscale)
-	if defaultscale then main.SetDefaultScale() end
-	if font ~= nil then
-		textImgSetFont(ti, font)
-		textImgSetBank(ti, bank)
-		textImgSetAlign(ti, align)
-		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
-		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-		textImgSetPos(ti, x, y)
-		textImgSetScale(ti, scaleX, scaleY)
-	end
-	if defaultscale then main.SetScaleValues() end
-	return ti
 end
 
 --dynamically adjusts alpha blending each time called based on specified values
@@ -336,54 +412,6 @@ function main.f_sortKeys(t, order)
 	end
 end
 
---prints "t" table content into "toFile" file
-function main.f_printTable(t, toFile)
-	local toFile = toFile or 'debug/table_print.txt'
-	local txt = ''
-	local print_t_cache = {}
-	local function sub_print_t(t, indent)
-		if print_t_cache[tostring(t)] then
-			txt = txt .. indent .. '*' .. tostring(t) .. '\n'
-		else
-			print_t_cache[tostring(t)] = true
-			if type(t) == 'table' then
-				for pos, val in pairs(t) do
-					if type(val) == 'table' then
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(t) .. ' {' .. '\n'
-						sub_print_t(val, indent .. string.rep(' ', string.len(tostring(pos)) + 8))
-						txt = txt .. indent .. string.rep(' ', string.len(tostring(pos)) + 6) .. '}' .. '\n'
-					elseif type(val) == 'string' then
-						txt = txt .. indent .. '[' .. pos .. '] => "' .. val .. '"' .. '\n'
-					else
-						txt = txt .. indent .. '[' .. pos .. '] => ' .. tostring(val) ..'\n'
-					end
-				end
-			else
-				txt = txt .. indent .. tostring(t) .. '\n'
-			end
-		end
-	end
-	if type(t) == 'table' then
-		txt = txt .. tostring(t) .. ' {' .. '\n'
-		sub_print_t(t, '  ')
-		txt = txt .. '}' .. '\n'
-	else
-		sub_print_t(t, '  ')
-	end
-	local file = io.open(toFile,"w+")
-	if file == nil then return end
-	file:write(txt)
-	file:close()
-end
-
---prints "v" variable into "toFile" file
-function main.f_printVar(v, toFile)
-	local toFile = toFile or 'debug/var_print.txt'
-	local file = io.open(toFile,"w+")
-	file:write(v)
-	file:close()
-end
-
 --remove duplicated string pattern
 function main.f_uniq(str, pattern, subpattern)
 	local out = {}
@@ -523,19 +551,6 @@ function main.f_tableMerge(t1, t2)
 		end
 	end
 	return t1
-end
-
---check if file exists
-function main.f_fileExists(name)
-	if name == '' then
-		return false
-	end
-	local f = io.open(name,'r')
-	if f ~= nil then
-		io.close(f)
-		return true
-	end
-	return false
 end
 
 --split strings
