@@ -225,7 +225,7 @@ function start.f_makeRoster(t_ret)
 			end
 		end
 	end
-	main.f_printTable(t_ret, 'debug/t_roster.txt')
+	if main.debugLog then main.f_printTable(t_ret, 'debug/t_roster.txt') end
 	return t_ret
 end
 
@@ -284,7 +284,7 @@ function start.f_aiRamp(currentMatch)
 			table.insert(t_aiRamp, endAI)
 		end
 	end
-	main.f_printTable(t_aiRamp, 'debug/t_aiRamp.txt')
+	if main.debugLog then main.f_printTable(t_aiRamp, 'debug/t_aiRamp.txt') end
 end
 
 --returns bool depending of rivals match validity
@@ -950,7 +950,7 @@ function start.f_resetGrid()
 			end
 		end
 	end
-	--main.f_printTable(start.t_drawFace, 'debug/t_drawFace.txt')
+	--if main.debugLog then main.f_printTable(start.t_drawFace, 'debug/t_drawFace.txt') end
 end
 
 --sets correct start cell
@@ -1078,7 +1078,7 @@ function start.f_selectSimple()
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		loadStart()
 		winner, t_gameStats = game()
-		main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+		if main.debugLog then main.f_printTable(t_gameStats, 'debug/t_gameStats.txt') end
 		--victory screen
 		if motif.victory_screen.vs_enabled == 1 and winner >= 1 and (gameMode('versus') or gameMode('netplayversus')) then
 			start.f_selectVictory()
@@ -1248,7 +1248,7 @@ function start.f_selectArranged()
 			clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 			loadStart()
 			winner, t_gameStats = game()
-			main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+			if main.debugLog then main.f_printTable(t_gameStats, 'debug/t_gameStats.txt') end
 		end
 		resetRemapInput()
 		main.f_cmdInput()
@@ -1498,7 +1498,7 @@ function start.f_selectArcade()
 			clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 			loadStart()
 			winner, t_gameStats = game()
-			main.f_printTable(t_gameStats, 'debug/t_gameStats.txt')
+			if main.debugLog then main.f_printTable(t_gameStats, 'debug/t_gameStats.txt') end
 			--here comes a new challenger
 			if t_gameStats.challenger > 0 then
 				start.f_challenger()
