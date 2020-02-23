@@ -511,18 +511,22 @@ func scriptCommonInit(l *lua.LState) {
 func systemScriptInit(l *lua.LState) {
 	scriptCommonInit(l)
 	luaRegister(l, "bgNew", func(*lua.LState) int {
-		sff := ""
-		if l.GetTop() >= 3 {
-			sff = strArg(l, 3)
+		s, ok := toUserData(l, 1).(*Sff)
+		if !ok {
+			userDataError(l, 1, s)
 		}
-		num, err := loadBGDef(strArg(l, 1), strArg(l, 2), sff)
+		bg, err := loadBGDef(s, strArg(l, 2), strArg(l, 3))
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
-		l.Push(lua.LNumber(num))
+		l.Push(newUserData(l, bg))
 		return 1
 	})
 	luaRegister(l, "bgDraw", func(*lua.LState) int {
+		bg, ok := toUserData(l, 1).(*BGDef)
+		if !ok {
+			userDataError(l, 1, bg)
+		}
 		top := false
 		var x, y, scl float32 = 0, 0, 1
 		if l.GetTop() >= 2 {
@@ -537,11 +541,15 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 5 {
 			scl = float32(numArg(l, 5))
 		}
-		sys.bgdef[int(numArg(l, 1))].draw(top, x, y, scl)
+		bg.draw(top, x, y, scl)
 		return 0
 	})
 	luaRegister(l, "bgReset", func(*lua.LState) int {
-		sys.bgdef[int(numArg(l, 1))].reset()
+		bg, ok := toUserData(l, 1).(*BGDef)
+		if !ok {
+			userDataError(l, 1, bg)
+		}
+		bg.reset()
 		return 0
 	})
 	luaRegister(l, "textImgNew", func(*lua.LState) int {
