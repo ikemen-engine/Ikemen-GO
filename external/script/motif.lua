@@ -1760,7 +1760,7 @@ for i = 1, #t_dir do
 		motif[t_dir[i]].spr_data = motif.files.spr_data
 	end
 	--backgrounds
-	motif[t_dir[i]].bg = bgNew(motif.def, t_dir[i]:match('^(.+)def$'), motif[t_dir[i]].spr)
+	motif[t_dir[i]].bg = bgNew(motif[t_dir[i]].spr_data, motif.def, t_dir[i]:match('^(.+)def$'))
 	main.loadingRefresh()
 end
 
@@ -1908,6 +1908,6 @@ if motif.vs_screen.p2_name_active_font == nil then
 	motif.vs_screen.p2_name_active_font_scale = {motif.vs_screen.p2_name_font_scale[1], motif.vs_screen.p2_name_font_scale[2]}
 end
 
-main.f_printTable(motif, "debug/t_motif.txt")
+if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
 
 return motif

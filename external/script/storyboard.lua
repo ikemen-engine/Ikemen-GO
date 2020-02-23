@@ -23,7 +23,7 @@ end
 
 local function f_play(t)
 	playBGM('')
-	main.f_printTable(t, 'debug/t_storyboard.txt')
+	if main.debugLog then main.f_printTable(t, 'debug/t_storyboard.txt') end
 	--loop through scenes in order
 	for k, v in main.f_sortKeys(t.scene) do
 		--scene >= startscene
@@ -333,7 +333,7 @@ local function f_parse(path)
 		prev_k = k
 		--backgrounds
 		if t.scene[k].bg_name ~= '' then
-			t.scene[k].bg = bgNew(t.def, t.scene[k].bg_name:lower(), t.scenedef.spr)
+			t.scene[k].bg = bgNew(t.scenedef.spr_data, t.def, t.scene[k].bg_name:lower())
 			bgReset(t.scene[k].bg)
 		end
 		--loop through scene layers
