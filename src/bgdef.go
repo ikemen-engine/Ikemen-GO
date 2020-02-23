@@ -43,7 +43,6 @@ func (bgct *bgcTimeLine) stepBGDef(s *BGDef) {
 type BGDef struct {
 	def            string
 	localcoord     [2]float32
-	sffloc         string
 	sff            *Sff
 	at             AnimationTable
 	bg             []*backGround
@@ -60,13 +59,12 @@ func newBGDef(def string) *BGDef {
 	return s
 }
 
-func loadBGDef(def string, bgname string, sffloc string) (int, error) {
+func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 	s := newBGDef(def)
 	str, err := LoadText(def)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
-	s.sff = &Sff{}
 	lines, i := SplitAndTrim(str, "\n"), 0
 	defmap := make(map[string][]IniSection)
 	for i < len(lines) {
@@ -83,43 +81,8 @@ func loadBGDef(def string, bgname string, sffloc string) (int, error) {
 	if sec := defmap["info"]; len(sec) > 0 {
 		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
 	}
-	var ok, skipat bool
-	var filename string
-	bgnum := -1
-	if sffloc != "" {
-		filename = sffloc
-	} else if sec := defmap["files"]; len(sec) > 0 {
-		if sec[0].LoadFile("spr", def, func(filename string) error {
-			filename = strings.Replace(filename, "\\", "/", -1)
-			return nil
-		}); err != nil {
-			return -1, err
-		}
-	}
-	for j := 0; j < len(sys.bgdef); j++ {
-		if !ok && sys.bgdef[j].sffloc == filename {
-			*s.sff = *sys.bgdef[j].sff
-			bgnum = j
-			ok = true
-		}
-		if sys.bgdef[j].def == def && ok {
-			skipat = true
-			break
-		}
-	}
-	if !ok { //skip loadSFF if already loaded
-		sff, err := loadSff(filename, false)
-		if err != nil {
-			return -1, err
-		}
-		*s.sff = *sff
-	}
-	s.sffloc = filename
-	if skipat { //skip ReadAnimationTable if already parsed
-		s.at = sys.bgdef[bgnum].at
-	} else {
-		s.at = ReadAnimationTable(s.sff, lines, &i)
-	}
+	s.sff = sff
+	s.at = ReadAnimationTable(s.sff, lines, &i)
 	var bglink *backGround
 	for _, bgsec := range defmap[bgname] {
 		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {
@@ -175,8 +138,7 @@ func loadBGDef(def string, bgname string, sffloc string) (int, error) {
 		}
 	}
 	s.localscl = 240 / s.localcoord[1]
-	sys.bgdef = append(sys.bgdef, s)
-	return len(sys.bgdef) - 1, nil
+	return s, nil
 }
 func (s *BGDef) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {
