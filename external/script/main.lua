@@ -994,7 +994,7 @@ function main.f_charParam(t, c)
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2
-	elseif c:match('%.[Dd][Ee][Ff]') or c:match('^random$') then --stage
+	elseif c:match('%.[Dd][Ee][Ff]') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
