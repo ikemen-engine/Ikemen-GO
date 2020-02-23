@@ -8,70 +8,6 @@ SetGCPercent(-1)
 --print("Elapsed time: " .. os.clock() - nClock)
 
 main = {}
-text = {}    
---Creates text
-function text:create(o)
-	local o = o or {}
-	o.data = {
-		font = o.font or '',
-		bank = o.bank or 0,
-		align = o.align or 0,
-		text = o.text or '',
-		x = o.x or 0,
-		y = o.y or 0,
-		scaleX = o.scaleX or 1, 
-		scaleY = o.scaleY or 1,
-		r = o.r or 255,
-		g = o.g or 255,
-		b = o.b or 255,
-		src = o.src or 255,
-		dst = o.dst or 0
-	}
-	setmetatable(o, self)
-	self.__index = self
-	local tmp = o.data
-	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
-	--if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
-	o.data.ti = main.f_createTextImg(unpack(o.data))
-	--for k, v in pairs(o) do print(k, v) end
-	return o
-end
---Updates text by changing values in old table
-function text:update(t)
-	for k, v in pairs(t) do
-		self.data[k] = v
-		--if k == "font" and type(v) == 'string' then fontNew(v) end 
-	end
-	local tmp = self.data
-	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
-	self.data.ti = main.f_updateTextImg(unpack(self.data))
-end
---Draws text (little bit shorter)
-function text:draw()
-	textImgDraw(self.data.ti)
-end
-
---	Text example:
---local txt_titleFooter1 = text:create( --this creates footer 1
---	{font=			motif.title_info.footer1_font[1],
---	bank=			motif.title_info.footer1_font[2],
---	align=			motif.title_info.footer1_font[3],
---	text=			motif.title_info.footer1_text,
---	x=				motif.title_info.footer1_offset[1],
---	y=				motif.title_info.footer1_offset[2],
---	scaleX=			motif.title_info.footer1_font_scale[1],
---	scaleY=			motif.title_info.footer1_font_scale[2],
---	r=				motif.title_info.footer1_font[4],
---	g=				motif.title_info.footer1_font[5],
---	b=				motif.title_info.footer1_font[6],
---	src=			motif.title_info.footer1_font[7],
---	dst=			motif.title_info.footer1_font[8],
---	defaultscale=	motif.defaultFooter}
---)
---txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
---txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
 
 refresh()
 math.randomseed(os.time())
@@ -135,6 +71,7 @@ function main.f_exists(file)
 	end
 	return ok, err
 end
+
 --check if a directory exists in this path
 function  main.f_isdir(path)
 	-- "/" works on both Unix and Windows
@@ -268,7 +205,7 @@ end
 function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
 	if defsc then main.SetDefaultScale() end
 	local ti = textImgNew()
-	if font ~= '' then
+	if font ~= nil then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
@@ -285,7 +222,7 @@ end
 --shortcut for updating text with several parameters
 function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
 	if defsc then main.SetDefaultScale() end
-	if font ~= '' then
+	if font ~= nil then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
@@ -304,6 +241,15 @@ function main.f_animPosDraw(a, x, y)
 	animSetPos(a, x, y)
 	animUpdate(a)
 	animDraw(a)
+end
+
+--textImgDraw at specified coordinates
+function main.f_textImgPosDraw(ti, x, y, align)
+	align = align or 0
+	textImgSetAlign(ti, align)
+	if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
+	textImgSetPos(ti, x, y)
+	textImgDraw(ti)
 end
 
 --makes the input detectable in the current frame
