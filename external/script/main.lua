@@ -1,9 +1,6 @@
 --;===========================================================
 --; INITIALIZE DATA
 --;===========================================================
---Disable GC during the initial load so it does not crash
-SetGCPercent(-1)
-
 --nClock = os.clock()
 --print("Elapsed time: " .. os.clock() - nClock)
 
@@ -200,6 +197,26 @@ end
 function text:draw()
 	textImgDraw(self.data.ti)
 end
+
+--	Text example:
+--local txt_titleFooter1 = text:create( --this creates footer 1
+--	{font=			motif.title_info.footer1_font[1],
+--	bank=			motif.title_info.footer1_font[2],
+--	align=			motif.title_info.footer1_font[3],
+--	text=			motif.title_info.footer1_text,
+--	x=				motif.title_info.footer1_offset[1],
+--	y=				motif.title_info.footer1_offset[2],
+--	scaleX=			motif.title_info.footer1_font_scale[1],
+--	scaleY=			motif.title_info.footer1_font_scale[2],
+--	r=				motif.title_info.footer1_font[4],
+--	g=				motif.title_info.footer1_font[5],
+--	b=				motif.title_info.footer1_font[6],
+--	src=			motif.title_info.footer1_font[7],
+--	dst=			motif.title_info.footer1_font[8],
+--	defaultscale=	motif.defaultFooter}
+--)
+--txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
+--txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
 
 --shortcut for creating new text with several parameters
 function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
@@ -2367,9 +2384,6 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
--- Now that everithig is loaded we can enable GC back.
-SetGCPercent(100)
-
 main.menu.loop()
 
 -- Debug Info
