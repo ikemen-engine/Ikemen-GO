@@ -30,6 +30,8 @@ data/kfm
 data/mugen1
 data/common.snd
 data/common1.cns
+data/continue.sff
+data/continue.snd
 data/credits.def
 data/credits.sff
 data/fight.def
@@ -46,3 +48,4 @@ data/logo.sff
 data/system.def
 data/system.sff
 data/system.snd
+data/tournament.sff

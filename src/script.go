@@ -352,6 +352,9 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
+		if l.GetTop() >= 1 {
+			sys.esc = boolArg(l, 1)
+		}
 		l.Push(lua.LBool(sys.esc))
 		return 1
 	})
@@ -395,8 +398,21 @@ func scriptCommonInit(l *lua.LState) {
 		sys.match = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setLifeShare", func(l *lua.LState) int {
-		sys.teamLifeShare = boolArg(l, 1)
+	luaRegister(l, "setConsecutiveWins", func(l *lua.LState) int {
+		sys.consecutiveWins[int(numArg(l, 1))-1] = int32(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "getConsecutiveWins", func(l *lua.LState) int {
+		l.Push(lua.LNumber(sys.consecutiveWins[int(numArg(l, 1))-1]))
+		return 1
+	})
+	luaRegister(l, "setLifeAdjustment", func(l *lua.LState) int {
+		sys.lifeAdjustment = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setLoseKO", func(l *lua.LState) int {
+		sys.simulLoseKO = boolArg(l, 1)
+		sys.tagLoseKO = boolArg(l, 2)
 		return 0
 	})
 	luaRegister(l, "setMatchWins", func(l *lua.LState) int {
@@ -497,7 +513,7 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebarPortraitScale = float32(numArg(l, 1))
 		return 0
 	})
-	
+
 	// TODO: Test if this even function works.
 	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
 		sys.windowTitle = string(strArg(l, 1))
@@ -510,6 +526,10 @@ func scriptCommonInit(l *lua.LState) {
 
 func systemScriptInit(l *lua.LState) {
 	scriptCommonInit(l)
+	luaRegister(l, "panicError", func(*lua.LState) int {
+		l.RaiseError(strArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "bgNew", func(*lua.LState) int {
 		s, ok := toUserData(l, 1).(*Sff)
 		if !ok {
@@ -803,7 +823,7 @@ func systemScriptInit(l *lua.LState) {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			c = strings.Trim(c, "\r")
 			if len(c) > 0 {
-				sys.sel.addCahr(c)
+				sys.sel.addChar(c)
 			}
 		}
 		return 0
@@ -1031,8 +1051,12 @@ func systemScriptInit(l *lua.LState) {
 		sys.lifeMul = float32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setTeam1VS2Life", func(l *lua.LState) int {
-		sys.team1VS2Life = float32(numArg(l, 1))
+	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
+		sys.gameSpeed = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setSingleVsTeamLife", func(l *lua.LState) int {
+		sys.singleVsTeamLife = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setTurnsRecoveryRate", func(l *lua.LState) int {
@@ -1083,8 +1107,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
 			l.RaiseError("The player number (%v) is invalid.", pn)
 		}
-		tbl := tableArg(l, 2)
-		tbl.ForEach(func(key, value lua.LValue) {
+		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
@@ -1107,9 +1130,163 @@ func systemScriptInit(l *lua.LState) {
 		})
 		return 0
 	})
+	luaRegister(l, "setLifeBarTimer", func(*lua.LState) int {
+		sys.timerStart = int32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setLifeBarScore", func(*lua.LState) int {
+		sys.scoreStart[0] = float32(numArg(l, 1))
+		if l.GetTop() >= 2 {
+			sys.scoreStart[1] = float32(numArg(l, 2))
+		}
+		return 0
+	})
+	luaRegister(l, "setLifeBarElements", func(*lua.LState) int {
+		tableArg(l, 1).ForEach(func(key, value lua.LValue) {
+			switch k := key.(type) {
+			case lua.LString:
+				switch string(k) {
+				case "timer":
+					sys.lifebar.tr.active = lua.LVAsBool(value)
+				case "p1score":
+					sys.lifebar.sc[0].active = lua.LVAsBool(value)
+				case "p2score":
+					sys.lifebar.sc[1].active = lua.LVAsBool(value)
+				case "match":
+					sys.lifebar.ma.active = lua.LVAsBool(value)
+				case "p1ai":
+					sys.lifebar.ai[0].active = lua.LVAsBool(value)
+				case "p2ai":
+					sys.lifebar.ai[1].active = lua.LVAsBool(value)
+				case "mode":
+					sys.lifebar.activeMode = lua.LVAsBool(value)
+				case "bars":
+					sys.lifebar.activeBars = lua.LVAsBool(value)
+				case "lifebar":
+					sys.lifebar.active = lua.LVAsBool(value)
+				default:
+					l.RaiseError("The table key (%v) is invalid.", key)
+				}
+			default:
+				l.RaiseError("The table key type (%v) is invalid.", fmt.Sprintf("%T\n", key))
+			}
+		})
+		return 0
+	})
+	luaRegister(l, "charChangeState", func(l *lua.LState) int {
+		pn := int(numArg(l, 1))
+		st := int32(numArg(l, 2))
+		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+			c := sys.chars[pn-1]
+			if st == -1 {
+				//TODO: remove character or make it invisible
+				//c[0].setSF(CSF_invisible) //this doesn't seem to be working
+				//c[0].setPosY(1000) //this may affect camera
+			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
+				sys.playerClear(pn-1)
+				c[0].changeState(st, -1, -1)
+				l.Push(lua.LBool(true))
+				return 1
+			}
+		}
+		l.Push(lua.LBool(false))
+		return 1
+	})
+	luaRegister(l, "lastMatchClearance", func(l *lua.LState) int {
+		if l.GetTop() == 0 {
+			sys.matchClearance = [2]MatchClearance{}
+			return 0
+		}
+		side := int(numArg(l, 1)) - 1
+		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+			switch v := value.(type) {
+			case lua.LString:
+				switch string(v) {
+				case "helpers":
+					sys.matchClearance[side].helpers = true
+				case "sound":
+					sys.matchClearance[side].sound = true
+				case "projectiles":
+					sys.matchClearance[side].projectiles = true
+				case "explodes":
+					sys.matchClearance[side].explodes = true
+				case "fading":
+					sys.matchClearance[side].fading = true
+				default:
+					l.RaiseError("The table value (%v) is invalid.", value)
+				}
+			default:
+				l.RaiseError("The table value type (%v) is invalid.", fmt.Sprintf("%T\n", value))
+			}
+		})
+		sys.matchClearance[side].updated = true
+		return 0
+	})
+	luaRegister(l, "lastMatchClear", func(l *lua.LState) int {
+		for i, p := range sys.chars {
+			if len(p) > 0 {
+				sys.playerClear(i)
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "lastMatchRender", func(l *lua.LState) int {
+		win := sys.lifebar.ro.win.displaytime
+		win2 := sys.lifebar.ro.win2.displaytime
+		drawn := sys.lifebar.ro.drawn.displaytime
+		sys.lifebar.ro.win.displaytime = 0
+		sys.lifebar.ro.win2.displaytime = 0
+		sys.lifebar.ro.drawn.displaytime = 0
+		lba := sys.lifebar.active
+		sys.lifebar.active = boolArg(l, 1)
+		x, y, newx, newy, le, ra, scl, sclmul := sys.matchPos[0], sys.matchPos[1], sys.matchPos[2], sys.matchPos[3], sys.matchPos[4], sys.matchPos[5], sys.matchPos[6], sys.matchPos[7]
+		//sys.step, sys.roundResetFlg, sys.reloadFlg = false, false, false
+		scl = sys.cam.ScaleBound(scl, sclmul)
+		tmp := (float32(sys.gameWidth) / 2) / scl
+		if AbsF((le+ra)-(newx-x)*2) >= tmp/2 {
+			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-le, ra-(newx-x))))
+		}
+		x = sys.cam.XBound(scl, MinF(x+le+tmp, MaxF(x+ra-tmp, newx)))
+		if !sys.cam.ZoomEnable {
+			// Pos X の誤差が出ないように精度を落とす
+			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
+		}
+		y = sys.cam.YBound(scl, newy)
+		if sys.tickFrame() && (sys.super <= 0 || !sys.superpausebg) &&
+			(sys.pause <= 0 || !sys.pausebg) {
+			sys.stage.action()
+		}
+		newx, newy = x, y
+		le, ra, sclmul = sys.action(&newx, &newy, scl)
+		if !sys.frameSkip {
+			dx, dy, dscl := x, y, scl
+			if sys.enableZoomstate {
+				if !sys.debugPaused() {
+					sys.zoomPosXLag += ((sys.zoomPos[0] - sys.zoomPosXLag) * (1 - sys.zoomlag))
+					sys.zoomPosYLag += ((sys.zoomPos[1] - sys.zoomPosYLag) * (1 - sys.zoomlag))
+					sys.drawScale = sys.drawScale / (sys.drawScale + (sys.zoomScale*scl-sys.drawScale)*sys.zoomlag) * sys.zoomScale * scl
+				}
+				dscl = MaxF(sys.cam.MinScale, sys.drawScale/sys.cam.BaseScale())
+				dx = sys.cam.XBound(dscl, x+sys.zoomPosXLag/scl)
+				dy = y + sys.zoomPosYLag
+			} else {
+				sys.zoomlag = 0
+				sys.zoomPosXLag = 0
+				sys.zoomPosYLag = 0
+				sys.zoomScale = 1
+				sys.zoomPos = [2]float32{0, 0}
+				sys.drawScale = sys.cam.Scale
+			}
+			sys.draw(dx, dy, dscl)
+		}
+		sys.matchPos = [8]float32{x, y, newx, newy, le, ra, scl, sclmul}
+		sys.lifebar.ro.win.displaytime = win
+		sys.lifebar.ro.win2.displaytime = win2
+		sys.lifebar.ro.drawn.displaytime = drawn
+		sys.lifebar.active = lba
+		return 0
+	})
 	luaRegister(l, "game", func(l *lua.LState) int {
-		tbl := l.NewTable()
-		tbl_chars := l.NewTable()
 		load := func() error {
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
@@ -1149,6 +1326,14 @@ func systemScriptInit(l *lua.LState) {
 				sys.lifebar.wi[i].clear()
 			}
 			sys.draws = 0
+			tbl := l.NewTable()
+			sys.matchData = l.NewTable()
+			if !sys.matchClearance[0].updated {
+				sys.matchClearance[0] = MatchClearance{}
+			}
+			if !sys.matchClearance[1].updated {
+				sys.matchClearance[1] = MatchClearance{}
+			}
 			fight := func() (int32, error) {
 				if err := load(); err != nil {
 					return -1, err
@@ -1215,30 +1400,6 @@ func systemScriptInit(l *lua.LState) {
 					if w1 != w2 {
 						winp = Btoi(w1) + Btoi(w2)*2
 					}
-					tbl_roundNo := l.NewTable()
-					for _, p := range sys.chars {
-						if len(p) > 0 {
-							tmp := l.NewTable()
-							tmp.RawSetString("name", lua.LString(p[0].name))
-							tmp.RawSetString("id", lua.LNumber(p[0].id))
-							tmp.RawSetString("memberNo", lua.LNumber(p[0].memberNo))
-							tmp.RawSetString("selectNo", lua.LNumber(p[0].selectNo))
-							tmp.RawSetString("life", lua.LNumber(p[0].life))
-							tmp.RawSetString("lifeMax", lua.LNumber(p[0].lifeMax))
-							tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
-							tmp.RawSetString("aiLevel", lua.LNumber(p[0].aiLevel()))
-							tmp.RawSetString("palno", lua.LNumber(p[0].palno()))
-							tmp.RawSetString("win", lua.LBool(p[0].win()))
-							tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
-							tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
-							tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
-							tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
-							tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
-							tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
-							tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
-						}
-					}
-					tbl_chars.RawSetInt(int(sys.round-1), tbl_roundNo)
 				}
 				return winp, nil
 			}
@@ -1265,24 +1426,41 @@ func systemScriptInit(l *lua.LState) {
 				sys.loader.reset()
 			}
 			if winp != -2 {
-				time := int32(0)
+				var ti int32
 				tbl_time := l.NewTable()
-				for k, v := range sys.timerCount {
+				for k, v := range sys.timerRounds {
 					tbl_time.RawSetInt(k+1, lua.LNumber(v))
-					time = time + v
+					ti += v
 				}
-				tbl.RawSetString("chars", tbl_chars)
-				tbl.RawSetString("time_rounds", tbl_time)
-				tbl.RawSetString("time", lua.LNumber(time))
+				sc := sys.scoreStart
+				tbl_score := l.NewTable()
+				for k, v := range sys.scoreRounds {
+					tbl_tmp := l.NewTable()
+					tbl_tmp.RawSetInt(1, lua.LNumber(v[0]))
+					tbl_tmp.RawSetInt(2, lua.LNumber(v[1]))
+					tbl_score.RawSetInt(k+1, tbl_tmp)
+					sc[0] += v[0]
+					sc[1] += v[1]
+				}
+				tbl.RawSetString("match", sys.matchData)
+				tbl.RawSetString("scoreRounds", tbl_score)
+				tbl.RawSetString("timerRounds", tbl_time)
+				tbl.RawSetString("time", lua.LNumber(ti))
 				tbl.RawSetString("roundTime", lua.LNumber(sys.roundTime))
 				tbl.RawSetString("winTeam", lua.LNumber(sys.winTeam))
 				tbl.RawSetString("lastRound", lua.LNumber(sys.round-1))
 				tbl.RawSetString("draws", lua.LNumber(sys.draws))
-				tbl.RawSetString("P1wins", lua.LNumber(sys.wins[0]))
-				tbl.RawSetString("P2wins", lua.LNumber(sys.wins[1]))
-				tbl.RawSetString("P1tmode", lua.LNumber(sys.tmode[0]))
-				tbl.RawSetString("P2tmode", lua.LNumber(sys.tmode[1]))
+				tbl.RawSetString("p1wins", lua.LNumber(sys.wins[0]))
+				tbl.RawSetString("p2wins", lua.LNumber(sys.wins[1]))
+				tbl.RawSetString("p1tmode", lua.LNumber(sys.tmode[0]))
+				tbl.RawSetString("p2tmode", lua.LNumber(sys.tmode[1]))
+				tbl.RawSetString("p1score", lua.LNumber(sc[0]))
+				tbl.RawSetString("p2score", lua.LNumber(sc[1]))
 				tbl.RawSetString("challenger", lua.LNumber(sys.challenger))
+				sys.timerStart = 0
+				sys.timerRounds = []int32{}
+				sys.scoreStart = [2]float32{}
+				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
 				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
 				sys.sel.sdefOverwrite = ""
@@ -1291,6 +1469,8 @@ func systemScriptInit(l *lua.LState) {
 				sys.resetGblEffect()
 				sys.resetOverrideCharData()
 				sys.ratioLevel = [MaxSimul*2 + MaxAttachedChar]int32{}
+				sys.matchClearance[0].updated = false
+				sys.matchClearance[1].updated = false
 				return 2
 			}
 		}
@@ -1364,8 +1544,6 @@ func systemScriptInit(l *lua.LState) {
 		} else if p == 3 {
 			sys.sel.vsportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
 		} else if p == 4 {
-			sys.sel.vportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
-		} else if p == 5 {
 			sys.sel.stageportrait = [...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}
 		}
 		return 0
@@ -1378,12 +1556,8 @@ func systemScriptInit(l *lua.LState) {
 		sys.demoTime = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setBarsDisplay", func(*lua.LState) int {
-		sys.barsDisplay = boolArg(l, 1)
-		return 0
-	})
-	luaRegister(l, "setStopTitleBGM", func(*lua.LState) int {
-		sys.stopTitleBGM = boolArg(l, 1)
+	luaRegister(l, "setAllowBGM", func(*lua.LState) int {
+		sys.allowbgm = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setGameMode", func(*lua.LState) int {
@@ -1475,11 +1649,6 @@ func systemScriptInit(l *lua.LState) {
 					if err != nil {
 						c.vsportrait = c.lportrait
 					}
-					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
-					if err != nil {
-						c.vportrait = c.lportrait
-						return nil
-					}
 					if len(c.pal) == 0 {
 						c.pal, _ = selectablePalettes(file)
 					}
@@ -1490,49 +1659,68 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "drawVictoryPortrait", func(l *lua.LState) int {
-		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
-		var xscl, yscl float32 = 1, 1
-		if l.GetTop() >= 4 {
-			xscl = float32(numArg(l, 4))
-			if l.GetTop() >= 5 {
-				yscl = float32(numArg(l, 5))
-			}
+	luaRegister(l, "drawCharSprite", func(l *lua.LState) int {
+		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+			l.RaiseError("drawCharSprite: the player number (%v) is not loaded.", pn)
 		}
-		if !sys.frameSkip {
-			c := sys.sel.GetChar(n)
-			if c != nil && c.vportrait != nil {
-				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
+		var ok bool
+		var group int16
+		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+			if !ok {
+				if int(lua.LVAsNumber(key))%2 == 1 {
+					group = int16(lua.LVAsNumber(value))
+				} else {
+					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)))
+					if fspr := sprite; fspr != nil {
+						pfx := sys.chars[pn-1][0].getPalfx()
+						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
+						fspr.Pal = nil
+						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
+						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
+						lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1, scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
+						lay.DrawSprite((float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale, float32(numArg(l, 4))*sys.lifebarScale,
+							lay.layerno, sprite, pfx, sys.cgi[pn-1].portraitscale)
+						ok = true
+					}
 				}
-				paltex := c.vportrait.PalTex
-				c.vportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/float32(sys.luaSpriteScale), yscl/float32(sys.luaSpriteScale), c.vportrait.Pal, nil, paltex)
 			}
-			if c.vportrait == nil {
-				LoadFile(&c.sprite, c.def, func(file string) error {
-					var err error
-					if c.lportrait == nil {
-						c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
-					}
-					if c.vsportrait == nil && c.lportrait != nil {
-						c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
-						if err != nil {
-							c.vsportrait = c.lportrait
-						}
-					}
-					c.vportrait, err = loadFromSff(file, sys.sel.vportrait[0], sys.sel.vportrait[1])
-					if err != nil && c.lportrait != nil {
-						c.vportrait = c.lportrait
-					}
-					if len(c.pal) == 0 {
-						c.pal, _ = selectablePalettes(file)
-					}
-					return nil
-				})
-
-			}
+		})
+		l.Push(lua.LBool(ok))
+		return 1
+	})
+	luaRegister(l, "drawCharAnimation", func(l *lua.LState) int {
+		//pn, anim_tbl (1 or more numbers), x, y, scaleX, scaleY, facing
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+			l.RaiseError("drawCharAnimation: the player number (%v) is not loaded.", pn)
 		}
+		var ok bool
+		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
+			if !ok {
+				if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false); anim != nil {
+					anim.Action() //TODO: for some reason doesn't advance the animation, remains at first frame
+					lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1, scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
+					lay.DrawAnim(&sys.scrrect, float32(numArg(l, 3))+sys.lifebarOffsetX, float32(numArg(l, 4)), sys.lifebarScale, lay.layerno, anim)
+					ok = true
+				}
+			}
+		})
+		l.Push(lua.LBool(ok))
+		return 1
+	})
+	luaRegister(l, "resetCharAnimation", func(l *lua.LState) int {
+		//pn, anim_tbl (1 or more numbers)
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+			l.RaiseError("resetCharAnimation: the player number (%v) is not loaded.", pn)
+		}
+		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
+			if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false); anim != nil {
+				anim.Reset()
+			}
+		})
 		return 0
 	})
 	luaRegister(l, "drawStagePortrait", func(l *lua.LState) int {
@@ -1613,10 +1801,88 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "getCharSff", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.sprite))
+		return 1
+	})
+	luaRegister(l, "getCharSnd", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.sound))
+		return 1
+	})
+	luaRegister(l, "getAttachedCharInfo", func(*lua.LState) int {
+		def := strArg(l, 1)
+		idx := strings.Index(def, "/")
+		if len(def) >= 4 && strings.ToLower(def[len(def)-4:]) == ".def" {
+			if idx < 0 {
+				return 0
+			}
+		} else if idx < 0 {
+			def += "/" + def + ".def"
+		} else {
+			def += ".def"
+		}
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+			def = "chars/" + def
+		}
+		if def = FileExist(def); len(def) == 0 {
+			return 0
+		}
+		str, err := LoadText(def)
+		if err != nil {
+			return 0
+		}
+		lines, i, info, files, displayname, sprite, sound := SplitAndTrim(str, "\n"), 0, true, true, "", "", ""
+		for i < len(lines) {
+			is, name, _ := ReadIniSection(lines, &i)
+			switch name {
+			case "info":
+				if info {
+					info = false
+					var ok bool
+					displayname, ok, _ = is.getText("displayname")
+					if !ok {
+						displayname, _, _ = is.getText("name")
+					}
+				}
+			case "files":
+				if files {
+					files = false
+					sprite = is["sprite"]
+					sound = is["sound"]
+				}
+			}
+		}
+		l.Push(lua.LString(def))
+		l.Push(lua.LString(displayname))
+		l.Push(lua.LString(sprite))
+		l.Push(lua.LString(sound))
+		return 4
+	})
+	luaRegister(l, "getWaveData", func(*lua.LState) int {
+		//path, group, sound, loops before give up searching for group/sound pair (optional)
+		var max uint32
+		if l.GetTop() >= 4 {
+			max = uint32(numArg(l, 4))
+		}
+		w, err := loadFromSnd(strArg(l, 1), int32(numArg(l, 2)), int32(numArg(l, 3)), max)
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
+		l.Push(newUserData(l, w))
+		return 1
+	})
+	luaRegister(l, "wavePlay", func(l *lua.LState) int {
+		w, ok := toUserData(l, 1).(*Wave)
+		if !ok {
+			userDataError(l, 1, w)
+		}
+		w.play()
+		return 0
+	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
-		zoomin, zoomout, stagebgm := sys.sel.GetStageInfo(int(numArg(l, 1)))
-		l.Push(lua.LString(zoomin))
-		l.Push(lua.LString(zoomout))
+		stagebgm, attachedchardef := sys.sel.GetStageInfo(int(numArg(l, 1)))
 		tbl := l.NewTable()
 		for k, v := range stagebgm {
 			subt := l.NewTable()
@@ -1627,7 +1893,8 @@ func systemScriptInit(l *lua.LState) {
 			tbl.RawSetInt(k + 1, subt)
 		}
 		l.Push(tbl)
-		return 3
+		l.Push(lua.LString(attachedchardef))
+		return 2
 	})
 	luaRegister(l, "getGamepadName", func(*lua.LState) int {
 		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
@@ -2188,6 +2455,8 @@ func triggerScriptInit(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.fall.envshake_ampl)
 		case "fall.envshake.phase":
 			ln = lua.LNumber(c.ghv.fall.envshake_phase)
+		case "score":
+			ln = lua.LNumber(c.ghv.score)
 		}
 		l.Push(ln)
 		return 1
@@ -2601,6 +2870,34 @@ func triggerScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.winPerfect()))
 		return 1
 	})
+	luaRegister(l, "winnormal", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winNormal()))
+		return 1
+	})
+	luaRegister(l, "winspecial", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winSpecial()))
+		return 1
+	})
+	luaRegister(l, "winhyper", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winHyper()))
+		return 1
+	})
+	luaRegister(l, "wincheese", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winCheese()))
+		return 1
+	})
+	luaRegister(l, "winthrow", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winThrow()))
+		return 1
+	})
+	luaRegister(l, "winsuicide", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winSuicide()))
+		return 1
+	})
+	luaRegister(l, "winteammate", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.winTeammate()))
+		return 1
+	})
 }
 
 // Debug Script
@@ -2715,6 +3012,18 @@ func debugScriptInit(l *lua.LState, file string) error {
 	luaRegister(l, "getAllowDebugKeys", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.allowDebugKeys))
 		return 1
+	})
+	luaRegister(l, "resetScore", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.scoreAdd(-sys.debugWC.scoreCurrent)
+		}
+		return 0
+	})
+	luaRegister(l, "markCheat", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.cheated = true
+		}
+		return 0
 	})
 	return l.DoFile(file)
 }

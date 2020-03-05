@@ -28,7 +28,7 @@ if getAllowDebugKeys() then
 	addHotkey('F3', false, false, false, 'powMax(1);powMax(2)')
 	addHotkey('F4', false, false, false, 'roundReset()')
 	addHotkey('F4', false, false, true, 'reload()')
-	addHotkey('F5', false, false, false, 'setTime(0)')
+	addHotkey('F5', false, false, false, 'setTime(0);markCheat(1);markCheat(2);markCheat(3);markCheat(4);markCheat(5);markCheat(6);markCheat(7);markCheat(8)')
 	addHotkey(
 	'SPACE', false, false, false,
 	'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime())')
@@ -62,6 +62,13 @@ function toggleAI(p)
 end
 
 function kill(p, ...)
+  if p % 2 ~= 0 then
+    markCheat(p + 1)
+    resetScore(p + 1)
+  else
+    markCheat(p - 1)
+    resetScore(p - 1)
+  end
   local oldid = id()
   if player(p) then
     local n = ...
@@ -72,6 +79,13 @@ function kill(p, ...)
 end
 
 function powMax(p)
+  if p % 2 ~= 0 then
+    markCheat(p + 1)
+    resetScore(p + 1)
+  else
+    markCheat(p - 1)
+    resetScore(p - 1)
+  end
   local oldid = id()
   if player(p) then
     setPower(powermax())
@@ -80,6 +94,13 @@ function powMax(p)
 end
 
 function full(p)
+  if p % 2 ~= 0 then
+    markCheat(p + 1)
+    resetScore(p + 1)
+  else
+    markCheat(p - 1)
+    resetScore(p - 1)
+  end
   local oldid = id()
   if player(p) then
     setLife(lifemax())
@@ -119,4 +140,3 @@ function status(p)
   playerid(oldid)
   return ret;
 end
-

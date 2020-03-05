@@ -1,7 +1,8 @@
 <project>
-    <shortName>IkemenGOPlus</shortName>
-    <fullName>Ikemen GO Plus</fullName>
-    <version>0.1</version>
+    <shortName>IkemenGO</shortName>
+    <fullName>Ikemen GO</fullName>
+    <version>K4 0.13</version>
+    <link>https://github.com/K4thos/Ikemen_GO</link>
     <readmeFile>${build_project_directory}/README.md</readmeFile>
     <licenseFile>${build_project_directory}/LICENSE.txt</licenseFile>
     <componentList>

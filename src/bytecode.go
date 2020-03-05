@@ -315,11 +315,16 @@ const (
 	OC_const_p2name
 	OC_const_p3name
 	OC_const_p4name
+	OC_const_p5name
+	OC_const_p6name
+	OC_const_p7name
+	OC_const_p8name
 	OC_const_authorname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_gamemode
+	OC_const_constants
 	OC_const_ratiolevel
 )
 const (
@@ -352,6 +357,13 @@ const (
 	OC_ex_winko
 	OC_ex_wintime
 	OC_ex_winperfect
+	OC_ex_winnormal
+	OC_ex_winspecial
+	OC_ex_winhyper
+	OC_ex_wincheese
+	OC_ex_winthrow
+	OC_ex_winsuicide
+	OC_ex_winteammate
 	OC_ex_lose
 	OC_ex_loseko
 	OC_ex_losetime
@@ -403,6 +415,31 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+	OC_ex_gethitvar_score
+	OC_ex_scorecurrent
+	OC_ex_scoreround
+	OC_ex_scoretotal
+	OC_ex_timeleft
+	OC_ex_timeround
+	OC_ex_timetotal
+	OC_ex_receiveddamage
+	OC_ex_receivedhits
+	OC_ex_combocount
+	OC_ex_damagecount
+	OC_ex_consecutivewins
+	OC_ex_countercount
+	OC_ex_firstattack
+	OC_ex_roundtype
+	OC_ex_getplayerid
+	OC_ex_networkplayer
+	OC_ex_cheated
+	OC_ex_memberno
+	OC_ex_playerno
+	OC_ex_pausetime
+	OC_ex_standby
+	OC_ex_max
+	OC_ex_min
+	OC_ex_round
 	OC_ex_ailevelf // float version of AILevel
 )
 const (
@@ -760,6 +797,24 @@ func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
 			v1.SetI(int32(f))
 		}
 	}
+}
+func (_ BytecodeExp) max(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v >= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v <= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
+	shift := math.Pow(10, v2.v)
+	v1.SetF(float32(math.Floor((v1.v*shift)+0.5) / shift))
 }
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	oc := c
@@ -1442,6 +1497,34 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_p5name:
+		p5 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p5 != nil && !(p5.scf(SCF_ko) && p5.scf(SCF_over)) &&
+			p5.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p6name:
+		p6 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
+			p6.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p7name:
+		p7 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p7 != nil && !(p7.scf(SCF_ko) && p7.scf(SCF_over)) &&
+			p7.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p8name:
+		p8 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
+			p8.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_const_stagevar_info_name:
 		sys.bcStack.PushB(sys.stage.nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1461,6 +1544,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(sys.gameMode ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_constants:
+		sys.bcStack.PushI(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
 	case OC_const_ratiolevel:
 		sys.bcStack.PushI(c.ratioLevel())
@@ -1498,6 +1584,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.winTime())
 	case OC_ex_winperfect:
 		sys.bcStack.PushB(c.winPerfect())
+	case OC_ex_winnormal:
+		sys.bcStack.PushB(c.winNormal())
+	case OC_ex_winspecial:
+		sys.bcStack.PushB(c.winSpecial())
+	case OC_ex_winhyper:
+		sys.bcStack.PushB(c.winHyper())
+	case OC_ex_wincheese:
+		sys.bcStack.PushB(c.winCheese())
+	case OC_ex_winthrow:
+		sys.bcStack.PushB(c.winThrow())
+	case OC_ex_winsuicide:
+		sys.bcStack.PushB(c.winSuicide())
+	case OC_ex_winteammate:
+		sys.bcStack.PushB(c.winTeammate())
 	case OC_ex_p2dist_x:
 		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
 	case OC_ex_p2dist_y:
@@ -1574,6 +1674,59 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
+	case OC_ex_gethitvar_score:
+		sys.bcStack.PushF(c.ghv.score)
+	case OC_ex_scorecurrent:
+		sys.bcStack.PushF(c.scoreCurrent)
+	case OC_ex_scoreround:
+		sys.bcStack.PushF(scoreRound(c.teamside))
+	case OC_ex_scoretotal:
+		sys.bcStack.PushF(scoreTotal(c.playerNo&1))
+	case OC_ex_timeleft:
+		sys.bcStack.PushI(timeLeft())
+	case OC_ex_timeround:
+		sys.bcStack.PushI(timeRound())
+	case OC_ex_timetotal:
+		sys.bcStack.PushI(timeTotal())
+	case OC_ex_receiveddamage:
+		sys.bcStack.PushI(c.getcombodmg)
+	case OC_ex_receivedhits:
+		sys.bcStack.PushI(c.getcombo)
+	case OC_ex_combocount:
+		sys.bcStack.PushI(c.comboCount())
+	case OC_ex_damagecount:
+		sys.bcStack.PushI(c.damageCount)
+	case OC_ex_consecutivewins:
+		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
+	case OC_ex_countercount:
+		sys.bcStack.PushI(c.counterHits)
+	case OC_ex_firstattack:
+		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_roundtype:
+		sys.bcStack.PushI(c.roundType())
+	case OC_ex_getplayerid:
+		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
+	case OC_ex_networkplayer:
+		sys.bcStack.PushI(c.networkPlayer())
+	case OC_ex_cheated:
+		sys.bcStack.PushB(c.cheated)
+	case OC_ex_memberno:
+		sys.bcStack.PushI(int32(c.memberNo) + 1)
+	case OC_ex_playerno:
+		sys.bcStack.PushI(int32(c.playerNo) + 1)
+	case OC_ex_pausetime:
+		sys.bcStack.PushI(c.pauseTime())
+	case OC_ex_standby:
+		sys.bcStack.PushB(c.scf(SCF_standby))
+	case OC_ex_max:
+		v2 := sys.bcStack.Pop()
+		be.max(sys.bcStack.Top(), v2)
+	case OC_ex_min:
+		v2 := sys.bcStack.Pop()
+		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_round:
+		v2 := sys.bcStack.Pop()
+		be.round(sys.bcStack.Top(), v2)
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
@@ -3369,6 +3522,7 @@ const (
 	hitDef_fall_envshake_ampl
 	hitDef_fall_envshake_phase
 	hitDef_fall_envshake_freq
+	hitDef_score
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -3639,6 +3793,11 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.envshake_phase = exp[0].evalF(c)
 	case hitDef_fall_envshake_freq:
 		hd.fall.envshake_freq = MaxF(0, exp[0].evalF(c))
+	case hitDef_score:
+		hd.score[0] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			hd.score[1] = exp[1].evalF(c)
+		}
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
 			return false
@@ -5874,6 +6033,134 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	})
 	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
 	sys.zoomPos[1] = zoompos[1]
+	return false
+}
+
+type scoreAdd StateControllerBase
+
+const (
+	scoreAdd_value byte = iota
+	scoreAdd_redirectid
+)
+
+func (sc scoreAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case scoreAdd_value:
+			crun.scoreAdd(exp[0].evalF(c))
+		case scoreAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type targetScoreAdd StateControllerBase
+
+const (
+	targetScoreAdd_id byte = iota
+	targetScoreAdd_value
+	targetScoreAdd_redirectid
+)
+
+func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetScoreAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetScoreAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetScoreAdd(tar, exp[0].evalF(c))
+		case targetScoreAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type roundTimeAdd StateControllerBase
+
+const (
+	roundTimeAdd_value byte = iota
+	roundTimeAdd_redirectid
+)
+
+func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case roundTimeAdd_value:
+			sys.time = Min(sys.roundTime, sys.time+exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type roundTimeSet StateControllerBase
+
+const (
+	roundTimeSet_value byte = iota
+	roundTimeSet_redirectid
+)
+
+func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case roundTimeSet_value:
+			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type printToConsole StateControllerBase
+
+const (
+	printToConsole_params byte = iota
+	printToConsole_text
+)
+
+func (sc printToConsole) Run(c *Char, _ []int32) bool {
+	params := []interface{}{}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case printToConsole_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case printToConsole_text:
+			sys.printToConsole(sys.workingState.playerNo,
+				int(exp[0].evalI(c)), params...)
+		}
+		return true
+	})
 	return false
 }
 

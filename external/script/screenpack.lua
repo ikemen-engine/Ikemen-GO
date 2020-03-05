@@ -85,7 +85,7 @@ function main.CalculateLocalcoordValues()
 	
 	main.SP_Localcoord_X_Dif = -math.floor( (( main.SP_Localcoord[1] / (main.SP_Localcoord43[1] / 320) ) - 320) / 2 )
 		
-	main.LB_ScreenWidth = config.Width / (config.Height / 240)
+	main.LB_ScreenWidth = config.GameWidth / (config.GameHeight / 240)
 	main.LB_ScreenDiference = (main.LB_ScreenWidth - 320) / (main.LB_ScreenWidth / 320)
 	--setLifebarPortaitScale(main.SP_Localcoord[1] / main.SP_Localcoord43[1])
 
