@@ -2896,6 +2896,7 @@ function start.f_p1SelectMenu()
 				end
 				p1SelEnd = true
 			end
+			main.f_cmdInput()
 		--select screen timer reached 0
 		elseif motif.select_info.timer_enabled == 1 and timerSelect == -1 then
 			sndPlay(motif.files.snd_data, motif.select_info.p1_cursor_done_snd[1], motif.select_info.p1_cursor_done_snd[2])
@@ -2943,7 +2944,6 @@ function start.f_p1SelectMenu()
 			end
 			p1SelEnd = true
 		end
-		--main.f_cmdInput()
 	end
 end
 
@@ -3008,6 +3008,7 @@ function start.f_p2SelectMenu()
 			if #t_p2Selected == p2NumChars then
 				p2SelEnd = true
 			end
+			main.f_cmdInput()
 		--select screen timer reached 0
 		elseif motif.select_info.timer_enabled == 1 and timerSelect == -1 then
 			sndPlay(motif.files.snd_data, motif.select_info.p2_cursor_done_snd[1], motif.select_info.p2_cursor_done_snd[2])
@@ -3031,7 +3032,6 @@ function start.f_p2SelectMenu()
 			end
 			p2SelEnd = true
 		end
-		--main.f_cmdInput()
 	end
 end
 
