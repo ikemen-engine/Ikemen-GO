@@ -2144,13 +2144,15 @@ function start.f_selectScreen()
 		if p1Cell then
 			--draw p1 name
 			if #t_p1Selected < p1NumChars then
-				txt_p1Name:update({
-					align = motif.select_info.p1_name_font[3],
-					text =  start.f_getName(start.f_selGrid(p1Cell + 1).char_ref),
-					x =     motif.select_info.p1_name_offset[1] + #t_p1Selected * motif.select_info.p1_name_spacing[1],
-					y =     motif.select_info.p1_name_offset[2] + #t_p1Selected * motif.select_info.p1_name_spacing[2],
-				})
-				txt_p1Name:draw()
+				if start.f_selGrid(p1Cell + 1).char_ref ~= nil then
+					txt_p1Name:update({
+						align = motif.select_info.p1_name_font[3],
+						text =  start.f_getName(start.f_selGrid(p1Cell + 1).char_ref),
+						x =     motif.select_info.p1_name_offset[1] + #t_p1Selected * motif.select_info.p1_name_spacing[1],
+						y =     motif.select_info.p1_name_offset[2] + #t_p1Selected * motif.select_info.p1_name_spacing[2],
+					})
+					txt_p1Name:draw()
+				end
 			end
 			start.f_drawName(
 				t_p1Selected,
@@ -2167,13 +2169,15 @@ function start.f_selectScreen()
 		if p2Cell then
 			--draw p2 name
 			if #t_p2Selected < p2NumChars then
-				txt_p2Name:update({
-					align = motif.select_info.p2_name_font[3],
-					text =  start.f_getName(start.f_selGrid(p2Cell + 1).char_ref),
-					x =     motif.select_info.p2_name_offset[1] + #t_p2Selected * motif.select_info.p2_name_spacing[1],
-					y =     motif.select_info.p2_name_offset[2] + #t_p2Selected * motif.select_info.p2_name_spacing[2],
-				})
-				txt_p2Name:draw()
+				if start.f_selGrid(p2Cell + 1).char_ref ~= nil then
+					txt_p2Name:update({
+						align = motif.select_info.p2_name_font[3],
+						text =  start.f_getName(start.f_selGrid(p2Cell + 1).char_ref),
+						x =     motif.select_info.p2_name_offset[1] + #t_p2Selected * motif.select_info.p2_name_spacing[1],
+						y =     motif.select_info.p2_name_offset[2] + #t_p2Selected * motif.select_info.p2_name_spacing[2],
+					})
+					txt_p2Name:draw()
+				end
 			end
 			start.f_drawName(
 				t_p2Selected,
