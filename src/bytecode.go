@@ -2083,62 +2083,125 @@ type tagIn StateControllerBase
 const (
 	tagIn_stateno = iota
 	tagIn_partnerstateno
+	tagIn_self
+	tagIn_partner
+	tagIn_ctrl
+	tagIn_partnerctrl
 	tagIn_redirectid
 )
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
-	p := c.partner(0)
 	crun := c
-	sn := int32(-1)
-	ret := false
-	c.unsetSCF(SCF_standby)
+	
+	var tagSCF int = -1
+	var partnerNo int32 = -1
+	var partnerStateNo int32 = -1
+	var partnerCtrlSetting int = -1
+
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:
-			sn = exp[0].evalI(c)
-		case tagIn_partnerstateno:
-			if p == nil {
-				return false
-			}
-			if psn := exp[0].evalI(c); psn >= 0 {
-				if sn >= 0 {
-					crun.changeState(sn, -1, -1)
-				}
-				p.unsetSCF(SCF_standby)
-				p.changeState(psn, -1, -1)
-				ret = true
+			sn := exp[0].evalI(c); if sn >= 0 {
+				crun.changeState(sn, -1, -1)
+				if tagSCF == -1 {tagSCF = 1}
 			} else {
 				return false
+			}
+		case tagIn_partnerstateno:
+			if psn := exp[0].evalI(c); psn >= 0 {
+				partnerStateNo = psn
+			} else {
+				return false
+			}
+		case tagIn_self:
+			sti := exp[0].evalB(c);if sti == true {
+				tagSCF = 1
+			} else {
+				tagSCF = 0
+			}
+		case tagIn_partner:
+			pti := exp[0].evalI(c); if pti >= 0 {
+				partnerNo = pti
+			} else {
+				return false
+			}
+		case tagIn_ctrl:
+			ctrls := exp[0].evalB(c)
+			crun.setCtrl(ctrls)
+			if tagSCF == -1 {tagSCF = 1}
+		case tagIn_partnerctrl:
+			pctrls := exp[0].evalB(c); if pctrls == true {
+				partnerCtrlSetting = 1
+			} else {
+				partnerCtrlSetting = 0
 			}
 		case tagIn_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				p = crun.partner(0)
-				if p == nil {
-					return false
-				}
 			} else {
 				return false
 			}
 		}
 		return true
 	})
-	return ret
+	// Data ajusments.
+	if tagSCF == -1 && partnerNo == -1 {tagSCF = 1}
+	if tagSCF == 1 {crun.unsetSCF(SCF_standby)}
+
+	// Partner
+	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
+		partner := crun.partnerV2(partnerNo)
+		partner.unsetSCF(SCF_standby)
+		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
+		if partnerCtrlSetting != -1 {if partnerCtrlSetting == 1 {partner.setCtrl(true)} else {partner.setCtrl(false)}}
+	}
+
+	return true
 }
 
 type tagOut StateControllerBase
 
 const (
-	tagOut_ = iota
+	tagOut_self = iota
+	tagOut_partner
+	tagOut_stateno
+	tagOut_partnerstateno
 	tagOut_redirectid
 )
 
 func (sc tagOut) Run(c *Char, _ []int32) bool {
 	crun := c
+	var tagSCF int = -1
+	var partnerNo int32 = -1
+	var partnerStateNo int32 = -1
+
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case tagOut_:
-			crun.setSCF(SCF_standby)
+		case tagOut_self:
+			if exp[0].evalB(c) == true {
+				tagSCF = 1
+			} else {
+				tagSCF = 0
+			}
+		case tagOut_stateno:
+			sn := exp[0].evalI(c); if sn >= 0 {
+				crun.changeState(sn, -1, -1)
+				if tagSCF == -1 {tagSCF = 1}
+			} else {
+				return false
+			}
+		case tagOut_partner:
+			pti := exp[0].evalI(c); if pti >= 0 {
+				partnerNo = pti
+			} else {
+				return false
+			}
+		case tagOut_partnerstateno:
+			if psn := exp[0].evalI(c); psn >= 0 {
+				partnerStateNo = psn
+			} else {
+				return false
+			}
 		case tagOut_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2148,6 +2211,15 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if tagSCF == -1 && partnerNo == -1 && partnerStateNo == -1 {tagSCF = 1}
+	if tagSCF == 1 {crun.setSCF(SCF_standby)}
+
+	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
+		partner := crun.partnerV2(partnerNo)
+		partner.setSCF(SCF_standby)
+		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
+	}
+
 	return true
 }
 

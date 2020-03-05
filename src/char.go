@@ -2240,6 +2240,9 @@ func (c *Char) partner(n int32) *Char {
 	if int(n) > len(sys.chars)/2-2 {
 		return nil
 	}
+	// X>>1 = X/2
+	// X<<1 = X*2
+	// X&1 = X%2
 	var p int
 	if int(n) == c.playerNo>>1 {
 		p = c.playerNo + 2
@@ -2248,6 +2251,20 @@ func (c *Char) partner(n int32) *Char {
 		if int(n) > c.playerNo>>1 {
 			p += 2
 		}
+	}
+	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
+		return sys.chars[p][0]
+	}
+	return nil
+}
+func (c *Char) partnerV2(n int32) *Char {
+	n = Max(0, n)
+	if int(n) > len(sys.chars)/2-2 {
+		return nil
+	}
+	var p int = (c.playerNo + int(n)<<1) + 2
+	if p>>1 > int(c.numPartner()) {
+		p -= int(c.numPartner()*2) + 2
 	}
 	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
 		return sys.chars[p][0]
@@ -4085,7 +4102,7 @@ func (c *Char) bind() {
 }
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
-	if c.sf(CSF_screenbound) {
+	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -4607,7 +4624,7 @@ func (c *Char) update(cvmin, cvmax,
 	if c.sf(CSF_screenbound) {
 		c.drawPos[0] = MaxF(min+sys.xmin/c.localscl, MinF(max+sys.xmax/c.localscl, c.drawPos[0]))
 	}
-	if c.sf(CSF_movecamera_x) {
+	if c.sf(CSF_movecamera_x) && c.scf(SCF_standby) == false {
 		*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
 		*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, *rightest))
 		if c.acttmp > 0 && !c.sf(CSF_posfreeze) &&
@@ -4616,7 +4633,7 @@ func (c *Char) update(cvmin, cvmax,
 			*cvmax = MaxF(*cvmax, c.vel[0]*c.localscl*c.facing)
 		}
 	}
-	if c.sf(CSF_movecamera_y) {
+	if c.sf(CSF_movecamera_y) && c.scf(SCF_standby) == false {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
 		*lowest = MinF(0, MaxF(c.drawPos[1]*c.localscl, *lowest))
 	}
