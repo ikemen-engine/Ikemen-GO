@@ -34,7 +34,6 @@ local function f_play(t)
 				--end storyboard
 				if (esc() or main.f_btnPalNo(main.p1Cmd) > 0) and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
-					refresh()
 					return
 				end
 				--play bgm
@@ -66,6 +65,9 @@ local function f_play(t)
 						--layer text
 						if t.scene[k].layer[k2].text_data ~= nil then
 							t.scene[k].layer[k2].text_timer = t.scene[k].layer[k2].text_timer + 1
+							if t.scene[k].layer[k2].text_length == 0 then --mugen style textwrap = 'w' wrapping by default
+								t.scene[k].layer[k2].text_length = main.f_pxLimit(t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1], t.info.localcoord[1], t.scene[k].layer[k2].font[3])
+							end
 							main.f_textRender(
 								t.scene[k].layer[k2].text_data,
 								t.scene[k].layer[k2].text,
@@ -214,7 +216,7 @@ local function f_parse(path)
 								text = '',
 								font = {1, 0, 0, 255, 255, 255, 255, 0},
 								text_delay = 2, --Ikemen feature
-								text_length = 50, --Ikemen feature
+								text_length = 0, --Ikemen feature (max text width in pixels)
 								text_timer = 0, --Ikemen feature
 								offset = {0, 0},
 								starttime = 0,
@@ -351,21 +353,21 @@ local function f_parse(path)
 			end
 			--text
 			if t_layer[k2].text ~= '' then
-				t.scene[k].layer[k2].text_data = main.f_createTextImg(
-					t.scenedef.font_data[t_layer[k2].font[1]],
-					t_layer[k2].font[2],
-					t_layer[k2].font[3],
-					t_layer[k2].text,
-					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-					320/t.info.localcoord[1],
-					240/t.info.localcoord[2],
-					t_layer[k2].font[4],
-					t_layer[k2].font[5],
-					t_layer[k2].font[6],
-					t_layer[k2].font[7],
-					t_layer[k2].font[8]
-				)
+				t.scene[k].layer[k2].text_data = text:create({
+					font =   t.scenedef.font_data[t_layer[k2].font[1]],
+					bank =   t_layer[k2].font[2],
+					align =  t_layer[k2].font[3],
+					text =   t_layer[k2].text,
+					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
+					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
+					scaleX = 320 / t.info.localcoord[1],
+					scaleY = 240 / t.info.localcoord[2],
+					r =      t_layer[k2].font[4],
+					g =      t_layer[k2].font[5],
+					b =      t_layer[k2].font[6],
+					src =    t_layer[k2].font[7],
+					dst =    t_layer[k2].font[8],
+				})
 			end
 			--endtime
 			if t_layer[k2].endtime == nil then

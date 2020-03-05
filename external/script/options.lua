@@ -167,10 +167,9 @@ function options.f_resetTables()
 			attackpowermul = config['Attack.LifeToPowerMul'],
 			gethitpowermul = config['GetHit.LifeToPowerMul'],
 			superdefencemul = config['Super.TargetDefenceMul'],
-			singlemode = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled),
-			numturns = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled),
-			numsimul = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled),
-			numtag = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled),
+			numturns = config.NumTurns,
+			numsimul = config.NumSimul,
+			numtag = config.NumTag,
 		},
 		t_engineCfg = {
 			allowdebugkeys = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled),
@@ -241,22 +240,22 @@ function options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 	return cursorPosY, moveTxt, item
 end
 
-local txt_title = main.f_createTextImg(
-	motif.font_data[motif.option_info.title_font[1]],
-	motif.option_info.title_font[2],
-	motif.option_info.title_font[3],
-	"",
-	motif.option_info.title_offset[1],
-	motif.option_info.title_offset[2],
-	motif.option_info.title_font_scale[1],
-	motif.option_info.title_font_scale[2],
-	motif.option_info.title_font[4],
-	motif.option_info.title_font[5],
-	motif.option_info.title_font[6],
-	motif.option_info.title_font[7],
-	motif.option_info.title_font[8]
-	--motif.defaultOptions --title font assignment exists in mugen
-)
+local txt_title = text:create({
+	font =   motif.font_data[motif.option_info.title_font[1]],
+	bank =   motif.option_info.title_font[2],
+	align =  motif.option_info.title_font[3],
+	text =   '',
+	x =      motif.option_info.title_offset[1],
+	y =      motif.option_info.title_offset[2],
+	scaleX = motif.option_info.title_font_scale[1],
+	scaleY = motif.option_info.title_font_scale[2],
+	r =      motif.option_info.title_font[4],
+	g =      motif.option_info.title_font[5],
+	b =      motif.option_info.title_font[6],
+	src =    motif.option_info.title_font[7],
+	dst =    motif.option_info.title_font[8],
+	--defsc =  motif.defaultOptions --title font assignment exists in mugen
+})
 function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 	fadeType = fadeType or 'fadein'
 	--draw clearcolor
@@ -285,123 +284,123 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 		)
 	end
 	--draw title
-	textImgDraw(txt_title)
+	txt_title:draw()
 	--draw menu items
 	for i = 1, #t do
 		if i > item - cursorPosY then
 			if i == item then
 				if t[i].selected then
-					textImgDraw(main.f_updateTextImg(
-						t[i].data,
-						motif.font_data[motif.option_info.menu_item_selected_active_font[1]],
-						motif.option_info.menu_item_selected_active_font[2],
-						motif.option_info.menu_item_selected_active_font[3],
-						t[i].displayname,
-						motif.option_info.menu_pos[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_selected_active_font_scale[1],
-						motif.option_info.menu_item_selected_active_font_scale[2],
-						motif.option_info.menu_item_selected_active_font[4],
-						motif.option_info.menu_item_selected_active_font[5],
-						motif.option_info.menu_item_selected_active_font[6],
-						motif.option_info.menu_item_selected_active_font[7],
-						motif.option_info.menu_item_selected_active_font[8],
-						motif.defaultOptions
-					))
+					t[i].data:update({
+						font =   motif.font_data[motif.option_info.menu_item_selected_active_font[1]],
+						bank =   motif.option_info.menu_item_selected_active_font[2],
+						align =  motif.option_info.menu_item_selected_active_font[3],
+						text =   t[i].displayname,
+						x =      motif.option_info.menu_pos[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_selected_active_font_scale[1],
+						scaleY = motif.option_info.menu_item_selected_active_font_scale[2],
+						r =      motif.option_info.menu_item_selected_active_font[4],
+						g =      motif.option_info.menu_item_selected_active_font[5],
+						b =      motif.option_info.menu_item_selected_active_font[6],
+						src =    motif.option_info.menu_item_selected_active_font[7],
+						dst =    motif.option_info.menu_item_selected_active_font[8],
+						defsc = motif.defaultOptions
+					})
+					t[i].data:draw()
 				else
-					textImgDraw(main.f_updateTextImg(
-						t[i].data,
-						motif.font_data[motif.option_info.menu_item_active_font[1]],
-						motif.option_info.menu_item_active_font[2],
-						motif.option_info.menu_item_active_font[3],
-						t[i].displayname,
-						motif.option_info.menu_pos[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_active_font_scale[1],
-						motif.option_info.menu_item_active_font_scale[2],
-						motif.option_info.menu_item_active_font[4],
-						motif.option_info.menu_item_active_font[5],
-						motif.option_info.menu_item_active_font[6],
-						motif.option_info.menu_item_active_font[7],
-						motif.option_info.menu_item_active_font[8],
-						motif.defaultOptions
-					))
+					t[i].data:update({
+						font =   motif.font_data[motif.option_info.menu_item_active_font[1]],
+						bank =   motif.option_info.menu_item_active_font[2],
+						align =  motif.option_info.menu_item_active_font[3],
+						text =   t[i].displayname,
+						x =      motif.option_info.menu_pos[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_active_font_scale[1],
+						scaleY = motif.option_info.menu_item_active_font_scale[2],
+						r =      motif.option_info.menu_item_active_font[4],
+						g =      motif.option_info.menu_item_active_font[5],
+						b =      motif.option_info.menu_item_active_font[6],
+						src =    motif.option_info.menu_item_active_font[7],
+						dst =    motif.option_info.menu_item_active_font[8],
+						defsc =  motif.defaultOptions
+					})
+					t[i].data:draw()
 				end
 				if t[i].vardata ~= nil then
-					textImgDraw(main.f_updateTextImg(
-						t[i].vardata,
-						motif.font_data[motif.option_info.menu_item_value_active_font[1]],
-						motif.option_info.menu_item_value_active_font[2],
-						motif.option_info.menu_item_value_active_font[3],
-						t[i].vardisplay,
-						motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_value_active_font_scale[1],
-						motif.option_info.menu_item_value_active_font_scale[2],
-						motif.option_info.menu_item_value_active_font[4],
-						motif.option_info.menu_item_value_active_font[5],
-						motif.option_info.menu_item_value_active_font[6],
-						motif.option_info.menu_item_value_active_font[7],
-						motif.option_info.menu_item_value_active_font[8],
-						motif.defaultOptions
-					))
+					t[i].vardata:update({
+						font =   motif.font_data[motif.option_info.menu_item_value_active_font[1]],
+						bank =   motif.option_info.menu_item_value_active_font[2],
+						align =  motif.option_info.menu_item_value_active_font[3],
+						text =   t[i].vardisplay,
+						x =      motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+						scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+						r =      motif.option_info.menu_item_value_active_font[4],
+						g =      motif.option_info.menu_item_value_active_font[5],
+						b =      motif.option_info.menu_item_value_active_font[6],
+						src =    motif.option_info.menu_item_value_active_font[7],
+						dst =    motif.option_info.menu_item_value_active_font[8],
+						defsc =  motif.defaultOptions
+					})
+					t[i].vardata:draw()
 				end
 			else
 				if t[i].selected then
-					textImgDraw(main.f_updateTextImg(
-						t[i].data,
-						motif.font_data[motif.option_info.menu_item_selected_font[1]],
-						motif.option_info.menu_item_selected_font[2],
-						motif.option_info.menu_item_selected_font[3],
-						t[i].displayname,
-						motif.option_info.menu_pos[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_selected_font_scale[1],
-						motif.option_info.menu_item_selected_font_scale[2],
-						motif.option_info.menu_item_selected_font[4],
-						motif.option_info.menu_item_selected_font[5],
-						motif.option_info.menu_item_selected_font[6],
-						motif.option_info.menu_item_selected_font[7],
-						motif.option_info.menu_item_selected_font[8],
-						motif.defaultOptions
-					))
+					t[i].data:update({
+						font =   motif.font_data[motif.option_info.menu_item_selected_font[1]],
+						bank =   motif.option_info.menu_item_selected_font[2],
+						align =  motif.option_info.menu_item_selected_font[3],
+						text =   t[i].displayname,
+						x =      motif.option_info.menu_pos[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_selected_font_scale[1],
+						scaleY = motif.option_info.menu_item_selected_font_scale[2],
+						r =      motif.option_info.menu_item_selected_font[4],
+						g =      motif.option_info.menu_item_selected_font[5],
+						b =      motif.option_info.menu_item_selected_font[6],
+						src =    motif.option_info.menu_item_selected_font[7],
+						dst =    motif.option_info.menu_item_selected_font[8],
+						defsc =  motif.defaultOptions
+					})
+					t[i].data:draw()
 				else
-					textImgDraw(main.f_updateTextImg(
-						t[i].data,
-						motif.font_data[motif.option_info.menu_item_font[1]],
-						motif.option_info.menu_item_font[2],
-						motif.option_info.menu_item_font[3],
-						t[i].displayname,
-						motif.option_info.menu_pos[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_font_scale[1],
-						motif.option_info.menu_item_font_scale[2],
-						motif.option_info.menu_item_font[4],
-						motif.option_info.menu_item_font[5],
-						motif.option_info.menu_item_font[6],
-						motif.option_info.menu_item_font[7],
-						motif.option_info.menu_item_font[8],
-						motif.defaultOptions
-					))
+					t[i].data:update({
+						font =   motif.font_data[motif.option_info.menu_item_font[1]],
+						bank =   motif.option_info.menu_item_font[2],
+						align =  motif.option_info.menu_item_font[3],
+						text =   t[i].displayname,
+						x =      motif.option_info.menu_pos[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_font_scale[1],
+						scaleY = motif.option_info.menu_item_font_scale[2],
+						r =      motif.option_info.menu_item_font[4],
+						g =      motif.option_info.menu_item_font[5],
+						b =      motif.option_info.menu_item_font[6],
+						src =    motif.option_info.menu_item_font[7],
+						dst =    motif.option_info.menu_item_font[8],
+						defsc =  motif.defaultOptions
+					})
+					t[i].data:draw()
 				end
 				if t[i].vardata ~= nil then
-					textImgDraw(main.f_updateTextImg(
-						t[i].vardata,
-						motif.font_data[motif.option_info.menu_item_value_font[1]],
-						motif.option_info.menu_item_value_font[2],
-						motif.option_info.menu_item_value_font[3],
-						t[i].vardisplay,
-						motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
-						motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						motif.option_info.menu_item_value_font_scale[1],
-						motif.option_info.menu_item_value_font_scale[2],
-						motif.option_info.menu_item_value_font[4],
-						motif.option_info.menu_item_value_font[5],
-						motif.option_info.menu_item_value_font[6],
-						motif.option_info.menu_item_value_font[7],
-						motif.option_info.menu_item_value_font[8],
-						motif.defaultOptions
-					))
+					t[i].vardata:update({
+						font =   motif.font_data[motif.option_info.menu_item_value_font[1]],
+						bank =   motif.option_info.menu_item_value_font[2],
+						align =  motif.option_info.menu_item_value_font[3],
+						text =   t[i].vardisplay,
+						x =      motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
+						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
+						scaleX = motif.option_info.menu_item_value_font_scale[1],
+						scaleY = motif.option_info.menu_item_value_font_scale[2],
+						r =      motif.option_info.menu_item_value_font[4],
+						g =      motif.option_info.menu_item_value_font[5],
+						b =      motif.option_info.menu_item_value_font[6],
+						src =    motif.option_info.menu_item_value_font[7],
+						dst =    motif.option_info.menu_item_value_font[8],
+						defsc =  motif.defaultOptions
+					})
+					t[i].vardata:draw()
 				end
 			end
 		end
@@ -456,18 +455,18 @@ end
 --; MAIN LOOP
 --;===========================================================
 options.t_mainCfg = {
-	{data = textImgNew(), itemname = 'arcadesettings', displayname = motif.option_info.menu_itemname_main_arcade},
-	{data = textImgNew(), itemname = 'videosettings', displayname = motif.option_info.menu_itemname_main_video},
-	{data = textImgNew(), itemname = 'audiosettings', displayname = motif.option_info.menu_itemname_main_audio},
-	{data = textImgNew(), itemname = 'inputsettings', displayname = motif.option_info.menu_itemname_main_input},
-	{data = textImgNew(), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
-	{data = textImgNew(), itemname = 'enginesettings', displayname = motif.option_info.menu_itemname_main_engine},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'portchange', displayname = motif.option_info.menu_itemname_main_port, vardata = textImgNew(), vardisplay = getListenPort()},
-	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_main_default},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'save', displayname = motif.option_info.menu_itemname_main_save},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_main_back},
+	{data = text:create({}), itemname = 'arcadesettings', displayname = motif.option_info.menu_itemname_main_arcade},
+	{data = text:create({}), itemname = 'videosettings', displayname = motif.option_info.menu_itemname_main_video},
+	{data = text:create({}), itemname = 'audiosettings', displayname = motif.option_info.menu_itemname_main_audio},
+	{data = text:create({}), itemname = 'inputsettings', displayname = motif.option_info.menu_itemname_main_input},
+	{data = text:create({}), itemname = 'gameplaysettings', displayname = motif.option_info.menu_itemname_main_gameplay},
+	{data = text:create({}), itemname = 'enginesettings', displayname = motif.option_info.menu_itemname_main_engine},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'portchange', displayname = motif.option_info.menu_itemname_main_port, vardata = text:create({}), vardisplay = getListenPort()},
+	{data = text:create({}), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_main_default},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'save', displayname = motif.option_info.menu_itemname_main_save},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_main_back},
 }
 options.t_mainCfg = main.f_cleanTable(options.t_mainCfg, main.t_sort.option_info)
 
@@ -477,12 +476,9 @@ function options.f_mainCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_mainCfg
-	textImgSetText(txt_title, motif.option_info.title_text_main)
-	if motif.music.option_bgm == '' then
-		main.f_menuReset(motif.optionbgdef.bg)
-	else
-		main.f_menuReset(motif.optionbgdef.bg, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
-	end
+	txt_title:update({text = motif.option_info.title_text_main})
+	main.f_bgReset(motif.optionbgdef.bg)
+	main.f_playBGM(false, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
@@ -491,10 +487,9 @@ function options.f_mainCfg()
 				options.f_saveCfg()
 			end
 			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
-			if motif.music.option_bgm == '' then
-				main.f_menuReset(motif.titlebgdef.bg)
-			else
-				main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+			main.f_bgReset(motif.titlebgdef.bg)
+			if motif.music.option_bgm ~= '' then
+				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			end
 			break
 		--Port Change
@@ -550,7 +545,7 @@ function options.f_mainCfg()
 				config.Height = 480
 				config['Super.TargetDefenceMul'] = 1.5
 				config.LifebarFontScale = 1
-				--config.System = 'external/script/main.lua'
+				--config.System = 'script/main.lua'
 				options.f_keyDefault()
 				--config.ControllerStickSensitivity = 0.4
 				--config.XinputTriggerSensitivity = 0
@@ -560,8 +555,8 @@ function options.f_mainCfg()
 				config.SimulMode = true
 				config.LifeMul = 100
 				config.Team1VS2Life = 100
-				config.TurnsRecoveryBase = 12.5
-				config.TurnsRecoveryBonus = 27.5
+				config.TurnsRecoveryBase = 0
+				config.TurnsRecoveryBonus = 20
 				config.ZoomActive = false
 				config.ZoomMin = 0.75
 				config.ZoomMax = 1.1
@@ -570,10 +565,10 @@ function options.f_mainCfg()
 				config.RoundsNumSingle = -1
 				config.RoundsNumTeam = -1
 				config.MaxDrawGames = -2
-				config.SingleTeamMode = true
 				config.NumTurns = 4
 				config.NumSimul = 4
 				config.NumTag = 4
+				config.PostProcessingShader = 0
 				config.Difficulty = 8
 				config.Credits = 10
 				setListenPort(7500)
@@ -589,7 +584,6 @@ function options.f_mainCfg()
 				config.AllowDebugKeys = true
 				config.ComboExtraFrameWindow = 1
 				config.ExternalShaders = {}
-				config.PostProcessingShader = 0
 				config.LocalcoordScalingType = 1
 				config.MSAA = false
 				config.LifeRatio = {0.80, 1.0, 1.17, 1.40}
@@ -608,10 +602,9 @@ function options.f_mainCfg()
 					options.f_saveCfg()
 				end
 				main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				if motif.music.option_bgm == '' then
-					main.f_menuReset(motif.titlebgdef.bg)
-				else
-					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+				main.f_bgReset(motif.titlebgdef.bg)
+				if motif.music.option_bgm ~= '' then
+					main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				end
 				break
 			--Return Without Saving
@@ -621,10 +614,9 @@ function options.f_mainCfg()
 					main.f_warning(main.f_extractText(motif.warning_info.text_noreload), motif.option_info, motif.optionbgdef)
 				end
 				main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
-				if motif.music.option_bgm == '' then
-					main.f_menuReset(motif.titlebgdef.bg)
-				else
-					main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+				main.f_bgReset(motif.titlebgdef.bg)
+				if motif.music.option_bgm ~= '' then
+					main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				end
 				break
 			end
@@ -637,17 +629,17 @@ end
 --; ARCADE SETTINGS
 --;===========================================================
 options.t_arcadeCfg = {
-	{data = textImgNew(), itemname = 'roundtime', displayname = motif.option_info.menu_itemname_arcade_roundtime, vardata = textImgNew(), vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_itemname_arcade_roundtime_none}, config.RoundTime)},
-	{data = textImgNew(), itemname = 'roundsnumsingle', displayname = motif.option_info.menu_itemname_arcade_roundsnumsingle, vardata = textImgNew(), vardisplay = options.roundsNumSingle},
-	{data = textImgNew(), itemname = 'roundsnumteam', displayname = motif.option_info.menu_itemname_arcade_roundsnumteam, vardata = textImgNew(), vardisplay = options.roundsNumTeam},
-	{data = textImgNew(), itemname = 'maxdrawgames', displayname = motif.option_info.menu_itemname_arcade_maxdrawgames, vardata = textImgNew(), vardisplay = options.maxDrawGames},
-	{data = textImgNew(), itemname = 'difficulty', displayname = motif.option_info.menu_itemname_arcade_difficulty, vardata = textImgNew(), vardisplay = config.Difficulty},
-	{data = textImgNew(), itemname = 'credits', displayname = motif.option_info.menu_itemname_arcade_credits, vardata = textImgNew(), vardisplay = config.Credits},
-	{data = textImgNew(), itemname = 'quickcontinue', displayname = motif.option_info.menu_itemname_arcade_quickcontinue, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.QuickContinue)},
-	{data = textImgNew(), itemname = 'airamping', displayname = motif.option_info.menu_itemname_arcade_airamping, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRamping)},
-	{data = textImgNew(), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_arcade_aipalette, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_arcade_aipalette_random, motif.option_info.menu_itemname_arcade_aipalette_default)},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_arcade_back},
+	{data = text:create({}), itemname = 'roundtime', displayname = motif.option_info.menu_itemname_arcade_roundtime, vardata = text:create({}), vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_itemname_arcade_roundtime_none}, config.RoundTime)},
+	{data = text:create({}), itemname = 'roundsnumsingle', displayname = motif.option_info.menu_itemname_arcade_roundsnumsingle, vardata = text:create({}), vardisplay = options.roundsNumSingle},
+	{data = text:create({}), itemname = 'roundsnumteam', displayname = motif.option_info.menu_itemname_arcade_roundsnumteam, vardata = text:create({}), vardisplay = options.roundsNumTeam},
+	{data = text:create({}), itemname = 'maxdrawgames', displayname = motif.option_info.menu_itemname_arcade_maxdrawgames, vardata = text:create({}), vardisplay = options.maxDrawGames},
+	{data = text:create({}), itemname = 'difficulty', displayname = motif.option_info.menu_itemname_arcade_difficulty, vardata = text:create({}), vardisplay = config.Difficulty},
+	{data = text:create({}), itemname = 'credits', displayname = motif.option_info.menu_itemname_arcade_credits, vardata = text:create({}), vardisplay = config.Credits},
+	{data = text:create({}), itemname = 'quickcontinue', displayname = motif.option_info.menu_itemname_arcade_quickcontinue, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.QuickContinue)},
+	{data = text:create({}), itemname = 'airamping', displayname = motif.option_info.menu_itemname_arcade_airamping, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.AIRamping)},
+	{data = text:create({}), itemname = 'airandomcolor', displayname = motif.option_info.menu_itemname_arcade_aipalette, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_itemname_arcade_aipalette_random, motif.option_info.menu_itemname_arcade_aipalette_default)},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_arcade_back},
 }
 options.t_arcadeCfg = main.f_cleanTable(options.t_arcadeCfg, main.t_sort.option_info)
 
@@ -657,12 +649,12 @@ function options.f_arcadeCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_arcadeCfg
-	textImgSetText(txt_title, motif.option_info.title_text_arcade)
+	txt_title:update({text = motif.option_info.title_text_arcade})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		--Time Limit
 		elseif t[item].itemname == 'roundtime' then
@@ -781,7 +773,7 @@ function options.f_arcadeCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -793,18 +785,18 @@ end
 --;===========================================================
 local function f_externalShaderName()
 	if config.ExternalShaders[config.PostProcessingShader - 3] ~= nil then
-		return config.ExternalShaders[config.PostProcessingShader - 3]:gsub('^external/shaders/', '')
+		return config.ExternalShaders[config.PostProcessingShader - 3]:gsub('^shaders/', '')
 	end
 	return motif.option_info.menu_itemname_disabled
 end
 
 options.t_videoCfg = {
-	{data = textImgNew(), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = textImgNew(), vardisplay = config.Width .. 'x' .. config.Height},
-	{data = textImgNew(), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.Fullscreen)},
-	{data = textImgNew(), itemname = 'msaa', displayname = motif.option_info.menu_itemname_video_msaa, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'externalshaders', displayname = motif.option_info.menu_itemname_video_externalshaders, vardata = textImgNew(), vardisplay = f_externalShaderName()},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
+	{data = text:create({}), itemname = 'resolution', displayname = motif.option_info.menu_itemname_video_resolution, vardata = text:create({}), vardisplay = config.Width .. 'x' .. config.Height},
+	{data = text:create({}), itemname = 'fullscreen', displayname = motif.option_info.menu_itemname_video_fullscreen, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.Fullscreen)},
+	{data = text:create({}), itemname = 'msaa', displayname = motif.option_info.menu_itemname_video_msaa, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = text:create({}), itemname = 'externalshaders', displayname = motif.option_info.menu_itemname_video_externalshaders, vardata = text:create({}), vardisplay = f_externalShaderName()},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 options.t_videoCfg = main.f_cleanTable(options.t_videoCfg, main.t_sort.option_info)
 
@@ -814,12 +806,12 @@ function options.f_videoCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_videoCfg
-	textImgSetText(txt_title, motif.option_info.title_text_video)
+	txt_title:update({text = motif.option_info.title_text_video})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		--Resolution
 		elseif t[item].itemname == 'resolution' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
@@ -857,7 +849,7 @@ function options.f_videoCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -868,19 +860,19 @@ end
 --; RESOLUTION SETTINGS
 --;===========================================================
 local t_resCfg = {
-	{data = textImgNew(), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_video_res_320x240},
-	{data = textImgNew(), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_video_res_640x480},
-	{data = textImgNew(), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_video_res_1280x960},
-	{data = textImgNew(), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_video_res_1600x1200},
-	{data = textImgNew(), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_video_res_960x720},
-	{data = textImgNew(), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_video_res_1280x720},
-	{data = textImgNew(), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_video_res_1600x900},
-	{data = textImgNew(), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_video_res_1920x1080},
-	{data = textImgNew(), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_video_res_2560x1440},
-	{data = textImgNew(), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_video_res_3840x2160},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'custom', displayname = motif.option_info.menu_itemname_video_res_custom},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_res_back},
+	{data = text:create({}), x = 320,  y = 240, displayname = motif.option_info.menu_itemname_video_res_320x240},
+	{data = text:create({}), x = 640,  y = 480, displayname = motif.option_info.menu_itemname_video_res_640x480},
+	{data = text:create({}), x = 1280, y = 960, displayname = motif.option_info.menu_itemname_video_res_1280x960},
+	{data = text:create({}), x = 1600, y = 1200, displayname = motif.option_info.menu_itemname_video_res_1600x1200},
+	{data = text:create({}), x = 960,  y = 720, displayname = motif.option_info.menu_itemname_video_res_960x720},
+	{data = text:create({}), x = 1280, y = 720, displayname = motif.option_info.menu_itemname_video_res_1280x720},
+	{data = text:create({}), x = 1600, y = 900, displayname = motif.option_info.menu_itemname_video_res_1600x900},
+	{data = text:create({}), x = 1920, y = 1080, displayname = motif.option_info.menu_itemname_video_res_1920x1080},
+	{data = text:create({}), x = 2560, y = 1440, displayname = motif.option_info.menu_itemname_video_res_2560x1440},
+	{data = text:create({}), x = 3840, y = 2160, displayname = motif.option_info.menu_itemname_video_res_3840x2160},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'custom', displayname = motif.option_info.menu_itemname_video_res_custom},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_video_res_back},
 }
 t_resCfg = main.f_cleanTable(t_resCfg, main.t_sort.option_info)
 
@@ -890,18 +882,18 @@ function options.f_resCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = t_resCfg
-	textImgSetText(txt_title, motif.option_info.title_text_res)
+	txt_title:update({text = motif.option_info.title_text_res})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_video)
+			txt_title:update({text = motif.option_info.title_text_video})
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Back
 			if t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			--Custom
 			elseif t[item].itemname == 'custom' then
@@ -925,7 +917,7 @@ function options.f_resCfg()
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				end
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			--Resolution
 			else
@@ -937,7 +929,7 @@ function options.f_resCfg()
 				end
 				modified = 1
 				needReload = 1
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			end
 		end
@@ -950,7 +942,7 @@ end
 --;===========================================================
 local t_shaderCfg = {}
 local t_shaders = {}
-local t_files = GetDirectoryFiles('external/shaders')
+local t_files = GetDirectoryFiles('shaders')
 for i = 1, #t_files do
 	t_files[i]:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 		path = path:gsub('\\', '/')
@@ -964,17 +956,17 @@ for i = 1, #t_files do
 						break
 					end
 				end
-				table.insert(t_shaderCfg, {data = textImgNew(), itemname = path .. filename, displayname = filename, selected = selected})
+				table.insert(t_shaderCfg, {data = text:create({}), itemname = path .. filename, displayname = filename, selected = selected})
 				t_shaders[path .. filename] = ''
 			end
 		end
 	end)
 end
 if #t_shaderCfg > 0 then
-	table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'empty', displayname = ' '})
-	table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'disableall', displayname = motif.option_info.menu_itemname_video_externalshaders_disableall})
+	table.insert(t_shaderCfg, {data = text:create({}), itemname = 'empty', displayname = ' '})
+	table.insert(t_shaderCfg, {data = text:create({}), itemname = 'disableall', displayname = motif.option_info.menu_itemname_video_externalshaders_disableall})
 end
-table.insert(t_shaderCfg, {data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_externalshaders_back})
+table.insert(t_shaderCfg, {data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_video_externalshaders_back})
 t_shaderCfg = main.f_cleanTable(t_shaderCfg, main.t_sort.option_info)
 
 function options.f_shaderCfg()
@@ -983,7 +975,7 @@ function options.f_shaderCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = t_shaderCfg
-	textImgSetText(txt_title, motif.option_info.title_text_externalshaders)
+	txt_title:update({text = motif.option_info.title_text_externalshaders})
 	if #t_shaderCfg == 1 then --only 'Back' option exists
 		main.f_warning(main.f_extractText(motif.warning_info.text_shaders), motif.option_info, motif.optionbgdef)
 	end
@@ -991,13 +983,13 @@ function options.f_shaderCfg()
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_video)
+			txt_title:update({text = motif.option_info.title_text_video})
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Back
 			if t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			--Disable all
 			elseif t[item].itemname == 'disableall' then
@@ -1013,7 +1005,7 @@ function options.f_shaderCfg()
 					modified = 1
 					needReload = 1
 				end
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			--Shader
 			else
@@ -1046,7 +1038,7 @@ function options.f_shaderCfg()
 				end
 				modified = 1
 				needReload = 1
-				textImgSetText(txt_title, motif.option_info.title_text_video)
+				txt_title:update({text = motif.option_info.title_text_video})
 				break
 			end
 		end
@@ -1058,12 +1050,12 @@ end
 --; AUDIO SETTINGS
 --;===========================================================
 options.t_audioCfg = {
-	{data = textImgNew(), itemname = 'mastervolume', displayname = motif.option_info.menu_itemname_audio_mastervolume, vardata = textImgNew(), vardisplay = config.MasterVolume .. '%'},
-	{data = textImgNew(), itemname = 'bgmvolume', displayname = motif.option_info.menu_itemname_audio_bgmvolume, vardata = textImgNew(), vardisplay = config.BgmVolume .. '%'},
-	{data = textImgNew(), itemname = 'sfxvolume', displayname = motif.option_info.menu_itemname_audio_sfxvolume, vardata = textImgNew(), vardisplay = config.WavVolume .. '%'},
-	{data = textImgNew(), itemname = 'audioducking', displayname = motif.option_info.menu_itemname_audio_audioducking, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_audio_back},
+	{data = text:create({}), itemname = 'mastervolume', displayname = motif.option_info.menu_itemname_audio_mastervolume, vardata = text:create({}), vardisplay = config.MasterVolume .. '%'},
+	{data = text:create({}), itemname = 'bgmvolume', displayname = motif.option_info.menu_itemname_audio_bgmvolume, vardata = text:create({}), vardisplay = config.BgmVolume .. '%'},
+	{data = text:create({}), itemname = 'sfxvolume', displayname = motif.option_info.menu_itemname_audio_sfxvolume, vardata = text:create({}), vardisplay = config.WavVolume .. '%'},
+	{data = text:create({}), itemname = 'audioducking', displayname = motif.option_info.menu_itemname_audio_audioducking, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_audio_back},
 }
 options.t_audioCfg = main.f_cleanTable(options.t_audioCfg, main.t_sort.option_info)
 
@@ -1073,12 +1065,12 @@ function options.f_audioCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_audioCfg
-	textImgSetText(txt_title, motif.option_info.title_text_audio)
+	txt_title:update({text = motif.option_info.title_text_audio})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		--Master Volume
 		elseif t[item].itemname == 'mastervolume' then
@@ -1139,7 +1131,7 @@ function options.f_audioCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -1150,17 +1142,17 @@ end
 --; GAMEPLAY SETTINGS
 --;===========================================================
 options.t_gameplayCfg = {
-	{data = textImgNew(), itemname = 'lifemul', displayname = motif.option_info.menu_itemname_gameplay_lifemul, vardata = textImgNew(), vardisplay = config.LifeMul .. '%'},
-	{data = textImgNew(), itemname = 'autoguard', displayname = motif.option_info.menu_itemname_gameplay_autoguard, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AutoGuard)},
-	{data = textImgNew(), itemname = 'team1vs2life', displayname = motif.option_info.menu_itemname_gameplay_team1vs2life, vardata = textImgNew(), vardisplay = config.Team1VS2Life .. '%'},
-	{data = textImgNew(), itemname = 'turnsrecoverybase', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybase, vardata = textImgNew(), vardisplay = config.TurnsRecoveryBase .. '%'},
-	{data = textImgNew(), itemname = 'turnsrecoverybonus', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybonus, vardata = textImgNew(), vardisplay = config.TurnsRecoveryBonus .. '%'},
-	{data = textImgNew(), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
-	{data = textImgNew(), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'ratioSettings', displayname = motif.option_info.menu_itemname_gameplay_ratio},
-	{data = textImgNew(), itemname = 'advancedGameplaySettings', displayname = motif.option_info.menu_itemname_gameplay_advanced},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
+	{data = text:create({}), itemname = 'lifemul', displayname = motif.option_info.menu_itemname_gameplay_lifemul, vardata = text:create({}), vardisplay = config.LifeMul .. '%'},
+	{data = text:create({}), itemname = 'autoguard', displayname = motif.option_info.menu_itemname_gameplay_autoguard, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.AutoGuard)},
+	{data = text:create({}), itemname = 'team1vs2life', displayname = motif.option_info.menu_itemname_gameplay_team1vs2life, vardata = text:create({}), vardisplay = config.Team1VS2Life .. '%'},
+	{data = text:create({}), itemname = 'turnsrecoverybase', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybase, vardata = text:create({}), vardisplay = config.TurnsRecoveryBase .. '%'},
+	{data = text:create({}), itemname = 'turnsrecoverybonus', displayname = motif.option_info.menu_itemname_gameplay_turnsrecoverybonus, vardata = text:create({}), vardisplay = config.TurnsRecoveryBonus .. '%'},
+	{data = text:create({}), itemname = 'teampowershare', displayname = motif.option_info.menu_itemname_gameplay_teampowershare, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.TeamPowerShare)},
+	{data = text:create({}), itemname = 'teamlifeshare', displayname = motif.option_info.menu_itemname_gameplay_teamlifeshare, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.TeamLifeShare)},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'ratioSettings', displayname = motif.option_info.menu_itemname_gameplay_ratio},
+	{data = text:create({}), itemname = 'advancedGameplaySettings', displayname = motif.option_info.menu_itemname_gameplay_advanced},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
 options.t_gameplayCfg = main.f_cleanTable(options.t_gameplayCfg, main.t_sort.option_info)
 
@@ -1170,12 +1162,12 @@ function options.f_gameplayCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_gameplayCfg
-	textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+	txt_title:update({text = motif.option_info.title_text_gameplay})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		--Life
 		elseif t[item].itemname == 'lifemul' then
@@ -1270,7 +1262,7 @@ function options.f_gameplayCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -1289,16 +1281,16 @@ function options.f_displayRatio(value)
 end
 
 options.t_ratioCfg = {
-	{data = textImgNew(), itemname = 'ratio1Life', displayname = motif.option_info.menu_itemname_gameplay_ratio1life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[1])},
-	{data = textImgNew(), itemname = 'ratio1Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio1attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[1])},
-	{data = textImgNew(), itemname = 'ratio2Life', displayname = motif.option_info.menu_itemname_gameplay_ratio2life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[2])},
-	{data = textImgNew(), itemname = 'ratio2Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio2attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[2])},
-	{data = textImgNew(), itemname = 'ratio3Life', displayname = motif.option_info.menu_itemname_gameplay_ratio3life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[3])},
-	{data = textImgNew(), itemname = 'ratio3Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio3attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[3])},
-	{data = textImgNew(), itemname = 'ratio4Life', displayname = motif.option_info.menu_itemname_gameplay_ratio4life, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.LifeRatio[4])},
-	{data = textImgNew(), itemname = 'ratio4Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio4attack, vardata = textImgNew(), vardisplay = options.f_displayRatio(config.AttackRatio[4])},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
+	{data = text:create({}), itemname = 'ratio1Life', displayname = motif.option_info.menu_itemname_gameplay_ratio1life, vardata = text:create({}), vardisplay = options.f_displayRatio(config.LifeRatio[1])},
+	{data = text:create({}), itemname = 'ratio1Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio1attack, vardata = text:create({}), vardisplay = options.f_displayRatio(config.AttackRatio[1])},
+	{data = text:create({}), itemname = 'ratio2Life', displayname = motif.option_info.menu_itemname_gameplay_ratio2life, vardata = text:create({}), vardisplay = options.f_displayRatio(config.LifeRatio[2])},
+	{data = text:create({}), itemname = 'ratio2Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio2attack, vardata = text:create({}), vardisplay = options.f_displayRatio(config.AttackRatio[2])},
+	{data = text:create({}), itemname = 'ratio3Life', displayname = motif.option_info.menu_itemname_gameplay_ratio3life, vardata = text:create({}), vardisplay = options.f_displayRatio(config.LifeRatio[3])},
+	{data = text:create({}), itemname = 'ratio3Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio3attack, vardata = text:create({}), vardisplay = options.f_displayRatio(config.AttackRatio[3])},
+	{data = text:create({}), itemname = 'ratio4Life', displayname = motif.option_info.menu_itemname_gameplay_ratio4life, vardata = text:create({}), vardisplay = options.f_displayRatio(config.LifeRatio[4])},
+	{data = text:create({}), itemname = 'ratio4Attack', displayname = motif.option_info.menu_itemname_gameplay_ratio4attack, vardata = text:create({}), vardisplay = options.f_displayRatio(config.AttackRatio[4])},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
 options.t_ratioCfg = main.f_cleanTable(options.t_ratioCfg, main.t_sort.option_info)
 
@@ -1308,17 +1300,17 @@ function options.f_ratioCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_ratioCfg
-	textImgSetText(txt_title, motif.option_info.title_text_ratio)
+	txt_title:update({text = motif.option_info.title_text_ratio})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			txt_title:update({text = motif.option_info.title_text_gameplay})
 			break
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			txt_title:update({text = motif.option_info.title_text_gameplay})
 			break
 		--Ratio 1-4 Life / Damage
 		else
@@ -1343,25 +1335,16 @@ end
 --;===========================================================
 --; ADVANCED GAMEPLAY SETTINGS
 --;===========================================================
-function options.f_checkTeamAmount(arg1, arg2, arg3)
-	local ret = arg1
-	if arg1 <= arg2 then
-		ret = arg3
-	end
-	return ret
-end
-
 options.t_advGameplayCfg = {
-	{data = textImgNew(), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = textImgNew(), vardisplay = config['Attack.LifeToPowerMul']},
-	{data = textImgNew(), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = textImgNew(), vardisplay = config['GetHit.LifeToPowerMul']},
-	{data = textImgNew(), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = textImgNew(), vardisplay = config['Super.TargetDefenceMul']},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'singlemode', displayname = motif.option_info.menu_itemname_gameplay_singlemode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = textImgNew(), vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
+	{data = text:create({}), itemname = 'attackpowermul', displayname = motif.option_info.menu_itemname_gameplay_attackpowermul, vardata = text:create({}), vardisplay = config['Attack.LifeToPowerMul']},
+	{data = text:create({}), itemname = 'gethitpowermul', displayname = motif.option_info.menu_itemname_gameplay_gethitpowermul, vardata = text:create({}), vardisplay = config['GetHit.LifeToPowerMul']},
+	{data = text:create({}), itemname = 'superdefencemul', displayname = motif.option_info.menu_itemname_gameplay_superdefencemul, vardata = text:create({}), vardisplay = config['Super.TargetDefenceMul']},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'numturns', displayname = motif.option_info.menu_itemname_gameplay_numturns, vardata = text:create({}), vardisplay = config.NumTurns},
+	{data = text:create({}), itemname = 'numsimul', displayname = motif.option_info.menu_itemname_gameplay_numsimul, vardata = text:create({}), vardisplay = config.NumSimul},
+	{data = text:create({}), itemname = 'numtag', displayname = motif.option_info.menu_itemname_gameplay_numtag, vardata = text:create({}), vardisplay = config.NumTag},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_gameplay_back},
 }
 options.t_advGameplayCfg = main.f_cleanTable(options.t_advGameplayCfg, main.t_sort.option_info)
 
@@ -1371,12 +1354,12 @@ function options.f_advGameplayCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_advGameplayCfg
-	textImgSetText(txt_title, motif.option_info.title_text_advgameplay)
+	txt_title:update({text = motif.option_info.title_text_advgameplay})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			txt_title:update({text = motif.option_info.title_text_gameplay})
 			break
 		--Attack.LifeToPowerMul
 		elseif t[item].itemname == 'attackpowermul' then
@@ -1423,16 +1406,6 @@ function options.f_advGameplayCfg()
 				setSuperTargetDefenceMul(config['Super.TargetDefenceMul'])
 				modified = 1
 			end
-		--Single Mode
-		elseif t[item].itemname == 'singlemode' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.SingleTeamMode then
-				config.SingleTeamMode = false
-			else
-				config.SingleTeamMode = true
-			end
-			t[item].vardisplay = options.f_boolDisplay(config.SingleTeamMode, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)
-			modified = 1
 		--Turns Limit
 		elseif t[item].itemname == 'numturns' then
 			if commandGetState(main.p1Cmd, 'r') and config.NumTurns < 8 then
@@ -1440,10 +1413,10 @@ function options.f_advGameplayCfg()
 				config.NumTurns = config.NumTurns + 1
 				t[item].vardisplay = config.NumTurns
 				modified = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.NumTurns > 1 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.NumTurns > 2 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTurns = config.NumTurns - 1
-				t[item].vardisplay = options.f_checkTeamAmount(config.NumTurns, 1, motif.option_info.menu_itemname_disabled)
+				t[item].vardisplay = config.NumTurns
 				modified = 1
 			end
 		--Simul Limit
@@ -1454,10 +1427,10 @@ function options.f_advGameplayCfg()
 				t[item].vardisplay = config.NumSimul
 				modified = 1
 				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
-			elseif commandGetState(main.p1Cmd, 'l') and config.NumSimul > 1 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.NumSimul > 2 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumSimul = config.NumSimul - 1
-				t[item].vardisplay = options.f_checkTeamAmount(config.NumSimul, 1, motif.option_info.menu_itemname_disabled)
+				t[item].vardisplay = config.NumSimul
 				modified = 1
 			end
 		--Tag Limit
@@ -1468,16 +1441,16 @@ function options.f_advGameplayCfg()
 				t[item].vardisplay = config.NumTag
 				modified = 1
 				needReload = 1 --TODO: won't be needed if we add a function that can extend sys.keyConfig and sys.JoystickConfig from lua
-			elseif commandGetState(main.p1Cmd, 'l') and config.NumTag > 1 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.NumTag > 2 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config.NumTag = config.NumTag - 1
-				t[item].vardisplay = options.f_checkTeamAmount(config.NumTag, 1, motif.option_info.menu_itemname_disabled)
+				t[item].vardisplay = config.NumTag
 				modified = 1
 			end
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_gameplay)
+			txt_title:update({text = motif.option_info.title_text_gameplay})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -1493,22 +1466,22 @@ t_quicklaunchNames[1] = "Level1"
 t_quicklaunchNames[2] = "Level2"
 
 options.t_engineCfg = {
-	{data = textImgNew(), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
-	{data = textImgNew(), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_engine_simulmode, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
-	{data = textImgNew(), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = textImgNew(), vardisplay = t_quicklaunchNames[config.QuickLaunch]},
-	{data = textImgNew(), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_engine_lifebarfontscale, vardata = textImgNew(), vardisplay = config.LifebarFontScale},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_engine_helpermax, vardata = textImgNew(), vardisplay = config.HelperMax},
-	{data = textImgNew(), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_engine_playerprojectilemax, vardata = textImgNew(), vardisplay = config.PlayerProjectileMax},
-	{data = textImgNew(), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_engine_explodmax, vardata = textImgNew(), vardisplay = config.ExplodMax},
-	{data = textImgNew(), itemname = 'afterimagemax', displayname = motif.option_info.menu_itemname_engine_afterimagemax, vardata = textImgNew(), vardisplay = config.AfterImageMax},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'zoomactive', displayname = motif.option_info.menu_itemname_engine_zoomactive, vardata = textImgNew(), vardisplay = options.f_boolDisplay(config.ZoomActive)},
-	{data = textImgNew(), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_engine_maxzoomout, vardata = textImgNew(), vardisplay = config.ZoomMin},
-	{data = textImgNew(), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_engine_maxzoomin, vardata = textImgNew(), vardisplay = config.ZoomMax},
-	{data = textImgNew(), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_engine_zoomspeed, vardata = textImgNew(), vardisplay = config.ZoomSpeed},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
+	{data = text:create({}), itemname = 'allowdebugkeys', displayname = motif.option_info.menu_itemname_engine_allowdebugkeys, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.AllowDebugKeys, motif.option_info.menu_itemname_enabled, motif.option_info.menu_itemname_disabled)},
+	{data = text:create({}), itemname = 'simulmode', displayname = motif.option_info.menu_itemname_engine_simulmode, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.SimulMode, motif.option_info.menu_itemname_disabled, motif.option_info.menu_itemname_enabled)},
+	{data = text:create({}), itemname = 'quicklaunch', displayname = motif.option_info.menu_itemname_engine_quicklaunch, vardata = text:create({}), vardisplay = t_quicklaunchNames[config.QuickLaunch]},
+	{data = text:create({}), itemname = 'lifebarfontscale', displayname = motif.option_info.menu_itemname_engine_lifebarfontscale, vardata = text:create({}), vardisplay = config.LifebarFontScale},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'helpermax', displayname = motif.option_info.menu_itemname_engine_helpermax, vardata = text:create({}), vardisplay = config.HelperMax},
+	{data = text:create({}), itemname = 'playerprojectilemax', displayname = motif.option_info.menu_itemname_engine_playerprojectilemax, vardata = text:create({}), vardisplay = config.PlayerProjectileMax},
+	{data = text:create({}), itemname = 'explodmax', displayname = motif.option_info.menu_itemname_engine_explodmax, vardata = text:create({}), vardisplay = config.ExplodMax},
+	{data = text:create({}), itemname = 'afterimagemax', displayname = motif.option_info.menu_itemname_engine_afterimagemax, vardata = text:create({}), vardisplay = config.AfterImageMax},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'zoomactive', displayname = motif.option_info.menu_itemname_engine_zoomactive, vardata = text:create({}), vardisplay = options.f_boolDisplay(config.ZoomActive)},
+	{data = text:create({}), itemname = 'maxzoomout', displayname = motif.option_info.menu_itemname_engine_maxzoomout, vardata = text:create({}), vardisplay = config.ZoomMin},
+	{data = text:create({}), itemname = 'maxzoomin', displayname = motif.option_info.menu_itemname_engine_maxzoomin, vardata = text:create({}), vardisplay = config.ZoomMax},
+	{data = text:create({}), itemname = 'zoomspeed', displayname = motif.option_info.menu_itemname_engine_zoomspeed, vardata = text:create({}), vardisplay = config.ZoomSpeed},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_video_back},
 }
 options.t_engineCfg = main.f_cleanTable(options.t_engineCfg, main.t_sort.option_info)
 
@@ -1518,12 +1491,12 @@ function options.f_engineCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_engineCfg
-	textImgSetText(txt_title, motif.option_info.title_text_engine)
+	txt_title:update({text = motif.option_info.title_text_engine})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		--Allow Debug Keys
 		elseif t[item].itemname == 'allowdebugkeys' and (commandGetState(main.p1Cmd, 'r') or commandGetState(main.p1Cmd, 'l') or main.f_btnPalNo(main.p1Cmd) > 0) then
@@ -1576,13 +1549,13 @@ function options.f_engineCfg()
 		elseif t[item].itemname == 'helpermax' then
 			if commandGetState(main.p1Cmd, 'r') then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.HelperMax = config.HelperMax + 10
+				config.HelperMax = config.HelperMax + 1
 				t[item].vardisplay = config.HelperMax
 				modified = 1
 				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.HelperMax > 10 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.HelperMax > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.HelperMax = config.HelperMax - 10
+				config.HelperMax = config.HelperMax - 1
 				t[item].vardisplay = config.HelperMax
 				modified = 1
 				needReload = 1
@@ -1591,13 +1564,13 @@ function options.f_engineCfg()
 		elseif t[item].itemname == 'playerprojectilemax' then
 			if commandGetState(main.p1Cmd, 'r') then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PlayerProjectileMax = config.PlayerProjectileMax + 10
+				config.PlayerProjectileMax = config.PlayerProjectileMax + 1
 				t[item].vardisplay = config.PlayerProjectileMax
 				modified = 1
 				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.PlayerProjectileMax > 10 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.PlayerProjectileMax > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.PlayerProjectileMax = config.PlayerProjectileMax - 10
+				config.PlayerProjectileMax = config.PlayerProjectileMax - 1
 				t[item].vardisplay = config.PlayerProjectileMax
 				modified = 1
 				needReload = 1
@@ -1606,13 +1579,13 @@ function options.f_engineCfg()
 		elseif t[item].itemname == 'explodmax' then
 			if commandGetState(main.p1Cmd, 'r') then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.ExplodMax = config.ExplodMax + 10
+				config.ExplodMax = config.ExplodMax + 1
 				t[item].vardisplay = config.ExplodMax
 				modified = 1
 				needReload = 1
-			elseif commandGetState(main.p1Cmd, 'l') and config.ExplodMax > 10 then
+			elseif commandGetState(main.p1Cmd, 'l') and config.ExplodMax > 1 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config.ExplodMax = config.ExplodMax - 10
+				config.ExplodMax = config.ExplodMax - 1
 				t[item].vardisplay = config.ExplodMax
 				modified = 1
 				needReload = 1
@@ -1684,7 +1657,7 @@ function options.f_engineCfg()
 		--Back
 		elseif t[item].itemname == 'back' and main.f_btnPalNo(main.p1Cmd) > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		end
 		options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -1695,12 +1668,12 @@ end
 --; INPUT SETTINGS
 --;===========================================================
 options.t_inputCfg = {
-	{data = textImgNew(), itemname = 'keyboard', displayname = motif.option_info.menu_itemname_input_keyboard},
-	{data = textImgNew(), itemname = 'gamepad', displayname = motif.option_info.menu_itemname_input_gamepad},
-	--{data = textImgNew(), itemname = 'system', displayname = motif.option_info.menu_itemname_input_system},
-	{data = textImgNew(), itemname = 'empty', displayname = ' '},
-	{data = textImgNew(), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_input_default},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_input_back},
+	{data = text:create({}), itemname = 'keyboard', displayname = motif.option_info.menu_itemname_input_keyboard},
+	{data = text:create({}), itemname = 'gamepad', displayname = motif.option_info.menu_itemname_input_gamepad},
+	--{data = text:create({}), itemname = 'system', displayname = motif.option_info.menu_itemname_input_system},
+	{data = text:create({}), itemname = 'empty', displayname = ' '},
+	{data = text:create({}), itemname = 'defaultvalues', displayname = motif.option_info.menu_itemname_input_default},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_input_back},
 }
 options.t_inputCfg = main.f_cleanTable(options.t_inputCfg, main.t_sort.option_info)
 
@@ -1710,12 +1683,12 @@ function options.f_inputCfg()
 	local moveTxt = 0
 	local item = 1
 	local t = options.t_inputCfg
-	textImgSetText(txt_title, motif.option_info.title_text_input)
+	txt_title:update({text = motif.option_info.title_text_input})
 	while true do
 		cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 		if esc() then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			textImgSetText(txt_title, motif.option_info.title_text_main)
+			txt_title:update({text = motif.option_info.title_text_main})
 			break
 		elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 			--Key Config
@@ -1738,7 +1711,7 @@ function options.f_inputCfg()
 			--Back
 			elseif t[item].itemname == 'back' then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				textImgSetText(txt_title, motif.option_info.title_text_main)
+				txt_title:update({text = motif.option_info.title_text_main})
 				break
 			end
 		end
@@ -1750,26 +1723,26 @@ end
 --; KEY SETTINGS
 --;===========================================================
 local t_keyCfg = {
-	{data = textImgNew(), itemname = 'dummy', displayname = ''},
-	{data = textImgNew(), itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = textImgNew(), infodisplay = ''},
-	{data = textImgNew(), itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = textImgNew()},
-	{data = textImgNew(), itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = textImgNew(), infodisplay = motif.option_info.menu_itemname_info_esc},
+	{data = text:create({}), itemname = 'dummy', displayname = ''},
+	{data = text:create({}), itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = text:create({}), infodisplay = ''},
+	{data = text:create({}), itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = text:create({})},
+	{data = text:create({}), itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = text:create({})},
+	{data = text:create({}), itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = text:create({})},
+	{data = text:create({}), itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = text:create({})},
+	{data = text:create({}), itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = text:create({})},
+	{data = text:create({}), itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = text:create({})},
+	{data = text:create({}), itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = text:create({})},
+	{data = text:create({}), itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = text:create({})},
+	{data = text:create({}), itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = text:create({})},
+	{data = text:create({}), itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = text:create({})},
+	{data = text:create({}), itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = text:create({})},
+	{data = text:create({}), itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = text:create({})},
+	{data = text:create({}), itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = text:create({})},
+	{data = text:create({}), itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = text:create({}), infodisplay = motif.option_info.menu_itemname_info_esc},
 }
 --t_keyCfg = main.f_cleanTable(t_keyCfg, main.t_sort.option_info)
 
-local txt_keyController = textImgNew()
+local txt_keyController = text:create({})
 function options.f_keyCfg(cfgType, controller)
 	main.f_cmdInput()
 	local cursorPosY = 2
@@ -1786,7 +1759,7 @@ function options.f_keyCfg(cfgType, controller)
 	local player = 1
 	local btn = tostring(config[cfgType][player].Buttons[item - item_start])
 	local joyNum = 0
-	textImgSetText(txt_title, motif.option_info.title_text_key)
+	txt_title:update({text = motif.option_info.title_text_key})
 	--count all button assignments on the same controller
 	for i = 1, #config[cfgType] do
 		joyNum = config[cfgType][i].Joystick
@@ -1927,7 +1900,7 @@ function options.f_keyCfg(cfgType, controller)
 		if configall == false then
 			if esc() and not t_conflict[joyNum] then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				textImgSetText(txt_title, motif.option_info.title_text_input)
+				txt_title:update({text = motif.option_info.title_text_input})
 				break
 			--Config all
 			elseif (t[item].itemname == 'configall' and main.f_btnPalNo(main.p1Cmd) > 0) or getKey() == 'F1' or getKey() == 'F2' then
@@ -1954,7 +1927,7 @@ function options.f_keyCfg(cfgType, controller)
 					main.f_warning(main.f_extractText(motif.warning_info.text_keys), motif.option_info, motif.optionbgdef)
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-					textImgSetText(txt_title, motif.option_info.title_text_input)
+					txt_title:update({text = motif.option_info.title_text_input})
 					break
 				end
 			--individual buttons
@@ -2013,23 +1986,23 @@ function options.f_keyCfg(cfgType, controller)
 		bgDraw(motif.optionbgdef.bg, false)
 		--draw player num
 		for i = 1, 2 do
-			textImgDraw(main.f_updateTextImg(
-				txt_keyController,
-				motif.font_data[motif.option_info['menu_item_key_p' .. i .. '_font'][1]],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][2],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][3],
-				motif.option_info['menu_itemname_key_p' .. i],
-				motif.option_info['menu_item_p' .. i .. '_pos'][1],
-				motif.option_info['menu_item_p' .. i .. '_pos'][2],
-				motif.option_info['menu_item_key_p' .. i .. '_font_scale'][1],
-				motif.option_info['menu_item_key_p' .. i .. '_font_scale'][2],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][4],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][5],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][6],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][7],
-				motif.option_info['menu_item_key_p' .. i .. '_font'][8],
-				motif.defaultOptions
-			))
+			txt_keyController:update({
+				font =   motif.font_data[motif.option_info['menu_item_key_p' .. i .. '_font'][1]],
+				bank =   motif.option_info['menu_item_key_p' .. i .. '_font'][2],
+				align =  motif.option_info['menu_item_key_p' .. i .. '_font'][3],
+				text =   motif.option_info['menu_itemname_key_p' .. i],
+				x =      motif.option_info['menu_item_p' .. i .. '_pos'][1],
+				y =      motif.option_info['menu_item_p' .. i .. '_pos'][2],
+				scaleX = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][1],
+				scaleY = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][2],
+				r =      motif.option_info['menu_item_key_p' .. i .. '_font'][4],
+				g =      motif.option_info['menu_item_key_p' .. i .. '_font'][5],
+				b =      motif.option_info['menu_item_key_p' .. i .. '_font'][6],
+				src =    motif.option_info['menu_item_key_p' .. i .. '_font'][7],
+				dst =    motif.option_info['menu_item_key_p' .. i .. '_font'][8],
+				defsc =  motif.defaultOptions
+			})
+			txt_keyController:draw()
 		end
 		--draw menu box
 		if motif.option_info.menu_boxbg_visible == 1 then
@@ -2055,7 +2028,7 @@ function options.f_keyCfg(cfgType, controller)
 			end
 		end
 		--draw title
-		textImgDraw(txt_title)
+		txt_title:draw()
 		--draw menu items
 		for i = 1, #t do
 			for j = 1, 2 do
@@ -2069,161 +2042,161 @@ function options.f_keyCfg(cfgType, controller)
 					end
 					if i == item and j == player then --active item
 						--draw displayname
-						textImgDraw(main.f_updateTextImg(
-							t[i].data,
-							motif.font_data[motif.option_info.menu_item_active_font[1]],
-							motif.option_info.menu_item_active_font[2],
-							motif.option_info.menu_item_active_font[3],
-							t[i].displayname,
-							t_pos[j][1],
-							t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-							motif.option_info.menu_item_active_font_scale[1],
-							motif.option_info.menu_item_active_font_scale[2],
-							motif.option_info.menu_item_active_font[4],
-							motif.option_info.menu_item_active_font[5],
-							motif.option_info.menu_item_active_font[6],
-							motif.option_info.menu_item_active_font[7],
-							motif.option_info.menu_item_active_font[8],
-							motif.defaultOptions
-						))
+						t[i].data:update({
+							font =   motif.font_data[motif.option_info.menu_item_active_font[1]],
+							bank =   motif.option_info.menu_item_active_font[2],
+							align =  motif.option_info.menu_item_active_font[3],
+							text =   t[i].displayname,
+							x =      t_pos[j][1],
+							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+							scaleX = motif.option_info.menu_item_active_font_scale[1],
+							scaleY = motif.option_info.menu_item_active_font_scale[2],
+							r =      motif.option_info.menu_item_active_font[4],
+							g =      motif.option_info.menu_item_active_font[5],
+							b =      motif.option_info.menu_item_active_font[6],
+							src =    motif.option_info.menu_item_active_font[7],
+							dst =    motif.option_info.menu_item_active_font[8],
+							defsc =  motif.defaultOptions
+						})
+						t[i].data:draw()
 						--draw vardata
 						if t[i].vardata ~= nil then
 							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
-								textImgDraw(main.f_updateTextImg(
-									t[i].vardata,
-									motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
-									motif.option_info.menu_item_value_conflict_font[2],
-									motif.option_info.menu_item_value_conflict_font[3],
-									t[i]['vardisplay' .. j],
-									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									motif.option_info.menu_item_value_conflict_font_scale[1],
-									motif.option_info.menu_item_value_conflict_font_scale[2],
-									motif.option_info.menu_item_value_conflict_font[4],
-									motif.option_info.menu_item_value_conflict_font[5],
-									motif.option_info.menu_item_value_conflict_font[6],
-									motif.option_info.menu_item_value_conflict_font[7],
-									motif.option_info.menu_item_value_conflict_font[8],
-									motif.defaultOptions
-								))
+								t[i].vardata:update({
+									font =   motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
+									bank =   motif.option_info.menu_item_value_conflict_font[2],
+									align =  motif.option_info.menu_item_value_conflict_font[3],
+									text =   t[i]['vardisplay' .. j],
+									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+									scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
+									scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
+									r =      motif.option_info.menu_item_value_conflict_font[4],
+									g =      motif.option_info.menu_item_value_conflict_font[5],
+									b =      motif.option_info.menu_item_value_conflict_font[6],
+									src =    motif.option_info.menu_item_value_conflict_font[7],
+									dst =    motif.option_info.menu_item_value_conflict_font[8],
+									defsc =  motif.defaultOptions
+								})
+								t[i].vardata:draw()
 								t_conflict[joyNum] = true
 							else
-								textImgDraw(main.f_updateTextImg(
-									t[i].vardata,
-									motif.font_data[motif.option_info.menu_item_value_active_font[1]],
-									motif.option_info.menu_item_value_active_font[2],
-									motif.option_info.menu_item_value_active_font[3],
-									t[i]['vardisplay' .. j],
-									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									motif.option_info.menu_item_value_active_font_scale[1],
-									motif.option_info.menu_item_value_active_font_scale[2],
-									motif.option_info.menu_item_value_active_font[4],
-									motif.option_info.menu_item_value_active_font[5],
-									motif.option_info.menu_item_value_active_font[6],
-									motif.option_info.menu_item_value_active_font[7],
-									motif.option_info.menu_item_value_active_font[8],
-									motif.defaultOptions
-								))
+								t[i].vardata:update({
+									font =   motif.font_data[motif.option_info.menu_item_value_active_font[1]],
+									bank =   motif.option_info.menu_item_value_active_font[2],
+									align =  motif.option_info.menu_item_value_active_font[3],
+									text =   t[i]['vardisplay' .. j],
+									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+									scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+									scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+									r =      motif.option_info.menu_item_value_active_font[4],
+									g =      motif.option_info.menu_item_value_active_font[5],
+									b =      motif.option_info.menu_item_value_active_font[6],
+									src =    motif.option_info.menu_item_value_active_font[7],
+									dst =    motif.option_info.menu_item_value_active_font[8],
+									defsc =  motif.defaultOptions
+								})
+								t[i].vardata:draw()
 							end
 						--draw infodata
 						elseif t[i].infodata ~= nil then
-							textImgDraw(main.f_updateTextImg(
-								t[i].infodata,
-								motif.font_data[motif.option_info.menu_item_info_active_font[1]],
-								motif.option_info.menu_item_info_active_font[2],
-								motif.option_info.menu_item_info_active_font[3],
-								t[i].infodisplay,
-								t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-								t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-								motif.option_info.menu_item_value_active_font_scale[1],
-								motif.option_info.menu_item_value_active_font_scale[2],
-								motif.option_info.menu_item_info_active_font[4],
-								motif.option_info.menu_item_info_active_font[5],
-								motif.option_info.menu_item_info_active_font[6],
-								motif.option_info.menu_item_info_active_font[7],
-								motif.option_info.menu_item_info_active_font[8],
-								motif.defaultOptions
-							))
+							t[i].infodata:update({
+								font =   motif.font_data[motif.option_info.menu_item_info_active_font[1]],
+								bank =   motif.option_info.menu_item_info_active_font[2],
+								align =  motif.option_info.menu_item_info_active_font[3],
+								text =   t[i].infodisplay,
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+								scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+								r =      motif.option_info.menu_item_info_active_font[4],
+								g =      motif.option_info.menu_item_info_active_font[5],
+								b =      motif.option_info.menu_item_info_active_font[6],
+								src =    motif.option_info.menu_item_info_active_font[7],
+								dst =    motif.option_info.menu_item_info_active_font[8],
+								defsc =  motif.defaultOptions
+							})
+							t[i].infodata:draw()
 						end
 					else --inactive item
 						--draw displayname
-						textImgDraw(main.f_updateTextImg(
-							t[i].data,
-							motif.font_data[motif.option_info.menu_item_font[1]],
-							motif.option_info.menu_item_font[2],
-							motif.option_info.menu_item_font[3],
-							t[i].displayname,
-							t_pos[j][1],
-							t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-							motif.option_info.menu_item_font_scale[1],
-							motif.option_info.menu_item_font_scale[2],
-							motif.option_info.menu_item_font[4],
-							motif.option_info.menu_item_font[5],
-							motif.option_info.menu_item_font[6],
-							motif.option_info.menu_item_font[7],
-							motif.option_info.menu_item_font[8],
-							motif.defaultOptions
-						))
+						t[i].data:update({
+							font =   motif.font_data[motif.option_info.menu_item_font[1]],
+							bank =   motif.option_info.menu_item_font[2],
+							align =  motif.option_info.menu_item_font[3],
+							text =   t[i].displayname,
+							x =      t_pos[j][1],
+							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+							scaleX = motif.option_info.menu_item_font_scale[1],
+							scaleY = motif.option_info.menu_item_font_scale[2],
+							r =      motif.option_info.menu_item_font[4],
+							g =      motif.option_info.menu_item_font[5],
+							b =      motif.option_info.menu_item_font[6],
+							src =    motif.option_info.menu_item_font[7],
+							dst =    motif.option_info.menu_item_font[8],
+							defsc =  motif.defaultOptions
+						})
+						t[i].data:draw()
 						--draw vardata
 						if t[i].vardata ~= nil then
 							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
-								textImgDraw(main.f_updateTextImg(
-									t[i].vardata,
-									motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
-									motif.option_info.menu_item_value_conflict_font[2],
-									motif.option_info.menu_item_value_conflict_font[3],
-									t[i]['vardisplay' .. j],
-									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									motif.option_info.menu_item_value_conflict_font_scale[1],
-									motif.option_info.menu_item_value_conflict_font_scale[2],
-									motif.option_info.menu_item_value_conflict_font[4],
-									motif.option_info.menu_item_value_conflict_font[5],
-									motif.option_info.menu_item_value_conflict_font[6],
-									motif.option_info.menu_item_value_conflict_font[7],
-									motif.option_info.menu_item_value_conflict_font[8],
-									motif.defaultOptions
-								))
+								t[i].vardata:update({
+									font =   motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
+									bank =   motif.option_info.menu_item_value_conflict_font[2],
+									align =  motif.option_info.menu_item_value_conflict_font[3],
+									text =   t[i]['vardisplay' .. j],
+									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+									scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
+									scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
+									r =      motif.option_info.menu_item_value_conflict_font[4],
+									g =      motif.option_info.menu_item_value_conflict_font[5],
+									b =      motif.option_info.menu_item_value_conflict_font[6],
+									src =    motif.option_info.menu_item_value_conflict_font[7],
+									dst =    motif.option_info.menu_item_value_conflict_font[8],
+									defsc =  motif.defaultOptions
+								})
+								t[i].vardata:draw()
 								t_conflict[joyNum] = true
 							else
-								textImgDraw(main.f_updateTextImg(
-									t[i].vardata,
-									motif.font_data[motif.option_info.menu_item_value_font[1]],
-									motif.option_info.menu_item_value_font[2],
-									motif.option_info.menu_item_value_font[3],
-									t[i]['vardisplay' .. j],
-									t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									motif.option_info.menu_item_value_font_scale[1],
-									motif.option_info.menu_item_value_font_scale[2],
-									motif.option_info.menu_item_value_font[4],
-									motif.option_info.menu_item_value_font[5],
-									motif.option_info.menu_item_value_font[6],
-									motif.option_info.menu_item_value_font[7],
-									motif.option_info.menu_item_value_font[8],
-									motif.defaultOptions
-								))
+								t[i].vardata:update({
+									font =   motif.font_data[motif.option_info.menu_item_value_font[1]],
+									bank =   motif.option_info.menu_item_value_font[2],
+									align =  motif.option_info.menu_item_value_font[3],
+									text =   t[i]['vardisplay' .. j],
+									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+									scaleX = motif.option_info.menu_item_value_font_scale[1],
+									scaleY = motif.option_info.menu_item_value_font_scale[2],
+									r =      motif.option_info.menu_item_value_font[4],
+									g =      motif.option_info.menu_item_value_font[5],
+									b =      motif.option_info.menu_item_value_font[6],
+									src =    motif.option_info.menu_item_value_font[7],
+									dst =    motif.option_info.menu_item_value_font[8],
+									defsc =  motif.defaultOptions
+								})
+								t[i].vardata:draw()
 							end
 						--draw infodata
 						elseif t[i].infodata ~= nil then
-							textImgDraw(main.f_updateTextImg(
-								t[i].infodata,
-								motif.font_data[motif.option_info.menu_item_info_font[1]],
-								motif.option_info.menu_item_info_font[2],
-								motif.option_info.menu_item_info_font[3],
-								t[i].infodisplay,
-								t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-								t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-								motif.option_info.menu_item_value_active_font_scale[1],
-								motif.option_info.menu_item_value_active_font_scale[2],
-								motif.option_info.menu_item_info_font[4],
-								motif.option_info.menu_item_info_font[5],
-								motif.option_info.menu_item_info_font[6],
-								motif.option_info.menu_item_info_font[7],
-								motif.option_info.menu_item_info_font[8],
-								motif.defaultOptions
-							))
+							t[i].infodata:update({
+								font =   motif.font_data[motif.option_info.menu_item_info_font[1]],
+								bank =   motif.option_info.menu_item_info_font[2],
+								align =  motif.option_info.menu_item_info_font[3],
+								text =   t[i].infodisplay,
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
+								scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+								r =      motif.option_info.menu_item_info_font[4],
+								g =      motif.option_info.menu_item_info_font[5],
+								b =      motif.option_info.menu_item_info_font[6],
+								src =    motif.option_info.menu_item_info_font[7],
+								dst =    motif.option_info.menu_item_info_font[8],
+								defsc =  motif.defaultOptions
+							})
+							t[i].infodata:draw()
 						end
 					end
 				end

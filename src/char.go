@@ -518,6 +518,7 @@ type HitDef struct {
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
+	score                      [2]float32
 }
 
 func (hd *HitDef) clear() {
@@ -543,7 +544,8 @@ func (hd *HitDef) clear() {
 		mindist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
-		kill:           true, guard_kill: true, playerNo: -1}
+		kill:           true, guard_kill: true, playerNo: -1,
+		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
@@ -1460,10 +1462,12 @@ type CharSystemVar struct {
 	specialFlag   CharSpecialFlag
 	sprPriority   int32
 	getcombo      int32
+	getcombodmg   int32
 	veloff        float32
 	width, edge   [2]float32
 	attackMul     float32
 	defenceMul    float32
+	scoreCurrent  float32
 }
 
 type Char struct {
@@ -2664,10 +2668,28 @@ func (c *Char) winTime() bool {
 	return c.win() && sys.finish == FT_TO
 }
 func (c *Char) winPerfect() bool {
-	if c.teamside >= 2 {
-		return false
-	}
 	return c.win() && sys.winType[c.playerNo&1] >= WT_PN
+}
+func (c *Char) winNormal() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_N || sys.winType[c.playerNo&1] == WT_PN)
+}
+func (c *Char) winSpecial() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_S || sys.winType[c.playerNo&1] == WT_PS)
+}
+func (c *Char) winHyper() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_H || sys.winType[c.playerNo&1] == WT_PH)
+}
+func (c *Char) winCheese() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_C || sys.winType[c.playerNo&1] == WT_PC)
+}
+func (c *Char) winThrow() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_Throw || sys.winType[c.playerNo&1] == WT_PThrow)
+}
+func (c *Char) winSuicide() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_Suicide || sys.winType[c.playerNo&1] == WT_PSuicide)
+}
+func (c *Char) winTeammate() bool {
+	return c.win() && (sys.winType[c.playerNo&1] == WT_Teammate || sys.winType[c.playerNo&1] == WT_PTeammate)
 }
 func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	ch = Min(255, ch)
@@ -2834,6 +2856,7 @@ func (c *Char) destroy() {
 	if c.helperIndex > 0 {
 		c.exitTarget(true)
 		c.getcombo = 0
+		c.getcombodmg = 0
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				t.gethitBindClear()
@@ -3174,6 +3197,58 @@ func (c *Char) hitAdd(h int32) {
 		}
 	}
 }
+func timeLeft() int32 {
+	if sys.time >= 0 {
+		return sys.time
+	}
+	return -1
+}
+func timeRound() int32 {
+	if sys.lifebar.ro.timerActive {
+		return sys.roundTime - sys.time
+	}
+	return 0
+}
+func timeTotal() int32 {
+	t := sys.timerStart
+	for _, v := range sys.timerRounds {
+		t += v
+	}
+	t += timeRound()
+	return t
+}
+func scoreRound(side int) float32 {
+	var s float32
+	for i, c := range sys.chars {
+		if len(c) > 0 && side == i&1 {
+			s += c[0].scoreCurrent
+		}
+	}
+	return s
+}
+func scoreTotal(side int) float32 {
+    s := sys.scoreStart[side]
+    for _, v := range sys.scoreRounds {
+        s += v[side]
+    }
+	s += scoreRound(side)
+    return s
+}
+func (c *Char) scoreAdd(s float32) {
+	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent + s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
+}
+func (c *Char) targetScoreAdd(tar []int32, s float32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.scoreAdd(s)
+		}
+	}
+}
+func (c *Char) scoreDefault(hd *HitDef, side int) float32 {
+	//TODO: remove this function once ZSS code for default scores is ready
+	return 0
+}
+
 func (c *Char) newProj() *Projectile {
 	for i, p := range sys.projs[c.playerNo] {
 		if p.id < 0 {
@@ -3305,6 +3380,8 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		hd.teamside = c.teamside + 1
 	}
 	hd.playerNo = c.ss.sb.playerNo
+	//ifnanset(&hd.score[0], c.scoreDefault(hd, 0))
+	//ifnanset(&hd.score[1], c.scoreDefault(hd, 1))
 }
 func (c *Char) setFEdge(fe float32) {
 	c.edge[0] = fe
@@ -3634,6 +3711,9 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		min := float64(Btoi(!kill && c.life > 0) - c.life)
 		if add < min {
 			add = min
+		}
+		if add < 0 {
+			c.getcombodmg -= int32(add)
 		}
 		c.lifeSet(c.life + int32(add))
 	}
@@ -4553,6 +4633,7 @@ func (c *Char) update(cvmin, cvmax,
 			if c.ss.moveType == MT_H {
 				if c.ghv.guarded {
 					c.getcombo = 0
+					c.getcombodmg = 0
 				}
 				if c.ghv.hitshaketime > 0 {
 					c.ghv.hitshaketime--
@@ -4576,6 +4657,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.hitid = -1
 				if c.comboExtraFrameWindow <= 0 {
 					c.getcombo = 0
+					c.getcombodmg = 0
 				} else {
 					c.comboExtraFrameWindow--
 				}
@@ -5310,6 +5392,30 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
 				}
+				/*if math.IsNaN(float64(hd.score[0])) {
+					c.scoreAdd(c.scoreDefault(hd, 0))
+				} else {
+					c.scoreAdd(hd.score[0])
+				}*/
+				if !math.IsNaN(float64(hd.score[0])) {
+					c.scoreAdd(hd.score[0])
+				}
+				if getter.player {
+					/*if math.IsNaN(float64(hd.score[1])) {
+						getter.scoreAdd(getter.scoreDefault(hd, 1))
+					} else {
+						getter.scoreAdd(hd.score[1])
+					}*/
+					if !math.IsNaN(float64(hd.score[1])) {
+						getter.scoreAdd(hd.score[1])
+					}
+				}
+				if sys.lifebar.co.firstAttack == -1 {
+					sys.lifebar.co.firstAttack = c.teamside
+				}
+				if getter.ss.moveType == MT_A {
+					sys.lifebar.co.counterCount[c.teamside] += 1
+				}
 			}
 		} else {
 			if hd.guard_sparkno != IErr {
@@ -5411,6 +5517,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.setDefPhase()
 			}
 			getter.getcombo += hd.numhits * hits
+			//getter.getcombodmg += hd.hitdamage
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {

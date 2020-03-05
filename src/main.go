@@ -80,6 +80,12 @@ func main() {
 	}
 	chk(glfw.Init())
 	defer glfw.Terminate()
+	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
+		f, err := os.Create("save/stats.json")
+		chk(err)
+		f.Write([]byte("{}"))
+		chk(f.Close())
+	}
 	defcfg := []byte(strings.Join(strings.Split(
 `{
 	"WindowTitle": "Ikemen GO",
@@ -125,8 +131,8 @@ func main() {
 	"SimulMode": true,
 	"LifeMul": 100,
 	"Team1VS2Life": 100,
-	"TurnsRecoveryBase": 12.5,
-	"TurnsRecoveryBonus": 27.5,
+	"TurnsRecoveryBase": 0,
+	"TurnsRecoveryBonus": 20,
 	"ZoomActive": false,
 	"ZoomMin": 0.75,
 	"ZoomMax": 1.1,
@@ -135,7 +141,6 @@ func main() {
 	"RoundsNumSingle": -1,
 	"RoundsNumTeam": -1,
 	"MaxDrawGames": -2,
-	"SingleTeamMode": true,
 	"NumTurns": 4,
 	"NumSimul": 4,
 	"NumTag": 4,
@@ -156,7 +161,6 @@ func main() {
 	"QuickLaunch": 0,
 	"AllowDebugKeys": true,
 	"ComboExtraFrameWindow": 1,
-	"PostProcessingShader": 0,
 	"ExternalShaders": [],
 	"LocalcoordScalingType": 1,
 	"MSAA": false,
@@ -168,6 +172,7 @@ func main() {
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
+		WindowTitle            string
 		HelperMax              int32
 		PlayerProjectileMax    int
 		ExplodMax              int
@@ -190,40 +195,61 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		NumSimul                   int
-		NumTag                     int
-		TeamLifeShare              bool
-		AIRandomColor              bool
-		ComboExtraFrameWindow      int32
-		Fullscreen                 bool
-		AudioDucking               bool
-		AllowDebugKeys             bool
-		MSAA                       bool
-		PostProcessingShader       int32
-		ExternalShaders            []string
-		LocalcoordScalingType      int32
-		CommonAir                  string
-		CommonCmd                  string
-		QuickLaunch                int
 		ControllerStickSensitivity float32
 		XinputTriggerSensitivity   float32
+		Motif                      string
+		CommonAir                  string
+		CommonCmd                  string
+		SimulMode                  bool
+		LifeMul                    float32
+		Team1VS2Life               float32
+		TurnsRecoveryBase          float32
+		TurnsRecoveryBonus         float32
+		ZoomActive                 bool
+		ZoomMin                    float32
+		ZoomMax                    float32
+		ZoomSpeed                  float32
+		RoundTime                  int32
+		RoundsNumSingle            int32
+		RoundsNumTeam              int32
+		MaxDrawGames               int32
+		NumTurns                   int
+		NumSimul                   int
+		NumTag                     int
+		Difficulty                 int
+		Credits                    int
+		ListenPort                 int
+		IP                         map[string]string
+		QuickContinue              bool
+		AIRandomColor              bool
+		AIRamping                  bool
+		AutoGuard                  bool
+		TeamPowerShare             bool
+		TeamLifeShare              bool
+		Fullscreen                 bool
+		PostProcessingShader       int32
+		AudioDucking               bool
+		QuickLaunch                int
+		AllowDebugKeys             bool
+		ComboExtraFrameWindow      int32
+		ExternalShaders            []string
+		LocalcoordScalingType      int32
+		MSAA                       bool
+		LifeRatio                  [4]float32
+		AttackRatio                [4]float32
 		WindowMainIconLocation     []string
-		WindowTitle                string
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
-	const configFile = "save/config.json"
-	if bytes, err := ioutil.ReadFile(configFile); err != nil {
-		f, err := os.Create(configFile)
-		chk(err)
-		f.Write(defcfg)
-		chk(f.Close())
-	} else {
+	if bytes, err := ioutil.ReadFile("save/config.json"); err == nil {
 		if len(bytes) >= 3 &&
 			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
 			bytes = bytes[3:]
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
+	cfg, err := json.MarshalIndent(tmp, "", "	")
+	chk(err)
+	chk(ioutil.WriteFile("save/config.json", cfg, 0644))
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.windowTitle = tmp.WindowTitle
@@ -239,7 +265,7 @@ func main() {
 	sys.quickLaunch = tmp.QuickLaunch
 	sys.windowMainIconLocation = tmp.WindowMainIconLocation
 	sys.externalShaderList = tmp.ExternalShaders
-	// For debug testing letting this here comented because it could be usefull in the future.
+	// For debug testing letting this here commented because it could be useful in the future.
 	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
 	sys.masterVolume = tmp.MasterVolume
 	sys.wavVolume = tmp.WavVolume
@@ -274,7 +300,7 @@ func main() {
 		for _, jc := range tmp.JoystickConfig {
 			b := jc.Buttons
 			if jc.Joystick >= 0 {
-				sys.JoystickConfig = append(sys.JoystickConfig, KeyConfig{jc.Joystick,
+				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{jc.Joystick,
 					Atoi(b[0].(string)), Atoi(b[1].(string)),
 					Atoi(b[2].(string)), Atoi(b[3].(string)),
 					Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
@@ -310,11 +336,11 @@ func main() {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
 			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
+				dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
 				panic(err)
 			}
 		default:
-			dialog.Message("%s\n\nError saved to Ikemen.log logfile.", err).Title("I.K.E.M.E.N Error").Error()
+			dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
 			panic(err)
 		}
 	}

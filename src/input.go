@@ -690,19 +690,19 @@ const (
 
 func (ib *InputBits) SetInput(in int) {
 	if 0 <= in && in < len(sys.keyConfig) {
-		*ib = InputBits(Btoi(sys.keyConfig[in].U() || sys.JoystickConfig[in].U()) |
-			Btoi(sys.keyConfig[in].D() || sys.JoystickConfig[in].D())<<1 |
-			Btoi(sys.keyConfig[in].L() || sys.JoystickConfig[in].L())<<2 |
-			Btoi(sys.keyConfig[in].R() || sys.JoystickConfig[in].R())<<3 |
-			Btoi(sys.keyConfig[in].A() || sys.JoystickConfig[in].A())<<4 |
-			Btoi(sys.keyConfig[in].B() || sys.JoystickConfig[in].B())<<5 |
-			Btoi(sys.keyConfig[in].C() || sys.JoystickConfig[in].C())<<6 |
-			Btoi(sys.keyConfig[in].X() || sys.JoystickConfig[in].X())<<7 |
-			Btoi(sys.keyConfig[in].Y() || sys.JoystickConfig[in].Y())<<8 |
-			Btoi(sys.keyConfig[in].Z() || sys.JoystickConfig[in].Z())<<9 |
-			Btoi(sys.keyConfig[in].S() || sys.JoystickConfig[in].S())<<10 |
-			Btoi(sys.keyConfig[in].V() || sys.JoystickConfig[in].V())<<11 |
-			Btoi(sys.keyConfig[in].W() || sys.JoystickConfig[in].W())<<12)
+		*ib = InputBits(Btoi(sys.keyConfig[in].U() || sys.joystickConfig[in].U()) |
+			Btoi(sys.keyConfig[in].D() || sys.joystickConfig[in].D())<<1 |
+			Btoi(sys.keyConfig[in].L() || sys.joystickConfig[in].L())<<2 |
+			Btoi(sys.keyConfig[in].R() || sys.joystickConfig[in].R())<<3 |
+			Btoi(sys.keyConfig[in].A() || sys.joystickConfig[in].A())<<4 |
+			Btoi(sys.keyConfig[in].B() || sys.joystickConfig[in].B())<<5 |
+			Btoi(sys.keyConfig[in].C() || sys.joystickConfig[in].C())<<6 |
+			Btoi(sys.keyConfig[in].X() || sys.joystickConfig[in].X())<<7 |
+			Btoi(sys.keyConfig[in].Y() || sys.joystickConfig[in].Y())<<8 |
+			Btoi(sys.keyConfig[in].Z() || sys.joystickConfig[in].Z())<<9 |
+			Btoi(sys.keyConfig[in].S() || sys.joystickConfig[in].S())<<10 |
+			Btoi(sys.keyConfig[in].V() || sys.joystickConfig[in].V())<<11 |
+			Btoi(sys.keyConfig[in].W() || sys.joystickConfig[in].W())<<12)
 	}
 }
 func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
@@ -2016,47 +2016,47 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32) bool {
 					w = sys.keyConfig[in].W()
 				}
 			}
-			if in < len(sys.JoystickConfig) {
-				joyS := sys.JoystickConfig[in].Joy
+			if in < len(sys.joystickConfig) {
+				joyS := sys.joystickConfig[in].Joy
 				if joyS >= 0 {
 					if l == false {
-						l = sys.JoystickConfig[in].L()
+						l = sys.joystickConfig[in].L()
 					}
 					if r == false {
-						r = sys.JoystickConfig[in].R()
+						r = sys.joystickConfig[in].R()
 					}
 					if u == false {
-						u = sys.JoystickConfig[in].U()
+						u = sys.joystickConfig[in].U()
 					}
 					if d == false {
-						d = sys.JoystickConfig[in].D()
+						d = sys.joystickConfig[in].D()
 					}
 					if a == false {
-						a = sys.JoystickConfig[in].A()
+						a = sys.joystickConfig[in].A()
 					}
 					if b == false {
-						b = sys.JoystickConfig[in].B()
+						b = sys.joystickConfig[in].B()
 					}
 					if c == false {
-						c = sys.JoystickConfig[in].C()
+						c = sys.joystickConfig[in].C()
 					}
 					if x == false {
-						x = sys.JoystickConfig[in].X()
+						x = sys.joystickConfig[in].X()
 					}
 					if y == false {
-						y = sys.JoystickConfig[in].Y()
+						y = sys.joystickConfig[in].Y()
 					}
 					if z == false {
-						z = sys.JoystickConfig[in].Z()
+						z = sys.joystickConfig[in].Z()
 					}
 					if s == false {
-						s = sys.JoystickConfig[in].S()
+						s = sys.joystickConfig[in].S()
 					}
 					if v == false {
-						v = sys.JoystickConfig[in].V()
+						v = sys.joystickConfig[in].V()
 					}
 					if w == false {
-						w = sys.JoystickConfig[in].W()
+						w = sys.joystickConfig[in].W()
 					}
 				}
 			}

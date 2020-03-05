@@ -17,6 +17,11 @@ local file = io.open("save/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
 
+--Data loading from stats.json
+file = io.open("save/stats.json","r")
+stats = json.decode(file:read("*all"))
+file:close()
+
 --Input stuff
 main.p1In = 1
 main.p2In = 2
@@ -68,7 +73,6 @@ function main.f_exists(file)
 	end
 	return ok, err
 end
-
 --check if a directory exists in this path
 function  main.f_isdir(path)
 	-- "/" works on both Unix and Windows
@@ -198,31 +202,11 @@ function text:draw()
 	textImgDraw(self.data.ti)
 end
 
---	Text example:
---local txt_titleFooter1 = text:create( --this creates footer 1
---	{font=			motif.title_info.footer1_font[1],
---	bank=			motif.title_info.footer1_font[2],
---	align=			motif.title_info.footer1_font[3],
---	text=			motif.title_info.footer1_text,
---	x=				motif.title_info.footer1_offset[1],
---	y=				motif.title_info.footer1_offset[2],
---	scaleX=			motif.title_info.footer1_font_scale[1],
---	scaleY=			motif.title_info.footer1_font_scale[2],
---	r=				motif.title_info.footer1_font[4],
---	g=				motif.title_info.footer1_font[5],
---	b=				motif.title_info.footer1_font[6],
---	src=			motif.title_info.footer1_font[7],
---	dst=			motif.title_info.footer1_font[8],
---	defaultscale=	motif.defaultFooter}
---)
---txt_titleFooter1:update({text="bacon"}) -- changes just the text to bacon
---txt_titleFooter1:draw() -- shows the text "bacon" instead of what it normally would
-
 --shortcut for creating new text with several parameters
 function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
 	if defsc then main.SetDefaultScale() end
 	local ti = textImgNew()
-	if font ~= nil then
+	if font ~= '' then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
@@ -239,7 +223,7 @@ end
 --shortcut for updating text with several parameters
 function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
 	if defsc then main.SetDefaultScale() end
-	if font ~= nil then
+	if font ~= '' then
 		textImgSetFont(ti, font)
 		textImgSetBank(ti, bank)
 		textImgSetAlign(ti, align)
@@ -258,15 +242,6 @@ function main.f_animPosDraw(a, x, y)
 	animSetPos(a, x, y)
 	animUpdate(a)
 	animDraw(a)
-end
-
---textImgDraw at specified coordinates
-function main.f_textImgPosDraw(ti, x, y, align)
-	align = align or 0
-	textImgSetAlign(ti, align)
-	if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-	textImgSetPos(ti, x, y)
-	textImgDraw(ti)
 end
 
 --makes the input detectable in the current frame
@@ -324,7 +299,7 @@ function main.f_boxcursorAlpha(r1min, r1max, r1step, r2min, r2max, r2step)
 end
 
 --generate anim from table
-function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, defaultscale)
+function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, defsc)
 	x = x or 0
 	y = y or 0
 	scaleX = scaleX or 1.0
@@ -364,27 +339,19 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, de
 		end
 		anim = anim .. '\n'
 	end
-	if defaultscale then main.SetDefaultScale() end
+	if defsc then main.SetDefaultScale() end
 	local data = animNew(sff, anim)
 	animSetScale(data, scaleX, scaleY)
 	animUpdate(data)
-	if defaultscale then main.SetScaleValues() end
+	if defsc then main.SetScaleValues() end
 	return data, length
-end
-
---Convert number to name and get rid of the ""
-function main.f_getName(cell)
-	local tmp = getCharName(cell)
-	if main.t_selChars[cell + 1].hidden == 3 then
-		tmp = 'Random'
-	elseif main.t_selChars[cell + 1].hidden == 2 then
-		tmp = ''
-	end
-	return tmp
 end
 
 --copy table content into new table
 function main.f_copyTable(t)
+	if t == nil then
+		return nil
+	end
 	t = t or {}
 	local t2 = {}
 	for k, v in pairs(t) do
@@ -412,11 +379,11 @@ end
 --iterate over the table in order
 -- basic usage, just sort by the keys:
 --for k, v in main.f_sortKeys(t) do
---    print(k,v)
+--	print(k, v)
 --end
 -- this uses an custom sorting function ordering by score descending
---for k, v in  main.f_sortKeys(t, function(t,a,b) return t[b] < t[a] end) do
---    print(k,v)
+--for k, v in main.f_sortKeys(t, function(t, a, b) return t[b] < t[a] end) do
+--	print(k, v)
 --end
 function main.f_sortKeys(t, order)
 	-- collect the keys
@@ -425,7 +392,7 @@ function main.f_sortKeys(t, order)
 	-- if order function given, sort it by passing the table and keys a, b,
 	-- otherwise just sort the keys 
 	if order then
-		table.sort(keys, function(a,b) return order(t, a, b) end)
+		table.sort(keys, function(a, b) return order(t, a, b) end)
 	else
 		table.sort(keys)
 	end
@@ -459,32 +426,53 @@ function main.f_contains(t, val)
 	return false
 end
 
---- Draw string letter by letter + wrap lines.
--- @data: text data
--- @str: string (text you want to draw)
--- @counter: external counter (values should be increased each frame by 1 starting from 1)
--- @x: first line X position
--- @y: first line Y position
--- @def: font def data needed to figure out y spacing between lines (rendering Y position increase for each line)
--- @delay (optional): ticks (frames) delay between each letter is rendered, defaults to 0 (all text rendered immediately)
--- @limit (optional): maximum line length (string wraps when reached), if omitted line wraps only if string contains '\n'
-function main.f_textRender(data, str, counter, x, y, font_data, delay, limit)
+--draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
+function main.f_textRender(data, str, counter, x, y, font_data, delay, pxLimit)
 	local delay = delay or 0
-	local limit = limit or -1
+	local pxLimit = pxLimit or 0
 	str = tostring(str)
-	if limit == -1 then
-		str = str:gsub('\\n', '\n')
-	else
-		str = str:gsub('%s*\\n%s*', ' ')
-		if math.floor(#str / limit) + 1 > 1 then
-			str = main.f_wrap(str, limit, indent, indent1)
+	local text = ''
+	if pxLimit <= 0 then --auto wrapping disabled
+		text = str:gsub('\\n', '\n')
+	else --add \n before the word that exceeds amount of free pixels in the line
+		local tmp = ''
+		local pxLeft = pxLimit
+		local tmp_px = 0
+		local space = font_data[' '] or fontGetTextWidth(motif.font_data[motif.victory_screen.winquote_font[1]], ' ')
+		for i = 1, string.len(str) do
+			local symbol = string.sub(str, i, i)
+			if font_data[symbol] == nil then --store symbol length in global table for faster counting
+				font_data[symbol] = fontGetTextWidth(motif.font_data[motif.victory_screen.winquote_font[1]], symbol)
+			end
+			local px = font_data[symbol]
+			if pxLeft + space - px > 0 then
+				if symbol:match('%s') then
+					text = text .. tmp .. symbol
+					tmp = ''
+					tmp_px = 0
+				else
+					tmp = tmp .. symbol
+					tmp_px = tmp_px + px
+				end
+				pxLeft = pxLeft - px
+			else --character in this word outside the pixel range
+				text = text .. '\n'
+				tmp = tmp .. symbol
+				tmp_px = tmp_px + px
+				pxLeft = pxLimit - tmp_px
+				tmp_px = 0
+			end
 		end
+		text = text .. tmp
 	end
-	local subEnd = math.floor(#str - (#str - counter / delay))
+	--store each string ending with \n in new table row
+	local subEnd = math.floor(#text - (#text - counter / delay))
 	local t = {}
-	for line in str:gmatch('([^\r\n]*)[\r\n]?') do
+	for line in text:gmatch('([^\r\n]*)[\r\n]?') do
 		table.insert(t, line)
 	end
+	--render
+	local ret = false
 	local lengthCnt = 0
 	for i = 1, #t do
 		if subEnd < #str then
@@ -496,32 +484,28 @@ function main.f_textRender(data, str, counter, x, y, font_data, delay, limit)
 			if subEnd < lengthCnt then
 				t[i] = t[i]:sub(0, subEnd - lengthCnt)
 			end
+		elseif i == #t then
+			ret = true
 		end
-		textImgSetText(data, t[i])
-		textImgSetPos(data, x, y + (font_data.Size[2] + font_data.Spacing[2]) * (i - 1))
-		textImgDraw(data)
+		data:update({
+			text = t[i],
+			x =    x,
+			y =    y + (font_data.Size[2] + font_data.Spacing[2]) * (i - 1),
+		})
+		data:draw()
 	end
+	return ret
 end
 
---- Wrap a long string.
--- source: http://lua-users.org/wiki/StringRecipes
--- @str: string to wrap
--- @limit: maximum line length
--- @indent: regular indentation
--- @indent1: indentation of first line
-function main.f_wrap(str, limit, indent, indent1)
-	indent = indent or ''
-	indent1 = indent1 or indent
-	limit = limit or 72
-	local here = 1 - #indent1
-	return indent1 .. str:gsub("(%s+)()(%S+)()",
-		function(sp, st, word, fi)
-			if fi - here > limit then
-				here = st - #indent
-				return '\n' .. indent .. word
-			end
-		end
-	)
+--calculates pxLimit parameter based on text x pos, localcoord and font align
+function main.f_pxLimit(x, screenWidth, align)
+	if align == 1 then --left
+		return screenWidth - x
+	elseif align == 0 then --center
+		return math.floor(screenWidth / 2 + 0.5)
+	else --right
+		return x
+	end
 end
 
 --Convert DEF string to table
@@ -655,7 +639,7 @@ function main.f_countSubstring(s1, s2)
 end
 
 --warning display
-local txt_warning = textImgNew()
+local txt_warning = text:create({})
 function main.f_warning(t, info, background, font_info, title, coords, col, alpha, defaultscale)
 	if defaultscale == nil then defaultscale = motif.defaultWarning end
 	font_info = font_info or motif.warning_info
@@ -678,27 +662,26 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		--draw menu box
 		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false)
 		--draw title
-		textImgDraw(title)
+		title:draw()
 		--draw text
 		for i = 1, #t do
-			main.f_updateTextImg(
-				txt_warning,
-				motif.font_data[font_info.text_font[1]],
-				font_info.text_font[2],
-				font_info.text_font[3],
-				t[i],
-				font_info.text_pos[1],
-				font_info.text_pos[2] + (motif.font_def[font_info.text_font[1]].Size[2] + motif.font_def[font_info.text_font[1]].Spacing[2]) * (i - 1),
-				font_info.text_font_scale[1],
-				font_info.text_font_scale[2],
-				font_info.text_font[4],
-				font_info.text_font[5],
-				font_info.text_font[6],
-				font_info.text_font[7],
-				font_info.text_font[8],
-				defaultscale
-			)
-			textImgDraw(txt_warning)
+			txt_warning:update({
+				font =   motif.font_data[font_info.text_font[1]],
+				bank =   font_info.text_font[2],
+				align =  font_info.text_font[3],
+				text =   t[i],
+				x =      font_info.text_pos[1],
+				y =      font_info.text_pos[2] + (motif.font_def[font_info.text_font[1]].Size[2] + motif.font_def[font_info.text_font[1]].Spacing[2]) * (i - 1),
+				scaleX = font_info.text_font_scale[1],
+				scaleY = font_info.text_font_scale[2],
+				r =      font_info.text_font[4],
+				g =      font_info.text_font[5],
+				b =      font_info.text_font[6],
+				src =    font_info.text_font[7],
+				dst =    font_info.text_font[8],
+				defsc =  defaultscale
+			})
+			txt_warning:draw()
 		end
 		--end loop
 		main.f_cmdInput()
@@ -707,9 +690,8 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 end
 
 --input display
-local txt_input = textImgNew()
 function main.f_input(t, info, background, category, controllerNo, keyBreak)
-	main.f_cmdInput()
+	--main.f_cmdInput()
 	category = category or 'string'
 	controllerNo = controllerNo or 0
 	keyBreak = keyBreak or ''
@@ -727,7 +709,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		if category == 'keyboard' then
 			input = getKey()
 			if input ~= '' then
-				main.f_cmdInput()
+				--main.f_cmdInput()
 				break
 			end
 		elseif category == 'gamepad' then
@@ -751,7 +733,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			end
 		else --string
 			if getKey() == 'RETURN' then
-				main.f_cmdInput()
+				--main.f_cmdInput()
 				break
 			elseif getKey() == 'BACKSPACE' then
 				input = input:match('^(.-).?$')
@@ -782,24 +764,11 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		)
 		--draw text
 		for i = 1, #t do
-			main.f_updateTextImg(
-				txt_input,
-				motif.font_data[motif.infobox.text_font[1]],
-				motif.infobox.text_font[2],
-				motif.infobox.text_font[3],
-				t[i],
-				motif.infobox.text_pos[1],
-				motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
-				motif.infobox.text_font_scale[1],
-				motif.infobox.text_font_scale[2],
-				motif.infobox.text_font[4],
-				motif.infobox.text_font[5],
-				motif.infobox.text_font[6],
-				motif.infobox.text_font[7],
-				motif.infobox.text_font[8],
-				motif.defaultInfobox
-			)
-			textImgDraw(txt_input)
+			txt_input:update({
+				text = t[i],
+				y =    motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
+			})
+			txt_input:draw()
 		end
 		--end loop
 		main.f_cmdInput()
@@ -813,7 +782,7 @@ main.nextRefresh = os.clock() + 0.02
 function main.loadingRefresh(txt)
 	if os.clock() >= main.nextRefresh then
 		if txt ~= nil then
-			textImgDraw(txt)
+			txt:draw()
 		end
 		refresh()
 		main.nextRefresh = os.clock() + 0.02
@@ -968,48 +937,62 @@ setMotifDir(motif.fileDir)
 setPortrait(motif.select_info.p1_face_spr[1], motif.select_info.p1_face_spr[2], 1) --Big portrait
 setPortrait(motif.select_info.portrait_spr[1], motif.select_info.portrait_spr[2], 2) --Small portrait
 setPortrait(motif.vs_screen.p1_spr[1], motif.vs_screen.p1_spr[2], 3) --Versus portrait
-setPortrait(motif.victory_screen.p1_spr[1], motif.victory_screen.p1_spr[2], 4) --Victory portrait
-setPortrait(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2], 5) --Stage portrait
+setPortrait(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2], 4) --Stage portrait
 
-main.txt_warningTitle = main.f_createTextImg(
-	motif.font_data[motif.warning_info.title_font[1]],
-	motif.warning_info.title_font[2],
-	motif.warning_info.title_font[3],
-	motif.warning_info.title,
-	motif.warning_info.title_pos[1],
-	motif.warning_info.title_pos[2],
-	motif.warning_info.title_font_scale[1],
-	motif.warning_info.title_font_scale[2],
-	motif.warning_info.title_font[4],
-	motif.warning_info.title_font[5],
-	motif.warning_info.title_font[6],
-	motif.warning_info.title_font[7],
-	motif.warning_info.title_font[8],
-	motif.defaultWarning
-)
-
---add characters and stages using select.def
-local txt_loading = main.f_createTextImg(
-	motif.font_data[motif.title_info.loading_font[1]],
-	motif.title_info.loading_font[2],
-	motif.title_info.loading_font[3],
-	motif.title_info.loading_text,
-	motif.title_info.loading_offset[1],
-	motif.title_info.loading_offset[2],
-	motif.title_info.loading_font_scale[1],
-	motif.title_info.loading_font_scale[2],
-	motif.title_info.loading_font[4],
-	motif.title_info.loading_font[5],
-	motif.title_info.loading_font[6],
-	motif.title_info.loading_font[7],
-	motif.title_info.loading_font[8],
-	motif.defaultLoading
-)
-textImgDraw(txt_loading)
+main.txt_warningTitle = text:create({
+	font =   motif.font_data[motif.warning_info.title_font[1]],
+	bank =   motif.warning_info.title_font[2],
+	align =  motif.warning_info.title_font[3],
+	text =   motif.warning_info.title,
+	x =      motif.warning_info.title_pos[1],
+	y =      motif.warning_info.title_pos[2],
+	scaleX = motif.warning_info.title_font_scale[1],
+	scaleY = motif.warning_info.title_font_scale[2],
+	r =      motif.warning_info.title_font[4],
+	g =      motif.warning_info.title_font[5],
+	b =      motif.warning_info.title_font[6],
+	src =    motif.warning_info.title_font[7],
+	dst =    motif.warning_info.title_font[8],
+	defsc =  motif.defaultWarning
+})
+local txt_input = text:create({
+	font =   motif.font_data[motif.infobox.text_font[1]],
+	bank =   motif.infobox.text_font[2],
+	align =  motif.infobox.text_font[3],
+	text =   '',
+	x =      motif.infobox.text_pos[1],
+	y =      0,
+	scaleX = motif.infobox.text_font_scale[1],
+	scaleY = motif.infobox.text_font_scale[2],
+	r =      motif.infobox.text_font[4],
+	g =      motif.infobox.text_font[5],
+	b =      motif.infobox.text_font[6],
+	src =    motif.infobox.text_font[7],
+	dst =    motif.infobox.text_font[8],
+	defsc =  motif.defaultInfobox
+})
+local txt_loading = text:create({
+	font =   motif.font_data[motif.title_info.loading_font[1]],
+	bank =   motif.title_info.loading_font[2],
+	align =  motif.title_info.loading_font[3],
+	text =   motif.title_info.loading_text,
+	x =      motif.title_info.loading_offset[1],
+	y =      motif.title_info.loading_offset[2],
+	scaleX = motif.title_info.loading_font_scale[1],
+	scaleY = motif.title_info.loading_font_scale[2],
+	r =      motif.title_info.loading_font[4],
+	g =      motif.title_info.loading_font[5],
+	b =      motif.title_info.loading_font[6],
+	src =    motif.title_info.loading_font[7],
+	dst =    motif.title_info.loading_font[8],
+	defsc =  motif.defaultLoading
+})
+txt_loading:draw()
 refresh()
 
+--add characters and stages using select.def
 function main.f_charParam(t, c)
-	if c:match('music[al]?[li]?[tf]?[e]?%s*=') then --music / musicalt / musiclife
+	if c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 		c = c:gsub('%s+([0-9%s]+)$', function(m1)
 			for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1026,7 +1009,7 @@ function main.f_charParam(t, c)
 			return ''
 		end)
 		c = c:gsub('\\', '/')
-		local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
+		local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
 		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 	elseif c:match('lifebar%s*=') then --lifebar
@@ -1036,7 +1019,7 @@ function main.f_charParam(t, c)
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2
-	elseif c:match('%.[Dd][Ee][Ff]') then --stage
+	elseif c:match('%.[Dd][Ee][Ff]') or c:match('^random$') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
@@ -1160,8 +1143,10 @@ function main.f_addStage(file)
 				tmp = 'music'
 			elseif k == 2 then
 				tmp = 'musicalt'
-			else
+			elseif k == 3 then
 				tmp = 'musiclife'
+			else
+				tmp = 'musicvictory'
 			end
 			main.t_selStages[stageNo][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
 		end
@@ -1188,9 +1173,6 @@ content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
 --for line in io.lines("data/select.def") do
-	--if chars + stages == 100 then
-	--	SetGCPercent(100)
-	--end
 	local lineCase = line:lower()
 	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		main.t_selChars = {}
@@ -1227,7 +1209,7 @@ for line in content:gmatch('[^\r\n]+') do
 				row = main.f_addStage(c)
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
-			elseif c:match('music[al]?[li]?[tf]?[e]?%s*=') then
+			elseif c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
 				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 				c = c:gsub('%s+([0-9%s]+)$', function(m1)
 					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1244,7 +1226,7 @@ for line in content:gmatch('[^\r\n]+') do
 					return ''
 				end)
 				c = c:gsub('\\', '/')
-				local bgtype, bgmusic = c:match('^(music[al]?[li]?[tf]?[e]?)%s*=%s*(.-)%s*$')
+				local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
 				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 			else
@@ -1297,6 +1279,7 @@ end
 --add default maxmatches / ratiomatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.arcaderatiomatches == nil then
 	main.t_selOptions.arcaderatiomatches = {
@@ -1418,7 +1401,7 @@ loadDebugFont(motif.files.debug_font)
 setDebugScript(motif.files.debug_script)
 
 --Assign Lifebar
-textImgDraw(txt_loading)
+txt_loading:draw()
 refresh()
 loadLifebar(motif.files.fight)
 main.currentLifebar = motif.files.fight
@@ -1472,94 +1455,95 @@ storyboard = require('external.script.storyboard')
 --;===========================================================
 --; MENUS
 --;===========================================================
+local txt_titleFooter1 = text:create({
+	font =   motif.font_data[motif.title_info.footer1_font[1]],
+	bank =   motif.title_info.footer1_font[2],
+	align =  motif.title_info.footer1_font[3],
+	text =   motif.title_info.footer1_text,
+	x =      motif.title_info.footer1_offset[1],
+	y =      motif.title_info.footer1_offset[2],
+	scaleX = motif.title_info.footer1_font_scale[1],
+	scaleY = motif.title_info.footer1_font_scale[2],
+	r =      motif.title_info.footer1_font[4],
+	g =      motif.title_info.footer1_font[5],
+	b =      motif.title_info.footer1_font[6],
+	src =    motif.title_info.footer1_font[7],
+	dst =    motif.title_info.footer1_font[8],
+	defsc =  motif.defaultFooter
+})
+local txt_titleFooter2 = text:create({
+	font =   motif.font_data[motif.title_info.footer2_font[1]],
+	bank =   motif.title_info.footer2_font[2],
+	align =  motif.title_info.footer2_font[3],
+	text =   motif.title_info.footer2_text,
+	x =      motif.title_info.footer2_offset[1],
+	y =      motif.title_info.footer2_offset[2],
+	scaleX = motif.title_info.footer2_font_scale[1],
+	scaleY = motif.title_info.footer2_font_scale[2],
+	r =      motif.title_info.footer2_font[4],
+	g =      motif.title_info.footer2_font[5],
+	b =      motif.title_info.footer2_font[6],
+	src =    motif.title_info.footer2_font[7],
+	dst =    motif.title_info.footer2_font[8],
+	defsc =  motif.defaultFooter
+})
+local txt_titleFooter3 = text:create({
+	font =   motif.font_data[motif.title_info.footer3_font[1]],
+	bank =   motif.title_info.footer3_font[2],
+	align =  motif.title_info.footer3_font[3],
+	text =   motif.title_info.footer3_text,
+	x =      motif.title_info.footer3_offset[1],
+	y =      motif.title_info.footer3_offset[2],
+	scaleX = motif.title_info.footer3_font_scale[1],
+	scaleY = motif.title_info.footer3_font_scale[2],
+	r =      motif.title_info.footer3_font[4],
+	g =      motif.title_info.footer3_font[5],
+	b =      motif.title_info.footer3_font[6],
+	src =    motif.title_info.footer3_font[7],
+	dst =    motif.title_info.footer3_font[8],
+	defsc =  motif.defaultFooter
+})
+local txt_infoboxTitle = text:create({
+	font =   motif.font_data[motif.infobox.title_font[1]],
+	bank =   motif.infobox.title_font[2],
+	align =  motif.infobox.title_font[3],
+	text =   motif.infobox.title,
+	x =      motif.infobox.title_pos[1],
+	y =      motif.infobox.title_pos[2],
+	scaleX = motif.infobox.title_font_scale[1],
+	scaleY = motif.infobox.title_font_scale[2],
+	r =      motif.infobox.title_font[4],
+	g =      motif.infobox.title_font[5],
+	b =      motif.infobox.title_font[6],
+	src =    motif.infobox.title_font[7],
+	dst =    motif.infobox.title_font[8],
+	defsc =  motif.defaultInfobox
+})
 
-local txt_titleFooter1 = main.f_createTextImg(
-	motif.font_data[motif.title_info.footer1_font[1]],
-	motif.title_info.footer1_font[2],
-	motif.title_info.footer1_font[3],
-	motif.title_info.footer1_text,
-	motif.title_info.footer1_offset[1],
-	motif.title_info.footer1_offset[2],
-	motif.title_info.footer1_font_scale[1],
-	motif.title_info.footer1_font_scale[2],
-	motif.title_info.footer1_font[4],
-	motif.title_info.footer1_font[5],
-	motif.title_info.footer1_font[6],
-	motif.title_info.footer1_font[7],
-	motif.title_info.footer1_font[8],
-	motif.defaultFooter
-)
-local txt_titleFooter2 = main.f_createTextImg(
-	motif.font_data[motif.title_info.footer2_font[1]],
-	motif.title_info.footer2_font[2],
-	motif.title_info.footer2_font[3],
-	motif.title_info.footer2_text,
-	motif.title_info.footer2_offset[1],
-	motif.title_info.footer2_offset[2],
-	motif.title_info.footer2_font_scale[1],
-	motif.title_info.footer2_font_scale[2],
-	motif.title_info.footer2_font[4],
-	motif.title_info.footer2_font[5],
-	motif.title_info.footer2_font[6],
-	motif.title_info.footer2_font[7],
-	motif.title_info.footer2_font[8],
-	motif.defaultFooter
-)
-local txt_titleFooter3 = main.f_createTextImg(
-	motif.font_data[motif.title_info.footer3_font[1]],
-	motif.title_info.footer3_font[2],
-	motif.title_info.footer3_font[3],
-	motif.title_info.footer3_text,
-	motif.title_info.footer3_offset[1],
-	motif.title_info.footer3_offset[2],
-	motif.title_info.footer3_font_scale[1],
-	motif.title_info.footer3_font_scale[2],
-	motif.title_info.footer3_font[4],
-	motif.title_info.footer3_font[5],
-	motif.title_info.footer3_font[6],
-	motif.title_info.footer3_font[7],
-	motif.title_info.footer3_font[8],
-	motif.defaultFooter
-)
-local txt_infoboxTitle = main.f_createTextImg(
-	motif.font_data[motif.infobox.title_font[1]],
-	motif.infobox.title_font[2],
-	motif.infobox.title_font[3],
-	motif.infobox.title,
-	motif.infobox.title_pos[1],
-	motif.infobox.title_pos[2],
-	motif.infobox.title_font_scale[1],
-	motif.infobox.title_font_scale[2],
-	motif.infobox.title_font[4],
-	motif.infobox.title_font[5],
-	motif.infobox.title_font[6],
-	motif.infobox.title_font[7],
-	motif.infobox.title_font[8],
-	motif.defaultInfobox
-)
+main.txt_mainSelect = text:create({
+	font =   motif.font_data[motif.select_info.title_font[1]],
+	bank =   motif.select_info.title_font[2],
+	align =  motif.select_info.title_font[3],
+	text =   '',
+	x =      motif.select_info.title_offset[1],
+	y =      motif.select_info.title_offset[2],
+	scaleX = motif.select_info.title_font_scale[1],
+	scaleY = motif.select_info.title_font_scale[2],
+	r =      motif.select_info.title_font[4],
+	g =      motif.select_info.title_font[5],
+	b =      motif.select_info.title_font[6],
+	src =    motif.select_info.title_font[7],
+	dst =    motif.select_info.title_font[8],
+})
 
-main.txt_mainSelect = main.f_createTextImg(
-	motif.font_data[motif.select_info.title_font[1]],
-	motif.select_info.title_font[2],
-	motif.select_info.title_font[3],
-	'',
-	motif.select_info.title_offset[1],
-	motif.select_info.title_offset[2],
-	motif.select_info.title_font_scale[1],
-	motif.select_info.title_font_scale[2],
-	motif.select_info.title_font[4],
-	motif.select_info.title_font[5],
-	motif.select_info.title_font[6],
-	motif.select_info.title_font[7],
-	motif.select_info.title_font[8]
-)
-
-function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
-	--ARCADE
-	if t[item].itemname == 'arcade' or t[item].itemname == 'teamarcade' then
+main.t_itemname = {
+	--ARCADE / TEAM ARCADE
+	['arcade'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1 --P1 controls P2 side of the select screen
-		main.p2SelectMenu = false --P2 character selection disabled
+		main.resetScore = true --score is set to lose count after loosing a match
+		main.versusScreen = true --versus screen enabled
+		main.victoryScreen = true --victory screen enabled
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1568,41 +1552,120 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.t_charparam.rivals = true
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.win_screen
 		main.credits = config.Credits - 1 --amount of continues
 		if t[item].itemname == 'arcade' then
 			main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
 			main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_arcade) --message displayed on top of select screen
+			main.txt_mainSelect:update({text = motif.select_info.title_text_arcade}) --message displayed on top of select screen
 		else --teamarcade
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamarcade)
+			main.txt_mainSelect:update({text = motif.select_info.title_text_teamarcade})
 		end
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('arcade')
 		start.f_selectArcade() --start f_selectArcade() function from script/start.lua
-	--VS MODE
-	elseif t[item].itemname == 'versus' or t[item].itemname == 'teamversus' then
+	end,
+	--TIME ATTACK
+	['timeattack'] = function(cursorPosY, moveTxt, item, t)
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		if main.roundTime == -1 then
+			main.roundTime = 5940 --99s * 60f
+		end
+		main.resetScore = true
+		main.quickContinue = true
+		main.versusScreen = true
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.t_lifebar.timer = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.timeattack_results_screen
+		main.credits = config.Credits - 1
+		main.txt_mainSelect:update({text = motif.select_info.title_text_timeattack})
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('timeattack')
+		start.f_selectArcade()
+	end,
+	--TIME CHALLENGE
+	['timechallenge'] = function(cursorPosY, moveTxt, item, t)
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.matchWins = {1, 0, 0}
+		if main.roundTime == -1 then
+			main.roundTime = 5940 --99s * 60f
+		end
+		main.stageMenu = true
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
+		--uses default main.t_charparam assignment
+		main.t_lifebar.timer = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.timechallenge_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_timechallenge})
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('timechallenge')
+		start.f_selectSimple()
+	end,
+	--SCORE CHALLENGE
+	['scorechallenge'] = function(cursorPosY, moveTxt, item, t)
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.p2In = 1
+		main.matchWins = {1, 0, 0}
+		main.stageMenu = true
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
+		--uses default main.t_charparam assignment
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.scorechallenge_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_scorechallenge})
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('scorechallenge')
+		start.f_selectSimple()
+	end,
+	--VS MODE / TEAM VERSUS
+	['versus'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		setHomeTeam(1) --P1 side considered the home team
 		main.p2In = 2 --P2 controls P2 side of the select screen
 		main.stageMenu = true --stage selection enabled
 		main.p2Faces = true --additional window with P2 select screen small portraits (faces) enabled
+		main.p2SelectMenu = true
+		main.versusScreen = true
+		main.victoryScreen = true
 		--uses default main.t_charparam assignment
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2score = true
 		if t[item].itemname == 'versus' then
 			main.p1TeamMenu = {mode = 0, chars = 1} --predefined P1 team mode as Single, 1 Character
 			main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_versus)
+			main.txt_mainSelect:update({text = motif.select_info.title_text_versus})
 		else --teamversus
-			textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamversus)
+			main.txt_mainSelect:update({text = motif.select_info.title_text_teamversus})
 		end
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('versus')
 		start.f_selectSimple() --start f_selectSimple() function from script/start.lua
+	end,
 	--TEAM CO-OP
-	elseif t[item].itemname == 'teamcoop' then
+	['teamcoop'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
-		main.p2Faces = true
 		main.coop = true --P2 fighting on P1 side enabled
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.resetScore = true
+		main.versusScreen = true
+		main.victoryScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1611,134 +1674,154 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.t_charparam.rivals = true
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.win_screen
 		main.credits = config.Credits - 1
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_teamcoop)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_teamcoop})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('teamcoop')
 		start.f_selectArcade()
+	end,
 	--SURVIVAL
-	elseif t[item].itemname == 'survival' then
+	['survival'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
-		main.p2SelectMenu = false
+		main.matchWins = {1, 0, 0}
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_survival)
+		main.t_lifebar.match = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.survival_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_survival})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('survival')
 		start.f_selectArranged()
+	end,
 	--SURVIVAL CO-OP
-	elseif t[item].itemname == 'survivalcoop' then
+	['survivalcoop'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
-		main.p2Faces = true
+		main.matchWins = {1, 0, 0}
 		main.coop = true
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_survivalcoop)
+		main.t_lifebar.match = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.survival_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_survivalcoop})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('survivalcoop')
 		start.f_selectArranged()
+	end,
 	--TRAINING
-	elseif t[item].itemname == 'training' then
+	['training'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.stageMenu = true
-		main.versusScreen = false --versus screen disabled
+		main.p2SelectMenu = true
+		main.roundTime = -1
 		--uses default main.t_charparam assignment
+		main.t_lifebar.p1score = true
 		main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 		main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_training)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_training})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('training')
 		start.f_selectSimple()
+	end,
 	--WATCH
-	elseif t[item].itemname == 'watch' then
+	['watch'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.aiFight = true --AI = config.Difficulty for all characters enabled
 		main.stageMenu = true
 		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
 		--uses default main.t_charparam assignment
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_watch)
+		main.t_lifebar.p1ai = true
+		main.t_lifebar.p2ai = true
+		main.txt_mainSelect:update({text = motif.select_info.title_text_watch})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('watch')
 		start.f_selectSimple()
+	end,
 	--OPTIONS
-	elseif t[item].itemname == 'options' then
+	['options'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-		options.f_mainCfg() --start f_mainCfg() function from script/options.lua
+		options.f_mainCfg() --start f_mainCfg() function from external/script/options.lua
+	end,
 	--FREE BATTLE
-	elseif t[item].itemname == 'freebattle' then
+	['freebattle'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.stageMenu = true
 		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
 		--uses default main.t_charparam assignment
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_freebattle)
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2ai = true
+		main.txt_mainSelect:update({text = motif.select_info.title_text_freebattle})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('freebattle')
 		start.f_selectSimple()
+	end,
 	--VS 100 KUMITE
-	elseif t[item].itemname == '100kumite' then
+	['vs100kumite'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
-		main.p2SelectMenu = false
+		main.matchWins = {1, 0, 0}
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_100kumite)
+		main.t_lifebar.match = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.vs100kumite_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_vs100kumite})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-		setGameMode('100kumite')
+		setGameMode('vs100kumite')
 		start.f_selectArranged()
+	end,
 	--BOSS RUSH
-	elseif t[item].itemname == 'bossrush' then
+	['bossrush'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
-		main.p2SelectMenu = false
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_bossrush)
+		main.t_lifebar.match = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.bossrush_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_bossrush})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('bossrush')
 		start.f_selectArranged()
-	--BONUS CHAR NAME
-	elseif t[item].itemname:match('^bonus_') then
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-		main.p2In = 1
-		main.versusScreen = false
-		main.t_charparam.stage = true
-		main.t_charparam.music = true
-		main.t_charparam.zoom = true
-		main.t_charparam.ai = true
-		main.t_charparam.rounds = true
-		main.t_charparam.time = true
-		main.t_charparam.onlyme = true
-		main.p1TeamMenu = {mode = 0, chars = 1}
-		main.p2TeamMenu = {mode = 0, chars = 1}
-		main.p2Char = {main.t_bonusChars[item]}
-		textImgSetText(main.txt_mainSelect, getCharName(main.t_bonusChars[item]))
-		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-		setGameMode('bonus')
-		start.f_selectSimple()
+	end,
 	--REPLAY
-	elseif t[item].itemname == 'replay' then
+	['replay'] = function(cursorPosY, moveTxt, item, t)
 		if main.f_fileExists('save/replays/netplay.replay') then
 			sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 			enterReplay('save/replays/netplay.replay')
@@ -1748,17 +1831,21 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 			exitNetPlay()
 			exitReplay()
 		end
+	end,
 	--DEMO
-	elseif t[item].itemname == 'randomtest' then
+	['randomtest'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 		setGameMode('randomtest')
 		randomtest.run()
-		main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+		main.f_bgReset(motif.titlebgdef.bg)
+		main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+	end,
 	--TOURNAMENT ROUND OF 32
-	elseif t[item].itemname == 'tournament32' then
+	['tournament32'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1766,13 +1853,15 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament32)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament32})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(32)
+	end,
 	--TOURNAMENT ROUND OF 16
-	elseif t[item].itemname == 'tournament16' then
+	['tournament16'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1780,13 +1869,15 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament16)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament16})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(16)
+	end,
 	--TOURNAMENT QUARTERFINALS
-	elseif t[item].itemname == 'tournament8' then
+	['tournament8'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1794,26 +1885,13 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament8)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament8})
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(8)
-	--TOURNAMENT SEMIFINALS
-	elseif t[item].itemname == 'tournament4' then
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-		main.t_charparam.stage = true
-		main.t_charparam.music = true
-		main.t_charparam.zoom = true
-		main.t_charparam.ai = true
-		main.t_charparam.rounds = true
-		main.t_charparam.time = true
-		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_tournament4)
-		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-		setGameMode('tournament')
-		start.f_selectTournament(4)
+	end,
 	--HOST
-	elseif t[item].itemname == 'serverhost' then
+	['serverhost'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort()))
 		exitNetPlay()
@@ -1825,8 +1903,9 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		file = io.open("save/replays/" .. os.date("%Y-%m(%b)-%d %I-%M%p-%Ss") .. ".replay", "w+")
 		file:write(tpmFile)
 		io.close(file)
+	end,
 	--NEW ADDRESS
-	elseif t[item].itemname == 'joinadd' then
+	['joinadd'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		local name = main.f_input(main.f_extractText(motif.title_info.input_ip_name_text), motif.title_info, motif.titlebgdef, 'string')
 		if name ~= '' then
@@ -1835,7 +1914,7 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 			if address:match('^[0-9%.]+$') then
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				config.IP[name] = address
-				table.insert(t, #t, {data = textImgNew(), itemname = 'ip_' .. name, displayname = name})
+				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
 				local file = io.open("save/config.json","w+")
 				file:write(json.encode(config, {indent = true}))
 				file:close()
@@ -1845,29 +1924,34 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		else
 			sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 		end
-	--CONNECTION
-	elseif t[item].itemname:match('^ip_') then
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-		main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname]))
-		exitNetPlay()
-		exitReplay()
+	end,
 	--ONLINE VERSUS
-	elseif t[item].itemname == 'netplayversus' then
+	['netplayversus'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		setHomeTeam(1)
 		main.p2In = 2
 		main.stageMenu = true
 		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
+		main.victoryScreen = true
 		--uses default main.t_charparam assignment
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplayversus)
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2score = true
+		main.txt_mainSelect:update({text = motif.select_info.title_text_netplayversus})
 		setGameMode('netplayversus')
 		start.f_selectSimple()
+	end,
 	--ONLINE CO-OP
-	elseif t[item].itemname == 'netplayteamcoop' then
+	['netplayteamcoop'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
-		main.p2Faces = true
 		main.coop = true
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.resetScore = true
+		main.versusScreen = true
+		main.victoryScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
@@ -1876,39 +1960,66 @@ function main.f_itemname(cursorPosY, moveTxt, item, t, tbl)
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.t_charparam.rivals = true
+		main.t_lifebar.p1score = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.win_screen
 		main.credits = config.Credits - 1
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplayteamcoop)
+		main.txt_mainSelect:update({text = motif.select_info.title_text_netplayteamcoop})
 		setGameMode('netplayteamcoop')
 		start.f_selectArcade()
+	end,
 	--ONLINE SURVIVAL
-	elseif t[item].itemname == 'netplaysurvivalcoop' then
+	['netplaysurvivalcoop'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
-		main.p2Faces = true
+		main.matchWins = {1, 0, 0}
 		main.coop = true
+		main.p2Faces = true
+		main.p2SelectMenu = true
+		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
 		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
-		textImgSetText(main.txt_mainSelect, motif.select_info.title_text_netplaysurvivalcoop)
+		main.t_lifebar.match = true
+		main.t_lifebar.p2ai = true
+		main.resultsTable = motif.survival_results_screen
+		main.txt_mainSelect:update({text = motif.select_info.title_text_netplaysurvivalcoop})
 		setGameMode('netplaysurvivalcoop')
 		start.f_selectArranged()
-	--BACK
-	elseif t[item].itemname == 'back' then
-		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-		return false
-	--EXIT
-	elseif t[item].itemname == 'exit' then
-		return false
-	--OPEN SUBMENU
-	elseif #tbl.submenu[t[item].itemname].items > 0 then
+	end,
+	--BONUS CHAR
+	['bonus'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-		tbl.submenu[t[item].itemname].loop()
-	end
-	return true
-end
+		main.p2In = 1
+		main.p2SelectMenu = true
+		main.t_charparam.stage = true
+		main.t_charparam.music = true
+		main.t_charparam.zoom = true
+		main.t_charparam.ai = true
+		main.t_charparam.rounds = true
+		main.t_charparam.time = true
+		main.t_charparam.onlyme = true
+		main.p1TeamMenu = {mode = 0, chars = 1}
+		main.p2TeamMenu = {mode = 0, chars = 1}
+		main.p2Char = {main.t_bonusChars[item]}
+		main.txt_mainSelect:update({text = getCharName(main.t_bonusChars[item])})
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
+		setGameMode('bonus')
+		start.f_selectSimple()
+	end,
+	--CONNECT
+	['connect'] = function(cursorPosY, moveTxt, item, t)
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname]))
+		exitNetPlay()
+		exitReplay()
+	end,
+}
+main.t_itemname.teamarcade = main.t_itemname.arcade
+main.t_itemname.teamversus = main.t_itemname.versus
 
 function main.f_deleteIP(item, t)
 	if t[item].itemname:match('^ip_') then
@@ -1929,7 +2040,7 @@ end
 
 function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_escsnd, bool_f1, bool_del)
 	return function()
-		main.f_cmdInput()
+		--main.f_cmdInput()
 		local cursorPosY = 1
 		local moveTxt = 0
 		local item = 1
@@ -1943,7 +2054,8 @@ function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_esc
 			end
 		end
 		if bool_bgreset then
-			main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+			main.f_bgReset(motif.titlebgdef.bg)
+			main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 		end
 		while true do
 			main.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
@@ -1972,8 +2084,29 @@ function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_esc
 				main.f_deleteIP(item, t)
 			elseif main.f_btnPalNo(main.p1Cmd) > 0 then
 				main.f_default()
-				if not main.f_itemname(cursorPosY, moveTxt, item, t, tbl) then
-					break
+				--open submenu if exists
+				if tbl.submenu[t[item].itemname] ~= nil and #tbl.submenu[t[item].itemname].items > 0 then
+					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+					tbl.submenu[t[item].itemname].loop()
+				--or activate appropriate function
+				else
+					local f = ''
+					if t[item].itemname:match('^bonus_') then
+						f = 'bonus'
+					elseif t[item].itemname:match('^ip_') then
+						f = 'connect'
+					else
+						f = t[item].itemname
+					end
+					if f == 'back' then
+						sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+						break
+					elseif f == 'exit' then
+						break
+					elseif main.t_itemname[f] ~= nil then
+						main.t_itemname[f](cursorPosY, moveTxt, item, t)
+						resetRemapInput()
+					end
 				end
 			end
 		end
@@ -2004,7 +2137,7 @@ for i = 1, #main.t_sort.title_info do
 		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
 			if main.menu.submenu[c] == nil then
 				if not main.t_sort.title_info[i]:match(c .. '_') then
-					table.insert(main.menu.items, {data = textImgNew(), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+					table.insert(main.menu.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				end
 				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
 				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
@@ -2012,7 +2145,7 @@ for i = 1, #main.t_sort.title_info do
 			t_pos = main.menu.submenu[c]
 		else --following strings after the first one
 			if t_pos.submenu[c] == nil then
-				table.insert(t_pos.items, {data = textImgNew(), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+				table.insert(t_pos.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}}
 				t_pos.submenu[c].loop = main.createMenu(t_pos.submenu[c], false, false, false, true, true, c == 'serverjoin')
 			end
@@ -2025,13 +2158,13 @@ for i = 1, #main.t_sort.title_info do
 		if main.t_sort.title_info[i]:match('_bonusgames_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k = 1, #main.t_bonusChars do
 				local name = getCharName(main.t_bonusChars[k])
-				table.insert(t_pos.items, {data = textImgNew(), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
+				table.insert(t_pos.items, {data = text:create({}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
 			end
 		end
 		--add IP addresses for serverjoin submenu
 		if main.t_sort.title_info[i]:match('_serverjoin_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k, v in pairs(config.IP) do
-				table.insert(t_pos.items, {data = textImgNew(), itemname = 'ip_' .. k, displayname = k})
+				table.insert(t_pos.items, {data = text:create({}), itemname = 'ip_' .. k, displayname = k})
 			end
 		end
 	end
@@ -2050,13 +2183,14 @@ function main.f_default()
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeShare(config.TeamLifeShare)
-	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	setDemoTime(motif.demo_mode.fight_endtime / 60 * getFramesPerCount())
 	setLifeMul(config.LifeMul / 100)
 	setTeam1VS2Life(config.Team1VS2Life / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
 	setGameMode('')
 	--default values for all modes
+	main.matchWins = {options.roundsNumSingle, options.roundsNumTeam, options.maxDrawGames}
+	main.roundTime = math.max(-1, config.RoundTime * getFramesPerCount()) --default round time using lifebar data
 	main.p1Char = nil --no predefined P1 character (assigned via table: {X, Y, (...)})
 	main.p2Char = nil --no predefined P2 character (assigned via table: {X, Y, (...)})
 	main.p1TeamMenu = nil --no predefined P1 team mode (assigned via table: {mode = X, chars = Y})
@@ -2065,16 +2199,21 @@ function main.f_default()
 	main.stageMenu = false --stage selection disabled
 	main.p2Faces = false --additional window with P2 select screen small portraits (faces) disabled
 	main.coop = false --P2 fighting on P1 side disabled
-	main.p2SelectMenu = true --P2 character selection enabled
-	main.versusScreen = true --versus screen enabled
+	main.p2SelectMenu = false --P2 character selection disabled
+	main.resetScore = false --score is not set to lose count after loosing a match
+	main.quickContinue = false --continue without char selection enforcement disabled 
+	main.versusScreen = false --versus screen disabled
+	main.victoryScreen = false --victory screen disabled
+	main.resultsTable = nil --no results table reference
 	main.f_resetCharparam()
+	main.f_resetLifebar()
 	main.p1In = 1 --P1 controls P1 side of the select screen
 	main.p2In = 2 --P2 controls P2 side of the select screen
 	resetRemapInput()
 end
 
 function main.f_resetCharparam()
-	main.t_charparam = { --default character parameters support
+	main.t_charparam = {
 		stage = false,
 		music = false,
 		zoom = false,
@@ -2089,6 +2228,21 @@ function main.f_resetCharparam()
 	}
 end
 
+function main.f_resetLifebar()
+	main.t_lifebar = {
+		timer = false,
+		p1score = false,
+		p2score = false,
+		match = false,
+		p1ai = false,
+		p2ai = false,
+		mode = true,
+		bars = true,
+		lifebar = true,
+	}
+	setLifeBarElements(main.t_lifebar)
+end
+
 function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	if motif.demo_mode.enabled == 0 then
 		return
@@ -2101,22 +2255,21 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	main.f_menuFade('demo_mode', 'fadeout', cursorPosY, moveTxt, item, t)
 	clearColor(motif.titlebgdef.bgclearcolor[1], motif.titlebgdef.bgclearcolor[2], motif.titlebgdef.bgclearcolor[3])
 	if motif.demo_mode.fight_playbgm == 1 or motif.demo_mode.fight_stopbgm == 1 then
-		setStopTitleBGM(true)
+		setAllowBGM(true)
 	else
-		setStopTitleBGM(false)
+		setAllowBGM(false)
 	end
 	if motif.demo_mode.fight_bars_display == 1 then
-		setBarsDisplay(true)
+		setLifeBarElements({['bars'] = true})
 	else
-		setBarsDisplay(false)
+		setLifeBarElements({['bars'] = false})
 	end
 	if motif.demo_mode.debuginfo == 0 and config.AllowDebugKeys then
 		setAllowDebugKeys(false)
 	end
 	setGameMode('demo')
 	randomtest.run()
-	setBarsDisplay(true)
-	setStopTitleBGM(true)
+	setAllowBGM(true)
 	setAllowDebugKeys(config.AllowDebugKeys)
 	refresh()
 	--intro
@@ -2128,11 +2281,10 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	else
 		introWaitCycles = introWaitCycles + 1
 	end
+	main.f_bgReset(motif.titlebgdef.bg)
 	--start title BGM only if it has been interrupted
 	if motif.demo_mode.fight_stopbgm == 1 or motif.demo_mode.fight_playbgm == 1 or (introWaitCycles == 0 and motif.files.intro_storyboard ~= '') then
-		main.f_menuReset(motif.titlebgdef.bg, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-	else
-		main.f_menuReset(motif.titlebgdef.bg)
+		main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 	end
 	main.f_menuFade('demo_mode', 'fadein', cursorPosY, moveTxt, item, t)
 end
@@ -2191,39 +2343,39 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 	for i = 1, items_shown do
 		if i > item - cursorPosY then
 			if i == item then
-				textImgDraw(main.f_updateTextImg(
-					t[i].data,
-					motif.font_data[motif.title_info.menu_item_active_font[1]],
-					motif.title_info.menu_item_active_font[2],
-					motif.title_info.menu_item_active_font[3],
-					t[i].displayname,
-					motif.title_info.menu_pos[1],
-					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
-					motif.title_info.menu_item_active_font_scale[1],
-					motif.title_info.menu_item_active_font_scale[2],
-					motif.title_info.menu_item_active_font[4],
-					motif.title_info.menu_item_active_font[5],
-					motif.title_info.menu_item_active_font[6],
-					motif.title_info.menu_item_active_font[7],
-					motif.title_info.menu_item_active_font[8]
-				))
+				t[i].data:update({
+					font =   motif.font_data[motif.title_info.menu_item_active_font[1]],
+					bank =   motif.title_info.menu_item_active_font[2],
+					align =  motif.title_info.menu_item_active_font[3],
+					text =   t[i].displayname,
+					x =      motif.title_info.menu_pos[1],
+					y =      motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
+					scaleX = motif.title_info.menu_item_active_font_scale[1],
+					scaleY = motif.title_info.menu_item_active_font_scale[2],
+					r =      motif.title_info.menu_item_active_font[4],
+					g =      motif.title_info.menu_item_active_font[5],
+					b =      motif.title_info.menu_item_active_font[6],
+					src =    motif.title_info.menu_item_active_font[7],
+					dst =    motif.title_info.menu_item_active_font[8],
+				})
+				t[i].data:draw()
 			else
-				textImgDraw(main.f_updateTextImg(
-					t[i].data,
-					motif.font_data[motif.title_info.menu_item_font[1]],
-					motif.title_info.menu_item_font[2],
-					motif.title_info.menu_item_font[3],
-					t[i].displayname,
-					motif.title_info.menu_pos[1],
-					motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
-					motif.title_info.menu_item_font_scale[1],
-					motif.title_info.menu_item_font_scale[2],
-					motif.title_info.menu_item_font[4],
-					motif.title_info.menu_item_font[5],
-					motif.title_info.menu_item_font[6],
-					motif.title_info.menu_item_font[7],
-					motif.title_info.menu_item_font[8]
-				))
+				t[i].data:update({
+					font =   motif.font_data[motif.title_info.menu_item_font[1]],
+					bank =   motif.title_info.menu_item_font[2],
+					align =  motif.title_info.menu_item_font[3],
+					text =   t[i].displayname,
+					x =      motif.title_info.menu_pos[1],
+					y =      motif.title_info.menu_pos[2] + (i - 1) * motif.title_info.menu_item_spacing[2] - moveTxt,
+					scaleX = motif.title_info.menu_item_font_scale[1],
+					scaleY = motif.title_info.menu_item_font_scale[2],
+					r =      motif.title_info.menu_item_font[4],
+					g =      motif.title_info.menu_item_font[5],
+					b =      motif.title_info.menu_item_font[6],
+					src =    motif.title_info.menu_item_font[7],
+					dst =    motif.title_info.menu_item_font[8],
+				})
+				t[i].data:draw()
 			end
 		end
 	end
@@ -2267,9 +2419,9 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.defaultLocalcoord
 		)
 	end
-	textImgDraw(txt_titleFooter1)
-	textImgDraw(txt_titleFooter2)
-	textImgDraw(txt_titleFooter3)
+	txt_titleFooter1:draw()
+	txt_titleFooter2:draw()
+	txt_titleFooter3:draw()
 	--draw fadein / fadeout
 	main.fadeActive = fadeScreen(
 		fadeType,
@@ -2308,35 +2460,43 @@ function main.f_menuFade(screen, fadeType, cursorPosY, moveTxt, item, t)
 	end
 end
 
-function main.f_menuReset(bgNum, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+function main.f_bgReset(data)
 	alpha1cur = 0
 	alpha2cur = 0
 	alpha1add = true
 	alpha2add = true
-	bgm = bgm or nil
-	bgReset(bgNum)
-	if bgm ~= nil then
-		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
-	end
+	bgReset(data)
 	main.fadeStart = getFrameCount()
 end
 
-local txt_connecting = main.f_createTextImg(
-	motif.font_data[motif.title_info.connecting_font[1]],
-	motif.title_info.connecting_font[2],
-	motif.title_info.connecting_font[3],
-	"",
-	motif.title_info.connecting_offset[1],
-	motif.title_info.connecting_offset[2],
-	motif.title_info.connecting_font_scale[1],
-	motif.title_info.connecting_font_scale[2],
-	motif.title_info.connecting_font[4],
-	motif.title_info.connecting_font[5],
-	motif.title_info.connecting_font[6],
-	motif.title_info.connecting_font[7],
-	motif.title_info.connecting_font[8],
-	motif.defaultConnecting
-)
+function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+	local bgm = bgm or ''
+	local bgmLoop = bgmLoop or 1
+	local bgmVolume = bgmVolume or 100
+	local bgmLoopstart = bgmLoopstart or 0
+	local bgmLoopend = bgmLoopend or 0
+	if interrupt or bgm ~= '' then
+		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+	end
+end
+
+local txt_connecting = text:create({
+	font =   motif.font_data[motif.title_info.connecting_font[1]],
+	bank =   motif.title_info.connecting_font[2],
+	align =  motif.title_info.connecting_font[3],
+	text =   '',
+	x =      motif.title_info.connecting_offset[1],
+	y =      motif.title_info.connecting_offset[2],
+	scaleX = motif.title_info.connecting_font_scale[1],
+	scaleY = motif.title_info.connecting_font_scale[2],
+	r =      motif.title_info.connecting_font[4],
+	g =      motif.title_info.connecting_font[5],
+	b =      motif.title_info.connecting_font[6],
+	src =    motif.title_info.connecting_font[7],
+	dst =    motif.title_info.connecting_font[8],
+	defsc =  motif.defaultConnecting
+})
+
 function main.f_connect(server, t)
 	local cancel = false
 	enterNetPlay(server)
@@ -2367,8 +2527,8 @@ function main.f_connect(server, t)
 		)
 		--draw text
 		for i = 1, #t do
-			textImgSetText(txt_connecting, t[i])
-			textImgDraw(txt_connecting)
+			txt_connecting:update({text = t[i]})
+			txt_connecting:draw()
 		end
 		--end loop
 		refresh()

@@ -676,6 +676,8 @@ type AnimTextSnd struct {
 	text        string
 	anim        AnimLayout
 	displaytime int32
+	time        int32
+	sndtime     int32
 }
 
 func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
