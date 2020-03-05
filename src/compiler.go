@@ -1217,10 +1217,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_receivedhits)
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
-	case "damagelocal":
-		out.append(OC_ex_, OC_ex_damagelocal)
-	case "damagemain":
-		out.append(OC_ex_, OC_ex_damagemain)
+	case "damagecount":
+		out.append(OC_ex_, OC_ex_damagecount)
 	case "consecutivewins":
 		out.append(OC_ex_, OC_ex_consecutivewins)
 	case "countercount":

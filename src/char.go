@@ -1472,8 +1472,7 @@ type CharSystemVar struct {
 	scoreCurrent  float32
 	firstAttack   bool
 	counterHits   int32
-	damageLocal   int32
-	damageMain    int32
+	damageCount   int32
 	cheated       bool
 }
 
@@ -3660,8 +3659,7 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 	}
 }
 func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
-	c.damageLocal -= add
-	sys.chars[c.playerNo][0].damageMain -= add
+	c.damageCount -= add
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			t.lifeAdd(-float64(t.computeDamage(-float64(add), kill, absolute, 1)),
@@ -5795,8 +5793,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								}
 								c.uniqHitCount++
 								if c.hitdef.hitdamage > 0 {
-									c.damageLocal += c.hitdef.hitdamage
-									sys.chars[c.playerNo][0].damageMain += c.hitdef.hitdamage
+									c.damageCount += c.hitdef.hitdamage
 								}
 							} else {
 								if mvh {

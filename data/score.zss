@@ -42,7 +42,7 @@ if RoundState = 0 {
 } else {
 	# set attack type
 	ignorehitpause if MoveHit && target,GetHitVar(guarded) = 0 && target,GetHitVar(score) = 0 {
-		if DamageLocal != Map(_iksys_attackTypeFlag) {
+		if DamageCount != Map(_iksys_attackTypeFlag) {
 			if HitDefAttr = SCA, HA {
 				MapSet{map: "_iksys_attackType"; value: 30}
 			} else if HitDefAttr = SCA, SA {
@@ -50,7 +50,7 @@ if RoundState = 0 {
 			} else if HitDefAttr = SCA, NA {
 				MapSet{map: "_iksys_attackType"; value: 10}
 			}
-			MapSet{map: "_iksys_attackTypeFlag"; value: DamageLocal}
+			MapSet{map: "_iksys_attackTypeFlag"; value: DamageCount}
 		}
 		if HitDefAttr = SCA, HT {
 			MapSet{map: "_iksys_attackType"; value: 31}
@@ -67,21 +67,21 @@ if RoundState = 0 {
 		}
 	}
 	# calculate attack type bonus and in how many frames it will be added
-	if Map(_iksys_attackType) != 0 && DamageLocal != Map(_iksys_damageCount) {
+	if Map(_iksys_attackType) != 0 && DamageCount != Map(_iksys_damageCount) {
 		if Map(_iksys_attackType) >= 30 {
-			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 10}
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 10}
 			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
 			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
 		} else if Map(_iksys_attackType) >= 20 {
-			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 9}
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 9}
 			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
 			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
 		} else if Map(_iksys_attackType) >= 10 {
-			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 8}
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 8}
 			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
 		}
 		MapSet{map: "_iksys_attackType"; value: 0}
-		MapSet{map: "_iksys_damageCount"; value: DamageLocal}
+		MapSet{map: "_iksys_damageCount"; value: DamageCount}
 	}
 	# score: damage bonus
 	if Map(_iksys_attackTypeFrames) > 0 {

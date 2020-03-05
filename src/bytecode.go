@@ -425,8 +425,7 @@ const (
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_combocount
-	OC_ex_damagelocal
-	OC_ex_damagemain
+	OC_ex_damagecount
 	OC_ex_consecutivewins
 	OC_ex_countercount
 	OC_ex_firstattack
@@ -1695,10 +1694,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.getcombo)
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
-	case OC_ex_damagelocal:
-		sys.bcStack.PushI(c.damageLocal)
-	case OC_ex_damagemain:
-		sys.bcStack.PushI(c.damageMain)
+	case OC_ex_damagecount:
+		sys.bcStack.PushI(c.damageCount)
 	case OC_ex_consecutivewins:
 		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
 	case OC_ex_countercount:
