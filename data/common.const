@@ -1,0 +1,102 @@
+[Constants]
+
+; Character Reserved Action Numbers
+AnimStanding = 0
+AnimStandTurning = 5
+AnimCrouchTurning = 6
+AnimStandToCrouch = 10
+AnimCrouching = 11
+AnimCrouchToStand = 12
+AnimWalkingForwards = 20
+AnimWalkingBackwards = 21
+AnimJumpStart_onGround = 40
+AnimJumpNeutral_upwards = 41
+AnimJumpForwards_upwards = 42
+AnimJumpBack_upwards = 43
+AnimJumpNeutral_downwards = 44 ;opt
+AnimJumpFwd_downwards = 45 ;opt
+AnimJumpBack_downwards = 46 ;opt
+AnimJumpLanding = 47
+AnimRunFwdOrHopForward = 100
+AnimHopBack = 105
+AnimStartGuarding_stand = 120
+AnimStartGuarding_crouch = 121
+AnimStartGuarding_air = 122
+AnimGuard_stand = 130
+AnimGuard_crouch = 131
+AnimGuard_air = 132
+AnimStopGuarding_stand = 140
+AnimStopGuarding_crouch = 141
+AnimStopGuarding_air = 142
+AnimGuardingAHit_stand = 150
+AnimGuardingAHit_crouch = 151
+AnimGuardingAHit_air = 152
+AnimLose = 170 ;opt
+AnimTimeOverDrawgame = 175 ;opt
+AnimWin = 180 ;opt
+AnimIntro = 190 ;opt
+AnimTaunt = 195 ;opt
+AnimStandOrAirHitHigh_light = 5000
+AnimStandOrAirHitHigh_medium = 5001
+AnimStandRecoverHigh_light = 5005
+AnimStandRecoverHigh_medium = 5006
+AnimStandOrAirHitLow_light = 5010
+AnimStandOrAirHitLow_medium = 5011
+AnimStandRecoverLow_light = 5015
+AnimStandRecoverLow_medium = 5016
+AnimCrouchHit_light = 5020
+AnimCrouchHit_medium = 5021
+AnimCrouchRecover_light = 5025
+AnimCrouchRecover_medium = 5026
+AnimStandOrAirHitBack = 5030
+AnimStandOrAirHitTransition = 5035 ;opt
+AnimAirRecover = 5040
+AnimAirFall = 5050
+AnimAirFall_comingDown = 5060 ;opt
+AnimTripped = 5070
+AnimLieDownHit_stayDown = 5080
+AnimLieDownHit_hitUpIntoAir = 5090
+AnimHittingGroundFromFall = 5100
+AnimBounceIntoAir = 5160
+AnimHitGroundFromBounce = 5170
+AnimLieDown = 5110
+AnimGetUpFromLieDown = 5120
+AnimLieDead_firstRounds = 5140 ;opt
+AnimLieDead_finalRound = 5150 ;opt
+AnimFallRecoveryNearGround = 5200
+AnimFallRecoveryInMidAir = 5210
+AnimDizzy = 5300
+AnimContinueScreen = 5500 ;opt
+AnimYesToContinue = 5510 ;opt
+AnimNoToContinue = 5520 ;opt
+
+; Optional Hit Up animations
+AnimAirFall_hitUp = 5051 ;opt
+AnimAirFall_comingDown_hitUp = 5061 ;opt
+AnimLieDownHit_stayDown_hitUp = 5081 ;opt
+AnimBounceFromGroundIntoAir_hitUp = 5101 ;opt
+AnimBounceIntoAir_hitUp = 5161 ;opt
+AnimHitGroundFromBounce_hitUp = 5171 ;opt
+AnimLieDown_hitUp = 5111 ;opt
+AnimGetUpFromLieDown_hitUp = 5121 ;opt
+AnimLieDead_firstRounds_hitUp = 5151 ;opt
+AnimLieDead_finalRound_hitUp = 5156 ;opt
+
+; Optional Hit Up-Diagonal animations
+AnimAirFall_hitUpDiagonal = 5052 ;opt
+AnimAirFall_comingDown_hitUpDiagonal = 5062 ;opt
+AnimLieDownHit_stayDown_hitUpDiagonal = 5082 ;opt
+AnimBounceFromGroundIntoAir_hitUpDiagonal = 5102 ;opt
+AnimBounceIntoAir_hitUpDiagonal = 5162 ;opt
+AnimHitGroundFromBounce_hitUpDiagonal = 5172 ;opt
+AnimLieDown_hitUpDiagonal = 5112 ;opt
+AnimGetUpFromLieDown_hitUpDiagonal = 5122 ;opt
+AnimLieDead_firstRounds_hitUpDiagonal = 5152 ;opt
+AnimLieDead_finalRound_hitUpDiagonal = 5157 ;opt
+
+; Tag
+TagStateEnteringScreen = 5600
+TagStateLeavingScreen = 5610
+TagStateWaitingOutside = 5611
+TagStateJumpingIn = 5620
+TagStateLanding = 5621
