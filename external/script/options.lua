@@ -869,12 +869,12 @@ options.t_itemname = {
 	['gamespeed'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F'}) and config.GameSpeed < 200 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.GameSpeed = config.GameSpeed + 5
+			config.GameSpeed = config.GameSpeed + 1
 			t.items[item].vardisplay = config.GameSpeed .. '%'
 			modified = 1
 		elseif main.input({1, 2}, {'$B'}) and config.GameSpeed > 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.GameSpeed = config.GameSpeed - 5
+			config.GameSpeed = config.GameSpeed - 1
 			t.items[item].vardisplay = config.GameSpeed .. '%'
 			modified = 1
 		end
