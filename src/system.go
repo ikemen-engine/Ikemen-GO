@@ -32,13 +32,14 @@ const (
 
 // System vars are accessed globally through the program
 var sys = System {
-	randseed:  int32(time.Now().UnixNano()),
-	scrrect:   [...]int32{0, 0, 320, 240},
+	randseed: int32(time.Now().UnixNano()),
+	scrrect: [...]int32{0, 0, 320, 240},
 	gameWidth: 320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
 	brightness: 256,
-	roundTime:  -1,
-	lifeMul:    1, team1VS2Life: 1,
+	roundTime: -1,
+	lifeMul: 1,
+	singleVsTeamLife: 1,
 	turnsRecoveryBase: 0.125,
 	turnsRecoveryBonus: 0.275,
 	mixer:             *newMixer(),
@@ -102,7 +103,8 @@ type System struct {
 	redrawWait              struct{ nextTime, lastDraw time.Time }
 	brightness              int32
 	roundTime               int32
-	lifeMul, team1VS2Life   float32
+	lifeMul                 float32
+	singleVsTeamLife        float32
 	turnsRecoveryBase       float32
 	turnsRecoveryBonus      float32
 	lifebarFontScale        float32
@@ -240,7 +242,9 @@ type System struct {
 	audioClose              chan bool
 	nomusic                 bool
 	workBe                  []BytecodeExp
-	teamLifeShare           bool
+	lifeAdjustment          bool
+	simulLoseKO             bool
+	tagLoseKO               bool
 	fullscreen              bool
 	allowDebugKeys          bool
 	commonAir               string
@@ -301,6 +305,11 @@ type System struct {
 	matchData               *lua.LTable
 	matchPos                [8]float32
 	matchClearance          [2]MatchClearance
+	consecutiveWins         [2]int32
+	commonConst             string
+	commonScore             string
+	commonTag               string
+	gameSpeed               float32
 }
 
 type OverrideCharData struct {
@@ -688,6 +697,14 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 			strings.Split(OldSprintf(spl[sn], a...), "\n")...)
 		if len(s.clipboardText[pn]) > 10 {
 			s.clipboardText[pn] = s.clipboardText[pn][len(s.clipboardText[pn])-10:]
+		}
+	}
+}
+func (s *System) printToConsole(pn, sn int, a ...interface{}) {
+	spl := s.stringPool[pn].List
+	if sn >= 0 && sn < len(spl) {
+		for _, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
+			fmt.Printf("%s\n", str)
 		}
 	}
 }
@@ -1111,9 +1128,14 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			ko := [...]bool{true, true}
 			for ii := range ko {
 				for i := ii; i < len(s.chars); i += 2 {
-					if len(s.chars[i]) > 0 && s.chars[i][0].alive() && s.chars[i][0].teamside < 2 {
-						ko[ii] = false
-						break
+					if len(s.chars[i]) > 0 && s.chars[i][0].teamside < 2 {
+						if s.chars[i][0].alive() {
+							ko[ii] = false
+						} else if (s.tmode[i&1] == TM_Simul && s.simulLoseKO && s.com[i] == 0) ||
+							(s.tmode[i&1] == TM_Tag && s.tagLoseKO) {
+							ko[ii] = true
+							break
+						}
 					}
 				}
 				if ko[ii] {
@@ -1162,6 +1184,10 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					for i, win := range w {
 						if win {
 							s.wins[i]++
+							if s.matchOver() && s.wins[^i&1] == 0 {
+								s.consecutiveWins[i]++
+							}
+							s.consecutiveWins[^i&1] = 0
 						}
 					}
 				}
@@ -1288,7 +1314,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 	}
 	if s.tickNextFrame() {
-		spd := s.accel
+		spd := s.gameSpeed * s.accel
 		_else := s.sf(GSF_nokoslow) || s.time == 0
 		if !_else {
 			slowt := -(s.lifebar.ro.over_hittime + (s.lifebar.ro.slow_time+3)>>2)
@@ -1641,9 +1667,9 @@ func (s *System) fight() (reload bool) {
 			case TM_Single:
 				switch s.tmode[(i+1)&1] {
 				case TM_Simul, TM_Tag:
-					lm *= s.team1VS2Life
+					lm *= s.singleVsTeamLife
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && s.teamLifeShare {
+					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && s.lifeAdjustment {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.matchWins[(i+1)&1])
 					}
@@ -1651,33 +1677,33 @@ func (s *System) fight() (reload bool) {
 			case TM_Simul, TM_Tag:
 				switch s.tmode[(i+1)&1] {
 				case TM_Simul, TM_Tag:
-					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && s.teamLifeShare {
+					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && s.lifeAdjustment {
 						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && s.teamLifeShare {
+					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && s.lifeAdjustment {
 						lm = lm * float32(s.numTurns[(i+1)&1]) /
 							float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
 					}
 				default:
-					if s.teamLifeShare {
+					if s.lifeAdjustment {
 						lm /= float32(s.numSimul[i&1])
 					}
 				}
 			case TM_Turns:
 				switch s.tmode[(i+1)&1] {
 				case TM_Single:
-					if s.matchWins[i&1] < s.numTurns[i&1] && s.teamLifeShare {
+					if s.matchWins[i&1] < s.numTurns[i&1] && s.lifeAdjustment {
 						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
 					}
 				case TM_Simul, TM_Tag:
-					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && s.teamLifeShare {
-						lm = lm * s.team1VS2Life *
+					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && s.lifeAdjustment {
+						lm = lm * s.singleVsTeamLife *
 							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
 							float32(s.numTurns[i&1])
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numTurns[i&1] && s.teamLifeShare {
+					if s.numTurns[(i+1)&1] < s.numTurns[i&1] && s.lifeAdjustment {
 						lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
 					}
 				}
@@ -1759,6 +1785,7 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("id", lua.LNumber(p[0].id))
 					tmp.RawSetString("memberNo", lua.LNumber(p[0].memberNo))
 					tmp.RawSetString("selectNo", lua.LNumber(p[0].selectNo))
+					tmp.RawSetString("teamside", lua.LNumber(p[0].teamside))
 					tmp.RawSetString("life", lua.LNumber(p[0].life))
 					tmp.RawSetString("lifeMax", lua.LNumber(p[0].lifeMax))
 					tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
@@ -1779,9 +1806,18 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
 					tmp.RawSetString("score", lua.LNumber(p[0].scoreCurrent))
+					tmp.RawSetString("damage", lua.LNumber(p[0].damageMain))
+					tmp.RawSetString("counterHits", lua.LNumber(p[0].counterHits))
+					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
+					tmp.RawSetString("cheated", lua.LBool(p[0].cheated))
 					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
 					scr[i&1] += p[0].scoreCurrent
 					p[0].scoreCurrent = 0
+					p[0].damageLocal = 0
+					p[0].damageMain = 0
+					p[0].counterHits = 0
+					p[0].firstAttack = false
+					p[0].cheated = false
 				}
 			}
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
@@ -2022,24 +2058,39 @@ func (wm wincntMap) getLevel(p int) int32 {
 }
 
 type SelectChar struct {
-	def, name, sprite, intro_storyboard, ending_storyboard string
-	pal, pal_defaults, pal_keymap                          []int32
-	portrait_scale                                         float32
-	sportrait, lportrait, vsportrait                       *Sprite
+	def               string
+	name              string
+	sprite            string
+	sound             string
+	intro_storyboard  string
+	ending_storyboard string
+	pal               []int32
+	pal_defaults      []int32
+	pal_keymap        []int32
+	portrait_scale    float32
+	sportrait         *Sprite
+	lportrait         *Sprite
+	vsportrait        *Sprite
 }
 
 type StageBgm struct {
-	bgmusic                             string
-	bgmvolume, bgmloopstart, bgmloopend int32
+	bgmusic      string
+	bgmvolume    int32
+	bgmloopstart int32
+	bgmloopend   int32
 }
+
 type SelectStage struct {
-	def, name, zoomout, zoomin string
-	stagebgm                   [4]StageBgm
-	stageportrait              *Sprite
-	portrait_scale             float32
-	xscale                     float32
-	yscale                     float32
+	def             string
+	name            string
+	attachedchardef string
+	stagebgm        [4]StageBgm
+	stageportrait   *Sprite
+	portrait_scale  float32
+	xscale          float32
+	yscale          float32
 }
+
 type Select struct {
 	columns, rows   int
 	cellsize        [2]float32
@@ -2109,12 +2160,12 @@ func (s *Select) GetStageName(n int) string {
 	}
 	return s.stagelist[n-1].name
 }
-func (s *Select) GetStageInfo(n int) (string, string, [4]StageBgm) {
+func (s *Select) GetStageInfo(n int) ([4]StageBgm, string) {
 	n %= len(s.stagelist) + 1
 	if n < 0 {
 		n += len(s.stagelist) + 1
 	}
-	return s.stagelist[n-1].zoomin, s.stagelist[n-1].zoomout, s.stagelist[n-1].stagebgm
+	return s.stagelist[n-1].stagebgm, s.stagelist[n-1].attachedchardef
 }
 func (s *Select) GetStage(n int) *SelectStage {
 	if len(s.stagelist) == 0 {
@@ -2126,7 +2177,7 @@ func (s *Select) GetStage(n int) *SelectStage {
 	}
 	return &s.stagelist[n-1]
 }
-func (s *Select) addCahr(def string) {
+func (s *Select) addChar(def string) {
 	s.charlist = append(s.charlist, SelectChar{})
 	sc := &s.charlist[len(s.charlist)-1]
 	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
@@ -2156,7 +2207,7 @@ func (s *Select) addCahr(def string) {
 		return
 	}
 	sc.def = def
-	lines, i, info, files, keymap, arcade, sprite := SplitAndTrim(str, "\n"), 0, true, true, true, true, ""
+	lines, i, info, files, keymap, arcade, sprite, sound := SplitAndTrim(str, "\n"), 0, true, true, true, true, "", ""
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -2181,6 +2232,7 @@ func (s *Select) addCahr(def string) {
 			if files {
 				files = false
 				sprite = is["sprite"]
+				sound = is["sound"]
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
 						sc.pal = append(sc.pal, int32(i))
@@ -2208,6 +2260,7 @@ func (s *Select) addCahr(def string) {
 		}
 	}
 	sc.sprite = sprite
+	sc.sound = sound
 	if sys.quickLaunch < 2 {
 		LoadFile(&sprite, def, func(file string) error {
 			var err error
@@ -2241,7 +2294,7 @@ func (s *Select) AddStage(def string) error {
 	}); err != nil {
 		return err
 	}
-	i, info, camera, music, bgdef, stageinfo := 0, true, true, true, true, true
+	i, info, music, bgdef, stageinfo := 0, true, true, true, true
 	s.stagelist = append(s.stagelist, SelectStage{})
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -2259,19 +2312,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-			}
-		case "camera":
-			if camera {
-				camera = false
-				var ok bool
-				ss.zoomout, ok = is.getString("setzoommax")
-				if !ok {
-					ss.zoomout = ""
-				}
-				ss.zoomin, ok = is.getString("setzoommin")
-				if !ok {
-					ss.zoomin = ""
-				}
+				ss.attachedchardef, ok = is.getString("attachedchar")
 			}
 		case "music":
 			if music {

@@ -24,9 +24,8 @@
  ;Each parameter has the form:
  ;    paramname = paramvalue
  ;where paramname is the name of the parameter type, and paramvalue is the value
- ;(data) that should be assigned to that parameter. The only exception is the
- ;'rivals' parameter in which paramname is not pre-set and paramvalue needs to
- ;be additionally enclosed in {} brackets.
+ ;(data) that should be assigned to that parameter.
+ ;'rivals' and 'slot' parameters are the exceptions to these general rules.
  ;
  ;The optional parameters are:
  ;
@@ -169,6 +168,19 @@
  ;   [Options] section should look like this: 'paramvalue.arcade.maxmatches'
  ;   'paramvalue.arcade.ratiomatches' and so forth.
  ;
+ ; - slot = {} (multiple chars in one slot)
+ ;   IKEMEN feature: This parameter allows to assign multiple characters into a
+ ;   single select screen slot. paramvalue, enclosed in {} brackets, consists
+ ;   of multiple newlines, where each of them follows the usual syntax.
+ ;   Characters added this way can have two extra parameters assigned:
+ ;   - select: Set the paramvalue to the command that selects this character.
+ ;     If multiple chars in this slot have the same paramvalue assigned, they
+ ;     will be selected randomly.
+ ;   - swap: Set the paramvalue to the command that swaps the current default
+ ;     slot character with this one. If multiple chars have the same paramvalue
+ ;     assigned, they will be swapped sequentially.
+ ;   Commands use the same syntax as character's cmd file (e.g. /s+a)
+ ;
  ;You can also add a randomize icon to the select screen. To do this, put the
  ;word "randomselect" on a line of its own, with no extra parameters.
  ;
@@ -177,7 +189,10 @@
  ; kfm, stages/mybg.def, maxmatches=somename
  ; kfm, stages/mybg.def, 3={SuaveDude, stages/mybg2.def}
  ; kfm, stages/mybg.def, music=sound/song.mp3, order=3, ai=8, hidden=2
- ; kfm, stages/mybg.def, stages/mybg2.def, music=sound/song.mp3
+ ; slot = {
+ ;      kfm, stages/mybg.def, swap=s
+ ;      SuaveDude, swap=s, select=/s+a
+ ; }
  ;
  ;Insert your characters below.
 

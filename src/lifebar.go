@@ -634,7 +634,7 @@ type LifeBarCombo struct {
 	shaketime     [2]int32
 	teamMode      bool
 	firstAttack   int
-	counterCount  [2]int
+	counterHits   [2]int
 	separator     string
 	places        int32
 }
@@ -735,7 +735,7 @@ func (c *LifeBarCombo) reset() {
 	c.counterX = [...]float32{c.start_x[0] * 2, c.start_x[1] * 2}
 	c.shaketime = [2]int32{}
 	c.firstAttack = -1
-	c.counterCount = [2]int{}
+	c.counterHits = [2]int{}
 }
 
 func (c *LifeBarCombo) draw(layerno int16, f []*Fnt) {

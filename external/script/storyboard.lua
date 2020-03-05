@@ -32,7 +32,7 @@ local function f_play(t)
 			local fadeStart = getFrameCount()
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if (esc() or main.f_btnPalNo(main.p1Cmd) > 0) and t.scenedef.skipbutton > 0 then
+				if (esc() or main.input({1}, {'pal'})) and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
 					return
 				end
@@ -98,7 +98,7 @@ local function f_play(t)
 					t.scene[k][fadeType .. '_col'][2],
 					t.scene[k][fadeType .. '_col'][3]
 				)
-				--if main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton <= 0 then
+				--if main.input({1}, {'pal'}) and t.scenedef.skipbutton <= 0 then
 				--	main.f_cmdInput()
 				--	refresh()
 				--	do

@@ -324,6 +324,7 @@ const (
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_gamemode
+	OC_const_constants
 	OC_const_ratiolevel
 )
 const (
@@ -414,13 +415,32 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+	OC_ex_gethitvar_score
 	OC_ex_scorecurrent
 	OC_ex_scoreround
 	OC_ex_scoretotal
 	OC_ex_timeleft
 	OC_ex_timeround
 	OC_ex_timetotal
-	OC_ex_combodamage
+	OC_ex_receiveddamage
+	OC_ex_receivedhits
+	OC_ex_combocount
+	OC_ex_damagelocal
+	OC_ex_damagemain
+	OC_ex_consecutivewins
+	OC_ex_countercount
+	OC_ex_firstattack
+	OC_ex_roundtype
+	OC_ex_getplayerid
+	OC_ex_networkplayer
+	OC_ex_cheated
+	OC_ex_memberno
+	OC_ex_playerno
+	OC_ex_pausetime
+	OC_ex_standby
+	OC_ex_max
+	OC_ex_min
+	OC_ex_round
 	OC_ex_ailevelf // float version of AILevel
 )
 const (
@@ -778,6 +798,24 @@ func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
 			v1.SetI(int32(f))
 		}
 	}
+}
+func (_ BytecodeExp) max(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v >= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v <= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
+	shift := math.Pow(10, v2.v)
+	v1.SetF(float32(math.Floor((v1.v*shift)+0.5) / shift))
 }
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	oc := c
@@ -1508,6 +1546,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_constants:
+		sys.bcStack.PushI(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		*i += 4
 	case OC_const_ratiolevel:
 		sys.bcStack.PushI(c.ratioLevel())
 	default:
@@ -1634,6 +1675,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
+	case OC_ex_gethitvar_score:
+		sys.bcStack.PushF(c.ghv.score)
 	case OC_ex_scorecurrent:
 		sys.bcStack.PushF(c.scoreCurrent)
 	case OC_ex_scoreround:
@@ -1646,8 +1689,47 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(timeRound())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
-	case OC_ex_combodamage:
+	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
+	case OC_ex_receivedhits:
+		sys.bcStack.PushI(c.getcombo)
+	case OC_ex_combocount:
+		sys.bcStack.PushI(c.comboCount())
+	case OC_ex_damagelocal:
+		sys.bcStack.PushI(c.damageLocal)
+	case OC_ex_damagemain:
+		sys.bcStack.PushI(c.damageMain)
+	case OC_ex_consecutivewins:
+		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
+	case OC_ex_countercount:
+		sys.bcStack.PushI(c.counterHits)
+	case OC_ex_firstattack:
+		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_roundtype:
+		sys.bcStack.PushI(c.roundType())
+	case OC_ex_getplayerid:
+		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
+	case OC_ex_networkplayer:
+		sys.bcStack.PushI(c.networkPlayer())
+	case OC_ex_cheated:
+		sys.bcStack.PushB(c.cheated)
+	case OC_ex_memberno:
+		sys.bcStack.PushI(int32(c.memberNo) + 1)
+	case OC_ex_playerno:
+		sys.bcStack.PushI(int32(c.playerNo) + 1)
+	case OC_ex_pausetime:
+		sys.bcStack.PushI(c.pauseTime())
+	case OC_ex_standby:
+		sys.bcStack.PushB(c.scf(SCF_standby))
+	case OC_ex_max:
+		v2 := sys.bcStack.Pop()
+		be.max(sys.bcStack.Top(), v2)
+	case OC_ex_min:
+		v2 := sys.bcStack.Pop()
+		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_round:
+		v2 := sys.bcStack.Pop()
+		be.round(sys.bcStack.Top(), v2)
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
@@ -5979,6 +6061,34 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 		switch id {
 		case roundTimeSet_value:
 			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type printToConsole StateControllerBase
+
+const (
+	printToConsole_params byte = iota
+	printToConsole_text
+)
+
+func (sc printToConsole) Run(c *Char, _ []int32) bool {
+	params := []interface{}{}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case printToConsole_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case printToConsole_text:
+			sys.printToConsole(sys.workingState.playerNo,
+				int(exp[0].evalI(c)), params...)
 		}
 		return true
 	})

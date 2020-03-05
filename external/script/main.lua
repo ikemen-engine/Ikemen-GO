@@ -22,45 +22,82 @@ file = io.open("save/stats.json","r")
 stats = json.decode(file:read("*all"))
 file:close()
 
---Input stuff
-main.p1In = 1
-main.p2In = 2
---main.inputDialog = inputDialogNew()
-
-function main.f_setCommand(c)
-	commandAdd(c, 'u', '$U')
-	commandAdd(c, 'd', '$D')
-	commandAdd(c, 'l', '$B')
-	commandAdd(c, 'r', '$F')
-	commandAdd(c, 'a', 'a')
-	commandAdd(c, 'b', 'b')
-	commandAdd(c, 'c', 'c')
-	commandAdd(c, 'x', 'x')
-	commandAdd(c, 'y', 'y')
-	commandAdd(c, 'z', 'z')
-	commandAdd(c, 's', 's')
-	commandAdd(c, 'v', 'v')
-	commandAdd(c, 'w', 'w')
-	commandAdd(c, 'holds', '/s')
-	commandAdd(c, 'su', '/s, U')
-	commandAdd(c, 'sd', '/s, D')
-end
-
-main.p1Cmd = commandNew()
-main.f_setCommand(main.p1Cmd)
-
-main.p2Cmd = commandNew()
-main.f_setCommand(main.p2Cmd)
-
-main.p3Cmd = commandNew()
-main.f_setCommand(main.p3Cmd)
-
-main.p4Cmd = commandNew()
-main.f_setCommand(main.p4Cmd)
-
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+--add default commands
+main.t_commands = {['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['v'] = 0, ['w'] = 0, ['/s'] = 0}
+function main.f_commandNew()
+	local c = commandNew()
+	for k, v in pairs(main.t_commands) do
+		commandAdd(c, k, k)
+	end
+	return c
+end
+main.cmd = {main.f_commandNew(), main.f_commandNew(), main.f_commandNew(), main.f_commandNew()}
+
+--add new commands
+function main.f_commandAdd(cmd)
+	if main.t_commands[cmd] ~= nil then
+		return
+	end
+	for i = 1, #main.cmd do
+		commandAdd(main.cmd[i], cmd, cmd)
+	end
+	main.t_commands[cmd] = 0
+end
+
+--makes the input detectable in the current frame
+main.p1In = 1
+main.p2In = 2
+main.p3In = 3
+main.p4In = 4
+function main.f_cmdInput()
+	commandInput(main.cmd[1], main.p1In)
+	commandInput(main.cmd[2], main.p2In)
+	commandInput(main.cmd[3], main.p3In)
+	commandInput(main.cmd[4], main.p4In)
+end
+
+--returns value depending on button pressed (a = 1; a + start = 7 etc.)
+function main.f_btnPalNo(cmd)
+	local s = 0
+	if commandGetState(cmd, '/s') then s = 6 end
+	if commandGetState(cmd, 'a') then return 1 + s end
+	if commandGetState(cmd, 'b') then return 2 + s end
+	if commandGetState(cmd, 'c') then return 3 + s end
+	if commandGetState(cmd, 'x') then return 4 + s end
+	if commandGetState(cmd, 'y') then return 5 + s end
+	if commandGetState(cmd, 'z') then return 6 + s end
+	if commandGetState(cmd, 'v') then return 1 + s end
+	if commandGetState(cmd, 'w') then return 2 + s end
+	return 0
+end
+
+--return bool based on command input
+function main.input(p, b)
+	for i = 1, #p do
+		for j = 1, #b do
+			if b[j] == 'pal' then
+				if main.f_btnPalNo(main.cmd[p[i]]) > 0 then
+					return true
+				end
+			elseif commandGetState(main.cmd[p[i]], b[j]) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+--return table with key names
+function main.f_extractKeys(str)
+	local t = {}
+	for i, c in ipairs(main.f_strsplit('%s*&%s*', str)) do --split string using "%s*&%s*" delimiter
+		t[i] = c
+	end
+	return t
+end
 
 --check if a file or directory exists in this path
 function main.f_exists(file)
@@ -188,14 +225,21 @@ function text:create(o)
 end
 --Updates text by changing values in old table
 function text:update(t)
+	local ok = false
 	for k, v in pairs(t) do
-		self.data[k] = v
-		--if k == "font" and type(v) == 'string' then fontNew(v) end 
+		if k == "font" and type(v) == 'string' then fontNew(v) end
+		if self.data[k] ~= v then
+			self.data[k] = v
+			--if type(v) == "number" or type(v) == "string" then print(k .. ': ' .. v) end
+			ok = true
+		end
 	end
-	local tmp = self.data
-	self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
-	self.data.ti = main.f_updateTextImg(unpack(self.data))
+	if ok then
+		local tmp = self.data
+		self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
+		scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
+		self.data.ti = main.f_updateTextImg(unpack(self.data))
+	end
 end
 --Draws text (little bit shorter)
 function text:draw()
@@ -242,27 +286,6 @@ function main.f_animPosDraw(a, x, y)
 	animSetPos(a, x, y)
 	animUpdate(a)
 	animDraw(a)
-end
-
---makes the input detectable in the current frame
-function main.f_cmdInput()
-	commandInput(main.p1Cmd, main.p1In)
-	commandInput(main.p2Cmd, main.p2In)
-end
-
---returns value depending on button pressed (a = 1; a + start = 7 etc.)
-function main.f_btnPalNo(cmd)
-	local s = 0
-	if commandGetState(cmd, 'holds') then s = 6 end
-	if commandGetState(cmd, 'a') then return 1 + s end
-	if commandGetState(cmd, 'b') then return 2 + s end
-	if commandGetState(cmd, 'c') then return 3 + s end
-	if commandGetState(cmd, 'x') then return 4 + s end
-	if commandGetState(cmd, 'y') then return 5 + s end
-	if commandGetState(cmd, 'z') then return 6 + s end
-	if commandGetState(cmd, 'v') then return 1 + s end
-	if commandGetState(cmd, 'w') then return 2 + s end
-	return 0
 end
 
 --dynamically adjusts alpha blending each time called based on specified values
@@ -522,7 +545,8 @@ function main.f_extractText(txt, var1, var2, var3, var4)
 	end)
 	--store each line in different row
 	t = {}
-	for i, c in ipairs(main.f_strsplit('\n', tmp)) do --split string using "\n" delimiter
+	tmp = tmp:gsub('\n', '\\n')
+	for i, c in ipairs(main.f_strsplit('\\n', tmp)) do --split string using "\n" delimiter
 		t[i] = c
 	end
 	if #t == 0 then
@@ -649,7 +673,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 	alpha = alpha or motif.warning_info.boxbg_alpha
 	main.f_cmdInput()
 	while true do
-		if main.f_btnPalNo(main.p1Cmd) > 0 or esc() then
+		if main.input({1, 2}, {'pal'}) or esc() then
 			sndPlay(motif.files.snd_data, info.cursor_move_snd[1], info.cursor_move_snd[2])
 			break
 		end
@@ -709,7 +733,6 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		if category == 'keyboard' then
 			input = getKey()
 			if input ~= '' then
-				--main.f_cmdInput()
 				break
 			end
 		elseif category == 'gamepad' then
@@ -733,7 +756,6 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			end
 		else --string
 			if getKey() == 'RETURN' then
-				--main.f_cmdInput()
 				break
 			elseif getKey() == 'BACKSPACE' then
 				input = input:match('^(.-).?$')
@@ -764,16 +786,17 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		)
 		--draw text
 		for i = 1, #t do
-			txt_input:update({
+			main.txt_input:update({
 				text = t[i],
 				y =    motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
 			})
-			txt_input:draw()
+			main.txt_input:draw()
 		end
 		--end loop
 		main.f_cmdInput()
 		refresh()
 	end
+	main.f_cmdInput()
 	return input
 end
 
@@ -831,18 +854,23 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	end
 	refresh()
 	--set settings
+	setLifeBarElements({['p1score'] = true, ['p2score'] = true})
 	setAutoguard(1, config.AutoGuard)
 	setAutoguard(2, config.AutoGuard)
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
-	setLifeShare(config.TeamLifeShare)
+	setLifeAdjustment(config.TeamLifeAdjustment)
+	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
 	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	setLifeMul(config.LifeMul / 100)
-	setTeam1VS2Life(config.Team1VS2Life / 100)
+	setGameSpeed(config.GameSpeed / 100)
+	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
 	--add chars
 	local p1NumChars = 0
 	local p2NumChars = 0
+	local p1TeamMode = 0
+	local p2TeamMode = 0
 	local t = {}
 	for k, v in pairs(main.flags) do
 		if k:match('^-p[1-8]$') then
@@ -880,18 +908,20 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 				t[#t].override['attackRatio'] = tonumber(main.flags['-p' .. num .. '.attackRatio'])
 			end
 			refresh()
+		elseif k:match('^-tmode1$') then
+			p1TeamMode = tonumber(v)
+		elseif k:match('^-tmode2$') then
+			p2TeamMode = tonumber(v)
 		elseif k:match('^-rounds$') then
 			setMatchWins(tonumber(v))
 		elseif k:match('^-draws$') then
 			setMatchMaxDrawGames(tonumber(v))
 		end
 	end
-	local p1TeamMode = 0
-	if p1NumChars > 1 then
+	if p1TeamMode == 0 and p1NumChars > 1 then
 		p1TeamMode = 1
 	end
-	local p2TeamMode = 0
-	if p2NumChars > 1 then
+	if p2TeamMode == 0 and p2NumChars > 1 then
 		p2TeamMode = 1
 	end
 	--add stage
@@ -955,7 +985,7 @@ main.txt_warningTitle = text:create({
 	dst =    motif.warning_info.title_font[8],
 	defsc =  motif.defaultWarning
 })
-local txt_input = text:create({
+main.txt_input = text:create({
 	font =   motif.font_data[motif.infobox.text_font[1]],
 	bank =   motif.infobox.text_font[2],
 	align =  motif.infobox.text_font[3],
@@ -1019,7 +1049,7 @@ function main.f_charParam(t, c)
 	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
 		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
 		t[tonumber(var1)] = var2
-	elseif c:match('%.[Dd][Ee][Ff]') or c:match('^random$') then --stage
+	elseif c:match('%.[Dd][Ee][Ff]') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
@@ -1036,7 +1066,8 @@ function main.f_charParam(t, c)
 	end
 end
 
-function main.f_addChar(line, row, playable)
+function main.f_addChar(line, row, playable, slot)
+	local slot = slot or false
 	local valid = false
 	local tmp = ''
 	main.t_selChars[row] = {}
@@ -1119,6 +1150,24 @@ function main.f_addChar(line, row, playable)
 		end
 		table.insert(main.t_orderSurvival[num], row - 1)
 	end
+	--slots
+	if not slot then
+		table.insert(main.t_selGrid, {['chars'] = {row}, ['slot'] = 1})
+	else
+		table.insert(main.t_selGrid[#main.t_selGrid].chars, row)
+	end
+	for _, v in ipairs({'swap', 'select'}) do
+		if main.t_selChars[row][v] ~= nil then
+			main.f_commandAdd(main.t_selChars[row][v])
+			if main.t_selGrid[#main.t_selGrid][v] == nil then
+				main.t_selGrid[#main.t_selGrid][v] = {}
+			end
+			if main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] == nil then
+				main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] = {}
+			end
+			table.insert(main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]], #main.t_selGrid[#main.t_selGrid].chars)
+		end
+	end
 	main.loadingRefresh(txt_loading)
 	return valid
 end
@@ -1136,7 +1185,7 @@ function main.f_addStage(file)
 	--end
 	main.t_stageDef[file:lower()] = stageNo
 	main.t_selStages[stageNo] = {name = tmp, stage = file}
-	local _, _, t_bgmusic = getStageInfo(stageNo)
+	local t_bgmusic, attachedChar = getStageInfo(stageNo)
 	for k = 1, #t_bgmusic do
 		if t_bgmusic[k].bgmusic ~= '' then
 			if k == 1 then
@@ -1150,6 +1199,11 @@ function main.f_addStage(file)
 			end
 			main.t_selStages[stageNo][tmp] = {[1] = {bgmusic = t_bgmusic[k].bgmusic:gsub('\\', '/'), bgmvolume = t_bgmusic[k].bgmvolume, bgmloopstart = t_bgmusic[k].bgmloopstart, bgmloopend = t_bgmusic[k].bgmloopend}}
 		end
+	end
+	if attachedChar ~= '' then
+		main.t_selStages[stageNo].attachedChar = {}
+		main.t_selStages[stageNo].attachedChar.def, main.t_selStages[stageNo].attachedChar.displayname, main.t_selStages[stageNo].attachedChar.sprite, main.t_selStages[stageNo].attachedChar.sound = getAttachedCharInfo(attachedChar)
+		main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
 	end
 	return stageNo
 end
@@ -1166,6 +1220,7 @@ local stages = 0
 local tmp = ''
 local section = 0
 local row = 0
+local slot = false
 local file = io.open(motif.files.select,"r")
 local content = file:read("*all")
 file:close()
@@ -1176,6 +1231,7 @@ for line in content:gmatch('[^\r\n]+') do
 	local lineCase = line:lower()
 	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		main.t_selChars = {}
+		main.t_selGrid = {}
 		row = 0
 		section = 1
 	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
@@ -1198,9 +1254,14 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif section == 1 then --[Characters]
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
+		elseif lineCase:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
+			table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
+			slot = true
+		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
+			slot = false
 		else
 			chars = chars + 1
-			main.f_addChar(line, chars, true)
+			main.f_addChar(line, chars, true, slot)
 		end
 	elseif section == 2 then --[ExtraStages]
 		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
@@ -1294,9 +1355,10 @@ if main.t_selOptions.arcaderatiomatches == nil then
 end
 
 --add excluded characters once all slots are filled
-for i = chars, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.select_info.columns - 1 do
+for i = #main.t_selGrid, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.select_info.columns - 1 do
 	chars = chars + 1
 	main.t_selChars[chars] = {}
+	table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
 	addChar('dummyChar')
 end
 for i = 1, #t_addExluded do
@@ -1393,6 +1455,7 @@ if main.debugLog then
 	main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
 	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
 	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
+	main.f_printTable(main.t_selGrid, "debug/t_selGrid.txt")
 	main.f_printTable(config, "debug/config.txt")
 end
 
@@ -1536,10 +1599,11 @@ main.txt_mainSelect = text:create({
 	dst =    motif.select_info.title_font[8],
 })
 
+main.reconnect = false
+main.serverhost = false
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1 --P1 controls P2 side of the select screen
 		main.resetScore = true --score is set to lose count after loosing a match
 		main.versusScreen = true --versus screen enabled
@@ -1563,13 +1627,13 @@ main.t_itemname = {
 		else --teamarcade
 			main.txt_mainSelect:update({text = motif.select_info.title_text_teamarcade})
 		end
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('arcade')
-		start.f_selectArcade() --start f_selectArcade() function from script/start.lua
+		start.f_selectArcade()
 	end,
 	--TIME ATTACK
 	['timeattack'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		if main.roundTime == -1 then
 			main.roundTime = 5940 --99s * 60f
@@ -1589,13 +1653,13 @@ main.t_itemname = {
 		main.resultsTable = motif.timeattack_results_screen
 		main.credits = config.Credits - 1
 		main.txt_mainSelect:update({text = motif.select_info.title_text_timeattack})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('timeattack')
 		start.f_selectArcade()
 	end,
 	--TIME CHALLENGE
 	['timechallenge'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		if main.roundTime == -1 then
@@ -1609,14 +1673,16 @@ main.t_itemname = {
 		main.t_lifebar.timer = true
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.timechallenge_results_screen
+		main.p1TeamMenu = {mode = 0, chars = 1}
+		main.p2TeamMenu = {mode = 0, chars = 1}
 		main.txt_mainSelect:update({text = motif.select_info.title_text_timechallenge})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('timechallenge')
 		start.f_selectSimple()
 	end,
 	--SCORE CHALLENGE
 	['scorechallenge'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.stageMenu = true
@@ -1627,14 +1693,16 @@ main.t_itemname = {
 		main.t_lifebar.p1score = true
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.scorechallenge_results_screen
+		main.p1TeamMenu = {mode = 0, chars = 1}
+		main.p2TeamMenu = {mode = 0, chars = 1}
 		main.txt_mainSelect:update({text = motif.select_info.title_text_scorechallenge})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('scorechallenge')
 		start.f_selectSimple()
 	end,
 	--VS MODE / TEAM VERSUS
 	['versus'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		setHomeTeam(1) --P1 side considered the home team
 		main.p2In = 2 --P2 controls P2 side of the select screen
 		main.stageMenu = true --stage selection enabled
@@ -1652,13 +1720,13 @@ main.t_itemname = {
 		else --teamversus
 			main.txt_mainSelect:update({text = motif.select_info.title_text_teamversus})
 		end
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('versus')
-		start.f_selectSimple() --start f_selectSimple() function from script/start.lua
+		start.f_selectSimple()
 	end,
 	--TEAM CO-OP
 	['teamcoop'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.coop = true --P2 fighting on P1 side enabled
 		main.p2Faces = true
@@ -1679,13 +1747,13 @@ main.t_itemname = {
 		main.resultsTable = motif.win_screen
 		main.credits = config.Credits - 1
 		main.txt_mainSelect:update({text = motif.select_info.title_text_teamcoop})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('teamcoop')
 		start.f_selectArcade()
 	end,
 	--SURVIVAL
 	['survival'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.versusScreen = true
@@ -1699,13 +1767,13 @@ main.t_itemname = {
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.survival_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_survival})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('survival')
 		start.f_selectArranged()
 	end,
 	--SURVIVAL CO-OP
 	['survivalcoop'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.matchWins = {1, 0, 0}
 		main.coop = true
@@ -1722,13 +1790,13 @@ main.t_itemname = {
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.survival_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_survivalcoop})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('survivalcoop')
 		start.f_selectArranged()
 	end,
 	--TRAINING
 	['training'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.stageMenu = true
 		main.p2SelectMenu = true
@@ -1738,13 +1806,13 @@ main.t_itemname = {
 		main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
 		main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
 		main.txt_mainSelect:update({text = motif.select_info.title_text_training})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('training')
 		start.f_selectSimple()
 	end,
 	--WATCH
 	['watch'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.aiFight = true --AI = config.Difficulty for all characters enabled
 		main.stageMenu = true
@@ -1755,6 +1823,7 @@ main.t_itemname = {
 		main.t_lifebar.p1ai = true
 		main.t_lifebar.p2ai = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_watch})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('watch')
 		start.f_selectSimple()
@@ -1763,11 +1832,10 @@ main.t_itemname = {
 	['options'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
-		options.f_mainCfg() --start f_mainCfg() function from external/script/options.lua
+		options.menu.loop()
 	end,
 	--FREE BATTLE
 	['freebattle'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.stageMenu = true
 		main.p2Faces = true
@@ -1777,13 +1845,13 @@ main.t_itemname = {
 		main.t_lifebar.p1score = true
 		main.t_lifebar.p2ai = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_freebattle})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('freebattle')
 		start.f_selectSimple()
 	end,
 	--VS 100 KUMITE
 	['vs100kumite'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.versusScreen = true
@@ -1797,13 +1865,13 @@ main.t_itemname = {
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.vs100kumite_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_vs100kumite})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('vs100kumite')
 		start.f_selectArranged()
 	end,
 	--BOSS RUSH
 	['bossrush'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.versusScreen = true
 		main.t_charparam.stage = true
@@ -1816,6 +1884,7 @@ main.t_itemname = {
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.bossrush_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_bossrush})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('bossrush')
 		start.f_selectArranged()
@@ -1844,7 +1913,6 @@ main.t_itemname = {
 	end,
 	--TOURNAMENT ROUND OF 32
 	['tournament32'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
@@ -1854,13 +1922,13 @@ main.t_itemname = {
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament32})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(32)
 	end,
 	--TOURNAMENT ROUND OF 16
 	['tournament16'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
@@ -1870,13 +1938,13 @@ main.t_itemname = {
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament16})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(16)
 	end,
 	--TOURNAMENT QUARTERFINALS
 	['tournament8'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
@@ -1886,14 +1954,21 @@ main.t_itemname = {
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_tournament8})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('tournament')
 		start.f_selectTournament(8)
 	end,
 	--HOST
 	['serverhost'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.serverhost = true
 		main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort()))
+		local f = main.f_checkSubmenu(main.menu.submenu.server, 2)
+		if f ~= '' then
+			main.f_default()
+			main.t_itemname[f](cursorPosY, moveTxt, item, t)
+			--resetRemapInput()
+		end
 		exitNetPlay()
 		exitReplay()
 		--save replay with a new name
@@ -1927,7 +2002,6 @@ main.t_itemname = {
 	end,
 	--ONLINE VERSUS
 	['netplayversus'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		setHomeTeam(1)
 		main.p2In = 2
 		main.stageMenu = true
@@ -1939,12 +2013,13 @@ main.t_itemname = {
 		main.t_lifebar.p1score = true
 		main.t_lifebar.p2score = true
 		main.txt_mainSelect:update({text = motif.select_info.title_text_netplayversus})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('netplayversus')
 		start.f_selectSimple()
 	end,
 	--ONLINE CO-OP
 	['netplayteamcoop'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.coop = true
 		main.p2Faces = true
@@ -1965,12 +2040,13 @@ main.t_itemname = {
 		main.resultsTable = motif.win_screen
 		main.credits = config.Credits - 1
 		main.txt_mainSelect:update({text = motif.select_info.title_text_netplayteamcoop})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('netplayteamcoop')
 		start.f_selectArcade()
 	end,
 	--ONLINE SURVIVAL
 	['netplaysurvivalcoop'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 2
 		main.matchWins = {1, 0, 0}
 		main.coop = true
@@ -1987,12 +2063,13 @@ main.t_itemname = {
 		main.t_lifebar.p2ai = true
 		main.resultsTable = motif.survival_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_netplaysurvivalcoop})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('netplaysurvivalcoop')
 		start.f_selectArranged()
 	end,
 	--BONUS CHAR
 	['bonus'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.p2In = 1
 		main.p2SelectMenu = true
 		main.t_charparam.stage = true
@@ -2006,20 +2083,28 @@ main.t_itemname = {
 		main.p2TeamMenu = {mode = 0, chars = 1}
 		main.p2Char = {main.t_bonusChars[item]}
 		main.txt_mainSelect:update({text = getCharName(main.t_bonusChars[item])})
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
 		setGameMode('bonus')
 		start.f_selectSimple()
 	end,
 	--CONNECT
 	['connect'] = function(cursorPosY, moveTxt, item, t)
-		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		main.serverhost = false
 		main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname]))
+		local f = main.f_checkSubmenu(main.menu.submenu.server, 2)
+		if f ~= '' then
+			main.f_default()
+			main.t_itemname[f](cursorPosY, moveTxt, item, t)
+			--resetRemapInput()
+		end
 		exitNetPlay()
 		exitReplay()
 	end,
 }
 main.t_itemname.teamarcade = main.t_itemname.arcade
 main.t_itemname.teamversus = main.t_itemname.versus
+if main.debugLog then main.f_printTable(main.t_itemname, 'debug/t_mainItemname.txt') end
 
 function main.f_deleteIP(item, t)
 	if t[item].itemname:match('^ip_') then
@@ -2038,7 +2123,27 @@ function main.f_deleteIP(item, t)
 	end
 end
 
-function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_escsnd, bool_f1, bool_del)
+--open submenu
+function main.f_checkSubmenu(t, minimum)
+	local minimum = minimum or 0
+	if t == nil then return '' end
+	local cnt = 0
+	local f = ''
+	for k, v in ipairs(t.items) do
+		if v.itemname ~= 'back' then
+			f = v.itemname
+			cnt = cnt + 1
+		end
+	end
+	if cnt >= minimum then
+		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+		t.loop()
+		f = ''
+	end
+	return f
+end
+
+function main.createMenu(tbl, bool_bgreset, bool_storyboard, bool_demo, bool_escsnd, bool_f1, bool_del)
 	return function()
 		--main.f_cmdInput()
 		local cursorPosY = 1
@@ -2082,15 +2187,10 @@ function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_esc
 				)
 			elseif bool_del and getKey() == 'DELETE' then
 				main.f_deleteIP(item, t)
-			elseif main.f_btnPalNo(main.p1Cmd) > 0 then
-				main.f_default()
-				--open submenu if exists
-				if tbl.submenu[t[item].itemname] ~= nil and #tbl.submenu[t[item].itemname].items > 0 then
-					sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
-					tbl.submenu[t[item].itemname].loop()
-				--or activate appropriate function
-				else
-					local f = ''
+			elseif main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_accept)) then
+				demoFrameCounter = 0
+				local f = main.f_checkSubmenu(tbl.submenu[t[item].itemname], 2)
+				if f == '' then
 					if t[item].itemname:match('^bonus_') then
 						f = 'bonus'
 					elseif t[item].itemname:match('^ip_') then
@@ -2098,15 +2198,16 @@ function main.createMenu(tbl, bool_storyboard, bool_bgreset, bool_demo, bool_esc
 					else
 						f = t[item].itemname
 					end
-					if f == 'back' then
-						sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-						break
-					elseif f == 'exit' then
-						break
-					elseif main.t_itemname[f] ~= nil then
-						main.t_itemname[f](cursorPosY, moveTxt, item, t)
-						resetRemapInput()
-					end
+				end
+				if f == 'back' then
+					sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+					break
+				elseif f == 'exit' then
+					break
+				elseif main.t_itemname[f] ~= nil then
+					main.f_default()
+					main.t_itemname[f](cursorPosY, moveTxt, item, t)
+					--resetRemapInput()
 				end
 			end
 		end
@@ -2136,18 +2237,18 @@ for i = 1, #main.t_sort.title_info do
 		--appending the menu table
 		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
 			if main.menu.submenu[c] == nil then
+				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
+				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
 				if not main.t_sort.title_info[i]:match(c .. '_') then
 					table.insert(main.menu.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				end
-				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
-				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
 			end
 			t_pos = main.menu.submenu[c]
-		else --following strings after the first one
+		else --following strings
 			if t_pos.submenu[c] == nil then
-				table.insert(t_pos.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}}
 				t_pos.submenu[c].loop = main.createMenu(t_pos.submenu[c], false, false, false, true, true, c == 'serverjoin')
+				table.insert(t_pos.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -2155,14 +2256,14 @@ for i = 1, #main.t_sort.title_info do
 		end
 		lastNum = j
 		--add bonus character names to bonusgames submenu
-		if main.t_sort.title_info[i]:match('_bonusgames_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
+		if main.t_sort.title_info[i]:match('_bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k = 1, #main.t_bonusChars do
 				local name = getCharName(main.t_bonusChars[k])
 				table.insert(t_pos.items, {data = text:create({}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
 			end
 		end
 		--add IP addresses for serverjoin submenu
-		if main.t_sort.title_info[i]:match('_serverjoin_back$') and j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
+		if main.t_sort.title_info[i]:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k, v in pairs(config.IP) do
 				table.insert(t_pos.items, {data = text:create({}), itemname = 'ip_' .. k, displayname = k})
 			end
@@ -2182,11 +2283,15 @@ function main.f_default()
 	setAutoguard(2, config.AutoGuard)
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
-	setLifeShare(config.TeamLifeShare)
+	setLifeAdjustment(config.TeamLifeAdjustment)
+	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
 	setDemoTime(motif.demo_mode.fight_endtime / 60 * getFramesPerCount())
 	setLifeMul(config.LifeMul / 100)
-	setTeam1VS2Life(config.Team1VS2Life / 100)
+	setGameSpeed(config.GameSpeed / 100)
+	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
+	setConsecutiveWins(1, 0)
+	setConsecutiveWins(2, 0)
 	setGameMode('')
 	--default values for all modes
 	main.matchWins = {options.roundsNumSingle, options.roundsNumTeam, options.maxDrawGames}
@@ -2264,13 +2369,13 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 	else
 		setLifeBarElements({['bars'] = false})
 	end
-	if motif.demo_mode.debuginfo == 0 and config.AllowDebugKeys then
+	if motif.demo_mode.debuginfo == 0 and config.DebugKeys then
 		setAllowDebugKeys(false)
 	end
 	setGameMode('demo')
 	randomtest.run()
 	setAllowBGM(true)
-	setAllowDebugKeys(config.AllowDebugKeys)
+	setAllowDebugKeys(config.DebugKeys)
 	refresh()
 	--intro
 	if introWaitCycles >= motif.demo_mode.intro_waitcycles then
@@ -2290,12 +2395,12 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 end
 
 function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-	if commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u') then
+	if main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_previous)) then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item - 1
 		demoFrameCounter = 0
 		introWaitCycles = 0
-	elseif commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd') then
+	elseif main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_next)) then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_move_snd[1], motif.title_info.cursor_move_snd[2])
 		item = item + 1
 		demoFrameCounter = 0
@@ -2312,9 +2417,9 @@ function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 	elseif item > #t then
 		item = 1
 		cursorPosY = 1
-	elseif (commandGetState(main.p1Cmd, 'u') or commandGetState(main.p2Cmd, 'u')) and cursorPosY > 1 then
+	elseif main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_previous)) and cursorPosY > 1 then
 		cursorPosY = cursorPosY - 1
-	elseif (commandGetState(main.p1Cmd, 'd') or commandGetState(main.p2Cmd, 'd')) and cursorPosY < motif.title_info.menu_window_visibleitems then
+	elseif main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_next)) and cursorPosY < motif.title_info.menu_window_visibleitems then
 		cursorPosY = cursorPosY + 1
 	end
 	if cursorPosY == motif.title_info.menu_window_visibleitems then
@@ -2433,9 +2538,11 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 	)
 	--frame transition
 	if main.fadeActive then
-		commandBufReset(main.p1Cmd)
+		commandBufReset(main.cmd[1])
+		commandBufReset(main.cmd[2])
 	elseif fadeType == 'fadeout' then
-		commandBufReset(main.p1Cmd)
+		commandBufReset(main.cmd[1])
+		commandBufReset(main.cmd[2])
 		return --skip last frame rendering
 	else
 		main.f_cmdInput()
@@ -2537,7 +2644,6 @@ function main.f_connect(server, t)
 	if not cancel then
 		synchronize()
 		math.randomseed(sszRandom())
-		main.menu.submenu.server.loop()
 	end
 end
 

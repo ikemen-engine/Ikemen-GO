@@ -1,0 +1,210 @@
+[statedef -4;]
+
+# score calculation
+if RoundState = 0 {
+	MapSet{map: "_iksys_vitalBase"; value: 0}
+	MapSet{map: "_iksys_consecutiveWinsFlag"; value: 0}
+	MapSet{map: "_iksys_attackTypeFlag"; value: 0}
+	MapSet{map: "_iksys_attackType"; value: 0}
+	MapSet{map: "_iksys_attackTypeBonus"; value: 0}
+	MapSet{map: "_iksys_attackTypeFrames"; value: 0}
+	MapSet{map: "_iksys_damageCount"; value: 0}
+	MapSet{map: "_iksys_comboCount"; value: 0}
+	MapSet{map: "_iksys_counterCount"; value: 0}
+	MapSet{map: "_iksys_firstAttackFlag"; value: 0}
+	MapSet{map: "_iksys_winFlag"; value: 0}
+} else if RoundState = 4 && !IsHelper {
+	# score: time vital bonus
+	if Win && Map(_iksys_vitalBase) = 0 && Alive && !Cheated {
+		MapSet{map: "_iksys_vitalBase"; value: 15000 * Life / LifeMax / (NumPartner + 1)}
+		let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
+		#PrintToConsole{text: "_timeRatio (100 * %d / (%d + %d)) = %d"; params: TimeLeft, TimeLeft, TimeRound, $_timeRatio}
+		if $_timeRatio > 90 {
+			#PrintToConsole{text: "score: time vital bonus (%d * 10) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 10, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 10, -2)}
+		} else if $_timeRatio > 85 {
+			#PrintToConsole{text: "score: time vital bonus (%d * 8) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 8, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 8, -2)}
+		} else if $_timeRatio > 80 {
+			#PrintToConsole{text: "score: time vital bonus (%d * 5) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 5, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 5, -2)}
+		} else if $_timeRatio > 70 {
+			#PrintToConsole{text: "score: time vital bonus (%d * 4) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 4, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 4, -2)}
+		} else if $_timeRatio > 60 {
+			#PrintToConsole{text: "score: time vital bonus (%d * 2) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 2, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 2, -2)}
+		} else {
+			#PrintToConsole{text: "score: time vital bonus (%d * 1) = %0.f"; params: Map(_iksys_vitalBase), Round(Map(_iksys_vitalBase) * 1, -2)}
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 1, -2)}
+		}
+	}
+	# score: consecutive wins bonus
+	if NumPartner = 0 || ID < Partner, ID {
+		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_consecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" && !Cheated {
+			#PrintToConsole{text: "score: consecutive wins bonus = %d"; params: 30000 + (ConsecutiveWins - 1) * 10000}
+			ScoreAdd{value: 30000 + (ConsecutiveWins - 1) * 10000}
+			MapSet{map: "_iksys_consecutiveWinsFlag"; value: 1}
+		}
+	}
+} else {
+	# set attack type
+	ignorehitpause if MoveHit && target,GetHitVar(guarded) = 0 && target,GetHitVar(score) = 0 {
+		if DamageLocal != Map(_iksys_attackTypeFlag) {
+			if HitDefAttr = SCA, HA {
+				#PrintToConsole{text: "hyper attack"}
+				MapSet{map: "_iksys_attackType"; value: 30}
+			} else if HitDefAttr = SCA, SA {
+				#PrintToConsole{text: "special attack"}
+				MapSet{map: "_iksys_attackType"; value: 20}
+			} else if HitDefAttr = SCA, NA {
+				#PrintToConsole{text: "normal attack"}
+				MapSet{map: "_iksys_attackType"; value: 10}
+			}
+			MapSet{map: "_iksys_attackTypeFlag"; value: DamageLocal}
+		}
+		if HitDefAttr = SCA, HT {
+			#PrintToConsole{text: "hyper throw"}
+			MapSet{map: "_iksys_attackType"; value: 31}
+		} else if HitDefAttr = SCA, ST {
+			#PrintToConsole{text: "special throw"}
+			MapSet{map: "_iksys_attackType"; value: 21}
+		} else if HitDefAttr = SCA, NT {
+			#PrintToConsole{text: "normal throw"}
+			MapSet{map: "_iksys_attackType"; value: 11}
+		} else if HitDefAttr = SCA, HP {
+			#PrintToConsole{text: "hyper projectile"}
+			MapSet{map: "_iksys_attackType"; value: 32}
+		} else if HitDefAttr = SCA, SP {
+			#PrintToConsole{text: "special projectile"}
+			MapSet{map: "_iksys_attackType"; value: 22}
+		} else if HitDefAttr = SCA, NP {
+			#PrintToConsole{text: "normal projectile"}
+			MapSet{map: "_iksys_attackType"; value: 12}
+		}
+	}
+	# calculate attack type bonus and in how many frames it will be added
+	if Map(_iksys_attackType) != 0 && DamageLocal != Map(_iksys_damageCount) {
+		if Map(_iksys_attackType) >= 30 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 10}
+			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		} else if Map(_iksys_attackType) >= 20 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 9}
+			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		} else if Map(_iksys_attackType) >= 10 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageLocal - Map(_iksys_damageCount)) * 8}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		}
+		MapSet{map: "_iksys_attackType"; value: 0}
+		MapSet{map: "_iksys_damageCount"; value: DamageLocal}
+	}
+	# score: damage bonus
+	if Map(_iksys_attackTypeFrames) > 0 {
+		#PrintToConsole{text: "score: damage bonus (value = %d; frames = %d) = %0.f"; params: Map(_iksys_attackTypeBonus), Map(_iksys_attackTypeFrames), Round(Map(_iksys_attackTypeBonus) / Map(_iksys_attackTypeFrames), -2)}
+		ScoreAdd{value: Round(Map(_iksys_attackTypeBonus) / Map(_iksys_attackTypeFrames), -2)}
+		MapAdd{map: "_iksys_attackTypeBonus"; value: 0 - Map(_iksys_attackTypeBonus) / Map(_iksys_attackTypeFrames)}
+		MapAdd{map: "_iksys_attackTypeFrames"; value: -1}
+	}
+	# score: counter bonus
+	ignorehitpause if CounterCount > Map(_iksys_counterCount) {
+		#PrintToConsole{text: "score: counter bonus = %d"; params: (CounterCount - Map(_iksys_counterCount)) * 100}
+		ScoreAdd{value: (CounterCount - Map(_iksys_counterCount)) * 100}
+		MapSet{map: "_iksys_counterCount"; value: CounterCount}
+	}
+	# score: first attack bonus
+	ignorehitpause if FirstAttack && Map(_iksys_firstAttackFlag) = 0 {
+		#PrintToConsole{text: "score: first attack bonus = 1500"}
+		ScoreAdd{value: 1500}
+		MapSet{map: "_iksys_firstAttackFlag"; value: 1}
+	}
+	if (NumPartner = 0 || ID < Partner, ID) && !IsHelper {
+		# score: combo bonus
+		ignorehitpause if ComboCount != Map(_iksys_comboCount) {
+			if ComboCount = 0 && Map(_iksys_comboCount) >= 2 {
+				if Map(_iksys_comboCount) = 2 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 300"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 300}
+				} else if Map(_iksys_comboCount) = 3 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 500"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 500}
+				} else if Map(_iksys_comboCount) = 4 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 1000"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 1000}
+				} else if Map(_iksys_comboCount) = 5 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 1200"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 1200}
+				} else if Map(_iksys_comboCount) = 6 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 1500"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 1500}
+				} else if Map(_iksys_comboCount) = 7 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 2000"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 2000}
+				} else if Map(_iksys_comboCount) = 8 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 2300"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 2300}
+				} else if Map(_iksys_comboCount) = 9 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 2600"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 2600}
+				} else if Map(_iksys_comboCount) = 10 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 3000"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 3000}
+				} else if Map(_iksys_comboCount) = 11 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 3300"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 3300}
+				} else if Map(_iksys_comboCount) = 12 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 3600"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 3600}
+				} else if Map(_iksys_comboCount) = 13 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 4000"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 4000}
+				} else if Map(_iksys_comboCount) = 14 {
+					#PrintToConsole{text: "score: combo bonus (%d) = 4500"; params: Map(_iksys_comboCount)}
+					ScoreAdd{value: 4500}
+				} else {
+					#PrintToConsole{text: "score: combo bonus (%d) = %d"; params: Map(_iksys_comboCount), Min(10000, 5000 + (Map(_iksys_comboCount) - 15) * 1000)}
+					ScoreAdd{value: Min(10000, 5000 + (Map(_iksys_comboCount) - 15) * 1000)}
+				}
+			}
+			MapSet{map: "_iksys_comboCount"; value: ComboCount}
+		}
+		# score: win type bonus
+		if Win && Map(_iksys_winFlag) = 0 && !Cheated {
+			if WinPerfect = 1 {
+				#PrintToConsole{text: "score: win type bonus (Perfect) = 15000"}
+				ScoreAdd{value: 15000}
+			}
+			if WinTime {
+				#PrintToConsole{text: "score: win type bonus (Time) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinKO {
+				#PrintToConsole{text: "score: win type bonus (KO) = 0"}
+				ScoreAdd{value: 0}
+			}
+			if WinNormal {
+				#PrintToConsole{text: "score: win type bonus (Normal) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinSpecial {
+				#PrintToConsole{text: "score: win type bonus (Special) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinHyper {
+				#PrintToConsole{text: "score: win type bonus (Hyper) = 10000"}
+				ScoreAdd{value: 10000}
+			} else if WinCheese {
+				#PrintToConsole{text: "score: win type bonus (Cheese) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinThrow {
+				#PrintToConsole{text: "score: win type bonus (Throw) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinSuicide {
+				#PrintToConsole{text: "score: win type bonus (Suicide) = 0"}
+				ScoreAdd{value: 0}
+			} else if WinTeammate {
+				#PrintToConsole{text: "score: win type bonus (Teammate) = 0"}
+				ScoreAdd{value: 0}
+			}
+			MapSet{map: "_iksys_winFlag"; value: 1}
+		}
+	}
+}

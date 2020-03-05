@@ -60,6 +60,8 @@ func main() {
 					fmt.Println(" -p<n>.lifeMax <life>       Sets player n's max life to <life>")
 					fmt.Println(" -p<n>.lifeRatio <ratio>    Sets player n's life ratio to <ratio>")
 					fmt.Println(" -p<n>.attackRatio <ratio>  Sets player n's attack ratio to <ratio>")
+					fmt.Println(" -tmode1 <tmode>            Sets p1 side team mode to <tmode>")
+					fmt.Println(" -tmode2 <tmode>            Sets p2 side team mode to <tmode>")
 					fmt.Println(" -rounds <num>              Plays for <num> rounds, and then quits")
 					fmt.Println(" -s <stagename>             Loads stage <stagename>")
 					fmt.Println("\nPress ENTER to exit.")
@@ -88,156 +90,242 @@ func main() {
 	}
 	defcfg := []byte(strings.Join(strings.Split(
 `{
-	"WindowTitle": "Ikemen GO",
-	"HelperMax": 56,
-	"PlayerProjectileMax": 256,
-	"ExplodMax": 512,
-	"AfterImageMax": 128,
-	"MasterVolume": 80,
-	"WavVolume": 80,
-	"BgmVolume": 80,
-	"Attack.LifeToPowerMul": 0.7,
-	"GetHit.LifeToPowerMul": 0.6,
-	"Width": 640,
-	"Height": 480,
-	"Super.TargetDefenceMul": 1.5,
+	"AIRamping": true,
+	"AIRandomColor": true,
+	"AudioDucking": false,
+	"AutoGuard": false,
+	"ComboExtraFrameWindow": 1,
+	"CommonAir": "data/common.air",
+	"CommonCmd": "data/common.cmd",
+	"CommonConst": "data/common.const",
+	"CommonScore": "data/score.zss",
+	"CommonTag": "data/tag.zss",
+	"ControllerStickSensitivity": 0.4,
+	"Credits": 10,
+	"DebugKeys": true,
+	"DebugMode": false,
+	"Difficulty": 8,
+	"ExternalShaders": [],
+	"Fullscreen": false,
+	"GameWidth": 640,
+	"GameHeight": 480,
+	"GameSpeed": 100,
+	"IP": {},
 	"LifebarFontScale": 1,
+	"LifeMul": 100,
+	"ListenPort": "7500",
+	"LocalcoordScalingType": 1,
+	"MaxAfterImage": 128,
+	"MaxDrawGames": -2,
+	"MaxExplod": 512,
+	"MaxHelper": 56,
+	"MaxPlayerProjectile": 256,
+	"Motif": "data/system.def",
+	"MSAA": false,
+	"MulAttackLifeToPower": 0.7,
+	"MulGetHitLifeToPower": 0.6,
+	"MulSuperTargetDefence": 1.5,
+	"NumSimul": [
+		2,
+		4
+	],
+	"NumTag": [
+		2,
+		4
+	],
+	"NumTurns": [
+		2,
+		4
+	],
+	"PostProcessingShader": 0,
+	"QuickContinue": false,
+	"QuickLaunch": 0,
+	"RatioAttack": [
+		0.82,
+		1,
+		1.17,
+		1.3
+	],
+	"RatioLife": [
+		0.8,
+		1,
+		1.17,
+		1.4
+	],
+	"RoundsNumSingle": 2,
+	"RoundsNumTeam": 2,
+	"RoundTime": 99,
+	"SimulLoseKO": true,
+	"SingleVsTeamLife": 100,
 	"System": "external/script/main.lua",
+	"TagLoseKO": false,
+	"TeamLifeAdjustment": false,
+	"TeamPowerShare": true,
+	"TurnsRecoveryBase": 0,
+	"TurnsRecoveryBonus": 20,
+	"VolumeBgm": 80,
+	"VolumeMaster": 80,
+	"VolumeSfx": 80,
+	"WindowMainIconLocation": [
+		"external/icons/IkemenCylia.png"
+	],
+	"WindowTitle": "Ikemen GO",
+	"XinputTriggerSensitivity": 0,
+	"ZoomActive": false,
+	"ZoomMax": 1.1,
+	"ZoomMin": 0.75,
+	"ZoomSpeed": 1,
 	"KeyConfig": [
 		{
 			"Joystick": -1,
-			"Buttons": ["UP", "DOWN", "LEFT", "RIGHT", "z", "x", "c", "a", "s", "d", "RETURN", "q", "w"]
+			"Buttons": [
+				"UP",
+				"DOWN",
+				"LEFT",
+				"RIGHT",
+				"z",
+				"x",
+				"c",
+				"a",
+				"s",
+				"d",
+				"RETURN",
+				"q",
+				"w"
+			]
 		},
 		{
 			"Joystick": -1,
-			"Buttons": ["t", "g", "f", "h", "j", "k", "l", "u", "i", "o", "RSHIFT", "LEFTBRACKET", "RIGHTBRACKET"]
+			"Buttons": [
+				"t",
+				"g",
+				"f",
+				"h",
+				"j",
+				"k",
+				"l",
+				"u",
+				"i",
+				"o",
+				"RSHIFT",
+				"LEFTBRACKET",
+				"RIGHTBRACKET"
+			]
 		}
 	],
 	"JoystickConfig": [
 		{
 			"Joystick": 0,
-			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+			"Buttons": [
+				"-3",
+				"-4",
+				"-1",
+				"-2",
+				"0",
+				"1",
+				"4",
+				"2",
+				"3",
+				"5",
+				"7",
+				"-10",
+				"-12"
+			]
 		},
 		{
 			"Joystick": 1,
-			"Buttons": ["-3", "-4", "-1", "-2", "0", "1", "4", "2", "3", "5", "7", "-10", "-12"]
+			"Buttons": [
+				"-3",
+				"-4",
+				"-1",
+				"-2",
+				"0",
+				"1",
+				"4",
+				"2",
+				"3",
+				"5",
+				"7",
+				"-10",
+				"-12"
+			]
 		}
-	],
-	"ControllerStickSensitivity": 0.4,
-	"XinputTriggerSensitivity": 0,
-	"Motif": "data/system.def",
-	"CommonAir": "data/common.air",
-	"CommonCmd": "data/common.cmd",
-	"SimulMode": true,
-	"LifeMul": 100,
-	"Team1VS2Life": 100,
-	"TurnsRecoveryBase": 0,
-	"TurnsRecoveryBonus": 20,
-	"ZoomActive": false,
-	"ZoomMin": 0.75,
-	"ZoomMax": 1.1,
-	"ZoomSpeed": 1,
-	"RoundTime": 99,
-	"RoundsNumSingle": -1,
-	"RoundsNumTeam": -1,
-	"MaxDrawGames": -2,
-	"NumTurns": 4,
-	"NumSimul": 4,
-	"NumTag": 4,
-	"Difficulty": 8,
-	"Credits": 10,
-	"ListenPort": 7500,
-	"IP": {
-		
-	},
-	"QuickContinue": false,
-	"AIRandomColor": true,
-	"AIRamping": true,
-	"AutoGuard": false,
-	"TeamPowerShare": false,
-	"TeamLifeShare": false,
-	"Fullscreen": false,
-	"AudioDucking": false,
-	"QuickLaunch": 0,
-	"AllowDebugKeys": true,
-	"ComboExtraFrameWindow": 1,
-	"ExternalShaders": [],
-	"LocalcoordScalingType": 1,
-	"MSAA": false,
-	"LifeRatio":[0.80, 1.0, 1.17, 1.40],
-	"AttackRatio":[0.82, 1.0, 1.17, 1.30],
-	"WindowMainIconLocation": [
-		"external/icons/IkemenCylia.png"
 	]
 }
 `, "\n"), "\r\n"))
 	tmp := struct {
-		WindowTitle            string
-		HelperMax              int32
-		PlayerProjectileMax    int
-		ExplodMax              int
-		AfterImageMax          int32
-		MasterVolume           int
-		WavVolume              int
-		BgmVolume              int
-		Attack_LifeToPowerMul  float32 `json:"Attack.LifeToPowerMul"`
-		GetHit_LifeToPowerMul  float32 `json:"GetHit.LifeToPowerMul"`
-		Width                  int32
-		Height                 int32
-		Super_TargetDefenceMul float32 `json:"Super.TargetDefenceMul"`
-		LifebarFontScale       float32
-		System                 string
-		KeyConfig              []struct {
-			Joystick int
-			Buttons  []interface{}
-		}
-		JoystickConfig         []struct {
-			Joystick int
-			Buttons  []interface{}
-		}
-		ControllerStickSensitivity float32
-		XinputTriggerSensitivity   float32
-		Motif                      string
+		AIRamping                  bool
+		AIRandomColor              bool
+		AudioDucking               bool
+		AutoGuard                  bool
+		ComboExtraFrameWindow      int32
 		CommonAir                  string
 		CommonCmd                  string
-		SimulMode                  bool
+		CommonConst                string
+		CommonScore                string
+		CommonTag                  string
+		ControllerStickSensitivity float32
+		Credits                    int
+		DebugKeys                  bool
+		DebugMode                  bool
+		Difficulty                 int
+		ExternalShaders            []string
+		Fullscreen                 bool
+		GameWidth                  int32
+		GameHeight                 int32
+		GameSpeed                  float32
+		IP                         map[string]string
+		LifebarFontScale           float32
 		LifeMul                    float32
-		Team1VS2Life               float32
-		TurnsRecoveryBase          float32
-		TurnsRecoveryBonus         float32
-		ZoomActive                 bool
-		ZoomMin                    float32
-		ZoomMax                    float32
-		ZoomSpeed                  float32
-		RoundTime                  int32
+		ListenPort                 string
+		LocalcoordScalingType      int32
+		MaxAfterImage              int32
+		MaxDrawGames               int32
+		MaxExplod                  int
+		MaxHelper                  int32
+		MaxPlayerProjectile        int
+		Motif                      string
+		MSAA                       bool
+		MulAttackLifeToPower       float32
+		MulGetHitLifeToPower       float32
+		MulSuperTargetDefence      float32
+		NumSimul                   [2]int
+		NumTag                     [2]int
+		NumTurns                   [2]int
+		PostProcessingShader       int32
+		QuickContinue              bool
+		QuickLaunch                int
+		RatioAttack                [4]float32
+		RatioLife                  [4]float32
 		RoundsNumSingle            int32
 		RoundsNumTeam              int32
-		MaxDrawGames               int32
-		NumTurns                   int
-		NumSimul                   int
-		NumTag                     int
-		Difficulty                 int
-		Credits                    int
-		ListenPort                 int
-		IP                         map[string]string
-		QuickContinue              bool
-		AIRandomColor              bool
-		AIRamping                  bool
-		AutoGuard                  bool
+		RoundTime                  int32
+		SimulLoseKO                bool
+		SingleVsTeamLife           float32
+		System                     string
+		TagLoseKO                  bool
+		TeamLifeAdjustment         bool
 		TeamPowerShare             bool
-		TeamLifeShare              bool
-		Fullscreen                 bool
-		PostProcessingShader       int32
-		AudioDucking               bool
-		QuickLaunch                int
-		AllowDebugKeys             bool
-		ComboExtraFrameWindow      int32
-		ExternalShaders            []string
-		LocalcoordScalingType      int32
-		MSAA                       bool
-		LifeRatio                  [4]float32
-		AttackRatio                [4]float32
+		TurnsRecoveryBase          float32
+		TurnsRecoveryBonus         float32
+		VolumeBgm                  int
+		VolumeMaster               int
+		VolumeSfx                  int
 		WindowMainIconLocation     []string
+		WindowTitle                string
+		XinputTriggerSensitivity   float32
+		ZoomActive                 bool
+		ZoomMax                    float32
+		ZoomMin                    float32
+		ZoomSpeed                  float32
+		KeyConfig                  []struct {
+			Joystick int
+			Buttons  []interface{}
+		}
+		JoystickConfig             []struct {
+			Joystick int
+			Buttons  []interface{}
+		}
 	}{}
 	chk(json.Unmarshal(defcfg, &tmp))
 	if bytes, err := ioutil.ReadFile("save/config.json"); err == nil {
@@ -253,13 +341,13 @@ func main() {
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.windowTitle = tmp.WindowTitle
-	sys.helperMax = tmp.HelperMax
-	sys.playerProjectileMax = tmp.PlayerProjectileMax
-	sys.explodMax = tmp.ExplodMax
-	sys.afterImageMax = tmp.AfterImageMax
-	sys.attack_LifeToPowerMul = tmp.Attack_LifeToPowerMul
-	sys.getHit_LifeToPowerMul = tmp.GetHit_LifeToPowerMul
-	sys.super_TargetDefenceMul = tmp.Super_TargetDefenceMul
+	sys.helperMax = tmp.MaxHelper
+	sys.playerProjectileMax = tmp.MaxPlayerProjectile
+	sys.explodMax = tmp.MaxExplod
+	sys.afterImageMax = tmp.MaxAfterImage
+	sys.attack_LifeToPowerMul = tmp.MulAttackLifeToPower
+	sys.getHit_LifeToPowerMul = tmp.MulGetHitLifeToPower
+	sys.super_TargetDefenceMul = tmp.MulSuperTargetDefence
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.quickLaunch = tmp.QuickLaunch
@@ -267,10 +355,11 @@ func main() {
 	sys.externalShaderList = tmp.ExternalShaders
 	// For debug testing letting this here commented because it could be useful in the future.
 	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
-	sys.masterVolume = tmp.MasterVolume
-	sys.wavVolume = tmp.WavVolume
-	sys.bgmVolume = tmp.BgmVolume
+	sys.masterVolume = tmp.VolumeMaster
+	sys.wavVolume = tmp.VolumeSfx
+	sys.bgmVolume = tmp.VolumeBgm
 	sys.AudioDucking = tmp.AudioDucking
+	sys.listenPort = tmp.ListenPort
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
@@ -285,7 +374,7 @@ func main() {
 		}
 		return x
 	}
-	for a := 0; a < Max(tmp.NumSimul, tmp.NumTag); a++ {
+	for a := 0; a < Max(tmp.NumSimul[1], tmp.NumTag[1]); a++ {
 		for _, kc := range tmp.KeyConfig {
 			b := kc.Buttons
 			if kc.Joystick < 0 {
@@ -309,27 +398,26 @@ func main() {
 			}
 		}
 	}
-	
-	sys.teamLifeShare = tmp.TeamLifeShare
+	sys.lifeAdjustment = tmp.TeamLifeAdjustment
 	sys.fullscreen = tmp.Fullscreen
 	sys.PostProcessingShader = tmp.PostProcessingShader
 	sys.MultisampleAntialiasing = tmp.MSAA
 	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.allowDebugKeys = tmp.AllowDebugKeys
+	sys.allowDebugKeys = tmp.DebugKeys
+	sys.debugDraw = tmp.DebugMode
 	air, err := ioutil.ReadFile(tmp.CommonAir)
-	if err != nil {
-		fmt.Print(err)
-	}
-	sys.commonAir = string("\n") + string(air)
+	//chk(err)
+	sys.commonAir = "\n" + string(air)
 	cmd, err := ioutil.ReadFile(tmp.CommonCmd)
-	if err != nil {
-		fmt.Print(err)
-	}
-	sys.commonCmd = string("\n") + string(cmd)
+	//chk(err)
+	sys.commonCmd = "\n" + string(cmd)
+	sys.commonConst = tmp.CommonConst
+	sys.commonScore = tmp.CommonScore
+	sys.commonTag = tmp.CommonTag
 	//os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("Ikemen.log")
 	defer closeLog(log)
-	l := sys.init(tmp.Width, tmp.Height)
+	l := sys.init(tmp.GameWidth, tmp.GameHeight)
 	if err := l.DoFile(tmp.System); err != nil {
 		fmt.Fprintln(log, err)
 		switch err.(type) {

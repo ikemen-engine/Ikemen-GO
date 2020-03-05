@@ -398,8 +398,21 @@ func scriptCommonInit(l *lua.LState) {
 		sys.match = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setLifeShare", func(l *lua.LState) int {
-		sys.teamLifeShare = boolArg(l, 1)
+	luaRegister(l, "setConsecutiveWins", func(l *lua.LState) int {
+		sys.consecutiveWins[int(numArg(l, 1))-1] = int32(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "getConsecutiveWins", func(l *lua.LState) int {
+		l.Push(lua.LNumber(sys.consecutiveWins[int(numArg(l, 1))-1]))
+		return 1
+	})
+	luaRegister(l, "setLifeAdjustment", func(l *lua.LState) int {
+		sys.lifeAdjustment = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setLoseKO", func(l *lua.LState) int {
+		sys.simulLoseKO = boolArg(l, 1)
+		sys.tagLoseKO = boolArg(l, 2)
 		return 0
 	})
 	luaRegister(l, "setMatchWins", func(l *lua.LState) int {
@@ -810,7 +823,7 @@ func systemScriptInit(l *lua.LState) {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			c = strings.Trim(c, "\r")
 			if len(c) > 0 {
-				sys.sel.addCahr(c)
+				sys.sel.addChar(c)
 			}
 		}
 		return 0
@@ -1038,8 +1051,12 @@ func systemScriptInit(l *lua.LState) {
 		sys.lifeMul = float32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setTeam1VS2Life", func(l *lua.LState) int {
-		sys.team1VS2Life = float32(numArg(l, 1))
+	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
+		sys.gameSpeed = float32(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setSingleVsTeamLife", func(l *lua.LState) int {
+		sys.singleVsTeamLife = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setTurnsRecoveryRate", func(l *lua.LState) int {
@@ -1784,10 +1801,88 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "getCharSff", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.sprite))
+		return 1
+	})
+	luaRegister(l, "getCharSnd", func(*lua.LState) int {
+		c := sys.sel.GetChar(int(numArg(l, 1)))
+		l.Push(lua.LString(c.sound))
+		return 1
+	})
+	luaRegister(l, "getAttachedCharInfo", func(*lua.LState) int {
+		def := strArg(l, 1)
+		idx := strings.Index(def, "/")
+		if len(def) >= 4 && strings.ToLower(def[len(def)-4:]) == ".def" {
+			if idx < 0 {
+				return 0
+			}
+		} else if idx < 0 {
+			def += "/" + def + ".def"
+		} else {
+			def += ".def"
+		}
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+			def = "chars/" + def
+		}
+		if def = FileExist(def); len(def) == 0 {
+			return 0
+		}
+		str, err := LoadText(def)
+		if err != nil {
+			return 0
+		}
+		lines, i, info, files, displayname, sprite, sound := SplitAndTrim(str, "\n"), 0, true, true, "", "", ""
+		for i < len(lines) {
+			is, name, _ := ReadIniSection(lines, &i)
+			switch name {
+			case "info":
+				if info {
+					info = false
+					var ok bool
+					displayname, ok, _ = is.getText("displayname")
+					if !ok {
+						displayname, _, _ = is.getText("name")
+					}
+				}
+			case "files":
+				if files {
+					files = false
+					sprite = is["sprite"]
+					sound = is["sound"]
+				}
+			}
+		}
+		l.Push(lua.LString(def))
+		l.Push(lua.LString(displayname))
+		l.Push(lua.LString(sprite))
+		l.Push(lua.LString(sound))
+		return 4
+	})
+	luaRegister(l, "getWaveData", func(*lua.LState) int {
+		//path, group, sound, loops before give up searching for group/sound pair (optional)
+		var max uint32
+		if l.GetTop() >= 4 {
+			max = uint32(numArg(l, 4))
+		}
+		w, err := loadFromSnd(strArg(l, 1), int32(numArg(l, 2)), int32(numArg(l, 3)), max)
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
+		l.Push(newUserData(l, w))
+		return 1
+	})
+	luaRegister(l, "wavePlay", func(l *lua.LState) int {
+		w, ok := toUserData(l, 1).(*Wave)
+		if !ok {
+			userDataError(l, 1, w)
+		}
+		w.play()
+		return 0
+	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
-		zoomin, zoomout, stagebgm := sys.sel.GetStageInfo(int(numArg(l, 1)))
-		l.Push(lua.LString(zoomin))
-		l.Push(lua.LString(zoomout))
+		stagebgm, attachedchardef := sys.sel.GetStageInfo(int(numArg(l, 1)))
 		tbl := l.NewTable()
 		for k, v := range stagebgm {
 			subt := l.NewTable()
@@ -1798,7 +1893,8 @@ func systemScriptInit(l *lua.LState) {
 			tbl.RawSetInt(k + 1, subt)
 		}
 		l.Push(tbl)
-		return 3
+		l.Push(lua.LString(attachedchardef))
+		return 2
 	})
 	luaRegister(l, "getGamepadName", func(*lua.LState) int {
 		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
@@ -2359,6 +2455,8 @@ func triggerScriptInit(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.fall.envshake_ampl)
 		case "fall.envshake.phase":
 			ln = lua.LNumber(c.ghv.fall.envshake_phase)
+		case "score":
+			ln = lua.LNumber(c.ghv.score)
 		}
 		l.Push(ln)
 		return 1
@@ -2914,6 +3012,18 @@ func debugScriptInit(l *lua.LState, file string) error {
 	luaRegister(l, "getAllowDebugKeys", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.allowDebugKeys))
 		return 1
+	})
+	luaRegister(l, "resetScore", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.scoreAdd(-sys.debugWC.scoreCurrent)
+		}
+		return 0
+	})
+	luaRegister(l, "markCheat", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.cheated = true
+		}
+		return 0
 	})
 	return l.DoFile(file)
 }

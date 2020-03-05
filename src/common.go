@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -373,6 +374,10 @@ func SectionName(sec string) (string, string) {
 		sec = ""
 	}
 	return strings.ToLower(name), sec
+}
+func HasExtension(file, ext string) bool {
+	match, _ := regexp.MatchString(ext, filepath.Ext(file))
+	return match
 }
 
 type Error string
