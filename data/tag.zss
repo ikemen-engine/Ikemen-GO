@@ -9,16 +9,10 @@ if Time = 0 {
 }
 VelSet{x: 10; y: 0}
 
-ScreenBound{value: 0; movecamera: 0,0}
-if BackEdgeBodyDist <= 0 {
-	NotHitBy{value: SCA; time: 2}
-}
-PlayerPush{value: 0}
-
 if BackEdgeBodyDist >= 0 {
 	if BackEdgeDist + 10 > Map(_iksys_tagSwitchDist) {
 		VelSet{x: 0; y: 0}
-		ChangeState{value: Const(AnimStanding); ctrl: 1}
+		TagIn{stateNo: Const(AnimStanding); ctrl: 1}
 	}
 }
 
@@ -31,11 +25,9 @@ if BackEdgeBodyDist >= 0 {
 persistent(0) {
 	Turn{}
 }
-VelSet{x: 10; y: 0}
+if Time = 0 {TagOut{}}
 
-ScreenBound{value: 0; movecamera: 0,0}
-NotHitBy{value: SCA}
-PlayerPush{value: 0}
+VelSet{x: 10; y: 0}
 
 if BackEdgeDist < -const240p(160) || FrontEdgeDist < -const240p(160) {
 	ChangeState{value: Const(TagStateWaitingOutside)}
@@ -47,10 +39,8 @@ if BackEdgeDist < -const240p(160) || FrontEdgeDist < -const240p(160) {
 [Statedef 5611; type: A; movetype: I; physics: N;
  anim: Const(AnimStanding); velset: 0,0; ctrl: 0;]
 
-ScreenBound{value: 0; movecamera: 0,0}
-NotHitBy{value: SCA}
-PlayerPush{value: 0}
-AssertSpecial{flag: invisible}
+if Time = 0 {TagOut{}}
+AssertSpecial{flag: invisible; flag2: noautoturn}
 
 if Facing != PlayerID(Map(_iksys_tagCurrentID)),Facing {
 	Turn{}
@@ -63,9 +53,6 @@ PosSet{x: (PlayerID(Map(_iksys_tagCurrentID)),Pos X) - 1000 * Facing; y: -150}
 #===============================================================================
 [Statedef 5620; type: S; movetype: I; physics: N;
  anim: Const(AnimJumpForwards_upwards); sprpriority: 2; ctrl: 0;]
-
-NotHitBy{value: SCA}
-PlayerPush{value: 0}
 
 if AnimElem = 2, < 0 {
 	PosSet{x: -243 * Facing; y: 0}
@@ -89,11 +76,8 @@ if Time = 0 {
 	PosSet{y: 0}
 }
 
-NotHitBy{value: SCA}
-PlayerPush{value: 0}
-
 if AnimTime >= 0 {
-	ChangeState{value: Const(AnimStanding); ctrl: 1}
+	TagIn{stateNo: Const(AnimStanding); ctrl: 1}
 }
 
 #===============================================================================

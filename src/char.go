@@ -4779,10 +4779,10 @@ func (c *Char) update(cvmin, cvmax,
 	if c.facing > 0 {
 		min, max = -max, -min
 	}
-	if c.sf(CSF_screenbound) {
+	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		c.drawPos[0] = MaxF(min+sys.xmin/c.localscl, MinF(max+sys.xmax/c.localscl, c.drawPos[0]))
 	}
-	if c.sf(CSF_movecamera_x) && c.scf(SCF_standby) == false {
+	if c.sf(CSF_movecamera_x) && !c.scf(SCF_standby) {
 		*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
 		*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, *rightest))
 		if c.acttmp > 0 && !c.sf(CSF_posfreeze) &&
@@ -4791,7 +4791,7 @@ func (c *Char) update(cvmin, cvmax,
 			*cvmax = MaxF(*cvmax, c.vel[0]*c.localscl*c.facing)
 		}
 	}
-	if c.sf(CSF_movecamera_y) && c.scf(SCF_standby) == false {
+	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
 		*lowest = MinF(0, MaxF(c.drawPos[1]*c.localscl, *lowest))
 	}
@@ -4985,7 +4985,7 @@ func (c *Char) cueDraw() {
 			}
 			return sd
 		}
-		if c.sf(CSF_invisible) || c.scf(SCF_standby) {
+		if c.sf(CSF_invisible) {
 			if rec {
 				c.aimg.recAfterImg(sdf(), c.hitPause())
 			}

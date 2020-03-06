@@ -3551,10 +3551,10 @@ func (c *Compiler) tagIn(is IniSection, sc *StateControllerBase,
 		}
 		return nil
 	})
-	if c.block != nil && c.block.ignorehitpause == -1 {
-		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
-		sys.cgi[c.playerNo].wakewakaLength++
-	}
+	//if c.block != nil && c.block.ignorehitpause == -1 {
+	//	c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
+	//	sys.cgi[c.playerNo].wakewakaLength++
+	//}
 	return *ret, err
 }
 func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
@@ -3578,10 +3578,10 @@ func (c *Compiler) tagOut(is IniSection, sc *StateControllerBase,
 		}
 		return nil
 	})
-	if c.block != nil && c.block.ignorehitpause == -1 {
-		c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
-		sys.cgi[c.playerNo].wakewakaLength++
-	}
+	//if c.block != nil && c.block.ignorehitpause == -1 {
+	//	c.block.ignorehitpause = sys.cgi[c.playerNo].wakewakaLength
+	//	sys.cgi[c.playerNo].wakewakaLength++
+	//}
 	return *ret, err
 }
 func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase,
