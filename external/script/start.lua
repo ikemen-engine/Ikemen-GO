@@ -421,15 +421,27 @@ function start.f_setRounds()
 	if lifebar:lower() ~= main.currentLifebar:lower() then
 		main.currentLifebar = lifebar
 		loadLifebar(lifebar)
+		main.framesPerCount = getFramesPerCount()
 	end
 	setLifeBarElements(main.t_lifebar)
 	--round time
+	local frames = main.framesPerCount
+	local p1FramesMul = 1
+	local p2FramesMul = 1
+	if p1TeamMode == 3 then
+		p1FramesMul = p1NumChars
+	end
+	if p2TeamMode == 3 then
+		p2FramesMul = p2NumChars
+	end
+	frames = frames * math.max(p1FramesMul, p2FramesMul)
+	setFramesPerCount(frames)
 	if main.t_charparam.time and main.t_charparam.rivals and start.f_rivalsMatch('time') then --round time assigned as rivals param
-		setRoundTime(math.max(-1, main.t_selChars[t_p1Selected[1].ref + 1].rivals[matchNo].time * getFramesPerCount()))
+		setRoundTime(math.max(-1, main.t_selChars[t_p1Selected[1].ref + 1].rivals[matchNo].time * frames))
 	elseif main.t_charparam.time and main.t_selChars[t_p2Selected[1].ref + 1].time ~= nil then --round time assigned as character param
-		setRoundTime(math.max(-1, main.t_selChars[t_p2Selected[1].ref + 1].time * getFramesPerCount()))
+		setRoundTime(math.max(-1, main.t_selChars[t_p2Selected[1].ref + 1].time * frames))
 	else --default round time
-		setRoundTime(main.roundTime)
+		setRoundTime(math.max(-1, main.roundTime * frames))
 	end
 	--rounds to win
 	if main.t_charparam.rounds and main.t_charparam.rivals and start.f_rivalsMatch('rounds') then --round num assigned as rivals param
@@ -551,12 +563,12 @@ function start.f_storeSavedData(mode, cleared)
 	if stats.modes == nil then
 		stats.modes = {}
 	end
-	stats.playtime = (stats.playtime or 0) + t_savedData.time.total / getFramesPerCount() --play time
+	stats.playtime = (stats.playtime or 0) + t_savedData.time.total / 60 --play time
 	if stats.modes[mode] == nil then
 		stats.modes[mode] = {}
 	end
 	local t = stats.modes[mode] --mode play time
-	t.playtime = (t.playtime or 0) + t_savedData.time.total / getFramesPerCount()
+	t.playtime = (t.playtime or 0) + t_savedData.time.total / 60
 	if t_sortRanking[mode] == nil then
 		f_saveStats()
 		return --mode can't be cleared, so further data collecting is not needed 
@@ -574,7 +586,7 @@ function start.f_storeSavedData(mode, cleared)
 		t.ranking,
 		{
 			['score'] = t_savedData.score.total[1],
-			['time'] = t_savedData.time.total / getFramesPerCount(),
+			['time'] = t_savedData.time.total / 60,
 			['name'] = t_savedData.name or '',
 			['chars'] = f_listCharRefs(t_p1Selected),
 			['tmode'] = p1TeamMode,
@@ -3649,9 +3661,9 @@ function start.f_result(mode)
 			stateType = '_win'
 		end
 	elseif mode == 'timeattack' then
-		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / getFramesPerCount()))
+		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / 60))
 		txt = txt_resultTimeAttack
-		if t_gameStats.time / getFramesPerCount() >= f_lowestRankingData('time') then
+		if t_gameStats.time / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
 		else
@@ -3661,9 +3673,9 @@ function start.f_result(mode)
 		if winner ~= 1 then
 			return false
 		end
-		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / getFramesPerCount()))
+		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / 60))
 		txt = txt_resultTimeChallenge
-		if t_gameStats.time / getFramesPerCount() >= f_lowestRankingData('time') then
+		if t_gameStats.time / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
 		else

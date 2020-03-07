@@ -431,6 +431,10 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.lifebar.ro.match_maxdrawgames))
 		return 1
 	})
+	luaRegister(l, "setFramesPerCount", func(l *lua.LState) int {
+		sys.lifebar.ti.framespercount = int32(numArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "getFramesPerCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
 		return 1

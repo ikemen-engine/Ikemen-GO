@@ -1392,7 +1392,7 @@ type CharGlobalInfo struct {
 	unhittable       int32
 	quotes           [MaxQuotes]string
 	portraitscale    float32
-	constants        map[string]int32
+	constants        map[string]float32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1523,7 +1523,7 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	mapArray              map[string]int32
+	mapArray              map[string]float32
 	aimg                  AfterImage
 	sounds                Sounds
 	p1facing              float32
@@ -1568,7 +1568,7 @@ func (c *Char) init(n int, idx int32) {
 	if c.helperIndex == 0 {
 		c.keyctrl, c.player = true, true
 	} else {
-		c.mapArray = make(map[string]int32)
+		c.mapArray = make(map[string]float32)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -1683,7 +1683,7 @@ func (c *Char) load(def string) error {
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
 	}
-	c.mapArray = make(map[string]int32)
+	c.mapArray = make(map[string]float32)
 	str, err := LoadText(def)
 	if err != nil {
 		return err
@@ -1749,15 +1749,13 @@ func (c *Char) load(def string) error {
 			if mapArray {
 				mapArray = false
 				for key, value := range is {
-					keylow := strings.ToLower(key)
-					intValue := Atoi(value)
-					c.mapArray[keylow] = intValue
+					c.mapArray[key] = float32(Atof(value))
 				}
 			}
 		}
 	}
 
-	gi.constants = make(map[string]int32)
+	gi.constants = make(map[string]float32)
 	str, err = LoadText(sys.commonConst)
 	if err != nil {
 		return err
@@ -1765,7 +1763,7 @@ func (c *Char) load(def string) error {
 	lines, i = SplitAndTrim(str, "\n"), 0
 	is, _, _ := ReadIniSection(lines, &i)
 	for key, value := range is {
-		gi.constants[key] = Atoi(value)
+		gi.constants[key] = float32(Atof(value))
 	}
 
 	if err := LoadFile(&cns, def, func(filename string) error {
@@ -1992,7 +1990,7 @@ func (c *Char) load(def string) error {
 			if constants {
 				constants = false
 				for key, value := range is {
-					gi.constants[key] = Atoi(value)
+					gi.constants[key] = float32(Atof(value))
 				}
 			}
 		}
@@ -4090,7 +4088,7 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	}
 }
 // MapSet() sets a map to a specific value. (Non case dependent) 
-func (c *Char) mapSet(s string, Value int32, scType int32) {
+func (c *Char) mapSet(s string, Value float32, scType int32) {
 	if s == "" {
 		return
 	}

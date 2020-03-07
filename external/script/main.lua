@@ -854,14 +854,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	end
 	refresh()
 	--set settings
-	setLifeBarElements({['p1score'] = true, ['p2score'] = true})
 	setAutoguard(1, config.AutoGuard)
 	setAutoguard(2, config.AutoGuard)
 	setPowerShare(1, config.TeamPowerShare)
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setRoundTime(math.max(-1, config.RoundTime * getFramesPerCount()))
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -871,6 +869,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	local p2NumChars = 0
 	local p1TeamMode = 0
 	local p2TeamMode = 0
+	local roundTime = config.RoundTime
 	local t = {}
 	for k, v in pairs(main.flags) do
 		if k:match('^-p[1-8]$') then
@@ -912,6 +911,8 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			p1TeamMode = tonumber(v)
 		elseif k:match('^-tmode2$') then
 			p2TeamMode = tonumber(v)
+		elseif k:match('^-time$') then
+			roundTime = tonumber(v)
 		elseif k:match('^-rounds$') then
 			setMatchWins(tonumber(v))
 		elseif k:match('^-draws$') then
@@ -924,6 +925,18 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	if p2TeamMode == 0 and p2NumChars > 1 then
 		p2TeamMode = 1
 	end
+	local frames = getFramesPerCount()
+	local p1FramesMul = 1
+	local p2FramesMul = 1
+	if p1TeamMode == 3 then
+		p1FramesMul = p1NumChars
+	end
+	if p2TeamMode == 3 then
+		p2FramesMul = p2NumChars
+	end
+	frames = frames * math.max(p1FramesMul, p2FramesMul)
+	setFramesPerCount(frames)
+	setRoundTime(math.max(-1, roundTime * frames))
 	--add stage
 	local stage = 'stages/stage0.def'
 	if main.flags['-s'] ~= nil then
@@ -1636,7 +1649,7 @@ main.t_itemname = {
 	['timeattack'] = function(cursorPosY, moveTxt, item, t)
 		main.p2In = 1
 		if main.roundTime == -1 then
-			main.roundTime = 5940 --99s * 60f
+			main.roundTime = 99
 		end
 		main.resetScore = true
 		main.quickContinue = true
@@ -1663,7 +1676,7 @@ main.t_itemname = {
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		if main.roundTime == -1 then
-			main.roundTime = 5940 --99s * 60f
+			main.roundTime = 99
 		end
 		main.stageMenu = true
 		main.p2Faces = true
@@ -2285,7 +2298,7 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setDemoTime(motif.demo_mode.fight_endtime / 60 * getFramesPerCount())
+	setDemoTime(motif.demo_mode.fight_endtime * 60)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -2294,8 +2307,8 @@ function main.f_default()
 	setConsecutiveWins(2, 0)
 	setGameMode('')
 	--default values for all modes
-	main.matchWins = {options.roundsNumSingle, options.roundsNumTeam, options.maxDrawGames}
-	main.roundTime = math.max(-1, config.RoundTime * getFramesPerCount()) --default round time using lifebar data
+	main.matchWins = {main.roundsNumSingle, main.roundsNumTeam, main.maxDrawGames}
+	main.roundTime = math.max(-1, config.RoundTime) --default round time
 	main.p1Char = nil --no predefined P1 character (assigned via table: {X, Y, (...)})
 	main.p2Char = nil --no predefined P2 character (assigned via table: {X, Y, (...)})
 	main.p1TeamMenu = nil --no predefined P1 team mode (assigned via table: {mode = X, chars = Y})

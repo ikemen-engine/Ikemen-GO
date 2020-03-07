@@ -2205,6 +2205,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.round(&bv1, bv2)
 			bv = bv1
 		}
+	case "float":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_float)
 	case "const240p":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
@@ -6697,7 +6702,7 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) (error) {
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Int, 1, false); err != nil {
+			mapSet_value, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil

@@ -440,6 +440,7 @@ const (
 	OC_ex_max
 	OC_ex_min
 	OC_ex_round
+	OC_ex_float
 	OC_ex_ailevelf // float version of AILevel
 )
 const (
@@ -1546,7 +1547,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_constants:
-		sys.bcStack.PushI(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
 	case OC_const_ratiolevel:
 		sys.bcStack.PushI(c.ratioLevel())
@@ -1727,12 +1728,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_round:
 		v2 := sys.bcStack.Pop()
 		be.round(sys.bcStack.Top(), v2)
+	case OC_ex_float:
+		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	case OC_ex_maparray:
-		sys.bcStack.PushI(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
@@ -6176,14 +6179,14 @@ const (
 func (sc mapSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	var s string
-	var value int32
+	var value float32
 	var scType int32
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case mapSet_mapArray:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case mapSet_value:
-			value = exp[0].evalI(c)
+			value = exp[0].evalF(c)
 		case mapSet_type:
 			scType = exp[0].evalI(c)
 		case mapSet_redirectid:

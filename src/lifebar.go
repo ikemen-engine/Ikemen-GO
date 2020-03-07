@@ -1250,7 +1250,7 @@ func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	if tr.active && sys.lifebar.ti.framespercount > 0 &&
 		tr.text_font[0] >= 0 && int(tr.text_font[0]) < len(f) && sys.time >= 0 {
 		text := tr.text_text
-		totalSec := float64(timeTotal()) / float64(sys.lifebar.ti.framespercount)
+		totalSec := float64(timeTotal()) / 60
 		h := math.Floor(totalSec / 3600)
 		m := math.Floor((totalSec / 3600 - h) * 60)
 		s := math.Floor(((totalSec / 3600 - h) * 60 - m) * 60)

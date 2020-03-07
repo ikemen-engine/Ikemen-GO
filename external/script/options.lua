@@ -7,20 +7,21 @@ local options = {}
 local modified = 0
 local needReload = 0
 
+main.framesPerCount = getFramesPerCount()
 if config.RoundsNumSingle == -1 then
-	options.roundsNumSingle = getMatchWins()
+	main.roundsNumSingle = getMatchWins()
 else
-	options.roundsNumSingle = config.RoundsNumSingle
+	main.roundsNumSingle = config.RoundsNumSingle
 end
 if config.RoundsNumTeam == -1 then
-	options.roundsNumTeam = getMatchWins()
+	main.roundsNumTeam = getMatchWins()
 else
-	options.roundsNumTeam = config.RoundsNumTeam
+	main.roundsNumTeam = config.RoundsNumTeam
 end
 if config.MaxDrawGames == -2 then
-	options.maxDrawGames = getMatchMaxDrawGames()
+	main.maxDrawGames = getMatchMaxDrawGames()
 else
-	options.maxDrawGames = config.MaxDrawGames
+	main.maxDrawGames = config.MaxDrawGames
 end
 
 --return string depending on bool
@@ -489,9 +490,9 @@ options.t_itemname = {
 			config.ZoomMin = 0.75
 			config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
-			options.roundsNumSingle = getMatchWins()
-			options.roundsNumTeam = getMatchWins()
-			options.maxDrawGames = getMatchMaxDrawGames()
+			main.roundsNumSingle = getMatchWins()
+			main.roundsNumTeam = getMatchWins()
+			main.maxDrawGames = getMatchMaxDrawGames()
 			options.f_resetVardisplay(options.menu)
 			setListenPort(config.ListenPort)
 			modified = 1
@@ -548,51 +549,51 @@ options.t_itemname = {
 	end,
 	--Rounds to Win Single
 	['roundsnumsingle'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and options.roundsNumSingle < 10 then
+		if main.input({1, 2}, {'$F'}) and main.roundsNumSingle < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.roundsNumSingle = options.roundsNumSingle + 1
-			t.items[item].vardisplay = options.roundsNumSingle
-			config.RoundsNumSingle = options.roundsNumSingle
+			main.roundsNumSingle = main.roundsNumSingle + 1
+			t.items[item].vardisplay = main.roundsNumSingle
+			config.RoundsNumSingle = main.roundsNumSingle
 			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and options.roundsNumSingle > 1 then
+		elseif main.input({1, 2}, {'$B'}) and main.roundsNumSingle > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.roundsNumSingle = options.roundsNumSingle - 1
-			t.items[item].vardisplay = options.roundsNumSingle
-			config.RoundsNumSingle = options.roundsNumSingle
+			main.roundsNumSingle = main.roundsNumSingle - 1
+			t.items[item].vardisplay = main.roundsNumSingle
+			config.RoundsNumSingle = main.roundsNumSingle
 			modified = 1
 		end
 		return true
 	end,
 	--Rounds to Win Simul/Tag
 	['roundsnumteam'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and options.roundsNumTeam < 10 then
+		if main.input({1, 2}, {'$F'}) and main.roundsNumTeam < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.roundsNumTeam = options.roundsNumTeam + 1
-			t.items[item].vardisplay = options.roundsNumTeam
-			config.RoundsNumTeam = options.roundsNumTeam
+			main.roundsNumTeam = main.roundsNumTeam + 1
+			t.items[item].vardisplay = main.roundsNumTeam
+			config.RoundsNumTeam = main.roundsNumTeam
 			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and options.roundsNumTeam > 1 then
+		elseif main.input({1, 2}, {'$B'}) and main.roundsNumTeam > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.roundsNumTeam = options.roundsNumTeam - 1
-			t.items[item].vardisplay = options.roundsNumTeam
-			config.RoundsNumTeam = options.roundsNumTeam
+			main.roundsNumTeam = main.roundsNumTeam - 1
+			t.items[item].vardisplay = main.roundsNumTeam
+			config.RoundsNumTeam = main.roundsNumTeam
 			modified = 1
 		end
 		return true
 	end,
 	--Max Draw Games
 	['maxdrawgames'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and options.maxDrawGames < 10 then
+		if main.input({1, 2}, {'$F'}) and main.maxDrawGames < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.maxDrawGames = options.maxDrawGames + 1
-			t.items[item].vardisplay = options.maxDrawGames
-			config.MaxDrawGames = options.maxDrawGames
+			main.maxDrawGames = main.maxDrawGames + 1
+			t.items[item].vardisplay = main.maxDrawGames
+			config.MaxDrawGames = main.maxDrawGames
 			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and options.maxDrawGames > -1 then
+		elseif main.input({1, 2}, {'$B'}) and main.maxDrawGames > -1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			options.maxDrawGames = options.maxDrawGames - 1
-			t.items[item].vardisplay = options.maxDrawGames
-			config.MaxDrawGames = options.maxDrawGames
+			main.maxDrawGames = main.maxDrawGames - 1
+			t.items[item].vardisplay = main.maxDrawGames
+			config.MaxDrawGames = main.maxDrawGames
 			modified = 1
 		end
 		return true
@@ -742,6 +743,8 @@ options.t_itemname = {
 			end
 			t.submenu[t.items[item].itemname].loop()
 			t.items[item].vardisplay = f_externalShaderName()
+			modified = 1
+			needReload = 1
 		end
 		return true
 	end,
@@ -1469,9 +1472,9 @@ end
 function options.f_vardisplay(itemname)
 	if itemname == 'portchange' then return config.ListenPort end
 	if itemname == 'roundtime' then return options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_valuename_none}, config.RoundTime) end
-	if itemname == 'roundsnumsingle' then return options.roundsNumSingle end
-	if itemname == 'roundsnumteam' then return options.roundsNumTeam end
-	if itemname == 'maxdrawgames' then return options.maxDrawGames end
+	if itemname == 'roundsnumsingle' then return main.roundsNumSingle end
+	if itemname == 'roundsnumteam' then return main.roundsNumTeam end
+	if itemname == 'maxdrawgames' then return main.maxDrawGames end
 	if itemname == 'difficulty' then return config.Difficulty end
 	if itemname == 'credits' then return config.Credits end
 	if itemname == 'quickcontinue' then return options.f_boolDisplay(config.QuickContinue) end

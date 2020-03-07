@@ -62,6 +62,7 @@ func main() {
 					fmt.Println(" -p<n>.attackRatio <ratio>  Sets player n's attack ratio to <ratio>")
 					fmt.Println(" -tmode1 <tmode>            Sets p1 side team mode to <tmode>")
 					fmt.Println(" -tmode2 <tmode>            Sets p2 side team mode to <tmode>")
+					fmt.Println(" -time <num>                Round time (-1 to disable)")
 					fmt.Println(" -rounds <num>              Plays for <num> rounds, and then quits")
 					fmt.Println(" -s <stagename>             Loads stage <stagename>")
 					fmt.Println("\nPress ENTER to exit.")
