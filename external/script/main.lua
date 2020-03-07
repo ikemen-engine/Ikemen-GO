@@ -2288,27 +2288,8 @@ if main.debugLog then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 local demoFrameCounter = 0
 local introWaitCycles = 0
 function main.f_default()
-	demoFrameCounter = 0
-	setAutoLevel(false) --generate autolevel.txt in game dir
-	setHomeTeam(2) --P2 side considered the home team: http://mugenguild.com/forum/topics/ishometeam-triggers-169132.0.html
-	--settings adjustable via options
-	setAutoguard(1, config.AutoGuard)
-	setAutoguard(2, config.AutoGuard)
-	setPowerShare(1, config.TeamPowerShare)
-	setPowerShare(2, config.TeamPowerShare)
-	setLifeAdjustment(config.TeamLifeAdjustment)
-	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setDemoTime(motif.demo_mode.fight_endtime * 60)
-	setLifeMul(config.LifeMul / 100)
-	setGameSpeed(config.GameSpeed / 100)
-	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
-	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
-	setConsecutiveWins(1, 0)
-	setConsecutiveWins(2, 0)
-	setGameMode('')
-	--default values for all modes
 	main.matchWins = {main.roundsNumSingle, main.roundsNumTeam, main.maxDrawGames}
-	main.roundTime = math.max(-1, config.RoundTime) --default round time
+	main.roundTime = config.RoundTime --default round time
 	main.p1Char = nil --no predefined P1 character (assigned via table: {X, Y, (...)})
 	main.p2Char = nil --no predefined P2 character (assigned via table: {X, Y, (...)})
 	main.p1TeamMenu = nil --no predefined P1 team mode (assigned via table: {mode = X, chars = Y})
@@ -2327,6 +2308,24 @@ function main.f_default()
 	main.f_resetLifebar()
 	main.p1In = 1 --P1 controls P1 side of the select screen
 	main.p2In = 2 --P2 controls P2 side of the select screen
+	demoFrameCounter = 0
+	setAutoLevel(false) --generate autolevel.txt in game dir
+	setHomeTeam(2) --P2 side considered the home team: http://mugenguild.com/forum/topics/ishometeam-triggers-169132.0.html
+	setConsecutiveWins(1, 0)
+	setConsecutiveWins(2, 0)
+	setGameMode('')
+	setAutoguard(1, config.AutoGuard)
+	setAutoguard(2, config.AutoGuard)
+	setPowerShare(1, config.TeamPowerShare)
+	setPowerShare(2, config.TeamPowerShare)
+	setLifeAdjustment(config.TeamLifeAdjustment)
+	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
+	setDemoTime(motif.demo_mode.fight_endtime * 60)
+	setLifeMul(config.LifeMul / 100)
+	setGameSpeed(config.GameSpeed / 100)
+	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
+	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
+	setRoundTime(math.max(-1, main.roundTime * main.framesPerCount))
 	resetRemapInput()
 end
 
