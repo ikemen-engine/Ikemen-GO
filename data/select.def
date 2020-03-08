@@ -62,11 +62,6 @@
  ;   bgmusic.victory assignment. You can use multiple musicvictory parameters
  ;   for random selection.
  ;
- ; - zoom
- ;   IKEMEN feature: Set the paramvalue to 0 to avoid stage zoom even if it is
- ;   enabled globally. Useful for characters that don't work well with zoom (for
- ;   example bonus characters)
- ;
  ; - ai
  ;   IKEMEN feature: Set the paramvalue between 1 and 8 to force AI Level
  ;   regardless of difficulty and AI ramping settings.
@@ -153,10 +148,10 @@
  ;   way. paramname refers to arcade match number (for example 4 = 4th match).
  ;   paramvalue, enclosed in {} brackets, follows the same syntax as adding a
  ;   new character with optional stage assignment and accepts following optional
- ;   char parameters: music, musicalt, musiclife, musicvictory, zoom, ai,
- ;   vsscreen, winscreen, rounds, time, lifebar, onlyme. If 'onlyme' parameter
- ;   is not set and you're playing in team mode the referenced character becomes
- ;   the opposite team leader, and other characters follows order settings.
+ ;   char parameters: music, musicalt, musiclife, musicvictory, ai, vsscreen,
+ ;   winscreen, rounds, time, lifebar, onlyme. If 'onlyme' parameter is not set
+ ;   and you're playing in team mode the referenced character becomes the
+ ;   opposite team leader, and other characters follows order settings.
  ;   Characters and stages referenced here, if not already added as separate
  ;   entries, won't be selectable in select screen.
  ;
@@ -247,26 +242,9 @@ kfm, stages/kfm.def
  ;   facing opponent with the exact order paramvalue will result in stage being
  ;   randomly chosen from a pool of stages with the matching order.
  ;
- ; - zoom
- ;   IKEMEN feature: Set the paramvalue to 0 to avoid stage zoom even if it is
- ;   enabled globally. And the other way around.
- ;
- ; - zoomMin
- ;   IKEMEN feature: Set the paramvalue to overwrite global maximum zoom out
- ;   setting for this particular stage.
- ;
- ; - zoomMax
- ;   IKEMEN feature: Set the paramvalue to overwrite global maximum zoom in
- ;   setting for this particular stage.
- ;
- ; - zoomSpeed
- ;   IKEMEN feature: Set the paramvalue to overwrite global zoom speed setting
- ;   for this particular stage.
- ;
  ;Examples:
  ; stages/mybg.def, music=sound/song.mp3, music=sound/song2.mp3
- ; stages/mybg.def, zoom=0, order=3
- ; stages/mybg.def, zoom=1, zoomMin=0.75, zoomMax=1.1, zoomSpeed=1
+ ; stages/mybg.def, order=3
  ;
  ;Insert your stages below.
 
