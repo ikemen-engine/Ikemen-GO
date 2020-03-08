@@ -972,7 +972,10 @@ func systemScriptInit(l *lua.LState) {
 		}
 		if !sys.frameSkip {
 			c := sys.sel.GetChar(n)
-			if c != nil && c.lportrait != nil {
+			if c != nil {
+				if c.lportrait == nil {
+					c.loadPortrait(true)
+				}
 				if c.portrait_scale != 1 {
 					xscl *= c.portrait_scale
 					yscl *= c.portrait_scale
@@ -980,20 +983,81 @@ func systemScriptInit(l *lua.LState) {
 				paltex := c.lportrait.PalTex
 				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil, paltex)
 			}
-			//QuickLaunch用キャラセレポートレイト読み込み
-			if c.sportrait == nil {
-				LoadFile(&c.sprite, c.def, func(file string) error {
-					var err error
-					c.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
-					if err != nil {
-						c.sportrait = newSprite()
-						return nil
-					}
-					if len(c.pal) == 0 {
-						c.pal, _ = selectablePalettes(file)
-					}
-					return nil
-				})
+		}
+		return 0
+	})
+	luaRegister(l, "drawSmallPortrait", func(l *lua.LState) int {
+		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
+		var xscl, yscl float32 = 1, 1
+		if l.GetTop() >= 4 {
+			xscl = float32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				yscl = float32(numArg(l, 5))
+			}
+		}
+		if !sys.frameSkip {
+			c := sys.sel.GetChar(n)
+			if c != nil {
+				if c.sportrait == nil {
+					return 0
+					//c.loadPortrait(true)
+				}
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.sportrait.PalTex
+				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex)
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "drawVersusPortrait", func(l *lua.LState) int {
+		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
+		var xscl, yscl float32 = 1, 1
+		if l.GetTop() >= 4 {
+			xscl = float32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				yscl = float32(numArg(l, 5))
+			}
+		}
+		if !sys.frameSkip {
+			c := sys.sel.GetChar(n)
+			if c != nil {
+				if c.vsportrait == nil {
+					c.loadPortrait(true)
+				}
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.vsportrait.PalTex
+				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex)
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "drawStagePortrait", func(l *lua.LState) int {
+		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
+		var xscl, yscl float32 = 1, 1
+		if l.GetTop() >= 4 {
+			xscl = float32(numArg(l, 4))
+			if l.GetTop() >= 5 {
+				yscl = float32(numArg(l, 5))
+			}
+		}
+		if !sys.frameSkip {
+			c := sys.sel.GetStage(n)
+			if c != nil {
+				if c.stageportrait == nil {
+					c.loadPortrait()
+				}
+				if c.portrait_scale != 1 {
+					xscl *= c.portrait_scale
+					yscl *= c.portrait_scale
+				}
+				paltex := c.stageportrait.PalTex
+				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex)
 			}
 		}
 		return 0
@@ -1600,69 +1664,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(ret))
 		return 1
 	})
-	luaRegister(l, "drawSmallPortrait", func(l *lua.LState) int {
-		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
-		var xscl, yscl float32 = 1, 1
-		if l.GetTop() >= 4 {
-			xscl = float32(numArg(l, 4))
-			if l.GetTop() >= 5 {
-				yscl = float32(numArg(l, 5))
-			}
-		}
-		if !sys.frameSkip {
-			c := sys.sel.GetChar(n)
-			if c != nil && c.sportrait != nil {
-				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
-				}
-				paltex := c.sportrait.PalTex
-				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex)
-			}
-		}
-		return 0
-	})
-	luaRegister(l, "drawVersusPortrait", func(l *lua.LState) int {
-		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
-		var xscl, yscl float32 = 1, 1
-		if l.GetTop() >= 4 {
-			xscl = float32(numArg(l, 4))
-			if l.GetTop() >= 5 {
-				yscl = float32(numArg(l, 5))
-			}
-		}
-		if !sys.frameSkip {
-			c := sys.sel.GetChar(n)
-			if c != nil && c.vsportrait != nil {
-				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
-				}
-				paltex := c.vsportrait.PalTex
-				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex)
-			}
-			//QuickLaunch用キャラセレポートレイト読み込み
-			if c.lportrait == nil {
-				LoadFile(&c.sprite, c.def, func(file string) error {
-					var err error
-					c.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
-					if err != nil {
-						c.lportrait = newSprite()
-					}
-					c.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
-					if err != nil {
-						c.vsportrait = c.lportrait
-					}
-					if len(c.pal) == 0 {
-						c.pal, _ = selectablePalettes(file)
-					}
-					return nil
-				})
-
-			}
-		}
-		return 0
-	})
 	luaRegister(l, "drawCharSprite", func(l *lua.LState) int {
 		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing
 		pn := int(numArg(l, 1))
@@ -1725,30 +1726,6 @@ func systemScriptInit(l *lua.LState) {
 				anim.Reset()
 			}
 		})
-		return 0
-	})
-	luaRegister(l, "drawStagePortrait", func(l *lua.LState) int {
-		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
-		var xscl, yscl float32 = 1, 1
-		if l.GetTop() >= 4 {
-			xscl = float32(numArg(l, 4))
-			if l.GetTop() >= 5 {
-				yscl = float32(numArg(l, 5))
-			}
-		}
-		if !sys.frameSkip {
-			c := sys.sel.GetStage(n)
-			if c != nil && c.stageportrait != nil {
-				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
-				}
-				xscl *= c.xscale
-				yscl *= c.yscale
-				paltex := c.stageportrait.PalTex
-				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex)
-			}
-		}
 		return 0
 	})
 	luaRegister(l, "getCharIntro", func(*lua.LState) int {
@@ -3019,13 +2996,23 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "resetScore", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.scoreAdd(-sys.debugWC.scoreCurrent)
+			side := int(numArg(l, 1)) - 1
+			for _, p := range sys.chars {
+				if len(p) > 0 && p[0].teamside == side {
+					p[0].scoreAdd(-p[0].scoreCurrent)
+				}
+			}
 		}
 		return 0
 	})
 	luaRegister(l, "markCheat", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.cheated = true
+			side := int(numArg(l, 1)) - 1
+			for _, p := range sys.chars {
+				if len(p) > 0 && p[0].teamside == side {
+					p[0].cheated = true
+				}
+			}
 		}
 		return 0
 	})

@@ -1617,13 +1617,16 @@ main.serverhost = false
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1 --P1 controls P2 side of the select screen
 		main.resetScore = true --score is set to lose count after loosing a match
 		main.versusScreen = true --versus screen enabled
 		main.victoryScreen = true --victory screen enabled
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -1647,6 +1650,10 @@ main.t_itemname = {
 	end,
 	--TIME ATTACK
 	['timeattack'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		if main.roundTime == -1 then
 			main.roundTime = 99
@@ -1656,7 +1663,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -1673,6 +1679,10 @@ main.t_itemname = {
 	end,
 	--TIME CHALLENGE
 	['timechallenge'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		if main.roundTime == -1 then
@@ -1696,6 +1706,10 @@ main.t_itemname = {
 	end,
 	--SCORE CHALLENGE
 	['scorechallenge'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.stageMenu = true
@@ -1749,7 +1763,6 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -1767,12 +1780,15 @@ main.t_itemname = {
 	end,
 	--SURVIVAL
 	['survival'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
@@ -1795,7 +1811,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
@@ -1810,7 +1825,11 @@ main.t_itemname = {
 	end,
 	--TRAINING
 	['training'] = function(cursorPosY, moveTxt, item, t)
-		main.p2In = 2
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
+		main.p2In = 1
 		main.stageMenu = true
 		main.p2SelectMenu = true
 		main.roundTime = -1
@@ -1826,6 +1845,10 @@ main.t_itemname = {
 	end,
 	--WATCH
 	['watch'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.aiFight = true --AI = config.Difficulty for all characters enabled
 		main.stageMenu = true
@@ -1849,6 +1872,10 @@ main.t_itemname = {
 	end,
 	--FREE BATTLE
 	['freebattle'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.stageMenu = true
 		main.p2Faces = true
@@ -1865,12 +1892,15 @@ main.t_itemname = {
 	end,
 	--VS 100 KUMITE
 	['vs100kumite'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.matchWins = {1, 0, 0}
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
@@ -1885,11 +1915,14 @@ main.t_itemname = {
 	end,
 	--BOSS RUSH
 	['bossrush'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
@@ -1929,7 +1962,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -1945,7 +1977,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -1961,7 +1992,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -2042,7 +2072,6 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -2068,7 +2097,6 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.time = true
 		main.t_charparam.onlyme = true
@@ -2083,11 +2111,14 @@ main.t_itemname = {
 	end,
 	--BONUS CHAR
 	['bonus'] = function(cursorPosY, moveTxt, item, t)
+		if main.playerInput ~= 1 then
+			remapInput(1, main.playerInput)
+			remapInput(main.playerInput, 1)
+		end
 		main.p2In = 1
 		main.p2SelectMenu = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
-		main.t_charparam.zoom = true
 		main.t_charparam.ai = true
 		main.t_charparam.rounds = true
 		main.t_charparam.time = true
@@ -2200,27 +2231,35 @@ function main.createMenu(tbl, bool_bgreset, bool_storyboard, bool_demo, bool_esc
 				)
 			elseif bool_del and getKey() == 'DELETE' then
 				main.f_deleteIP(item, t)
-			elseif main.input({1, 2}, main.f_extractKeys(motif.title_info.menu_key_accept)) then
-				demoFrameCounter = 0
-				local f = main.f_checkSubmenu(tbl.submenu[t[item].itemname], 2)
-				if f == '' then
-					if t[item].itemname:match('^bonus_') then
-						f = 'bonus'
-					elseif t[item].itemname:match('^ip_') then
-						f = 'connect'
-					else
-						f = t[item].itemname
-					end
+			else
+				main.playerInput = 0
+				if main.input({1}, main.f_extractKeys(motif.title_info.menu_key_accept)) then
+					main.playerInput = 1
+				elseif main.input({2}, main.f_extractKeys(motif.title_info.menu_key_accept)) then
+					main.playerInput = 2
 				end
-				if f == 'back' then
-					sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
-					break
-				elseif f == 'exit' then
-					break
-				elseif main.t_itemname[f] ~= nil then
-					main.f_default()
-					main.t_itemname[f](cursorPosY, moveTxt, item, t)
-					--resetRemapInput()
+				if main.playerInput > 0 then
+					demoFrameCounter = 0
+					local f = main.f_checkSubmenu(tbl.submenu[t[item].itemname], 2)
+					if f == '' then
+						if t[item].itemname:match('^bonus_') then
+							f = 'bonus'
+						elseif t[item].itemname:match('^ip_') then
+							f = 'connect'
+						else
+							f = t[item].itemname
+						end
+					end
+					if f == 'back' then
+						sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+						break
+					elseif f == 'exit' then
+						break
+					elseif main.t_itemname[f] ~= nil then
+						main.f_default()
+						main.t_itemname[f](cursorPosY, moveTxt, item, t)
+						main.f_default()
+					end
 				end
 			end
 		end
@@ -2325,6 +2364,7 @@ function main.f_default()
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
 	setTurnsRecoveryRate(config.TurnsRecoveryBase / 100, config.TurnsRecoveryBonus / 100)
+	setFramesPerCount(main.framesPerCount)
 	setRoundTime(math.max(-1, main.roundTime * main.framesPerCount))
 	resetRemapInput()
 end
@@ -2333,7 +2373,6 @@ function main.f_resetCharparam()
 	main.t_charparam = {
 		stage = false,
 		music = false,
-		zoom = false,
 		ai = false,
 		vsscreen = true,
 		winscreen = true,

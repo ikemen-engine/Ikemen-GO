@@ -139,8 +139,11 @@ func main() {
 		4
 	],
 	"PostProcessingShader": 0,
+	"PreloadingSmall": true,
+	"PreloadingBig": true,
+	"PreloadingVersus": true,
+	"PreloadingStage": true,
 	"QuickContinue": false,
-	"QuickLaunch": 0,
 	"RatioAttack": [
 		0.82,
 		1,
@@ -294,8 +297,11 @@ func main() {
 		NumTag                     [2]int
 		NumTurns                   [2]int
 		PostProcessingShader       int32
+		PreloadingSmall            bool
+		PreloadingBig              bool
+		PreloadingVersus           bool
+		PreloadingStage            bool
 		QuickContinue              bool
-		QuickLaunch                int
 		RatioAttack                [4]float32
 		RatioLife                  [4]float32
 		RoundsNumSingle            int32
@@ -337,30 +343,50 @@ func main() {
 		chk(json.Unmarshal(bytes, &tmp))
 	}
 	cfg, err := json.MarshalIndent(tmp, "", "	")
-	chk(err)
 	chk(ioutil.WriteFile("save/config.json", cfg, 0644))
+	sys.AudioDucking = tmp.AudioDucking
+	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
+	air, err := ioutil.ReadFile(tmp.CommonAir); if err == nil {
+		sys.commonAir = "\n" + string(air)
+	}
+	cmd, err := ioutil.ReadFile(tmp.CommonCmd); if err == nil {
+		sys.commonCmd = "\n" + string(cmd)
+	}
+	sys.commonConst = tmp.CommonConst
+	sys.commonScore = tmp.CommonScore
+	sys.commonTag = tmp.CommonTag
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
-	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
-	sys.windowTitle = tmp.WindowTitle
+	sys.allowDebugKeys = tmp.DebugKeys
+	sys.debugDraw = tmp.DebugMode
+	sys.externalShaderList = tmp.ExternalShaders
+	sys.fullscreen = tmp.Fullscreen
+	sys.lifebarFontScale = tmp.LifebarFontScale
+	sys.listenPort = tmp.ListenPort
+	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
 	sys.helperMax = tmp.MaxHelper
 	sys.playerProjectileMax = tmp.MaxPlayerProjectile
 	sys.explodMax = tmp.MaxExplod
 	sys.afterImageMax = tmp.MaxAfterImage
+	sys.MultisampleAntialiasing = tmp.MSAA
 	sys.attack_LifeToPowerMul = tmp.MulAttackLifeToPower
 	sys.getHit_LifeToPowerMul = tmp.MulGetHitLifeToPower
 	sys.super_TargetDefenceMul = tmp.MulSuperTargetDefence
-	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
-	sys.lifebarFontScale = tmp.LifebarFontScale
-	sys.quickLaunch = tmp.QuickLaunch
-	sys.windowMainIconLocation = tmp.WindowMainIconLocation
-	sys.externalShaderList = tmp.ExternalShaders
-	// For debug testing letting this here commented because it could be useful in the future.
-	// log.Printf("Unmarshaled: %v", tmp.WindowMainIconLocation)
+	sys.PostProcessingShader = tmp.PostProcessingShader
+	sys.preloading.small = tmp.PreloadingSmall
+	sys.preloading.big = tmp.PreloadingBig
+	sys.preloading.versus = tmp.PreloadingVersus
+	sys.preloading.stage = tmp.PreloadingStage
+	sys.lifeAdjustment = tmp.TeamLifeAdjustment
+	sys.bgmVolume = tmp.VolumeBgm
 	sys.masterVolume = tmp.VolumeMaster
 	sys.wavVolume = tmp.VolumeSfx
-	sys.bgmVolume = tmp.VolumeBgm
-	sys.AudioDucking = tmp.AudioDucking
-	sys.listenPort = tmp.ListenPort
+	sys.windowMainIconLocation = tmp.WindowMainIconLocation
+	sys.windowTitle = tmp.WindowTitle
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.cam.ZoomEnable = tmp.ZoomActive
+	sys.cam.ZoomMax = tmp.ZoomMax
+	sys.cam.ZoomMin = tmp.ZoomMin
+	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
@@ -399,22 +425,6 @@ func main() {
 			}
 		}
 	}
-	sys.lifeAdjustment = tmp.TeamLifeAdjustment
-	sys.fullscreen = tmp.Fullscreen
-	sys.PostProcessingShader = tmp.PostProcessingShader
-	sys.MultisampleAntialiasing = tmp.MSAA
-	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.allowDebugKeys = tmp.DebugKeys
-	sys.debugDraw = tmp.DebugMode
-	air, err := ioutil.ReadFile(tmp.CommonAir)
-	//chk(err)
-	sys.commonAir = "\n" + string(air)
-	cmd, err := ioutil.ReadFile(tmp.CommonCmd)
-	//chk(err)
-	sys.commonCmd = "\n" + string(cmd)
-	sys.commonConst = tmp.CommonConst
-	sys.commonScore = tmp.CommonScore
-	sys.commonTag = tmp.CommonTag
 	//os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("Ikemen.log")
 	defer closeLog(log)

@@ -253,7 +253,6 @@ type System struct {
 	keyString               string
 	timerCount              []int32
 	cmdFlags                map[string]string
-	quickLaunch             int
 	masterVolume            int
 	wavVolume               int
 	bgmVolume               int
@@ -310,6 +309,7 @@ type System struct {
 	commonScore             string
 	commonTag               string
 	gameSpeed               float32
+	preloading              Preloading
 }
 
 type OverrideCharData struct {
@@ -333,6 +333,12 @@ type MatchClearance struct {
 	explodes    bool
 	fading      bool
 	updated     bool
+}
+type Preloading struct {
+	small  bool
+	big    bool
+	versus bool
+	stage  bool
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -1910,7 +1916,7 @@ func (s *System) fight() (reload bool) {
 			break
 		}
 		if s.gameMode == "arcade" && s.com[1] > 0 {
-			if s.keyConfig[1].S() || s.joystickConfig[1].S() {
+			if s.keyConfig[s.inputRemap[1]].S() || s.joystickConfig[s.inputRemap[1]].S() {
 				s.challenger = 2
 			}
 			if s.challenger > 0 && s.lifebar.ch.challenger.cnt >= s.lifebar.ch.over_time {
@@ -2071,22 +2077,58 @@ type SelectChar struct {
 	vsportrait        *Sprite
 }
 
-type StageBgm struct {
-	bgmusic      string
-	bgmvolume    int32
-	bgmloopstart int32
-	bgmloopend   int32
+func (sc *SelectChar) loadPortrait(loaded bool) {
+	LoadFile(&sc.sprite, sc.def, func(file string) error {
+		var err error
+		if sc.sportrait == nil && (sys.preloading.small || loaded) {
+			if sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1]); err != nil {
+				sc.sportrait = newSprite()
+			}
+		}
+		if sc.lportrait == nil && (sys.preloading.big || loaded) {
+			if sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1]); err != nil {
+				sc.lportrait = newSprite()
+			}
+		}
+		if sc.vsportrait == nil && (sys.preloading.versus || loaded) {
+			if sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1]); err != nil {
+				sc.vsportrait = sc.lportrait
+			}
+		}
+		if len(sc.pal) == 0 {
+			sc.pal, _ = selectablePalettes(file)
+		}
+		return nil
+	})
 }
 
 type SelectStage struct {
 	def             string
 	name            string
+	spr             string
 	attachedchardef string
 	stagebgm        [4]StageBgm
 	stageportrait   *Sprite
 	portrait_scale  float32
 	xscale          float32
 	yscale          float32
+}
+
+func (ss *SelectStage) loadPortrait() {
+	LoadFile(&ss.spr, ss.def, func(file string) error {
+		var err error
+		if ss.stageportrait, err = loadFromSff(file, sys.sel.stageportrait[0], sys.sel.stageportrait[1]); err != nil {
+			ss.stageportrait = newSprite()
+		}
+		return nil
+	})
+}
+
+type StageBgm struct {
+	bgmusic      string
+	bgmvolume    int32
+	bgmloopstart int32
+	bgmloopend   int32
 }
 
 type Select struct {
@@ -2112,16 +2154,16 @@ type Select struct {
 
 func newSelect() *Select {
 	return &Select{columns: 5,
-					rows: 2,
-					randomscl: [...]float32{1, 1},
-					cellsize: [...]float32{29, 29},
-					cellscale: [...]float32{1, 1},
-					selectedStageNo: -1,
-					sportrait: [...]int16{9000, 0},
-					lportrait: [...]int16{9000, 1},
-					vsportrait: [...]int16{9000, 1},
-					stageportrait: [...]int16{9000, 0},
-					aportrait: make(map[string]Anim)}
+		rows: 2,
+		randomscl: [...]float32{1, 1},
+		cellsize: [...]float32{29, 29},
+		cellscale: [...]float32{1, 1},
+		selectedStageNo: -1,
+		sportrait: [...]int16{9000, 0},
+		lportrait: [...]int16{9000, 1},
+		vsportrait: [...]int16{9000, 1},
+		stageportrait: [...]int16{9000, 0},
+		aportrait: make(map[string]Anim)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -2259,25 +2301,8 @@ func (s *Select) addChar(def string) {
 	}
 	sc.sprite = sprite
 	sc.sound = sound
-	if sys.quickLaunch < 2 {
-		LoadFile(&sprite, def, func(file string) error {
-			var err error
-			sc.sportrait, err = loadFromSff(file, sys.sel.sportrait[0], sys.sel.sportrait[1])
-			if sys.quickLaunch == 1 {
-				//sc.lportrait = sc.sportrait
-				//sc.vsportrait = sc.lportrait
-			} else {
-				sc.lportrait, err = loadFromSff(file, sys.sel.lportrait[0], sys.sel.lportrait[1])
-				sc.vsportrait, err = loadFromSff(file, sys.sel.vsportrait[0], sys.sel.vsportrait[1])
-				if err != nil {
-					sc.vsportrait = sc.lportrait
-				}
-			}
-			if len(sc.pal) == 0 {
-				sc.pal, _ = selectablePalettes(file)
-			}
-			return nil
-		})
+	if sys.preloading.small || sys.preloading.big || sys.preloading.versus {
+		sc.loadPortrait(false)
 	}
 }
 func (s *Select) AddStage(def string) error {
@@ -2348,12 +2373,9 @@ func (s *Select) AddStage(def string) error {
 		case "bgdef":
 			if bgdef {
 				bgdef = false
-				if sys.quickLaunch == 0 {
-					spr := is["spr"]
-					LoadFile(&spr, def, func(file string) error {
-						ss.stageportrait, _ = loadFromSff(file, sys.sel.stageportrait[0], sys.sel.stageportrait[1])
-						return nil
-					})
+				ss.spr = is["spr"]
+				if sys.preloading.stage {
+					ss.loadPortrait()
 				}
 			}
 		case "stageinfo":

@@ -384,12 +384,6 @@ function options.f_displayRatio(value)
 	return ret .. '%'
 end
 
-local t_quicklaunchNames = {
-	[0] = motif.option_info.menu_valuename_disabled,
-	[1] = motif.option_info.menu_valuename_level1,
-	[2] = motif.option_info.menu_valuename_level2,
-}
-
 local function f_externalShaderName()
 	if #config.ExternalShaders > 0 and config.PostProcessingShader ~= 0 then
 		return config.ExternalShaders[1]:gsub('^.+/', '')
@@ -464,8 +458,11 @@ options.t_itemname = {
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
 			config.PostProcessingShader = 0
+			config.PreloadingSmall = true
+			config.PreloadingBig = true
+			config.PreloadingVersus = true
+			config.PreloadingStage = true
 			config.QuickContinue = false
-			config.QuickLaunch = 0
 			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
 			config.RatioAttack = {0.82, 1.0, 1.17, 1.30}
 			config.RoundsNumSingle = 2
@@ -1154,37 +1151,6 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Quick Launch
-	['quicklaunch'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if main.input({1, 2}, {'$F'}) and config.QuickLaunch < #t_quicklaunchNames then
-				config.QuickLaunch = config.QuickLaunch + 1
-			elseif main.input({1, 2}, {'$B'}) and config.QuickLaunch > 0 then
-				config.QuickLaunch = config.QuickLaunch - 1
-			end
-			t.items[item].vardisplay = t_quicklaunchNames[config.QuickLaunch]
-			modified = 1
-		end
-		return true
-	end,
-	--Lifebar Font Scale
-	['lifebarfontscale'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.LifebarFontScale = options.f_precision(config.LifebarFontScale + 0.1, '%.01f')
-			t.items[item].vardisplay = config.LifebarFontScale
-			modified = 1
-			needReload = 1
-		elseif main.input({1, 2}, {'$B'}) and config.LifebarFontScale > 0.1 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.LifebarFontScale = options.f_precision(config.LifebarFontScale - 0.1, '%.01f')
-			t.items[item].vardisplay = config.LifebarFontScale
-			modified = 1
-			needReload = 1
-		end
-		return true
-	end,
 	--HelperMax
 	['helpermax'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F'}) then
@@ -1253,61 +1219,58 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Zoom Active
-	['zoomactive'] = function(cursorPosY, moveTxt, item, t)
+	--Small portraits
+	['preloadingsmall'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.ZoomActive then
-				config.ZoomActive = false
+			if config.PreloadingSmall then
+				config.PreloadingSmall = false
 			else
-				config.ZoomActive = true
-			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.ZoomActive)
+				config.PreloadingSmall = true
+				end
+			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingSmall)
 			modified = 1
 		end
 		return true
 	end,
-	--Default Max Zoom Out
-	['maxzoomout'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.ZoomMin < 10 then
+	--Select portraits
+	['preloadingbig'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomMin = options.f_precision(config.ZoomMin + 0.05, '%.02f')
-			t.items[item].vardisplay = config.ZoomMin
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.ZoomMin > 0.05 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomMin = options.f_precision(config.ZoomMin - 0.05, '%.02f')
-			t.items[item].vardisplay = config.ZoomMin
-			modified = 1
-		end
-		return true
-	end,
-	--Default Max Zoom In
-	['maxzoomin'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.ZoomMax < 10 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomMax = options.f_precision(config.ZoomMax + 0.05, '%.02f')
-			t.items[item].vardisplay = config.ZoomMax
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.ZoomMax > 0.05 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomMax = options.f_precision(config.ZoomMax - 0.05, '%.02f')
-			t.items[item].vardisplay = config.ZoomMax
+			if config.PreloadingBig then
+				config.PreloadingBig = false
+			else
+				config.PreloadingBig = true
+				end
+			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingBig)
 			modified = 1
 		end
 		return true
 	end,
-	--Default Zoom Speed
-	['zoomspeed'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.ZoomSpeed < 10 then
+	--Versus portraits
+	['preloadingversus'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomSpeed = options.f_precision(config.ZoomSpeed + 0.1, '%.01f')
-			t.items[item].vardisplay = config.ZoomSpeed
+			if config.PreloadingVersus then
+				config.PreloadingVersus = false
+			else
+				config.PreloadingVersus = true
+				end
+			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingVersus)
 			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.ZoomSpeed > 0.1 then
+		end
+		return true
+	end,
+	--Stage portraits
+	['preloadingstage'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.ZoomSpeed = options.f_precision(config.ZoomSpeed - 0.1, '%.01f')
-			t.items[item].vardisplay = config.ZoomSpeed
+			if config.PreloadingStage then
+				config.PreloadingStage = false
+			else
+				config.PreloadingStage = true
+				end
+			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingStage)
 			modified = 1
 		end
 		return true
@@ -1516,16 +1479,14 @@ function options.f_vardisplay(itemname)
 	if itemname == 'mintag' then return config.NumTag[1] end
 	if itemname == 'maxtag' then return config.NumTag[2] end
 	if itemname == 'debugkeys' then return options.f_boolDisplay(config.DebugKeys, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
-	if itemname == 'quicklaunch' then return t_quicklaunchNames[config.QuickLaunch] end
-	if itemname == 'lifebarfontscale' then return config.LifebarFontScale end
 	if itemname == 'helpermax' then return config.MaxHelper end
 	if itemname == 'projectilemax' then return config.MaxPlayerProjectile end
 	if itemname == 'explodmax' then return config.MaxExplod end
 	if itemname == 'afterimagemax' then return config.MaxAfterImage end
-	if itemname == 'zoomactive' then return options.f_boolDisplay(config.ZoomActive) end
-	if itemname == 'maxzoomout' then return config.ZoomMin end
-	if itemname == 'maxzoomin' then return config.ZoomMax end
-	if itemname == 'zoomspeed' then return config.ZoomSpeed end
+	if itemname == 'preloadingsmall' then return options.f_boolDisplay(config.PreloadingSmall) end
+	if itemname == 'preloadingbig' then return options.f_boolDisplay(config.PreloadingBig) end
+	if itemname == 'preloadingversus' then return options.f_boolDisplay(config.PreloadingVersus) end
+	if itemname == 'preloadingstage' then return options.f_boolDisplay(config.PreloadingStage) end
 	return ''
 end
 

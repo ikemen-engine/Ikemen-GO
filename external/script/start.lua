@@ -674,45 +674,6 @@ function start.f_setStage(num)
 	end
 	setStage(num)
 	selectStage(num)
-	--zoom
-	local zoom = config.ZoomActive
-	local zoomMin = config.ZoomMin
-	local zoomMax = config.ZoomMax
-	local zoomSpeed = config.ZoomSpeed
-	if main.t_charparam.zoom and main.t_charparam.rivals and start.f_rivalsMatch('zoom') then --zoom assigned as rivals param
-		if main.t_selChars[t_p1Selected[1].ref + 1].rivals[matchNo].zoom == 1 then
-			zoom = true
-		else
-			zoom = false
-		end
-	elseif main.t_charparam.zoom and main.t_selChars[t_p2Selected[1].ref + 1].zoom ~= nil then --zoom assigned as character param
-		if main.t_selChars[t_p2Selected[1].ref + 1].zoom == 1 then
-			zoom = true
-		else
-			zoom = false
-		end
-	elseif main.t_selStages[num] ~= nil and main.t_selStages[num].zoom ~= nil then --zoom assigned as stage param
-		if main.t_selStages[num].zoom == 1 then
-			zoom = true
-		else
-			zoom = false
-		end
-	end
-	if main.t_selStages[num] ~= nil then
-		if main.t_selStages[num].zoommin ~= nil then
-			zoomMin = main.t_selStages[num].zoommin
-		end
-		if main.t_selStages[num].zoommax ~= nil then
-			zoomMax = main.t_selStages[num].zoommax
-		end
-		if main.t_selStages[num].zoomspeed ~= nil then
-			zoomSpeed = main.t_selStages[num].zoomspeed
-		end
-	end
-	setZoom(zoom)
-	setZoomMin(zoomMin)
-	setZoomMax(zoomMax)
-	setZoomSpeed(zoomSpeed)
 	--music
 	t_victoryBGM = {false, false}
 	local t = {'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}
@@ -1393,7 +1354,6 @@ function start.f_selectSimple()
 		start.f_selectReset()
 		while true do --inner loop
 			fadeType = 'fadein'
-			resetRemapInput()
 			selectStart()
 			if not start.f_selectScreen() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -1454,7 +1414,6 @@ function start.f_selectArranged()
 		start.f_selectReset()
 		while true do --inner loop
 			fadeType = 'fadein'
-			resetRemapInput()
 			selectStart()
 			if not start.f_selectScreen() then
 				sndPlay(motif.files.snd_data, motif.select_info.cancel_snd[1], motif.select_info.cancel_snd[2])
@@ -1599,7 +1558,6 @@ function start.f_selectArcade()
 		start.f_selectReset()
 		while true do --inner loop
 			fadeType = 'fadein'
-			resetRemapInput()
 			selectStart()
 			--select screen
 			if not start.f_selectScreen() then

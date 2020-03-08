@@ -6,7 +6,6 @@ local file = io.open("save/config.json","r")
 config = json.decode(file:read("*all"))
 file:close()
 -- This is done to get the AI level config
-
 if getAllowDebugKeys() then
 	addHotkey('c', true, false, false, 'toggleClsnDraw()')
 	addHotkey('d', true, false, false, 'toggleDebugDraw()')
@@ -20,18 +19,18 @@ if getAllowDebugKeys() then
 	addHotkey('6', true, false, false, 'toggleAI(6)')
 	addHotkey('7', true, false, false, 'toggleAI(7)')
 	addHotkey('8', true, false, false, 'toggleAI(8)')
-	addHotkey('F1', false, false, false, 'kill(2);kill(4);kill(6);kill(8)')
-	addHotkey('F1', true, false, false, 'kill(1);kill(3);kill(5);kill(7)')
-	addHotkey('F2', false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1);kill(5,1);kill(6,1);kill(7,1);kill(8,1)')
-	addHotkey('F2', true, false, false, 'kill(1,1);kill(3,1);kill(5,1);kill(7,1)')
-	addHotkey('F2', false, false, true, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1)')
-	addHotkey('F3', false, false, false, 'powMax(1);powMax(2)')
+	addHotkey('F1', false, false, false, 'kill(2);kill(4);kill(6);kill(8);markCheat(1);resetScore(1)')
+	addHotkey('F1', true, false, false, 'kill(1);kill(3);kill(5);kill(7);markCheat(2);resetScore(2)')
+	addHotkey('F2', false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1);kill(5,1);kill(6,1);kill(7,1);kill(8,1);markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
+	addHotkey('F2', true, false, false, 'kill(1,1);kill(3,1);kill(5,1);kill(7,1);markCheat(2);resetScore(2)')
+	addHotkey('F2', false, false, true, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1);markCheat(1);resetScore(1)')
+	addHotkey('F3', false, false, false, 'powMax(1);powMax(2);markCheat(1);markCheat(2)')
 	addHotkey('F4', false, false, false, 'roundReset()')
 	addHotkey('F4', false, false, true, 'reload()')
-	addHotkey('F5', false, false, false, 'setTime(0);markCheat(1);markCheat(2);markCheat(3);markCheat(4);markCheat(5);markCheat(6);markCheat(7);markCheat(8)')
+	addHotkey('F5', false, false, false, 'setTime(0);markCheat(1);markCheat(2)')
 	addHotkey(
 	'SPACE', false, false, false,
-	'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime())')
+	'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
 	addHotkey('i', true, false, false, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
 end
 addHotkey('PAUSE', false, false, false, 'togglePause()')
@@ -44,7 +43,7 @@ function changeSpeed()
   if speed >= 4 then
     speed = 0.25
   else
-    speed = speed*2.0
+    speed = speed * 2.0
   end
   setAccel(speed)
 end
@@ -62,13 +61,6 @@ function toggleAI(p)
 end
 
 function kill(p, ...)
-  if p % 2 ~= 0 then
-    markCheat(p + 1)
-    resetScore(p + 1)
-  else
-    markCheat(p - 1)
-    resetScore(p - 1)
-  end
   local oldid = id()
   if player(p) then
     local n = ...
@@ -79,13 +71,6 @@ function kill(p, ...)
 end
 
 function powMax(p)
-  if p % 2 ~= 0 then
-    markCheat(p + 1)
-    resetScore(p + 1)
-  else
-    markCheat(p - 1)
-    resetScore(p - 1)
-  end
   local oldid = id()
   if player(p) then
     setPower(powermax())
@@ -94,13 +79,6 @@ function powMax(p)
 end
 
 function full(p)
-  if p % 2 ~= 0 then
-    markCheat(p + 1)
-    resetScore(p + 1)
-  else
-    markCheat(p - 1)
-    resetScore(p - 1)
-  end
   local oldid = id()
   if player(p) then
     setLife(lifemax())
