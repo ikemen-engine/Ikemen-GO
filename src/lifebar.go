@@ -2089,6 +2089,32 @@ func (l *Lifebar) step() {
 }
 func (l *Lifebar) reset() {
 	for ti, tm := range sys.tmode {
+		//hb
+		//0: Single (2)
+		//1: Simul (4)
+		//2: Turns (2)
+		//3: Tag (4)
+		//4: Simul_3p (6)
+		//5: Simul_4p (8)
+		//6: Tag_3p (6)
+		//7: Tag_4p (8)
+		//pb
+		//0: Single (2)
+		//1: Simul (4)
+		//2: Turns (2)
+		//3: Tag (2)
+		//4: Simul_3P (6)
+		//5: Simul_4P (8)
+		//fa
+		//0: Single (2)
+		//1: Simul (8)
+		//2: Turns (2)
+		//3: Tag (8)
+		//nm
+		//0: Single (2)
+		//1: Simul (8)
+		//2: Turns (2)
+		//3: Tag (8)
 		l.ref[0][ti] = int(tm)
 		l.ref[1][ti] = int(tm)
 		l.ref[2][ti] = int(tm)
@@ -2100,28 +2126,28 @@ func (l *Lifebar) reset() {
 				l.ref[2][ti] = 3
 				l.ref[3][ti] = 3
 			} else { //Tag 3P/4P
-				l.ref[0][ti] = int(sys.numSimul[ti]) + 3
+				l.ref[0][ti] = int(math.Min(7, float64(sys.numSimul[ti])+3))
 				l.ref[1][ti] = 3
 				l.ref[2][ti] = 3
 				l.ref[3][ti] = 3
 			}
 		} else if tm == TM_Simul && sys.numSimul[ti] > 2 { //Simul 3P/4P
-			l.ref[0][ti] = int(sys.numSimul[ti]) + 1
-			l.ref[1][ti] = int(sys.numSimul[ti]) + 1
+			l.ref[0][ti] = int(math.Min(5, float64(sys.numSimul[ti])+1))
+			l.ref[1][ti] = int(math.Min(5, float64(sys.numSimul[ti])+1))
 		}
 		l.num[0][ti] = len(l.hb[l.ref[0][ti]])
 		l.num[1][ti] = len(l.pb[l.ref[1][ti]])
 		l.num[2][ti] = len(l.fa[l.ref[2][ti]])
 		l.num[3][ti] = len(l.nm[l.ref[3][ti]])
 		if tm == TM_Simul || tm == TM_Tag {
-			l.num[0][ti] = int(sys.numSimul[ti]) * 2
+			l.num[0][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
 			if sys.powerShare[ti] {
 				l.num[1][ti] = 2
 			} else if tm == TM_Simul {
-				l.num[1][ti] = int(sys.numSimul[ti]) * 2
+				l.num[1][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
 			}
-			l.num[2][ti] = int(sys.numSimul[ti]) * 2
-			l.num[3][ti] = int(sys.numSimul[ti]) * 2
+			l.num[2][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
+			l.num[3][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
 		}
 	}
 	for _, hb := range l.hb {

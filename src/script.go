@@ -1368,7 +1368,7 @@ func systemScriptInit(l *lua.LState) {
 			for i := range sys.cgi {
 				num := len(sys.lifebar.fa[sys.tmode[i&1]])
 				if (sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag) {
-					num = int(sys.numSimul[i&1]) * 2
+					num = int(math.Min(float64(num), float64(sys.numSimul[i&1])*2))
 				}
 				if i < num {
 					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
