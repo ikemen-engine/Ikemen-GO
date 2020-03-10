@@ -3,6 +3,7 @@
 --;===========================================================
 --nClock = os.clock()
 --print("Elapsed time: " .. os.clock() - nClock)
+--SetGCPercent(-1)
 
 main = {}
 
@@ -872,9 +873,9 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	local roundTime = config.RoundTime
 	local t = {}
 	for k, v in pairs(main.flags) do
-		if k:match('^-p[1-8]$') then
+		if k:match('^-p[0-9]+$') then
 			addChar(v)
-			local num = tonumber(k:match('^-p([1-8])'))
+			local num = tonumber(k:match('^-p([0-9]+)'))
 			local player = 1
 			if num % 2 == 0 then --even value
 				player = 2
@@ -2701,6 +2702,7 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
+--SetGCPercent(100)
 main.menu.loop()
 
 -- Debug Info
