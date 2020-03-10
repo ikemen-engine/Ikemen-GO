@@ -874,7 +874,6 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	local t = {}
 	for k, v in pairs(main.flags) do
 		if k:match('^-p[0-9]+$') then
-			addChar(v)
 			local num = tonumber(k:match('^-p([0-9]+)'))
 			local player = 1
 			if num % 2 == 0 then --even value
@@ -960,7 +959,8 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	if main.debugLog then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	--iterate over the table in -p order ascending
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
-		selectChar(v.player, k - 1, v.pal)
+		addChar(v.character)
+		selectChar(v.player, v.num - 1, v.pal)
 		setCom(v.num, v.ai)
 		overrideCharData(v.num, v.override)
 	end
