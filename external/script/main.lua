@@ -2174,13 +2174,17 @@ function main.f_checkSubmenu(t, minimum)
 	if t == nil then return '' end
 	local cnt = 0
 	local f = ''
+	local skip = false
 	for k, v in ipairs(t.items) do
-		if v.itemname ~= 'back' then
+		if v.itemname:match('^bonus_') or v.itemname == 'joinadd' then
+			skip = true
+			break
+		elseif v.itemname ~= 'back' then
 			f = v.itemname
 			cnt = cnt + 1
 		end
 	end
-	if cnt >= minimum then
+	if cnt >= minimum or skip then
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		t.loop()
 		f = ''
