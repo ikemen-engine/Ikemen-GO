@@ -2122,18 +2122,22 @@ func (l *Lifebar) reset() {
 		if tm == TM_Tag {
 			if sys.numSimul[ti] == 2 { //Tag 2P
 				l.ref[0][ti] = 3
-				l.ref[1][ti] = 3
-				l.ref[2][ti] = 3
-				l.ref[3][ti] = 3
-			} else { //Tag 3P/4P
-				l.ref[0][ti] = int(math.Min(7, float64(sys.numSimul[ti])+3))
-				l.ref[1][ti] = 3
-				l.ref[2][ti] = 3
-				l.ref[3][ti] = 3
+			} else if sys.numSimul[ti] == 3 { //Tag 3P
+				l.ref[0][ti] = 6
+			} else if sys.numSimul[ti] >= 4 { //Tag 4P
+				l.ref[0][ti] = 7
 			}
-		} else if tm == TM_Simul && sys.numSimul[ti] > 2 { //Simul 3P/4P
-			l.ref[0][ti] = int(math.Min(5, float64(sys.numSimul[ti])+1))
-			l.ref[1][ti] = int(math.Min(5, float64(sys.numSimul[ti])+1))
+			l.ref[1][ti] = 3
+			l.ref[2][ti] = 3
+			l.ref[3][ti] = 3
+		} else if tm == TM_Simul {
+			if sys.numSimul[ti] == 3 { //Simul 3P
+				l.ref[0][ti] = 4
+				l.ref[1][ti] = 4
+			} else if sys.numSimul[ti] >= 4 { //Simul 4P
+				l.ref[0][ti] = 5
+				l.ref[1][ti] = 5
+			}
 		}
 		l.num[0][ti] = len(l.hb[l.ref[0][ti]])
 		l.num[1][ti] = len(l.pb[l.ref[1][ti]])

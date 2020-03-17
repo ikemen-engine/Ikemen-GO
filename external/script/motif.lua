@@ -1271,7 +1271,6 @@ local motif =
 		text_res = 'Non 4:3 resolutions require stages coded for different\naspect ratio. Change it back to 4:3 if stages look off.', --Ikemen feature
 		text_keys = 'Conflict between button keys detected.\nAll keys should have unique assignment.\nFix the problem before exitting key settings.', --Ikemen feature
 		text_pad = 'Controller not detected.\nCheck if your controller is plugged in.', --Ikemen feature
-		text_simul = 'This is a legacy option that works only if screenpack \nhas not been updated to support both Tag and Simul \nmode selection in select screen.', --Ikemen feature
 		text_options = 'No option items detected.\nCheck documentation and default system.def [Option Info]\nsection for a reference how to add option screen menus.', --Ikemen feature
 		text_shaders = 'No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from "./external/shaders" directory.', --Ikemen feature
 		text_pos = {25, 33}, --Ikemen feature
@@ -1384,8 +1383,10 @@ for line in file:lines() do
 				else --single value
 					if param:match('_itemname_') then
 						table.insert(pos_sort, param:match('_itemname_(.+)$'))
+						pos[param] = value
+					else
+						pos[param] = main.f_dataType(value)
 					end
-					pos[param] = main.f_dataType(value)
 				end
 			end
 		elseif param == nil then --only valid lines left are animations

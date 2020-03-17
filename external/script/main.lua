@@ -1830,7 +1830,7 @@ main.t_itemname = {
 			remapInput(1, main.playerInput)
 			remapInput(main.playerInput, 1)
 		end
-		main.p2In = 1
+		main.p2In = 2
 		main.stageMenu = true
 		main.p2SelectMenu = true
 		main.roundTime = -1
