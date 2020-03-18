@@ -1,4 +1,4 @@
-[statedef -4;]
+[statedef -4]
 
 # score calculation
 if RoundState = 0 {

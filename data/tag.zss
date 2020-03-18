@@ -7,9 +7,14 @@
 if Time = 0 {
 	PosSet{x: -243 * Facing; y: 0}
 }
+
 VelSet{x: 10; y: 0}
 
 if BackEdgeBodyDist >= 0 {
+	if Standby {
+		TagIn{}
+	}
+	
 	if BackEdgeDist + 10 > Map(_iksys_tagSwitchDist) {
 		VelSet{x: 0; y: 0}
 		TagIn{stateNo: Const(AnimStanding); ctrl: 1}
@@ -118,7 +123,7 @@ let ret = $currentID;
 #===============================================================================
 #States that are executed when in self's state
 #===============================================================================
-[statedef -3;]
+[Statedef -3]
 
 if Map(_iksys_tagActive) = 1 {
 	if RoundState = 4 {
@@ -162,4 +167,6 @@ if Map(_iksys_tagActive) = 1 {
 	} else if ID = Map(_iksys_tagCurrentID) {
 		TeamMapSet{map: "_iksys_tagCurrentID"; value: ID}
 	}
+} else if RoundState = 0 && TeamMode != Tag {
+	MapSet{map: "_iksys_tagActive"; value: 0}
 }
