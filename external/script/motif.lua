@@ -1,7 +1,7 @@
 --;===========================================================
 --; FOOTER VALUES
 --;===========================================================
-local footer_version = 'v0.90'
+local footer_version = 'v0.91.1'
 local footer_link = ''
 local file = io.open('./releaseconf.xml', 'r')
 if file ~= nil then
@@ -1287,6 +1287,224 @@ local motif =
 	anim = {},
 }
 
+function motif.setBaseOptionInfo()
+	--Ikemen feature
+	motif.option_info.menu_itemname_menuarcade = "Arcade Settings"
+	motif.option_info.menu_itemname_menuarcade_roundtime = "Time Limit"
+	motif.option_info.menu_itemname_menuarcade_roundsnumsingle = "Rounds to Win Single"
+	motif.option_info.menu_itemname_menuarcade_roundsnumteam = "Rounds to Win Simul/Tag"
+	motif.option_info.menu_itemname_menuarcade_maxdrawgames = "Max Draw Games"
+	motif.option_info.menu_itemname_menuarcade_difficulty = "Difficulty Level"
+	motif.option_info.menu_itemname_menuarcade_credits = "Credits"
+	motif.option_info.menu_itemname_menuarcade_quickcontinue = "Quick Continue"
+	motif.option_info.menu_itemname_menuarcade_airamping = "AI Ramping"
+	motif.option_info.menu_itemname_menuarcade_aipalette = "AI Palette"
+	motif.option_info.menu_itemname_menuarcade_empty = ""
+	motif.option_info.menu_itemname_menuarcade_back = "Back"
+	motif.option_info.menu_itemname_menuvideo = "Video Settings"
+	motif.option_info.menu_itemname_menuvideo_resolution = "Resolution" --reserved submenu
+	-- Resolution is assigned based on values used in itemname suffix (e_g_ 320x240)
+	motif.option_info.menu_itemname_menuvideo_resolution_320x240 = "320x240    (4:3 QVGA)"
+	motif.option_info.menu_itemname_menuvideo_resolution_640x480 = "640x480    (4:3 VGA)"
+	motif.option_info.menu_itemname_menuvideo_resolution_960x720 = "960x720    (4:3 HD)"
+	motif.option_info.menu_itemname_menuvideo_resolution_1280x720 = "1280x720   (16:9 HD)"
+	motif.option_info.menu_itemname_menuvideo_resolution_1600x900 = "1600x900   (16:9 HD+)"
+	motif.option_info.menu_itemname_menuvideo_resolution_1920x1080 = "1920x1080  (16:9 FHD)"
+	motif.option_info.menu_itemname_menuvideo_resolution_empty = ""
+	motif.option_info.menu_itemname_menuvideo_resolution_customres = "Custom"
+	motif.option_info.menu_itemname_menuvideo_resolution_back = "Back"
+	motif.option_info.menu_itemname_menuvideo_fullscreen = "Fullscreen"
+	motif.option_info.menu_itemname_menuvideo_msaa = "MSAA"
+	motif.option_info.menu_itemname_menuvideo_shaders = "Shaders" --reserved submenu
+	-- This list is populated with shaders existing in 'external/shaders' directory
+	motif.option_info.menu_itemname_menuvideo_shaders_empty = ""
+	motif.option_info.menu_itemname_menuvideo_shaders_noshader = "Disable"
+	motif.option_info.menu_itemname_menuvideo_shaders_back = "Back"
+	motif.option_info.menu_itemname_menuvideo_empty = ""
+	motif.option_info.menu_itemname_menuvideo_back = "Back"
+	motif.option_info.menu_itemname_menuaudio = "Audio Settings"
+	motif.option_info.menu_itemname_menuaudio_mastervolume = "Master Volume"
+	motif.option_info.menu_itemname_menuaudio_bgmvolume = "BGM Volume"
+	motif.option_info.menu_itemname_menuaudio_sfxvolume = "SFX Volume"
+	motif.option_info.menu_itemname_menuaudio_audioducking = "Audio Ducking"
+	motif.option_info.menu_itemname_menuaudio_empty = ""
+	motif.option_info.menu_itemname_menuaudio_back = "Back"
+	motif.option_info.menu_itemname_menuinput = "Input Settings"
+	motif.option_info.menu_itemname_menuinput_keyboard = "Key Config"
+	motif.option_info.menu_itemname_menuinput_gamepad = "Joystick Config"
+	motif.option_info.menu_itemname_menuinput_empty = ""
+	motif.option_info.menu_itemname_menuinput_inputdefault = "Default"
+	motif.option_info.menu_itemname_menuinput_back = "Back"
+	motif.option_info.menu_itemname_menugameplay = "Gameplay Settings"
+	motif.option_info.menu_itemname_menugameplay_lifemul = "Life"
+	motif.option_info.menu_itemname_menugameplay_gamespeed = "Game Speed"
+	motif.option_info.menu_itemname_menugameplay_autoguard = "Auto-Guard"
+	motif.option_info.menu_itemname_menugameplay_empty = ""
+	motif.option_info.menu_itemname_menugameplay_singlevsteamlife = "Single VS Team Life"
+	motif.option_info.menu_itemname_menugameplay_teamlifeadjustment = "Team Life Adjustment"
+	motif.option_info.menu_itemname_menugameplay_teampowershare = "Team Power Share"
+	motif.option_info.menu_itemname_menugameplay_simulloseko = "Simul Player KOed Lose"
+	motif.option_info.menu_itemname_menugameplay_tagloseko = "Tag Partner KOed Lose"
+	motif.option_info.menu_itemname_menugameplay_turnsrecoverybase = "Turns Recovery Base"
+	motif.option_info.menu_itemname_menugameplay_turnsrecoverybonus = "Turns Recovery Bonus"
+	motif.option_info.menu_itemname_menugameplay_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuratio = "Ratio Settings"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio1life = "Ratio 1 Life"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio1attack = "Ratio 1 Damage"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio2life = "Ratio 2 Life"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio2attack = "Ratio 2 Damage"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio3life = "Ratio 3 Life"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio3attack = "Ratio 3 Damage"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio4life = "Ratio 4 Life"
+	motif.option_info.menu_itemname_menugameplay_menuratio_ratio4attack = "Ratio 4 Damage"
+	motif.option_info.menu_itemname_menugameplay_menuratio_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuratio_back = "Back"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced = "Advanced Settings"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_attackpowermul = "Attack_LifeToPowerMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_gethitpowermul = "GetHit_LifeToPowerMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_superdefencemul = "Super_TargetDefenceMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_minturns = "Min Turns Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxturns = "Max Turns Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_minsimul = "Min Simul Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxsimul = "Max Simul Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_mintag = "Min Tag Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxtag = "Max Tag Chars"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_back = "Back"
+	motif.option_info.menu_itemname_menugameplay_back = "Back"
+	motif.option_info.menu_itemname_menuengine = "Engine Settings"
+	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
+	motif.option_info.menu_itemname_menuengine_quicklaunch = "Quick Launch"
+	motif.option_info.menu_itemname_menuengine_lifebarfontscale = "Lifebar Font Scale"
+	motif.option_info.menu_itemname_menuengine_empty = ""
+	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
+	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
+	motif.option_info.menu_itemname_menuengine_explodmax = "ExplodMax"
+	motif.option_info.menu_itemname_menuengine_afterimagemax = "AfterImageMax"
+	motif.option_info.menu_itemname_menuengine_empty = ""
+	motif.option_info.menu_itemname_menuengine_zoomactive = "Zoom Active"
+	motif.option_info.menu_itemname_menuengine_maxzoomout = "Default Max Zoom Out"
+	motif.option_info.menu_itemname_menuengine_maxzoomin = "Default Max Zoom In"
+	motif.option_info.menu_itemname_menuengine_zoomspeed = "Default Zoom Speed"
+	motif.option_info.menu_itemname_menuengine_empty = ""
+	motif.option_info.menu_itemname_menuengine_back = "Back"
+	motif.option_info.menu_itemname_empty = ""
+	motif.option_info.menu_itemname_portchange = "Port Change"
+	motif.option_info.menu_itemname_default = "Default Values"
+	motif.option_info.menu_itemname_empty = ""
+	motif.option_info.menu_itemname_savereturn = "Save and Return"
+	motif.option_info.menu_itemname_return = "Return Without Saving"
+	
+	-- Default options screen order.
+	main.t_sort.option_info = {
+		"menuarcade",
+		"menuarcade_roundtime",
+		"menuarcade_roundsnumsingle",
+		"menuarcade_roundsnumteam",
+		"menuarcade_maxdrawgames",
+		"menuarcade_difficulty",
+		"menuarcade_credits",
+		"menuarcade_quickcontinue",
+		"menuarcade_airamping",
+		"menuarcade_aipalette",
+		"menuarcade_empty",
+		"menuarcade_back",
+		"menuvideo",
+		"menuvideo_resolution",
+		"menuvideo_resolution_320x240",
+		"menuvideo_resolution_640x480",
+		"menuvideo_resolution_960x720",
+		"menuvideo_resolution_1280x720",
+		"menuvideo_resolution_1600x900",
+		"menuvideo_resolution_1920x1080",
+		"menuvideo_resolution_empty",
+		"menuvideo_resolution_customres",
+		"menuvideo_resolution_back",
+		"menuvideo_fullscreen",
+		"menuvideo_msaa",
+		"menuvideo_shaders",
+		"menuvideo_shaders_empty",
+		"menuvideo_shaders_noshader",
+		"menuvideo_shaders_back",
+		"menuvideo_empty",
+		"menuvideo_back",
+		"menuaudio",
+		"menuaudio_mastervolume",
+		"menuaudio_bgmvolume",
+		"menuaudio_sfxvolume",
+		"menuaudio_audioducking",
+		"menuaudio_empty",
+		"menuaudio_back",
+		"menuinput",
+		"menuinput_keyboard",
+		"menuinput_gamepad",
+		"menuinput_empty",
+		"menuinput_inputdefault",
+		"menuinput_back",
+		"menugameplay",
+		"menugameplay_lifemul",
+		"menugameplay_gamespeed",
+		"menugameplay_autoguard",
+		"menugameplay_empty",
+		"menugameplay_singlevsteamlife",
+		"menugameplay_teamlifeadjustment",
+		"menugameplay_teampowershare",
+		"menugameplay_simulloseko",
+		"menugameplay_tagloseko",
+		"menugameplay_turnsrecoverybase",
+		"menugameplay_turnsrecoverybonus",
+		"menugameplay_empty",
+		"menugameplay_menuratio",
+		"menugameplay_menuratio_ratio1life",
+		"menugameplay_menuratio_ratio1attack",
+		"menugameplay_menuratio_ratio2life",
+		"menugameplay_menuratio_ratio2attack",
+		"menugameplay_menuratio_ratio3life",
+		"menugameplay_menuratio_ratio3attack",
+		"menugameplay_menuratio_ratio4life",
+		"menugameplay_menuratio_ratio4attack",
+		"menugameplay_menuratio_empty",
+		"menugameplay_menuratio_back",
+		"menugameplay_menuadvanced",
+		"menugameplay_menuadvanced_attackpowermul",
+		"menugameplay_menuadvanced_gethitpowermul",
+		"menugameplay_menuadvanced_superdefencemul",
+		"menugameplay_menuadvanced_empty",
+		"menugameplay_menuadvanced_minturns",
+		"menugameplay_menuadvanced_maxturns",
+		"menugameplay_menuadvanced_minsimul",
+		"menugameplay_menuadvanced_maxsimul",
+		"menugameplay_menuadvanced_mintag",
+		"menugameplay_menuadvanced_maxtag",
+		"menugameplay_menuadvanced_empty",
+		"menugameplay_menuadvanced_back",
+		"menugameplay_back",
+		"menuengine",
+		"menuengine_debugkeys",
+		"menuengine_quicklaunch",
+		"menuengine_lifebarfontscale",
+		"menuengine_empty",
+		"menuengine_helpermax",
+		"menuengine_projectilemax",
+		"menuengine_explodmax",
+		"menuengine_afterimagemax",
+		"menuengine_empty",
+		"menuengine_zoomactive",
+		"menuengine_maxzoomout",
+		"menuengine_maxzoomin",
+		"menuengine_zoomspeed",
+		"menuengine_empty",
+		"menuengine_back",
+		"empty",
+		"portchange",
+		"default",
+		"empty",
+		"savereturn",
+		"return"
+	}
+end
+
 --;===========================================================
 --; PARSE SCREENPACK
 --;===========================================================
@@ -1651,6 +1869,11 @@ for k, v in ipairs(t_cmdItems) do
 	for i, cmd in ipairs (main.f_extractKeys(v)) do
 		main.f_commandAdd(cmd)
 	end
+end
+
+-- If we don't find a option menu we use the default one.
+if main.t_sort.option_info == nil or #main.t_sort.option_info == 0 then
+	motif.setBaseOptionInfo()
 end
 
 if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
