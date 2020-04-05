@@ -404,7 +404,11 @@ func (f *Fnt) CharWidth(c rune) int32 {
 //This depends on each char's width and font spacing
 func (f *Fnt) TextWidth(txt string) (w int32) {
 	for _, c := range txt {
-		w += f.CharWidth(c) + f.Spacing[0]
+		if f.Type == "truetype" {
+			w += int32(f.ttf.Width(1, string(c))) + f.Spacing[0]
+		} else {
+			w += f.CharWidth(c) + f.Spacing[0]
+		}
 	}
 	return
 }
@@ -457,6 +461,7 @@ func (f *Fnt) drawChar(
 	bank int32,
 	c rune,
 	pal []uint32,
+	window *[4]int32,
 ) float32 {
 
 	if c == ' ' {
@@ -473,7 +478,7 @@ func (f *Fnt) drawChar(
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil, nil)
+		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil)
 
 	//if pal != nil {
 	//	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
@@ -493,12 +498,13 @@ func (f *Fnt) drawChar(
 func (f *Fnt) Print(txt string,
 	x, y, xscl, yscl float32,
 	bank, align int32,
+	//window *[4]int32,
 ) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, align, false)
+			f.DrawTtf(txt, x, y, xscl, yscl, align, false, &sys.scrrect)
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, bank, align)
+			f.DrawText(txt, x, y, xscl, yscl, bank, align, &sys.scrrect)
 		}
 	}
 }
@@ -508,6 +514,7 @@ func (f *Fnt) DrawText(
 	txt string,
 	x, y, xscl, yscl float32,
 	bank, align int32,
+	window *[4]int32,
 ) {
 
 	if len(txt) == 0 {
@@ -559,6 +566,7 @@ func (f *Fnt) DrawText(
 			bank,
 			c,
 			pal,
+			window,
 		) + xscl*float32(f.Spacing[0])
 	}
 	//gl.DeleteTextures(1, &paltex)
@@ -570,6 +578,7 @@ func (f *Fnt) DrawTtf(
 	x, y, xscl, yscl float32,
 	align int32,
 	blend bool,
+	window *[4]int32,
 ) {
 
 	if len(txt) == 0 {
@@ -579,7 +588,7 @@ func (f *Fnt) DrawTtf(
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
-	f.ttf.Printf(x, y, (xscl + yscl) / 2, align, blend, txt) //x, y, scale, align, string, printf args
+	f.ttf.Printf(x, y, (xscl+yscl)/2, align, blend, txt) //x, y, scale, align, blend, string, printf args
 }
 
 type TextSprite struct {
@@ -587,26 +596,26 @@ type TextSprite struct {
 	fnt              *Fnt
 	bank, align      int32
 	x, y, xscl, yscl float32
+	window           [4]int32
 }
 
 func NewTextSprite() *TextSprite {
-	return &TextSprite{align: 1, xscl: 1, yscl: 1}
+	return &TextSprite{align: 1, xscl: 1, yscl: 1, window: sys.scrrect}
 }
 
-func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
-	if ts.fnt.Type == "truetype" {
-		ts.fnt.ttf.SetColor(r, g, b, 1)
-	} else {
-		ts.fnt.SetColor(r, g, b, alphaSrc, alphaDst)
-	}
+func (ts *TextSprite) SetWindow(x, y, w, h float32) {
+	ts.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
+	ts.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+	ts.window[2] = int32(w*sys.widthScale + 0.5)
+	ts.window[3] = int32(h*sys.heightScale + 0.5)
 }
 
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true)
+			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window)
 		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
+			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window)
 		}
 	}
 }

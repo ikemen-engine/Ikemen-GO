@@ -77,7 +77,7 @@ local motif =
 		debug_script = 'external/script/debug.lua', --Ikemen feature
 		font =
 		{
-			[1] = 'f-4x6.def',
+			[1] = 'f-4x6.fnt',
 			[2] = 'f-6x9.def',
 			[3] = 'jg.fnt',
 		},
@@ -143,21 +143,25 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		loading_offset = {localX - math.floor(10 * localX / 320 + 0.5), localY - 10}, --Ikemen feature (310, 230)
-		loading_font = {'f-4x6.def', 7, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		loading_offset = {localX - math.floor(10 * localX / 320 + 0.5), localY - 8}, --Ikemen feature (310, 232)
+		loading_font = {'f-4x6.fnt', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		loading_font_scale = {1.0, 1.0}, --Ikemen feature
+		loading_font_height = -1, --Ikemen feature
 		loading_text = 'LOADING...', --Ikemen feature
-		footer1_offset = {math.floor(2 * localX / 320 + 0.5), localY - 2}, --Ikemen feature (2, 238)
-		footer1_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0}, --Ikemen feature
+		footer1_offset = {math.floor(2 * localX / 320 + 0.5), localY}, --Ikemen feature (2, 240)
+		footer1_font = {'f-4x6.fnt', 0, 1, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer1_font_scale = {1.0, 1.0}, --Ikemen feature
+		footer1_font_height = -1, --Ikemen feature
 		footer1_text = 'I.K.E.M.E.N. GO', --Ikemen feature
-		footer2_offset = {localX / 2, localY - 2}, --Ikemen feature (160, 238)
-		footer2_font = {'f-4x6.def', 7, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		footer2_offset = {localX / 2, localY}, --Ikemen feature (160, 240)
+		footer2_font = {'f-4x6.fnt', 0, 0, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer2_font_scale = {1.0, 1.0}, --Ikemen feature
+		footer2_font_height = -1, --Ikemen feature
 		footer2_text = 'Press F1 for info', --Ikemen feature
-		footer3_offset = {localX - math.floor(2 * localX / 320 + 0.5), localY - 2}, --Ikemen feature (318, 238)
-		footer3_font = {'f-4x6.def', 7, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		footer3_offset = {localX - math.floor(2 * localX / 320 + 0.5), localY}, --Ikemen feature (318, 240)
+		footer3_font = {'f-4x6.fnt', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
+		footer3_font_height = -1, --Ikemen feature
 		footer3_text = footer_version, --Ikemen feature
 		footer_boxbg_visible = 1, --Ikemen feature
 		footer_boxbg_coords = {0, localY - 7, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
@@ -166,6 +170,7 @@ local motif =
 		connecting_offset = {math.floor(10 * localX / 320 + 0.5), 40}, --Ikemen feature
 		connecting_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		connecting_font_scale = {1.0, 1.0}, --Ikemen feature
+		connecting_font_height = -1, --Ikemen feature
 		connecting_host_text = 'Waiting for player 2... (%s)', --Ikemen feature
 		connecting_join_text = 'Now connecting to %s... (%s)', --Ikemen feature
 		connecting_boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
@@ -177,10 +182,12 @@ local motif =
 		menu_key_previous = '$U&$B',
 		menu_key_accept = 'a&b&c&x&y&z',
 		menu_pos = {159, 158},
-		menu_item_font = {'f-6x9.def', 7, 0, 255, 255, 255, 255, 0},
+		menu_item_font = {'f-6x9.def', 0, 0, 191, 191, 191, 255, 0},
 		menu_item_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
+		menu_item_font_height = -1, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		menu_item_active_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
+		menu_item_active_font_height = -1, --Ikemen feature
 		menu_item_spacing = {0, 13},
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_versus = 'VS MODE',
@@ -190,7 +197,7 @@ local motif =
 		--menu_itemname_survival = 'SURVIVAL',
 		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
 		--menu_itemname_storymode = 'STORY MODE', --Ikemen feature (not implemented yet)
-		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature (not implemented yet)
+		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
 		--menu_itemname_training = 'TRAINING',
 		--menu_itemname_watch = 'WATCH',
 		--menu_itemname_options = 'OPTIONS',
@@ -203,8 +210,8 @@ local motif =
 		--menu_itemname_netplayteamcoop = 'ONLINE CO-OP', --Ikemen feature
 		--menu_itemname_netplaysurvivalcoop = 'ONLINE SURVIVAL', --Ikemen feature
 		--menu_itemname_freebattle = 'FREE BATTLE', --Ikemen feature
-		--menu_itemname_timechallenge = 'TIME CHALLENGE', --Ikemen feature (not implemented yet)
-		--menu_itemname_scorechallenge = 'SCORE CHALLENGE', --Ikemen feature (not implemented yet)
+		--menu_itemname_timechallenge = 'TIME CHALLENGE', --Ikemen feature
+		--menu_itemname_scorechallenge = 'SCORE CHALLENGE', --Ikemen feature
 		--menu_itemname_vs100kumite = 'VS 100 KUMITE', --Ikemen feature
 		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
 		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
@@ -212,10 +219,10 @@ local motif =
 		--menu_itemname_scoreranking = 'SCORE RANKING', --Ikemen feature (not implemented yet)
 		--menu_itemname_replay = 'REPLAY', --Ikemen feature
 		--menu_itemname_randomtest = 'DEMO', --Ikemen feature
-		--menu_itemname_tournament32 = 'ROUND OF 32', --Ikemen feature
-		--menu_itemname_tournament16 = 'ROUND OF 16', --Ikemen feature
-		--menu_itemname_tournament8 = 'QUARTERFINALS', --Ikemen feature
-		menu_window_margins_y = {12, 8}, --only partial support for now (menu_window_visibleitems + 1 displayed if y value > 0)
+		--menu_itemname_tournament32 = 'ROUND OF 32', --Ikemen feature (not implemented yet)
+		--menu_itemname_tournament16 = 'ROUND OF 16', --Ikemen feature (not implemented yet)
+		--menu_itemname_tournament8 = 'QUARTERFINALS', --Ikemen feature (not implemented yet)
+		menu_window_margins_y = {12, 8},
 		menu_window_visibleitems = 5,
 		menu_boxcursor_visible = 1,
 		menu_boxcursor_coords = {-40, -10, 39, 2},
@@ -236,10 +243,12 @@ local motif =
 		title_pos = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_font_height = -1, --Ikemen feature
 		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* This fork source code: " .. footer_link, --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
-		text_pos = {25, 30}, --Ikemen feature
-		text_font = {'f-4x6.def', 7, 1, 255, 255, 255, 255, 0},
+		text_pos = {25, 32}, --Ikemen feature
+		text_font = {'f-4x6.fnt', 0, 1, 191, 191, 191, 255, 0},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_font_height = -1, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -308,16 +317,17 @@ local motif =
 		p2_cursor_move_snd = {100, 0},
 		p2_cursor_done_snd = {100, 1},
 		p2_random_move_snd = {100, 0},
-		random_move_snd_cancel = 0, --not implemented yet (needs a function that checks if sound is currently playing)
+		random_move_snd_cancel = 0,
 		stage_move_snd = {100, 0},
 		stage_done_snd = {100, 1},
 		cancel_snd = {100, 2},
 		portrait_spr = {9000, 0},
-		portrait_offset = {0, 0}, --not implemented yet
+		portrait_offset = {0, 0},
 		portrait_scale = {1.0, 1.0},
 		title_offset = {0, 0},
 		title_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
 		title_font_scale = {1.0, 1.0},
+		title_font_height = -1, --Ikemen feature
 		title_text_arcade = 'Arcade', --Ikemen feature
 		title_text_versus = 'Versus Mode', --Ikemen feature
 		title_text_teamarcade = 'Team Arcade', --Ikemen feature
@@ -326,26 +336,26 @@ local motif =
 		title_text_survival = 'Survival', --Ikemen feature
 		title_text_survivalcoop = 'Survival Cooperative', --Ikemen feature
 		title_text_storymode = 'Story Mode', --Ikemen feature (not implemented yet)
-		title_text_timeattack = 'Time Attack', --Ikemen feature (not implemented yet)
+		title_text_timeattack = 'Time Attack', --Ikemen feature
 		title_text_training = 'Training Mode', --Ikemen feature
 		title_text_watch = 'Watch Mode', --Ikemen feature
 		title_text_netplayversus = 'Online Versus', --Ikemen feature
 		title_text_netplayteamcoop = 'Online Cooperative', --Ikemen feature
 		title_text_netplaysurvivalcoop = 'Online Survival', --Ikemen feature
 		title_text_freebattle = 'Quick Match', --Ikemen feature
-		title_text_timechallenge = 'Time Challenge', --Ikemen feature (not implemented yet)
-		title_text_scorechallenge = 'Score Challenge', --Ikemen feature (not implemented yet)
+		title_text_timechallenge = 'Time Challenge', --Ikemen feature
+		title_text_scorechallenge = 'Score Challenge', --Ikemen feature
 		title_text_vs100kumite = 'VS 100 Kumite', --Ikemen feature
 		title_text_bossrush = 'Boss Rush', --Ikemen feature
 		--title_text_replay = 'Replay', --Ikemen feature
-		title_text_tournament32 = 'Tournament Mode', --Ikemen feature
-		title_text_tournament16 = 'Tournament Mode', --Ikemen feature
-		title_text_tournament8 = 'Tournament Mode', --Ikemen feature
+		title_text_tournament32 = 'Tournament Mode', --Ikemen feature (not implemented yet)
+		title_text_tournament16 = 'Tournament Mode', --Ikemen feature (not implemented yet)
+		title_text_tournament8 = 'Tournament Mode', --Ikemen feature (not implemented yet)
 		p1_face_spr = {9000, 1},
 		p1_face_offset = {0, 0},
 		p1_face_facing = 1,
 		p1_face_scale = {1.0, 1.0},
-		p1_face_window = {0, 0, 0, 0},
+		p1_face_window = {0, 0, config.GameWidth, config.GameHeight},
 		p1_face_num = 1, --Ikemen feature
 		p1_face_spacing = {0, 0}, --Ikemen feature
 		p1_c1_face_offset = {0, 0}, --Ikemen feature
@@ -360,7 +370,7 @@ local motif =
 		p2_face_offset = {0, 0},
 		p2_face_facing = -1,
 		p2_face_scale = {1.0, 1.0},
-		p2_face_window = {0, 0, 0, 0},
+		p2_face_window = {0, 0, config.GameWidth, config.GameHeight},
 		p2_face_num = 1, --Ikemen feature
 		p2_face_spacing = {0, 0}, --Ikemen feature
 		p2_c1_face_offset = {0, 0}, --Ikemen feature
@@ -374,18 +384,23 @@ local motif =
 		p1_name_offset = {0, 0},
 		p1_name_font = {'jg.fnt', 4, 1, 255, 255, 255, 255, 0},
 		p1_name_font_scale = {1.0, 1.0},
+		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
 		p2_name_offset = {0, 0},
 		p2_name_font = {'jg.fnt', 1, -1, 255, 255, 255, 255, 0},
 		p2_name_font_scale = {1.0, 1.0},
+		p2_name_font_height = -1, --Ikemen feature
 		p2_name_spacing = {0, 14},
 		stage_pos = {0, 0},
-		stage_active_font = {'f-4x6.def', 0, 0, 255, 255, 255, 255, 0},
+		stage_active_font = {'f-4x6.fnt', 0, 0, 255, 255, 255, 255, 0},
 		stage_active_font_scale = {1.0, 1.0},
-		stage_active2_font = {'f-4x6.def', 0, 0, 255, 255, 255, 255, 0},
+		stage_active_font_height = -1, --Ikemen feature
+		stage_active2_font = {'f-4x6.fnt', 0, 0, 255, 255, 255, 255, 0},
 		stage_active2_font_scale = {1.0, 1.0},
-		stage_done_font = {'f-4x6.def', 0, 0, 255, 255, 255, 255, 0},
+		stage_active2_font_height = -1, --Ikemen feature
+		stage_done_font = {'f-4x6.fnt', 0, 0, 255, 255, 255, 255, 0},
 		stage_done_font_scale = {1.0, 1.0},
+		stage_done_font_height = -1, --Ikemen feature
 		stage_text = 'Stage %i: %s', --Ikemen feature
 		stage_random_text = 'Stage: Random', --Ikemen feature
 		stage_portrait_spr = {9000, 0}, --Ikemen feature
@@ -395,6 +410,7 @@ local motif =
 		--stage_portrait_random_anim = nil, --Ikemen feature
 		stage_portrait_random_offset = {0, 0}, --Ikemen feature
 		stage_portrait_random_scale = {1.0, 1.0}, --Ikemen feature
+		stage_portrait_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
 		teammenu_key_next = '$D',
 		teammenu_key_previous = '$U',
 		teammenu_key_add = '$F',
@@ -444,6 +460,7 @@ local motif =
 		p1_teammenu_selftitle_scale = {1.0, 1.0},
 		p1_teammenu_selftitle_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0},
 		p1_teammenu_selftitle_font_scale = {1.0, 1.0},
+		p1_teammenu_selftitle_font_height = -1, --Ikemen feature
 		p1_teammenu_selftitle_text = '',
 		--p1_teammenu_enemytitle_anim = nil,
 		p1_teammenu_enemytitle_spr = {},
@@ -452,6 +469,7 @@ local motif =
 		p1_teammenu_enemytitle_scale = {1.0, 1.0},
 		p1_teammenu_enemytitle_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0},
 		p1_teammenu_enemytitle_font_scale = {1.0, 1.0},
+		p1_teammenu_enemytitle_font_height = -1, --Ikemen feature
 		p1_teammenu_enemytitle_text = '',
 		p1_teammenu_move_snd = {100, 0},
 		p1_teammenu_value_snd = {100, 0},
@@ -461,10 +479,13 @@ local motif =
 		p1_teammenu_item_font_offset = {0, 0}, --Ikemen feature
 		p1_teammenu_item_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0},
 		p1_teammenu_item_font_scale = {1.0, 1.0},
+		p1_teammenu_item_font_height = -1, --Ikemen feature
 		p1_teammenu_item_active_font = {'jg.fnt', 3, 1, 255, 255, 255, 255, 0},
 		p1_teammenu_item_active_font_scale = {1.0, 1.0},
+		p1_teammenu_item_active_font_height = -1, --Ikemen feature
 		p1_teammenu_item_active2_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0},
 		p1_teammenu_item_active2_font_scale = {1.0, 1.0},
+		p1_teammenu_item_active2_font_height = -1, --Ikemen feature
 		--p1_teammenu_item_cursor_anim = nil,
 		p1_teammenu_item_cursor_spr = {},
 		p1_teammenu_item_cursor_offset = {0, 0},
@@ -554,6 +575,7 @@ local motif =
 		p2_teammenu_selftitle_scale = {1.0, 1.0},
 		p2_teammenu_selftitle_font = {'jg.fnt', 0, -1, 255, 255, 255, 255, 0},
 		p2_teammenu_selftitle_font_scale = {1.0, 1.0},
+		p2_teammenu_selftitle_font_height = -1, --Ikemen feature
 		p2_teammenu_selftitle_text = '',
 		--p2_teammenu_enemytitle_anim = nil,
 		p2_teammenu_enemytitle_spr = {},
@@ -562,6 +584,7 @@ local motif =
 		p2_teammenu_enemytitle_scale = {1.0, 1.0},
 		p2_teammenu_enemytitle_font = {'jg.fnt', 0, -1, 255, 255, 255, 255, 0},
 		p2_teammenu_enemytitle_font_scale = {1.0, 1.0},
+		p2_teammenu_enemytitle_font_height = -1, --Ikemen feature
 		p2_teammenu_enemytitle_text = '',
 		p2_teammenu_move_snd = {100, 0},
 		p2_teammenu_value_snd = {100, 0},
@@ -571,10 +594,13 @@ local motif =
 		p2_teammenu_item_font_offset = {0, 0}, --Ikemen feature
 		p2_teammenu_item_font = {'jg.fnt', 0, -1, 255, 255, 255, 255, 0},
 		p2_teammenu_item_font_scale = {1.0, 1.0},
+		p2_teammenu_item_font_height = -1, --Ikemen feature
 		p2_teammenu_item_active_font = {'jg.fnt', 1, -1, 255, 255, 255, 255, 0},
 		p2_teammenu_item_active_font_scale = {1.0, 1.0},
+		p2_teammenu_item_active_font_height = -1, --Ikemen feature
 		p2_teammenu_item_active2_font = {'jg.fnt', 0, -1, 255, 255, 255, 255, 0},
 		p2_teammenu_item_active2_font_scale = {1.0, 1.0},
+		p2_teammenu_item_active2_font_height = -1, --Ikemen feature
 		--p2_teammenu_item_cursor_anim = nil,
 		p2_teammenu_item_cursor_spr = {},
 		p2_teammenu_item_cursor_offset = {0, 0},
@@ -630,12 +656,14 @@ local motif =
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		timer_font_height = -1, --Ikemen feature
 		timer_count = 99, --Ikemen feature
 		timer_framespercount = 60, --Ikemen feature
 		timer_displaytime = 10, --Ikemen feature
 		record_offset = {0, 0}, --Ikemen feature
 		record_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		record_font_scale = {1.0, 1.0}, --Ikemen feature
+		record_font_height = -1, --Ikemen feature
 		record_text_scorechallenge = '', --Ikemen feature
 		record_text_timechallenge = '', --Ikemen feature
 		p1_select_snd = {9000, 0}, --Ikemen feature
@@ -658,12 +686,13 @@ local motif =
 		match_offset = {159, 12},
 		match_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
 		match_font_scale = {1.0, 1.0},
+		match_font_height = -1, --Ikemen feature
 		p1_pos = {0, 0},
 		p1_spr = {9000, 1},
 		p1_offset = {0, 0},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		--p1_window = {0, 0, 0, 0}, --not implemented yet
+		p1_window = {0, 0, config.GameWidth, config.GameHeight},
 		p1_num = 1, --Ikemen feature
 		p1_spacing = {0, 0}, --Ikemen feature
 		p1_c1_offset = {0, 0}, --Ikemen feature
@@ -687,7 +716,7 @@ local motif =
 		p2_offset = {0, 0},
 		p2_facing = -1,
 		p2_scale = {1.0, 1.0},
-		--p2_window = {0, 0, 0, 0}, --not implemented yet
+		p2_window = {0, 0, config.GameWidth, config.GameHeight},
 		p2_num = 1, --Ikemen feature
 		p2_spacing = {0, 0}, --Ikemen feature
 		p2_c1_offset = {0, 0}, --Ikemen feature
@@ -710,16 +739,20 @@ local motif =
 		p1_name_offset = {0, 0},
 		p1_name_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
 		p1_name_font_scale = {1.0, 1.0},
+		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
 		p2_name_pos = {0, 0},
 		p2_name_offset = {0, 0},
 		p2_name_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
 		p2_name_font_scale = {1.0, 1.0},
+		p2_name_font_height = -1, --Ikemen feature
 		p2_name_spacing = {0, 14},
 		--p1_name_active_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		--p1_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_name_active_font_height = -1, --Ikemen feature
 		--p2_name_active_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		--p2_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_name_active_font_height = -1, --Ikemen feature
 		p1_cursor_move_snd = {100, 0}, --Ikemen feature
 		p1_cursor_done_snd = {100, 1}, --Ikemen feature
 		p2_cursor_move_snd = {100, 0}, --Ikemen feature
@@ -735,8 +768,8 @@ local motif =
 	demo_mode =
 	{
 		enabled = 1,
-		select_enabled = 0, --not implemented yet
-		vsscreen_enabled = 0, --not implemented yet
+		select_enabled = 0, --not used in ikemen
+		vsscreen_enabled = 0, --not used in ikemen
 		title_waittime = 600,
 		fight_endtime = 1500,
 		fight_playbgm = 0,
@@ -773,22 +806,27 @@ local motif =
 		continue_text = 'Continue?',
 		continue_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		continue_font_scale = {1.0, 1.0},
+		continue_font_height = -1, --Ikemen feature
 		continue_offset = {0, 0},
 		yes_text = 'Yes',
-		yes_font = {'f-6x9.def', 7, 0, 255, 255, 255, 255, 0},
+		yes_font = {'f-6x9.def', 0, 0, 191, 191, 191, 255, 0},
 		yes_font_scale = {1.0, 1.0},
+		yes_font_height = -1, --Ikemen feature
 		yes_offset = {-17, 20},
 		yes_active_text = 'Yes',
 		yes_active_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		yes_active_font_scale = {1.0, 1.0},
+		yes_active_font_height = -1, --Ikemen feature
 		yes_active_offset = {-17, 20},
 		no_text = 'No',
-		no_font = {'f-6x9.def', 7, 0, 255, 255, 255, 255, 0},
+		no_font = {'f-6x9.def', 0, 0, 191, 191, 191, 255, 0},
 		no_font_scale = {1.0, 1.0},
+		no_font_height = -1, --Ikemen feature
 		no_offset = {15, 20},
 		no_active_text = 'No',
 		no_active_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		no_active_font_scale = {1.0, 1.0},
+		no_active_font_height = -1, --Ikemen feature
 		no_active_offset = {15, 20},
 		move_snd = {100, 0}, --Ikemen feature
 		done_snd = {100, 1}, --Ikemen feature
@@ -826,6 +864,7 @@ local motif =
 		credits_offset = {0, 0}, --Ikemen feature
 		credits_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		credits_font_scale = {1.0, 1.0}, --Ikemen feature
+		credits_font_height = -1, --Ikemen feature
 	},
 	continuebgdef =
 	{
@@ -854,7 +893,7 @@ local motif =
 		p1_offset = {100, 20},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		--p1_window = {0, 0, 319, 160}, --not implemented yet
+		p1_window = {0, 0, config.GameWidth, config.GameHeight},
 		p1_num = 1, --Ikemen feature
 		p1_c1_spr = {9000, 2}, --Ikemen feature
 		p1_c1_offset = {0, 0}, --Ikemen feature
@@ -879,12 +918,13 @@ local motif =
 		p1_name_offset = {20, 180},
 		p1_name_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0},
 		p1_name_font_scale = {1.0, 1.0},
+		p1_name_font_height = -1, --Ikemen feature
 		p2_pos = {0, 0}, --Ikemen feature
 		p2_spr = {9000, 2}, --Ikemen feature
 		p2_offset = {100, 20}, --Ikemen feature
 		p2_facing = 1, --Ikemen feature
 		p2_scale = {1.0, 1.0}, --Ikemen feature
-		--p2_window = {0, 0, 319, 160}, --Ikemen feature (not implemented yet)
+		p2_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
 		p2_num = 0, --Ikemen feature
 		p2_c1_spr = {9000, 2}, --Ikemen feature
 		p2_c1_offset = {0, 0}, --Ikemen feature
@@ -909,14 +949,15 @@ local motif =
 		p2_name_offset = {20, 180}, --Ikemen feature
 		p2_name_font = {'jg.fnt', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		p2_name_font_scale = {1.0, 1.0}, --Ikemen feature
+		p2_name_font_height = -1, --Ikemen feature
 		winquote_text = 'Winner!',
 		winquote_offset = {20, 192},
 		winquote_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0},
 		winquote_font_scale = {1.0, 1.0},
+		winquote_font_height = -1, --Ikemen feature
 		winquote_delay = 2, --Ikemen feature
-		winquote_length = 0, --Ikemen feature
 		winquote_textwrap = 'w', --default wrapping when winquote.length is not set
-		winquote_window = {18, 171, 301, 228},
+		winquote_window = {0, 0, config.GameWidth, config.GameHeight},
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -938,6 +979,7 @@ local motif =
 		wintext_offset = {159, 70},
 		wintext_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		wintext_font_scale = {1.0, 1.0},
+		wintext_font_height = -1, --Ikemen feature
 		wintext_displaytime = -1,
 		wintext_layerno = 2,
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
@@ -963,13 +1005,14 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300,
-		wintext_text = 'Rounds survived: %i',
-		wintext_offset = {159, 70},
-		wintext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
-		wintext_font_scale = {1.0, 1.0},
-		wintext_displaytime = -1,
-		wintext_layerno = 2,
+		show_time = 300,
+		winstext_text = 'Rounds survived: %i',
+		winstext_offset = {159, 70},
+		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0},
+		winstext_font_scale = {1.0, 1.0},
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1,
+		winstext_layerno = 2,
 		roundstowin = 5,
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
@@ -979,20 +1022,21 @@ local motif =
 		p2_statedef_win = {}, --Ikemen feature
 		p2_statedef_lose = {}, --Ikemen feature
 	},
-	vs100kumite_results_screen =
+	vs100_kumite_results_screen =
 	{
 		enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300, --Ikemen feature
-		wintext_text = 'Wins: %i\nLoses: %i', --Ikemen feature
-		wintext_offset = {159, 70}, --Ikemen feature
-		wintext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
-		wintext_font_scale = {1.0, 1.0}, --Ikemen feature
-		wintext_displaytime = -1, --Ikemen feature
-		wintext_layerno = 2, --Ikemen feature
+		show_time = 300, --Ikemen feature
+		winstext_text = 'Wins: %i\nLoses: %i', --Ikemen feature
+		winstext_offset = {159, 70}, --Ikemen feature
+		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1, --Ikemen feature
+		winstext_layerno = 2, --Ikemen feature
 		roundstowin = 51, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
@@ -1002,20 +1046,21 @@ local motif =
 		p2_statedef_win = {}, --Ikemen feature
 		p2_statedef_lose = {}, --Ikemen feature
 	},
-	timeattack_results_screen =
+	time_attack_results_screen =
 	{
 		enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300, --Ikemen feature
-		wintext_text = 'Clear Time: %m:%s.%x', --Ikemen feature
-		wintext_offset = {159, 70}, --Ikemen feature
-		wintext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
-		wintext_font_scale = {1.0, 1.0}, --Ikemen feature
-		wintext_displaytime = -1, --Ikemen feature
-		wintext_layerno = 2, --Ikemen feature
+		show_time = 300, --Ikemen feature
+		winstext_text = 'Clear Time: %m:%s.%x', --Ikemen feature
+		winstext_offset = {159, 70}, --Ikemen feature
+		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1, --Ikemen feature
+		winstext_layerno = 2, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1024,20 +1069,21 @@ local motif =
 		p2_statedef_win = {}, --Ikemen feature
 		p2_statedef_lose = {}, --Ikemen feature
 	},
-	timechallenge_results_screen =
+	time_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300, --Ikemen feature
-		wintext_text = 'Clear Time: %m:%s.%x', --Ikemen feature
-		wintext_offset = {159, 70}, --Ikemen feature
-		wintext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
-		wintext_font_scale = {1.0, 1.0}, --Ikemen feature
-		wintext_displaytime = -1, --Ikemen feature
-		wintext_layerno = 2, --Ikemen feature
+		show_time = 300, --Ikemen feature
+		winstext_text = 'Clear Time: %m:%s.%x', --Ikemen feature
+		winstext_offset = {159, 70}, --Ikemen feature
+		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1, --Ikemen feature
+		winstext_layerno = 2, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1046,20 +1092,21 @@ local motif =
 		p2_statedef_win = {}, --Ikemen feature
 		p2_statedef_lose = {}, --Ikemen feature
 	},
-	scorechallenge_results_screen =
+	score_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300, --Ikemen feature
-		wintext_text = 'Score: %i', --Ikemen feature
-		wintext_offset = {159, 70}, --Ikemen feature
-		wintext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
-		wintext_font_scale = {1.0, 1.0}, --Ikemen feature
-		wintext_displaytime = -1, --Ikemen feature
-		wintext_layerno = 2, --Ikemen feature
+		show_time = 300, --Ikemen feature
+		winstext_text = 'Score: %i', --Ikemen feature
+		winstext_offset = {159, 70}, --Ikemen feature
+		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1, --Ikemen feature
+		winstext_layerno = 2, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1068,20 +1115,21 @@ local motif =
 		p2_statedef_win = {}, --Ikemen feature
 		p2_statedef_lose = {}, --Ikemen feature
 	},
-	bossrush_results_screen =
+	boss_rush_results_screen =
 	{
 		enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 64, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		pose_time = 300, --Ikemen feature
-		wintext_text = 'Congratulations!', --Ikemen feature
-		wintext_offset = {159, 70}, --Ikemen feature
-		wintext_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
-		wintext_font_scale = {1.0, 1.0}, --Ikemen feature
-		wintext_displaytime = -1, --Ikemen feature
-		wintext_layerno = 2, --Ikemen feature
+		show_time = 300, --Ikemen feature
+		winstext_text = 'Congratulations!', --Ikemen feature
+		winstext_offset = {159, 70}, --Ikemen feature
+		winstext_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
+		winstext_font_height = -1, --Ikemen feature
+		winstext_displaytime = -1, --Ikemen feature
+		winstext_layerno = 2, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1102,21 +1150,29 @@ local motif =
 		title_offset = {159, 19},
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
 		title_font_scale = {1.0, 1.0},
+		title_font_height = -1, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
-		menu_item_font = {'f-6x9.def', 7, 1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191, 255, 0}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_font_height = -1, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_selected_font = {'f-6x9.def', 4, 1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_active_font_height = -1, --Ikemen feature
+		menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247, 255, 0}, --Ikemen feature
 		menu_item_selected_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_selected_active_font = {'f-6x9.def', 4, 1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_selected_font_height = -1, --Ikemen feature
+		menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247, 255, 0}, --Ikemen feature
 		menu_item_selected_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_value_font = {'f-6x9.def', 7, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_selected_active_font_height = -1, --Ikemen feature
+		menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		menu_item_value_font_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_value_font_height = -1, --Ikemen feature
 		menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255, 255, 0}, --Ikemen feature
 		menu_item_value_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_value_conflict_font = {'f-6x9.def', 1, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_value_active_font_height = -1, --Ikemen feature
+		menu_item_value_conflict_font = {'f-6x9.def', 0, -1, 247, 0, 0, 255, 0}, --Ikemen feature
 		menu_item_value_conflict_font_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_value_conflict_font_height = -1, --Ikemen feature
 		menu_item_spacing = {150, 13}, --Ikemen feature
 		--menu_itemname_roundtime = 'Time Limit', --Ikemen feature
 		--menu_itemname_roundsnumsingle = 'Rounds to Win Single', --Ikemen feature
@@ -1206,6 +1262,7 @@ local motif =
 		menu_valuename_no = 'No', --Ikemen feature
 		menu_valuename_enabled = 'Enabled', --Ikemen feature
 		menu_valuename_disabled = 'Disabled', --Ikemen feature
+		menu_window_margins_y = {localY, localY}, --Ikemen feature
 		menu_window_visibleitems = 16, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
 		menu_boxcursor_coords = {-5, -10, 154, 2}, --Ikemen feature
@@ -1215,14 +1272,18 @@ local motif =
 		menu_boxbg_col = {0, 0, 0}, --Ikemen feature
 		menu_boxbg_alpha = {20, 100}, --Ikemen feature
 		menu_title_uppercase = 1, --Ikemen feature
-		menu_item_key_p1_font = {'f-6x9.def', 4, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_key_p1_font = {'f-6x9.def', 0, 0, 0, 247, 247, 255, 0}, --Ikemen feature
 		menu_item_key_p1_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_key_p2_font = {'f-6x9.def', 1, 0, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_key_p1_font_height = -1, --Ikemen feature
+		menu_item_key_p2_font = {'f-6x9.def', 0, 0, 247, 0, 0, 255, 0}, --Ikemen feature
 		menu_item_key_p2_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_info_font = {'f-6x9.def', 5, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_key_p2_font_height = -1, --Ikemen feature
+		menu_item_info_font = {'f-6x9.def', 0, -1, 247, 247, 0, 255, 0}, --Ikemen feature
 		menu_item_info_font_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_info_active_font = {'f-6x9.def', 5, -1, 255, 255, 255, 255, 0}, --Ikemen feature
+		menu_item_info_font_height = -1, --Ikemen feature
+		menu_item_info_active_font = {'f-6x9.def', 0, -1, 247, 247, 0, 255, 0}, --Ikemen feature
 		menu_item_info_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_info_active_font_height = -1, --Ikemen feature
 		menu_item_p1_pos = {91, 33}, --Ikemen feature
 		menu_item_p2_pos = {230, 33}, --Ikemen feature
 		menu_key_p1_pos = {39, 33}, --Ikemen feature
@@ -1260,6 +1321,7 @@ local motif =
 		title_pos = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_font_height = -1, --Ikemen feature
 		text_chars = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
 		text_stages = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
 		text_order = "Incorrect 'maxmatches' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
@@ -1276,6 +1338,7 @@ local motif =
 		text_pos = {25, 33}, --Ikemen feature
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_font_height = -1, --Ikemen feature
 		boxbg_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		boxbg_col = {0, 0, 0}, --Ikemen feature
 		boxbg_alpha = {20, 100}, --Ikemen feature
@@ -1301,9 +1364,10 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuarcade_aipalette = "AI Palette"
 	motif.option_info.menu_itemname_menuarcade_empty = ""
 	motif.option_info.menu_itemname_menuarcade_back = "Back"
+
 	motif.option_info.menu_itemname_menuvideo = "Video Settings"
 	motif.option_info.menu_itemname_menuvideo_resolution = "Resolution" --reserved submenu
-	-- Resolution is assigned based on values used in itemname suffix (e_g_ 320x240)
+	-- Resolution is assigned based on values used in itemname suffix (e.g. 320x240)
 	motif.option_info.menu_itemname_menuvideo_resolution_320x240 = "320x240    (4:3 QVGA)"
 	motif.option_info.menu_itemname_menuvideo_resolution_640x480 = "640x480    (4:3 VGA)"
 	motif.option_info.menu_itemname_menuvideo_resolution_960x720 = "960x720    (4:3 HD)"
@@ -1322,6 +1386,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuvideo_shaders_back = "Back"
 	motif.option_info.menu_itemname_menuvideo_empty = ""
 	motif.option_info.menu_itemname_menuvideo_back = "Back"
+
 	motif.option_info.menu_itemname_menuaudio = "Audio Settings"
 	motif.option_info.menu_itemname_menuaudio_mastervolume = "Master Volume"
 	motif.option_info.menu_itemname_menuaudio_bgmvolume = "BGM Volume"
@@ -1329,12 +1394,14 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuaudio_audioducking = "Audio Ducking"
 	motif.option_info.menu_itemname_menuaudio_empty = ""
 	motif.option_info.menu_itemname_menuaudio_back = "Back"
+
 	motif.option_info.menu_itemname_menuinput = "Input Settings"
 	motif.option_info.menu_itemname_menuinput_keyboard = "Key Config"
 	motif.option_info.menu_itemname_menuinput_gamepad = "Joystick Config"
 	motif.option_info.menu_itemname_menuinput_empty = ""
 	motif.option_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.option_info.menu_itemname_menuinput_back = "Back"
+
 	motif.option_info.menu_itemname_menugameplay = "Gameplay Settings"
 	motif.option_info.menu_itemname_menugameplay_lifemul = "Life"
 	motif.option_info.menu_itemname_menugameplay_gamespeed = "Game Speed"
@@ -1360,9 +1427,9 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugameplay_menuratio_empty = ""
 	motif.option_info.menu_itemname_menugameplay_menuratio_back = "Back"
 	motif.option_info.menu_itemname_menugameplay_menuadvanced = "Advanced Settings"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_attackpowermul = "Attack_LifeToPowerMul"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_gethitpowermul = "GetHit_LifeToPowerMul"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_superdefencemul = "Super_TargetDefenceMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_attackpowermul = "Attack.LifeToPowerMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_gethitpowermul = "GetHit.LifeToPowerMul"
+	motif.option_info.menu_itemname_menugameplay_menuadvanced_superdefencemul = "Super.TargetDefenceMul"
 	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
 	motif.option_info.menu_itemname_menugameplay_menuadvanced_minturns = "Min Turns Chars"
 	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxturns = "Max Turns Chars"
@@ -1373,29 +1440,28 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
 	motif.option_info.menu_itemname_menugameplay_menuadvanced_back = "Back"
 	motif.option_info.menu_itemname_menugameplay_back = "Back"
+
 	motif.option_info.menu_itemname_menuengine = "Engine Settings"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
-	motif.option_info.menu_itemname_menuengine_quicklaunch = "Quick Launch"
-	motif.option_info.menu_itemname_menuengine_lifebarfontscale = "Lifebar Font Scale"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
 	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
 	motif.option_info.menu_itemname_menuengine_explodmax = "ExplodMax"
 	motif.option_info.menu_itemname_menuengine_afterimagemax = "AfterImageMax"
 	motif.option_info.menu_itemname_menuengine_empty = ""
-	motif.option_info.menu_itemname_menuengine_zoomactive = "Zoom Active"
-	motif.option_info.menu_itemname_menuengine_maxzoomout = "Default Max Zoom Out"
-	motif.option_info.menu_itemname_menuengine_maxzoomin = "Default Max Zoom In"
-	motif.option_info.menu_itemname_menuengine_zoomspeed = "Default Zoom Speed"
-	motif.option_info.menu_itemname_menuengine_empty = ""
+	motif.option_info.menu_itemname_menuengine_menupreloading = "Pre-loading"
+	motif.option_info.menu_itemname_menuengine_menupreloading_preloadingsmall = "Small portraits"
+	motif.option_info.menu_itemname_menuengine_menupreloading_preloadingbig = "Select portraits"
+	motif.option_info.menu_itemname_menuengine_menupreloading_preloadingversus = "Versus portraits"
+	motif.option_info.menu_itemname_menuengine_menupreloading_preloadingstage = "Stage portraits"
 	motif.option_info.menu_itemname_menuengine_back = "Back"
+
 	motif.option_info.menu_itemname_empty = ""
 	motif.option_info.menu_itemname_portchange = "Port Change"
 	motif.option_info.menu_itemname_default = "Default Values"
 	motif.option_info.menu_itemname_empty = ""
 	motif.option_info.menu_itemname_savereturn = "Save and Return"
 	motif.option_info.menu_itemname_return = "Return Without Saving"
-	
 	-- Default options screen order.
 	main.t_sort.option_info = {
 		"menuarcade",
@@ -1482,26 +1548,24 @@ function motif.setBaseOptionInfo()
 		"menugameplay_back",
 		"menuengine",
 		"menuengine_debugkeys",
-		"menuengine_quicklaunch",
-		"menuengine_lifebarfontscale",
 		"menuengine_empty",
 		"menuengine_helpermax",
 		"menuengine_projectilemax",
 		"menuengine_explodmax",
 		"menuengine_afterimagemax",
 		"menuengine_empty",
-		"menuengine_zoomactive",
-		"menuengine_maxzoomout",
-		"menuengine_maxzoomin",
-		"menuengine_zoomspeed",
-		"menuengine_empty",
+		"menuengine_menupreloading",
+		"menuengine_menupreloading_preloadingsmall",
+		"menuengine_menupreloading_preloadingbig",
+		"menuengine_menupreloading_preloadingversus",
+		"menuengine_menupreloading_preloadingstage",
 		"menuengine_back",
 		"empty",
 		"portchange",
 		"default",
 		"empty",
 		"savereturn",
-		"return"
+		"return",
 	}
 end
 
@@ -1509,22 +1573,13 @@ end
 --; PARSE SCREENPACK
 --;===========================================================
 --here starts proper screenpack DEF file parsing
+main.t_fntDefault = {0, 0, 255, 255, 255, 255, 0}
 main.t_sort = {}
 local t = {}
 local pos = t
 local pos_sort = main.t_sort
 local def_pos = motif
 t.anim = {}
-t.font_data = {
-	['f-4x6.def'] = fontNew('f-4x6.def'),
-	['f-6x9.def'] = fontNew('f-6x9.def'),
-	['jg.fnt'] = fontNew('jg.fnt')
-}
-t.font_def = {
-	['f-4x6.def'] = fontGetDef(t.font_data['f-4x6.def']),
-	['f-6x9.def'] = fontGetDef(t.font_data['f-6x9.def']),
-	['jg.fnt'] = fontGetDef(t.font_data['jg.fnt'])
-}
 local fileDir, fileName = motif.def:match('^(.-)([^/\\]+)$')
 t.fileDir = fileDir
 t.fileName = fileName
@@ -1563,20 +1618,24 @@ for line in file:lines() do
 			value = value:gsub('^(%.[0-9])', '0%1') --add 0 before dot if missing at the beginning of matched string
 			value = value:gsub('([^0-9])(%.[0-9])', '%10%2') --add 0 before dot if missing anywhere else
 			if param:match('^font[0-9]+') then --font declaration param matched
+				if pos.font == nil then
+					pos.font = {}
+					pos.font_height = {}
+				end
 				local num = tonumber(param:match('font([0-9]+)'))
 				if param:match('_height$') then
-					if pos.font_height == nil then
-						pos.font_height = {}
-					end
 					pos.font_height[num] = main.f_dataType(value)
 				else
 					value = value:gsub('\\', '/')
-					if pos.font == nil then
-						pos.font = {}
-					end
 					pos.font[num] = tostring(value)
 				end
 			elseif pos[param] == nil or param:match('_itemname_') then --mugen takes into account only first occurrence
+				if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
+					local _, n = value:gsub(',%s*[0-9]*', '')
+					for i = n + 1, #main.t_fntDefault do
+						value = value:gsub(',?%s*$', ',' .. main.t_fntDefault[i])
+					end
+				end
 				if value:match('.+,.+') then --multiple values
 					for i, c in ipairs(main.f_strsplit(',', value)) do --split value using "," delimiter
 						if param:match('_anim$') then --mugen recognizes animations even if there are more values
@@ -1586,6 +1645,9 @@ for line in file:lines() do
 							pos[param] = {}
 							if param:match('_font$') then
 								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
+									if pos[param .. '_height'] == -1 and t.files.font_height[tonumber(c)] ~= nil then
+										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
+									end
 									c = t.files.font[tonumber(c)]
 								else
 									break --use default font values
@@ -1724,19 +1786,6 @@ for i = 1, #t_dir do
 	--backgrounds
 	motif[t_dir[i]].bg = bgNew(motif[t_dir[i]].spr_data, motif.def, t_dir[i]:match('^(.+)def$'))
 	main.loadingRefresh()
-end
-
-for k, v in pairs(motif.files.font) do --loop through table keys
-	if v ~= '' then
-		if motif.font_data[v] == nil then
-			motif.font_data[v] = fontNew(v)
-			if motif.files.font_height[k] ~= nil then
-				fontSetHeight(motif.font_data[v], motif.files.font_height[k])
-			end
-		end
-		motif.font_def[v] = fontGetDef(motif.font_data[v])
-		main.loadingRefresh()
-	end
 end
 
 local function f_facing(var)

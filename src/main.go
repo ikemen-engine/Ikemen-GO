@@ -175,9 +175,9 @@ func main() {
 	],
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
-	"ZoomActive": false,
-	"ZoomMax": 1.1,
-	"ZoomMin": 0.75,
+	"ZoomActive": true,
+	"ZoomMax": 1,
+	"ZoomMin": 1,
 	"ZoomSpeed": 1,
 	"KeyConfig": [
 		{

@@ -27,7 +27,8 @@ file:close()
 --; COMMON FUNCTIONS
 --;===========================================================
 --add default commands
-main.t_commands = {['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['v'] = 0, ['w'] = 0, ['/s'] = 0}
+main.t_commands = {
+	['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['d'] = 0, ['w'] = 0, ['/s'] = 0, ['/d'] = 0, ['/w'] = 0}
 function main.f_commandNew()
 	local c = commandNew()
 	for k, v in pairs(main.t_commands) do
@@ -64,14 +65,14 @@ end
 function main.f_btnPalNo(cmd)
 	local s = 0
 	if commandGetState(cmd, '/s') then s = 6 end
+	--if commandGetState(cmd, '/d') then s = 12 end
+	--if commandGetState(cmd, '/w') then s = 18 end
 	if commandGetState(cmd, 'a') then return 1 + s end
 	if commandGetState(cmd, 'b') then return 2 + s end
 	if commandGetState(cmd, 'c') then return 3 + s end
 	if commandGetState(cmd, 'x') then return 4 + s end
 	if commandGetState(cmd, 'y') then return 5 + s end
 	if commandGetState(cmd, 'z') then return 6 + s end
-	if commandGetState(cmd, 'v') then return 1 + s end
-	if commandGetState(cmd, 'w') then return 2 + s end
 	return 0
 end
 
@@ -183,103 +184,169 @@ function main.f_printVar(v, toFile)
 	file:close()
 end
 
---unpacking doesn't work with the text table thing normally, so fixed that
-function unpack(t, i)
-	i = i or 1
-	n = 0
-	for c, k in pairs(t) do
-		n = n + 1
-		if n == i then
-			return k, unpack(t, i+1)
+--split strings
+function main.f_strsplit(delimiter, text)
+	local list = {}
+	local pos = 1
+	if string.find('', delimiter, 1) then
+		if string.len(text) == 0 then
+			table.insert(list, text)
+		else
+			for i = 1, string.len(text) do
+				table.insert(list, string.sub(text, i, i))
+			end
+		end
+	else
+		while true do
+			local first, last = string.find(text, delimiter, pos)
+			if first then
+				table.insert(list, string.sub(text, pos, first - 1))
+				pos = last + 1
+			else
+				table.insert(list, string.sub(text, pos))
+				break
+			end
 		end
 	end
+	return list
 end
 
+require('external.script.screenpack')
+main.IntLocalcoordValues()
+main.CalculateLocalcoordValues()
+main.IntLifebarScale()
+main.SetScaleValues()
+
+--fix for wrong x coordinate after flipping text/sprite (this should be fixed on source code level at some point)
+function main.f_alignOffset(align)
+	if align == -1 then
+		return 1
+	end
+	return 0
+end
+
+main.font = {}
 text = {}
---Creates text
-function text:create(o)
-	local o = o or {}
-	o.data = {
-		font = o.font or '',
-		bank = o.bank or 0,
-		align = o.align or 0,
-		text = o.text or '',
-		x = o.x or 0,
-		y = o.y or 0,
-		scaleX = o.scaleX or 1, 
-		scaleY = o.scaleY or 1,
-		r = o.r or 255,
-		g = o.g or 255,
-		b = o.b or 255,
-		src = o.src or 255,
-		dst = o.dst or 0
+--create text
+function text:create(t)
+	--default values
+	if t.window == nil then t.window = {} end
+	local o = {
+		font = t.font or '',
+		bank = t.bank or 0,
+		align = t.align or 0,
+		text = t.text or '',
+		x = t.x or 0,
+		y = t.y or 0,
+		scaleX = t.scaleX or 1, 
+		scaleY = t.scaleY or 1,
+		r = t.r or 255,
+		g = t.g or 255,
+		b = t.b or 255,
+		src = t.src or 255,
+		dst = t.dst or 0,
+		height = t.height or -1,
+		window = {
+			main.screenOverscan + (t.window[1] or 0), 
+			t.window[2] or 0,
+			main.screenOverscan + (t.window[3] or motif.info.localcoord[1]) - (t.window[1] or 0),
+			(t.window[4] or motif.info.localcoord[2]) - (t.window[2] or 0)
+		},
+		defsc = t.defsc or false
 	}
+	o.ti = textImgNew()
 	setmetatable(o, self)
 	self.__index = self
-	local tmp = o.data
-	o.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-	scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
-	--if motif.font_data[o.data.font] then o.data.font = fontNew(o.data.font) end
-	o.data.ti = main.f_createTextImg(unpack(o.data))
-	--for k, v in pairs(o) do print(k, v) end
+	--font
+	if o.font ~= '' then
+		if main.font[o.font] == nil then
+			main.font[o.font] = {}
+		end
+		local s = o.r .. o.g .. o.b .. o.src .. o.dst .. o.height
+		if main.font[o.font][s] == nil then
+			main.font[o.font][s] = fontNew(o.font)
+		end
+		--r, g, b, trans
+		if o.r ~= 255 or o.g ~= 255 or o.b ~= 255 or o.src ~= 255 or o.dst ~= 0 then
+			fontSetColor(main.font[o.font][s], o.r, o.g, o.b, o.src, o.dst)
+		end
+		--height (ttf)
+		if o.height ~= -1 then
+			fontSetHeight(main.font[o.font][s], t.height)
+		end
+		--font def
+		if main.font[o.font].def == nil then
+			main.font[o.font].def = fontGetDef(main.font[o.font][s])
+		end
+		textImgSetFont(o.ti, main.font[o.font][s])
+	end
+	textImgSetBank(o.ti, o.bank)
+	textImgSetAlign(o.ti, o.align)
+	textImgSetText(o.ti, o.text)
+	if o.defsc then main.SetDefaultScale() end
+	textImgSetPos(o.ti, o.x + main.f_alignOffset(o.align), o.y)
+	textImgSetScale(o.ti, o.scaleX, o.scaleY)
+	textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3], o.window[4])
+	if o.defsc then main.SetScaleValues() end
 	return o
 end
---Updates text by changing values in old table
+
+--update text
 function text:update(t)
 	local ok = false
+	local fontChange = false
+	local colorChange = false
+	local heightChange = false
 	for k, v in pairs(t) do
-		if k == "font" and type(v) == 'string' then fontNew(v) end
-		if self.data[k] ~= v then
-			self.data[k] = v
-			--if type(v) == "number" or type(v) == "string" then print(k .. ': ' .. v) end
+		if self[k] ~= v then
+			if k == 'font' then
+				fontChange = true
+			elseif k == 'r' or k == 'g' or k == 'b' or k == 'src' or k == 'dst' then
+				colorChange = true
+			elseif k == 'height' then
+				heightChange = true
+			end
+			self[k] = v
 			ok = true
 		end
 	end
-	if ok then
-		local tmp = self.data
-		self.data = {ti = tmp.ti, font = tmp.font, bank = tmp.bank, align = tmp.align, text = tmp.text, x = tmp.x, y = tmp.y,
-		scaleX = tmp.scaleX, scaleY = tmp.scaleY, r = tmp.r, g = tmp.g, b = tmp.b, src = tmp.src, dst = tmp.dst, defsc = tmp.defsc}
-		self.data.ti = main.f_updateTextImg(unpack(self.data))
+	if not ok then return end
+	--font
+	if fontChange or colorChange or heightChange then
+		if main.font[self.font] == nil then
+			main.font[self.font] = {}
+		end
+		local s = self.r .. self.g .. self.b .. self.src .. self.dst .. self.height
+		if main.font[self.font][s] == nil then
+			main.font[self.font][s] = fontNew(self.font)
+		end
+		--r, g, b, trans
+		if colorChange then
+			fontSetColor(main.font[self.font][s], self.r, self.g, self.b, self.src, self.dst)
+		end
+		--height (ttf)
+		if heightChange then
+			fontSetHeight(main.font[self.font][s], self.height)
+		end
+		--font def
+		if main.font[self.font].def == nil then
+			main.font[self.font].def = fontGetDef(main.font[self.font][s])
+		end
+		textImgSetFont(self.ti, main.font[self.font][s])
 	end
+	textImgSetBank(self.ti, self.bank)
+	textImgSetAlign(self.ti, self.align)
+	textImgSetText(self.ti, self.text)
+	if self.defsc then main.SetDefaultScale() end
+	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
+	textImgSetScale(self.ti, self.scaleX, self.scaleY)
+	textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3], self.window[4])
+	if self.defsc then main.SetScaleValues() end
 end
---Draws text (little bit shorter)
+
+--draw text
 function text:draw()
-	textImgDraw(self.data.ti)
-end
-
---shortcut for creating new text with several parameters
-function main.f_createTextImg(font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
-	if defsc then main.SetDefaultScale() end
-	local ti = textImgNew()
-	if font ~= '' then
-		textImgSetFont(ti, font)
-		textImgSetBank(ti, bank)
-		textImgSetAlign(ti, align)
-		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
-		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-		textImgSetPos(ti, x, y)
-		textImgSetScale(ti, scaleX, scaleY)
-	end
-	if defsc then main.SetScaleValues() end
-	return ti
-end
-
---shortcut for updating text with several parameters
-function main.f_updateTextImg(ti, font, bank, align, text, x, y, scaleX, scaleY, r, g, b, src, dst, defsc)
-	if defsc then main.SetDefaultScale() end
-	if font ~= '' then
-		textImgSetFont(ti, font)
-		textImgSetBank(ti, bank)
-		textImgSetAlign(ti, align)
-		textImgSetText(ti, text)
-		textImgSetColor(ti, r, g, b, src, dst)
-		if align == -1 then x = x + 1 end --fix for wrong offset after flipping text
-		textImgSetPos(ti, x, y)
-		textImgSetScale(ti, scaleX, scaleY)
-	end
-	if defsc then main.SetScaleValues() end
-	return ti
+	textImgDraw(self.ti)
 end
 
 --animDraw at specified coordinates
@@ -450,26 +517,42 @@ function main.f_contains(t, val)
 	return false
 end
 
+--calculates text line length (in pixels) for main.f_textRender
+function main.f_lineLength(startX, maxWidth, align, window, windowWrap)
+	local w = maxWidth
+	if #window > 0 and windowWrap then
+		w = window[3]
+	end
+	if align == 1 then --left
+		return w - startX
+	elseif align == 0 then --center
+		return math.floor(math.min(startX - (window[1] or 0), w - startX) * 2 + 0.5)
+	else --right
+		return startX - (window[1] or 0)
+	end
+end
+
 --draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
-function main.f_textRender(data, str, counter, x, y, font_data, delay, pxLimit)
+function main.f_textRender(data, str, counter, x, y, font_def, delay, length)
 	local delay = delay or 0
-	local pxLimit = pxLimit or 0
+	local length = length or 0
 	str = tostring(str)
 	local text = ''
-	if pxLimit <= 0 then --auto wrapping disabled
+	if length <= 0 then --auto wrapping disabled
 		text = str:gsub('\\n', '\n')
 	else --add \n before the word that exceeds amount of free pixels in the line
 		local tmp = ''
-		local pxLeft = pxLimit
+		local pxLeft = length
 		local tmp_px = 0
-		local space = font_data[' '] or fontGetTextWidth(motif.font_data[motif.victory_screen.winquote_font[1]], ' ')
+		local s = data.r .. data.g .. data.b .. data.src .. data.dst .. data.height
+		local space = (font_def[' '] or fontGetTextWidth(main.font[data.font][s], ' ')) * data.scaleX
 		for i = 1, string.len(str) do
 			local symbol = string.sub(str, i, i)
-			if font_data[symbol] == nil then --store symbol length in global table for faster counting
-				font_data[symbol] = fontGetTextWidth(motif.font_data[motif.victory_screen.winquote_font[1]], symbol)
+			if font_def[symbol] == nil then --store symbol length in global table for faster counting
+				font_def[symbol] = fontGetTextWidth(main.font[data.font][s], symbol)
 			end
-			local px = font_data[symbol]
-			if pxLeft + space - px > 0 then
+			local px = font_def[symbol] * data.scaleX
+			if pxLeft + space - px >= 0 then
 				if symbol:match('%s') then
 					text = text .. tmp .. symbol
 					tmp = ''
@@ -479,11 +562,11 @@ function main.f_textRender(data, str, counter, x, y, font_data, delay, pxLimit)
 					tmp_px = tmp_px + px
 				end
 				pxLeft = pxLeft - px
-			else --character in this word outside the pixel range
+			else --character in this word is outside the pixel range
 				text = text .. '\n'
 				tmp = tmp .. symbol
 				tmp_px = tmp_px + px
-				pxLeft = pxLimit - tmp_px
+				pxLeft = length - tmp_px
 				tmp_px = 0
 			end
 		end
@@ -514,22 +597,11 @@ function main.f_textRender(data, str, counter, x, y, font_data, delay, pxLimit)
 		data:update({
 			text = t[i],
 			x =    x,
-			y =    y + (font_data.Size[2] + font_data.Spacing[2]) * (i - 1),
+			y =    y + math.floor(font_def.Size[2] * data.scaleY + font_def.Spacing[2] * data.scaleY + 0.5) * (i - 1),
 		})
 		data:draw()
 	end
 	return ret
-end
-
---calculates pxLimit parameter based on text x pos, localcoord and font align
-function main.f_pxLimit(x, screenWidth, align)
-	if align == 1 then --left
-		return screenWidth - x
-	elseif align == 0 then --center
-		return math.floor(screenWidth / 2 + 0.5)
-	else --right
-		return x
-	end
 end
 
 --Convert DEF string to table
@@ -589,33 +661,6 @@ function main.f_tableMerge(t1, t2)
 	return t1
 end
 
---split strings
-function main.f_strsplit(delimiter, text)
-	local list = {}
-	local pos = 1
-	if string.find('', delimiter, 1) then
-		if string.len(text) == 0 then
-			table.insert(list, text)
-		else
-			for i = 1, string.len(text) do
-				table.insert(list, string.sub(text, i, i))
-			end
-		end
-	else
-		while true do
-			local first, last = string.find(text, delimiter, pos)
-			if first then
-				table.insert(list, string.sub(text, pos, first - 1))
-				pos = last + 1
-			else
-				table.insert(list, string.sub(text, pos))
-				break
-			end
-		end
-	end
-	return list
-end
-
 --return table with reversed keys
 function main.f_reversedTable(t)
 	local reversedTable = {}
@@ -664,7 +709,6 @@ function main.f_countSubstring(s1, s2)
 end
 
 --warning display
-local txt_warning = text:create({})
 function main.f_warning(t, info, background, font_info, title, coords, col, alpha, defaultscale)
 	if defaultscale == nil then defaultscale = motif.defaultWarning end
 	font_info = font_info or motif.warning_info
@@ -673,6 +717,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 	col = col or motif.warning_info.boxbg_col
 	alpha = alpha or motif.warning_info.boxbg_alpha
 	main.f_cmdInput()
+	esc(false) --reset ESC
 	while true do
 		if main.input({1, 2}, {'pal'}) or esc() then
 			sndPlay(motif.files.snd_data, info.cursor_move_snd[1], info.cursor_move_snd[2])
@@ -690,13 +735,13 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		title:draw()
 		--draw text
 		for i = 1, #t do
-			txt_warning:update({
-				font =   motif.font_data[font_info.text_font[1]],
+			main.txt_warning:update({
+				font =   font_info.text_font[1],
 				bank =   font_info.text_font[2],
 				align =  font_info.text_font[3],
 				text =   t[i],
 				x =      font_info.text_pos[1],
-				y =      font_info.text_pos[2] + (motif.font_def[font_info.text_font[1]].Size[2] + motif.font_def[font_info.text_font[1]].Spacing[2]) * (i - 1),
+				y =      font_info.text_pos[2] + math.floor(main.font[font_info.text_font[1]].def.Size[2] * font_info.text_font_scale[2] + main.font[font_info.text_font[1]].def.Spacing[2] * font_info.text_font_scale[2] + 0.5) * (i - 1),
 				scaleX = font_info.text_font_scale[1],
 				scaleY = font_info.text_font_scale[2],
 				r =      font_info.text_font[4],
@@ -704,9 +749,10 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 				b =      font_info.text_font[6],
 				src =    font_info.text_font[7],
 				dst =    font_info.text_font[8],
+				height = font_info.text_font_height,
 				defsc =  defaultscale
 			})
-			txt_warning:draw()
+			main.txt_warning:draw()
 		end
 		--end loop
 		main.f_cmdInput()
@@ -789,7 +835,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		for i = 1, #t do
 			main.txt_input:update({
 				text = t[i],
-				y =    motif.infobox.text_pos[2] + (motif.font_def[motif.infobox.text_font[1]].Size[2] + motif.font_def[motif.infobox.text_font[1]].Spacing[2]) * (i - 1),
+				y =    motif.infobox.text_pos[2] + math.floor(main.font[motif.infobox.text_font[1]].def.Size[2] * motif.infobox.text_font_scale[2] + main.font[motif.infobox.text_font[1]].def.Spacing[2] * motif.infobox.text_font_scale[2] + 0.5) * (i - 1),
 			})
 			main.txt_input:draw()
 		end
@@ -812,15 +858,6 @@ function main.loadingRefresh(txt)
 		main.nextRefresh = os.clock() + 0.02
 	end
 end
-
---;===========================================================
---; LOCALCOORD
---;===========================================================
-require('external.script.screenpack')
-main.IntLocalcoordValues()
-main.CalculateLocalcoordValues()
-main.IntLifebarScale()
-main.SetScaleValues()
 
 --;===========================================================
 --; COMMAND LINE QUICK VS
@@ -983,8 +1020,9 @@ setPortrait(motif.select_info.portrait_spr[1], motif.select_info.portrait_spr[2]
 setPortrait(motif.vs_screen.p1_spr[1], motif.vs_screen.p1_spr[2], 3) --Versus portrait
 setPortrait(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2], 4) --Stage portrait
 
+main.txt_warning = text:create({})
 main.txt_warningTitle = text:create({
-	font =   motif.font_data[motif.warning_info.title_font[1]],
+	font =   motif.warning_info.title_font[1],
 	bank =   motif.warning_info.title_font[2],
 	align =  motif.warning_info.title_font[3],
 	text =   motif.warning_info.title,
@@ -997,10 +1035,11 @@ main.txt_warningTitle = text:create({
 	b =      motif.warning_info.title_font[6],
 	src =    motif.warning_info.title_font[7],
 	dst =    motif.warning_info.title_font[8],
+	height = motif.warning_info.title_font_height,
 	defsc =  motif.defaultWarning
 })
 main.txt_input = text:create({
-	font =   motif.font_data[motif.infobox.text_font[1]],
+	font =   motif.infobox.text_font[1],
 	bank =   motif.infobox.text_font[2],
 	align =  motif.infobox.text_font[3],
 	text =   '',
@@ -1013,10 +1052,11 @@ main.txt_input = text:create({
 	b =      motif.infobox.text_font[6],
 	src =    motif.infobox.text_font[7],
 	dst =    motif.infobox.text_font[8],
+	height = motif.infobox.text_font_height,
 	defsc =  motif.defaultInfobox
 })
 local txt_loading = text:create({
-	font =   motif.font_data[motif.title_info.loading_font[1]],
+	font =   motif.title_info.loading_font[1],
 	bank =   motif.title_info.loading_font[2],
 	align =  motif.title_info.loading_font[3],
 	text =   motif.title_info.loading_text,
@@ -1029,6 +1069,7 @@ local txt_loading = text:create({
 	b =      motif.title_info.loading_font[6],
 	src =    motif.title_info.loading_font[7],
 	dst =    motif.title_info.loading_font[8],
+	height = motif.title_info.loading_font_height,
 	defsc =  motif.defaultLoading
 })
 txt_loading:draw()
@@ -1170,8 +1211,9 @@ function main.f_addChar(line, row, playable, slot)
 	else
 		table.insert(main.t_selGrid[#main.t_selGrid].chars, row)
 	end
-	for _, v in ipairs({'swap', 'select'}) do
+	for _, v in ipairs({'next', 'previous', 'select'}) do
 		if main.t_selChars[row][v] ~= nil then
+			main.t_selChars[row][v] = main.t_selChars[row][v]:gsub('/(.)%s*+', '/%1,') --convert '+' to ',' for button holding
 			main.f_commandAdd(main.t_selChars[row][v])
 			if main.t_selGrid[#main.t_selGrid][v] == nil then
 				main.t_selGrid[#main.t_selGrid][v] = {}
@@ -1533,7 +1575,7 @@ storyboard = require('external.script.storyboard')
 --; MENUS
 --;===========================================================
 local txt_titleFooter1 = text:create({
-	font =   motif.font_data[motif.title_info.footer1_font[1]],
+	font =   motif.title_info.footer1_font[1],
 	bank =   motif.title_info.footer1_font[2],
 	align =  motif.title_info.footer1_font[3],
 	text =   motif.title_info.footer1_text,
@@ -1546,10 +1588,11 @@ local txt_titleFooter1 = text:create({
 	b =      motif.title_info.footer1_font[6],
 	src =    motif.title_info.footer1_font[7],
 	dst =    motif.title_info.footer1_font[8],
+	height = motif.title_info.footer1_font_height,
 	defsc =  motif.defaultFooter
 })
 local txt_titleFooter2 = text:create({
-	font =   motif.font_data[motif.title_info.footer2_font[1]],
+	font =   motif.title_info.footer2_font[1],
 	bank =   motif.title_info.footer2_font[2],
 	align =  motif.title_info.footer2_font[3],
 	text =   motif.title_info.footer2_text,
@@ -1562,10 +1605,11 @@ local txt_titleFooter2 = text:create({
 	b =      motif.title_info.footer2_font[6],
 	src =    motif.title_info.footer2_font[7],
 	dst =    motif.title_info.footer2_font[8],
+	height = motif.title_info.footer2_font_height,
 	defsc =  motif.defaultFooter
 })
 local txt_titleFooter3 = text:create({
-	font =   motif.font_data[motif.title_info.footer3_font[1]],
+	font =   motif.title_info.footer3_font[1],
 	bank =   motif.title_info.footer3_font[2],
 	align =  motif.title_info.footer3_font[3],
 	text =   motif.title_info.footer3_text,
@@ -1578,10 +1622,11 @@ local txt_titleFooter3 = text:create({
 	b =      motif.title_info.footer3_font[6],
 	src =    motif.title_info.footer3_font[7],
 	dst =    motif.title_info.footer3_font[8],
+	height = motif.title_info.footer3_font_height,
 	defsc =  motif.defaultFooter
 })
 local txt_infoboxTitle = text:create({
-	font =   motif.font_data[motif.infobox.title_font[1]],
+	font =   motif.infobox.title_font[1],
 	bank =   motif.infobox.title_font[2],
 	align =  motif.infobox.title_font[3],
 	text =   motif.infobox.title,
@@ -1594,11 +1639,12 @@ local txt_infoboxTitle = text:create({
 	b =      motif.infobox.title_font[6],
 	src =    motif.infobox.title_font[7],
 	dst =    motif.infobox.title_font[8],
+	height = motif.infobox.title_font_height,
 	defsc =  motif.defaultInfobox
 })
 
 main.txt_mainSelect = text:create({
-	font =   motif.font_data[motif.select_info.title_font[1]],
+	font =   motif.select_info.title_font[1],
 	bank =   motif.select_info.title_font[2],
 	align =  motif.select_info.title_font[3],
 	text =   '',
@@ -1611,6 +1657,7 @@ main.txt_mainSelect = text:create({
 	b =      motif.select_info.title_font[6],
 	src =    motif.select_info.title_font[7],
 	dst =    motif.select_info.title_font[8],
+	height = motif.select_info.title_font_height,
 })
 
 main.reconnect = false
@@ -1670,7 +1717,7 @@ main.t_itemname = {
 		main.t_charparam.onlyme = true
 		main.t_lifebar.timer = true
 		main.t_lifebar.p2ai = true
-		main.resultsTable = motif.timeattack_results_screen
+		main.resultsTable = motif.time_attack_results_screen
 		main.credits = config.Credits - 1
 		main.txt_mainSelect:update({text = motif.select_info.title_text_timeattack})
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
@@ -1696,7 +1743,7 @@ main.t_itemname = {
 		--uses default main.t_charparam assignment
 		main.t_lifebar.timer = true
 		main.t_lifebar.p2ai = true
-		main.resultsTable = motif.timechallenge_results_screen
+		main.resultsTable = motif.time_challenge_results_screen
 		main.p1TeamMenu = {mode = 0, chars = 1}
 		main.p2TeamMenu = {mode = 0, chars = 1}
 		main.txt_mainSelect:update({text = motif.select_info.title_text_timechallenge})
@@ -1720,7 +1767,7 @@ main.t_itemname = {
 		--uses default main.t_charparam assignment
 		main.t_lifebar.p1score = true
 		main.t_lifebar.p2ai = true
-		main.resultsTable = motif.scorechallenge_results_screen
+		main.resultsTable = motif.score_challenge_results_screen
 		main.p1TeamMenu = {mode = 0, chars = 1}
 		main.p2TeamMenu = {mode = 0, chars = 1}
 		main.txt_mainSelect:update({text = motif.select_info.title_text_scorechallenge})
@@ -1907,7 +1954,7 @@ main.t_itemname = {
 		main.t_charparam.onlyme = true
 		main.t_lifebar.match = true
 		main.t_lifebar.p2ai = true
-		main.resultsTable = motif.vs100kumite_results_screen
+		main.resultsTable = motif.vs100_kumite_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_vs100kumite})
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -1929,7 +1976,7 @@ main.t_itemname = {
 		main.t_charparam.onlyme = true
 		main.t_lifebar.match = true
 		main.t_lifebar.p2ai = true
-		main.resultsTable = motif.bossrush_results_screen
+		main.resultsTable = motif.boss_rush_results_screen
 		main.txt_mainSelect:update({text = motif.select_info.title_text_bossrush})
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -1943,7 +1990,13 @@ main.t_itemname = {
 			enterReplay('save/replays/netplay.replay')
 			synchronize()
 			math.randomseed(sszRandom())
-			main.menu.submenu.server.loop()
+			--main.menu.submenu.server.loop()
+			local f = main.f_checkSubmenu(main.menu.submenu.server, 2)
+			if f ~= '' then
+				main.f_default()
+				main.t_itemname[f](cursorPosY, moveTxt, item, t)
+				--resetRemapInput()
+			end
 			exitNetPlay()
 			exitReplay()
 		end
@@ -2274,6 +2327,12 @@ end
 --dynamically generates all main screen menus and submenus using itemname data stored in main.t_sort table
 main.menu = {['submenu'] = {}, ['items'] = {}}
 main.menu.loop = main.createMenu(main.menu, true, true, true, false, true, false)
+local t_menuWindow = {
+	0,
+	math.max(0, motif.title_info.menu_pos[2] - motif.title_info.menu_window_margins_y[1]),
+	motif.info.localcoord[1],
+	math.min(motif.info.localcoord[2], motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2])
+}
 local t_pos = {} --for storing current main.menu table position
 local t_skipGroup = {}
 local lastNum = 0
@@ -2297,7 +2356,7 @@ for i = 1, #main.t_sort.title_info do
 				main.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}}
 				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
 				if not main.t_sort.title_info[i]:match(c .. '_') then
-					table.insert(main.menu.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+					table.insert(main.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				end
 			end
 			t_pos = main.menu.submenu[c]
@@ -2305,7 +2364,7 @@ for i = 1, #main.t_sort.title_info do
 			if t_pos.submenu[c] == nil then
 				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}}
 				t_pos.submenu[c].loop = main.createMenu(t_pos.submenu[c], false, false, false, true, true, c == 'serverjoin')
-				table.insert(t_pos.items, {data = text:create({}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -2316,13 +2375,13 @@ for i = 1, #main.t_sort.title_info do
 		if main.t_sort.title_info[i]:match('_bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k = 1, #main.t_bonusChars do
 				local name = getCharName(main.t_bonusChars[k])
-				table.insert(t_pos.items, {data = text:create({}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
+				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
 			end
 		end
 		--add IP addresses for serverjoin submenu
 		if main.t_sort.title_info[i]:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k, v in pairs(config.IP) do
-				table.insert(t_pos.items, {data = text:create({}), itemname = 'ip_' .. k, displayname = k})
+				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'ip_' .. k, displayname = k})
 			end
 		end
 	end
@@ -2364,7 +2423,7 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setDemoTime(motif.demo_mode.fight_endtime * 60)
+	setDemoTime(motif.demo_mode.fight_endtime)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -2495,7 +2554,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 	bgDraw(motif.titlebgdef.bg, false)
 	--draw menu items
 	local items_shown = item + motif.title_info.menu_window_visibleitems - cursorPosY
-	if motif.title_info.menu_window_visibleitems > 1 and motif.title_info.menu_window_margins_y[2] ~= 0 and items_shown < #t then
+	if motif.title_info.menu_window_visibleitems > 1 and items_shown < #t then
 		items_shown = items_shown + 1
 	end
 	if items_shown > #t then
@@ -2505,7 +2564,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 		if i > item - cursorPosY then
 			if i == item then
 				t[i].data:update({
-					font =   motif.font_data[motif.title_info.menu_item_active_font[1]],
+					font =   motif.title_info.menu_item_active_font[1],
 					bank =   motif.title_info.menu_item_active_font[2],
 					align =  motif.title_info.menu_item_active_font[3],
 					text =   t[i].displayname,
@@ -2518,11 +2577,12 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 					b =      motif.title_info.menu_item_active_font[6],
 					src =    motif.title_info.menu_item_active_font[7],
 					dst =    motif.title_info.menu_item_active_font[8],
+					height = motif.title_info.menu_item_active_font_height,
 				})
 				t[i].data:draw()
 			else
 				t[i].data:update({
-					font =   motif.font_data[motif.title_info.menu_item_font[1]],
+					font =   motif.title_info.menu_item_font[1],
 					bank =   motif.title_info.menu_item_font[2],
 					align =  motif.title_info.menu_item_font[3],
 					text =   t[i].displayname,
@@ -2535,6 +2595,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 					b =      motif.title_info.menu_item_font[6],
 					src =    motif.title_info.menu_item_font[7],
 					dst =    motif.title_info.menu_item_font[8],
+					height = motif.title_info.menu_item_font_height,
 				})
 				t[i].data:draw()
 			end
@@ -2644,7 +2705,7 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 end
 
 local txt_connecting = text:create({
-	font =   motif.font_data[motif.title_info.connecting_font[1]],
+	font =   motif.title_info.connecting_font[1],
 	bank =   motif.title_info.connecting_font[2],
 	align =  motif.title_info.connecting_font[3],
 	text =   '',
@@ -2657,6 +2718,7 @@ local txt_connecting = text:create({
 	b =      motif.title_info.connecting_font[6],
 	src =    motif.title_info.connecting_font[7],
 	dst =    motif.title_info.connecting_font[8],
+	height = motif.title_info.connecting_font_height,
 	defsc =  motif.defaultConnecting
 })
 

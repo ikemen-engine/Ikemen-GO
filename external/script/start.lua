@@ -893,7 +893,7 @@ function start.f_getName(ref)
 end
 
 --draws character names
-function start.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spacingX, spacingY, active_font, active_row)
+function start.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
 	for i = 1, #t do
 		local x = offsetX
 		local f = font
@@ -904,24 +904,23 @@ function start.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, spaci
 				f = font
 			end
 		end
-		if motif.font_data[f[1]] ~= -1 then
-			data:update({
-				font =   motif.font_data[f[1]],
-				bank =   f[2],
-				align =  f[3],
-				text =   start.f_getName(t[i].ref),
-				x =      x + (i - 1) * spacingX,
-				y =      offsetY + (i - 1) * spacingY,
-				scaleX = scaleX,
-				scaleY = scaleY,
-				r =      f[4],
-				g =      f[5],
-				b =      f[6],
-				src =    f[7],
-				dst =    f[8],
-			})
-			data:draw()
-		end
+		data:update({
+			font =   f[1],
+			bank =   f[2],
+			align =  f[3],
+			text =   start.f_getName(t[i].ref),
+			x =      x + (i - 1) * spacingX,
+			y =      offsetY + (i - 1) * spacingY,
+			scaleX = scaleX,
+			scaleY = scaleY,
+			r =      f[4],
+			g =      f[5],
+			b =      f[6],
+			src =    f[7],
+			dst =    f[8],
+			height = height,
+		})
+		data:draw()
 	end
 end
 
@@ -1065,24 +1064,72 @@ function start.f_resetGrid()
 			
 			--1Pのランダムセル表示位置 / 1P random cell display position
 			if start.t_grid[row + p1RowOffset][col].char == 'randomselect' or start.t_grid[row + p1RowOffset][col].hidden == 3 then
-				table.insert(start.t_drawFace, {d = 1, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y})
+				table.insert(start.t_drawFace, {
+					d = 1,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			--1Pのキャラ表示位置 / 1P character display position
 			elseif start.t_grid[row + p1RowOffset][col].char ~= nil and start.t_grid[row + p1RowOffset][col].hidden == 0 then
-				table.insert(start.t_drawFace, {d = 2, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y})
+				table.insert(start.t_drawFace, {
+					d = 2,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			--Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
-				table.insert(start.t_drawFace, {d = 0, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y})
+				table.insert(start.t_drawFace, {
+					d = 0,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			end
 			
 			--2Pのランダムセル表示位置 / 2P random cell display position
 			if start.t_grid[row + p2RowOffset][col].char == 'randomselect' or start.t_grid[row + p2RowOffset][col].hidden == 3 then
-				table.insert(start.t_drawFace, {d = 11, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y}		)
+				table.insert(start.t_drawFace, {
+					d = 11,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			--2Pのキャラ表示位置 / 2P character display position
 			elseif start.t_grid[row + p2RowOffset][col].char ~= nil and start.t_grid[row + p2RowOffset][col].hidden == 0 then
-				table.insert(start.t_drawFace, {d = 12, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y})
+				table.insert(start.t_drawFace, {
+					d = 12,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			--Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
-				table.insert(start.t_drawFace, {d = 10, p1 = start.t_grid[row + p1RowOffset][col].char_ref, p2 = start.t_grid[row + p2RowOffset][col].char_ref, x1 = p1FaceX + start.t_grid[row][col].x, x2 = p2FaceX + start.t_grid[row][col].x, y1 = p1FaceY + start.t_grid[row][col].y, y2 = p2FaceY + start.t_grid[row][col].y})
+				table.insert(start.t_drawFace, {
+					d = 10,
+					p1 = start.t_grid[row + p1RowOffset][col].char_ref,
+					p2 = start.t_grid[row + p2RowOffset][col].char_ref,
+					x1 = p1FaceX + start.t_grid[row][col].x,
+					x2 = p2FaceX + start.t_grid[row][col].x,
+					y1 = p1FaceY + start.t_grid[row][col].y,
+					y2 = p2FaceY + start.t_grid[row][col].y
+				})
 			end
 		end
 	end
@@ -1133,22 +1180,35 @@ end
 
 --return true if slot is selected, update start.t_grid
 function start.f_slotSelected(cell, cmd, x, y)
-	if #main.t_selGrid[cell].chars > 1 then
-		for _, cmdType in ipairs({'swap', 'select'}) do
+	if #main.t_selGrid[cell].chars > 0 then
+		for _, cmdType in ipairs({'select', 'next', 'previous'}) do
 			if main.t_selGrid[cell][cmdType] ~= nil then
 				for k, v in pairs(main.t_selGrid[cell][cmdType]) do
 					if main.input({cmd}, {k}) then
-						if cmdType == 'swap' then
+						if cmdType == 'next' then
 							local ok = false
-							for i, s in ipairs(v) do
-								if s > main.t_selGrid[cell].slot then
-									main.t_selGrid[cell].slot = s
+							for i = 1, #v do
+								if v[i] > main.t_selGrid[cell].slot then
+									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
 								end
 							end
 							if not ok then
 								main.t_selGrid[cell].slot = v[1]
+								ok = true
+							end
+						elseif cmdType == 'previous' then
+							local ok = false
+							for i = #v, 1, -1 do
+								if v[i] < main.t_selGrid[cell].slot then
+									main.t_selGrid[cell].slot = v[i]
+									ok = true
+									break
+								end
+							end
+							if not ok then
+								main.t_selGrid[cell].slot = v[#v]
 								ok = true
 							end
 						else --select
@@ -1890,7 +1950,7 @@ end
 --; SELECT SCREEN
 --;===========================================================
 local txt_recordSelect = text:create({
-	font =   motif.font_data[motif.select_info.record_font[1]],
+	font =   motif.select_info.record_font[1],
 	bank =   motif.select_info.record_font[2],
 	align =  motif.select_info.record_font[3],
 	text =   '',
@@ -1903,9 +1963,10 @@ local txt_recordSelect = text:create({
 	b =      motif.select_info.record_font[6],
 	src =    motif.select_info.record_font[7],
 	dst =    motif.select_info.record_font[8],
+	height = motif.select_info.record_font_height,
 })
 local txt_timerSelect = text:create({
-	font =   motif.font_data[motif.select_info.timer_font[1]],
+	font =   motif.select_info.timer_font[1],
 	bank =   motif.select_info.timer_font[2],
 	align =  motif.select_info.timer_font[3],
 	text =   '',
@@ -1918,9 +1979,10 @@ local txt_timerSelect = text:create({
 	b =      motif.select_info.timer_font[6],
 	src =    motif.select_info.timer_font[7],
 	dst =    motif.select_info.timer_font[8],
+	height = motif.select_info.timer_font_height,
 })
 local txt_p1Name = text:create({
-	font =   motif.font_data[motif.select_info.p1_name_font[1]],
+	font =   motif.select_info.p1_name_font[1],
 	bank =   motif.select_info.p1_name_font[2],
 	align =  motif.select_info.p1_name_font[3],
 	text =   '',
@@ -1933,12 +1995,10 @@ local txt_p1Name = text:create({
 	b =      motif.select_info.p1_name_font[6],
 	src =    motif.select_info.p1_name_font[7],
 	dst =    motif.select_info.p1_name_font[8],
+	height = motif.select_info.p1_name_font_height,
 })
-local p1RandomCount = 0
-local p1RandomPortrait = 0
-p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 local txt_p2Name = text:create({
-	font =   motif.font_data[motif.select_info.p2_name_font[1]],
+	font =   motif.select_info.p2_name_font[1],
 	bank =   motif.select_info.p2_name_font[2],
 	align =  motif.select_info.p2_name_font[3],
 	text =   '',
@@ -1951,17 +2011,13 @@ local txt_p2Name = text:create({
 	b =      motif.select_info.p2_name_font[6],
 	src =    motif.select_info.p2_name_font[7],
 	dst =    motif.select_info.p2_name_font[8],
+	height = motif.select_info.p2_name_font_height,
 })
-local p2RandomCount = 0
-local p2RandomPortrait = 0
-p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 
-function start.f_alignOffset(align)
-	if align == -1 then
-		return 1 --fix for wrong offset after flipping sprites
-	end
-	return 0
-end
+local p1RandomCount = motif.select_info.cell_random_switchtime
+local p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
+local p2RandomCount = motif.select_info.cell_random_switchtime
+local p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 
 function start.f_selectScreen()
 	if selScreenEnd then
@@ -1997,10 +2053,13 @@ function start.f_selectScreen()
 					if p1RandomCount < motif.select_info.cell_random_switchtime then
 						p1RandomCount = p1RandomCount + 1
 					else
+						if motif.select_info.random_move_snd_cancel == 1 then
+							sndStop(motif.files.snd_data, motif.select_info.p1_random_move_snd[1], motif.select_info.p1_random_move_snd[2])
+						end
+						sndPlay(motif.files.snd_data, motif.select_info.p1_random_move_snd[1], motif.select_info.p1_random_move_snd[2])
 						p1RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 						p1RandomCount = 0
 					end
-					sndPlay(motif.files.snd_data, motif.select_info.p1_random_move_snd[1], motif.select_info.p1_random_move_snd[2])
 					t_portrait[1] = p1RandomPortrait
 				elseif start.f_selGrid(p1Cell + 1).hidden ~= 2 then
 					t_portrait[1] = start.f_selGrid(p1Cell + 1).char_ref
@@ -2015,10 +2074,14 @@ function start.f_selectScreen()
 			for n = #t_portrait, 1, -1 do
 				drawPortrait(
 					t_portrait[n],
-					motif.select_info.p1_face_offset[1] + motif.select_info['p1_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p1_face_spacing[1] + start.f_alignOffset(motif.select_info.p1_face_facing),
+					motif.select_info.p1_face_offset[1] + motif.select_info['p1_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p1_face_spacing[1] + main.f_alignOffset(motif.select_info.p1_face_facing),
 					motif.select_info.p1_face_offset[2] + motif.select_info['p1_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p1_face_spacing[2],
 					motif.select_info.p1_face_facing * motif.select_info.p1_face_scale[1] * motif.select_info['p1_c' .. n .. '_face_scale'][1],
-					motif.select_info.p1_face_scale[2] * motif.select_info['p1_c' .. n .. '_face_scale'][2]
+					motif.select_info.p1_face_scale[2] * motif.select_info['p1_c' .. n .. '_face_scale'][2],
+					motif.select_info.p1_face_window[1],
+					motif.select_info.p1_face_window[2],
+					motif.select_info.p1_face_window[3],
+					motif.select_info.p1_face_window[4]
 				)
 			end
 		end
@@ -2030,10 +2093,13 @@ function start.f_selectScreen()
 					if p2RandomCount < motif.select_info.cell_random_switchtime then
 						p2RandomCount = p2RandomCount + 1
 					else
+						if motif.select_info.random_move_snd_cancel == 1 then
+							sndStop(motif.files.snd_data, motif.select_info.p2_random_move_snd[1], motif.select_info.p2_random_move_snd[2])
+						end
+						sndPlay(motif.files.snd_data, motif.select_info.p2_random_move_snd[1], motif.select_info.p2_random_move_snd[2])
 						p2RandomPortrait = main.t_randomChars[math.random(1, #main.t_randomChars)]
 						p2RandomCount = 0
 					end
-					sndPlay(motif.files.snd_data, motif.select_info.p2_random_move_snd[1], motif.select_info.p2_random_move_snd[2])
 					t_portrait[1] = p2RandomPortrait
 				elseif start.f_selGrid(p2Cell + 1).hidden ~= 2 then
 					t_portrait[1] = start.f_selGrid(p2Cell + 1).char_ref
@@ -2048,36 +2114,69 @@ function start.f_selectScreen()
 			for n = #t_portrait, 1, -1 do
 				drawPortrait(
 					t_portrait[n],
-					motif.select_info.p2_face_offset[1] + motif.select_info['p2_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p2_face_spacing[1] + start.f_alignOffset(motif.select_info.p2_face_facing),
+					motif.select_info.p2_face_offset[1] + motif.select_info['p2_c' .. n .. '_face_offset'][1] + (n - 1) * motif.select_info.p2_face_spacing[1] + main.f_alignOffset(motif.select_info.p2_face_facing),
 					motif.select_info.p2_face_offset[2] + motif.select_info['p2_c' .. n .. '_face_offset'][2] + (n - 1) * motif.select_info.p2_face_spacing[2],
 					motif.select_info.p2_face_facing * motif.select_info.p2_face_scale[1] * motif.select_info['p2_c' .. n .. '_face_scale'][1],
-					motif.select_info.p2_face_scale[2] * motif.select_info['p2_c' .. n .. '_face_scale'][2]
+					motif.select_info.p2_face_scale[2] * motif.select_info['p2_c' .. n .. '_face_scale'][2],
+					motif.select_info.p2_face_window[1],
+					motif.select_info.p2_face_window[2],
+					motif.select_info.p2_face_window[3],
+					motif.select_info.p2_face_window[4]
 				)
 			end
 		end
-		--draw cell art (slow for large rosters, this will be likely moved to 'drawFace' function in future)
+		--draw cell art
 		for i = 1, #start.t_drawFace do
-			-- Let's check if is on the P1 side before drawing the background.
-			if start.t_drawFace[i].d == 1 or start.t_drawFace[i].d == 2 or start.t_drawFace[i].d == 0 then
-				main.f_animPosDraw(motif.select_info.cell_bg_data, start.t_drawFace[i].x1, start.t_drawFace[i].y1) --draw cell background
-			end
-			
-			if start.t_drawFace[i].d == 1 then --draw random cell
-				main.f_animPosDraw(motif.select_info.cell_random_data, start.t_drawFace[i].x1, start.t_drawFace[i].y1)
-			elseif start.t_drawFace[i].d == 2 then --draw face cell
-				drawSmallPortrait(start.t_drawFace[i].p1, start.t_drawFace[i].x1, start.t_drawFace[i].y1, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
-			end
-			--P2 side grid enabled
-			if main.p2Faces and motif.select_info.double_select == 1 then
-				-- Let's check if is on the P2 side before drawing the background.
-				if start.t_drawFace[i].d == 11 or start.t_drawFace[i].d == 12 or start.t_drawFace[i].d == 10 then 
-					main.f_animPosDraw(motif.select_info.cell_bg_data, start.t_drawFace[i].x2, start.t_drawFace[i].y2) --draw cell background
+			--P1 side check before drawing
+			if start.t_drawFace[i].d <= 2 then
+				--draw cell background
+				main.f_animPosDraw(
+					motif.select_info.cell_bg_data,
+					start.t_drawFace[i].x1,
+					start.t_drawFace[i].y1
+				)
+				--draw random cell
+				if start.t_drawFace[i].d == 1 then
+					main.f_animPosDraw(
+						motif.select_info.cell_random_data,
+						start.t_drawFace[i].x1 + motif.select_info.portrait_offset[1],
+						start.t_drawFace[i].y1 + motif.select_info.portrait_offset[2]
+					)
+				--draw face cell
+				elseif start.t_drawFace[i].d == 2 then
+					drawSmallPortrait(
+						start.t_drawFace[i].p1,
+						start.t_drawFace[i].x1 + motif.select_info.portrait_offset[1],
+						start.t_drawFace[i].y1 + motif.select_info.portrait_offset[2],
+						motif.select_info.portrait_scale[1],
+						motif.select_info.portrait_scale[2]
+					)
 				end
-
-				if start.t_drawFace[i].d == 11 then --draw random cell
-					main.f_animPosDraw(motif.select_info.cell_random_data, start.t_drawFace[i].x2, start.t_drawFace[i].y2)
-				elseif start.t_drawFace[i].d == 12 then --draw face cell
-					drawSmallPortrait(start.t_drawFace[i].p2, start.t_drawFace[i].x2, start.t_drawFace[i].y2, motif.select_info.portrait_scale[1], motif.select_info.portrait_scale[2])
+			end
+			--P2 side check before drawing (double select only)
+			if main.p2Faces and motif.select_info.double_select == 1 and start.t_drawFace[i].d >= 10 then
+				--draw cell background
+				main.f_animPosDraw(
+					motif.select_info.cell_bg_data,
+					start.t_drawFace[i].x2,
+					start.t_drawFace[i].y2
+				)
+				--draw random cell
+				if start.t_drawFace[i].d == 11 then
+					main.f_animPosDraw(
+						motif.select_info.cell_random_data,
+						start.t_drawFace[i].x2 + motif.select_info.portrait_offset[1],
+						start.t_drawFace[i].y2 + motif.select_info.portrait_offset[2]
+					)
+				--draw face cell
+				elseif start.t_drawFace[i].d == 12 then
+					drawSmallPortrait(
+						start.t_drawFace[i].p2,
+						start.t_drawFace[i].x2 + motif.select_info.portrait_offset[1],
+						start.t_drawFace[i].y2 + motif.select_info.portrait_offset[2],
+						motif.select_info.portrait_scale[1],
+						motif.select_info.portrait_scale[2]
+					)
 				end
 			end
 		end
@@ -2113,50 +2212,48 @@ function start.f_selectScreen()
 		end
 		if p1Cell then
 			--draw p1 name
+			local t_name = {}
+			for i = 1, #t_p1Selected do
+				table.insert(t_name, {['ref'] = t_p1Selected[i].ref})
+			end
 			if #t_p1Selected < p1NumChars then
 				if start.f_selGrid(p1Cell + 1).char_ref ~= nil then
-					txt_p1Name:update({
-						align = motif.select_info.p1_name_font[3],
-						text =  start.f_getName(start.f_selGrid(p1Cell + 1).char_ref),
-						x =     motif.select_info.p1_name_offset[1] + #t_p1Selected * motif.select_info.p1_name_spacing[1],
-						y =     motif.select_info.p1_name_offset[2] + #t_p1Selected * motif.select_info.p1_name_spacing[2],
-					})
-					txt_p1Name:draw()
+					table.insert(t_name, {['ref'] = start.f_selGrid(p1Cell + 1).char_ref})
 				end
 			end
 			start.f_drawName(
-				t_p1Selected,
+				t_name,
 				txt_p1Name,
 				motif.select_info.p1_name_font,
 				motif.select_info.p1_name_offset[1],
 				motif.select_info.p1_name_offset[2],
 				motif.select_info.p1_name_font_scale[1],
 				motif.select_info.p1_name_font_scale[2],
+				motif.select_info.p1_name_font_height,
 				motif.select_info.p1_name_spacing[1],
 				motif.select_info.p1_name_spacing[2]
 			)
 		end
 		if p2Cell then
 			--draw p2 name
+			local t_name = {}
+			for i = 1, #t_p2Selected do
+				table.insert(t_name, {['ref'] = t_p2Selected[i].ref})
+			end
 			if #t_p2Selected < p2NumChars then
 				if start.f_selGrid(p2Cell + 1).char_ref ~= nil then
-					txt_p2Name:update({
-						align = motif.select_info.p2_name_font[3],
-						text =  start.f_getName(start.f_selGrid(p2Cell + 1).char_ref),
-						x =     motif.select_info.p2_name_offset[1] + #t_p2Selected * motif.select_info.p2_name_spacing[1],
-						y =     motif.select_info.p2_name_offset[2] + #t_p2Selected * motif.select_info.p2_name_spacing[2],
-					})
-					txt_p2Name:draw()
+					table.insert(t_name, {['ref'] = start.f_selGrid(p2Cell + 1).char_ref})
 				end
 			end
 			start.f_drawName(
-				t_p2Selected,
+				t_name,
 				txt_p2Name,
 				motif.select_info.p2_name_font,
 				motif.select_info.p2_name_offset[1],
 				motif.select_info.p2_name_offset[2],
 				motif.select_info.p2_name_font_scale[1],
 				motif.select_info.p2_name_font_scale[2],
+				motif.select_info.p2_name_font_height,
 				motif.select_info.p2_name_spacing[1],
 				motif.select_info.p2_name_spacing[2]
 			)
@@ -2179,7 +2276,7 @@ function start.f_selectScreen()
 		for i = 1, #t_recordText do
 			txt_recordSelect:update({
 				text = t_recordText[i],
-				y = motif.select_info.record_offset[2] + (motif.font_def[motif.select_info.record_font[1]].Size[2] + motif.font_def[motif.select_info.record_font[1]].Spacing[2]) * (i - 1),
+				y = motif.select_info.record_offset[2] + math.floor(main.font[motif.select_info.record_font[1]].def.Size[2] * motif.select_info.record_font_scale[2] + main.font[motif.select_info.record_font[1]].def.Spacing[2] * motif.select_info.record_font_scale[2] + 0.5) * (i - 1),
 			})
 			txt_recordSelect:draw()
 		end
@@ -2241,7 +2338,7 @@ end
 --; PLAYER 1 TEAM MENU
 --;===========================================================
 local txt_p1TeamSelfTitle = text:create({
-	font =   motif.font_data[motif.select_info.p1_teammenu_selftitle_font[1]],
+	font =   motif.select_info.p1_teammenu_selftitle_font[1],
 	bank =   motif.select_info.p1_teammenu_selftitle_font[2],
 	align =  motif.select_info.p1_teammenu_selftitle_font[3],
 	text =   motif.select_info.p1_teammenu_selftitle_text,
@@ -2254,9 +2351,10 @@ local txt_p1TeamSelfTitle = text:create({
 	b =      motif.select_info.p1_teammenu_selftitle_font[6],
 	src =    motif.select_info.p1_teammenu_selftitle_font[7],
 	dst =    motif.select_info.p1_teammenu_selftitle_font[8],
+	height = motif.select_info.p1_teammenu_selftitle_font_height,
 })
 local txt_p1TeamEnemyTitle = text:create({
-	font =   motif.font_data[motif.select_info.p1_teammenu_enemytitle_font[1]],
+	font =   motif.select_info.p1_teammenu_enemytitle_font[1],
 	bank =   motif.select_info.p1_teammenu_enemytitle_font[2],
 	align =  motif.select_info.p1_teammenu_enemytitle_font[3],
 	text =   motif.select_info.p1_teammenu_enemytitle_text,
@@ -2269,6 +2367,7 @@ local txt_p1TeamEnemyTitle = text:create({
 	b =      motif.select_info.p1_teammenu_enemytitle_font[6],
 	src =    motif.select_info.p1_teammenu_enemytitle_font[7],
 	dst =    motif.select_info.p1_teammenu_enemytitle_font[8],
+	height = motif.select_info.p1_teammenu_enemytitle_font_height,
 })
 local p1TeamActiveCount = 0
 local p1TeamActiveFont = 'p1_teammenu_item_active_font'
@@ -2395,7 +2494,7 @@ function start.f_p1TeamMenu()
 				end
 				--Draw team active font
 				t_p1TeamMenu[i].data:update({
-					font =   motif.font_data[motif.select_info[p1TeamActiveFont][1]],
+					font =   motif.select_info[p1TeamActiveFont][1],
 					bank =   motif.select_info[p1TeamActiveFont][2],
 					align =  motif.select_info[p1TeamActiveFont][3], --p1_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					text =   t_p1TeamMenu[i].displayname,
@@ -2408,12 +2507,13 @@ function start.f_p1TeamMenu()
 					b =      motif.select_info[p1TeamActiveFont][6],
 					src =    motif.select_info[p1TeamActiveFont][7],
 					dst =    motif.select_info[p1TeamActiveFont][8],
+					height = motif.select_info[p1TeamActiveFont .. '_height'],
 				})
 				t_p1TeamMenu[i].data:draw()
 			else
 				--Draw team not active font
 				t_p1TeamMenu[i].data:update({
-					font =   motif.font_data[motif.select_info.p1_teammenu_item_font[1]],
+					font =   motif.select_info.p1_teammenu_item_font[1],
 					bank =   motif.select_info.p1_teammenu_item_font[2],
 					align =  motif.select_info.p1_teammenu_item_font[3], --p1_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					text =   t_p1TeamMenu[i].displayname,
@@ -2426,6 +2526,7 @@ function start.f_p1TeamMenu()
 					b =      motif.select_info.p1_teammenu_item_font[6],
 					src =    motif.select_info.p1_teammenu_item_font[7],
 					dst =    motif.select_info.p1_teammenu_item_font[8],
+					height = motif.select_info.p1_teammenu_item_font_height,
 				})
 				t_p1TeamMenu[i].data:draw()
 			end
@@ -2520,7 +2621,7 @@ end
 --; PLAYER 2 TEAM MENU
 --;===========================================================
 local txt_p2TeamSelfTitle = text:create({
-	font =   motif.font_data[motif.select_info.p2_teammenu_selftitle_font[1]],
+	font =   motif.select_info.p2_teammenu_selftitle_font[1],
 	bank =   motif.select_info.p2_teammenu_selftitle_font[2],
 	align =  motif.select_info.p2_teammenu_selftitle_font[3],
 	text =   motif.select_info.p2_teammenu_selftitle_text,
@@ -2533,9 +2634,10 @@ local txt_p2TeamSelfTitle = text:create({
 	b =      motif.select_info.p2_teammenu_selftitle_font[6],
 	src =    motif.select_info.p2_teammenu_selftitle_font[7],
 	dst =    motif.select_info.p2_teammenu_selftitle_font[8],
+	height = motif.select_info.p2_teammenu_selftitle_font_height,
 })
 local txt_p2TeamEnemyTitle = text:create({
-	font =   motif.font_data[motif.select_info.p2_teammenu_enemytitle_font[1]],
+	font =   motif.select_info.p2_teammenu_enemytitle_font[1],
 	bank =   motif.select_info.p2_teammenu_enemytitle_font[2],
 	align =  motif.select_info.p2_teammenu_enemytitle_font[3],
 	text =   motif.select_info.p2_teammenu_enemytitle_text,
@@ -2548,6 +2650,7 @@ local txt_p2TeamEnemyTitle = text:create({
 	b =      motif.select_info.p2_teammenu_enemytitle_font[6],
 	src =    motif.select_info.p2_teammenu_enemytitle_font[7],
 	dst =    motif.select_info.p2_teammenu_enemytitle_font[8],
+	height = motif.select_info.p2_teammenu_enemytitle_font_height,
 })
 local p2TeamActiveCount = 0
 local p2TeamActiveFont = 'p2_teammenu_item_active_font'
@@ -2685,7 +2788,7 @@ function start.f_p2TeamMenu()
 				end
 				--Draw team active font
 				t_p2TeamMenu[i].data:update({
-					font =   motif.font_data[motif.select_info[p2TeamActiveFont][1]],
+					font =   motif.select_info[p2TeamActiveFont][1],
 					bank =   motif.select_info[p2TeamActiveFont][2],
 					align =  motif.select_info[p2TeamActiveFont][3], --p2_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					text =   t_p2TeamMenu[i].displayname,
@@ -2698,12 +2801,13 @@ function start.f_p2TeamMenu()
 					b =      motif.select_info[p2TeamActiveFont][6],
 					src =    motif.select_info[p2TeamActiveFont][7],
 					dst =    motif.select_info[p2TeamActiveFont][8],
+					height = motif.select_info[p2TeamActiveFont .. '_height'],
 				})
 				t_p2TeamMenu[i].data:draw()
 			else
 				--Draw team not active font
 				t_p2TeamMenu[i].data:update({
-					font =   motif.font_data[motif.select_info.p2_teammenu_item_font[1]],
+					font =   motif.select_info.p2_teammenu_item_font[1],
 					bank =   motif.select_info.p2_teammenu_item_font[2],
 					align =  motif.select_info.p2_teammenu_item_font[3], --p2_teammenu_item_font (winmugen ignores active font facing? Fixed in mugen 1.0)
 					text =   t_p2TeamMenu[i].displayname,
@@ -2716,6 +2820,7 @@ function start.f_p2TeamMenu()
 					b =      motif.select_info.p2_teammenu_item_font[6],
 					src =    motif.select_info.p2_teammenu_item_font[7],
 					dst =    motif.select_info.p2_teammenu_item_font[8],
+					height = motif.select_info.p2_teammenu_item_font_height,
 				})
 				t_p2TeamMenu[i].data:draw()
 			end
@@ -3048,7 +3153,11 @@ function start.f_stageMenu()
 			motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
 			motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2],
 			--[[motif.select_info.stage_portrait_facing * ]]motif.select_info.stage_portrait_scale[1],
-			motif.select_info.stage_portrait_scale[2]
+			motif.select_info.stage_portrait_scale[2],
+			motif.select_info.stage_portrait_window[1],
+			motif.select_info.stage_portrait_window[2],
+			motif.select_info.stage_portrait_window[3],
+			motif.select_info.stage_portrait_window[4]
 		)
 	end
 	if main.input({1, 2}, {'pal'}) then
@@ -3080,12 +3189,12 @@ function start.f_stageMenu()
 	end
 	for i = 1, #t_txt do
 		txt_selStage:update({
-			font =   motif.font_data[motif.select_info[stageActiveFont][1]],
+			font =   motif.select_info[stageActiveFont][1],
 			bank =   motif.select_info[stageActiveFont][2],
 			align =  motif.select_info[stageActiveFont][3],
 			text =   t_txt[i],
 			x =      motif.select_info.stage_pos[1],
-			y =      motif.select_info.stage_pos[2] + (motif.font_def[motif.select_info[stageActiveFont][1]].Size[2] + motif.font_def[motif.select_info[stageActiveFont][1]].Spacing[2]) * (i - 1),
+			y =      motif.select_info.stage_pos[2] + math.floor(main.font[motif.select_info[stageActiveFont][1]].def.Size[2] * motif.select_info[stageActiveFont .. '_scale'][2] + main.font[motif.select_info[stageActiveFont][1]].def.Spacing[2] * motif.select_info[stageActiveFont .. '_scale'][2] + 0.5) * (i - 1),
 			scaleX = motif.select_info[stageActiveFont .. '_scale'][1],
 			scaleY = motif.select_info[stageActiveFont .. '_scale'][2],
 			r =      motif.select_info[stageActiveFont][4],
@@ -3093,6 +3202,7 @@ function start.f_stageMenu()
 			b =      motif.select_info[stageActiveFont][6],
 			src =    motif.select_info[stageActiveFont][7],
 			dst =    motif.select_info[stageActiveFont][8],
+			height = motif.select_info[stageActiveFont .. '_height'],
 		})
 		txt_selStage:draw()
 	end
@@ -3102,7 +3212,7 @@ end
 --; VERSUS SCREEN
 --;===========================================================
 local txt_p1NameVS = text:create({
-	font =   motif.font_data[motif.vs_screen.p1_name_font[1]],
+	font =   motif.vs_screen.p1_name_font[1],
 	bank =   motif.vs_screen.p1_name_font[2],
 	align =  motif.vs_screen.p1_name_font[3],
 	text =   '',
@@ -3115,9 +3225,10 @@ local txt_p1NameVS = text:create({
 	b =      motif.vs_screen.p1_name_font[6],
 	src =    motif.vs_screen.p1_name_font[7],
 	dst =    motif.vs_screen.p1_name_font[8],
+	height = motif.vs_screen.p1_name_font_height,
 })
 local txt_p2NameVS = text:create({
-	font =   motif.font_data[motif.vs_screen.p2_name_font[1]],
+	font =   motif.vs_screen.p2_name_font[1],
 	bank =   motif.vs_screen.p2_name_font[2],
 	align =  motif.vs_screen.p2_name_font[3],
 	text =   '',
@@ -3130,9 +3241,10 @@ local txt_p2NameVS = text:create({
 	b =      motif.vs_screen.p2_name_font[6],
 	src =    motif.vs_screen.p2_name_font[7],
 	dst =    motif.vs_screen.p2_name_font[8],
+	height = motif.vs_screen.p2_name_font_height,
 })
 local txt_matchNo = text:create({
-	font =   motif.font_data[motif.vs_screen.match_font[1]],
+	font =   motif.vs_screen.match_font[1],
 	bank =   motif.vs_screen.match_font[2],
 	align =  motif.vs_screen.match_font[3],
 	text =   '',
@@ -3145,6 +3257,7 @@ local txt_matchNo = text:create({
 	b =      motif.vs_screen.match_font[6],
 	src =    motif.vs_screen.match_font[7],
 	dst =    motif.vs_screen.match_font[8],
+	height = motif.vs_screen.match_font_height,
 })
 
 function start.f_selectChar(player, t)
@@ -3351,10 +3464,14 @@ function start.f_selectVersus()
 				end
 				drawVersusPortrait(
 					t_portrait[i],
-					motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1] + motif.vs_screen['p1_c' .. i .. '_offset'][1] + (i - 1) * motif.vs_screen.p1_spacing[1] + start.f_alignOffset(motif.vs_screen.p1_facing) + math.floor(t_p1_slide_dist[1] + 0.5),
+					motif.vs_screen.p1_pos[1] + motif.vs_screen.p1_offset[1] + motif.vs_screen['p1_c' .. i .. '_offset'][1] + (i - 1) * motif.vs_screen.p1_spacing[1] + main.f_alignOffset(motif.vs_screen.p1_facing) + math.floor(t_p1_slide_dist[1] + 0.5),
 					motif.vs_screen.p1_pos[2] + motif.vs_screen.p1_offset[2] + motif.vs_screen['p1_c' .. i .. '_offset'][2] + (i - 1) * motif.vs_screen.p1_spacing[2] +  math.floor(t_p1_slide_dist[2] + 0.5),
 					motif.vs_screen.p1_facing * motif.vs_screen.p1_scale[1] * motif.vs_screen['p1_c' .. i .. '_scale'][1],
-					motif.vs_screen.p1_scale[2] * motif.vs_screen['p1_c' .. i .. '_scale'][2]
+					motif.vs_screen.p1_scale[2] * motif.vs_screen['p1_c' .. i .. '_scale'][2],
+					motif.vs_screen.p1_window[1],
+					motif.vs_screen.p1_window[2],
+					motif.vs_screen.p1_window[3],
+					motif.vs_screen.p1_window[4]
 				)
 			end
 			--draw p2 portraits
@@ -3373,10 +3490,14 @@ function start.f_selectVersus()
 				end
 				drawVersusPortrait(
 					t_portrait[i],
-					motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1] + motif.vs_screen['p2_c' .. i .. '_offset'][1] + (i - 1) * motif.vs_screen.p2_spacing[1] + start.f_alignOffset(motif.vs_screen.p2_facing) + math.floor(t_p2_slide_dist[1] + 0.5),
+					motif.vs_screen.p2_pos[1] + motif.vs_screen.p2_offset[1] + motif.vs_screen['p2_c' .. i .. '_offset'][1] + (i - 1) * motif.vs_screen.p2_spacing[1] + main.f_alignOffset(motif.vs_screen.p2_facing) + math.floor(t_p2_slide_dist[1] + 0.5),
 					motif.vs_screen.p2_pos[2] + motif.vs_screen.p2_offset[2] + motif.vs_screen['p2_c' .. i .. '_offset'][2] + (i - 1) * motif.vs_screen.p2_spacing[2] + math.floor(t_p2_slide_dist[2] + 0.5),
 					motif.vs_screen.p2_facing * motif.vs_screen.p2_scale[1] * motif.vs_screen['p2_c' .. i .. '_scale'][1],
-					motif.vs_screen.p2_scale[2] * motif.vs_screen['p2_c' .. i .. '_scale'][2]
+					motif.vs_screen.p2_scale[2] * motif.vs_screen['p2_c' .. i .. '_scale'][2],
+					motif.vs_screen.p2_window[1],
+					motif.vs_screen.p2_window[2],
+					motif.vs_screen.p2_window[3],
+					motif.vs_screen.p2_window[4]
 				)
 			end
 			--draw names
@@ -3388,6 +3509,7 @@ function start.f_selectVersus()
 				motif.vs_screen.p1_name_pos[2] + motif.vs_screen.p1_name_offset[2],
 				motif.vs_screen.p1_name_font_scale[1],
 				motif.vs_screen.p1_name_font_scale[2],
+				motif.vs_screen.p1_name_font_height,
 				motif.vs_screen.p1_name_spacing[1],
 				motif.vs_screen.p1_name_spacing[2],
 				motif.vs_screen.p1_name_active_font,
@@ -3401,6 +3523,7 @@ function start.f_selectVersus()
 				motif.vs_screen.p2_name_pos[2] + motif.vs_screen.p2_name_offset[2],
 				motif.vs_screen.p2_name_font_scale[1],
 				motif.vs_screen.p2_name_font_scale[2],
+				motif.vs_screen.p2_name_font_height,
 				motif.vs_screen.p2_name_spacing[1],
 				motif.vs_screen.p2_name_spacing[2],
 				motif.vs_screen.p2_name_active_font,
@@ -3443,7 +3566,7 @@ end
 --; RESULT SCREEN
 --;===========================================================
 local txt_winscreen = text:create({
-	font =   motif.font_data[motif.win_screen.wintext_font[1]],
+	font =   motif.win_screen.wintext_font[1],
 	bank =   motif.win_screen.wintext_font[2],
 	align =  motif.win_screen.wintext_font[3],
 	text =   motif.win_screen.wintext_text,
@@ -3456,106 +3579,113 @@ local txt_winscreen = text:create({
 	b =      motif.win_screen.wintext_font[6],
 	src =    motif.win_screen.wintext_font[7],
 	dst =    motif.win_screen.wintext_font[8],
+	height = motif.win_screen.wintext_font_height,
 })
 local txt_resultSurvival = text:create({
-	font =   motif.font_data[motif.survival_results_screen.wintext_font[1]],
-	bank =   motif.survival_results_screen.wintext_font[2],
-	align =  motif.survival_results_screen.wintext_font[3],
+	font =   motif.survival_results_screen.winstext_font[1],
+	bank =   motif.survival_results_screen.winstext_font[2],
+	align =  motif.survival_results_screen.winstext_font[3],
 	text =   '',
-	x =      motif.survival_results_screen.wintext_offset[1],
-	y =      motif.survival_results_screen.wintext_offset[2],
-	scaleX = motif.survival_results_screen.wintext_font_scale[1],
-	scaleY = motif.survival_results_screen.wintext_font_scale[2],
-	r =      motif.survival_results_screen.wintext_font[4],
-	g =      motif.survival_results_screen.wintext_font[5],
-	b =      motif.survival_results_screen.wintext_font[6],
-	src =    motif.survival_results_screen.wintext_font[7],
-	dst =    motif.survival_results_screen.wintext_font[8],
+	x =      motif.survival_results_screen.winstext_offset[1],
+	y =      motif.survival_results_screen.winstext_offset[2],
+	scaleX = motif.survival_results_screen.winstext_font_scale[1],
+	scaleY = motif.survival_results_screen.winstext_font_scale[2],
+	r =      motif.survival_results_screen.winstext_font[4],
+	g =      motif.survival_results_screen.winstext_font[5],
+	b =      motif.survival_results_screen.winstext_font[6],
+	src =    motif.survival_results_screen.winstext_font[7],
+	dst =    motif.survival_results_screen.winstext_font[8],
+	height = motif.survival_results_screen.winstext_font_height,
 })
 local txt_resultVS100 = text:create({
-	font =   motif.font_data[motif.vs100kumite_results_screen.wintext_font[1]],
-	bank =   motif.vs100kumite_results_screen.wintext_font[2],
-	align =  motif.vs100kumite_results_screen.wintext_font[3],
+	font =   motif.vs100_kumite_results_screen.winstext_font[1],
+	bank =   motif.vs100_kumite_results_screen.winstext_font[2],
+	align =  motif.vs100_kumite_results_screen.winstext_font[3],
 	text =   '',
-	x =      motif.vs100kumite_results_screen.wintext_offset[1],
-	y =      motif.vs100kumite_results_screen.wintext_offset[2],
-	scaleX = motif.vs100kumite_results_screen.wintext_font_scale[1],
-	scaleY = motif.vs100kumite_results_screen.wintext_font_scale[2],
-	r =      motif.vs100kumite_results_screen.wintext_font[4],
-	g =      motif.vs100kumite_results_screen.wintext_font[5],
-	b =      motif.vs100kumite_results_screen.wintext_font[6],
-	src =    motif.vs100kumite_results_screen.wintext_font[7],
-	dst =    motif.vs100kumite_results_screen.wintext_font[8],
+	x =      motif.vs100_kumite_results_screen.winstext_offset[1],
+	y =      motif.vs100_kumite_results_screen.winstext_offset[2],
+	scaleX = motif.vs100_kumite_results_screen.winstext_font_scale[1],
+	scaleY = motif.vs100_kumite_results_screen.winstext_font_scale[2],
+	r =      motif.vs100_kumite_results_screen.winstext_font[4],
+	g =      motif.vs100_kumite_results_screen.winstext_font[5],
+	b =      motif.vs100_kumite_results_screen.winstext_font[6],
+	src =    motif.vs100_kumite_results_screen.winstext_font[7],
+	dst =    motif.vs100_kumite_results_screen.winstext_font[8],
+	height = motif.vs100_kumite_results_screen.winstext_font_height,
 })
 local txt_resultTimeAttack = text:create({
-	font =   motif.font_data[motif.timeattack_results_screen.wintext_font[1]],
-	bank =   motif.timeattack_results_screen.wintext_font[2],
-	align =  motif.timeattack_results_screen.wintext_font[3],
+	font =   motif.time_attack_results_screen.winstext_font[1],
+	bank =   motif.time_attack_results_screen.winstext_font[2],
+	align =  motif.time_attack_results_screen.winstext_font[3],
 	text =   '',
-	x =      motif.timeattack_results_screen.wintext_offset[1],
-	y =      motif.timeattack_results_screen.wintext_offset[2],
-	scaleX = motif.timeattack_results_screen.wintext_font_scale[1],
-	scaleY = motif.timeattack_results_screen.wintext_font_scale[2],
-	r =      motif.timeattack_results_screen.wintext_font[4],
-	g =      motif.timeattack_results_screen.wintext_font[5],
-	b =      motif.timeattack_results_screen.wintext_font[6],
-	src =    motif.timeattack_results_screen.wintext_font[7],
-	dst =    motif.timeattack_results_screen.wintext_font[8],
+	x =      motif.time_attack_results_screen.winstext_offset[1],
+	y =      motif.time_attack_results_screen.winstext_offset[2],
+	scaleX = motif.time_attack_results_screen.winstext_font_scale[1],
+	scaleY = motif.time_attack_results_screen.winstext_font_scale[2],
+	r =      motif.time_attack_results_screen.winstext_font[4],
+	g =      motif.time_attack_results_screen.winstext_font[5],
+	b =      motif.time_attack_results_screen.winstext_font[6],
+	src =    motif.time_attack_results_screen.winstext_font[7],
+	dst =    motif.time_attack_results_screen.winstext_font[8],
+	height = motif.time_attack_results_screen.winstext_font_height,
 })
 local txt_resultTimeChallenge = text:create({
-	font =   motif.font_data[motif.timechallenge_results_screen.wintext_font[1]],
-	bank =   motif.timechallenge_results_screen.wintext_font[2],
-	align =  motif.timechallenge_results_screen.wintext_font[3],
+	font =   motif.time_challenge_results_screen.winstext_font[1],
+	bank =   motif.time_challenge_results_screen.winstext_font[2],
+	align =  motif.time_challenge_results_screen.winstext_font[3],
 	text =   '',
-	x =      motif.timechallenge_results_screen.wintext_offset[1],
-	y =      motif.timechallenge_results_screen.wintext_offset[2],
-	scaleX = motif.timechallenge_results_screen.wintext_font_scale[1],
-	scaleY = motif.timechallenge_results_screen.wintext_font_scale[2],
-	r =      motif.timechallenge_results_screen.wintext_font[4],
-	g =      motif.timechallenge_results_screen.wintext_font[5],
-	b =      motif.timechallenge_results_screen.wintext_font[6],
-	src =    motif.timechallenge_results_screen.wintext_font[7],
-	dst =    motif.timechallenge_results_screen.wintext_font[8],
+	x =      motif.time_challenge_results_screen.winstext_offset[1],
+	y =      motif.time_challenge_results_screen.winstext_offset[2],
+	scaleX = motif.time_challenge_results_screen.winstext_font_scale[1],
+	scaleY = motif.time_challenge_results_screen.winstext_font_scale[2],
+	r =      motif.time_challenge_results_screen.winstext_font[4],
+	g =      motif.time_challenge_results_screen.winstext_font[5],
+	b =      motif.time_challenge_results_screen.winstext_font[6],
+	src =    motif.time_challenge_results_screen.winstext_font[7],
+	dst =    motif.time_challenge_results_screen.winstext_font[8],
+	height = motif.time_challenge_results_screen.winstext_font_height,
 })
 local txt_resultScoreChallenge = text:create({
-	font =   motif.font_data[motif.scorechallenge_results_screen.wintext_font[1]],
-	bank =   motif.scorechallenge_results_screen.wintext_font[2],
-	align =  motif.scorechallenge_results_screen.wintext_font[3],
+	font =   motif.score_challenge_results_screen.winstext_font[1],
+	bank =   motif.score_challenge_results_screen.winstext_font[2],
+	align =  motif.score_challenge_results_screen.winstext_font[3],
 	text =   '',
-	x =      motif.scorechallenge_results_screen.wintext_offset[1],
-	y =      motif.scorechallenge_results_screen.wintext_offset[2],
-	scaleX = motif.scorechallenge_results_screen.wintext_font_scale[1],
-	scaleY = motif.scorechallenge_results_screen.wintext_font_scale[2],
-	r =      motif.scorechallenge_results_screen.wintext_font[4],
-	g =      motif.scorechallenge_results_screen.wintext_font[5],
-	b =      motif.scorechallenge_results_screen.wintext_font[6],
-	src =    motif.scorechallenge_results_screen.wintext_font[7],
-	dst =    motif.scorechallenge_results_screen.wintext_font[8],
+	x =      motif.score_challenge_results_screen.winstext_offset[1],
+	y =      motif.score_challenge_results_screen.winstext_offset[2],
+	scaleX = motif.score_challenge_results_screen.winstext_font_scale[1],
+	scaleY = motif.score_challenge_results_screen.winstext_font_scale[2],
+	r =      motif.score_challenge_results_screen.winstext_font[4],
+	g =      motif.score_challenge_results_screen.winstext_font[5],
+	b =      motif.score_challenge_results_screen.winstext_font[6],
+	src =    motif.score_challenge_results_screen.winstext_font[7],
+	dst =    motif.score_challenge_results_screen.winstext_font[8],
+	height = motif.score_challenge_results_screen.winstext_font_height,
 })
 local txt_resultBossRush = text:create({
-	font =   motif.font_data[motif.bossrush_results_screen.wintext_font[1]],
-	bank =   motif.bossrush_results_screen.wintext_font[2],
-	align =  motif.bossrush_results_screen.wintext_font[3],
-	text =   motif.bossrush_results_screen.wintext_text,
-	x =      motif.bossrush_results_screen.wintext_offset[1],
-	y =      motif.bossrush_results_screen.wintext_offset[2],
-	scaleX = motif.bossrush_results_screen.wintext_font_scale[1],
-	scaleY = motif.bossrush_results_screen.wintext_font_scale[2],
-	r =      motif.bossrush_results_screen.wintext_font[4],
-	g =      motif.bossrush_results_screen.wintext_font[5],
-	b =      motif.bossrush_results_screen.wintext_font[6],
-	src =    motif.bossrush_results_screen.wintext_font[7],
-	dst =    motif.bossrush_results_screen.wintext_font[8],
+	font =   motif.boss_rush_results_screen.winstext_font[1],
+	bank =   motif.boss_rush_results_screen.winstext_font[2],
+	align =  motif.boss_rush_results_screen.winstext_font[3],
+	text =   motif.boss_rush_results_screen.winstext_text,
+	x =      motif.boss_rush_results_screen.winstext_offset[1],
+	y =      motif.boss_rush_results_screen.winstext_offset[2],
+	scaleX = motif.boss_rush_results_screen.winstext_font_scale[1],
+	scaleY = motif.boss_rush_results_screen.winstext_font_scale[2],
+	r =      motif.boss_rush_results_screen.winstext_font[4],
+	g =      motif.boss_rush_results_screen.winstext_font[5],
+	b =      motif.boss_rush_results_screen.winstext_font[6],
+	src =    motif.boss_rush_results_screen.winstext_font[7],
+	dst =    motif.boss_rush_results_screen.winstext_font[8],
+	height = motif.boss_rush_results_screen.winstext_font_height,
 })
 
-local function f_drawTextAtLayerNo(t, t_resultText, txt, layerNo)
-	if t.wintext_layerno ~= layerNo then
+local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
+	if t[prefix .. '_layerno'] ~= layerNo then
 		return
 	end
-	for i = 1, #t_resultText do
+	for i = 1, #t_text do
 		txt:update({
-			text = t_resultText[i],
-			y =    t.wintext_offset[2] + (motif.font_def[t.wintext_font[1]].Size[2] + motif.font_def[t.wintext_font[1]].Spacing[2]) * (i - 1),
+			text = t_text[i],
+			y =    t[prefix .. '_offset'][2] + math.floor(main.font[t[prefix .. '_font'][1]].def.Size[2] * t[prefix .. '_font_scale'][2] + main.font[t[prefix .. '_font'][1]].def.Spacing[2] * t[prefix .. '_font_scale'][2] + 0.5) * (i - 1),
 		})
 		txt:draw()
 	end
@@ -3583,6 +3713,7 @@ function start.f_result(mode)
 		return false
 	end
 	local t = main.resultsTable
+	local prefix = 'winstext'
 	local t_resultText = {}
 	local txt = ''
 	local stateType = ''
@@ -3592,16 +3723,17 @@ function start.f_result(mode)
 		if tPos.ending ~= nil and main.f_fileExists(tPos.ending) then --not displayed if the team leader has an ending
 			return false
 		end
-		t_resultText = main.f_extractText(t.wintext_text)
+		prefix = 'wintext'
+		t_resultText = main.f_extractText(t[prefix .. '_text'])
 		txt = txt_winscreen
 	elseif mode == 'bossrush' then
 		if winner ~= 1 then
 			return false
 		end
-		t_resultText = main.f_extractText(t.wintext_text)
+		t_resultText = main.f_extractText(t[prefix .. '_text'])
 		txt = txt_resultBossRush
 	elseif mode == 'survival' or mode == 'survivalcoop' or mode == 'netplaysurvivalcoop' then
-		t_resultText = main.f_extractText(t.wintext_text, winCnt)
+		t_resultText = main.f_extractText(t[prefix .. '_text'], winCnt)
 		txt = txt_resultSurvival
 		if winCnt < t.roundstowin then
 			stateType = '_lose'
@@ -3610,7 +3742,7 @@ function start.f_result(mode)
 			stateType = '_win'
 		end
 	elseif mode == 'vs100kumite' then
-		t_resultText = main.f_extractText(t.wintext_text, winCnt, loseCnt)
+		t_resultText = main.f_extractText(t[prefix .. '_text'], winCnt, loseCnt)
 		txt = txt_resultVS100
 		if winCnt < t.roundstowin then
 			stateType = '_lose'
@@ -3619,7 +3751,7 @@ function start.f_result(mode)
 			stateType = '_win'
 		end
 	elseif mode == 'timeattack' then
-		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / 60))
+		t_resultText = main.f_extractText(start.f_clearTimeText(t[prefix .. '_text'], t_savedData.time.total / 60))
 		txt = txt_resultTimeAttack
 		if t_gameStats.time / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
@@ -3631,7 +3763,7 @@ function start.f_result(mode)
 		if winner ~= 1 then
 			return false
 		end
-		t_resultText = main.f_extractText(start.f_clearTimeText(t.wintext_text, t_savedData.time.total / 60))
+		t_resultText = main.f_extractText(start.f_clearTimeText(t[prefix .. '_text'], t_savedData.time.total / 60))
 		txt = txt_resultTimeChallenge
 		if t_gameStats.time / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
@@ -3643,7 +3775,7 @@ function start.f_result(mode)
 		if winner ~= 1 then
 			return false
 		end
-		t_resultText = main.f_extractText(t.wintext_text, t_gameStats.p1score)
+		t_resultText = main.f_extractText(t[prefix .. '_text'], t_gameStats.p1score)
 		txt = txt_resultScoreChallenge
 		if t_gameStats.p1score <= f_lowestRankingData('score') then
 			stateType = '_lose'
@@ -3676,7 +3808,7 @@ function start.f_result(mode)
 			lastMatchClear()
 			--main.f_cmdInput()
 			return nil
-		elseif fadeType == 'fadein' and (counter >= t.pose_time or main.input({1}, {'pal'})) then
+		elseif fadeType == 'fadein' and (counter >= (t.pose_time or t.show_time) or main.input({1}, {'pal'})) then
 			main.fadeStart = getFrameCount()
 			fadeType = 'fadeout'
 		end
@@ -3699,15 +3831,15 @@ function start.f_result(mode)
 			false
 		)
 		--draw text at layerno = 0
-		f_drawTextAtLayerNo(t, t_resultText, txt, 0)
+		f_drawTextAtLayerNo(t, prefix, t_resultText, txt, 0)
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.resultsbgdef.bg, false)
 		--draw text at layerno = 1
-		f_drawTextAtLayerNo(t, t_resultText, txt, 1)		
+		f_drawTextAtLayerNo(t, prefix, t_resultText, txt, 1)		
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.resultsbgdef.bg, true)
 		--draw text at layerno = 1
-		f_drawTextAtLayerNo(t, t_resultText, txt, 2)
+		f_drawTextAtLayerNo(t, prefix, t_resultText, txt, 2)
 		--draw fadein / fadeout
 		main.fadeActive = fadeScreen(
 			fadeType,
@@ -3737,7 +3869,7 @@ end
 --; VICTORY SCREEN
 --;===========================================================
 local txt_winquote = text:create({
-	font =   motif.font_data[motif.victory_screen.winquote_font[1]],
+	font =   motif.victory_screen.winquote_font[1],
 	bank =   motif.victory_screen.winquote_font[2],
 	align =  motif.victory_screen.winquote_font[3],
 	text =   '',
@@ -3750,9 +3882,11 @@ local txt_winquote = text:create({
 	b =      motif.victory_screen.winquote_font[6],
 	src =    motif.victory_screen.winquote_font[7],
 	dst =    motif.victory_screen.winquote_font[8],
+	height = motif.victory_screen.winquote_font_height,
+	window = motif.victory_screen.winquote_window,
 })
 local txt_p1_winquoteName = text:create({
-	font =   motif.font_data[motif.victory_screen.p1_name_font[1]],
+	font =   motif.victory_screen.p1_name_font[1],
 	bank =   motif.victory_screen.p1_name_font[2],
 	align =  motif.victory_screen.p1_name_font[3],
 	text =   '',
@@ -3765,9 +3899,10 @@ local txt_p1_winquoteName = text:create({
 	b =      motif.victory_screen.p1_name_font[6],
 	src =    motif.victory_screen.p1_name_font[7],
 	dst =    motif.victory_screen.p1_name_font[8],
+	height = motif.victory_screen.p1_name_font_height,
 })
 local txt_p2_winquoteName = text:create({
-	font =   motif.font_data[motif.victory_screen.p2_name_font[1]],
+	font =   motif.victory_screen.p2_name_font[1],
 	bank =   motif.victory_screen.p2_name_font[2],
 	align =  motif.victory_screen.p2_name_font[3],
 	text =   '',
@@ -3780,6 +3915,7 @@ local txt_p2_winquoteName = text:create({
 	b =      motif.victory_screen.p2_name_font[6],
 	src =    motif.victory_screen.p2_name_font[7],
 	dst =    motif.victory_screen.p2_name_font[8],
+	height = motif.victory_screen.p2_name_font_height,
 })
 
 function start.f_teamOrder(teamNo, allow_ko, num)
@@ -3915,7 +4051,11 @@ function start.f_selectVictory()
 				motif.victory_screen.p2_pos[2] + motif.victory_screen.p2_offset[2] + motif.victory_screen['p2_c' .. i .. '_offset'][2] + math.floor(t_p2_slide_dist[2] + 0.5),
 				motif.victory_screen.p2_scale[1] * motif.victory_screen['p2_c' .. i .. '_scale'][1],
 				motif.victory_screen.p2_scale[2] * motif.victory_screen['p2_c' .. i .. '_scale'][2],
-				motif.victory_screen.p2_facing
+				motif.victory_screen.p2_facing,
+				motif.victory_screen.p2_window[1],
+				motif.victory_screen.p2_window[2],
+				motif.victory_screen.p2_window[3],
+				motif.victory_screen.p2_window[4]
 			)
 		end
 		-- winner team portraits
@@ -3936,7 +4076,11 @@ function start.f_selectVictory()
 				motif.victory_screen.p1_pos[2] + motif.victory_screen.p1_offset[2] + motif.victory_screen['p1_c' .. i .. '_offset'][2] + math.floor(t_p1_slide_dist[2] + 0.5),
 				motif.victory_screen.p1_scale[1] * motif.victory_screen['p1_c' .. i .. '_scale'][1],
 				motif.victory_screen.p1_scale[2] * motif.victory_screen['p1_c' .. i .. '_scale'][2],
-				motif.victory_screen.p1_facing
+				motif.victory_screen.p1_facing,
+				motif.victory_screen.p1_window[1],
+				motif.victory_screen.p1_window[2],
+				motif.victory_screen.p1_window[3],
+				motif.victory_screen.p1_window[4]
 			)
 		end
 		--draw winner name
@@ -3947,19 +4091,15 @@ function start.f_selectVictory()
 		end
 		--draw winquote
 		cnt = cnt + 1
-		local pxLimit = motif.victory_screen.winquote_length
-		if pxLimit == 0 and motif.victory_screen.winquote_textwrap:match('[wl]') then
-			pxLimit = main.f_pxLimit(motif.victory_screen.winquote_offset[1], motif.info.localcoord[1], motif.victory_screen.winquote_font[3])
-		end
 		finishedText = main.f_textRender(
 			txt_winquote,
 			winquote,
 			cnt,
 			motif.victory_screen.winquote_offset[1],
 			motif.victory_screen.winquote_offset[2],
-			motif.font_def[motif.victory_screen.winquote_font[1]],
+			main.font[motif.victory_screen.winquote_font[1]].def,
 			motif.victory_screen.winquote_delay,
-			pxLimit
+			main.f_lineLength(motif.victory_screen.winquote_offset[1], motif.info.localcoord[1], motif.victory_screen.winquote_font[3], motif.victory_screen.winquote_window, motif.victory_screen.winquote_textwrap:match('[wl]'))
 		)
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.victorybgdef.bg, true)
@@ -3992,7 +4132,7 @@ end
 --; CONTINUE SCREEN
 --;===========================================================
 local txt_credits = text:create({
-	font =   motif.font_data[motif.continue_screen.credits_font[1]],
+	font =   motif.continue_screen.credits_font[1],
 	bank =   motif.continue_screen.credits_font[2],
 	align =  motif.continue_screen.credits_font[3],
 	text =   '',
@@ -4005,9 +4145,10 @@ local txt_credits = text:create({
 	b =      motif.continue_screen.credits_font[6],
 	src =    motif.continue_screen.credits_font[7],
 	dst =    motif.continue_screen.credits_font[8],
+	height = motif.continue_screen.credits_font_height,
 })
 local txt_continue = text:create({
-	font =   motif.font_data[motif.continue_screen.continue_font[1]],
+	font =   motif.continue_screen.continue_font[1],
 	bank =   motif.continue_screen.continue_font[2],
 	align =  motif.continue_screen.continue_font[3],
 	text =   motif.continue_screen.continue_text,
@@ -4020,6 +4161,7 @@ local txt_continue = text:create({
 	b =      motif.continue_screen.continue_font[6],
 	src =    motif.continue_screen.continue_font[7],
 	dst =    motif.continue_screen.continue_font[8],
+	height = motif.continue_screen.continue_font_height,
 })
 local txt_yes = text:create({})
 local txt_no = text:create({})
@@ -4211,7 +4353,7 @@ function start.f_continue()
 					end
 				end
 				txt:update({
-					font =   motif.font_data[motif.continue_screen[var .. '_font'][1]],
+					font =   motif.continue_screen[var .. '_font'][1],
 					bank =   motif.continue_screen[var .. '_font'][2],
 					align =  motif.continue_screen[var .. '_font'][3],
 					text =   motif.continue_screen[var .. '_text'],
@@ -4224,6 +4366,7 @@ function start.f_continue()
 					b =      motif.continue_screen[var .. '_font'][6],
 					src =    motif.continue_screen[var .. '_font'][7],
 					dst =    motif.continue_screen[var .. '_font'][8],
+					height = motif.continue_screen[var .. '_font_height'],
 				})
 				txt:draw()
 			end
