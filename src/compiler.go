@@ -7928,10 +7928,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_c, CK_nc
 					case "s":
 						*k, *nk = CK_s, CK_ns
-					case "v":
-						*k, *nk = CK_v, CK_nv
 					case "d":
-						*k, *nk = CK_v, CK_nv
+						*k, *nk = CK_d, CK_nd
 					case "w":
 						*k, *nk = CK_w, CK_nw
 					}
