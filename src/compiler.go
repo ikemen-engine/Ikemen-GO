@@ -145,7 +145,12 @@ func newCompiler() *Compiler {
 	}
 	return c
 }
-func (_ *Compiler) tokenizer(in *string) string {
+
+func (c *Compiler) tokenizer(in *string) string {
+	return strings.ToLower(c.tokenizerCS(in))
+}
+
+func (_ *Compiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
 		return ""
@@ -279,7 +284,7 @@ func (_ *Compiler) tokenizer(in *string) string {
 			i = len(*in)
 		}
 	}
-	token := strings.ToLower((*in)[:i])
+	token := (*in)[:i]
 	*in = (*in)[i:]
 	return token
 }
@@ -548,6 +553,15 @@ func (c *Compiler) kakkohiraku(in *string) error {
 			"Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizer(in)
+	return nil
+}
+func (c *Compiler) kakkohirakuCS(in *string) error {
+	if c.tokenizerCS(in) != "(" {
+		return Error(c.token + "の次に'('がありません" +
+			" / " +
+			"Missing '(' after " + c.token)
+	}
+	c.token = c.tokenizerCS(in)
 	return nil
 }
 func (c *Compiler) kakkotojiru() error {
@@ -2230,13 +2244,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
 	case "map":
-		if err := c.kakkohiraku(in); err != nil {
+		if err := c.kakkohirakuCS(in); err != nil {
 			return bvNone(), err
 		}
 		out.append(OC_ex_)
-		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(
-			strings.ToLower(c.token))))
-		c.token = c.tokenizer(in)
+		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(c.token)))
+		c.token = c.tokenizerCS(in)
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}

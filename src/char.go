@@ -4087,12 +4087,12 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 		pfx.remap[i] = di
 	}
 }
-// MapSet() sets a map to a specific value. (Non case dependent) 
+// MapSet() sets a map to a specific value. (Case dependent) 
 func (c *Char) mapSet(s string, Value float32, scType int32) {
 	if s == "" {
 		return
 	}
-	key := strings.ToLower(s)
+	key := s
 	switch scType {
 		case 0:
 			c.mapArray[key] = Value
