@@ -1,7 +1,7 @@
 --;===========================================================
 --; FOOTER VALUES
 --;===========================================================
-local footer_version = 'v0.91.1'
+local footer_version = 'v0.92'
 local footer_link = ''
 local file = io.open('./releaseconf.xml', 'r')
 if file ~= nil then
