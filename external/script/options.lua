@@ -161,7 +161,7 @@ function options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
 end
 
 local txt_title = text:create({
-	font =   motif.font_data[motif.option_info.title_font[1]],
+	font =   motif.option_info.title_font[1],
 	bank =   motif.option_info.title_font[2],
 	align =  motif.option_info.title_font[3],
 	text =   '',
@@ -174,6 +174,7 @@ local txt_title = text:create({
 	b =      motif.option_info.title_font[6],
 	src =    motif.option_info.title_font[7],
 	dst =    motif.option_info.title_font[8],
+	height = motif.option_info.title_font_height,
 	--defsc =  motif.defaultOptions --title font assignment exists in mugen
 })
 function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
@@ -211,7 +212,7 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			if i == item then
 				if t[i].selected then
 					t[i].data:update({
-						font =   motif.font_data[motif.option_info.menu_item_selected_active_font[1]],
+						font =   motif.option_info.menu_item_selected_active_font[1],
 						bank =   motif.option_info.menu_item_selected_active_font[2],
 						align =  motif.option_info.menu_item_selected_active_font[3],
 						text =   t[i].displayname,
@@ -224,12 +225,13 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_selected_active_font[6],
 						src =    motif.option_info.menu_item_selected_active_font[7],
 						dst =    motif.option_info.menu_item_selected_active_font[8],
+						height = motif.option_info.menu_item_selected_active_font_height,
 						defsc = motif.defaultOptions
 					})
 					t[i].data:draw()
 				else
 					t[i].data:update({
-						font =   motif.font_data[motif.option_info.menu_item_active_font[1]],
+						font =   motif.option_info.menu_item_active_font[1],
 						bank =   motif.option_info.menu_item_active_font[2],
 						align =  motif.option_info.menu_item_active_font[3],
 						text =   t[i].displayname,
@@ -242,13 +244,14 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_active_font[6],
 						src =    motif.option_info.menu_item_active_font[7],
 						dst =    motif.option_info.menu_item_active_font[8],
+						height = motif.option_info.menu_item_active_font_height,
 						defsc =  motif.defaultOptions
 					})
 					t[i].data:draw()
 				end
 				if t[i].vardata ~= nil then
 					t[i].vardata:update({
-						font =   motif.font_data[motif.option_info.menu_item_value_active_font[1]],
+						font =   motif.option_info.menu_item_value_active_font[1],
 						bank =   motif.option_info.menu_item_value_active_font[2],
 						align =  motif.option_info.menu_item_value_active_font[3],
 						text =   t[i].vardisplay,
@@ -261,6 +264,7 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_value_active_font[6],
 						src =    motif.option_info.menu_item_value_active_font[7],
 						dst =    motif.option_info.menu_item_value_active_font[8],
+						height = motif.option_info.menu_item_value_active_font_height,
 						defsc =  motif.defaultOptions
 					})
 					t[i].vardata:draw()
@@ -268,7 +272,7 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			else
 				if t[i].selected then
 					t[i].data:update({
-						font =   motif.font_data[motif.option_info.menu_item_selected_font[1]],
+						font =   motif.option_info.menu_item_selected_font[1],
 						bank =   motif.option_info.menu_item_selected_font[2],
 						align =  motif.option_info.menu_item_selected_font[3],
 						text =   t[i].displayname,
@@ -281,12 +285,13 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_selected_font[6],
 						src =    motif.option_info.menu_item_selected_font[7],
 						dst =    motif.option_info.menu_item_selected_font[8],
+						height = motif.option_info.menu_item_selected_font_height,
 						defsc =  motif.defaultOptions
 					})
 					t[i].data:draw()
 				else
 					t[i].data:update({
-						font =   motif.font_data[motif.option_info.menu_item_font[1]],
+						font =   motif.option_info.menu_item_font[1],
 						bank =   motif.option_info.menu_item_font[2],
 						align =  motif.option_info.menu_item_font[3],
 						text =   t[i].displayname,
@@ -299,13 +304,14 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_font[6],
 						src =    motif.option_info.menu_item_font[7],
 						dst =    motif.option_info.menu_item_font[8],
+						height = motif.option_info.menu_item_font_height,
 						defsc =  motif.defaultOptions
 					})
 					t[i].data:draw()
 				end
 				if t[i].vardata ~= nil then
 					t[i].vardata:update({
-						font =   motif.font_data[motif.option_info.menu_item_value_font[1]],
+						font =   motif.option_info.menu_item_value_font[1],
 						bank =   motif.option_info.menu_item_value_font[2],
 						align =  motif.option_info.menu_item_value_font[3],
 						text =   t[i].vardisplay,
@@ -318,6 +324,7 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 						b =      motif.option_info.menu_item_value_font[6],
 						src =    motif.option_info.menu_item_value_font[7],
 						dst =    motif.option_info.menu_item_value_font[8],
+						height = motif.option_info.menu_item_value_font_height,
 						defsc =  motif.defaultOptions
 					})
 					t[i].vardata:draw()
@@ -482,9 +489,9 @@ options.t_itemname = {
 			--config.WindowMainIconLocation = {}
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
-			config.ZoomActive = false
-			config.ZoomMax = 1.1
-			config.ZoomMin = 0.75
+			config.ZoomActive = true
+			config.ZoomMax = 1
+			config.ZoomMin = 1
 			config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
 			main.roundsNumSingle = getMatchWins()
@@ -1500,6 +1507,13 @@ end
 --dynamically generates all option screen menus and submenus using itemname data stored in main.t_sort table
 options.menu = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.title_info.menu_itemname_options)}
 options.menu.loop = options.createMenu(options.menu, true, true)
+local t_menuWindow = {
+	0,
+	math.max(0, motif.option_info.menu_pos[2] - motif.option_info.menu_window_margins_y[1]),
+	motif.info.localcoord[1],
+	math.min(motif.info.localcoord[2], motif.option_info.menu_pos[2] + (motif.option_info.menu_window_visibleitems - 1) * motif.option_info.menu_item_spacing[2] + motif.option_info.menu_window_margins_y[2])
+}
+
 local t_pos = {} --for storing current options.menu table position
 local lastNum = 0
 for i = 1, #main.t_sort.option_info do
@@ -1507,7 +1521,7 @@ for i = 1, #main.t_sort.option_info do
 		--populate shaders submenu
 		if main.t_sort.option_info[i]:match('_shaders_back$') and c == 'back' then
 			for k = #options.t_shaders, 1, -1 do
-				table.insert(t_pos.items, 1, {data = text:create({}), itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, 1, {data = text:create({window = t_menuWindow}), itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
 			end
 		end
 		--appending the menu table
@@ -1516,7 +1530,7 @@ for i = 1, #main.t_sort.option_info do
 				options.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]])}
 				options.menu.submenu[c].loop = options.createMenu(options.menu.submenu[c], false, false)
 				if not main.t_sort.option_info[i]:match(c .. '_') then
-					table.insert(options.menu.items, {data = text:create({}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
+					table.insert(options.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
 				end
 			end
 			t_pos = options.menu.submenu[c]
@@ -1524,7 +1538,7 @@ for i = 1, #main.t_sort.option_info do
 			if t_pos.submenu[c] == nil or c == 'empty' then
 				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]])}
 				t_pos.submenu[c].loop = options.createMenu(t_pos.submenu[c], false, false)
-				table.insert(t_pos.items, {data = text:create({}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -1539,26 +1553,26 @@ if main.debugLog then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt')
 --; KEY SETTINGS
 --;===========================================================
 local t_keyCfg = {
-	{data = {text:create({}), text:create({})}, itemname = 'empty', displayname = ''},
-	{data = {text:create({}), text:create({})}, itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = {text:create({}), text:create({})}, infodisplay = ''},
-	{data = {text:create({}), text:create({})}, itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = {text:create({}), text:create({})}},
-	{data = {text:create({}), text:create({})}, itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = {text:create({}), text:create({})}, infodisplay = motif.option_info.menu_valuename_esc},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'empty', displayname = ''},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, infodisplay = ''},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
+	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, infodisplay = motif.option_info.menu_valuename_esc},
 }
 --t_keyCfg = main.f_cleanTable(t_keyCfg, main.t_sort.option_info)
 
-local txt_keyController = {text:create({}), text:create({})}
+local txt_keyController = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}
 function options.f_keyCfg(cfgType, controller, title)
 	main.f_cmdInput()
 	local cursorPosY = 2
@@ -1806,7 +1820,7 @@ function options.f_keyCfg(cfgType, controller, title)
 		--draw player num
 		for i = 1, 2 do
 			txt_keyController[i]:update({
-				font =   motif.font_data[motif.option_info['menu_item_key_p' .. i .. '_font'][1]],
+				font =   motif.option_info['menu_item_key_p' .. i .. '_font'][1],
 				bank =   motif.option_info['menu_item_key_p' .. i .. '_font'][2],
 				align =  motif.option_info['menu_item_key_p' .. i .. '_font'][3],
 				text =   motif.option_info['menu_itemname_key_p' .. i],
@@ -1819,6 +1833,7 @@ function options.f_keyCfg(cfgType, controller, title)
 				b =      motif.option_info['menu_item_key_p' .. i .. '_font'][6],
 				src =    motif.option_info['menu_item_key_p' .. i .. '_font'][7],
 				dst =    motif.option_info['menu_item_key_p' .. i .. '_font'][8],
+				height = motif.option_info['menu_item_key_p' .. i .. '_font_height'],
 				defsc =  motif.defaultOptions
 			})
 			txt_keyController[i]:draw()
@@ -1862,7 +1877,7 @@ function options.f_keyCfg(cfgType, controller, title)
 					if i == item and j == player then --active item
 						--draw displayname
 						t[i].data[j]:update({
-							font =   motif.font_data[motif.option_info.menu_item_active_font[1]],
+							font =   motif.option_info.menu_item_active_font[1],
 							bank =   motif.option_info.menu_item_active_font[2],
 							align =  motif.option_info.menu_item_active_font[3],
 							text =   t[i].displayname,
@@ -1875,6 +1890,7 @@ function options.f_keyCfg(cfgType, controller, title)
 							b =      motif.option_info.menu_item_active_font[6],
 							src =    motif.option_info.menu_item_active_font[7],
 							dst =    motif.option_info.menu_item_active_font[8],
+							height = motif.option_info.menu_item_active_font_height,
 							defsc =  motif.defaultOptions
 						})
 						t[i].data[j]:draw()
@@ -1882,7 +1898,7 @@ function options.f_keyCfg(cfgType, controller, title)
 						if t[i].vardata ~= nil then
 							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
 								t[i].vardata[j]:update({
-									font =   motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
+									font =   motif.option_info.menu_item_value_conflict_font[1],
 									bank =   motif.option_info.menu_item_value_conflict_font[2],
 									align =  motif.option_info.menu_item_value_conflict_font[3],
 									text =   t[i]['vardisplay' .. j],
@@ -1895,13 +1911,14 @@ function options.f_keyCfg(cfgType, controller, title)
 									b =      motif.option_info.menu_item_value_conflict_font[6],
 									src =    motif.option_info.menu_item_value_conflict_font[7],
 									dst =    motif.option_info.menu_item_value_conflict_font[8],
+									height = motif.option_info.menu_item_value_conflict_font_height,
 									defsc =  motif.defaultOptions
 								})
 								t[i].vardata[j]:draw()
 								t_conflict[joyNum] = true
 							else
 								t[i].vardata[j]:update({
-									font =   motif.font_data[motif.option_info.menu_item_value_active_font[1]],
+									font =   motif.option_info.menu_item_value_active_font[1],
 									bank =   motif.option_info.menu_item_value_active_font[2],
 									align =  motif.option_info.menu_item_value_active_font[3],
 									text =   t[i]['vardisplay' .. j],
@@ -1914,6 +1931,7 @@ function options.f_keyCfg(cfgType, controller, title)
 									b =      motif.option_info.menu_item_value_active_font[6],
 									src =    motif.option_info.menu_item_value_active_font[7],
 									dst =    motif.option_info.menu_item_value_active_font[8],
+									height = motif.option_info.menu_item_value_active_font_height,
 									defsc =  motif.defaultOptions
 								})
 								t[i].vardata[j]:draw()
@@ -1921,7 +1939,7 @@ function options.f_keyCfg(cfgType, controller, title)
 						--draw infodata
 						elseif t[i].infodata ~= nil then
 							t[i].infodata[j]:update({
-								font =   motif.font_data[motif.option_info.menu_item_info_active_font[1]],
+								font =   motif.option_info.menu_item_info_active_font[1],
 								bank =   motif.option_info.menu_item_info_active_font[2],
 								align =  motif.option_info.menu_item_info_active_font[3],
 								text =   t[i].infodisplay,
@@ -1934,6 +1952,7 @@ function options.f_keyCfg(cfgType, controller, title)
 								b =      motif.option_info.menu_item_info_active_font[6],
 								src =    motif.option_info.menu_item_info_active_font[7],
 								dst =    motif.option_info.menu_item_info_active_font[8],
+								height = motif.option_info.menu_item_info_active_font_height,
 								defsc =  motif.defaultOptions
 							})
 							t[i].infodata[j]:draw()
@@ -1941,7 +1960,7 @@ function options.f_keyCfg(cfgType, controller, title)
 					else --inactive item
 						--draw displayname
 						t[i].data[j]:update({
-							font =   motif.font_data[motif.option_info.menu_item_font[1]],
+							font =   motif.option_info.menu_item_font[1],
 							bank =   motif.option_info.menu_item_font[2],
 							align =  motif.option_info.menu_item_font[3],
 							text =   t[i].displayname,
@@ -1954,6 +1973,7 @@ function options.f_keyCfg(cfgType, controller, title)
 							b =      motif.option_info.menu_item_font[6],
 							src =    motif.option_info.menu_item_font[7],
 							dst =    motif.option_info.menu_item_font[8],
+							height = motif.option_info.menu_item_font_height,
 							defsc =  motif.defaultOptions
 						})
 						t[i].data[j]:draw()
@@ -1961,7 +1981,7 @@ function options.f_keyCfg(cfgType, controller, title)
 						if t[i].vardata ~= nil then
 							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
 								t[i].vardata[j]:update({
-									font =   motif.font_data[motif.option_info.menu_item_value_conflict_font[1]],
+									font =   motif.option_info.menu_item_value_conflict_font[1],
 									bank =   motif.option_info.menu_item_value_conflict_font[2],
 									align =  motif.option_info.menu_item_value_conflict_font[3],
 									text =   t[i]['vardisplay' .. j],
@@ -1974,13 +1994,14 @@ function options.f_keyCfg(cfgType, controller, title)
 									b =      motif.option_info.menu_item_value_conflict_font[6],
 									src =    motif.option_info.menu_item_value_conflict_font[7],
 									dst =    motif.option_info.menu_item_value_conflict_font[8],
+									height = motif.option_info.menu_item_value_conflict_font_height,
 									defsc =  motif.defaultOptions
 								})
 								t[i].vardata[j]:draw()
 								t_conflict[joyNum] = true
 							else
 								t[i].vardata[j]:update({
-									font =   motif.font_data[motif.option_info.menu_item_value_font[1]],
+									font =   motif.option_info.menu_item_value_font[1],
 									bank =   motif.option_info.menu_item_value_font[2],
 									align =  motif.option_info.menu_item_value_font[3],
 									text =   t[i]['vardisplay' .. j],
@@ -1993,6 +2014,7 @@ function options.f_keyCfg(cfgType, controller, title)
 									b =      motif.option_info.menu_item_value_font[6],
 									src =    motif.option_info.menu_item_value_font[7],
 									dst =    motif.option_info.menu_item_value_font[8],
+									height = motif.option_info.menu_item_value_font_height,
 									defsc =  motif.defaultOptions
 								})
 								t[i].vardata[j]:draw()
@@ -2000,7 +2022,7 @@ function options.f_keyCfg(cfgType, controller, title)
 						--draw infodata
 						elseif t[i].infodata ~= nil then
 							t[i].infodata[j]:update({
-								font =   motif.font_data[motif.option_info.menu_item_info_font[1]],
+								font =   motif.option_info.menu_item_info_font[1],
 								bank =   motif.option_info.menu_item_info_font[2],
 								align =  motif.option_info.menu_item_info_font[3],
 								text =   t[i].infodisplay,
@@ -2013,6 +2035,7 @@ function options.f_keyCfg(cfgType, controller, title)
 								b =      motif.option_info.menu_item_info_font[6],
 								src =    motif.option_info.menu_item_info_font[7],
 								dst =    motif.option_info.menu_item_info_font[8],
+								height = motif.option_info.menu_item_info_font_height,
 								defsc =  motif.defaultOptions
 							})
 							t[i].infodata[j]:draw()

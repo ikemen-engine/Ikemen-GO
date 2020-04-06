@@ -10,7 +10,6 @@ local function f_reset(t)
 		if t.scene[k].bg_name ~= '' then
 			bgReset(t.scene[k].bg)
 		end
-		
 		for k2, v2 in pairs(t.scene[k].layer) do
 			if t.scene[k].layer[k2].anim_data ~= nil then
 				animReset(t.scene[k].layer[k2].anim_data)
@@ -65,18 +64,15 @@ local function f_play(t)
 						--layer text
 						if t.scene[k].layer[k2].text_data ~= nil then
 							t.scene[k].layer[k2].text_timer = t.scene[k].layer[k2].text_timer + 1
-							if t.scene[k].layer[k2].text_length == 0 then --mugen style textwrap = 'w' wrapping by default
-								t.scene[k].layer[k2].text_length = main.f_pxLimit(t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1], t.info.localcoord[1], t.scene[k].layer[k2].font[3])
-							end
 							main.f_textRender(
 								t.scene[k].layer[k2].text_data,
 								t.scene[k].layer[k2].text,
 								t.scene[k].layer[k2].text_timer,
 								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
 								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
-								t.scenedef.font_def[t.scene[k].layer[k2].font[1]],
+								main.font[t.scene[k].layer[k2].font[1]].def,
 								t.scene[k].layer[k2].text_delay,
-								t.scene[k].layer[k2].text_length
+								main.f_lineLength(t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1], t.info.localcoord[1], t.scene[k].layer[k2].font[3], t.scene[k].layer[k2].text_window, true)
 							)
 							end
 					end
@@ -133,12 +129,10 @@ local function f_parse(path)
 		scenedef = {
 			spr = '',
 			snd = '',
-			font = {[1] = 'f-6x9.fnt'},
+			font = {},
 			font_height = {},
-			font_def = {}, --Ikemen feature
 			startscene = 0,
 			skipbutton = 1, --Ikemen feature
-			font_data = {}
 		},
 		scene = {},
 	}
@@ -214,9 +208,11 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 0, 255, 255, 255, 255, 0},
+								font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
+								font_scale = {1.0, 1.0}, --Ikemen feature
+								font_height = -1, --Ikemen feature
 								text_delay = 2, --Ikemen feature
-								text_length = 0, --Ikemen feature (max text width in pixels)
+								text_window = {}, --Ikemen feature
 								text_timer = 0, --Ikemen feature
 								offset = {0, 0},
 								starttime = 0,
@@ -242,12 +238,29 @@ local function f_parse(path)
 						pos_val = pos
 					end
 					if pos_val[param] == nil then --mugen takes into account only first occurrence
+						if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
+							local _, n = value:gsub(',%s*[0-9]*', '')
+							for i = n + 1, #main.t_fntDefault do
+								value = value:gsub(',?%s*$', ',' .. main.t_fntDefault[i])
+							end
+						end
 						if value:match('.+,.+') then --multiple values
 							for i, c in ipairs(main.f_strsplit(',', value)) do --split value using "," delimiter
-								if pos_val[param] == nil then
+								if i == 1 then
+									--t_layer[k2].font
 									pos_val[param] = {}
+									if param:match('_font$') then
+										if t.scenedef ~= nil and t.scenedef.font ~= nil and t.scenedef.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
+											if pos_val[param .. '_height'] == -1 and t.scenedef.font_height[tonumber(c)] ~= nil then
+												pos_val[param .. '_height'] = t.scenedef.font_height[tonumber(c)]
+											end
+											c = t.scenedef.font[tonumber(c)]
+										else
+											break --use default font values
+										end
+									end
 								end
-								if c == '' then
+								if c == nil or c == '' then
 									table.insert(pos_val[param], 0)
 								else
 									table.insert(pos_val[param], main.f_dataType(c))
@@ -294,16 +307,6 @@ local function f_parse(path)
 			end
 		end
 		t.scenedef.snd_data = sndNew(t.scenedef.snd)
-	end
-	--scenedef fonts
-	for k, v in pairs(t.scenedef.font) do --loop through table keys
-		if v ~= '' and t.scenedef.font_data[v] == nil then
-			t.scenedef.font_data[v] = fontNew(v)
-			if t.scenedef.font_height[k] ~= nil then
-				fontSetHeight(t.scenedef.font_data[v], t.scenedef.font_height[k])
-			end
-			t.scenedef.font_def[k] = fontGetDef(t.scenedef.font_data[v])
-		end
 	end
 	--loop through scenes
 	local prev_k = ''
@@ -354,19 +357,21 @@ local function f_parse(path)
 			--text
 			if t_layer[k2].text ~= '' then
 				t.scene[k].layer[k2].text_data = text:create({
-					font =   t.scenedef.font_data[t_layer[k2].font[1]],
+					font =   t_layer[k2].font[1],
 					bank =   t_layer[k2].font[2],
 					align =  t_layer[k2].font[3],
 					text =   t_layer[k2].text,
 					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-					scaleX = 320 / t.info.localcoord[1],
-					scaleY = 240 / t.info.localcoord[2],
+					scaleX = t_layer[k2].font_scale[1] * 320 / t.info.localcoord[1],
+					scaleY = t_layer[k2].font_scale[2] * 240 / t.info.localcoord[2],
 					r =      t_layer[k2].font[4],
 					g =      t_layer[k2].font[5],
 					b =      t_layer[k2].font[6],
 					src =    t_layer[k2].font[7],
 					dst =    t_layer[k2].font[8],
+					height = t_layer[k2].font_height,
+					window = t_layer[k2].text_window
 				})
 			end
 			--endtime

@@ -1524,6 +1524,7 @@ type Char struct {
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
 	mapArray              map[string]float32
+	mapDefault            map[string]float32
 	aimg                  AfterImage
 	sounds                Sounds
 	p1facing              float32
@@ -1683,7 +1684,7 @@ func (c *Char) load(def string) error {
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
 	}
-	c.mapArray = make(map[string]float32)
+	c.mapDefault = make(map[string]float32)
 	str, err := LoadText(def)
 	if err != nil {
 		return err
@@ -1749,7 +1750,7 @@ func (c *Char) load(def string) error {
 			if mapArray {
 				mapArray = false
 				for key, value := range is {
-					c.mapArray[key] = float32(Atof(value))
+					c.mapDefault[key] = float32(Atof(value))
 				}
 			}
 		}
@@ -5494,12 +5495,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.scoreAdd(hd.score[1])
 					}
 				}
-				if sys.lifebar.co.firstAttack == -1 {
-					sys.lifebar.co.firstAttack = c.teamside
+				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack {
+					sys.lifebar.co[c.teamside].firstAttack = true
 					c.firstAttack = true
 				}
 				if getter.ss.moveType == MT_A {
-					sys.lifebar.co.counterHits[c.teamside] += 1
+					sys.lifebar.co[c.teamside].counterHits += 1
 					c.counterHits += 1
 				}
 			}

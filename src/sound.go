@@ -574,6 +574,16 @@ func (s *Snd) play(gn [2]int32) bool {
 	c.sound = s.Get(gn)
 	return c.sound != nil
 }
+func (s *Snd) stop(gn [2]int32) {
+	w := s.Get(gn)
+	for k, v := range sys.sounds {
+		if v.sound != nil && v.sound == w {
+			sys.sounds[k] = Sound{volume: 256, freqmul: 1}
+			//break
+		}
+	}
+	return
+}
 
 func newWave() *Wave {
 	return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}

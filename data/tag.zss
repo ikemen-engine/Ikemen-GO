@@ -8,18 +8,17 @@ if Time = 0 {
 	PosSet{x: -243 * Facing; y: 0}
 }
 
-VelSet{x: 10; y: 0}
-
 if BackEdgeBodyDist >= 0 {
 	if Standby {
 		TagIn{}
 	}
-	
-	if BackEdgeDist + 10 > Map(_iksys_tagSwitchDist) {
+	if BackEdgeDist >= Map(_iksys_tagSwitchDist) {
 		VelSet{x: 0; y: 0}
-		TagIn{stateNo: Const(AnimStanding); ctrl: 1}
+		ChangeState{value: Const(AnimStanding); ctrl: 1}
 	}
 }
+
+VelSet{x: 10; y: 0}
 
 #===============================================================================
 #TagStateLeavingScreen
@@ -31,7 +30,7 @@ persistent(0) {
 	Turn{}
 }
 
-if Time = 0 && !Standby {
+if !Standby {
 	TagOut{}
 }
 
@@ -52,6 +51,7 @@ AssertSpecial{flag: invisible; flag2: noautoturn}
 if Facing != PlayerID(Map(_iksys_tagCurrentID)),Facing {
 	Turn{}
 }
+
 PosSet{x: (PlayerID(Map(_iksys_tagCurrentID)),Pos X) - 1000 * Facing}
 
 #===============================================================================
@@ -125,7 +125,15 @@ let ret = $currentID;
 #===============================================================================
 [Statedef -3]
 
-if Map(_iksys_tagActive) = 1 {
+if RoundState = 0 && TeamMode = Tag {
+	MapSet{map: "_iksys_tagActive"; value: 1}
+	MapSet{map: "_iksys_tagSwitchDist"; value: 0}
+	if RoundNo = 1 {
+		MapSet{map: "_iksys_tagCurrentID"; value: GetPlayerID(TeamSide)}
+	} else if ID = Map(_iksys_tagCurrentID) {
+		TeamMapSet{map: "_iksys_tagCurrentID"; value: ID}
+	}
+} else if Map(_iksys_tagActive) = 1 {
 	if RoundState = 4 {
 		MapSet{map: "_iksys_tagActive"; value: 0}
 	} else if Life {
@@ -159,14 +167,4 @@ if Map(_iksys_tagActive) = 1 {
 			ChangeState{value: Const(TagStateEnteringScreen); redirectid: $partnerID}
 		}
 	}
-} else if RoundState = 0 && TeamMode = Tag {
-	MapSet{map: "_iksys_tagActive"; value: 1}
-	MapSet{map: "_iksys_tagSwitchDist"; value: 0}
-	if RoundNo = 1 {
-		MapSet{map: "_iksys_tagCurrentID"; value: GetPlayerID(TeamSide)}
-	} else if ID = Map(_iksys_tagCurrentID) {
-		TeamMapSet{map: "_iksys_tagCurrentID"; value: ID}
-	}
-} else if RoundState = 0 && TeamMode != Tag {
-	MapSet{map: "_iksys_tagActive"; value: 0}
 }

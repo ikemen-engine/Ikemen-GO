@@ -1566,7 +1566,7 @@ func (s *System) fight() (reload bool) {
 			}
 			*y += float32(s.debugFont.Size[1]) / s.heightScale
 			s.debugFont.DrawText(drawTxt, (320-float32(s.gameWidth))/2, *y,
-				1/s.widthScale, 1/s.heightScale, 0, 1)
+				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect)
 		}
 		s.allPalFX.enable = tmp
 	}
@@ -1729,6 +1729,10 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 			copyVar(i)
+			p[0].mapArray = make(map[string]float32)
+			for k,v := range p[0].mapDefault {
+				p[0].mapArray[k] = v
+			}
 		}
 	}
 	s.cam.Init()

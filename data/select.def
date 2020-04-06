@@ -167,14 +167,15 @@
  ;   IKEMEN feature: This parameter allows to assign multiple characters into a
  ;   single select screen slot. paramvalue, enclosed in {} brackets, consists
  ;   of multiple newlines, where each of them follows the usual syntax.
- ;   Characters added this way can have two extra parameters assigned:
+ ;   Characters added this way can have 3 extra parameters assigned:
  ;   - select: Set the paramvalue to the command that selects this character.
  ;     If multiple chars in this slot have the same paramvalue assigned, they
  ;     will be selected randomly.
- ;   - swap: Set the paramvalue to the command that swaps the current default
- ;     slot character with this one. If multiple chars have the same paramvalue
- ;     assigned, they will be swapped sequentially.
- ;   Commands use the same syntax as character's cmd file (e.g. /s+a)
+ ;   - next: Set the paramvalue to the command that swaps the current slot
+ ;     character with the next character that shares the same paramvalue.
+ ;   - previous: Set the paramvalue to the command that swaps the current slot
+ ;     character with the previous character that shares the same paramvalue.
+ ;   Commands use the same syntax as mugen CMD files (comma is permitted)
  ;
  ;You can also add a randomize icon to the select screen. To do this, put the
  ;word "randomselect" on a line of its own, with no extra parameters.
@@ -185,13 +186,14 @@
  ; kfm, stages/mybg.def, 3={SuaveDude, stages/mybg2.def}
  ; kfm, stages/mybg.def, music=sound/song.mp3, order=3, ai=8, hidden=2
  ; slot = {
- ;      kfm, stages/mybg.def, swap=s
- ;      SuaveDude, swap=s, select=/s+a
+ ;      kfm, stages/mybg.def, previous=d, next=w
+ ;      SuaveDude, previous=d, next=w, select=/s+a
  ; }
  ;
  ;Insert your characters below.
 
 kfm, stages/kfm.def
+randomselect
 
 ;-------------------------------------------------------------------------------
 [ExtraStages]

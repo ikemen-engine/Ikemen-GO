@@ -214,6 +214,14 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(newUserData(l, fnt))
 		return 1
 	})
+	luaRegister(l, "fontSetColor", func(*lua.LState) int {
+		fnt, ok := toUserData(l, 1).(*Fnt)
+		if !ok {
+			userDataError(l, 1, fnt)
+		}
+		fnt.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
+		return 0
+	})
 	luaRegister(l, "fontSetHeight", func(l *lua.LState) int {
 		fnt, ok := toUserData(l, 1).(*Fnt)
 		if !ok {
@@ -328,6 +336,14 @@ func scriptCommonInit(l *lua.LState) {
 			userDataError(l, 1, s)
 		}
 		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
+		return 0
+	})
+	luaRegister(l, "sndStop", func(l *lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		s.stop([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
@@ -616,14 +632,6 @@ func systemScriptInit(l *lua.LState) {
 		ts.text = strArg(l, 2)
 		return 0
 	})
-	luaRegister(l, "textImgSetColor", func(*lua.LState) int {
-		ts, ok := toUserData(l, 1).(*TextSprite)
-		if !ok {
-			userDataError(l, 1, ts)
-		}
-		ts.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
-		return 0
-	})
 	luaRegister(l, "textImgSetPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
@@ -640,6 +648,15 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.xscl, ts.yscl = float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale)
+		return 0
+	})
+	luaRegister(l, "textImgSetWindow", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
+			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
 		return 0
 	})
 	luaRegister(l, "textImgDraw", func(*lua.LState) int {
@@ -964,10 +981,14 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "drawPortrait", func(l *lua.LState) int {
 		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
 		var xscl, yscl float32 = 1, 1
+		window := &sys.scrrect
 		if l.GetTop() >= 4 {
 			xscl = float32(numArg(l, 4))
 			if l.GetTop() >= 5 {
 				yscl = float32(numArg(l, 5))
+				if l.GetTop() >= 9 {
+					window = &[...]int32{int32(numArg(l, 6)), int32(numArg(l, 7)), int32(numArg(l, 8)), int32(numArg(l, 9))}
+				}
 			}
 		}
 		if !sys.frameSkip {
@@ -981,7 +1002,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				paltex := c.lportrait.PalTex
-				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil, paltex)
+				c.lportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.lportrait.Pal, nil, paltex, window)
 			}
 		}
 		return 0
@@ -989,10 +1010,14 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "drawSmallPortrait", func(l *lua.LState) int {
 		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
 		var xscl, yscl float32 = 1, 1
+		window := &sys.scrrect
 		if l.GetTop() >= 4 {
 			xscl = float32(numArg(l, 4))
 			if l.GetTop() >= 5 {
 				yscl = float32(numArg(l, 5))
+				if l.GetTop() >= 9 {
+					window = &[...]int32{int32(numArg(l, 6)), int32(numArg(l, 7)), int32(numArg(l, 8)), int32(numArg(l, 9))}
+				}
 			}
 		}
 		if !sys.frameSkip {
@@ -1007,7 +1032,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				paltex := c.sportrait.PalTex
-				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex)
+				c.sportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaSmallPortraitScale, yscl/sys.luaSmallPortraitScale, c.sportrait.Pal, nil, paltex, window)
 			}
 		}
 		return 0
@@ -1015,10 +1040,14 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "drawVersusPortrait", func(l *lua.LState) int {
 		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
 		var xscl, yscl float32 = 1, 1
+		window := &sys.scrrect
 		if l.GetTop() >= 4 {
 			xscl = float32(numArg(l, 4))
 			if l.GetTop() >= 5 {
 				yscl = float32(numArg(l, 5))
+				if l.GetTop() >= 9 {
+					window = &[...]int32{int32(numArg(l, 6)), int32(numArg(l, 7)), int32(numArg(l, 8)), int32(numArg(l, 9))}
+				}
 			}
 		}
 		if !sys.frameSkip {
@@ -1032,7 +1061,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				paltex := c.vsportrait.PalTex
-				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex)
+				c.vsportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.vsportrait.Pal, nil, paltex, window)
 			}
 		}
 		return 0
@@ -1040,10 +1069,14 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "drawStagePortrait", func(l *lua.LState) int {
 		n, x, y := int(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3))
 		var xscl, yscl float32 = 1, 1
+		window := &sys.scrrect
 		if l.GetTop() >= 4 {
 			xscl = float32(numArg(l, 4))
 			if l.GetTop() >= 5 {
 				yscl = float32(numArg(l, 5))
+				if l.GetTop() >= 9 {
+					window = &[...]int32{int32(numArg(l, 6)), int32(numArg(l, 7)), int32(numArg(l, 8)), int32(numArg(l, 9))}
+				}
 			}
 		}
 		if !sys.frameSkip {
@@ -1057,7 +1090,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				paltex := c.stageportrait.PalTex
-				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex)
+				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex, window)
 			}
 		}
 		return 0
@@ -1080,14 +1113,14 @@ func systemScriptInit(l *lua.LState) {
 								(y+float32(j)*sys.sel.cellsize[1])/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[0]*c.portrait_scale)/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[1]*c.portrait_scale)/float32(sys.luaSpriteScale),
-								c.sportrait.Pal, nil, paltex)
+								c.sportrait.Pal, nil, paltex, &sys.scrrect)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
 							paltex := sys.sel.randomspr.PalTex
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
 								y+float32(j)*sys.sel.cellsize[1]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[0]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[1]/float32(sys.luaSpriteScale),
-								sys.sel.randomspr.Pal, nil, paltex)
+								sys.sel.randomspr.Pal, nil, paltex, &sys.scrrect)
 						}
 					}
 				}
@@ -1167,7 +1200,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
-		sys.loadStart()
+		//sys.loadStart()
 		return 0
 	})
 	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
@@ -1665,10 +1698,14 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "drawCharSprite", func(l *lua.LState) int {
-		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing
+		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing, window
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("drawCharSprite: the player number (%v) is not loaded.", pn)
+		}
+		window := &sys.scrrect
+		if l.GetTop() >= 11 {
+			window = &[...]int32{int32(numArg(l, 8)), int32(numArg(l, 9)), int32(numArg(l, 10)), int32(numArg(l, 11))}
 		}
 		var ok bool
 		var group int16
@@ -1686,7 +1723,7 @@ func systemScriptInit(l *lua.LState) {
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
 						lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1, scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
 						lay.DrawSprite((float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale, float32(numArg(l, 4))*sys.lifebarScale,
-							lay.layerno, sprite, pfx, sys.cgi[pn-1].portraitscale)
+							lay.layerno, sprite, pfx, sys.chars[pn-1][0].localscl*sys.cgi[pn-1].portraitscale, window)
 						ok = true
 					}
 				}
@@ -1696,10 +1733,14 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "drawCharAnimation", func(l *lua.LState) int {
-		//pn, anim_tbl (1 or more numbers), x, y, scaleX, scaleY, facing
+		//pn, anim_tbl (1 or more numbers), x, y, scaleX, scaleY, facing, window
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("drawCharAnimation: the player number (%v) is not loaded.", pn)
+		}
+		window := &sys.scrrect
+		if l.GetTop() >= 11 {
+			window = &[...]int32{int32(numArg(l, 8)), int32(numArg(l, 9)), int32(numArg(l, 10)), int32(numArg(l, 11))}
 		}
 		var ok bool
 		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
@@ -1707,7 +1748,7 @@ func systemScriptInit(l *lua.LState) {
 				if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false); anim != nil {
 					anim.Action() //TODO: for some reason doesn't advance the animation, remains at first frame
 					lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1, scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
-					lay.DrawAnim(&sys.scrrect, float32(numArg(l, 3))+sys.lifebarOffsetX, float32(numArg(l, 4)), sys.lifebarScale, lay.layerno, anim)
+					lay.DrawAnim(window, float32(numArg(l, 3))+sys.lifebarOffsetX, float32(numArg(l, 4)), sys.chars[pn-1][0].localscl, lay.layerno, anim)
 					ok = true
 				}
 			}
@@ -1861,6 +1902,26 @@ func systemScriptInit(l *lua.LState) {
 		}
 		w.play()
 		return 0
+	})
+	luaRegister(l, "stopAllSounds", func(l *lua.LState) int {
+		sys.sounds = newSounds(len(sys.sounds))
+		return 0
+	})
+	luaRegister(l, "getSoundPlaying", func(*lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
+		var found bool
+		for _, v := range sys.sounds {
+			if v.sound != nil && v.sound == w {
+				found = true
+				break
+			}
+		}
+		l.Push(lua.LBool(found))
+		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
 		stagebgm, attachedchardef := sys.sel.GetStageInfo(int(numArg(l, 1)))
