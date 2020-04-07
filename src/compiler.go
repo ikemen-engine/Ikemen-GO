@@ -2244,12 +2244,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
 	case "map":
-		if err := c.kakkohirakuCS(in); err != nil {
+		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
 		}
 		out.append(OC_ex_)
-		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(c.token)))
-		c.token = c.tokenizerCS(in)
+		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(c.token))))
+		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
