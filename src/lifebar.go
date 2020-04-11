@@ -1977,34 +1977,35 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 }
 func (l *Lifebar) step() {
 	for ti, _ := range sys.tmode {
+		//HealthBar
 		for i := ti; i < l.num[0][ti]; i += 2 {
 			l.hb[l.ref[0][ti]][i].step(float32(sys.chars[i][0].life)/
 				float32(sys.chars[i][0].lifeMax), (sys.chars[i][0].getcombo != 0 ||
 				sys.chars[i][0].ss.moveType == MT_H) &&
 				!sys.chars[i][0].scf(SCF_over))
 		}
-	}
-	for ti, _ := range sys.tmode {
+		//PowerBar
 		for i := ti; i < l.num[1][ti]; i += 2 {
 			l.pb[l.ref[1][ti]][i].step(float32(sys.chars[i][0].power)/
 				float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000,
 				sys.chars[i][0].power)
 		}
-	}
-	for ti, _ := range sys.tmode {
+		//LifeBarFace
 		for i := ti; i < l.num[2][ti]; i += 2 {
 			l.fa[l.ref[2][ti]][i].step()
 		}
-	}
-	for ti, _ := range sys.tmode {
+		//LifeBarName
 		for i := ti; i < l.num[3][ti]; i += 2 {
 			l.nm[l.ref[3][ti]][i].step()
 		}
 	}
+	//LifeBarWinIcon
 	for i := range l.wi {
 		l.wi[i].step(sys.wins[i])
 	}
+	//LifeBarTime
 	l.ti.step()
+	//LifeBarCombo
 	cb, cd, cp := [2]int32{}, [2]int32{}, [2]float32{}
 	for i, ch := range sys.chars {
 		for _, c := range ch {
@@ -2018,7 +2019,9 @@ func (l *Lifebar) step() {
 	for i := range l.co {
 		l.co[i].step(cb[i], cd[i], cp[i])
 	}
+	//LifeBarChallenger
 	l.ch.step(l.snd)
+	//LifeBarRatio
 	for ti, tm := range sys.tmode {
 		if tm == TM_Turns {
 			rl := sys.chars[ti][0].ratioLevel()
@@ -2027,24 +2030,25 @@ func (l *Lifebar) step() {
 			}
 		}
 	}
+	//LifeBarTimer
 	l.tr.step()
+	//LifeBarScore
 	for i := range l.sc {
 		l.sc[i].step()
 	}
+	//LifeBarMatch
 	l.ma.step()
+	//LifeBarAiLevel
 	for i := range l.ai {
 		l.ai[i].step()
 	}
+	//LifeBarMode
 	if _, ok := l.mo[sys.gameMode]; ok {
 		l.mo[sys.gameMode].step()
 	}
 }
 func (l *Lifebar) reset() {
 	for ti, tm := range sys.tmode {
-		//0: hb
-		//1: pb
-		//2: fa
-		//3: nm
 		//0: Single (2)
 		//1: Simul (8)
 		//2: Turns (2)
@@ -2147,35 +2151,22 @@ func (l *Lifebar) draw(layerno int16) {
 	}
 	if !sys.sf(GSF_nobardisplay) && l.activeBars {
 		for ti, _ := range sys.tmode {
+			//HealthBar
 			for i := ti; i < l.num[0][ti]; i += 2 {
 				l.hb[l.ref[0][ti]][i].bgDraw(layerno)
-			}
-		}
-		for ti, _ := range sys.tmode {
-			for i := ti; i < l.num[0][ti]; i += 2 {
 				l.hb[l.ref[0][ti]][i].draw(layerno, float32(sys.chars[i][0].life)/
 					float32(sys.chars[i][0].lifeMax))
 			}
-		}
-		for ti, _ := range sys.tmode {
+			//PowerBar
 			for i := ti; i < l.num[1][ti]; i += 2 {
 				l.pb[l.ref[1][ti]][i].bgDraw(layerno)
-			}
-		}
-		for ti, _ := range sys.tmode {
-			for i := ti; i < l.num[1][ti]; i += 2 {
 				l.pb[l.ref[1][ti]][i].draw(layerno, float32(sys.chars[i][0].power)/
 					float32(sys.chars[i][0].powerMax), sys.chars[i][0].power/1000,
 					sys.chars[i][0].power, l.fnt[:])
 			}
-		}
-		for ti, _ := range sys.tmode {
+			//LifeBarFace
 			for i := ti; i < l.num[2][ti]; i += 2 {
 				l.fa[l.ref[2][ti]][i].bgDraw(layerno)
-			}
-		}
-		for ti, _ := range sys.tmode {
-			for i := ti; i < l.num[2][ti]; i += 2 {
 				if fspr := l.fa[l.ref[2][ti]][i].face; fspr != nil {
 					pfx := sys.chars[i][0].getPalfx()
 					sys.cgi[i].sff.palList.SwapPalMap(&pfx.remap)
@@ -2185,22 +2176,20 @@ func (l *Lifebar) draw(layerno int16) {
 					l.fa[l.ref[2][ti]][i].draw(layerno, pfx, i == sys.superplayer)
 				}
 			}
-		}
-		for ti, _ := range sys.tmode {
+			//LifeBarName
 			for i := ti; i < l.num[3][ti]; i += 2 {
 				l.nm[l.ref[3][ti]][i].bgDraw(layerno)
-			}
-		}
-		for ti, _ := range sys.tmode {
-			for i := ti; i < l.num[3][ti]; i += 2 {
 				l.nm[l.ref[3][ti]][i].draw(layerno, l.fnt[:], sys.cgi[i].lifebarname)
 			}
 		}
+		//LifeBarTime
 		l.ti.bgDraw(layerno)
 		l.ti.draw(layerno, l.fnt[:])
+		//LifeBarWinIcon
 		for i := range l.wi {
 			l.wi[i].draw(layerno, l.fnt[:], i)
 		}
+		//LifeBarRatio
 		for ti, tm := range sys.tmode {
 			if tm == TM_Turns {
 				rl := sys.chars[ti][0].ratioLevel()
@@ -2209,25 +2198,32 @@ func (l *Lifebar) draw(layerno int16) {
 				}
 			}
 		}
+		//LifeBarTimer
 		l.tr.bgDraw(layerno)
 		l.tr.draw(layerno, l.fnt[:])
+		//LifeBarScore
 		for i := range l.sc {
 			l.sc[i].bgDraw(layerno)
 			l.sc[i].draw(layerno, l.fnt[:], i)
 		}
+		//LifeBarMatch
 		l.ma.bgDraw(layerno)
 		l.ma.draw(layerno, l.fnt[:])
+		//LifeBarAiLevel
 		for i := range l.ai {
 			l.ai[i].bgDraw(layerno)
 			l.ai[i].draw(layerno, l.fnt[:], sys.com[sys.chars[i][0].playerNo])
 		}
 
 	}
+	//LifeBarCombo
 	for i := range l.co {
 		l.co[i].draw(layerno, l.fnt[:], i)
 	}
+	//LifeBarChallenger
 	l.ch.bgDraw(layerno)
 	l.ch.draw(layerno, l.fnt[:])
+	//LifeBarMode
 	if _, ok := l.mo[sys.gameMode]; ok {
 		l.mo[sys.gameMode].bgDraw(layerno)
 		l.mo[sys.gameMode].draw(layerno, l.fnt[:])
