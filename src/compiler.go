@@ -145,7 +145,12 @@ func newCompiler() *Compiler {
 	}
 	return c
 }
-func (_ *Compiler) tokenizer(in *string) string {
+
+func (c *Compiler) tokenizer(in *string) string {
+	return strings.ToLower(c.tokenizerCS(in))
+}
+
+func (_ *Compiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
 		return ""
@@ -279,7 +284,7 @@ func (_ *Compiler) tokenizer(in *string) string {
 			i = len(*in)
 		}
 	}
-	token := strings.ToLower((*in)[:i])
+	token := (*in)[:i]
 	*in = (*in)[i:]
 	return token
 }
@@ -548,6 +553,15 @@ func (c *Compiler) kakkohiraku(in *string) error {
 			"Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizer(in)
+	return nil
+}
+func (c *Compiler) kakkohirakuCS(in *string) error {
+	if c.tokenizerCS(in) != "(" {
+		return Error(c.token + "の次に'('がありません" +
+			" / " +
+			"Missing '(' after " + c.token)
+	}
+	c.token = c.tokenizerCS(in)
 	return nil
 }
 func (c *Compiler) kakkotojiru() error {
@@ -2234,8 +2248,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ex_)
-		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(
-			strings.ToLower(c.token))))
+		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(c.token))))
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
@@ -7928,10 +7941,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_c, CK_nc
 					case "s":
 						*k, *nk = CK_s, CK_ns
-					case "v":
-						*k, *nk = CK_v, CK_nv
 					case "d":
-						*k, *nk = CK_v, CK_nv
+						*k, *nk = CK_d, CK_nd
 					case "w":
 						*k, *nk = CK_w, CK_nw
 					}
