@@ -1,17 +1,4 @@
 --;===========================================================
---; FOOTER VALUES
---;===========================================================
-local footer_version = 'v0.91.1'
-local footer_link = ''
-local file = io.open('./releaseconf.xml', 'r')
-if file ~= nil then
-	local s_file = file:read("*all")
-	footer_version = s_file:match('<version>(.-)</version>')
-	footer_link = s_file:match('<link>(.-)</link>')
-	file:close()
-end
-
---;===========================================================
 --; LOCALCOORD VALUES
 --;===========================================================
 local def = config.Motif
@@ -162,7 +149,7 @@ local motif =
 		footer3_font = {'f-4x6.fnt', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
-		footer3_text = footer_version, --Ikemen feature
+		footer3_text = 'v0.93', --Ikemen feature
 		footer_boxbg_visible = 1, --Ikemen feature
 		footer_boxbg_coords = {0, localY - 7, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_boxbg_col = {0, 0, 64}, --Ikemen feature
@@ -244,7 +231,7 @@ local motif =
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
-		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* This fork source code: " .. footer_link, --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
+		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* Feedback: https://mugenguild.com/forum/topics/ikemen-go-184152.0.html", --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
 		text_pos = {25, 32}, --Ikemen feature
 		text_font = {'f-4x6.fnt', 0, 1, 191, 191, 191, 255, 0},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature

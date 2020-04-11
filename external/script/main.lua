@@ -1523,7 +1523,6 @@ setDebugScript(motif.files.debug_script)
 txt_loading:draw()
 refresh()
 loadLifebar(motif.files.fight)
-main.currentLifebar = motif.files.fight
 main.loadingRefresh(txt_loading)
 
 --print warning if training character is missing

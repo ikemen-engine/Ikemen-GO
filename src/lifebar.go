@@ -711,8 +711,8 @@ func readLifeBarCombo(pre string, is IniSection) *LifeBarCombo {
 	is.ReadI32(pre+"pos", &c.pos[0], &c.pos[1])
 	is.ReadF32(pre+"start.x", &c.start_x)
 	if pre == "team2." { //mugen 1.0 implementation reuses winmugen code where both sides shared the same values
-		c.pos[0] = int32(sys.scrrect[2]) - c.pos[0]
-		c.start_x = float32(sys.scrrect[2]) - c.start_x
+		c.pos[0] = sys.lifebarLocalcoord[0] - c.pos[0]
+		c.start_x = float32(sys.lifebarLocalcoord[0]) - c.start_x
 	}
 	is.ReadI32(pre+"counter.font", &c.counter_font[0], &c.counter_font[1],
 		&c.counter_font[2])
@@ -1931,7 +1931,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 3; i < len(l.hb); i++ {
 				if i == v {
 					for j := 0; j < len(l.hb[i]); j++ {
-						l.hb[i][j] = l.hb[1][j]
+						if i == 6 || i == 7 {
+							l.hb[i][j] = l.hb[3][j]
+						} else {
+							l.hb[i][j] = l.hb[1][j]
+						}
 					}
 				}
 			}
@@ -1947,7 +1951,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 3; i < len(l.fa); i++ {
 				if i == v {
 					for j := 0; j < len(l.fa[i]); j++ {
-						l.fa[i][j] = l.fa[1][j]
+						if i == 6 || i == 7 {
+							l.fa[i][j] = l.fa[3][j]
+						} else {
+							l.fa[i][j] = l.fa[1][j]
+						}
 					}
 				}
 			}
@@ -1955,7 +1963,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 3; i < len(l.nm); i++ {
 				if i == v {
 					for j := 0; j < len(l.nm[i]); j++ {
-						l.nm[i][j] = l.nm[1][j]
+						if i == 6 || i == 7 {
+							l.nm[i][j] = l.nm[3][j]
+						} else {
+							l.nm[i][j] = l.nm[1][j]
+						}
 					}
 				}
 			}
@@ -2045,34 +2057,29 @@ func (l *Lifebar) reset() {
 		l.ref[1][ti] = int(tm)
 		l.ref[2][ti] = int(tm)
 		l.ref[3][ti] = int(tm)
-		if tm == TM_Tag {
-			if sys.numSimul[ti] == 2 { //Tag
-				l.ref[0][ti] = 3
-				l.ref[1][ti] = 3
-				l.ref[2][ti] = 3
-				l.ref[3][ti] = 3
-			} else if sys.numSimul[ti] == 3 { //Tag 3P
-				l.ref[0][ti] = 6
-				l.ref[1][ti] = 6
-				l.ref[2][ti] = 6
-				l.ref[3][ti] = 6
-			} else if sys.numSimul[ti] >= 4 { //Tag 4P
-				l.ref[0][ti] = 7
-				l.ref[1][ti] = 7
-				l.ref[2][ti] = 7
-				l.ref[3][ti] = 7
-			}
-		} else if tm == TM_Simul {
-			if sys.numSimul[ti] == 3 { //Simul 3P
+		if tm == TM_Simul {
+			if sys.numSimul[ti] == 3 {
 				l.ref[0][ti] = 4
 				l.ref[1][ti] = 4
 				l.ref[2][ti] = 4
 				l.ref[3][ti] = 4
-			} else if sys.numSimul[ti] >= 4 { //Simul 4P
+			} else if sys.numSimul[ti] >= 4 {
 				l.ref[0][ti] = 5
 				l.ref[1][ti] = 5
 				l.ref[2][ti] = 5
 				l.ref[3][ti] = 5
+			}
+		} else if tm == TM_Tag {
+			if sys.numSimul[ti] == 3 {
+				l.ref[0][ti] = 6
+				l.ref[1][ti] = 6
+				l.ref[2][ti] = 6
+				l.ref[3][ti] = 6
+			} else if sys.numSimul[ti] >= 4 {
+				l.ref[0][ti] = 7
+				l.ref[1][ti] = 7
+				l.ref[2][ti] = 7
+				l.ref[3][ti] = 7
 			}
 		}
 		l.num[0][ti] = len(l.hb[l.ref[0][ti]])

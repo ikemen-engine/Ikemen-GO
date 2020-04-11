@@ -407,22 +407,8 @@ function start.f_remapAI()
 	end
 end
 
---sets lifebar, round time, rounds to win
-local lifebar = motif.files.fight
+--sets lifebar elements, round time, rounds to win
 function start.f_setRounds()
-	--lifebar
-	if main.t_charparam.lifebar and main.t_charparam.rivals and start.f_rivalsMatch('lifebar') then --lifebar assigned as rivals param
-		lifebar = main.t_selChars[t_p1Selected[1].ref + 1].rivals[matchNo].lifebar:gsub('\\', '/')
-	elseif main.t_charparam.lifebar and main.t_selChars[t_p2Selected[1].ref + 1].lifebar ~= nil then --lifebar assigned as character param
-		lifebar = main.t_selChars[t_p2Selected[1].ref + 1].lifebar:gsub('\\', '/')
-	else --default lifebar
-		lifebar = motif.files.fight
-	end
-	if lifebar:lower() ~= main.currentLifebar:lower() then
-		main.currentLifebar = lifebar
-		loadLifebar(lifebar)
-		main.framesPerCount = getFramesPerCount()
-	end
 	setLifeBarElements(main.t_lifebar)
 	--round time
 	local frames = main.framesPerCount

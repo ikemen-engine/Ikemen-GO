@@ -533,6 +533,11 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebarPortraitScale = float32(numArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setLifebarLocalcoord", func(l *lua.LState) int {
+		sys.lifebarLocalcoord[0] = int32(numArg(l, 1))
+		sys.lifebarLocalcoord[1] = int32(numArg(l, 2))
+		return 0
+	})
 
 	// TODO: Test if this even function works.
 	luaRegister(l, "setWindowTitle", func(*lua.LState) int {
@@ -1404,10 +1409,23 @@ func systemScriptInit(l *lua.LState) {
 					num = int(math.Min(float64(num), float64(sys.numSimul[i&1])*2))
 				}
 				if i < num {
-					fa := sys.lifebar.fa[sys.tmode[i&1]][i]
+					ref := sys.tmode[i&1]
+					if sys.tmode[i&1] == TM_Simul {
+						if sys.numSimul[i&1] == 3 {
+							ref = 4
+						} else if sys.numSimul[i&1] >= 4 {
+							ref = 5
+						}
+					} else if sys.tmode[i&1] == TM_Tag {
+						if sys.numSimul[i&1] == 3 {
+							ref = 6
+						} else if sys.numSimul[i&1] >= 4 {
+							ref = 7
+						}
+					}
+					fa := sys.lifebar.fa[ref][i]
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
 						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
-
 					fa.scale = sys.cgi[i].portraitscale
 				}
 			}
