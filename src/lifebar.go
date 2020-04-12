@@ -761,7 +761,7 @@ func (c *LifeBarCombo) step(combo, damage int32, percentage float32) {
 	if c.resttime > 0 {
 		c.counterX -= c.counterX / c.showspeed
 	} else {
-		c.counterX -= sys.lifebarFontScale * c.hidespeed * float32(sys.gameWidth)/320
+		c.counterX -= sys.lifebarFontScale * c.hidespeed * float32(sys.lifebarLocalcoord[0])/320
 		if c.counterX < c.start_x*2 {
 			c.counterX = c.start_x * 2
 		}
@@ -2109,10 +2109,10 @@ func (l *Lifebar) reset() {
 		//1: Simul (8)
 		//2: Turns (2)
 		//3: Tag (8)
-		//4: Simul_3p (6)
-		//5: Simul_4p (8)
-		//6: Tag_3p (6)
-		//7: Tag_4p (8)
+		//4: Simul_3P (6)
+		//5: Simul_4P (8)
+		//6: Tag_3P (6)
+		//7: Tag_4P (8)
 		l.ref[0][ti] = int(tm)
 		l.ref[1][ti] = int(tm)
 		l.ref[2][ti] = int(tm)

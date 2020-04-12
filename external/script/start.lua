@@ -3436,7 +3436,7 @@ function start.f_selectVersus()
 			bgDraw(motif.versusbgdef.bg, false)
 			--draw p1 portraits
 			local t_portrait = {}
-			for i = #t_p1Selected, 1, -1 do
+			for i = 1, #t_p1Selected do
 				if #t_portrait < motif.vs_screen.p1_num then
 					table.insert(t_portrait, t_p1Selected[i].ref)
 				end
@@ -3462,7 +3462,7 @@ function start.f_selectVersus()
 			end
 			--draw p2 portraits
 			t_portrait = {}
-			for i = #t_p2Selected, 1, -1 do
+			for i = 1, #t_p2Selected do
 				if #t_portrait < motif.vs_screen.p2_num then
 					table.insert(t_portrait, t_p2Selected[i].ref)
 				end

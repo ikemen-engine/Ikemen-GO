@@ -52,8 +52,6 @@ if Facing != PlayerID(Map(_iksys_tagCurrentID)),Facing {
 	Turn{}
 }
 
-PosSet{x: (PlayerID(Map(_iksys_tagCurrentID)),Pos X) - 1000 * Facing}
-
 #===============================================================================
 #TagStateJumpingIn
 #===============================================================================
