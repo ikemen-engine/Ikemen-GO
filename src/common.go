@@ -380,6 +380,19 @@ func HasExtension(file, ext string) bool {
 	return match
 }
 
+func sliceInsertInt(array []int, value int, index int) []int {
+	return append(array[:index], append([]int{value}, array[index:]...)...)
+}
+
+func sliceRemoveInt(array []int, index int) []int {
+	return append(array[:index], array[index+1:]...)
+}
+	
+func sliceMoveInt(array []int, srcIndex int, dstIndex int) []int {
+	value := array[srcIndex]
+	return sliceInsertInt(sliceRemoveInt(array, srcIndex), value, dstIndex)
+}
+
 type Error string
 
 func (e Error) Error() string { return string(e) }

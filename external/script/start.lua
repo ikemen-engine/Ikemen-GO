@@ -4040,8 +4040,8 @@ function start.f_selectVictory()
 				motif.victory_screen.p2_facing,
 				motif.victory_screen.p2_window[1],
 				motif.victory_screen.p2_window[2],
-				motif.victory_screen.p2_window[3],
-				motif.victory_screen.p2_window[4]
+				motif.victory_screen.p2_window[3] * config.GameWidth / main.SP_Localcoord[1],
+				motif.victory_screen.p2_window[4] * config.GameHeight / main.SP_Localcoord[2]
 			)
 		end
 		-- winner team portraits
@@ -4065,8 +4065,8 @@ function start.f_selectVictory()
 				motif.victory_screen.p1_facing,
 				motif.victory_screen.p1_window[1],
 				motif.victory_screen.p1_window[2],
-				motif.victory_screen.p1_window[3],
-				motif.victory_screen.p1_window[4]
+				motif.victory_screen.p1_window[3] * config.GameWidth / main.SP_Localcoord[1],
+				motif.victory_screen.p1_window[4] * config.GameHeight / main.SP_Localcoord[2]
 			)
 		end
 		--draw winner name
