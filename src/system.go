@@ -83,6 +83,7 @@ var sys = System {
 	PostProcessingShader:    0,
 	allowbgm:                true,
 	borderless:              false,
+	vRetrace:                1,
 }
 
 type TeamMode int32
@@ -290,7 +291,9 @@ type System struct {
 	windowMainIcon			[]image.Image
 	windowMainIconLocation	[]string
 
+	// Rendering
 	borderless              bool
+	vRetrace                int
 
 	gameMode                string
 	demoTime                int32
@@ -370,7 +373,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.window.MakeContextCurrent()
 	s.window.SetKeyCallback(keyCallback)
 	s.window.SetCharModsCallback(charCallback)
-	glfw.SwapInterval(1)
+	// V-Sync
+	glfw.SwapInterval(s.vRetrace)
 	// Intializate OpenGL.
 	chk(gl.Init())
 	

@@ -171,6 +171,7 @@ func main() {
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
+	"VRetrace": 1, 
 	"WindowMainIconLocation": [
 		"external/icons/IkemenCylia.png"
 	],
@@ -320,6 +321,7 @@ func main() {
 		VolumeBgm                  int
 		VolumeMaster               int
 		VolumeSfx                  int
+		VRetrace                   int
 		WindowMainIconLocation     []string
 		WindowTitle                string
 		XinputTriggerSensitivity   float32
@@ -385,6 +387,7 @@ func main() {
 	sys.wavVolume = tmp.VolumeSfx
 	sys.windowMainIconLocation = tmp.WindowMainIconLocation
 	sys.windowTitle = tmp.WindowTitle
+	sys.vRetrace = tmp.VRetrace
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	sys.cam.ZoomEnable = tmp.ZoomActive
 	sys.cam.ZoomMax = tmp.ZoomMax
