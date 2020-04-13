@@ -2970,7 +2970,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 		return 0
 	})
 	luaRegister(l, "setLife", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
+		if sys.netInput == nil && sys.fileInput == nil && sys.debugWC.alive() {
 			sys.debugWC.lifeSet(int32(numArg(l, 1)))
 		}
 		return 0
