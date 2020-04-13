@@ -95,6 +95,7 @@ func main() {
 	"AIRandomColor": true,
 	"AudioDucking": false,
 	"AutoGuard": false,
+	"Borderless": false,
 	"ComboExtraFrameWindow": 1,
 	"CommonAir": "data/common.air",
 	"CommonCmd": "data/common.cmd",
@@ -262,6 +263,7 @@ func main() {
 		AIRandomColor              bool
 		AudioDucking               bool
 		AutoGuard                  bool
+		Borderless                 bool
 		ComboExtraFrameWindow      int32
 		CommonAir                  string
 		CommonCmd                  string
@@ -360,6 +362,7 @@ func main() {
 	sys.debugDraw = tmp.DebugMode
 	sys.externalShaderList = tmp.ExternalShaders
 	sys.fullscreen = tmp.Fullscreen
+	sys.borderless = tmp.Borderless
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.listenPort = tmp.ListenPort
 	sys.LocalcoordScalingType = tmp.LocalcoordScalingType

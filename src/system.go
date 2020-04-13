@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"io"
 	"image"
 	"bufio"
@@ -80,7 +81,8 @@ var sys = System {
 	//Shader vars
 	MultisampleAntialiasing: false,
 	PostProcessingShader:    0,
-	allowbgm:              true,
+	allowbgm:                true,
+	borderless:              false,
 }
 
 type TeamMode int32
@@ -287,6 +289,8 @@ type System struct {
 	windowMainIcon			[]image.Image
 	windowMainIconLocation	[]string
 
+	borderless              bool
+
 	gameMode                string
 	demoTime                int32
 	frameCounter            int32
@@ -350,11 +354,16 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
 	var err error
 	if s.fullscreen {
-		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			s.windowTitle, glfw.GetPrimaryMonitor(), nil)
+		if runtime.GOOS == "windows" && s.borderless {
+			s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, nil, nil)
+			s.window.SetAttrib(glfw.Decorated, 0)
+			s.window.SetPos(0, 0)
+			s.window.SetSize(int(s.scrrect[2]), int(s.scrrect[3]))
+		} else {
+			s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, glfw.GetPrimaryMonitor(), nil)
+		}
 	} else {
-		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]),
-			s.windowTitle, nil, nil)
+		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, nil, nil)
 	}
 	chk(err)
 	s.window.MakeContextCurrent()
