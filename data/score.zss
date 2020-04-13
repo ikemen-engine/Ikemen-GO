@@ -17,31 +17,36 @@ if RoundState = 0 {
 	# score: time vital bonus
 	if Win && Map(_iksys_vitalBase) = 0 && Alive && !Cheated {
 		MapSet{map: "_iksys_vitalBase"; value: Float(Life) / LifeMax / (NumPartner + 1) * 15000}
-		let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
-		let _p1TagNum = 1;
-		let _p2TagNum = 1;
-		if TeamMode = Tag {
-			let _p1TagNum = NumPartner + 1;
-		}
-		if Enemy,TeamMode = Tag {
-			let _p2TagNum = Enemy,NumPartner + 1;
-		}
-		if $_p1TagNum > $_p2TagNum {
-			# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
-			let _timeRatio = $_timeRatio * $_p2TagNum / $_p1TagNum;
-		}
-		if $_timeRatio > 90 {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 10, -2)}
-		} else if $_timeRatio > 85 {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 8, -2)}
-		} else if $_timeRatio > 80 {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 5, -2)}
-		} else if $_timeRatio > 70 {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 4, -2)}
-		} else if $_timeRatio > 60 {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 2, -2)}
+		if Enemy,RoundsExisted > 0 {
+			# skip time ratio multiplier and adjust vital bonus depending on how many rounds it took to beat the enemy
+			ScoreAdd{value: Round(Map(_iksys_vitalBase) / (Enemy,RoundsExisted + 1), -2)}
 		} else {
-			ScoreAdd{value: Round(Map(_iksys_vitalBase) * 1, -2)}
+			let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
+			let _p1TagNum = 1;
+			let _p2TagNum = 1;
+			if TeamMode = Tag {
+				let _p1TagNum = NumPartner + 1;
+			}
+			if Enemy,TeamMode = Tag {
+				let _p2TagNum = Enemy,NumPartner + 1;
+			}
+			if $_p1TagNum > $_p2TagNum {
+				# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
+				let _timeRatio = $_timeRatio * $_p2TagNum / $_p1TagNum;
+			}
+			if $_timeRatio > 90 {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 10, -2)}
+			} else if $_timeRatio > 85 {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 8, -2)}
+			} else if $_timeRatio > 80 {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 5, -2)}
+			} else if $_timeRatio > 70 {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 4, -2)}
+			} else if $_timeRatio > 60 {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 2, -2)}
+			} else {
+				ScoreAdd{value: Round(Map(_iksys_vitalBase) * 1, -2)}
+			}
 		}
 	}
 	# score: consecutive wins bonus
