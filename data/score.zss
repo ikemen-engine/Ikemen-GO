@@ -17,8 +17,8 @@ if RoundState = 0 {
 	# score: time vital bonus
 	if Win && Map(_iksys_vitalBase) = 0 && Alive && !Cheated {
 		MapSet{map: "_iksys_vitalBase"; value: Float(Life) / LifeMax / (NumPartner + 1) * 15000}
-		if Enemy,RoundsExisted > 0 {
-			# skip time ratio multiplier and adjust vital bonus depending on how many rounds it took to beat the enemy
+		if TeamMode = Turns && RoundsExisted = 0 && Enemy,RoundsExisted > 0 {
+			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
 			ScoreAdd{value: Round(Map(_iksys_vitalBase) / (Enemy,RoundsExisted + 1), -2)}
 		} else {
 			let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
