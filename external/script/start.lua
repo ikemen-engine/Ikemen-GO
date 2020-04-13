@@ -407,22 +407,8 @@ function start.f_remapAI()
 	end
 end
 
---sets lifebar, round time, rounds to win
-local lifebar = motif.files.fight
+--sets lifebar elements, round time, rounds to win
 function start.f_setRounds()
-	--lifebar
-	if main.t_charparam.lifebar and main.t_charparam.rivals and start.f_rivalsMatch('lifebar') then --lifebar assigned as rivals param
-		lifebar = main.t_selChars[t_p1Selected[1].ref + 1].rivals[matchNo].lifebar:gsub('\\', '/')
-	elseif main.t_charparam.lifebar and main.t_selChars[t_p2Selected[1].ref + 1].lifebar ~= nil then --lifebar assigned as character param
-		lifebar = main.t_selChars[t_p2Selected[1].ref + 1].lifebar:gsub('\\', '/')
-	else --default lifebar
-		lifebar = motif.files.fight
-	end
-	if lifebar:lower() ~= main.currentLifebar:lower() then
-		main.currentLifebar = lifebar
-		loadLifebar(lifebar)
-		main.framesPerCount = getFramesPerCount()
-	end
 	setLifeBarElements(main.t_lifebar)
 	--round time
 	local frames = main.framesPerCount
@@ -3450,7 +3436,7 @@ function start.f_selectVersus()
 			bgDraw(motif.versusbgdef.bg, false)
 			--draw p1 portraits
 			local t_portrait = {}
-			for i = #t_p1Selected, 1, -1 do
+			for i = 1, #t_p1Selected do
 				if #t_portrait < motif.vs_screen.p1_num then
 					table.insert(t_portrait, t_p1Selected[i].ref)
 				end
@@ -3476,7 +3462,7 @@ function start.f_selectVersus()
 			end
 			--draw p2 portraits
 			t_portrait = {}
-			for i = #t_p2Selected, 1, -1 do
+			for i = 1, #t_p2Selected do
 				if #t_portrait < motif.vs_screen.p2_num then
 					table.insert(t_portrait, t_p2Selected[i].ref)
 				end
@@ -4054,8 +4040,8 @@ function start.f_selectVictory()
 				motif.victory_screen.p2_facing,
 				motif.victory_screen.p2_window[1],
 				motif.victory_screen.p2_window[2],
-				motif.victory_screen.p2_window[3],
-				motif.victory_screen.p2_window[4]
+				motif.victory_screen.p2_window[3] * config.GameWidth / main.SP_Localcoord[1],
+				motif.victory_screen.p2_window[4] * config.GameHeight / main.SP_Localcoord[2]
 			)
 		end
 		-- winner team portraits
@@ -4079,8 +4065,8 @@ function start.f_selectVictory()
 				motif.victory_screen.p1_facing,
 				motif.victory_screen.p1_window[1],
 				motif.victory_screen.p1_window[2],
-				motif.victory_screen.p1_window[3],
-				motif.victory_screen.p1_window[4]
+				motif.victory_screen.p1_window[3] * config.GameWidth / main.SP_Localcoord[1],
+				motif.victory_screen.p1_window[4] * config.GameHeight / main.SP_Localcoord[2]
 			)
 		end
 		--draw winner name

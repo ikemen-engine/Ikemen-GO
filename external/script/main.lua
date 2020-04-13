@@ -1001,6 +1001,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 		setCom(v.num, v.ai)
 		overrideCharData(v.num, v.override)
 	end
+	loadStart()
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
 		main.f_printTable(t_gameStats, main.flags['-log'])
@@ -1523,7 +1524,6 @@ setDebugScript(motif.files.debug_script)
 txt_loading:draw()
 refresh()
 loadLifebar(motif.files.fight)
-main.currentLifebar = motif.files.fight
 main.loadingRefresh(txt_loading)
 
 --print warning if training character is missing

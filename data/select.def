@@ -82,11 +82,6 @@
  ;   IKEMEN feature: Set the paramvalue to the time (in seconds) in order to
  ;   overwrite round time chosen in the settings.
  ;
- ; - lifebar
- ;   IKEMEN feature: set the paramvalue to the relative path (starting from main
- ;   ikemen directory) to the lifebar that should be used during match instead
- ;   of default lifebar assigned to screenpack.
- ;
  ; - onlyme
  ;   IKEMEN feature: Set the paramvalue to 1 to force facing this character
  ;   individually in team modes.
@@ -149,11 +144,11 @@
  ;   paramvalue, enclosed in {} brackets, follows the same syntax as adding a
  ;   new character with optional stage assignment and accepts following optional
  ;   char parameters: music, musicalt, musiclife, musicvictory, ai, vsscreen,
- ;   winscreen, rounds, time, lifebar, onlyme. If 'onlyme' parameter is not set
- ;   and you're playing in team mode the referenced character becomes the
- ;   opposite team leader, and other characters follows order settings.
- ;   Characters and stages referenced here, if not already added as separate
- ;   entries, won't be selectable in select screen.
+ ;   winscreen, rounds, time, onlyme. If 'onlyme' parameter is not set and
+ ;   you're playing in team mode the referenced character becomes the opposite
+ ;   team leader, and other characters follows order settings. Characters and
+ ;   stages referenced here, if not already added as separate entries, won't be
+ ;   selectable in select screen.
  ;
  ; - maxmatches
  ;   IKEMEN feature: This parameter makes the character ignore default

@@ -274,6 +274,7 @@ type System struct {
 	lifebarScale          float32
 	lifebarOffsetX        float32
 	lifebarPortraitScale  float32
+	lifebarLocalcoord     [2]int32
 	LocalcoordScalingType int32
 
 	//Shader Vars
@@ -1736,12 +1737,12 @@ func (s *System) fight() (reload bool) {
 				if s.round == 1 {
 					p[0].power = p[0].ocd().power //p[0].power = 0
 				}
+				p[0].mapArray = make(map[string]float32)
+				for k,v := range p[0].mapDefault {
+					p[0].mapArray[k] = v
+				}
 			}
 			copyVar(i)
-			p[0].mapArray = make(map[string]float32)
-			for k,v := range p[0].mapDefault {
-				p[0].mapArray[k] = v
-			}
 		}
 	}
 	s.cam.Init()
