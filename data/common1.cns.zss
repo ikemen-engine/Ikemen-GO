@@ -224,28 +224,36 @@ if Time = 0 {
 }
 
 #---------------------------------------------------------------------------
-# Run Up (Deprecated in DosMugen)
+# Run up (Deprecated in DosMugen)
 [Statedef 110; type: S; physics: N;]
-if Time = 0 {
+if time = 0 {
 	CtrlSet{value: 0}
 	ChangeAnim{value: 110}
 	HitBy{value: SCA, NT, ST, HT; time: 30}
-	VelSet{x: 0}
+	VelSet{x: 0; z: -7}
 }
-if AnimTime = 0 {
+VelMul{z: 0.8}
+if animTime = -8 {
+	VelSet{z: 0}
+}
+if animTime = 0 {
 	ChangeState{value: 0; ctrl: 1}
 }
 
 #---------------------------------------------------------------------------
-# Run Down (Deprecated in DosMugen)
+# Run down (Deprecated in DosMugen)
 [Statedef 115; type: S; physics: N;]
-if Time = 0 {
+if time = 0 {
 	CtrlSet{value: 0}
-	ChangeAnim{value: 110}
+	ChangeAnim{value: 115}
 	HitBy{value: SCA, NT, ST, HT; time: 30}
-	VelSet{x: 0}
+	VelSet{x: 0; z: 7}
 }
-if AnimTime = 0 {
+VelMul{z: 0.8}
+if animTime = -8 {
+	VelSet{z: 0}
+}
+if animTime = 0 {
 	ChangeState{value: 0; ctrl: 1}
 }
 
