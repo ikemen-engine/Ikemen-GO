@@ -1563,9 +1563,8 @@ type Lifebar struct {
 	fsff       *Sff
 	snd, fsnd  *Snd
 	fnt        [10]*Fnt
-	ref        [4][2]int
-	num        [4][2]int
-	order      [4][2][]int
+	ref        [2]int
+	order      [2][]int
 	hb         [8][]*HealthBar
 	pb         [8][]*PowerBar
 	fa         [8][]*LifeBarFace
@@ -2011,48 +2010,36 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 func (l *Lifebar) step() {
 	for ti, tm := range sys.tmode {
 		if tm == TM_Tag && l.ro.timerActive {
-			for el := 0; el < 4; el++ {
-				for n, i := range l.order[el][ti] {
-					if !sys.chars[i][0].scf(SCF_standby) && sys.chars[i][0].alive() {
-						if n != 0 {
-							if n == len(l.order[el][ti])-1 {
-								l.order[el][ti] = sliceMoveInt(l.order[el][ti], n, 0)
-							} else {
-								last := len(l.order[el][ti]) - 1
-								for k := last; k > 0; k-- {
-									if !sys.chars[l.order[el][ti][k]][0].alive() {
-										last -= 1
-									}
+			for i, v := range l.order[ti] {
+				if !sys.chars[v][0].scf(SCF_standby) && sys.chars[v][0].alive() {
+					if i != 0 {
+						if i == len(l.order[ti])-1 {
+							l.order[ti] = sliceMoveInt(l.order[ti], i, 0)
+						} else {
+							last := len(l.order[ti]) - 1
+							for n := last; n > 0; n-- {
+								if !sys.chars[l.order[ti][n]][0].alive() {
+									last -= 1
 								}
-								l.order[el][ti] = sliceMoveInt(l.order[el][ti], 0, last)
 							}
+							l.order[ti] = sliceMoveInt(l.order[ti], 0, last)
 						}
-						break
 					}
+					break
 				}
 			}
 		}
 	}
 	for ti, _ := range sys.tmode {
-		//HealthBar
-		cnt := 0
-		for i := ti; i < l.num[0][ti]; i += 2 {
-			l.hb[l.ref[0][ti]][i].step(l.order[0][ti][cnt], l.hb[l.ref[0][ti]][l.order[0][ti][cnt]])
-			cnt += 1
-		}
-		//PowerBar
-		cnt = 0
-		for i := ti; i < l.num[1][ti]; i += 2 {
-			l.pb[l.ref[1][ti]][i].step(l.order[1][ti][cnt], l.pb[l.ref[1][ti]][l.order[1][ti][cnt]])
-			cnt += 1
-		}
-		//LifeBarFace
-		for i := ti; i < l.num[2][ti]; i += 2 {
-			l.fa[l.ref[2][ti]][i].step()
-		}
-		//LifeBarName
-		for i := ti; i < l.num[3][ti]; i += 2 {
-			l.nm[l.ref[3][ti]][i].step()
+		for i, v := range l.order[ti] {
+			//HealthBar
+			l.hb[l.ref[ti]][i*2+ti].step(v, l.hb[l.ref[ti]][v])
+			//PowerBar
+			l.pb[l.ref[ti]][i*2+ti].step(v, l.pb[l.ref[ti]][v])
+			//LifeBarFace
+			l.fa[l.ref[ti]][i*2+ti].step()
+			//LifeBarName
+			l.nm[l.ref[ti]][i*2+ti].step()
 		}
 	}
 	//LifeBarWinIcon
@@ -2104,73 +2091,38 @@ func (l *Lifebar) step() {
 	}
 }
 func (l *Lifebar) reset() {
+	var num [2]int
 	for ti, tm := range sys.tmode {
-		//0: Single (2)
-		//1: Simul (8)
-		//2: Turns (2)
-		//3: Tag (8)
-		//4: Simul_3P (6)
-		//5: Simul_4P (8)
-		//6: Tag_3P (6)
-		//7: Tag_4P (8)
-		l.ref[0][ti] = int(tm)
-		l.ref[1][ti] = int(tm)
-		l.ref[2][ti] = int(tm)
-		l.ref[3][ti] = int(tm)
+		l.ref[ti] = int(tm)
 		if tm == TM_Simul {
 			if sys.numSimul[ti] == 3 {
-				l.ref[0][ti] = 4
-				l.ref[1][ti] = 4
-				l.ref[2][ti] = 4
-				l.ref[3][ti] = 4
+				l.ref[ti] = 4 //Simul_3P (6)
 			} else if sys.numSimul[ti] >= 4 {
-				l.ref[0][ti] = 5
-				l.ref[1][ti] = 5
-				l.ref[2][ti] = 5
-				l.ref[3][ti] = 5
+				l.ref[ti] = 5 //Simul_4P (8)
+			} else {
+				l.ref[ti] = 1 //Simul (8)
 			}
 		} else if tm == TM_Tag {
 			if sys.numSimul[ti] == 3 {
-				l.ref[0][ti] = 6
-				l.ref[1][ti] = 6
-				l.ref[2][ti] = 6
-				l.ref[3][ti] = 6
+				l.ref[ti] = 6 //Tag_3P (6)
 			} else if sys.numSimul[ti] >= 4 {
-				l.ref[0][ti] = 7
-				l.ref[1][ti] = 7
-				l.ref[2][ti] = 7
-				l.ref[3][ti] = 7
+				l.ref[ti] = 7 //Tag_4P (8)
+			} else {
+				l.ref[ti] = 3 //Tag (8)
 			}
+		} else if tm == TM_Turns {
+			l.ref[ti] = 2 //Turns (2)
+		} else {
+			l.ref[ti] = 0 //Single (2)
 		}
-		l.num[0][ti] = len(l.hb[l.ref[0][ti]])
-		l.num[1][ti] = len(l.pb[l.ref[1][ti]])
-		l.num[2][ti] = len(l.fa[l.ref[2][ti]])
-		l.num[3][ti] = len(l.nm[l.ref[3][ti]])
 		if tm == TM_Simul || tm == TM_Tag {
-			l.num[0][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
-			if sys.powerShare[ti] {
-				l.num[1][ti] = 2
-			} else if tm == TM_Simul {
-				l.num[1][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
-			}
-			l.num[2][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
-			l.num[3][ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
+			num[ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
+		} else {
+			num[ti] = len(l.hb[l.ref[ti]])
 		}
-		l.order[0][ti] = []int{}
-		for i := ti; i < l.num[0][ti]; i += 2 {
-			l.order[0][ti] = append(l.order[0][ti], i)
-		}
-		l.order[1][ti] = []int{}
-		for i := ti; i < l.num[1][ti]; i += 2 {
-			l.order[1][ti] = append(l.order[1][ti], i)
-		}
-		l.order[2][ti] = []int{}
-		for i := ti; i < l.num[2][ti]; i += 2 {
-			l.order[2][ti] = append(l.order[2][ti], i)
-		}
-		l.order[3][ti] = []int{}
-		for i := ti; i < l.num[3][ti]; i += 2 {
-			l.order[3][ti] = append(l.order[3][ti], i)
+		l.order[ti] = []int{}
+		for i := ti; i < num[ti]; i += 2 {
+			l.order[ti] = append(l.order[ti], i)
 		}
 	}
 	for _, hb := range l.hb {
@@ -2222,34 +2174,27 @@ func (l *Lifebar) draw(layerno int16) {
 		return
 	}
 	if !sys.sf(GSF_nobardisplay) && l.activeBars {
-		for ti, _ := range sys.tmode {
-			//HealthBar
-			cnt := 0
-			for i := ti; i < l.num[0][ti]; i += 2 {
-				l.hb[l.ref[0][ti]][i].bgDraw(layerno)
-				l.hb[l.ref[0][ti]][i].draw(layerno, l.order[0][ti][cnt], l.hb[l.ref[0][ti]][l.order[0][ti][cnt]])
-				cnt += 1
-			}
-			//PowerBar
-			cnt = 0
-			for i := ti; i < l.num[1][ti]; i += 2 {
-				l.pb[l.ref[1][ti]][i].bgDraw(layerno)
-				l.pb[l.ref[1][ti]][i].draw(layerno, l.order[1][ti][cnt], l.pb[l.ref[1][ti]][l.order[1][ti][cnt]], l.fnt[:])
-				cnt += 1
-			}
-			//LifeBarFace
-			cnt = 0
-			for i := ti; i < l.num[2][ti]; i += 2 {
-				l.fa[l.ref[2][ti]][i].bgDraw(layerno)
-				l.fa[l.ref[2][ti]][i].draw(layerno, l.order[2][ti][cnt], l.fa[l.ref[2][ti]][l.order[2][ti][cnt]])
-				cnt += 1
-			}
-			//LifeBarName
-			cnt = 0
-			for i := ti; i < l.num[3][ti]; i += 2 {
-				l.nm[l.ref[3][ti]][i].bgDraw(layerno)
-				l.nm[l.ref[3][ti]][i].draw(layerno, l.order[3][ti][cnt], l.fnt[:])
-				cnt += 1
+		for ti, tm := range sys.tmode {
+			for i, v := range l.order[ti] {
+				//HealthBar
+				l.hb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				l.hb[l.ref[ti]][i*2+ti].draw(layerno, v, l.hb[l.ref[ti]][v])
+				//PowerBar
+				if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
+					if i == 0 {
+						l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+						l.pb[l.ref[ti]][i*2+ti].draw(layerno, i*2+ti, l.pb[l.ref[ti]][i*2+ti], l.fnt[:])
+					}
+				} else {
+					l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+					l.pb[l.ref[ti]][i*2+ti].draw(layerno, v, l.pb[l.ref[ti]][v], l.fnt[:])
+				}
+				//LifeBarFace
+				l.fa[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				l.fa[l.ref[ti]][i*2+ti].draw(layerno, v, l.fa[l.ref[ti]][v])
+				//LifeBarName
+				l.nm[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				l.nm[l.ref[ti]][i*2+ti].draw(layerno, v, l.fnt[:])
 			}
 		}
 		//LifeBarTime
