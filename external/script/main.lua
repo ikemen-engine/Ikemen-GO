@@ -978,11 +978,11 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			if main.flags['-p' .. num .. '.power'] ~= nil then
 				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
 			end
-			if main.flags['-p' .. num .. '.guardPower'] ~= nil then
-				t[#t].override['guardPower'] = tonumber(main.flags['-p' .. num .. '.guardPower'])
+			if main.flags['-p' .. num .. '.guardPoints'] ~= nil then
+				t[#t].override['guardPoints'] = tonumber(main.flags['-p' .. num .. '.guardPoints'])
 			end
-			if main.flags['-p' .. num .. '.stunPower'] ~= nil then
-				t[#t].override['stunPower'] = tonumber(main.flags['-p' .. num .. '.stunPower'])
+			if main.flags['-p' .. num .. '.dizzyPoints'] ~= nil then
+				t[#t].override['dizzyPoints'] = tonumber(main.flags['-p' .. num .. '.dizzyPoints'])
 			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])

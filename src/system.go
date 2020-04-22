@@ -323,17 +323,17 @@ type System struct {
 }
 
 type OverrideCharData struct {
-	power         int32
-	guardPower    int32
-	stunPower     int32
-	life          int32
-	lifeMax       int32
-	lifeRatio     float32
-	attackRatio   float32
+	power        int32
+	guardPoints  int32
+	dizzyPoints  int32
+	life         int32
+	lifeMax      int32
+	lifeRatio    float32
+	attackRatio  float32
 }
 func (s *System) resetOverrideCharData() {
 	for i := range s.ocd {
-		s.ocd[i] = OverrideCharData{power: 0, guardPower:0, stunPower: 0,
+		s.ocd[i] = OverrideCharData{power: 0, guardPoints:0, dizzyPoints: 0,
 		life: 0, lifeMax: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
 	return
@@ -1538,8 +1538,8 @@ func (s *System) fight() (reload bool) {
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
 		pow[pn] = s.chars[pn][0].power
-		gpow[pn] = s.chars[pn][0].guardPower
-		spow[pn] = s.chars[pn][0].stunPower
+		gpow[pn] = s.chars[pn][0].guardPoints
+		spow[pn] = s.chars[pn][0].dizzyPoints
 		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
 			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
 		}
@@ -1756,15 +1756,15 @@ func (s *System) fight() (reload bool) {
 					p[0].mapArray[k] = v
 				}
 			}
-			if p[0].ocd().guardPower != 0 {
-				p[0].guardPower = p[0].ocd().guardPower
+			if p[0].ocd().guardPoints != 0 {
+				p[0].guardPoints = p[0].ocd().guardPoints
 			} else {
-				p[0].guardPower = p[0].guardPowerMax
+				p[0].guardPoints = p[0].guardPointsMax
 			}
-			if p[0].ocd().stunPower != 0 {
-				p[0].stunPower = p[0].ocd().stunPower
+			if p[0].ocd().dizzyPoints != 0 {
+				p[0].dizzyPoints = p[0].ocd().dizzyPoints
 			} else {
-				p[0].stunPower = p[0].stunPowerMax
+				p[0].dizzyPoints = p[0].dizzyPointsMax
 			}
 			copyVar(i)
 		}
@@ -1782,8 +1782,8 @@ func (s *System) fight() (reload bool) {
 			if len(p) > 0 {
 				p[0].life = life[i]
 				p[0].power = pow[i]
-				p[0].guardPower = gpow[i]
-				p[0].stunPower = spow[i]
+				p[0].guardPoints = gpow[i]
+				p[0].dizzyPoints = spow[i]
 				copy(p[0].ivar[:], ivar[i])
 				copy(p[0].fvar[:], fvar[i])
 			}
@@ -2542,8 +2542,8 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
-			p.guardPower = sys.chars[pn][0].guardPower
-			p.stunPower = sys.chars[pn][0].stunPower
+			p.guardPoints = sys.chars[pn][0].guardPoints
+			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 	}
 	p.memberNo = memberNo
@@ -2595,8 +2595,8 @@ func (l *Loader) loadAttachedChar(atcpn int, def string) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
-			p.guardPower = sys.chars[pn][0].guardPower
-			p.stunPower = sys.chars[pn][0].stunPower
+			p.guardPoints = sys.chars[pn][0].guardPoints
+			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 	}
 	p.memberNo = -atcpn

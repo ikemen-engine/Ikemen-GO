@@ -223,8 +223,8 @@ const (
 const (
 	OC_const_data_life OpCode = iota
 	OC_const_data_power
-	OC_const_data_guardpower
-	OC_const_data_stunpower
+	OC_const_data_guardpoints
+	OC_const_data_dizzypoints
 	OC_const_data_attack
 	OC_const_data_defence
 	OC_const_data_fall_defence_mul
@@ -417,8 +417,8 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
-	OC_ex_gethitvar_guardpower
-	OC_ex_gethitvar_stunpower
+	OC_ex_gethitvar_guardpoints
+	OC_ex_gethitvar_dizzypoints
 	OC_ex_gethitvar_score
 	OC_ex_gethitvar_attr
 	OC_ex_scorecurrent
@@ -427,10 +427,10 @@ const (
 	OC_ex_timeleft
 	OC_ex_timeround
 	OC_ex_timetotal
-	OC_ex_guardpower
-	OC_ex_guardpowermax
-	OC_ex_stunpower
-	OC_ex_stunpowermax
+	OC_ex_guardpoints
+	OC_ex_guardpointsmax
+	OC_ex_dizzypoints
+	OC_ex_dizzypointsmax
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_combocount
@@ -447,7 +447,7 @@ const (
 	OC_ex_pausetime
 	OC_ex_standby
 	OC_ex_dizzy
-	OC_ex_guardbrake
+	OC_ex_guardbreak
 	OC_ex_max
 	OC_ex_min
 	OC_ex_round
@@ -1303,10 +1303,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().data.life)
 	case OC_const_data_power:
 		sys.bcStack.PushI(c.gi().data.power)
-	case OC_const_data_guardpower:
-		sys.bcStack.PushI(c.gi().data.guardpower)
-	case OC_const_data_stunpower:
-		sys.bcStack.PushI(c.gi().data.stunpower)
+	case OC_const_data_guardpoints:
+		sys.bcStack.PushI(c.gi().data.guardpoints)
+	case OC_const_data_dizzypoints:
+		sys.bcStack.PushI(c.gi().data.dizzypoints)
 	case OC_const_data_attack:
 		sys.bcStack.PushI(c.gi().data.attack)
 	case OC_const_data_defence:
@@ -1690,10 +1690,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
-	case OC_ex_gethitvar_guardpower:
-		sys.bcStack.PushI(c.ghv.guardpower)
-	case OC_ex_gethitvar_stunpower:
-		sys.bcStack.PushI(c.ghv.stunpower)
+	case OC_ex_gethitvar_guardpoints:
+		sys.bcStack.PushI(c.ghv.guardpoints)
+	case OC_ex_gethitvar_dizzypoints:
+		sys.bcStack.PushI(c.ghv.dizzypoints)
 	case OC_ex_gethitvar_score:
 		sys.bcStack.PushF(c.ghv.score)
 	case OC_ex_gethitvar_attr:
@@ -1710,14 +1710,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(timeRound())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
-	case OC_ex_guardpower:
-		sys.bcStack.PushI(c.getGuardPower())
-	case OC_ex_guardpowermax:
-		sys.bcStack.PushI(c.guardPowerMax)
-	case OC_ex_stunpower:
-		sys.bcStack.PushI(c.getStunPower())
-	case OC_ex_stunpowermax:
-		sys.bcStack.PushI(c.stunPowerMax)
+	case OC_ex_guardpoints:
+		sys.bcStack.PushI(c.getGuardPoints())
+	case OC_ex_guardpointsmax:
+		sys.bcStack.PushI(c.guardPointsMax)
+	case OC_ex_dizzypoints:
+		sys.bcStack.PushI(c.getDizzyPoints())
+	case OC_ex_dizzypointsmax:
+		sys.bcStack.PushI(c.dizzyPointsMax)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
 	case OC_ex_receivedhits:
@@ -1750,8 +1750,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.scf(SCF_standby))
 	case OC_ex_dizzy:
 		sys.bcStack.PushB(c.scf(SCF_dizzy))
-	case OC_ex_guardbrake:
-		sys.bcStack.PushB(c.scf(SCF_guardbrake))
+	case OC_ex_guardbreak:
+		sys.bcStack.PushB(c.scf(SCF_guardbreak))
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)
@@ -2662,20 +2662,20 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type guardBrakeSet StateControllerBase
+type guardBreakSet StateControllerBase
 
 const (
-	guardBrakeSet_value byte = iota
-	guardBrakeSet_redirectid
+	guardBreakSet_value byte = iota
+	guardBreakSet_redirectid
 )
 
-func (sc guardBrakeSet) Run(c *Char, _ []int32) bool {
+func (sc guardBreakSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case guardBrakeSet_value:
-			crun.setGuardBrake(exp[0].evalB(c))
-		case guardBrakeSet_redirectid:
+		case guardBreakSet_value:
+			crun.setGuardBreak(exp[0].evalB(c))
+		case guardBreakSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -3608,8 +3608,8 @@ const (
 	hitDef_fall_envshake_ampl
 	hitDef_fall_envshake_phase
 	hitDef_fall_envshake_freq
-	hitDef_guardpower
-	hitDef_stunpower
+	hitDef_guardpoints
+	hitDef_dizzypoints
 	hitDef_score
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
@@ -3881,10 +3881,10 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.envshake_phase = exp[0].evalF(c)
 	case hitDef_fall_envshake_freq:
 		hd.fall.envshake_freq = MaxF(0, exp[0].evalF(c))
-	case hitDef_guardpower:
-		hd.guardpower = Max(IErr+1, exp[0].evalI(c))
-	case hitDef_stunpower:
-		hd.stunpower = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_guardpoints:
+		hd.guardpoints = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_dizzypoints:
+		hd.dizzypoints = Max(IErr+1, exp[0].evalI(c))
 	case hitDef_score:
 		hd.score[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -4644,30 +4644,30 @@ func (sc targetPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type targetGuardPowerAdd StateControllerBase
+type targetGuardPointsAdd StateControllerBase
 
 const (
-	targetGuardPowerAdd_id byte = iota
-	targetGuardPowerAdd_value
-	targetGuardPowerAdd_redirectid
+	targetGuardPointsAdd_id byte = iota
+	targetGuardPointsAdd_value
+	targetGuardPointsAdd_redirectid
 )
 
-func (sc targetGuardPowerAdd) Run(c *Char, _ []int32) bool {
+func (sc targetGuardPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
 	tar := crun.getTarget(-1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case targetGuardPowerAdd_id:
+		case targetGuardPointsAdd_id:
 			if len(tar) == 0 {
 				return false
 			}
 			tar = crun.getTarget(exp[0].evalI(c))
-		case targetGuardPowerAdd_value:
+		case targetGuardPointsAdd_value:
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetGuardPowerAdd(tar, exp[0].evalI(c))
-		case targetGuardPowerAdd_redirectid:
+			crun.targetGuardPointsAdd(tar, exp[0].evalI(c))
+		case targetGuardPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				tar = crun.getTarget(-1)
@@ -4683,30 +4683,30 @@ func (sc targetGuardPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type targetStunPowerAdd StateControllerBase
+type targetDizzyPointsAdd StateControllerBase
 
 const (
-	targetStunPowerAdd_id byte = iota
-	targetStunPowerAdd_value
-	targetStunPowerAdd_redirectid
+	targetDizzyPointsAdd_id byte = iota
+	targetDizzyPointsAdd_value
+	targetDizzyPointsAdd_redirectid
 )
 
-func (sc targetStunPowerAdd) Run(c *Char, _ []int32) bool {
+func (sc targetDizzyPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
 	tar := crun.getTarget(-1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case targetStunPowerAdd_id:
+		case targetDizzyPointsAdd_id:
 			if len(tar) == 0 {
 				return false
 			}
 			tar = crun.getTarget(exp[0].evalI(c))
-		case targetStunPowerAdd_value:
+		case targetDizzyPointsAdd_value:
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetStunPowerAdd(tar, exp[0].evalI(c))
-		case targetStunPowerAdd_redirectid:
+			crun.targetDizzyPointsAdd(tar, exp[0].evalI(c))
+		case targetDizzyPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				tar = crun.getTarget(-1)
@@ -4866,20 +4866,20 @@ func (sc powerSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type guardPowerAdd StateControllerBase
+type guardPointsAdd StateControllerBase
 
 const (
-	guardPowerAdd_value byte = iota
-	guardPowerAdd_redirectid
+	guardPointsAdd_value byte = iota
+	guardPointsAdd_redirectid
 )
 
-func (sc guardPowerAdd) Run(c *Char, _ []int32) bool {
+func (sc guardPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case guardPowerAdd_value:
-			crun.guardPowerAdd(exp[0].evalI(c))
-		case guardPowerAdd_redirectid:
+		case guardPointsAdd_value:
+			crun.guardPointsAdd(exp[0].evalI(c))
+		case guardPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -4891,20 +4891,20 @@ func (sc guardPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type guardPowerSet StateControllerBase
+type guardPointsSet StateControllerBase
 
 const (
-	guardPowerSet_value byte = iota
-	guardPowerSet_redirectid
+	guardPointsSet_value byte = iota
+	guardPointsSet_redirectid
 )
 
-func (sc guardPowerSet) Run(c *Char, _ []int32) bool {
+func (sc guardPointsSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case guardPowerSet_value:
-			crun.guardPowerSet(exp[0].evalI(c))
-		case guardPowerSet_redirectid:
+		case guardPointsSet_value:
+			crun.guardPointsSet(exp[0].evalI(c))
+		case guardPointsSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -4916,20 +4916,20 @@ func (sc guardPowerSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type stunPowerAdd StateControllerBase
+type dizzyPointsAdd StateControllerBase
 
 const (
-	stunPowerAdd_value byte = iota
-	stunPowerAdd_redirectid
+	dizzyPointsAdd_value byte = iota
+	dizzyPointsAdd_redirectid
 )
 
-func (sc stunPowerAdd) Run(c *Char, _ []int32) bool {
+func (sc dizzyPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case stunPowerAdd_value:
-			crun.stunPowerAdd(exp[0].evalI(c))
-		case stunPowerAdd_redirectid:
+		case dizzyPointsAdd_value:
+			crun.dizzyPointsAdd(exp[0].evalI(c))
+		case dizzyPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -4941,20 +4941,20 @@ func (sc stunPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type stunPowerSet StateControllerBase
+type dizzyPointsSet StateControllerBase
 
 const (
-	stunPowerSet_value byte = iota
-	stunPowerSet_redirectid
+	dizzyPointsSet_value byte = iota
+	dizzyPointsSet_redirectid
 )
 
-func (sc stunPowerSet) Run(c *Char, _ []int32) bool {
+func (sc dizzyPointsSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case stunPowerSet_value:
-			crun.stunPowerSet(exp[0].evalI(c))
-		case stunPowerSet_redirectid:
+		case dizzyPointsSet_value:
+			crun.dizzyPointsSet(exp[0].evalI(c))
+		case dizzyPointsSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {

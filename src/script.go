@@ -1226,10 +1226,10 @@ func systemScriptInit(l *lua.LState) {
 				switch string(k) {
 				case "power":
 					sys.ocd[pn-1].power = int32(lua.LVAsNumber(value))
-				case "guardPower":
-					sys.ocd[pn-1].guardPower = int32(lua.LVAsNumber(value))
-				case "stunPower":
-					sys.ocd[pn-1].stunPower = int32(lua.LVAsNumber(value))
+				case "guardPoints":
+					sys.ocd[pn-1].guardPoints = int32(lua.LVAsNumber(value))
+				case "dizzyPoints":
+					sys.ocd[pn-1].dizzyPoints = int32(lua.LVAsNumber(value))
 				case "life":
 					sys.ocd[pn-1].life = int32(lua.LVAsNumber(value))
 				case "lifeMax":
@@ -2235,10 +2235,10 @@ func triggerScriptInit(l *lua.LState) {
 			ln = lua.LNumber(c.gi().data.life)
 		case "data.power":
 			ln = lua.LNumber(c.gi().data.power)
-		case "data.guardpower":
-			ln = lua.LNumber(c.gi().data.guardpower)
-		case "data.stunpower":
-			ln = lua.LNumber(c.gi().data.stunpower)
+		case "data.guardpoints":
+			ln = lua.LNumber(c.gi().data.guardpoints)
+		case "data.dizzypoints":
+			ln = lua.LNumber(c.gi().data.dizzypoints)
 		case "data.attack":
 			ln = lua.LNumber(c.gi().data.attack)
 		case "data.defence":
@@ -2778,20 +2778,20 @@ func triggerScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.powerMax))
 		return 1
 	})
-	luaRegister(l, "guardpower", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getGuardPower()))
+	luaRegister(l, "guardpoints", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.getGuardPoints()))
 		return 1
 	})
-	luaRegister(l, "guardpowermax", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.guardPowerMax))
+	luaRegister(l, "guardpointsmax", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.guardPointsMax))
 		return 1
 	})
-	luaRegister(l, "stunpower", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getStunPower()))
+	luaRegister(l, "dizzypoints", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.getDizzyPoints()))
 		return 1
 	})
-	luaRegister(l, "stunpowermax", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.stunPowerMax))
+	luaRegister(l, "dizzypointsmax", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.dizzyPointsMax))
 		return 1
 	})
 	luaRegister(l, "playeridexist", func(*lua.LState) int {
@@ -3022,15 +3022,15 @@ func debugScriptInit(l *lua.LState, file string) error {
 		}
 		return 0
 	})
-	luaRegister(l, "setGuardPower", func(*lua.LState) int {
+	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.setGuardPower(int32(numArg(l, 1)))
+			sys.debugWC.setGuardPoints(int32(numArg(l, 1)))
 		}
 		return 0
 	})
-	luaRegister(l, "setStunPower", func(*lua.LState) int {
+	luaRegister(l, "setDizzyPoints", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.setStunPower(int32(numArg(l, 1)))
+			sys.debugWC.setDizzyPoints(int32(numArg(l, 1)))
 		}
 		return 0
 	})

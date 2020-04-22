@@ -82,8 +82,8 @@ function powMax(p)
 	local oldid = id()
 	if player(p) then
 		setPower(powermax())
-		setGuardPower(guardpowermax())
-		setStunPower(stunpowermax())
+		setGuardPoints(guardpointsmax())
+		setDizzyPoints(dizzypointsmax())
 		playerid(oldid)
 	end
 end
@@ -93,8 +93,8 @@ function full(p)
 	if player(p) then
 		setLife(lifemax())
 		setPower(powermax())
-		setGuardPower(guardpowermax())
-		setStunPower(stunpowermax())
+		setGuardPoints(guardpointsmax())
+		setDizzyPoints(dizzypointsmax())
 		playerid(oldid)
 	end
 end
@@ -125,7 +125,7 @@ function status(p)
 	ret = string.format(
 		'ID:%d STA:%s%s%s%6d(%d) ANI:%6d(%d)%2d LIF:%5d POW:%5d GRD:%5d STN:%5d TIM:%d',
 		id(), statetype(), movetype(), physics(), stateno(), stateOwner(),
-		anim(), animOwner(), animelemno(0), life(), power(), guardpower(), stunpower(), time()
+		anim(), animOwner(), animelemno(0), life(), power(), guardpoints(), dizzypoints(), time()
 	)
 	playerid(oldid)
 	return ret

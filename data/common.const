@@ -5,8 +5,8 @@ Default.Attack.LifeToPowerMul = 0.7
 Default.GetHit.LifeToPowerMul = 0.6
 Super.TargetDefenceMul = 1.5
 
-Default.LifeToGuardPowerMul = -2
-Default.LifeToStunPowerMul = 0
+Default.LifeToGuardPointsMul = -2
+Default.LifeToDizzyPointsMul = 0
 
 ; Character Reserved Action Numbers
 AnimStanding = 0
@@ -169,8 +169,8 @@ StateDizzyFallDown_air = 5302
 StateDizzyLyingDown = 5303
 StateDizzy = 5310
 StateDizzyBirdsHelper = 5320
-StateGuardBrakeStart = 5400
-StateGuardBrake = 5410
+StateGuardBreakStart = 5400
+StateGuardBreak = 5410
 
 ; tag.zss states
 StateTagEnteringScreen = 5600

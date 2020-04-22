@@ -501,7 +501,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	if !sys.lifebar.activeGb {
 		return
 	}
-	power := float32(sys.chars[ref][0].guardPower) / float32(sys.chars[ref][0].guardPowerMax)
+	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
 		r = sys.scrrect
@@ -530,7 +530,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	gb.front[mv].lay.DrawAnim(&pr, float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 		layerno, &gb.front[mv].anim)
 	if gb.value_font[0] >= 0 && int(gb.value_font[0]) < len(f) {
-		text := strings.Replace(gb.value_text, "%d", fmt.Sprintf("%d", sys.chars[ref][0].guardPower), 1)
+		text := strings.Replace(gb.value_text, "%d", fmt.Sprintf("%d", sys.chars[ref][0].guardPoints), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 		gb.value_lay.DrawText(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 			layerno, text, f[gb.value_font[0]], gb.value_font[1], gb.value_font[2])
@@ -634,7 +634,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	if !sys.lifebar.activeSb {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].stunPower) / float32(sys.chars[ref][0].stunPowerMax)
+	power := 1 - float32(sys.chars[ref][0].dizzyPoints) / float32(sys.chars[ref][0].dizzyPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
 		r = sys.scrrect
@@ -663,7 +663,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	sb.front[mv].lay.DrawAnim(&pr, float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 		layerno, &sb.front[mv].anim)
 	if sb.value_font[0] >= 0 && int(sb.value_font[0]) < len(f) {
-		text := strings.Replace(sb.value_text, "%d", fmt.Sprintf("%d", sys.chars[ref][0].stunPower), 1)
+		text := strings.Replace(sb.value_text, "%d", fmt.Sprintf("%d", sys.chars[ref][0].dizzyPoints), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 		sb.value_lay.DrawText(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 			layerno, text, f[sb.value_font[0]], sb.value_font[1], sb.value_font[2])

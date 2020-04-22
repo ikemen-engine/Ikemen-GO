@@ -1,4 +1,4 @@
-#Guard Brake and Dizzy code adopted from add004 by Shiyo Kakuge
+#Guard Break and Dizzy code adopted from add004 by Shiyo Kakuge
 #===============================================================================
 #Functions
 #===============================================================================
@@ -47,7 +47,7 @@ if !NumHelper(Const(StateDizzyBirdsHelper)) {
 	}
 }
 
-# Dizzy / Guard Brake Hit Ground Explod (direct copy from common1)
+# Dizzy / Guard Break Hit Ground Explod (direct copy from common1)
 [Function fStunnedHitGroundEffect(vely)]
 Explod{
 	anim: F (60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
@@ -276,12 +276,12 @@ if Time > 8 {
 }
 
 #===============================================================================
-#StateGuardBrakeStart
+#StateGuardBreakStart
 #===============================================================================
 [Statedef 5400; type: U; physics: U; velset: 0, 0; ctrl: 0;]
 
-if !GuardBrake {
-	GuardBrakeSet{value: 1}
+if !GuardBreak {
+	GuardBreakSet{value: 1}
 }
 
 if Time = 0 {
@@ -334,11 +334,11 @@ persistent(0) if Time = 0 {
 }
 
 if (Time > 13 && AnimTime = 0) || Time > 36 {
-	SelfState{value: Const(StateGuardBrake)}
+	SelfState{value: Const(StateGuardBreak)}
 }
 
 #===============================================================================
-#StateGuardBrake
+#StateGuardBreak
 #===============================================================================
 [Statedef 5410; type: U; physics: U; velset: 0, 0; ctrl: 0;]
 
@@ -386,39 +386,39 @@ if Animtime = 0 || Time > 99 {
 [Statedef -2]
 
 if RoundState = 0 {
-	GuardPowerSet{value: GuardPowerMax}
-	StunPowerSet{value: StunPowerMax}
-	MapSet{map: "_iksys_guardPowerCounter"; value: 0}
-	MapSet{map: "_iksys_stunPowerCounter"; value: 0}
+	GuardPointsSet{value: GuardPointsMax}
+	DizzyPointsSet{value: DizzyPointsMax}
+	MapSet{map: "_iksys_guardPointsCounter"; value: 0}
+	MapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
 } else if RoundState = 2 && Alive {
 	# Guard Break
 	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
-		MapSet{map: "_iksys_guardPowerCounter"; value: 60}
-		MapSet{map: "_iksys_stunPowerCounter"; value: 60}
-		if (GameTime % 5) = 0 && float(GuardPower) / GuardPowerMax <= 0.2 {
+		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
+		MapSet{map: "_iksys_dizzyPointsCounter"; value: 60}
+		if (GameTime % 5) = 0 && float(GuardPoints) / GuardPointsMax <= 0.2 {
 			PalFX{time: 2; add: 200, 0, 0}
 		}
-		ignorehitpause if GuardPower = 0 && !GuardBrake {
-			ChangeState{value: Const(StateGuardBrakeStart)}
+		ignorehitpause if GuardPoints = 0 && !GuardBreak {
+			ChangeState{value: Const(StateGuardBreakStart)}
 		}
 	} else if MoveType != H {
-		if Map(_iksys_guardPowerCounter) > 0 {
-			MapAdd{map: "_iksys_guardPowerCounter"; value: -1}
+		if Map(_iksys_guardPointsCounter) > 0 {
+			MapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 		}
-		if Map(_iksys_stunPowerCounter) > 0 {
-			MapAdd{map: "_iksys_stunPowerCounter"; value: -1}
+		if Map(_iksys_dizzyPointsCounter) > 0 {
+			MapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
 		}
 	}
-	ignorehitpause if GuardBrake && StateNo != [Const(StateGuardBrakeStart), Const(StateGuardBrake)] {
-		GuardPowerSet{value: GuardPowerMax}
-		GuardBrakeSet{value: 0}
+	ignorehitpause if GuardBreak && StateNo != [Const(StateGuardBreakStart), Const(StateGuardBreak)] {
+		GuardPointsSet{value: GuardPointsMax}
+		GuardBreakSet{value: 0}
 	}
-	if !GuardBrake && GuardPower < GuardPowerMax && Map(_iksys_guardPowerCounter) = 0 {
-		GuardPowerAdd{value: round(float(GuardPowerMax) / 25, 0)} #guard power recovery
-		MapSet{map: "_iksys_guardPowerCounter"; value: 30}
+	if !GuardBreak && GuardPoints < GuardPointsMax && Map(_iksys_guardPointsCounter) = 0 {
+		GuardPointsAdd{value: round(float(GuardPointsMax) / 25, 0)} #guard power recovery
+		MapSet{map: "_iksys_guardPointsCounter"; value: 30}
 	}
 	# Dizzy
-	ignorehitpause if StunPower = 0 {
+	ignorehitpause if DizzyPoints = 0 {
 		if StateNo = Const(StateStandGetHit_knockedBack) || StateNo = Const(StateCrouchGetHit_knockedBack) {
 			if GetHitVar(hittime) = 0 {
 				call fDizzyBirdHelper();
@@ -433,7 +433,7 @@ if RoundState = 0 {
 		}
 	}
 	ignorehitpause if Dizzy && StateNo != [Const(StateDizzyFallDown_standCrouch), Const(StateDizzy)] && (MoveType != H || Map(_iksys_DizzyState) > 0) {
-		StunPowerSet{value: StunPowerMax}
+		DizzyPointsSet{value: DizzyPointsMax}
 		DizzySet{value: 0}
 	}
 	if Map(_iksys_DizzyState) = 2 && MoveType != H {
@@ -443,16 +443,16 @@ if RoundState = 0 {
 		if Map(_iksys_DizzyState) < 2 && ReceivedDamage > Map(_iksys_receivedDamage) && GetHitVar(attr) != [Const(AttrStandingHyperAttack), Const(AttrAerialHyperProjectile)] {
 			if Map(_iksys_DizzyState) = 1 {
 				MapSet{map: "_iksys_DizzyState"; value: 2}
-			} else if GetHitVar(stunpower) = 0 {
-				StunPowerAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -2} #stun power drain
+			} else if GetHitVar(dizzypoints) = 0 {
+				DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -2} #stun power drain
 			}
 		}
 		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
-		MapSet{map: "_iksys_guardPowerCounter"; value: 60}
-		MapSet{map: "_iksys_stunPowerCounter"; value: 60}
+		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
+		MapSet{map: "_iksys_dizzyPointsCounter"; value: 60}
 	}
-	if !Dizzy && StunPower < StunPowerMax && Map(_iksys_stunPowerCounter) = 0 {
-		StunPowerAdd{value: round(float(StunPowerMax) / 100, 0)} #stun power recovery
-		MapSet{map: "_iksys_guardPowerCounter"; value: 6}
+	if !Dizzy && DizzyPoints < DizzyPointsMax && Map(_iksys_dizzyPointsCounter) = 0 {
+		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #stun power recovery
+		MapSet{map: "_iksys_guardPointsCounter"; value: 6}
 	}
 }

@@ -25,7 +25,7 @@ const (
 	SCF_over
 	SCF_ko_round_middle
 	SCF_dizzy
-	SCF_guardbrake
+	SCF_guardbreak
 	SCF_disabled
 )
 
@@ -134,12 +134,12 @@ func (cr ClsnRect) draw(trans int32) {
 }
 
 type CharData struct {
-	life       int32
-	power      int32
-	guardpower int32
-	stunpower  int32
-	attack     int32
-	defence    int32
+	life        int32
+	power       int32
+	guardpoints int32
+	dizzypoints int32
+	attack      int32
+	defence     int32
 	fall    struct {
 		defence_mul float32
 	}
@@ -163,8 +163,8 @@ func (cd *CharData) init() {
 	*cd = CharData{}
 	cd.life = 1000
 	cd.power = 3000
-	cd.guardpower = 1000
-	cd.stunpower = 1000
+	cd.guardpoints = 1000
+	cd.dizzypoints = 1000
 	cd.attack = 100
 	cd.defence = 100
 	cd.fall.defence_mul = 1.5
@@ -525,8 +525,8 @@ type HitDef struct {
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
-	guardpower                 int32
-	stunpower                  int32
+	guardpoints                int32
+	dizzypoints                int32
 	score                      [2]float32
 }
 
@@ -554,7 +554,7 @@ func (hd *HitDef) clear() {
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1,
-		guardpower: IErr, stunpower: IErr,
+		guardpoints: IErr, dizzypoints: IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
@@ -598,8 +598,8 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
-	guardpower     int32
-	stunpower      int32
+	guardpoints    int32
+	dizzypoints    int32
 	score          float32
 }
 
@@ -1510,10 +1510,10 @@ type Char struct {
 	lifeMax         int32
 	power           int32
 	powerMax        int32
-	guardPower      int32
-	guardPowerMax   int32
-	stunPower       int32
-	stunPowerMax    int32
+	guardPoints     int32
+	guardPointsMax  int32
+	dizzyPoints     int32
+	dizzyPointsMax  int32
 	juggle          int32
 	fallTime        int32
 	localcoord      int32
@@ -1645,8 +1645,8 @@ func (c *Char) copyParent(p *Char) {
 	} else {
 		c.power = 0
 	}
-	c.guardPower, c.guardPowerMax = p.guardPowerMax, p.guardPowerMax
-	c.stunPower, c.stunPowerMax = p.stunPowerMax, p.stunPowerMax
+	c.guardPoints, c.guardPointsMax = p.guardPointsMax, p.guardPointsMax
+	c.dizzyPoints, c.dizzyPointsMax = p.dizzyPointsMax, p.dizzyPointsMax
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -1867,12 +1867,12 @@ func (c *Char) load(def string) error {
 				c.lifeMax = gi.data.life
 				is.ReadI32("power", &gi.data.power)
 				c.powerMax = gi.data.power
-				gi.data.guardpower = c.lifeMax
-				is.ReadI32("guardpower", &gi.data.guardpower)
-				c.guardPowerMax = gi.data.guardpower
-				gi.data.stunpower = c.lifeMax
-				is.ReadI32("stunpower", &gi.data.stunpower)
-				c.stunPowerMax = gi.data.stunpower
+				gi.data.guardpoints = c.lifeMax
+				is.ReadI32("guardpoints", &gi.data.guardpoints)
+				c.guardPointsMax = gi.data.guardpoints
+				gi.data.dizzypoints = c.lifeMax
+				is.ReadI32("dizzypoints", &gi.data.dizzypoints)
+				c.dizzyPointsMax = gi.data.dizzypoints
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
 				var i32 int32
@@ -2244,11 +2244,11 @@ func (c *Char) setCtrl(ctrl bool) {
 		c.unsetSCF(SCF_ctrl)
 	}
 }
-func (c *Char) setGuardBrake(set bool) {
+func (c *Char) setGuardBreak(set bool) {
 	if set {
-		c.setSCF(SCF_guardbrake)
+		c.setSCF(SCF_guardbreak)
 	} else {
-		c.unsetSCF(SCF_guardbrake)
+		c.unsetSCF(SCF_guardbreak)
 	}
 }
 func (c *Char) setStun(set bool) {
@@ -2452,7 +2452,7 @@ func (c *Char) constp(coordinate, value float32) BytecodeValue {
 }
 func (c *Char) ctrl() bool {
 	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
-		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbrake)
+		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbreak)
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
@@ -2633,11 +2633,11 @@ func (c *Char) getPower() int32 {
 	}
 	return sys.chars[c.playerNo][0].power
 }
-func (c *Char) getGuardPower() int32 {
-	return sys.chars[c.playerNo][0].guardPower
+func (c *Char) getGuardPoints() int32 {
+	return sys.chars[c.playerNo][0].guardPoints
 }
-func (c *Char) getStunPower() int32 {
-	return sys.chars[c.playerNo][0].stunPower
+func (c *Char) getDizzyPoints() int32 {
+	return sys.chars[c.playerNo][0].dizzyPoints
 }
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
@@ -3513,10 +3513,10 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower,
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
-	ifierrset(&hd.guardpower,
-		int32(c.gi().constants["default.lifetoguardpowermul"]*float32(hd.hitdamage)))
-	ifierrset(&hd.stunpower,
-		int32(c.gi().constants["default.lifetostunpowermul"]*float32(hd.hitdamage)))
+	ifierrset(&hd.guardpoints,
+		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+	ifierrset(&hd.dizzypoints,
+		int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}
@@ -3792,17 +3792,17 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 		}
 	}
 }
-func (c *Char) targetGuardPowerAdd(tar []int32, power int32) {
+func (c *Char) targetGuardPointsAdd(tar []int32, power int32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil && t.player {
-			t.guardPowerAdd(power)
+			t.guardPointsAdd(power)
 		}
 	}
 }
-func (c *Char) targetStunPowerAdd(tar []int32, power int32) {
+func (c *Char) targetDizzyPointsAdd(tar []int32, power int32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil && t.player {
-			t.stunPowerAdd(power)
+			t.dizzyPointsAdd(power)
 		}
 	}
 }
@@ -3932,27 +3932,27 @@ func (c *Char) powerSet(pow int32) {
 		sys.chars[c.playerNo][0].setPower(pow)
 	}
 }
-func (c *Char) setGuardPower(pow int32) {
+func (c *Char) setGuardPoints(pow int32) {
 	if !sys.roundEnd() && sys.lifebar.activeGb {
-		c.guardPower = Max(0, Min(c.guardPowerMax, pow))
+		c.guardPoints = Max(0, Min(c.guardPointsMax, pow))
 	}
 }
-func (c *Char) guardPowerAdd(add int32) {
-	sys.chars[c.playerNo][0].setGuardPower(c.getGuardPower() + add)
+func (c *Char) guardPointsAdd(add int32) {
+	sys.chars[c.playerNo][0].setGuardPoints(c.getGuardPoints() + add)
 }
-func (c *Char) guardPowerSet(pow int32) {
-	sys.chars[c.playerNo][0].setGuardPower(pow)
+func (c *Char) guardPointsSet(pow int32) {
+	sys.chars[c.playerNo][0].setGuardPoints(pow)
 }
-func (c *Char) setStunPower(pow int32) {
+func (c *Char) setDizzyPoints(pow int32) {
 	if !sys.roundEnd() && sys.lifebar.activeSb {
-		c.stunPower = Max(0, Min(c.stunPowerMax, pow))
+		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, pow))
 	}
 }
-func (c *Char) stunPowerAdd(add int32) {
-	sys.chars[c.playerNo][0].setStunPower(c.getStunPower() + add)
+func (c *Char) dizzyPointsAdd(add int32) {
+	sys.chars[c.playerNo][0].setDizzyPoints(c.getDizzyPoints() + add)
 }
-func (c *Char) stunPowerSet(pow int32) {
-	sys.chars[c.playerNo][0].setStunPower(pow)
+func (c *Char) dizzyPointsSet(pow int32) {
+	sys.chars[c.playerNo][0].setDizzyPoints(pow)
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
@@ -4855,8 +4855,8 @@ func (c *Char) update(cvmin, cvmax,
 					c.comboExtraFrameWindow--
 				}
 				//c.ghv.score = 0
-				//c.ghv.guardpower = 0
-				//c.ghv.stunpower = 0
+				//c.ghv.guardpoints = 0
+				//c.ghv.dizzypoints = 0
 				//c.ghv.attr = 0
 			}
 			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
@@ -5339,8 +5339,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
-				ghv.guardpower = hd.guardpower
-				ghv.stunpower = hd.stunpower
+				ghv.guardpoints = hd.guardpoints
+				ghv.dizzypoints = hd.dizzypoints
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -5593,7 +5593,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
-					getter.stunPowerAdd(hd.stunpower)
+					getter.dizzyPointsAdd(hd.dizzypoints)
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
@@ -5634,7 +5634,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
-					getter.guardPowerAdd(hd.guardpower)
+					getter.guardPointsAdd(hd.guardpoints)
 				}
 			}
 		}
