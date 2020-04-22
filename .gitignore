@@ -1,5 +1,6 @@
 # IDE Files
 .vscode/*
+.vs/*
 .idea/*
 
 # Binaries
@@ -13,6 +14,8 @@ Ikemen_GO.xml.backup
 build.bat
 build_console.bat
 get.bat
+go.sum
+go.mod
 
 # Distribution and debug files
 Ikemen.log

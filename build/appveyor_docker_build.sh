@@ -19,27 +19,35 @@
 #       $(pwd):/code is source:destination and $(pwd) maps to current directory where the script is called.
 #  -i   : interactive. 
 #  -t   : allocate a pseudo terminal
-#  windblade/ikemen-dev-gacel:latest        : docker image configured with the tooling required to build the binaries.
+#  windblade/ikemen-dev:latest        : docker image configured with the tooling required to build the binaries.
 #  bash -c 'cd /code && bash -x get.sh' : command called when the container launches. In changes to the code directory
 #  then execute both get and build scripts 
 
 cd ..
 
+if [ -f ./go.mod ]; then
+	echo "Missing dependencies, please run get.sh"
+	exit
+fi
+if [ -d ./bin ]; then
+	mkdir bin
+fi
+
+echo "------------------------------------------------------------"
 echo "Building linux binary..."
-docker run --rm -e OS=linux -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=linux -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
 
+echo "------------------------------------------------------------"
 echo "Building mac binary..."
-docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=mac -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
 
+echo "------------------------------------------------------------"
 echo "Building windows x86 binary..."
-docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=windows32 -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
 
 # We copy the Windres files so we can have a icon files
 cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_Cylia_x64.syso'
 
+echo "------------------------------------------------------------"
 echo "Building windows x64 binary..."
-docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=windows -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 

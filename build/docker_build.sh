@@ -25,14 +25,22 @@
 
 cd ..
 
+if [ -f ./go.mod ]; then
+	echo "Missing dependencies, please run get.sh"
+	exit
+fi
+if [ -d ./bin ]; then
+	mkdir bin
+fi
+
+echo "------------------------------------------------------------"
 echo "Building linux binary..."
-docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
 docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
 
+echo "------------------------------------------------------------"
 echo "Building windows binary..."
-docker run --rm -e OS=windows -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh' 
 docker run --rm -e OS=windows -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
 
+echo "------------------------------------------------------------"
 echo "Building mac binary..."
-docker run --rm -e OS=mac -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x get.sh' 
 docker run --rm -e OS=mac -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
