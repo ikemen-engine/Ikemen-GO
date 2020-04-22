@@ -182,7 +182,7 @@ func NewNormalizer() *Normalizer {
 func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
-	if sys.AudioDucking {
+	if sys.audioDucking {
 		if lmul < rmul {
 			n.mul = lmul
 		} else {

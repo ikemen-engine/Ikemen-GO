@@ -1320,11 +1320,11 @@ function start.f_selectReset()
 		end
 		col = col + 1
 	end
-	if main.p2Faces and motif.select_info.double_select == 1 then
-		p1FaceX = motif.select_info.pos_p1_double_select[1]
-		p1FaceY = motif.select_info.pos_p1_double_select[2]
-		p2FaceX = motif.select_info.pos_p2_double_select[1]
-		p2FaceY = motif.select_info.pos_p2_double_select[2]
+	if main.p2Faces and motif.select_info.doubleselect_enabled == 1 then
+		p1FaceX = motif.select_info.pos[1] + motif.select_info.p1_doubleselect_offset[1]
+		p1FaceY = motif.select_info.pos[2] + motif.select_info.p1_doubleselect_offset[2]
+		p2FaceX = motif.select_info.pos[1] + motif.select_info.p2_doubleselect_offset[1]
+		p2FaceY = motif.select_info.pos[2] + motif.select_info.p2_doubleselect_offset[2]
 	else
 		p1FaceX = motif.select_info.pos[1]
 		p1FaceY = motif.select_info.pos[2]
@@ -2140,7 +2140,7 @@ function start.f_selectScreen()
 				end
 			end
 			--P2 side check before drawing (double select only)
-			if main.p2Faces and motif.select_info.double_select == 1 and start.t_drawFace[i].d >= 10 then
+			if main.p2Faces and motif.select_info.doubleselect_enabled == 1 and start.t_drawFace[i].d >= 10 then
 				--draw cell background
 				main.f_animPosDraw(
 					motif.select_info.cell_bg_data,
@@ -2167,7 +2167,7 @@ function start.f_selectScreen()
 			end
 		end
 		--drawFace(p1FaceX, p1FaceY, p1FaceOffset)
-		--if main.p2Faces and motif.select_info.double_select == 1 then
+		--if main.p2Faces and motif.select_info.doubleselect_enabled == 1 then
 		--	drawFace(p2FaceX, p2FaceY, p2FaceOffset)
 		--end
 		--draw p1 done cursor
@@ -2301,7 +2301,7 @@ function start.f_selectScreen()
 		else
 			main.f_cmdInput()
 		end
-		refresh()
+		main.f_refresh()
 	end
 	if main.coop then
 		if matchNo == 0 then --coop swap before first match
@@ -2452,10 +2452,10 @@ function start.f_p1TeamMenu()
 			end
 		end
 		--Draw team background
-		animUpdate(motif.select_info.p1_teammenu_bg_data)
+		main.t_animUpdate[motif.select_info.p1_teammenu_bg_data] = 1
 		animDraw(motif.select_info.p1_teammenu_bg_data)
 		--Draw team active element background
-		animUpdate(motif.select_info['p1_teammenu_bg_' .. t_p1TeamMenu[p1TeamMenu].itemname .. '_data'])
+		main.t_animUpdate[motif.select_info['p1_teammenu_bg_' .. t_p1TeamMenu[p1TeamMenu].itemname .. '_data']] = 1
 		animDraw(motif.select_info['p1_teammenu_bg_' .. t_p1TeamMenu[p1TeamMenu].itemname .. '_data'])
 		--Draw team cursor
 		main.f_animPosDraw(
@@ -2464,7 +2464,7 @@ function start.f_p1TeamMenu()
 			(p1TeamMenu - 1) * motif.select_info.p1_teammenu_item_spacing[2]
 		)
 		--Draw team title
-		animUpdate(motif.select_info.p1_teammenu_selftitle_data)
+		main.t_animUpdate[motif.select_info.p1_teammenu_selftitle_data] = 1
 		animDraw(motif.select_info.p1_teammenu_selftitle_data)
 		txt_p1TeamSelfTitle:draw()
 		for i = 1, #t_p1TeamMenu do
@@ -2566,7 +2566,7 @@ function start.f_p1TeamMenu()
 					end
 				end
 			elseif t_p1TeamMenu[i].itemname == 'ratio' and p1TeamMenu == i then
-				animUpdate(motif.select_info['p1_teammenu_ratio' .. p1NumRatio .. '_icon_data'])
+				main.t_animUpdate[motif.select_info['p1_teammenu_ratio' .. p1NumRatio .. '_icon_data']] = 1
 				animDraw(motif.select_info['p1_teammenu_ratio' .. p1NumRatio .. '_icon_data'])
 			end
 		end
@@ -2740,10 +2740,10 @@ function start.f_p2TeamMenu()
 			end
 		end
 		--Draw team background
-		animUpdate(motif.select_info.p2_teammenu_bg_data)
+		main.t_animUpdate[motif.select_info.p2_teammenu_bg_data] = 1
 		animDraw(motif.select_info.p2_teammenu_bg_data)
 		--Draw team active element background
-		animUpdate(motif.select_info['p2_teammenu_bg_' .. t_p2TeamMenu[p2TeamMenu].itemname .. '_data'])
+		main.t_animUpdate[motif.select_info['p2_teammenu_bg_' .. t_p2TeamMenu[p2TeamMenu].itemname .. '_data']] = 1
 		animDraw(motif.select_info['p2_teammenu_bg_' .. t_p2TeamMenu[p2TeamMenu].itemname .. '_data'])
 		--Draw team cursor
 		main.f_animPosDraw(
@@ -2753,11 +2753,11 @@ function start.f_p2TeamMenu()
 		)
 		--Draw team title
 		if main.coop or main.p2In == 1 then
-			animUpdate(motif.select_info.p2_teammenu_enemytitle_data)
+			main.t_animUpdate[motif.select_info.p2_teammenu_enemytitle_data] = 1
 			animDraw(motif.select_info.p2_teammenu_enemytitle_data)
 			txt_p2TeamEnemyTitle:draw()
 		else
-			animUpdate(motif.select_info.p2_teammenu_selftitle_data)
+			main.t_animUpdate[motif.select_info.p2_teammenu_selftitle_data] = 1
 			animDraw(motif.select_info.p2_teammenu_selftitle_data)
 			txt_p2TeamSelfTitle:draw()
 		end
@@ -2860,7 +2860,7 @@ function start.f_p2TeamMenu()
 					end
 				end
 			elseif t_p2TeamMenu[i].itemname == 'ratio' and p2TeamMenu == i and main.p2SelectMenu then
-				animUpdate(motif.select_info['p2_teammenu_ratio' .. p2NumRatio .. '_icon_data'])
+				main.t_animUpdate[motif.select_info['p2_teammenu_ratio' .. p2NumRatio .. '_icon_data']] = 1
 				animDraw(motif.select_info['p2_teammenu_ratio' .. p2NumRatio .. '_icon_data'])
 			end
 		end
@@ -3131,7 +3131,7 @@ function start.f_stageMenu()
 		end
 	end
 	if stageList == 0 then --draw random stage portrait loaded from screenpack SFF
-		animUpdate(motif.select_info.stage_portrait_random_data)
+		main.t_animUpdate[motif.select_info.stage_portrait_random_data] = 1
 		animDraw(motif.select_info.stage_portrait_random_data)	
 	else --draw stage portrait loaded from stage SFF
 		drawStagePortrait(
@@ -3542,7 +3542,7 @@ function start.f_selectVersus()
 			else
 				main.f_cmdInput()
 			end
-			refresh()
+			main.f_refresh()
 		end
 		return true
 	end
@@ -3814,6 +3814,7 @@ function start.f_result(mode)
 			t.boxbg_col[3],
 			t.boxbg_alpha[1],
 			t.boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw text at layerno = 0
@@ -3845,7 +3846,7 @@ function start.f_result(mode)
 		else
 			main.f_cmdInput()
 		end
-		refresh()
+		main.f_refresh()
 	end
 	lastMatchClear()
 	return true
@@ -4014,6 +4015,7 @@ function start.f_selectVictory()
 			motif.victory_screen.boxbg_col[3],
 			motif.victory_screen.boxbg_alpha[1],
 			motif.victory_screen.boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw layerno = 0 backgrounds
@@ -4108,7 +4110,7 @@ function start.f_selectVictory()
 		else
 			main.f_cmdInput()
 		end
-		refresh()
+		main.f_refresh()
 	end
 	lastMatchClear()
 	return true
@@ -4191,6 +4193,7 @@ function start.f_continue()
 			motif.continue_screen.boxbg_col[3],
 			motif.continue_screen.boxbg_alpha[1],
 			motif.continue_screen.boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw layerno = 0 backgrounds

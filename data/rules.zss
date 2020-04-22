@@ -1,0 +1,457 @@
+#===============================================================================
+#Functions
+#===============================================================================
+# Draw Color BG
+[Function fDrawCBG(colNo)]
+Explod{
+	anim: F Const(FxBackgroundColor);
+	sprpriority: -6000;
+	space: screen;
+	postype: left;
+	pos: -$colNo * ScreenWidth, ScreenHeight / 2;
+	scale: ScreenWidth, 7.5 * ScreenWidth / 320.0;
+	bindtime: -1;
+	ignorehitpause: 1;
+	supermovetime: -1;
+	pausemovetime: -1;
+	ownpal: 1;
+}
+
+# Dizzy Bird Explod [helper]
+[Function fDizzyBirdExplod(arg)]
+let fvarA = (float(var(1)) + $arg) * 0.0698;
+let fvarB = cos($fvarA) * var(2) * 0.25;
+let fvarC = (cos($fvarA) + 3) * 0.12 * ifelse(($fvarB < 0), -1, 1) * ((Time % 9) * 0.05 + 1);
+Explod{
+	id: 0;
+	anim: F Const(FxDizzyEffect) + var(10);
+	postype: p1;
+	pos: floor(sin($fvarA) * var(2)), floor($fvarB + fvar(11));
+	sprpriority: ifelse($fvarB > 0, 6, -6);
+	ownpal: 1;
+	scale: $fvarC, Abs($fvarC);
+	vel: 0, -var(2) * 0.05;
+	facing: -1;
+}
+
+# Dizzy Bird Helper
+[Function fDizzyBirdHelper()]
+if !NumHelper(Const(StateDizzyBirdsHelper)) {
+	call fDrawCBG(3);
+	Helper{
+		id: Const(StateDizzyBirdsHelper);
+		stateno: Const(StateDizzyBirdsHelper);
+		ownpal: 1;
+		size.height: ifelse(Life < 200, 3, (Random % 3))
+	}
+}
+
+# Dizzy / Guard Brake Hit Ground Explod (direct copy from common1)
+[Function fStunnedHitGroundEffect(vely)]
+Explod{
+	anim: F (60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
+	postype: p1;
+	pos: 0, 0;
+	facing: facing;
+	sprpriority: ifelse($vely <= Const240p(14), -10, 10);
+}
+PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
+
+#===============================================================================
+#StateDizzyBirdsHelper [helper]
+#===============================================================================
+[Statedef 5320; type: a; physics: n; anim: Const(AnimBlank); velset: 0, 0; ctrl: 0;]
+
+if Parent,StateNo = Const(StateDizzy) {
+	var(0) := -1; #in dizzy state
+}
+if RoundState != 2 || Parent,Alive = 0 || Parent,Ctrl || Parent,MoveType = A || (var(0) = -1 && Parent,StateNo != Const(StateDizzy)) {
+	var(0) := 1; #destroy helper
+}
+
+if var(0) < 1 {
+	PosSet{x: Parent,Pos X; y: Parent,Pos Y}
+}
+
+if Time = 0 {
+	fvar(12) := Parent,Const(size.head.pos.y) - 3;
+	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
+} else if Parent,StateType != C && Parent,Anim != [5110, 5119] && Parent,Anim != [5170, 5179] {
+	fvar(12) := Parent,Const(size.head.pos.y) + 1;
+	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
+} else if Parent,StateType = C {
+	fvar(12) := Parent,Const(size.head.pos.y) * 0.5;
+	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
+} else if Parent,Anim = [5110, 5119] || Parent,Anim = [5170, 5179] {
+	fvar(12) := Parent,Const(size.head.pos.y) * 0.2;
+	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
+}
+
+persistent(0) if Time = 0 {
+	var(2) := Parent,Const(size.ground.back) + Parent,Const(size.ground.front); #bird type
+	var(10) := (Random % 6); #width
+	fvar(11) := fvar(12); #pos y
+}
+
+RemoveExplod{id: 0}
+
+var(1) := var(1) + 1;
+if Parent,StateNo = [5000, 5199] || Parent,StateNo = Const(StateDizzy) || Parent,StateNo = Const(StateDizzyFallDown_air) || Parent,StateNo = Const(StateDizzyLyingDown) {
+	call fDizzyBirdExplod(0);
+	call fDizzyBirdExplod(22.5);
+	call fDizzyBirdExplod(45);
+	call fDizzyBirdExplod(67.5);
+}
+
+ignorehitpause if var(0) > 0 {
+	DestroySelf{}
+}
+
+#===============================================================================
+#StateDizzyFallDown_standCrouch
+#===============================================================================
+[Statedef 5301; type: u; movetype: h; physics: n; velset: 0, 0; ctrl: 0;]
+
+if !Dizzy {
+	DizzySet{value: 1}
+}
+
+NotHitBy{value: SCA}
+
+if Time = 0 {
+	if StateType = S {
+		if Anim > Const(AnimStandOrAirHitLow_light) {
+			ChangeAnim{value: Const(AnimStandOrAirHitHigh_hard)}
+		} else {
+			ChangeAnim{value: Const(AnimStandOrAirHitLow_hard)}
+		}
+	} else {
+		ChangeAnim{value: Const(AnimCrouchHit_hard)}
+	}
+}
+
+if Anim = [Const(AnimStandOrAirHitHigh_hard), Const(AnimStandOrAirHitLow_hard)] && (AnimTime = 0 || Time > 16) {
+	ChangeAnim{value: Const(AnimCrouchHit_hard)}
+}
+if Anim = Const(AnimCrouchHit_hard) && (AnimTime = 0 || Time > 26) {
+	ChangeAnim{value: Const(AnimLieDownHit_stayDown)}
+}
+if Anim = Const(AnimLieDownHit_stayDown) && (AnimTime = 0 || Time > 36) {
+	SelfState{value: Const(StateDizzyLyingDown)}
+}
+
+#===============================================================================
+#StateDizzyFallDown_air
+#===============================================================================
+[Statedef 5302; type: a; movetype: h; physics: n; anim: Const(AnimHittingGroundFromFall); ctrl: 0;]
+
+if !Dizzy {
+	call fDizzyBirdHelper();
+	DizzySet{value: 1}
+}
+
+if Time = 0 {
+	AfterImageTime{time: 0}
+	NotHitBy{value: SCA; time: 1}
+	if SelfAnimExist(Const(AnimAirFall_hitUpDiagonal)) {
+		ChangeAnim{value: Const(AnimAirFall_hitUpDiagonal)}
+	}
+}
+
+if Anim = [Const(AnimAirFall), Const(AnimAirFall_hitUpDiagonal)] {
+	VelAdd{y: GetHitVar(yaccel)}
+	if Pos Y + Vel Y >= 0 && Vel Y > 0 {
+		StateTypeSet{statetype: l}
+		ChangeAnim{value: Const(AnimHittingGroundFromFall)}
+	}
+}
+
+#AnimHitGround + AnimGetUp
+if Anim != [Const(AnimAirFall), Const(AnimAirFall_hitUpDiagonal)] {
+	NotHitBy{value: SCA}
+}
+
+persistent(0) if AnimTime = 0 && Anim = Const(AnimHittingGroundFromFall) {
+	ChangeAnim{value: Const(AnimBounceIntoAir)}
+}
+persistent(0) if Anim = Const(AnimBounceIntoAir) {
+	HitFallVel{}
+	PosSet{y: Const(movement.down.bounce.offset.y)}
+	PosAdd{
+		x: Const(movement.down.bounce.offset.x);
+		y: ifelse(Const(movement.down.bounce.offset.y) > -5, -5, Const(movement.down.bounce.offset.y));
+	}
+}
+if Anim = Const(AnimBounceIntoAir) {
+	VelAdd{y: Const240p(0.5)}
+}
+
+if Anim = Const(AnimBounceIntoAir) && Vel Y > 0 {
+	if Pos Y >= Const(movement.down.bounce.groundlevel) || (Pos y >= Const240p(10) && Const(movement.down.bounce.groundlevel) = 0) {
+		ChangeState{value: Const(StateDizzyLyingDown)}
+	}
+}
+
+if Anim = [5100, 5109] {
+	PosSet{y: 0}
+	if GetHitVar(fall.yvel) {
+		call fStunnedHitGroundEffect(floor(Vel Y));
+	}
+	VelSet{y: 0}
+	PosFreeze{}
+}
+
+#===============================================================================
+#StateDizzyLyingDown
+#===============================================================================
+[Statedef 5303; type: l; movetype: h; physics: n; velset: 0, 0; ctrl: 0;]
+
+if !Dizzy {
+	call fDizzyBirdHelper();
+	DizzySet{value: 1}
+}
+
+if Time = 0 {
+	PosSet{y: 0}
+	if GetHitVar(fall.yvel) {
+		call fStunnedHitGroundEffect(floor(Vel Y));
+	}
+	VelSet{y: 0}
+}
+
+#AnimLieDown
+if Time = 0 && Anim != [5110, 5119] {
+	ChangeAnim{value: 5110 + (Anim % 10) * SelfAnimExist(5110 + (Anim % 10))}
+}
+
+#AnimGetUp
+if Anim = [5110, 5119] && Time > 32 {
+	ChangeAnim{value: 5120 + (Anim % 10) * SelfAnimExist(5120 + (Anim % 10))}
+}
+
+if AnimTime = 0 && Anim = [5120, 5129] || Time > 96 {
+	ChangeState{value: Const(StateDizzy)}
+}
+
+NotHitBy{value: SCA; time: 1}
+
+#===============================================================================
+#StateDizzy
+#===============================================================================
+[Statedef 5310; type: s; movetype: i; physics: s; anim: Const(AnimDizzy); movehitpersist: 1; velset: 0, 0; ctrl: 0;]
+
+if !Dizzy {
+	call fDizzyBirdHelper();
+	DizzySet{value: 1}
+}
+
+if Time = 0 {
+	MapSet{map: "_iksys_DizzyState"; value: 1}
+	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: 312}
+	PosSet{y: 0}
+}
+
+if (Time % 42) = 0 {
+	PlaySnd{value: F Const(FxDizzyEffect), 0; channel: 2}
+}
+
+if Time > 1 {
+	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
+	if Command = "holdfwd" || Command = "holdback" || Command = "holdup" || Command = "holddown" {
+		if Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c" {
+			MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
+		}
+	}
+	if AILevel > 0 && Random < AILevel * 90 && Random < 500 {
+		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
+	}
+}
+
+if Time > 8 {
+	if Map(_iksys_dizzyRecoveryTime) <= 0 || RoundState > 2 {
+		MapSet{map: "_iksys_DizzyState"; value: 0}
+		SelfState{value: 0; ctrl: 1}
+	}
+}
+
+#===============================================================================
+#StateGuardBrakeStart
+#===============================================================================
+[Statedef 5400; type: U; physics: U; velset: 0, 0; ctrl: 0;]
+
+if !GuardBrake {
+	GuardBrakeSet{value: 1}
+}
+
+if Time = 0 {
+	PlaySnd{value: F 5400, 0}
+	Explod{
+		anim: F Const(FxGuardCrashShockwave);
+		postype: p1;
+		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
+		sprpriority: 7;
+		ownpal: 1;
+		scale: 0.15, 4.5;
+		trans: add;
+		alpha: 256, 256;
+		ignorehitpause: 1;
+		pausemovetime: -1;
+		ignorehitpause: 1;
+	}
+}
+
+if Time < 13 {
+	Explod{
+		anim: F Const(FxGuardCrashSpark) + (Random % 3);
+		postype: p1;
+		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
+		sprpriority: 6;
+		ownpal: 1;
+		random: floor(Const(size.height) / 8 * Const(size.xscale)), floor(Const(size.height) * Const(size.yscale));
+		scale: (Random % 9) * 0.03 + 0.25, (Random % 9) * 0.03 + 0.25;
+		vel: -((Random % 18) + 5) * 0.36, ((Random % 19) - 8) * 0.36;
+		accel: 0.038, 0;
+		facing: ifelse(Random < 500, 1, -1);
+		vfacing: ifelse(Random < 500, 1, -1);
+		ignorehitpause: 1;
+		pausemovetime: -1;
+		ignorehitpause: 1;
+	}
+}
+
+persistent(0) if Time = 0 {
+	call fDrawCBG(0);
+	Pause{time: 13; movetime: 13}
+	StateTypeSet{physics: StateType}
+	if StateType = S {
+		ChangeAnim{value: Const(AnimStandOrAirHitHigh_hard)}
+	} else if StateType = C {
+		ChangeAnim{value: Const(AnimCrouchHit_hard)}
+	} else {
+		ChangeAnim{value: Const(AnimStandOrAirHitLow_hard)}
+	}
+}
+
+if (Time > 13 && AnimTime = 0) || Time > 36 {
+	SelfState{value: Const(StateGuardBrake)}
+}
+
+#===============================================================================
+#StateGuardBrake
+#===============================================================================
+[Statedef 5410; type: U; physics: U; velset: 0, 0; ctrl: 0;]
+
+if StateType = A {
+	VelAdd{y: Const(movement.yaccel)}
+	if Pos Y >= 0 && Vel Y > 0 {
+		VelSet{y: 0}
+		PosSet{y: 0}
+	}
+}
+
+if Time = 0 {
+	StateTypeSet{physics: StateType}
+	if StateType = S {
+		ChangeAnim{value: Const(AnimStandRecoverHigh_hard)}
+	} else if StateType = C {
+		ChangeAnim{value: Const(AnimCrouchRecover_hard)}
+	} else {
+		ChangeAnim{value: Const(AnimStandRecoverLow_hard)}
+	}
+}
+
+if Time <= 80 {
+	ChangeAnim{value: Anim}
+	if (Time % 2) = 0 {
+		if (Time % 4) {
+			Offset{x: -1}
+		} else {
+			Offset{x: 1}
+		}
+	}
+}
+
+if Animtime = 0 || Time > 99 {
+	if StateType = S {
+		SelfState{value: Const(StateStand); ctrl: 1}
+	} else {
+		SelfState{value: Const(StateCrouching); ctrl: 1}
+	}
+}
+
+#===============================================================================
+#Global states
+#===============================================================================
+[Statedef -2]
+
+if RoundState = 0 {
+	GuardPowerSet{value: GuardPowerMax}
+	StunPowerSet{value: StunPowerMax}
+	MapSet{map: "_iksys_guardPowerCounter"; value: 0}
+	MapSet{map: "_iksys_stunPowerCounter"; value: 0}
+} else if RoundState = 2 && Alive {
+	# Guard Break
+	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
+		MapSet{map: "_iksys_guardPowerCounter"; value: 60}
+		MapSet{map: "_iksys_stunPowerCounter"; value: 60}
+		if (GameTime % 5) = 0 && float(GuardPower) / GuardPowerMax <= 0.2 {
+			PalFX{time: 2; add: 200, 0, 0}
+		}
+		ignorehitpause if GuardPower = 0 && !GuardBrake {
+			ChangeState{value: Const(StateGuardBrakeStart)}
+		}
+	} else if MoveType != H {
+		if Map(_iksys_guardPowerCounter) > 0 {
+			MapAdd{map: "_iksys_guardPowerCounter"; value: -1}
+		}
+		if Map(_iksys_stunPowerCounter) > 0 {
+			MapAdd{map: "_iksys_stunPowerCounter"; value: -1}
+		}
+	}
+	ignorehitpause if GuardBrake && StateNo != [Const(StateGuardBrakeStart), Const(StateGuardBrake)] {
+		GuardPowerSet{value: GuardPowerMax}
+		GuardBrakeSet{value: 0}
+	}
+	if !GuardBrake && GuardPower < GuardPowerMax && Map(_iksys_guardPowerCounter) = 0 {
+		GuardPowerAdd{value: round(float(GuardPowerMax) / 25, 0)} #guard power recovery
+		MapSet{map: "_iksys_guardPowerCounter"; value: 30}
+	}
+	# Dizzy
+	ignorehitpause if StunPower = 0 {
+		if StateNo = Const(StateStandGetHit_knockedBack) || StateNo = Const(StateCrouchGetHit_knockedBack) {
+			if GetHitVar(hittime) = 0 {
+				call fDizzyBirdHelper();
+			}
+			if HitOver {
+				SelfState{value: Const(StateDizzyFallDown_standCrouch)}
+			}
+		} else if (StateNo = Const(StateAirGetHit_knockedAway) || StateNo = Const(StateTrippedGetHit_knockedAway)) && HitShakeOver {
+			SelfState{value: Const(StateDizzyFallDown_air)}
+		} else if StateNo = Const(StateDownedGetHit_lyingDown) || StateNo = Const(StateDownedGetHit_lyingDown) + 1 {
+			SelfState{value: Const(StateDizzyLyingDown)}
+		}
+	}
+	ignorehitpause if Dizzy && StateNo != [Const(StateDizzyFallDown_standCrouch), Const(StateDizzy)] && (MoveType != H || Map(_iksys_DizzyState) > 0) {
+		StunPowerSet{value: StunPowerMax}
+		DizzySet{value: 0}
+	}
+	if Map(_iksys_DizzyState) = 2 && MoveType != H {
+		MapSet{map: "_iksys_DizzyState"; value: 0}
+	}
+	if ReceivedDamage != Map(_iksys_receivedDamage) {
+		if Map(_iksys_DizzyState) < 2 && ReceivedDamage > Map(_iksys_receivedDamage) && GetHitVar(attr) != [Const(AttrStandingHyperAttack), Const(AttrAerialHyperProjectile)] {
+			if Map(_iksys_DizzyState) = 1 {
+				MapSet{map: "_iksys_DizzyState"; value: 2}
+			} else if GetHitVar(stunpower) = 0 {
+				StunPowerAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -2} #stun power drain
+			}
+		}
+		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
+		MapSet{map: "_iksys_guardPowerCounter"; value: 60}
+		MapSet{map: "_iksys_stunPowerCounter"; value: 60}
+	}
+	if !Dizzy && StunPower < StunPowerMax && Map(_iksys_stunPowerCounter) = 0 {
+		StunPowerAdd{value: round(float(StunPowerMax) / 100, 0)} #stun power recovery
+		MapSet{map: "_iksys_guardPowerCounter"; value: 6}
+	}
+}

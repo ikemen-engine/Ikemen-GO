@@ -223,6 +223,8 @@ const (
 const (
 	OC_const_data_life OpCode = iota
 	OC_const_data_power
+	OC_const_data_guardpower
+	OC_const_data_stunpower
 	OC_const_data_attack
 	OC_const_data_defence
 	OC_const_data_fall_defence_mul
@@ -415,13 +417,20 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+	OC_ex_gethitvar_guardpower
+	OC_ex_gethitvar_stunpower
 	OC_ex_gethitvar_score
+	OC_ex_gethitvar_attr
 	OC_ex_scorecurrent
 	OC_ex_scoreround
 	OC_ex_scoretotal
 	OC_ex_timeleft
 	OC_ex_timeround
 	OC_ex_timetotal
+	OC_ex_guardpower
+	OC_ex_guardpowermax
+	OC_ex_stunpower
+	OC_ex_stunpowermax
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_combocount
@@ -437,6 +446,8 @@ const (
 	OC_ex_playerno
 	OC_ex_pausetime
 	OC_ex_standby
+	OC_ex_dizzy
+	OC_ex_guardbrake
 	OC_ex_max
 	OC_ex_min
 	OC_ex_round
@@ -1292,6 +1303,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().data.life)
 	case OC_const_data_power:
 		sys.bcStack.PushI(c.gi().data.power)
+	case OC_const_data_guardpower:
+		sys.bcStack.PushI(c.gi().data.guardpower)
+	case OC_const_data_stunpower:
+		sys.bcStack.PushI(c.gi().data.stunpower)
 	case OC_const_data_attack:
 		sys.bcStack.PushI(c.gi().data.attack)
 	case OC_const_data_defence:
@@ -1675,8 +1690,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
+	case OC_ex_gethitvar_guardpower:
+		sys.bcStack.PushI(c.ghv.guardpower)
+	case OC_ex_gethitvar_stunpower:
+		sys.bcStack.PushI(c.ghv.stunpower)
 	case OC_ex_gethitvar_score:
 		sys.bcStack.PushF(c.ghv.score)
+	case OC_ex_gethitvar_attr:
+		sys.bcStack.PushI(c.ghv.attr)
 	case OC_ex_scorecurrent:
 		sys.bcStack.PushF(c.scoreCurrent)
 	case OC_ex_scoreround:
@@ -1689,6 +1710,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(timeRound())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
+	case OC_ex_guardpower:
+		sys.bcStack.PushI(c.getGuardPower())
+	case OC_ex_guardpowermax:
+		sys.bcStack.PushI(c.guardPowerMax)
+	case OC_ex_stunpower:
+		sys.bcStack.PushI(c.getStunPower())
+	case OC_ex_stunpowermax:
+		sys.bcStack.PushI(c.stunPowerMax)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
 	case OC_ex_receivedhits:
@@ -1719,6 +1748,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.pauseTime())
 	case OC_ex_standby:
 		sys.bcStack.PushB(c.scf(SCF_standby))
+	case OC_ex_dizzy:
+		sys.bcStack.PushB(c.scf(SCF_dizzy))
+	case OC_ex_guardbrake:
+		sys.bcStack.PushB(c.scf(SCF_guardbrake))
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)
@@ -2629,6 +2662,56 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type guardBrakeSet StateControllerBase
+
+const (
+	guardBrakeSet_value byte = iota
+	guardBrakeSet_redirectid
+)
+
+func (sc guardBrakeSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardBrakeSet_value:
+			crun.setGuardBrake(exp[0].evalB(c))
+		case guardBrakeSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type dizzySet StateControllerBase
+
+const (
+	dizzySet_value byte = iota
+	dizzySet_redirectid
+)
+
+func (sc dizzySet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case dizzySet_value:
+			crun.setStun(exp[0].evalB(c))
+		case dizzySet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type explod StateControllerBase
 
 const (
@@ -3525,6 +3608,8 @@ const (
 	hitDef_fall_envshake_ampl
 	hitDef_fall_envshake_phase
 	hitDef_fall_envshake_freq
+	hitDef_guardpower
+	hitDef_stunpower
 	hitDef_score
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
@@ -3796,6 +3881,10 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.envshake_phase = exp[0].evalF(c)
 	case hitDef_fall_envshake_freq:
 		hd.fall.envshake_freq = MaxF(0, exp[0].evalF(c))
+	case hitDef_guardpower:
+		hd.guardpower = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_stunpower:
+		hd.stunpower = Max(IErr+1, exp[0].evalI(c))
 	case hitDef_score:
 		hd.score[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -4555,6 +4644,84 @@ func (sc targetPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type targetGuardPowerAdd StateControllerBase
+
+const (
+	targetGuardPowerAdd_id byte = iota
+	targetGuardPowerAdd_value
+	targetGuardPowerAdd_redirectid
+)
+
+func (sc targetGuardPowerAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetGuardPowerAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetGuardPowerAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetGuardPowerAdd(tar, exp[0].evalI(c))
+		case targetGuardPowerAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type targetStunPowerAdd StateControllerBase
+
+const (
+	targetStunPowerAdd_id byte = iota
+	targetStunPowerAdd_value
+	targetStunPowerAdd_redirectid
+)
+
+func (sc targetStunPowerAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetStunPowerAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetStunPowerAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetStunPowerAdd(tar, exp[0].evalI(c))
+		case targetStunPowerAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type targetDrop StateControllerBase
 
 const (
@@ -4688,6 +4855,106 @@ func (sc powerSet) Run(c *Char, _ []int32) bool {
 		case powerSet_value:
 			crun.powerSet(exp[0].evalI(c))
 		case powerSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type guardPowerAdd StateControllerBase
+
+const (
+	guardPowerAdd_value byte = iota
+	guardPowerAdd_redirectid
+)
+
+func (sc guardPowerAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardPowerAdd_value:
+			crun.guardPowerAdd(exp[0].evalI(c))
+		case guardPowerAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type guardPowerSet StateControllerBase
+
+const (
+	guardPowerSet_value byte = iota
+	guardPowerSet_redirectid
+)
+
+func (sc guardPowerSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardPowerSet_value:
+			crun.guardPowerSet(exp[0].evalI(c))
+		case guardPowerSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type stunPowerAdd StateControllerBase
+
+const (
+	stunPowerAdd_value byte = iota
+	stunPowerAdd_redirectid
+)
+
+func (sc stunPowerAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case stunPowerAdd_value:
+			crun.stunPowerAdd(exp[0].evalI(c))
+		case stunPowerAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type stunPowerSet StateControllerBase
+
+const (
+	stunPowerSet_value byte = iota
+	stunPowerSet_redirectid
+)
+
+func (sc stunPowerSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case stunPowerSet_value:
+			crun.stunPowerSet(exp[0].evalI(c))
+		case stunPowerSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -4941,7 +5208,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	sys.superanim, sys.superpmap.remap = crun.getAnim(100, true), nil
 	sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
-	sys.superp2defmul = sys.super_TargetDefenceMul
+	sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case superPause_time:
@@ -4971,7 +5238,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_p2defmul:
 			sys.superp2defmul = exp[0].evalF(c)
 			if sys.superp2defmul == 0 {
-				sys.superp2defmul = sys.super_TargetDefenceMul
+				sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
 			}
 		case superPause_poweradd:
 			crun.powerAdd(exp[0].evalI(c))

@@ -47,6 +47,8 @@ func newCompiler() *Compiler {
 		"changeanim2":        c.changeAnim2,
 		"helper":             c.helper,
 		"ctrlset":            c.ctrlSet,
+		"guardbrakeset":      c.guardBrakeSet,
+		"dizzyset":           c.dizzySet,
 		"explod":             c.explod,
 		"modifyexplod":       c.modifyExplod,
 		"gamemakeanim":       c.gameMakeAnim,
@@ -69,6 +71,8 @@ func newCompiler() *Compiler {
 		"varadd":             c.varAdd,
 		"parentvarset":       c.parentVarSet,
 		"parentvaradd":       c.parentVarAdd,
+		"rootvarset":         c.rootVarSet,
+		"rootvaradd":         c.rootVarAdd,
 		"turn":               c.turn,
 		"targetfacing":       c.targetFacing,
 		"targetbind":         c.targetBind,
@@ -78,11 +82,17 @@ func newCompiler() *Compiler {
 		"targetvelset":       c.targetVelSet,
 		"targetveladd":       c.targetVelAdd,
 		"targetpoweradd":     c.targetPowerAdd,
+		"targetguardpoweradd": c.targetPowerAdd,
+		"targetstunpoweradd": c.targetPowerAdd,
 		"targetdrop":         c.targetDrop,
 		"lifeadd":            c.lifeAdd,
 		"lifeset":            c.lifeSet,
 		"poweradd":           c.powerAdd,
 		"powerset":           c.powerSet,
+		"guardpoweradd":      c.guardPowerAdd,
+		"guardpowerset":      c.guardPowerSet,
+		"stunpoweradd":       c.stunPowerAdd,
+		"stunpowerset":       c.stunPowerSet,
 		"hitvelset":          c.hitVelSet,
 		"screenbound":        c.screenBound,
 		"posfreeze":          c.posFreeze,
@@ -1258,6 +1268,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_pausetime)
 	case "standby":
 		out.append(OC_ex_, OC_ex_standby)
+	case "dizzy":
+		out.append(OC_ex_, OC_ex_dizzy)
+	case "guardbrake":
+		out.append(OC_ex_, OC_ex_guardbrake)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -1282,6 +1296,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_data_life)
 		case "data.power":
 			out.append(OC_const_data_power)
+		case "data.guardpower":
+			out.append(OC_const_data_guardpower)
+		case "data.stunpower":
+			out.append(OC_const_data_stunpower)
 		case "data.attack":
 			out.append(OC_const_data_attack)
 		case "data.defence":
@@ -1570,8 +1588,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_fall_envshake_ampl)
 			case "fall.envshake.phase":
 				out.append(OC_ex_gethitvar_fall_envshake_phase)
+			case "guardpower":
+				out.append(OC_ex_gethitvar_guardpower)
+			case "stunpower":
+				out.append(OC_ex_gethitvar_stunpower)
 			case "score":
 				out.append(OC_ex_gethitvar_score)
+			case "attr":
+				out.append(OC_ex_gethitvar_attr)
 			default:
 				return bvNone(), Error(c.token + "が不正です")
 			}
@@ -1759,6 +1783,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_power)
 	case "powermax":
 		out.append(OC_powermax)
+	case "guardpower":
+		out.append(OC_ex_, OC_ex_guardpower)
+	case "guardpowermax":
+		out.append(OC_ex_, OC_ex_guardpowermax)
+	case "stunpower":
+		out.append(OC_ex_, OC_ex_stunpower)
+	case "stunpowermax":
+		out.append(OC_ex_, OC_ex_stunpowermax)
 	case "playeridexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
@@ -3784,6 +3816,28 @@ func (c *Compiler) ctrlSet(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) guardBrakeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardBrakeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardBrakeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardBrakeSet_value, VT_Bool, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) dizzySet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*dizzySet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			dizzySet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", dizzySet_value, VT_Bool, 1, true)
+	})
+	return *ret, err
+}
 func (c *Compiler) explodSub(is IniSection,
 	sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "remappal",
@@ -4755,6 +4809,14 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_fall_envshake_freq, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "guardpower",
+		hitDef_guardpower, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "stunpower",
+		hitDef_stunpower, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "score",
 		hitDef_score, VT_Float, 2, false); err != nil {
 		return err
@@ -5281,6 +5343,28 @@ func (c *Compiler) parentVarAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) rootVarSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.varSetSub(is, sc, OC_root, OC_st_var)
+	})
+	return *ret, err
+}
+func (c *Compiler) rootVarAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.varSetSub(is, sc, OC_root, OC_st_varadd)
+	})
+	return *ret, err
+}
 func (c *Compiler) turn(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*turn)(sc), c.stateSec(is, func() error {
@@ -5499,6 +5583,44 @@ func (c *Compiler) targetPowerAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) targetGuardPowerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetGuardPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetGuardPowerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetGuardPowerAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetGuardPowerAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetStunPowerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetStunPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetStunPowerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetStunPowerAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetStunPowerAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) targetDrop(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetDrop)(sc), c.stateSec(is, func() error {
@@ -5571,6 +5693,50 @@ func (c *Compiler) powerSet(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		return c.paramValue(is, sc, "value", powerSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) guardPowerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardPowerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardPowerAdd_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) guardPowerSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardPowerSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardPowerSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardPowerSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) stunPowerAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*stunPowerAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			stunPowerAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", stunPowerAdd_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) stunPowerSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*stunPowerSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			stunPowerSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", stunPowerSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }
@@ -7676,7 +7842,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-		case "varset", "varadd", "parentvarset", "parentvaradd":
+		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
 		}
 		break
 	}
@@ -7857,7 +8023,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	if err != nil {
 		return nil, err
 	}
-	lines, i, cmd, stcommon, stscore, sttag := SplitAndTrim(str, "\n"), 0, "", "", sys.commonScore, sys.commonTag
+	lines, i, cmd, stcommon := SplitAndTrim(str, "\n"), 0, "", ""
+	strules, stscore, sttag := sys.commonRules, sys.commonScore, sys.commonTag
 	var st [11]string
 	info, files := true, true
 	for i < len(lines) {
@@ -7890,6 +8057,9 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				}
 				if _, ok := is["sttag"]; ok {
 					sttag = is["sttag"]
+				}
+				if _, ok := is["strules"]; ok {
+					strules = is["strules"]
 				}
 				st[0] = is["st"]
 				for i := 1; i < len(st); i++ {
@@ -8006,6 +8176,11 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, def); err != nil {
+			return nil, err
+		}
+	}
+	if len(strules) > 0 {
+		if err := c.stateCompile(states, strules, def); err != nil {
 			return nil, err
 		}
 	}

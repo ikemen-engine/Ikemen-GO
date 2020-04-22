@@ -211,6 +211,66 @@ function main.f_strsplit(delimiter, text)
 	return list
 end
 
+--command line global flags
+main.flags = getCommandLineFlags()
+if main.flags['-ailevel'] ~= nil then
+	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
+end
+if main.flags['-speed'] ~= nil then
+	config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+end
+if main.flags['-speedtest'] ~= nil then
+	setGameSpeed(100)
+end
+if main.flags['-nomusic'] ~= nil then
+	setBgmVolume(0)
+end
+if main.flags['-nosound'] ~= nil then
+	setMasterVolume(0)
+end
+if main.flags['-togglelifebars'] ~= nil then
+	toggleStatusDraw()
+end
+if main.flags['-maxpowermode'] ~= nil then
+	toggleMaxPowerMode()
+end
+
+--motif
+main.motifDef = config.Motif
+if main.flags['-r'] ~= nil or main.flags['-rubric'] ~= nil then
+	local case = main.flags['-r']:lower() or main.flags['-rubric']:lower()
+	if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
+		main.motifDef = main.flags['-r'] or main.flags['-rubric']
+	elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
+		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric'])
+	elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
+		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric']) .. '/system.def'
+	end
+end
+
+--lifebar
+local file = io.open(main.motifDef, 'r')
+main.motifData = file:read("*all")
+file:close()
+local fileDir = main.motifDef:match('^(.-)[^/\\]+$')
+if main.flags['-lifebar'] ~= nil then
+	main.lifebarDef = main.flags['-lifebar']
+else
+	main.lifebarDef = main.motifData:match('fight%s*=%s*(.-%.def)%s*')
+end
+if main.f_fileExists(main.lifebarDef) then
+	main.lifebarDef = main.lifebarDef
+elseif main.f_fileExists(fileDir .. main.lifebarDef) then
+	main.lifebarDef = fileDir .. main.lifebarDef
+elseif main.f_fileExists('data/' .. main.lifebarDef) then
+	main.lifebarDef = 'data/' .. main.lifebarDef
+else
+	main.lifebarDef = 'data/fight.def'
+end
+loadLifebar(main.lifebarDef)
+refresh()
+
+--scaling
 require('external.script.screenpack')
 main.IntLocalcoordValues()
 main.CalculateLocalcoordValues()
@@ -349,10 +409,22 @@ function text:draw()
 	textImgDraw(self.ti)
 end
 
+--refreshing screen after delayed animation progression to next frame
+main.t_animUpdate = {}
+function main.f_refresh()
+	for k, v in pairs(main.t_animUpdate) do
+		for i = 1, v do
+			animUpdate(k)
+		end
+	end
+	main.t_animUpdate = {}
+	refresh()
+end
+
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y)
+	main.t_animUpdate[a] = 1
 	animSetPos(a, x, y)
-	animUpdate(a)
 	animDraw(a)
 end
 
@@ -730,7 +802,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		--draw layerno = 1 backgrounds
 		bgDraw(background.bg, true)
 		--draw menu box
-		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false)
+		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false, false)
 		--draw title
 		title:draw()
 		--draw text
@@ -829,6 +901,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			motif.infobox.boxbg_col[3],
 			motif.infobox.boxbg_alpha[1],
 			motif.infobox.boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw text
@@ -862,35 +935,7 @@ end
 --;===========================================================
 --; COMMAND LINE QUICK VS
 --;===========================================================
-main.flags = getCommandLineFlags()
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
-	--load lifebar
-	local def = config.Motif
-	if main.flags['-r'] ~= nil then
-		local case = main.flags['-r']:lower()
-		if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
-			def = main.flags['-r']
-		elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
-			def = 'data/' .. main.flags['-r']
-		elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
-			def = 'data/' .. main.flags['-r'] .. '/system.def'
-		end
-	end
-	local fileDir = def:match('^(.-)[^/\\]+$')
-	local file = io.open(def,"r")
-	local s = file:read("*all")
-	file:close()
-	local lifebar = s:match('fight%s*=%s*(.-%.def)%s*')
-	if main.f_fileExists(lifebar) then
-		loadLifebar(lifebar)
-	elseif main.f_fileExists(fileDir .. lifebar) then
-		loadLifebar(fileDir .. lifebar)
-	elseif main.f_fileExists('data/' .. lifebar) then
-		loadLifebar('data/' .. lifebar)
-	else
-		loadLifebar('data/fight.def')
-	end
-	refresh()
 	--set settings
 	setAutoguard(1, config.AutoGuard)
 	setAutoguard(2, config.AutoGuard)
@@ -898,6 +943,8 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
+	setGuardBar(config.GaugeGuard)
+	setStunBar(config.GaugeStun)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -930,6 +977,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
 			if main.flags['-p' .. num .. '.power'] ~= nil then
 				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
+			end
+			if main.flags['-p' .. num .. '.guardPower'] ~= nil then
+				t[#t].override['guardPower'] = tonumber(main.flags['-p' .. num .. '.guardPower'])
+			end
+			if main.flags['-p' .. num .. '.stunPower'] ~= nil then
+				t[#t].override['stunPower'] = tonumber(main.flags['-p' .. num .. '.stunPower'])
 			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
@@ -1571,6 +1624,11 @@ options = require('external.script.options')
 start = require('external.script.start')
 storyboard = require('external.script.storyboard')
 
+if main.flags['-storyboard'] ~= nil then
+	storyboard.f_storyboard(main.flags['-storyboard'])
+	os.exit()
+end
+
 --;===========================================================
 --; MENUS
 --;===========================================================
@@ -2001,7 +2059,7 @@ main.t_itemname = {
 			exitReplay()
 		end
 	end,
-	--DEMO
+	--RANDOMTEST
 	['randomtest'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -2331,7 +2389,7 @@ local t_menuWindow = {
 	0,
 	math.max(0, motif.title_info.menu_pos[2] - motif.title_info.menu_window_margins_y[1]),
 	motif.info.localcoord[1],
-	math.min(motif.info.localcoord[2], motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2])
+	motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2]
 }
 local t_pos = {} --for storing current main.menu table position
 local t_skipGroup = {}
@@ -2423,6 +2481,8 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
+	setGuardBar(config.GaugeGuard)
+	setStunBar(config.GaugeStun)
 	setDemoTime(motif.demo_mode.fight_endtime)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
@@ -2488,7 +2548,15 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 		setAllowDebugKeys(false)
 	end
 	setGameMode('demo')
-	randomtest.run()
+	for i = 1, 2 do
+		setCom(i, 8)
+		setTeamMode(i, 0, 1)
+		local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
+		selectChar(i, ch, getCharRandomPalette(ch))
+	end
+	start.f_setStage()
+	loadStart()
+	game()
 	setAllowBGM(true)
 	setAllowDebugKeys(config.DebugKeys)
 	refresh()
@@ -2621,7 +2689,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.menu_boxcursor_col[3],
 			src,
 			dst,
-			motif.defaultLocalcoord --for some reason can't be false on winmugen screenpack, no idea why
+			motif.defaultLocalcoord,
+			true
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -2638,7 +2707,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.footer_boxbg_col[3],
 			motif.title_info.footer_boxbg_alpha[1],
 			motif.title_info.footer_boxbg_alpha[2],
-			motif.defaultLocalcoord
+			motif.defaultLocalcoord,
+			true
 		)
 	end
 	txt_titleFooter1:draw()
@@ -2685,6 +2755,7 @@ function main.f_menuFade(screen, fadeType, cursorPosY, moveTxt, item, t)
 end
 
 function main.f_bgReset(data)
+	main.t_animUpdate = {}
 	alpha1cur = 0
 	alpha2cur = 0
 	alpha1add = true
@@ -2748,6 +2819,7 @@ function main.f_connect(server, t)
 			motif.title_info.connecting_boxbg_col[3],
 			motif.title_info.connecting_boxbg_alpha[1],
 			motif.title_info.connecting_boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw text
@@ -2769,7 +2841,18 @@ end
 --; INITIALIZE LOOPS
 --;===========================================================
 --SetGCPercent(100)
+if main.flags['-stresstest'] ~= nil then
+	main.f_default()
+	local frameskip = tonumber(main.flags['-stresstest'])
+	if frameskip >= 1 then
+		setGameSpeed(frameskip + 1)
+	end
+	setGameMode('randomtest')
+	randomtest.run()
+	os.exit()
+end
 main.menu.loop()
 
 -- Debug Info
+--main.motifData = nil
 --if main.debugLog then main.f_printTable(main, "debug/t_main.txt") end

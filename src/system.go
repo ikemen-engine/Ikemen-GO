@@ -62,6 +62,7 @@ var sys = System {
 	oldNextAddTime:        1,
 	commandLine:           make(chan string),
 	cam:                   *newCamera(),
+	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
 	errLog:                log.New(os.Stderr, "", 0),
@@ -159,8 +160,6 @@ type System struct {
 	workingState            *StateBytecode
 	specialFlag             GlobalSpecialFlag
 	afterImageMax           int32
-	attack_LifeToPowerMul   float32
-	getHit_LifeToPowerMul   float32
 	comboExtraFrameWindow   int32
 	envShake                EnvShake
 	pause                   int32
@@ -179,7 +178,6 @@ type System struct {
 	superpos                [2]float32
 	superfacing             float32
 	superp2defmul           float32
-	super_TargetDefenceMul  float32
 	envcol                  [3]int32
 	envcol_time             int32
 	envcol_under            bool
@@ -259,7 +257,7 @@ type System struct {
 	masterVolume            int
 	wavVolume               int
 	bgmVolume               int
-	AudioDucking            bool
+	audioDucking            bool
 	windowTitle             string
 	//FLAC_FrameWait          int
 
@@ -267,6 +265,7 @@ type System struct {
 	xinputTriggerSensitivity   float32
 
 	// Localcoord sceenpack
+	luaLocalcoord         [2]int32
 	luaSpriteScale        float64
 	luaSmallPortraitScale float32
 	luaBigPortraitScale   float32
@@ -314,23 +313,28 @@ type System struct {
 	matchClearance          [2]MatchClearance
 	consecutiveWins         [2]int32
 	commonConst             string
+	commonRules             string
 	commonScore             string
 	commonTag               string
 	gameSpeed               float32
+	maxPowerMode            bool
+	postMatch               bool
 	preloading              Preloading
 }
 
 type OverrideCharData struct {
-	power        int32
-	life         int32
-	lifeMax      int32
-	lifeRatio    float32
-	attackRatio  float32
+	power         int32
+	guardPower    int32
+	stunPower     int32
+	life          int32
+	lifeMax       int32
+	lifeRatio     float32
+	attackRatio   float32
 }
 func (s *System) resetOverrideCharData() {
 	for i := range s.ocd {
-		s.ocd[i] = OverrideCharData{power: 0, life: 0, lifeMax: 0,
-		lifeRatio: 1.0, attackRatio: 1.0}
+		s.ocd[i] = OverrideCharData{power: 0, guardPower:0, stunPower: 0,
+		life: 0, lifeMax: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
 	return
 }
@@ -1483,7 +1487,7 @@ func (s *System) draw(x, y, scl float32) {
 	}
 }
 func (s *System) fight() (reload bool) {
-	s.gameTime, s.paused, s.accel, s.statusDraw = 0, false, 1, true
+	s.gameTime, s.paused, s.accel = 0, false, 1
 	for i := range s.clipboardText {
 		s.clipboardText[i] = nil
 	}
@@ -1528,12 +1532,14 @@ func (s *System) fight() (reload bool) {
 		}
 		s.wincnt.update()
 	}()
-	var life, pow [len(s.chars)]int32
+	var life, pow, gpow, spow [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
 		pow[pn] = s.chars[pn][0].power
+		gpow[pn] = s.chars[pn][0].guardPower
+		spow[pn] = s.chars[pn][0].stunPower
 		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
 			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
 		}
@@ -1739,12 +1745,26 @@ func (s *System) fight() (reload bool) {
 					p[0].life = p[0].lifeMax
 				}
 				if s.round == 1 {
-					p[0].power = p[0].ocd().power //p[0].power = 0
+					if s.maxPowerMode {
+						p[0].power = p[0].powerMax
+					} else {
+						p[0].power = p[0].ocd().power //p[0].power = 0
+					}
 				}
 				p[0].mapArray = make(map[string]float32)
 				for k,v := range p[0].mapDefault {
 					p[0].mapArray[k] = v
 				}
+			}
+			if p[0].ocd().guardPower != 0 {
+				p[0].guardPower = p[0].ocd().guardPower
+			} else {
+				p[0].guardPower = p[0].guardPowerMax
+			}
+			if p[0].ocd().stunPower != 0 {
+				p[0].stunPower = p[0].ocd().stunPower
+			} else {
+				p[0].stunPower = p[0].stunPowerMax
 			}
 			copyVar(i)
 		}
@@ -1762,6 +1782,8 @@ func (s *System) fight() (reload bool) {
 			if len(p) > 0 {
 				p[0].life = life[i]
 				p[0].power = pow[i]
+				p[0].guardPower = gpow[i]
+				p[0].stunPower = spow[i]
 				copy(p[0].ivar[:], ivar[i])
 				copy(p[0].fvar[:], fvar[i])
 			}
@@ -2520,6 +2542,8 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
+			p.guardPower = sys.chars[pn][0].guardPower
+			p.stunPower = sys.chars[pn][0].stunPower
 		}
 	}
 	p.memberNo = memberNo
@@ -2571,6 +2595,8 @@ func (l *Loader) loadAttachedChar(atcpn int, def string) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
+			p.guardPower = sys.chars[pn][0].guardPower
+			p.stunPower = sys.chars[pn][0].stunPower
 		}
 	}
 	p.memberNo = -atcpn

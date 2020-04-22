@@ -24,6 +24,9 @@ const (
 	SCF_airjump
 	SCF_over
 	SCF_ko_round_middle
+	SCF_dizzy
+	SCF_guardbrake
+	SCF_disabled
 )
 
 type CharSpecialFlag uint32
@@ -131,10 +134,12 @@ func (cr ClsnRect) draw(trans int32) {
 }
 
 type CharData struct {
-	life    int32
-	power   int32
-	attack  int32
-	defence int32
+	life       int32
+	power      int32
+	guardpower int32
+	stunpower  int32
+	attack     int32
+	defence    int32
 	fall    struct {
 		defence_mul float32
 	}
@@ -158,6 +163,8 @@ func (cd *CharData) init() {
 	*cd = CharData{}
 	cd.life = 1000
 	cd.power = 3000
+	cd.guardpower = 1000
+	cd.stunpower = 1000
 	cd.attack = 100
 	cd.defence = 100
 	cd.fall.defence_mul = 1.5
@@ -518,6 +525,8 @@ type HitDef struct {
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
+	guardpower                 int32
+	stunpower                  int32
 	score                      [2]float32
 }
 
@@ -545,6 +554,7 @@ func (hd *HitDef) clear() {
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1,
+		guardpower: IErr, stunpower: IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
@@ -588,6 +598,8 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
+	guardpower     int32
+	stunpower      int32
 	score          float32
 }
 
@@ -1498,6 +1510,10 @@ type Char struct {
 	lifeMax         int32
 	power           int32
 	powerMax        int32
+	guardPower      int32
+	guardPowerMax   int32
+	stunPower       int32
+	stunPowerMax    int32
 	juggle          int32
 	fallTime        int32
 	localcoord      int32
@@ -1623,7 +1639,14 @@ func (c *Char) clear1() {
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
 	c.name, c.key, c.size, c.teamside = p.name+"'s helper", p.key, p.size, p.teamside
-	c.life, c.lifeMax, c.power, c.powerMax = p.lifeMax, p.lifeMax, 0, p.powerMax
+	c.life, c.lifeMax, c.powerMax = p.lifeMax, p.lifeMax, p.powerMax
+	if sys.maxPowerMode {
+		c.power = c.powerMax
+	} else {
+		c.power = 0
+	}
+	c.guardPower, c.guardPowerMax = p.guardPowerMax, p.guardPowerMax
+	c.stunPower, c.stunPowerMax = p.stunPowerMax, p.stunPowerMax
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -1844,6 +1867,12 @@ func (c *Char) load(def string) error {
 				c.lifeMax = gi.data.life
 				is.ReadI32("power", &gi.data.power)
 				c.powerMax = gi.data.power
+				gi.data.guardpower = c.lifeMax
+				is.ReadI32("guardpower", &gi.data.guardpower)
+				c.guardPowerMax = gi.data.guardpower
+				gi.data.stunpower = c.lifeMax
+				is.ReadI32("stunpower", &gi.data.stunpower)
+				c.stunPowerMax = gi.data.stunpower
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
 				var i32 int32
@@ -2215,6 +2244,20 @@ func (c *Char) setCtrl(ctrl bool) {
 		c.unsetSCF(SCF_ctrl)
 	}
 }
+func (c *Char) setGuardBrake(set bool) {
+	if set {
+		c.setSCF(SCF_guardbrake)
+	} else {
+		c.unsetSCF(SCF_guardbrake)
+	}
+}
+func (c *Char) setStun(set bool) {
+	if set {
+		c.setSCF(SCF_dizzy)
+	} else {
+		c.unsetSCF(SCF_dizzy)
+	}
+}
 func (c *Char) scf(scf SystemCharFlag) bool {
 	return c.systemFlag&scf != 0
 }
@@ -2408,7 +2451,8 @@ func (c *Char) constp(coordinate, value float32) BytecodeValue {
 	return BytecodeFloat(320 / c.localscl / coordinate * value)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby)
+	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
+		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbrake)
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
@@ -2589,6 +2633,12 @@ func (c *Char) getPower() int32 {
 	}
 	return sys.chars[c.playerNo][0].power
 }
+func (c *Char) getGuardPower() int32 {
+	return sys.chars[c.playerNo][0].guardPower
+}
+func (c *Char) getStunPower() int32 {
+	return sys.chars[c.playerNo][0].stunPower
+}
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
@@ -2646,6 +2696,8 @@ func (c *Char) roundsExisted() int32 {
 }
 func (c *Char) roundState() int32 {
 	switch {
+	case sys.postMatch:
+		return -1
 	case sys.intro > sys.lifebar.ro.ctrl_time+1:
 		return 0
 	case sys.lifebar.ro.cur == 0:
@@ -3454,13 +3506,17 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifierrset(&hd.hitgetpower,
-		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgetpower,
-		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)*0.5))
 	ifierrset(&hd.hitgivepower,
-		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower,
-		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
+	ifierrset(&hd.guardpower,
+		int32(c.gi().constants["default.lifetoguardpowermul"]*float32(hd.hitdamage)))
+	ifierrset(&hd.stunpower,
+		int32(c.gi().constants["default.lifetostunpowermul"]*float32(hd.hitdamage)))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}
@@ -3736,6 +3792,20 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 		}
 	}
 }
+func (c *Char) targetGuardPowerAdd(tar []int32, power int32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.guardPowerAdd(power)
+		}
+	}
+}
+func (c *Char) targetStunPowerAdd(tar []int32, power int32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.stunPowerAdd(power)
+		}
+	}
+}
 func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	var tg []int32
 	if excludeid < 0 {
@@ -3841,7 +3911,11 @@ func (c *Char) lifeSet(life int32) {
 }
 func (c *Char) setPower(pow int32) {
 	if !sys.roundEnd() {
-		c.power = Max(0, Min(c.powerMax, pow))
+		if sys.maxPowerMode {
+			c.power = c.powerMax
+		} else {
+			c.power = Max(0, Min(c.powerMax, pow))
+		}
 	}
 }
 func (c *Char) powerAdd(add int32) {
@@ -3857,6 +3931,28 @@ func (c *Char) powerSet(pow int32) {
 	} else {
 		sys.chars[c.playerNo][0].setPower(pow)
 	}
+}
+func (c *Char) setGuardPower(pow int32) {
+	if !sys.roundEnd() && sys.lifebar.activeGb {
+		c.guardPower = Max(0, Min(c.guardPowerMax, pow))
+	}
+}
+func (c *Char) guardPowerAdd(add int32) {
+	sys.chars[c.playerNo][0].setGuardPower(c.getGuardPower() + add)
+}
+func (c *Char) guardPowerSet(pow int32) {
+	sys.chars[c.playerNo][0].setGuardPower(pow)
+}
+func (c *Char) setStunPower(pow int32) {
+	if !sys.roundEnd() && sys.lifebar.activeSb {
+		c.stunPower = Max(0, Min(c.stunPowerMax, pow))
+	}
+}
+func (c *Char) stunPowerAdd(add int32) {
+	sys.chars[c.playerNo][0].setStunPower(c.getStunPower() + add)
+}
+func (c *Char) stunPowerSet(pow int32) {
+	sys.chars[c.playerNo][0].setStunPower(pow)
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
@@ -4343,7 +4439,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) {
+	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return false
 	}
 	var clsn1, clsn2 []float32
@@ -4446,7 +4542,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	return true
 }
 func (c *Char) action() {
-	if c.minus != 2 || c.sf(CSF_destroy) {
+	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
 	p := false
@@ -4675,6 +4771,9 @@ func (c *Char) action() {
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
+	if c.scf(SCF_disabled) {
+		return
+	}
 	if sys.tickFrame() {
 		if c.sf(CSF_destroy) {
 			c.destroy()
@@ -4748,11 +4847,17 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallcount = 0
 				c.ghv.hitid = -1
 				if c.comboExtraFrameWindow <= 0 {
-					c.getcombo = 0
-					c.getcombodmg = 0
+					if !c.scf(SCF_dizzy) {
+						c.getcombo = 0
+						c.getcombodmg = 0
+					}
 				} else {
 					c.comboExtraFrameWindow--
 				}
+				//c.ghv.score = 0
+				//c.ghv.guardpower = 0
+				//c.ghv.stunpower = 0
+				//c.ghv.attr = 0
 			}
 			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 {
@@ -4932,7 +5037,7 @@ func (c *Char) tick() {
 	}
 }
 func (c *Char) cueDraw() {
-	if c.helperIndex < 0 {
+	if c.helperIndex < 0 || c.scf(SCF_disabled) {
 		return
 	}
 	if sys.clsnDraw && c.curFrame != nil {
@@ -5234,6 +5339,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
+				ghv.guardpower = hd.guardpower
+				ghv.stunpower = hd.stunpower
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -5486,6 +5593,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
+					getter.stunPowerAdd(hd.stunpower)
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
@@ -5526,6 +5634,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
+					getter.guardPowerAdd(hd.guardpower)
 				}
 			}
 		}

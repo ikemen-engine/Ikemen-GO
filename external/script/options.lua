@@ -201,7 +201,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			motif.option_info.menu_boxbg_col[3],
 			motif.option_info.menu_boxbg_alpha[1],
 			motif.option_info.menu_boxbg_alpha[2],
-			motif.defaultOptions
+			motif.defaultOptions,
+			false
 		)
 	end
 	--draw title
@@ -352,7 +353,8 @@ function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
 			motif.option_info.menu_boxcursor_col[3],
 			src,
 			dst,
-			motif.defaultOptions
+			motif.defaultOptions,
+			false
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -432,9 +434,11 @@ options.t_itemname = {
 			config.AIRandomColor = true
 			config.AudioDucking = false
 			config.AutoGuard = false
+			config.Borderless = false
 			config.ComboExtraFrameWindow = 1
 			--config.CommonAir = "data/common.air"
 			--config.CommonCmd = "data/common.cmd"
+			--config.CommonRules = "data/rules.zss"
 			--config.CommonScore = "data/score.zss"
 			--config.CommonTag = "data/tag.zss"
 			--config.ControllerStickSensitivity = 0.4
@@ -446,6 +450,8 @@ options.t_itemname = {
 			config.GameWidth = 640
 			config.GameHeight = 480
 			config.GameSpeed = 100
+			config.GaugeGuard = false
+			config.GaugeStun = false
 			--config.IP = {}
 			config.LifebarFontScale = 1
 			config.LifeMul = 100
@@ -458,9 +464,6 @@ options.t_itemname = {
 			config.MaxExplod = 512
 			config.MaxAfterImage = 128
 			config.MSAA = false
-			config.MulAttackLifeToPower = 0.7
-			config.MulGetHitLifeToPower = 0.6
-			config.MulSuperTargetDefence = 1.5
 			config.NumSimul = {2, 4}
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
@@ -486,6 +489,7 @@ options.t_itemname = {
 			config.VolumeBgm = 80
 			config.VolumeMaster = 80
 			config.VolumeSfx = 80
+			config.VRetrace = 1
 			--config.WindowMainIconLocation = {}
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
@@ -901,6 +905,34 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	--Guard Gauge
+	['guardgauge'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.GaugeGuard then
+				config.GaugeGuard = false
+			else
+				config.GaugeGuard = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.GaugeGuard)
+			modified = 1
+		end
+		return true
+	end,
+	--Stun Gauge
+	['stungauge'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.GaugeStun then
+				config.GaugeStun = false
+			else
+				config.GaugeStun = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.GaugeStun)
+			modified = 1
+		end
+		return true
+	end,
 	--Single VS Team Life
 	['singlevsteamlife'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F'}) and config.SingleVsTeamLife < 300 then
@@ -998,57 +1030,6 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.TurnsRecoveryBonus = config.TurnsRecoveryBonus - 0.5
 			t.items[item].vardisplay = config.TurnsRecoveryBonus .. '%'
-			modified = 1
-		end
-		return true
-	end,
-	--Attack.LifeToPowerMul
-	['attackpowermul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulAttackLifeToPower = options.f_precision(config.MulAttackLifeToPower + 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulAttackLifeToPower
-			setAttackLifeToPowerMul(config.MulAttackLifeToPower)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MulAttackLifeToPower > 0.1 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulAttackLifeToPower = options.f_precision(config.MulAttackLifeToPower - 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulAttackLifeToPower
-			setAttackLifeToPowerMul(config.MulAttackLifeToPower)
-			modified = 1
-		end
-		return true
-	end,
-	--GetHit.LifeToPowerMul
-	['gethitpowermul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulGetHitLifeToPower = options.f_precision(config.MulGetHitLifeToPower + 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulGetHitLifeToPower
-			setGetHitLifeToPowerMul(config.MulGetHitLifeToPower)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MulGetHitLifeToPower > 0.1 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulGetHitLifeToPower = options.f_precision(config.MulGetHitLifeToPower - 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulGetHitLifeToPower
-			setGetHitLifeToPowerMul(config.MulGetHitLifeToPower)
-			modified = 1
-		end
-		return true
-	end,
-	--Super.TargetDefenceMul
-	['superdefencemul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulSuperTargetDefence = options.f_precision(config.MulSuperTargetDefence + 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulSuperTargetDefence
-			setSuperTargetDefenceMul(config.MulSuperTargetDefence)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MulSuperTargetDefence > 0.1 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MulSuperTargetDefence = options.f_precision(config.MulSuperTargetDefence - 0.1, '%.01f')
-			t.items[item].vardisplay = config.MulSuperTargetDefence
-			setSuperTargetDefenceMul(config.MulSuperTargetDefence)
 			modified = 1
 		end
 		return true
@@ -1461,6 +1442,8 @@ function options.f_vardisplay(itemname)
 	if itemname == 'lifemul' then return config.LifeMul .. '%' end
 	if itemname == 'gamespeed' then return config.GameSpeed .. '%' end
 	if itemname == 'autoguard' then return options.f_boolDisplay(config.AutoGuard) end
+	if itemname == 'guardgauge' then return options.f_boolDisplay(config.GaugeGuard) end
+	if itemname == 'stungauge' then return options.f_boolDisplay(config.GaugeStun) end
 	if itemname == 'singlevsteamlife' then return config.SingleVsTeamLife .. '%' end
 	if itemname == 'teamlifeadjustment' then return options.f_boolDisplay(config.TeamLifeAdjustment) end
 	if itemname == 'teampowershare' then return options.f_boolDisplay(config.TeamPowerShare) end
@@ -1476,9 +1459,6 @@ function options.f_vardisplay(itemname)
 	if itemname == 'ratio3attack' then return options.f_displayRatio(config.RatioAttack[3]) end
 	if itemname == 'ratio4life' then return options.f_displayRatio(config.RatioLife[4]) end
 	if itemname == 'ratio4attack' then return options.f_displayRatio(config.RatioAttack[4]) end
-	if itemname == 'attackpowermul' then return config.MulAttackLifeToPower end
-	if itemname == 'gethitpowermul' then return config.MulGetHitLifeToPower end
-	if itemname == 'superdefencemul' then return config.MulSuperTargetDefence end
 	if itemname == 'minturns' then return config.NumTurns[1] end
 	if itemname == 'maxturns' then return config.NumTurns[2] end
 	if itemname == 'minsimul' then return config.NumSimul[1] end
@@ -1511,7 +1491,7 @@ local t_menuWindow = {
 	0,
 	math.max(0, motif.option_info.menu_pos[2] - motif.option_info.menu_window_margins_y[1]),
 	motif.info.localcoord[1],
-	math.min(motif.info.localcoord[2], motif.option_info.menu_pos[2] + (motif.option_info.menu_window_visibleitems - 1) * motif.option_info.menu_item_spacing[2] + motif.option_info.menu_window_margins_y[2])
+	motif.option_info.menu_pos[2] + (motif.option_info.menu_window_visibleitems - 1) * motif.option_info.menu_item_spacing[2] + motif.option_info.menu_window_margins_y[2]
 }
 
 local t_pos = {} --for storing current options.menu table position
@@ -1857,7 +1837,8 @@ function options.f_keyCfg(cfgType, controller, title)
 					motif.option_info.menu_boxbg_col[3],
 					motif.option_info.menu_boxbg_alpha[1],
 					motif.option_info.menu_boxbg_alpha[2],
-					motif.defaultOptions
+					motif.defaultOptions,
+					false
 				)
 			end
 		end
@@ -2066,7 +2047,8 @@ function options.f_keyCfg(cfgType, controller, title)
 						motif.option_info.menu_boxcursor_col[3],
 						src,
 						dst,
-						motif.defaultOptions
+						motif.defaultOptions,
+						false
 					)
 				end
 			end

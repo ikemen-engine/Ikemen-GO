@@ -144,22 +144,25 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "fillRect", func(l *lua.LState) int {
-		var ws, hs, xc float32 = 1, 1, 0
-		if l.GetTop() >= 10 && boolArg(l, 10) { //auto scaling == true
-			ws, hs = sys.widthScale, sys.heightScale
-			//x correction for non 4:3 aspect ratios
-			xc = float32(sys.scrrect[2]) / (float32(sys.scrrect[3]) / 240)
-			xc = (xc - 320) / (xc / 320) / 2
-		}
-		rect := [4]int32{
-			int32(float32(numArg(l, 1)) * ws + xc * ws + xc),
-			int32(float32(numArg(l, 2)) * hs),
-			int32(float32(numArg(l, 3)) * ws),
-			int32(float32(numArg(l, 4)) * hs),
+		x1 := float32(numArg(l, 1))
+		y1 := float32(numArg(l, 2))
+		x2 := float32(numArg(l, 3))
+		y2 := float32(numArg(l, 4))
+		var ws, hs float32 = 1, 1
+		if l.GetTop() >= 10 && boolArg(l, 10) { //auto scaling
+			if l.GetTop() >= 11 && boolArg(l, 11) { //use screenpack localcoord
+				ws = float32(sys.scrrect[2]) / MinF(float32(sys.luaLocalcoord[0]), float32(sys.gameWidth))
+				hs = float32(sys.scrrect[3]) / MinF(float32(sys.luaLocalcoord[1]), float32(sys.gameHeight))
+			} else {
+				ws = float32(sys.scrrect[2]) / float32(sys.gameWidth)
+				hs = float32(sys.scrrect[3]) / float32(sys.gameHeight)
+				x1 += float32(sys.gameWidth-320)/2
+				y1 += float32(sys.gameHeight-240)
+			}
 		}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)
-		FillRect(rect, col, a)
+		FillRect([4]int32{int32(x1*ws),int32(y1*hs),int32(x2*ws),int32(y2*hs)}, col, a)
 		return 0
 	})
 	luaRegister(l, "fadeScreen", func(l *lua.LState) int {
@@ -468,19 +471,7 @@ func scriptCommonInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setAudioDucking", func(l *lua.LState) int {
-		sys.AudioDucking = boolArg(l, 1)
-		return 0
-	})
-	luaRegister(l, "setAttackLifeToPowerMul", func(l *lua.LState) int {
-		sys.attack_LifeToPowerMul = float32(numArg(l, 1))
-		return 0
-	})
-	luaRegister(l, "setGetHitLifeToPowerMul", func(l *lua.LState) int {
-		sys.getHit_LifeToPowerMul = float32(numArg(l, 1))
-		return 0
-	})
-	luaRegister(l, "setSuperTargetDefenceMul", func(l *lua.LState) int {
-		sys.super_TargetDefenceMul = float32(numArg(l, 1))
+		sys.audioDucking = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setAllowDebugKeys", func(l *lua.LState) int {
@@ -494,6 +485,20 @@ func scriptCommonInit(l *lua.LState) {
 			}
 		}
 		sys.allowDebugKeys = d
+		return 0
+	})
+	luaRegister(l, "setGuardBar", func(l *lua.LState) int {
+		sys.lifebar.activeGb = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setStunBar", func(l *lua.LState) int {
+		sys.lifebar.activeSb = boolArg(l, 1)
+		return 0
+	})
+	
+	luaRegister(l, "setLuaLocalcoord", func(l *lua.LState) int {
+		sys.luaLocalcoord[0] = int32(numArg(l, 1))
+		sys.luaLocalcoord[1] = int32(numArg(l, 2))
 		return 0
 	})
 
@@ -1158,7 +1163,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
-		sys.gameSpeed = float32(numArg(l, 1))
+		if sys.gameSpeed != 100 { //not speedtest
+			sys.gameSpeed = float32(numArg(l, 1))
+		}
 		return 0
 	})
 	luaRegister(l, "setSingleVsTeamLife", func(l *lua.LState) int {
@@ -1219,6 +1226,10 @@ func systemScriptInit(l *lua.LState) {
 				switch string(k) {
 				case "power":
 					sys.ocd[pn-1].power = int32(lua.LVAsNumber(value))
+				case "guardPower":
+					sys.ocd[pn-1].guardPower = int32(lua.LVAsNumber(value))
+				case "stunPower":
+					sys.ocd[pn-1].stunPower = int32(lua.LVAsNumber(value))
 				case "life":
 					sys.ocd[pn-1].life = int32(lua.LVAsNumber(value))
 				case "lifeMax":
@@ -1285,9 +1296,9 @@ func systemScriptInit(l *lua.LState) {
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
 			c := sys.chars[pn-1]
 			if st == -1 {
-				//TODO: remove character or make it invisible
-				//c[0].setSF(CSF_invisible) //this doesn't seem to be working
-				//c[0].setPosY(1000) //this may affect camera
+				for _, ch := range c {
+					ch.setSCF(SCF_disabled)
+				}
 			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
 				sys.playerClear(pn-1)
 				c[0].changeState(st, -1, -1)
@@ -1337,6 +1348,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "lastMatchRender", func(l *lua.LState) int {
+		sys.postMatch = true
 		win := sys.lifebar.ro.win.displaytime
 		win2 := sys.lifebar.ro.win2.displaytime
 		drawn := sys.lifebar.ro.drawn.displaytime
@@ -1390,6 +1402,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.lifebar.ro.win2.displaytime = win2
 		sys.lifebar.ro.drawn.displaytime = drawn
 		sys.lifebar.active = lba
+		sys.postMatch = false
 		return 0
 	})
 	luaRegister(l, "game", func(l *lua.LState) int {
@@ -2042,6 +2055,14 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(s.Offset[1]))
 		return 4
 	})
+	luaRegister(l, "toggleStatusDraw", func(*lua.LState) int {
+		sys.statusDraw = !sys.statusDraw
+		return 0
+	})
+	luaRegister(l, "toggleMaxPowerMode", func(*lua.LState) int {
+		sys.maxPowerMode = !sys.maxPowerMode
+		return 0
+	})
 }
 
 // Trigger Script
@@ -2214,6 +2235,10 @@ func triggerScriptInit(l *lua.LState) {
 			ln = lua.LNumber(c.gi().data.life)
 		case "data.power":
 			ln = lua.LNumber(c.gi().data.power)
+		case "data.guardpower":
+			ln = lua.LNumber(c.gi().data.guardpower)
+		case "data.stunpower":
+			ln = lua.LNumber(c.gi().data.stunpower)
 		case "data.attack":
 			ln = lua.LNumber(c.gi().data.attack)
 		case "data.defence":
@@ -2753,6 +2778,22 @@ func triggerScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.powerMax))
 		return 1
 	})
+	luaRegister(l, "guardpower", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.getGuardPower()))
+		return 1
+	})
+	luaRegister(l, "guardpowermax", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.guardPowerMax))
+		return 1
+	})
+	luaRegister(l, "stunpower", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.getStunPower()))
+		return 1
+	})
+	luaRegister(l, "stunpowermax", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.stunPowerMax))
+		return 1
+	})
 	luaRegister(l, "playeridexist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.playerIDExist(
 			BytecodeInt(int32(numArg(l, 1)))).ToB()))
@@ -2981,6 +3022,18 @@ func debugScriptInit(l *lua.LState, file string) error {
 		}
 		return 0
 	})
+	luaRegister(l, "setGuardPower", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.setGuardPower(int32(numArg(l, 1)))
+		}
+		return 0
+	})
+	luaRegister(l, "setStunPower", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.setStunPower(int32(numArg(l, 1)))
+		}
+		return 0
+	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
 			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1)
@@ -3020,6 +3073,31 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "toggleStatusDraw", func(*lua.LState) int {
 		sys.statusDraw = !sys.statusDraw
+		return 0
+	})
+	luaRegister(l, "toggleMaxPowerMode", func(*lua.LState) int {
+		sys.maxPowerMode = !sys.maxPowerMode
+		if sys.maxPowerMode {
+			for _, c := range sys.chars {
+				if len(c) > 0 {
+					c[0].power = c[0].powerMax
+				}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "togglePlayer", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+			return 0
+		}
+		for _, ch := range sys.chars[pn-1] {
+			if ch.scf(SCF_disabled) {
+				ch.unsetSCF(SCF_disabled)
+			} else {
+				ch.setSCF(SCF_disabled)
+			}
+		}
 		return 0
 	})
 	luaRegister(l, "roundReset", func(*lua.LState) int {

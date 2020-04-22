@@ -1,5 +1,5 @@
 #===============================================================================
-#TagStateEnteringScreen
+#StateTagEnteringScreen
 #===============================================================================
 [Statedef 5600; type: S; movetype: I; physics: S;
  anim: Const(AnimRunFwdOrHopForward); sprpriority: 2; ctrl: 0;]
@@ -14,17 +14,17 @@ if BackEdgeBodyDist >= 0 {
 	}
 	if BackEdgeDist >= Map(_iksys_tagSwitchDist) {
 		VelSet{x: 0; y: 0}
-		ChangeState{value: Const(AnimStanding); ctrl: 1}
+		ChangeState{value: Const(StateStand); ctrl: 1}
 	}
 }
 
 VelSet{x: 10; y: 0}
 
 #===============================================================================
-#TagStateLeavingScreen
+#StateTagLeavingScreen
 #===============================================================================
 [Statedef 5610; type: S; movetype: I; physics: N;
- anim: Const(AnimRunFwdOrHopForward); sprpriority: -2; velset: 0,0; ctrl: 0; facep2: 1;]
+ anim: Const(AnimRunFwdOrHopForward); sprpriority: -2; velset: 0, 0; ctrl: 0; facep2: 1;]
 
 persistent(0) {
 	Turn{}
@@ -36,15 +36,15 @@ if !Standby {
 
 VelSet{x: 10; y: 0}
 
-if BackEdgeDist < -const240p(160) || FrontEdgeDist < -const240p(160) {
-	ChangeState{value: Const(TagStateWaitingOutside)}
+if BackEdgeDist < -Const240p(160) || FrontEdgeDist < -Const240p(160) {
+	ChangeState{value: Const(StateTagWaitingOutside)}
 }
 
 #===============================================================================
-#TagStateWaitingOutside
+#StateTagWaitingOutside
 #===============================================================================
 [Statedef 5611; type: A; movetype: I; physics: N;
- anim: Const(AnimStanding); velset: 0,0; ctrl: 0;]
+ anim: Const(AnimStanding); velset: 0, 0; ctrl: 0;]
 
 AssertSpecial{flag: invisible; flag2: noautoturn}
 
@@ -53,7 +53,7 @@ if Facing != PlayerID(Map(_iksys_tagCurrentID)),Facing {
 }
 
 #===============================================================================
-#TagStateJumpingIn
+#StateTagJumpingIn
 #===============================================================================
 [Statedef 5620; type: S; movetype: I; physics: N;
  anim: Const(AnimJumpForwards_upwards); sprpriority: 2; ctrl: 0;]
@@ -66,12 +66,12 @@ if AnimElem = 2, < 0 {
 	Gravity{}
 	if Vel Y >= 0 && Pos Y > 0 {
 		VelSet{x: 0; y: 0}
-		ChangeState{value: Const(TagStateLanding)}
+		ChangeState{value: Const(StateTagLanding)}
 	}
 }
 
 #===============================================================================
-#TagStateLanding
+#StateTagLanding
 #===============================================================================
 [Statedef 5621; type: S; movetype: I; physics: N;
  anim: Const(AnimJumpLanding); sprpriority: 2; ctrl: 0;]
@@ -81,7 +81,7 @@ if Time = 0 {
 }
 
 if AnimTime >= 0 {
-	TagIn{stateNo: Const(AnimStanding); ctrl: 1}
+	TagIn{stateno: Const(StateStand); ctrl: 1}
 }
 
 #===============================================================================
@@ -97,19 +97,19 @@ let ret = $currentID;
 
 [Function fGetTagPartnerID(currentID, add) ret]
 let currentID = call fTagPartnerRange($currentID + $add);
-if PlayerID($currentID),Life <= 0 {
+if PlayerID($currentID),Alive = 0 {
 	let partnerCnt = 1;
 	if $partnerCnt = Min(NumPartner, 3) {
 		let currentID = 0;
 	} else {
 		let currentID = call fTagPartnerRange($currentID + $add);
-		if PlayerID($currentID),Life <= 0 {
+		if PlayerID($currentID),Alive = 0 {
 			let partnerCnt = $partnerCnt + 1;
 			if $partnerCnt = Min(NumPartner, 3) {
 				let currentID = 0;
 			} else {
 				let currentID = call fTagPartnerRange($currentID + $add);
-				if PlayerID($currentID),Life <= 0 {
+				if PlayerID($currentID),Alive = 0 {
 					let currentID = 0;
 				}
 			}
@@ -119,7 +119,7 @@ if PlayerID($currentID),Life <= 0 {
 let ret = $currentID;
 
 #===============================================================================
-#States that are executed when in self's state
+#Global states (executed when in self's state)
 #===============================================================================
 [Statedef -3]
 
@@ -134,27 +134,27 @@ if RoundState = 0 && TeamMode = Tag {
 } else if Map(_iksys_tagActive) = 1 {
 	if RoundState = 4 {
 		MapSet{map: "_iksys_tagActive"; value: 0}
-	} else if Life {
+	} else if Alive {
 		if ID = Map(_iksys_tagCurrentID) {
-			if Ctrl = 1 && Pos Y >= 0 && MoveType != H && GetHitVar(isbound) = 0 && StateNo != Const(AnimGetUpFromLieDown) &&
-			StateNo != [Const(AnimFallRecoveryNearGround),Const(AnimFallRecoveryInMidAir)] {
+			if Ctrl = 1 && Pos Y >= 0 && MoveType != H && GetHitVar(isbound) = 0 && StateNo != Const(StateDownedGetHit_gettingUp) &&
+			StateNo != [Const(StateAirGetHit_fallRecoveryOnGroundStillFalling), Const(StateAirGetHit_fallRecoveryInAir)] {
 				let partnerID = 0;
 				if command = "d" {
 					let partnerID = call fGetTagPartnerID(ID, -1);
 				} else if command = "w" {
 					let partnerID = call fGetTagPartnerID(ID, 1);
 				}
-				if $partnerID > 0 && PlayerID($partnerID),StateNo = Const(TagStateWaitingOutside) {
+				if $partnerID > 0 && PlayerID($partnerID),StateNo = Const(StateTagWaitingOutside) {
 					MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist; redirectid: $partnerID}
 					TeamMapSet{map: "_iksys_tagCurrentID"; value: $partnerID}
-					ChangeState{value: Const(TagStateEnteringScreen); redirectid: $partnerID}
-					ChangeState{value: Const(TagStateLeavingScreen)}
+					ChangeState{value: Const(StateTagEnteringScreen); redirectid: $partnerID}
+					ChangeState{value: Const(StateTagLeavingScreen)}
 				}
 			}
-		} else if StateNo != [Const(TagStateLeavingScreen), Const(TagStateWaitingOutside)] && RoundState = 2 {
-			ChangeState{value: Const(TagStateLeavingScreen); ctrl: 0}
-		} else if StateNo = Const(TagStateWaitingOutside) && (Lose || Win || TimeLeft = 0) {
-			ChangeState{value: Const(TagStateJumpingIn)}
+		} else if StateNo != [Const(StateTagLeavingScreen), Const(StateTagWaitingOutside)] && RoundState = 2 {
+			ChangeState{value: Const(StateTagLeavingScreen); ctrl: 0}
+		} else if StateNo = Const(StateTagWaitingOutside) && (Lose || Win || TimeLeft = 0) {
+			ChangeState{value: Const(StateTagJumpingIn)}
 		}
 	} else if ID = Map(_iksys_tagCurrentID) {
 		MapSet{map: "_iksys_tagActive"; value: 0}
@@ -162,7 +162,7 @@ if RoundState = 0 && TeamMode = Tag {
 		if $partnerID > 0 {
 			MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist; redirectid: $partnerID}
 			TeamMapSet{map: "_iksys_tagCurrentID"; value: $partnerID}
-			ChangeState{value: Const(TagStateEnteringScreen); redirectid: $partnerID}
+			ChangeState{value: Const(StateTagEnteringScreen); redirectid: $partnerID}
 		}
 	}
 }
