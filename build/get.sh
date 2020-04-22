@@ -6,7 +6,7 @@ export CGO_ENABLED=1
 echo "Downloading dependencies..."
 echo ""
 
-if [ -f ./go.mod ]; then
+if [ ! -f ./go.mod ]; then
 	go mod init github.com/Windblade-GR01/Ikemen_GO/src
 	echo ""
 fi

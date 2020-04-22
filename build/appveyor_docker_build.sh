@@ -25,13 +25,12 @@
 
 cd ..
 
-if [ -f ./go.mod ]; then
-	echo "Missing dependencies, please run get.sh"
-	exit
-fi
-if [ -d ./bin ]; then
+if [ ! -d ./bin ]; then
 	mkdir bin
 fi
+
+echo "------------------------------------------------------------"
+docker run --rm -e OS=linux -v $(pwd):/code -i windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh'
 
 echo "------------------------------------------------------------"
 echo "Building linux binary..."

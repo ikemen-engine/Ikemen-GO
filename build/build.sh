@@ -16,11 +16,11 @@ case "$OSTYPE" in
 	;;
 esac
 
-if [ -f ./go.mod ]; then
+if [ ! -f ./go.mod ]; then
 	echo "Missing dependencies, please run get.sh"
 	exit
 fi
-if [ -d ./bin ]; then
+if [ ! -d ./bin ]; then
 	mkdir bin
 fi
 
