@@ -258,7 +258,7 @@ if (Time % 42) = 0 {
 
 if Time > 1 {
 	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
-	if AILevel = 0 && Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c" {
+	if AILevel = 0 && (Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c") {
 		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
 	} else if AILevel > 0 && Random < min(500, AILevel * 90) {
 		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
