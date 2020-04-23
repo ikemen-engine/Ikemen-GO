@@ -65,11 +65,14 @@ end
 function main.f_btnPalNo(cmd)
 	local s = 0
 	if commandGetState(cmd, '/s') then s = 6 end
-	for i, k in pairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
-		if commandGetState(cmd, k) then
-			return i + s
-		end
-	end
+	--if commandGetState(cmd, '/d') then s = 12 end
+	--if commandGetState(cmd, '/w') then s = 18 end
+	if commandGetState(cmd, 'a') then return 1 + s end
+	if commandGetState(cmd, 'b') then return 2 + s end
+	if commandGetState(cmd, 'c') then return 3 + s end
+	if commandGetState(cmd, 'x') then return 4 + s end
+	if commandGetState(cmd, 'y') then return 5 + s end
+	if commandGetState(cmd, 'z') then return 6 + s end
 	return 0
 end
 
@@ -208,66 +211,6 @@ function main.f_strsplit(delimiter, text)
 	return list
 end
 
---command line global flags
-main.flags = getCommandLineFlags()
-if main.flags['-ailevel'] ~= nil then
-	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
-end
-if main.flags['-speed'] ~= nil then
-	config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
-end
-if main.flags['-speedtest'] ~= nil then
-	setGameSpeed(100)
-end
-if main.flags['-nomusic'] ~= nil then
-	setBgmVolume(0)
-end
-if main.flags['-nosound'] ~= nil then
-	setMasterVolume(0)
-end
-if main.flags['-togglelifebars'] ~= nil then
-	toggleStatusDraw()
-end
-if main.flags['-maxpowermode'] ~= nil then
-	toggleMaxPowerMode()
-end
-
---motif
-main.motifDef = config.Motif
-if main.flags['-r'] ~= nil or main.flags['-rubric'] ~= nil then
-	local case = main.flags['-r']:lower() or main.flags['-rubric']:lower()
-	if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
-		main.motifDef = main.flags['-r'] or main.flags['-rubric']
-	elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
-		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric'])
-	elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
-		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric']) .. '/system.def'
-	end
-end
-
---lifebar
-local file = io.open(main.motifDef, 'r')
-main.motifData = file:read("*all")
-file:close()
-local fileDir = main.motifDef:match('^(.-)[^/\\]+$')
-if main.flags['-lifebar'] ~= nil then
-	main.lifebarDef = main.flags['-lifebar']
-else
-	main.lifebarDef = main.motifData:match('fight%s*=%s*(.-%.def)%s*')
-end
-if main.f_fileExists(main.lifebarDef) then
-	main.lifebarDef = main.lifebarDef
-elseif main.f_fileExists(fileDir .. main.lifebarDef) then
-	main.lifebarDef = fileDir .. main.lifebarDef
-elseif main.f_fileExists('data/' .. main.lifebarDef) then
-	main.lifebarDef = 'data/' .. main.lifebarDef
-else
-	main.lifebarDef = 'data/fight.def'
-end
-loadLifebar(main.lifebarDef)
-refresh()
-
---scaling
 require('external.script.screenpack')
 main.IntLocalcoordValues()
 main.CalculateLocalcoordValues()
@@ -284,6 +227,8 @@ end
 
 main.font = {}
 text = {}
+color = {}
+rect = {}
 --create text
 function text:create(t)
 	--default values
@@ -406,22 +351,109 @@ function text:draw()
 	textImgDraw(self.ti)
 end
 
---refreshing screen after delayed animation progression to next frame
-main.t_animUpdate = {}
-function main.f_refresh()
-	for k, v in pairs(main.t_animUpdate) do
-		for i = 1, v do
-			animUpdate(k)
-		end
+--create color
+function color:new(r,g,b,src,dst)
+	local n = {r=r or 255,g=g or 255, b=b or 255, src=src or 255, dst=dst or 0}
+	setmetatable(n,self)
+	self.__index = self
+	return n
+end
+--create color from hex value
+function color:fromHex(h)
+	h = tostring(h)
+	if h:sub(0,1) =="#" then h = h:sub(2,-1) end 
+	if h:sub(0,2) =="0x" then h = h:sub(3,-1) end 
+	local r = tonumber(h:sub(1,2),16)
+	local g = tonumber(h:sub(3,4),16)
+	local b = tonumber(h:sub(5,6),16)
+	local src = tonumber(h:sub(7,8),16) or 255
+	local dst = tonumber(h:sub(9,10),16) or 0
+	return color:new(r,g,b,src,dst)
+end
+--create string of color converted to hex
+function color:toHex(lua)
+	local r = string.format("%x", self.r)
+	local g = string.format("%x", self.g)
+	local b = string.format("%x", self.b)
+	local src = string.format("%x", self.src)
+	local dst = string.format("%x", self.dst)
+
+	local hex = tostring((r:len()<2 and "0")..r..(g:len()<2 and "0")..g..(b:len()<2 and "0")..
+	b..(src:len()<2 and "0")..src..(dst:len()<2 and "0")..dst)
+
+	return hex
+end
+--returns r,g,b,src,dst
+function color:unpack()
+	return tonumber(self.r),tonumber(self.g),tonumber(self.b),tonumber(self.src),tonumber(self.dst)
+end
+--create a rect
+function rect:create(...)
+	local args = ...
+	
+	args.x1 = args.x or args.x1
+	args.y1 = args.y or args.y1
+	if args.dim or args.dimensions then
+		--create dimensions if arguments have a dim or dimensions argument instead of x1,y1,x2,y2
+		local dim = args.dim or args.dimensions
+		args.x1 = dim.x1 or dim[1] or args.x1
+		args.y1 = dim.y1 or dim[2] or args.y1
+		args.x2 = dim.x2 or dim[3] or args.x2
+		args.y2 = dim.y2 or dim[4] or args.y2
+
+	elseif args.scale or args.size then
+		--create x2,y2 if arguments have a scale or size argument
+		local sc = args.scale or args.size
+		args.x2 = sc.x or sc[1]
+		args.y2 = sc.y or sc[2]
+
 	end
-	main.t_animUpdate = {}
-	refresh()
+	args.color = args.color or color:new(args.r,args.g,args.b,args.src,args.dst)
+	args.r,args.g,args.b,args.src,args.dst = args.color:unpack()
+	setmetatable(args, self)
+	self.__index = self
+	return args
+end
+--modify the rect
+function rect:update(...)
+	local args = ...
+	local env = setfenv(1, args)
+	self.x1 = x or x1 or self.x1
+	self.y1 = y or y1 or self.y1
+	for i, k in pairs(args) do
+		self[i] = k
+	end
+	if dim or dimensions then
+		--create dimensions if arguments have a dim or dimensions argument instead of x1,y1,x2,y2
+		local dim = args.dim or args.dimensions
+		self.x1 = dim.x1 or dim[1] or x1 or self.x1
+		self.y1 = dim.y1 or dim[2] or y1 or self.y1
+		self.x2 = dim.x2 or dim[3] or x2 or self.x2
+		self.y2 = dim.y2 or dim[4] or y2 or self.y2
+
+	elseif scale or size then
+		--create x2,y2 if arguments have a scale or size argument
+		local sc = args.scale or args.size
+		self.x2 = sc.x or sc[1] or self.x2
+		self.y2 = sc.y or sc[2] or self.y2
+
+	end
+	if r or g or b or src or dst then
+		self.color = color:new(r or self.r,g or self.g,b or self.b,src or self.src,dst or self.dst)
+	end
+
+	return self
+end
+--draw the rect using fillRect
+function rect:draw()
+	local r,g,b,s,d = self.color:unpack()
+	fillRect(self.x1,self.y1,self.x2,self.y2,r,g,b,s,d,self.defsc or false,self.fixcoord or false)
 end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y)
-	main.t_animUpdate[a] = 1
 	animSetPos(a, x, y)
+	animUpdate(a)
 	animDraw(a)
 end
 
@@ -799,7 +831,8 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		--draw layerno = 1 backgrounds
 		bgDraw(background.bg, true)
 		--draw menu box
-		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false, false)
+		local r = rect:create{x=coords[1], y=coords[2], size={coords[3] - coords[1] + 1, coords[4] - coords[2] + 1}, r=col[1], g=col[2], b=col[3], src=alpha[1], dst=alpha[2], false}
+		r:draw()
 		--draw title
 		title:draw()
 		--draw text
@@ -898,7 +931,6 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			motif.infobox.boxbg_col[3],
 			motif.infobox.boxbg_alpha[1],
 			motif.infobox.boxbg_alpha[2],
-			false,
 			false
 		)
 		--draw text
@@ -932,7 +964,35 @@ end
 --;===========================================================
 --; COMMAND LINE QUICK VS
 --;===========================================================
+main.flags = getCommandLineFlags()
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
+	--load lifebar
+	local def = config.Motif
+	if main.flags['-r'] ~= nil then
+		local case = main.flags['-r']:lower()
+		if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
+			def = main.flags['-r']
+		elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
+			def = 'data/' .. main.flags['-r']
+		elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
+			def = 'data/' .. main.flags['-r'] .. '/system.def'
+		end
+	end
+	local fileDir = def:match('^(.-)[^/\\]+$')
+	local file = io.open(def,"r")
+	local s = file:read("*all")
+	file:close()
+	local lifebar = s:match('fight%s*=%s*(.-%.def)%s*')
+	if main.f_fileExists(lifebar) then
+		loadLifebar(lifebar)
+	elseif main.f_fileExists(fileDir .. lifebar) then
+		loadLifebar(fileDir .. lifebar)
+	elseif main.f_fileExists('data/' .. lifebar) then
+		loadLifebar('data/' .. lifebar)
+	else
+		loadLifebar('data/fight.def')
+	end
+	refresh()
 	--set settings
 	setAutoguard(1, config.AutoGuard)
 	setAutoguard(2, config.AutoGuard)
@@ -940,8 +1000,6 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setGuardBar(config.GaugeGuard)
-	setStunBar(config.GaugeStun)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -974,12 +1032,6 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
 			if main.flags['-p' .. num .. '.power'] ~= nil then
 				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
-			end
-			if main.flags['-p' .. num .. '.guardPoints'] ~= nil then
-				t[#t].override['guardPoints'] = tonumber(main.flags['-p' .. num .. '.guardPoints'])
-			end
-			if main.flags['-p' .. num .. '.dizzyPoints'] ~= nil then
-				t[#t].override['dizzyPoints'] = tonumber(main.flags['-p' .. num .. '.dizzyPoints'])
 			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
@@ -1621,11 +1673,6 @@ options = require('external.script.options')
 start = require('external.script.start')
 storyboard = require('external.script.storyboard')
 
-if main.flags['-storyboard'] ~= nil then
-	storyboard.f_storyboard(main.flags['-storyboard'])
-	os.exit()
-end
-
 --;===========================================================
 --; MENUS
 --;===========================================================
@@ -2056,7 +2103,7 @@ main.t_itemname = {
 			exitReplay()
 		end
 	end,
-	--RANDOMTEST
+	--DEMO
 	['randomtest'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -2386,7 +2433,7 @@ local t_menuWindow = {
 	0,
 	math.max(0, motif.title_info.menu_pos[2] - motif.title_info.menu_window_margins_y[1]),
 	motif.info.localcoord[1],
-	motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2]
+	math.min(motif.info.localcoord[2], motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2])
 }
 local t_pos = {} --for storing current main.menu table position
 local t_skipGroup = {}
@@ -2478,8 +2525,6 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setGuardBar(config.GaugeGuard)
-	setStunBar(config.GaugeStun)
 	setDemoTime(motif.demo_mode.fight_endtime)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
@@ -2545,15 +2590,7 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 		setAllowDebugKeys(false)
 	end
 	setGameMode('demo')
-	for i = 1, 2 do
-		setCom(i, 8)
-		setTeamMode(i, 0, 1)
-		local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
-		selectChar(i, ch, getCharRandomPalette(ch))
-	end
-	start.f_setStage()
-	loadStart()
-	game()
+	randomtest.run()
 	setAllowBGM(true)
 	setAllowDebugKeys(config.DebugKeys)
 	refresh()
@@ -2686,8 +2723,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.menu_boxcursor_col[3],
 			src,
 			dst,
-			motif.defaultLocalcoord,
-			true
+			motif.defaultLocalcoord --for some reason can't be false on winmugen screenpack, no idea why
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -2704,8 +2740,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.footer_boxbg_col[3],
 			motif.title_info.footer_boxbg_alpha[1],
 			motif.title_info.footer_boxbg_alpha[2],
-			motif.defaultLocalcoord,
-			true
+			motif.defaultLocalcoord
 		)
 	end
 	txt_titleFooter1:draw()
@@ -2752,7 +2787,6 @@ function main.f_menuFade(screen, fadeType, cursorPosY, moveTxt, item, t)
 end
 
 function main.f_bgReset(data)
-	main.t_animUpdate = {}
 	alpha1cur = 0
 	alpha2cur = 0
 	alpha1add = true
@@ -2816,7 +2850,6 @@ function main.f_connect(server, t)
 			motif.title_info.connecting_boxbg_col[3],
 			motif.title_info.connecting_boxbg_alpha[1],
 			motif.title_info.connecting_boxbg_alpha[2],
-			false,
 			false
 		)
 		--draw text
@@ -2838,18 +2871,7 @@ end
 --; INITIALIZE LOOPS
 --;===========================================================
 --SetGCPercent(100)
-if main.flags['-stresstest'] ~= nil then
-	main.f_default()
-	local frameskip = tonumber(main.flags['-stresstest'])
-	if frameskip >= 1 then
-		setGameSpeed(frameskip + 1)
-	end
-	setGameMode('randomtest')
-	randomtest.run()
-	os.exit()
-end
 main.menu.loop()
 
 -- Debug Info
---main.motifData = nil
 --if main.debugLog then main.f_printTable(main, "debug/t_main.txt") end
