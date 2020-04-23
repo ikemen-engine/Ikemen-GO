@@ -61,7 +61,7 @@ PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
 #===============================================================================
 #StateDizzyBirdsHelper [helper]
 #===============================================================================
-[Statedef 5320; type: a; physics: n; anim: Const(AnimBlank); velset: 0, 0; ctrl: 0;]
+[Statedef 5310; type: a; physics: n; anim: Const(AnimBlank); velset: 0, 0; ctrl: 0;]
 
 if Parent,StateNo = Const(StateDizzy) {
 	var(0) := -1; #in dizzy state
@@ -239,7 +239,7 @@ NotHitBy{value: SCA; time: 1}
 #===============================================================================
 #StateDizzy
 #===============================================================================
-[Statedef 5310; type: s; movetype: i; physics: s; anim: Const(AnimDizzy); movehitpersist: 1; velset: 0, 0; ctrl: 0;]
+[Statedef 5300; type: s; movetype: i; physics: s; anim: Const(AnimDizzy); movehitpersist: 1; velset: 0, 0; ctrl: 0;]
 
 if !Dizzy {
 	call fDizzyBirdHelper();
@@ -258,12 +258,9 @@ if (Time % 42) = 0 {
 
 if Time > 1 {
 	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
-	if Command = "holdfwd" || Command = "holdback" || Command = "holdup" || Command = "holddown" {
-		if Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c" {
-			MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
-		}
-	}
-	if AILevel > 0 && Random < AILevel * 90 && Random < 500 {
+	if AILevel = 0 && Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c" {
+		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
+	} else if AILevel > 0 && Random < min(500, AILevel * 90) {
 		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
 	}
 }
@@ -276,7 +273,7 @@ if Time > 8 {
 }
 
 #===============================================================================
-#StateGuardBreakStart
+#StateGuardBreakHit
 #===============================================================================
 [Statedef 5400; type: U; physics: U; velset: 0, 0; ctrl: 0;]
 
@@ -334,13 +331,13 @@ persistent(0) if Time = 0 {
 }
 
 if (Time > 13 && AnimTime = 0) || Time > 36 {
-	SelfState{value: Const(StateGuardBreak)}
+	SelfState{value: Const(StateGuardBreakRecover)}
 }
 
 #===============================================================================
-#StateGuardBreak
+#StateGuardBreakRecover
 #===============================================================================
-[Statedef 5410; type: U; physics: U; velset: 0, 0; ctrl: 0;]
+[Statedef 5401; type: U; physics: U; velset: 0, 0; ctrl: 0;]
 
 if StateType = A {
 	VelAdd{y: Const(movement.yaccel)}
@@ -394,12 +391,12 @@ if RoundState = 0 {
 	# Guard Break
 	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
 		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
-		MapSet{map: "_iksys_dizzyPointsCounter"; value: 60}
+		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 		if (GameTime % 5) = 0 && float(GuardPoints) / GuardPointsMax <= 0.2 {
 			PalFX{time: 2; add: 200, 0, 0}
 		}
 		ignorehitpause if GuardPoints = 0 && !GuardBreak {
-			ChangeState{value: Const(StateGuardBreakStart)}
+			ChangeState{value: Const(StateGuardBreakHit)}
 		}
 	} else if MoveType != H {
 		if Map(_iksys_guardPointsCounter) > 0 {
@@ -409,7 +406,7 @@ if RoundState = 0 {
 			MapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
 		}
 	}
-	ignorehitpause if GuardBreak && StateNo != [Const(StateGuardBreakStart), Const(StateGuardBreak)] {
+	ignorehitpause if GuardBreak && StateNo != [Const(StateGuardBreakHit), Const(StateGuardBreakRecover)] {
 		GuardPointsSet{value: GuardPointsMax}
 		GuardBreakSet{value: 0}
 	}
@@ -449,7 +446,7 @@ if RoundState = 0 {
 		}
 		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
 		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
-		MapSet{map: "_iksys_dizzyPointsCounter"; value: 60}
+		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
 	if !Dizzy && DizzyPoints < DizzyPointsMax && Map(_iksys_dizzyPointsCounter) = 0 {
 		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #stun power recovery
