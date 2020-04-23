@@ -24,16 +24,8 @@ local p2NumRatio = 1
 local p1TeamMenu = 1
 local p2TeamMenu = 1
 --let cursor wrap around
-local wrappingX = false
-local wrappingY = false
-if motif.select_info.wrapping == 1 then
-	if motif.select_info.wrapping_x == 1 then
-		wrappingX = true
-	end
-	if motif.select_info.wrapping_y == 1 then
-		wrappingY = true
-	end
-end
+local wrappingX = (motif.select_info.wrapping == 1 and motif.select_info.wrapping_x == 1)
+local wrappingY = (motif.select_info.wrapping == 1 and motif.select_info.wrapping_y == 1)
 --initialize other local variables
 local t_victoryBGM = {false, false}
 local t_roster = {}
@@ -85,11 +77,11 @@ local stageNo = 0
 local stageList = 0
 local timerSelect = 0
 local t_savedData = {
-	['win'] = {0, 0},
-	['lose'] = {0, 0},
-	['time'] = {['total'] = 0, ['matches'] = {}},
-	['score'] = {['total'] = {0, 0}, ['matches'] = {}},
-	['consecutive'] = {0, 0},
+	win = {0, 0},
+	lose = {0, 0},
+	time = {total = 0, matches = {}},
+	score = {total = {0, 0}, matches = {}},
+	consecutive = {0, 0},
 }
 local fadeType = 'fadein'
 local challenger = false
@@ -883,7 +875,7 @@ function start.f_drawName(t, data, font, offsetX, offsetY, scaleX, scaleY, heigh
 	for i = 1, #t do
 		local x = offsetX
 		local f = font
-		if active_font ~= nil and active_row ~= nil then
+		if active_font and active_row then
 			if i == active_row then
 				f = active_font
 			else
@@ -1251,11 +1243,7 @@ function start.f_clearTimeText(text, totalSec)
 	if string.len(x) < 2 then
 		x = '0' .. x
 	end
-	text = text:gsub('%%h', h)
-	text = text:gsub('%%m', m)
-	text = text:gsub('%%s', s)
-	text = text:gsub('%%x', x)
-	return text
+	return text:gsub('%%h', h):gsub('%%m', m):gsub('%%s', s):gsub('%%x', x)
 end
 
 --return formatted record text table

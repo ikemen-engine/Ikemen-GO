@@ -65,14 +65,11 @@ end
 function main.f_btnPalNo(cmd)
 	local s = 0
 	if commandGetState(cmd, '/s') then s = 6 end
-	--if commandGetState(cmd, '/d') then s = 12 end
-	--if commandGetState(cmd, '/w') then s = 18 end
-	if commandGetState(cmd, 'a') then return 1 + s end
-	if commandGetState(cmd, 'b') then return 2 + s end
-	if commandGetState(cmd, 'c') then return 3 + s end
-	if commandGetState(cmd, 'x') then return 4 + s end
-	if commandGetState(cmd, 'y') then return 5 + s end
-	if commandGetState(cmd, 'z') then return 6 + s end
+	for i, k in pairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
+		if commandGetState(cmd, k) then
+			return i + s
+		end
+	end
 	return 0
 end
 
