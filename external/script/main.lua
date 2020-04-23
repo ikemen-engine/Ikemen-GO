@@ -358,6 +358,31 @@ function color:new(r,g,b,src,dst)
 	self.__index = self
 	return n
 end
+function color.__add(a,b) --adds rgb (color+color)
+	local r = math.max(0,math.min(a.r+b.r,255))
+	local g = math.max(0,math.min(a.g+b.g,255))
+	local b = math.max(0,math.min(a.b+b.b,255))
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__sub(a,b) --substracts rgb (color-color)
+	local r = math.max(0,math.min(a.r-b.r,255))
+	local g = math.max(0,math.min(a.g-b.g,255))
+	local b = math.max(0,math.min(a.b-b.b,255))
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__mul(a,b) --multiply blend (color*color)
+	local r = (a.r/255)*(b.r/255)*255
+	local g = (a.g/255)*(b.g/255)*255
+	local b = (a.b/255)*(b.b/255)*255
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__eq(a,b) --compares r,g,b,src, and dst (color==color)
+	if a.r==b.r and a.g==b.g and a.b==b.b and a.src == b.src and a.dst == b.dst then
+		return true
+	else
+		return false
+	end
+end
 --create color from hex value
 function color:fromHex(h)
 	h = tostring(h)
