@@ -39,8 +39,6 @@ else
     BINARY_NAME="Ikemen_GO";  
 fi;
 
-mkdir bin
-
 if [ "$IS_WINDOWS" = "1" ]; then
 	go build -ldflags "-H windowsgui" -o ./bin/$BINARY_NAME ./src
 else

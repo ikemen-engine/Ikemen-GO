@@ -16,7 +16,14 @@ case "$OSTYPE" in
 	;;
 esac
 
-mkdir bin
+if [ ! -f ./go.mod ]; then
+	echo "Missing dependencies, please run get.sh"
+	exit
+fi
+if [ ! -d ./bin ]; then
+	mkdir bin
+fi
+
 go build -o ./bin/$BINARY_NAME ./src
 chmod +x ./bin/$BINARY_NAME
 
