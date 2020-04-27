@@ -242,8 +242,8 @@ NotHitBy{value: SCA; time: 1}
 [Statedef 5300; type: s; movetype: i; physics: s; anim: Const(AnimDizzy); movehitpersist: 1; velset: 0, 0; ctrl: 0;]
 
 if !Dizzy {
-	call fDizzyBirdHelper();
-	DizzySet{value: 1}
+	MapSet{map: "_iksys_DizzyState"; value: 0}
+	SelfState{value: Const(StateStand); ctrl: 1}
 }
 
 if Time = 0 {
@@ -270,7 +270,7 @@ if Time > 1 {
 if Time > 8 {
 	if Map(_iksys_dizzyRecoveryTime) <= 0 || RoundState > 2 {
 		MapSet{map: "_iksys_DizzyState"; value: 0}
-		SelfState{value: 0; ctrl: 1}
+		SelfState{value: Const(StateStand); ctrl: 1}
 	}
 }
 
@@ -413,7 +413,7 @@ if RoundState = 0 {
 		GuardBreakSet{value: 0}
 	}
 	if !GuardBreak && GuardPoints < GuardPointsMax && Map(_iksys_guardPointsCounter) = 0 {
-		GuardPointsAdd{value: round(float(GuardPointsMax) / 25, 0)} #guard power recovery
+		GuardPointsAdd{value: round(float(GuardPointsMax) / 25, 0)} #guard points recovery
 		MapSet{map: "_iksys_guardPointsCounter"; value: 30}
 	}
 	# Dizzy
@@ -431,7 +431,7 @@ if RoundState = 0 {
 			SelfState{value: Const(StateDizzyLyingDown)}
 		}
 	}
-	ignorehitpause if Dizzy && StateNo != [Const(StateDizzyFallDown_standCrouch), Const(StateDizzy)] && (MoveType != H || Map(_iksys_DizzyState) > 0) {
+	ignorehitpause if Dizzy && StateNo != [Const(StateDizzy), Const(StateDizzyLyingDown)] && (MoveType != H || Map(_iksys_DizzyState) > 0) {
 		DizzyPointsSet{value: DizzyPointsMax}
 		DizzySet{value: 0}
 	}
@@ -443,7 +443,7 @@ if RoundState = 0 {
 			if Map(_iksys_DizzyState) = 1 {
 				MapSet{map: "_iksys_DizzyState"; value: 2}
 			} else if GetHitVar(dizzypoints) = 0 {
-				DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -2} #stun power drain
+				DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -1.8} #dizzy points drain
 			}
 		}
 		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
@@ -451,7 +451,7 @@ if RoundState = 0 {
 		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
 	if !Dizzy && DizzyPoints < DizzyPointsMax && Map(_iksys_dizzyPointsCounter) = 0 {
-		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #stun power recovery
+		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #dizzy points recovery
 		MapSet{map: "_iksys_guardPointsCounter"; value: 6}
 	}
 }

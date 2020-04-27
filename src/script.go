@@ -3034,6 +3034,12 @@ func debugScriptInit(l *lua.LState, file string) error {
 		}
 		return 0
 	})
+	luaRegister(l, "removeDizzy", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.unsetSCF(SCF_dizzy)
+		}
+		return 0
+	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
 			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1)

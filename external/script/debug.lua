@@ -95,6 +95,7 @@ function full(p)
 		setPower(powermax())
 		setGuardPoints(guardpointsmax())
 		setDizzyPoints(dizzypointsmax())
+		removeDizzy()
 		playerid(oldid)
 	end
 end
