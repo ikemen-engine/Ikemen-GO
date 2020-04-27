@@ -615,8 +615,8 @@ local motif =
 		record_font_height = -1, --Ikemen feature
 		record_text_scorechallenge = '', --Ikemen feature
 		record_text_timechallenge = '', --Ikemen feature
-		p1_select_snd = {9000, 0}, --Ikemen feature
-		p2_select_snd = {9000, 0}, --Ikemen feature
+		p1_select_snd = {-1, 0}, --Ikemen feature
+		p2_select_snd = {-1, 0}, --Ikemen feature
 	},
 	selectbgdef =
 	{
@@ -1583,7 +1583,7 @@ for line in file:lines() do
 							break
 						elseif i == 1 then
 							pos[param] = {}
-							if param:match('_font$') then
+							if param:match('_font$') and tonumber(c) ~= -1 then
 								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
 									if pos[param .. '_height'] == -1 and t.files.font_height[tonumber(c)] ~= nil then
 										pos[param .. '_height'] = t.files.font_height[tonumber(c)]

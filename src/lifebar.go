@@ -2423,6 +2423,9 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	return l, nil
 }
 func (l *Lifebar) step() {
+	if sys.paused {
+		return
+	}
 	for ti, tm := range sys.tmode {
 		if tm == TM_Tag && l.ro.timerActive {
 			for i, v := range l.order[ti] {

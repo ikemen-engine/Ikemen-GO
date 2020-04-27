@@ -289,7 +289,7 @@ function text:create(t)
 	--default values
 	if t.window == nil then t.window = {} end
 	local o = {
-		font = t.font or '',
+		font = t.font or -1,
 		bank = t.bank or 0,
 		align = t.align or 0,
 		text = t.text or '',
@@ -315,7 +315,7 @@ function text:create(t)
 	setmetatable(o, self)
 	self.__index = self
 	--font
-	if o.font ~= '' then
+	if o.font ~= -1 then
 		if main.font[o.font] == nil then
 			main.font[o.font] = {}
 		end

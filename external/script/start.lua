@@ -1269,6 +1269,7 @@ end
 
 --cursor sound data, play cursor sound
 function start.f_playWave(ref, name, g, n, loops)
+	if g < 0 or n < 0 then return end
 	if name == 'stage' then
 		local a = main.t_selStages[ref].attachedChar
 		if a == nil or a.sound == nil then
