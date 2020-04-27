@@ -450,6 +450,7 @@ const (
 	OC_ex_guardbreak
 	OC_ex_max
 	OC_ex_min
+	OC_ex_rand
 	OC_ex_round
 	OC_ex_float
 	OC_ex_ailevelf // float version of AILevel
@@ -827,6 +828,9 @@ func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
 func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
 	shift := math.Pow(10, v2.v)
 	v1.SetF(float32(math.Floor((v1.v*shift)+0.5) / shift))
+}
+func (_ BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetI(Rand(int32(v1.v), int32(v2.v)))
 }
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	oc := c
@@ -1758,6 +1762,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_rand:
+		v2 := sys.bcStack.Pop()
+		be.random(sys.bcStack.Top(), v2)
 	case OC_ex_round:
 		v2 := sys.bcStack.Pop()
 		be.round(sys.bcStack.Top(), v2)

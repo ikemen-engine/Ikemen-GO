@@ -43,7 +43,7 @@ if !NumHelper(Const(StateDizzyBirdsHelper)) {
 		id: Const(StateDizzyBirdsHelper);
 		stateno: Const(StateDizzyBirdsHelper);
 		ownpal: 1;
-		size.height: ifelse(Life < 200, 3, (Random % 3))
+		size.height: ifelse(Life < 200, 3, rand(0, 2))
 	}
 }
 
@@ -90,7 +90,7 @@ if Time = 0 {
 
 persistent(0) if Time = 0 {
 	var(2) := Parent,Const(size.ground.back) + Parent,Const(size.ground.front); #bird type
-	var(10) := (Random % 6); #width
+	var(10) := rand(0, 5); #width
 	fvar(11) := fvar(12); #pos y
 }
 
@@ -300,14 +300,14 @@ if Time = 0 {
 
 if Time < 13 {
 	Explod{
-		anim: F Const(FxGuardCrashSpark) + (Random % 3);
+		anim: F Const(FxGuardCrashSpark) + rand(0, 2);
 		postype: p1;
 		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
 		sprpriority: 6;
 		ownpal: 1;
 		random: floor(Const(size.height) / 8 * Const(size.xscale)), floor(Const(size.height) * Const(size.yscale));
-		scale: (Random % 9) * 0.03 + 0.25, (Random % 9) * 0.03 + 0.25;
-		vel: -((Random % 18) + 5) * 0.36, ((Random % 19) - 8) * 0.36;
+		scale: rand(0, 8) * 0.03 + 0.25, rand(0, 8) * 0.03 + 0.25;
+		vel: -(rand(0, 17) + 5) * 0.36, (rand(0, 18) - 8) * 0.36;
 		accel: 0.038, 0;
 		facing: ifelse(Random < 500, 1, -1);
 		vfacing: ifelse(Random < 500, 1, -1);
