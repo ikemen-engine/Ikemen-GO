@@ -84,6 +84,7 @@ var sys = System {
 	allowbgm:                true,
 	borderless:              false,
 	vRetrace:                1,
+	screenshotFolder:        "",
 }
 
 type TeamMode int32
@@ -261,6 +262,7 @@ type System struct {
 	bgmVolume               int
 	AudioDucking            bool
 	windowTitle             string
+	screenshotFolder        string
 	//FLAC_FrameWait          int
 
 	controllerStickSensitivity float32

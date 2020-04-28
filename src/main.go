@@ -160,6 +160,7 @@ func main() {
 	"RoundsNumSingle": 2,
 	"RoundsNumTeam": 2,
 	"RoundTime": 99,
+	"ScreenshotFolder": "",
 	"SimulLoseKO": true,
 	"SingleVsTeamLife": 100,
 	"System": "external/script/main.lua",
@@ -310,6 +311,7 @@ func main() {
 		RoundsNumSingle            int32
 		RoundsNumTeam              int32
 		RoundTime                  int32
+		ScreenshotFolder           string
 		SimulLoseKO                bool
 		SingleVsTeamLife           float32
 		System                     string
@@ -356,6 +358,7 @@ func main() {
 	cmd, err := ioutil.ReadFile(tmp.CommonCmd); if err == nil {
 		sys.commonCmd = "\n" + string(cmd)
 	}
+	// TODO: We should organize this.
 	sys.commonConst = tmp.CommonConst
 	sys.commonScore = tmp.CommonScore
 	sys.commonTag = tmp.CommonTag
@@ -389,6 +392,14 @@ func main() {
 	sys.windowTitle = tmp.WindowTitle
 	sys.vRetrace = tmp.VRetrace
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	tmp.ScreenshotFolder = strings.TrimSpace(tmp.ScreenshotFolder)
+	if tmp.ScreenshotFolder != "" {
+		tmp.ScreenshotFolder = strings.Replace(tmp.ScreenshotFolder, "\\", "/", -1)
+		tmp.ScreenshotFolder = strings.TrimRight(tmp.ScreenshotFolder, "/")
+		sys.screenshotFolder = tmp.ScreenshotFolder + "/"
+	} else {
+		sys.screenshotFolder = tmp.ScreenshotFolder
+	}
 	sys.cam.ZoomEnable = tmp.ZoomActive
 	sys.cam.ZoomMax = tmp.ZoomMax
 	sys.cam.ZoomMin = tmp.ZoomMin
