@@ -1569,7 +1569,7 @@ for line in file:lines() do
 					value = value:gsub('\\', '/')
 					pos.font[num] = tostring(value)
 				end
-			elseif pos[param] == nil or param:match('_itemname_') then --mugen takes into account only first occurrence
+			elseif pos[param] == nil or param:match('_itemname_') or param:match('_font_height$') then --mugen takes into account only first occurrence
 				if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
 					local _, n = value:gsub(',%s*[0-9]*', '')
 					for i = n + 1, #main.t_fntDefault do
@@ -1584,8 +1584,8 @@ for line in file:lines() do
 						elseif i == 1 then
 							pos[param] = {}
 							if param:match('_font$') and tonumber(c) ~= -1 then
-								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
-									if pos[param .. '_height'] == -1 and t.files.font_height[tonumber(c)] ~= nil then
+								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then
+									if pos[param .. '_height'] == nil and t.files.font_height[tonumber(c)] ~= nil then
 										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
 									end
 									c = t.files.font[tonumber(c)]

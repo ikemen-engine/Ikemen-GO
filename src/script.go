@@ -210,28 +210,16 @@ func scriptCommonInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "fontNew", func(l *lua.LState) int {
-		fnt, err := loadFnt(strArg(l, 1))
+		var height int32 = -1
+		if l.GetTop() >= 2 {
+			height = int32(numArg(l, 2))
+		}
+		fnt, err := loadFnt(strArg(l, 1), height)
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
 		l.Push(newUserData(l, fnt))
 		return 1
-	})
-	luaRegister(l, "fontSetColor", func(*lua.LState) int {
-		fnt, ok := toUserData(l, 1).(*Fnt)
-		if !ok {
-			userDataError(l, 1, fnt)
-		}
-		fnt.SetColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), 255, 0)
-		return 0
-	})
-	luaRegister(l, "fontSetHeight", func(l *lua.LState) int {
-		fnt, ok := toUserData(l, 1).(*Fnt)
-		if !ok {
-			userDataError(l, 1, fnt)
-		}
-		fnt.Size[1] = uint16(numArg(l, 2))
-		return 0
 	})
 	luaRegister(l, "fontGetDef", func(l *lua.LState) int {
 		fnt, ok := toUserData(l, 1).(*Fnt)
@@ -667,6 +655,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
 			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
+		return 0
+	})
+	luaRegister(l, "textImgSetColor", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.palfx.setColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)))
 		return 0
 	})
 	luaRegister(l, "textImgDraw", func(*lua.LState) int {
@@ -1147,7 +1143,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "loadDebugFont", func(l *lua.LState) int {
-		f, err := loadFnt(strArg(l, 1))
+		f, err := loadFnt(strArg(l, 1), -1)
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
@@ -1349,12 +1345,6 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "lastMatchRender", func(l *lua.LState) int {
 		sys.postMatch = true
-		win := sys.lifebar.ro.win.displaytime
-		win2 := sys.lifebar.ro.win2.displaytime
-		drawn := sys.lifebar.ro.drawn.displaytime
-		sys.lifebar.ro.win.displaytime = 0
-		sys.lifebar.ro.win2.displaytime = 0
-		sys.lifebar.ro.drawn.displaytime = 0
 		lba := sys.lifebar.active
 		sys.lifebar.active = boolArg(l, 1)
 		x, y, newx, newy, le, ra, scl, sclmul := sys.matchPos[0], sys.matchPos[1], sys.matchPos[2], sys.matchPos[3], sys.matchPos[4], sys.matchPos[5], sys.matchPos[6], sys.matchPos[7]
@@ -1398,9 +1388,6 @@ func systemScriptInit(l *lua.LState) {
 			sys.draw(dx, dy, dscl)
 		}
 		sys.matchPos = [8]float32{x, y, newx, newy, le, ra, scl, sclmul}
-		sys.lifebar.ro.win.displaytime = win
-		sys.lifebar.ro.win2.displaytime = win2
-		sys.lifebar.ro.drawn.displaytime = drawn
 		sys.lifebar.active = lba
 		sys.postMatch = false
 		return 0

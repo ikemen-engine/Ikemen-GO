@@ -52,6 +52,7 @@ type PalFXDef struct {
 	sinadd    [3]int32
 	cycletime int32
 	invertall bool
+	frgba     [4]float32
 }
 type PalFX struct {
 	PalFXDef
@@ -68,7 +69,8 @@ type PalFX struct {
 
 func newPalFX() *PalFX { return &PalFX{} }
 func (pf *PalFX) clear2(nt bool) {
-	pf.PalFXDef = PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
+	pf.PalFXDef = PalFXDef{color: 1, mul: [...]int32{256, 256, 256},
+		frgba: [...]float32{1.0, 1.0, 1.0, 1.0}}
 	pf.negType = nt
 	pf.sintime = 0
 }
@@ -204,6 +206,23 @@ func (pf *PalFX) synthesize(pfx PalFX) {
 	}
 	pf.eColor *= pfx.eColor
 	pf.eInvertall = pf.eInvertall != pfx.eInvertall
+}
+
+func (pf *PalFX) setColor(r, g, b float32) {
+	rNormalized := Max(0, Min(255, int32(r)))
+	gNormalized := Max(0, Min(255, int32(g)))
+	bNormalized := Max(0, Min(255, int32(b)))
+
+	pf.enable = true
+	pf.eColor = 1
+	pf.eMul = [...]int32{
+		256 * rNormalized >> 8,
+		256 * gNormalized >> 8,
+		256 * bNormalized >> 8,
+	}
+
+	pf.frgba = [...]float32{float32(rNormalized)/255, float32(gNormalized)/255,
+		float32(bNormalized)/255, 1.0}
 }
 
 type PaletteList struct {

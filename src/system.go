@@ -1438,7 +1438,6 @@ func (s *System) draw(x, y, scl float32) {
 			fade(rect, 255)
 		}
 		s.lifebar.draw(0)
-		s.lifebar.ro.draw(0)
 	} else {
 		FillRect(s.scrrect, ecol, 255)
 	}
@@ -1449,10 +1448,8 @@ func (s *System) draw(x, y, scl float32) {
 		}
 	}
 	s.lifebar.draw(1)
-	s.lifebar.ro.draw(1)
 	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
 	s.lifebar.draw(2)
-	s.lifebar.ro.draw(2)
 	tmp := s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
 		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime
 	if s.intro > s.lifebar.ro.ctrl_time+1 {
@@ -1588,7 +1585,8 @@ func (s *System) fight() (reload bool) {
 			}
 			*y += float32(s.debugFont.Size[1]) / s.heightScale
 			s.debugFont.DrawText(drawTxt, (320-float32(s.gameWidth))/2, *y,
-				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect)
+				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect,
+				s.debugFont.palfx)
 		}
 		s.allPalFX.enable = tmp
 	}

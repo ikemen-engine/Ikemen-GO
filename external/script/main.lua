@@ -281,6 +281,7 @@ function main.f_alignOffset(align)
 end
 
 main.font = {}
+main.font_def = {}
 text = {}
 color = {}
 rect = {}
@@ -314,32 +315,19 @@ function text:create(t)
 	o.ti = textImgNew()
 	setmetatable(o, self)
 	self.__index = self
-	--font
 	if o.font ~= -1 then
-		if main.font[o.font] == nil then
-			main.font[o.font] = {}
+		if main.font[o.font .. o.height] == nil then
+			main.font[o.font .. o.height] = fontNew(o.font, o.height)
 		end
-		local s = o.r .. o.g .. o.b .. o.src .. o.dst .. o.height
-		if main.font[o.font][s] == nil then
-			main.font[o.font][s] = fontNew(o.font)
+		if main.font_def[o.font.. o.height] == nil then
+			main.font_def[o.font.. o.height] = fontGetDef(main.font[o.font .. o.height])
 		end
-		--r, g, b, trans
-		if o.r ~= 255 or o.g ~= 255 or o.b ~= 255 or o.src ~= 255 or o.dst ~= 0 then
-			fontSetColor(main.font[o.font][s], o.r, o.g, o.b, o.src, o.dst)
-		end
-		--height (ttf)
-		if o.height ~= -1 then
-			fontSetHeight(main.font[o.font][s], t.height)
-		end
-		--font def
-		if main.font[o.font].def == nil then
-			main.font[o.font].def = fontGetDef(main.font[o.font][s])
-		end
-		textImgSetFont(o.ti, main.font[o.font][s])
+		textImgSetFont(o.ti, main.font[o.font .. o.height])
 	end
 	textImgSetBank(o.ti, o.bank)
 	textImgSetAlign(o.ti, o.align)
 	textImgSetText(o.ti, o.text)
+	textImgSetColor(o.ti, o.r, o.g, o.b, o.src, o.dst)
 	if o.defsc then main.SetDefaultScale() end
 	textImgSetPos(o.ti, o.x + main.f_alignOffset(o.align), o.y)
 	textImgSetScale(o.ti, o.scaleX, o.scaleY)
@@ -352,48 +340,29 @@ end
 function text:update(t)
 	local ok = false
 	local fontChange = false
-	local colorChange = false
-	local heightChange = false
 	for k, v in pairs(t) do
 		if self[k] ~= v then
-			if k == 'font' then
+			if k == 'font' or k == 'height' then
 				fontChange = true
-			elseif k == 'r' or k == 'g' or k == 'b' or k == 'src' or k == 'dst' then
-				colorChange = true
-			elseif k == 'height' then
-				heightChange = true
 			end
 			self[k] = v
 			ok = true
 		end
 	end
 	if not ok then return end
-	--font
-	if fontChange or colorChange or heightChange then
-		if main.font[self.font] == nil then
-			main.font[self.font] = {}
+	if fontChange then
+		if main.font[self.font .. self.height] == nil then
+			main.font[self.font .. self.height] = fontNew(self.font, self.height)
 		end
-		local s = self.r .. self.g .. self.b .. self.src .. self.dst .. self.height
-		if main.font[self.font][s] == nil then
-			main.font[self.font][s] = fontNew(self.font)
+		if main.font_def[self.font .. self.height] == nil then
+			main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
 		end
-		--r, g, b, trans
-		if colorChange then
-			fontSetColor(main.font[self.font][s], self.r, self.g, self.b, self.src, self.dst)
-		end
-		--height (ttf)
-		if heightChange then
-			fontSetHeight(main.font[self.font][s], self.height)
-		end
-		--font def
-		if main.font[self.font].def == nil then
-			main.font[self.font].def = fontGetDef(main.font[self.font][s])
-		end
-		textImgSetFont(self.ti, main.font[self.font][s])
+		textImgSetFont(self.ti, main.font[self.font .. self.height])
 	end
 	textImgSetBank(self.ti, self.bank)
 	textImgSetAlign(self.ti, self.align)
 	textImgSetText(self.ti, self.text)
+	textImgSetColor(self.ti, self.r, self.g, self.b, self.src, self.dst)
 	if self.defsc then main.SetDefaultScale() end
 	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
 	textImgSetScale(self.ti, self.scaleX, self.scaleY)
@@ -737,12 +706,11 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length)
 		local tmp = ''
 		local pxLeft = length
 		local tmp_px = 0
-		local s = data.r .. data.g .. data.b .. data.src .. data.dst .. data.height
-		local space = (font_def[' '] or fontGetTextWidth(main.font[data.font][s], ' ')) * data.scaleX
+		local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ')) * data.scaleX
 		for i = 1, string.len(str) do
 			local symbol = string.sub(str, i, i)
 			if font_def[symbol] == nil then --store symbol length in global table for faster counting
-				font_def[symbol] = fontGetTextWidth(main.font[data.font][s], symbol)
+				font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol)
 			end
 			local px = font_def[symbol] * data.scaleX
 			if pxLeft + space - px >= 0 then
@@ -896,6 +864,12 @@ function main.f_oddRounding(v)
 	end
 end
 
+--y spacing calculation
+function main.f_ySpacing(t, key)
+	local font_def = main.font_def[t[key][1] .. t[key .. '_height']]
+	return math.floor(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2] + 0.5)
+end
+
 --count occurrences of a substring
 function main.f_countSubstring(s1, s2)
     return select(2, s1:gsub(s2, ""))
@@ -934,7 +908,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 				align =  font_info.text_font[3],
 				text =   t[i],
 				x =      font_info.text_pos[1],
-				y =      font_info.text_pos[2] + math.floor(main.font[font_info.text_font[1]].def.Size[2] * font_info.text_font_scale[2] + main.font[font_info.text_font[1]].def.Spacing[2] * font_info.text_font_scale[2] + 0.5) * (i - 1),
+				y =      font_info.text_pos[2] + main.f_ySpacing(font_info, 'text_font') * (i - 1),
 				scaleX = font_info.text_font_scale[1],
 				scaleY = font_info.text_font_scale[2],
 				r =      font_info.text_font[4],
@@ -1029,7 +1003,7 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 		for i = 1, #t do
 			main.txt_input:update({
 				text = t[i],
-				y =    motif.infobox.text_pos[2] + math.floor(main.font[motif.infobox.text_font[1]].def.Size[2] * motif.infobox.text_font_scale[2] + main.font[motif.infobox.text_font[1]].def.Spacing[2] * motif.infobox.text_font_scale[2] + 0.5) * (i - 1),
+				y =    motif.infobox.text_pos[2] + main.f_ySpacing(motif.infobox, 'text_font') * (i - 1),
 			})
 			main.txt_input:draw()
 		end

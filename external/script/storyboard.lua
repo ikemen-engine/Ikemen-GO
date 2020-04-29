@@ -70,7 +70,7 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_timer,
 								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
 								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
-								main.font[t.scene[k].layer[k2].font[1]].def,
+								main.font_def[t.scene[k].layer[k2].font[1] .. t.scene[k].layer[k2].font_height],
 								t.scene[k].layer[k2].text_delay,
 								main.f_lineLength(t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1], t.info.localcoord[1], t.scene[k].layer[k2].font[3], t.scene[k].layer[k2].text_window, true)
 							)
@@ -237,7 +237,7 @@ local function f_parse(path)
 					else
 						pos_val = pos
 					end
-					if pos_val[param] == nil then --mugen takes into account only first occurrence
+					if pos_val[param] == nil or param:match('_font_height$') then --mugen takes into account only first occurrence
 						if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
 							local _, n = value:gsub(',%s*[0-9]*', '')
 							for i = n + 1, #main.t_fntDefault do
@@ -250,8 +250,8 @@ local function f_parse(path)
 									--t_layer[k2].font
 									pos_val[param] = {}
 									if param:match('_font$') and tonumber(c) ~= -1 then
-										if t.scenedef ~= nil and t.scenedef.font ~= nil and t.scenedef.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
-											if pos_val[param .. '_height'] == -1 and t.scenedef.font_height[tonumber(c)] ~= nil then
+										if t.scenedef ~= nil and t.scenedef.font ~= nil and t.scenedef.font[tonumber(c)] ~= nil then
+											if pos_val[param .. '_height'] == nil and t.scenedef.font_height[tonumber(c)] ~= nil then
 												pos_val[param .. '_height'] = t.scenedef.font_height[tonumber(c)]
 											end
 											c = t.scenedef.font[tonumber(c)]

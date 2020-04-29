@@ -2251,7 +2251,7 @@ function start.f_selectScreen()
 		for i = 1, #t_recordText do
 			txt_recordSelect:update({
 				text = t_recordText[i],
-				y = motif.select_info.record_offset[2] + math.floor(main.font[motif.select_info.record_font[1]].def.Size[2] * motif.select_info.record_font_scale[2] + main.font[motif.select_info.record_font[1]].def.Spacing[2] * motif.select_info.record_font_scale[2] + 0.5) * (i - 1),
+				y = motif.select_info.record_offset[2] + main.f_ySpacing(motif.select_info, 'record_font') * (i - 1),
 			})
 			txt_recordSelect:draw()
 		end
@@ -3169,7 +3169,7 @@ function start.f_stageMenu()
 			align =  motif.select_info[stageActiveFont][3],
 			text =   t_txt[i],
 			x =      motif.select_info.stage_pos[1],
-			y =      motif.select_info.stage_pos[2] + math.floor(main.font[motif.select_info[stageActiveFont][1]].def.Size[2] * motif.select_info[stageActiveFont .. '_scale'][2] + main.font[motif.select_info[stageActiveFont][1]].def.Spacing[2] * motif.select_info[stageActiveFont .. '_scale'][2] + 0.5) * (i - 1),
+			y =      motif.select_info.stage_pos[2] + main.f_ySpacing(motif.select_info, stageActiveFont) * (i - 1),
 			scaleX = motif.select_info[stageActiveFont .. '_scale'][1],
 			scaleY = motif.select_info[stageActiveFont .. '_scale'][2],
 			r =      motif.select_info[stageActiveFont][4],
@@ -3660,7 +3660,7 @@ local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
 	for i = 1, #t_text do
 		txt:update({
 			text = t_text[i],
-			y =    t[prefix .. '_offset'][2] + math.floor(main.font[t[prefix .. '_font'][1]].def.Size[2] * t[prefix .. '_font_scale'][2] + main.font[t[prefix .. '_font'][1]].def.Spacing[2] * t[prefix .. '_font_scale'][2] + 0.5) * (i - 1),
+			y =    t[prefix .. '_offset'][2] + main.f_ySpacing(t, prefix .. '_font') * (i - 1)
 		})
 		txt:draw()
 	end
@@ -4074,7 +4074,7 @@ function start.f_selectVictory()
 			cnt,
 			motif.victory_screen.winquote_offset[1],
 			motif.victory_screen.winquote_offset[2],
-			main.font[motif.victory_screen.winquote_font[1]].def,
+			main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
 			motif.victory_screen.winquote_delay,
 			main.f_lineLength(motif.victory_screen.winquote_offset[1], motif.info.localcoord[1], motif.victory_screen.winquote_font[3], motif.victory_screen.winquote_window, motif.victory_screen.winquote_textwrap:match('[wl]'))
 		)

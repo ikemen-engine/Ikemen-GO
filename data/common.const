@@ -5,7 +5,7 @@ Default.Attack.LifeToPowerMul = 0.7
 Default.GetHit.LifeToPowerMul = 0.6
 Super.TargetDefenceMul = 1.5
 
-Default.LifeToGuardPointsMul = -2
+Default.LifeToGuardPointsMul = -1.5
 Default.LifeToDizzyPointsMul = 0
 
 ; Character Reserved Action Numbers
