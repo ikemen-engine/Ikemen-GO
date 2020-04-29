@@ -1272,6 +1272,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzy)
 	case "guardbreak":
 		out.append(OC_ex_, OC_ex_guardbreak)
+	case "customstate":
+		out.append(OC_ex_, OC_ex_customstate)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
