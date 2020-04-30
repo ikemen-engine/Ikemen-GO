@@ -14,850 +14,919 @@
 # ローカル変数は引数、返り値を含め 256 個まで
 # 関数は定義済みのものしか呼べないので、再帰はできない
 
-
-[Statedef 0; type: S; physics: S;
+#---------------------------------------------------------------------------
+# Stand
+[Statedef 0; 
+ type: S; physics: S;
  sprpriority: 0;]
+
 if cond(Anim = 5, AnimTime = 0, Anim != 0) {
-    ChangeAnim{value: 0}
+	ChangeAnim{value: 0}
 }
 if Time = 0 {
-    VelSet{y: 0}
+	VelSet{y: 0}
 }
 if Time = 4 || abs(Vel X) < ifelse(MajorVersion = 1,
-    Const(movement.stand.friction.threshold), 2) {
-    VelSet{x: 0}
+	Const(movement.stand.friction.threshold), 2) {
+	VelSet{x: 0}
 }
 if !Alive {
-    ChangeState{value: 5050; ctrl: 0}
+	ChangeState{value: 5050; ctrl: 0}
 }
 
-
+#---------------------------------------------------------------------------
+# Stand to Crouch
 [Statedef 10; type: C; physics: C;
  anim: 10;]
+
 if Time = 0 {
-    VelMul{x: .75}
+	VelMul{x: .75}
 }
 if abs(Vel X) < Const(movement.crouch.friction.threshold) {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 if AnimTime = 0 {
-    ChangeState{value: 11}
+	ChangeState{value: 11}
 }
 
-
+#---------------------------------------------------------------------------
+# Crouching
 [Statedef 11; type: C; physics: C;
  anim: 11; sprpriority: 0;]
 if Anim = 6 && AnimTime = 0 {
-    ChangeAnim{value: 11}
+	ChangeAnim{value: 11}
 }
 if abs(Vel X) < Const(movement.crouch.friction.threshold) {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 
-
+#---------------------------------------------------------------------------
+# Crouch to Stand
 [Statedef 12; type: S; physics: S;
  anim: 12;]
 if AnimTime = 0 {
-    ChangeState{value: 0}
+	ChangeState{value: 0}
 }
 
-
+#---------------------------------------------------------------------------
+# Walk
 [Statedef 20; type: S; physics: S;
  sprpriority: 0;]
 if Command = "holdback" {
-    VelSet{x: Const(velocity.walk.back.x)}
+	VelSet{x: Const(velocity.walk.back.x)}
 } else if Command = "holdfwd" {
-    VelSet{x: Const(velocity.walk.fwd.x)}
+	VelSet{x: Const(velocity.walk.fwd.x)}
 }
 if Vel X > 0 {
-    if cond(Anim = 5, AnimTime = 0, Anim != 20) {
-        ChangeAnim{value: 20}
-    }
+	if cond(Anim = 5, AnimTime = 0, Anim != 20) {
+		ChangeAnim{value: 20}
+	}
 } else if Vel X < 0 {
-    if cond(Anim = 5, AnimTime = 0, Anim != 21) {
-        ChangeAnim{value: 21}
-    }
+	if cond(Anim = 5, AnimTime = 0, Anim != 21) {
+		ChangeAnim{value: 21}
+	}
 }
 
-
+#---------------------------------------------------------------------------
+# Jump Start
 [Statedef 40; type: S; physics: S;
  anim: 40; ctrl: 0; sprpriority: 1; facep2: 1;]
 if Time = 0 {
-    SysVar(1) := 0;
+	SysVar(1) := 0;
 }
 if Command = "holdback" {
-    SysVar(1) := -1;
+	SysVar(1) := -1;
 } else if Command = "holdfwd" {
-    SysVar(1) := 1;
+	SysVar(1) := 1;
 }
 if AnimTime = 0 {
-    if SysVar(1) = 0 {
-        let x = Const(velocity.jump.neu.x);
-    } else if SysVar(1) = 1 {
-        if prevstateno = 100 {
-            let x = Const(velocity.runjump.fwd.x);
-        } else {
-            let x = Const(velocity.jump.fwd.x);
-        }
-    } else {
-        let x = Const(velocity.jump.back.x);
-    }
-    VelSet{x: $x; y: Const(velocity.jump.y)}
-    ChangeState{value: 50; ctrl: 1}
+	if SysVar(1) = 0 {
+		let x = Const(velocity.jump.neu.x);
+	} else if SysVar(1) = 1 {
+		if prevstateno = 100 {
+			let x = Const(velocity.runjump.fwd.x);
+		} else {
+			let x = Const(velocity.jump.fwd.x);
+		}
+	} else {
+		let x = Const(velocity.jump.back.x);
+	}
+	VelSet{x: $x; y: Const(velocity.jump.y)}
+	ChangeState{value: 50; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# AirJump Start
 [Statedef 45; type: A; physics: N;
  ctrl: 0; velset: 0, 0;]
 ChangeAnim{value: ifelse(SelfAnimExist(44), 44, 41)}
 if Time = 0 {
-    SysVar(1) := 0;
+	SysVar(1) := 0;
 }
 if Command = "holdback" {
-    SysVar(1) := -1;
+	SysVar(1) := -1;
 } else if Command = "holdfwd" {
-    SysVar(1) := 1;
+	SysVar(1) := 1;
 }
 if Time = 2 {
-    if SysVar(1) = 0 {
-        let x = Const(velocity.airjump.neu.x);
-    } else if SysVar(1) = 1 {
-        let x = Const(velocity.airjump.fwd.x);
-    } else {
-        let x = Const(velocity.airjump.back.x);
-    }
-    VelSet{x: $x; y: Const(velocity.airjump.y)}
-    ChangeState{value: 50; ctrl: 1}
+	if SysVar(1) = 0 {
+		let x = Const(velocity.airjump.neu.x);
+	} else if SysVar(1) = 1 {
+		let x = Const(velocity.airjump.fwd.x);
+	} else {
+		let x = Const(velocity.airjump.back.x);
+	}
+	VelSet{x: $x; y: Const(velocity.airjump.y)}
+	ChangeState{value: 50; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Jump Up
 [Statedef 50; type: A; physics: A;]
 if Time = 0 {
-    SysVar(1) := 0;
-    ChangeAnim{value: cond(Vel X = 0, 41, ifelse(Vel X > 0, 42, 43))}
+	SysVar(1) := 0;
+	ChangeAnim{value: cond(Vel X = 0, 41, ifelse(Vel X > 0, 42, 43))}
 }
 persistent(0) if Vel Y > Const240p(-2) && SelfAnimExist(Anim + 3) &&
-    Anim = [41, 43] {
-    ChangeAnim{value: Anim + 3}
+	Anim = [41, 43] {
+	ChangeAnim{value: Anim + 3}
 }
 
-
+#---------------------------------------------------------------------------
+# Jump Down
 [Statedef 51; type: A; physics: A;]
+if Time = 0 {
+	SysVar(1) := 0;
+	ChangeAnim{value: cond(Vel X = 0, 41, ifelse(Vel X > 0, 42, 43))}
+}
+persistent(0) if Vel Y > Const240p(-2) && SelfAnimExist(Anim + 3) && Anim = [41, 43] {
+	ChangeAnim{value: Anim + 3}
+}
 
-
+#---------------------------------------------------------------------------
+# Jump Land
 [Statedef 52; type: S; physics: S;
  ctrl: 0; anim: 47;]
 if Time = 0 {
-    VelSet{y: 0}
-    PosSet{y: 0}
+	VelSet{y: 0}
+	PosSet{y: 0}
 } else if Time = 3 {
-    CtrlSet{value: 1}
+	CtrlSet{value: 1}
 }
 if MajorVersion = 1 && abs(Vel X) < Const(movement.stand.friction.threshold){
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 if AnimTime = 0 {
-    ChangeState{value: 0; ctrl: 1}
+	ChangeState{value: 0; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Run forward
 [Statedef 100; type: S; physics: S;
  anim: 100; sprpriority: 1;]
 VelSet{x: Const(velocity.run.fwd.x)}
 AssertSpecial{flag: NoWalk; flag2: NoAutoTurn}
 if Command != "holdfwd" {
-    ChangeState{value: 0}
+	ChangeState{value: 0}
 }
 
-
+#---------------------------------------------------------------------------
+# Hop backwards
 [Statedef 105; type: A; physics: A;
  ctrl: 0; anim: 105; sprpriority: 1;]
 if Time = 0 {
-    VelSet{x: Const(velocity.run.back.x); y: Const(velocity.run.back.y)}
-}else if Time = 2 {
-    CtrlSet{value: 1}
+	VelSet{x: Const(velocity.run.back.x); y: Const(velocity.run.back.y)}
+} else if Time = 2 {
+	CtrlSet{value: 1}
 }
 if Vel Y > 0 && Pos Y >= 0 {
-    ChangeState{value: 106}
+	ChangeState{value: 106}
 }
 
-
+#---------------------------------------------------------------------------
+# Hop backwards (land)
 [Statedef 106; type: S; physics: S;
  ctrl: 0; anim: 47;]
 if MajorVersion = 1 && abs(Vel X) < Const(movement.stand.friction.threshold) {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 if Time = 0 {
-    VelSet{y: 0}
-    PosSet{y: 0}
+	VelSet{y: 0}
+	PosSet{y: 0}
 } else if Time = 2 {
-    if MajorVersion = 1 {
-        MakeDust{pos: 0, 0; spacing: 1}
-    } else {
-        MakeDust{pos: -5, -2; spacing: 1}
-    }
+	if MajorVersion = 1 {
+		MakeDust{pos: 0, 0; spacing: 1}
+	} else {
+		MakeDust{pos: -5, -2; spacing: 1}
+	}
 } else if Time = 7 {
-    ChangeState{value: 0; ctrl: 1}
+	ChangeState{value: 0; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Run up (Deprecated in DosMugen)
 [Statedef 110; type: S; physics: N;]
-if Time = 0 {
-    CtrlSet{value: 0}
-    ChangeAnim{value: 110}
-    HitBy{value: SCA, NT, ST, HT; time: 30}
-    VelSet{x: 0}
+if time = 0 {
+	CtrlSet{value: 0}
+	ChangeAnim{value: 110}
+	HitBy{value: SCA, NT, ST, HT; time: 30}
+	VelSet{x: 0; z: -7}
 }
-if AnimTime = 0 {
-    ChangeState{value: 0; ctrl: 1}
+VelMul{z: 0.8}
+if animTime = -8 {
+	VelSet{z: 0}
+} else if animTime = 0 {
+	ChangeState{value: 0; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Run down (Deprecated in DosMugen)
 [Statedef 115; type: S; physics: N;]
-if Time = 0 {
-    CtrlSet{value: 0}
-    ChangeAnim{value: 110}
-    HitBy{value: SCA, NT, ST, HT; time: 30}
-    VelSet{x: 0}
+if time = 0 {
+	CtrlSet{value: 0}
+	ChangeAnim{value: 115}
+	HitBy{value: SCA, NT, ST, HT; time: 30}
+	VelSet{x: 0; z: 7}
 }
-if AnimTime = 0 {
-    ChangeState{value: 0; ctrl: 1}
+VelMul{z: 0.8}
+if animTime = -8 {
+	VelSet{z: 0}
+} else if animTime = 0 {
+	ChangeState{value: 0; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
 [Function HiToLoAndLoToHi()]
 if Command = "holddown" {
-    if statetype = S {
-        StateTypeSet{statetype: C; physics: C}
-    }
+	if statetype = S {
+		StateTypeSet{statetype: C; physics: C}
+	}
 } else if statetype = C {
-    StateTypeSet{statetype: S; physics: S}
+	StateTypeSet{statetype: S; physics: S}
 }
 
-
+#---------------------------------------------------------------------------
 [Function StopGuarding()]
 if Command != "holdback" || !inguarddist {
-    ChangeState{value: 140}
+	ChangeState{value: 140}
 }
 
-
+#---------------------------------------------------------------------------
+# GUARD (start)
 [Statedef 120; type: U; physics: U;]
 if Time = 0 {
-    ChangeAnim{value: 120 + (statetype = C) + (statetype = A) * 2}
-    if statetype = S {
-        StateTypeSet{physics: S}
-    } else if statetype = C {
-        StateTypeSet{physics: C}
-    } else if statetype = A {
-        StateTypeSet{physics: A}
-    }
+	ChangeAnim{value: 120 + (statetype = C) + (statetype = A) * 2}
+	if statetype = S {
+		StateTypeSet{physics: S}
+	} else if statetype = C {
+		StateTypeSet{physics: C}
+	} else if statetype = A {
+		StateTypeSet{physics: A}
+	}
 }
 call HiToLoAndLoToHi();
 if AnimTime = 0 {
-    ChangeState{value: 130 + (statetype = C) + (statetype = A) * 2}
+	ChangeState{value: 130 + (statetype = C) + (statetype = A) * 2}
 }
 call StopGuarding();
 
-
+#---------------------------------------------------------------------------
+# Stand guard (guarding)
 [Statedef 130; type: S; physics: S;]
 if Anim != 130 {
-    ChangeAnim{value: 130}
+	ChangeAnim{value: 130}
 }
 if Command = "holddown" {
-    ChangeState{value: 131}
+	ChangeState{value: 131}
 }
 call StopGuarding();
 
-
+#---------------------------------------------------------------------------
+# Crouch guard (guarding)
 [Statedef 131; type: C; physics: C;]
 if Anim != 131 {
-    ChangeAnim{value: 131}
+	ChangeAnim{value: 131}
 }
 if Command != "holddown" {
-    ChangeState{value: 130}
+	ChangeState{value: 130}
 }
 call StopGuarding();
 
-
+#---------------------------------------------------------------------------
 [Function AirGuardLand()]
 VelAdd{y: Const(movement.yaccel)}
 if SysVar(0) := (Pos Y >= 0 && Vel Y > 0) {
-    VelSet{y: 0}
-    PosSet{y: 0}
-    ChangeState{value: ifelse(Command = "holdback" && inguarddist, 130, 52)}
+	VelSet{y: 0}
+	PosSet{y: 0}
+	ChangeState{value: ifelse(Command = "holdback" && inguarddist, 130, 52)}
 }
 
-
+#---------------------------------------------------------------------------
+# Air guard (guarding)
 [Statedef 132; type: A; physics: N;]
 if Anim != 132 {
-    ChangeAnim{value: 132}
+	ChangeAnim{value: 132}
 }
 call AirGuardLand();
 call StopGuarding();
 
-
+#---------------------------------------------------------------------------
+# Guard (end)
 [Statedef 140; type: U; physics: U;
  ctrl: 1;]
 if Time = 0 {
-    ChangeAnim{value: 140 + (statetype = C) + (statetype = A) * 2}
-    if statetype = S {
-        StateTypeSet{physics: S}
-    } else if statetype = C {
-        StateTypeSet{physics: C}
-    } else if statetype = A {
-        StateTypeSet{physics: A}
-    }
+	ChangeAnim{value: 140 + (statetype = C) + (statetype = A) * 2}
+	if statetype = S {
+		StateTypeSet{physics: S}
+	} else if statetype = C {
+		StateTypeSet{physics: C}
+	} else if statetype = A {
+		StateTypeSet{physics: A}
+	}
 }
 call HiToLoAndLoToHi();
 
-
+#---------------------------------------------------------------------------
 [Function GuardShaking(anim)]
 ChangeAnim{value: $anim}
 if HitShakeOver {
-    ChangeState{value: 151 + 2 * (Command = "holddown")}
+	ChangeState{value: 151 + 2 * (Command = "holddown")}
 }
 call HiToLoAndLoToHi();
 
-
+#---------------------------------------------------------------------------
 [Function GuardKnockedBack(nextState)]
 if Time = 0 {
-    HitVelSet{x: 1}
+	HitVelSet{x: 1}
 }
 if Time = GetHitVar(slidetime) || HitOver {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 if Time = GetHitVar(ctrltime) {
-    CtrlSet{value: 1}
+	CtrlSet{value: 1}
 }
 call HiToLoAndLoToHi();
 if HitOver {
-    ChangeState{value: $nextState; ctrl: 1}
+	ChangeState{value: $nextState; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Stand guard hit (shaking)
 [Statedef 150; type: S; movetype: H; physics: N;
  velset: 0, 0;]
 call GuardShaking(150);
 
-
+#---------------------------------------------------------------------------
+# Stand guard hit (knocked back)
 [Statedef 151; type: S; movetype: H; physics: S;
  anim: 150;]
 call GuardKnockedBack(130);
 
-
+#---------------------------------------------------------------------------
+# Crouch guard hit (shaking)
 [Statedef 152; type: C; movetype: H; physics: N;
  velset: 0, 0;]
 call GuardShaking(151);
 
-
+#---------------------------------------------------------------------------
+# Crouch guard hit (knocked back)
 [Statedef 153; type: C; movetype: H; physics: C;
  anim: 151;]
 call GuardKnockedBack(131);
 
-
+#---------------------------------------------------------------------------
+# Air guard hit (shaking)
 [Statedef 154; type: A; movetype: H; physics: N;
  velset: 0, 0;]
 ChangeAnim{value: 152}
 if HitShakeOver {
-    ChangeState{value: 155}
+	ChangeState{value: 155}
 }
 
-
+#---------------------------------------------------------------------------
+# Air guard hit (knocked away)
 [Statedef 155; type: A; movetype: H; physics: N;
  anim: 152;]
 if Time = 0 {
-    HitVelSet{x: 1; y: 1}
+	HitVelSet{x: 1; y: 1}
 }
 if Time = GetHitVar(ctrltime) {
-    CtrlSet{value: 1}
+	CtrlSet{value: 1}
 }
 call AirGuardLand();
 
-
+#---------------------------------------------------------------------------
+# Lose (time over)
 [Statedef 170; type: S;
  ctrl: 0; anim: 170; velset: 0, 0;]
 NotHitBy{value: SCA; time: 1}
 
-
+#---------------------------------------------------------------------------
+# Draw game (time over)
 [Statedef 175; type: S;
  ctrl: 0; velset: 0, 0;]
 if Time = 0 {
-    if !SelfAnimExist(175) {
-        ChangeState{value: 170}
-    }
-    ChangeAnim{value: 175}
+	if !SelfAnimExist(175) { # If anim 170 does not exist, go to SD 170,
+		ChangeState{value: 170}
+	}
+	ChangeAnim{value: 175}
 }
 NotHitBy{value: SCA; time: 1}
 
-
+#---------------------------------------------------------------------------
+# Pre-intro
 [Statedef 190; type: S;
  ctrl: 0; velset: 0, 0;]
 if SelfAnimExist(190) {
-    ChangeAnim{value: 190}
+	ChangeAnim{value: 190}
 }
 if Time = 0 {
-    ChangeState{value: 191}
+	ChangeState{value: 191}
 }
 
-
+#---------------------------------------------------------------------------
+# Intro (override this state to give character an intro)
 [Statedef 191; type: S;
  ctrl: 0;]
 if Time = 0 {
-    ChangeState{value: 0}
+	ChangeState{value: 0}
 }
 
-
+#---------------------------------------------------------------------------
 [Function GetHitShaking(lAnim)]
 if Time = 0 {
-    if GetHitVar(animtype) = [4, 5] &&
-        SelfAnimExist(5051 + GetHitVar(animtype) - 4) {
-        ChangeAnim{value: 5051 + GetHitVar(animtype) - 4}
-    } else if GetHitVar(animtype) = [3, 5] {
-        ChangeAnim{value: 5030}
-    } else {
-        ChangeAnim{value: $lAnim + GetHitVar(animtype)}
-    }
+	if GetHitVar(animtype) = [4, 5] &&
+		SelfAnimExist(5051 + GetHitVar(animtype) - 4) {
+		ChangeAnim{value: 5051 + GetHitVar(animtype) - 4}
+	} else if GetHitVar(animtype) = [3, 5] {
+		ChangeAnim{value: 5030}
+	} else {
+		ChangeAnim{value: $lAnim + GetHitVar(animtype)}
+	}
 } else {
-    ChangeAnim{value: Anim}
+	ChangeAnim{value: Anim}
 }
 
-
+#---------------------------------------------------------------------------
 [Function GetHitKnockedBack(lAnim, nextState)]
 if Time = 0 {
-    HitVelSet{x: 1}
+	HitVelSet{x: 1}
 }
 if AnimTime = 0 {
-    ChangeAnim{value: $lAnim + GetHitVar(animtype)}
+	ChangeAnim{value: $lAnim + GetHitVar(animtype)}
 }
 if Time >= GetHitVar(slidetime) {
-    VelMul{x: .6}
+	VelMul{x: .6}
 }
 if HitOver {
-    VelSet{x: 0}
-    DefenceMulSet{value: 1}
-    ChangeState{value: $nextState; ctrl: 1}
+	VelSet{x: 0}
+	DefenceMulSet{value: 1}
+	ChangeState{value: $nextState; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Stand get-hit (shaking)
 [Statedef 5000; type: S; movetype: H; physics: N;
  velset: 0, 0;]
 call GetHitShaking(ifelse(GetHitVar(groundtype) = 1, 5000, 5010));
 if (Time = 0 && (GetHitVar(yvel) || GetHitVar(fall))) || Pos Y != 0 {
-    StateTypeSet{statetype: A}
+	StateTypeSet{statetype: A}
 }
 if HitShakeOver {
-    ChangeState{value: ifelse(GetHitVar(yvel) || GetHitVar(fall), 5030, 5001)}
+	ChangeState{value: ifelse(GetHitVar(yvel) || GetHitVar(fall), 5030, 5001)}
 }
 
-
+#---------------------------------------------------------------------------
+# Stand get-hit (knocked back)
 [Statedef 5001; type: S; movetype: H; physics: S;]
 call GetHitKnockedBack(5005 + (GetHitVar(groundtype) = 2) * 10, 0);
 
-
+#---------------------------------------------------------------------------
+# Crouch get-hit (shaking)
 [Statedef 5010; type: C; movetype: H; physics: N;
  velset: 0, 0;]
 call GetHitShaking(5020);
 if (Time = 0 && (GetHitVar(yvel) || GetHitVar(fall))) || Pos Y != 0 {
-    StateTypeSet{statetype: A}
+	StateTypeSet{statetype: A}
 }
 if HitShakeOver {
-    ChangeState{value: ifelse(GetHitVar(yvel) || GetHitVar(fall), 5030, 5011)}
+	ChangeState{value: ifelse(GetHitVar(yvel) || GetHitVar(fall), 5030, 5011)}
 }
 
-
+#---------------------------------------------------------------------------
+# Crouch get-hit (knocked back)
 [Statedef 5011; type: C; movetype: H; physics: C;]
 call GetHitKnockedBack(5025, 11);
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (shaking)
 [Statedef 5020; type: A; movetype: H; physics: N;
  velset: 0, 0;]
 call GetHitShaking(ifelse(GetHitVar(airtype) = 1, 5000, 5010));
 if HitShakeOver {
-    ChangeState{value: 5030}
+	ChangeState{value: 5030}
 }
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (knocked away)
 [Statedef 5030; type: A; movetype: H; physics: N;
  ctrl: 0;]
 if MajorVersion = 1 && Anim != [5000, 5199] && SelfAnimExist(5030) {
-    ChangeAnim{value: 5030}
+	ChangeAnim{value: 5030}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if Time = 0 {
-    HitVelSet{x: 1; y: 1}
+	HitVelSet{x: 1; y: 1}
 }
 if HitOver || Vel Y > 0 && Pos Y >= Const(movement.air.gethit.groundlevel) {
-    if HitFall {
-        ChangeState{value: 5050}
-    } else {
-        ChangeState{value: 5040}
-    }
+	if HitFall {
+		ChangeState{value: 5050}
+	} else {
+		ChangeState{value: 5040}
+	}
 }
 if AnimTime = 0 {
-    ChangeState{value: 5035}
+	ChangeState{value: 5035}
 }
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (transition)
 [Statedef 5035; type: A; movetype: H; physics: N;]
 if Time = 0 && SelfAnimExist(5035) && Anim != [5051, 5059] && Anim != 5090 {
-    ChangeAnim{value: 5035}
+	ChangeAnim{value: 5035}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if HitOver || AnimTime = 0 ||
-    Vel Y > 0 && Pos Y >= Const(movement.air.gethit.groundlevel) ||
-    Time = 0 && Anim != 5035 {
-    if HitFall {
-        ChangeState{value: 5050}
-    } else {
-        ChangeState{value: 5040}
-    }
+	Vel Y > 0 && Pos Y >= Const(movement.air.gethit.groundlevel) ||
+	Time = 0 && Anim != 5035 {
+	if HitFall {
+		ChangeState{value: 5050}
+	} else {
+		ChangeState{value: 5040}
+	}
 }
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (recovering in air, not falling)
 [Statedef 5040; type: A; movetype: H; physics: N;]
 if !Alive {
-    ChangeState{value: 5050; ctrl: 0}
+	ChangeState{value: 5050; ctrl: 0}
 }
 if AnimTime = 0 && Anim != 5040 || Time = 0 && Anim != 5035 {
-    ChangeAnim{value: 5040}
+	ChangeAnim{value: 5040}
 }
 if HitOver {
-    CtrlSet{value: 1}
-    StateTypeSet{movetype: I}
+	CtrlSet{value: 1}
+	StateTypeSet{movetype: I}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if Vel Y > 0 && Pos Y >= 0 {
-    ChangeState{value: 52}
+	ChangeState{value: 52}
 }
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (falling)
 [Statedef 5050; type: A; movetype: H; physics: N;]
 if AnimTime = 0 && Anim = 5035 || Time = 0 && Anim != 5035 &&
-    Anim != [5051, 5059] && Anim != [5061, 5069] && Anim != 5090 {
-    ChangeAnim{value: 5050}
+	Anim != [5051, 5059] && Anim != [5061, 5069] && Anim != 5090 {
+	ChangeAnim{value: 5050}
 }
 persistent(0) if Anim = [5050, 5059] && Vel Y >= ifelse(Anim = 5050,
-    Const240p(1), Const240p(-2)) && SelfAnimExist(Anim + 10) {
-    ChangeAnim{value: Anim + 10}
+	Const240p(1), Const240p(-2)) && SelfAnimExist(Anim + 10) {
+	ChangeAnim{value: Anim + 10}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if Alive && CanRecover && Command = "recovery" {
-    if Vel Y > 0 &&
-        Pos Y >= Const(movement.air.gethit.groundrecover.ground.threshold) {
-        ChangeState{value: 5200}
-    }
-    if Vel Y > Const(movement.air.gethit.airrecover.threshold) {
-        ChangeState{value: 5210}
-    }
+	if Vel Y > 0 &&
+		Pos Y >= Const(movement.air.gethit.groundrecover.ground.threshold) {
+		ChangeState{value: 5200}
+	}
+	if Vel Y > Const(movement.air.gethit.airrecover.threshold) {
+		ChangeState{value: 5210}
+	}
 }
 if Vel Y > 0 && Pos Y >= cond(Anim = [5051, 5059] || Anim = [5061, 5069], 0,
-    ifelse(MajorVersion = 1, Const(movement.air.gethit.groundlevel), 25)) {
-    ChangeState{value: 5100}
+	ifelse(MajorVersion = 1, Const(movement.air.gethit.groundlevel), 25)) {
+	ChangeState{value: 5100}
 }
 
-
+#---------------------------------------------------------------------------
+# Tripped get-hit (shaking)
 [Statedef 5070; type: A; movetype: H; physics: N;
  velset: 0, 0;]
 ChangeAnim{value: 5070}
 if HitShakeOver {
-    ChangeState{value: 5071}
+	ChangeState{value: 5071}
 }
 
-
+#---------------------------------------------------------------------------
+# Tripped get-hit (knocked away)
 [Statedef 5071; type: A; movetype: H; physics: N;]
 if Time = 0 {
-    HitVelSet{x: 1; y: 1}
+	HitVelSet{x: 1; y: 1}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if Vel Y > 0 && Pos Y >= Const(movement.air.gethit.trip.groundlevel) {
-    ChangeState{value: 5110}
+	ChangeState{value: 5110}
 }
 
-
+#---------------------------------------------------------------------------
 [Function SelfAnimExistAddMod10(cond, base) ret]
 let ret = cond($cond && SelfAnimExist($base + Anim % 10),
-    $base + Anim % 10, $base);
+	$base + Anim % 10, $base);
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (shaking)
 [Statedef 5080; type: L; movetype: H; physics: N;
  velset: 0, 0;]
 if Time = 0 {
-    SysVar(2) := ifelse (GetHitVar(yvel) = 0, 5080, 5090);
-    if (Anim = [5081, 5089] || Anim = [5111, 5119]) &&
-        SelfAnimExist(SysVar(2) + Anim % 10) {
-        SysVar(2) := SysVar(2) + Anim % 10;
-    }
-    if SysVar(2) = 5090 && !SelfAnimExist(5090) {
-        SysVar(2) := 5030;
-    }
+	SysVar(2) := ifelse (GetHitVar(yvel) = 0, 5080, 5090);
+	if (Anim = [5081, 5089] || Anim = [5111, 5119]) &&
+		SelfAnimExist(SysVar(2) + Anim % 10) {
+		SysVar(2) := SysVar(2) + Anim % 10;
+	}
+	if SysVar(2) = 5090 && !SelfAnimExist(5090) {
+		SysVar(2) := 5030;
+	}
 }
 ChangeAnim{value: SysVar(2)}
 if HitShakeOver {
-    if GetHitVar(yvel) {
-        ChangeState{value: 5030}
-    } else {
-        ChangeState{value: 5081}
-    }
+	if GetHitVar(yvel) {
+		ChangeState{value: 5030}
+	} else {
+		ChangeState{value: 5081}
+	}
 }
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (knocked back)
 [Statedef 5081; type: L; movetype: H; physics: C;]
 if Time = 0 {
-    HitVelSet{x: 1}
-    SysVar(0) := 1;
+	HitVelSet{x: 1}
+	SysVar(0) := 1;
 }
 if HitOver {
-    VelSet{x: 0}
-    ChangeState{value: 5110}
+	VelSet{x: 0}
+	ChangeState{value: 5110}
 }
 
-
+#---------------------------------------------------------------------------
 [Function HitGroundEffect(vely)]
 if MajorVersion = 1 {
-    Explod{
-        anim: F(60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
-        postype: p1;
-        pos: 0, 0;
-        facing: facing;
-        sprpriority: ifelse ($vely <= Const240p(14), -10, 10);
-    }
+	Explod{
+		anim: F(60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
+		postype: p1;
+		pos: 0, 0;
+		facing: facing;
+		sprpriority: ifelse ($vely <= Const240p(14), -10, 10);
+	}
 } else {
-    GameMakeAnim{
-        value: 60 + ($vely > 5) + ($vely > 14);
-        pos: 0, 0;
-        under: $vely <= 14;
-    }
+	GameMakeAnim{
+		value: 60 + ($vely > 5) + ($vely > 14);
+		pos: 0, 0;
+		under: $vely <= 14;
+	}
 }
 PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (hit ground from fall)
 [Statedef 5100; type: L; movetype: H; physics: N;]
 if Time = 0 {
-    if MajorVersion != 1 && GetHitVar(fall.yvel) = 0 && Vel X > 1 {
-        VelSet{x: 1}
-    }
-    FallEnvShake{}
-    SysVar(1) := floor(Vel Y);
-    let a = call SelfAnimExistAddMod10(Anim = [5051, 5059] ||
-        Anim = [5061, 5069], 5100);
-    ChangeAnim{value: $a}
-    PosSet{y: 0}
-    VelSet{y: 0}
-    VelMul{x: .75}
-    if GetHitVar(fall.yvel) = 0 {
-        ChangeState{value: 5110}
-    }
+	if MajorVersion != 1 && GetHitVar(fall.yvel) = 0 && Vel X > 1 {
+		VelSet{x: 1}
+	}
+	FallEnvShake{}
+	SysVar(1) := floor(Vel Y);
+	let a = call SelfAnimExistAddMod10(Anim = [5051, 5059] ||
+		Anim = [5061, 5069], 5100);
+	ChangeAnim{value: $a}
+	PosSet{y: 0}
+	VelSet{y: 0}
+	VelMul{x: .75}
+	if GetHitVar(fall.yvel) = 0 {
+		ChangeState{value: 5110}
+	}
 } else if Time = 1 {
-    call HitGroundEffect(SysVar(1));
+	call HitGroundEffect(SysVar(1));
 } else if Time = 3 {
-    HitFallDamage{}
+	HitFallDamage{}
 }
 PosFreeze{}
 if AnimTime = 0 {
-    ChangeState{value: 5101}
+	ChangeState{value: 5101}
 }
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (bounce off ground)
 [Statedef 5101; type: L; movetype: H; physics: N;]
 if Time = 0 {
-    let a = call SelfAnimExistAddMod10(Anim = [5101, 5109], 5160);
-    ChangeAnim{value: $a}
-    HitFallVel{}
-    PosSet{y: Const(movement.down.bounce.offset.y)}
-    PosAdd{x: Const(movement.down.bounce.offset.x)}
+	let a = call SelfAnimExistAddMod10(Anim = [5101, 5109], 5160);
+	ChangeAnim{value: $a}
+	HitFallVel{}
+	PosSet{y: Const(movement.down.bounce.offset.y)}
+	PosAdd{x: Const(movement.down.bounce.offset.x)}
 }
 VelAdd{y: Const(movement.down.bounce.yaccel)}
 if Vel Y > 0 && Pos Y >= Const(movement.down.bounce.groundlevel) {
-    ChangeState{value: 5110}
+	ChangeState{value: 5110}
 }
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (lying down)
 [Statedef 5110; type: L; movetype: H; physics: N;]
 persistent(0) if SelfAnimExist(5110 + Anim % 10) && Anim = [5081, 5089] {
-    ChangeAnim{value: 5110 + Anim % 10}
+	ChangeAnim{value: 5110 + Anim % 10}
 }
 if Time = 0 {
-    FallEnvShake{}
-    if Anim != [5110, 5119] {
-        let a = call SelfAnimExistAddMod10(Anim = [5161, 5169], 5170);
-        ChangeAnim{value: $a}
-    }
-    HitFallDamage{}
-    PosSet{y: 0}
-    if GetHitVar(fall.yvel) {
-        SysVar(1) := floor(Vel Y);
-    }
-    if !SysVar(0) {
-        call HitGroundEffect(SysVar(1));
-    }
-    VelSet{y: 0}
+	FallEnvShake{}
+	if Anim != [5110, 5119] {
+		let a = call SelfAnimExistAddMod10(Anim = [5161, 5169], 5170);
+		ChangeAnim{value: $a}
+	}
+	HitFallDamage{}
+	PosSet{y: 0}
+	if GetHitVar(fall.yvel) {
+		SysVar(1) := floor(Vel Y);
+	}
+	if !SysVar(0) {
+		call HitGroundEffect(SysVar(1));
+	}
+	VelSet{y: 0}
 }
 let atEq0OrSv0 = AnimTime = 0 || SysVar(0);
 if $atEq0OrSv0 {
-    persistent(0) if Anim = [5171, 5179] && SelfAnimExist(5110 + Anim % 10) {
-        ChangeAnim{value: 5110 + Anim % 10}
-    }
-    persistent(0) if Anim != [5111, 5119] {
-        ChangeAnim{value: 5110}
-    }
+	persistent(0) if Anim = [5171, 5179] && SelfAnimExist(5110 + Anim % 10) {
+		ChangeAnim{value: 5110 + Anim % 10}
+	}
+	persistent(0) if Anim != [5111, 5119] {
+		ChangeAnim{value: 5110}
+	}
 }
 if !Alive && ($atEq0OrSv0 || Anim = [5110, 5119]) {
-    ChangeState{value: 5150}
+	ChangeState{value: 5150}
 }
 if Time = 0 {
-    SysVar(0) := 0;
+	SysVar(0) := 0;
 }
 VelMul{x: .85}
 if MajorVersion = 1 && abs(Vel X) < Const(movement.down.friction.threshold) {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (getting up)
 [Statedef 5120; type: L; movetype: I; physics: N;]
 if Time = 0 {
-    let a = call SelfAnimExistAddMod10(Anim = [5111, 5119], 5120);
-    ChangeAnim{value: $a}
-    VelSet{x: 0}
+	let a = call SelfAnimExistAddMod10(Anim = [5111, 5119], 5120);
+	ChangeAnim{value: $a}
+	VelSet{x: 0}
 }
 NotHitBy{value: SCA; time: 1}
 if AnimTime = 0 {
-    HitFallSet{value: 1}
-    NotHitBy{value: , NT,ST,HT; time: 12}
-    NotHitBy{value2: SCA; time: 3}
-    ChangeState{value: 0; ctrl: 1}
+	HitFallSet{value: 1}
+	NotHitBy{value: , NT,ST,HT; time: 12}
+	NotHitBy{value2: SCA; time: 3}
+	ChangeState{value: 0; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Downed get-hit (lying defeated)
 [Statedef 5150; type: L; movetype: H; physics: N;
  sprpriority: -3; ctrl: 0;]
 if Time = 0 {
-    let a = call SelfAnimExistAddMod10(Anim = [5111, 5119] ||
-        Anim = [5171, 5179], 5140);
-    if SelfAnimExist($a) {
-        ChangeAnim{value: $a}
-    }
-    if Anim != [5140, 5159] && Anim != [5110, 5119] {
-        ChangeAnim{value: 5110}
-    }
+	let a = call SelfAnimExistAddMod10(Anim = [5111, 5119] ||
+		Anim = [5171, 5179], 5140);
+	if SelfAnimExist($a) {
+		ChangeAnim{value: $a}
+	}
+	if Anim != [5140, 5159] && Anim != [5110, 5119] {
+		ChangeAnim{value: 5110}
+	}
 }
 persistent(0) if MatchOver = 1 && Anim = [5140, 5149] &&
-    SelfAnimExist(Anim + 10) {
-    ChangeAnim{value: Anim + 10}
+	SelfAnimExist(Anim + 10) {
+	ChangeAnim{value: Anim + 10}
 }
 VelMul{x: .85}
 persistent(0) if abs(Vel X) < Const(movement.down.friction.threshold) {
-    VelSet{x: 0}
+	VelSet{x: 0}
 }
 NotHitBy{value: SCA; time: 1}
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (fall recovery on ground; still falling)
 [Statedef 5200; type: A; movetype: H; physics: N;]
 if Anim = 5035 && AnimTime = 0 {
-    ChangeAnim{value: 5050}
+	ChangeAnim{value: 5050}
 }
 VelAdd{y: GetHitVar(yaccel)}
 if Vel Y > 0 && Pos Y >= Const(movement.air.gethit.groundrecover.groundlevel) {
-    SelfState{value: 5201}
+	SelfState{value: 5201}
 }
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (fall recovery on ground)
 [Statedef 5201; type: A; movetype: H; physics: A;
  anim: 5200;]
 if Time = 0 {
-    if p2dist X < Const240p(-5) {
-        Turn{}
-    }
-    VelSet{
-        x: Const(velocity.air.gethit.groundrecover.x);
-        y: Const(velocity.air.gethit.groundrecover.y);
-    }
-    PosSet{y: 0}
-    PalFX{time: 3; add: 128, 128, 128}
-    if MajorVersion = 1 {
-        Explod{anim: F60; postype: none;
-            pos: Pos X + camerapos X, Pos Y - floor(Vel Y);
-            facing: facing; sprpriority: -10}
-    }
+	if p2dist X < Const240p(-5) {
+		Turn{}
+	}
+	VelSet{
+		x: Const(velocity.air.gethit.groundrecover.x);
+		y: Const(velocity.air.gethit.groundrecover.y);
+	}
+	PosSet{y: 0}
+	PalFX{time: 3; add: 128, 128, 128}
+	if MajorVersion = 1 {
+		Explod{anim: F60; postype: none;
+			pos: Pos X + camerapos X, Pos Y - floor(Vel Y);
+			facing: facing; sprpriority: -10}
+	}
 } else if Time = 1 && MajorVersion != 1 {
-    GameMakeAnim{value: 60; pos: 0, 0; under: 1}
+	GameMakeAnim{value: 60; pos: 0, 0; under: 1}
 }
 NotHitBy{value: SCA; time: 1}
 
-
+#---------------------------------------------------------------------------
+# Air get-hit (fall recovery in air)
 [Statedef 5210; type: A; movetype: I; physics: N;
  anim: 5210; ctrl: 0;]
 if Time = 0 {
-     PalFX{time: 3; add: 128, 128, 128}
-     PosFreeze{}
-     if p2dist X < Const240p(-20) {
-        Turn{}
-     }
-     NotHitBy{value: SCA; time: 15}
+	 PalFX{time: 3; add: 128, 128, 128}
+	 PosFreeze{}
+	 if p2dist X < Const240p(-20) {
+		Turn{}
+	 }
+	 NotHitBy{value: SCA; time: 15}
 } else if Time < 4 {
-    if MajorVersion = 1 {
-        PosFreeze{}
-    }
+	if MajorVersion = 1 {
+		PosFreeze{}
+	}
 } else {
-    if Time = 4 {
-        if MajorVersion = 1 {
-            VelMul{
-                x: Const(velocity.air.gethit.airrecover.mul.x);
-                y: Const(velocity.air.gethit.airrecover.mul.y);
-            }
-        } else {
-            VelMul{x: .8; y: .8}
-        }
-        VelAdd{
-            x: Const(velocity.air.gethit.airrecover.add.x);
-            y: Const(velocity.air.gethit.airrecover.add.y);
-        }
-        if MajorVersion != 1 {
-            if Vel Y > 0 {
-                VelMul{y: .5}
-            }
-            if Vel Y > -3 {
-                VelAdd{y: -2}
-            }
-            if Vel Y > -2 {
-                VelAdd{y: -1}
-            }
-        }
-        if Command = "holdup" {
-            VelAdd{y: Const(velocity.air.gethit.airrecover.up)}
-        }
-        if Command = "holddown" {
-            VelAdd{y: Const(velocity.air.gethit.airrecover.down)}
-        }
-        if Command = "holdfwd" {
-            VelAdd{x: Const(velocity.air.gethit.airrecover.fwd)}
-        }
-        if Command = "holdback" {
-            VelAdd{x: Const(velocity.air.gethit.airrecover.back)}
-        }
-    } else if Time = 20 {
-        CtrlSet{value: 1}
-    }
-    VelAdd{y: Const(movement.air.gethit.airrecover.yaccel)}
+	if Time = 4 {
+		if MajorVersion = 1 {
+			VelMul{
+				x: Const(velocity.air.gethit.airrecover.mul.x);
+				y: Const(velocity.air.gethit.airrecover.mul.y);
+			}
+		} else {
+			VelMul{x: .8; y: .8}
+		}
+		VelAdd{
+			x: Const(velocity.air.gethit.airrecover.add.x);
+			y: Const(velocity.air.gethit.airrecover.add.y);
+		}
+		if MajorVersion != 1 {
+			if Vel Y > 0 {
+				VelMul{y: .5}
+			}
+			if Vel Y > -3 {
+				VelAdd{y: -2}
+			}
+			if Vel Y > -2 {
+				VelAdd{y: -1}
+			}
+		}
+		if Command = "holdup" {
+			VelAdd{y: Const(velocity.air.gethit.airrecover.up)}
+		}
+		if Command = "holddown" {
+			VelAdd{y: Const(velocity.air.gethit.airrecover.down)}
+		}
+		if Command = "holdfwd" {
+			VelAdd{x: Const(velocity.air.gethit.airrecover.fwd)}
+		}
+		if Command = "holdback" {
+			VelAdd{x: Const(velocity.air.gethit.airrecover.back)}
+		}
+	} else if Time = 20 {
+		CtrlSet{value: 1}
+	}
+	VelAdd{y: Const(movement.air.gethit.airrecover.yaccel)}
 }
 if Vel Y > 0 && Pos Y >= 0 {
-    ChangeState{value: 52; ctrl: 1}
+	ChangeState{value: 52; ctrl: 1}
 }
 
-
+#---------------------------------------------------------------------------
+# Continue screen animation
 [Statedef 5500; type: S;
  ctrl: 0; anim: 5300; velset: 0, 0;]
 if Time = 0 && SelfAnimExist(5500) {
-    ChangeAnim{value: 5500}
+	ChangeAnim{value: 5500}
 }
 
-
+#---------------------------------------------------------------------------
+# Initialize (at the start of the round)
 [Statedef 5900; type: S;]
-if roundsexisted = 0 {
-    VarRangeSet{value: 0}
-    VarRangeSet{fvalue: 0}
+if roundsExisted = 0 {
+	VarRangeSet{value: 0}
+	VarRangeSet{fvalue: 0}
 }
 RemapPal{source: 1, 1; dest: 1, ifelse(ishelper, palno, drawpalno)}
-if roundno = 1 {
-    ChangeState{value: 190}
+if roundNo = 1 {
+	ChangeState{value: 190}
 }
 ChangeState{value: 0}

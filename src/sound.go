@@ -182,7 +182,7 @@ func NewNormalizer() *Normalizer {
 func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
-	if sys.AudioDucking {
+	if sys.audioDucking {
 		if lmul < rmul {
 			n.mul = lmul
 		} else {
@@ -260,26 +260,6 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) IsVorbis() bool {
-	return bgm.IsFormat(".ogg")
-}
-
-func (bgm *Bgm) IsMp3() bool {
-	return bgm.IsFormat(".mp3")
-}
-
-//func (bgm *Bgm) IsFLAC() bool {
-//	return bgm.IsFormat(".flac")
-//}
-
-func (bgm *Bgm) IsWAVE() bool {
-	return bgm.IsFormat(".wav")
-}
-
-func (bgm *Bgm) IsFormat(extension string) bool {
-	return filepath.Ext(bgm.filename) == extension
-}
-
 func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
 	if filepath.Base(bgm.filename) == filepath.Base(filename) {
 		return
@@ -297,16 +277,15 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 	}
 	speaker.Clear()
 
-	if bgm.IsVorbis() {
+	if HasExtension(bgm.filename, "^\\.[Oo][Gg][Gg]$") {
 		bgm.ReadVorbis(loop, bgmVolume)
-	} else if bgm.IsMp3() {
+	} else if HasExtension(bgm.filename, "^\\.[Mm][Pp]3$") {
 		bgm.ReadMp3(loop, bgmVolume)
-	//} else if bgm.IsFLAC() {
+	//} else if HasExtension(bgm.filename, "^\\.[Ff][Ll][Aa][Cc]$") {
 	//	bgm.ConvertFLAC(loop, bgmVolume)
-	} else if bgm.IsWAVE() {
+	} else if HasExtension(bgm.filename, "^\\.[Ww][Aa][Vv]$") {
 		bgm.ReadWav(loop, bgmVolume)
 	}
-
 }
 
 func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
@@ -575,9 +554,10 @@ func LoadSnd(filename string) (*Snd, error) {
 			if !ok {
 				tmp, err := ReadWave(f, int64(subHeaderOffset))
 				if err != nil {
-					return nil, err
+					fmt.Printf("Warning: Broken sound found in %s (%d, %d)\n", filename, num[0], num[1])
+				} else {
+					s.table[num] = tmp
 				}
-				s.table[num] = tmp
 			}
 		}
 		subHeaderOffset = nextSubHeaderOffset
@@ -593,6 +573,91 @@ func (s *Snd) play(gn [2]int32) bool {
 		return false
 	}
 	c.sound = s.Get(gn)
+	return c.sound != nil
+}
+func (s *Snd) stop(gn [2]int32) {
+	w := s.Get(gn)
+	for k, v := range sys.sounds {
+		if v.sound != nil && v.sound == w {
+			sys.sounds[k] = Sound{volume: 256, freqmul: 1}
+			//break
+		}
+	}
+	return
+}
+
+func newWave() *Wave {
+	return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}
+}
+func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
+	w := newWave()
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { chk(f.Close()) }()
+	buf := make([]byte, 12)
+	var n int
+	if n, err = f.Read(buf); err != nil {
+		return nil, err
+	}
+	if string(buf[:n]) != "ElecbyteSnd\x00" {
+		return nil, Error("ElecbyteSndではありません")
+	}
+	read := func(x interface{}) error {
+		return binary.Read(f, binary.LittleEndian, x)
+	}
+	var ver uint16
+	if err := read(&ver); err != nil {
+		return nil, err
+	}
+	var ver2 uint16
+	if err := read(&ver2); err != nil {
+		return nil, err
+	}
+	var numberOfSounds uint32
+	if err := read(&numberOfSounds); err != nil {
+		return nil, err
+	}
+	var subHeaderOffset uint32
+	if err := read(&subHeaderOffset); err != nil {
+		return nil, err
+	}
+	loops := numberOfSounds
+	if max > 0 && max < numberOfSounds {
+		loops = max
+	}
+	for i := uint32(0); i < loops; i++ {
+		f.Seek(int64(subHeaderOffset), 0)
+		var nextSubHeaderOffset uint32
+		if err := read(&nextSubHeaderOffset); err != nil {
+			return nil, err
+		}
+		var subFileLenght uint32
+		if err := read(&subFileLenght); err != nil {
+			return nil, err
+		}
+		var num [2]int32
+		if err := read(&num); err != nil {
+			return nil, err
+		}
+		if num[0] == g && num[1] == s {
+			tmp, err := ReadWave(f, int64(subHeaderOffset))
+			if err != nil {
+				return nil, err
+			}
+			return tmp, nil
+		}
+		subHeaderOffset = nextSubHeaderOffset
+	}
+	return w, nil
+}
+func (w *Wave) play() bool {
+	c := sys.sounds.GetChannel()
+	if c == nil {
+		return false
+	}
+	c.sound = w
 	return c.sound != nil
 }
 

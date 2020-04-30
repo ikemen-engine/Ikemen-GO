@@ -40,13 +40,13 @@ func newFnt() *Fnt {
 	}
 }
 
-func loadFnt(filename string) (*Fnt, error) {
+func loadFnt(filename string, height int32) (*Fnt, error) {
 
 	if strings.HasSuffix(filename, ".fnt") {
 		return loadFntV1(filename)
 	}
 
-	return loadFntV2(filename)
+	return loadFntV2(filename, height)
 }
 
 func loadFntV1(filename string) (*Fnt, error) {
@@ -202,7 +202,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 				defflg = false
 				is := NewIniSection()
 				is.Parse(lines, &i)
-				loadDefInfo(f, filename, is)
+				loadDefInfo(f, filename, is, 0)
 			}
 		}
 	}
@@ -244,12 +244,12 @@ func loadFntV1(filename string) (*Fnt, error) {
 		}
 	}
 
-	f.SetColor(255, 255, 255, 255, 0)
+	f.palfx.setColor(255, 255, 255)
 
 	return f, nil
 }
 
-func loadFntV2(filename string) (*Fnt, error) {
+func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f := newFnt()
 
 	filename = SearchFile(filename, "font/")
@@ -275,17 +275,17 @@ func loadFntV2(filename string) (*Fnt, error) {
 			i--
 			switch name {
 			case "def":
-				loadDefInfo(f, filename, is)
+				loadDefInfo(f, filename, is, height)
 			}
 		}
 	}
 
-	f.SetColor(255, 255, 255, 255, 0)
+	f.palfx.setColor(255, 255, 255)
 
 	return f, nil
 }
 
-func loadDefInfo(f *Fnt, filename string, is IniSection) {
+func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 	f.Type = strings.ToLower(is["type"])
 	ary := SplitAndTrim(is["size"], ",")
 	if len(ary[0]) > 0 {
@@ -317,14 +317,14 @@ func loadDefInfo(f *Fnt, filename string, is IniSection) {
 
 	if len(is["file"]) > 0 {
 		if f.Type == "truetype" {
-			loadFntTtf(f, filename, is["file"])
+			loadFntTtf(f, filename, is["file"], height)
 		} else {
 			loadFntSff(f, filename, is["file"])
 		}
 	}
 }
 
-func loadFntTtf(f *Fnt, fontfile string, filename string) {
+func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	//Search in local directory
 	fileDir := SearchFile(filename, fontfile)
 	//Search in system directory
@@ -335,10 +335,14 @@ func loadFntTtf(f *Fnt, fontfile string, filename string) {
 		if err != nil {
 			panic(err)
 		}
-		//fmt.Printf("Found font in '%s'\n", fileDir)
 	}
 	//Load ttf
-	ttf, err := glfont.LoadFont(fileDir, int32(f.Size[1]), int(sys.gameWidth), int(sys.gameHeight))
+	if height == -1 {
+		height = int32(f.Size[1])
+	} else {
+		f.Size[1] = uint16(height)
+	}
+	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight))
 	if err != nil {
 		panic(err)
 	}
@@ -404,31 +408,13 @@ func (f *Fnt) CharWidth(c rune) int32 {
 //This depends on each char's width and font spacing
 func (f *Fnt) TextWidth(txt string) (w int32) {
 	for _, c := range txt {
-		w += f.CharWidth(c) + f.Spacing[0]
+		if f.Type == "truetype" {
+			w += int32(f.ttf.Width(1, string(c))) + f.Spacing[0]
+		} else {
+			w += f.CharWidth(c) + f.Spacing[0]
+		}
 	}
 	return
-}
-
-func (f *Fnt) SetColor(r, g, b, alphaSrc, alphaDst float32) {
-	if f.Type == "truetype" {
-		f.ttf.SetColor(r, g, b, 1)
-		return
-	}
-
-	rNormalized := Max(0, Min(255, int32(r)))
-	gNormalized := Max(0, Min(255, int32(g)))
-	bNormalized := Max(0, Min(255, int32(b)))
-
-	f.palfx.enable = true
-	f.palfx.eColor = 1
-	f.palfx.eMul = [...]int32{
-		256 * rNormalized >> 8,
-		256 * gNormalized >> 8,
-		256 * bNormalized >> 8,
-	}
-
-	f.alphaSrc = Max(0, Min(255, int32(alphaSrc)))
-	f.alphaDst = Max(0, Min(255, int32(alphaDst)))
 }
 
 func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
@@ -452,12 +438,8 @@ func (f *Fnt) calculateTrans() int32 {
 	return alphaSrc | separator | alphaDst
 }
 
-func (f *Fnt) drawChar(
-	x, y, xscl, yscl float32,
-	bank int32,
-	c rune,
-	pal []uint32,
-) float32 {
+func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
+	pal []uint32, window *[4]int32) float32 {
 
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
@@ -473,7 +455,7 @@ func (f *Fnt) drawChar(
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, &sys.scrrect, 0, 0, nil, nil)
+		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil)
 
 	//if pal != nil {
 	//	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
@@ -490,25 +472,20 @@ func (f *Fnt) drawChar(
 	return float32(spr.Size[0]) * xscl
 }
 
-func (f *Fnt) Print(txt string,
-	x, y, xscl, yscl float32,
-	bank, align int32,
-) {
+func (f *Fnt) Print(txt string, x, y, xscl, yscl float32, bank, align int32,
+	window *[4]int32, palfx *PalFX) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.ttf.Printf(x, y, yscl, align, false, txt) //x, y, scale, align, string, printf args
+			f.DrawTtf(txt, x, y, xscl, yscl, align, false, window, palfx.frgba)
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, bank, align)
+			f.DrawText(txt, x, y, xscl, yscl, bank, align, window, palfx)
 		}
 	}
 }
 
 //DrawText prints on screen a specified text with the current font sprites
-func (f *Fnt) DrawText(
-	txt string,
-	x, y, xscl, yscl float32,
-	bank, align int32,
-) {
+func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
+	window *[4]int32, palfx *PalFX) {
 
 	if len(txt) == 0 {
 		return
@@ -530,7 +507,7 @@ func (f *Fnt) DrawText(
 	var pal []uint32
 	//var paltex uint32
 	if len(f.palettes) != 0 {
-		pal = f.palfx.getFxPal(f.palettes[bank][:], false)
+		pal = palfx.getFxPal(f.palettes[bank][:], false)
 		//gl.Enable(gl.TEXTURE_1D)
 		//gl.ActiveTexture(gl.TEXTURE1)
 		//gl.GenTextures(1, &paltex)
@@ -551,18 +528,24 @@ func (f *Fnt) DrawText(
 	}
 
 	for _, c := range txt {
-		x += f.drawChar(
-			x,
-			y,
-			xscl,
-			yscl,
-			bank,
-			c,
-			pal,
-		) + xscl*float32(f.Spacing[0])
+		x += f.drawChar(x, y, xscl, yscl, bank, c, pal, window) + xscl*float32(f.Spacing[0])
 	}
 	//gl.DeleteTextures(1, &paltex)
 	//gl.Disable(gl.TEXTURE_1D)
+}
+
+func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
+	blend bool, window *[4]int32, frgba [4]float32) {
+	
+	if len(txt) == 0 {
+		return
+	}
+
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+
+	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3]) //r, g, b, a
+	f.ttf.Printf(x, y, (xscl+yscl)/2, align, blend, txt) //x, y, scale, align, blend, string, printf args
 }
 
 type TextSprite struct {
@@ -570,26 +553,27 @@ type TextSprite struct {
 	fnt              *Fnt
 	bank, align      int32
 	x, y, xscl, yscl float32
+	window           [4]int32
+	palfx            *PalFX
 }
 
 func NewTextSprite() *TextSprite {
-	return &TextSprite{align: 1, xscl: 1, yscl: 1}
+	return &TextSprite{align: 1, xscl: 1, yscl: 1, window: sys.scrrect, palfx: newPalFX()}
 }
 
-func (ts *TextSprite) SetColor(r, g, b, alphaSrc, alphaDst float32) {
-	if ts.fnt.Type == "truetype" {
-		ts.fnt.ttf.SetColor(r, g, b, 1)
-	} else {
-		ts.fnt.SetColor(r, g, b, alphaSrc, alphaDst)
-	}
+func (ts *TextSprite) SetWindow(x, y, w, h float32) {
+	ts.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
+	ts.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+	ts.window[2] = int32(w*sys.widthScale + 0.5)
+	ts.window[3] = int32(h*sys.heightScale + 0.5)
 }
 
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.ttf.Printf(ts.x, ts.y, (ts.xscl + ts.yscl) / 2, ts.align, true, ts.text) //x, y, scale, align, blend ,string, printf args
+			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.palfx.frgba)
 		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align)
+			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx)
 		}
 	}
 }

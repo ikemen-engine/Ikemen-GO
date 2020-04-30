@@ -10,7 +10,6 @@ local function f_reset(t)
 		if t.scene[k].bg_name ~= '' then
 			bgReset(t.scene[k].bg)
 		end
-		
 		for k2, v2 in pairs(t.scene[k].layer) do
 			if t.scene[k].layer[k2].anim_data ~= nil then
 				animReset(t.scene[k].layer[k2].anim_data)
@@ -23,7 +22,7 @@ end
 
 local function f_play(t)
 	playBGM('')
-	main.f_printTable(t, 'debug/t_storyboard.txt')
+	if main.debugLog then main.f_printTable(t, 'debug/t_storyboard.txt') end
 	--loop through scenes in order
 	for k, v in main.f_sortKeys(t.scene) do
 		--scene >= startscene
@@ -32,9 +31,8 @@ local function f_play(t)
 			local fadeStart = getFrameCount()
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if (esc() or main.f_btnPalNo(main.p1Cmd) > 0) and t.scenedef.skipbutton > 0 then
+				if (esc() or main.input({1, 2}, {'pal'})) and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
-					refresh()
 					return
 				end
 				--play bgm
@@ -72,9 +70,9 @@ local function f_play(t)
 								t.scene[k].layer[k2].text_timer,
 								t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1],
 								t.scene[k].layerall_pos[2] + t.scene[k].layer[k2].offset[2],
-								t.scene[k].layer[k2].text_spacing[2],
+								main.font_def[t.scene[k].layer[k2].font[1] .. t.scene[k].layer[k2].font_height],
 								t.scene[k].layer[k2].text_delay,
-								t.scene[k].layer[k2].text_length
+								main.f_lineLength(t.scene[k].layerall_pos[1] + t.scene[k].layer[k2].offset[1], t.info.localcoord[1], t.scene[k].layer[k2].font[3], t.scene[k].layer[k2].text_window, true)
 							)
 							end
 					end
@@ -96,7 +94,7 @@ local function f_play(t)
 					t.scene[k][fadeType .. '_col'][2],
 					t.scene[k][fadeType .. '_col'][3]
 				)
-				--if main.f_btnPalNo(main.p1Cmd) > 0 and t.scenedef.skipbutton <= 0 then
+				--if main.input({1}, {'pal'}) and t.scenedef.skipbutton <= 0 then
 				--	main.f_cmdInput()
 				--	refresh()
 				--	do
@@ -131,11 +129,10 @@ local function f_parse(path)
 		scenedef = {
 			spr = '',
 			snd = '',
-			font = {[1] = 'f-6x9.fnt'},
+			font = {},
 			font_height = {},
 			startscene = 0,
 			skipbutton = 1, --Ikemen feature
-			font_data = {}
 		},
 		scene = {},
 	}
@@ -211,10 +208,11 @@ local function f_parse(path)
 							{
 								anim = -1,
 								text = '',
-								font = {1, 0, 0, 255, 255, 255, 255, 0},
-								text_spacing = {0, 15}, --Ikemen feature
+								font = {'f-6x9.def', 0, 0, 255, 255, 255, 255, 0},
+								font_scale = {1.0, 1.0}, --Ikemen feature
+								font_height = -1, --Ikemen feature
 								text_delay = 2, --Ikemen feature
-								text_length = 50, --Ikemen feature
+								text_window = {}, --Ikemen feature
 								text_timer = 0, --Ikemen feature
 								offset = {0, 0},
 								starttime = 0,
@@ -239,13 +237,30 @@ local function f_parse(path)
 					else
 						pos_val = pos
 					end
-					if pos_val[param] == nil then --mugen takes into account only first occurrence
+					if pos_val[param] == nil or param:match('_font_height$') then --mugen takes into account only first occurrence
+						if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
+							local _, n = value:gsub(',%s*[0-9]*', '')
+							for i = n + 1, #main.t_fntDefault do
+								value = value:gsub(',?%s*$', ',' .. main.t_fntDefault[i])
+							end
+						end
 						if value:match('.+,.+') then --multiple values
 							for i, c in ipairs(main.f_strsplit(',', value)) do --split value using "," delimiter
-								if pos_val[param] == nil then
+								if i == 1 then
+									--t_layer[k2].font
 									pos_val[param] = {}
+									if param:match('_font$') and tonumber(c) ~= -1 then
+										if t.scenedef ~= nil and t.scenedef.font ~= nil and t.scenedef.font[tonumber(c)] ~= nil then
+											if pos_val[param .. '_height'] == nil and t.scenedef.font_height[tonumber(c)] ~= nil then
+												pos_val[param .. '_height'] = t.scenedef.font_height[tonumber(c)]
+											end
+											c = t.scenedef.font[tonumber(c)]
+										else
+											break --use default font values
+										end
+									end
 								end
-								if c == '' then
+								if c == nil or c == '' then
 									table.insert(pos_val[param], 0)
 								else
 									table.insert(pos_val[param], main.f_dataType(c))
@@ -293,16 +308,6 @@ local function f_parse(path)
 		end
 		t.scenedef.snd_data = sndNew(t.scenedef.snd)
 	end
-	--scenedef fonts
-	for k, v in pairs(t.scenedef.font) do --loop through table keys
-		if v ~= '' and t.scenedef.font_data[v] == nil then
-			if t.scenedef.font_height[k] ~= nil then
-				t.scenedef.font_data[v] = fontNew(v, t.scenedef.font_height[k])
-			else
-				t.scenedef.font_data[v] = fontNew(v)
-			end
-		end
-	end
 	--loop through scenes
 	local prev_k = ''
 	for k, v in main.f_sortKeys(t.scene) do
@@ -333,7 +338,7 @@ local function f_parse(path)
 		prev_k = k
 		--backgrounds
 		if t.scene[k].bg_name ~= '' then
-			t.scene[k].bg = bgNew(t.def, t.scene[k].bg_name:lower(), t.scenedef.spr)
+			t.scene[k].bg = bgNew(t.scenedef.spr_data, t.def, t.scene[k].bg_name:lower())
 			bgReset(t.scene[k].bg)
 		end
 		--loop through scene layers
@@ -347,25 +352,27 @@ local function f_parse(path)
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]
 				)
-				--animSetScale(t.scene[k].layer[k2].anim_data, 320/t.info.localcoord[1], 240/t.info.localcoord[2])
+				animSetScale(t.scene[k].layer[k2].anim_data, 320/t.info.localcoord[1], 240/t.info.localcoord[2])
 			end
 			--text
 			if t_layer[k2].text ~= '' then
-				t.scene[k].layer[k2].text_data = main.f_createTextImg(
-					t.scenedef.font_data[t_layer[k2].font[1]],
-					t_layer[k2].font[2],
-					t_layer[k2].font[3],
-					t_layer[k2].text,
-					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-					320/t.info.localcoord[1],
-					240/t.info.localcoord[2],
-					t_layer[k2].font[4],
-					t_layer[k2].font[5],
-					t_layer[k2].font[6],
-					t_layer[k2].font[7],
-					t_layer[k2].font[8]
-				)
+				t.scene[k].layer[k2].text_data = text:create({
+					font =   t_layer[k2].font[1],
+					bank =   t_layer[k2].font[2],
+					align =  t_layer[k2].font[3],
+					text =   t_layer[k2].text,
+					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
+					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
+					scaleX = t_layer[k2].font_scale[1] * 320 / t.info.localcoord[1],
+					scaleY = t_layer[k2].font_scale[2] * 240 / t.info.localcoord[2],
+					r =      t_layer[k2].font[4],
+					g =      t_layer[k2].font[5],
+					b =      t_layer[k2].font[6],
+					src =    t_layer[k2].font[7],
+					dst =    t_layer[k2].font[8],
+					height = t_layer[k2].font_height,
+					window = t_layer[k2].text_window
+				})
 			end
 			--endtime
 			if t_layer[k2].endtime == nil then

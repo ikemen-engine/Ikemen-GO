@@ -1,0 +1,186 @@
+#===============================================================================
+#Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[Statedef -4]
+
+# score calculation
+if RoundState = 0 {
+	MapSet{map: "_iksys_vitalBase"; value: 0}
+	MapSet{map: "_iksys_consecutiveWinsFlag"; value: 0}
+	MapSet{map: "_iksys_attackTypeFlag"; value: 0}
+	MapSet{map: "_iksys_attackType"; value: 0}
+	MapSet{map: "_iksys_attackTypeBonus"; value: 0}
+	MapSet{map: "_iksys_attackTypeFrames"; value: 0}
+	MapSet{map: "_iksys_damageCount"; value: 0}
+	MapSet{map: "_iksys_comboCount"; value: 0}
+	MapSet{map: "_iksys_counterCount"; value: 0}
+	MapSet{map: "_iksys_firstAttackFlag"; value: 0}
+	MapSet{map: "_iksys_winFlag"; value: 0}
+} else if RoundState = 4 && !IsHelper {
+	# score: time vital bonus
+	if Win && Map(_iksys_vitalBase) = 0 && Alive && !Cheated {
+		MapSet{map: "_iksys_vitalBase"; value: float(Life) / LifeMax / (NumPartner + 1) * 15000}
+		if TeamMode = Turns && RoundsExisted = 0 && enemy,RoundsExisted > 0 {
+			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
+			ScoreAdd{value: round(Map(_iksys_vitalBase) / (enemy,RoundsExisted + 1), -2)}
+		} else {
+			let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
+			let _p1TagNum = 1;
+			let _p2TagNum = 1;
+			if TeamMode = Tag {
+				let _p1TagNum = NumPartner + 1;
+			}
+			if enemy,TeamMode = Tag {
+				let _p2TagNum = enemy,NumPartner + 1;
+			}
+			if $_p1TagNum > $_p2TagNum {
+				# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
+				let _timeRatio = $_timeRatio * $_p2TagNum / $_p1TagNum;
+			}
+			if $_timeRatio > 90 {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 10, -2)}
+			} else if $_timeRatio > 85 {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 8, -2)}
+			} else if $_timeRatio > 80 {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 5, -2)}
+			} else if $_timeRatio > 70 {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 4, -2)}
+			} else if $_timeRatio > 60 {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 2, -2)}
+			} else {
+				ScoreAdd{value: round(Map(_iksys_vitalBase) * 1, -2)}
+			}
+		}
+	}
+	# score: consecutive wins bonus
+	if NumPartner = 0 || ID < Partner, ID {
+		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_consecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" && !Cheated {
+			ScoreAdd{value: 30000 + (ConsecutiveWins - 1) * 10000}
+			MapSet{map: "_iksys_consecutiveWinsFlag"; value: 1}
+		}
+	}
+} else if RoundState > 0 {
+	# set attack type
+	ignorehitpause if MoveHit && target,GetHitVar(guarded) = 0 && target,GetHitVar(score) = 0 {
+		if DamageCount != Map(_iksys_attackTypeFlag) {
+			if HitDefAttr = SCA, HA {
+				MapSet{map: "_iksys_attackType"; value: 30}
+			} else if HitDefAttr = SCA, SA {
+				MapSet{map: "_iksys_attackType"; value: 20}
+			} else if HitDefAttr = SCA, NA {
+				MapSet{map: "_iksys_attackType"; value: 10}
+			}
+			MapSet{map: "_iksys_attackTypeFlag"; value: DamageCount}
+		}
+		if HitDefAttr = SCA, HT {
+			MapSet{map: "_iksys_attackType"; value: 31}
+		} else if HitDefAttr = SCA, ST {
+			MapSet{map: "_iksys_attackType"; value: 21}
+		} else if HitDefAttr = SCA, NT {
+			MapSet{map: "_iksys_attackType"; value: 11}
+		} else if HitDefAttr = SCA, HP {
+			MapSet{map: "_iksys_attackType"; value: 32}
+		} else if HitDefAttr = SCA, SP {
+			MapSet{map: "_iksys_attackType"; value: 22}
+		} else if HitDefAttr = SCA, NP {
+			MapSet{map: "_iksys_attackType"; value: 12}
+		}
+	}
+	# calculate attack type bonus and in how many frames it will be added
+	if Map(_iksys_attackType) != 0 && DamageCount != Map(_iksys_damageCount) {
+		if Map(_iksys_attackType) >= 30 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 10}
+			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		} else if Map(_iksys_attackType) >= 20 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 9}
+			#MapSet{map: "_iksys_attackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		} else if Map(_iksys_attackType) >= 10 {
+			MapAdd{map: "_iksys_attackTypeBonus"; value: (DamageCount - Map(_iksys_damageCount)) * 8}
+			MapSet{map: "_iksys_attackTypeFrames"; value: 1}
+		}
+		MapSet{map: "_iksys_attackType"; value: 0}
+		MapSet{map: "_iksys_damageCount"; value: DamageCount}
+	}
+	# score: damage bonus
+	if Map(_iksys_attackTypeFrames) > 0 {
+		ScoreAdd{value: round(Map(_iksys_attackTypeBonus) / Map(_iksys_attackTypeFrames), -2)}
+		MapAdd{map: "_iksys_attackTypeBonus"; value: 0 - Map(_iksys_attackTypeBonus) / Map(_iksys_attackTypeFrames)}
+		MapAdd{map: "_iksys_attackTypeFrames"; value: -1}
+	}
+	# score: counter bonus
+	ignorehitpause if CounterCount > Map(_iksys_counterCount) {
+		ScoreAdd{value: (CounterCount - Map(_iksys_counterCount)) * 100}
+		MapSet{map: "_iksys_counterCount"; value: CounterCount}
+	}
+	# score: first attack bonus
+	ignorehitpause if FirstAttack && Map(_iksys_firstAttackFlag) = 0 {
+		ScoreAdd{value: 1500}
+		MapSet{map: "_iksys_firstAttackFlag"; value: 1}
+	}
+	if (NumPartner = 0 || ID < Partner, ID) && !IsHelper {
+		# score: combo bonus
+		ignorehitpause if ComboCount != Map(_iksys_comboCount) {
+			if ComboCount = 0 && Map(_iksys_comboCount) >= 2 {
+				if Map(_iksys_comboCount) = 2 {
+					ScoreAdd{value: 300}
+				} else if Map(_iksys_comboCount) = 3 {
+					ScoreAdd{value: 500}
+				} else if Map(_iksys_comboCount) = 4 {
+					ScoreAdd{value: 1000}
+				} else if Map(_iksys_comboCount) = 5 {
+					ScoreAdd{value: 1200}
+				} else if Map(_iksys_comboCount) = 6 {
+					ScoreAdd{value: 1500}
+				} else if Map(_iksys_comboCount) = 7 {
+					ScoreAdd{value: 2000}
+				} else if Map(_iksys_comboCount) = 8 {
+					ScoreAdd{value: 2300}
+				} else if Map(_iksys_comboCount) = 9 {
+					ScoreAdd{value: 2600}
+				} else if Map(_iksys_comboCount) = 10 {
+					ScoreAdd{value: 3000}
+				} else if Map(_iksys_comboCount) = 11 {
+					ScoreAdd{value: 3300}
+				} else if Map(_iksys_comboCount) = 12 {
+					ScoreAdd{value: 3600}
+				} else if Map(_iksys_comboCount) = 13 {
+					ScoreAdd{value: 4000}
+				} else if Map(_iksys_comboCount) = 14 {
+					ScoreAdd{value: 4500}
+				} else {
+					ScoreAdd{value: Min(10000, 5000 + (Map(_iksys_comboCount) - 15) * 1000)}
+				}
+			}
+			MapSet{map: "_iksys_comboCount"; value: ComboCount}
+		}
+		# score: win type bonus
+		if Win && Map(_iksys_winFlag) = 0 && !Cheated {
+			if WinPerfect = 1 {
+				ScoreAdd{value: 15000}
+			}
+			if WinTime {
+				ScoreAdd{value: 0}
+			} else if WinKO {
+				ScoreAdd{value: 0}
+			}
+			if WinNormal {
+				ScoreAdd{value: 0}
+			} else if WinSpecial {
+				ScoreAdd{value: 0}
+			} else if WinHyper {
+				ScoreAdd{value: 10000}
+			} else if WinCheese {
+				ScoreAdd{value: 0}
+			} else if WinThrow {
+				ScoreAdd{value: 0}
+			} else if WinSuicide {
+				ScoreAdd{value: 0}
+			} else if WinTeammate {
+				ScoreAdd{value: 0}
+			}
+			MapSet{map: "_iksys_winFlag"; value: 1}
+		}
+	}
+}

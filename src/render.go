@@ -34,7 +34,7 @@ var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect [4]uintptr
+var postShaderSelect []uintptr//[4]uintptr
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -120,14 +120,15 @@ func RenderInit() {
 	}
 	compile := func(shaderType uint32, src string) (shader uintptr) {
 		shader = gl.CreateShaderObjectARB(shaderType)
-		s, l := gl.Str(src), int32(len(src)-1)
-		gl.ShaderSourceARB(shader, 1, &s, &l)
+		s, _ := gl.Strs(src)
+		var l int32 = int32(len(src)-1)
+		gl.ShaderSourceARB(shader, 1, s, &l)
 		gl.CompileShaderARB(shader)
 		var ok int32
 		gl.GetObjectParameterivARB(shader, gl.OBJECT_COMPILE_STATUS_ARB, &ok)
 		if ok == 0 {
 			chk(errLog(shader))
-			panic(Error("コンパイルエラー / Compile error"))
+			panic(Error("コンパイルエラー\nShader compile error"))
 		}
 		return
 	}
@@ -177,6 +178,10 @@ func RenderInit() {
 	gl.DeleteObjectARB(vertObj)
 
 	// Compile postprocessing shaders
+
+	// Calculate total ammount of shaders loaded.
+	postShaderSelect = make([]uintptr, 4+len(sys.externalShaderList))
+
 	// [0]: ident shader(no postprocessing)
 	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
@@ -204,6 +209,15 @@ func RenderInit() {
 	postShaderSelect[3] = link(vertObj, fragObj)
 	gl.DeleteObjectARB(vertObj)
 	gl.DeleteObjectARB(fragObj)
+
+	// External Shaders
+	for i := 0; i < len(sys.externalShaderList); i++ {
+		vertObj = compile(gl.VERTEX_SHADER, sys.externalShaders[0][i])
+		fragObj = compile(gl.FRAGMENT_SHADER, sys.externalShaders[1][i])
+		postShaderSelect[4+i] = link(vertObj, fragObj)
+		gl.DeleteObjectARB(vertObj)
+		gl.DeleteObjectARB(fragObj)
+	}
 
 	if sys.MultisampleAntialiasing {
 		gl.Enable(gl.MULTISAMPLE)

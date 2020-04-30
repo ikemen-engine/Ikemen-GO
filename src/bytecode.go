@@ -223,6 +223,8 @@ const (
 const (
 	OC_const_data_life OpCode = iota
 	OC_const_data_power
+	OC_const_data_guardpoints
+	OC_const_data_dizzypoints
 	OC_const_data_attack
 	OC_const_data_defence
 	OC_const_data_fall_defence_mul
@@ -315,11 +317,17 @@ const (
 	OC_const_p2name
 	OC_const_p3name
 	OC_const_p4name
+	OC_const_p5name
+	OC_const_p6name
+	OC_const_p7name
+	OC_const_p8name
 	OC_const_authorname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_gamemode
+	OC_const_constants
+	OC_const_ratiolevel
 )
 const (
 	OC_st_var OpCode = iota + OC_var*2
@@ -351,6 +359,13 @@ const (
 	OC_ex_winko
 	OC_ex_wintime
 	OC_ex_winperfect
+	OC_ex_winnormal
+	OC_ex_winspecial
+	OC_ex_winhyper
+	OC_ex_wincheese
+	OC_ex_winthrow
+	OC_ex_winsuicide
+	OC_ex_winteammate
 	OC_ex_lose
 	OC_ex_loseko
 	OC_ex_losetime
@@ -402,6 +417,43 @@ const (
 	OC_ex_gethitvar_fall_envshake_freq
 	OC_ex_gethitvar_fall_envshake_ampl
 	OC_ex_gethitvar_fall_envshake_phase
+	OC_ex_gethitvar_guardpoints
+	OC_ex_gethitvar_dizzypoints
+	OC_ex_gethitvar_score
+	OC_ex_gethitvar_attr
+	OC_ex_scorecurrent
+	OC_ex_scoreround
+	OC_ex_scoretotal
+	OC_ex_timeleft
+	OC_ex_timeround
+	OC_ex_timetotal
+	OC_ex_guardpoints
+	OC_ex_guardpointsmax
+	OC_ex_dizzypoints
+	OC_ex_dizzypointsmax
+	OC_ex_receiveddamage
+	OC_ex_receivedhits
+	OC_ex_combocount
+	OC_ex_damagecount
+	OC_ex_consecutivewins
+	OC_ex_countercount
+	OC_ex_firstattack
+	OC_ex_roundtype
+	OC_ex_getplayerid
+	OC_ex_networkplayer
+	OC_ex_cheated
+	OC_ex_memberno
+	OC_ex_playerno
+	OC_ex_pausetime
+	OC_ex_standby
+	OC_ex_dizzy
+	OC_ex_guardbreak
+	OC_ex_customstate
+	OC_ex_max
+	OC_ex_min
+	OC_ex_rand
+	OC_ex_round
+	OC_ex_float
 	OC_ex_ailevelf // float version of AILevel
 )
 const (
@@ -759,6 +811,27 @@ func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
 			v1.SetI(int32(f))
 		}
 	}
+}
+func (_ BytecodeExp) max(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v >= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
+	if v1.v <= v2.v {
+		v1.SetF(float32(v1.v))
+	} else {
+		v1.SetF(float32(v2.v))
+	}
+}
+func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
+	shift := math.Pow(10, v2.v)
+	v1.SetF(float32(math.Floor((v1.v*shift)+0.5) / shift))
+}
+func (_ BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetI(Rand(int32(v1.v), int32(v2.v)))
 }
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	oc := c
@@ -1235,6 +1308,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().data.life)
 	case OC_const_data_power:
 		sys.bcStack.PushI(c.gi().data.power)
+	case OC_const_data_guardpoints:
+		sys.bcStack.PushI(c.gi().data.guardpoints)
+	case OC_const_data_dizzypoints:
+		sys.bcStack.PushI(c.gi().data.dizzypoints)
 	case OC_const_data_attack:
 		sys.bcStack.PushI(c.gi().data.attack)
 	case OC_const_data_defence:
@@ -1441,6 +1518,34 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_p5name:
+		p5 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p5 != nil && !(p5.scf(SCF_ko) && p5.scf(SCF_over)) &&
+			p5.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p6name:
+		p6 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
+			p6.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p7name:
+		p7 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p7 != nil && !(p7.scf(SCF_ko) && p7.scf(SCF_over)) &&
+			p7.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_const_p8name:
+		p8 := sys.charList.enemyNear(c, 1, true)
+		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
+			p8.gi().nameLow ==
+				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+					unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_const_stagevar_info_name:
 		sys.bcStack.PushB(sys.stage.nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1461,6 +1566,11 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_constants:
+		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		*i += 4
+	case OC_const_ratiolevel:
+		sys.bcStack.PushI(c.ratioLevel())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -1495,6 +1605,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.winTime())
 	case OC_ex_winperfect:
 		sys.bcStack.PushB(c.winPerfect())
+	case OC_ex_winnormal:
+		sys.bcStack.PushB(c.winNormal())
+	case OC_ex_winspecial:
+		sys.bcStack.PushB(c.winSpecial())
+	case OC_ex_winhyper:
+		sys.bcStack.PushB(c.winHyper())
+	case OC_ex_wincheese:
+		sys.bcStack.PushB(c.winCheese())
+	case OC_ex_winthrow:
+		sys.bcStack.PushB(c.winThrow())
+	case OC_ex_winsuicide:
+		sys.bcStack.PushB(c.winSuicide())
+	case OC_ex_winteammate:
+		sys.bcStack.PushB(c.winTeammate())
 	case OC_ex_p2dist_x:
 		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
 	case OC_ex_p2dist_y:
@@ -1571,12 +1695,90 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_envshake_phase:
 		sys.bcStack.PushF(c.ghv.fall.envshake_phase * c.localscl / oc.localscl)
+	case OC_ex_gethitvar_guardpoints:
+		sys.bcStack.PushI(c.ghv.guardpoints)
+	case OC_ex_gethitvar_dizzypoints:
+		sys.bcStack.PushI(c.ghv.dizzypoints)
+	case OC_ex_gethitvar_score:
+		sys.bcStack.PushF(c.ghv.score)
+	case OC_ex_gethitvar_attr:
+		sys.bcStack.PushI(c.ghv.attr)
+	case OC_ex_scorecurrent:
+		sys.bcStack.PushF(c.scoreCurrent)
+	case OC_ex_scoreround:
+		sys.bcStack.PushF(scoreRound(c.teamside))
+	case OC_ex_scoretotal:
+		sys.bcStack.PushF(scoreTotal(c.playerNo&1))
+	case OC_ex_timeleft:
+		sys.bcStack.PushI(timeLeft())
+	case OC_ex_timeround:
+		sys.bcStack.PushI(timeRound())
+	case OC_ex_timetotal:
+		sys.bcStack.PushI(timeTotal())
+	case OC_ex_guardpoints:
+		sys.bcStack.PushI(c.getGuardPoints())
+	case OC_ex_guardpointsmax:
+		sys.bcStack.PushI(c.guardPointsMax)
+	case OC_ex_dizzypoints:
+		sys.bcStack.PushI(c.getDizzyPoints())
+	case OC_ex_dizzypointsmax:
+		sys.bcStack.PushI(c.dizzyPointsMax)
+	case OC_ex_receiveddamage:
+		sys.bcStack.PushI(c.getcombodmg)
+	case OC_ex_receivedhits:
+		sys.bcStack.PushI(c.getcombo)
+	case OC_ex_combocount:
+		sys.bcStack.PushI(c.comboCount())
+	case OC_ex_damagecount:
+		sys.bcStack.PushI(c.damageCount)
+	case OC_ex_consecutivewins:
+		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
+	case OC_ex_countercount:
+		sys.bcStack.PushI(c.counterHits)
+	case OC_ex_firstattack:
+		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_roundtype:
+		sys.bcStack.PushI(c.roundType())
+	case OC_ex_getplayerid:
+		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
+	case OC_ex_networkplayer:
+		sys.bcStack.PushI(c.networkPlayer())
+	case OC_ex_cheated:
+		sys.bcStack.PushB(c.cheated)
+	case OC_ex_memberno:
+		sys.bcStack.PushI(int32(c.memberNo) + 1)
+	case OC_ex_playerno:
+		sys.bcStack.PushI(int32(c.playerNo) + 1)
+	case OC_ex_pausetime:
+		sys.bcStack.PushI(c.pauseTime())
+	case OC_ex_standby:
+		sys.bcStack.PushB(c.scf(SCF_standby))
+	case OC_ex_dizzy:
+		sys.bcStack.PushB(c.scf(SCF_dizzy))
+	case OC_ex_guardbreak:
+		sys.bcStack.PushB(c.scf(SCF_guardbreak))
+	case OC_ex_customstate:
+		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
+	case OC_ex_max:
+		v2 := sys.bcStack.Pop()
+		be.max(sys.bcStack.Top(), v2)
+	case OC_ex_min:
+		v2 := sys.bcStack.Pop()
+		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_rand:
+		v2 := sys.bcStack.Pop()
+		be.random(sys.bcStack.Top(), v2)
+	case OC_ex_round:
+		v2 := sys.bcStack.Pop()
+		be.round(sys.bcStack.Top(), v2)
+	case OC_ex_float:
+		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
 	case OC_ex_maparray:
-		sys.bcStack.PushI(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
+		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
@@ -2080,62 +2282,125 @@ type tagIn StateControllerBase
 const (
 	tagIn_stateno = iota
 	tagIn_partnerstateno
+	tagIn_self
+	tagIn_partner
+	tagIn_ctrl
+	tagIn_partnerctrl
 	tagIn_redirectid
 )
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
-	p := c.partner(0)
 	crun := c
-	sn := int32(-1)
-	ret := false
-	c.unsetSCF(SCF_standby)
+	
+	var tagSCF int = -1
+	var partnerNo int32 = -1
+	var partnerStateNo int32 = -1
+	var partnerCtrlSetting int = -1
+
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:
-			sn = exp[0].evalI(c)
-		case tagIn_partnerstateno:
-			if p == nil {
-				return false
-			}
-			if psn := exp[0].evalI(c); psn >= 0 {
-				if sn >= 0 {
-					crun.changeState(sn, -1, -1)
-				}
-				p.unsetSCF(SCF_standby)
-				p.changeState(psn, -1, -1)
-				ret = true
+			sn := exp[0].evalI(c); if sn >= 0 {
+				crun.changeState(sn, -1, -1)
+				if tagSCF == -1 {tagSCF = 1}
 			} else {
 				return false
+			}
+		case tagIn_partnerstateno:
+			if psn := exp[0].evalI(c); psn >= 0 {
+				partnerStateNo = psn
+			} else {
+				return false
+			}
+		case tagIn_self:
+			sti := exp[0].evalB(c);if sti == true {
+				tagSCF = 1
+			} else {
+				tagSCF = 0
+			}
+		case tagIn_partner:
+			pti := exp[0].evalI(c); if pti >= 0 {
+				partnerNo = pti
+			} else {
+				return false
+			}
+		case tagIn_ctrl:
+			ctrls := exp[0].evalB(c)
+			crun.setCtrl(ctrls)
+			if tagSCF == -1 {tagSCF = 1}
+		case tagIn_partnerctrl:
+			pctrls := exp[0].evalB(c); if pctrls == true {
+				partnerCtrlSetting = 1
+			} else {
+				partnerCtrlSetting = 0
 			}
 		case tagIn_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				p = crun.partner(0)
-				if p == nil {
-					return false
-				}
 			} else {
 				return false
 			}
 		}
 		return true
 	})
-	return ret
+	// Data ajusments.
+	if tagSCF == -1 && partnerNo == -1 {tagSCF = 1}
+	if tagSCF == 1 {crun.unsetSCF(SCF_standby)}
+
+	// Partner
+	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
+		partner := crun.partnerV2(partnerNo)
+		partner.unsetSCF(SCF_standby)
+		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
+		if partnerCtrlSetting != -1 {if partnerCtrlSetting == 1 {partner.setCtrl(true)} else {partner.setCtrl(false)}}
+	}
+
+	return true
 }
 
 type tagOut StateControllerBase
 
 const (
-	tagOut_ = iota
+	tagOut_self = iota
+	tagOut_partner
+	tagOut_stateno
+	tagOut_partnerstateno
 	tagOut_redirectid
 )
 
 func (sc tagOut) Run(c *Char, _ []int32) bool {
 	crun := c
+	var tagSCF int = -1
+	var partnerNo int32 = -1
+	var partnerStateNo int32 = -1
+
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case tagOut_:
-			crun.setSCF(SCF_standby)
+		case tagOut_self:
+			if exp[0].evalB(c) == true {
+				tagSCF = 1
+			} else {
+				tagSCF = 0
+			}
+		case tagOut_stateno:
+			sn := exp[0].evalI(c); if sn >= 0 {
+				crun.changeState(sn, -1, -1)
+				if tagSCF == -1 {tagSCF = 1}
+			} else {
+				return false
+			}
+		case tagOut_partner:
+			pti := exp[0].evalI(c); if pti >= 0 {
+				partnerNo = pti
+			} else {
+				return false
+			}
+		case tagOut_partnerstateno:
+			if psn := exp[0].evalI(c); psn >= 0 {
+				partnerStateNo = psn
+			} else {
+				return false
+			}
 		case tagOut_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2145,6 +2410,15 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if tagSCF == -1 && partnerNo == -1 && partnerStateNo == -1 {tagSCF = 1}
+	if tagSCF == 1 {crun.setSCF(SCF_standby)}
+
+	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
+		partner := crun.partnerV2(partnerNo)
+		partner.setSCF(SCF_standby)
+		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
+	}
+
 	return true
 }
 
@@ -2387,6 +2661,56 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 		case ctrlSet_value:
 			crun.setCtrl(exp[0].evalB(c))
 		case ctrlSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type guardBreakSet StateControllerBase
+
+const (
+	guardBreakSet_value byte = iota
+	guardBreakSet_redirectid
+)
+
+func (sc guardBreakSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardBreakSet_value:
+			crun.setGuardBreak(exp[0].evalB(c))
+		case guardBreakSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type dizzySet StateControllerBase
+
+const (
+	dizzySet_value byte = iota
+	dizzySet_redirectid
+)
+
+func (sc dizzySet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case dizzySet_value:
+			crun.setStun(exp[0].evalB(c))
+		case dizzySet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -3294,6 +3618,9 @@ const (
 	hitDef_fall_envshake_ampl
 	hitDef_fall_envshake_phase
 	hitDef_fall_envshake_freq
+	hitDef_guardpoints
+	hitDef_dizzypoints
+	hitDef_score
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -3564,6 +3891,15 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.envshake_phase = exp[0].evalF(c)
 	case hitDef_fall_envshake_freq:
 		hd.fall.envshake_freq = MaxF(0, exp[0].evalF(c))
+	case hitDef_guardpoints:
+		hd.guardpoints = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_dizzypoints:
+		hd.dizzypoints = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_score:
+		hd.score[0] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			hd.score[1] = exp[1].evalF(c)
+		}
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
 			return false
@@ -4318,6 +4654,84 @@ func (sc targetPowerAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type targetGuardPointsAdd StateControllerBase
+
+const (
+	targetGuardPointsAdd_id byte = iota
+	targetGuardPointsAdd_value
+	targetGuardPointsAdd_redirectid
+)
+
+func (sc targetGuardPointsAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetGuardPointsAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetGuardPointsAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetGuardPointsAdd(tar, exp[0].evalI(c))
+		case targetGuardPointsAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type targetDizzyPointsAdd StateControllerBase
+
+const (
+	targetDizzyPointsAdd_id byte = iota
+	targetDizzyPointsAdd_value
+	targetDizzyPointsAdd_redirectid
+)
+
+func (sc targetDizzyPointsAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetDizzyPointsAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetDizzyPointsAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetDizzyPointsAdd(tar, exp[0].evalI(c))
+		case targetDizzyPointsAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type targetDrop StateControllerBase
 
 const (
@@ -4451,6 +4865,106 @@ func (sc powerSet) Run(c *Char, _ []int32) bool {
 		case powerSet_value:
 			crun.powerSet(exp[0].evalI(c))
 		case powerSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type guardPointsAdd StateControllerBase
+
+const (
+	guardPointsAdd_value byte = iota
+	guardPointsAdd_redirectid
+)
+
+func (sc guardPointsAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardPointsAdd_value:
+			crun.guardPointsAdd(exp[0].evalI(c))
+		case guardPointsAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type guardPointsSet StateControllerBase
+
+const (
+	guardPointsSet_value byte = iota
+	guardPointsSet_redirectid
+)
+
+func (sc guardPointsSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case guardPointsSet_value:
+			crun.guardPointsSet(exp[0].evalI(c))
+		case guardPointsSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type dizzyPointsAdd StateControllerBase
+
+const (
+	dizzyPointsAdd_value byte = iota
+	dizzyPointsAdd_redirectid
+)
+
+func (sc dizzyPointsAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case dizzyPointsAdd_value:
+			crun.dizzyPointsAdd(exp[0].evalI(c))
+		case dizzyPointsAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type dizzyPointsSet StateControllerBase
+
+const (
+	dizzyPointsSet_value byte = iota
+	dizzyPointsSet_redirectid
+)
+
+func (sc dizzyPointsSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case dizzyPointsSet_value:
+			crun.dizzyPointsSet(exp[0].evalI(c))
+		case dizzyPointsSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {
@@ -4704,7 +5218,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	sys.superanim, sys.superpmap.remap = crun.getAnim(100, true), nil
 	sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
-	sys.superp2defmul = sys.super_TargetDefenceMul
+	sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case superPause_time:
@@ -4734,7 +5248,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_p2defmul:
 			sys.superp2defmul = exp[0].evalF(c)
 			if sys.superp2defmul == 0 {
-				sys.superp2defmul = sys.super_TargetDefenceMul
+				sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
 			}
 		case superPause_poweradd:
 			crun.powerAdd(exp[0].evalI(c))
@@ -5172,7 +5686,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.defenceMul = float32(crun.gi().data.defence) * crun.ocd().defenceRatio / (exp[0].evalF(c) * 100)
+			crun.defenceMul = float32(crun.gi().data.defence) / (exp[0].evalF(c) * 100)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5746,10 +6260,11 @@ const (
 
 func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 	crun := c
+	var v int32 = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case victoryQuote_value:
-			exp[0].evalI(c)
+			v = exp[0].evalI(c)
 		case victoryQuote_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5759,6 +6274,7 @@ func (sc victoryQuote) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.winquote = v
 	return false
 }
 
@@ -5800,24 +6316,156 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type scoreAdd StateControllerBase
+
+const (
+	scoreAdd_value byte = iota
+	scoreAdd_redirectid
+)
+
+func (sc scoreAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case scoreAdd_value:
+			crun.scoreAdd(exp[0].evalF(c))
+		case scoreAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type targetScoreAdd StateControllerBase
+
+const (
+	targetScoreAdd_id byte = iota
+	targetScoreAdd_value
+	targetScoreAdd_redirectid
+)
+
+func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar := crun.getTarget(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetScoreAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetScoreAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetScoreAdd(tar, exp[0].evalF(c))
+		case targetScoreAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type roundTimeAdd StateControllerBase
+
+const (
+	roundTimeAdd_value byte = iota
+	roundTimeAdd_redirectid
+)
+
+func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case roundTimeAdd_value:
+			sys.time = Min(sys.roundTime, sys.time+exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type roundTimeSet StateControllerBase
+
+const (
+	roundTimeSet_value byte = iota
+	roundTimeSet_redirectid
+)
+
+func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case roundTimeSet_value:
+			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+		}
+		return true
+	})
+	return false
+}
+
+type printToConsole StateControllerBase
+
+const (
+	printToConsole_params byte = iota
+	printToConsole_text
+)
+
+func (sc printToConsole) Run(c *Char, _ []int32) bool {
+	params := []interface{}{}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case printToConsole_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case printToConsole_text:
+			sys.printToConsole(sys.workingState.playerNo,
+				int(exp[0].evalI(c)), params...)
+		}
+		return true
+	})
+	return false
+}
+
 type mapSet StateControllerBase
 
 const (
 	mapSet_mapArray byte = iota
 	mapSet_value
 	mapSet_redirectid
+	mapSet_type
 )
 
 func (sc mapSet) Run(c *Char, _ []int32) bool {
 	crun := c
 	var s string
-	var value int32
+	var value float32
+	var scType int32
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case mapSet_mapArray:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case mapSet_value:
-			value = exp[0].evalI(c)
+			value = exp[0].evalF(c)
+		case mapSet_type:
+			scType = exp[0].evalI(c)
 		case mapSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5827,7 +6475,7 @@ func (sc mapSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.mapSet(s, value)
+	crun.mapSet(s, value, scType)
 	return false
 }
 

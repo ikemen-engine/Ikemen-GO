@@ -24,10 +24,10 @@ function main.IntLocalcoordValues()
 end
 
 function main.CalculateLocalcoordValues()
-	-- We load the libar localcoord from the motif file
-	main.SP_Localcoord = main.ParseDefFileValue(config.Motif, "info", "localcoord", true)
-	local spOriginTemp = main.ParseDefFileValue(config.Motif, "info", "localcoord_origin", true)
-	local spCenterTemp = main.ParseDefFileValue(config.Motif, "info", "localcoord_center", false)
+	-- We load the motif localcoord from the motif file
+	main.SP_Localcoord = main.ParseDefFileValue(main.motifDef, "info", "localcoord", true)
+	local spOriginTemp = main.ParseDefFileValue(main.motifDef, "info", "localcoord_origin", true)
+	local spCenterTemp = main.ParseDefFileValue(main.motifDef, "info", "localcoord_center", false)
 	
 	-- We check if we got a valid value
 	if spCenterTemp  == nil then
@@ -40,31 +40,10 @@ function main.CalculateLocalcoordValues()
 	if main.SP_Localcoord == nil then
 		main.SP_Localcoord = {320, 240}
 	end
-
-	-- We now have to search for the config file.
-	local motifFileFolder = ""
-	local lbFileName = main.ParseDefFileValue(config.Motif, "files", "fight", false)
-	-- Get the morif file folder.
-	local tempMFF = main.f_strsplit("/",config.Motif)
-	local i = 1
-	-- We skip the last object on the table (The file iteself) to get only the directory.
-	while i < table.getn(tempMFF) do
-		motifFileFolder = motifFileFolder .. tempMFF[i] .. "/"
-		i = i + 1
-	end
-	tempMFF = nil
 	
-	-- We seach for the file
-	if main.f_fileExists(motifFileFolder .. lbFileName) then
-		main.LB_Localcoord = main.ParseDefFileValue(motifFileFolder .. lbFileName, "info", "localcoord", true)
-	elseif main.f_fileExists("data/" .. lbFileName) then
-		main.LB_Localcoord = main.ParseDefFileValue("data/" .. lbFileName, "info", "localcoord", true)
-	elseif main.f_fileExists(lbFileName) then
-		main.LB_Localcoord = main.ParseDefFileValue(lbFileName, "info", "localcoord", true)
-	else
-		main.LB_Localcoord = main.SP_Localcoord
-	end
-
+	-- We load the lifebar localcoord from the lifebar file
+	main.LB_Localcoord = main.ParseDefFileValue(main.lifebarDef, "info", "localcoord", true)
+	
 	-- We check if what we got is valid
 	if main.LB_Localcoord == nil then
 		main.LB_Localcoord = main.SP_Localcoord
@@ -85,7 +64,7 @@ function main.CalculateLocalcoordValues()
 	
 	main.SP_Localcoord_X_Dif = -math.floor( (( main.SP_Localcoord[1] / (main.SP_Localcoord43[1] / 320) ) - 320) / 2 )
 		
-	main.LB_ScreenWidth = config.Width / (config.Height / 240)
+	main.LB_ScreenWidth = config.GameWidth / (config.GameHeight / 240)
 	main.LB_ScreenDiference = (main.LB_ScreenWidth - 320) / (main.LB_ScreenWidth / 320)
 	--setLifebarPortaitScale(main.SP_Localcoord[1] / main.SP_Localcoord43[1])
 
@@ -113,6 +92,9 @@ function main.IntLifebarScale()
 		setLifebarOffsetX((main.LB_Localcoord43[1] - main.LB_Localcoord[1]) / 2)
 		setLuaLifebarScale(320 / main.LB_Localcoord43[1])
 	end
+	setLifebarPortraitScale(main.LB_Localcoord[1] / main.LB_Localcoord43[1])
+	setLifebarLocalcoord(main.LB_Localcoord[1], main.LB_Localcoord[2])
+	setLuaLocalcoord(main.SP_Localcoord[1], main.SP_Localcoord[2])
 end
 
 function main.SetScaleValues()
@@ -136,7 +118,7 @@ end
 
 -- Edited version of the parser in motif.lua, made to parse only a single value and end once it steps outside [searchBlock]
 function main.ParseDefFileValue(argFile, searchBlock, searchParam, isNumber)
-	-- We use 'arg' inestead of 'config.Motif' because we also want the option to parse the lifebar
+	-- We use 'arg' inestead of 'main.motifDef' because we also want the option to parse the lifebar
 	local file = io.open(argFile)
 	local weAreInInfo = 0
 	local ret = {}
