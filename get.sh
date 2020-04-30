@@ -12,4 +12,3 @@ go get -u github.com/hajimehoshi/oto@v0.5.4
 go get -u github.com/pkg/errors
 go get -u github.com/jfreymuth/oggvorbis
 go get -u github.com/sqweek/dialog
-go get -u github.com/kbinani/screenshot
