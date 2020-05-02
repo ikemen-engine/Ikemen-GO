@@ -300,6 +300,7 @@ func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
 }
 
 /*
+// TODO: Now that we are using modules this should work again if we configure it correctly.
 func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
 	f, _ := os.Open(bgm.filename)
 	s, format, err := flac.Decode(f)
