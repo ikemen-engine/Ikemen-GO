@@ -439,12 +439,15 @@ if RoundState = 0 {
 		MapSet{map: "_iksys_DizzyState"; value: 0}
 	}
 	if ReceivedDamage != Map(_iksys_receivedDamage) {
-		if Map(_iksys_DizzyState) < 2 && ReceivedDamage > Map(_iksys_receivedDamage) && GetHitVar(attr) != [Const(AttrStandingHyperAttack), Const(AttrAerialHyperProjectile)] {
-			if Map(_iksys_DizzyState) = 1 {
-				MapSet{map: "_iksys_DizzyState"; value: 2}
-			} else if GetHitVar(dizzypoints) = 0 {
-				DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -1.8} #dizzy points drain
+		if ReceivedDamage > Map(_iksys_receivedDamage) {
+			if Map(_iksys_DizzyState) < 2 && GetHitVar(attr) != [Const(AttrStandingHyperAttack), Const(AttrAerialHyperProjectile)] {
+				if Map(_iksys_DizzyState) = 1 {
+					MapSet{map: "_iksys_DizzyState"; value: 2}
+				} else if GetHitVar(dizzypoints) = 0 {
+					DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -1.8} #dizzy points drain
+				}
 			}
+			RedLifeAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * 0.25; absolute: 1} #damage to red life conversion
 		}
 		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
 		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
@@ -453,5 +456,11 @@ if RoundState = 0 {
 	if !Dizzy && DizzyPoints < DizzyPointsMax && Map(_iksys_dizzyPointsCounter) = 0 {
 		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #dizzy points recovery
 		MapSet{map: "_iksys_guardPointsCounter"; value: 6}
+	}
+	# Red Life regeneration
+	if Standby && RedLife > 0 && (Time % 30) = 0 {
+		let regenVal = min(RedLife, ceil(LifeMax/200)); #0.5% LifeMax per 0.5s
+		LifeAdd{value: $regenVal; absolute: 1}
+		RedLifeAdd{value: -$regenVal; absolute: 1}
 	}
 }

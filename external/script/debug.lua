@@ -95,6 +95,7 @@ function full(p)
 		setPower(powermax())
 		setGuardPoints(guardpointsmax())
 		setDizzyPoints(dizzypointsmax())
+		setRedLife(0)
 		removeDizzy()
 		playerid(oldid)
 	end
@@ -124,9 +125,9 @@ function status(p)
 	local oldid = id()
 	if not player(p) then return false end
 	ret = string.format(
-		'ID:%d STA:%s%s%s%6d(%d) ANI:%6d(%d)%2d LIF:%5d POW:%5d GRD:%5d STN:%5d TIM:%d',
-		id(), statetype(), movetype(), physics(), stateno(), stateOwner(),
-		anim(), animOwner(), animelemno(0), life(), power(), guardpoints(), dizzypoints(), time()
+		'ID:%d STA:%s%s%s%6d(%d) ANI:%6d(%d)%2d LIF:%5d POW:%5d RED:%5d GRD:%5d STN:%5d TIM:%d',
+		id(), statetype(), movetype(), physics(), stateno(), stateOwner(), anim(), animOwner(),
+		animelemno(0), life(), power(), redlife(), guardpoints(), dizzypoints(), time()
 	)
 	playerid(oldid)
 	return ret

@@ -1038,8 +1038,9 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setGuardBar(config.GaugeGuard)
-	setStunBar(config.GaugeStun)
+	setGuardBar(config.BarGuard)
+	setStunBar(config.BarStun)
+	setRedLifeBar(config.BarRedLife)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -1572,9 +1573,9 @@ for i = 1, #t_addExluded do
 end
 
 --add Training by stupa if not included in select.def
-if main.t_charDef.training == nil and main.f_fileExists('chars/training/training.def') then
+if main.t_charDef[config.TrainingChar] == nil and main.f_fileExists(config.TrainingChar) then
 	chars = chars + 1
-	main.f_addChar('training, exclude = 1', chars, false)
+	main.f_addChar(config.TrainingChar .. ', exclude = 1', chars, false)
 end
 
 --add remaining character parameters
@@ -1675,7 +1676,7 @@ loadLifebar(motif.files.fight)
 main.loadingRefresh(txt_loading)
 
 --print warning if training character is missing
-if main.t_charDef.training == nil then
+if main.t_charDef[config.TrainingChar] == nil then
 	main.f_warning(main.f_extractText(motif.warning_info.text_training), motif.title_info, motif.titlebgdef)
 	os.exit()
 end
@@ -2037,7 +2038,7 @@ main.t_itemname = {
 		--uses default main.t_charparam assignment
 		main.t_lifebar.p1score = true
 		main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-		main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
+		main.p2Char = {main.t_charDef[config.TrainingChar]} --predefined P2 character as Training by stupa
 		main.txt_mainSelect:update({text = motif.select_info.title_text_training})
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -2576,8 +2577,9 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
-	setGuardBar(config.GaugeGuard)
-	setStunBar(config.GaugeStun)
+	setGuardBar(config.BarGuard)
+	setStunBar(config.BarStun)
+	setRedLifeBar(config.BarRedLife)
 	setDemoTime(motif.demo_mode.fight_endtime)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)

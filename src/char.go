@@ -527,6 +527,7 @@ type HitDef struct {
 	lhit                       bool
 	guardpoints                int32
 	dizzypoints                int32
+	redlife                    int32
 	score                      [2]float32
 }
 
@@ -554,7 +555,7 @@ func (hd *HitDef) clear() {
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1,
-		guardpoints: IErr, dizzypoints: IErr,
+		guardpoints: IErr, dizzypoints: IErr, redlife: IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
@@ -600,6 +601,7 @@ type GetHitVar struct {
 	forcestand     bool
 	guardpoints    int32
 	dizzypoints    int32
+	redlife        int32
 	score          float32
 }
 
@@ -1514,6 +1516,7 @@ type Char struct {
 	guardPointsMax  int32
 	dizzyPoints     int32
 	dizzyPointsMax  int32
+	redLife         int32
 	juggle          int32
 	fallTime        int32
 	localcoord      int32
@@ -1647,6 +1650,7 @@ func (c *Char) copyParent(p *Char) {
 	}
 	c.guardPoints, c.guardPointsMax = p.guardPointsMax, p.guardPointsMax
 	c.dizzyPoints, c.dizzyPointsMax = p.dizzyPointsMax, p.dizzyPointsMax
+	c.redLife = 0
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -2633,12 +2637,6 @@ func (c *Char) getPower() int32 {
 	}
 	return sys.chars[c.playerNo][0].power
 }
-func (c *Char) getGuardPoints() int32 {
-	return sys.chars[c.playerNo][0].guardPoints
-}
-func (c *Char) getDizzyPoints() int32 {
-	return sys.chars[c.playerNo][0].dizzyPoints
-}
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
@@ -3514,9 +3512,11 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifierrset(&hd.guardgivepower,
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
 	ifierrset(&hd.guardpoints,
-		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
 	ifierrset(&hd.dizzypoints,
-		int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	ifierrset(&hd.redlife,
+		int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}
@@ -3792,17 +3792,27 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 		}
 	}
 }
-func (c *Char) targetGuardPointsAdd(tar []int32, power int32) {
+func (c *Char) targetGuardPointsAdd(tar []int32, add int32) {
 	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil && t.player {
-			t.guardPointsAdd(power)
+		if t := sys.playerID(tid); t != nil {
+			t.guardPointsAdd(add)
 		}
 	}
 }
-func (c *Char) targetDizzyPointsAdd(tar []int32, power int32) {
+func (c *Char) targetDizzyPointsAdd(tar []int32, add int32) {
 	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil && t.player {
-			t.dizzyPointsAdd(power)
+		if t := sys.playerID(tid); t != nil {
+			t.dizzyPointsAdd(add)
+		}
+	}
+}
+func (c *Char) targetRedLifeAdd(tar []int32, add float64, absolute bool) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			if !absolute {
+				add /= float64(t.defenceMul)
+			}
+			t.redLifeAdd(math.Ceil(add), true)
 		}
 	}
 }
@@ -3907,6 +3917,7 @@ func (c *Char) lifeSet(life int32) {
 		} else {
 			c.life = 1
 		}
+		c.redLife = 0
 	}
 }
 func (c *Char) setPower(pow int32) {
@@ -3932,27 +3943,36 @@ func (c *Char) powerSet(pow int32) {
 		sys.chars[c.playerNo][0].setPower(pow)
 	}
 }
-func (c *Char) setGuardPoints(pow int32) {
-	if !sys.roundEnd() && sys.lifebar.activeGb {
-		c.guardPoints = Max(0, Min(c.guardPointsMax, pow))
-	}
-}
 func (c *Char) guardPointsAdd(add int32) {
-	sys.chars[c.playerNo][0].setGuardPoints(c.getGuardPoints() + add)
+	c.guardPointsSet(c.guardPoints + add)
 }
-func (c *Char) guardPointsSet(pow int32) {
-	sys.chars[c.playerNo][0].setGuardPoints(pow)
-}
-func (c *Char) setDizzyPoints(pow int32) {
-	if !sys.roundEnd() && sys.lifebar.activeSb {
-		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, pow))
+func (c *Char) guardPointsSet(set int32) {
+	if !sys.roundEnd() && sys.lifebar.activeGb {
+		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
 	}
 }
 func (c *Char) dizzyPointsAdd(add int32) {
-	sys.chars[c.playerNo][0].setDizzyPoints(c.getDizzyPoints() + add)
+	c.dizzyPointsSet(c.dizzyPoints + add)
 }
-func (c *Char) dizzyPointsSet(pow int32) {
-	sys.chars[c.playerNo][0].setDizzyPoints(pow)
+func (c *Char) dizzyPointsSet(set int32) {
+	if !sys.roundEnd() && sys.lifebar.activeSb {
+		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, set))
+	}
+}
+func (c *Char) redLifeAdd(add float64, absolute bool) {
+	if add != 0 && c.roundState() != 3 {
+		if !absolute {
+			add /= float64(c.defenceMul)
+		}
+		c.redLifeSet(c.redLife + int32(add))
+	}
+}
+func (c *Char) redLifeSet(set int32) {
+	if c.life == 0 {
+		c.redLife = 0
+	} else if !sys.roundEnd() && sys.lifebar.activeRl {
+		c.redLife = Max(0, Min(c.lifeMax-c.life, set))
+	}
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
@@ -4565,6 +4585,18 @@ func (c *Char) action() {
 		c.setSCF(SCF_guard)
 	}
 	if !p {
+		if c.ghv.damage != 0 {
+			if c.ss.moveType == MT_H {
+				c.lifeAdd(-float64(c.ghv.damage), true, true)
+			}
+			c.ghv.damage = 0
+		}
+		if c.ghv.redlife != 0 {
+			if c.ss.moveType == MT_H && !c.scf(SCF_guard) {
+				c.redLifeAdd(float64(c.ghv.redlife), true)
+			}
+			c.ghv.redlife = 0
+		}
 		if c.palfx != nil {
 			c.palfx.step()
 		}
@@ -4732,12 +4764,6 @@ func (c *Char) action() {
 			} else {
 				c.curFrame = nil
 			}
-		}
-		if c.ghv.damage != 0 {
-			if c.ss.moveType == MT_H {
-				c.lifeAdd(-float64(c.ghv.damage), true, true)
-			}
-			c.ghv.damage = 0
 		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
@@ -5341,6 +5367,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.groundanimtype = hd.animtype
 				ghv.guardpoints = hd.guardpoints
 				ghv.dizzypoints = hd.dizzypoints
+				ghv.redlife = hd.redlife
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}

@@ -434,6 +434,9 @@ options.t_itemname = {
 			config.AIRandomColor = true
 			config.AudioDucking = false
 			config.AutoGuard = false
+			config.BarGuard = false
+			config.BarRedLife = true
+			config.BarStun = false
 			config.Borderless = false
 			config.ComboExtraFrameWindow = 1
 			--config.CommonAir = "data/common.air"
@@ -450,8 +453,6 @@ options.t_itemname = {
 			config.GameWidth = 640
 			config.GameHeight = 480
 			config.GameSpeed = 100
-			config.GaugeGuard = false
-			config.GaugeStun = false
 			--config.IP = {}
 			config.LifebarFontScale = 1
 			config.LifeMul = 100
@@ -484,6 +485,7 @@ options.t_itemname = {
 			config.TagLoseKO = false
 			config.TeamLifeAdjustment = false
 			config.TeamPowerShare = true
+			--config.TrainingChar = "chars/training/training.def"
 			config.TurnsRecoveryBase = 0
 			config.TurnsRecoveryBonus = 20
 			config.VolumeBgm = 80
@@ -905,30 +907,44 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Guard Gauge
-	['guardgauge'] = function(cursorPosY, moveTxt, item, t)
+	--Guard Break
+	['guardbar'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.GaugeGuard then
-				config.GaugeGuard = false
+			if config.BarGuard then
+				config.BarGuard = false
 			else
-				config.GaugeGuard = true
+				config.BarGuard = true
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.GaugeGuard)
+			t.items[item].vardisplay = options.f_boolDisplay(config.BarGuard)
 			modified = 1
 		end
 		return true
 	end,
-	--Stun Gauge
-	['stungauge'] = function(cursorPosY, moveTxt, item, t)
+	--Dizzy
+	['stunbar'] = function(cursorPosY, moveTxt, item, t)
 		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.GaugeStun then
-				config.GaugeStun = false
+			if config.BarStun then
+				config.BarStun = false
 			else
-				config.GaugeStun = true
+				config.BarStun = true
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.GaugeStun)
+			t.items[item].vardisplay = options.f_boolDisplay(config.BarStun)
+			modified = 1
+		end
+		return true
+	end,
+	--Red Life
+	['redlifebar'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.BarRedLife then
+				config.BarRedLife = false
+			else
+				config.BarRedLife = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.BarRedLife)
 			modified = 1
 		end
 		return true
@@ -1442,8 +1458,9 @@ function options.f_vardisplay(itemname)
 	if itemname == 'lifemul' then return config.LifeMul .. '%' end
 	if itemname == 'gamespeed' then return config.GameSpeed .. '%' end
 	if itemname == 'autoguard' then return options.f_boolDisplay(config.AutoGuard) end
-	if itemname == 'guardgauge' then return options.f_boolDisplay(config.GaugeGuard) end
-	if itemname == 'stungauge' then return options.f_boolDisplay(config.GaugeStun) end
+	if itemname == 'guardbar' then return options.f_boolDisplay(config.BarGuard) end
+	if itemname == 'stunbar' then return options.f_boolDisplay(config.BarStun) end
+	if itemname == 'redlifebar' then return options.f_boolDisplay(config.BarRedLife) end
 	if itemname == 'singlevsteamlife' then return config.SingleVsTeamLife .. '%' end
 	if itemname == 'teamlifeadjustment' then return options.f_boolDisplay(config.TeamLifeAdjustment) end
 	if itemname == 'teampowershare' then return options.f_boolDisplay(config.TeamPowerShare) end

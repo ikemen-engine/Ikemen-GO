@@ -107,6 +107,9 @@ Debug Options:
 	"AIRandomColor": true,
 	"AudioDucking": false,
 	"AutoGuard": false,
+	"BarGuard": false,
+	"BarRedLife": true,
+	"BarStun": false,
 	"Borderless": false,
 	"ComboExtraFrameWindow": 1,
 	"CommonAir": "data/common.air",
@@ -125,8 +128,6 @@ Debug Options:
 	"GameWidth": 640,
 	"GameHeight": 480,
 	"GameSpeed": 100,
-	"GaugeGuard": false,
-	"GaugeStun": false,
 	"IP": {},
 	"LifebarFontScale": 1,
 	"LifeMul": 100,
@@ -178,6 +179,7 @@ Debug Options:
 	"TagLoseKO": false,
 	"TeamLifeAdjustment": false,
 	"TeamPowerShare": true,
+	"TrainingChar": "chars/training/training.def",
 	"TurnsRecoveryBase": 0,
 	"TurnsRecoveryBonus": 20,
 	"VolumeBgm": 80,
@@ -276,6 +278,9 @@ Debug Options:
 		AIRandomColor              bool
 		AudioDucking               bool
 		AutoGuard                  bool
+		BarGuard                   bool
+		BarRedLife                 bool
+		BarStun                    bool
 		Borderless                 bool
 		ComboExtraFrameWindow      int32
 		CommonAir                  string
@@ -294,8 +299,6 @@ Debug Options:
 		GameWidth                  int32
 		GameHeight                 int32
 		GameSpeed                  float32
-		GaugeGuard                 bool
-		GaugeStun                  bool
 		IP                         map[string]string
 		LifebarFontScale           float32
 		LifeMul                    float32
@@ -328,6 +331,7 @@ Debug Options:
 		TagLoseKO                  bool
 		TeamLifeAdjustment         bool
 		TeamPowerShare             bool
+		TrainingChar               string
 		TurnsRecoveryBase          float32
 		TurnsRecoveryBonus         float32
 		VolumeBgm                  int

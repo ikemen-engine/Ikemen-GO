@@ -1352,8 +1352,9 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugameplay_lifemul = "Life"
 	motif.option_info.menu_itemname_menugameplay_gamespeed = "Game Speed"
 	motif.option_info.menu_itemname_menugameplay_autoguard = "Auto-Guard"
-	motif.option_info.menu_itemname_menugameplay_guardgauge = "Guard Gauge"
-	motif.option_info.menu_itemname_menugameplay_stungauge = "Stun Gauge"
+	motif.option_info.menu_itemname_menugameplay_guardbar = "Guard Break"
+	motif.option_info.menu_itemname_menugameplay_stunbar = "Dizzy"
+	motif.option_info.menu_itemname_menugameplay_redlifebar = "Red Life"
 	motif.option_info.menu_itemname_menugameplay_empty = ""
 	motif.option_info.menu_itemname_menugameplay_menuteam = "Team Settings"
 	motif.option_info.menu_itemname_menugameplay_menuteam_singlevsteamlife = "Single VS Team Life"
@@ -1456,6 +1457,9 @@ function motif.setBaseOptionInfo()
 		"menugameplay_lifemul",
 		"menugameplay_gamespeed",
 		"menugameplay_autoguard",
+		"menugameplay_guardbar",
+		"menugameplay_stunbar",
+		"menugameplay_redlifebar",
 		"menugameplay_empty",
 		"menugameplay_menuteam",
 		"menugameplay_menuteam_singlevsteamlife",

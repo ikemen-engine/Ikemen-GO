@@ -419,6 +419,7 @@ const (
 	OC_ex_gethitvar_fall_envshake_phase
 	OC_ex_gethitvar_guardpoints
 	OC_ex_gethitvar_dizzypoints
+	OC_ex_gethitvar_redlife
 	OC_ex_gethitvar_score
 	OC_ex_gethitvar_attr
 	OC_ex_scorecurrent
@@ -431,6 +432,7 @@ const (
 	OC_ex_guardpointsmax
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
+	OC_ex_redlife
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_combocount
@@ -1699,6 +1701,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.guardpoints)
 	case OC_ex_gethitvar_dizzypoints:
 		sys.bcStack.PushI(c.ghv.dizzypoints)
+	case OC_ex_gethitvar_redlife:
+		sys.bcStack.PushI(c.ghv.redlife)
 	case OC_ex_gethitvar_score:
 		sys.bcStack.PushF(c.ghv.score)
 	case OC_ex_gethitvar_attr:
@@ -1716,13 +1720,15 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
 	case OC_ex_guardpoints:
-		sys.bcStack.PushI(c.getGuardPoints())
+		sys.bcStack.PushI(c.guardPoints)
 	case OC_ex_guardpointsmax:
 		sys.bcStack.PushI(c.guardPointsMax)
 	case OC_ex_dizzypoints:
-		sys.bcStack.PushI(c.getDizzyPoints())
+		sys.bcStack.PushI(c.dizzyPoints)
 	case OC_ex_dizzypointsmax:
 		sys.bcStack.PushI(c.dizzyPointsMax)
+	case OC_ex_redlife:
+		sys.bcStack.PushI(c.redLife)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
 	case OC_ex_receivedhits:
@@ -3620,6 +3626,7 @@ const (
 	hitDef_fall_envshake_freq
 	hitDef_guardpoints
 	hitDef_dizzypoints
+	hitDef_redlife
 	hitDef_score
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
@@ -3895,6 +3902,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.guardpoints = Max(IErr+1, exp[0].evalI(c))
 	case hitDef_dizzypoints:
 		hd.dizzypoints = Max(IErr+1, exp[0].evalI(c))
+	case hitDef_redlife:
+		hd.redlife = Max(IErr+1, exp[0].evalI(c))
 	case hitDef_score:
 		hd.score[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -4732,6 +4741,48 @@ func (sc targetDizzyPointsAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type targetRedLifeAdd StateControllerBase
+
+const (
+	targetRedLifeAdd_id byte = iota
+	targetRedLifeAdd_absolute
+	targetRedLifeAdd_value
+	targetRedLifeAdd_redirectid
+)
+
+func (sc targetRedLifeAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	tar, a := crun.getTarget(-1), false
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetRedLifeAdd_id:
+			if len(tar) == 0 {
+				return false
+			}
+			tar = crun.getTarget(exp[0].evalI(c))
+		case targetRedLifeAdd_absolute:
+			a = exp[0].evalB(c)
+		case targetRedLifeAdd_value:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetRedLifeAdd(tar, float64(exp[0].evalI(c)), a)
+		case targetRedLifeAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				tar = crun.getTarget(-1)
+				if len(tar) == 0 {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type targetDrop StateControllerBase
 
 const (
@@ -4965,6 +5016,60 @@ func (sc dizzyPointsSet) Run(c *Char, _ []int32) bool {
 		case dizzyPointsSet_value:
 			crun.dizzyPointsSet(exp[0].evalI(c))
 		case dizzyPointsSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type redLifeAdd StateControllerBase
+
+const (
+	redLifeAdd_absolute byte = iota
+	redLifeAdd_value
+	redLifeAdd_redirectid
+)
+
+func (sc redLifeAdd) Run(c *Char, _ []int32) bool {
+	a := false
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case redLifeAdd_absolute:
+			a = exp[0].evalB(c)
+		case redLifeAdd_value:
+			crun.redLifeAdd(float64(exp[0].evalI(c)), a)
+		case redLifeAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type redLifeSet StateControllerBase
+
+const (
+	redLifeSet_value byte = iota
+	redLifeSet_redirectid
+)
+
+func (sc redLifeSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case redLifeSet_value:
+			crun.redLifeSet(exp[0].evalI(c))
+		case redLifeSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {

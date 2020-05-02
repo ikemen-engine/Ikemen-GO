@@ -483,6 +483,10 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebar.activeSb = boolArg(l, 1)
 		return 0
 	})
+	luaRegister(l, "setRedLifeBar", func(l *lua.LState) int {
+		sys.lifebar.activeRl = boolArg(l, 1)
+		return 0
+	})
 	
 	luaRegister(l, "setLuaLocalcoord", func(l *lua.LState) int {
 		sys.luaLocalcoord[0] = int32(numArg(l, 1))
@@ -2766,7 +2770,7 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "guardpoints", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getGuardPoints()))
+		l.Push(lua.LNumber(sys.debugWC.guardPoints))
 		return 1
 	})
 	luaRegister(l, "guardpointsmax", func(*lua.LState) int {
@@ -2774,11 +2778,15 @@ func triggerScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "dizzypoints", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getDizzyPoints()))
+		l.Push(lua.LNumber(sys.debugWC.dizzyPoints))
 		return 1
 	})
 	luaRegister(l, "dizzypointsmax", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.dizzyPointsMax))
+		return 1
+	})
+	luaRegister(l, "redlife", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.redLife))
 		return 1
 	})
 	luaRegister(l, "playeridexist", func(*lua.LState) int {
@@ -3011,13 +3019,19 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.setGuardPoints(int32(numArg(l, 1)))
+			sys.debugWC.guardPointsSet(int32(numArg(l, 1)))
 		}
 		return 0
 	})
 	luaRegister(l, "setDizzyPoints", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.setDizzyPoints(int32(numArg(l, 1)))
+			sys.debugWC.dizzyPointsSet(int32(numArg(l, 1)))
+		}
+		return 0
+	})
+	luaRegister(l, "setRedLife", func(*lua.LState) int {
+		if sys.netInput == nil && sys.fileInput == nil {
+			sys.debugWC.redLifeSet(int32(numArg(l, 1)))
 		}
 		return 0
 	})

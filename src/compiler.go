@@ -82,17 +82,20 @@ func newCompiler() *Compiler {
 		"targetvelset":       c.targetVelSet,
 		"targetveladd":       c.targetVelAdd,
 		"targetpoweradd":     c.targetPowerAdd,
-		"targetguardpointsadd": c.targetPowerAdd,
-		"targetdizzypointsadd": c.targetPowerAdd,
+		"targetguardpointsadd": c.targetGuardPointsAdd,
+		"targetdizzypointsadd": c.targetDizzyPointsAdd,
+		"targetredlifeadd":   c.targetRedLifeAdd,
 		"targetdrop":         c.targetDrop,
 		"lifeadd":            c.lifeAdd,
 		"lifeset":            c.lifeSet,
 		"poweradd":           c.powerAdd,
 		"powerset":           c.powerSet,
-		"guardpointsadd":      c.guardPointsAdd,
-		"guardpointsset":      c.guardPointsSet,
-		"dizzypointsadd":       c.dizzyPointsAdd,
-		"dizzypointsset":       c.dizzyPointsSet,
+		"guardpointsadd":     c.guardPointsAdd,
+		"guardpointsset":     c.guardPointsSet,
+		"dizzypointsadd":     c.dizzyPointsAdd,
+		"dizzypointsset":     c.dizzyPointsSet,
+		"redlifeadd":         c.redLifeAdd,
+		"redlifeset":         c.redLifeSet,
 		"hitvelset":          c.hitVelSet,
 		"screenbound":        c.screenBound,
 		"posfreeze":          c.posFreeze,
@@ -1594,6 +1597,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_guardpoints)
 			case "dizzypoints":
 				out.append(OC_ex_gethitvar_dizzypoints)
+			case "redlife":
+				out.append(OC_ex_gethitvar_redlife)
 			case "score":
 				out.append(OC_ex_gethitvar_score)
 			case "attr":
@@ -1793,6 +1798,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzypoints)
 	case "dizzypointsmax":
 		out.append(OC_ex_, OC_ex_dizzypointsmax)
+	case "redlife":
+		out.append(OC_ex_, OC_ex_redlife)
 	case "playeridexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
@@ -4844,6 +4851,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_dizzypoints, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "redlife",
+		hitDef_redlife, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "score",
 		hitDef_score, VT_Float, 2, false); err != nil {
 		return err
@@ -5648,6 +5659,29 @@ func (c *Compiler) targetDizzyPointsAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) targetRedLifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetRedLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetRedLifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetRedLifeAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			targetRedLifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetRedLifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) targetDrop(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*targetDrop)(sc), c.stateSec(is, func() error {
@@ -5764,6 +5798,36 @@ func (c *Compiler) dizzyPointsSet(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		return c.paramValue(is, sc, "value", dizzyPointsSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) redLifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*redLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			redLifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			redLifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			redLifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) redLifeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*redLifeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			redLifeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", redLifeSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
 }

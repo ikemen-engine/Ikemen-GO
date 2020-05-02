@@ -1531,7 +1531,7 @@ func (s *System) fight() (reload bool) {
 		}
 		s.wincnt.update()
 	}()
-	var life, pow, gpow, spow [len(s.chars)]int32
+	var life, pow, gpow, spow, rlife [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32
 	copyVar := func(pn int) {
@@ -1539,6 +1539,7 @@ func (s *System) fight() (reload bool) {
 		pow[pn] = s.chars[pn][0].power
 		gpow[pn] = s.chars[pn][0].guardPoints
 		spow[pn] = s.chars[pn][0].dizzyPoints
+		rlife[pn] = s.chars[pn][0].redLife
 		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
 			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
 		}
@@ -1766,6 +1767,7 @@ func (s *System) fight() (reload bool) {
 			} else {
 				p[0].dizzyPoints = p[0].dizzyPointsMax
 			}
+			p[0].redLife = 0
 			copyVar(i)
 		}
 	}
@@ -1784,6 +1786,7 @@ func (s *System) fight() (reload bool) {
 				p[0].power = pow[i]
 				p[0].guardPoints = gpow[i]
 				p[0].dizzyPoints = spow[i]
+				p[0].redLife = rlife[i]
 				copy(p[0].ivar[:], ivar[i])
 				copy(p[0].fvar[:], fvar[i])
 			}
@@ -1875,6 +1878,7 @@ func (s *System) fight() (reload bool) {
 						} else if p[0].life <= 0 {
 							p[0].life = 1
 						}
+						p[0].redLife = 0
 						copyVar(i)
 					}
 				}

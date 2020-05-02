@@ -7,6 +7,7 @@ Super.TargetDefenceMul = 1.5
 
 Default.LifeToGuardPointsMul = -1.5
 Default.LifeToDizzyPointsMul = 0
+Default.LifeToRedLifeMul = 0
 
 ; Character Reserved Action Numbers
 AnimStanding = 0

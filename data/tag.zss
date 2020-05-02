@@ -12,7 +12,7 @@ if BackEdgeBodyDist >= 0 {
 	if Standby {
 		TagIn{}
 	}
-	if BackEdgeDist >= Map(_iksys_tagSwitchDist) {
+	if BackEdgeDist >= Map(_iksys_tagSwitchDist) || P2BodyDist X < 30 {
 		VelSet{x: 0; y: 0}
 		ChangeState{value: Const(StateStand); ctrl: 1}
 	}
