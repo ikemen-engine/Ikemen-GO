@@ -450,7 +450,7 @@ const (
 	OC_ex_standby
 	OC_ex_dizzy
 	OC_ex_guardbreak
-	OC_ex_customstate
+	OC_ex_incustomstate
 	OC_ex_max
 	OC_ex_min
 	OC_ex_rand
@@ -1763,7 +1763,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.scf(SCF_dizzy))
 	case OC_ex_guardbreak:
 		sys.bcStack.PushB(c.scf(SCF_guardbreak))
-	case OC_ex_customstate:
+	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
