@@ -1712,7 +1712,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_scoreround:
 		sys.bcStack.PushF(scoreRound(c.teamside))
 	case OC_ex_scoretotal:
-		sys.bcStack.PushF(scoreTotal(c.playerNo&1))
+		sys.bcStack.PushF(scoreTotal(c.playerNo & 1))
 	case OC_ex_timeleft:
 		sys.bcStack.PushI(timeLeft())
 	case OC_ex_timeround:
@@ -2297,7 +2297,7 @@ const (
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
 	crun := c
-	
+
 	var tagSCF int = -1
 	var partnerNo int32 = -1
 	var partnerStateNo int32 = -1
@@ -2306,9 +2306,12 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:
-			sn := exp[0].evalI(c); if sn >= 0 {
+			sn := exp[0].evalI(c)
+			if sn >= 0 {
 				crun.changeState(sn, -1, -1)
-				if tagSCF == -1 {tagSCF = 1}
+				if tagSCF == -1 {
+					tagSCF = 1
+				}
 			} else {
 				return false
 			}
@@ -2319,13 +2322,15 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		case tagIn_self:
-			sti := exp[0].evalB(c);if sti == true {
+			sti := exp[0].evalB(c)
+			if sti == true {
 				tagSCF = 1
 			} else {
 				tagSCF = 0
 			}
 		case tagIn_partner:
-			pti := exp[0].evalI(c); if pti >= 0 {
+			pti := exp[0].evalI(c)
+			if pti >= 0 {
 				partnerNo = pti
 			} else {
 				return false
@@ -2333,9 +2338,12 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		case tagIn_ctrl:
 			ctrls := exp[0].evalB(c)
 			crun.setCtrl(ctrls)
-			if tagSCF == -1 {tagSCF = 1}
+			if tagSCF == -1 {
+				tagSCF = 1
+			}
 		case tagIn_partnerctrl:
-			pctrls := exp[0].evalB(c); if pctrls == true {
+			pctrls := exp[0].evalB(c)
+			if pctrls == true {
 				partnerCtrlSetting = 1
 			} else {
 				partnerCtrlSetting = 0
@@ -2350,15 +2358,27 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	// Data ajusments.
-	if tagSCF == -1 && partnerNo == -1 {tagSCF = 1}
-	if tagSCF == 1 {crun.unsetSCF(SCF_standby)}
+	if tagSCF == -1 && partnerNo == -1 {
+		tagSCF = 1
+	}
+	if tagSCF == 1 {
+		crun.unsetSCF(SCF_standby)
+	}
 
 	// Partner
 	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
 		partner := crun.partnerV2(partnerNo)
 		partner.unsetSCF(SCF_standby)
-		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
-		if partnerCtrlSetting != -1 {if partnerCtrlSetting == 1 {partner.setCtrl(true)} else {partner.setCtrl(false)}}
+		if partnerStateNo >= 0 {
+			partner.changeState(partnerStateNo, -1, -1)
+		}
+		if partnerCtrlSetting != -1 {
+			if partnerCtrlSetting == 1 {
+				partner.setCtrl(true)
+			} else {
+				partner.setCtrl(false)
+			}
+		}
 	}
 
 	return true
@@ -2389,14 +2409,18 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 				tagSCF = 0
 			}
 		case tagOut_stateno:
-			sn := exp[0].evalI(c); if sn >= 0 {
+			sn := exp[0].evalI(c)
+			if sn >= 0 {
 				crun.changeState(sn, -1, -1)
-				if tagSCF == -1 {tagSCF = 1}
+				if tagSCF == -1 {
+					tagSCF = 1
+				}
 			} else {
 				return false
 			}
 		case tagOut_partner:
-			pti := exp[0].evalI(c); if pti >= 0 {
+			pti := exp[0].evalI(c)
+			if pti >= 0 {
 				partnerNo = pti
 			} else {
 				return false
@@ -2416,13 +2440,19 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if tagSCF == -1 && partnerNo == -1 && partnerStateNo == -1 {tagSCF = 1}
-	if tagSCF == 1 {crun.setSCF(SCF_standby)}
+	if tagSCF == -1 && partnerNo == -1 && partnerStateNo == -1 {
+		tagSCF = 1
+	}
+	if tagSCF == 1 {
+		crun.setSCF(SCF_standby)
+	}
 
 	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
 		partner := crun.partnerV2(partnerNo)
 		partner.setSCF(SCF_standby)
-		if partnerStateNo >= 0 {partner.changeState(partnerStateNo, -1, -1)}
+		if partnerStateNo >= 0 {
+			partner.changeState(partnerStateNo, -1, -1)
+		}
 	}
 
 	return true

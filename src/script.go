@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"os"
-	"path/filepath"
-	
+
 	"github.com/go-gl/glfw/v3.3/glfw"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -114,7 +114,7 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(nameTable)
 		return 1
 	})
-	
+
 	//----------------------------------------------------------------
 	// Generate table listing all files in a given directory
 	luaRegister(l, "GetDirectoryFiles", func(*lua.LState) int {
@@ -126,20 +126,20 @@ func scriptCommonInit(l *lua.LState) {
 		l.Push(dir)
 		return 1
 	})
-	
+
 	//----------------------------------------------------------------
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.frameCounter))
 		return 1
 	})
-	
+
 	luaRegister(l, "clearColor", func(l *lua.LState) int {
 		a := int32(255)
 		if l.GetTop() >= 4 {
 			a = int32(numArg(l, 4))
 		}
 		col := uint32(int32(numArg(l, 3))&0xff | int32(numArg(l, 2))&0xff<<8 |
-		int32(numArg(l, 1))&0xff<<16)
+			int32(numArg(l, 1))&0xff<<16)
 		FillRect(sys.scrrect, col, a)
 		return 0
 	})
@@ -156,13 +156,13 @@ func scriptCommonInit(l *lua.LState) {
 			} else {
 				ws = float32(sys.scrrect[2]) / float32(sys.gameWidth)
 				hs = float32(sys.scrrect[3]) / float32(sys.gameHeight)
-				x1 += float32(sys.gameWidth-320)/2
-				y1 += float32(sys.gameHeight-240)
+				x1 += float32(sys.gameWidth-320) / 2
+				y1 += float32(sys.gameHeight - 240)
 			}
 		}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)
-		FillRect([4]int32{int32(x1*ws),int32(y1*hs),int32(x2*ws),int32(y2*hs)}, col, a)
+		FillRect([4]int32{int32(x1 * ws), int32(y1 * hs), int32(x2 * ws), int32(y2 * hs)}, col, a)
 		return 0
 	})
 	luaRegister(l, "fadeScreen", func(l *lua.LState) int {
@@ -176,7 +176,7 @@ func scriptCommonInit(l *lua.LState) {
 		if strArg(l, 1) == "fadeout" {
 			a = math.Floor(float64(255) / length * frame)
 		} else if strArg(l, 1) == "fadein" {
-			a = math.Floor(255 - 255 * (frame - 1) / length)
+			a = math.Floor(255 - 255*(frame-1)/length)
 		}
 		if a < 0 {
 			a = 0
@@ -487,7 +487,7 @@ func scriptCommonInit(l *lua.LState) {
 		sys.lifebar.activeRl = boolArg(l, 1)
 		return 0
 	})
-	
+
 	luaRegister(l, "setLuaLocalcoord", func(l *lua.LState) int {
 		sys.luaLocalcoord[0] = int32(numArg(l, 1))
 		sys.luaLocalcoord[1] = int32(numArg(l, 2))
@@ -825,7 +825,7 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			sys.com[pn-1] = 0
 		}
-	
+
 		return 0
 	})
 	luaRegister(l, "setAutoLevel", func(*lua.LState) int {
@@ -1300,7 +1300,7 @@ func systemScriptInit(l *lua.LState) {
 					ch.setSCF(SCF_disabled)
 				}
 			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
-				sys.playerClear(pn-1)
+				sys.playerClear(pn - 1)
 				c[0].changeState(st, -1, -1)
 				l.Push(lua.LBool(true))
 				return 1
@@ -1409,7 +1409,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 			for i := range sys.cgi {
 				num := len(sys.lifebar.fa[sys.tmode[i&1]])
-				if (sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag) {
+				if sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag {
 					num = int(math.Min(float64(num), float64(sys.numSimul[i&1])*2))
 				}
 				if i < num {
@@ -1827,7 +1827,7 @@ func systemScriptInit(l *lua.LState) {
 		tbl = l.NewTable()
 		if len(c.pal_keymap) > 0 {
 			for k, v := range c.pal_keymap {
-				if int32(k + 1) != v { //only actual remaps are relevant
+				if int32(k+1) != v { //only actual remaps are relevant
 					tbl.RawSetInt(k+1, lua.LNumber(v))
 				}
 			}
@@ -1954,7 +1954,7 @@ func systemScriptInit(l *lua.LState) {
 			subt.RawSetString("bgmvolume", lua.LNumber(v.bgmvolume))
 			subt.RawSetString("bgmloopstart", lua.LNumber(v.bgmloopstart))
 			subt.RawSetString("bgmloopend", lua.LNumber(v.bgmloopend))
-			tbl.RawSetInt(k + 1, subt)
+			tbl.RawSetInt(k+1, subt)
 		}
 		l.Push(tbl)
 		l.Push(lua.LString(attachedchardef))

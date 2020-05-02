@@ -34,127 +34,127 @@ type Compiler struct {
 func newCompiler() *Compiler {
 	c := &Compiler{funcs: make(map[string]bytecodeFunction)}
 	c.scmap = map[string]scFunc{
-		"hitby":              c.hitBy,
-		"nothitby":           c.notHitBy,
-		"assertspecial":      c.assertSpecial,
-		"playsnd":            c.playSnd,
-		"changestate":        c.changeState,
-		"selfstate":          c.selfState,
-		"tagin":              c.tagIn,
-		"tagout":             c.tagOut,
-		"destroyself":        c.destroySelf,
-		"changeanim":         c.changeAnim,
-		"changeanim2":        c.changeAnim2,
-		"helper":             c.helper,
-		"ctrlset":            c.ctrlSet,
-		"guardbreakset":      c.guardBreakSet,
-		"dizzyset":           c.dizzySet,
-		"explod":             c.explod,
-		"modifyexplod":       c.modifyExplod,
-		"gamemakeanim":       c.gameMakeAnim,
-		"posset":             c.posSet,
-		"posadd":             c.posAdd,
-		"velset":             c.velSet,
-		"veladd":             c.velAdd,
-		"velmul":             c.velMul,
-		"palfx":              c.palFX,
-		"allpalfx":           c.allPalFX,
-		"bgpalfx":            c.bgPalFX,
-		"afterimage":         c.afterImage,
-		"afterimagetime":     c.afterImageTime,
-		"hitdef":             c.hitDef,
-		"reversaldef":        c.reversalDef,
-		"projectile":         c.projectile,
-		"width":              c.width,
-		"sprpriority":        c.sprPriority,
-		"varset":             c.varSet,
-		"varadd":             c.varAdd,
-		"parentvarset":       c.parentVarSet,
-		"parentvaradd":       c.parentVarAdd,
-		"rootvarset":         c.rootVarSet,
-		"rootvaradd":         c.rootVarAdd,
-		"turn":               c.turn,
-		"targetfacing":       c.targetFacing,
-		"targetbind":         c.targetBind,
-		"bindtotarget":       c.bindToTarget,
-		"targetlifeadd":      c.targetLifeAdd,
-		"targetstate":        c.targetState,
-		"targetvelset":       c.targetVelSet,
-		"targetveladd":       c.targetVelAdd,
-		"targetpoweradd":     c.targetPowerAdd,
+		"hitby":                c.hitBy,
+		"nothitby":             c.notHitBy,
+		"assertspecial":        c.assertSpecial,
+		"playsnd":              c.playSnd,
+		"changestate":          c.changeState,
+		"selfstate":            c.selfState,
+		"tagin":                c.tagIn,
+		"tagout":               c.tagOut,
+		"destroyself":          c.destroySelf,
+		"changeanim":           c.changeAnim,
+		"changeanim2":          c.changeAnim2,
+		"helper":               c.helper,
+		"ctrlset":              c.ctrlSet,
+		"guardbreakset":        c.guardBreakSet,
+		"dizzyset":             c.dizzySet,
+		"explod":               c.explod,
+		"modifyexplod":         c.modifyExplod,
+		"gamemakeanim":         c.gameMakeAnim,
+		"posset":               c.posSet,
+		"posadd":               c.posAdd,
+		"velset":               c.velSet,
+		"veladd":               c.velAdd,
+		"velmul":               c.velMul,
+		"palfx":                c.palFX,
+		"allpalfx":             c.allPalFX,
+		"bgpalfx":              c.bgPalFX,
+		"afterimage":           c.afterImage,
+		"afterimagetime":       c.afterImageTime,
+		"hitdef":               c.hitDef,
+		"reversaldef":          c.reversalDef,
+		"projectile":           c.projectile,
+		"width":                c.width,
+		"sprpriority":          c.sprPriority,
+		"varset":               c.varSet,
+		"varadd":               c.varAdd,
+		"parentvarset":         c.parentVarSet,
+		"parentvaradd":         c.parentVarAdd,
+		"rootvarset":           c.rootVarSet,
+		"rootvaradd":           c.rootVarAdd,
+		"turn":                 c.turn,
+		"targetfacing":         c.targetFacing,
+		"targetbind":           c.targetBind,
+		"bindtotarget":         c.bindToTarget,
+		"targetlifeadd":        c.targetLifeAdd,
+		"targetstate":          c.targetState,
+		"targetvelset":         c.targetVelSet,
+		"targetveladd":         c.targetVelAdd,
+		"targetpoweradd":       c.targetPowerAdd,
 		"targetguardpointsadd": c.targetGuardPointsAdd,
 		"targetdizzypointsadd": c.targetDizzyPointsAdd,
-		"targetredlifeadd":   c.targetRedLifeAdd,
-		"targetdrop":         c.targetDrop,
-		"lifeadd":            c.lifeAdd,
-		"lifeset":            c.lifeSet,
-		"poweradd":           c.powerAdd,
-		"powerset":           c.powerSet,
-		"guardpointsadd":     c.guardPointsAdd,
-		"guardpointsset":     c.guardPointsSet,
-		"dizzypointsadd":     c.dizzyPointsAdd,
-		"dizzypointsset":     c.dizzyPointsSet,
-		"redlifeadd":         c.redLifeAdd,
-		"redlifeset":         c.redLifeSet,
-		"hitvelset":          c.hitVelSet,
-		"screenbound":        c.screenBound,
-		"posfreeze":          c.posFreeze,
-		"envshake":           c.envShake,
-		"hitoverride":        c.hitOverride,
-		"pause":              c.pause,
-		"superpause":         c.superPause,
-		"trans":              c.trans,
-		"playerpush":         c.playerPush,
-		"statetypeset":       c.stateTypeSet,
-		"angledraw":          c.angleDraw,
-		"angleset":           c.angleSet,
-		"angleadd":           c.angleAdd,
-		"anglemul":           c.angleMul,
-		"envcolor":           c.envColor,
-		"displaytoclipboard": c.displayToClipboard,
-		"appendtoclipboard":  c.appendToClipboard,
-		"clearclipboard":     c.clearClipboard,
-		"makedust":           c.makeDust,
-		"attackdist":         c.attackDist,
-		"attackmulset":       c.attackMulSet,
-		"defencemulset":      c.defenceMulSet,
-		"fallenvshake":       c.fallEnvShake,
-		"hitfalldamage":      c.hitFallDamage,
-		"hitfallvel":         c.hitFallVel,
-		"hitfallset":         c.hitFallSet,
-		"varrangeset":        c.varRangeSet,
-		"remappal":           c.remapPal,
-		"stopsnd":            c.stopSnd,
-		"sndpan":             c.sndPan,
-		"varrandom":          c.varRandom,
-		"gravity":            c.gravity,
-		"bindtoparent":       c.bindToParent,
-		"bindtoroot":         c.bindToRoot,
-		"removeexplod":       c.removeExplod,
-		"explodbindtime":     c.explodBindTime,
-		"movehitreset":       c.moveHitReset,
-		"hitadd":             c.hitAdd,
-		"offset":             c.offset,
-		"victoryquote":       c.victoryQuote,
-		"zoom":               c.zoom,
-		"scoreadd":           c.scoreAdd,
-		"targetscoreadd":     c.targetScoreAdd,
-		"roundtimeadd":       c.roundTimeAdd,
-		"roundtimeset":       c.roundTimeSet,
-		"printtoconsole":     c.printToConsole,
-		"mapset":             c.mapSet,
-		"mapadd":             c.mapAdd,
-		"parentmapset":       c.parentMapSet,
-		"parentmapadd":       c.parentMapAdd,
-		"rootmapset":         c.rootMapSet,
-		"rootmapadd":         c.rootMapAdd,
-		"teammapset":         c.teamMapSet,
-		"teammapadd":         c.teamMapAdd,
-		"matchrestart":       c.matchRestart,
-		"savefile":           c.saveFile,
-		"loadfile":           c.loadFile,
-		"forcefeedback":      c.null,
-		"null":               c.null,
+		"targetredlifeadd":     c.targetRedLifeAdd,
+		"targetdrop":           c.targetDrop,
+		"lifeadd":              c.lifeAdd,
+		"lifeset":              c.lifeSet,
+		"poweradd":             c.powerAdd,
+		"powerset":             c.powerSet,
+		"guardpointsadd":       c.guardPointsAdd,
+		"guardpointsset":       c.guardPointsSet,
+		"dizzypointsadd":       c.dizzyPointsAdd,
+		"dizzypointsset":       c.dizzyPointsSet,
+		"redlifeadd":           c.redLifeAdd,
+		"redlifeset":           c.redLifeSet,
+		"hitvelset":            c.hitVelSet,
+		"screenbound":          c.screenBound,
+		"posfreeze":            c.posFreeze,
+		"envshake":             c.envShake,
+		"hitoverride":          c.hitOverride,
+		"pause":                c.pause,
+		"superpause":           c.superPause,
+		"trans":                c.trans,
+		"playerpush":           c.playerPush,
+		"statetypeset":         c.stateTypeSet,
+		"angledraw":            c.angleDraw,
+		"angleset":             c.angleSet,
+		"angleadd":             c.angleAdd,
+		"anglemul":             c.angleMul,
+		"envcolor":             c.envColor,
+		"displaytoclipboard":   c.displayToClipboard,
+		"appendtoclipboard":    c.appendToClipboard,
+		"clearclipboard":       c.clearClipboard,
+		"makedust":             c.makeDust,
+		"attackdist":           c.attackDist,
+		"attackmulset":         c.attackMulSet,
+		"defencemulset":        c.defenceMulSet,
+		"fallenvshake":         c.fallEnvShake,
+		"hitfalldamage":        c.hitFallDamage,
+		"hitfallvel":           c.hitFallVel,
+		"hitfallset":           c.hitFallSet,
+		"varrangeset":          c.varRangeSet,
+		"remappal":             c.remapPal,
+		"stopsnd":              c.stopSnd,
+		"sndpan":               c.sndPan,
+		"varrandom":            c.varRandom,
+		"gravity":              c.gravity,
+		"bindtoparent":         c.bindToParent,
+		"bindtoroot":           c.bindToRoot,
+		"removeexplod":         c.removeExplod,
+		"explodbindtime":       c.explodBindTime,
+		"movehitreset":         c.moveHitReset,
+		"hitadd":               c.hitAdd,
+		"offset":               c.offset,
+		"victoryquote":         c.victoryQuote,
+		"zoom":                 c.zoom,
+		"scoreadd":             c.scoreAdd,
+		"targetscoreadd":       c.targetScoreAdd,
+		"roundtimeadd":         c.roundTimeAdd,
+		"roundtimeset":         c.roundTimeSet,
+		"printtoconsole":       c.printToConsole,
+		"mapset":               c.mapSet,
+		"mapadd":               c.mapAdd,
+		"parentmapset":         c.parentMapSet,
+		"parentmapadd":         c.parentMapAdd,
+		"rootmapset":           c.rootMapSet,
+		"rootmapadd":           c.rootMapAdd,
+		"teammapset":           c.teamMapSet,
+		"teammapadd":           c.teamMapAdd,
+		"matchrestart":         c.matchRestart,
+		"savefile":             c.saveFile,
+		"loadfile":             c.loadFile,
+		"forcefeedback":        c.null,
+		"null":                 c.null,
 	}
 	return c
 }
@@ -2437,11 +2437,11 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
 				return bvNone(), Error("演算子がありません" +
-				"\n" +
-				"No comparison operator" +
-				"\n" + 
-				"Token = '" + c.token + "' String = '" + *in + "'" +
-				"\n[ECID 3]\n")
+					"\n" +
+					"No comparison operator" +
+					"\n" +
+					"Token = '" + c.token + "' String = '" + *in + "'" +
+					"\n[ECID 3]\n")
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
@@ -2451,9 +2451,9 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			if c.usiroOp {
 				if c.isOperator(c.token) <= 0 {
 					return bvNone(), Error("演算子がありません" +
-					"\n" +
-					"No comparison operator" +
-					"\n[ECID 4]\n")
+						"\n" +
+						"No comparison operator" +
+						"\n[ECID 4]\n")
 				}
 				if err := c.renzokuEnzansihaError(in); err != nil {
 					return bvNone(), err
@@ -6863,8 +6863,9 @@ func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase,
 func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "0", VT_Int, 1)
@@ -6875,8 +6876,9 @@ func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "1", VT_Int, 1)
@@ -6887,8 +6889,9 @@ func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "2", VT_Int, 1)
@@ -6899,8 +6902,9 @@ func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
@@ -6911,8 +6915,9 @@ func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) rootMapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "4", VT_Int, 1)
@@ -6923,8 +6928,9 @@ func (c *Compiler) rootMapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) rootMapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "5", VT_Int, 1)
@@ -6935,8 +6941,9 @@ func (c *Compiler) rootMapAdd(is IniSection, sc *StateControllerBase,
 func (c *Compiler) teamMapSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "6", VT_Int, 1)
@@ -6947,8 +6954,9 @@ func (c *Compiler) teamMapSet(is IniSection, sc *StateControllerBase,
 func (c *Compiler) teamMapAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
 		return nil
 	})
 	c.scAdd(sc, mapSet_type, "7", VT_Int, 1)
@@ -6956,7 +6964,7 @@ func (c *Compiler) teamMapAdd(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 
-func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) (error) {
+func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
@@ -7211,7 +7219,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
 						return Error(data + "が無効な値です" +
-									"\n" + data + " is a invalid state controller")
+							"\n" + data + " is a invalid state controller")
 					}
 				case "persistent":
 					if c.stateNo >= 0 {

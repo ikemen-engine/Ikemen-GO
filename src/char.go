@@ -140,7 +140,7 @@ type CharData struct {
 	dizzypoints int32
 	attack      int32
 	defence     int32
-	fall    struct {
+	fall        struct {
 		defence_mul float32
 	}
 	liedown struct {
@@ -556,7 +556,7 @@ func (hd *HitDef) clear() {
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1,
 		guardpoints: IErr, dizzypoints: IErr, redlife: IErr,
-		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
+		score: [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
@@ -1698,9 +1698,9 @@ func (c *Char) stCgi() *CharGlobalInfo {
 func (c *Char) ocd() *OverrideCharData {
 	if sys.tmode[c.playerNo&1] == TM_Turns {
 		if c.playerNo&1 == 0 {
-			return &sys.ocd[c.memberNo * 2]
+			return &sys.ocd[c.memberNo*2]
 		}
-		return &sys.ocd[c.memberNo * 2 + 1]
+		return &sys.ocd[c.memberNo*2+1]
 	}
 	return &sys.ocd[c.playerNo]
 }
@@ -2028,7 +2028,6 @@ func (c *Char) load(def string) error {
 				}
 			}
 		}
-		
 	}
 	if LoadFile(&sprite, def, func(filename string) error {
 		var err error
@@ -2637,6 +2636,12 @@ func (c *Char) getPower() int32 {
 	}
 	return sys.chars[c.playerNo][0].power
 }
+func (c *Char) getGuardPoints() int32 {
+	return sys.chars[c.playerNo][0].guardPoints
+}
+func (c *Char) getDizzyPoints() int32 {
+	return sys.chars[c.playerNo][0].dizzyPoints
+}
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
@@ -2679,9 +2684,9 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 }
 func (c *Char) ratioLevel() int32 {
 	if c.playerNo&1 == 0 {
-		return sys.ratioLevel[int32(c.memberNo) * 2]
+		return sys.ratioLevel[int32(c.memberNo)*2]
 	}
-	return sys.ratioLevel[int32(c.memberNo) * 2 + 1]
+	return sys.ratioLevel[int32(c.memberNo)*2+1]
 }
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
@@ -3363,15 +3368,15 @@ func scoreRound(side int) float32 {
 	return s
 }
 func scoreTotal(side int) float32 {
-    s := sys.scoreStart[side]
-    for _, v := range sys.scoreRounds {
-        s += v[side]
-    }
+	s := sys.scoreStart[side]
+	for _, v := range sys.scoreRounds {
+		s += v[side]
+	}
 	s += scoreRound(side)
-    return s
+	return s
 }
 func (c *Char) scoreAdd(s float32) {
-	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent + s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
+	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent+s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
 }
 func (c *Char) targetScoreAdd(tar []int32, s float32) {
 	for _, tid := range tar {
@@ -4161,13 +4166,13 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	}
 	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
-	if !ok {
+	if !ok || si < 0 {
 		return
 	}
 	var di int
 	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
-	if !ok {
+	if !ok || di < 0 {
 		di = si
 	}
 	if pfx.remap == nil {
@@ -4194,7 +4199,7 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	}
 	di, ok := c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
-	if !ok {
+	if !ok || di < 0 {
 		return
 	}
 	if pfx.remap == nil {
@@ -4204,6 +4209,7 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 		pfx.remap[i] = di
 	}
 }
+
 // MapSet() sets a map to a specific value.
 func (c *Char) mapSet(s string, Value float32, scType int32) {
 	if s == "" {
@@ -4211,46 +4217,46 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 	}
 	key := strings.ToLower(s)
 	switch scType {
-		case 0:
+	case 0:
+		c.mapArray[key] = Value
+	case 1:
+		c.mapArray[key] += Value
+	case 2:
+		if c.parent() != nil {
+			c.parent().mapArray[key] = Value
+		} else {
 			c.mapArray[key] = Value
-		case 1:
+		}
+	case 3:
+		if c.parent() != nil {
+			c.parent().mapArray[key] += Value
+		} else {
 			c.mapArray[key] += Value
-		case 2:
-			if c.parent() != nil {
-				c.parent().mapArray[key] = Value
-			} else {
-				c.mapArray[key] = Value
+		}
+	case 4:
+		if c.root() != nil {
+			c.root().mapArray[key] = Value
+		} else {
+			c.mapArray[key] = Value
+		}
+	case 5:
+		if c.root() != nil {
+			c.root().mapArray[key] += Value
+		} else {
+			c.mapArray[key] += Value
+		}
+	case 6:
+		for i, p := range sys.chars {
+			if len(p) > 0 && c.teamside == i&1 {
+				p[0].mapArray[key] = Value
 			}
-		case 3:
-			if c.parent() != nil {
-				c.parent().mapArray[key] += Value
-			} else {
-				c.mapArray[key] += Value
+		}
+	case 7:
+		for i, p := range sys.chars {
+			if len(p) > 0 && c.teamside == i&1 {
+				p[0].mapArray[key] += Value
 			}
-		case 4:
-			if c.root() != nil {
-				c.root().mapArray[key] = Value
-			} else {
-				c.mapArray[key] = Value
-			}
-		case 5:
-			if c.root() != nil {
-				c.root().mapArray[key] += Value
-			} else {
-				c.mapArray[key] += Value
-			}
-		case 6:
-			for i, p := range sys.chars {
-				if len(p) > 0 && c.teamside == i&1 {
-					p[0].mapArray[key] = Value
-				}
-			}
-		case 7:
-			for i, p := range sys.chars {
-				if len(p) > 0 && c.teamside == i&1 {
-					p[0].mapArray[key] += Value
-				}
-			}
+		}
 	}
 }
 

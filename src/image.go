@@ -13,7 +13,6 @@ import (
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/kbinani/screenshot"
 )
 
 type TransType int32
@@ -221,8 +220,8 @@ func (pf *PalFX) setColor(r, g, b float32) {
 		256 * bNormalized >> 8,
 	}
 
-	pf.frgba = [...]float32{float32(rNormalized)/255, float32(gNormalized)/255,
-		float32(bNormalized)/255, 1.0}
+	pf.frgba = [...]float32{float32(rNormalized) / 255, float32(gNormalized) / 255,
+		float32(bNormalized) / 255, 1.0}
 }
 
 type PaletteList struct {
@@ -1138,7 +1137,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			if i <= MaxPalNo &&
 				s.palList.PalTable[[...]int16{1, int16(i + 1)}] == s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] &&
 				gn_[0] != 1 && gn_[1] != int16(i+1) {
-				delete(s.palList.PalTable, [...]int16{1, int16(i + 1)}) //余計なパレットを削除
+				s.palList.PalTable[[...]int16{1, int16(i + 1)}] = -1
 			}
 			if i <= MaxPalNo && i+1 == int(s.header.NumberOfPalettes) {
 				for j := i + 1; j < MaxPalNo; j++ {
@@ -1237,18 +1236,19 @@ func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
 	return &osp
 }
 func captureScreen() {
-	var err error
-	var img *image.RGBA
-	if sys.fullscreen {
-		img, err = screenshot.CaptureDisplay(0)
-	} else {
-		xpos, ypos := sys.window.GetPos()
-		width, height := sys.window.GetSize()
-		bounds := image.Rect(xpos, ypos, xpos + width, ypos + height)
-		img, err = screenshot.CaptureRect(bounds)
-	}
-	if err != nil {
-		panic(err)
+	width, height := sys.window.GetSize()
+	pixdata := make([]uint8, 4*width*height)
+	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixdata))
+	for i := 0; i < 4*width*height; i++ {
+		var x, y, j int
+		x = i % (width * 4)
+		y = i / (width * 4)
+		j = x + (height-1-y)*width*4
+		if i%4 == 3 {
+			pixdata[i] = 255 //アルファ値を255にする
+		}
+		img.Pix[j] = pixdata[i]
 	}
 	var filename string
 	for i := sys.captureNum; i < 999; i++ {

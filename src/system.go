@@ -1,15 +1,15 @@
 package main
 
 import (
-	"runtime"
-	"io"
-	"image"
 	"bufio"
 	"fmt"
+	"image"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,28 +32,28 @@ const (
 )
 
 // System vars are accessed globally through the program
-var sys = System {
-	randseed: int32(time.Now().UnixNano()),
-	scrrect: [...]int32{0, 0, 320, 240},
+var sys = System{
+	randseed:  int32(time.Now().UnixNano()),
+	scrrect:   [...]int32{0, 0, 320, 240},
 	gameWidth: 320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
-	brightness: 256,
-	roundTime: -1,
-	lifeMul: 1,
-	singleVsTeamLife: 1,
-	turnsRecoveryBase: 0.125,
+	brightness:         256,
+	roundTime:          -1,
+	lifeMul:            1,
+	singleVsTeamLife:   1,
+	turnsRecoveryBase:  0.125,
 	turnsRecoveryBonus: 0.275,
-	mixer:             *newMixer(),
-	bgm:               *newBgm(),
-	sounds:            newSounds(16),
-	allPalFX:          *newPalFX(),
-	bgPalFX:           *newPalFX(),
-	sel:               *newSelect(),
-	keySatate:         make(map[glfw.Key]bool),
-	match:             1,
-	listenPort:        "7500",
-	loader:            *newLoader(),
-	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
+	mixer:              *newMixer(),
+	bgm:                *newBgm(),
+	sounds:             newSounds(16),
+	allPalFX:           *newPalFX(),
+	bgPalFX:            *newPalFX(),
+	sel:                *newSelect(),
+	keySatate:          make(map[glfw.Key]bool),
+	match:              1,
+	listenPort:         "7500",
+	loader:             *newLoader(),
+	numSimul:           [...]int32{2, 2}, numTurns: [...]int32{2, 2},
 	ignoreMostErrors:      true,
 	superpmap:             *newPalFX(),
 	wincnt:                wincntMap(make(map[string][]int32)),
@@ -289,57 +289,59 @@ type System struct {
 	externalShaders     [][]string
 
 	// Icon :D
-	windowMainIcon			[]image.Image
-	windowMainIconLocation	[]string
+	windowMainIcon         []image.Image
+	windowMainIconLocation []string
 
 	// Rendering
-	borderless              bool
-	vRetrace                int
+	borderless bool
+	vRetrace   int
 
-	gameMode                string
-	demoTime                int32
-	frameCounter            int32
-	motifDir                string
-	captureNum              int
-	challenger              int
-	roundType               [2]RoundType
-	ocd                     [MaxSimul*2 + MaxAttachedChar]OverrideCharData
-	allowbgm                bool
-	ratioLevel              [MaxSimul*2 + MaxAttachedChar]int32
-	timerStart              int32
-	timerRounds             []int32
-	scoreStart              [2]float32
-	scoreRounds             [][2]float32
-	matchData               *lua.LTable
-	matchPos                [8]float32
-	matchClearance          [2]MatchClearance
-	consecutiveWins         [2]int32
-	commonConst             string
-	commonRules             string
-	commonScore             string
-	commonTag               string
-	gameSpeed               float32
-	maxPowerMode            bool
-	postMatch               bool
-	preloading              Preloading
+	gameMode        string
+	demoTime        int32
+	frameCounter    int32
+	motifDir        string
+	captureNum      int
+	challenger      int
+	roundType       [2]RoundType
+	ocd             [MaxSimul*2 + MaxAttachedChar]OverrideCharData
+	allowbgm        bool
+	ratioLevel      [MaxSimul*2 + MaxAttachedChar]int32
+	timerStart      int32
+	timerRounds     []int32
+	scoreStart      [2]float32
+	scoreRounds     [][2]float32
+	matchData       *lua.LTable
+	matchPos        [8]float32
+	matchClearance  [2]MatchClearance
+	consecutiveWins [2]int32
+	commonConst     string
+	commonRules     string
+	commonScore     string
+	commonTag       string
+	gameSpeed       float32
+	maxPowerMode    bool
+	postMatch       bool
+	preloading      Preloading
 }
 
 type OverrideCharData struct {
-	power        int32
-	guardPoints  int32
-	dizzyPoints  int32
-	life         int32
-	lifeMax      int32
-	lifeRatio    float32
-	attackRatio  float32
+	power       int32
+	guardPoints int32
+	dizzyPoints int32
+	life        int32
+	lifeMax     int32
+	lifeRatio   float32
+	attackRatio float32
 }
+
 func (s *System) resetOverrideCharData() {
 	for i := range s.ocd {
-		s.ocd[i] = OverrideCharData{power: 0, guardPoints:0, dizzyPoints: 0,
-		life: 0, lifeMax: 0, lifeRatio: 1.0, attackRatio: 1.0}
+		s.ocd[i] = OverrideCharData{power: 0, guardPoints: 0, dizzyPoints: 0,
+			life: 0, lifeMax: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
 	return
 }
+
 type MatchClearance struct {
 	helpers     bool
 	sound       bool
@@ -383,7 +385,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	glfw.SwapInterval(s.vRetrace)
 	// Intializate OpenGL.
 	chk(gl.Init())
-	
+
 	// Check if the shader selected is currently avalible.
 	if s.PostProcessingShader < int32(len(s.externalShaderList))+3 {
 		s.PostProcessingShader = 0
@@ -399,7 +401,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		s.externalShaderNames = make([]string, len(s.externalShaderList))
 		s.externalShaders[0] = make([]string, len(s.externalShaderList))
 		s.externalShaders[1] = make([]string, len(s.externalShaderList))
-		
+
 		// Then we load.
 		for i, shaderLocation := range s.externalShaderList {
 			// Create names.
@@ -408,18 +410,18 @@ func (s *System) init(w, h int32) *lua.LState {
 			s.externalShaderNames[i] = splitDir[len(splitDir)-1]
 
 			// Load vert shaders.
-			content, err := ioutil.ReadFile(shaderLocation + ".vert") 
+			content, err := ioutil.ReadFile(shaderLocation + ".vert")
 			if err != nil {
 				chk(err)
 			}
-			s.externalShaders[0][i] = string(content) + "\x00";
+			s.externalShaders[0][i] = string(content) + "\x00"
 
 			// Load frag shaders.
-			content, err = ioutil.ReadFile(shaderLocation + ".frag") 
+			content, err = ioutil.ReadFile(shaderLocation + ".frag")
 			if err != nil {
 				chk(err)
 			}
-			s.externalShaders[1][i] = string(content) + "\x00";
+			s.externalShaders[1][i] = string(content) + "\x00"
 		}
 	}
 	// PS: The "\x00" is what is know as Null Terminator.
@@ -447,7 +449,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	// So now that we have a windo we add a icon.
 	if len(s.windowMainIconLocation) > 0 {
 		// First we initialize arrays.
-		f := make([]io.ReadCloser, len(s.windowMainIconLocation) )
+		f := make([]io.ReadCloser, len(s.windowMainIconLocation))
 		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
 		// And then we load them.
 		for i, iconLocation := range s.windowMainIconLocation {
@@ -820,12 +822,12 @@ func (s *System) nextRound() {
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
 	s.nextCharId = s.helperMax
-	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0] - 1) ||
-		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins - 1) {
+	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
+		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins-1) {
 		s.roundType[0] = RT_Deciding
 	}
-	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1] - 1) ||
-		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins - 1) {
+	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1]-1) ||
+		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins-1) {
 		s.roundType[1] = RT_Deciding
 	}
 	if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
@@ -1308,15 +1310,15 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 						if len(p) > 0 {
 							if s.waitdown >= 0 && p[0].win() && p[0].alive() &&
 								((!s.matchOver() && (s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns)) ||
-								(s.gameMode == "survival" || s.gameMode == "survivalcoop" || 
-								s.gameMode == "netplaysurvivalcoop")) {
+									(s.gameMode == "survival" || s.gameMode == "survivalcoop" ||
+										s.gameMode == "netplaysurvivalcoop")) {
 								rt := s.roundTime
 								if rt < 0 {
 									rt = 99 * sys.lifebar.ti.framespercount
 								}
-								p[0].life += int32((float32(s.time) + 1) / (float32(rt) + 1) *
-									float32(p[0].lifeMax) * s.turnsRecoveryBonus +
-									float32(p[0].lifeMax) * s.turnsRecoveryBase)
+								p[0].life += int32((float32(s.time)+1)/(float32(rt)+1)*
+									float32(p[0].lifeMax)*s.turnsRecoveryBonus +
+									float32(p[0].lifeMax)*s.turnsRecoveryBase)
 								if p[0].life > p[0].lifeMax {
 									p[0].life = p[0].lifeMax
 								}
@@ -1755,7 +1757,7 @@ func (s *System) fight() (reload bool) {
 					}
 				}
 				p[0].mapArray = make(map[string]float32)
-				for k,v := range p[0].mapDefault {
+				for k, v := range p[0].mapDefault {
 					p[0].mapArray[k] = v
 				}
 			}
@@ -1981,8 +1983,8 @@ func (s *System) fight() (reload bool) {
 				p2cnt = s.numSimul[1]
 			}
 			for _, p := range s.chars {
-				if len(p) > 0 && float32(p[0].life) / float32(p[0].lifeMax) * 100 <= float32(s.stage.bgmratiolife) {
-					if p[0].playerNo % 2 == 0 {
+				if len(p) > 0 && float32(p[0].life)/float32(p[0].lifeMax)*100 <= float32(s.stage.bgmratiolife) {
+					if p[0].playerNo%2 == 0 {
 						p1cnt -= 1
 					} else {
 						p2cnt -= 1
@@ -2192,7 +2194,7 @@ type Select struct {
 	lportrait       [2]int16
 	vsportrait      [2]int16
 	stageportrait   [2]int16
-	aportrait		map[string]Anim
+	aportrait       map[string]Anim
 	cdefOverwrite   [MaxSimul * 2]string
 	sdefOverwrite   string
 	stagebgm        [5]StageBgm
@@ -2200,16 +2202,16 @@ type Select struct {
 
 func newSelect() *Select {
 	return &Select{columns: 5,
-		rows: 2,
-		randomscl: [...]float32{1, 1},
-		cellsize: [...]float32{29, 29},
-		cellscale: [...]float32{1, 1},
+		rows:            2,
+		randomscl:       [...]float32{1, 1},
+		cellsize:        [...]float32{29, 29},
+		cellscale:       [...]float32{1, 1},
 		selectedStageNo: -1,
-		sportrait: [...]int16{9000, 0},
-		lportrait: [...]int16{9000, 1},
-		vsportrait: [...]int16{9000, 1},
-		stageportrait: [...]int16{9000, 0},
-		aportrait: make(map[string]Anim)}
+		sportrait:       [...]int16{9000, 0},
+		lportrait:       [...]int16{9000, 1},
+		vsportrait:      [...]int16{9000, 1},
+		stageportrait:   [...]int16{9000, 0},
+		aportrait:       make(map[string]Anim)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i

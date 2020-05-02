@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
-	lua "github.com/yuin/gopher-lua"
 	"github.com/sqweek/dialog"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func init() {
@@ -102,7 +102,7 @@ Debug Options:
 		chk(f.Close())
 	}
 	defcfg := []byte(strings.Join(strings.Split(
-`{
+		`{
 	"AIRamping": true,
 	"AIRandomColor": true,
 	"AudioDucking": false,
@@ -351,7 +351,7 @@ Debug Options:
 			Joystick int
 			Buttons  []interface{}
 		}
-		JoystickConfig             []struct {
+		JoystickConfig []struct {
 			Joystick int
 			Buttons  []interface{}
 		}
@@ -368,10 +368,12 @@ Debug Options:
 	chk(ioutil.WriteFile("save/config.json", cfg, 0644))
 	sys.audioDucking = tmp.AudioDucking
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
-	air, err := ioutil.ReadFile(tmp.CommonAir); if err == nil {
+	air, err := ioutil.ReadFile(tmp.CommonAir)
+	if err == nil {
 		sys.commonAir = "\n" + string(air)
 	}
-	cmd, err := ioutil.ReadFile(tmp.CommonCmd); if err == nil {
+	cmd, err := ioutil.ReadFile(tmp.CommonCmd)
+	if err == nil {
 		sys.commonCmd = "\n" + string(cmd)
 	}
 	// TODO: We should organize this.

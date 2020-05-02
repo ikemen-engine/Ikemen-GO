@@ -1,0 +1,58 @@
+[Files]
+sff = fight.sff
+;snd = fight.snd
+;font1 = font/jg.fnt
+;font2 = font/num1.fnt
+;font3 = font/name1.fnt
+fightfx.sff = fightfx.sff
+fightfx.air = fightfx.air
+common.snd = common.snd
+;-----------------------------------------------------------
+;[FightFx]
+scale = 1
+;-----------------------------------------------------------
+[Lifebar]
+[Simul Lifebar]
+;[Simul_3P Lifebar] ; Ikemen feature
+;[Simul_4P Lifebar] ; Ikemen feature
+;[Tag Lifebar] ; Ikemen feature
+;[Tag_3P Lifebar] ; Ikemen feature
+;[Tag_4P Lifebar] ; Ikemen feature
+[Turns Lifebar]
+;-----------------------------------------------------------
+[Powerbar]
+;[Simul Powerbar] ; Ikemen feature
+;[Simul_3P Powerbar] ; Ikemen feature
+;[Simul_4P Powerbar] ; Ikemen feature
+;[Tag Powerbar] ; Ikemen feature
+;[Turns Powerbar] ; Ikemen feature
+;-----------------------------------------------------------
+[Face]
+[Simul Face]
+;[Tag Face] ; Ikemen feature
+[Turns Face]
+;-----------------------------------------------------------
+[Name]
+[Simul Name]
+;[Tag Name] ; Ikemen feature
+[Turns Name]
+;-----------------------------------------------------------
+[Time]
+framespercount = 60
+;-----------------------------------------------------------
+[Combo]
+;-----------------------------------------------------------
+[Round]
+match.wins = 2
+match.maxdrawgames = 0
+start.waittime = 0
+ctrl.time = 0
+;-----------------------------------------------------------
+[WinIcon]
+;-----------------------------------------------------------
+;[Challenger] ; Ikemen feature
+;-----------------------------------------------------------
+;[BGdef]
+;[BG somename]
+;[BGCtrlDef somename]
+;[BGCtrl somename]
