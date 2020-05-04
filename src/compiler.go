@@ -124,6 +124,7 @@ func newCompiler() *Compiler {
 		"hitfallset":           c.hitFallSet,
 		"varrangeset":          c.varRangeSet,
 		"remappal":             c.remapPal,
+		"remapsprite":          c.remapSprite,
 		"stopsnd":              c.stopSnd,
 		"sndpan":               c.sndPan,
 		"varrandom":            c.varRandom,
@@ -6544,6 +6545,38 @@ func (c *Compiler) remapPal(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "dest",
 			remapPal_dest, VT_Int, 2, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) remapSprite(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*remapSprite)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			remapSprite_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reset",
+			remapSprite_reset, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "preset", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(remapSprite_preset, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "source",
+			remapSprite_source, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dest",
+			remapSprite_dest, VT_Int, 2, false); err != nil {
 			return err
 		}
 		return nil

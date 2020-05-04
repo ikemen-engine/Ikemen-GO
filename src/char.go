@@ -1407,6 +1407,7 @@ type CharGlobalInfo struct {
 	quotes           [MaxQuotes]string
 	portraitscale    float32
 	constants        map[string]float32
+	remapPreset      map[string]RemapPreset
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1544,6 +1545,7 @@ type Char struct {
 	CharSystemVar
 	mapArray              map[string]float32
 	mapDefault            map[string]float32
+	remapSpr              RemapPreset
 	aimg                  AfterImage
 	sounds                Sounds
 	p1facing              float32
@@ -1589,6 +1591,7 @@ func (c *Char) init(n int, idx int32) {
 		c.keyctrl, c.player = true, true
 	} else {
 		c.mapArray = make(map[string]float32)
+		c.remapSpr = make(RemapPreset)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -1860,9 +1863,11 @@ func (c *Char) load(def string) error {
 	gi.movement.down.bounce.groundlevel /= originLs
 	gi.movement.down.friction_threshold /= originLs
 
+	gi.remapPreset = make(map[string]RemapPreset)
+
 	data, size, velocity, movement, quotes, constants := true, true, true, true, true, true
 	for i < len(lines) {
-		is, name, _ := ReadIniSection(lines, &i)
+		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
 		case "data":
 			if data {
@@ -2025,6 +2030,21 @@ func (c *Char) load(def string) error {
 				constants = false
 				for key, value := range is {
 					gi.constants[key] = float32(Atof(value))
+				}
+			}
+		case "remappreset ":
+			if len(subname) >= 1 {
+				if _, ok := gi.remapPreset[subname]; !ok {
+					gi.remapPreset[subname] = make(RemapPreset)
+				}
+				for key, value := range is {
+					k, v := strings.Split(key, ","), strings.Split(value, ",")
+					if len(k) == 2 && len(v) == 2 {
+						if _, ok := gi.remapPreset[subname][int16(Atoi(k[0]))]; !ok {
+							gi.remapPreset[subname][int16(Atoi(k[0]))] = make(RemapTable)
+						}
+						gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(Atoi(v[0])), int16(Atoi(v[1]))}
+					}
 				}
 			}
 		}
@@ -2212,6 +2232,7 @@ func (c *Char) setYV(yv float32) {
 func (c *Char) changeAnim(animNo int32) {
 	if a := c.getAnim(animNo, false); a != nil {
 		c.anim = a
+		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
@@ -2224,6 +2245,7 @@ func (c *Char) changeAnim(animNo int32) {
 func (c *Char) changeAnim2(animNo int32) {
 	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false); a != nil {
 		c.anim = a
+		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
@@ -4207,6 +4229,29 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	}
 	for i := range pfx.remap {
 		pfx.remap[i] = di
+	}
+}
+
+type RemapTable map[int16][2]int16
+type RemapPreset map[int16]RemapTable
+func (c *Char) remapSprite(src [2]int16, dst [2]int16) {
+	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
+		return
+	}
+	if _, ok := c.remapSpr[src[0]]; !ok {
+		c.remapSpr[src[0]] = make(RemapTable)
+	}
+	c.remapSpr[src[0]][src[1]] = [...]int16{dst[0], dst[1]}
+}
+func (c *Char) remapSpritePreset(preset string) {
+	if _, ok := c.gi().remapPreset[preset]; !ok {
+		return
+	}
+	var src, dst [2]int16
+	for src[0] = range c.gi().remapPreset[preset] {
+		for src[1], dst = range c.gi().remapPreset[preset][src[0]] {
+			c.remapSprite(src, dst)
+		}
 	}
 }
 

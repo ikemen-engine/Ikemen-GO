@@ -1760,6 +1760,7 @@ func (s *System) fight() (reload bool) {
 				for k, v := range p[0].mapDefault {
 					p[0].mapArray[k] = v
 				}
+				p[0].remapSpr = make(RemapPreset)
 			}
 			if p[0].ocd().guardPoints != 0 {
 				p[0].guardPoints = p[0].ocd().guardPoints

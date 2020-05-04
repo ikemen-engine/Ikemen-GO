@@ -161,10 +161,12 @@ type Animation struct {
 	angle                      float32
 	interpolate_blend_srcalpha float32
 	interpolate_blend_dstalpha float32
+	remap                      RemapPreset
 }
 
 func newAnimation(sff *Sff) *Animation {
-	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true}
+	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true,
+		remap: make(RemapPreset)}
 }
 func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	a := newAnimation(sff)
@@ -461,7 +463,13 @@ func (a *Animation) UpdateSprite() {
 		}
 	}
 	if a.newframe && a.sff != nil && a.frames[a.current].Time != 0 {
-		a.spr = a.sff.GetSprite(a.curFrame().Group, a.curFrame().Number)
+		group, number := a.curFrame().Group, a.curFrame().Number
+		if mg, ok := a.remap[group]; ok {
+			if mn, ok := mg[number]; ok {
+				group, number = mn[0], mn[1]
+			}
+		}
+		a.spr = a.sff.GetSprite(group, number)
 	}
 	a.newframe, a.drawidx = false, a.current
 

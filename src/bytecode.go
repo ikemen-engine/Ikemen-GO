@@ -6033,6 +6033,51 @@ func (sc remapPal) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type remapSprite StateControllerBase
+
+const (
+	remapSprite_reset byte = iota
+	remapSprite_preset
+	remapSprite_source
+	remapSprite_dest
+	remapSprite_redirectid
+)
+
+func (sc remapSprite) Run(c *Char, _ []int32) bool {
+	crun := c
+	src := [...]int16{-1, -1}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case remapSprite_reset:
+			if exp[0].evalB(c) {
+				crun.remapSpr = make(RemapPreset)
+			}
+		case remapSprite_preset:
+			crun.remapSpritePreset(string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
+		case remapSprite_source:
+			src[0] = int16(exp[0].evalI(c))
+			if len(exp) > 1 {
+				src[1] = int16(exp[1].evalI(c))
+			}
+		case remapSprite_dest:
+			dst := [...]int16{int16(exp[0].evalI(c)), -1}
+			if len(exp) > 1 {
+				dst[1] = int16(exp[1].evalI(c))
+			}
+			crun.remapSprite(src, dst)
+		case remapSprite_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	crun.anim.remap = crun.remapSpr
+	return false
+}
+
 type stopSnd StateControllerBase
 
 const (
