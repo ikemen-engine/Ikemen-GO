@@ -2037,13 +2037,15 @@ func (c *Char) load(def string) error {
 				if _, ok := gi.remapPreset[subname]; !ok {
 					gi.remapPreset[subname] = make(RemapPreset)
 				}
-				for key, value := range is {
-					k, v := strings.Split(key, ","), strings.Split(value, ",")
-					if len(k) == 2 && len(v) == 2 {
+				for key := range is {
+					k := strings.Split(key, ",")
+					if len(k) == 2 {
+						var v [2]int32
+						is.ReadI32(key, &v[0], &v[1])
 						if _, ok := gi.remapPreset[subname][int16(Atoi(k[0]))]; !ok {
 							gi.remapPreset[subname][int16(Atoi(k[0]))] = make(RemapTable)
 						}
-						gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(Atoi(v[0])), int16(Atoi(v[1]))}
+						gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(v[0]), int16(v[1])}
 					}
 				}
 			}
