@@ -13,7 +13,6 @@ if RoundState = 0 {
 	MapSet{map: "_iksys_attackTypeFrames"; value: 0}
 	MapSet{map: "_iksys_damageCount"; value: 0}
 	MapSet{map: "_iksys_comboCount"; value: 0}
-	MapSet{map: "_iksys_counterCount"; value: 0}
 	MapSet{map: "_iksys_firstAttackFlag"; value: 0}
 	MapSet{map: "_iksys_winFlag"; value: 0}
 } else if RoundState = 4 && !IsHelper {
@@ -110,9 +109,8 @@ if RoundState = 0 {
 		MapAdd{map: "_iksys_attackTypeFrames"; value: -1}
 	}
 	# score: counter bonus
-	ignorehitpause if CounterCount > Map(_iksys_counterCount) {
-		ScoreAdd{value: (CounterCount - Map(_iksys_counterCount)) * 100}
-		MapSet{map: "_iksys_counterCount"; value: CounterCount}
+	ignorehitpause if MoveCountered = 1 {
+		ScoreAdd{value: 100}
 	}
 	# score: first attack bonus
 	ignorehitpause if FirstAttack && Map(_iksys_firstAttackFlag) = 0 {
