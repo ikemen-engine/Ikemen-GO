@@ -1096,8 +1096,8 @@ func systemScriptInit(l *lua.LState) {
 					c.loadPortrait()
 				}
 				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
+					//xscl *= c.portrait_scale
+					//yscl *= c.portrait_scale
 				}
 				paltex := c.stageportrait.PalTex
 				c.stageportrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaBigPortraitScale, yscl/sys.luaBigPortraitScale, c.stageportrait.Pal, nil, paltex, window)

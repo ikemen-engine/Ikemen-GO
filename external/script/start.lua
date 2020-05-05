@@ -3092,7 +3092,10 @@ end
 --;===========================================================
 --; STAGE MENU
 --;===========================================================
-local txt_selStage = text:create({})
+local txt_selStage = text:create({
+	font = motif.select_info.stage_active_font[1],
+	height = motif.select_info.stage_active_font_height
+})
 
 local stageActiveCount = 0
 local stageActiveFont = 'stage_active_font'

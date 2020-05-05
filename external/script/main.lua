@@ -319,8 +319,8 @@ function text:create(t)
 		if main.font[o.font .. o.height] == nil then
 			main.font[o.font .. o.height] = fontNew(o.font, o.height)
 		end
-		if main.font_def[o.font.. o.height] == nil then
-			main.font_def[o.font.. o.height] = fontGetDef(main.font[o.font .. o.height])
+		if main.font_def[o.font .. o.height] == nil then
+			main.font_def[o.font .. o.height] = fontGetDef(main.font[o.font .. o.height])
 		end
 		textImgSetFont(o.ti, main.font[o.font .. o.height])
 	end
@@ -350,7 +350,7 @@ function text:update(t)
 		end
 	end
 	if not ok then return end
-	if fontChange then
+	if fontChange and self.font ~= -1 then
 		if main.font[self.font .. self.height] == nil then
 			main.font[self.font .. self.height] = fontNew(self.font, self.height)
 		end
@@ -372,6 +372,7 @@ end
 
 --draw text
 function text:draw()
+	if self.font == -1 then return end
 	textImgDraw(self.ti)
 end
 
@@ -696,6 +697,7 @@ end
 
 --draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
 function main.f_textRender(data, str, counter, x, y, font_def, delay, length)
+	if data.font == -1 then return end
 	local delay = delay or 0
 	local length = length or 0
 	str = tostring(str)
@@ -867,6 +869,7 @@ end
 --y spacing calculation
 function main.f_ySpacing(t, key)
 	local font_def = main.font_def[t[key][1] .. t[key .. '_height']]
+	if font_def == nil then return 0 end
 	return math.floor(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2] + 0.5)
 end
 
