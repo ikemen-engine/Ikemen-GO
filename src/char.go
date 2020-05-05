@@ -1485,8 +1485,8 @@ type CharSystemVar struct {
 	attackMul     float32
 	defenceMul    float32
 	scoreCurrent  float32
+	counterHit    bool
 	firstAttack   bool
-	counterHits   int32
 	damageCount   int32
 	cheated       bool
 }
@@ -1609,6 +1609,7 @@ func (c *Char) clearState() {
 	}
 	c.mctype = MC_Hit
 	c.mctime = 0
+	c.counterHit = false
 	c.fallTime = 0
 	c.hitdefContact = false
 }
@@ -1619,6 +1620,7 @@ func (c *Char) clear1() {
 	c.clearState()
 	c.hoIdx = -1
 	c.mctype, c.mctime = MC_Hit, 0
+	c.counterHit = false
 	c.fallTime = 0
 	c.varRangeSet(0, int32(NumVar)-1, 0)
 	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
@@ -2212,6 +2214,7 @@ func (c *Char) clearHitCount() {
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
+	c.counterHit = false
 }
 func (c *Char) clearHitDef() {
 	c.hitdef.clear()
@@ -2565,6 +2568,12 @@ func (c *Char) moveHit() int32 {
 }
 func (c *Char) moveReversed() int32 {
 	if c.mctype == MC_Reversed {
+		return Abs(c.mctime)
+	}
+	return 0
+}
+func (c *Char) moveCountered() int32 {
+	if c.counterHit {
 		return Abs(c.mctime)
 	}
 	return 0
@@ -5689,7 +5698,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if getter.ss.moveType == MT_A {
 					sys.lifebar.co[c.teamside].counterHits += 1
-					c.counterHits += 1
+					c.counterHit = true
 				}
 			}
 		} else {

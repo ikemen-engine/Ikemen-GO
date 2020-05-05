@@ -438,7 +438,7 @@ const (
 	OC_ex_combocount
 	OC_ex_damagecount
 	OC_ex_consecutivewins
-	OC_ex_countercount
+	OC_ex_movecountered
 	OC_ex_firstattack
 	OC_ex_roundtype
 	OC_ex_getplayerid
@@ -451,6 +451,8 @@ const (
 	OC_ex_dizzy
 	OC_ex_guardbreak
 	OC_ex_incustomstate
+	OC_ex_animlength
+	OC_ex_animelemlength
 	OC_ex_max
 	OC_ex_min
 	OC_ex_rand
@@ -1739,8 +1741,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.damageCount)
 	case OC_ex_consecutivewins:
 		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
-	case OC_ex_countercount:
-		sys.bcStack.PushI(c.counterHits)
+	case OC_ex_movecountered:
+		sys.bcStack.PushI(c.moveCountered())
 	case OC_ex_firstattack:
 		sys.bcStack.PushB(c.firstAttack)
 	case OC_ex_roundtype:
@@ -1765,6 +1767,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.scf(SCF_guardbreak))
 	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
+	case OC_ex_animlength:
+		sys.bcStack.PushI(c.anim.totaltime)
+	case OC_ex_animelemlength:
+		sys.bcStack.PushI(c.anim.frames[c.anim.current].Time)
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)

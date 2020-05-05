@@ -1249,8 +1249,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_damagecount)
 	case "consecutivewins":
 		out.append(OC_ex_, OC_ex_consecutivewins)
-	case "countercount":
-		out.append(OC_ex_, OC_ex_countercount)
+	case "movecountered":
+		out.append(OC_ex_, OC_ex_movecountered)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
 	case "roundtype":
@@ -1278,6 +1278,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_guardbreak)
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
+	case "animlength":
+		out.append(OC_ex_, OC_ex_animlength)
+	case "animelemlength":
+		out.append(OC_ex_, OC_ex_animelemlength)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
