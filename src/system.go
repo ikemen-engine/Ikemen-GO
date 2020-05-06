@@ -2302,13 +2302,11 @@ func (s *Select) addChar(def string) {
 			if info {
 				info = false
 				var ok bool
-				sc.name, ok, _ = is.getText("displayname")
-				if !ok {
+				if sc.name, ok, _ = is.getText("displayname"); !ok {
 					sc.name, _, _ = is.getText("name")
 				}
 				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
-				ok = is.ReadF32("localcoord", &sc.portrait_scale)
-				if !ok {
+				if ok = is.ReadF32("localcoord", &sc.portrait_scale); !ok {
 					sc.portrait_scale = 1
 				} else {
 					sc.portrait_scale = (320 / sc.portrait_scale)
@@ -2428,20 +2426,16 @@ func (s *Select) AddStage(def string) error {
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				var ok bool
-				ok = is.ReadF32("localcoord", &ss.portrait_scale)
-				if !ok {
+				if ok := is.ReadF32("localcoord", &ss.portrait_scale); !ok {
 					ss.portrait_scale = 1
 				} else {
 					ss.portrait_scale = (320 / ss.portrait_scale)
 				}
-				ok = is.ReadF32("xscale", &ss.xscale)
-				if !ok {
+				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
 					ss.xscale = 1
-				}
-				ok = is.ReadF32("yscale", &ss.yscale)
-				if !ok {
+					is.ReadF32("xscale", &ss.xscale)
 					ss.yscale = 1
+					is.ReadF32("yscale", &ss.yscale)
 				}
 			}
 		}
