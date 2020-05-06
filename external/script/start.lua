@@ -2357,9 +2357,6 @@ local t_p1TeamMenu = {
 t_p1TeamMenu = main.f_cleanTable(t_p1TeamMenu, main.t_sort.select_info)
 
 function start.f_p1TeamMenu()
-	if #t_p1Cursor > 0 then
-		t_p1Cursor = {}
-	end
 	if main.p1TeamMenu ~= nil then --Predefined team
 		p1TeamMode = main.p1TeamMenu.mode
 		p1NumChars = main.p1TeamMenu.chars
@@ -2640,9 +2637,6 @@ local t_p2TeamMenu = {
 t_p2TeamMenu = main.f_cleanTable(t_p2TeamMenu, main.t_sort.select_info)
 
 function start.f_p2TeamMenu()
-	if #t_p2Cursor > 0 then
-		t_p2Cursor = {}
-	end
 	if main.p2TeamMenu ~= nil then --Predefined team
 		p2TeamMode = main.p2TeamMenu.mode
 		p2NumChars = main.p2TeamMenu.chars
