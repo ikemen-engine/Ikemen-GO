@@ -602,6 +602,9 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 		if key == glfw.KeyF12 {
 			captureScreen()
 		}
+		if key == glfw.KeyEnter && mk&(glfw.ModAlt) != 0 {
+			sys.window.toggleFullscreen()
+		}
 	}
 }
 

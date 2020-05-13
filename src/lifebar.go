@@ -1653,6 +1653,25 @@ func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 			text, f[tr.text.font[0]], tr.text.font[1], tr.text.font[2], tr.text.palfx)
 	}
 }
+func timeLeft() int32 {
+	if sys.time >= 0 {
+		return sys.time
+	}
+	return -1
+}
+func timeRound() int32 {
+	return sys.roundTime - sys.time
+}
+func timeTotal() int32 {
+	t := sys.timerStart
+	for _, v := range sys.timerRounds {
+		t += v
+	}
+	if sys.lifebar.ro.timerActive {
+		t += timeRound()
+	}
+	return t
+}
 
 type LifeBarScore struct {
 	pos       [2]int32
@@ -1726,6 +1745,23 @@ func (sc *LifeBarScore) draw(layerno int16, f []*Fnt, side int) {
 		sc.text.lay.DrawText(float32(sc.pos[0])+sys.lifebarOffsetX, float32(sc.pos[1]), sys.lifebarScale, layerno,
 			text, f[sc.text.font[0]], sc.text.font[1], sc.text.font[2], sc.text.palfx)
 	}
+}
+func scoreRound(side int) float32 {
+	var s float32
+	for i, c := range sys.chars {
+		if len(c) > 0 && side == i&1 {
+			s += c[0].scoreCurrent
+		}
+	}
+	return s
+}
+func scoreTotal(side int) float32 {
+	s := sys.scoreStart[side]
+	for _, v := range sys.scoreRounds {
+		s += v[side]
+	}
+	s += scoreRound(side)
+	return s
 }
 
 type LifeBarMatch struct {

@@ -31,7 +31,7 @@ local function f_play(t)
 			local fadeStart = getFrameCount()
 			for i = 0, t.scene[k].end_time do
 				--end storyboard
-				if (esc() or main.input({1, 2}, {'pal'})) and t.scenedef.skipbutton > 0 then
+				if (esc() or main.input({1, 2}, {'pal', 's'})) and t.scenedef.skipbutton > 0 then
 					main.f_cmdInput()
 					return
 				end
@@ -41,9 +41,9 @@ local function f_play(t)
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
-					for j = 1, #t.scene[k].sound do
-						if i == t.scene[k].sound[j].starttime then
-							sndPlay(t.scenedef.snd_data, t.scene[k].sound[j].value[1], t.scene[k].sound[j].value[2])
+					for k2, v2 in main.f_sortKeys(t.scene[k].sound) do
+						if i == v2.starttime then
+							sndPlay(t.scenedef.snd_data, v2.value[1], v2.value[2])
 						end
 					end
 				end
@@ -94,7 +94,7 @@ local function f_play(t)
 					t.scene[k][fadeType .. '_col'][2],
 					t.scene[k][fadeType .. '_col'][3]
 				)
-				--if main.input({1}, {'pal'}) and t.scenedef.skipbutton <= 0 then
+				--if main.input({1}, {'pal', 's'}) and t.scenedef.skipbutton <= 0 then
 				--	main.f_cmdInput()
 				--	refresh()
 				--	do

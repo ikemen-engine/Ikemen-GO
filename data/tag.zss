@@ -151,10 +151,10 @@ if RoundState = 0 && TeamMode = Tag {
 					ChangeState{value: Const(StateTagLeavingScreen)}
 				}
 			}
-		} else if StateNo != [Const(StateTagLeavingScreen), Const(StateTagWaitingOutside)] && RoundState = 2 {
+		} else if StateNo != [Const(StateTagLeavingScreen), Const(StateTagWaitingOutside)] && RoundState = 2 && TimeLeft > 0 {
 			ChangeState{value: Const(StateTagLeavingScreen); ctrl: 0}
-		} else if StateNo = Const(StateTagWaitingOutside) && (Lose || Win || TimeLeft = 0) {
-			ChangeState{value: Const(StateTagJumpingIn)}
+		} else if StateNo = Const(StateTagWaitingOutside) && (Lose || Win || DrawGame || TimeLeft = 0) {
+			ChangeState{value: Const(StateTagJumpingIn); ctrl: 1}
 		}
 	} else if ID = Map(_iksys_tagCurrentID) {
 		MapSet{map: "_iksys_tagActive"; value: 0}

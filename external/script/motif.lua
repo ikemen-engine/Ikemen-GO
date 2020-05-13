@@ -22,8 +22,6 @@ local motif =
 		intro_storyboard = '',
 		select = 'data/select.def',
 		fight = 'data/fight.def',
-		debug_font = 'f-6x9.def', --Ikemen feature
-		debug_script = 'external/script/debug.lua', --Ikemen feature
 		font =
 		{
 			[1] = 'f-4x6.fnt',
@@ -129,7 +127,7 @@ local motif =
 		input_ip_address_text = 'Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.', --Ikemen feature
 		menu_key_next = '$D&$F',
 		menu_key_previous = '$U&$B',
-		menu_key_accept = 'a&b&c&x&y&z',
+		menu_key_accept = 'a&b&c&x&y&z&s',
 		menu_pos = {159, 158},
 		menu_item_font = {'f-6x9.def', 0, 0, 191, 191, 191, 255, 0},
 		menu_item_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
@@ -366,7 +364,7 @@ local motif =
 		teammenu_key_previous = '$U',
 		teammenu_key_add = '$F',
 		teammenu_key_subtract = '$B',
-		teammenu_key_accept = 'a&b&c&x&y&z',
+		teammenu_key_accept = 'a&b&c&x&y&z&s',
 		teammenu_move_wrapping = 1,
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
@@ -1137,6 +1135,7 @@ local motif =
 		--menu_itemname_resolution = 'Resolution', --Ikemen feature
 		--menu_itemname_customres = 'Custom', --Ikemen feature
 		--menu_itemname_fullscreen = 'Fullscreen', --Ikemen feature
+		--menu_itemname_vretrace = 'VSync', --Ikemen feature
 		--menu_itemname_msaa = 'MSAA', --Ikemen feature
 		--menu_itemname_shaders = 'Shaders', --Ikemen feature
 		--menu_itemname_noshader = 'Disable', --Ikemen feature
@@ -1326,6 +1325,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuvideo_resolution_customres = "Custom"
 	motif.option_info.menu_itemname_menuvideo_resolution_back = "Back"
 	motif.option_info.menu_itemname_menuvideo_fullscreen = "Fullscreen"
+	motif.option_info.menu_itemname_menuvideo_vretrace = "VSync"
 	motif.option_info.menu_itemname_menuvideo_msaa = "MSAA"
 	motif.option_info.menu_itemname_menuvideo_shaders = "Shaders" --reserved submenu
 	-- This list is populated with shaders existing in 'external/shaders' directory
@@ -1435,6 +1435,7 @@ function motif.setBaseOptionInfo()
 		"menuvideo_resolution_customres",
 		"menuvideo_resolution_back",
 		"menuvideo_fullscreen",
+		"menuvideo_vretrace",
 		"menuvideo_msaa",
 		"menuvideo_shaders",
 		"menuvideo_shaders_empty",

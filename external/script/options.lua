@@ -403,7 +403,7 @@ end
 options.t_itemname = {
 	--Back
 	['back'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 			return false
 		end
@@ -411,7 +411,7 @@ options.t_itemname = {
 	end,
 	--Port Change
 	['portchange'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			local port = main.f_input(main.f_extractText(motif.option_info.input_text_port), motif.option_info, motif.optionbgdef, 'string')
 			if tonumber(port) ~= nil then
@@ -428,7 +428,7 @@ options.t_itemname = {
 	end,
 	--Default Values
 	['default'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			config.AIRamping = true
 			config.AIRandomColor = true
@@ -441,12 +441,16 @@ options.t_itemname = {
 			config.ComboExtraFrameWindow = 1
 			--config.CommonAir = "data/common.air"
 			--config.CommonCmd = "data/common.cmd"
-			--config.CommonRules = "data/rules.zss"
-			--config.CommonScore = "data/score.zss"
-			--config.CommonTag = "data/tag.zss"
+			--config.CommonStates = {
+			--	"data/rules.zss",
+			--	"data/score.zss",
+			--	"data/tag.zss"
+			--}
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
+			--config.DebugFont = "font/f-4x6.def"
 			config.DebugKeys = true
+			--config.DebugScript = "external/script/debug.lua"
 			config.Difficulty = 8
 			config.ExternalShaders = {}
 			config.Fullscreen = false
@@ -491,8 +495,8 @@ options.t_itemname = {
 			config.VolumeBgm = 80
 			config.VolumeMaster = 80
 			config.VolumeSfx = 80
-			config.VRetrace = 1
-			--config.WindowMainIconLocation = {}
+			config.VRetrace = 0
+			--config.WindowIcon = "external/icons/IkemenCylia.png"
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
 			config.ZoomActive = true
@@ -512,7 +516,7 @@ options.t_itemname = {
 	end,
 	--Save and Return
 	['savereturn'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			if modified == 1 then
 				options.f_saveCfg()
@@ -528,7 +532,7 @@ options.t_itemname = {
 	end,
 	--Return Without Saving
 	['return'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			if needReload == 1 then
 				main.f_warning(main.f_extractText(motif.warning_info.text_noreload), motif.option_info, motif.optionbgdef)
@@ -640,7 +644,7 @@ options.t_itemname = {
 	end,
 	--Quick Continue
 	['quickcontinue'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.QuickContinue then
 				config.QuickContinue = false
@@ -654,7 +658,7 @@ options.t_itemname = {
 	end,
 	--AI Ramping
 	['airamping'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AIRamping then
 				config.AIRamping = false
@@ -668,7 +672,7 @@ options.t_itemname = {
 	end,
 	--AI Palette
 	['aipalette'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AIRandomColor then
 				config.AIRandomColor = false
@@ -682,7 +686,7 @@ options.t_itemname = {
 	end,
 	--Resolution (submenu)
 	['resolution'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			local t_pos = {}
 			local ok = false
@@ -708,22 +712,37 @@ options.t_itemname = {
 	end,
 	--Fullscreen
 	['fullscreen'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.Fullscreen then
 				config.Fullscreen = false
 			else
 				config.Fullscreen = true
 			end
+			toggleFullscreen()
 			t.items[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
 			modified = 1
-			needReload = 1
+		end
+		return true
+	end,
+	--VSync
+	['vretrace'] = function(cursorPosY, moveTxt, item, t)
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.VRetrace == 1 then
+				config.VRetrace = 0
+			else
+				config.VRetrace = 1
+			end
+			toggleVsync()
+			t.items[item].vardisplay = options.f_definedDisplay(config.VRetrace, {[1] = motif.option_info.menu_valuename_enabled}, motif.option_info.menu_valuename_disabled)
+			modified = 1
 		end
 		return true
 	end,
 	--MSAA
 	['msaa'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.MSAA then
 				config.MSAA = false
@@ -738,7 +757,7 @@ options.t_itemname = {
 	end,
 	--Shaders (submenu)
 	['shaders'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if #options.t_shaders == 0 then
 				main.f_warning(main.f_extractText(motif.warning_info.text_shaders), motif.option_info, motif.optionbgdef)
@@ -760,7 +779,7 @@ options.t_itemname = {
 	end,
 	--Disable (shader)
 	['noshader'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			config.ExternalShaders = {}
 			config.PostProcessingShader = 0
@@ -772,7 +791,7 @@ options.t_itemname = {
 	end,
 	--Custom resolution
 	['customres'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			local width = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_reswidth), motif.option_info, motif.optionbgdef, 'string'))
 			if width ~= nil then
@@ -803,13 +822,13 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeMaster = config.VolumeMaster + 1
 			t.items[item].vardisplay = config.VolumeMaster .. '%'
-			setMasterVolume(config.VolumeMaster)
+			setVolumeMaster(config.VolumeMaster)
 			modified = 1
 		elseif main.input({1, 2}, {'$B'}) and config.VolumeMaster > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeMaster = config.VolumeMaster - 1
 			t.items[item].vardisplay = config.VolumeMaster  .. '%'
-			setMasterVolume(config.VolumeMaster)
+			setVolumeMaster(config.VolumeMaster)
 			modified = 1
 		end
 		return true
@@ -820,13 +839,13 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeBgm = config.VolumeBgm + 1
 			t.items[item].vardisplay = config.VolumeBgm .. '%'
-			setBgmVolume(config.VolumeBgm)
+			setVolumeBgm(config.VolumeBgm)
 			modified = 1
 		elseif main.input({1, 2}, {'$B'}) and config.VolumeBgm > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeBgm = config.VolumeBgm - 1
 			t.items[item].vardisplay = config.VolumeBgm .. '%'
-			setBgmVolume(config.VolumeBgm)
+			setVolumeBgm(config.VolumeBgm)
 			modified = 1
 		end
 		return true
@@ -837,20 +856,20 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeSfx = config.VolumeSfx + 1
 			t.items[item].vardisplay = config.VolumeSfx .. '%'
-			setWavVolume(config.VolumeSfx)
+			setVolumeSfx(config.VolumeSfx)
 			modified = 1
 		elseif main.input({1, 2}, {'$B'}) and config.VolumeSfx > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeSfx = config.VolumeSfx - 1
 			t.items[item].vardisplay = config.VolumeSfx .. '%'
-			setWavVolume(config.VolumeSfx)
+			setVolumeSfx(config.VolumeSfx)
 			modified = 1
 		end
 		return true
 	end,
 	--Audio Ducking
 	['audioducking'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AudioDucking then
 				config.AudioDucking = false
@@ -895,7 +914,7 @@ options.t_itemname = {
 	end,
 	--Auto-Guard
 	['autoguard'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AutoGuard then
 				config.AutoGuard = false
@@ -909,7 +928,7 @@ options.t_itemname = {
 	end,
 	--Guard Break
 	['guardbar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarGuard then
 				config.BarGuard = false
@@ -923,7 +942,7 @@ options.t_itemname = {
 	end,
 	--Dizzy
 	['stunbar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarStun then
 				config.BarStun = false
@@ -937,7 +956,7 @@ options.t_itemname = {
 	end,
 	--Red Life
 	['redlifebar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarRedLife then
 				config.BarRedLife = false
@@ -966,7 +985,7 @@ options.t_itemname = {
 	end,
 	--Team Life Adjustment
 	['teamlifeadjustment'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.TeamLifeAdjustment then
 				config.TeamLifeAdjustment = false
@@ -980,7 +999,7 @@ options.t_itemname = {
 	end,
 	--Team Power Share
 	['teampowershare'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.TeamPowerShare then
 				config.TeamPowerShare = false
@@ -994,7 +1013,7 @@ options.t_itemname = {
 	end,
 	--Simul Player KOed Lose
 	['simulloseko'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.SimulLoseKO then
 				config.SimulLoseKO = false
@@ -1008,7 +1027,7 @@ options.t_itemname = {
 	end,
 	--Tag Partner KOed Lose
 	['tagloseko'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.TagLoseKO then
 				config.TagLoseKO = false
@@ -1142,7 +1161,7 @@ options.t_itemname = {
 	end,
 	--Debug Keys
 	['debugkeys'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.DebugKeys then
 				config.DebugKeys = false
@@ -1225,7 +1244,7 @@ options.t_itemname = {
 	end,
 	--Small portraits
 	['preloadingsmall'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingSmall then
 				config.PreloadingSmall = false
@@ -1239,7 +1258,7 @@ options.t_itemname = {
 	end,
 	--Select portraits
 	['preloadingbig'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingBig then
 				config.PreloadingBig = false
@@ -1253,7 +1272,7 @@ options.t_itemname = {
 	end,
 	--Versus portraits
 	['preloadingversus'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingVersus then
 				config.PreloadingVersus = false
@@ -1267,7 +1286,7 @@ options.t_itemname = {
 	end,
 	--Stage portraits
 	['preloadingstage'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal'}) then
+		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingStage then
 				config.PreloadingStage = false
@@ -1281,7 +1300,7 @@ options.t_itemname = {
 	end,
 	--Key Config
 	['keyboard'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			--t.submenu[t.items[item].itemname].loop()
 			--options.menu.submenu.input.loop{}
@@ -1291,7 +1310,7 @@ options.t_itemname = {
 	end,
 	--Joystick Config
 	['gamepad'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			--t.submenu[t.items[item].itemname].loop()
 			--options.menu.submenu.input.loop{}
@@ -1301,7 +1320,7 @@ options.t_itemname = {
 	end,
 	--Default
 	['inputdefault'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal'}) then
+		if main.input({1, 2}, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			options.f_keyDefault()
 			modified = 1
@@ -1312,7 +1331,7 @@ options.t_itemname = {
 }
 --external shaders
 options.t_shaders = {}
-for k, v in ipairs(GetDirectoryFiles('external/shaders')) do
+for k, v in ipairs(getDirectoryFiles('external/shaders')) do
 	v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 		path = path:gsub('\\', '/')
 		ext = ext:lower()
@@ -1321,7 +1340,7 @@ for k, v in ipairs(GetDirectoryFiles('external/shaders')) do
 		end
 		if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
 			options.t_itemname[path .. filename] = function(cursorPosY, moveTxt, item, t)
-				if main.input({1, 2}, {'pal'}) then
+				if main.input({1, 2}, {'pal', 's'}) then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 					config.ExternalShaders = {path .. filename}
 					config.PostProcessingShader = 4
@@ -1337,7 +1356,7 @@ for k, v in ipairs(main.t_sort.option_info) do
 	if v:match('_[0-9]+x[0-9]+$') then
 		local width, height = v:match('_([0-9]+)x([0-9]+)$')
 		options.t_itemname[width .. 'x' .. height] = function(cursorPosY, moveTxt, item, t)
-			if main.input({1, 2}, {'pal'}) then
+			if main.input({1, 2}, {'pal', 's'}) then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.GameWidth = tonumber(width)
 				config.GameHeight = tonumber(height)
@@ -1409,7 +1428,7 @@ function options.createMenu(tbl, bool_bgreset, bool_main)
 				if not options.t_itemname[t[item].itemname](cursorPosY, moveTxt, item, tbl) then
 					break
 				end
-			elseif main.input({1, 2}, {'pal'}) then
+			elseif main.input({1, 2}, {'pal', 's'}) then
 				local f = main.f_checkSubmenu(tbl.submenu[t[item].itemname])
 				if f ~= '' and not options.t_itemname[f](cursorPosY, moveTxt, item, tbl) then
 					break
@@ -1449,6 +1468,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'aipalette' then return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
 	if itemname == 'resolution' then return config.GameWidth .. 'x' .. config.GameHeight end
 	if itemname == 'fullscreen' then return options.f_boolDisplay(config.Fullscreen) end
+	if itemname == 'vretrace' then return options.f_definedDisplay(config.VRetrace, {[1] = motif.option_info.menu_valuename_enabled}, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'msaa' then return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'shaders' then return f_externalShaderName() end
 	if itemname == 'mastervolume' then return config.VolumeMaster .. '%' end
@@ -1567,7 +1587,7 @@ local t_keyCfg = {
 	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
 	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, infodisplay = motif.option_info.menu_valuename_esc},
 }
---t_keyCfg = main.f_cleanTable(t_keyCfg, main.t_sort.option_info)
+--t_keyCfg = main.f_tableClean(t_keyCfg, main.t_sort.option_info)
 
 local txt_keyController = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}
 function options.f_keyCfg(cfgType, controller, title)
@@ -1733,7 +1753,7 @@ function options.f_keyCfg(cfgType, controller, title)
 				txt_title:update({text = motif.option_info.title_text_input})
 				break
 			--Config all
-			elseif (t[item].itemname == 'configall' and main.input({1, 2}, {'pal'})) or getKey() == 'F1' or getKey() == 'F2' then
+			elseif (t[item].itemname == 'configall' and main.input({1, 2}, {'pal', 's'})) or getKey() == 'F1' or getKey() == 'F2' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				if getKey() == 'F1' then
 					player = 1
@@ -1752,7 +1772,7 @@ function options.f_keyCfg(cfgType, controller, title)
 					configall = true
 				end
 			--Back
-			elseif t[item].itemname == 'back' and main.input({1, 2}, {'pal'}) then
+			elseif t[item].itemname == 'back' and main.input({1, 2}, {'pal', 's'}) then
 				if t_conflict[joyNum] then
 					main.f_warning(main.f_extractText(motif.warning_info.text_keys), motif.option_info, motif.optionbgdef)
 				else
@@ -1761,7 +1781,7 @@ function options.f_keyCfg(cfgType, controller, title)
 					break
 				end
 			--individual buttons
-			elseif main.input({1, 2}, {'pal'}) then
+			elseif main.input({1, 2}, {'pal', 's'}) then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
 					main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)

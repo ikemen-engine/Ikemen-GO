@@ -3,7 +3,7 @@
 --;===========================================================
 --nClock = os.clock()
 --print("Elapsed time: " .. os.clock() - nClock)
---SetGCPercent(-1)
+--setGCPercent(-1)
 
 main = {}
 
@@ -26,6 +26,11 @@ file:close()
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+--debug table printing
+function pt(t)
+	print(table.concat(t, ','))
+end
+
 --add default commands
 main.t_commands = {
 	['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['d'] = 0, ['w'] = 0, ['/s'] = 0, ['/d'] = 0, ['/w'] = 0}
@@ -218,10 +223,10 @@ if main.flags['-speedtest'] ~= nil then
 	setGameSpeed(100)
 end
 if main.flags['-nomusic'] ~= nil then
-	setBgmVolume(0)
+	setVolumeBgm(0)
 end
 if main.flags['-nosound'] ~= nil then
-	setMasterVolume(0)
+	setVolumeMaster(0)
 end
 if main.flags['-togglelifebars'] ~= nil then
 	toggleStatusDraw()
@@ -602,7 +607,7 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, de
 end
 
 --copy table content into new table
-function main.f_copyTable(t)
+function main.f_tableCopy(t)
 	if t == nil then
 		return nil
 	end
@@ -610,7 +615,7 @@ function main.f_copyTable(t)
 	local t2 = {}
 	for k, v in pairs(t) do
 		if type(v) == "table" then
-			t2[k] = main.f_copyTable(v)
+			t2[k] = main.f_tableCopy(v)
 		else
 			t2[k] = v
 		end
@@ -619,15 +624,74 @@ function main.f_copyTable(t)
 end
 
 --randomizes table content
-function main.f_shuffleTable(t)
+function main.f_tableShuffle(t)
 	local rand = math.random
-	assert(t, "main.f_shuffleTable() expected a table, got nil")
+	assert(t, "main.f_tableShuffle() expected a table, got nil")
 	local iterations = #t
 	local j
 	for i = iterations, 2, -1 do
 		j = rand(i)
 		t[i], t[j] = t[j], t[i]
 	end
+end
+
+--return table with reversed keys
+function main.f_tableReverse(t)
+	local reversedTable = {}
+	local itemCount = #t
+	for k, v in ipairs(t) do
+		reversedTable[itemCount + 1 - k] = v
+	end
+	return reversedTable
+end
+
+--wrap table
+function main.f_tableWrap(t, l)
+    for i = 1, l do
+        table.insert(t, 1, t[#t])
+        table.remove(t, #t)
+    end
+end
+
+--merge 2 tables into 1 overwriting values
+function main.f_tableMerge(t1, t2)
+	for k, v in pairs(t2) do
+		if type(v) == "table" then
+			if type(t1[k] or false) == "table" then
+				main.f_tableMerge(t1[k] or {}, t2[k] or {})
+			else
+				t1[k] = v
+			end
+		elseif type(t1[k] or false) == "table" then
+			t1[k][1] = v
+		else
+			t1[k] = v
+		end
+	end
+	return t1
+end
+
+--return table with proper order and without rows disabled in screenpack
+function main.f_tableClean(t, t_sort)
+	local t_clean = {}
+	local t_added = {}
+	--first we add all entries existing in screenpack file in correct order
+	for i = 1, #t_sort do
+		for j = 1, #t do
+			if t_sort[i] == t[j].itemname and t[j].displayname ~= '' then
+				table.insert(t_clean, t[j])
+				t_added[t[j].itemname] = 1
+				break
+			end
+		end
+	end
+	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
+	for i = 1, #t do
+		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
+			table.insert(t_clean, t[i])
+		end
+	end
+	return t_clean
 end
 
 --iterate over the table in order
@@ -806,57 +870,6 @@ function main.f_dataType(arg)
 	return arg
 end
 
---merge 2 tables into 1 overwriting values
-function main.f_tableMerge(t1, t2)
-	for k, v in pairs(t2) do
-		if type(v) == "table" then
-			if type(t1[k] or false) == "table" then
-				main.f_tableMerge(t1[k] or {}, t2[k] or {})
-			else
-				t1[k] = v
-			end
-		elseif type(t1[k] or false) == "table" then
-			t1[k][1] = v
-		else
-			t1[k] = v
-		end
-	end
-	return t1
-end
-
---return table with reversed keys
-function main.f_reversedTable(t)
-	local reversedTable = {}
-	local itemCount = #t
-	for k, v in ipairs(t) do
-		reversedTable[itemCount + 1 - k] = v
-	end
-	return reversedTable
-end
-
---return table with proper order and without rows disabled in screenpack
-function main.f_cleanTable(t, t_sort)
-	local t_clean = {}
-	local t_added = {}
-	--first we add all entries existing in screenpack file in correct order
-	for i = 1, #t_sort do
-		for j = 1, #t do
-			if t_sort[i] == t[j].itemname and t[j].displayname ~= '' then
-				table.insert(t_clean, t[j])
-				t_added[t[j].itemname] = 1
-				break
-			end
-		end
-	end
-	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
-	for i = 1, #t do
-		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
-			table.insert(t_clean, t[i])
-		end
-	end
-	return t_clean
-end
-
 --odd value rounding
 function main.f_oddRounding(v)
 	if v % 2 ~= 0 then
@@ -889,7 +902,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 	main.f_cmdInput()
 	esc(false) --reset ESC
 	while true do
-		if main.input({1, 2}, {'pal'}) or esc() then
+		if main.input({1, 2}, {'pal', 's'}) or esc() then
 			sndPlay(motif.files.snd_data, info.cursor_move_snd[1], info.cursor_move_snd[2])
 			break
 		end
@@ -1137,8 +1150,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	end
 	addStage(stage)
 	--load data
-	loadDebugFont('f-6x9.fnt')
-	setDebugScript('external/script/debug.lua')
+	loadDebugFont(config.DebugFont)
 	selectStart()
 	setMatchNo(1)
 	setStage(0)
@@ -1411,7 +1423,7 @@ function main.f_addStage(file)
 	end
 	if attachedChar ~= '' then
 		main.t_selStages[stageNo].attachedChar = {}
-		main.t_selStages[stageNo].attachedChar.def, main.t_selStages[stageNo].attachedChar.displayname, main.t_selStages[stageNo].attachedChar.sprite, main.t_selStages[stageNo].attachedChar.sound = getAttachedCharInfo(attachedChar)
+		main.t_selStages[stageNo].attachedChar.def, main.t_selStages[stageNo].attachedChar.displayname, main.t_selStages[stageNo].attachedChar.sprite, main.t_selStages[stageNo].attachedChar.sound = getCharAttachedInfo(attachedChar)
 		main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
 	end
 	return stageNo
@@ -1669,8 +1681,7 @@ if main.debugLog then
 end
 
 --Debug stuff
-loadDebugFont(motif.files.debug_font)
-setDebugScript(motif.files.debug_script)
+loadDebugFont(config.DebugFont)
 
 --Assign Lifebar
 txt_loading:draw()
@@ -2940,7 +2951,7 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
---SetGCPercent(100)
+--setGCPercent(100)
 if main.flags['-stresstest'] ~= nil then
 	main.f_default()
 	local frameskip = tonumber(main.flags['-stresstest'])

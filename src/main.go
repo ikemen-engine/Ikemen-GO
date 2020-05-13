@@ -115,13 +115,17 @@ Debug Options:
 	"CommonAir": "data/common.air",
 	"CommonCmd": "data/common.cmd",
 	"CommonConst": "data/common.const",
-	"CommonRules": "data/rules.zss",
-	"CommonScore": "data/score.zss",
-	"CommonTag": "data/tag.zss",
+	"CommonStates": [
+        "data/rules.zss",
+        "data/score.zss",
+        "data/tag.zss"
+    ],
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
+	"DebugFont": "font/f-4x6.def",
 	"DebugKeys": true,
 	"DebugMode": false,
+	"DebugScript": "external/script/debug.lua",
 	"Difficulty": 8,
 	"ExternalShaders": [],
 	"Fullscreen": false,
@@ -186,10 +190,8 @@ Debug Options:
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VRetrace": 1, 
-	"WindowMainIconLocation": [
-		"external/icons/IkemenCylia.png"
-	],
+	"VRetrace": 0, 
+	"WindowIcon": "external/icons/IkemenCylia.png",
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
 	"ZoomActive": true,
@@ -287,13 +289,13 @@ Debug Options:
 		CommonAir                  string
 		CommonCmd                  string
 		CommonConst                string
-		CommonRules                string
-		CommonScore                string
-		CommonTag                  string
+		CommonStates               []string
 		ControllerStickSensitivity float32
 		Credits                    int
+		DebugFont                  string
 		DebugKeys                  bool
 		DebugMode                  bool
+		DebugScript                string
 		Difficulty                 int
 		ExternalShaders            []string
 		Fullscreen                 bool
@@ -340,7 +342,7 @@ Debug Options:
 		VolumeMaster               int
 		VolumeSfx                  int
 		VRetrace                   int
-		WindowMainIconLocation     []string
+		WindowIcon                 string
 		WindowTitle                string
 		XinputTriggerSensitivity   float32
 		ZoomActive                 bool
@@ -364,50 +366,45 @@ Debug Options:
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
-	cfg, err := json.MarshalIndent(tmp, "", "	")
+	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile("save/config.json", cfg, 0644))
+	sys.afterImageMax = tmp.MaxAfterImage
+	sys.allowDebugKeys = tmp.DebugKeys
 	sys.audioDucking = tmp.AudioDucking
+	sys.bgmVolume = tmp.VolumeBgm
+	sys.borderless = tmp.Borderless
+	sys.cam.ZoomEnable = tmp.ZoomActive
+	sys.cam.ZoomMax = tmp.ZoomMax
+	sys.cam.ZoomMin = tmp.ZoomMin
+	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
-	air, err := ioutil.ReadFile(tmp.CommonAir)
-	if err == nil {
+	if air, err := ioutil.ReadFile(tmp.CommonAir); err == nil {
 		sys.commonAir = "\n" + string(air)
 	}
-	cmd, err := ioutil.ReadFile(tmp.CommonCmd)
-	if err == nil {
+	if cmd, err := ioutil.ReadFile(tmp.CommonCmd); err == nil {
 		sys.commonCmd = "\n" + string(cmd)
 	}
-	// TODO: We should organize this.
 	sys.commonConst = tmp.CommonConst
-	sys.commonRules = tmp.CommonRules
-	sys.commonScore = tmp.CommonScore
-	sys.commonTag = tmp.CommonTag
+	sys.commonStates = tmp.CommonStates
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
-	sys.allowDebugKeys = tmp.DebugKeys
 	sys.debugDraw = tmp.DebugMode
+	sys.debugScript = tmp.DebugScript
+	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
 	sys.fullscreen = tmp.Fullscreen
-	sys.borderless = tmp.Borderless
+	sys.helperMax = tmp.MaxHelper
+	sys.lifeAdjustment = tmp.TeamLifeAdjustment
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.listenPort = tmp.ListenPort
-	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.helperMax = tmp.MaxHelper
-	sys.playerProjectileMax = tmp.MaxPlayerProjectile
-	sys.explodMax = tmp.MaxExplod
-	sys.afterImageMax = tmp.MaxAfterImage
-	sys.MultisampleAntialiasing = tmp.MSAA
-	sys.PostProcessingShader = tmp.PostProcessingShader
-	sys.preloading.small = tmp.PreloadingSmall
-	sys.preloading.big = tmp.PreloadingBig
-	sys.preloading.versus = tmp.PreloadingVersus
-	sys.preloading.stage = tmp.PreloadingStage
-	sys.lifeAdjustment = tmp.TeamLifeAdjustment
-	sys.bgmVolume = tmp.VolumeBgm
+	sys.localcoordScalingType = tmp.LocalcoordScalingType
 	sys.masterVolume = tmp.VolumeMaster
-	sys.wavVolume = tmp.VolumeSfx
-	sys.windowMainIconLocation = tmp.WindowMainIconLocation
-	sys.windowTitle = tmp.WindowTitle
-	sys.vRetrace = tmp.VRetrace
-	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.multisampleAntialiasing = tmp.MSAA
+	sys.playerProjectileMax = tmp.MaxPlayerProjectile
+	sys.postProcessingShader = tmp.PostProcessingShader
+	sys.preloading.big = tmp.PreloadingBig
+	sys.preloading.small = tmp.PreloadingSmall
+	sys.preloading.stage = tmp.PreloadingStage
+	sys.preloading.versus = tmp.PreloadingVersus
 	tmp.ScreenshotFolder = strings.TrimSpace(tmp.ScreenshotFolder)
 	if tmp.ScreenshotFolder != "" {
 		tmp.ScreenshotFolder = strings.Replace(tmp.ScreenshotFolder, "\\", "/", -1)
@@ -416,10 +413,11 @@ Debug Options:
 	} else {
 		sys.screenshotFolder = tmp.ScreenshotFolder
 	}
-	sys.cam.ZoomEnable = tmp.ZoomActive
-	sys.cam.ZoomMax = tmp.ZoomMax
-	sys.cam.ZoomMin = tmp.ZoomMin
-	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
+	sys.vRetrace = tmp.VRetrace
+	sys.wavVolume = tmp.VolumeSfx
+	sys.windowMainIconLocation = append(sys.windowMainIconLocation, tmp.WindowIcon)
+	sys.windowTitle = tmp.WindowTitle
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
