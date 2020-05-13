@@ -1355,11 +1355,11 @@ type AiInput struct {
 	dir, dt, at, bt, ct, xt, yt, zt, st, vt, wt int32
 }
 
-func (__ *AiInput) Update(level float32) {
+func (ai *AiInput) Update(level float32) {
 	if sys.intro != 0 {
-		__.dt, __.at, __.bt, __.ct = 0, 0, 0, 0
-		__.xt, __.yt, __.zt, __.st = 0, 0, 0, 0
-		__.vt, __.wt = 0, 0
+		ai.dt, ai.at, ai.bt, ai.ct = 0, 0, 0, 0
+		ai.xt, ai.yt, ai.zt, ai.st = 0, 0, 0, 0
+		ai.vt, ai.wt = 0, 0
 		return
 	}
 	var osu, hanasu int32 = 15, 60
@@ -1375,59 +1375,59 @@ func (__ *AiInput) Update(level float32) {
 		}
 		return false
 	}
-	if dec(&__.dt) {
-		__.dir = Rand(0, 7)
+	if dec(&ai.dt) {
+		ai.dir = Rand(0, 7)
 	}
 	osu, hanasu = int32((-11.25*level+165)*7), 30
-	dec(&__.at)
-	dec(&__.bt)
-	dec(&__.ct)
-	dec(&__.xt)
-	dec(&__.yt)
-	dec(&__.zt)
-	dec(&__.vt)
-	dec(&__.wt)
+	dec(&ai.at)
+	dec(&ai.bt)
+	dec(&ai.ct)
+	dec(&ai.xt)
+	dec(&ai.yt)
+	dec(&ai.zt)
+	dec(&ai.vt)
+	dec(&ai.wt)
 	osu = 3600
-	dec(&__.st)
+	dec(&ai.st)
 }
-func (__ *AiInput) L() bool {
-	return __.dt != 0 && (__.dir == 5 || __.dir == 6 || __.dir == 7)
+func (ai *AiInput) L() bool {
+	return ai.dt != 0 && (ai.dir == 5 || ai.dir == 6 || ai.dir == 7)
 }
-func (__ *AiInput) R() bool {
-	return __.dt != 0 && (__.dir == 1 || __.dir == 2 || __.dir == 3)
+func (ai *AiInput) R() bool {
+	return ai.dt != 0 && (ai.dir == 1 || ai.dir == 2 || ai.dir == 3)
 }
-func (__ *AiInput) U() bool {
-	return __.dt != 0 && (__.dir == 7 || __.dir == 0 || __.dir == 1)
+func (ai *AiInput) U() bool {
+	return ai.dt != 0 && (ai.dir == 7 || ai.dir == 0 || ai.dir == 1)
 }
-func (__ *AiInput) D() bool {
-	return __.dt != 0 && (__.dir == 3 || __.dir == 4 || __.dir == 5)
+func (ai *AiInput) D() bool {
+	return ai.dt != 0 && (ai.dir == 3 || ai.dir == 4 || ai.dir == 5)
 }
-func (__ *AiInput) A() bool {
-	return __.at != 0
+func (ai *AiInput) A() bool {
+	return ai.at != 0
 }
-func (__ *AiInput) B() bool {
-	return __.bt != 0
+func (ai *AiInput) B() bool {
+	return ai.bt != 0
 }
-func (__ *AiInput) C() bool {
-	return __.ct != 0
+func (ai *AiInput) C() bool {
+	return ai.ct != 0
 }
-func (__ *AiInput) X() bool {
-	return __.xt != 0
+func (ai *AiInput) X() bool {
+	return ai.xt != 0
 }
-func (__ *AiInput) Y() bool {
-	return __.yt != 0
+func (ai *AiInput) Y() bool {
+	return ai.yt != 0
 }
-func (__ *AiInput) Z() bool {
-	return __.zt != 0
+func (ai *AiInput) Z() bool {
+	return ai.zt != 0
 }
-func (__ *AiInput) S() bool {
-	return __.st != 0
+func (ai *AiInput) S() bool {
+	return ai.st != 0
 }
-func (__ *AiInput) V() bool {
-	return __.vt != 0
+func (ai *AiInput) V() bool {
+	return ai.vt != 0
 }
-func (__ *AiInput) W() bool {
-	return __.wt != 0
+func (ai *AiInput) W() bool {
+	return ai.wt != 0
 }
 
 type cmdElem struct {
