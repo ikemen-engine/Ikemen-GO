@@ -1967,7 +1967,13 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "toggleFullscreen", func(*lua.LState) int {
-		sys.window.toggleFullscreen()
+		fs := !sys.window.fullscreen
+		if l.GetTop() >= 1 {
+			fs = boolArg(l, 1)
+		}
+		if fs != sys.window.fullscreen {
+			sys.window.toggleFullscreen()
+		}
 		return 0
 	})
 	luaRegister(l, "toggleMaxPowerMode", func(*lua.LState) int {

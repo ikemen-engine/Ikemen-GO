@@ -719,7 +719,7 @@ options.t_itemname = {
 			else
 				config.Fullscreen = true
 			end
-			toggleFullscreen()
+			toggleFullscreen(config.Fullscreen)
 			t.items[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
 			modified = 1
 		end
