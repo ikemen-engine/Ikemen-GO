@@ -253,7 +253,7 @@ if Time = 0 {
 }
 
 if (Time % 42) = 0 {
-	PlaySnd{value: F Const(FxDizzyEffect), 0; channel: 2}
+	PlaySnd{value: F5300, 0; channel: 2}
 }
 
 if Time > 1 {
@@ -284,9 +284,9 @@ if !GuardBreak {
 }
 
 if Time = 0 {
-	PlaySnd{value: F 5400, 0}
+	PlaySnd{value: F5400, 0}
 	Explod{
-		anim: F Const(FxGuardCrashShockwave);
+		anim: F Const(FxGuardBreakShockwave);
 		postype: p1;
 		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
 		sprpriority: 7;
@@ -302,7 +302,7 @@ if Time = 0 {
 
 if Time < 13 {
 	Explod{
-		anim: F Const(FxGuardCrashSpark) + rand(0, 2);
+		anim: F Const(FxGuardBreakSpark) + rand(0, 2);
 		postype: p1;
 		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
 		sprpriority: 6;

@@ -202,8 +202,8 @@ FxSmallFloorDust = 120
 FxPowerUpEffect = 130
 
 FxDizzyEffect = 5300
-FxGuardCrashSpark = 5400
-FxGuardCrashShockwave = 5410
+FxGuardBreakSpark = 5400
+FxGuardBreakShockwave = 5410
 FxBackgroundColor = 9000
 
 ; GetHitVar(attr)
