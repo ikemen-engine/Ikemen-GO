@@ -1263,6 +1263,53 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 			if s.time == 0 {
 				//s.intro = -s.lifebar.ro.over_hittime
+				l := [2]float32{}
+				for i := 0; i < 2; i++ {
+					for j := i; j < len(s.chars); j += 2 {
+						if len(s.chars[j]) > 0 {
+							if s.tmode[i] == TM_Simul || s.tmode[i] == TM_Tag {
+								l[i] += (float32(s.chars[j][0].life) /
+									float32(s.numSimul[i])) /
+									float32(s.chars[j][0].lifeMax)
+							} else {
+								l[i] += float32(s.chars[j][0].life) /
+									float32(s.chars[j][0].lifeMax)
+							}
+						}
+					}
+				}
+				if l[0] > l[1] {
+					p := true
+					for i := 0; i < len(s.chars); i += 2 {
+						if len(s.chars[i]) > 0 &&
+							s.chars[i][0].life < s.chars[i][0].lifeMax {
+							p = false
+							break
+						}
+					}
+					if p {
+						s.winType[0].SetPerfect()
+					}
+					s.finish = FT_TO
+					s.winTeam = 0
+				} else if l[0] < l[1] {
+					p := true
+					for i := 1; i < len(s.chars); i += 2 {
+						if len(s.chars[i]) > 0 &&
+							s.chars[i][0].life < s.chars[i][0].lifeMax {
+							p = false
+							break
+						}
+					}
+					if p {
+						s.winType[1].SetPerfect()
+					}
+					s.finish = FT_TO
+					s.winTeam = 1
+				} else {
+					s.finish = FT_TODraw
+					s.winTeam = -1
+				}
 				if !(ko[0] || ko[1]) {
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
@@ -1323,7 +1370,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 				if s.waitdown <= 0 || s.intro < rs4t-s.lifebar.ro.over_wintime {
 					if s.waitdown >= 0 {
-						if s.finish == FT_NotYet {
+						/*if s.finish == FT_NotYet {
 							l := [2]float32{}
 							for i := 0; i < 2; i++ {
 								for j := i; j < len(s.chars); j += 2 {
@@ -1372,7 +1419,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 								s.winTeam = -1
 							}
 							inclWinCount()
-						}
+						}*/
 						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
 						if !w[0] || !w[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
