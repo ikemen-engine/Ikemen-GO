@@ -2390,7 +2390,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		}
 	}
 
-	return true
+	return false
 }
 
 type tagOut StateControllerBase
@@ -2464,7 +2464,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		}
 	}
 
-	return true
+	return false
 }
 
 type destroySelf StateControllerBase

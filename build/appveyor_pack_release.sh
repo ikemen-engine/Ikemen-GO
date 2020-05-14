@@ -12,7 +12,7 @@ rm openal-soft-1.20.0-bin.zip
 cp ./build/Ikemen_GO.command ./bin/Ikemen_GO.command 
 cp ./License.txt ./bin/License.txt
 
-git clone https://github.com/K4thos/Ikemen_GO-Elecbyte-Screenpack.git
+git clone $1
 mv ./Ikemen_GO-Elecbyte-Screenpack/chars ./bin/chars
 mv ./Ikemen_GO-Elecbyte-Screenpack/data ./bin/data
 mv ./Ikemen_GO-Elecbyte-Screenpack/font ./bin/font
