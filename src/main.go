@@ -190,7 +190,7 @@ Debug Options:
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VRetrace": 0, 
+	"VRetrace": 1, 
 	"WindowIcon": "external/icons/IkemenCylia.png",
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
