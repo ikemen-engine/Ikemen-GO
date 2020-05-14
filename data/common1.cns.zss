@@ -196,7 +196,7 @@ if Command != "holdfwd" {
  ctrl: 0; anim: 105; sprpriority: 1;]
 if Time = 0 {
 	VelSet{x: Const(velocity.run.back.x); y: Const(velocity.run.back.y)}
-}else if Time = 2 {
+} else if Time = 2 {
 	CtrlSet{value: 1}
 }
 if Vel Y > 0 && Pos Y >= 0 {
@@ -235,8 +235,7 @@ if time = 0 {
 VelMul{z: 0.8}
 if animTime = -8 {
 	VelSet{z: 0}
-}
-if animTime = 0 {
+} else if animTime = 0 {
 	ChangeState{value: 0; ctrl: 1}
 }
 
@@ -252,8 +251,7 @@ if time = 0 {
 VelMul{z: 0.8}
 if animTime = -8 {
 	VelSet{z: 0}
-}
-if animTime = 0 {
+} else if animTime = 0 {
 	ChangeState{value: 0; ctrl: 1}
 }
 

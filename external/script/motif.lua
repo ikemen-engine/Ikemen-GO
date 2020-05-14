@@ -1,42 +1,3 @@
-
---;===========================================================
---; LOCALCOORD VALUES
---;===========================================================
-local def = config.Motif
-if main.flags['-r'] ~= nil then
-	local case = main.flags['-r']:lower()
-	if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
-		def = main.flags['-r']
-	elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
-		def = 'data/' .. main.flags['-r']
-	elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
-		def = 'data/' .. main.flags['-r'] .. '/system.def'
-	end
-end
-
-local file = io.open(def, 'r')
-local s_file = file:read("*all")
-file:close()
-local localX, localY = s_file:match('localcoord%s*=%s*(%d+)%s*,%s*(%d+)')
---local scaleX = 1
---local scaleY = 1
-if localX ~= nil then
-	localX = tonumber(localX)
-	--scaleX = localX / 320
-else
-	localX = 320
-end
-if localY ~= nil then
-	localY = tonumber(localY)
-	--scaleY = localY / 240
-else
-	localY = 240
-end
---local coords_fix = 0
---if scaleY > 1 then
---	coords_fix = math.floor(scaleY - 1)
---end
-
 --;===========================================================
 --; DEFAULT VALUES
 --;===========================================================
@@ -44,7 +5,7 @@ end
 --This is important because there are more params available in Ikemen. Whole screenpack code refers to these values.
 local motif =
 {
-	def = def,
+	def = main.motifDef,
 	info =
 	{
 		name = 'Default',
@@ -61,8 +22,6 @@ local motif =
 		intro_storyboard = '',
 		select = 'data/select.def',
 		fight = 'data/fight.def',
-		debug_font = 'f-6x9.def', --Ikemen feature
-		debug_script = 'external/script/debug.lua', --Ikemen feature
 		font =
 		{
 			[1] = 'f-4x6.fnt',
@@ -131,31 +90,31 @@ local motif =
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
-		loading_offset = {localX - math.floor(10 * localX / 320 + 0.5), localY - 8}, --Ikemen feature (310, 232)
+		loading_offset = {main.SP_Localcoord[1] - math.floor(10 * main.SP_Localcoord[1] / 320 + 0.5), main.SP_Localcoord[2] - 8}, --Ikemen feature (310, 232)
 		loading_font = {'f-4x6.fnt', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		loading_font_scale = {1.0, 1.0}, --Ikemen feature
 		loading_font_height = -1, --Ikemen feature
 		loading_text = 'LOADING...', --Ikemen feature
-		footer1_offset = {math.floor(2 * localX / 320 + 0.5), localY}, --Ikemen feature (2, 240)
+		footer1_offset = {math.floor(2 * main.SP_Localcoord[1] / 320 + 0.5), main.SP_Localcoord[2]}, --Ikemen feature (2, 240)
 		footer1_font = {'f-4x6.fnt', 0, 1, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer1_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer1_font_height = -1, --Ikemen feature
 		footer1_text = 'I.K.E.M.E.N. GO', --Ikemen feature
-		footer2_offset = {localX / 2, localY}, --Ikemen feature (160, 240)
+		footer2_offset = {main.SP_Localcoord[1] / 2, main.SP_Localcoord[2]}, --Ikemen feature (160, 240)
 		footer2_font = {'f-4x6.fnt', 0, 0, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer2_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer2_font_height = -1, --Ikemen feature
 		footer2_text = 'Press F1 for info', --Ikemen feature
-		footer3_offset = {localX - math.floor(2 * localX / 320 + 0.5), localY}, --Ikemen feature (318, 240)
+		footer3_offset = {main.SP_Localcoord[1] - math.floor(2 * main.SP_Localcoord[1] / 320 + 0.5), main.SP_Localcoord[2]}, --Ikemen feature (318, 240)
 		footer3_font = {'f-4x6.fnt', 0, -1, 191, 191, 191, 255, 0}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
 		footer3_text = 'v0.94', --Ikemen feature
 		footer_boxbg_visible = 1, --Ikemen feature
-		footer_boxbg_coords = {0, localY - 7, localX - 1, localY - 1}, --Ikemen feature (0, 233, 319, 239)
+		footer_boxbg_coords = {0, main.SP_Localcoord[2] - 7, main.SP_Localcoord[1] - 1, main.SP_Localcoord[2] - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_boxbg_col = {0, 0, 64}, --Ikemen feature
 		footer_boxbg_alpha = {255, 100}, --Ikemen feature
-		connecting_offset = {math.floor(10 * localX / 320 + 0.5), 40}, --Ikemen feature
+		connecting_offset = {math.floor(10 * main.SP_Localcoord[1] / 320 + 0.5), 40}, --Ikemen feature
 		connecting_font = {'f-6x9.def', 0, 1, 255, 255, 255, 255, 0}, --Ikemen feature
 		connecting_font_scale = {1.0, 1.0}, --Ikemen feature
 		connecting_font_height = -1, --Ikemen feature
@@ -168,7 +127,7 @@ local motif =
 		input_ip_address_text = 'Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.', --Ikemen feature
 		menu_key_next = '$D&$F',
 		menu_key_previous = '$U&$B',
-		menu_key_accept = 'a&b&c&x&y&z',
+		menu_key_accept = 'a&b&c&x&y&z&s',
 		menu_pos = {159, 158},
 		menu_item_font = {'f-6x9.def', 0, 0, 191, 191, 191, 255, 0},
 		menu_item_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
@@ -180,36 +139,38 @@ local motif =
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_versus = 'VS MODE',
 		--menu_itemname_teamarcade = 'TEAM ARCADE',
-		--menu_itemname_teamversus = 'TEAM VERSUS',
 		--menu_itemname_teamcoop = 'TEAM CO-OP',
-		--menu_itemname_survival = 'SURVIVAL',
-		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
+		--menu_itemname_versus = 'VS MODE',
+		--menu_itemname_teamversus = 'TEAM VERSUS',
 		--menu_itemname_storymode = 'STORY MODE', --Ikemen feature (not implemented yet)
-		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
-		--menu_itemname_training = 'TRAINING',
-		--menu_itemname_watch = 'WATCH',
-		--menu_itemname_options = 'OPTIONS',
-		--menu_itemname_exit = 'EXIT',
-		--menu_itemname_back = 'BACK', --Ikemen feature
-		--menu_itemname_joinadd = 'NEW ADDRESS', --Ikemen feature
 		--menu_itemname_serverhost = 'HOST GAME', --Ikemen feature
 		--menu_itemname_serverjoin = 'JOIN GAME', --Ikemen feature
-		--menu_itemname_netplayversus = 'ONLINE VERSUS', --Ikemen feature
-		--menu_itemname_netplayteamcoop = 'ONLINE CO-OP', --Ikemen feature
-		--menu_itemname_netplaysurvivalcoop = 'ONLINE SURVIVAL', --Ikemen feature
-		--menu_itemname_freebattle = 'FREE BATTLE', --Ikemen feature
-		--menu_itemname_timechallenge = 'TIME CHALLENGE', --Ikemen feature
-		--menu_itemname_scorechallenge = 'SCORE CHALLENGE', --Ikemen feature
-		--menu_itemname_vs100kumite = 'VS 100 KUMITE', --Ikemen feature
-		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
-		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
-		--menu_itemname_trials = 'TRIALS', --Ikemen feature (not implemented yet)
-		--menu_itemname_scoreranking = 'SCORE RANKING', --Ikemen feature (not implemented yet)
-		--menu_itemname_replay = 'REPLAY', --Ikemen feature
-		--menu_itemname_randomtest = 'DEMO', --Ikemen feature
+		--menu_itemname_joinadd = 'NEW ADDRESS', --Ikemen feature
+		--menu_itemname_netplayversus = 'VERSUS', --Ikemen feature
+		--menu_itemname_netplayteamcoop = 'ARCADE CO-OP', --Ikemen feature
+		--menu_itemname_netplaysurvivalcoop = 'SURVIVAL CO-OP', --Ikemen feature
 		--menu_itemname_tournament32 = 'ROUND OF 32', --Ikemen feature (not implemented yet)
 		--menu_itemname_tournament16 = 'ROUND OF 16', --Ikemen feature (not implemented yet)
 		--menu_itemname_tournament8 = 'QUARTERFINALS', --Ikemen feature (not implemented yet)
+		--menu_itemname_training = 'TRAINING',
+		--menu_itemname_freebattle = 'QUICK MATCH', --Ikemen feature
+		--menu_itemname_trials = 'TRIALS', --Ikemen feature (not implemented yet)
+		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
+		--menu_itemname_survival = 'SURVIVAL',
+		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
+		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
+		--menu_itemname_vs100kumite = 'VS 100 KUMITE', --Ikemen feature
+		--menu_itemname_timechallenge = 'TIME CHALLENGE', --Ikemen feature
+		--menu_itemname_scorechallenge = 'SCORE CHALLENGE', --Ikemen feature
+		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
+		--menu_itemname_watch = 'AI MATCH',
+		--menu_itemname_randomtest = 'RANDOMTEST', --Ikemen feature
+		--menu_itemname_replay = 'REPLAY', --Ikemen feature
+		--menu_itemname_records = 'RECORDS', --Ikemen feature (not implemented yet)
+		--menu_itemname_ranking = 'RANKING', --Ikemen feature (not implemented yet)
+		--menu_itemname_options = 'OPTIONS',
+		--menu_itemname_back = 'BACK', --Ikemen feature
+		--menu_itemname_exit = 'EXIT',
 		menu_window_margins_y = {12, 8},
 		menu_window_visibleitems = 5,
 		menu_boxcursor_visible = 1,
@@ -256,9 +217,9 @@ local motif =
 		wrapping_x = 1, --Ikemen feature
 		wrapping_y = 1, --Ikemen feature
 		pos = {90, 170},
-		double_select = 0, --Ikemen feature
-		pos_p1_double_select = {10, 170}, --Ikemen feature
-		pos_p2_double_select = {169, 170}, --Ikemen feature
+		doubleselect_enabled = 0, --Ikemen feature
+		p1_doubleselect_offset = {-80, 0}, --Ikemen feature
+		p2_doubleselect_offset = {-1, 0}, --Ikemen feature
 		showemptyboxes = 0,
 		moveoveremptyboxes = 0,
 		searchemptyboxesup = 0, --Ikemen feature
@@ -317,28 +278,28 @@ local motif =
 		title_font_scale = {1.0, 1.0},
 		title_font_height = -1, --Ikemen feature
 		title_text_arcade = 'Arcade', --Ikemen feature
-		title_text_versus = 'Versus Mode', --Ikemen feature
 		title_text_teamarcade = 'Team Arcade', --Ikemen feature
-		title_text_teamversus = 'Team Versus', --Ikemen feature
 		title_text_teamcoop = 'Team Cooperative', --Ikemen feature
-		title_text_survival = 'Survival', --Ikemen feature
-		title_text_survivalcoop = 'Survival Cooperative', --Ikemen feature
+		title_text_versus = 'Versus Mode', --Ikemen feature
+		title_text_teamversus = 'Team Versus', --Ikemen feature
 		title_text_storymode = 'Story Mode', --Ikemen feature (not implemented yet)
-		title_text_timeattack = 'Time Attack', --Ikemen feature
-		title_text_training = 'Training Mode', --Ikemen feature
-		title_text_watch = 'Watch Mode', --Ikemen feature
 		title_text_netplayversus = 'Online Versus', --Ikemen feature
 		title_text_netplayteamcoop = 'Online Cooperative', --Ikemen feature
 		title_text_netplaysurvivalcoop = 'Online Survival', --Ikemen feature
-		title_text_freebattle = 'Quick Match', --Ikemen feature
-		title_text_timechallenge = 'Time Challenge', --Ikemen feature
-		title_text_scorechallenge = 'Score Challenge', --Ikemen feature
-		title_text_vs100kumite = 'VS 100 Kumite', --Ikemen feature
-		title_text_bossrush = 'Boss Rush', --Ikemen feature
-		--title_text_replay = 'Replay', --Ikemen feature
 		title_text_tournament32 = 'Tournament Mode', --Ikemen feature (not implemented yet)
 		title_text_tournament16 = 'Tournament Mode', --Ikemen feature (not implemented yet)
 		title_text_tournament8 = 'Tournament Mode', --Ikemen feature (not implemented yet)
+		title_text_training = 'Training Mode', --Ikemen feature
+		title_text_freebattle = 'Quick Match', --Ikemen feature
+		title_text_timeattack = 'Time Attack', --Ikemen feature
+		title_text_survival = 'Survival', --Ikemen feature
+		title_text_survivalcoop = 'Survival Cooperative', --Ikemen feature
+		title_text_bossrush = 'Boss Rush', --Ikemen feature
+		title_text_vs100kumite = 'VS 100 Kumite', --Ikemen feature
+		title_text_timechallenge = 'Time Challenge', --Ikemen feature
+		title_text_scorechallenge = 'Score Challenge', --Ikemen feature
+		title_text_watch = 'Watch Mode', --Ikemen feature
+		--title_text_replay = 'Replay', --Ikemen feature
 		p1_face_spr = {9000, 1},
 		p1_face_offset = {0, 0},
 		p1_face_facing = 1,
@@ -403,7 +364,7 @@ local motif =
 		teammenu_key_previous = '$U',
 		teammenu_key_add = '$F',
 		teammenu_key_subtract = '$B',
-		teammenu_key_accept = 'a&b&c&x&y&z',
+		teammenu_key_accept = 'a&b&c&x&y&z&s',
 		teammenu_move_wrapping = 1,
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
@@ -654,8 +615,8 @@ local motif =
 		record_font_height = -1, --Ikemen feature
 		record_text_scorechallenge = '', --Ikemen feature
 		record_text_timechallenge = '', --Ikemen feature
-		p1_select_snd = {9000, 0}, --Ikemen feature
-		p2_select_snd = {9000, 0}, --Ikemen feature
+		p1_select_snd = {-1, 0}, --Ikemen feature
+		p2_select_snd = {-1, 0}, --Ikemen feature
 	},
 	selectbgdef =
 	{
@@ -1174,6 +1135,7 @@ local motif =
 		--menu_itemname_resolution = 'Resolution', --Ikemen feature
 		--menu_itemname_customres = 'Custom', --Ikemen feature
 		--menu_itemname_fullscreen = 'Fullscreen', --Ikemen feature
+		--menu_itemname_vretrace = 'VSync', --Ikemen feature
 		--menu_itemname_msaa = 'MSAA', --Ikemen feature
 		--menu_itemname_shaders = 'Shaders', --Ikemen feature
 		--menu_itemname_noshader = 'Disable', --Ikemen feature
@@ -1202,9 +1164,6 @@ local motif =
 		--menu_itemname_ratio3attack = 'Ratio 3 Damage', --Ikemen feature
 		--menu_itemname_ratio4life = 'Ratio 4 Life', --Ikemen feature
 		--menu_itemname_ratio4attack = 'Ratio 4 Damage', --Ikemen feature
-		--menu_itemname_attackpowermul = 'Attack.LifeToPowerMul', --Ikemen feature
-		--menu_itemname_gethitpowermul = 'GetHit.LifeToPowerMul', --Ikemen feature
-		--menu_itemname_superdefencemul = 'Super.TargetDefenceMul', --Ikemen feature
 		--menu_itemname_minturns = 'Min Turns Chars', --Ikemen feature
 		--menu_itemname_maxturns = 'Max Turns Chars', --Ikemen feature
 		--menu_itemname_minsimul = 'Min Simul Chars', --Ikemen feature
@@ -1250,7 +1209,7 @@ local motif =
 		menu_valuename_no = 'No', --Ikemen feature
 		menu_valuename_enabled = 'Enabled', --Ikemen feature
 		menu_valuename_disabled = 'Disabled', --Ikemen feature
-		menu_window_margins_y = {localY, localY}, --Ikemen feature
+		menu_window_margins_y = {main.SP_Localcoord[2], main.SP_Localcoord[2]}, --Ikemen feature
 		menu_window_visibleitems = 16, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
 		menu_boxcursor_coords = {-5, -10, 154, 2}, --Ikemen feature
@@ -1366,6 +1325,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuvideo_resolution_customres = "Custom"
 	motif.option_info.menu_itemname_menuvideo_resolution_back = "Back"
 	motif.option_info.menu_itemname_menuvideo_fullscreen = "Fullscreen"
+	motif.option_info.menu_itemname_menuvideo_vretrace = "VSync"
 	motif.option_info.menu_itemname_menuvideo_msaa = "MSAA"
 	motif.option_info.menu_itemname_menuvideo_shaders = "Shaders" --reserved submenu
 	-- This list is populated with shaders existing in 'external/shaders' directory
@@ -1394,15 +1354,27 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugameplay_lifemul = "Life"
 	motif.option_info.menu_itemname_menugameplay_gamespeed = "Game Speed"
 	motif.option_info.menu_itemname_menugameplay_autoguard = "Auto-Guard"
+	motif.option_info.menu_itemname_menugameplay_guardbar = "Guard Break"
+	motif.option_info.menu_itemname_menugameplay_stunbar = "Dizzy"
+	motif.option_info.menu_itemname_menugameplay_redlifebar = "Red Life"
 	motif.option_info.menu_itemname_menugameplay_empty = ""
-	motif.option_info.menu_itemname_menugameplay_singlevsteamlife = "Single VS Team Life"
-	motif.option_info.menu_itemname_menugameplay_teamlifeadjustment = "Team Life Adjustment"
-	motif.option_info.menu_itemname_menugameplay_teampowershare = "Team Power Share"
-	motif.option_info.menu_itemname_menugameplay_simulloseko = "Simul Player KOed Lose"
-	motif.option_info.menu_itemname_menugameplay_tagloseko = "Tag Partner KOed Lose"
-	motif.option_info.menu_itemname_menugameplay_turnsrecoverybase = "Turns Recovery Base"
-	motif.option_info.menu_itemname_menugameplay_turnsrecoverybonus = "Turns Recovery Bonus"
-	motif.option_info.menu_itemname_menugameplay_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuteam = "Team Settings"
+	motif.option_info.menu_itemname_menugameplay_menuteam_singlevsteamlife = "Single VS Team Life"
+	motif.option_info.menu_itemname_menugameplay_menuteam_teamlifeadjustment = "Team Life Adjustment"
+	motif.option_info.menu_itemname_menugameplay_menuteam_teampowershare = "Team Power Share"
+	motif.option_info.menu_itemname_menugameplay_menuteam_simulloseko = "Simul Player KOed Lose"
+	motif.option_info.menu_itemname_menugameplay_menuteam_tagloseko = "Tag Partner KOed Lose"
+	motif.option_info.menu_itemname_menugameplay_menuteam_turnsrecoverybase = "Turns Recovery Base"
+	motif.option_info.menu_itemname_menugameplay_menuteam_turnsrecoverybonus = "Turns Recovery Bonus"
+	motif.option_info.menu_itemname_menugameplay_menuteam_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuteam_minturns = "Min Turns Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_maxturns = "Max Turns Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_minsimul = "Min Simul Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_maxsimul = "Max Simul Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_mintag = "Min Tag Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_maxtag = "Max Tag Chars"
+	motif.option_info.menu_itemname_menugameplay_menuteam_empty = ""
+	motif.option_info.menu_itemname_menugameplay_menuteam_back = "Back"
 	motif.option_info.menu_itemname_menugameplay_menuratio = "Ratio Settings"
 	motif.option_info.menu_itemname_menugameplay_menuratio_ratio1life = "Ratio 1 Life"
 	motif.option_info.menu_itemname_menugameplay_menuratio_ratio1attack = "Ratio 1 Damage"
@@ -1414,19 +1386,6 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugameplay_menuratio_ratio4attack = "Ratio 4 Damage"
 	motif.option_info.menu_itemname_menugameplay_menuratio_empty = ""
 	motif.option_info.menu_itemname_menugameplay_menuratio_back = "Back"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced = "Advanced Settings"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_attackpowermul = "Attack.LifeToPowerMul"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_gethitpowermul = "GetHit.LifeToPowerMul"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_superdefencemul = "Super.TargetDefenceMul"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_minturns = "Min Turns Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxturns = "Max Turns Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_minsimul = "Min Simul Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxsimul = "Max Simul Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_mintag = "Min Tag Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_maxtag = "Max Tag Chars"
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_empty = ""
-	motif.option_info.menu_itemname_menugameplay_menuadvanced_back = "Back"
 	motif.option_info.menu_itemname_menugameplay_back = "Back"
 
 	motif.option_info.menu_itemname_menuengine = "Engine Settings"
@@ -1476,6 +1435,7 @@ function motif.setBaseOptionInfo()
 		"menuvideo_resolution_customres",
 		"menuvideo_resolution_back",
 		"menuvideo_fullscreen",
+		"menuvideo_vretrace",
 		"menuvideo_msaa",
 		"menuvideo_shaders",
 		"menuvideo_shaders_empty",
@@ -1500,15 +1460,27 @@ function motif.setBaseOptionInfo()
 		"menugameplay_lifemul",
 		"menugameplay_gamespeed",
 		"menugameplay_autoguard",
+		"menugameplay_guardbar",
+		"menugameplay_stunbar",
+		"menugameplay_redlifebar",
 		"menugameplay_empty",
-		"menugameplay_singlevsteamlife",
-		"menugameplay_teamlifeadjustment",
-		"menugameplay_teampowershare",
-		"menugameplay_simulloseko",
-		"menugameplay_tagloseko",
-		"menugameplay_turnsrecoverybase",
-		"menugameplay_turnsrecoverybonus",
-		"menugameplay_empty",
+		"menugameplay_menuteam",
+		"menugameplay_menuteam_singlevsteamlife",
+		"menugameplay_menuteam_teamlifeadjustment",
+		"menugameplay_menuteam_teampowershare",
+		"menugameplay_menuteam_simulloseko",
+		"menugameplay_menuteam_tagloseko",
+		"menugameplay_menuteam_turnsrecoverybase",
+		"menugameplay_menuteam_turnsrecoverybonus",
+		"menugameplay_menuteam_empty",
+		"menugameplay_menuteam_minturns",
+		"menugameplay_menuteam_maxturns",
+		"menugameplay_menuteam_minsimul",
+		"menugameplay_menuteam_maxsimul",
+		"menugameplay_menuteam_mintag",
+		"menugameplay_menuteam_maxtag",
+		"menugameplay_menuteam_empty",
+		"menugameplay_menuteam_back",
 		"menugameplay_menuratio",
 		"menugameplay_menuratio_ratio1life",
 		"menugameplay_menuratio_ratio1attack",
@@ -1520,19 +1492,6 @@ function motif.setBaseOptionInfo()
 		"menugameplay_menuratio_ratio4attack",
 		"menugameplay_menuratio_empty",
 		"menugameplay_menuratio_back",
-		"menugameplay_menuadvanced",
-		"menugameplay_menuadvanced_attackpowermul",
-		"menugameplay_menuadvanced_gethitpowermul",
-		"menugameplay_menuadvanced_superdefencemul",
-		"menugameplay_menuadvanced_empty",
-		"menugameplay_menuadvanced_minturns",
-		"menugameplay_menuadvanced_maxturns",
-		"menugameplay_menuadvanced_minsimul",
-		"menugameplay_menuadvanced_maxsimul",
-		"menugameplay_menuadvanced_mintag",
-		"menugameplay_menuadvanced_maxtag",
-		"menugameplay_menuadvanced_empty",
-		"menugameplay_menuadvanced_back",
 		"menugameplay_back",
 		"menuengine",
 		"menuengine_debugkeys",
@@ -1617,7 +1576,7 @@ for line in file:lines() do
 					value = value:gsub('\\', '/')
 					pos.font[num] = tostring(value)
 				end
-			elseif pos[param] == nil or param:match('_itemname_') then --mugen takes into account only first occurrence
+			elseif pos[param] == nil or param:match('_itemname_') or param:match('_font_height$') then --mugen takes into account only first occurrence
 				if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
 					local _, n = value:gsub(',%s*[0-9]*', '')
 					for i = n + 1, #main.t_fntDefault do
@@ -1631,9 +1590,9 @@ for line in file:lines() do
 							break
 						elseif i == 1 then
 							pos[param] = {}
-							if param:match('_font$') then
-								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then --in case font is used before it's declared in DEF file
-									if pos[param .. '_height'] == -1 and t.files.font_height[tonumber(c)] ~= nil then
+							if param:match('_font$') and tonumber(c) ~= -1 then
+								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then
+									if pos[param .. '_height'] == nil and t.files.font_height[tonumber(c)] ~= nil then
 										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
 									end
 									c = t.files.font[tonumber(c)]
@@ -1696,7 +1655,7 @@ motif.defaultConnecting = t.title_info == nil or t.title_info.connecting_font ==
 motif.defaultInfobox = t.infobox == nil or t.infobox.text_font == nil or t.infobox.text_font[1] == motif.infobox.text_font[1]
 motif.defaultLoading = false --t.title_info == nil or t.title_info.loading_font == nil or t.title_info.loading_font[1] == motif.title_info.loading_font[1]
 motif.defaultFooter = false --t.title_info == nil or t.title_info.footer1_font == nil or t.title_info.footer1_font[1] == motif.title_info.footer1_font[1]
-motif.defaultLocalcoord = localX == 320 and localY == 240
+motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
 
 --merge tables
 motif = main.f_tableMerge(motif, t)

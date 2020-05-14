@@ -219,14 +219,14 @@ func RenderInit() {
 		gl.DeleteObjectARB(fragObj)
 	}
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.Enable(gl.MULTISAMPLE)
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &fbo_texture)
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, fbo_texture)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
@@ -237,7 +237,7 @@ func RenderInit() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], false)
 	} else {
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
@@ -245,7 +245,7 @@ func RenderInit() {
 
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.GenTextures(1, &fbo_f_texture)
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -263,7 +263,7 @@ func RenderInit() {
 	gl.GenFramebuffers(1, &fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, fbo_texture, 0)
 
 		gl.GenFramebuffers(1, &fbo_f)
@@ -282,7 +282,7 @@ func bindFB() {
 }
 
 func unbindFB() {
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo_f)
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fbo)
 		gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.LINEAR)
@@ -290,7 +290,7 @@ func unbindFB() {
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 
-	postShader = postShaderSelect[sys.PostProcessingShader]
+	postShader = postShaderSelect[sys.postProcessingShader]
 
 	postVertAttrib = gl.GetAttribLocationARB(postShader, gl.Str("VertCoord\x00"))
 	postTexUniform = gl.GetUniformLocationARB(postShader, gl.Str("Texture\x00"))
@@ -299,7 +299,7 @@ func unbindFB() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgramObjectARB(postShader)
 
-	if sys.MultisampleAntialiasing {
+	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)

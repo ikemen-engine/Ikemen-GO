@@ -34,114 +34,128 @@ type Compiler struct {
 func newCompiler() *Compiler {
 	c := &Compiler{funcs: make(map[string]bytecodeFunction)}
 	c.scmap = map[string]scFunc{
-		"hitby":              c.hitBy,
-		"nothitby":           c.notHitBy,
-		"assertspecial":      c.assertSpecial,
-		"playsnd":            c.playSnd,
-		"changestate":        c.changeState,
-		"selfstate":          c.selfState,
-		"tagin":              c.tagIn,
-		"tagout":             c.tagOut,
-		"destroyself":        c.destroySelf,
-		"changeanim":         c.changeAnim,
-		"changeanim2":        c.changeAnim2,
-		"helper":             c.helper,
-		"ctrlset":            c.ctrlSet,
-		"explod":             c.explod,
-		"modifyexplod":       c.modifyExplod,
-		"gamemakeanim":       c.gameMakeAnim,
-		"posset":             c.posSet,
-		"posadd":             c.posAdd,
-		"velset":             c.velSet,
-		"veladd":             c.velAdd,
-		"velmul":             c.velMul,
-		"palfx":              c.palFX,
-		"allpalfx":           c.allPalFX,
-		"bgpalfx":            c.bgPalFX,
-		"afterimage":         c.afterImage,
-		"afterimagetime":     c.afterImageTime,
-		"hitdef":             c.hitDef,
-		"reversaldef":        c.reversalDef,
-		"projectile":         c.projectile,
-		"width":              c.width,
-		"sprpriority":        c.sprPriority,
-		"varset":             c.varSet,
-		"varadd":             c.varAdd,
-		"parentvarset":       c.parentVarSet,
-		"parentvaradd":       c.parentVarAdd,
-		"turn":               c.turn,
-		"targetfacing":       c.targetFacing,
-		"targetbind":         c.targetBind,
-		"bindtotarget":       c.bindToTarget,
-		"targetlifeadd":      c.targetLifeAdd,
-		"targetstate":        c.targetState,
-		"targetvelset":       c.targetVelSet,
-		"targetveladd":       c.targetVelAdd,
-		"targetpoweradd":     c.targetPowerAdd,
-		"targetdrop":         c.targetDrop,
-		"lifeadd":            c.lifeAdd,
-		"lifeset":            c.lifeSet,
-		"poweradd":           c.powerAdd,
-		"powerset":           c.powerSet,
-		"hitvelset":          c.hitVelSet,
-		"screenbound":        c.screenBound,
-		"posfreeze":          c.posFreeze,
-		"envshake":           c.envShake,
-		"hitoverride":        c.hitOverride,
-		"pause":              c.pause,
-		"superpause":         c.superPause,
-		"trans":              c.trans,
-		"playerpush":         c.playerPush,
-		"statetypeset":       c.stateTypeSet,
-		"angledraw":          c.angleDraw,
-		"angleset":           c.angleSet,
-		"angleadd":           c.angleAdd,
-		"anglemul":           c.angleMul,
-		"envcolor":           c.envColor,
-		"displaytoclipboard": c.displayToClipboard,
-		"appendtoclipboard":  c.appendToClipboard,
-		"clearclipboard":     c.clearClipboard,
-		"makedust":           c.makeDust,
-		"attackdist":         c.attackDist,
-		"attackmulset":       c.attackMulSet,
-		"defencemulset":      c.defenceMulSet,
-		"fallenvshake":       c.fallEnvShake,
-		"hitfalldamage":      c.hitFallDamage,
-		"hitfallvel":         c.hitFallVel,
-		"hitfallset":         c.hitFallSet,
-		"varrangeset":        c.varRangeSet,
-		"remappal":           c.remapPal,
-		"stopsnd":            c.stopSnd,
-		"sndpan":             c.sndPan,
-		"varrandom":          c.varRandom,
-		"gravity":            c.gravity,
-		"bindtoparent":       c.bindToParent,
-		"bindtoroot":         c.bindToRoot,
-		"removeexplod":       c.removeExplod,
-		"explodbindtime":     c.explodBindTime,
-		"movehitreset":       c.moveHitReset,
-		"hitadd":             c.hitAdd,
-		"offset":             c.offset,
-		"victoryquote":       c.victoryQuote,
-		"zoom":               c.zoom,
-		"scoreadd":           c.scoreAdd,
-		"targetscoreadd":     c.targetScoreAdd,
-		"roundtimeadd":       c.roundTimeAdd,
-		"roundtimeset":       c.roundTimeSet,
-		"printtoconsole":     c.printToConsole,
-		"mapset":             c.mapSet,
-		"mapadd":             c.mapAdd,
-		"parentmapset":       c.parentMapSet,
-		"parentmapadd":       c.parentMapAdd,
-		"rootmapset":         c.rootMapSet,
-		"rootmapadd":         c.rootMapAdd,
-		"teammapset":         c.teamMapSet,
-		"teammapadd":         c.teamMapAdd,
-		"matchrestart":       c.matchRestart,
-		"savefile":           c.saveFile,
-		"loadfile":           c.loadFile,
-		"forcefeedback":      c.null,
-		"null":               c.null,
+		"hitby":                c.hitBy,
+		"nothitby":             c.notHitBy,
+		"assertspecial":        c.assertSpecial,
+		"playsnd":              c.playSnd,
+		"changestate":          c.changeState,
+		"selfstate":            c.selfState,
+		"tagin":                c.tagIn,
+		"tagout":               c.tagOut,
+		"destroyself":          c.destroySelf,
+		"changeanim":           c.changeAnim,
+		"changeanim2":          c.changeAnim2,
+		"helper":               c.helper,
+		"ctrlset":              c.ctrlSet,
+		"explod":               c.explod,
+		"modifyexplod":         c.modifyExplod,
+		"gamemakeanim":         c.gameMakeAnim,
+		"posset":               c.posSet,
+		"posadd":               c.posAdd,
+		"velset":               c.velSet,
+		"veladd":               c.velAdd,
+		"velmul":               c.velMul,
+		"palfx":                c.palFX,
+		"allpalfx":             c.allPalFX,
+		"bgpalfx":              c.bgPalFX,
+		"afterimage":           c.afterImage,
+		"afterimagetime":       c.afterImageTime,
+		"hitdef":               c.hitDef,
+		"reversaldef":          c.reversalDef,
+		"projectile":           c.projectile,
+		"width":                c.width,
+		"sprpriority":          c.sprPriority,
+		"varset":               c.varSet,
+		"varadd":               c.varAdd,
+		"parentvarset":         c.parentVarSet,
+		"parentvaradd":         c.parentVarAdd,
+		"rootvarset":           c.rootVarSet,
+		"rootvaradd":           c.rootVarAdd,
+		"turn":                 c.turn,
+		"targetfacing":         c.targetFacing,
+		"targetbind":           c.targetBind,
+		"bindtotarget":         c.bindToTarget,
+		"targetlifeadd":        c.targetLifeAdd,
+		"targetstate":          c.targetState,
+		"targetvelset":         c.targetVelSet,
+		"targetveladd":         c.targetVelAdd,
+		"targetpoweradd":       c.targetPowerAdd,
+		"targetdrop":           c.targetDrop,
+		"lifeadd":              c.lifeAdd,
+		"lifeset":              c.lifeSet,
+		"poweradd":             c.powerAdd,
+		"powerset":             c.powerSet,
+		"hitvelset":            c.hitVelSet,
+		"screenbound":          c.screenBound,
+		"posfreeze":            c.posFreeze,
+		"envshake":             c.envShake,
+		"hitoverride":          c.hitOverride,
+		"pause":                c.pause,
+		"superpause":           c.superPause,
+		"trans":                c.trans,
+		"playerpush":           c.playerPush,
+		"statetypeset":         c.stateTypeSet,
+		"angledraw":            c.angleDraw,
+		"angleset":             c.angleSet,
+		"angleadd":             c.angleAdd,
+		"anglemul":             c.angleMul,
+		"envcolor":             c.envColor,
+		"displaytoclipboard":   c.displayToClipboard,
+		"appendtoclipboard":    c.appendToClipboard,
+		"clearclipboard":       c.clearClipboard,
+		"makedust":             c.makeDust,
+		"attackdist":           c.attackDist,
+		"attackmulset":         c.attackMulSet,
+		"defencemulset":        c.defenceMulSet,
+		"fallenvshake":         c.fallEnvShake,
+		"hitfalldamage":        c.hitFallDamage,
+		"hitfallvel":           c.hitFallVel,
+		"hitfallset":           c.hitFallSet,
+		"varrangeset":          c.varRangeSet,
+		"remappal":             c.remapPal,
+		"stopsnd":              c.stopSnd,
+		"sndpan":               c.sndPan,
+		"varrandom":            c.varRandom,
+		"gravity":              c.gravity,
+		"bindtoparent":         c.bindToParent,
+		"bindtoroot":           c.bindToRoot,
+		"removeexplod":         c.removeExplod,
+		"explodbindtime":       c.explodBindTime,
+		"movehitreset":         c.moveHitReset,
+		"hitadd":               c.hitAdd,
+		"offset":               c.offset,
+		"victoryquote":         c.victoryQuote,
+		"zoom":                 c.zoom,
+		"dizzypointsadd":       c.dizzyPointsAdd,
+		"dizzypointsset":       c.dizzyPointsSet,
+		"dizzyset":             c.dizzySet,
+		"guardbreakset":        c.guardBreakSet,
+		"guardpointsadd":       c.guardPointsAdd,
+		"guardpointsset":       c.guardPointsSet,
+		"loadfile":             c.loadFile,
+		"mapset":               c.mapSet,
+		"mapadd":               c.mapAdd,
+		"parentmapset":         c.parentMapSet,
+		"parentmapadd":         c.parentMapAdd,
+		"rootmapset":           c.rootMapSet,
+		"rootmapadd":           c.rootMapAdd,
+		"teammapset":           c.teamMapSet,
+		"teammapadd":           c.teamMapAdd,
+		"matchrestart":         c.matchRestart,
+		"printtoconsole":       c.printToConsole,
+		"redlifeadd":           c.redLifeAdd,
+		"redlifeset":           c.redLifeSet,
+		"remapsprite":          c.remapSprite,
+		"roundtimeadd":         c.roundTimeAdd,
+		"roundtimeset":         c.roundTimeSet,
+		"savefile":             c.saveFile,
+		"scoreadd":             c.scoreAdd,
+		"targetdizzypointsadd": c.targetDizzyPointsAdd,
+		"targetguardpointsadd": c.targetGuardPointsAdd,
+		"targetredlifeadd":     c.targetRedLifeAdd,
+		"targetscoreadd":       c.targetScoreAdd,
+		"forcefeedback":        c.null,
+		"null":                 c.null,
 	}
 	return c
 }
@@ -1176,8 +1190,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ailevel":
 		out.append(OC_ailevel)
-	case "ailevelf":
-		out.append(OC_ex_, OC_ex_ailevelf)
 	case "alive":
 		out.append(OC_alive)
 	case "anim":
@@ -1225,39 +1237,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_camerazoom)
 	case "canrecover":
 		out.append(OC_canrecover)
-	case "receiveddamage":
-		out.append(OC_ex_, OC_ex_receiveddamage)
-	case "receivedhits":
-		out.append(OC_ex_, OC_ex_receivedhits)
-	case "combocount":
-		out.append(OC_ex_, OC_ex_combocount)
-	case "damagecount":
-		out.append(OC_ex_, OC_ex_damagecount)
-	case "consecutivewins":
-		out.append(OC_ex_, OC_ex_consecutivewins)
-	case "countercount":
-		out.append(OC_ex_, OC_ex_countercount)
-	case "firstattack":
-		out.append(OC_ex_, OC_ex_firstattack)
-	case "roundtype":
-		out.append(OC_ex_, OC_ex_roundtype)
-	case "getplayerid":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_, OC_ex_getplayerid)
-	case "networkplayer":
-		out.append(OC_ex_, OC_ex_networkplayer)
-	case "cheated":
-		out.append(OC_ex_, OC_ex_cheated)
-	case "memberno":
-		out.append(OC_ex_, OC_ex_memberno)
-	case "playerno":
-		out.append(OC_ex_, OC_ex_playerno)
-	case "pausetime":
-		out.append(OC_ex_, OC_ex_pausetime)
-	case "standby":
-		out.append(OC_ex_, OC_ex_standby)
 	case "command":
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -1282,6 +1261,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_data_life)
 		case "data.power":
 			out.append(OC_const_data_power)
+		case "data.dizzypoints":
+			out.append(OC_const_data_dizzypoints)
+		case "data.guardpoints":
+			out.append(OC_const_data_guardpoints)
 		case "data.attack":
 			out.append(OC_const_data_attack)
 		case "data.defence":
@@ -1468,6 +1451,21 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), Error(c.token + "の次に')'がありません")
 		}
 		*in = (*in)[1:]
+	case "const240p":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_const240p)
+	case "const480p":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_const480p)
+	case "const720p":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_const720p)
 	case "ctrl":
 		out.append(OC_ctrl)
 	case "drawgame":
@@ -1482,10 +1480,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_frontedgedist)
 	case "gameheight":
 		out.append(OC_gameheight)
-	case "gamemode":
-		if err := nameSub(OC_const_gamemode); err != nil {
-			return bvNone(), err
-		}
 	case "gametime":
 		out.append(OC_gametime)
 	case "gamewidth":
@@ -1570,6 +1564,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_fall_envshake_ampl)
 			case "fall.envshake.phase":
 				out.append(OC_ex_gethitvar_fall_envshake_phase)
+			case "attr":
+				out.append(OC_ex_gethitvar_attr)
+			case "dizzypoints":
+				out.append(OC_ex_gethitvar_dizzypoints)
+			case "guardpoints":
+				out.append(OC_ex_gethitvar_guardpoints)
+			case "redlife":
+				out.append(OC_ex_gethitvar_redlife)
 			case "score":
 				out.append(OC_ex_gethitvar_score)
 			default:
@@ -1788,8 +1790,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_projhittime)
 	case "random":
 		out.append(OC_random)
-	case "ratiolevel":
-		out.append(OC_const_, OC_const_ratiolevel)
 	case "rightedge":
 		out.append(OC_rightedge)
 	case "roundno":
@@ -1798,12 +1798,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_roundsexisted)
 	case "roundstate":
 		out.append(OC_roundstate)
-	case "scorecurrent":
-		out.append(OC_ex_, OC_ex_scorecurrent)
-	case "scoreround":
-		out.append(OC_ex_, OC_ex_scoreround)
-	case "scoretotal":
-		out.append(OC_ex_, OC_ex_scoretotal)
 	case "screenheight":
 		out.append(OC_screenheight)
 	case "screenpos":
@@ -1910,12 +1904,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_tickspersecond)
 	case "time", "statetime":
 		out.append(OC_time)
-	case "timeleft":
-		out.append(OC_ex_, OC_ex_timeleft)
-	case "timeround":
-		out.append(OC_ex_, OC_ex_timeround)
-	case "timetotal":
-		out.append(OC_ex_, OC_ex_timetotal)
 	case "topedge":
 		out.append(OC_topedge)
 	case "uniqhitcount":
@@ -2129,6 +2117,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if bv, err = c.mathFunc(out, in, rd, OC_ceil, out.ceil); err != nil {
 			return bvNone(), err
 		}
+	case "float":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_float)
 	case "max":
 		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
@@ -2189,6 +2182,31 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.min(&bv1, bv2)
 			bv = bv1
 		}
+	case "rand":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("','がありません")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.kakkotojiru(); err != nil {
+			return bvNone(), err
+		}
+		if rd {
+			out.append(OC_rdreset)
+		}
+		out.append(be1...)
+		out.appendValue(bv1)
+		out.append(be2...)
+		out.appendValue(bv2)
+		out.append(OC_ex_, OC_ex_rand)
 	case "round":
 		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
@@ -2219,30 +2237,49 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.round(&bv1, bv2)
 			bv = bv1
 		}
-	case "float":
+	case "ailevelf":
+		out.append(OC_ex_, OC_ex_ailevelf)
+	case "animelemlength":
+		out.append(OC_ex_, OC_ex_animelemlength)
+	case "animlength":
+		out.append(OC_ex_, OC_ex_animlength)
+	case "cheated":
+		out.append(OC_ex_, OC_ex_cheated)
+	case "combocount":
+		out.append(OC_ex_, OC_ex_combocount)
+	case "consecutivewins":
+		out.append(OC_ex_, OC_ex_consecutivewins)
+	case "damagecount":
+		out.append(OC_ex_, OC_ex_damagecount)
+	case "dizzy":
+		out.append(OC_ex_, OC_ex_dizzy)
+	case "dizzypoints":
+		out.append(OC_ex_, OC_ex_dizzypoints)
+	case "dizzypointsmax":
+		out.append(OC_ex_, OC_ex_dizzypointsmax)
+	case "firstattack":
+		out.append(OC_ex_, OC_ex_firstattack)
+	case "gamemode":
+		if err := nameSub(OC_const_gamemode); err != nil {
+			return bvNone(), err
+		}
+	case "getplayerid":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		out.append(OC_ex_, OC_ex_float)
-	case "const240p":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_, OC_ex_const240p)
-	case "const480p":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_, OC_ex_const480p)
-	case "const720p":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_, OC_ex_const720p)
+		out.append(OC_ex_, OC_ex_getplayerid)
+	case "groundangle":
+		out.append(OC_ex_, OC_ex_groundangle)
+	case "guardbreak":
+		out.append(OC_ex_, OC_ex_guardbreak)
+	case "guardpoints":
+		out.append(OC_ex_, OC_ex_guardpoints)
+	case "guardpointsmax":
+		out.append(OC_ex_, OC_ex_guardpointsmax)
+	case "incustomstate":
+		out.append(OC_ex_, OC_ex_incustomstate)
 	case "majorversion":
 		out.append(OC_ex_, OC_ex_majorversion)
-	case "drawpalno":
-		out.append(OC_ex_, OC_ex_drawpalno)
 	case "map":
 		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
@@ -2253,17 +2290,74 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
+	case "memberno":
+		out.append(OC_ex_, OC_ex_memberno)
+	case "movecountered":
+		out.append(OC_ex_, OC_ex_movecountered)
+	case "networkplayer":
+		out.append(OC_ex_, OC_ex_networkplayer)
+	case "pausetime":
+		out.append(OC_ex_, OC_ex_pausetime)
+	case "physics":
+		if err := eqne(func() error {
+			if len(c.token) == 0 {
+				return Error("physicsの値が指定されていません")
+			}
+			var st StateType
+			switch c.token[0] {
+			case 's':
+				st = ST_S
+			case 'c':
+				st = ST_C
+			case 'a':
+				st = ST_A
+			case 'n':
+				st = ST_N
+			default:
+				return Error(c.token + "が無効な値です")
+			}
+			out.append(OC_ex_, OC_ex_physics, OpCode(st))
+			return nil
+		}); err != nil {
+			return bvNone(), err
+		}
+	case "playerno":
+		out.append(OC_ex_, OC_ex_playerno)
+	case "ratiolevel":
+		out.append(OC_const_, OC_const_ratiolevel)
+	case "receiveddamage":
+		out.append(OC_ex_, OC_ex_receiveddamage)
+	case "receivedhits":
+		out.append(OC_ex_, OC_ex_receivedhits)
+	case "redlife":
+		out.append(OC_ex_, OC_ex_redlife)
+	case "roundtype":
+		out.append(OC_ex_, OC_ex_roundtype)
+	case "scorecurrent":
+		out.append(OC_ex_, OC_ex_scorecurrent)
+	case "scoreround":
+		out.append(OC_ex_, OC_ex_scoreround)
+	case "scoretotal":
+		out.append(OC_ex_, OC_ex_scoretotal)
 	case "selfstatenoexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
-	case "groundangle":
-		out.append(OC_ex_, OC_ex_groundangle)
-	case "stagefrontedge":
-		out.append(OC_ex_, OC_ex_stagefrontedge)
 	case "stagebackedge":
 		out.append(OC_ex_, OC_ex_stagebackedge)
+	case "stagefrontedge":
+		out.append(OC_ex_, OC_ex_stagefrontedge)
+	case "standby":
+		out.append(OC_ex_, OC_ex_standby)
+	case "timeleft":
+		out.append(OC_ex_, OC_ex_timeleft)
+	case "timeround":
+		out.append(OC_ex_, OC_ex_timeround)
+	case "timetotal":
+		out.append(OC_ex_, OC_ex_timetotal)
+	case "drawpalno":
+		out.append(OC_ex_, OC_ex_drawpalno)
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
@@ -2371,11 +2465,11 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
 				return bvNone(), Error("演算子がありません" +
-				"\n" +
-				"No comparison operator" +
-				"\n" + 
-				"Token = '" + c.token + "' String = '" + *in + "'" +
-				"\n[ECID 3]\n")
+					"\n" +
+					"No comparison operator" +
+					"\n" +
+					"Token = '" + c.token + "' String = '" + *in + "'" +
+					"\n[ECID 3]\n")
 			}
 			oldtoken, oldin := c.token, *in
 			var dummyout BytecodeExp
@@ -2385,9 +2479,9 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			if c.usiroOp {
 				if c.isOperator(c.token) <= 0 {
 					return bvNone(), Error("演算子がありません" +
-					"\n" +
-					"No comparison operator" +
-					"\n[ECID 4]\n")
+						"\n" +
+						"No comparison operator" +
+						"\n[ECID 4]\n")
 				}
 				if err := c.renzokuEnzansihaError(in); err != nil {
 					return bvNone(), err
@@ -3737,8 +3831,14 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			helper_stateno, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "keyctrl",
-			helper_keyctrl, VT_Bool, 1, false); err != nil {
+		if err := c.stateParam(is, "keyctrl", func(data string) error {
+			bes, err := c.exprs(data, VT_Int, 4)
+			if err != nil {
+				return err
+			}
+			sc.add(helper_keyctrl, bes)
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "id",
@@ -3767,6 +3867,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "extendsmap",
 			helper_extendsmap, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "inheritjuggle",
+			helper_inheritjuggle, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -4755,6 +4859,18 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_fall_envshake_freq, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "dizzypoints",
+		hitDef_dizzypoints, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guardpoints",
+		hitDef_guardpoints, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "redlife",
+		hitDef_redlife, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "score",
 		hitDef_score, VT_Float, 2, false); err != nil {
 		return err
@@ -5278,6 +5394,28 @@ func (c *Compiler) parentVarAdd(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		return c.varSetSub(is, sc, OC_parent, OC_st_varadd)
+	})
+	return *ret, err
+}
+func (c *Compiler) rootVarSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.varSetSub(is, sc, OC_root, OC_st_var)
+	})
+	return *ret, err
+}
+func (c *Compiler) rootVarAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			varSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.varSetSub(is, sc, OC_root, OC_st_varadd)
 	})
 	return *ret, err
 }
@@ -6529,177 +6667,97 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-
-func (c *Compiler) scoreAdd(is IniSection, sc *StateControllerBase,
+func (c *Compiler) dizzyPointsAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
-	ret, err := (*scoreAdd)(sc), c.stateSec(is, func() error {
+	ret, err := (*dizzyPointsAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			scoreAdd_redirectid, VT_Int, 1, false); err != nil {
+			dizzyPointsAdd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "value",
-			scoreAdd_value, VT_Float, 1, true); err != nil {
+		return c.paramValue(is, sc, "value", dizzyPointsAdd_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) dizzyPointsSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*dizzyPointsSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			dizzyPointsSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", dizzyPointsSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) dizzySet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*dizzySet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			dizzySet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", dizzySet_value, VT_Bool, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) guardBreakSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardBreakSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardBreakSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardBreakSet_value, VT_Bool, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) guardPointsAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardPointsAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardPointsAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardPointsAdd_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) guardPointsSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*guardPointsSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			guardPointsSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", guardPointsSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*loadFile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			loadFile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(loadFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramSaveData(is, sc, loadFile_saveData); err != nil {
 			return err
 		}
 		return nil
 	})
 	return *ret, err
 }
-
-func (c *Compiler) targetScoreAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*targetScoreAdd)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			targetScoreAdd_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "id",
-			targetScoreAdd_id, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			targetScoreAdd_value, VT_Float, 1, true); err != nil {
-			return err
-		}
-		return nil
-	})
-	return *ret, err
-}
-
-func (c *Compiler) roundTimeAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*roundTimeAdd)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			roundTimeAdd_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			roundTimeAdd_value, VT_Int, 1, true); err != nil {
-			return err
-		}
-		return nil
-	})
-	return *ret, err
-}
-
-func (c *Compiler) roundTimeSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*roundTimeSet)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			roundTimeSet_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		return c.paramValue(is, sc, "value", roundTimeSet_value, VT_Int, 1, true)
-	})
-	return *ret, err
-}
-
-func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*printToConsole)(sc), c.stateSec(is, func() error {
-		return c.displayToClipboardSub(is, sc)
-	})
-	return *ret, err
-}
-
 // TODO: Remove boilderplate from the Map's Compiler.
-func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "0", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "1", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "2", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) rootMapSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "4", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) rootMapAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "5", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) teamMapSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "6", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) teamMapAdd(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
-	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
-		if err := c.mapSetSub(is, sc)
-		err != nil {return err}
-		return nil
-	})
-	c.scAdd(sc, mapSet_type, "7", VT_Int, 1)
-
-	return *ret, err
-}
-
-func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) (error) {
+func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
@@ -6722,7 +6780,102 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) (error) {
 	})
 	return err
 }
+func (c *Compiler) mapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "0", VT_Int, 1)
 
+	return *ret, err
+}
+func (c *Compiler) mapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "1", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) parentMapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "2", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) parentMapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "3", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) rootMapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "4", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) rootMapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "5", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) teamMapSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "6", VT_Int, 1)
+
+	return *ret, err
+}
+func (c *Compiler) teamMapAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*mapSet)(sc), c.stateSec(is, func() error {
+		if err := c.mapSetSub(is, sc); err != nil {
+			return err
+		}
+		return nil
+	})
+	c.scAdd(sc, mapSet_type, "7", VT_Int, 1)
+
+	return *ret, err
+}
 func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*matchRestart)(sc), c.stateSec(is, func() error {
@@ -6815,7 +6968,101 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-
+func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*printToConsole)(sc), c.stateSec(is, func() error {
+		return c.displayToClipboardSub(is, sc)
+	})
+	return *ret, err
+}
+func (c *Compiler) redLifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*redLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			redLifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			redLifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			redLifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) redLifeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*redLifeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			redLifeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", redLifeSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+func (c *Compiler) remapSprite(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*remapSprite)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			remapSprite_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reset",
+			remapSprite_reset, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "preset", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("\"で囲まれていません")
+			}
+			sc.add(remapSprite_preset, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "source",
+			remapSprite_source, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dest",
+			remapSprite_dest, VT_Int, 2, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) roundTimeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*roundTimeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			roundTimeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			roundTimeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) roundTimeSet(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*roundTimeSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			roundTimeSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", roundTimeSet_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
 func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*saveFile)(sc), c.stateSec(is, func() error {
@@ -6839,31 +7086,101 @@ func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-
-func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
+func (c *Compiler) scoreAdd(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
-	ret, err := (*loadFile)(sc), c.stateSec(is, func() error {
+	ret, err := (*scoreAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			loadFile_redirectid, VT_Int, 1, false); err != nil {
+			scoreAdd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "path", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
-			}
-			sc.add(loadFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.paramSaveData(is, sc, loadFile_saveData); err != nil {
+		if err := c.paramValue(is, sc, "value",
+			scoreAdd_value, VT_Float, 1, true); err != nil {
 			return err
 		}
 		return nil
 	})
 	return *ret, err
 }
-
+func (c *Compiler) targetDizzyPointsAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetDizzyPointsAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetDizzyPointsAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetDizzyPointsAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetDizzyPointsAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetGuardPointsAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetGuardPointsAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetGuardPointsAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetGuardPointsAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetGuardPointsAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetRedLifeAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetRedLifeAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetRedLifeAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetRedLifeAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			targetRedLifeAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetRedLifeAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) targetScoreAdd(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*targetScoreAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetScoreAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetScoreAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			targetScoreAdd_value, VT_Float, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil
@@ -6954,7 +7271,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
 						return Error(data + "が無効な値です" +
-									"\n" + data + " is a invalid state controller")
+							"\n" + data + " is a invalid state controller")
 					}
 				case "persistent":
 					if c.stateNo >= 0 {
@@ -7676,7 +7993,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-		case "varset", "varadd", "parentvarset", "parentvaradd":
+		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
 		}
 		break
 	}
@@ -7857,7 +8174,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	if err != nil {
 		return nil, err
 	}
-	lines, i, cmd, stcommon, stscore, sttag := SplitAndTrim(str, "\n"), 0, "", "", sys.commonScore, sys.commonTag
+	lines, i, cmd, stcommon := SplitAndTrim(str, "\n"), 0, "", ""
 	var st [11]string
 	info, files := true, true
 	for i < len(lines) {
@@ -7885,12 +8202,6 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			if files {
 				files = false
 				cmd, stcommon = is["cmd"], is["stcommon"]
-				if _, ok := is["stscore"]; ok {
-					stscore = is["stscore"]
-				}
-				if _, ok := is["sttag"]; ok {
-					sttag = is["sttag"]
-				}
 				st[0] = is["st"]
 				for i := 1; i < len(st); i++ {
 					st[i] = is[fmt.Sprintf("st%v", i-1)]
@@ -8009,13 +8320,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			return nil, err
 		}
 	}
-	if len(stscore) > 0 {
-		if err := c.stateCompile(states, stscore, def); err != nil {
-			return nil, err
-		}
-	}
-	if len(sttag) > 0 {
-		if err := c.stateCompile(states, sttag, def); err != nil {
+	for _, s := range sys.commonStates {
+		if err := c.stateCompile(states, s, def); err != nil {
 			return nil, err
 		}
 	}

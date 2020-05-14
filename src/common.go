@@ -627,7 +627,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
-	text string, f *Fnt, b, a int32) {
+	text string, f *Fnt, b, a int32, palfx *PalFX) {
 	if l.layerno == ln {
 		if l.facing < 0 {
 			//x += sys.lifebarFontScale
@@ -637,7 +637,8 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		}
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
-			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a)
+			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a,
+			&sys.scrrect, palfx)
 	}
 }
 
@@ -690,8 +691,7 @@ func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
 
 type AnimTextSnd struct {
 	snd         [2]int32
-	font        [3]int32
-	text        string
+	text        LbText
 	anim        AnimLayout
 	displaytime int32
 	time        int32
@@ -699,28 +699,21 @@ type AnimTextSnd struct {
 }
 
 func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
-	return &AnimTextSnd{snd: [2]int32{-1}, font: [3]int32{-1},
+	return &AnimTextSnd{snd: [2]int32{-1},
 		anim: *newAnimLayout(sff, ln), displaytime: -2}
 }
 func ReadAnimTextSnd(pre string, is IniSection,
-	sff *Sff, at AnimationTable, ln int16) *AnimTextSnd {
+	sff *Sff, at AnimationTable, ln int16, f []*Fnt) *AnimTextSnd {
 	ats := newAnimTextSnd(sff, ln)
-	ats.Read(pre, is, at, ln)
+	ats.Read(pre, is, at, ln, f)
 	return ats
 }
 func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
-	ln int16) {
+	ln int16, f []*Fnt) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
-	is.ReadI32(pre+"font", &ats.font[0], &ats.font[1], &ats.font[2])
-	if tmp, ok := is.getString(pre+"text") ; ok {
-		ats.text = tmp
-		ats.anim.lay = *newLayout(ln)
-		ats.displaytime = -2
-	}
+	ats.text = readLbText(pre, is, "", ln, f)
+	ats.anim.lay = *newLayout(ln)
 	ats.anim.Read(pre, is, at, ln)
-	if len(ats.anim.anim.frames) > 0 {
-		ats.displaytime = -2
-	}
 	is.ReadI32(pre+"displaytime", &ats.displaytime)
 }
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
@@ -729,10 +722,10 @@ func (ats *AnimTextSnd) Action() { ats.anim.Action() }
 func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.Draw(x, y, layerno)
-	} else if ats.font[0] >= 0 && int(ats.font[0]) < len(f) &&
-		len(ats.text) > 0 {
-		ats.anim.lay.DrawText(x, y, 1, layerno, ats.text,
-			f[ats.font[0]], ats.font[1], ats.font[2])
+	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
+		len(ats.text.text) > 0 {
+		ats.text.lay.DrawText(x, y, 1, layerno, ats.text.text,
+			f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
 	}
 }
 
@@ -740,17 +733,17 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.DrawScaled(x, y, layerno, scale)
-	} else if ats.font[0] >= 0 && int(ats.font[0]) < len(f) &&
-		len(ats.text) > 0 {
-		ats.anim.lay.DrawText(x, y, scale, layerno, ats.text,
-			f[ats.font[0]], ats.font[1], ats.font[2])
+	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
+		len(ats.text.text) > 0 {
+		ats.text.lay.DrawText(x, y, scale, layerno, ats.text.text,
+			f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
 	}
 }
 
 func (ats *AnimTextSnd) NoSound() bool { return ats.snd[0] < 0 }
 func (ats *AnimTextSnd) NoDisplay() bool {
 	return len(ats.anim.anim.frames) == 0 &&
-		(ats.font[0] < 0 || len(ats.text) == 0)
+		(ats.text.font[0] < 0 || len(ats.text.text) == 0)
 }
 func (ats *AnimTextSnd) End(dt int32) bool {
 	if ats.displaytime < 0 {

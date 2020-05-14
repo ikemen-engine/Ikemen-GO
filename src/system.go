@@ -1,15 +1,15 @@
 package main
 
 import (
-	"runtime"
-	"io"
-	"image"
 	"bufio"
 	"fmt"
+	"image"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,28 +32,28 @@ const (
 )
 
 // System vars are accessed globally through the program
-var sys = System {
-	randseed: int32(time.Now().UnixNano()),
-	scrrect: [...]int32{0, 0, 320, 240},
+var sys = System{
+	randseed:  int32(time.Now().UnixNano()),
+	scrrect:   [...]int32{0, 0, 320, 240},
 	gameWidth: 320, gameHeight: 240,
 	widthScale: 1, heightScale: 1,
-	brightness: 256,
-	roundTime: -1,
-	lifeMul: 1,
-	singleVsTeamLife: 1,
-	turnsRecoveryBase: 0.125,
+	brightness:         256,
+	roundTime:          -1,
+	lifeMul:            1,
+	singleVsTeamLife:   1,
+	turnsRecoveryBase:  0.125,
 	turnsRecoveryBonus: 0.275,
-	mixer:             *newMixer(),
-	bgm:               *newBgm(),
-	sounds:            newSounds(16),
-	allPalFX:          *newPalFX(),
-	bgPalFX:           *newPalFX(),
-	sel:               *newSelect(),
-	keySatate:         make(map[glfw.Key]bool),
-	match:             1,
-	listenPort:        "7500",
-	loader:            *newLoader(),
-	numSimul:          [...]int32{2, 2}, numTurns: [...]int32{2, 2},
+	mixer:              *newMixer(),
+	bgm:                *newBgm(),
+	sounds:             newSounds(16),
+	allPalFX:           *newPalFX(),
+	bgPalFX:            *newPalFX(),
+	sel:                *newSelect(),
+	keySatate:          make(map[glfw.Key]bool),
+	match:              1,
+	listenPort:         "7500",
+	loader:             *newLoader(),
+	numSimul:           [...]int32{2, 2}, numTurns: [...]int32{2, 2},
 	ignoreMostErrors:      true,
 	superpmap:             *newPalFX(),
 	wincnt:                wincntMap(make(map[string][]int32)),
@@ -62,6 +62,7 @@ var sys = System {
 	oldNextAddTime:        1,
 	commandLine:           make(chan string),
 	cam:                   *newCamera(),
+	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
 	errLog:                log.New(os.Stderr, "", 0),
@@ -79,8 +80,8 @@ var sys = System {
 	lifebarOffsetX:        0,
 	lifebarPortraitScale:  1,
 	//Shader vars
-	MultisampleAntialiasing: false,
-	PostProcessingShader:    0,
+	multisampleAntialiasing: false,
+	postProcessingShader:    0,
 	allowbgm:                true,
 	borderless:              false,
 	vRetrace:                1,
@@ -102,7 +103,7 @@ type System struct {
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
 	widthScale, heightScale float32
-	window                  *glfw.Window
+	window                  *Window
 	gameEnd, frameSkip      bool
 	redrawWait              struct{ nextTime, lastDraw time.Time }
 	brightness              int32
@@ -115,6 +116,7 @@ type System struct {
 	debugFont               *Fnt
 	debugScript             string
 	debugDraw               bool
+	debugRef                [2]int
 	mixer                   Mixer
 	bgm                     Bgm
 	audioContext            *openal.Context
@@ -160,8 +162,6 @@ type System struct {
 	workingState            *StateBytecode
 	specialFlag             GlobalSpecialFlag
 	afterImageMax           int32
-	attack_LifeToPowerMul   float32
-	getHit_LifeToPowerMul   float32
 	comboExtraFrameWindow   int32
 	envShake                EnvShake
 	pause                   int32
@@ -180,7 +180,6 @@ type System struct {
 	superpos                [2]float32
 	superfacing             float32
 	superp2defmul           float32
-	super_TargetDefenceMul  float32
 	envcol                  [3]int32
 	envcol_time             int32
 	envcol_under            bool
@@ -234,10 +233,11 @@ type System struct {
 	drawc2mtk               ClsnRect
 	drawwh                  ClsnRect
 	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
-	clsnDraw                bool
 	accel                   float32
-	statusDraw              bool
 	clsnSpr                 Sprite
+	clsnDraw                bool
+	musicDraw               bool
+	statusDraw              bool
 	mainThreadTask          chan func()
 	explodMax               int
 	workpal                 []uint32
@@ -260,7 +260,7 @@ type System struct {
 	masterVolume            int
 	wavVolume               int
 	bgmVolume               int
-	AudioDucking            bool
+	audioDucking            bool
 	windowTitle             string
 	screenshotFolder        string
 	//FLAC_FrameWait          int
@@ -269,6 +269,7 @@ type System struct {
 	xinputTriggerSensitivity   float32
 
 	// Localcoord sceenpack
+	luaLocalcoord         [2]int32
 	luaSpriteScale        float64
 	luaSmallPortraitScale float32
 	luaBigPortraitScale   float32
@@ -278,64 +279,156 @@ type System struct {
 	lifebarOffsetX        float32
 	lifebarPortraitScale  float32
 	lifebarLocalcoord     [2]int32
-	LocalcoordScalingType int32
+	localcoordScalingType int32
 
-	//Shader Vars
-	PostProcessingShader    int32
-	MultisampleAntialiasing bool
+	// Shader Vars
+	postProcessingShader    int32
+	multisampleAntialiasing bool
 
 	// External Shader Vars
 	externalShaderList  []string
 	externalShaderNames []string
 	externalShaders     [][]string
 
-	// Icon :D
-	windowMainIcon			[]image.Image
-	windowMainIconLocation	[]string
+	// Icon
+	windowMainIcon         []image.Image
+	windowMainIconLocation []string
 
 	// Rendering
-	borderless              bool
-	vRetrace                int
+	borderless bool
+	vRetrace   int
 
-	gameMode                string
-	demoTime                int32
-	frameCounter            int32
-	motifDir                string
-	captureNum              int
-	challenger              int
-	roundType               [2]RoundType
-	ocd                     [MaxSimul*2 + MaxAttachedChar]OverrideCharData
-	allowbgm                bool
-	ratioLevel              [MaxSimul*2 + MaxAttachedChar]int32
-	timerStart              int32
-	timerRounds             []int32
-	scoreStart              [2]float32
-	scoreRounds             [][2]float32
-	matchData               *lua.LTable
-	matchPos                [8]float32
-	matchClearance          [2]MatchClearance
-	consecutiveWins         [2]int32
-	commonConst             string
-	commonScore             string
-	commonTag               string
-	gameSpeed               float32
-	preloading              Preloading
+	gameMode        string
+	demoTime        int32
+	frameCounter    int32
+	motifDir        string
+	captureNum      int
+	challenger      int
+	roundType       [2]RoundType
+	ocd             [MaxSimul*2 + MaxAttachedChar]OverrideCharData
+	allowbgm        bool
+	ratioLevel      [MaxSimul*2 + MaxAttachedChar]int32
+	timerStart      int32
+	timerRounds     []int32
+	scoreStart      [2]float32
+	scoreRounds     [][2]float32
+	matchData       *lua.LTable
+	matchPos        [8]float32
+	matchClearance  [2]MatchClearance
+	consecutiveWins [2]int32
+	commonConst     string
+	commonStates    []string
+	gameSpeed       float32
+	maxPowerMode    bool
+	postMatch       bool
+	preloading      Preloading
+	clsnText        []ClsnText
+	consoleText     []string
+}
+
+type Window struct {
+    *glfw.Window
+	title      string
+	fullscreen bool
+	x, y, w, h int
+}
+
+var firstWindow = true
+func (s *System) newWindow(title string, fullscreen bool, w, h int, oldWindow *Window) (*Window, error) {
+	var err error
+	var window, oldW *glfw.Window
+	var x, y int
+
+	if oldWindow != nil {
+		oldW = oldWindow.Window
+		x, y = oldW.GetPos()
+	}
+
+	if fullscreen {
+		window, err = s.fullscreenWindow(w, h, title, nil, nil, oldW)
+		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+	} else {
+		window, err = glfw.CreateWindow(w, h, title, nil, oldW)
+		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+	}
+	chk(err)
+	if firstWindow {
+		x, y = window.GetPos()
+		window.MakeContextCurrent()
+		window.SetKeyCallback(keyCallback)
+		window.SetCharModsCallback(charCallback)
+		// V-Sync
+		if s.vRetrace != -1 {
+			glfw.SwapInterval(s.vRetrace)
+		}
+		// Initialize OpenGL.
+		chk(gl.Init())
+		firstWindow = false
+	}
+	ret := &Window{window, title, fullscreen, x, y, w, h}
+	return ret, err
+}
+func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
+	mode *glfw.VidMode, oldWindow *glfw.Window) (*glfw.Window, error) {
+	var err error
+	var window *glfw.Window
+
+	if monitor == nil {
+		if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
+			return nil, fmt.Errorf("failed to obtain primary monitor")
+		}
+	}
+	//if mode == nil {
+	//	if mode = monitor.GetVideoMode(); mode == nil {
+	//		return nil, fmt.Errorf("failed to obtain video mode")
+	//	}
+	//}
+	if runtime.GOOS == "windows" && s.borderless {
+		window, err = glfw.CreateWindow(w, h, title, nil, oldWindow)
+		window.SetAttrib(glfw.Decorated, 0)
+		window.SetPos(0, 0)
+		window.SetSize(w, h)
+	} else {
+		//window, err = glfw.CreateWindow(mode.Width, mode.Height, title, monitor, oldWindow)
+		window, err = glfw.CreateWindow(w, h, title, monitor, oldWindow)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create window:", err)
+	}
+	return window, nil
+}
+func (w *Window) destroy() {
+	w.Window.Destroy()
+}
+func (w *Window) toggleFullscreen() {
+	if w.fullscreen {
+		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
+		w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+	} else {
+		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
+		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+	}
+	w.fullscreen = !w.fullscreen
 }
 
 type OverrideCharData struct {
-	power        int32
-	life         int32
-	lifeMax      int32
-	lifeRatio    float32
-	attackRatio  float32
+	life        int32
+	lifeMax     int32
+	power       int32
+	dizzyPoints int32
+	guardPoints int32
+	lifeRatio   float32
+	attackRatio float32
 }
+
 func (s *System) resetOverrideCharData() {
 	for i := range s.ocd {
-		s.ocd[i] = OverrideCharData{power: 0, life: 0, lifeMax: 0,
-		lifeRatio: 1.0, attackRatio: 1.0}
+		s.ocd[i] = OverrideCharData{life: 0, lifeMax: 0, power: 0,
+		dizzyPoints: 0, guardPoints: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
 	return
 }
+
 type MatchClearance struct {
 	helpers     bool
 	sound       bool
@@ -344,6 +437,7 @@ type MatchClearance struct {
 	fading      bool
 	updated     bool
 }
+
 type Preloading struct {
 	small  bool
 	big    bool
@@ -353,36 +447,18 @@ type Preloading struct {
 
 // Initialize stuff, this is called after the config int at main.go
 func (s *System) init(w, h int32) *lua.LState {
+	s.setWindowSize(w, h)
+	var err error
 	// Create a GLWF window.
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	s.setWindowSize(w, h)
-	var err error
-	if s.fullscreen {
-		if runtime.GOOS == "windows" && s.borderless {
-			s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, nil, nil)
-			s.window.SetAttrib(glfw.Decorated, 0)
-			s.window.SetPos(0, 0)
-			s.window.SetSize(int(s.scrrect[2]), int(s.scrrect[3]))
-		} else {
-			s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, glfw.GetPrimaryMonitor(), nil)
-		}
-	} else {
-		s.window, err = glfw.CreateWindow(int(s.scrrect[2]), int(s.scrrect[3]), s.windowTitle, nil, nil)
-	}
-	chk(err)
-	s.window.MakeContextCurrent()
-	s.window.SetKeyCallback(keyCallback)
-	s.window.SetCharModsCallback(charCallback)
-	// V-Sync
-	glfw.SwapInterval(s.vRetrace)
-	// Intializate OpenGL.
-	chk(gl.Init())
+
+	s.window, err = sys.newWindow(s.windowTitle, s.fullscreen, int(s.scrrect[2]), int(s.scrrect[3]), nil)
 	
 	// Check if the shader selected is currently avalible.
-	if s.PostProcessingShader < int32(len(s.externalShaderList))+3 {
-		s.PostProcessingShader = 0
+	if s.postProcessingShader < int32(len(s.externalShaderList))+3 {
+		s.postProcessingShader = 0
 	}
 
 	// Loading of external shader data.
@@ -395,7 +471,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		s.externalShaderNames = make([]string, len(s.externalShaderList))
 		s.externalShaders[0] = make([]string, len(s.externalShaderList))
 		s.externalShaders[1] = make([]string, len(s.externalShaderList))
-		
+
 		// Then we load.
 		for i, shaderLocation := range s.externalShaderList {
 			// Create names.
@@ -404,23 +480,23 @@ func (s *System) init(w, h int32) *lua.LState {
 			s.externalShaderNames[i] = splitDir[len(splitDir)-1]
 
 			// Load vert shaders.
-			content, err := ioutil.ReadFile(shaderLocation + ".vert") 
+			content, err := ioutil.ReadFile(shaderLocation + ".vert")
 			if err != nil {
 				chk(err)
 			}
-			s.externalShaders[0][i] = string(content) + "\x00";
+			s.externalShaders[0][i] = string(content) + "\x00"
 
 			// Load frag shaders.
-			content, err = ioutil.ReadFile(shaderLocation + ".frag") 
+			content, err = ioutil.ReadFile(shaderLocation + ".frag")
 			if err != nil {
 				chk(err)
 			}
-			s.externalShaders[1][i] = string(content) + "\x00";
+			s.externalShaders[1][i] = string(content) + "\x00"
 		}
 	}
 	// PS: The "\x00" is what is know as Null Terminator.
 
-	// Now we proced to int the render.
+	// Now we proceed to int the render.
 	RenderInit()
 	// And the audio.
 	s.audioOpen()
@@ -440,17 +516,17 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.clsnSpr.SetPxl([]byte{0})
 	s.resetOverrideCharData()
 	systemScriptInit(l)
-	// So now that we have a windo we add a icon.
+	// So now that we have a window we add a icon.
 	if len(s.windowMainIconLocation) > 0 {
 		// First we initialize arrays.
-		f := make([]io.ReadCloser, len(s.windowMainIconLocation) )
+		f := make([]io.ReadCloser, len(s.windowMainIconLocation))
 		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
 		// And then we load them.
 		for i, iconLocation := range s.windowMainIconLocation {
 			f[i], _ = os.Open(iconLocation)
 			s.windowMainIcon[i], _, err = image.Decode(f[i])
 		}
-		s.window.SetIcon(s.windowMainIcon)
+		s.window.Window.SetIcon(s.windowMainIcon)
 		chk(err)
 	}
 	// [Icon add end]
@@ -484,7 +560,7 @@ func (s *System) eventUpdate() bool {
 		v.Activate = false
 	}
 	glfw.PollEvents()
-	s.gameEnd = s.window.ShouldClose()
+	s.gameEnd = s.window.Window.ShouldClose()
 	return !s.gameEnd
 }
 func (s *System) runMainThreadTask() {
@@ -501,7 +577,7 @@ func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
 		unbindFB()
-		s.window.SwapBuffers()
+		s.window.Window.SwapBuffers()
 		// Begin the next frame
 		bindFB()
 	}
@@ -717,8 +793,13 @@ func (s *System) unsetSF(gsf GlobalSpecialFlag) {
 func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 	spl := s.stringPool[pn].List
 	if sn >= 0 && sn < len(spl) {
-		s.clipboardText[pn] = append(s.clipboardText[pn],
-			strings.Split(OldSprintf(spl[sn], a...), "\n")...)
+		for i, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
+			if i == 0 && len(s.clipboardText[pn]) > 0 {
+				s.clipboardText[pn][len(s.clipboardText[pn])-1] += str
+			} else {
+				s.clipboardText[pn] = append(s.clipboardText[pn], str)
+			}
+		}
 		if len(s.clipboardText[pn]) > 10 {
 			s.clipboardText[pn] = s.clipboardText[pn][len(s.clipboardText[pn])-10:]
 		}
@@ -729,7 +810,11 @@ func (s *System) printToConsole(pn, sn int, a ...interface{}) {
 	if sn >= 0 && sn < len(spl) {
 		for _, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
 			fmt.Printf("%s\n", str)
+			s.consoleText = append(s.consoleText, str)
 		}
+	}
+	if len(s.consoleText) > 10 {
+		s.consoleText = s.consoleText[len(s.consoleText)-10:]
 	}
 }
 func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
@@ -816,12 +901,12 @@ func (s *System) nextRound() {
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
 	s.nextCharId = s.helperMax
-	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0] - 1) ||
-		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins - 1) {
+	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
+		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins-1) {
 		s.roundType[0] = RT_Deciding
 	}
-	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1] - 1) ||
-		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins - 1) {
+	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1]-1) ||
+		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins-1) {
 		s.roundType[1] = RT_Deciding
 	}
 	if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
@@ -991,6 +1076,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawc2sp = s.drawc2sp[:0]
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
+	s.clsnText = nil
 	s.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
 	leftest, rightest = *x, *x
@@ -1304,15 +1390,15 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 						if len(p) > 0 {
 							if s.waitdown >= 0 && p[0].win() && p[0].alive() &&
 								((!s.matchOver() && (s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns)) ||
-								(s.gameMode == "survival" || s.gameMode == "survivalcoop" || 
-								s.gameMode == "netplaysurvivalcoop")) {
+									(s.gameMode == "survival" || s.gameMode == "survivalcoop" ||
+										s.gameMode == "netplaysurvivalcoop")) {
 								rt := s.roundTime
 								if rt < 0 {
 									rt = 99 * sys.lifebar.ti.framespercount
 								}
-								p[0].life += int32((float32(s.time) + 1) / (float32(rt) + 1) *
-									float32(p[0].lifeMax) * s.turnsRecoveryBonus +
-									float32(p[0].lifeMax) * s.turnsRecoveryBase)
+								p[0].life += int32((float32(s.time)+1)/(float32(rt)+1)*
+									float32(p[0].lifeMax)*s.turnsRecoveryBonus +
+									float32(p[0].lifeMax)*s.turnsRecoveryBase)
 								if p[0].life > p[0].lifeMax {
 									p[0].life = p[0].lifeMax
 								}
@@ -1436,7 +1522,6 @@ func (s *System) draw(x, y, scl float32) {
 			fade(rect, 255)
 		}
 		s.lifebar.draw(0)
-		s.lifebar.ro.draw(0)
 	} else {
 		FillRect(s.scrrect, ecol, 255)
 	}
@@ -1447,10 +1532,8 @@ func (s *System) draw(x, y, scl float32) {
 		}
 	}
 	s.lifebar.draw(1)
-	s.lifebar.ro.draw(1)
 	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
 	s.lifebar.draw(2)
-	s.lifebar.ro.draw(2)
 	tmp := s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
 		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime
 	if s.intro > s.lifebar.ro.ctrl_time+1 {
@@ -1484,10 +1567,14 @@ func (s *System) draw(x, y, scl float32) {
 		s.drawc2mtk.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xff404040
 		s.drawwh.draw(0x3feff)
+		for _, t := range s.clsnText {
+			sys.debugFont.DrawText(t.text, t.x, t.y, 1/sys.widthScale,
+				1/sys.heightScale, 0, 1, &sys.scrrect, t.palfx)
+		}
 	}
 }
 func (s *System) fight() (reload bool) {
-	s.gameTime, s.paused, s.accel, s.statusDraw = 0, false, 1, true
+	s.gameTime, s.paused, s.accel = 0, false, 1
 	for i := range s.clipboardText {
 		s.clipboardText[i] = nil
 	}
@@ -1532,12 +1619,15 @@ func (s *System) fight() (reload bool) {
 		}
 		s.wincnt.update()
 	}()
-	var life, pow [len(s.chars)]int32
+	var life, pow, gpow, spow, rlife [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
 		pow[pn] = s.chars[pn][0].power
+		gpow[pn] = s.chars[pn][0].guardPoints
+		spow[pn] = s.chars[pn][0].dizzyPoints
+		rlife[pn] = s.chars[pn][0].redLife
 		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
 			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
 		}
@@ -1551,11 +1641,16 @@ func (s *System) fight() (reload bool) {
 	dL := lua.NewState()
 	defer dL.Close()
 	var statusLFunc *lua.LFunction
+	var listLFunc []*lua.LFunction
 	if len(s.debugScript) > 0 {
 		if err := debugScriptInit(dL, s.debugScript); err != nil {
 			s.errLog.Println(err.Error())
 		} else {
-			statusLFunc, _ = dL.GetGlobal("status").(*lua.LFunction)
+			statusLFunc, _ = dL.GetGlobal("statusInfo").(*lua.LFunction)
+			listLFunc = append(listLFunc, dL.GetGlobal("engineInfo").(*lua.LFunction))
+			listLFunc = append(listLFunc, dL.GetGlobal("playerInfo").(*lua.LFunction))
+			listLFunc = append(listLFunc, dL.GetGlobal("actionInfo").(*lua.LFunction))
+			listLFunc = append(listLFunc, dL.GetGlobal("stateInfo").(*lua.LFunction))
 		}
 	}
 	debugInput := func() {
@@ -1567,7 +1662,7 @@ func (s *System) fight() (reload bool) {
 		default:
 		}
 	}
-	put := func(y *float32, txt string) {
+	put := func(x, y *float32, txt string) {
 		tmp := s.allPalFX.enable
 		s.allPalFX.enable = false
 		for txt != "" {
@@ -1583,15 +1678,19 @@ func (s *System) fight() (reload bool) {
 				drawTxt, txt = txt, ""
 			}
 			*y += float32(s.debugFont.Size[1]) / s.heightScale
-			s.debugFont.DrawText(drawTxt, (320-float32(s.gameWidth))/2, *y,
-				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect)
+			s.debugFont.DrawText(drawTxt, *x, *y,
+				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect,
+				s.debugFont.palfx)
 		}
 		s.allPalFX.enable = tmp
 	}
 	drawDebug := func() {
 		if s.debugDraw && s.debugFont != nil {
+			//Player Info
+			x := (320 - float32(s.gameWidth)) / 2 + 1
 			y := 240 - float32(s.gameHeight)
 			if statusLFunc != nil {
+				s.debugFont.palfx.setColor(255, 255, 255)
 				for i, p := range s.chars {
 					if len(p) > 0 {
 						top := dL.GetTop()
@@ -1599,43 +1698,58 @@ func (s *System) fight() (reload bool) {
 							Protect: true}, lua.LNumber(i+1)) == nil {
 							s, ok := dL.Get(-1).(lua.LString)
 							if ok && len(s) > 0 {
-								put(&y, string(s))
+								put(&x, &y, string(s))
 							}
 						}
 						dL.SetTop(top)
 					}
 				}
 			}
+			//Console
 			y = MaxF(y, 48+240-float32(s.gameHeight))
-			for i, p := range s.chars {
-				if len(p) > 0 {
-					put(&y, s.cgi[i].def)
-				}
+			s.debugFont.palfx.setColor(255, 255, 255)
+			for _, s := range s.consoleText {
+				put(&x, &y, s)
 			}
-			put(&y, s.stage.def)
-			if s.debugWC != nil {
-				//put(&y, fmt.Sprintf("<P%v:%v>", s.debugWC.playerNo+1, s.debugWC.name))
-				if s.bgm.streamer != nil {
-					put(&y, fmt.Sprintf("BgmPos: %v", s.bgm.streamer.Position()))
-					put(&y, fmt.Sprintf("BgmLen: %v", s.bgm.streamer.Len()))
-					if s.nomusic == false {
-						put(&y, fmt.Sprintf("BgmPlayback: enabled"))
+			//Data
+			y = float32(s.gameHeight) - float32(s.debugFont.Size[1]) / s.heightScale *
+				(float32(len(listLFunc)) + float32(len(s.clipboardText[s.debugRef[0]])) + 1)
+			for i, f := range listLFunc {
+				if f != nil {
+					pn := s.debugRef[0]
+					hn := s.debugRef[1]
+					if pn >= len(s.chars) || hn >= len(s.chars[pn]) {
+						s.debugRef[0] = 0
+						s.debugRef[1] = 0
+					}
+					s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
+					if i == 1 {
+						s.debugFont.palfx.setColor(199, 199, 219)
+					} else if i > 1 && s.debugWC.ss.sb.playerNo != s.debugWC.playerNo {
+						s.debugFont.palfx.setColor(255, 255, 127)
 					} else {
-						put(&y, fmt.Sprintf("BgmPlayback: disabled"))
+						s.debugFont.palfx.setColor(255, 255, 255)
 					}
-					put(&y, fmt.Sprintf("BgmLoopEnd: %v", s.bgm.bgmLoopEnd))
-					put(&y, fmt.Sprintf("BgmLoopStart: %v", s.bgm.bgmLoopStart))
-				} else {
-					put(&y, fmt.Sprintf("BgmPlayback: disabled"))
+					top := dL.GetTop()
+					if dL.CallByParam(lua.P{Fn: f, NRet: 1,
+						Protect: true}) == nil {
+						s, ok := dL.Get(-1).(lua.LString)
+						if ok && len(s) > 0 {
+							if i == 1 && (sys.debugWC == nil || sys.debugWC.sf(CSF_destroy)) {
+								put(&x, &y, string(s) + " disabled")
+								break
+							}
+							put(&x, &y, string(s))
+							
+						}
+					}
+					dL.SetTop(top)
 				}
 			}
-			for i, p := range s.chars {
-				if len(p) > 0 {
-					for _, s := range s.clipboardText[i] {
-						put(&y, s)
-					}
-				}
-				y += float32(s.debugFont.Size[1]) / s.heightScale
+			//Clipboard
+			s.debugFont.palfx.setColor(255, 255, 255)
+			for _, s := range s.clipboardText[s.debugRef[0]] {
+				put(&x, &y, s)
 			}
 		}
 	}
@@ -1743,13 +1857,29 @@ func (s *System) fight() (reload bool) {
 					p[0].life = p[0].lifeMax
 				}
 				if s.round == 1 {
-					p[0].power = p[0].ocd().power //p[0].power = 0
+					if s.maxPowerMode {
+						p[0].power = p[0].powerMax
+					} else {
+						p[0].power = p[0].ocd().power //p[0].power = 0
+					}
 				}
 				p[0].mapArray = make(map[string]float32)
-				for k,v := range p[0].mapDefault {
+				for k, v := range p[0].mapDefault {
 					p[0].mapArray[k] = v
 				}
+				p[0].remapSpr = make(RemapPreset)
 			}
+			if p[0].ocd().guardPoints != 0 {
+				p[0].guardPoints = p[0].ocd().guardPoints
+			} else {
+				p[0].guardPoints = p[0].guardPointsMax
+			}
+			if p[0].ocd().dizzyPoints != 0 {
+				p[0].dizzyPoints = p[0].ocd().dizzyPoints
+			} else {
+				p[0].dizzyPoints = p[0].dizzyPointsMax
+			}
+			p[0].redLife = 0
 			copyVar(i)
 		}
 	}
@@ -1766,6 +1896,9 @@ func (s *System) fight() (reload bool) {
 			if len(p) > 0 {
 				p[0].life = life[i]
 				p[0].power = pow[i]
+				p[0].guardPoints = gpow[i]
+				p[0].dizzyPoints = spow[i]
+				p[0].redLife = rlife[i]
 				copy(p[0].ivar[:], ivar[i])
 				copy(p[0].fvar[:], fvar[i])
 			}
@@ -1834,14 +1967,12 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
 					tmp.RawSetString("score", lua.LNumber(p[0].scoreCurrent))
-					tmp.RawSetString("counterHits", lua.LNumber(p[0].counterHits))
 					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
 					tmp.RawSetString("cheated", lua.LBool(p[0].cheated))
 					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
 					scr[i&1] += p[0].scoreCurrent
 					p[0].scoreCurrent = 0
 					p[0].damageCount = 0
-					p[0].counterHits = 0
 					p[0].firstAttack = false
 					p[0].cheated = false
 				}
@@ -1857,6 +1988,7 @@ func (s *System) fight() (reload bool) {
 						} else if p[0].life <= 0 {
 							p[0].life = 1
 						}
+						p[0].redLife = 0
 						copyVar(i)
 					}
 				}
@@ -1957,8 +2089,8 @@ func (s *System) fight() (reload bool) {
 				p2cnt = s.numSimul[1]
 			}
 			for _, p := range s.chars {
-				if len(p) > 0 && float32(p[0].life) / float32(p[0].lifeMax) * 100 <= float32(s.stage.bgmratiolife) {
-					if p[0].playerNo % 2 == 0 {
+				if len(p) > 0 && float32(p[0].life)/float32(p[0].lifeMax)*100 <= float32(s.stage.bgmratiolife) {
+					if p[0].playerNo%2 == 0 {
 						p1cnt -= 1
 					} else {
 						p2cnt -= 1
@@ -2168,7 +2300,7 @@ type Select struct {
 	lportrait       [2]int16
 	vsportrait      [2]int16
 	stageportrait   [2]int16
-	aportrait		map[string]Anim
+	aportrait       map[string]Anim
 	cdefOverwrite   [MaxSimul * 2]string
 	sdefOverwrite   string
 	stagebgm        [5]StageBgm
@@ -2176,16 +2308,16 @@ type Select struct {
 
 func newSelect() *Select {
 	return &Select{columns: 5,
-		rows: 2,
-		randomscl: [...]float32{1, 1},
-		cellsize: [...]float32{29, 29},
-		cellscale: [...]float32{1, 1},
+		rows:            2,
+		randomscl:       [...]float32{1, 1},
+		cellsize:        [...]float32{29, 29},
+		cellscale:       [...]float32{1, 1},
 		selectedStageNo: -1,
-		sportrait: [...]int16{9000, 0},
-		lportrait: [...]int16{9000, 1},
-		vsportrait: [...]int16{9000, 1},
-		stageportrait: [...]int16{9000, 0},
-		aportrait: make(map[string]Anim)}
+		sportrait:       [...]int16{9000, 0},
+		lportrait:       [...]int16{9000, 1},
+		vsportrait:      [...]int16{9000, 1},
+		stageportrait:   [...]int16{9000, 0},
+		aportrait:       make(map[string]Anim)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -2277,13 +2409,11 @@ func (s *Select) addChar(def string) {
 			if info {
 				info = false
 				var ok bool
-				sc.name, ok, _ = is.getText("displayname")
-				if !ok {
+				if sc.name, ok, _ = is.getText("displayname"); !ok {
 					sc.name, _, _ = is.getText("name")
 				}
 				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
-				ok = is.ReadF32("localcoord", &sc.portrait_scale)
-				if !ok {
+				if ok = is.ReadF32("localcoord", &sc.portrait_scale); !ok {
 					sc.portrait_scale = 1
 				} else {
 					sc.portrait_scale = (320 / sc.portrait_scale)
@@ -2403,20 +2533,16 @@ func (s *Select) AddStage(def string) error {
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				var ok bool
-				ok = is.ReadF32("localcoord", &ss.portrait_scale)
-				if !ok {
+				if ok := is.ReadF32("localcoord", &ss.portrait_scale); !ok {
 					ss.portrait_scale = 1
 				} else {
 					ss.portrait_scale = (320 / ss.portrait_scale)
 				}
-				ok = is.ReadF32("xscale", &ss.xscale)
-				if !ok {
+				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
 					ss.xscale = 1
-				}
-				ok = is.ReadF32("yscale", &ss.yscale)
-				if !ok {
+					is.ReadF32("xscale", &ss.xscale)
 					ss.yscale = 1
+					is.ReadF32("yscale", &ss.yscale)
 				}
 			}
 		}
@@ -2524,6 +2650,8 @@ func (l *Loader) loadChar(pn int) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
+			p.guardPoints = sys.chars[pn][0].guardPoints
+			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 	}
 	p.memberNo = memberNo
@@ -2543,7 +2671,7 @@ func (l *Loader) loadChar(pn int) int {
 		}
 	}
 	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = sys.cgi[pn].palkeymap[pal-1] + 1
+		sys.cgi[pn].palno = pal //sys.cgi[pn].palkeymap[pal-1] + 1
 	}
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) &&
 		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
@@ -2575,6 +2703,8 @@ func (l *Loader) loadAttachedChar(atcpn int, def string) int {
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
+			p.guardPoints = sys.chars[pn][0].guardPoints
+			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 	}
 	p.memberNo = -atcpn

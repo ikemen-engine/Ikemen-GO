@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
-	lua "github.com/yuin/gopher-lua"
 	"github.com/sqweek/dialog"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func init() {
@@ -47,25 +47,37 @@ func main() {
 			if match {
 				help, _ := regexp.MatchString("^-[h%?]", a)
 				if help {
-					fmt.Println("I.K.E.M.E.N\nOptions (case sensitive):")
-					fmt.Println(" -h -?                      Help")
-					fmt.Println(" -log <logfile>             Records match data to <logfile>")
-					fmt.Println(" -r <sysfile>               Loads motif <sysfile>. eg. -r motifdir or -r motifdir/system.def")
-					fmt.Println("\nQuick VS Options:")
-					fmt.Println(" -p<n> <playername>         Loads player n, eg. -p3 kfm")
-					fmt.Println(" -p<n>.ai <level>           Set player n's AI to <level>, eg. -p1.ai 8")
-					fmt.Println(" -p<n>.color <col>          Set player n's color to <col>")
-					fmt.Println(" -p<n>.power <power>        Sets player n's power to <power>")
-					fmt.Println(" -p<n>.life <life>          Sets player n's life to <life>")
-					fmt.Println(" -p<n>.lifeMax <life>       Sets player n's max life to <life>")
-					fmt.Println(" -p<n>.lifeRatio <ratio>    Sets player n's life ratio to <ratio>")
-					fmt.Println(" -p<n>.attackRatio <ratio>  Sets player n's attack ratio to <ratio>")
-					fmt.Println(" -tmode1 <tmode>            Sets p1 side team mode to <tmode>")
-					fmt.Println(" -tmode2 <tmode>            Sets p2 side team mode to <tmode>")
-					fmt.Println(" -time <num>                Round time (-1 to disable)")
-					fmt.Println(" -rounds <num>              Plays for <num> rounds, and then quits")
-					fmt.Println(" -s <stagename>             Loads stage <stagename>")
-					fmt.Println("\nPress ENTER to exit.")
+					text := `Options (case sensitive):
+-h -?                   Help
+-log <logfile>          Records match data to <logfile>
+-r <path>               Loads motif <path>. eg. -r motifdir or -r motifdir/system.def
+-lifebar <path>         Loads lifebar <path>. eg. -lifebar data/fight.def
+-storyboard <path>      Loads storyboard <path>. eg. -storyboard chars/kfm/intro.def
+
+Quick VS Options:
+-p<n> <playername>      Loads player n, eg. -p3 kfm
+-p<n>.ai <level>        Sets player n's AI to <level>, eg. -p1.ai 8
+-p<n>.color <col>       Sets player n's color to <col>
+-p<n>.power <power>     Sets player n's power to <power>
+-p<n>.life <life>       Sets player n's life to <life>
+-tmode1 <tmode>         Sets p1 team mode to <tmode>
+-tmode2 <tmode>         Sets p2 team mode to <tmode>
+-time <num>             Round time (-1 to disable)
+-rounds <num>           Plays for <num> rounds, and then quits
+-s <stagename>          Loads stage <stagename>
+
+Debug Options:
+-nojoy                  Disables joysticks
+-nomusic                Disables music
+-nosound                Disables all sound effects and music
+-togglelifebars         Disables display of the Life and Power bars
+-maxpowermode           Enables auto-refill of Power bars
+-ailevel <level>        Changes game difficulty setting to <level> (1-8)
+-speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
+-stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
+-speedtest              Speed test (match speed x100)`
+					//dialog.Message(text).Title("I.K.E.M.E.N Command line options").Info()
+					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 					var s string
 					fmt.Scanln(&s)
 					os.Exit(0)
@@ -90,22 +102,30 @@ func main() {
 		chk(f.Close())
 	}
 	defcfg := []byte(strings.Join(strings.Split(
-`{
+		`{
 	"AIRamping": true,
 	"AIRandomColor": true,
 	"AudioDucking": false,
 	"AutoGuard": false,
+	"BarGuard": false,
+	"BarRedLife": true,
+	"BarStun": false,
 	"Borderless": false,
 	"ComboExtraFrameWindow": 1,
 	"CommonAir": "data/common.air",
 	"CommonCmd": "data/common.cmd",
 	"CommonConst": "data/common.const",
-	"CommonScore": "data/score.zss",
-	"CommonTag": "data/tag.zss",
+	"CommonStates": [
+        "data/rules.zss",
+        "data/score.zss",
+        "data/tag.zss"
+    ],
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
+	"DebugFont": "font/f-4x6.def",
 	"DebugKeys": true,
 	"DebugMode": false,
+	"DebugScript": "external/script/debug.lua",
 	"Difficulty": 8,
 	"ExternalShaders": [],
 	"Fullscreen": false,
@@ -124,9 +144,6 @@ func main() {
 	"MaxPlayerProjectile": 256,
 	"Motif": "data/system.def",
 	"MSAA": false,
-	"MulAttackLifeToPower": 0.7,
-	"MulGetHitLifeToPower": 0.6,
-	"MulSuperTargetDefence": 1.5,
 	"NumSimul": [
 		2,
 		4
@@ -167,15 +184,14 @@ func main() {
 	"TagLoseKO": false,
 	"TeamLifeAdjustment": false,
 	"TeamPowerShare": true,
+	"TrainingChar": "chars/training/training.def",
 	"TurnsRecoveryBase": 0,
 	"TurnsRecoveryBonus": 20,
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VRetrace": 1, 
-	"WindowMainIconLocation": [
-		"external/icons/IkemenCylia.png"
-	],
+	"VRetrace": 0, 
+	"WindowIcon": "external/icons/IkemenCylia.png",
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
 	"ZoomActive": true,
@@ -265,17 +281,21 @@ func main() {
 		AIRandomColor              bool
 		AudioDucking               bool
 		AutoGuard                  bool
+		BarGuard                   bool
+		BarRedLife                 bool
+		BarStun                    bool
 		Borderless                 bool
 		ComboExtraFrameWindow      int32
 		CommonAir                  string
 		CommonCmd                  string
 		CommonConst                string
-		CommonScore                string
-		CommonTag                  string
+		CommonStates               []string
 		ControllerStickSensitivity float32
 		Credits                    int
+		DebugFont                  string
 		DebugKeys                  bool
 		DebugMode                  bool
+		DebugScript                string
 		Difficulty                 int
 		ExternalShaders            []string
 		Fullscreen                 bool
@@ -294,9 +314,6 @@ func main() {
 		MaxPlayerProjectile        int
 		Motif                      string
 		MSAA                       bool
-		MulAttackLifeToPower       float32
-		MulGetHitLifeToPower       float32
-		MulSuperTargetDefence      float32
 		NumSimul                   [2]int
 		NumTag                     [2]int
 		NumTurns                   [2]int
@@ -318,13 +335,14 @@ func main() {
 		TagLoseKO                  bool
 		TeamLifeAdjustment         bool
 		TeamPowerShare             bool
+		TrainingChar               string
 		TurnsRecoveryBase          float32
 		TurnsRecoveryBonus         float32
 		VolumeBgm                  int
 		VolumeMaster               int
 		VolumeSfx                  int
 		VRetrace                   int
-		WindowMainIconLocation     []string
+		WindowIcon                 string
 		WindowTitle                string
 		XinputTriggerSensitivity   float32
 		ZoomActive                 bool
@@ -335,7 +353,7 @@ func main() {
 			Joystick int
 			Buttons  []interface{}
 		}
-		JoystickConfig             []struct {
+		JoystickConfig []struct {
 			Joystick int
 			Buttons  []interface{}
 		}
@@ -348,50 +366,45 @@ func main() {
 		}
 		chk(json.Unmarshal(bytes, &tmp))
 	}
-	cfg, err := json.MarshalIndent(tmp, "", "	")
+	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile("save/config.json", cfg, 0644))
-	sys.AudioDucking = tmp.AudioDucking
+	sys.afterImageMax = tmp.MaxAfterImage
+	sys.allowDebugKeys = tmp.DebugKeys
+	sys.audioDucking = tmp.AudioDucking
+	sys.bgmVolume = tmp.VolumeBgm
+	sys.borderless = tmp.Borderless
+	sys.cam.ZoomEnable = tmp.ZoomActive
+	sys.cam.ZoomMax = tmp.ZoomMax
+	sys.cam.ZoomMin = tmp.ZoomMin
+	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
-	air, err := ioutil.ReadFile(tmp.CommonAir); if err == nil {
+	if air, err := ioutil.ReadFile(tmp.CommonAir); err == nil {
 		sys.commonAir = "\n" + string(air)
 	}
-	cmd, err := ioutil.ReadFile(tmp.CommonCmd); if err == nil {
+	if cmd, err := ioutil.ReadFile(tmp.CommonCmd); err == nil {
 		sys.commonCmd = "\n" + string(cmd)
 	}
-	// TODO: We should organize this.
 	sys.commonConst = tmp.CommonConst
-	sys.commonScore = tmp.CommonScore
-	sys.commonTag = tmp.CommonTag
+	sys.commonStates = tmp.CommonStates
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
-	sys.allowDebugKeys = tmp.DebugKeys
 	sys.debugDraw = tmp.DebugMode
+	sys.debugScript = tmp.DebugScript
+	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
 	sys.fullscreen = tmp.Fullscreen
-	sys.borderless = tmp.Borderless
+	sys.helperMax = tmp.MaxHelper
+	sys.lifeAdjustment = tmp.TeamLifeAdjustment
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.listenPort = tmp.ListenPort
-	sys.LocalcoordScalingType = tmp.LocalcoordScalingType
-	sys.helperMax = tmp.MaxHelper
-	sys.playerProjectileMax = tmp.MaxPlayerProjectile
-	sys.explodMax = tmp.MaxExplod
-	sys.afterImageMax = tmp.MaxAfterImage
-	sys.MultisampleAntialiasing = tmp.MSAA
-	sys.attack_LifeToPowerMul = tmp.MulAttackLifeToPower
-	sys.getHit_LifeToPowerMul = tmp.MulGetHitLifeToPower
-	sys.super_TargetDefenceMul = tmp.MulSuperTargetDefence
-	sys.PostProcessingShader = tmp.PostProcessingShader
-	sys.preloading.small = tmp.PreloadingSmall
-	sys.preloading.big = tmp.PreloadingBig
-	sys.preloading.versus = tmp.PreloadingVersus
-	sys.preloading.stage = tmp.PreloadingStage
-	sys.lifeAdjustment = tmp.TeamLifeAdjustment
-	sys.bgmVolume = tmp.VolumeBgm
+	sys.localcoordScalingType = tmp.LocalcoordScalingType
 	sys.masterVolume = tmp.VolumeMaster
-	sys.wavVolume = tmp.VolumeSfx
-	sys.windowMainIconLocation = tmp.WindowMainIconLocation
-	sys.windowTitle = tmp.WindowTitle
-	sys.vRetrace = tmp.VRetrace
-	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
+	sys.multisampleAntialiasing = tmp.MSAA
+	sys.playerProjectileMax = tmp.MaxPlayerProjectile
+	sys.postProcessingShader = tmp.PostProcessingShader
+	sys.preloading.big = tmp.PreloadingBig
+	sys.preloading.small = tmp.PreloadingSmall
+	sys.preloading.stage = tmp.PreloadingStage
+	sys.preloading.versus = tmp.PreloadingVersus
 	tmp.ScreenshotFolder = strings.TrimSpace(tmp.ScreenshotFolder)
 	if tmp.ScreenshotFolder != "" {
 		tmp.ScreenshotFolder = strings.Replace(tmp.ScreenshotFolder, "\\", "/", -1)
@@ -400,10 +413,11 @@ func main() {
 	} else {
 		sys.screenshotFolder = tmp.ScreenshotFolder
 	}
-	sys.cam.ZoomEnable = tmp.ZoomActive
-	sys.cam.ZoomMax = tmp.ZoomMax
-	sys.cam.ZoomMin = tmp.ZoomMin
-	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
+	sys.vRetrace = tmp.VRetrace
+	sys.wavVolume = tmp.VolumeSfx
+	sys.windowMainIconLocation = append(sys.windowMainIconLocation, tmp.WindowIcon)
+	sys.windowTitle = tmp.WindowTitle
+	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	stoki := func(key string) int {
 		return int(StringToKey(key))
 	}
@@ -430,15 +444,17 @@ func main() {
 					stoki(b[10].(string)), stoki(b[11].(string)), stoki(b[12].(string))})
 			}
 		}
-		for _, jc := range tmp.JoystickConfig {
-			b := jc.Buttons
-			if jc.Joystick >= 0 {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{jc.Joystick,
-					Atoi(b[0].(string)), Atoi(b[1].(string)),
-					Atoi(b[2].(string)), Atoi(b[3].(string)),
-					Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
-					Atoi(b[7].(string)), Atoi(b[8].(string)), Atoi(b[9].(string)),
-					Atoi(b[10].(string)), Atoi(b[11].(string)), Atoi(b[12].(string))})
+		if _, ok := sys.cmdFlags["-nojoy"]; !ok {
+			for _, jc := range tmp.JoystickConfig {
+				b := jc.Buttons
+				if jc.Joystick >= 0 {
+					sys.joystickConfig = append(sys.joystickConfig, KeyConfig{jc.Joystick,
+						Atoi(b[0].(string)), Atoi(b[1].(string)),
+						Atoi(b[2].(string)), Atoi(b[3].(string)),
+						Atoi(b[4].(string)), Atoi(b[5].(string)), Atoi(b[6].(string)),
+						Atoi(b[7].(string)), Atoi(b[8].(string)), Atoi(b[9].(string)),
+						Atoi(b[10].(string)), Atoi(b[11].(string)), Atoi(b[12].(string))})
+				}
 			}
 		}
 	}

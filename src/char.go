@@ -24,6 +24,9 @@ const (
 	SCF_airjump
 	SCF_over
 	SCF_ko_round_middle
+	SCF_dizzy
+	SCF_guardbreak
+	SCF_disabled
 )
 
 type CharSpecialFlag uint32
@@ -101,6 +104,12 @@ const (
 	SaveData_fvar
 )
 
+type ClsnText struct {
+	x, y  float32
+	text  string
+	palfx *PalFX
+}
+
 type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
@@ -131,11 +140,13 @@ func (cr ClsnRect) draw(trans int32) {
 }
 
 type CharData struct {
-	life    int32
-	power   int32
-	attack  int32
-	defence int32
-	fall    struct {
+	life        int32
+	power       int32
+	dizzypoints int32
+	guardpoints int32
+	attack      int32
+	defence     int32
+	fall        struct {
 		defence_mul float32
 	}
 	liedown struct {
@@ -158,6 +169,8 @@ func (cd *CharData) init() {
 	*cd = CharData{}
 	cd.life = 1000
 	cd.power = 3000
+	cd.dizzypoints = 1000
+	cd.guardpoints = 1000
 	cd.attack = 100
 	cd.defence = 100
 	cd.fall.defence_mul = 1.5
@@ -518,6 +531,9 @@ type HitDef struct {
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
+	dizzypoints                int32
+	guardpoints                int32
+	redlife                    int32
 	score                      [2]float32
 }
 
@@ -545,7 +561,8 @@ func (hd *HitDef) clear() {
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
 		kill:           true, guard_kill: true, playerNo: -1,
-		score:          [...]float32{float32(math.NaN()), float32(math.NaN())}}
+		dizzypoints: IErr, guardpoints: IErr, redlife: IErr,
+		score: [...]float32{float32(math.NaN()), float32(math.NaN())}}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
@@ -588,6 +605,9 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
+	dizzypoints    int32
+	guardpoints    int32
+	redlife        int32
 	score          float32
 }
 
@@ -951,6 +971,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	if e.id == IErr {
 		e.anim = nil
+		return
+	}
+	if sys.chars[playerNo][0].scf(SCF_disabled) {
 		return
 	}
 	var c *Char
@@ -1393,6 +1416,7 @@ type CharGlobalInfo struct {
 	quotes           [MaxQuotes]string
 	portraitscale    float32
 	constants        map[string]float32
+	remapPreset      map[string]RemapPreset
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1464,16 +1488,16 @@ type CharSystemVar struct {
 	specialFlag   CharSpecialFlag
 	sprPriority   int32
 	getcombo      int32
-	getcombodmg   int32
 	veloff        float32
 	width, edge   [2]float32
 	attackMul     float32
 	defenceMul    float32
-	scoreCurrent  float32
-	firstAttack   bool
-	counterHits   int32
-	damageCount   int32
 	cheated       bool
+	counterHit    bool
+	damageCount   int32
+	firstAttack   bool
+	getcombodmg   int32
+	scoreCurrent  float32
 }
 
 type Char struct {
@@ -1490,7 +1514,7 @@ type Char struct {
 	parentIndex     int32
 	playerNo        int
 	teamside        int
-	keyctrl         bool
+	keyctrl         [4]bool
 	player          bool
 	animPN          int
 	animNo          int32
@@ -1498,6 +1522,11 @@ type Char struct {
 	lifeMax         int32
 	power           int32
 	powerMax        int32
+	dizzyPoints     int32
+	dizzyPointsMax  int32
+	guardPoints     int32
+	guardPointsMax  int32
+	redLife         int32
 	juggle          int32
 	fallTime        int32
 	localcoord      int32
@@ -1523,30 +1552,32 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	mapArray              map[string]float32
-	mapDefault            map[string]float32
 	aimg                  AfterImage
 	sounds                Sounds
 	p1facing              float32
 	cpucmd                int32
 	attackDist            float32
 	offset                [2]float32
-	platformPosY          float32
-	groundAngle           float32
 	stchtmp               bool
 	inguarddist           bool
 	pushed                bool
 	hitdefContact         bool
-	movedY                bool
-	ownpal                bool
 	atktmp                int8
 	hittmp                int8
 	acttmp                int8
 	minus                 int8
+	platformPosY          float32
+	groundAngle           float32
+	movedY                bool
+	ownpal                bool
 	winquote              int32
 	memberNo              int
 	selectNo              int
 	comboExtraFrameWindow int32
+	inheritJuggle         int32
+	mapArray              map[string]float32
+	mapDefault            map[string]float32
+	remapSpr              RemapPreset
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1567,9 +1598,11 @@ func (c *Char) init(n int, idx int32) {
 	c.playerNo, c.helperIndex = n, idx
 	c.animPN = c.playerNo
 	if c.helperIndex == 0 {
-		c.keyctrl, c.player = true, true
+		c.player = true
+		c.keyctrl = [...]bool{true, true, true, true}
 	} else {
 		c.mapArray = make(map[string]float32)
+		c.remapSpr = make(RemapPreset)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -1587,6 +1620,7 @@ func (c *Char) clearState() {
 	}
 	c.mctype = MC_Hit
 	c.mctime = 0
+	c.counterHit = false
 	c.fallTime = 0
 	c.hitdefContact = false
 }
@@ -1597,6 +1631,7 @@ func (c *Char) clear1() {
 	c.clearState()
 	c.hoIdx = -1
 	c.mctype, c.mctime = MC_Hit, 0
+	c.counterHit = false
 	c.fallTime = 0
 	c.varRangeSet(0, int32(NumVar)-1, 0)
 	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
@@ -1608,7 +1643,7 @@ func (c *Char) clear1() {
 	c.playerNo = -1
 	c.ownpal = true
 	c.facing = 1
-	c.keyctrl = false
+	c.keyctrl = [...]bool{false, false, false, true}
 	c.player = false
 	c.animPN = -1
 	c.animNo = 0
@@ -1623,7 +1658,15 @@ func (c *Char) clear1() {
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
 	c.name, c.key, c.size, c.teamside = p.name+"'s helper", p.key, p.size, p.teamside
-	c.life, c.lifeMax, c.power, c.powerMax = p.lifeMax, p.lifeMax, 0, p.powerMax
+	c.life, c.lifeMax, c.powerMax = p.lifeMax, p.lifeMax, p.powerMax
+	if sys.maxPowerMode {
+		c.power = c.powerMax
+	} else {
+		c.power = 0
+	}
+	c.dizzyPoints, c.dizzyPointsMax = p.dizzyPointsMax, p.dizzyPointsMax
+	c.guardPoints, c.guardPointsMax = p.guardPointsMax, p.guardPointsMax
+	c.redLife = 0
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -1671,9 +1714,9 @@ func (c *Char) stCgi() *CharGlobalInfo {
 func (c *Char) ocd() *OverrideCharData {
 	if sys.tmode[c.playerNo&1] == TM_Turns {
 		if c.playerNo&1 == 0 {
-			return &sys.ocd[c.memberNo * 2]
+			return &sys.ocd[c.memberNo*2]
 		}
-		return &sys.ocd[c.memberNo * 2 + 1]
+		return &sys.ocd[c.memberNo*2+1]
 	}
 	return &sys.ocd[c.playerNo]
 }
@@ -1833,9 +1876,11 @@ func (c *Char) load(def string) error {
 	gi.movement.down.bounce.groundlevel /= originLs
 	gi.movement.down.friction_threshold /= originLs
 
+	gi.remapPreset = make(map[string]RemapPreset)
+
 	data, size, velocity, movement, quotes, constants := true, true, true, true, true, true
 	for i < len(lines) {
-		is, name, _ := ReadIniSection(lines, &i)
+		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
 		case "data":
 			if data {
@@ -1844,6 +1889,12 @@ func (c *Char) load(def string) error {
 				c.lifeMax = gi.data.life
 				is.ReadI32("power", &gi.data.power)
 				c.powerMax = gi.data.power
+				gi.data.dizzypoints = c.lifeMax
+				is.ReadI32("dizzypoints", &gi.data.dizzypoints)
+				c.dizzyPointsMax = gi.data.dizzypoints
+				gi.data.guardpoints = c.lifeMax
+				is.ReadI32("guardpoints", &gi.data.guardpoints)
+				c.guardPointsMax = gi.data.guardpoints
 				is.ReadI32("attack", &gi.data.attack)
 				is.ReadI32("defence", &gi.data.defence)
 				var i32 int32
@@ -1981,7 +2032,7 @@ func (c *Char) load(def string) error {
 		case "quotes":
 			if quotes {
 				quotes = false
-				for i := 0; i < MaxQuotes; i++ {
+				for i := range gi.quotes {
 					if is[fmt.Sprintf("victory%v", i)] != "" {
 						gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
 					}
@@ -1994,8 +2045,24 @@ func (c *Char) load(def string) error {
 					gi.constants[key] = float32(Atof(value))
 				}
 			}
+		case "remappreset ":
+			if len(subname) >= 1 {
+				if _, ok := gi.remapPreset[subname]; !ok {
+					gi.remapPreset[subname] = make(RemapPreset)
+				}
+				for key := range is {
+					k := strings.Split(key, ",")
+					if len(k) == 2 {
+						var v [2]int32
+						is.ReadI32(key, &v[0], &v[1])
+						if _, ok := gi.remapPreset[subname][int16(Atoi(k[0]))]; !ok {
+							gi.remapPreset[subname][int16(Atoi(k[0]))] = make(RemapTable)
+						}
+						gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(v[0]), int16(v[1])}
+					}
+				}
+			}
 		}
-		
 	}
 	if LoadFile(&sprite, def, func(filename string) error {
 		var err error
@@ -2158,6 +2225,7 @@ func (c *Char) clearHitCount() {
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
+	c.counterHit = false
 }
 func (c *Char) clearHitDef() {
 	c.hitdef.clear()
@@ -2180,6 +2248,7 @@ func (c *Char) setYV(yv float32) {
 func (c *Char) changeAnim(animNo int32) {
 	if a := c.getAnim(animNo, false); a != nil {
 		c.anim = a
+		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
@@ -2192,6 +2261,7 @@ func (c *Char) changeAnim(animNo int32) {
 func (c *Char) changeAnim2(animNo int32) {
 	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false); a != nil {
 		c.anim = a
+		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
@@ -2213,6 +2283,20 @@ func (c *Char) setCtrl(ctrl bool) {
 		c.setSCF(SCF_ctrl)
 	} else {
 		c.unsetSCF(SCF_ctrl)
+	}
+}
+func (c *Char) setDizzy(set bool) {
+	if set {
+		c.setSCF(SCF_dizzy)
+	} else {
+		c.unsetSCF(SCF_dizzy)
+	}
+}
+func (c *Char) setGuardBreak(set bool) {
+	if set {
+		c.setSCF(SCF_guardbreak)
+	} else {
+		c.unsetSCF(SCF_guardbreak)
 	}
 }
 func (c *Char) scf(scf SystemCharFlag) bool {
@@ -2376,8 +2460,17 @@ func (c *Char) bottomEdge() float32 {
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }
+func (c *Char) comboCount() int32 {
+	var v int32
+	for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
+		for j := range sys.chars[i] {
+			v = Min(999, Max(sys.chars[i][j].getcombo, v))
+		}
+	}
+	return v
+}
 func (c *Char) command(pn, i int) bool {
-	if !c.keyctrl || c.cmd == nil {
+	if !c.keyctrl[0] || c.cmd == nil {
 		return false
 	}
 	cl := c.cmd[pn].At(i)
@@ -2408,7 +2501,8 @@ func (c *Char) constp(coordinate, value float32) BytecodeValue {
 	return BytecodeFloat(320 / c.localscl / coordinate * value)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby)
+	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
+		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbreak)
 }
 func (c *Char) drawgame() bool {
 	return c.roundState() >= 3 && sys.winTeam < 0
@@ -2433,6 +2527,24 @@ func (c *Char) gameHeight() float32 {
 }
 func (c *Char) gameWidth() float32 {
 	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
+}
+func (c *Char) getDizzyPoints() int32 {
+	return sys.chars[c.playerNo][0].dizzyPoints
+}
+func (c *Char) getGuardPoints() int32 {
+	return sys.chars[c.playerNo][0].guardPoints
+}
+func (c *Char) getPlayerID(pn int) int32 {
+	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+		return sys.chars[pn-1][0].id
+	}
+	return 0
+}
+func (c *Char) getPower() int32 {
+	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
+		return sys.chars[c.playerNo&1][0].power
+	}
+	return sys.chars[c.playerNo][0].power
 }
 func (c *Char) hitDefAttr(attr int32) bool {
 	return c.ss.moveType == MT_A && c.hitdef.testAttr(attr)
@@ -2480,6 +2592,12 @@ func (c *Char) moveContact() int32 {
 	}
 	return 0
 }
+func (c *Char) moveCountered() int32 {
+	if c.counterHit {
+		return Abs(c.mctime)
+	}
+	return 0
+}
 func (c *Char) moveGuarded() int32 {
 	if c.mctype == MC_Guarded {
 		return Abs(c.mctime)
@@ -2495,6 +2613,24 @@ func (c *Char) moveHit() int32 {
 func (c *Char) moveReversed() int32 {
 	if c.mctype == MC_Reversed {
 		return Abs(c.mctime)
+	}
+	return 0
+}
+func (c *Char) networkPlayer() int32 {
+	if sys.netInput == nil || sys.com[c.playerNo] > 0 {
+		return 0
+	}
+	if sys.home == 0 { //Versus style modes
+		if c.teamside == 0 {
+			return 1 //host
+		} else if c.teamside == 1 {
+			return 2 //client
+		}
+	} else if c.teamside == 0 { //Co-op, players side
+		if c.playerNo == 0 {
+			return 1 //host
+		}
+		return 2 //client
 	}
 	return 0
 }
@@ -2583,11 +2719,15 @@ func (c *Char) palno() int32 {
 	}
 	return c.gi().palno
 }
-func (c *Char) getPower() int32 {
-	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
-		return sys.chars[c.playerNo&1][0].power
+func (c *Char) pauseTime() int32 {
+	var p int32
+	if sys.super > 0 && c.superMovetime == 0 {
+		p = sys.super
 	}
-	return sys.chars[c.playerNo][0].power
+	if sys.pause > 0 && c.pauseMovetime == 0 && p < sys.pause {
+		p = sys.pause
+	}
+	return p
 }
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
@@ -2631,9 +2771,9 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 }
 func (c *Char) ratioLevel() int32 {
 	if c.playerNo&1 == 0 {
-		return sys.ratioLevel[int32(c.memberNo) * 2]
+		return sys.ratioLevel[int32(c.memberNo)*2]
 	}
-	return sys.ratioLevel[int32(c.memberNo) * 2 + 1]
+	return sys.ratioLevel[int32(c.memberNo)*2+1]
 }
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
@@ -2646,6 +2786,8 @@ func (c *Char) roundsExisted() int32 {
 }
 func (c *Char) roundState() int32 {
 	switch {
+	case sys.postMatch:
+		return -1
 	case sys.intro > sys.lifebar.ro.ctrl_time+1:
 		return 0
 	case sys.lifebar.ro.cur == 0:
@@ -2659,6 +2801,16 @@ func (c *Char) roundState() int32 {
 	default:
 		return 3
 	}
+}
+func (c *Char) roundType() int32 {
+	if sys.roundType[0] == RT_Final {
+		return 3
+	} else if sys.roundType[c.playerNo&1] == RT_Deciding {
+		return 2
+	} else if sys.roundType[^c.playerNo&1] == RT_Deciding {
+		return 1
+	}
+	return 0
 }
 func (c *Char) screenPosX() float32 {
 	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
@@ -2732,51 +2884,6 @@ func (c *Char) winSuicide() bool {
 }
 func (c *Char) winTeammate() bool {
 	return c.win() && (sys.winType[c.playerNo&1] == WT_Teammate || sys.winType[c.playerNo&1] == WT_PTeammate)
-}
-func (c *Char) roundType() int32 {
-	if sys.roundType[0] == RT_Final {
-		return 3
-	} else if sys.roundType[c.playerNo&1] == RT_Deciding {
-		return 2
-	} else if sys.roundType[^c.playerNo&1] == RT_Deciding {
-		return 1
-	}
-	return 0
-}
-func (c *Char) getPlayerID(pn int) int32 {
-	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-		return sys.chars[pn-1][0].id
-	}
-	return 0
-}
-func (c *Char) networkPlayer() int32 {
-	if sys.netInput == nil || sys.com[c.playerNo] > 0 {
-		return 0
-	}
-	if sys.home == 0 { //Versus style modes
-		if c.teamside == 0 {
-			return 1 //host
-		} else if c.teamside == 1 {
-			return 2 //client
-		}
-	} else if c.teamside == 0 { //Co-op, players side
-		if c.playerNo == 0 {
-			return 1 //host
-		}
-		return 2 //client
-	}
-	return 0
-}
-
-func (c *Char) pauseTime() int32 {
-	var p int32
-	if sys.super > 0 && c.superMovetime == 0 {
-		p = sys.super
-	}
-	if sys.pause > 0 && c.pauseMovetime == 0 && p < sys.pause {
-		p = sys.pause
-	}
-	return p
 }
 func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	ch = Min(255, ch)
@@ -3284,62 +3391,6 @@ func (c *Char) hitAdd(h int32) {
 		}
 	}
 }
-func timeLeft() int32 {
-	if sys.time >= 0 {
-		return sys.time
-	}
-	return -1
-}
-func timeRound() int32 {
-	return sys.roundTime - sys.time
-}
-func timeTotal() int32 {
-	t := sys.timerStart
-	for _, v := range sys.timerRounds {
-		t += v
-	}
-	if sys.lifebar.ro.timerActive {
-		t += timeRound()
-	}
-	return t
-}
-func scoreRound(side int) float32 {
-	var s float32
-	for i, c := range sys.chars {
-		if len(c) > 0 && side == i&1 {
-			s += c[0].scoreCurrent
-		}
-	}
-	return s
-}
-func scoreTotal(side int) float32 {
-    s := sys.scoreStart[side]
-    for _, v := range sys.scoreRounds {
-        s += v[side]
-    }
-	s += scoreRound(side)
-    return s
-}
-func (c *Char) scoreAdd(s float32) {
-	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent + s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
-}
-func (c *Char) targetScoreAdd(tar []int32, s float32) {
-	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil && t.player {
-			t.scoreAdd(s)
-		}
-	}
-}
-func (c *Char) comboCount() int32 {
-	var v int32
-	for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
-		for j := range sys.chars[i] {
-			v = Min(999, Max(sys.chars[i][j].getcombo, v))
-		}
-	}
-	return v
-}
-
 func (c *Char) newProj() *Projectile {
 	for i, p := range sys.projs[c.playerNo] {
 		if p.id < 0 {
@@ -3454,13 +3505,19 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifierrset(&hd.hitgetpower,
-		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgetpower,
-		int32(sys.attack_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)*0.5))
 	ifierrset(&hd.hitgivepower,
-		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)))
+		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower,
-		int32(sys.getHit_LifeToPowerMul*float32(hd.hitdamage)*0.5))
+		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
+	ifierrset(&hd.dizzypoints,
+		int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	ifierrset(&hd.guardpoints,
+		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	ifierrset(&hd.redlife,
+		int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}
@@ -3683,6 +3740,44 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
 		}
 	}
 }
+func (c *Char) targetPowerAdd(tar []int32, power int32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.powerAdd(power)
+		}
+	}
+}
+func (c *Char) targetDizzyPointsAdd(tar []int32, add int32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.dizzyPointsAdd(add)
+		}
+	}
+}
+func (c *Char) targetGuardPointsAdd(tar []int32, add int32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			t.guardPointsAdd(add)
+		}
+	}
+}
+func (c *Char) targetRedLifeAdd(tar []int32, add float64, absolute bool) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			if !absolute {
+				add /= float64(t.defenceMul)
+			}
+			t.redLifeAdd(math.Ceil(add), true)
+		}
+	}
+}
+func (c *Char) targetScoreAdd(tar []int32, s float32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil && t.player {
+			t.scoreAdd(s)
+		}
+	}
+}
 func (c *Char) targetState(tar []int32, state int32) {
 	if state >= 0 {
 		pn := c.ss.sb.playerNo
@@ -3726,13 +3821,6 @@ func (c *Char) targetVelAddY(tar []int32, y float32) {
 		if t := sys.playerID(tid); t != nil {
 			y *= c.localscl / t.localscl
 			t.vel[1] += y
-		}
-	}
-}
-func (c *Char) targetPowerAdd(tar []int32, power int32) {
-	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil && t.player {
-			t.powerAdd(power)
 		}
 	}
 }
@@ -3837,11 +3925,16 @@ func (c *Char) lifeSet(life int32) {
 		} else {
 			c.life = 1
 		}
+		c.redLife = 0
 	}
 }
 func (c *Char) setPower(pow int32) {
 	if !sys.roundEnd() {
-		c.power = Max(0, Min(c.powerMax, pow))
+		if sys.maxPowerMode {
+			c.power = c.powerMax
+		} else {
+			c.power = Max(0, Min(c.powerMax, pow))
+		}
 	}
 }
 func (c *Char) powerAdd(add int32) {
@@ -3857,6 +3950,40 @@ func (c *Char) powerSet(pow int32) {
 	} else {
 		sys.chars[c.playerNo][0].setPower(pow)
 	}
+}
+func (c *Char) dizzyPointsAdd(add int32) {
+	c.dizzyPointsSet(c.dizzyPoints + add)
+}
+func (c *Char) dizzyPointsSet(set int32) {
+	if !sys.roundEnd() && sys.lifebar.activeSb {
+		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, set))
+	}
+}
+func (c *Char) guardPointsAdd(add int32) {
+	c.guardPointsSet(c.guardPoints + add)
+}
+func (c *Char) guardPointsSet(set int32) {
+	if !sys.roundEnd() && sys.lifebar.activeGb {
+		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
+	}
+}
+func (c *Char) redLifeAdd(add float64, absolute bool) {
+	if add != 0 && c.roundState() != 3 {
+		if !absolute {
+			add /= float64(c.defenceMul)
+		}
+		c.redLifeSet(c.redLife + int32(add))
+	}
+}
+func (c *Char) redLifeSet(set int32) {
+	if c.life == 0 {
+		c.redLife = 0
+	} else if !sys.roundEnd() && sys.lifebar.activeRl {
+		c.redLife = Max(0, Min(c.lifeMax-c.life, set))
+	}
+}
+func (c *Char) scoreAdd(s float32) {
+	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent+s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
@@ -4045,13 +4172,13 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	}
 	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
-	if !ok {
+	if !ok || si < 0 {
 		return
 	}
 	var di int
 	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
-	if !ok {
+	if !ok || di < 0 {
 		di = si
 	}
 	if pfx.remap == nil {
@@ -4078,7 +4205,7 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	}
 	di, ok := c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
-	if !ok {
+	if !ok || di < 0 {
 		return
 	}
 	if pfx.remap == nil {
@@ -4088,6 +4215,31 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 		pfx.remap[i] = di
 	}
 }
+
+type RemapTable map[int16][2]int16
+type RemapPreset map[int16]RemapTable
+
+func (c *Char) remapSprite(src [2]int16, dst [2]int16) {
+	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
+		return
+	}
+	if _, ok := c.remapSpr[src[0]]; !ok {
+		c.remapSpr[src[0]] = make(RemapTable)
+	}
+	c.remapSpr[src[0]][src[1]] = [...]int16{dst[0], dst[1]}
+}
+func (c *Char) remapSpritePreset(preset string) {
+	if _, ok := c.gi().remapPreset[preset]; !ok {
+		return
+	}
+	var src, dst [2]int16
+	for src[0] = range c.gi().remapPreset[preset] {
+		for src[1], dst = range c.gi().remapPreset[preset][src[0]] {
+			c.remapSprite(src, dst)
+		}
+	}
+}
+
 // MapSet() sets a map to a specific value.
 func (c *Char) mapSet(s string, Value float32, scType int32) {
 	if s == "" {
@@ -4095,46 +4247,46 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 	}
 	key := strings.ToLower(s)
 	switch scType {
-		case 0:
+	case 0:
+		c.mapArray[key] = Value
+	case 1:
+		c.mapArray[key] += Value
+	case 2:
+		if c.parent() != nil {
+			c.parent().mapArray[key] = Value
+		} else {
 			c.mapArray[key] = Value
-		case 1:
+		}
+	case 3:
+		if c.parent() != nil {
+			c.parent().mapArray[key] += Value
+		} else {
 			c.mapArray[key] += Value
-		case 2:
-			if c.parent() != nil {
-				c.parent().mapArray[key] = Value
-			} else {
-				c.mapArray[key] = Value
+		}
+	case 4:
+		if c.root() != nil {
+			c.root().mapArray[key] = Value
+		} else {
+			c.mapArray[key] = Value
+		}
+	case 5:
+		if c.root() != nil {
+			c.root().mapArray[key] += Value
+		} else {
+			c.mapArray[key] += Value
+		}
+	case 6:
+		for i, p := range sys.chars {
+			if len(p) > 0 && c.teamside == i&1 {
+				p[0].mapArray[key] = Value
 			}
-		case 3:
-			if c.parent() != nil {
-				c.parent().mapArray[key] += Value
-			} else {
-				c.mapArray[key] += Value
+		}
+	case 7:
+		for i, p := range sys.chars {
+			if len(p) > 0 && c.teamside == i&1 {
+				p[0].mapArray[key] += Value
 			}
-		case 4:
-			if c.root() != nil {
-				c.root().mapArray[key] = Value
-			} else {
-				c.mapArray[key] = Value
-			}
-		case 5:
-			if c.root() != nil {
-				c.root().mapArray[key] += Value
-			} else {
-				c.mapArray[key] += Value
-			}
-		case 6:
-			for i, p := range sys.chars {
-				if len(p) > 0 && c.teamside == i&1 {
-					p[0].mapArray[key] = Value
-				}
-			}
-		case 7:
-			for i, p := range sys.chars {
-				if len(p) > 0 && c.teamside == i&1 {
-					p[0].mapArray[key] += Value
-				}
-			}
+		}
 	}
 }
 
@@ -4343,7 +4495,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) {
+	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return false
 	}
 	var clsn1, clsn2 []float32
@@ -4446,7 +4598,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	return true
 }
 func (c *Char) action() {
-	if c.minus != 2 || c.sf(CSF_destroy) {
+	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
 	p := false
@@ -4469,10 +4621,22 @@ func (c *Char) action() {
 		c.setSCF(SCF_guard)
 	}
 	if !p {
+		if c.ghv.damage != 0 {
+			if c.ss.moveType == MT_H {
+				c.lifeAdd(-float64(c.ghv.damage), true, true)
+			}
+			c.ghv.damage = 0
+		}
+		if c.ghv.redlife != 0 {
+			if c.ss.moveType == MT_H && !c.scf(SCF_guard) {
+				c.redLifeAdd(float64(c.ghv.redlife), true)
+			}
+			c.ghv.redlife = 0
+		}
 		if c.palfx != nil {
 			c.palfx.step()
 		}
-		if c.keyctrl && c.cmd != nil {
+		if c.keyctrl[0] && c.cmd != nil {
 			if c.ss.stateType == ST_A {
 				if c.cmd[0].Buffer.U < 0 {
 					c.setSCF(SCF_airjump)
@@ -4581,26 +4745,26 @@ func (c *Char) action() {
 		}
 	}
 	c.minus = -4
-	if c.ss.sb.playerNo == c.playerNo {
+	if c.keyctrl[3] && c.ss.sb.playerNo == c.playerNo {
 		if sb, ok := c.gi().states[-4]; ok {
 			sb.run(c)
 		}
 	}
 	if !p {
 		c.minus = -3
-		if c.ss.sb.playerNo == c.playerNo && c.player {
+		if c.keyctrl[2] && c.ss.sb.playerNo == c.playerNo {
 			if sb, ok := c.gi().states[-3]; ok {
 				sb.run(c)
 			}
 		}
 		c.minus = -2
-		if c.player {
+		if c.keyctrl[1] {
 			if sb, ok := c.gi().states[-2]; ok {
 				sb.run(c)
 			}
 		}
 		c.minus = -1
-		if c.keyctrl && c.ss.sb.playerNo == c.playerNo {
+		if c.keyctrl[0] && c.ss.sb.playerNo == c.playerNo {
 			if sb, ok := c.gi().states[-1]; ok {
 				sb.run(c)
 			}
@@ -4637,12 +4801,6 @@ func (c *Char) action() {
 				c.curFrame = nil
 			}
 		}
-		if c.ghv.damage != 0 {
-			if c.ss.moveType == MT_H {
-				c.lifeAdd(-float64(c.ghv.damage), true, true)
-			}
-			c.ghv.damage = 0
-		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
@@ -4675,6 +4833,9 @@ func (c *Char) action() {
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
+	if c.scf(SCF_disabled) {
+		return
+	}
 	if sys.tickFrame() {
 		if c.sf(CSF_destroy) {
 			c.destroy()
@@ -4748,11 +4909,17 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallcount = 0
 				c.ghv.hitid = -1
 				if c.comboExtraFrameWindow <= 0 {
-					c.getcombo = 0
-					c.getcombodmg = 0
+					if !c.scf(SCF_dizzy) {
+						c.getcombo = 0
+						c.getcombodmg = 0
+					}
 				} else {
 					c.comboExtraFrameWindow--
 				}
+				//c.ghv.attr = 0
+				//c.ghv.dizzypoints = 0
+				//c.ghv.guardpoints = 0
+				//c.ghv.score = 0
 			}
 			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 {
@@ -4811,7 +4978,7 @@ func (c *Char) tick() {
 		}
 	}
 	if c.cmd == nil {
-		if c.keyctrl {
+		if c.keyctrl[0] {
 			c.cmd = make([]CommandList, len(sys.chars))
 			c.cmd[0].Buffer = NewCommandBuffer()
 			for i := range c.cmd {
@@ -4932,7 +5099,7 @@ func (c *Char) tick() {
 	}
 }
 func (c *Char) cueDraw() {
-	if c.helperIndex < 0 {
+	if c.helperIndex < 0 || c.scf(SCF_disabled) {
 		return
 	}
 	if sys.clsnDraw && c.curFrame != nil {
@@ -4960,6 +5127,21 @@ func (c *Char) cueDraw() {
 		if c.sf(CSF_playerpush) {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height() * (320 / float32(c.localcoord)), c.width[0] * c.localscl, 0},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
+		}
+
+		x = (c.pos[0]*c.localscl - sys.cam.Pos[0]) * sys.cam.Scale
+		y = (c.pos[1]*c.localscl-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl
+		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
+		y += -c.height()*(320/float32(c.localcoord)) + float32(sys.gameHeight-240)
+		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), palfx: newPalFX()})
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil {
+				y += float32(sys.debugFont.Size[1]) / sys.heightScale
+				palfx := newPalFX()
+				palfx.setColor(255, 191, 255)
+				jg := t.ghv.getJuggle(c.id, c.gi().data.airjuggle)
+				sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("Target %d %d", tid, jg), palfx: palfx})
+			}
 		}
 	}
 	if c.anim != nil {
@@ -5018,9 +5200,6 @@ func (c *Char) cueDraw() {
 		c.minus = 2
 		c.oldPos = c.pos
 	}
-}
-func (c *Char) victoryQuote(v int32) {
-	c.winquote = v
 }
 
 type CharList struct {
@@ -5234,6 +5413,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
+				ghv.dizzypoints = hd.dizzypoints
+				ghv.guardpoints = hd.guardpoints
+				ghv.redlife = hd.redlife
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -5486,6 +5668,15 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
+					getter.dizzyPointsAdd(hd.dizzypoints)
+				}
+				if getter.ss.moveType == MT_A {
+					sys.lifebar.co[c.teamside].counterHits += 1
+					c.counterHit = true
+				}
+				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack {
+					sys.lifebar.co[c.teamside].firstAttack = true
+					c.firstAttack = true
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
@@ -5494,14 +5685,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if !math.IsNaN(float64(hd.score[1])) {
 						getter.scoreAdd(hd.score[1])
 					}
-				}
-				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack {
-					sys.lifebar.co[c.teamside].firstAttack = true
-					c.firstAttack = true
-				}
-				if getter.ss.moveType == MT_A {
-					sys.lifebar.co[c.teamside].counterHits += 1
-					c.counterHits += 1
 				}
 			}
 		} else {
@@ -5526,6 +5709,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
+					getter.guardPointsAdd(hd.guardpoints)
 				}
 			}
 		}
@@ -5557,6 +5741,30 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		if !proj && hd.hitonce > 0 {
 			c.targetDrop(-1, false)
+		}
+		if c.helperIndex != 0 {
+			//update parent's or root's target list, add to the their juggle points
+			if c.inheritJuggle == 1 && c.parent() != nil {
+				c.parent().addTarget(getter.id)
+				jg := c.parent().gi().data.airjuggle
+				for _, v := range getter.ghv.hitBy {
+					if (v[0] == c.parent().id || v[0] == c.id) && v[1] < jg {
+						jg = v[1]
+					}
+				}
+				getter.ghv.dropId(c.parent().id)
+				getter.ghv.hitBy = append(getter.ghv.hitBy, [...]int32{c.parent().id, jg - c.juggle})
+			} else if c.inheritJuggle == 2 && c.root() != nil {
+				c.root().addTarget(getter.id)
+				jg := c.root().gi().data.airjuggle
+				for _, v := range getter.ghv.hitBy {
+					if (v[0] == c.root().id || v[0] == c.id) && v[1] < jg {
+						jg = v[1]
+					}
+				}
+				getter.ghv.dropId(c.root().id)
+				getter.ghv.hitBy = append(getter.ghv.hitBy, [...]int32{c.root().id, jg - c.juggle})
+			}
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
@@ -5763,6 +5971,24 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
 					getter.inguarddist = true
+				}
+				if c.helperIndex != 0 {
+					//inherit parent's or root's juggle points
+					if c.inheritJuggle == 1 && c.parent() != nil {
+						for _, v := range getter.ghv.hitBy {
+							if v[0] == c.parent().id {
+								getter.ghv.addId(c.id, v[1])
+								break
+							}
+						}
+					} else if c.inheritJuggle == 2 && c.root() != nil {
+						for _, v := range getter.ghv.hitBy {
+							if v[0] == c.root().id {
+								getter.ghv.addId(c.id, v[1])
+								break
+							}
+						}
+					}
 				}
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&

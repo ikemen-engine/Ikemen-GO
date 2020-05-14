@@ -23,7 +23,6 @@ go get -u github.com/hajimehoshi/go-mp3@v0.2.1
 go get -u github.com/hajimehoshi/oto@v0.5.4
 go get -u github.com/pkg/errors
 go get -u github.com/jfreymuth/oggvorbis
-go get -u github.com/kbinani/screenshot
 go get -u github.com/sqweek/dialog
 
 echo. 

@@ -3,7 +3,7 @@
 --;===========================================================
 --nClock = os.clock()
 --print("Elapsed time: " .. os.clock() - nClock)
---SetGCPercent(-1)
+--setGCPercent(-1)
 
 main = {}
 
@@ -26,6 +26,11 @@ file:close()
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+--debug table printing
+function pt(t)
+	print(table.concat(t, ','))
+end
+
 --add default commands
 main.t_commands = {
 	['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['d'] = 0, ['w'] = 0, ['/s'] = 0, ['/d'] = 0, ['/w'] = 0}
@@ -65,14 +70,9 @@ end
 function main.f_btnPalNo(cmd)
 	local s = 0
 	if commandGetState(cmd, '/s') then s = 6 end
-	--if commandGetState(cmd, '/d') then s = 12 end
-	--if commandGetState(cmd, '/w') then s = 18 end
-	if commandGetState(cmd, 'a') then return 1 + s end
-	if commandGetState(cmd, 'b') then return 2 + s end
-	if commandGetState(cmd, 'c') then return 3 + s end
-	if commandGetState(cmd, 'x') then return 4 + s end
-	if commandGetState(cmd, 'y') then return 5 + s end
-	if commandGetState(cmd, 'z') then return 6 + s end
+	for i, k in pairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
+		if commandGetState(cmd, k) then return i + s end
+	end
 	return 0
 end
 
@@ -211,6 +211,66 @@ function main.f_strsplit(delimiter, text)
 	return list
 end
 
+--command line global flags
+main.flags = getCommandLineFlags()
+if main.flags['-ailevel'] ~= nil then
+	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
+end
+if main.flags['-speed'] ~= nil then
+	config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+end
+if main.flags['-speedtest'] ~= nil then
+	setGameSpeed(100)
+end
+if main.flags['-nomusic'] ~= nil then
+	setVolumeBgm(0)
+end
+if main.flags['-nosound'] ~= nil then
+	setVolumeMaster(0)
+end
+if main.flags['-togglelifebars'] ~= nil then
+	toggleStatusDraw()
+end
+if main.flags['-maxpowermode'] ~= nil then
+	toggleMaxPowerMode()
+end
+
+--motif
+main.motifDef = config.Motif
+if main.flags['-r'] ~= nil or main.flags['-rubric'] ~= nil then
+	local case = main.flags['-r']:lower() or main.flags['-rubric']:lower()
+	if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
+		main.motifDef = main.flags['-r'] or main.flags['-rubric']
+	elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
+		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric'])
+	elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
+		main.motifDef = 'data/' .. (main.flags['-r'] or main.flags['-rubric']) .. '/system.def'
+	end
+end
+
+--lifebar
+local file = io.open(main.motifDef, 'r')
+main.motifData = file:read("*all")
+file:close()
+local fileDir = main.motifDef:match('^(.-)[^/\\]+$')
+if main.flags['-lifebar'] ~= nil then
+	main.lifebarDef = main.flags['-lifebar']
+else
+	main.lifebarDef = main.motifData:match('fight%s*=%s*(.-%.def)%s*')
+end
+if main.f_fileExists(main.lifebarDef) then
+	main.lifebarDef = main.lifebarDef
+elseif main.f_fileExists(fileDir .. main.lifebarDef) then
+	main.lifebarDef = fileDir .. main.lifebarDef
+elseif main.f_fileExists('data/' .. main.lifebarDef) then
+	main.lifebarDef = 'data/' .. main.lifebarDef
+else
+	main.lifebarDef = 'data/fight.def'
+end
+loadLifebar(main.lifebarDef)
+refresh()
+
+--scaling
 require('external.script.screenpack')
 main.IntLocalcoordValues()
 main.CalculateLocalcoordValues()
@@ -226,13 +286,16 @@ function main.f_alignOffset(align)
 end
 
 main.font = {}
+main.font_def = {}
 text = {}
+color = {}
+rect = {}
 --create text
 function text:create(t)
 	--default values
 	if t.window == nil then t.window = {} end
 	local o = {
-		font = t.font or '',
+		font = t.font or -1,
 		bank = t.bank or 0,
 		align = t.align or 0,
 		text = t.text or '',
@@ -257,32 +320,19 @@ function text:create(t)
 	o.ti = textImgNew()
 	setmetatable(o, self)
 	self.__index = self
-	--font
-	if o.font ~= '' then
-		if main.font[o.font] == nil then
-			main.font[o.font] = {}
+	if o.font ~= -1 then
+		if main.font[o.font .. o.height] == nil then
+			main.font[o.font .. o.height] = fontNew(o.font, o.height)
 		end
-		local s = o.r .. o.g .. o.b .. o.src .. o.dst .. o.height
-		if main.font[o.font][s] == nil then
-			main.font[o.font][s] = fontNew(o.font)
+		if main.font_def[o.font .. o.height] == nil then
+			main.font_def[o.font .. o.height] = fontGetDef(main.font[o.font .. o.height])
 		end
-		--r, g, b, trans
-		if o.r ~= 255 or o.g ~= 255 or o.b ~= 255 or o.src ~= 255 or o.dst ~= 0 then
-			fontSetColor(main.font[o.font][s], o.r, o.g, o.b, o.src, o.dst)
-		end
-		--height (ttf)
-		if o.height ~= -1 then
-			fontSetHeight(main.font[o.font][s], t.height)
-		end
-		--font def
-		if main.font[o.font].def == nil then
-			main.font[o.font].def = fontGetDef(main.font[o.font][s])
-		end
-		textImgSetFont(o.ti, main.font[o.font][s])
+		textImgSetFont(o.ti, main.font[o.font .. o.height])
 	end
 	textImgSetBank(o.ti, o.bank)
 	textImgSetAlign(o.ti, o.align)
 	textImgSetText(o.ti, o.text)
+	textImgSetColor(o.ti, o.r, o.g, o.b, o.src, o.dst)
 	if o.defsc then main.SetDefaultScale() end
 	textImgSetPos(o.ti, o.x + main.f_alignOffset(o.align), o.y)
 	textImgSetScale(o.ti, o.scaleX, o.scaleY)
@@ -295,48 +345,29 @@ end
 function text:update(t)
 	local ok = false
 	local fontChange = false
-	local colorChange = false
-	local heightChange = false
 	for k, v in pairs(t) do
 		if self[k] ~= v then
-			if k == 'font' then
+			if k == 'font' or k == 'height' then
 				fontChange = true
-			elseif k == 'r' or k == 'g' or k == 'b' or k == 'src' or k == 'dst' then
-				colorChange = true
-			elseif k == 'height' then
-				heightChange = true
 			end
 			self[k] = v
 			ok = true
 		end
 	end
 	if not ok then return end
-	--font
-	if fontChange or colorChange or heightChange then
-		if main.font[self.font] == nil then
-			main.font[self.font] = {}
+	if fontChange and self.font ~= -1 then
+		if main.font[self.font .. self.height] == nil then
+			main.font[self.font .. self.height] = fontNew(self.font, self.height)
 		end
-		local s = self.r .. self.g .. self.b .. self.src .. self.dst .. self.height
-		if main.font[self.font][s] == nil then
-			main.font[self.font][s] = fontNew(self.font)
+		if main.font_def[self.font .. self.height] == nil then
+			main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
 		end
-		--r, g, b, trans
-		if colorChange then
-			fontSetColor(main.font[self.font][s], self.r, self.g, self.b, self.src, self.dst)
-		end
-		--height (ttf)
-		if heightChange then
-			fontSetHeight(main.font[self.font][s], self.height)
-		end
-		--font def
-		if main.font[self.font].def == nil then
-			main.font[self.font].def = fontGetDef(main.font[self.font][s])
-		end
-		textImgSetFont(self.ti, main.font[self.font][s])
+		textImgSetFont(self.ti, main.font[self.font .. self.height])
 	end
 	textImgSetBank(self.ti, self.bank)
 	textImgSetAlign(self.ti, self.align)
 	textImgSetText(self.ti, self.text)
+	textImgSetColor(self.ti, self.r, self.g, self.b, self.src, self.dst)
 	if self.defsc then main.SetDefaultScale() end
 	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
 	textImgSetScale(self.ti, self.scaleX, self.scaleY)
@@ -346,13 +377,150 @@ end
 
 --draw text
 function text:draw()
+	if self.font == -1 then return end
 	textImgDraw(self.ti)
+end
+
+--create color
+function color:new(r,g,b,src,dst)
+	local n = {r=r or 255,g=g or 255, b=b or 255, src=src or 255, dst=dst or 0}
+	setmetatable(n,self)
+	self.__index = self
+	return n
+end
+function color.__add(a,b) --adds rgb (color+color)
+	local r = math.max(0,math.min(a.r+b.r,255))
+	local g = math.max(0,math.min(a.g+b.g,255))
+	local b = math.max(0,math.min(a.b+b.b,255))
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__sub(a,b) --substracts rgb (color-color)
+	local r = math.max(0,math.min(a.r-b.r,255))
+	local g = math.max(0,math.min(a.g-b.g,255))
+	local b = math.max(0,math.min(a.b-b.b,255))
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__mul(a,b) --multiply blend (color*color)
+	local r = (a.r/255)*(b.r/255)*255
+	local g = (a.g/255)*(b.g/255)*255
+	local b = (a.b/255)*(b.b/255)*255
+	return color:new(r,g,b,a.src,a.dst)
+end
+function color.__eq(a,b) --compares r,g,b,src, and dst (color==color)
+	if a.r==b.r and a.g==b.g and a.b==b.b and a.src == b.src and a.dst == b.dst then
+		return true
+	else
+		return false
+	end
+end
+--create color from hex value
+function color:fromHex(h)
+	h = tostring(h)
+	if h:sub(0,1) =="#" then h = h:sub(2,-1) end 
+	if h:sub(0,2) =="0x" then h = h:sub(3,-1) end 
+	local r = tonumber(h:sub(1,2),16)
+	local g = tonumber(h:sub(3,4),16)
+	local b = tonumber(h:sub(5,6),16)
+	local src = tonumber(h:sub(7,8),16) or 255
+	local dst = tonumber(h:sub(9,10),16) or 0
+	return color:new(r,g,b,src,dst)
+end
+--create string of color converted to hex
+function color:toHex(lua)
+	local r = string.format("%x", self.r)
+	local g = string.format("%x", self.g)
+	local b = string.format("%x", self.b)
+	local src = string.format("%x", self.src)
+	local dst = string.format("%x", self.dst)
+
+	local hex = tostring((r:len()<2 and "0")..r..(g:len()<2 and "0")..g..(b:len()<2 and "0")..
+	b..(src:len()<2 and "0")..src..(dst:len()<2 and "0")..dst)
+
+	return hex
+end
+--returns r,g,b,src,dst
+function color:unpack()
+	return tonumber(self.r),tonumber(self.g),tonumber(self.b),tonumber(self.src),tonumber(self.dst)
+end
+--create a rect
+function rect:create(...)
+	local args = ...
+	
+	args.x1 = args.x or args.x1
+	args.y1 = args.y or args.y1
+	if args.dim or args.dimensions then
+		--create dimensions if arguments have a dim or dimensions argument instead of x1,y1,x2,y2
+		local dim = args.dim or args.dimensions
+		args.x1 = dim.x1 or dim[1] or args.x1
+		args.y1 = dim.y1 or dim[2] or args.y1
+		args.x2 = dim.x2 or dim[3] or args.x2
+		args.y2 = dim.y2 or dim[4] or args.y2
+
+	elseif args.scale or args.size then
+		--create x2,y2 if arguments have a scale or size argument
+		local sc = args.scale or args.size
+		args.x2 = sc.x or sc[1]
+		args.y2 = sc.y or sc[2]
+
+	end
+	args.color = args.color or color:new(args.r,args.g,args.b,args.src,args.dst)
+	args.r,args.g,args.b,args.src,args.dst = args.color:unpack()
+	setmetatable(args, self)
+	self.__index = self
+	return args
+end
+--modify the rect
+function rect:update(...)
+	local args = ...
+	local env = setfenv(1, args)
+	self.x1 = x or x1 or self.x1
+	self.y1 = y or y1 or self.y1
+	for i, k in pairs(args) do
+		self[i] = k
+	end
+	if dim or dimensions then
+		--create dimensions if arguments have a dim or dimensions argument instead of x1,y1,x2,y2
+		local dim = args.dim or args.dimensions
+		self.x1 = dim.x1 or dim[1] or x1 or self.x1
+		self.y1 = dim.y1 or dim[2] or y1 or self.y1
+		self.x2 = dim.x2 or dim[3] or x2 or self.x2
+		self.y2 = dim.y2 or dim[4] or y2 or self.y2
+
+	elseif scale or size then
+		--create x2,y2 if arguments have a scale or size argument
+		local sc = args.scale or args.size
+		self.x2 = sc.x or sc[1] or self.x2
+		self.y2 = sc.y or sc[2] or self.y2
+
+	end
+	if r or g or b or src or dst then
+		self.color = color:new(r or self.r,g or self.g,b or self.b,src or self.src,dst or self.dst)
+	end
+
+	return self
+end
+--draw the rect using fillRect
+function rect:draw()
+	local r,g,b,s,d = self.color:unpack()
+	fillRect(self.x1,self.y1,self.x2,self.y2,r,g,b,s,d,self.defsc or false,self.fixcoord or false)
+end
+
+--refreshing screen after delayed animation progression to next frame
+main.t_animUpdate = {}
+function main.f_refresh()
+	for k, v in pairs(main.t_animUpdate) do
+		for i = 1, v do
+			animUpdate(k)
+		end
+	end
+	main.t_animUpdate = {}
+	refresh()
 end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y)
+	main.t_animUpdate[a] = 1
 	animSetPos(a, x, y)
-	animUpdate(a)
 	animDraw(a)
 end
 
@@ -439,7 +607,7 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, de
 end
 
 --copy table content into new table
-function main.f_copyTable(t)
+function main.f_tableCopy(t)
 	if t == nil then
 		return nil
 	end
@@ -447,7 +615,7 @@ function main.f_copyTable(t)
 	local t2 = {}
 	for k, v in pairs(t) do
 		if type(v) == "table" then
-			t2[k] = main.f_copyTable(v)
+			t2[k] = main.f_tableCopy(v)
 		else
 			t2[k] = v
 		end
@@ -456,15 +624,74 @@ function main.f_copyTable(t)
 end
 
 --randomizes table content
-function main.f_shuffleTable(t)
+function main.f_tableShuffle(t)
 	local rand = math.random
-	assert(t, "main.f_shuffleTable() expected a table, got nil")
+	assert(t, "main.f_tableShuffle() expected a table, got nil")
 	local iterations = #t
 	local j
 	for i = iterations, 2, -1 do
 		j = rand(i)
 		t[i], t[j] = t[j], t[i]
 	end
+end
+
+--return table with reversed keys
+function main.f_tableReverse(t)
+	local reversedTable = {}
+	local itemCount = #t
+	for k, v in ipairs(t) do
+		reversedTable[itemCount + 1 - k] = v
+	end
+	return reversedTable
+end
+
+--wrap table
+function main.f_tableWrap(t, l)
+    for i = 1, l do
+        table.insert(t, 1, t[#t])
+        table.remove(t, #t)
+    end
+end
+
+--merge 2 tables into 1 overwriting values
+function main.f_tableMerge(t1, t2)
+	for k, v in pairs(t2) do
+		if type(v) == "table" then
+			if type(t1[k] or false) == "table" then
+				main.f_tableMerge(t1[k] or {}, t2[k] or {})
+			else
+				t1[k] = v
+			end
+		elseif type(t1[k] or false) == "table" then
+			t1[k][1] = v
+		else
+			t1[k] = v
+		end
+	end
+	return t1
+end
+
+--return table with proper order and without rows disabled in screenpack
+function main.f_tableClean(t, t_sort)
+	local t_clean = {}
+	local t_added = {}
+	--first we add all entries existing in screenpack file in correct order
+	for i = 1, #t_sort do
+		for j = 1, #t do
+			if t_sort[i] == t[j].itemname and t[j].displayname ~= '' then
+				table.insert(t_clean, t[j])
+				t_added[t[j].itemname] = 1
+				break
+			end
+		end
+	end
+	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
+	for i = 1, #t do
+		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
+			table.insert(t_clean, t[i])
+		end
+	end
+	return t_clean
 end
 
 --iterate over the table in order
@@ -534,6 +761,7 @@ end
 
 --draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
 function main.f_textRender(data, str, counter, x, y, font_def, delay, length)
+	if data.font == -1 then return end
 	local delay = delay or 0
 	local length = length or 0
 	str = tostring(str)
@@ -544,12 +772,11 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length)
 		local tmp = ''
 		local pxLeft = length
 		local tmp_px = 0
-		local s = data.r .. data.g .. data.b .. data.src .. data.dst .. data.height
-		local space = (font_def[' '] or fontGetTextWidth(main.font[data.font][s], ' ')) * data.scaleX
+		local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ')) * data.scaleX
 		for i = 1, string.len(str) do
 			local symbol = string.sub(str, i, i)
 			if font_def[symbol] == nil then --store symbol length in global table for faster counting
-				font_def[symbol] = fontGetTextWidth(main.font[data.font][s], symbol)
+				font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol)
 			end
 			local px = font_def[symbol] * data.scaleX
 			if pxLeft + space - px >= 0 then
@@ -643,57 +870,6 @@ function main.f_dataType(arg)
 	return arg
 end
 
---merge 2 tables into 1 overwriting values
-function main.f_tableMerge(t1, t2)
-	for k, v in pairs(t2) do
-		if type(v) == "table" then
-			if type(t1[k] or false) == "table" then
-				main.f_tableMerge(t1[k] or {}, t2[k] or {})
-			else
-				t1[k] = v
-			end
-		elseif type(t1[k] or false) == "table" then
-			t1[k][1] = v
-		else
-			t1[k] = v
-		end
-	end
-	return t1
-end
-
---return table with reversed keys
-function main.f_reversedTable(t)
-	local reversedTable = {}
-	local itemCount = #t
-	for k, v in ipairs(t) do
-		reversedTable[itemCount + 1 - k] = v
-	end
-	return reversedTable
-end
-
---return table with proper order and without rows disabled in screenpack
-function main.f_cleanTable(t, t_sort)
-	local t_clean = {}
-	local t_added = {}
-	--first we add all entries existing in screenpack file in correct order
-	for i = 1, #t_sort do
-		for j = 1, #t do
-			if t_sort[i] == t[j].itemname and t[j].displayname ~= '' then
-				table.insert(t_clean, t[j])
-				t_added[t[j].itemname] = 1
-				break
-			end
-		end
-	end
-	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
-	for i = 1, #t do
-		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
-			table.insert(t_clean, t[i])
-		end
-	end
-	return t_clean
-end
-
 --odd value rounding
 function main.f_oddRounding(v)
 	if v % 2 ~= 0 then
@@ -701,6 +877,13 @@ function main.f_oddRounding(v)
 	else
 		return 0
 	end
+end
+
+--y spacing calculation
+function main.f_ySpacing(t, key)
+	local font_def = main.font_def[t[key][1] .. t[key .. '_height']]
+	if font_def == nil then return 0 end
+	return math.floor(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2] + 0.5)
 end
 
 --count occurrences of a substring
@@ -719,7 +902,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 	main.f_cmdInput()
 	esc(false) --reset ESC
 	while true do
-		if main.input({1, 2}, {'pal'}) or esc() then
+		if main.input({1, 2}, {'pal', 's'}) or esc() then
 			sndPlay(motif.files.snd_data, info.cursor_move_snd[1], info.cursor_move_snd[2])
 			break
 		end
@@ -730,7 +913,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		--draw layerno = 1 backgrounds
 		bgDraw(background.bg, true)
 		--draw menu box
-		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false)
+		fillRect(coords[1], coords[2], coords[3] - coords[1] + 1, coords[4] - coords[2] + 1, col[1], col[2], col[3], alpha[1], alpha[2], false, false)
 		--draw title
 		title:draw()
 		--draw text
@@ -741,7 +924,7 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 				align =  font_info.text_font[3],
 				text =   t[i],
 				x =      font_info.text_pos[1],
-				y =      font_info.text_pos[2] + math.floor(main.font[font_info.text_font[1]].def.Size[2] * font_info.text_font_scale[2] + main.font[font_info.text_font[1]].def.Spacing[2] * font_info.text_font_scale[2] + 0.5) * (i - 1),
+				y =      font_info.text_pos[2] + main.f_ySpacing(font_info, 'text_font') * (i - 1),
 				scaleX = font_info.text_font_scale[1],
 				scaleY = font_info.text_font_scale[2],
 				r =      font_info.text_font[4],
@@ -829,13 +1012,14 @@ function main.f_input(t, info, background, category, controllerNo, keyBreak)
 			motif.infobox.boxbg_col[3],
 			motif.infobox.boxbg_alpha[1],
 			motif.infobox.boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw text
 		for i = 1, #t do
 			main.txt_input:update({
 				text = t[i],
-				y =    motif.infobox.text_pos[2] + math.floor(main.font[motif.infobox.text_font[1]].def.Size[2] * motif.infobox.text_font_scale[2] + main.font[motif.infobox.text_font[1]].def.Spacing[2] * motif.infobox.text_font_scale[2] + 0.5) * (i - 1),
+				y =    motif.infobox.text_pos[2] + main.f_ySpacing(motif.infobox, 'text_font') * (i - 1),
 			})
 			main.txt_input:draw()
 		end
@@ -862,35 +1046,7 @@ end
 --;===========================================================
 --; COMMAND LINE QUICK VS
 --;===========================================================
-main.flags = getCommandLineFlags()
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
-	--load lifebar
-	local def = config.Motif
-	if main.flags['-r'] ~= nil then
-		local case = main.flags['-r']:lower()
-		if case:match('^data[/\\]') and main.f_fileExists(main.flags['-r']) then
-			def = main.flags['-r']
-		elseif case:match('%.def$') and main.f_fileExists('data/' .. main.flags['-r']) then
-			def = 'data/' .. main.flags['-r']
-		elseif main.f_fileExists('data/' .. main.flags['-r'] .. '/system.def') then
-			def = 'data/' .. main.flags['-r'] .. '/system.def'
-		end
-	end
-	local fileDir = def:match('^(.-)[^/\\]+$')
-	local file = io.open(def,"r")
-	local s = file:read("*all")
-	file:close()
-	local lifebar = s:match('fight%s*=%s*(.-%.def)%s*')
-	if main.f_fileExists(lifebar) then
-		loadLifebar(lifebar)
-	elseif main.f_fileExists(fileDir .. lifebar) then
-		loadLifebar(fileDir .. lifebar)
-	elseif main.f_fileExists('data/' .. lifebar) then
-		loadLifebar('data/' .. lifebar)
-	else
-		loadLifebar('data/fight.def')
-	end
-	refresh()
 	--set settings
 	setAutoguard(1, config.AutoGuard)
 	setAutoguard(2, config.AutoGuard)
@@ -898,6 +1054,9 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
+	setGuardBar(config.BarGuard)
+	setStunBar(config.BarStun)
+	setRedLifeBar(config.BarRedLife)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
 	setSingleVsTeamLife(config.SingleVsTeamLife / 100)
@@ -930,6 +1089,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
 			if main.flags['-p' .. num .. '.power'] ~= nil then
 				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
+			end
+			if main.flags['-p' .. num .. '.guardPoints'] ~= nil then
+				t[#t].override['guardPoints'] = tonumber(main.flags['-p' .. num .. '.guardPoints'])
+			end
+			if main.flags['-p' .. num .. '.dizzyPoints'] ~= nil then
+				t[#t].override['dizzyPoints'] = tonumber(main.flags['-p' .. num .. '.dizzyPoints'])
 			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
@@ -985,8 +1150,7 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	end
 	addStage(stage)
 	--load data
-	loadDebugFont('f-6x9.fnt')
-	setDebugScript('external/script/debug.lua')
+	loadDebugFont(config.DebugFont)
 	selectStart()
 	setMatchNo(1)
 	setStage(0)
@@ -1259,7 +1423,7 @@ function main.f_addStage(file)
 	end
 	if attachedChar ~= '' then
 		main.t_selStages[stageNo].attachedChar = {}
-		main.t_selStages[stageNo].attachedChar.def, main.t_selStages[stageNo].attachedChar.displayname, main.t_selStages[stageNo].attachedChar.sprite, main.t_selStages[stageNo].attachedChar.sound = getAttachedCharInfo(attachedChar)
+		main.t_selStages[stageNo].attachedChar.def, main.t_selStages[stageNo].attachedChar.displayname, main.t_selStages[stageNo].attachedChar.sprite, main.t_selStages[stageNo].attachedChar.sound = getCharAttachedInfo(attachedChar)
 		main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
 	end
 	return stageNo
@@ -1424,9 +1588,9 @@ for i = 1, #t_addExluded do
 end
 
 --add Training by stupa if not included in select.def
-if main.t_charDef.training == nil and main.f_fileExists('chars/training/training.def') then
+if main.t_charDef[config.TrainingChar] == nil and main.f_fileExists(config.TrainingChar) then
 	chars = chars + 1
-	main.f_addChar('training, exclude = 1', chars, false)
+	main.f_addChar(config.TrainingChar .. ', exclude = 1', chars, false)
 end
 
 --add remaining character parameters
@@ -1517,8 +1681,7 @@ if main.debugLog then
 end
 
 --Debug stuff
-loadDebugFont(motif.files.debug_font)
-setDebugScript(motif.files.debug_script)
+loadDebugFont(config.DebugFont)
 
 --Assign Lifebar
 txt_loading:draw()
@@ -1527,7 +1690,7 @@ loadLifebar(motif.files.fight)
 main.loadingRefresh(txt_loading)
 
 --print warning if training character is missing
-if main.t_charDef.training == nil then
+if main.t_charDef[config.TrainingChar] == nil then
 	main.f_warning(main.f_extractText(motif.warning_info.text_training), motif.title_info, motif.titlebgdef)
 	os.exit()
 end
@@ -1570,6 +1733,11 @@ randomtest = require('external.script.randomtest')
 options = require('external.script.options')
 start = require('external.script.start')
 storyboard = require('external.script.storyboard')
+
+if main.flags['-storyboard'] ~= nil then
+	storyboard.f_storyboard(main.flags['-storyboard'])
+	os.exit()
+end
 
 --;===========================================================
 --; MENUS
@@ -1884,7 +2052,7 @@ main.t_itemname = {
 		--uses default main.t_charparam assignment
 		main.t_lifebar.p1score = true
 		main.p2TeamMenu = {mode = 0, chars = 1} --predefined P2 team mode as Single, 1 Character
-		main.p2Char = {main.t_charDef.training} --predefined P2 character as Training by stupa
+		main.p2Char = {main.t_charDef[config.TrainingChar]} --predefined P2 character as Training by stupa
 		main.txt_mainSelect:update({text = motif.select_info.title_text_training})
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -2001,7 +2169,7 @@ main.t_itemname = {
 			exitReplay()
 		end
 	end,
-	--DEMO
+	--RANDOMTEST
 	['randomtest'] = function(cursorPosY, moveTxt, item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 		main.f_menuFade('title_info', 'fadeout', cursorPosY, moveTxt, item, t)
@@ -2331,7 +2499,7 @@ local t_menuWindow = {
 	0,
 	math.max(0, motif.title_info.menu_pos[2] - motif.title_info.menu_window_margins_y[1]),
 	motif.info.localcoord[1],
-	math.min(motif.info.localcoord[2], motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2])
+	motif.title_info.menu_pos[2] + (motif.title_info.menu_window_visibleitems - 1) * motif.title_info.menu_item_spacing[2] + motif.title_info.menu_window_margins_y[2]
 }
 local t_pos = {} --for storing current main.menu table position
 local t_skipGroup = {}
@@ -2423,6 +2591,9 @@ function main.f_default()
 	setPowerShare(2, config.TeamPowerShare)
 	setLifeAdjustment(config.TeamLifeAdjustment)
 	setLoseKO(config.SimulLoseKO, config.TagLoseKO)
+	setGuardBar(config.BarGuard)
+	setStunBar(config.BarStun)
+	setRedLifeBar(config.BarRedLife)
 	setDemoTime(motif.demo_mode.fight_endtime)
 	setLifeMul(config.LifeMul / 100)
 	setGameSpeed(config.GameSpeed / 100)
@@ -2488,7 +2659,15 @@ function main.f_demo(cursorPosY, moveTxt, item, t, fadeType)
 		setAllowDebugKeys(false)
 	end
 	setGameMode('demo')
-	randomtest.run()
+	for i = 1, 2 do
+		setCom(i, 8)
+		setTeamMode(i, 0, 1)
+		local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
+		selectChar(i, ch, getCharRandomPalette(ch))
+	end
+	start.f_setStage()
+	loadStart()
+	game()
 	setAllowBGM(true)
 	setAllowDebugKeys(config.DebugKeys)
 	refresh()
@@ -2621,7 +2800,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.menu_boxcursor_col[3],
 			src,
 			dst,
-			motif.defaultLocalcoord --for some reason can't be false on winmugen screenpack, no idea why
+			motif.defaultLocalcoord,
+			true
 		)
 	end
 	--draw layerno = 1 backgrounds
@@ -2638,7 +2818,8 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData)
 			motif.title_info.footer_boxbg_col[3],
 			motif.title_info.footer_boxbg_alpha[1],
 			motif.title_info.footer_boxbg_alpha[2],
-			motif.defaultLocalcoord
+			motif.defaultLocalcoord,
+			true
 		)
 	end
 	txt_titleFooter1:draw()
@@ -2685,6 +2866,7 @@ function main.f_menuFade(screen, fadeType, cursorPosY, moveTxt, item, t)
 end
 
 function main.f_bgReset(data)
+	main.t_animUpdate = {}
 	alpha1cur = 0
 	alpha2cur = 0
 	alpha1add = true
@@ -2748,6 +2930,7 @@ function main.f_connect(server, t)
 			motif.title_info.connecting_boxbg_col[3],
 			motif.title_info.connecting_boxbg_alpha[1],
 			motif.title_info.connecting_boxbg_alpha[2],
+			false,
 			false
 		)
 		--draw text
@@ -2768,8 +2951,19 @@ end
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
---SetGCPercent(100)
+--setGCPercent(100)
+if main.flags['-stresstest'] ~= nil then
+	main.f_default()
+	local frameskip = tonumber(main.flags['-stresstest'])
+	if frameskip >= 1 then
+		setGameSpeed(frameskip + 1)
+	end
+	setGameMode('randomtest')
+	randomtest.run()
+	os.exit()
+end
 main.menu.loop()
 
 -- Debug Info
+--main.motifData = nil
 --if main.debugLog then main.f_printTable(main, "debug/t_main.txt") end
