@@ -21,6 +21,7 @@ go.mod
 Ikemen.log
 Ikemen_GO.exe
 Ikemen_GO.bat
+OpenAL32.dll
 save/*
 debug/*
 chars/*
@@ -28,6 +29,7 @@ font/*
 sound/*
 stages/*
 wip/*
+work/*
 data/big
 data/kfm
 data/mugen1
@@ -37,6 +39,7 @@ data/continue.sff
 data/continue.snd
 data/credits.def
 data/credits.sff
+data/debug.zss
 data/fight.def
 data/fight.sff
 data/fight.snd

@@ -3735,8 +3735,9 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
 	c.damageCount -= add
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
-			t.lifeAdd(-float64(t.computeDamage(-float64(add), kill, absolute, 1)),
-				true, true)
+			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1))
+			t.lifeAdd(-dmg, true, true)
+			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 		}
 	}
 }
@@ -4621,18 +4622,6 @@ func (c *Char) action() {
 		c.setSCF(SCF_guard)
 	}
 	if !p {
-		if c.ghv.damage != 0 {
-			if c.ss.moveType == MT_H {
-				c.lifeAdd(-float64(c.ghv.damage), true, true)
-			}
-			c.ghv.damage = 0
-		}
-		if c.ghv.redlife != 0 {
-			if c.ss.moveType == MT_H && !c.scf(SCF_guard) {
-				c.redLifeAdd(float64(c.ghv.redlife), true)
-			}
-			c.ghv.redlife = 0
-		}
 		if c.palfx != nil {
 			c.palfx.step()
 		}
@@ -4800,6 +4789,18 @@ func (c *Char) action() {
 			} else {
 				c.curFrame = nil
 			}
+		}
+		if c.ghv.damage != 0 {
+			if c.ss.moveType == MT_H {
+				c.lifeAdd(-float64(c.ghv.damage), true, true)
+			}
+			c.ghv.damage = 0
+		}
+		if c.ghv.redlife != 0 {
+			if c.ss.moveType == MT_H && !c.scf(SCF_guard) {
+				c.redLifeAdd(float64(c.ghv.redlife), true)
+			}
+			c.ghv.redlife = 0
 		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++

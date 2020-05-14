@@ -447,7 +447,6 @@ if RoundState = 0 && !IsHelper {
 					DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * -1.8} #dizzy points drain
 				}
 			}
-			RedLifeAdd{value: (ReceivedDamage - Map(_iksys_receivedDamage)) * 0.25; absolute: 1} #damage to red life conversion
 		}
 		MapSet{map: "_iksys_receivedDamage"; value: ReceivedDamage}
 		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
