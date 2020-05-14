@@ -2251,6 +2251,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_consecutivewins)
 	case "damagecount":
 		out.append(OC_ex_, OC_ex_damagecount)
+	case "isdizzy":
+		out.append(OC_ex_, OC_ex_dizzy)
 	case "dizzy":
 		out.append(OC_ex_, OC_ex_dizzy)
 	case "dizzypoints":
