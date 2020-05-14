@@ -384,12 +384,12 @@ if Animtime = 0 || Time > 99 {
 #===============================================================================
 [Statedef -2]
 
-if RoundState = 0 {
+if RoundState = 0 && !IsHelper {
 	GuardPointsSet{value: GuardPointsMax}
 	DizzyPointsSet{value: DizzyPointsMax}
 	MapSet{map: "_iksys_guardPointsCounter"; value: 0}
 	MapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
-} else if RoundState = 2 && Alive {
+} else if RoundState = 2 && Alive && !IsHelper {
 	# Guard Break
 	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
 		MapSet{map: "_iksys_guardPointsCounter"; value: 60}

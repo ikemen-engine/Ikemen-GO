@@ -126,6 +126,8 @@ func newCompiler() *Compiler {
 		"offset":               c.offset,
 		"victoryquote":         c.victoryQuote,
 		"zoom":                 c.zoom,
+		"forcefeedback":        c.null,
+		"null":                 c.null,
 		"dizzypointsadd":       c.dizzyPointsAdd,
 		"dizzypointsset":       c.dizzyPointsSet,
 		"dizzyset":             c.dizzySet,
@@ -154,8 +156,6 @@ func newCompiler() *Compiler {
 		"targetguardpointsadd": c.targetGuardPointsAdd,
 		"targetredlifeadd":     c.targetRedLifeAdd,
 		"targetscoreadd":       c.targetScoreAdd,
-		"forcefeedback":        c.null,
-		"null":                 c.null,
 	}
 	return c
 }

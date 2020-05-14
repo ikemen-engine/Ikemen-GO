@@ -123,7 +123,7 @@ let ret = $currentID;
 #===============================================================================
 [Statedef -3]
 
-if RoundState = 0 && TeamMode = Tag {
+if RoundState = 0 && TeamMode = Tag && !IsHelper {
 	MapSet{map: "_iksys_tagActive"; value: 1}
 	MapSet{map: "_iksys_tagSwitchDist"; value: 0}
 	if RoundNo = 1 {
@@ -131,7 +131,7 @@ if RoundState = 0 && TeamMode = Tag {
 	} else if ID = Map(_iksys_tagCurrentID) {
 		TeamMapSet{map: "_iksys_tagCurrentID"; value: ID}
 	}
-} else if Map(_iksys_tagActive) = 1 {
+} else if Map(_iksys_tagActive) = 1 && !IsHelper {
 	if RoundState = 4 {
 		MapSet{map: "_iksys_tagActive"; value: 0}
 	} else if Alive {
