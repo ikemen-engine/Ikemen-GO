@@ -986,6 +986,11 @@ func (a *Anim) SetColorKey(mask int16) {
 func (a *Anim) SetAlpha(src, dst int16) {
 	a.anim.srcAlpha, a.anim.dstAlpha = src, dst
 }
+func (a *Anim) SetFacing(fc float32) {
+	if (fc == 1 && a.xscl < 0) || (fc == -1 && a.xscl > 0) {
+		a.xscl *= -1
+	}
+}
 func (a *Anim) SetScale(x, y float32) {
 	a.xscl, a.yscl = x, y
 }

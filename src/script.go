@@ -435,6 +435,14 @@ func systemScriptInit(l *lua.LState) {
 		a.SetAlpha(int16(numArg(l, 2)), int16(numArg(l, 3)))
 		return 0
 	})
+	luaRegister(l, "animSetFacing", func(*lua.LState) int {
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		a.SetFacing(float32(numArg(l, 2)))
+		return 0
+	})
 	luaRegister(l, "animSetScale", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {

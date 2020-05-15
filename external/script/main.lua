@@ -518,9 +518,10 @@ function main.f_refresh()
 end
 
 --animDraw at specified coordinates
-function main.f_animPosDraw(a, x, y)
+function main.f_animPosDraw(a, x, y, f)
 	main.t_animUpdate[a] = 1
 	animSetPos(a, x, y)
+	if f ~= nil then animSetFacing(a, f) end
 	animDraw(a)
 end
 
