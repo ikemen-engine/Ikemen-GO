@@ -1076,7 +1076,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			--1Pのキャラ表示位置 / 1P character display position
 			elseif start.t_grid[row + p1RowOffset][col].char ~= nil and start.t_grid[row + p1RowOffset][col].hidden == 0 then
@@ -1087,7 +1089,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			--Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
@@ -1098,7 +1102,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			end
 			
@@ -1111,7 +1117,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			--2Pのキャラ表示位置 / 2P character display position
 			elseif start.t_grid[row + p2RowOffset][col].char ~= nil and start.t_grid[row + p2RowOffset][col].hidden == 0 then
@@ -1122,7 +1130,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			--Empty boxes display position
 			elseif motif.select_info.showemptyboxes == 1 then
@@ -1133,7 +1143,9 @@ function start.f_resetGrid()
 					x1 = p1FaceX + start.t_grid[row][col].x,
 					x2 = p2FaceX + start.t_grid[row][col].x,
 					y1 = p1FaceY + start.t_grid[row][col].y,
-					y2 = p2FaceY + start.t_grid[row][col].y
+					y2 = p2FaceY + start.t_grid[row][col].y,
+					row = row,
+					col = col
 				})
 			end
 		end
@@ -1235,6 +1247,14 @@ function start.f_slotSelected(cell, cmd, x, y)
 end
 
 --
+function start.f_faceOffset(col, row, key)
+	if motif.select_info['cell_' .. col .. '_' .. row .. '_offset'] ~= nil then
+		return motif.select_info['cell_' .. col .. '_' .. row .. '_offset'][key] or 0
+	end
+	return 0
+end
+
+--
 local cnt = motif.select_info.columns + 1
 local row = 1
 local col = 0
@@ -1246,7 +1266,10 @@ for i = 1, (motif.select_info.rows + motif.select_info.rows_scrolling) * motif.s
 		start.t_grid[row] = {}
 	end
 	col = #start.t_grid[row] + 1
-	start.t_grid[row][col] = {x = (col - 1) * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]), y = (row - 1) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])}
+	start.t_grid[row][col] = {
+		x = (col - 1) * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(col, row, 1),
+		y = (row - 1) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(col, row, 2)
+	}
 	if start.f_selGrid(i).char ~= nil then
 		start.t_grid[row][col].char = start.f_selGrid(i).char
 		start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
@@ -2150,7 +2173,7 @@ function start.f_selectScreen()
 						start.t_drawFace[i].p1,
 						start.t_drawFace[i].x1 + motif.select_info.portrait_offset[1],
 						start.t_drawFace[i].y1 + motif.select_info.portrait_offset[2],
-						motif.select_info.portrait_scale[1],
+						motif.select_info.portrait_scale[1] * (motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1),
 						motif.select_info.portrait_scale[2]
 					)
 				end
