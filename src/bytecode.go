@@ -1516,35 +1516,35 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p4name:
-		p4 := sys.charList.enemyNear(c, 1, true)
+		p4 := sys.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p4 != nil && !(p4.scf(SCF_ko) && p4.scf(SCF_over)) &&
 			p4.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p5name:
-		p5 := sys.charList.enemyNear(c, 1, true)
+		p5 := sys.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p5 != nil && !(p5.scf(SCF_ko) && p5.scf(SCF_over)) &&
 			p5.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 1, true)
+		p6 := sys.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
 			p6.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p7name:
-		p7 := sys.charList.enemyNear(c, 1, true)
+		p7 := sys.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p7 != nil && !(p7.scf(SCF_ko) && p7.scf(SCF_over)) &&
 			p7.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 1, true)
+		p8 := sys.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
 			p8.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -2222,7 +2222,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, x)
+	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, x, true)
 	return false
 }
 
@@ -2893,7 +2893,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case explod_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c))
+			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
 		case explod_angle:
 			e.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3152,7 +3152,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		case gameMakeAnim_under:
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c))
+			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
 		}
 		return true
 	})
@@ -5043,7 +5043,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	crun := c
 	var t, mt int32 = 30, 0
 	uh := true
-	sys.superanim, sys.superpmap.remap = crun.getAnim(100, true), nil
+	sys.superanim, sys.superpmap.remap = crun.getAnim(100, true, false), nil
 	sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
 	sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
@@ -5061,7 +5061,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			sys.superdarken = exp[0].evalB(c)
 		case superPause_anim:
 			f := exp[0].evalB(c)
-			if sys.superanim = crun.getAnim(exp[1].evalI(c), f); sys.superanim != nil {
+			if sys.superanim = crun.getAnim(exp[1].evalI(c), f, false); sys.superanim != nil {
 				if f {
 					sys.superpmap.remap = nil
 				} else {
@@ -5089,11 +5089,11 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, &crun.pos[0])
+				vo, 0, 1, &crun.pos[0], false)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				sys.superanim, sys.superpmap.remap = crun.getAnim(30, true), nil
+				sys.superanim, sys.superpmap.remap = crun.getAnim(30, true, false), nil
 				sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 			} else {
 				return false

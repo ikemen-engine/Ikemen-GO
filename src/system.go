@@ -805,16 +805,19 @@ func (s *System) appendToClipboard(pn, sn int, a ...interface{}) {
 		}
 	}
 }
+func (s *System) appendToConsole(str string) {
+	s.consoleText = append(s.consoleText, str)
+	if len(s.consoleText) > 15 {
+		s.consoleText = s.consoleText[len(s.consoleText)-15:]
+	}
+}
 func (s *System) printToConsole(pn, sn int, a ...interface{}) {
 	spl := s.stringPool[pn].List
 	if sn >= 0 && sn < len(spl) {
 		for _, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
 			fmt.Printf("%s\n", str)
-			s.consoleText = append(s.consoleText, str)
+			s.appendToConsole(str)
 		}
-	}
-	if len(s.consoleText) > 10 {
-		s.consoleText = s.consoleText[len(s.consoleText)-10:]
 	}
 }
 func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,

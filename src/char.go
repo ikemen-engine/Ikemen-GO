@@ -917,7 +917,7 @@ func (e *Explod) setPos(c *Char) {
 		case PT_P1:
 			pPos(c)
 		case PT_P2:
-			if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
+			if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
 				pPos(p2)
 			}
 		case PT_F, PT_B:
@@ -1195,10 +1195,10 @@ func (p *Projectile) update(playerNo int) {
 			if p.hits < 0 && p.remove {
 				if p.hits == -1 {
 					if p.hitanim != p.anim {
-						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, false)
+						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, false, false)
 					}
 				} else if p.cancelanim != p.anim {
-					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, false)
+					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, false, false)
 				}
 			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
@@ -1211,7 +1211,7 @@ func (p *Projectile) update(playerNo int) {
 				p.removetime == 0 ||
 				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
 				if p.remanim != p.anim {
-					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, false)
+					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, false, false)
 				}
 			} else {
 				rem = false
@@ -1584,6 +1584,10 @@ func newChar(n int, idx int32) (c *Char) {
 	c = &Char{aimg: *newAfterImage()}
 	c.init(n, idx)
 	return c
+}
+
+func (c *Char) warn() string {
+	return fmt.Sprintf("WARNING: %v (%v) in state %v: ", c.name, c.id, c.ss.no)
 }
 func (c *Char) panic() {
 	if sys.workingState != &c.ss.sb {
@@ -2246,7 +2250,7 @@ func (c *Char) setYV(yv float32) {
 	}
 }
 func (c *Char) changeAnim(animNo int32) {
-	if a := c.getAnim(animNo, false); a != nil {
+	if a := c.getAnim(animNo, false, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
@@ -2259,7 +2263,7 @@ func (c *Char) changeAnim(animNo int32) {
 	}
 }
 func (c *Char) changeAnim2(animNo int32) {
-	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false); a != nil {
+	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
@@ -2319,15 +2323,20 @@ func (c *Char) unsetSF(csf CharSpecialFlag) {
 }
 func (c *Char) parent() *Char {
 	if c.parentIndex == IErr {
+		sys.appendToConsole(c.warn() + "has no parent")
 		return nil
 	}
-	if c.parentIndex < 0 && !sys.ignoreMostErrors {
-		sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+	if c.parentIndex < 0 {
+		sys.appendToConsole(c.warn() + "parent in retargeted trigger has been destroyed already")
+		if !sys.ignoreMostErrors {
+			sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+		}
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
 }
 func (c *Char) root() *Char {
 	if c.helperIndex == 0 {
+		sys.appendToConsole(c.warn() + "has no root")
 		return nil
 	}
 	return sys.chars[c.playerNo][0]
@@ -2338,6 +2347,7 @@ func (c *Char) helper(id int32) *Char {
 			return h
 		}
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper %v", id))
 	return nil
 }
 func (c *Char) target(id int32) *Char {
@@ -2346,11 +2356,15 @@ func (c *Char) target(id int32) *Char {
 			return t
 		}
 	}
+	if id != -1 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no target %v", id))
+	}
 	return nil
 }
 func (c *Char) partner(n int32) *Char {
 	n = Max(0, n)
 	if int(n) > len(sys.chars)/2-2 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th partner", n))
 		return nil
 	}
 	// X>>1 = X/2
@@ -2368,6 +2382,7 @@ func (c *Char) partner(n int32) *Char {
 	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
 		return sys.chars[p][0]
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("illegal partner number (%v) in retargeted trigger", n))
 	return nil
 }
 func (c *Char) partnerV2(n int32) *Char {
@@ -2386,6 +2401,7 @@ func (c *Char) partnerV2(n int32) *Char {
 }
 func (c *Char) enemy(n int32) *Char {
 	if n < 0 || n >= c.numEnemy() {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th enemy", n))
 		return nil
 	}
 	if c.teamside == 3-1 {
@@ -2394,10 +2410,10 @@ func (c *Char) enemy(n int32) *Char {
 	return sys.chars[n*2+int32(^c.playerNo&1)][0]
 }
 func (c *Char) enemyNear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, false)
+	return sys.charList.enemyNear(c, n, false, true)
 }
 func (c *Char) p2() *Char {
-	p2 := sys.charList.enemyNear(c, 0, true)
+	p2 := sys.charList.enemyNear(c, 0, true, false)
 	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
 		return nil
 	}
@@ -2909,7 +2925,7 @@ func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	return nil
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	_, freqmul float32, _ *float32) {
+	_, freqmul float32, _ *float32, log bool) {
 	if g < 0 {
 		return
 	}
@@ -2923,15 +2939,24 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			w = c.gi().snd.Get([...]int32{g, n})
 		}
 	}
-	if w == nil && !sys.ignoreMostErrors {
-		str := "存在しないサウンド: "
-		if f {
-			str += "F:"
-		} else {
-			str += fmt.Sprintf("P%v:", c.playerNo+1)
+	if w == nil {
+		if log {
+			if f {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
+			} else {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
+			}
 		}
-		sys.errLog.Printf("%v%v,%v\n", str, g, n)
-		return
+		if !sys.ignoreMostErrors {
+			str := "存在しないサウンド: "
+			if f {
+				str += "F:"
+			} else {
+				str += fmt.Sprintf("P%v:", c.playerNo+1)
+			}
+			sys.errLog.Printf("%v%v,%v\n", str, g, n)
+			return
+		}
 	}
 	if ch := c.newChannel(chNo, lowpriority); ch != nil {
 		ch.sound, ch.loop, ch.freqmul = w, loop, freqmul
@@ -2956,7 +2981,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 // Furimuki = Turn around
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if c.rdDistX(sys.charList.enemyNear(c, 0, true), c).ToF() < 0 {
+		if c.rdDistX(sys.charList.enemyNear(c, 0, true, false), c).ToF() < 0 {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5)
@@ -2969,6 +2994,7 @@ func (c *Char) furimuki() {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("2500 loops: %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
 		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
 			c.name, c.ss.prevno, c.ss.no, no)
 		return false
@@ -2997,6 +3023,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("存在しないステート: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
@@ -3127,7 +3154,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		p[1] = c.pos[1]*c.localscl/localscl + pos[1]
 		*dstFacing *= c.facing
 	case PT_P2:
-		if p2 := sys.charList.enemyNear(c, 0, true); p2 != nil {
+		if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
 			p[0] = p2.pos[0]*p2.localscl/localscl + pos[0]*p2.facing
 			p[1] = p2.pos[1]*p2.localscl/localscl + pos[1]
 			if isProj {
@@ -3299,7 +3326,7 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.explDrawlist[en], true)
 	remove(&sys.topexplDrawlist[en], false)
 }
-func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
+func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	if n < 0 {
 		return nil
 	}
@@ -3308,14 +3335,23 @@ func (c *Char) getAnim(n int32, ffx bool) (a *Animation) {
 	} else {
 		a = c.gi().anim.get(n)
 	}
-	if a == nil && !sys.ignoreMostErrors {
-		str := "存在しないアニメ: "
-		if ffx {
-			str += "F:"
-		} else {
-			str += fmt.Sprintf("P%v:", c.playerNo+1)
+	if a == nil {
+		if log {
+			if ffx {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
+			} else {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
+			}
 		}
-		sys.errLog.Printf("%v%v\n", str, n)
+		if !sys.ignoreMostErrors {
+			str := "存在しないアニメ: "
+			if ffx {
+				str += "F:"
+			} else {
+				str += fmt.Sprintf("P%v:", c.playerNo+1)
+			}
+			sys.errLog.Printf("%v%v\n", str, n)
+		}
 	}
 	return
 }
@@ -3415,7 +3451,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.anim < -1 {
 		p.anim = 0
 	}
-	p.ani = c.getAnim(p.anim, false)
+	p.ani = c.getAnim(p.anim, false, false)
 	if p.ani == nil && c.anim != nil {
 		p.ani = &Animation{}
 		*p.ani = *c.anim
@@ -3560,24 +3596,28 @@ func (c *Char) varGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumVar) {
 		return BytecodeInt(c.ivar[i])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumFvar) {
 		return BytecodeFloat(c.fvar[i])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysVar) {
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysFvar) {
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varSet(i, v int32) BytecodeValue {
@@ -3585,6 +3625,7 @@ func (c *Char) varSet(i, v int32) BytecodeValue {
 		c.ivar[i] = v
 		return BytecodeInt(v)
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
@@ -3592,6 +3633,7 @@ func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i] = v
 		return BytecodeFloat(v)
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarSet(i, v int32) BytecodeValue {
@@ -3599,6 +3641,7 @@ func (c *Char) sysVarSet(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] = v
 		return BytecodeInt(v)
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
@@ -3606,6 +3649,7 @@ func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] = v
 		return BytecodeFloat(v)
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varAdd(i, v int32) BytecodeValue {
@@ -3613,6 +3657,7 @@ func (c *Char) varAdd(i, v int32) BytecodeValue {
 		c.ivar[i] += v
 		return BytecodeInt(c.ivar[i])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
@@ -3620,6 +3665,7 @@ func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i] += v
 		return BytecodeFloat(c.fvar[i])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
@@ -3627,6 +3673,7 @@ func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] += v
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
@@ -3634,6 +3681,7 @@ func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] += v
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varRangeSet(s, e, v int32) {
@@ -4132,7 +4180,7 @@ func (c *Char) over() bool {
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
-		e.anim = c.getAnim(120, true)
+		e.anim = c.getAnim(120, true, false)
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
 		e.offset = [...]float32{x, y}
@@ -4174,12 +4222,14 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
 	if !ok || si < 0 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no source palette %v,%v for RemapPal", src[0], src[1]))
 		return
 	}
 	var di int
 	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
 	if !ok || di < 0 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no dest palette %v,%v for RemapPal", dst[0], dst[1]))
 		di = si
 	}
 	if pfx.remap == nil {
@@ -5087,7 +5137,7 @@ func (c *Char) tick() {
 		if c.life <= 0 && !sys.sf(GSF_noko) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, &c.pos[0])
+				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, &c.pos[0], false)
 			}
 			c.setSCF(SCF_ko)
 		}
@@ -5632,7 +5682,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				off[1] += p1.hitdef.sparkxy[1] * c.localscl
 			}
 			if e, i := c.newExplod(); e != nil {
-				e.anim = c.getAnim(animNo, ffx)
+				e.anim = c.getAnim(animNo, ffx, false)
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
@@ -5663,7 +5713,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.hitsound[1],
-					-1, vo, 0, 1, &getter.pos[0])
+					-1, vo, 0, 1, &getter.pos[0], true)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -5704,7 +5754,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.guardsound[1],
-					-1, vo, 0, 1, &getter.pos[0])
+					-1, vo, 0, 1, &getter.pos[0], true)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)
@@ -6138,8 +6188,11 @@ func (cl *CharList) get(id int32) *Char {
 	}
 	return cl.idMap[id]
 }
-func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
+func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	if n < 0 {
+		if log {
+			sys.appendToConsole(c.warn() + fmt.Sprintf("illegal near enemy number (%v) in retargeted trigger", n))
+		}
 		return nil
 	}
 	cache := &c.enemynear[Btoi(p2)]
@@ -6168,6 +6221,9 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2 bool) *Char {
 		}
 	}
 	if int(n) >= len(*cache) {
+		if log {
+			sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th nearest enemy", n))
+		}
 		return nil
 	}
 	return (*cache)[n]

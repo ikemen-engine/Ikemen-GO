@@ -1010,6 +1010,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.ratioLevel = [MaxSimul*2 + MaxAttachedChar]int32{}
 				sys.matchClearance[0].updated = false
 				sys.matchClearance[1].updated = false
+				sys.consoleText = []string{}
 				return 2
 			}
 		}
@@ -1069,7 +1070,7 @@ func systemScriptInit(l *lua.LState) {
 		var ok bool
 		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
 			if !ok {
-				if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false); anim != nil {
+				if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false, false); anim != nil {
 					anim.Action() //TODO: for some reason doesn't advance the animation, remains at first frame
 					lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1, scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
 					lay.DrawAnim(window, float32(numArg(l, 3))+sys.lifebarOffsetX, float32(numArg(l, 4)), sys.chars[pn-1][0].localscl, lay.layerno, anim)
@@ -1087,7 +1088,7 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("charAnimReset: the player number (%v) is not loaded.", pn)
 		}
 		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
-			if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false); anim != nil {
+			if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false, false); anim != nil {
 				anim.Reset()
 			}
 		})

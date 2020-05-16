@@ -555,7 +555,8 @@ func LoadSnd(filename string) (*Snd, error) {
 			if !ok {
 				tmp, err := ReadWave(f, int64(subHeaderOffset))
 				if err != nil {
-					fmt.Printf("Warning: Broken sound found in %s (%d, %d)\n", filename, num[0], num[1])
+					sys.appendToConsole(fmt.Sprintf("WARNING: %s sound %d,%d can't be read\n", filename, num[0], num[1]))
+					sys.errLog.Printf("%s sound %d,%d can't be read\n", filename, num[0], num[1])
 				} else {
 					s.table[num] = tmp
 				}
