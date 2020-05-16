@@ -1589,7 +1589,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training by stupa if not included in select.def
-if main.t_charDef[config.TrainingChar] == nil and main.f_fileExists(config.TrainingChar) then
+if main.t_charDef[config.TrainingChar] == nil then
 	chars = chars + 1
 	main.f_addChar(config.TrainingChar .. ', exclude = 1', chars, false)
 end
