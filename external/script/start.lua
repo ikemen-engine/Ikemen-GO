@@ -2158,14 +2158,16 @@ function start.f_selectScreen()
 				main.f_animPosDraw(
 					motif.select_info.cell_bg_data,
 					start.t_drawFace[i].x1,
-					start.t_drawFace[i].y1
+					start.t_drawFace[i].y1,
+					(motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1)
 				)
 				--draw random cell
 				if start.t_drawFace[i].d == 1 then
 					main.f_animPosDraw(
 						motif.select_info.cell_random_data,
 						start.t_drawFace[i].x1 + motif.select_info.portrait_offset[1],
-						start.t_drawFace[i].y1 + motif.select_info.portrait_offset[2]
+						start.t_drawFace[i].y1 + motif.select_info.portrait_offset[2],
+						(motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1)
 					)
 				--draw face cell
 				elseif start.t_drawFace[i].d == 2 then
@@ -2184,14 +2186,16 @@ function start.f_selectScreen()
 				main.f_animPosDraw(
 					motif.select_info.cell_bg_data,
 					start.t_drawFace[i].x2,
-					start.t_drawFace[i].y2
+					start.t_drawFace[i].y2,
+					(motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1)
 				)
 				--draw random cell
 				if start.t_drawFace[i].d == 11 then
 					main.f_animPosDraw(
 						motif.select_info.cell_random_data,
 						start.t_drawFace[i].x2 + motif.select_info.portrait_offset[1],
-						start.t_drawFace[i].y2 + motif.select_info.portrait_offset[2]
+						start.t_drawFace[i].y2 + motif.select_info.portrait_offset[2],
+						(motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1)
 					)
 				--draw face cell
 				elseif start.t_drawFace[i].d == 12 then
@@ -2199,7 +2203,7 @@ function start.f_selectScreen()
 						start.t_drawFace[i].p2,
 						start.t_drawFace[i].x2 + motif.select_info.portrait_offset[1],
 						start.t_drawFace[i].y2 + motif.select_info.portrait_offset[2],
-						motif.select_info.portrait_scale[1],
+						motif.select_info.portrait_scale[1] * (motif.select_info['cell_' .. start.t_drawFace[i].col .. '_' .. start.t_drawFace[i].row .. '_facing'] or 1),
 						motif.select_info.portrait_scale[2]
 					)
 				end
@@ -2212,13 +2216,23 @@ function start.f_selectScreen()
 		--draw p1 done cursor
 		for i = 1, #t_p1Selected do
 			if t_p1Selected[i].cursor ~= nil then
-				main.f_animPosDraw(motif.select_info.p1_cursor_done_data, t_p1Selected[i].cursor[1], t_p1Selected[i].cursor[2])
+				main.f_animPosDraw(
+					motif.select_info.p1_cursor_done_data,
+					t_p1Selected[i].cursor[1],
+					t_p1Selected[i].cursor[2],
+					t_p1Selected[i].cursor[4]
+				)
 			end
 		end
 		--draw p2 done cursor
 		for i = 1, #t_p2Selected do
 			if t_p2Selected[i].cursor ~= nil then
-				main.f_animPosDraw(motif.select_info.p2_cursor_done_data, t_p2Selected[i].cursor[1], t_p2Selected[i].cursor[2])
+				main.f_animPosDraw(
+					motif.select_info.p2_cursor_done_data,
+					t_p2Selected[i].cursor[1],
+					t_p2Selected[i].cursor[2],
+					t_p2Selected[i].cursor[4]
+				)
 			end
 		end
 		--Player1 team menu
@@ -2963,13 +2977,18 @@ function start.f_p1SelectMenu()
 		end
 		p1Cell = p1SelX + motif.select_info.columns * p1SelY
 		--draw active cursor
-		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
-		local cursorY = p1FaceY + (p1SelY - p1RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])
+		local cursorX = p1FaceX + p1SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(p1SelX + 1, p1SelY + 1, 1)
+		local cursorY = p1FaceY + (p1SelY - p1RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(p1SelX + 1, p1SelY + 1, 2)
 		if resetgrid == true then
 			start.f_resetGrid()
 		end
 		if start.f_selGrid(p1Cell + 1).hidden ~= 1 then
-			main.f_animPosDraw(motif.select_info.p1_cursor_active_data, cursorX, cursorY)
+			main.f_animPosDraw(
+				motif.select_info.p1_cursor_active_data,
+				cursorX,
+				cursorY,
+				(motif.select_info['cell_' .. p1SelX + 1 .. '_' .. p1SelY + 1 .. '_facing'] or 1)
+			)
 		end
 		--cell selected
 		if start.f_slotSelected(p1Cell + 1, 1, p1SelX, p1SelY) and start.f_selGrid(p1Cell + 1).char ~= nil and start.f_selGrid(p1Cell + 1).hidden ~= 2 then
@@ -2982,7 +3001,7 @@ function start.f_p1SelectMenu()
 			table.insert(t_p1Selected, {
 				ref = selected,
 				pal = start.f_selectPal(selected, main.f_btnPalNo(main.cmd[1])),
-				cursor = {cursorX, cursorY, p1RowOffset},
+				cursor = {cursorX, cursorY, p1RowOffset, (motif.select_info['cell_' .. p1SelX + 1 .. '_' .. p1SelY + 1 .. '_facing'] or 1)},
 				ratio = start.f_setRatio(1)
 			})
 			t_p1Cursor[p1NumChars - #t_p1Selected + 1] = {p1SelX, p1SelY, p1FaceOffset, p1RowOffset}
@@ -3011,7 +3030,7 @@ function start.f_p1SelectMenu()
 				table.insert(t_p1Selected, {
 					ref = selected,
 					pal = start.f_selectPal(selected),
-					cursor = {cursorX, cursorY, p1RowOffset},
+					cursor = {cursorX, cursorY, p1RowOffset, (motif.select_info['cell_' .. p1SelX + 1 .. '_' .. p1SelY + 1 .. '_facing'] or 1)},
 					ratio = start.f_setRatio(1)
 				})
 				t_p1Cursor[p1NumChars - #t_p1Selected + 1] = {p1SelX, p1SelY, p1FaceOffset, p1RowOffset}
@@ -3030,7 +3049,7 @@ function start.f_p1SelectMenu()
 					table.insert(t_p2Selected, {
 						ref = selected,
 						pal = start.f_selectPal(selected),
-						cursor = {cursorX, cursorY, p2RowOffset},
+						cursor = {cursorX, cursorY, p2RowOffset, (motif.select_info['cell_' .. p2SelX + 1 .. '_' .. p2SelY + 1 .. '_facing'] or 1)},
 						ratio = start.f_setRatio(2)
 					})
 					t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
@@ -3082,12 +3101,17 @@ function start.f_p2SelectMenu()
 		end
 		p2Cell = p2SelX + motif.select_info.columns * p2SelY
 		--draw active cursor
-		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1])
-		local cursorY = p2FaceY + (p2SelY - p2RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2])
+		local cursorX = p2FaceX + p2SelX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(p2SelX + 1, p2SelY + 1, 1)
+		local cursorY = p2FaceY + (p2SelY - p2RowOffset) * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(p2SelX + 1, p2SelY + 1, 2)
 		if resetgrid == true then
 			start.f_resetGrid()
 		end
-		main.f_animPosDraw(motif.select_info.p2_cursor_active_data, cursorX, cursorY)
+		main.f_animPosDraw(
+			motif.select_info.p2_cursor_active_data,
+			cursorX,
+			cursorY,
+			(motif.select_info['cell_' .. p2SelX + 1 .. '_' .. p2SelY + 1 .. '_facing'] or 1)
+		)
 		--cell selected
 		if start.f_slotSelected(p2Cell + 1, 2, p2SelX, p2SelY) and start.f_selGrid(p2Cell + 1).char ~= nil and start.f_selGrid(p2Cell + 1).hidden ~= 2 then
 			sndPlay(motif.files.snd_data, motif.select_info.p2_cursor_done_snd[1], motif.select_info.p2_cursor_done_snd[2])
@@ -3099,7 +3123,7 @@ function start.f_p2SelectMenu()
 			table.insert(t_p2Selected, {
 				ref = selected,
 				pal = start.f_selectPal(selected, main.f_btnPalNo(main.cmd[2])),
-				cursor = {cursorX, cursorY, p2RowOffset},
+				cursor = {cursorX, cursorY, p2RowOffset, (motif.select_info['cell_' .. p2SelX + 1 .. '_' .. p2SelY + 1 .. '_facing'] or 1)},
 				ratio = start.f_setRatio(2)
 			})
 			t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
@@ -3123,7 +3147,7 @@ function start.f_p2SelectMenu()
 				table.insert(t_p2Selected, {
 					ref = selected,
 					pal = start.f_selectPal(selected),
-					cursor = {cursorX, cursorY, p2RowOffset},
+					cursor = {cursorX, cursorY, p2RowOffset, (motif.select_info['cell_' .. p2SelX + 1 .. '_' .. p2SelY + 1 .. '_facing'] or 1)},
 					ratio = start.f_setRatio(2)
 				})
 				t_p2Cursor[p2NumChars - #t_p2Selected + 1] = {p2SelX, p2SelY, p2FaceOffset, p2RowOffset}
