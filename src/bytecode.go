@@ -2824,10 +2824,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_random:
 			rndx := exp[0].evalF(c) * lclscround
-			e.offset[0] += RandF(-rndx, rndx-2) * .5
+			e.offset[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
 				rndy := exp[1].evalF(c) * lclscround
-				e.offset[1] += RandF(-rndy, rndy-2) * .5
+				e.offset[1] += RandF(-rndy, rndy)
 			}
 		case explod_postype:
 			e.postype = PosType(exp[0].evalI(c))
