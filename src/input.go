@@ -1300,7 +1300,7 @@ func (ni *NetInput) Update() bool {
 
 type FileInput struct {
 	f  *os.File
-	ib [MaxSimul * 2]InputBits
+	ib [MaxSimul*2 + MaxAttachedChar]InputBits
 }
 
 func OpenFileInput(filename string) *FileInput {
