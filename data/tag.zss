@@ -123,7 +123,9 @@ let ret = $currentID;
 #===============================================================================
 [Statedef -3]
 
-if RoundState = 0 && TeamMode = Tag && !IsHelper {
+if !Const(Default.Enable.Tag) || IsHelper {
+	#do nothing, global code disabled locally (or executed by helper)
+} else if RoundState = 0 && TeamMode = Tag {
 	MapSet{map: "_iksys_tagActive"; value: 1}
 	MapSet{map: "_iksys_tagSwitchDist"; value: 0}
 	if RoundNo = 1 {
@@ -131,7 +133,7 @@ if RoundState = 0 && TeamMode = Tag && !IsHelper {
 	} else if ID = Map(_iksys_tagCurrentID) {
 		TeamMapSet{map: "_iksys_tagCurrentID"; value: ID}
 	}
-} else if Map(_iksys_tagActive) = 1 && !IsHelper {
+} else if Map(_iksys_tagActive) = 1 {
 	if RoundState = 4 {
 		MapSet{map: "_iksys_tagActive"; value: 0}
 	} else if Alive {
@@ -164,5 +166,11 @@ if RoundState = 0 && TeamMode = Tag && !IsHelper {
 			TeamMapSet{map: "_iksys_tagCurrentID"; value: $partnerID}
 			ChangeState{value: Const(StateTagEnteringScreen); redirectid: $partnerID}
 		}
+	}
+	# Red Life regeneration
+	if Standby && RedLife > 0 && (Time % 30) = 0 {
+		let regenVal = min(RedLife, ceil(LifeMax/200)); #0.5% LifeMax per 0.5s
+		LifeAdd{value: $regenVal; absolute: 1}
+		RedLifeAdd{value: -$regenVal; absolute: 1}
 	}
 }

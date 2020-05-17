@@ -1,5 +1,11 @@
 [Constants]
 
+; Negative state global code toggle
+Default.Enable.Dizzy = 1
+Default.Enable.GuardBreak = 1
+Default.Enable.Score = 1
+Default.Enable.Tag = 1
+
 ; Rules
 Default.Attack.LifeToPowerMul = 0.7
 Default.GetHit.LifeToPowerMul = 0.6

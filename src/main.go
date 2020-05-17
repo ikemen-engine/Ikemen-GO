@@ -116,9 +116,10 @@ Debug Options:
 	"CommonCmd": "data/common.cmd",
 	"CommonConst": "data/common.const",
 	"CommonStates": [
-        "data/rules.zss",
-        "data/score.zss",
-        "data/tag.zss"
+		"data/dizzy.zss",
+		"data/guardbreak.zss",
+		"data/score.zss",
+		"data/tag.zss"
     ],
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
