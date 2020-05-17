@@ -427,13 +427,7 @@ Debug Options:
 		i, _ = strconv.Atoi(key)
 		return i
 	}
-	Max := func(x, y int) int {
-		if x < y {
-			return y
-		}
-		return x
-	}
-	for a := 0; a < Max(tmp.NumSimul[1], tmp.NumTag[1]); a++ {
+	for i := 0; i < MaxSimul; i++ {
 		for _, kc := range tmp.KeyConfig {
 			b := kc.Buttons
 			if kc.Joystick < 0 {
@@ -458,6 +452,10 @@ Debug Options:
 				}
 			}
 		}
+	}
+	for i := 0; i < MaxAttachedChar; i++ {
+		sys.keyConfig = append(sys.keyConfig, KeyConfig{-1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1})
 	}
 	//os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("Ikemen.log")
