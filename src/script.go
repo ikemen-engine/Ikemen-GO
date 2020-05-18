@@ -1105,7 +1105,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
 				sys.playerClear(pn - 1)
-				c[0].changeState(st, -1, -1)
+				c[0].changeState(st, -1, -1, false)
 				l.Push(lua.LBool(true))
 				return 1
 			}
@@ -3250,7 +3250,7 @@ func debugScriptInit(l *lua.LState, file string) error {
 	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
 		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1)
+			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1, false)
 		}
 		return 0
 	})

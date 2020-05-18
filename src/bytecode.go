@@ -2067,7 +2067,7 @@ func (sc stateDef) Run(c *Char) {
 				}
 			}
 		case stateDef_anim:
-			c.changeAnim(exp[0].evalI(c))
+			c.changeAnim(exp[1].evalI(c), exp[0].evalB(c))
 		case stateDef_ctrl:
 			c.setCtrl(exp[0].evalB(c))
 		case stateDef_poweradd:
@@ -2239,6 +2239,7 @@ const (
 func (sc changeState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, ctrl int32 = -1, -1, -1
+	fflg := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -2246,7 +2247,8 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 		case changeState_ctrl:
 			ctrl = exp[0].evalI(c)
 		case changeState_anim:
-			a = exp[0].evalI(c)
+			a = exp[1].evalI(c)
+			fflg = exp[0].evalB(c)
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2256,7 +2258,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.changeState(v, a, ctrl)
+	crun.changeState(v, a, ctrl, fflg)
 	return true
 }
 
@@ -2265,6 +2267,7 @@ type selfState changeState
 func (sc selfState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, r, ctrl int32 = -1, -1, -1, -1
+	fflg := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -2272,7 +2275,8 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 		case changeState_ctrl:
 			ctrl = exp[0].evalI(c)
 		case changeState_anim:
-			a = exp[0].evalI(c)
+			a = exp[1].evalI(c)
+			fflg = exp[0].evalB(c)
 		case changeState_readplayerid:
 			if rpid := sys.playerID(exp[0].evalI(c)); rpid != nil {
 				r = int32(rpid.playerNo)
@@ -2288,7 +2292,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.selfState(v, a, r, ctrl)
+	crun.selfState(v, a, r, ctrl, fflg)
 	return true
 }
 
@@ -2317,7 +2321,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		case tagIn_stateno:
 			sn := exp[0].evalI(c)
 			if sn >= 0 {
-				crun.changeState(sn, -1, -1)
+				crun.changeState(sn, -1, -1, false)
 				if tagSCF == -1 {
 					tagSCF = 1
 				}
@@ -2379,7 +2383,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		partner := crun.partnerV2(partnerNo)
 		partner.unsetSCF(SCF_standby)
 		if partnerStateNo >= 0 {
-			partner.changeState(partnerStateNo, -1, -1)
+			partner.changeState(partnerStateNo, -1, -1, false)
 		}
 		if partnerCtrlSetting != -1 {
 			if partnerCtrlSetting == 1 {
@@ -2420,7 +2424,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		case tagOut_stateno:
 			sn := exp[0].evalI(c)
 			if sn >= 0 {
-				crun.changeState(sn, -1, -1)
+				crun.changeState(sn, -1, -1, false)
 				if tagSCF == -1 {
 					tagSCF = 1
 				}
@@ -2460,7 +2464,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		partner := crun.partnerV2(partnerNo)
 		partner.setSCF(SCF_standby)
 		if partnerStateNo >= 0 {
-			partner.changeState(partnerStateNo, -1, -1)
+			partner.changeState(partnerStateNo, -1, -1, false)
 		}
 	}
 
@@ -2514,7 +2518,7 @@ func (sc changeAnim) Run(c *Char, _ []int32) bool {
 			elem = exp[0].evalI(c)
 			setelem = true
 		case changeAnim_value:
-			crun.changeAnim(exp[0].evalI(c))
+			crun.changeAnim(exp[1].evalI(c), exp[0].evalB(c))
 			if setelem {
 				crun.setAnimElem(elem)
 			}
@@ -2542,7 +2546,7 @@ func (sc changeAnim2) Run(c *Char, _ []int32) bool {
 			elem = exp[0].evalI(c)
 			setelem = true
 		case changeAnim_value:
-			crun.changeAnim2(exp[0].evalI(c))
+			crun.changeAnim2(exp[1].evalI(c), exp[0].evalB(c))
 			if setelem {
 				crun.setAnimElem(elem)
 			}

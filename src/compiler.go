@@ -3382,8 +3382,15 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			stateDef_velset, VT_Float, 3, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "anim",
-			stateDef_anim, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "anim", func(data string) error {
+			fflg := false
+			if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+				fflg = true
+				data = data[1:]
+			}
+			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "ctrl",
@@ -3610,8 +3617,15 @@ func (c *Compiler) changeStateSub(is IniSection,
 		changeState_ctrl, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "anim",
-		changeState_anim, VT_Int, 1, false); err != nil {
+	if err := c.stateParam(is, "anim", func(data string) error {
+		fflg := false
+		if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+			fflg = true
+			data = data[1:]
+		}
+		return c.scAdd(sc, changeState_anim, data, VT_Int, 1,
+			sc.iToExp(Btoi(fflg))...)
+	}); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "readplayerid",
@@ -3727,8 +3741,15 @@ func (c *Compiler) changeAnimSub(is IniSection,
 		changeAnim_elem, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "value",
-		changeAnim_value, VT_Int, 1, true); err != nil {
+	if err := c.stateParam(is, "value", func(data string) error {
+		fflg := false
+		if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+			fflg = true
+			data = data[1:]
+		}
+		return c.scAdd(sc, changeAnim_value, data, VT_Int, 1,
+			sc.iToExp(Btoi(fflg))...)
+	}); err != nil {
 		return err
 	}
 	return nil

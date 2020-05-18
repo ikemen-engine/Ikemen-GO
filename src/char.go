@@ -2249,8 +2249,8 @@ func (c *Char) setYV(yv float32) {
 		c.movedY = true
 	}
 }
-func (c *Char) changeAnim(animNo int32) {
-	if a := c.getAnim(animNo, false, true); a != nil {
+func (c *Char) changeAnim(animNo int32, ffx bool) {
+	if a := c.getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
@@ -2262,8 +2262,8 @@ func (c *Char) changeAnim(animNo int32) {
 		}
 	}
 }
-func (c *Char) changeAnim2(animNo int32) {
-	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, false, true); a != nil {
+func (c *Char) changeAnim2(animNo int32, ffx bool) {
+	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
@@ -2984,9 +2984,9 @@ func (c *Char) furimuki() {
 		if c.rdDistX(sys.charList.enemyNear(c, 0, true, false), c).ToF() < 0 {
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeAnim(5)
+				c.changeAnim(5, false)
 			case ST_C:
-				c.changeAnim(6)
+				c.changeAnim(6, false)
 			}
 			c.setFacing(-c.facing)
 		}
@@ -3039,12 +3039,12 @@ func (c *Char) stateChange2() bool {
 	}
 	return false
 }
-func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
+func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.furimuki()
 	}
 	if anim >= 0 {
-		c.changeAnim(anim)
+		c.changeAnim(anim, ffx)
 	}
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
@@ -3061,17 +3061,17 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32) {
 		sys.changeStateNest = 0
 	}
 }
-func (c *Char) changeState(no, anim, ctrl int32) {
-	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl)
+func (c *Char) changeState(no, anim, ctrl int32, ffx bool) {
+	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl, ffx)
 }
-func (c *Char) selfState(no, anim, readplayerid, ctrl int32) {
+func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx bool) {
 	var playerno int
 	if readplayerid >= 0 {
 		playerno = int(readplayerid)
 	} else {
 		playerno = c.playerNo
 	}
-	c.changeStateEx(no, playerno, anim, ctrl)
+	c.changeStateEx(no, playerno, anim, ctrl, ffx)
 }
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
@@ -3216,7 +3216,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 			h.mapArray[key] = value
 		}
 	}
-	h.changeStateEx(st, c.playerNo, 0, 1)
+	h.changeStateEx(st, c.playerNo, 0, 1, false)
 }
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
@@ -4428,7 +4428,7 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				//c.selfState(5050, -1, -1, -1)
+				//c.selfState(5050, -1, -1, -1, false)
 				c.setBindTime(0)
 				return
 			}
@@ -4687,7 +4687,7 @@ func (c *Char) action() {
 			if c.ctrl() && (c.key >= 0 || c.helperIndex == 0) {
 				if !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
 					if c.ss.no != 40 {
-						c.changeState(40, -1, -1)
+						c.changeState(40, -1, -1, false)
 					}
 				} else if c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
 					c.pos[1] <= float32(c.gi().movement.airjump.height) &&
@@ -4696,38 +4696,38 @@ func (c *Char) action() {
 					if c.ss.no != 45 {
 						c.airJumpCount++
 						c.unsetSCF(SCF_airjump)
-						c.changeState(45, -1, -1)
+						c.changeState(45, -1, -1, false)
 					}
 				} else {
 					if c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
 						if c.ss.no != 10 {
-							c.changeState(10, -1, -1)
+							c.changeState(10, -1, -1, false)
 						}
 					} else if c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
 						if c.ss.no != 12 {
-							c.changeState(12, -1, -1)
+							c.changeState(12, -1, -1, false)
 						}
 					} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
 						(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
 							c.cmd[0].Buffer.B > 0) {
 						if c.ss.no != 20 {
-							c.changeState(20, -1, -1)
+							c.changeState(20, -1, -1, false)
 						}
 					} else if c.ss.no == 20 &&
 						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-						c.changeState(0, -1, -1)
+						c.changeState(0, -1, -1, false)
 					}
 					if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
 						!c.inGuardState() {
-						c.changeState(120, -1, -1)
+						c.changeState(120, -1, -1, false)
 					}
 				}
 			} else if c.scf(SCF_ctrl) {
 				switch c.ss.no {
 				case 11:
-					c.changeState(12, -1, -1)
+					c.changeState(12, -1, -1, false)
 				case 20:
-					c.changeState(0, -1, -1)
+					c.changeState(0, -1, -1, false)
 				}
 			}
 		}
@@ -4813,12 +4813,12 @@ func (c *Char) action() {
 		c.ss.sb.run(c)
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() {
-				c.changeState(5120, -1, -1)
+				c.changeState(5120, -1, -1, false)
 			}
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
 				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
-					Btoi(c.ss.stateType == ST_A)*51, -1, -1)
+					Btoi(c.ss.stateType == ST_A)*51, -1, -1, false)
 			}
 			for {
 				c.posUpdate()
@@ -4826,7 +4826,7 @@ func (c *Char) action() {
 					c.ss.no == 105 {
 					break
 				}
-				c.changeState(52, -1, -1)
+				c.changeState(52, -1, -1, false)
 			}
 			c.ss.time++
 			if c.mctime > 0 {
@@ -5074,32 +5074,32 @@ func (c *Char) tick() {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
 			if c.movedY {
-				c.changeStateEx(5020, pn, -1, 0)
+				c.changeStateEx(5020, pn, -1, 0, false)
 			} else {
-				c.changeStateEx(5080, pn, -1, 0)
+				c.changeStateEx(5080, pn, -1, 0, false)
 			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.selfState(150, -1, -1, 0)
+				c.selfState(150, -1, -1, 0, false)
 			case ST_C:
-				c.selfState(152, -1, -1, 0)
+				c.selfState(152, -1, -1, 0, false)
 			case ST_A:
-				c.selfState(154, -1, -1, 0)
+				c.selfState(154, -1, -1, 0, false)
 			}
 		} else if c.ghv._type == HT_Trip {
-			c.changeStateEx(5070, pn, -1, 0)
+			c.changeStateEx(5070, pn, -1, 0, false)
 		} else {
 			if c.ghv.forcestand && c.ss.stateType == ST_C {
 				c.ss.stateType = ST_S
 			}
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeStateEx(5000, pn, -1, 0)
+				c.changeStateEx(5000, pn, -1, 0, false)
 			case ST_C:
-				c.changeStateEx(5010, pn, -1, 0)
+				c.changeStateEx(5010, pn, -1, 0, false)
 			case ST_A:
-				c.changeStateEx(5020, pn, -1, 0)
+				c.changeStateEx(5020, pn, -1, 0, false)
 			}
 		}
 		if c.hoIdx >= 0 {
@@ -5126,10 +5126,10 @@ func (c *Char) tick() {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
 				c.ss.moveType != MT_H && !sys.sf(GSF_noko) {
 				c.ghv.fallf = true
-				c.selfState(5030, -1, -1, -1)
+				c.selfState(5030, -1, -1, -1, false)
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
-				c.selfState(5120, -1, -1, -1)
+				c.selfState(5120, -1, -1, -1, false)
 			}
 		}
 	}
