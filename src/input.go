@@ -634,13 +634,15 @@ func JoystickState(joy, button int) bool {
 			return false
 		}
 
+		var joyName = joystick[joy].GetGamepadName()
+
 		//Xbox360コントローラーのLRトリガー判定
-		if (button == 9 || button == 11) && strings.Contains(joystick[joy].GetGamepadName(), "XInput") {
+		if (button == 9 || button == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360")) {
 			return axes[button/2] > sys.xinputTriggerSensitivity
 		}
 
 		// Ignore trigger axis on PS4 (We already have buttons)
-		if (button >= 6 && button <= 9) && joystick[joy].GetGamepadName() == "PS4 Controller" {
+		if (button >= 6 && button <= 9) && joyName == "PS4 Controller" {
 			return false
 		}
 
