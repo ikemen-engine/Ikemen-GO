@@ -4784,26 +4784,26 @@ func (c *Char) action() {
 		}
 	}
 	c.minus = -4
-	if c.keyctrl[3] && c.ss.sb.playerNo == c.playerNo {
+	if c.ss.sb.playerNo == c.playerNo {
 		if sb, ok := c.gi().states[-4]; ok {
 			sb.run(c)
 		}
 	}
 	if !p {
 		c.minus = -3
-		if c.keyctrl[2] && c.ss.sb.playerNo == c.playerNo {
+		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[2]) {
 			if sb, ok := c.gi().states[-3]; ok {
 				sb.run(c)
 			}
 		}
 		c.minus = -2
-		if c.keyctrl[1] {
+		if c.player || c.keyctrl[1] {
 			if sb, ok := c.gi().states[-2]; ok {
 				sb.run(c)
 			}
 		}
 		c.minus = -1
-		if c.keyctrl[0] && c.ss.sb.playerNo == c.playerNo {
+		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[0]) {
 			if sb, ok := c.gi().states[-1]; ok {
 				sb.run(c)
 			}

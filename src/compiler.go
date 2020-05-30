@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"regexp"
 )
 
 const kuuhaktokigou = " !=<>()|&+-*/%,[]^:;{}#\"\t\r\n"
@@ -3384,7 +3385,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := false
-			if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+			if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
 				fflg = true
 				data = data[1:]
 			}
@@ -3550,14 +3551,11 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 		if err := c.stateParam(is, "value", func(data string) error {
 			f = true
 			fflg := false
-			if len(data) > 0 {
-				switch data[0] {
-				case 'F', 'f':
+			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
+				if strings.ToLower(data)[0] == 'f' {
 					fflg = true
-					data = data[1:]
-				case 'S', 's':
-					data = data[1:]
 				}
+				data = data[1:]
 			}
 			return c.scAdd(sc, playSnd_value, data, VT_Int, 2,
 				sc.iToExp(Btoi(fflg))...)
@@ -3619,7 +3617,7 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}
 	if err := c.stateParam(is, "anim", func(data string) error {
 		fflg := false
-		if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+		if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
 			fflg = true
 			data = data[1:]
 		}
@@ -3743,7 +3741,7 @@ func (c *Compiler) changeAnimSub(is IniSection,
 	}
 	if err := c.stateParam(is, "value", func(data string) error {
 		fflg := false
-		if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+		if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
 			fflg = true
 			data = data[1:]
 		}
@@ -4032,7 +4030,7 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := false
-			if len(data) > 0 && strings.ToLower(data)[0] == 'f' {
+			if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
 				fflg = true
 				data = data[1:]
 			}
@@ -4109,7 +4107,7 @@ func (c *Compiler) gameMakeAnim(is IniSection, sc *StateControllerBase,
 		anim := func(data string) error {
 			b = true
 			fflg := true
-			if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+			if m, _ := regexp.MatchString("^s[^a-z]", strings.ToLower(data)); m {
 				fflg = false
 				data = data[1:]
 			}
@@ -4570,14 +4568,11 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	hsnd := func(id byte, data string) error {
 		fflg := true
-		if len(data) > 0 {
-			switch data[0] {
-			case 'F', 'f':
-				data = data[1:]
-			case 'S', 's':
+		if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
+			if strings.ToLower(data)[0] == 's' {
 				fflg = false
-				data = data[1:]
 			}
+			data = data[1:]
 		}
 		return c.scAdd(sc, id, data, VT_Int, 2, sc.iToExp(Btoi(fflg))...)
 	}
@@ -4674,7 +4669,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	sprk := func(id byte, data string) error {
 		fflg := true
-		if len(data) > 0 && strings.ToLower(data)[0] == 's' {
+		if m, _ := regexp.MatchString("^s[^a-z]", strings.ToLower(data)); m {
 			fflg = false
 			data = data[1:]
 		}
@@ -5922,14 +5917,11 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := true
-			if len(data) > 0 {
-				data = strings.ToLower(data)
-				if data[0] == 's' {
+			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
+				if strings.ToLower(data)[0] == 's' {
 					fflg = false
-					data = data[1:]
-				} else if data[0] == 'f' {
-					data = data[1:]
 				}
+				data = data[1:]
 			}
 			return c.scAdd(sc, superPause_anim, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
@@ -5954,14 +5946,11 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "sound", func(data string) error {
 			fflg := true
-			if len(data) > 0 {
-				data = strings.ToLower(data)
-				if data[0] == 's' {
+			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
+				if strings.ToLower(data)[0] == 's' {
 					fflg = false
-					data = data[1:]
-				} else if data[0] == 'f' {
-					data = data[1:]
 				}
+				data = data[1:]
 			}
 			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
 				sc.iToExp(Btoi(fflg))...)
