@@ -41,6 +41,11 @@ const (
 	CSF_nojugglecheck
 	CSF_noautoturn
 	CSF_nowalk
+	CSF_nobrake
+	CSF_nocrouch
+	CSF_nojump
+	CSF_noairjump
+	CSF_nohardcodedkeys
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -4685,41 +4690,43 @@ func (c *Char) action() {
 				c.unsetSCF(SCF_airjump)
 			}
 			if c.ctrl() && (c.key >= 0 || c.helperIndex == 0) {
-				if !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
-					if c.ss.no != 40 {
-						c.changeState(40, -1, -1, false)
-					}
-				} else if c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
-					c.pos[1] <= float32(c.gi().movement.airjump.height) &&
-					c.airJumpCount < c.gi().movement.airjump.num &&
-					c.cmd[0].Buffer.U > 0 {
-					if c.ss.no != 45 {
-						c.airJumpCount++
-						c.unsetSCF(SCF_airjump)
-						c.changeState(45, -1, -1, false)
-					}
-				} else {
-					if c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
-						if c.ss.no != 10 {
-							c.changeState(10, -1, -1, false)
+				if !c.sf(CSF_nohardcodedkeys) {
+					if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+						if c.ss.no != 40 {
+							c.changeState(40, -1, -1, false)
 						}
-					} else if c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
-						if c.ss.no != 12 {
-							c.changeState(12, -1, -1, false)
+					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
+						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
+						c.airJumpCount < c.gi().movement.airjump.num &&
+						c.cmd[0].Buffer.U > 0 {
+						if c.ss.no != 45 {
+							c.airJumpCount++
+							c.unsetSCF(SCF_airjump)
+							c.changeState(45, -1, -1, false)
 						}
-					} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
-						(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
-							c.cmd[0].Buffer.B > 0) {
-						if c.ss.no != 20 {
-							c.changeState(20, -1, -1, false)
+					} else {
+						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
+							if c.ss.no != 10 {
+								c.changeState(10, -1, -1, false)
+							}
+						} else if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
+							if c.ss.no != 12 {
+								c.changeState(12, -1, -1, false)
+							}
+						} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
+							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
+								c.cmd[0].Buffer.B > 0) {
+							if c.ss.no != 20 {
+								c.changeState(20, -1, -1, false)
+							}
+						} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
+							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+							c.changeState(0, -1, -1, false)
 						}
-					} else if c.ss.no == 20 &&
-						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-						c.changeState(0, -1, -1, false)
-					}
-					if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
-						!c.inGuardState() {
-						c.changeState(120, -1, -1, false)
+						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+							!c.inGuardState() {
+							c.changeState(120, -1, -1, false)
+						}
 					}
 				}
 			} else if c.scf(SCF_ctrl) {

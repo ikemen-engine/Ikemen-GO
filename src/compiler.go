@@ -3486,6 +3486,16 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noautoturn)))
 			case "nowalk":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nowalk)))
+			case "nobrake":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nobrake)))
+			case "nocrouch":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nocrouch)))
+			case "nojump":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nojump)))
+			case "noairjump":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noairjump)))
+			case "nohardcodedkeys":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nohardcodedkeys)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
 			case "roundnotover":
