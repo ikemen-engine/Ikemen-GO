@@ -152,6 +152,11 @@ function playerInfo()
 	return string.format('%s %d%s', name(), id(), customState())
 end
 
+function statsInfo()
+	return string.format('HP: %d; ATK: %s; DEF: %s', 
+		life(), tostring(attack()), tostring(defence()))
+end
+
 function actionInfo()
 	return string.format(
 		'ActionID: %d (P%d); SPR: %d,%d; ElemNo: %d/%d; Time: %d/%d (%d/%d)',

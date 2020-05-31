@@ -2651,6 +2651,14 @@ func triggerScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.lifeMax))
 		return 1
 	})
+	luaRegister(l, "attack", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.CharSystemVar.attackMul*100))
+		return 1
+	})
+	luaRegister(l, "defence", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.CharSystemVar.finalDefence*100))
+		return 1
+	})
 	luaRegister(l, "lose", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.lose()))
 		return 1

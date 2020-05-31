@@ -1699,6 +1699,7 @@ func (s *System) fight() (reload bool) {
 			statusLFunc, _ = dL.GetGlobal("statusInfo").(*lua.LFunction)
 			listLFunc = append(listLFunc, dL.GetGlobal("engineInfo").(*lua.LFunction))
 			listLFunc = append(listLFunc, dL.GetGlobal("playerInfo").(*lua.LFunction))
+			listLFunc = append(listLFunc, dL.GetGlobal("statsInfo").(*lua.LFunction))
 			listLFunc = append(listLFunc, dL.GetGlobal("actionInfo").(*lua.LFunction))
 			listLFunc = append(listLFunc, dL.GetGlobal("stateInfo").(*lua.LFunction))
 		}

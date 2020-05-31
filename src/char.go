@@ -43,6 +43,7 @@ const (
 	CSF_nowalk
 	CSF_nobrake
 	CSF_nocrouch
+	CSF_nostand
 	CSF_nojump
 	CSF_noairjump
 	CSF_nohardcodedkeys
@@ -1497,8 +1498,8 @@ type CharSystemVar struct {
 	width, edge   [2]float32
 	attackMul     float32
 	defenceMul    float32
-	superDefence  float32
-	fallDefence   float32
+	customDefence float32
+	finalDefence  float64
 	cheated       bool
 	counterHit    bool
 	damageCount   int32
@@ -1646,6 +1647,8 @@ func (c *Char) clear1() {
 	c.fallTime = 0
 	c.varRangeSet(0, int32(NumVar)-1, 0)
 	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
+	c.defenceMul = 1
+	c.customDefence = 1
 	c.key = -1
 	c.id = -1
 	c.helperId = 0
@@ -1701,8 +1704,7 @@ func (c *Char) clear2() {
 		width:      [...]float32{c.defFW(), c.defBW()},
 		attackMul:  float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		defenceMul: 1,
-		fallDefence: 0,
-		superDefence: 1}
+		customDefence: 1}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -3823,7 +3825,7 @@ func (c *Char) targetRedLifeAdd(tar []int32, add float64, absolute bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			if !absolute {
-				add /= float64(((float32(c.gi().data.defence)*c.defenceMul*c.superDefence+c.fallDefence)/100))
+				add /= c.finalDefence
 			}
 			t.redLifeAdd(math.Ceil(add), true)
 		}
@@ -3922,7 +3924,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 		return 0
 	}
 	if !absolute {
-		damage *= float64(atkmul / ((float32(c.gi().data.defence)*c.defenceMul*c.superDefence+c.fallDefence)/100))
+		damage *= float64(atkmul) / c.finalDefence
 	}
 	damage = math.Ceil(damage)
 	min, max := float64(c.life-c.lifeMax), float64(Max(0, c.life-Btoi(!kill)))
@@ -3937,7 +3939,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {
-			add /= float64(((float32(c.gi().data.defence)*c.defenceMul*c.superDefence+c.fallDefence)/100))
+			add /= c.finalDefence
 		}
 		add = math.Floor(add)
 		max := float64(c.lifeMax - c.life)
@@ -4028,7 +4030,7 @@ func (c *Char) guardPointsSet(set int32) {
 func (c *Char) redLifeAdd(add float64, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {
-			add /= float64(((float32(c.gi().data.defence)*c.defenceMul*c.superDefence+c.fallDefence)/100))
+			add /= c.finalDefence
 		}
 		c.redLifeSet(c.redLife + int32(add))
 	}
@@ -4713,7 +4715,7 @@ func (c *Char) action() {
 							if c.ss.no != 10 {
 								c.changeState(10, -1, -1, false)
 							}
-						} else if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
+						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
 							if c.ss.no != 12 {
 								c.changeState(12, -1, -1, false)
 							}
@@ -4926,9 +4928,8 @@ func (c *Char) update(cvmin, cvmax,
 				c.superMovetime, c.pauseMovetime = 0, 0
 			}
 			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
-			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) &&
-				c.ss.time == 1 {
-				c.defenceMul = c.gi().data.fall.defence_mul
+			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) && c.ss.time == 1 {
+				c.defenceMul *= c.gi().data.fall.defence_mul
 				c.ghv.fallcount++
 			}
 		}
@@ -4964,9 +4965,7 @@ func (c *Char) update(cvmin, cvmax,
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.fallDefence = 0
-				c.superDefence = 0
-				//c.defenceMul = float32(c.gi().data.defence) / 100
+				c.defenceMul = 1
 				c.ghv.hittime = -1
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false
@@ -4991,6 +4990,7 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
+	c.finalDefence = float64(((float32(c.gi().data.defence)*c.customDefence*c.defenceMul)/100))
 	if sys.tickNextFrame() {
 		c.pushed = false
 	}
@@ -5259,8 +5259,7 @@ func (c *Char) cueDraw() {
 			c.exitTarget(false)
 		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
-			c.superDefence = sys.superp2defmul
-			//c.defenceMul *= sys.superp2defmul
+			c.defenceMul *= sys.superp2defmul
 		}
 		c.minus = 2
 		c.oldPos = c.pos

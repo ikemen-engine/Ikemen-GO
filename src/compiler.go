@@ -3490,6 +3490,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nobrake)))
 			case "nocrouch":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nocrouch)))
+			case "nostand":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nostand)))
 			case "nojump":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nojump)))
 			case "noairjump":
