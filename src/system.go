@@ -70,6 +70,7 @@ var sys = System{
 	keyInput:              glfw.KeyUnknown,
 	keyString:             "",
 	comboExtraFrameWindow: 1,
+	zoomDelay:             false,
 	//FLAC_FrameWait:       -1,
 	// Localcoord sceenpack
 	luaSpriteScale:        1,
@@ -263,6 +264,7 @@ type System struct {
 	audioDucking            bool
 	windowTitle             string
 	screenshotFolder        string
+	zoomDelay               bool
 	//FLAC_FrameWait          int
 
 	controllerStickSensitivity float32

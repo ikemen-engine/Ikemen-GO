@@ -196,6 +196,7 @@ Debug Options:
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
 	"ZoomActive": true,
+	"ZoomDelay": false,
 	"ZoomMax": 1,
 	"ZoomMin": 1,
 	"ZoomSpeed": 1,
@@ -347,6 +348,7 @@ Debug Options:
 		WindowTitle                string
 		XinputTriggerSensitivity   float32
 		ZoomActive                 bool
+		ZoomDelay                  bool
 		ZoomMax                    float32
 		ZoomMin                    float32
 		ZoomSpeed                  float32
@@ -374,6 +376,7 @@ Debug Options:
 	sys.audioDucking = tmp.AudioDucking
 	sys.bgmVolume = tmp.VolumeBgm
 	sys.borderless = tmp.Borderless
+	sys.zoomDelay = tmp.ZoomDelay
 	sys.cam.ZoomEnable = tmp.ZoomActive
 	sys.cam.ZoomMax = tmp.ZoomMax
 	sys.cam.ZoomMin = tmp.ZoomMin
