@@ -41,17 +41,17 @@ func (bgct *bgcTimeLine) stepBGDef(s *BGDef) {
 }
 
 type BGDef struct {
-	def            string
-	localcoord     [2]float32
-	sff            *Sff
-	at             AnimationTable
-	bg             []*backGround
-	bgc            []bgCtrl
-	bgct           bgcTimeLine
-	bga            bgAction
-	resetbg        bool
-	localscl       float32
-	scale          [2]float32
+	def        string
+	localcoord [2]float32
+	sff        *Sff
+	at         AnimationTable
+	bg         []*backGround
+	bgc        []bgCtrl
+	bgct       bgcTimeLine
+	bga        bgAction
+	resetbg    bool
+	localscl   float32
+	scale      [2]float32
 }
 
 func newBGDef(def string) *BGDef {
@@ -90,6 +90,9 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
 			s.sff, s.at, 0))
+		if s.bg[len(s.bg)-1].startrect[0] != -32768 { //workaround for screenpack bg window offset
+			s.bg[len(s.bg)-1].startrect[0] += (sys.gameWidth-320)/2 + int32(sys.luaSpriteOffsetX)
+		}
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
@@ -281,11 +284,9 @@ func (s *BGDef) draw(top bool, x, y, scl float32) {
 		s.action()
 	}
 	//x, y = x/s.localscl, y/s.localscl
-	bgscl := s.localscl
-	pos := [...]float32{x, y}
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, 1, s.scale, 0)
+			b.draw([...]float32{x, y}, scl, s.localscl, 1, s.scale, 0)
 		}
 	}
 }

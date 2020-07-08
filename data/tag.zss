@@ -5,20 +5,20 @@
  anim: Const(AnimRunFwdOrHopForward); sprpriority: 2; ctrl: 0;]
 
 if Time = 0 {
-	PosSet{x: -243 * Facing; y: 0}
+	PosSet{x: -Const240p(243) * Facing; y: 0}
 }
 
 if BackEdgeBodyDist >= 0 {
 	if Standby {
 		TagIn{}
 	}
-	if BackEdgeDist >= Map(_iksys_tagSwitchDist) || P2BodyDist X < 30 {
+	if BackEdgeDist * LocalScale >= Map(_iksys_tagSwitchDist) || P2BodyDist X < Const240p(30) {
 		VelSet{x: 0; y: 0}
 		ChangeState{value: Const(StateStand); ctrl: 1}
 	}
 }
 
-VelSet{x: 10; y: 0}
+VelSet{x: Const240p(10); y: 0}
 
 #===============================================================================
 #StateTagLeavingScreen
@@ -34,7 +34,7 @@ if !Standby {
 	TagOut{}
 }
 
-VelSet{x: 10; y: 0}
+VelSet{x: Const240p(10); y: 0}
 
 if BackEdgeDist < -Const240p(160) || FrontEdgeDist < -Const240p(160) {
 	ChangeState{value: Const(StateTagWaitingOutside)}
@@ -59,9 +59,9 @@ if Facing != PlayerID(Map(_iksys_tagCurrentID)),Facing {
  anim: Const(AnimJumpForwards_upwards); sprpriority: 2; ctrl: 0;]
 
 if AnimElem = 2, < 0 {
-	PosSet{x: -243 * Facing; y: 0}
+	PosSet{x: -Const240p(243) * Facing; y: 0}
 } else if AnimElem = 2, = 0 {
-	VelSet{x: 4; y: -8.75}
+	VelSet{x: Const240p(4); y: -Const240p(8.75)}
 } else if AnimElem = 2, >= 0 {
 	Gravity{}
 	if Vel Y >= 0 && Pos Y > 0 {
@@ -147,7 +147,7 @@ if !Const(Default.Enable.Tag) || IsHelper {
 					let partnerID = call fGetTagPartnerID(ID, 1);
 				}
 				if $partnerID > 0 && PlayerID($partnerID),StateNo = Const(StateTagWaitingOutside) {
-					MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist; redirectid: $partnerID}
+					MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist * LocalScale; redirectid: $partnerID}
 					TeamMapSet{map: "_iksys_tagCurrentID"; value: $partnerID}
 					ChangeState{value: Const(StateTagEnteringScreen); redirectid: $partnerID}
 					ChangeState{value: Const(StateTagLeavingScreen)}
@@ -162,7 +162,7 @@ if !Const(Default.Enable.Tag) || IsHelper {
 		MapSet{map: "_iksys_tagActive"; value: 0}
 		let partnerID = call fGetTagPartnerID(ID, 1);
 		if $partnerID > 0 {
-			MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist; redirectid: $partnerID}
+			MapSet{map: "_iksys_tagSwitchDist"; value: BackEdgeDist * LocalScale; redirectid: $partnerID}
 			TeamMapSet{map: "_iksys_tagCurrentID"; value: $partnerID}
 			ChangeState{value: Const(StateTagEnteringScreen); redirectid: $partnerID}
 		}

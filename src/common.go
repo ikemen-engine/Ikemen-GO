@@ -133,7 +133,7 @@ func Atoi(str string) int32 {
 func Atof(str string) float64 {
 	f := 0.0
 	str = strings.TrimSpace(str)
-	if len(str) >= 0 {
+	if len(str) > 0 {
 		var a string
 		if str[0] == '-' || str[0] == '+' {
 			a = str[1:]
@@ -387,7 +387,7 @@ func sliceInsertInt(array []int, value int, index int) []int {
 func sliceRemoveInt(array []int, index int) []int {
 	return append(array[:index], array[index+1:]...)
 }
-	
+
 func sliceMoveInt(array []int, srcIndex int, dstIndex int) []int {
 	value := array[srcIndex]
 	return sliceInsertInt(sliceRemoveInt(array, srcIndex), value, dstIndex)
@@ -612,7 +612,7 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 	}
 }
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
-	a *Animation) {
+	a *Animation, palfx *PalFX) {
 	if l.layerno == ln {
 		if l.facing < 0 {
 			//x += sys.lifebarFontScale
@@ -623,7 +623,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
 			l.scale[1]*float32(l.vfacing),
-			0, 0, 0, 0, float32(sys.gameWidth-320)/2, nil, false, 1, false, 1)
+			0, 0, 0, 0, float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1)
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
@@ -643,12 +643,13 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 }
 
 type AnimLayout struct {
-	anim Animation
-	lay  Layout
+	anim  Animation
+	lay   Layout
+	palfx *PalFX
 }
 
 func newAnimLayout(sff *Sff, ln int16) *AnimLayout {
-	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout(ln)}
+	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout(ln), palfx: newPalFX()}
 }
 func ReadAnimLayout(pre string, is IniSection,
 	sff *Sff, at AnimationTable, ln int16) *AnimLayout {
@@ -672,21 +673,39 @@ func (al *AnimLayout) Read(pre string, is IniSection, at AnimationTable,
 			al.lay = *newLayout(ln)
 		}
 	}
+	al.ReadAnimPalfx(pre+"palfx.", is)
 	al.lay.Read(pre, is)
 }
 func (al *AnimLayout) Reset() {
 	al.anim.Reset()
 }
 func (al *AnimLayout) Action() {
+	if al.palfx != nil {
+		al.palfx.step()
+	}
 	al.anim.Action()
 }
 func (al *AnimLayout) Draw(x, y float32, layerno int16) {
-	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim)
+	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim, al.palfx)
 }
 
 // Allow to set a custom scale with the draw (For lifebar localcoord)
 func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
-	al.lay.DrawAnim(&sys.scrrect, x, y, scale, layerno, &al.anim)
+	al.lay.DrawAnim(&sys.scrrect, x, y, scale, layerno, &al.anim, al.palfx)
+}
+
+func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
+	al.palfx.clear()
+	al.palfx.time = -1
+	is.ReadI32(pre+"time", &al.palfx.time)
+	is.ReadI32(pre+"add", &al.palfx.add[0], &al.palfx.add[1], &al.palfx.add[2])
+	is.ReadI32(pre+"mul", &al.palfx.mul[0], &al.palfx.mul[1], &al.palfx.mul[2])
+	is.ReadI32(pre+"sinadd", &al.palfx.sinadd[0], &al.palfx.sinadd[1], &al.palfx.sinadd[2], &al.palfx.cycletime)
+	is.ReadBool(pre+"invertall", &al.palfx.invertall)
+	var n float32
+	if is.ReadF32(pre+"color", &n) {
+		al.palfx.color = MaxF(0, MinF(1, n/256))
+	}
 }
 
 type AnimTextSnd struct {
@@ -711,7 +730,7 @@ func ReadAnimTextSnd(pre string, is IniSection,
 func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 	ln int16, f []*Fnt) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
-	ats.text = readLbText(pre, is, "", ln, f)
+	ats.text = *readLbText(pre, is, "", ln, f)
 	ats.anim.lay = *newLayout(ln)
 	ats.anim.Read(pre, is, at, ln)
 	is.ReadI32(pre+"displaytime", &ats.displaytime)

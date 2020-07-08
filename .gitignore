@@ -9,18 +9,17 @@ bin/*
 # Compilation files
 go/*
 src/*.syso
+*.bat
+*.sh
 releaseconf.xml.backup
 Ikemen_GO.xml.backup
-build.bat
-build_console.bat
-get.bat
+get.
 go.sum
 go.mod
 
 # Distribution and debug files
 Ikemen.log
 Ikemen_GO.exe
-Ikemen_GO.bat
 OpenAL32.dll
 save/*
 debug/*
@@ -29,7 +28,7 @@ font/*
 sound/*
 stages/*
 wip/*
-work/*
+data/work
 data/big
 data/kfm
 data/mugen1
@@ -47,10 +46,12 @@ data/fightfx.air
 data/fightfx.sff
 data/gameover.def
 data/gameover.sff
+data/glyphs.sff
 data/intro.def
 data/intro.sff
 data/logo.def
 data/logo.sff
+data/select.def
 data/system.def
 data/system.sff
 data/system.snd

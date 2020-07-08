@@ -419,10 +419,12 @@ const (
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animlength
+	OC_ex_attack
 	OC_ex_cheated
 	OC_ex_combocount
 	OC_ex_consecutivewins
 	OC_ex_damagecount
+	OC_ex_defence
 	OC_ex_dizzy
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
@@ -434,6 +436,7 @@ const (
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
 	OC_ex_incustomstate
+	OC_ex_localscale
 	OC_ex_maparray
 	OC_ex_max
 	OC_ex_min
@@ -831,7 +834,7 @@ func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
 	}
 }
 func (_ BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
-	v1.SetI(Rand(int32(v1.v), int32(v2.v)))
+	v1.SetI(RandI(int32(v1.v), int32(v2.v)))
 }
 func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
 	shift := math.Pow(10, v2.v)
@@ -1718,9 +1721,15 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_ailevelf:
 		sys.bcStack.PushF(c.aiLevel())
 	case OC_ex_animelemlength:
-		sys.bcStack.PushI(c.curFrame.Time)
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(f.Time)
+		} else {
+			sys.bcStack.PushI(0)
+		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
+	case OC_ex_attack:
+		sys.bcStack.PushF(c.attackMul * 100)
 	case OC_ex_cheated:
 		sys.bcStack.PushB(c.cheated)
 	case OC_ex_combocount:
@@ -1729,6 +1738,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
 	case OC_ex_damagecount:
 		sys.bcStack.PushI(c.damageCount)
+	case OC_ex_defence:
+		sys.bcStack.PushF(float32(c.finalDefence) * 100)
 	case OC_ex_dizzy:
 		sys.bcStack.PushB(c.scf(SCF_dizzy))
 	case OC_ex_dizzypoints:
@@ -1753,6 +1764,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPointsMax)
 	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
+	case OC_ex_localscale:
+		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_maparray:
@@ -2970,6 +2983,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			}
 			switch id {
+			case explod_ownpal:
+				op := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.ownpal = op })
 			case explod_facing:
 				if exp[0].evalI(c) < 0 {
 					eachExpl(func(e *Explod) { e.relativef = -1 })
@@ -3004,6 +3020,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.postype = pt
 					e.setPos(c)
 				})
+			case explod_space:
+				sp := Space(exp[0].evalI(c))
+				eachExpl(func(e *Explod) { e.space = sp })
 			case explod_velocity:
 				x := exp[0].evalF(c) * lclscround
 				eachExpl(func(e *Explod) { e.velocity[0] = x })
@@ -3082,6 +3101,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				}
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
+			case explod_anim:
+				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+				eachExpl(func(e *Explod) { e.anim = anim })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -3091,6 +3113,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_xangle:
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
+			case explod_ignorehitpause:
+				ihp := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
 			case explod_bindid:
 				bId := exp[0].evalI(c)
 				if bId == -1 {
@@ -4074,11 +4099,14 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.priority = exp[0].evalI(c)
 			p.priorityPoints = p.priority
 		case projectile_projhitanim:
-			p.hitanim = exp[0].evalI(c)
+			p.hitanim = exp[1].evalI(c)
+			p.hitanim_fflg = exp[0].evalB(c)
 		case projectile_projremanim:
-			p.remanim = Max(-1, exp[0].evalI(c))
+			p.remanim = Max(-1, exp[1].evalI(c))
+			p.remanim_fflg = exp[0].evalB(c)
 		case projectile_projcancelanim:
-			p.cancelanim = Max(-1, exp[0].evalI(c))
+			p.cancelanim = Max(-1, exp[1].evalI(c))
+			p.cancelanim_fflg = exp[0].evalB(c)
 		case projectile_velocity:
 			p.velocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
@@ -4123,7 +4151,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				p.heightbound[1] = int32(float32(exp[1].evalI(c)) * lclscround)
 			}
 		case projectile_projanim:
-			p.anim = exp[0].evalI(c)
+			p.anim = exp[1].evalI(c)
+			p.anim_fflg = exp[0].evalB(c)
 		case projectile_supermovetime:
 			p.supermovetime = exp[0].evalI(c)
 		case projectile_pausemovetime:
@@ -4162,11 +4191,16 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		return false
 	}
 	crun.setHitdefDefault(&p.hitdef, true)
+	if p.hitanim == -1 {
+		p.hitanim_fflg = p.anim_fflg
+	}
 	if p.remanim == IErr {
 		p.remanim = p.hitanim
+		p.remanim_fflg = p.hitanim_fflg
 	}
 	if p.cancelanim == IErr {
 		p.cancelanim = p.remanim
+		p.cancelanim_fflg = p.remanim_fflg
 	}
 	if p.aimg.time != 0 {
 		p.aimg.setupPalFX()
@@ -5346,9 +5380,11 @@ type displayToClipboard StateControllerBase
 const (
 	displayToClipboard_params byte = iota
 	displayToClipboard_text
+	displayToClipboard_redirectid
 )
 
 func (sc displayToClipboard) Run(c *Char, _ []int32) bool {
+	crun := c
 	params := []interface{}{}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -5361,9 +5397,15 @@ func (sc displayToClipboard) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case displayToClipboard_text:
-			sys.clipboardText[sys.workingState.playerNo] = nil
-			sys.appendToClipboard(sys.workingState.playerNo,
+			crun.clipboardText = nil
+			crun.appendToClipboard(sys.workingState.playerNo,
 				int(exp[0].evalI(c)), params...)
+		case displayToClipboard_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
@@ -5373,6 +5415,7 @@ func (sc displayToClipboard) Run(c *Char, _ []int32) bool {
 type appendToClipboard displayToClipboard
 
 func (sc appendToClipboard) Run(c *Char, _ []int32) bool {
+	crun := c
 	params := []interface{}{}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -5385,8 +5428,14 @@ func (sc appendToClipboard) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case displayToClipboard_text:
-			sys.appendToClipboard(sys.workingState.playerNo,
+			crun.appendToClipboard(sys.workingState.playerNo,
 				int(exp[0].evalI(c)), params...)
+		case displayToClipboard_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
@@ -5397,13 +5446,21 @@ type clearClipboard StateControllerBase
 
 const (
 	clearClipboard_ byte = iota
+	clearClipboard_redirectid
 )
 
 func (sc clearClipboard) Run(c *Char, _ []int32) bool {
+	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case clearClipboard_:
-			sys.clipboardText[sys.workingState.playerNo] = nil
+			crun.clipboardText = nil
+		case clearClipboard_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
@@ -6419,6 +6476,7 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			} else {
 				sys.sel.sdefOverwrite = filepath.Dir(c.gi().def) + "/" + s
 			}
+			reloadFlag = true
 		case matchRestart_p1def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			if filepath.IsAbs(s) {

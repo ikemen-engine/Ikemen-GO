@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strconv"
 	"strings"
 )
 
@@ -22,7 +21,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 	if len(line) == 0 || (line[0] < '0' || '9' < line[0]) && line[0] != '-' {
 		return nil
 	}
-	ary := strings.SplitN(line, ",", 7)
+	ary := strings.SplitN(line, ",", 10)
 	if len(ary) < 5 {
 		return nil
 	}
@@ -54,8 +53,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 	if ia >= 0 {
 		ary[6] = ary[6][ia:]
 	}
-	ary = SplitAndTrim(ary[6], ",")
-	a := strings.ToLower(ary[0])
+	a := strings.ToLower(SplitAndTrim(ary[6], ",")[0])
 	switch {
 	case a == "a1":
 		af.SrcAlpha, af.DstAlpha = 255, 128
@@ -95,27 +93,29 @@ func ReadAnimFrame(line string) *AnimFrame {
 	case len(a) > 0 && a[0] == 'a':
 		af.SrcAlpha, af.DstAlpha = 255, 255
 	}
-	if len(ary) > 1 {
-		af.Ex = make([][]float32, 3)
-		f, err := strconv.ParseFloat(ary[1], 32)
-		if err != nil {
-			f = 1
-		}
-		af.Ex[2] = append(af.Ex[2], float32(f)) // X-Scale
-		if len(ary) > 2 {
-			f, err := strconv.ParseFloat(ary[2], 32)
-			if err != nil {
-				f = 1
-			}
-			af.Ex[2] = append(af.Ex[2], float32(f)) // Y-Scale
-			if len(ary) > 3 {
-				f, err := strconv.ParseFloat(ary[3], 32)
-				if err != nil {
-					f = 0
-				}
-				af.Ex[2] = append(af.Ex[2], float32(f)) // Angle
-			}
-		}
+	if len(ary) < 8 {
+		return af
+	}
+	af.Ex = make([][]float32, 3)
+	var f float32
+	if f = float32(Atof(ary[7])); f == 0 {
+		f = 1
+	}
+	af.Ex[2] = append(af.Ex[2], f) // X-Scale
+	if len(ary) < 9 {
+		return af
+	}
+	if f = float32(Atof(ary[8])); f == 0 {
+		f = 1
+	}
+	af.Ex[2] = append(af.Ex[2], f) // Y-Scale
+	if len(ary) < 10 {
+		return af
+	}
+	f = float32(Atof(ary[9]))
+	af.Ex[2] = append(af.Ex[2], f) // Angle
+	if len(ary) < 11 {
+		return af
 	}
 	return af
 }
@@ -162,11 +162,12 @@ type Animation struct {
 	interpolate_blend_srcalpha float32
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
+	scale                      [2]float32
 }
 
 func newAnimation(sff *Sff) *Animation {
 	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true,
-		remap: make(RemapPreset)}
+		remap: make(RemapPreset), scale: [...]float32{1, 1}}
 }
 func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	a := newAnimation(sff)
@@ -473,8 +474,8 @@ func (a *Animation) UpdateSprite() {
 	}
 	a.newframe, a.drawidx = false, a.current
 
-	a.scale_x = 1
-	a.scale_y = 1
+	a.scale_x = a.scale[0]
+	a.scale_y = a.scale[1]
 	a.angle = 0
 	a.interpolate_offset_x = 0
 	a.interpolate_offset_y = 0
@@ -483,9 +484,9 @@ func (a *Animation) UpdateSprite() {
 
 	if len(a.frames[a.drawidx].Ex) > 2 {
 		if len(a.frames[a.drawidx].Ex[2]) > 0 {
-			a.scale_x = a.frames[a.drawidx].Ex[2][0]
+			a.scale_x *= a.frames[a.drawidx].Ex[2][0]
 			if len(a.frames[a.drawidx].Ex[2]) > 1 {
-				a.scale_y = a.frames[a.drawidx].Ex[2][1]
+				a.scale_y *= a.frames[a.drawidx].Ex[2][1]
 				if len(a.frames[a.drawidx].Ex[2]) > 2 {
 					a.angle = a.frames[a.drawidx].Ex[2][2]
 				}
@@ -959,12 +960,15 @@ type Anim struct {
 	anim             *Animation
 	window           [4]int32
 	x, y, xscl, yscl float32
+	palfx            *PalFX
 }
 
 func NewAnim(sff *Sff, action string) *Anim {
 	lines, i := SplitAndTrim(action, "\n"), 0
 	a := &Anim{anim: ReadAnimation(sff, lines, &i),
-		window: sys.scrrect, xscl: 1, yscl: 1}
+		window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
+	a.palfx.clear()
+	a.palfx.time = -1
 	if len(a.anim.frames) == 0 {
 		return nil
 	}
@@ -1001,13 +1005,14 @@ func (a *Anim) SetWindow(x, y, w, h float32) {
 	a.window[3] = int32(h*sys.heightScale + 0.5)
 }
 func (a *Anim) Update() {
+	a.palfx.step()
 	a.anim.Action()
 }
 func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, 0, 0, 0, nil, false, 1, false, 1)
+			0, 0, 0, 0, 0, a.palfx, false, 1, false, 1)
 	}
 }
 func (a *Anim) ResetFrames() {

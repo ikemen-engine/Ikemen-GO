@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Windblade-GR01/glfont"
+	"github.com/K4thos/glfont"
 	findfont "github.com/flopp/go-findfont"
 )
 
@@ -347,7 +347,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 		panic(err)
 	}
 	f.ttf = ttf
-	
+
 	//Create Ttf dummy palettes
 	f.palettes = make([][256]uint32, 1)
 	for i := 0; i < 256; i++ {
@@ -371,25 +371,36 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 	//Load sprites
 	for k, sprite := range sff.sprites {
 		s := sff.getOwnPalSprite(sprite.Group, sprite.Number)
-		offsetX := uint16(s.Offset[0])
-		sizeX := uint16(s.Size[0])
+		if sprite.Group == 0 {
+			offsetX := uint16(s.Offset[0])
+			sizeX := uint16(s.Size[0])
 
-		fci := &FntCharImage{
-			ofs: offsetX,
-			w:   sizeX,
+			fci := &FntCharImage{
+				ofs: offsetX,
+				w:   sizeX,
+			}
+			fci.img = make([]Sprite, 1)
+			fci.img[0] = *s
+			f.images[rune(k[1])] = fci
 		}
-		fci.img = make([]Sprite, 1)
-		fci.img[0] = *s
-		f.images[rune(k[1])] = fci
 	}
 
 	//Load palettes
 	f.palettes = make([][256]uint32, sff.header.NumberOfPalettes)
+	var idef int
 	for i := 0; i < int(sff.header.NumberOfPalettes); i++ {
-		pal := sff.palList.Get(i)
+		var pal []uint32
+		si, ok := sff.palList.PalTable[[...]int16{0, int16(i)}]
+		if ok && si >= 0 {
+			pal = sff.palList.Get(si)
+			if i == 0 {
+				idef = si
+			}
+		} else {
+			pal = sff.palList.Get(idef)
+		}
 		copy(f.palettes[i][:], pal)
 	}
-
 }
 
 //CharWidth returns the width that has a specified character
@@ -409,7 +420,7 @@ func (f *Fnt) CharWidth(c rune) int32 {
 func (f *Fnt) TextWidth(txt string) (w int32) {
 	for _, c := range txt {
 		if f.Type == "truetype" {
-			w += int32(f.ttf.Width(1, string(c))) + f.Spacing[0]
+			w += int32(f.ttf.Width(1, string(c)))
 		} else {
 			w += f.CharWidth(c) + f.Spacing[0]
 		}
@@ -452,6 +463,7 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 
 	//trans := f.calculateTrans()
 
+	//spr.Draw(x, y, xscl, yscl, pal, nil, nil, window)
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
@@ -536,7 +548,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 	blend bool, window *[4]int32, frgba [4]float32) {
-	
+
 	if len(txt) == 0 {
 		return
 	}
@@ -544,8 +556,11 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
-	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3]) //r, g, b, a
-	f.ttf.Printf(x, y, (xscl+yscl)/2, align, blend, txt) //x, y, scale, align, blend, string, printf args
+	win := [4]int32{(*window)[0], sys.scrrect[3] - ((*window)[1] + (*window)[3]),
+		(*window)[2], (*window)[3]}
+
+	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])    //r, g, b, a
+	f.ttf.Printf(x, y, (xscl+yscl)/2, align, blend, win, txt) //x, y, scale, align, blend, window, string, printf args
 }
 
 type TextSprite struct {

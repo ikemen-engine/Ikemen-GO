@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"regexp"
 	"strings"
 )
 
@@ -248,8 +249,8 @@ func readBackGround(is IniSection, link *backGround,
 		is.ReadF32("yscalestart", &bg.yscalestart)
 		is.ReadF32("yscaledelta", &bg.yscaledelta)
 	} else {
-		is.ReadI32("tilespacing", &bg.anim.tile[0])
-		bg.anim.tile[1] = bg.anim.tile[0]
+		is.ReadI32("tilespacing", &bg.anim.tile[0], &bg.anim.tile[1])
+		//bg.anim.tile[1] = bg.anim.tile[0]
 		if bg.actionno < 0 && len(bg.anim.frames) > 0 {
 			if spr := sff.GetSprite(
 				bg.anim.frames[0].Group, bg.anim.frames[0].Number); spr != nil {
@@ -589,14 +590,15 @@ type Stage struct {
 	bgmratiolife    int32
 	bgmtriggerlife  int32
 	bgmtriggeralt   int32
+	mainstage       bool
+	stageCamera     stageCamera
 }
 
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: float32(math.NaN()),
 		rightbound: float32(math.NaN()), screenleft: 15, screenright: 15,
 		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1},
-		bgmratiolife: 30}
-	sys.cam.stageCamera = *newStageCamera()
+		bgmratiolife: 30, stageCamera: *newStageCamera()}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.sdw.yscale = 0.4
@@ -605,7 +607,7 @@ func newStage(def string) *Stage {
 	s.p[0].startx, s.p[1].startx = -70, 70
 	return s
 }
-func loadStage(def string) (*Stage, error) {
+func loadStage(def string, main bool) (*Stage, error) {
 	s := newStage(def)
 	str, err := LoadText(def)
 	if err != nil {
@@ -641,6 +643,18 @@ func loadStage(def string) (*Stage, error) {
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
 		s.attachedchardef, ok = sec[0].getString("attachedchar")
+		if main {
+			for k, v := range sec[0] {
+				if match, _ := regexp.MatchString("^round[0-9]+def$", k); match {
+					re := regexp.MustCompile("[0-9]+")
+					submatchall := re.FindAllString(k, -1)
+					if len(submatchall) == 1 {
+						sys.stageList[Atoi(submatchall[0])], sys.loader.err = loadStage(v, false)
+					}
+				}
+			}
+			sec[0].ReadBool("roundloop", &sys.stageLoop)
+		}
 	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
@@ -651,19 +665,19 @@ func loadStage(def string) (*Stage, error) {
 		sec[0].ReadF32("rightbound", &s.rightbound)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
-		sec[0].ReadF32("topscale", &sys.cam.ztopscale)
+		sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
 	}
 	if sec := defmap["bound"]; len(sec) > 0 {
 		sec[0].ReadI32("screenleft", &s.screenleft)
 		sec[0].ReadI32("screenright", &s.screenright)
 	}
 	if sec := defmap["stageinfo"]; len(sec) > 0 {
-		sec[0].ReadI32("zoffset", &sys.cam.zoffset)
+		sec[0].ReadI32("zoffset", &s.stageCamera.zoffset)
 		sec[0].ReadI32("zoffsetlink", &s.zoffsetlink)
 		sec[0].ReadBool("hires", &s.hires)
 		sec[0].ReadBool("resetbg", &s.resetbg)
-		sec[0].readI32ForStage("localcoord", &sys.cam.localcoord[0],
-			&sys.cam.localcoord[1])
+		sec[0].readI32ForStage("localcoord", &s.stageCamera.localcoord[0],
+			&s.stageCamera.localcoord[1])
 		sec[0].ReadF32("xscale", &s.scale[0])
 		sec[0].ReadF32("yscale", &s.scale[1])
 	}
@@ -677,18 +691,29 @@ func loadStage(def string) (*Stage, error) {
 	}
 	var boundlow int32
 	if sec := defmap["camera"]; len(sec) > 0 {
-		sec[0].ReadI32("startx", &sys.cam.startx)
-		sec[0].ReadI32("boundleft", &sys.cam.boundleft)
-		sec[0].ReadI32("boundright", &sys.cam.boundright)
-		sec[0].ReadI32("boundhigh", &sys.cam.boundhigh)
-		sec[0].ReadF32("verticalfollow", &sys.cam.verticalfollow)
-		sec[0].ReadI32("tension", &sys.cam.tension)
-		sec[0].ReadI32("floortension", &sys.cam.floortension)
-		sec[0].ReadI32("overdrawlow", &sys.cam.overdrawlow)
-		sec[0].ReadF32("zoomout", &sys.cam.mugen_zoomout)
+		sec[0].ReadI32("startx", &s.stageCamera.startx)
+		sec[0].ReadI32("boundleft", &s.stageCamera.boundleft)
+		sec[0].ReadI32("boundright", &s.stageCamera.boundright)
+		sec[0].ReadI32("boundhigh", &s.stageCamera.boundhigh)
+		sec[0].ReadF32("verticalfollow", &s.stageCamera.verticalfollow)
+		sec[0].ReadI32("tension", &s.stageCamera.tension)
+		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
+		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
+		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
+		if sys.cam.ZoomMax == 0 {
+			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
+		} else {
+			s.stageCamera.zoomin = sys.cam.ZoomMax
+		}
+		sec[0].ReadF32("zoomout", &s.stageCamera.mugen_zoomout)
+		if sys.cam.ZoomMin == 0 {
+			s.stageCamera.zoomout = s.stageCamera.mugen_zoomout
+		} else {
+			s.stageCamera.zoomout = sys.cam.ZoomMin
+		}
 		var tmp int32
 		if sec[0].ReadI32("tensionhigh", &tmp) {
-			sys.cam.floortension = int32(240/(float32(sys.gameWidth)/float32(sys.cam.localcoord[0]))) - tmp
+			s.stageCamera.floortension = int32(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0]))) - tmp
 		}
 		sec[0].ReadI32("boundlow", &boundlow)
 	}
@@ -740,7 +765,7 @@ func loadStage(def string) (*Stage, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, float32(sys.cam.startx)))
+			s.sff, s.at, float32(s.stageCamera.startx)))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
@@ -788,8 +813,8 @@ func loadStage(def string) (*Stage, error) {
 			s.bgc = append(s.bgc, *bgc)
 		}
 	}
-	s.localscl = float32(sys.gameWidth) / float32(sys.cam.localcoord[0])
-	sys.cam.localscl = s.localscl
+	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
+	s.stageCamera.localscl = s.localscl
 	if math.IsNaN(float64(s.leftbound)) {
 		s.leftbound = 1000
 	} else {
@@ -810,17 +835,18 @@ func loadStage(def string) (*Stage, error) {
 		}
 		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
 			zlink = i
-			sys.cam.zoffset += int32(b.start[1] * s.scale[1])
+			s.stageCamera.zoffset += int32(b.start[1] * s.scale[1])
 		}
 	}
-	ratio1 := float32(sys.cam.localcoord[0]) / float32(sys.cam.localcoord[1])
+	ratio1 := float32(s.stageCamera.localcoord[0]) / float32(s.stageCamera.localcoord[1])
 	ratio2 := float32(sys.gameWidth) / 240
 	if ratio1 > ratio2 {
-		sys.cam.drawOffsetY =
-			MinF(float32(sys.cam.localcoord[1])*s.localscl*0.5*
-				(ratio1/ratio2-1), float32(Max(0, sys.cam.overdrawlow)))
+		s.stageCamera.drawOffsetY =
+			MinF(float32(s.stageCamera.localcoord[1])*s.localscl*0.5*
+				(ratio1/ratio2-1), float32(Max(0, s.stageCamera.overdrawlow)))
 	}
-	sys.cam.drawOffsetY += float32(boundlow) * s.localscl
+	s.stageCamera.drawOffsetY += float32(boundlow) * s.localscl
+	s.mainstage = main
 	return s, nil
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {
@@ -977,17 +1003,17 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		bgscl = 0.5
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
-	scl2, boundlow := s.localscl*scl, float32(Max(0, sys.cam.boundhigh))
+	scl2, boundlow := s.localscl*scl, float32(Max(0, s.stageCamera.boundhigh))
 	if pos[1] > boundlow {
 		yofs += (pos[1] - boundlow) * scl2
 		pos[1] = boundlow
-	} else if pos[1] < float32(sys.cam.boundhigh) {
-		yofs += (pos[1] - float32(sys.cam.boundhigh)) * scl2
-		pos[1] = float32(sys.cam.boundhigh)
+	} else if pos[1] < float32(s.stageCamera.boundhigh) {
+		yofs += (pos[1] - float32(s.stageCamera.boundhigh)) * scl2
+		pos[1] = float32(s.stageCamera.boundhigh)
 	}
-	if sys.cam.verticalfollow > 0 {
+	if s.stageCamera.verticalfollow > 0 {
 		if yofs < 0 {
-			tmp := (float32(sys.cam.boundhigh) - pos[1]) * scl2
+			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
 			if scl > 1 {
 				tmp += (sys.cam.screenZoff + float32(sys.gameHeight-240)) * (1/scl - 1)
 			} else {
@@ -1016,11 +1042,11 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	yofs += (sys.cam.drawOffsetY +
-		float32(sys.cam.localcoord[1]-240)*s.localscl) *
-		Pow(scl, ((360*float32(sys.cam.localcoord[0])+
-			160*float32(sys.cam.localcoord[1]))/float32(sys.cam.localcoord[0])+
-			sys.cam.drawOffsetY)/480)
+	yofs += (s.stageCamera.drawOffsetY +
+		float32(s.stageCamera.localcoord[1]-240)*s.localscl) *
+		Pow(scl, ((360*float32(s.stageCamera.localcoord[0])+
+			160*float32(s.stageCamera.localcoord[1]))/float32(s.stageCamera.localcoord[0])+
+			s.stageCamera.drawOffsetY)/480)
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
 			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs)

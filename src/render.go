@@ -34,7 +34,7 @@ var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect []uintptr//[4]uintptr
+var postShaderSelect []uintptr //[4]uintptr
 
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
@@ -121,7 +121,7 @@ func RenderInit() {
 	compile := func(shaderType uint32, src string) (shader uintptr) {
 		shader = gl.CreateShaderObjectARB(shaderType)
 		s, _ := gl.Strs(src)
-		var l int32 = int32(len(src)-1)
+		var l int32 = int32(len(src) - 1)
 		gl.ShaderSourceARB(shader, 1, s, &l)
 		gl.CompileShaderARB(shader)
 		var ok int32

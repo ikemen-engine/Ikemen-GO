@@ -12,6 +12,7 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
+
 	//"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
@@ -281,8 +282,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.ReadVorbis(loop, bgmVolume)
 	} else if HasExtension(bgm.filename, "^\\.[Mm][Pp]3$") {
 		bgm.ReadMp3(loop, bgmVolume)
-	//} else if HasExtension(bgm.filename, "^\\.[Ff][Ll][Aa][Cc]$") {
-	//	bgm.ConvertFLAC(loop, bgmVolume)
+		//} else if HasExtension(bgm.filename, "^\\.[Ff][Ll][Aa][Cc]$") {
+		//	bgm.ConvertFLAC(loop, bgmVolume)
 	} else if HasExtension(bgm.filename, "^\\.[Ww][Aa][Vv]$") {
 		bgm.ReadWav(loop, bgmVolume)
 	}
@@ -324,7 +325,7 @@ func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
 	// Open decode and convert
 	s, format, err := flac.Decode(f1)
 	wav.Encode(f2, s, format)
- 
+
 	bgm.filename = "save/tempaudio.wav"
 	//bgm.tempfile = f2
 	bgm.format = "flac"
@@ -555,8 +556,8 @@ func LoadSnd(filename string) (*Snd, error) {
 			if !ok {
 				tmp, err := ReadWave(f, int64(subHeaderOffset))
 				if err != nil {
-					sys.appendToConsole(fmt.Sprintf("WARNING: %s sound %d,%d can't be read\n", filename, num[0], num[1]))
-					sys.errLog.Printf("%s sound %d,%d can't be read\n", filename, num[0], num[1])
+					sys.warnConsole(fmt.Sprintf("WARNING: %v sound can't be read: %v,%v\n", filename, num[0], num[1]))
+					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
 				} else {
 					s.table[num] = tmp
 				}

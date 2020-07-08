@@ -30,7 +30,7 @@ if !NumHelper(Const(StateDizzyBirdsHelper)) {
 [Function fDizzyBirdExplod(arg)]
 let fvarA = (float(var(1)) + $arg) * 0.0698;
 let fvarB = cos($fvarA) * var(2) * 0.25;
-let fvarC = (cos($fvarA) + 3) * 0.12 * ifelse(($fvarB < 0), -1, 1) * ((Time % 9) * 0.05 + 1);
+let fvarC = Const240p((cos($fvarA) + 3) * 0.12 * ifelse(($fvarB < 0), -1, 1) * ((Time % 9) * 0.05 + 1));
 Explod{
 	id: 0;
 	anim: F Const(FxDizzyEffect) + var(10);
@@ -57,7 +57,7 @@ PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
 #===============================================================================
 #StateDizzyBirdsHelper [helper]
 #===============================================================================
-[Statedef 5310; type: a; physics: n; anim: Const(AnimBlank); velset: 0, 0; ctrl: 0;]
+[Statedef 5310; type: a; physics: n; anim: -2; velset: 0, 0; ctrl: 0;]
 
 if Parent,StateNo = Const(StateDizzy) {
 	var(0) := -1; #in dizzy state

@@ -541,6 +541,9 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	if s.palidx < 0 {
 		s.palidx = src.palidx
 	}
+	s.rle = src.rle
+	//s.paltemp = src.paltemp
+	//s.PalTex = src.PalTex
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if s.Pal != nil || s.rle <= -11 {
@@ -1095,11 +1098,18 @@ func loadSff(filename string, char bool) (*Sff, error) {
 		return binary.Read(f, binary.LittleEndian, x)
 	}
 	if s.header.Ver0 != 1 {
+		var uniquePals map[[2]int16]bool = make(map[[2]int16]bool)
 		for i := 0; i < int(s.header.NumberOfPalettes); i++ {
 			f.Seek(int64(s.header.FirstPaletteHeaderOffset)+int64(i*16), 0)
 			var gn_ [3]int16
 			if err := read(gn_[:]); err != nil {
 				return nil, err
+			}
+			if uniquePals[[...]int16{gn_[0], gn_[1]}] {
+				sys.warnConsole(fmt.Sprintf("WARNING: %v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes))
+				sys.errLog.Printf("%v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
+			} else {
+				uniquePals[[...]int16{gn_[0], gn_[1]}] = true
 			}
 			var link uint16
 			if err := read(&link); err != nil {
@@ -1239,6 +1249,7 @@ func captureScreen() {
 	width, height := sys.window.Window.GetSize()
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+	unbindFB()
 	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixdata))
 	for i := 0; i < 4*width*height; i++ {
 		var x, y, j int

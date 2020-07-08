@@ -47,6 +47,10 @@ const (
 	CSF_nojump
 	CSF_noairjump
 	CSF_nohardcodedkeys
+	CSF_nogetupfromliedown
+	CSF_nofastrecoverfromliedown
+	CSF_nofallcount
+	CSF_nofalldefenceup
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -62,7 +66,10 @@ const (
 	CSF_gethit
 	CSF_assertspecial CharSpecialFlag = CSF_nostandguard | CSF_nocrouchguard |
 		CSF_noairguard | CSF_noshadow | CSF_invisible | CSF_unguardable |
-		CSF_nojugglecheck | CSF_noautoturn | CSF_nowalk
+		CSF_nojugglecheck | CSF_noautoturn | CSF_nowalk | CSF_nobrake |
+		CSF_nocrouch | CSF_nostand | CSF_nojump | CSF_noairjump |
+		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
+		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup
 )
 
 type GlobalSpecialFlag uint32
@@ -1123,9 +1130,13 @@ type Projectile struct {
 	hitdef          HitDef
 	id              int32
 	anim            int32
+	anim_fflg       bool
 	hitanim         int32
+	hitanim_fflg    bool
 	remanim         int32
+	remanim_fflg    bool
 	cancelanim      int32
+	cancelanim_fflg bool
 	scale           [2]float32
 	angle           float32
 	clsnScale       [2]float32
@@ -1200,11 +1211,11 @@ func (p *Projectile) update(playerNo int) {
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
 				if p.hits == -1 {
-					if p.hitanim != p.anim {
-						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, false, false)
+					if p.hitanim != p.anim || p.hitanim_fflg != p.anim_fflg {
+						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_fflg, true)
 					}
-				} else if p.cancelanim != p.anim {
-					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, false, false)
+				} else if p.cancelanim != p.anim || p.cancelanim_fflg != p.anim_fflg {
+					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_fflg, true)
 				}
 			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
@@ -1216,8 +1227,8 @@ func (p *Projectile) update(playerNo int) {
 				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
 				p.removetime == 0 ||
 				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
-				if p.remanim != p.anim {
-					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, false, false)
+				if p.remanim != p.anim || p.remanim_fflg != p.anim_fflg {
+					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_fflg, true)
 				}
 			} else {
 				rem = false
@@ -1586,6 +1597,7 @@ type Char struct {
 	mapArray              map[string]float32
 	mapDefault            map[string]float32
 	remapSpr              RemapPreset
+	clipboardText         []string
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1595,7 +1607,7 @@ func newChar(n int, idx int32) (c *Char) {
 }
 
 func (c *Char) warn() string {
-	return fmt.Sprintf("WARNING: %v (%v) in state %v: ", c.name, c.id, c.ss.no)
+	return fmt.Sprintf("%v: WARNING: %v (%v) in state %v: ", sys.tickCount, c.name, c.id, c.ss.no)
 }
 func (c *Char) panic() {
 	if sys.workingState != &c.ss.sb {
@@ -1701,12 +1713,12 @@ func (c *Char) clear2() {
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
 		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
-		width:      [...]float32{c.defFW(), c.defBW()},
-		attackMul:  float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
-		defenceMul: 1,
+		width:         [...]float32{c.defFW(), c.defBW()},
+		attackMul:     float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
+		defenceMul:    1,
 		customDefence: 1}
 	c.oldPos, c.drawPos = c.pos, c.pos
-	if c.helperIndex == 0 {
+	if c.helperIndex == 0 && c.teamside < 2 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
 			c.palfx.clear()
 		} else {
@@ -2334,11 +2346,11 @@ func (c *Char) unsetSF(csf CharSpecialFlag) {
 }
 func (c *Char) parent() *Char {
 	if c.parentIndex == IErr {
-		sys.appendToConsole(c.warn() + "has no parent")
+		sys.warnConsole(c.warn() + "has no parent")
 		return nil
 	}
 	if c.parentIndex < 0 {
-		sys.appendToConsole(c.warn() + "parent in retargeted trigger has been destroyed already")
+		sys.warnConsole(c.warn() + "parent has been already destroyed")
 		if !sys.ignoreMostErrors {
 			sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
 		}
@@ -2347,7 +2359,7 @@ func (c *Char) parent() *Char {
 }
 func (c *Char) root() *Char {
 	if c.helperIndex == 0 {
-		sys.appendToConsole(c.warn() + "has no root")
+		sys.warnConsole(c.warn() + "has no root")
 		return nil
 	}
 	return sys.chars[c.playerNo][0]
@@ -2358,7 +2370,7 @@ func (c *Char) helper(id int32) *Char {
 			return h
 		}
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper %v", id))
+	sys.warnConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
 	return nil
 }
 func (c *Char) target(id int32) *Char {
@@ -2368,14 +2380,14 @@ func (c *Char) target(id int32) *Char {
 		}
 	}
 	if id != -1 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no target %v", id))
+		sys.warnConsole(c.warn() + fmt.Sprintf("has no target: %v", id))
 	}
 	return nil
 }
 func (c *Char) partner(n int32) *Char {
 	n = Max(0, n)
 	if int(n) > len(sys.chars)/2-2 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th partner", n))
+		sys.warnConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 		return nil
 	}
 	// X>>1 = X/2
@@ -2393,7 +2405,7 @@ func (c *Char) partner(n int32) *Char {
 	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
 		return sys.chars[p][0]
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("illegal partner number (%v) in retargeted trigger", n))
+	sys.warnConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 	return nil
 }
 func (c *Char) partnerV2(n int32) *Char {
@@ -2412,7 +2424,7 @@ func (c *Char) partnerV2(n int32) *Char {
 }
 func (c *Char) enemy(n int32) *Char {
 	if n < 0 || n >= c.numEnemy() {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th enemy", n))
+		sys.warnConsole(c.warn() + fmt.Sprintf("has no enemy: %v", n))
 		return nil
 	}
 	if c.teamside == 3-1 {
@@ -2813,7 +2825,7 @@ func (c *Char) roundsExisted() int32 {
 }
 func (c *Char) roundState() int32 {
 	switch {
-	case sys.postMatch:
+	case sys.matchOver() && sys.roundOver():
 		return -1
 	case sys.intro > sys.lifebar.ro.ctrl_time+1:
 		return 0
@@ -2953,9 +2965,9 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	if w == nil {
 		if log {
 			if f {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
+				sys.warnConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
 			} else {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
+				sys.warnConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
 			}
 		}
 		if !sys.ignoreMostErrors {
@@ -3005,7 +3017,7 @@ func (c *Char) furimuki() {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("2500 loops: %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
+		sys.warnConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after 2500 loops): %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
 		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
 			c.name, c.ss.prevno, c.ss.no, no)
 		return false
@@ -3034,7 +3046,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
+		sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("存在しないステート: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
@@ -3338,6 +3350,9 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.topexplDrawlist[en], false)
 }
 func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
+	if n == -2 {
+		return &Animation{}
+	}
 	if n < 0 {
 		return nil
 	}
@@ -3349,9 +3364,9 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	if a == nil {
 		if log {
 			if ffx {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
+				sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
 			} else {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
+				sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
 			}
 		}
 		if !sys.ignoreMostErrors {
@@ -3462,7 +3477,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.anim < -1 {
 		p.anim = 0
 	}
-	p.ani = c.getAnim(p.anim, false, false)
+	p.ani = c.getAnim(p.anim, p.anim_fflg, true)
 	if p.ani == nil && c.anim != nil {
 		p.ani = &Animation{}
 		*p.ani = *c.anim
@@ -3607,28 +3622,28 @@ func (c *Char) varGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumVar) {
 		return BytecodeInt(c.ivar[i])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumFvar) {
 		return BytecodeFloat(c.fvar[i])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysVar) {
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysFvar) {
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varSet(i, v int32) BytecodeValue {
@@ -3636,7 +3651,7 @@ func (c *Char) varSet(i, v int32) BytecodeValue {
 		c.ivar[i] = v
 		return BytecodeInt(v)
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
@@ -3644,7 +3659,7 @@ func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i] = v
 		return BytecodeFloat(v)
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarSet(i, v int32) BytecodeValue {
@@ -3652,7 +3667,7 @@ func (c *Char) sysVarSet(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] = v
 		return BytecodeInt(v)
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
@@ -3660,7 +3675,7 @@ func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] = v
 		return BytecodeFloat(v)
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varAdd(i, v int32) BytecodeValue {
@@ -3668,7 +3683,7 @@ func (c *Char) varAdd(i, v int32) BytecodeValue {
 		c.ivar[i] += v
 		return BytecodeInt(c.ivar[i])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
@@ -3676,7 +3691,7 @@ func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i] += v
 		return BytecodeFloat(c.fvar[i])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
@@ -3684,7 +3699,7 @@ func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] += v
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
@@ -3692,7 +3707,7 @@ func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] += v
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varRangeSet(s, e, v int32) {
@@ -4183,7 +4198,7 @@ func (c *Char) angleSet(a float32) {
 }
 func (c *Char) ctrlOver() bool {
 	return sys.time == 0 ||
-		sys.intro < -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
+		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || (c.ctrlOver() && c.scf(SCF_ctrl) &&
@@ -4207,10 +4222,14 @@ func (c *Char) hitFallDamage() {
 }
 func (c *Char) hitFallVel() {
 	if c.ss.moveType == MT_H {
-		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
-			c.setXV(c.ghv.fall.xvelocity)
+		scl := c.localscl
+		if c.ghv.playerNo != -1 {
+			scl = sys.chars[c.ghv.playerNo][0].localscl
 		}
-		c.setYV(c.ghv.fall.yvelocity)
+		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
+			c.setXV(c.ghv.fall.xvelocity / scl)
+		}
+		c.setYV(c.ghv.fall.yvelocity / scl)
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv float32) {
@@ -4233,14 +4252,14 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
 	if !ok || si < 0 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no source palette %v,%v for RemapPal", src[0], src[1]))
+		sys.warnConsole(c.warn() + fmt.Sprintf("has no source palette for RemapPal: %v,%v", src[0], src[1]))
 		return
 	}
 	var di int
 	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
 	if !ok || di < 0 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no dest palette %v,%v for RemapPal", dst[0], dst[1]))
+		sys.warnConsole(c.warn() + fmt.Sprintf("has no dest palette for RemapPal: %v,%v", dst[0], dst[1]))
 		di = si
 	}
 	if pfx.remap == nil {
@@ -4352,12 +4371,28 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 	}
 }
 
+func (c *Char) appendToClipboard(pn, sn int, a ...interface{}) {
+	spl := sys.stringPool[pn].List
+	if sn >= 0 && sn < len(spl) {
+		for i, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
+			if i == 0 && len(c.clipboardText) > 0 {
+				c.clipboardText[len(c.clipboardText)-1] += str
+			} else {
+				c.clipboardText = append(c.clipboardText, str)
+			}
+		}
+		if len(c.clipboardText) > 10 {
+			c.clipboardText = c.clipboardText[len(c.clipboardText)-10:]
+		}
+	}
+}
+
 func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
 }
 func (c *Char) gravity() {
-	c.vel[1] += c.gi().movement.yaccel
+	c.vel[1] += c.gi().movement.yaccel * (320 / float32(c.localcoord)) / c.localscl
 }
 func (c *Char) posUpdate() {
 	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
@@ -4825,7 +4860,7 @@ func (c *Char) action() {
 		c.minus = 0
 		c.ss.sb.run(c)
 		if !c.hitPause() {
-			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() {
+			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
 				c.changeState(5120, -1, -1, false)
 			}
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
@@ -4929,8 +4964,12 @@ func (c *Char) update(cvmin, cvmax,
 			}
 			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
 			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) && c.ss.time == 1 {
-				c.defenceMul *= c.gi().data.fall.defence_mul
-				c.ghv.fallcount++
+				if !c.sf(CSF_nofalldefenceup) {
+					c.defenceMul *= c.gi().data.fall.defence_mul
+				}
+				if !c.sf(CSF_nofallcount) {
+					c.ghv.fallcount++
+				}
 			}
 		}
 		if c.acttmp > 0 && c.ss.moveType != MT_H || c.roundState() == 2 &&
@@ -4990,7 +5029,7 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
-	c.finalDefence = float64(((float32(c.gi().data.defence)*c.customDefence*c.defenceMul)/100))
+	c.finalDefence = float64(((float32(c.gi().data.defence) * c.customDefence * c.defenceMul) / 100))
 	if sys.tickNextFrame() {
 		c.pushed = false
 	}
@@ -5127,12 +5166,14 @@ func (c *Char) tick() {
 			}
 		}
 		if c.hitPauseTime <= 0 && c.ss.stateType == ST_L && c.recoverTime > 0 &&
-			c.ss.sb.playerNo == c.playerNo && (c.cmd[0].Buffer.Bb == 1 ||
-			c.cmd[0].Buffer.Db == 1 || c.cmd[0].Buffer.Fb == 1 ||
-			c.cmd[0].Buffer.Ub == 1 || c.cmd[0].Buffer.ab == 1 ||
-			c.cmd[0].Buffer.bb == 1 || c.cmd[0].Buffer.cb == 1 ||
-			c.cmd[0].Buffer.xb == 1 || c.cmd[0].Buffer.yb == 1 ||
-			c.cmd[0].Buffer.zb == 1 || c.cmd[0].Buffer.sb == 1) {
+			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
+			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
+				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
+				c.cmd[0].Buffer.ab == 1 || c.cmd[0].Buffer.bb == 1 ||
+				c.cmd[0].Buffer.cb == 1 || c.cmd[0].Buffer.xb == 1 ||
+				c.cmd[0].Buffer.yb == 1 || c.cmd[0].Buffer.zb == 1 ||
+				c.cmd[0].Buffer.sb == 1 || c.cmd[0].Buffer.db == 1 ||
+				c.cmd[0].Buffer.wb == 1 /*|| c.cmd[0].Buffer.mb == 1*/) {
 			c.recoverTime -= RandI(1, (c.recoverTime+1)/2)
 		}
 		if !c.stchtmp {
@@ -5192,9 +5233,9 @@ func (c *Char) cueDraw() {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height() * (320 / float32(c.localcoord)), c.width[0] * c.localscl, 0},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
-
-		x = (c.pos[0]*c.localscl - sys.cam.Pos[0]) * sys.cam.Scale
-		y = (c.pos[1]*c.localscl-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl
+		//debug clsnText
+		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
+		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl + 240 - float32(sys.gameHeight)
 		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
 		y += -c.height()*(320/float32(c.localcoord)) + float32(sys.gameHeight-240)
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), palfx: newPalFX()})
@@ -5734,13 +5775,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.powerAdd(hd.hitgivepower)
 					getter.dizzyPointsAdd(hd.dizzypoints)
 				}
-				if getter.ss.moveType == MT_A {
+				if getter.ss.moveType == MT_A && c.teamside < 2 {
 					sys.lifebar.co[c.teamside].counterHits += 1
 					c.counterHit = true
 				}
-				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack {
+				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack && c.teamside < 2 {
 					sys.lifebar.co[c.teamside].firstAttack = true
-					c.firstAttack = true
+					sys.chars[c.playerNo][0].firstAttack = true
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
@@ -6204,7 +6245,7 @@ func (cl *CharList) get(id int32) *Char {
 func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	if n < 0 {
 		if log {
-			sys.appendToConsole(c.warn() + fmt.Sprintf("illegal near enemy number (%v) in retargeted trigger", n))
+			sys.warnConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
 		}
 		return nil
 	}
@@ -6235,7 +6276,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	if int(n) >= len(*cache) {
 		if log {
-			sys.appendToConsole(c.warn() + fmt.Sprintf("has no %v-th nearest enemy", n))
+			sys.warnConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
 		}
 		return nil
 	}
