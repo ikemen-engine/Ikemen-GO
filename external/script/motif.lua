@@ -1863,6 +1863,7 @@ local fileDir, fileName = motif.def:match('^(.-)([^/\\]+)$')
 t.fileDir = fileDir
 t.fileName = fileName
 local tmp = ''
+local group = ''
 --local file = io.open(motif.def, 'r')
 --for line in file:lines() do
 for line in main.motifData:gmatch('([^\n]*)\n?') do
@@ -1870,23 +1871,25 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 	if line:match('^[^%g]*%s*%[.-%s*%]%s*$') then --matched [] group
 		line = line:match('%[(.-)%s*%]%s*$') --match text between []
 		line = line:gsub('[%. ]', '_') --change . and space to _
-		local row = tostring(line:lower())
-		if row:match('^begin_action_[0-9]+$') then --matched anim
-			row = tonumber(row:match('^begin_action_([0-9]+)$'))
-			t.anim[row] = {}
-			pos = t.anim[row]
+		group = tostring(line:lower())
+		if group:match('^begin_action_[0-9]+$') then --matched anim
+			group = tonumber(group:match('^begin_action_([0-9]+)$'))
+			t.anim[group] = {}
+			pos = t.anim[group]
 		else --matched other []
-			t[row] = {}
-			main.t_sort[row] = {}
-			pos = t[row]
-			pos_sort = main.t_sort[row]
-			def_pos = motif[row]
+			t[group] = {}
+			main.t_sort[group] = {}
+			pos = t[group]
+			pos_sort = main.t_sort[group]
+			def_pos = motif[group]
 		end
 	else --matched non [] line
 		local param, value = line:match('^%s*([^=]-)%s*=%s*(.-)%s*$')
 		if param ~= nil then
 			param = param:gsub('[%. ]', '_') --change param . and space to _
-			param = param:lower() --lowercase param
+			if group ~= 'glyphs' then
+				param = param:lower() --lowercase param
+			end
 			if value ~= nil and def_pos ~= nil then --let's check if it's even a valid param
 				if value == '' and (type(def_pos[param]) == 'number' or type(def_pos[param]) == 'table') then --text should remain empty
 					value = nil
