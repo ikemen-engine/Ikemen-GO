@@ -254,7 +254,7 @@ function menu.run()
 		motif[section].boxbg_alpha[1],
 		motif[section].boxbg_alpha[2],
 		false,
-		false
+		motif.defaultLocalcoord
 	)
 	--Button Config
 	if menu.itemname == 'keyboard' or menu.itemname == 'gamepad' then
@@ -462,7 +462,7 @@ function menu.commandlistRender(section, t)
 		motif[section].movelist_boxbg_alpha[1],
 		motif[section].movelist_boxbg_alpha[2],
 		false,
-		false
+		motif.defaultLocalcoord
 	)
 	--draw title
 	if motif[section].movelist_label_uppercase == 1 then

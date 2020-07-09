@@ -1930,15 +1930,8 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 							pos[param] = {}
 							if param:match('_font$') and tonumber(c) ~= -1 then
 								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then
-									if pos[param .. '_height'] == nil then
-										if t.files.font_height[tonumber(c)] ~= nil then
-											pos[param .. '_height'] = t.files.font_height[tonumber(c)]
-										else
-											pos[param .. '_height'] = -1
-										end
-									end
-									if pos[param .. '_scale'] == nil then
-										pos[param .. '_scale'] = {1.0, 1.0}
+									if pos[param .. '_height'] == nil and t.files.font_height[tonumber(c)] ~= nil then
+										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
 									end
 									c = t.files.font[tonumber(c)]
 								else
