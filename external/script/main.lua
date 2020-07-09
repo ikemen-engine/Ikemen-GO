@@ -2681,6 +2681,7 @@ function main.createMenu(tbl, bool_bgreset, bool_storyboard, bool_demo, bool_esc
 					elseif f == 'exit' then
 						break
 					elseif main.t_itemname[f] ~= nil then
+						t[item].itemname = f
 						main.f_default()
 						main.t_itemname[f](cursorPosY, moveTxt, item, t)
 						main.f_default()

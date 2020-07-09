@@ -843,40 +843,39 @@ func (fa *LifeBarFace) bgDraw(layerno int16) {
 }
 func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 	fspr := far.face
-	if fspr == nil {
-		return
-	}
-	pfx := sys.chars[ref][0].getPalfx()
-	sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
-	fspr.Pal = nil
-	fspr.Pal = fspr.GetPal(&sys.cgi[ref].sff.palList)
-	sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
+	if fspr != nil {
+		pfx := sys.chars[ref][0].getPalfx()
+		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
+		fspr.Pal = nil
+		fspr.Pal = fspr.GetPal(&sys.cgi[ref].sff.palList)
+		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
 
-	ob := sys.brightness
-	if ref == sys.superplayer {
-		sys.brightness = 256
-	}
-	fa.face_lay.DrawSprite((float32(fa.pos[0])+sys.lifebarOffsetX)*sys.lifebarScale, float32(fa.pos[1])*sys.lifebarScale, layerno,
-		far.face, pfx, far.scale*sys.lifebarPortraitScale, &sys.scrrect)
-	if !sys.chars[ref][0].alive() {
-		fa.ko.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
-	}
-	sys.brightness = ob
-	i := int32(len(far.teammate_face)) - 1
-	x := float32(fa.teammate_pos[0] + fa.teammate_spacing[0]*(i-1))
-	y := float32(fa.teammate_pos[1] + fa.teammate_spacing[1]*(i-1))
-	for ; i >= 0; i-- {
-		if i != fa.numko {
-			fa.teammate_bg.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
-			fa.teammate_bg0.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
-			fa.teammate_bg1.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
-			fa.teammate_bg2.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
-			fa.teammate_face_lay.DrawSprite((x+sys.lifebarOffsetX)*sys.lifebarScale, y*sys.lifebarScale, layerno, far.teammate_face[i], nil, far.teammate_scale[i]*sys.lifebarPortraitScale, &sys.scrrect)
-			if i < fa.numko {
-				fa.teammate_ko.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+		ob := sys.brightness
+		if ref == sys.superplayer {
+			sys.brightness = 256
+		}
+		fa.face_lay.DrawSprite((float32(fa.pos[0])+sys.lifebarOffsetX)*sys.lifebarScale, float32(fa.pos[1])*sys.lifebarScale, layerno,
+			far.face, pfx, far.scale*sys.lifebarPortraitScale, &sys.scrrect)
+		if !sys.chars[ref][0].alive() {
+			fa.ko.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
+		}
+		sys.brightness = ob
+		i := int32(len(far.teammate_face)) - 1
+		x := float32(fa.teammate_pos[0] + fa.teammate_spacing[0]*(i-1))
+		y := float32(fa.teammate_pos[1] + fa.teammate_spacing[1]*(i-1))
+		for ; i >= 0; i-- {
+			if i != fa.numko {
+				fa.teammate_bg.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+				fa.teammate_bg0.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+				fa.teammate_bg1.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+				fa.teammate_bg2.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+				fa.teammate_face_lay.DrawSprite((x+sys.lifebarOffsetX)*sys.lifebarScale, y*sys.lifebarScale, layerno, far.teammate_face[i], nil, far.teammate_scale[i]*sys.lifebarPortraitScale, &sys.scrrect)
+				if i < fa.numko {
+					fa.teammate_ko.DrawScaled((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
+				}
+				x -= float32(fa.teammate_spacing[0])
+				y -= float32(fa.teammate_spacing[1])
 			}
-			x -= float32(fa.teammate_spacing[0])
-			y -= float32(fa.teammate_spacing[1])
 		}
 	}
 	fa.top.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
