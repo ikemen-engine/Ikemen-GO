@@ -115,7 +115,6 @@ local function f_play(t)
 end
 
 local function f_parse(path)
-	--storyboards use their own localcoord function, so we disable it
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {}
