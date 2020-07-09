@@ -464,6 +464,8 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	//trans := f.calculateTrans()
 
 	//spr.Draw(x, y, xscl, yscl, pal, nil, nil, window)
+	x -= xscl * float32(spr.Offset[0])
+	y -= yscl * float32(spr.Offset[1])
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,

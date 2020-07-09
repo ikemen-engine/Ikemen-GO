@@ -2564,7 +2564,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	//fightfx scale
-	var localcoord43 float32
+	//TODO: below formula is not reliable on 320x180 localcoord
+	/*var localcoord43 float32
 	if sys.lifebarLocalcoord[0] >= sys.lifebarLocalcoord[1] {
 		localcoord43 = (float32(sys.lifebarLocalcoord[1]) / 3) * 4
 	} else {
@@ -2574,7 +2575,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		for _, a := range l.fat {
 			a.scale = [...]float32{sc, sc}
 		}
-	}
+	}*/
 	//Iterate over map in a stable iteration order
 	keys := make([]string, 0, len(missing))
 	for k := range missing {

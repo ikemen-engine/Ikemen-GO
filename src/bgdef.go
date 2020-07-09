@@ -90,9 +90,6 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
 			s.sff, s.at, 0))
-		if s.bg[len(s.bg)-1].startrect[0] != -32768 { //workaround for screenpack bg window offset
-			s.bg[len(s.bg)-1].startrect[0] += (sys.gameWidth-320)/2 + int32(sys.luaSpriteOffsetX)
-		}
 	}
 	bgcdef := *newBgCtrl()
 	i = 0

@@ -116,7 +116,6 @@ end
 
 local function f_parse(path)
 	--storyboards use their own localcoord function, so we disable it
-	main.f_disableLuaScale()
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {}
@@ -402,12 +401,11 @@ local function f_parse(path)
 			end
 		end
 	end
-	--finished loading storyboard, re-enable custom scaling
-	main.f_setLuaScale()
 	return t
 end
 
 function storyboard.f_storyboard(path)
+	main.f_disableLuaScale()
 	path = path:gsub('\\', '/')
 	if storyboard.t_storyboard[path] == nil then
 		storyboard.t_storyboard[path] = f_parse(path)
@@ -415,6 +413,7 @@ function storyboard.f_storyboard(path)
 		f_reset(storyboard.t_storyboard[path])
 	end
 	f_play(storyboard.t_storyboard[path])
+	main.f_setLuaScale()
 end
 
 return storyboard
