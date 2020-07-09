@@ -1685,10 +1685,10 @@ for i = 1, #main.t_selChars do
 			if main.t_stageDef[v:lower()] == nil then
 				main.t_selChars[i].stage[j] = main.f_addStage(v)
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then --stage available all the time
-					table.insert(main.t_includeStage[1], v)
-					table.insert(main.t_includeStage[2], v)
+					table.insert(main.t_includeStage[1], main.t_selChars[i].stage[j])
+					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				elseif main.t_selChars[i].includestage == -1 then --excluded stage that can be still manually selected
-					table.insert(main.t_includeStage[2], v)
+					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				end
 			else --already added
 				main.t_selChars[i].stage[j] = main.t_stageDef[v:lower()]
