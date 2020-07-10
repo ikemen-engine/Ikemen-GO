@@ -209,7 +209,7 @@ function loop()
 	else
 		main.f_cmdInput()
 		if esc() or main.f_input(main.t_players, {'m'}) then
-			if gameMode() == "" then --match started via command line
+			if gameMode() == "" or gameMode() == "demo" or gameMode() == "randomtest" then
 				endMatch()
 			else
 				menu.init()
