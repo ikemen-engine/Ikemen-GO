@@ -185,7 +185,7 @@ function loop()
 		end
 	end
 	--match end
-	if roundover() and matchover() then
+	if matchover() and roundover() then
 		if not endFlag then
 			resetMatchData()
 			endFlag = true
