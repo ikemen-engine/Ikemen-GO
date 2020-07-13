@@ -113,8 +113,6 @@ AnimContinueScreen = 5500 ;opt
 AnimYesToContinue = 5510 ;opt
 AnimNoToContinue = 5520 ;opt
 
-AnimBlank = 909601
-
 ; common1.cns / common1.cns.zss states
 StateStand = 0
 StateStandToCrouch = 10
@@ -170,12 +168,14 @@ StateAirGetHit_fallRecoveryInAir = 5210
 StateContinueScreenAnimation = 5500
 StateInitialize = 5900
 
-; rules.zss states
+; dizzy.zss states
 StateDizzy = 5300
 StateDizzyFallDown_standCrouch = 5301
 StateDizzyFallDown_air = 5302
 StateDizzyLyingDown = 5303
 StateDizzyBirdsHelper = 5310
+
+; guardbreak.zss states
 StateGuardBreakHit = 5400
 StateGuardBreakRecover = 5401
 

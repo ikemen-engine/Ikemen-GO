@@ -16,7 +16,7 @@ if Time = 0 {
 		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
 		sprpriority: 7;
 		ownpal: 1;
-		scale: 0.15, 4.5;
+		scale: Const240p(0.15), Const240p(4.5);
 		trans: add;
 		alpha: 256, 256;
 		ignorehitpause: 1;
@@ -33,9 +33,9 @@ if Time < 13 {
 		sprpriority: 6;
 		ownpal: 1;
 		random: floor(Const(size.height) / 8 * Const(size.xscale)), floor(Const(size.height) * Const(size.yscale));
-		scale: rand(0, 8) * 0.03 + 0.25, rand(0, 8) * 0.03 + 0.25;
-		vel: -(rand(0, 17) + 5) * 0.36, (rand(0, 18) - 8) * 0.36;
-		accel: 0.038, 0;
+		scale: Const240p(rand(0, 8) * 0.03 + 0.25), Const240p(rand(0, 8) * 0.03 + 0.25);
+		vel: -Const240p((rand(0, 17) + 5) * 0.36), Const240p((rand(0, 18) - 8) * 0.36);
+		accel: Const240p(0.038), 0;
 		facing: ifelse(Random < 500, 1, -1);
 		vfacing: ifelse(Random < 500, 1, -1);
 		ignorehitpause: 1;
@@ -101,7 +101,7 @@ if Time <= 80 {
 	ChangeAnim{value: Anim}
 	if (Time % 2) = 0 {
 		if (Time % 4) {
-			Offset{x: -1}
+			Offset{x: -Const240p(1)}
 		} else {
 			Offset{x: 1}
 		}

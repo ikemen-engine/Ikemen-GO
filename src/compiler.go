@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
-	"regexp"
 )
 
 const kuuhaktokigou = " !=<>()|&+-*/%,[]^:;{}#\"\t\r\n"
@@ -159,6 +159,194 @@ func newCompiler() *Compiler {
 		"targetscoreadd":       c.targetScoreAdd,
 	}
 	return c
+}
+
+var triggerMap = map[string]int{
+	//redirections
+	"player":    0,
+	"parent":    0,
+	"root":      0,
+	"helper":    0,
+	"target":    0,
+	"partner":   0,
+	"enemy":     0,
+	"enemynear": 0,
+	"playerid":  0,
+	//vanilla triggers
+	"abs":               1,
+	"acos":              1,
+	"ailevel":           1,
+	"alive":             1,
+	"anim":              1,
+	"animelem":          1,
+	"animelemno":        1,
+	"animelemtime":      1,
+	"animexist":         1,
+	"animtime":          1,
+	"asin":              1,
+	"atan":              1,
+	"authorname":        1,
+	"backedge":          1,
+	"backedgebodydist":  1,
+	"backedgedist":      1,
+	"bottomedge":        1,
+	"camerapos":         1,
+	"camerazoom":        1,
+	"canrecover":        1,
+	"ceil":              1,
+	"command":           1,
+	"cond":              1,
+	"const":             1,
+	"const240p":         1,
+	"const480p":         1,
+	"const720p":         1,
+	"cos":               1,
+	"ctrl":              1,
+	"drawgame":          1,
+	"e":                 1,
+	"exp":               1,
+	"facing":            1,
+	"floor":             1,
+	"frontedge":         1,
+	"frontedgebodydist": 1,
+	"frontedgedist":     1,
+	"fvar":              1,
+	"gameheight":        1,
+	"gametime":          1,
+	"gamewidth":         1,
+	"gethitvar":         1,
+	"hitcount":          1,
+	"hitdefattr":        1,
+	"hitfall":           1,
+	"hitover":           1,
+	"hitpausetime":      1,
+	"hitshakeover":      1,
+	"hitvel":            1,
+	"id":                1,
+	"ifelse":            1,
+	"inguarddist":       1,
+	"ishelper":          1,
+	"ishometeam":        1,
+	"leftedge":          1,
+	"life":              1,
+	"lifemax":           1,
+	"ln":                1,
+	"log":               1,
+	"lose":              1,
+	"matchno":           1,
+	"matchover":         1,
+	"movecontact":       1,
+	"moveguarded":       1,
+	"movehit":           1,
+	"movetype":          1,
+	"movereversed":      1,
+	"name":              1,
+	"numenemy":          1,
+	"numexplod":         1,
+	"numhelper":         1,
+	"numpartner":        1,
+	"numproj":           1,
+	"numprojid":         1,
+	"numtarget":         1,
+	"p1name":            1,
+	"p2bodydist":        1,
+	"p2dist":            1,
+	"p2life":            1,
+	"p2movetype":        1,
+	"p2name":            1,
+	"p2stateno":         1,
+	"p2statetype":       1,
+	"p3name":            1,
+	"p4name":            1,
+	"palno":             1,
+	"parentdist":        1,
+	"pi":                1,
+	"pos":               1,
+	"power":             1,
+	"powermax":          1,
+	"playeridexist":     1,
+	"prevstateno":       1,
+	"projcanceltime":    1,
+	"projcontact":       1,
+	"projcontacttime":   1,
+	"projguarded":       1,
+	"projguardedtime":   1,
+	"projhit":           1,
+	"projhittime":       1,
+	"random":            1,
+	"rightedge":         1,
+	"rootdist":          1,
+	"roundno":           1,
+	"roundsexisted":     1,
+	"roundstate":        1,
+	"screenpos":         1,
+	"screenheight":      1,
+	"screenwidth":       1,
+	"selfanimexist":     1,
+	"sin":               1,
+	"stateno":           1,
+	"statetype":         1,
+	"stagevar":          1,
+	"sysfvar":           1,
+	"sysvar":            1,
+	"tan":               1,
+	"teammode":          1,
+	"teamside":          1,
+	"tickspersecond":    1,
+	"time":              1,
+	"timemod":           1,
+	"topedge":           1,
+	"uniqhitcount":      1,
+	"var":               1,
+	"vel":               1,
+	"win":               1,
+	//new triggers
+	"animelemlength":   1,
+	"animlength":       1,
+	"attack":           1,
+	"cheated":          1,
+	"combocount":       1,
+	"consecutivewins":  1,
+	"damagecount":      1,
+	"defence":          1,
+	"dizzy":            1,
+	"dizzypoints":      1,
+	"dizzypointsmax":   1,
+	"firstattack":      1,
+	"gamemode":         1,
+	"getplayerid":      1,
+	"guardbreak":       1,
+	"guardpoints":      1,
+	"guardpointsmax":   1,
+	"incustomstate":    1,
+	"localscale":       1,
+	"majorversion":     1,
+	"map":              1,
+	"memberno":         1,
+	"movecountered":    1,
+	"networkplayer":    1,
+	"p5name":           1,
+	"p6name":           1,
+	"p7name":           1,
+	"p8name":           1,
+	"pausetime":        1,
+	"physics":          1,
+	"playerno":         1,
+	"ratiolevel":       1,
+	"receivedhits":     1,
+	"receiveddamage":   1,
+	"redlife":          1,
+	"roundtype":        1,
+	"scorecurrent":     1,
+	"scoreround":       1,
+	"scoretotal":       1,
+	"selfstatenoexist": 1,
+	"stagebackedge":    1,
+	"stagefrontedge":   1,
+	"standby":          1,
+	"timeleft":         1,
+	"timeround":        1,
+	"timetotal":        1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -2244,6 +2432,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_animelemlength)
 	case "animlength":
 		out.append(OC_ex_, OC_ex_animlength)
+	case "attack":
+		out.append(OC_ex_, OC_ex_attack)
 	case "cheated":
 		out.append(OC_ex_, OC_ex_cheated)
 	case "combocount":
@@ -2252,8 +2442,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_consecutivewins)
 	case "damagecount":
 		out.append(OC_ex_, OC_ex_damagecount)
-	case "isdizzy":
-		out.append(OC_ex_, OC_ex_dizzy)
+	case "defence":
+		out.append(OC_ex_, OC_ex_defence)
 	case "dizzy":
 		out.append(OC_ex_, OC_ex_dizzy)
 	case "dizzypoints":
@@ -2281,6 +2471,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_guardpointsmax)
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
+	case "localscale":
+		out.append(OC_ex_, OC_ex_localscale)
 	case "majorversion":
 		out.append(OC_ex_, OC_ex_majorversion)
 	case "map":
@@ -2422,11 +2614,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
 			vi, ok := c.vars[c.token[1:]]
 			if !ok {
-				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + "Is not defined")
+				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + " is not defined")
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + "It is illegal")
+			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + " is illegal")
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -3385,9 +3577,16 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := false
-			if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
-				fflg = true
-				data = data[1:]
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
 			}
 			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
@@ -3499,6 +3698,14 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noairjump)))
 			case "nohardcodedkeys":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nohardcodedkeys)))
+			case "nogetupfromliedown":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nogetupfromliedown)))
+			case "nofastrecoverfromliedown":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofastrecoverfromliedown)))
+			case "nofallcount":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofallcount)))
+			case "nofalldefenceup":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofalldefenceup)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
 			case "roundnotover":
@@ -3563,11 +3770,16 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 		if err := c.stateParam(is, "value", func(data string) error {
 			f = true
 			fflg := false
-			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
-				if strings.ToLower(data)[0] == 'f' {
-					fflg = true
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' || data[0] == 's' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = data[0] == 'f'
+						data = data[1:]
+					}
 				}
-				data = data[1:]
 			}
 			return c.scAdd(sc, playSnd_value, data, VT_Int, 2,
 				sc.iToExp(Btoi(fflg))...)
@@ -3629,9 +3841,16 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}
 	if err := c.stateParam(is, "anim", func(data string) error {
 		fflg := false
-		if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
-			fflg = true
-			data = data[1:]
+		if len(data) > 1 {
+			data = strings.ToLower(data)
+			if data[0] == 'f' {
+				re := regexp.MustCompile("[^a-z]")
+				m := re.Split(data[1:], -1)
+				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+					fflg = true
+					data = data[1:]
+				}
+			}
 		}
 		return c.scAdd(sc, changeState_anim, data, VT_Int, 1,
 			sc.iToExp(Btoi(fflg))...)
@@ -3753,9 +3972,16 @@ func (c *Compiler) changeAnimSub(is IniSection,
 	}
 	if err := c.stateParam(is, "value", func(data string) error {
 		fflg := false
-		if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
-			fflg = true
-			data = data[1:]
+		if len(data) > 1 {
+			data = strings.ToLower(data)
+			if data[0] == 'f' {
+				re := regexp.MustCompile("[^a-z]")
+				m := re.Split(data[1:], -1)
+				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+					fflg = true
+					data = data[1:]
+				}
+			}
 		}
 		return c.scAdd(sc, changeAnim_value, data, VT_Int, 1,
 			sc.iToExp(Btoi(fflg))...)
@@ -4042,9 +4268,16 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := false
-			if m, _ := regexp.MatchString("^f[^a-z]", strings.ToLower(data)); m {
-				fflg = true
-				data = data[1:]
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
 			}
 			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
@@ -4071,13 +4304,35 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 	return *ret, err
 }
 func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+	ihp int8) (StateController, error) {
 	ret, err := (*modifyExplod)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			explod_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "ownpal",
+			explod_ownpal, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		if err := c.explodSub(is, sc); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "anim", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "angle",
@@ -4091,6 +4346,9 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 		if err := c.paramValue(is, sc, "xangle",
 			explod_xangle, VT_Float, 1, false); err != nil {
 			return err
+		}
+		if ihp == 0 {
+			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
 		return nil
 	})
@@ -4119,9 +4377,16 @@ func (c *Compiler) gameMakeAnim(is IniSection, sc *StateControllerBase,
 		anim := func(data string) error {
 			b = true
 			fflg := true
-			if m, _ := regexp.MatchString("^s[^a-z]", strings.ToLower(data)); m {
-				fflg = false
-				data = data[1:]
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 's' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = false
+						data = data[1:]
+					}
+				}
 			}
 			return c.scAdd(sc, gameMakeAnim_anim, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
@@ -4580,11 +4845,16 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	hsnd := func(id byte, data string) error {
 		fflg := true
-		if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
-			if strings.ToLower(data)[0] == 's' {
-				fflg = false
+		if len(data) > 1 {
+			data = strings.ToLower(data)
+			if data[0] == 'f' || data[0] == 's' {
+				re := regexp.MustCompile("[^a-z]")
+				m := re.Split(data[1:], -1)
+				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+					fflg = data[0] == 'f'
+					data = data[1:]
+				}
 			}
-			data = data[1:]
 		}
 		return c.scAdd(sc, id, data, VT_Int, 2, sc.iToExp(Btoi(fflg))...)
 	}
@@ -4681,9 +4951,16 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	sprk := func(id byte, data string) error {
 		fflg := true
-		if m, _ := regexp.MatchString("^s[^a-z]", strings.ToLower(data)); m {
-			fflg = false
-			data = data[1:]
+		if len(data) > 1 {
+			data = strings.ToLower(data)
+			if data[0] == 's' {
+				re := regexp.MustCompile("[^a-z]")
+				m := re.Split(data[1:], -1)
+				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+					fflg = false
+					data = data[1:]
+				}
+			}
 		}
 		return c.scAdd(sc, id, data, VT_Int, 1, sc.iToExp(Btoi(fflg))...)
 	}
@@ -4979,16 +5256,58 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_projpriority, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "projhitanim",
-			projectile_projhitanim, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "projhitanim", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, projectile_projhitanim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "projremanim",
-			projectile_projremanim, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "projremanim", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, projectile_projremanim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "projcancelanim",
-			projectile_projcancelanim, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "projcancelanim", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, projectile_projcancelanim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "velocity",
@@ -5041,8 +5360,22 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_projheightbound, VT_Int, 2, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "projanim",
-			projectile_projanim, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "projanim", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, projectile_projanim, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "supermovetime",
@@ -5929,11 +6262,16 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			fflg := true
-			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
-				if strings.ToLower(data)[0] == 's' {
-					fflg = false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' || data[0] == 's' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = data[0] == 'f'
+						data = data[1:]
+					}
 				}
-				data = data[1:]
 			}
 			return c.scAdd(sc, superPause_anim, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
@@ -5958,11 +6296,16 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "sound", func(data string) error {
 			fflg := true
-			if m, _ := regexp.MatchString("^[fs][^a-z]", strings.ToLower(data)); m {
-				if strings.ToLower(data)[0] == 's' {
-					fflg = false
+			if len(data) > 1 {
+				data = strings.ToLower(data)
+				if data[0] == 'f' || data[0] == 's' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(data[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = data[0] == 'f'
+						data = data[1:]
+					}
 				}
-				data = data[1:]
 			}
 			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
 				sc.iToExp(Btoi(fflg))...)
@@ -6186,6 +6529,10 @@ func (c *Compiler) envColor(is IniSection, sc *StateControllerBase,
 }
 func (c *Compiler) displayToClipboardSub(is IniSection,
 	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		displayToClipboard_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, "params", func(data string) error {
 		bes, err := c.exprs(data, VT_SFalse, 100000)
 		if err != nil {
@@ -6240,6 +6587,10 @@ func (c *Compiler) appendToClipboard(is IniSection, sc *StateControllerBase,
 func (c *Compiler) clearClipboard(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*clearClipboard)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			clearClipboard_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
 		sc.add(clearClipboard_, nil)
 		return nil
 	})
@@ -6780,6 +7131,7 @@ func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+
 // TODO: Remove boilderplate from the Map's Compiler.
 func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
@@ -7976,7 +8328,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 						return err
 					}
 				}
-				if scname == "explod" {
+				if scname == "explod" || scname == "modifyexplod" {
 					if err := c.paramValue(is, sc, "ignorehitpause",
 						explod_ignorehitpause, VT_Bool, 1, false); err != nil {
 						return err
@@ -8280,6 +8632,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 						*k, *nk = CK_d, CK_nd
 					case "w":
 						*k, *nk = CK_w, CK_nw
+					case "m":
+						*k, *nk = CK_m, CK_nm
 					}
 				}
 				rm("x", &ckr.x, &ckr.nx)
@@ -8289,9 +8643,9 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("b", &ckr.b, &ckr.nb)
 				rm("c", &ckr.c, &ckr.nc)
 				rm("s", &ckr.s, &ckr.ns)
-				rm("v", &ckr.v, &ckr.nv)
-				rm("d", &ckr.v, &ckr.nv)
+				rm("d", &ckr.d, &ckr.nd)
 				rm("w", &ckr.w, &ckr.nw)
+				rm("m", &ckr.m, &ckr.nm)
 			}
 		case "defaults":
 			if defaults {

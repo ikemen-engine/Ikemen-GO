@@ -19,7 +19,7 @@ if !Const(Default.Enable.Score) {
 } else if RoundState = 4 && !IsHelper {
 	# score: time vital bonus
 	if Win && Map(_iksys_scoreVitalBase) = 0 && Alive && !Cheated {
-		MapSet{map: "_iksys_scoreVitalBase"; value: float(Life) / LifeMax / (NumPartner + 1) * 15000}
+		MapSet{map: "_iksys_scoreVitalBase"; value: float(Life) / LifeMax / (NumPartner + 1) * 10000}
 		if TeamMode = Turns && RoundsExisted = 0 && enemy,RoundsExisted > 0 {
 			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
 			ScoreAdd{value: round(Map(_iksys_scoreVitalBase) / (enemy,RoundsExisted + 1), -2)}
@@ -53,7 +53,7 @@ if !Const(Default.Enable.Score) {
 		}
 	}
 	# score: consecutive wins bonus
-	if NumPartner = 0 || ID < Partner, ID {
+	if NumPartner = 0 || ID < Partner,ID {
 		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_scoreConsecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" && !Cheated {
 			ScoreAdd{value: 30000 + (ConsecutiveWins - 1) * 10000}
 			MapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 1}
@@ -118,7 +118,7 @@ if !Const(Default.Enable.Score) {
 		ScoreAdd{value: 1500}
 		MapSet{map: "_iksys_scoreFirstAttackFlag"; value: 1}
 	}
-	if (NumPartner = 0 || ID < Partner, ID) && !IsHelper {
+	if (NumPartner = 0 || ID < Partner,ID) && !IsHelper {
 		# score: combo bonus
 		ignorehitpause if ComboCount != Map(_iksys_scoreComboCount) {
 			if ComboCount = 0 && Map(_iksys_scoreComboCount) >= 2 {

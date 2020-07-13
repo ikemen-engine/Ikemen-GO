@@ -1,28 +1,9 @@
-
 local options = {}
-
 --;===========================================================
 --; COMMON
 --;===========================================================
-local modified = 0
-local needReload = 0
-
-main.framesPerCount = getFramesPerCount()
-if config.RoundsNumSingle == -1 then
-	main.roundsNumSingle = getMatchWins()
-else
-	main.roundsNumSingle = config.RoundsNumSingle
-end
-if config.RoundsNumTeam == -1 then
-	main.roundsNumTeam = getMatchWins()
-else
-	main.roundsNumTeam = config.RoundsNumTeam
-end
-if config.MaxDrawGames == -2 then
-	main.maxDrawGames = getMatchMaxDrawGames()
-else
-	main.maxDrawGames = config.MaxDrawGames
-end
+local modified = false
+local needReload = false
 
 --return string depending on bool
 function options.f_boolDisplay(bool, t, f)
@@ -49,14 +30,14 @@ function options.f_precision(v, decimal)
 end
 
 --save configuration
-function options.f_saveCfg()
+function options.f_saveCfg(reload)
 	--Data saving to config.json
-	local file = io.open("save/config.json","w+")
+	local file = io.open(main.flags['-config'], 'w+')
 	file:write(json.encode(config, {indent = true}))
 	file:close()
 	--Reload game if needed
-	if needReload == 1 then
-		main.f_warning(main.f_extractText(motif.warning_info.text_reload), motif.option_info, motif.optionbgdef)
+	if reload then
+		main.f_warning(main.f_extractText(motif.warning_info.text_reload_text), motif.option_info, motif.optionbgdef)
 		os.exit()
 	end
 end
@@ -78,20 +59,22 @@ function options.f_keyDefault()
 			config.KeyConfig[i].Buttons[11] = 'RETURN'
 			config.KeyConfig[i].Buttons[12] = 'q'
 			config.KeyConfig[i].Buttons[13] = 'w'
+			config.KeyConfig[i].Buttons[14] = 'Not used'
 		elseif i == 2 then
-			config.KeyConfig[i].Buttons[1] = 't'
-			config.KeyConfig[i].Buttons[2] = 'g'
-			config.KeyConfig[i].Buttons[3] = 'f'
-			config.KeyConfig[i].Buttons[4] = 'h'
-			config.KeyConfig[i].Buttons[5] = 'j'
-			config.KeyConfig[i].Buttons[6] = 'k'
-			config.KeyConfig[i].Buttons[7] = 'l'
-			config.KeyConfig[i].Buttons[8] = 'u'
-			config.KeyConfig[i].Buttons[9] = 'i'
-			config.KeyConfig[i].Buttons[10] = 'o'
+			config.KeyConfig[i].Buttons[1] = 'i'
+			config.KeyConfig[i].Buttons[2] = 'k'
+			config.KeyConfig[i].Buttons[3] = 'j'
+			config.KeyConfig[i].Buttons[4] = 'l'
+			config.KeyConfig[i].Buttons[5] = 'f'
+			config.KeyConfig[i].Buttons[6] = 'g'
+			config.KeyConfig[i].Buttons[7] = 'h'
+			config.KeyConfig[i].Buttons[8] = 'r'
+			config.KeyConfig[i].Buttons[9] = 't'
+			config.KeyConfig[i].Buttons[10] = 'y'
 			config.KeyConfig[i].Buttons[11] = 'RSHIFT'
 			config.KeyConfig[i].Buttons[12] = 'LEFTBRACKET'
 			config.KeyConfig[i].Buttons[13] = 'RIGHTBRACKET'
+			config.KeyConfig[i].Buttons[14] = 'Not used'
 		else
 			for j = 1, #config.KeyConfig[i].Buttons do
 				config.KeyConfig[i].Buttons[j] = tostring(motif.option_info.menu_valuename_nokey)
@@ -99,10 +82,10 @@ function options.f_keyDefault()
 		end
 	end
 	for i = 1, #config.JoystickConfig do
-		config.JoystickConfig[i].Buttons[1] = '-3'
-		config.JoystickConfig[i].Buttons[2] = '-4'
-		config.JoystickConfig[i].Buttons[3] = '-1'
-		config.JoystickConfig[i].Buttons[4] = '-2'
+		config.JoystickConfig[i].Buttons[1] = '10'
+		config.JoystickConfig[i].Buttons[2] = '12'
+		config.JoystickConfig[i].Buttons[3] = '13'
+		config.JoystickConfig[i].Buttons[4] = '11'
 		config.JoystickConfig[i].Buttons[5] = '0'
 		config.JoystickConfig[i].Buttons[6] = '1'
 		config.JoystickConfig[i].Buttons[7] = '4'
@@ -112,55 +95,12 @@ function options.f_keyDefault()
 		config.JoystickConfig[i].Buttons[11] = '7'
 		config.JoystickConfig[i].Buttons[12] = '-10'
 		config.JoystickConfig[i].Buttons[13] = '-12'
+		config.JoystickConfig[i].Buttons[14] = '6'
 	end
 	resetRemapInput()
 end
 
-function options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-	if main.input({1, 2}, {'$U'}) then
-		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-		item = item - 1
-		if t[item] ~= nil and t[item].itemname == 'empty' then
-			item = item - 1
-		end
-	elseif main.input({1, 2}, {'$D'}) then
-		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-		item = item + 1
-		if t[item] ~= nil and t[item].itemname == 'empty' then
-			item = item + 1
-		end
-	end
-	--cursor position calculation
-	if item < 1 then
-		item = #t
-		if #t > motif.option_info.menu_window_visibleitems then
-			cursorPosY = motif.option_info.menu_window_visibleitems
-		else
-			cursorPosY = #t
-		end
-	elseif item > #t then
-		item = 1
-		cursorPosY = 1
-	elseif main.input({1, 2}, {'$U'}) and cursorPosY > 1 then
-		cursorPosY = cursorPosY - 1
-		if t[cursorPosY] ~= nil and t[cursorPosY].itemname == 'empty' then
-			cursorPosY = cursorPosY - 1
-		end
-	elseif main.input({1, 2}, {'$D'}) and cursorPosY < motif.option_info.menu_window_visibleitems then
-		cursorPosY = cursorPosY + 1
-		if t[cursorPosY] ~= nil and t[cursorPosY].itemname == 'empty' then
-			cursorPosY = cursorPosY + 1
-		end
-	end
-	if cursorPosY == motif.option_info.menu_window_visibleitems then
-		moveTxt = (item - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_item_spacing[2]
-	elseif cursorPosY == 1 then
-		moveTxt = (item - 1) * motif.option_info.menu_item_spacing[2]
-	end
-	return cursorPosY, moveTxt, item
-end
-
-local txt_title = text:create({
+options.txt_title = text:create({
 	font =   motif.option_info.title_font[1],
 	bank =   motif.option_info.title_font[2],
 	align =  motif.option_info.title_font[3],
@@ -177,210 +117,6 @@ local txt_title = text:create({
 	height = motif.option_info.title_font_height,
 	--defsc =  motif.defaultOptions --title font assignment exists in mugen
 })
-function options.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType)
-	fadeType = fadeType or 'fadein'
-	--draw clearcolor
-	clearColor(motif.optionbgdef.bgclearcolor[1], motif.optionbgdef.bgclearcolor[2], motif.optionbgdef.bgclearcolor[3])
-	--draw layerno = 0 backgrounds
-	bgDraw(motif.optionbgdef.bg, false)
-	--draw menu box
-	if motif.option_info.menu_boxbg_visible == 1 then
-		local coord4 = 0
-		if #t > motif.option_info.menu_window_visibleitems and moveTxt == (#t - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_item_spacing[2] then
-			coord4 = motif.option_info.menu_window_visibleitems * (motif.option_info.menu_boxcursor_coords[4] - motif.option_info.menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_boxcursor_coords[2])
-		else
-			coord4 = #t * (motif.option_info.menu_boxcursor_coords[4] - motif.option_info.menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_boxcursor_coords[2])
-		end
-		fillRect(
-			motif.option_info.menu_pos[1] + motif.option_info.menu_boxcursor_coords[1],
-			motif.option_info.menu_pos[2] + motif.option_info.menu_boxcursor_coords[2],
-			motif.option_info.menu_boxcursor_coords[3] - motif.option_info.menu_boxcursor_coords[1] + 1,
-			coord4,
-			motif.option_info.menu_boxbg_col[1],
-			motif.option_info.menu_boxbg_col[2],
-			motif.option_info.menu_boxbg_col[3],
-			motif.option_info.menu_boxbg_alpha[1],
-			motif.option_info.menu_boxbg_alpha[2],
-			motif.defaultOptions,
-			false
-		)
-	end
-	--draw title
-	txt_title:draw()
-	--draw menu items
-	for i = 1, #t do
-		if i > item - cursorPosY then
-			if i == item then
-				if t[i].selected then
-					t[i].data:update({
-						font =   motif.option_info.menu_item_selected_active_font[1],
-						bank =   motif.option_info.menu_item_selected_active_font[2],
-						align =  motif.option_info.menu_item_selected_active_font[3],
-						text =   t[i].displayname,
-						x =      motif.option_info.menu_pos[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_selected_active_font_scale[1],
-						scaleY = motif.option_info.menu_item_selected_active_font_scale[2],
-						r =      motif.option_info.menu_item_selected_active_font[4],
-						g =      motif.option_info.menu_item_selected_active_font[5],
-						b =      motif.option_info.menu_item_selected_active_font[6],
-						src =    motif.option_info.menu_item_selected_active_font[7],
-						dst =    motif.option_info.menu_item_selected_active_font[8],
-						height = motif.option_info.menu_item_selected_active_font_height,
-						defsc = motif.defaultOptions
-					})
-					t[i].data:draw()
-				else
-					t[i].data:update({
-						font =   motif.option_info.menu_item_active_font[1],
-						bank =   motif.option_info.menu_item_active_font[2],
-						align =  motif.option_info.menu_item_active_font[3],
-						text =   t[i].displayname,
-						x =      motif.option_info.menu_pos[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_active_font_scale[1],
-						scaleY = motif.option_info.menu_item_active_font_scale[2],
-						r =      motif.option_info.menu_item_active_font[4],
-						g =      motif.option_info.menu_item_active_font[5],
-						b =      motif.option_info.menu_item_active_font[6],
-						src =    motif.option_info.menu_item_active_font[7],
-						dst =    motif.option_info.menu_item_active_font[8],
-						height = motif.option_info.menu_item_active_font_height,
-						defsc =  motif.defaultOptions
-					})
-					t[i].data:draw()
-				end
-				if t[i].vardata ~= nil then
-					t[i].vardata:update({
-						font =   motif.option_info.menu_item_value_active_font[1],
-						bank =   motif.option_info.menu_item_value_active_font[2],
-						align =  motif.option_info.menu_item_value_active_font[3],
-						text =   t[i].vardisplay,
-						x =      motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_value_active_font_scale[1],
-						scaleY = motif.option_info.menu_item_value_active_font_scale[2],
-						r =      motif.option_info.menu_item_value_active_font[4],
-						g =      motif.option_info.menu_item_value_active_font[5],
-						b =      motif.option_info.menu_item_value_active_font[6],
-						src =    motif.option_info.menu_item_value_active_font[7],
-						dst =    motif.option_info.menu_item_value_active_font[8],
-						height = motif.option_info.menu_item_value_active_font_height,
-						defsc =  motif.defaultOptions
-					})
-					t[i].vardata:draw()
-				end
-			else
-				if t[i].selected then
-					t[i].data:update({
-						font =   motif.option_info.menu_item_selected_font[1],
-						bank =   motif.option_info.menu_item_selected_font[2],
-						align =  motif.option_info.menu_item_selected_font[3],
-						text =   t[i].displayname,
-						x =      motif.option_info.menu_pos[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_selected_font_scale[1],
-						scaleY = motif.option_info.menu_item_selected_font_scale[2],
-						r =      motif.option_info.menu_item_selected_font[4],
-						g =      motif.option_info.menu_item_selected_font[5],
-						b =      motif.option_info.menu_item_selected_font[6],
-						src =    motif.option_info.menu_item_selected_font[7],
-						dst =    motif.option_info.menu_item_selected_font[8],
-						height = motif.option_info.menu_item_selected_font_height,
-						defsc =  motif.defaultOptions
-					})
-					t[i].data:draw()
-				else
-					t[i].data:update({
-						font =   motif.option_info.menu_item_font[1],
-						bank =   motif.option_info.menu_item_font[2],
-						align =  motif.option_info.menu_item_font[3],
-						text =   t[i].displayname,
-						x =      motif.option_info.menu_pos[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_font_scale[1],
-						scaleY = motif.option_info.menu_item_font_scale[2],
-						r =      motif.option_info.menu_item_font[4],
-						g =      motif.option_info.menu_item_font[5],
-						b =      motif.option_info.menu_item_font[6],
-						src =    motif.option_info.menu_item_font[7],
-						dst =    motif.option_info.menu_item_font[8],
-						height = motif.option_info.menu_item_font_height,
-						defsc =  motif.defaultOptions
-					})
-					t[i].data:draw()
-				end
-				if t[i].vardata ~= nil then
-					t[i].vardata:update({
-						font =   motif.option_info.menu_item_value_font[1],
-						bank =   motif.option_info.menu_item_value_font[2],
-						align =  motif.option_info.menu_item_value_font[3],
-						text =   t[i].vardisplay,
-						x =      motif.option_info.menu_pos[1] + motif.option_info.menu_item_spacing[1],
-						y =      motif.option_info.menu_pos[2] + (i - 1) * motif.option_info.menu_item_spacing[2] - moveTxt,
-						scaleX = motif.option_info.menu_item_value_font_scale[1],
-						scaleY = motif.option_info.menu_item_value_font_scale[2],
-						r =      motif.option_info.menu_item_value_font[4],
-						g =      motif.option_info.menu_item_value_font[5],
-						b =      motif.option_info.menu_item_value_font[6],
-						src =    motif.option_info.menu_item_value_font[7],
-						dst =    motif.option_info.menu_item_value_font[8],
-						height = motif.option_info.menu_item_value_font_height,
-						defsc =  motif.defaultOptions
-					})
-					t[i].vardata:draw()
-				end
-			end
-		end
-	end
-	--draw menu cursor
-	if motif.option_info.menu_boxcursor_visible == 1 and not main.fadeActive then
-		local src, dst = main.f_boxcursorAlpha(
-			motif.option_info.menu_boxcursor_alpharange[1],
-			motif.option_info.menu_boxcursor_alpharange[2],
-			motif.option_info.menu_boxcursor_alpharange[3],
-			motif.option_info.menu_boxcursor_alpharange[4],
-			motif.option_info.menu_boxcursor_alpharange[5],
-			motif.option_info.menu_boxcursor_alpharange[6]
-		)
-		fillRect(
-			motif.option_info.menu_pos[1] + motif.option_info.menu_boxcursor_coords[1],
-			motif.option_info.menu_pos[2] + motif.option_info.menu_boxcursor_coords[2] + (cursorPosY - 1) * motif.option_info.menu_item_spacing[2],
-			motif.option_info.menu_boxcursor_coords[3] - motif.option_info.menu_boxcursor_coords[1] + 1,
-			motif.option_info.menu_boxcursor_coords[4] - motif.option_info.menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif.option_info.menu_boxcursor_coords[2]),
-			motif.option_info.menu_boxcursor_col[1],
-			motif.option_info.menu_boxcursor_col[2],
-			motif.option_info.menu_boxcursor_col[3],
-			src,
-			dst,
-			motif.defaultOptions,
-			false
-		)
-	end
-	--draw layerno = 1 backgrounds
-	bgDraw(motif.optionbgdef.bg, true)
-	--draw fadein / fadeout
-	main.fadeActive = fadeScreen(
-		fadeType,
-		main.fadeStart,
-		motif.option_info[fadeType .. '_time'],
-		motif.option_info[fadeType .. '_col'][1],
-		motif.option_info[fadeType .. '_col'][2],
-		motif.option_info[fadeType .. '_col'][3]
-	)
-	--frame transition
-	if main.fadeActive then
-		commandBufReset(main.cmd[1])
-		commandBufReset(main.cmd[2])
-	elseif fadeType == 'fadeout' then
-		commandBufReset(main.cmd[1])
-		commandBufReset(main.cmd[2])
-		return --skip last frame rendering
-	else
-		main.f_cmdInput()
-	end
-	refresh()
-end
 
 --;===========================================================
 --; LOOPS
@@ -403,23 +139,23 @@ end
 options.t_itemname = {
 	--Back
 	['back'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.title_info.cancel_snd[2])
+		if main.f_input(main.t_players, {'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			return false
 		end
 		return true
 	end,
 	--Port Change
 	['portchange'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			local port = main.f_input(main.f_extractText(motif.option_info.input_text_port), motif.option_info, motif.optionbgdef, 'string')
+			local port = main.f_drawInput(main.f_extractText(motif.option_info.input_port_text), motif.option_info, motif.optionbgdef, 'string')
 			if tonumber(port) ~= nil then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.ListenPort = tostring(port)
 				setListenPort(port)
 				t.items[item].vardisplay = getListenPort()
-				modified = 1
+				modified = true
 			else
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			end
@@ -428,7 +164,7 @@ options.t_itemname = {
 	end,
 	--Default Values
 	['default'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			config.AIRamping = true
 			config.AIRandomColor = true
@@ -441,28 +177,36 @@ options.t_itemname = {
 			config.ComboExtraFrameWindow = 1
 			--config.CommonAir = "data/common.air"
 			--config.CommonCmd = "data/common.cmd"
+			--config.CommonLua = {
+			--	"loop()"
+			--}
 			--config.CommonStates = {
 			--	"data/dizzy.zss",
 			--	"data/guardbreak.zss",
 			--	"data/score.zss",
 			--	"data/tag.zss"
 			--}
+			config.ConsoleType = 1
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
 			--config.DebugFont = "font/f-4x6.def"
 			config.DebugKeys = true
-			--config.DebugScript = "external/script/debug.lua"
 			config.Difficulty = 8
 			config.ExternalShaders = {}
+			config.ForceStageZoomin = 0
+			config.ForceStageZoomout = 0
 			config.Fullscreen = false
 			config.GameWidth = 640
 			config.GameHeight = 480
 			config.GameSpeed = 100
 			--config.IP = {}
+			--config.LegacyMode = false
 			config.LifebarFontScale = 1
 			config.LifeMul = 100
 			config.ListenPort = "7500"
 			config.LocalcoordScalingType = 1
+			config.LoseSimul = true
+			config.LoseTag = false
 			config.MaxDrawGames = -2
 			--config.Motif = "data/system.def"
 			config.MaxHelper = 56
@@ -474,20 +218,19 @@ options.t_itemname = {
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
 			config.PostProcessingShader = 0
-			config.PreloadingSmall = true
 			config.PreloadingBig = true
-			config.PreloadingVersus = true
+			config.PreloadingSmall = true
 			config.PreloadingStage = true
+			config.PreloadingVersus = true
 			config.QuickContinue = false
 			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
 			config.RatioAttack = {0.82, 1.0, 1.17, 1.30}
 			config.RoundsNumSingle = 2
 			config.RoundsNumTeam = 2
 			config.RoundTime = 99
-			config.SimulLoseKO = true
+			config.SafeLoading = false
 			config.SingleVsTeamLife = 100
 			--config.System = "external/script/main.lua"
-			config.TagLoseKO = false
 			config.TeamLifeAdjustment = false
 			config.TeamPowerShare = true
 			--config.TrainingChar = "chars/training/training.def"
@@ -501,28 +244,51 @@ options.t_itemname = {
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
 			config.ZoomActive = true
-			config.ZoomMax = 1
-			config.ZoomMin = 1
+			config.ZoomDelay = false
 			config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
-			main.roundsNumSingle = getMatchWins()
-			main.roundsNumTeam = getMatchWins()
-			main.maxDrawGames = getMatchMaxDrawGames()
+			main.timeFramesPerCount = getTimeFramesPerCount()
+			main.f_updateRoundsNum()
 			options.f_resetVardisplay(options.menu)
+			setAllowDebugKeys(config.DebugKeys)
+			setAudioDucking(config.AudioDucking)
+			setGameSpeed(config.GameSpeed / 100)
+			setLifeAdjustment(config.TeamLifeAdjustment)
+			setLifeMul(config.LifeMul / 100)
 			setListenPort(config.ListenPort)
-			modified = 1
-			needReload = 1
+			setLoseSimul(config.LoseSimul)
+			setLoseTag(config.LoseTag)
+			setMaxAfterImage(config.MaxAfterImage)
+			setMaxExplod(config.MaxExplod)
+			setMaxHelper(config.MaxHelper)
+			setMaxPlayerProjectile(config.MaxPlayerProjectile)
+			setPowerShare(1, config.TeamPowerShare)
+			setPowerShare(2, config.TeamPowerShare)
+			setSingleVsTeamLife(config.SingleVsTeamLife / 100)
+			setTurnsRecoveryBase(config.TurnsRecoveryBase / 100)
+			setTurnsRecoveryBonus(config.TurnsRecoveryBonus / 100)
+			setVolumeBgm(config.VolumeBgm)
+			setVolumeMaster(config.VolumeMaster)
+			setVolumeSfx(config.VolumeSfx)
+			setZoom(config.ZoomActive)
+			setZoomMax(config.ForceStageZoomin)
+			setZoomMin(config.ForceStageZoomout)
+			setZoomSpeed(config.ZoomSpeed)
+			toggleFullscreen(config.Fullscreen)
+			toggleVsync(config.VRetrace)
+			modified = true
+			needReload = true
 		end
 		return true
 	end,
 	--Save and Return
 	['savereturn'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			if modified == 1 then
-				options.f_saveCfg()
+			if modified then
+				options.f_saveCfg(needReload)
 			end
-			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
+			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t.items)
 			main.f_bgReset(motif.titlebgdef.bg)
 			if motif.music.option_bgm ~= '' then
 				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
@@ -533,12 +299,12 @@ options.t_itemname = {
 	end,
 	--Return Without Saving
 	['return'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-			if needReload == 1 then
-				main.f_warning(main.f_extractText(motif.warning_info.text_noreload), motif.option_info, motif.optionbgdef)
+			if needReload then
+				main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.option_info, motif.optionbgdef)
 			end
-			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
+			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t.items)
 			main.f_bgReset(motif.titlebgdef.bg)
 			if motif.music.option_bgm ~= '' then
 				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
@@ -549,103 +315,103 @@ options.t_itemname = {
 	end,
 	--Time Limit
 	['roundtime'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.RoundTime < 1000 then
+		if main.f_input(main.t_players, {'$F'}) and config.RoundTime < 1000 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.RoundTime = config.RoundTime + 1
 			t.items[item].vardisplay = config.RoundTime
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.RoundTime > -1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.RoundTime > -1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.RoundTime = config.RoundTime - 1
 			t.items[item].vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_valuename_none}, config.RoundTime)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Rounds to Win Single
 	['roundsnumsingle'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and main.roundsNumSingle < 10 then
+		if main.f_input(main.t_players, {'$F'}) and main.roundsNumSingle < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.roundsNumSingle = main.roundsNumSingle + 1
 			t.items[item].vardisplay = main.roundsNumSingle
 			config.RoundsNumSingle = main.roundsNumSingle
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and main.roundsNumSingle > 1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and main.roundsNumSingle > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.roundsNumSingle = main.roundsNumSingle - 1
 			t.items[item].vardisplay = main.roundsNumSingle
 			config.RoundsNumSingle = main.roundsNumSingle
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Rounds to Win Simul/Tag
 	['roundsnumteam'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and main.roundsNumTeam < 10 then
+		if main.f_input(main.t_players, {'$F'}) and main.roundsNumTeam < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.roundsNumTeam = main.roundsNumTeam + 1
 			t.items[item].vardisplay = main.roundsNumTeam
 			config.RoundsNumTeam = main.roundsNumTeam
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and main.roundsNumTeam > 1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and main.roundsNumTeam > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.roundsNumTeam = main.roundsNumTeam - 1
 			t.items[item].vardisplay = main.roundsNumTeam
 			config.RoundsNumTeam = main.roundsNumTeam
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Max Draw Games
 	['maxdrawgames'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and main.maxDrawGames < 10 then
+		if main.f_input(main.t_players, {'$F'}) and main.maxDrawGames < 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.maxDrawGames = main.maxDrawGames + 1
 			t.items[item].vardisplay = main.maxDrawGames
 			config.MaxDrawGames = main.maxDrawGames
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and main.maxDrawGames > -1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and main.maxDrawGames > -1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			main.maxDrawGames = main.maxDrawGames - 1
 			t.items[item].vardisplay = main.maxDrawGames
 			config.MaxDrawGames = main.maxDrawGames
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Difficulty Level
 	['difficulty'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.Difficulty < 8 then
+		if main.f_input(main.t_players, {'$F'}) and config.Difficulty < 8 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.Difficulty = config.Difficulty + 1
 			t.items[item].vardisplay = config.Difficulty
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.Difficulty > 1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.Difficulty > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.Difficulty = config.Difficulty - 1
 			t.items[item].vardisplay = config.Difficulty
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Credits
 	['credits'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.Credits < 99 then
+		if main.f_input(main.t_players, {'$F'}) and config.Credits < 99 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.Credits = config.Credits + 1
 			t.items[item].vardisplay = config.Credits
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.Credits > 1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.Credits > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.Credits = config.Credits - 1
 			t.items[item].vardisplay = config.Credits
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Quick Continue
 	['quickcontinue'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.QuickContinue then
 				config.QuickContinue = false
@@ -653,13 +419,13 @@ options.t_itemname = {
 				config.QuickContinue = true
 				end
 			t.items[item].vardisplay = options.f_boolDisplay(config.QuickContinue)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--AI Ramping
 	['airamping'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AIRamping then
 				config.AIRamping = false
@@ -667,13 +433,13 @@ options.t_itemname = {
 				config.AIRamping = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AIRamping)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--AI Palette
 	['aipalette'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AIRandomColor then
 				config.AIRandomColor = false
@@ -681,13 +447,13 @@ options.t_itemname = {
 				config.AIRandomColor = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Resolution (submenu)
 	['resolution'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			local t_pos = {}
 			local ok = false
@@ -713,7 +479,7 @@ options.t_itemname = {
 	end,
 	--Fullscreen
 	['fullscreen'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.Fullscreen then
 				config.Fullscreen = false
@@ -722,13 +488,13 @@ options.t_itemname = {
 			end
 			toggleFullscreen(config.Fullscreen)
 			t.items[item].vardisplay = options.f_boolDisplay(config.Fullscreen)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--VSync
 	['vretrace'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.VRetrace == 1 then
 				config.VRetrace = 0
@@ -737,13 +503,13 @@ options.t_itemname = {
 			end
 			toggleVsync()
 			t.items[item].vardisplay = options.f_definedDisplay(config.VRetrace, {[1] = motif.option_info.menu_valuename_enabled}, motif.option_info.menu_valuename_disabled)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--MSAA
 	['msaa'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.MSAA then
 				config.MSAA = false
@@ -751,17 +517,17 @@ options.t_itemname = {
 				config.MSAA = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
-			modified = 1
-			needReload = 1
+			modified = true
+			needReload = true
 		end
 		return true
 	end,
 	--Shaders (submenu)
 	['shaders'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if #options.t_shaders == 0 then
-				main.f_warning(main.f_extractText(motif.warning_info.text_shaders), motif.option_info, motif.optionbgdef)
+				main.f_warning(main.f_extractText(motif.warning_info.text_shaders_text), motif.option_info, motif.optionbgdef)
 				return true
 			end
 			for k, v in ipairs(t.submenu[t.items[item].itemname].items) do
@@ -773,40 +539,40 @@ options.t_itemname = {
 			end
 			t.submenu[t.items[item].itemname].loop()
 			t.items[item].vardisplay = f_externalShaderName()
-			modified = 1
-			needReload = 1
+			modified = true
+			needReload = true
 		end
 		return true
 	end,
 	--Disable (shader)
 	['noshader'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
+		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			config.ExternalShaders = {}
 			config.PostProcessingShader = 0
-			modified = 1
-			needReload = 1
+			modified = true
+			needReload = true
 			return false
 		end
 		return true
 	end,
 	--Custom resolution
 	['customres'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
+		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			local width = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_reswidth), motif.option_info, motif.optionbgdef, 'string'))
+			local width = tonumber(main.f_drawInput(main.f_extractText(motif.option_info.input_reswidth_text), motif.option_info, motif.optionbgdef, 'string'))
 			if width ~= nil then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				local height = tonumber(main.f_input(main.f_extractText(motif.option_info.input_text_resheight), motif.option_info, motif.optionbgdef, 'string'))
+				local height = tonumber(main.f_drawInput(main.f_extractText(motif.option_info.input_resheight_text), motif.option_info, motif.optionbgdef, 'string'))
 				if height ~= nil then
 					config.GameWidth = width
 					config.GameHeight = height
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 					if (height / 3 * 4) ~= width then
-						main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
+						main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.option_info, motif.optionbgdef)
 					end
-					modified = 1
-					needReload = 1
+					modified = true
+					needReload = true
 				else
 					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				end
@@ -819,58 +585,58 @@ options.t_itemname = {
 	end,
 	--Master Volume
 	['mastervolume'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.VolumeMaster < 200 then
+		if main.f_input(main.t_players, {'$F'}) and config.VolumeMaster < 200 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeMaster = config.VolumeMaster + 1
 			t.items[item].vardisplay = config.VolumeMaster .. '%'
 			setVolumeMaster(config.VolumeMaster)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.VolumeMaster > 0 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.VolumeMaster > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeMaster = config.VolumeMaster - 1
 			t.items[item].vardisplay = config.VolumeMaster  .. '%'
 			setVolumeMaster(config.VolumeMaster)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--BGM Volume
 	['bgmvolume'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.VolumeBgm < 100 then
+		if main.f_input(main.t_players, {'$F'}) and config.VolumeBgm < 100 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeBgm = config.VolumeBgm + 1
 			t.items[item].vardisplay = config.VolumeBgm .. '%'
 			setVolumeBgm(config.VolumeBgm)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.VolumeBgm > 0 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.VolumeBgm > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeBgm = config.VolumeBgm - 1
 			t.items[item].vardisplay = config.VolumeBgm .. '%'
 			setVolumeBgm(config.VolumeBgm)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--SFX Volume
 	['sfxvolume'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.VolumeSfx < 100 then
+		if main.f_input(main.t_players, {'$F'}) and config.VolumeSfx < 100 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeSfx = config.VolumeSfx + 1
 			t.items[item].vardisplay = config.VolumeSfx .. '%'
 			setVolumeSfx(config.VolumeSfx)
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.VolumeSfx > 0 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.VolumeSfx > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.VolumeSfx = config.VolumeSfx - 1
 			t.items[item].vardisplay = config.VolumeSfx .. '%'
 			setVolumeSfx(config.VolumeSfx)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Audio Ducking
 	['audioducking'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AudioDucking then
 				config.AudioDucking = false
@@ -879,43 +645,47 @@ options.t_itemname = {
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 			setAudioDucking(config.AudioDucking)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Life
 	['lifemul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.LifeMul < 300 then
+		if main.f_input(main.t_players, {'$F'}) and config.LifeMul < 300 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.LifeMul = config.LifeMul + 10
+			setLifeMul(config.LifeMul / 100)
 			t.items[item].vardisplay = config.LifeMul .. '%'
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.LifeMul > 10 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.LifeMul > 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.LifeMul = config.LifeMul - 10
+			setLifeMul(config.LifeMul / 100)
 			t.items[item].vardisplay = config.LifeMul .. '%'
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Game Speed
 	['gamespeed'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.GameSpeed < 200 then
+		if main.f_input(main.t_players, {'$F'}) and config.GameSpeed < 200 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.GameSpeed = config.GameSpeed + 1
+			setGameSpeed(config.GameSpeed / 100)
 			t.items[item].vardisplay = config.GameSpeed .. '%'
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.GameSpeed > 10 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.GameSpeed > 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.GameSpeed = config.GameSpeed - 1
+			setGameSpeed(config.GameSpeed / 100)
 			t.items[item].vardisplay = config.GameSpeed .. '%'
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Auto-Guard
 	['autoguard'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.AutoGuard then
 				config.AutoGuard = false
@@ -923,13 +693,13 @@ options.t_itemname = {
 				config.AutoGuard = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AutoGuard)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Guard Break
 	['guardbar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarGuard then
 				config.BarGuard = false
@@ -937,13 +707,13 @@ options.t_itemname = {
 				config.BarGuard = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.BarGuard)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Dizzy
 	['stunbar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarStun then
 				config.BarStun = false
@@ -951,13 +721,13 @@ options.t_itemname = {
 				config.BarStun = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.BarStun)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Red Life
 	['redlifebar'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.BarRedLife then
 				config.BarRedLife = false
@@ -965,204 +735,215 @@ options.t_itemname = {
 				config.BarRedLife = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.BarRedLife)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Single VS Team Life
 	['singlevsteamlife'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.SingleVsTeamLife < 300 then
+		if main.f_input(main.t_players, {'$F'}) and config.SingleVsTeamLife < 300 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.SingleVsTeamLife = config.SingleVsTeamLife + 10
+			setSingleVsTeamLife(config.SingleVsTeamLife / 100)
 			t.items[item].vardisplay = config.SingleVsTeamLife .. '%'
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.SingleVsTeamLife > 10 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.SingleVsTeamLife > 10 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.SingleVsTeamLife = config.SingleVsTeamLife - 10
+			setSingleVsTeamLife(config.SingleVsTeamLife / 100)
 			t.items[item].vardisplay = config.SingleVsTeamLife .. '%'
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Team Life Adjustment
 	['teamlifeadjustment'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.TeamLifeAdjustment then
 				config.TeamLifeAdjustment = false
 			else
 				config.TeamLifeAdjustment = true
 			end
+			setLifeAdjustment(config.TeamLifeAdjustment)
 			t.items[item].vardisplay = options.f_boolDisplay(config.TeamLifeAdjustment)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Team Power Share
 	['teampowershare'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.TeamPowerShare then
 				config.TeamPowerShare = false
 			else
 				config.TeamPowerShare = true
 			end
+			setPowerShare(1, config.TeamPowerShare)
+			setPowerShare(2, config.TeamPowerShare)
 			t.items[item].vardisplay = options.f_boolDisplay(config.TeamPowerShare)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Simul Player KOed Lose
-	['simulloseko'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+	['losekosimul'] = function(cursorPosY, moveTxt, item, t)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.SimulLoseKO then
-				config.SimulLoseKO = false
+			if config.LoseSimul then
+				config.LoseSimul = false
 			else
-				config.SimulLoseKO = true
+				config.LoseSimul = true
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.SimulLoseKO)
-			modified = 1
+			setLoseSimul(config.LoseSimul)
+			t.items[item].vardisplay = options.f_boolDisplay(config.LoseSimul)
+			modified = true
 		end
 		return true
 	end,
 	--Tag Partner KOed Lose
-	['tagloseko'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+	['losekotag'] = function(cursorPosY, moveTxt, item, t)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.TagLoseKO then
-				config.TagLoseKO = false
+			if config.LoseTag then
+				config.LoseTag = false
 			else
-				config.TagLoseKO = true
+				config.LoseTag = true
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.TagLoseKO)
-			modified = 1
+			setLoseTag(config.LoseTag)
+			t.items[item].vardisplay = options.f_boolDisplay(config.LoseTag)
+			modified = true
 		end
 		return true
 	end,
 	--Turns Recovery Base
 	['turnsrecoverybase'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.TurnsRecoveryBase < 100 then
+		if main.f_input(main.t_players, {'$F'}) and config.TurnsRecoveryBase < 100 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.TurnsRecoveryBase = config.TurnsRecoveryBase + 0.5
+			setTurnsRecoveryBase(config.TurnsRecoveryBase / 100)
 			t.items[item].vardisplay = config.TurnsRecoveryBase .. '%'
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.TurnsRecoveryBase > 0 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.TurnsRecoveryBase > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.TurnsRecoveryBase = config.TurnsRecoveryBase - 0.5
+			setTurnsRecoveryBase(config.TurnsRecoveryBase / 100)
 			t.items[item].vardisplay = config.TurnsRecoveryBase .. '%'
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Turns Recovery Bonus
 	['turnsrecoverybonus'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.TurnsRecoveryBonus < 100 then
+		if main.f_input(main.t_players, {'$F'}) and config.TurnsRecoveryBonus < 100 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.TurnsRecoveryBonus = config.TurnsRecoveryBonus + 0.5
+			setTurnsRecoveryBonus(config.TurnsRecoveryBonus / 100)
 			t.items[item].vardisplay = config.TurnsRecoveryBonus .. '%'
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.TurnsRecoveryBonus > 0 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.TurnsRecoveryBonus > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.TurnsRecoveryBonus = config.TurnsRecoveryBonus - 0.5
+			setTurnsRecoveryBonus(config.TurnsRecoveryBonus / 100)
 			t.items[item].vardisplay = config.TurnsRecoveryBonus .. '%'
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Min Turns Chars
 	['minturns'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumTurns[1] < config.NumTurns[2] then
+		if main.f_input(main.t_players, {'$F'}) and config.NumTurns[1] < config.NumTurns[2] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTurns[1] = config.NumTurns[1] + 1
 			t.items[item].vardisplay = config.NumTurns[1]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumTurns[1] > 1 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumTurns[1] > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTurns[1] = config.NumTurns[1] - 1
 			t.items[item].vardisplay = config.NumTurns[1]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Max Turns Chars
 	['maxturns'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumTurns[2] < 8 then
+		if main.f_input(main.t_players, {'$F'}) and config.NumTurns[2] < 8 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTurns[2] = config.NumTurns[2] + 1
 			t.items[item].vardisplay = config.NumTurns[2]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumTurns[2] > config.NumTurns[1] then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumTurns[2] > config.NumTurns[1] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTurns[2] = config.NumTurns[2] - 1
 			t.items[item].vardisplay = config.NumTurns[2]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Min Simul Chars
 	['minsimul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumSimul[1] < config.NumSimul[2] then
+		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[1] < config.NumSimul[2] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[1] = config.NumSimul[1] + 1
 			t.items[item].vardisplay = config.NumSimul[1]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumSimul[1] > 2 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumSimul[1] > 2 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[1] = config.NumSimul[1] - 1
 			t.items[item].vardisplay = config.NumSimul[1]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Max Simul Chars
 	['maxsimul'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumSimul[2] < 8 then
+		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[2] < 8 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[2] = config.NumSimul[2] + 1
 			t.items[item].vardisplay = config.NumSimul[2]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumSimul[2] > config.NumSimul[1] then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumSimul[2] > config.NumSimul[1] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[2] = config.NumSimul[2] - 1
 			t.items[item].vardisplay = config.NumSimul[2]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Min Tag Chars
 	['mintag'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumTag[1] < config.NumTag[2] then
+		if main.f_input(main.t_players, {'$F'}) and config.NumTag[1] < config.NumTag[2] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTag[1] = config.NumTag[1] + 1
 			t.items[item].vardisplay = config.NumTag[1]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumTag[1] > 2 then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumTag[1] > 2 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTag[1] = config.NumTag[1] - 1
 			t.items[item].vardisplay = config.NumTag[1]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Max Tag Chars
 	['maxtag'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) and config.NumTag[2] < 4 then
+		if main.f_input(main.t_players, {'$F'}) and config.NumTag[2] < 4 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTag[2] = config.NumTag[2] + 1
 			t.items[item].vardisplay = config.NumTag[2]
-			modified = 1
-		elseif main.input({1, 2}, {'$B'}) and config.NumTag[2] > config.NumTag[1] then
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.NumTag[2] > config.NumTag[1] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumTag[2] = config.NumTag[2] - 1
 			t.items[item].vardisplay = config.NumTag[2]
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Debug Keys
 	['debugkeys'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.DebugKeys then
 				config.DebugKeys = false
@@ -1171,81 +952,81 @@ options.t_itemname = {
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.DebugKeys, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 			setAllowDebugKeys(config.DebugKeys)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--HelperMax
 	['helpermax'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
+		if main.f_input(main.t_players, {'$F'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxHelper = config.MaxHelper + 1
 			t.items[item].vardisplay = config.MaxHelper
-			modified = 1
-			needReload = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MaxHelper > 1 then
+			setMaxHelper(config.MaxHelper)
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.MaxHelper > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxHelper = config.MaxHelper - 1
 			t.items[item].vardisplay = config.MaxHelper
-			modified = 1
-			needReload = 1
+			setMaxHelper(config.MaxHelper)
+			modified = true
 		end
 		return true
 	end,
 	--PlayerProjectileMax
 	['projectilemax'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
+		if main.f_input(main.t_players, {'$F'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxPlayerProjectile = config.MaxPlayerProjectile + 1
 			t.items[item].vardisplay = config.MaxPlayerProjectile
-			modified = 1
-			needReload = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MaxPlayerProjectile > 1 then
+			setMaxPlayerProjectile(config.MaxPlayerProjectile)
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.MaxPlayerProjectile > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxPlayerProjectile = config.MaxPlayerProjectile - 1
 			t.items[item].vardisplay = config.MaxPlayerProjectile
-			modified = 1
-			needReload = 1
+			setMaxPlayerProjectile(config.MaxPlayerProjectile)
+			modified = true
 		end
 		return true
 	end,
 	--ExplodMax
 	['explodmax'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
+		if main.f_input(main.t_players, {'$F'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxExplod = config.MaxExplod + 1
 			t.items[item].vardisplay = config.MaxExplod
-			modified = 1
-			needReload = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MaxExplod > 1 then
+			setMaxExplod(config.MaxExplod)
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.MaxExplod > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxExplod = config.MaxExplod - 1
 			t.items[item].vardisplay = config.MaxExplod
-			modified = 1
-			needReload = 1
+			setMaxExplod(config.MaxExplod)
+			modified = true
 		end
 		return true
 	end,
 	--AfterImageMax
 	['afterimagemax'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F'}) then
+		if main.f_input(main.t_players, {'$F'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxAfterImage = config.MaxAfterImage + 1
 			t.items[item].vardisplay = config.MaxAfterImage
-			modified = 1
-			needReload = 1
-		elseif main.input({1, 2}, {'$B'}) and config.MaxAfterImage > 1 then
+			setMaxAfterImage(config.MaxAfterImage)
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.MaxAfterImage > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxAfterImage = config.MaxAfterImage - 1
 			t.items[item].vardisplay = config.MaxAfterImage
-			modified = 1
-			needReload = 1
+			setMaxAfterImage(config.MaxAfterImage)
+			modified = true
 		end
 		return true
 	end,
 	--Small portraits
 	['preloadingsmall'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingSmall then
 				config.PreloadingSmall = false
@@ -1253,13 +1034,13 @@ options.t_itemname = {
 				config.PreloadingSmall = true
 				end
 			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingSmall)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Select portraits
 	['preloadingbig'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingBig then
 				config.PreloadingBig = false
@@ -1267,13 +1048,13 @@ options.t_itemname = {
 				config.PreloadingBig = true
 				end
 			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingBig)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Versus portraits
 	['preloadingversus'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingVersus then
 				config.PreloadingVersus = false
@@ -1281,13 +1062,13 @@ options.t_itemname = {
 				config.PreloadingVersus = true
 				end
 			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingVersus)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Stage portraits
 	['preloadingstage'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			if config.PreloadingStage then
 				config.PreloadingStage = false
@@ -1295,37 +1076,52 @@ options.t_itemname = {
 				config.PreloadingStage = true
 				end
 			t.items[item].vardisplay = options.f_boolDisplay(config.PreloadingStage)
-			modified = 1
+			modified = true
 		end
 		return true
 	end,
 	--Key Config
 	['keyboard'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
+		if main.f_input(main.t_players, {'pal', 's'}) --[[or getKey() == 'F1']] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			--t.submenu[t.items[item].itemname].loop()
-			--options.menu.submenu.input.loop{}
-			options.f_keyCfg('KeyConfig', t.items[item].itemname, t.submenu[t.items[item].itemname].title)
+			options.f_keyCfgInit('KeyConfig', t.submenu[t.items[item].itemname].title)
+			while true do
+				if not options.f_keyCfg('KeyConfig', t.items[item].itemname, 'optionbgdef', false) then
+					break
+				end
+			end
 		end
 		return true
 	end,
 	--Joystick Config
 	['gamepad'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
+		if main.f_input(main.t_players, {'pal', 's'}) --[[or getKey() == 'F2']] then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			--t.submenu[t.items[item].itemname].loop()
-			--options.menu.submenu.input.loop{}
-			options.f_keyCfg('JoystickConfig', t.items[item].itemname, t.submenu[t.items[item].itemname].title)
+			if main.flags['-nojoy'] == nil then
+				options.f_keyCfgInit('JoystickConfig', t.submenu[t.items[item].itemname].title)
+				while true do
+					if not options.f_keyCfg('JoystickConfig', t.items[item].itemname, 'optionbgdef', false) then
+						break
+					end
+				end
+			end
 		end
 		return true
 	end,
 	--Default
 	['inputdefault'] = function(cursorPosY, moveTxt, item, t)
-		if main.input({1, 2}, {'pal', 's'}) then
+		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			options.f_keyDefault()
-			modified = 1
-			needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
+			for pn = 1, #config.KeyConfig do
+				setKeyConfig(pn, config.KeyConfig[pn].Joystick, config.KeyConfig[pn].Buttons)
+			end
+			if main.flags['-nojoy'] == nil then
+				for pn = 1, #config.JoystickConfig do
+					setKeyConfig(pn, config.JoystickConfig[pn].Joystick, config.JoystickConfig[pn].Buttons)
+				end
+			end
+			modified = true
 		end
 		return true
 	end,
@@ -1337,11 +1133,11 @@ for k, v in ipairs(getDirectoryFiles('external/shaders')) do
 		path = path:gsub('\\', '/')
 		ext = ext:lower()
 		if ext == 'frag' then
-			table.insert(options.t_shaders, {['path'] = path, ['filename'] = filename})
+			table.insert(options.t_shaders, {path = path, filename = filename})
 		end
 		if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
 			options.t_itemname[path .. filename] = function(cursorPosY, moveTxt, item, t)
-				if main.input({1, 2}, {'pal', 's'}) then
+				if main.f_input(main.t_players, {'pal', 's'}) then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 					config.ExternalShaders = {path .. filename}
 					config.PostProcessingShader = 4
@@ -1357,15 +1153,15 @@ for k, v in ipairs(main.t_sort.option_info) do
 	if v:match('_[0-9]+x[0-9]+$') then
 		local width, height = v:match('_([0-9]+)x([0-9]+)$')
 		options.t_itemname[width .. 'x' .. height] = function(cursorPosY, moveTxt, item, t)
-			if main.input({1, 2}, {'pal', 's'}) then
+			if main.f_input(main.t_players, {'pal', 's'}) then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.GameWidth = tonumber(width)
 				config.GameHeight = tonumber(height)
 				if (config.GameHeight / 3 * 4) ~= config.GameWidth then
-					main.f_warning(main.f_extractText(motif.warning_info.text_res), motif.option_info, motif.optionbgdef)
+					main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.option_info, motif.optionbgdef)
 				end
-				modified = 1
-				needReload = 1
+				modified = true
+				needReload = true
 				return false
 			end
 			return true
@@ -1376,16 +1172,16 @@ for k, v in ipairs(main.t_sort.option_info) do
 		options.t_itemname['ratio' .. ratioLevel .. tmp1 .. tmp2] = function(cursorPosY, moveTxt, item, t)
 			local ratioType = tmp1:upper() .. tmp2
 			ratioLevel = tonumber(ratioLevel)
-			if main.input({1, 2}, {'$F'}) then
+			if main.f_input(main.t_players, {'$F'}) then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] + 0.01, '%.02f')
 				t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
-				modified = 1
-			elseif main.input({1, 2}, {'$B'}) and config['Ratio' .. ratioType][ratioLevel] > 0.01 then
+				modified = true
+			elseif main.f_input(main.t_players, {'$B'}) and config['Ratio' .. ratioType][ratioLevel] > 0.01 then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 				config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] - 0.01, '%.02f')
 				t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
-				modified = 1
+				modified = true
 			end
 			return true
 		end
@@ -1393,9 +1189,8 @@ for k, v in ipairs(main.t_sort.option_info) do
 end
 if main.debugLog then main.f_printTable(options.t_itemname, 'debug/t_optionsItemname.txt') end
 
-function options.createMenu(tbl, bool_bgreset, bool_main)
+function options.createMenu(tbl, bool_bgreset, bool_main, bool_f1)
 	return function()
-		--main.f_cmdInput()
 		local cursorPosY = 1
 		local moveTxt = 0
 		local item = 1
@@ -1404,19 +1199,27 @@ function options.createMenu(tbl, bool_bgreset, bool_main)
 			main.f_bgReset(motif.optionbgdef.bg)
 			main.f_playBGM(false, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
 			if #main.t_sort.option_info == 0 then
-				main.f_warning(main.f_extractText(motif.warning_info.text_options), motif.option_info, motif.optionbgdef)
+				main.f_warning(main.f_extractText(motif.warning_info.text_options_text), motif.option_info, motif.optionbgdef)
 				return
 			end
 		end
 		while true do
-			options.f_menuCommonDraw(cursorPosY, moveTxt, item, t)
-			cursorPosY, moveTxt, item = options.f_menuCommonCalc(cursorPosY, moveTxt, item, t)
-			txt_title:update({text = tbl.title})
-			if esc() then
+			if tbl.reset then
+				tbl.reset = false
+				main.f_cmdInput()
+			else
+				main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, 'fadein', 'option_info', 'option_info', 'optionbgdef', options.txt_title, motif.defaultOptions, motif.defaultOptions, false, {})
+			end
+			cursorPosY, moveTxt, item = main.f_menuCommonCalc(cursorPosY, moveTxt, item, t, 'option_info', {'$U'}, {'$D'})
+			options.txt_title:update({text = tbl.title})
+			if esc() or main.f_input(main.t_players, {'m'}) then
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 				if bool_main then
-					if modified == 1 then
-						options.f_saveCfg()
+					if modified then
+						--options.f_saveCfg(needReload)
+					end
+					if needReload then
+						main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.option_info, motif.optionbgdef)
 					end
 					main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 					main.f_bgReset(motif.titlebgdef.bg)
@@ -1425,11 +1228,18 @@ function options.createMenu(tbl, bool_bgreset, bool_main)
 					end
 				end
 				break
+			elseif bool_f1 and (getKey() == 'F1' or getKey() == 'F2') then
+				if not options.t_itemname.keyboard(cursorPosY, moveTxt, item, tbl) then
+					break
+				end
+				if not options.t_itemname.gamepad(cursorPosY, moveTxt, item, tbl) then
+					break
+				end
 			elseif options.t_itemname[t[item].itemname] ~= nil then
 				if not options.t_itemname[t[item].itemname](cursorPosY, moveTxt, item, tbl) then
 					break
 				end
-			elseif main.input({1, 2}, {'pal', 's'}) then
+			elseif main.f_input(main.t_players, {'pal', 's'}) then
 				local f = main.f_checkSubmenu(tbl.submenu[t[item].itemname])
 				if f ~= '' and not options.t_itemname[f](cursorPosY, moveTxt, item, tbl) then
 					break
@@ -1485,8 +1295,8 @@ function options.f_vardisplay(itemname)
 	if itemname == 'singlevsteamlife' then return config.SingleVsTeamLife .. '%' end
 	if itemname == 'teamlifeadjustment' then return options.f_boolDisplay(config.TeamLifeAdjustment) end
 	if itemname == 'teampowershare' then return options.f_boolDisplay(config.TeamPowerShare) end
-	if itemname == 'simulloseko' then return options.f_boolDisplay(config.SimulLoseKO) end
-	if itemname == 'tagloseko' then return options.f_boolDisplay(config.TagLoseKO) end
+	if itemname == 'losekosimul' then return options.f_boolDisplay(config.LoseSimul) end
+	if itemname == 'losekotag' then return options.f_boolDisplay(config.LoseTag) end
 	if itemname == 'turnsrecoverybase' then return config.TurnsRecoveryBase .. '%' end
 	if itemname == 'turnsrecoverybonus' then return config.TurnsRecoveryBonus .. '%' end
 	if itemname == 'ratio1life' then return options.f_displayRatio(config.RatioLife[1]) end
@@ -1515,23 +1325,19 @@ function options.f_vardisplay(itemname)
 	return ''
 end
 
-local function f_itemnameUpper(title)
-	if motif.option_info.menu_title_uppercase == 1 then
-		return title:upper()
-	end
-	return title
+local t_menuWindow = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}
+if motif.option_info.menu_window_margins_y[1] ~= 0 or motif.option_info.menu_window_margins_y[2] ~= 0 then
+	t_menuWindow = {
+		0,
+		math.max(0, motif.option_info.menu_pos[2] - motif.option_info.menu_window_margins_y[1]),
+		motif.info.localcoord[1],
+		motif.option_info.menu_pos[2] + (motif.option_info.menu_window_visibleitems - 1) * motif.option_info.menu_item_spacing[2] + motif.option_info.menu_window_margins_y[2]
+	}
 end
 
 --dynamically generates all option screen menus and submenus using itemname data stored in main.t_sort table
-options.menu = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.title_info.menu_itemname_options)}
-options.menu.loop = options.createMenu(options.menu, true, true)
-local t_menuWindow = {
-	0,
-	math.max(0, motif.option_info.menu_pos[2] - motif.option_info.menu_window_margins_y[1]),
-	motif.info.localcoord[1],
-	motif.option_info.menu_pos[2] + (motif.option_info.menu_window_visibleitems - 1) * motif.option_info.menu_item_spacing[2] + motif.option_info.menu_window_margins_y[2]
-}
-
+options.menu = {title = main.f_itemnameUpper(motif.option_info.title_text, motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+options.menu.loop = options.createMenu(options.menu, true, true, true)
 local t_pos = {} --for storing current options.menu table position
 local lastNum = 0
 for i = 1, #main.t_sort.option_info do
@@ -1545,8 +1351,8 @@ for i = 1, #main.t_sort.option_info do
 		--appending the menu table
 		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
 			if options.menu.submenu[c] == nil or c == 'empty' then
-				options.menu.submenu[c] = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]])}
-				options.menu.submenu[c].loop = options.createMenu(options.menu.submenu[c], false, false)
+				options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+				options.menu.submenu[c].loop = options.createMenu(options.menu.submenu[c], false, false, false)
 				if not main.t_sort.option_info[i]:match(c .. '_') then
 					table.insert(options.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
 				end
@@ -1554,8 +1360,8 @@ for i = 1, #main.t_sort.option_info do
 			t_pos = options.menu.submenu[c]
 		else --following strings
 			if t_pos.submenu[c] == nil or c == 'empty' then
-				t_pos.submenu[c] = {['submenu'] = {}, ['items'] = {}, ['title'] = f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]])}
-				t_pos.submenu[c].loop = options.createMenu(t_pos.submenu[c], false, false)
+				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+				t_pos.submenu[c].loop = options.createMenu(t_pos.submenu[c], false, false, false)
 				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
 			end
 			if j > lastNum then
@@ -1570,45 +1376,47 @@ if main.debugLog then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt')
 --;===========================================================
 --; KEY SETTINGS
 --;===========================================================
+local function f_keyCfgText()
+	return {text:create({}), text:create({})}
+end
 local t_keyCfg = {
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'empty', displayname = ''},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, infodisplay = ''},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}},
-	{data = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}, infodisplay = motif.option_info.menu_valuename_esc},
+	{data = f_keyCfgText(), itemname = 'empty', displayname = ''},
+	{data = f_keyCfgText(), itemname = 'configall', displayname = motif.option_info.menu_itemname_key_all, infodata = f_keyCfgText(), infodisplay = ''},
+	{data = f_keyCfgText(), itemname = 'up', displayname = motif.option_info.menu_itemname_key_up, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'down', displayname = motif.option_info.menu_itemname_key_down, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'left', displayname = motif.option_info.menu_itemname_key_left, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'right', displayname = motif.option_info.menu_itemname_key_right, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'a', displayname = motif.option_info.menu_itemname_key_a, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'b', displayname = motif.option_info.menu_itemname_key_b, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'c', displayname = motif.option_info.menu_itemname_key_c, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'x', displayname = motif.option_info.menu_itemname_key_x, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'y', displayname = motif.option_info.menu_itemname_key_y, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'z', displayname = motif.option_info.menu_itemname_key_z, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'start', displayname = motif.option_info.menu_itemname_key_start, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'd', displayname = motif.option_info.menu_itemname_key_d, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'w', displayname = motif.option_info.menu_itemname_key_w, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'menu', displayname = motif.option_info.menu_itemname_key_menu, vardata = f_keyCfgText()},
+	{data = f_keyCfgText(), itemname = 'back', displayname = motif.option_info.menu_itemname_key_back, infodata = f_keyCfgText(), infodisplay = ''},
 }
 --t_keyCfg = main.f_tableClean(t_keyCfg, main.t_sort.option_info)
 
-local txt_keyController = {text:create({window = t_menuWindow}), text:create({window = t_menuWindow})}
-function options.f_keyCfg(cfgType, controller, title)
-	main.f_cmdInput()
-	local cursorPosY = 2
-	local moveTxt = 0
-	local item = 2
-	local item_start = 2
-	local t = t_keyCfg
-	local t_pos = {motif.option_info.menu_key_p1_pos, motif.option_info.menu_key_p2_pos}
-	local configall = false
-	local key = ''
-	local t_keyList = {}
-	local t_conflict = {}
-	local btnReleased = 0
-	local player = 1
-	local btn = tostring(config[cfgType][player].Buttons[item - item_start])
-	local joyNum = 0
-	txt_title:update({text = title})
-	--count all button assignments on the same controller
+local txt_keyController = f_keyCfgText()
+local cursorPosY = 2
+local item = 2
+local item_start = 2
+local t_pos = {}
+local configall = false
+local key = ''
+local t_keyList = {}
+local t_conflict = {}
+local t_savedConfig = {}
+local btnReleased = false
+local player = 1
+local btn = ''
+local joyNum = 0
+
+function options.f_keyCfgReset(cfgType)
+	t_keyList = {}
 	for i = 1, #config[cfgType] do
 		joyNum = config[cfgType][i].Joystick
 		if t_keyList[joyNum] == nil then
@@ -1627,475 +1435,456 @@ function options.f_keyCfg(cfgType, controller, title)
 			end
 		end
 	end
+end
+
+function options.f_keyCfgInit(cfgType, title)
+	resetKey()
+	main.f_cmdInput()
+	cursorPosY = 2
+	item = 2
+	item_start = 2
+	t_pos = {motif.option_info.menu_key_p1_pos, motif.option_info.menu_key_p2_pos}
+	configall = false
+	key = ''
+	t_conflict = {}
+	t_savedConfig = main.f_tableCopy(config[cfgType])
+	btnReleased = false
+	player = 1
+	btn = tostring(config[cfgType][player].Buttons[item - item_start])
+	options.txt_title:update({text = title})
+	options.f_keyCfgReset(cfgType)
 	joyNum = config[cfgType][player].Joystick
-	while true do
-		--Config all
-		if configall then
-			if cfgType == 'KeyConfig' then --detect keyboard key
-				key = getKey()
-			elseif getJoystickPresent(joyNum) == false then --ensure that gamepad is connected
-				main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
-				configall = false
-				commandBufReset(main.cmd[1])
-				commandBufReset(main.cmd[2])
-			else --detect gamepad key
-				local tmp = getKey()
-				if tonumber(tmp) == nil then --button released
-					btnReleased = 1
-				elseif btnReleased == 1 then --button pressed after releasing button once
-					key = tmp
-					btnReleased = 0
-				end
+end
+
+function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
+	local t = t_keyCfg
+	--Config all
+	if configall then
+		--esc (reset mapping)
+		if esc() --[[or main.f_input(main.t_players, {'m'})]] then
+			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+			esc(false)
+			config[cfgType][player] = main.f_tableCopy(t_savedConfig[player])
+			for pn = 1, #config[cfgType] do
+				setKeyConfig(pn, config[cfgType][pn].Joystick, config[cfgType][pn].Buttons)
 			end
-			key = tostring(key)
-			if esc() then
-				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				configall = false
-				commandBufReset(main.cmd[1])
-				commandBufReset(main.cmd[2])
-			--some key detected
-			elseif key ~= '' then
-				--spacebar (disable key)
-				if key == 'SPACE' then
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					--decrease old button count
-					if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-						t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
-					else
-						t_keyList[joyNum][btn] = nil
-					end
-					--update vardisplay / config data
-					t[item]['vardisplay' .. player] = motif.option_info.menu_valuename_nokey
-					config[cfgType][player].Buttons[item - item_start] = tostring(motif.option_info.menu_valuename_nokey)
-					modified = 1
-					needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
-				--other keyboard or gamepad key
-				elseif cfgType == 'KeyConfig' or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-					--decrease old button count
-					if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-						t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
-					else
-						t_keyList[joyNum][btn] = nil
-					end
-					--increase new button count
-					if t_keyList[joyNum][key] == nil then
-						t_keyList[joyNum][key] = 1
-					else
-						t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
-					end
-					--update vardisplay / config data
-					t[item]['vardisplay' .. player] = key
-					config[cfgType][player].Buttons[item - item_start] = tostring(key)
-					modified = 1
-					needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
-				--non gamepad key on gamepad controller
-				else
-					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				end
-				--move to the next position
-				item = item + 1
-				if cursorPosY < motif.option_info.menu_window_visibleitems then
-					cursorPosY = cursorPosY + 1
-				end
-				if item > 15 then
-					item = item_start
-					cursorPosY = item_start
-					configall = false
-					commandBufReset(main.cmd[1])
-					commandBufReset(main.cmd[2])
-				end
-			end
-			resetKey()
-			key = ''
-		--move up / down / left / right
-		elseif main.input({1, 2}, {'$U'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			item = item - 1
-		elseif main.input({1, 2}, {'$D'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			item = item + 1
-		elseif main.input({1, 2}, {'$F', '$B'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if player == 1 then
-				player = 2
-			else
-				player = 1
-			end
-			joyNum = config[cfgType][player].Joystick
-		end
-		--cursor position calculation
-		if item < item_start then
-			item = #t
-			if #t > motif.option_info.menu_window_visibleitems then
-				cursorPosY = motif.option_info.menu_window_visibleitems
-			else
-				cursorPosY = #t
-			end
-		elseif item > #t then
+			options.f_keyCfgReset(cfgType)
 			item = item_start
 			cursorPosY = item_start
-		elseif configall == false then
-			if main.input({1, 2}, {'$U'}) and cursorPosY > item_start then
-				cursorPosY = cursorPosY - 1
-			elseif main.input({1, 2}, {'$D'}) and cursorPosY < motif.option_info.menu_window_visibleitems then
-				cursorPosY = cursorPosY + 1
+			configall = false
+			commandBufReset(main.t_cmd[1])
+			commandBufReset(main.t_cmd[2])
+		--spacebar (disable key)
+		elseif getKey() == 'SPACE' then
+			key = 'SPACE'
+		--keyboard key detection
+		elseif cfgType == 'KeyConfig' then
+			key = getKey()
+		--gamepad key detection
+		else
+			local tmp = getJoystickKey(joyNum)
+			if tonumber(tmp) == nil then
+				btnReleased = true
+			elseif btnReleased then
+				key = tmp
+				btnReleased = false
 			end
+			key = tostring(key)
 		end
-		if cursorPosY == motif.option_info.menu_window_visibleitems then
-			moveTxt = (item - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_item_spacing[2]
-		elseif cursorPosY == item_start then
-			moveTxt = (item - item_start) * motif.option_info.menu_item_spacing[2]
-		end
-		btn = tostring(config[cfgType][player].Buttons[item - item_start])
-		if configall == false then
-			if esc() and not t_conflict[joyNum] then
-				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-				txt_title:update({text = motif.option_info.title_text_input})
-				break
-			--Config all
-			elseif (t[item].itemname == 'configall' and main.input({1, 2}, {'pal', 's'})) or getKey() == 'F1' or getKey() == 'F2' then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-				if getKey() == 'F1' then
-					player = 1
-				elseif getKey() == 'F2' then
-					player = 2
-				end
-				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
-					main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
-					item = item_start
-					cursorPosY = item_start
-				else
-					resetKey()
-					item = item_start + 1
-					cursorPosY = item_start + 1
-					btnReleased = 0
-					configall = true
-				end
-			--Back
-			elseif t[item].itemname == 'back' and main.input({1, 2}, {'pal', 's'}) then
-				if t_conflict[joyNum] then
-					main.f_warning(main.f_extractText(motif.warning_info.text_keys), motif.option_info, motif.optionbgdef)
-				else
-					sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
-					txt_title:update({text = motif.option_info.title_text_input})
-					break
-				end
-			--individual buttons
-			elseif main.input({1, 2}, {'pal', 's'}) then
+		--other keyboard or gamepad key
+		if key ~= '' then
+			if key == 'SPACE' then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
-					main.f_warning(main.f_extractText(motif.warning_info.text_pad), motif.option_info, motif.optionbgdef)
+				--decrease old button count
+				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 				else
-					key = main.f_input(main.f_extractText(motif.option_info.input_text_key), motif.option_info, motif.optionbgdef, controller, joyNum, 'SPACE')
-					--spacebar (disable key)
-					if key == 'SPACE' then
-						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-						--decrease old button count
-						if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-							t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
+					t_keyList[joyNum][btn] = nil
+				end
+				--update vardisplay / config data
+				t[item]['vardisplay' .. player] = motif.option_info.menu_valuename_nokey
+				config[cfgType][player].Buttons[item - item_start] = tostring(motif.option_info.menu_valuename_nokey)
+				modified = true
+			elseif cfgType == 'KeyConfig' or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
+				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+				--decrease old button count
+				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
+					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
+				else
+					t_keyList[joyNum][btn] = nil
+				end
+				--remove previous button assignment if already set
+				for k, v in ipairs(t) do
+					if v['vardisplay' .. player] == key then
+						v['vardisplay' .. player] = 'Not used'
+						config[cfgType][player].Buttons[k - item_start] = 'Not used'
+						if t_keyList[joyNum][key] ~= nil and t_keyList[joyNum][key] > 1 then
+							t_keyList[joyNum][key] = t_keyList[joyNum][key] - 1
 						else
-							t_keyList[joyNum][btn] = nil
+							t_keyList[joyNum][key] = nil
 						end
-						--update vardisplay / config data
-						t[item]['vardisplay' .. player] = motif.option_info.menu_valuename_nokey
-						config[cfgType][player].Buttons[item - item_start] = motif.option_info.menu_valuename_nokey
-						modified = 1
-						needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
-					--other keyboard or gamepad key
-					elseif (cfgType == 'KeyConfig' and key ~= '') or (cfgType == 'JoystickConfig' and tonumber(key) ~= nil) then
-						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-						--decrease old button count
-						if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-							t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
-						else
-							t_keyList[joyNum][btn] = nil
-						end
-						--increase new button count
-						if t_keyList[joyNum][key] == nil then
-							t_keyList[joyNum][key] = 1
-						else
-							t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
-						end
-						--update vardisplay / config data
-						t[item]['vardisplay' .. player] = key
-						config[cfgType][player].Buttons[item - item_start] = tostring(key)
-						modified = 1
-						needReload = 1 --TODO: won't be needed if we add a function that can edit sys.keyConfig and sys.JoystickConfig from lua
-					else
-						sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 					end
-					resetKey()
-					key = ''
+				end
+				--increase new button count
+				if t_keyList[joyNum][key] == nil then
+					t_keyList[joyNum][key] = 1
+				else
+					t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
+				end
+				--update vardisplay / config data
+				t[item]['vardisplay' .. player] = key
+				config[cfgType][player].Buttons[item - item_start] = key
+				modified = true
+			end
+			--move to the next position
+			item = item + 1
+			cursorPosY = cursorPosY + 1
+			if item > #t or t[item].itemname == 'back' then
+				item = item_start
+				cursorPosY = item_start
+				configall = false
+				commandBufReset(main.t_cmd[1])
+				commandBufReset(main.t_cmd[2])
+				for pn = 1, #config[cfgType] do
+					setKeyConfig(pn, config[cfgType][pn].Joystick, config[cfgType][pn].Buttons)
+				end
+			end
+			key = ''
+		end
+		resetKey()
+	--move left / right
+	elseif main.f_input(main.t_players, {'$F', '$B'}) then
+		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+		if player == 1 then
+			player = 2
+		else
+			player = 1
+		end
+		joyNum = config[cfgType][player].Joystick
+	--move up / down
+	elseif main.f_input(main.t_players, {'$U', '$D'}) then
+		sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+		if cursorPosY == item_start then
+			cursorPosY = #t
+			item = #t
+		else
+			cursorPosY = item_start
+			item = item_start
+		end
+	end
+	btn = tostring(config[cfgType][player].Buttons[item - item_start])
+	if configall == false then
+		if esc() or main.f_input(main.t_players, {'m'}) or (t[item].itemname == 'back' and main.f_input(main.t_players, {'pal', 's'})) then
+			if t_conflict[joyNum] then
+				if not main.f_warning(main.f_extractText(motif.warning_info.text_keys_text), motif.option_info, motif.optionbgdef) then
+					options.txt_title:update({text = motif.option_info.title_input_text})
+					config[cfgType] = main.f_tableCopy(t_savedConfig)
+					for pn = 1, #config[cfgType] do
+						setKeyConfig(pn, config[cfgType][pn].Joystick, config[cfgType][pn].Buttons)
+					end
+					menu.itemname = ''
+					return false
+				end
+			else
+				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
+				options.txt_title:update({text = motif.option_info.title_input_text})
+				for pn = 1, #config[cfgType] do
+					setKeyConfig(pn, config[cfgType][pn].Joystick, config[cfgType][pn].Buttons)
+				end
+				menu.itemname = ''
+				return false
+			end
+		--Config all
+		elseif (t[item].itemname == 'configall' and main.f_input(main.t_players, {'pal', 's'})) or getKey() == 'F1' or getKey() == 'F2' then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+			if getKey() == 'F1' then
+				player = 1
+			elseif getKey() == 'F2' then
+				player = 2
+			end
+			if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
+				main.f_warning(main.f_extractText(motif.warning_info.text_pad_text), motif.option_info, motif.optionbgdef)
+				item = item_start
+				cursorPosY = item_start
+			else
+				item = item_start + 1
+				cursorPosY = item_start + 1
+				btnReleased = false
+				configall = true
+			end
+			resetKey()
+		end
+	end
+	t_conflict[joyNum] = false
+	--draw clearcolor
+	if not skipClear then
+		clearColor(motif[bgdef].bgclearcolor[1], motif[bgdef].bgclearcolor[2], motif[bgdef].bgclearcolor[3])
+	end
+	--draw layerno = 0 backgrounds
+	bgDraw(motif[bgdef].bg, false)
+	--draw player num
+	for i = 1, 2 do
+		txt_keyController[i]:update({
+			font =   motif.option_info['menu_item_key_p' .. i .. '_font'][1],
+			bank =   motif.option_info['menu_item_key_p' .. i .. '_font'][2],
+			align =  motif.option_info['menu_item_key_p' .. i .. '_font'][3],
+			text =   motif.option_info.menu_itemname_key_playerno .. ' ' .. i,
+			x =      motif.option_info['menu_item_p' .. i .. '_pos'][1],
+			y =      motif.option_info['menu_item_p' .. i .. '_pos'][2],
+			scaleX = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][1],
+			scaleY = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][2],
+			r =      motif.option_info['menu_item_key_p' .. i .. '_font'][4],
+			g =      motif.option_info['menu_item_key_p' .. i .. '_font'][5],
+			b =      motif.option_info['menu_item_key_p' .. i .. '_font'][6],
+			src =    motif.option_info['menu_item_key_p' .. i .. '_font'][7],
+			dst =    motif.option_info['menu_item_key_p' .. i .. '_font'][8],
+			height = motif.option_info['menu_item_key_p' .. i .. '_font_height'],
+			defsc =  motif.defaultOptions
+		})
+		txt_keyController[i]:draw()
+	end
+	--draw menu box
+	if motif.option_info.menu_boxbg_visible == 1 then
+		for i = 1, 2 do
+			fillRect(
+				t_pos[i][1] + motif.option_info.menu_key_boxcursor_coords[1],
+				t_pos[i][2] + motif.option_info.menu_key_boxcursor_coords[2],
+				motif.option_info.menu_key_boxcursor_coords[3] - motif.option_info.menu_key_boxcursor_coords[1] + 1,
+				#t * (motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2]),
+				motif.option_info.menu_boxbg_col[1],
+				motif.option_info.menu_boxbg_col[2],
+				motif.option_info.menu_boxbg_col[3],
+				motif.option_info.menu_boxbg_alpha[1],
+				motif.option_info.menu_boxbg_alpha[2],
+				motif.defaultOptions,
+				false
+			)
+		end
+	end
+	--draw title
+	options.txt_title:draw()
+	--draw menu items
+	for i = 1, #t do
+		for j = 1, 2 do
+			if i > item - cursorPosY then
+				if j == 1 then --player1 side (left)
+					if t[i].itemname == 'configall' then
+						t[i].infodisplay = motif.option_info.menu_valuename_f1
+					elseif t[i].itemname == 'back' then
+						t[i].infodisplay = motif.option_info.menu_valuename_esc
+					end
+				else --player2 side (right)
+					if t[i].itemname == 'configall' then
+						t[i].infodisplay = motif.option_info.menu_valuename_f2
+					elseif t[i].itemname == 'back' then
+						t[i].infodisplay = motif.option_info.menu_valuename_esc --menu_valuename_next
+					end
+				end
+				if i == item and j == player then --active item
+					--draw displayname
+					t[i].data[j]:update({
+						font =   motif.option_info.menu_item_active_font[1],
+						bank =   motif.option_info.menu_item_active_font[2],
+						align =  motif.option_info.menu_item_active_font[3],
+						text =   t[i].displayname,
+						x =      t_pos[j][1],
+						y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+						scaleX = motif.option_info.menu_item_active_font_scale[1],
+						scaleY = motif.option_info.menu_item_active_font_scale[2],
+						r =      motif.option_info.menu_item_active_font[4],
+						g =      motif.option_info.menu_item_active_font[5],
+						b =      motif.option_info.menu_item_active_font[6],
+						src =    motif.option_info.menu_item_active_font[7],
+						dst =    motif.option_info.menu_item_active_font[8],
+						height = motif.option_info.menu_item_active_font_height,
+						defsc =  motif.defaultOptions
+					})
+					t[i].data[j]:draw()
+					--draw vardata
+					if t[i].vardata ~= nil then
+						if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
+							t[i].vardata[j]:update({
+								font =   motif.option_info.menu_item_value_conflict_font[1],
+								bank =   motif.option_info.menu_item_value_conflict_font[2],
+								align =  motif.option_info.menu_item_value_conflict_font[3],
+								text =   t[i]['vardisplay' .. j],
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+								scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
+								r =      motif.option_info.menu_item_value_conflict_font[4],
+								g =      motif.option_info.menu_item_value_conflict_font[5],
+								b =      motif.option_info.menu_item_value_conflict_font[6],
+								src =    motif.option_info.menu_item_value_conflict_font[7],
+								dst =    motif.option_info.menu_item_value_conflict_font[8],
+								height = motif.option_info.menu_item_value_conflict_font_height,
+								defsc =  motif.defaultOptions
+							})
+							t[i].vardata[j]:draw()
+							t_conflict[joyNum] = true
+						else
+							t[i].vardata[j]:update({
+								font =   motif.option_info.menu_item_value_active_font[1],
+								bank =   motif.option_info.menu_item_value_active_font[2],
+								align =  motif.option_info.menu_item_value_active_font[3],
+								text =   t[i]['vardisplay' .. j],
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+								scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+								r =      motif.option_info.menu_item_value_active_font[4],
+								g =      motif.option_info.menu_item_value_active_font[5],
+								b =      motif.option_info.menu_item_value_active_font[6],
+								src =    motif.option_info.menu_item_value_active_font[7],
+								dst =    motif.option_info.menu_item_value_active_font[8],
+								height = motif.option_info.menu_item_value_active_font_height,
+								defsc =  motif.defaultOptions
+							})
+							t[i].vardata[j]:draw()
+						end
+					--draw infodata
+					elseif t[i].infodata ~= nil then
+						t[i].infodata[j]:update({
+							font =   motif.option_info.menu_item_info_active_font[1],
+							bank =   motif.option_info.menu_item_info_active_font[2],
+							align =  motif.option_info.menu_item_info_active_font[3],
+							text =   t[i].infodisplay,
+							x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+							scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+							scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+							r =      motif.option_info.menu_item_info_active_font[4],
+							g =      motif.option_info.menu_item_info_active_font[5],
+							b =      motif.option_info.menu_item_info_active_font[6],
+							src =    motif.option_info.menu_item_info_active_font[7],
+							dst =    motif.option_info.menu_item_info_active_font[8],
+							height = motif.option_info.menu_item_info_active_font_height,
+							defsc =  motif.defaultOptions
+						})
+						t[i].infodata[j]:draw()
+					end
+				else --inactive item
+					--draw displayname
+					t[i].data[j]:update({
+						font =   motif.option_info.menu_item_font[1],
+						bank =   motif.option_info.menu_item_font[2],
+						align =  motif.option_info.menu_item_font[3],
+						text =   t[i].displayname,
+						x =      t_pos[j][1],
+						y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+						scaleX = motif.option_info.menu_item_font_scale[1],
+						scaleY = motif.option_info.menu_item_font_scale[2],
+						r =      motif.option_info.menu_item_font[4],
+						g =      motif.option_info.menu_item_font[5],
+						b =      motif.option_info.menu_item_font[6],
+						src =    motif.option_info.menu_item_font[7],
+						dst =    motif.option_info.menu_item_font[8],
+						height = motif.option_info.menu_item_font_height,
+						defsc =  motif.defaultOptions
+					})
+					t[i].data[j]:draw()
+					--draw vardata
+					if t[i].vardata ~= nil then
+						if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
+							t[i].vardata[j]:update({
+								font =   motif.option_info.menu_item_value_conflict_font[1],
+								bank =   motif.option_info.menu_item_value_conflict_font[2],
+								align =  motif.option_info.menu_item_value_conflict_font[3],
+								text =   t[i]['vardisplay' .. j],
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+								scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
+								r =      motif.option_info.menu_item_value_conflict_font[4],
+								g =      motif.option_info.menu_item_value_conflict_font[5],
+								b =      motif.option_info.menu_item_value_conflict_font[6],
+								src =    motif.option_info.menu_item_value_conflict_font[7],
+								dst =    motif.option_info.menu_item_value_conflict_font[8],
+								height = motif.option_info.menu_item_value_conflict_font_height,
+								defsc =  motif.defaultOptions
+							})
+							t[i].vardata[j]:draw()
+							t_conflict[joyNum] = true
+						else
+							t[i].vardata[j]:update({
+								font =   motif.option_info.menu_item_value_font[1],
+								bank =   motif.option_info.menu_item_value_font[2],
+								align =  motif.option_info.menu_item_value_font[3],
+								text =   t[i]['vardisplay' .. j],
+								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+								scaleX = motif.option_info.menu_item_value_font_scale[1],
+								scaleY = motif.option_info.menu_item_value_font_scale[2],
+								r =      motif.option_info.menu_item_value_font[4],
+								g =      motif.option_info.menu_item_value_font[5],
+								b =      motif.option_info.menu_item_value_font[6],
+								src =    motif.option_info.menu_item_value_font[7],
+								dst =    motif.option_info.menu_item_value_font[8],
+								height = motif.option_info.menu_item_value_font_height,
+								defsc =  motif.defaultOptions
+							})
+							t[i].vardata[j]:draw()
+						end
+					--draw infodata
+					elseif t[i].infodata ~= nil then
+						t[i].infodata[j]:update({
+							font =   motif.option_info.menu_item_info_font[1],
+							bank =   motif.option_info.menu_item_info_font[2],
+							align =  motif.option_info.menu_item_info_font[3],
+							text =   t[i].infodisplay,
+							x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
+							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2],
+							scaleX = motif.option_info.menu_item_value_active_font_scale[1],
+							scaleY = motif.option_info.menu_item_value_active_font_scale[2],
+							r =      motif.option_info.menu_item_info_font[4],
+							g =      motif.option_info.menu_item_info_font[5],
+							b =      motif.option_info.menu_item_info_font[6],
+							src =    motif.option_info.menu_item_info_font[7],
+							dst =    motif.option_info.menu_item_info_font[8],
+							height = motif.option_info.menu_item_info_font_height,
+							defsc =  motif.defaultOptions
+						})
+						t[i].infodata[j]:draw()
+					end
 				end
 			end
 		end
-		t_conflict[joyNum] = false
-		--draw clearcolor
-		clearColor(motif.optionbgdef.bgclearcolor[1], motif.optionbgdef.bgclearcolor[2], motif.optionbgdef.bgclearcolor[3])
-		--draw layerno = 0 backgrounds
-		bgDraw(motif.optionbgdef.bg, false)
-		--draw player num
+	end
+	--draw menu cursor
+	if motif.option_info.menu_boxcursor_visible == 1 then
+		local src, dst = main.f_boxcursorAlpha(
+			motif.option_info.menu_boxcursor_alpharange[1],
+			motif.option_info.menu_boxcursor_alpharange[2],
+			motif.option_info.menu_boxcursor_alpharange[3],
+			motif.option_info.menu_boxcursor_alpharange[4],
+			motif.option_info.menu_boxcursor_alpharange[5],
+			motif.option_info.menu_boxcursor_alpharange[6]
+		)
 		for i = 1, 2 do
-			txt_keyController[i]:update({
-				font =   motif.option_info['menu_item_key_p' .. i .. '_font'][1],
-				bank =   motif.option_info['menu_item_key_p' .. i .. '_font'][2],
-				align =  motif.option_info['menu_item_key_p' .. i .. '_font'][3],
-				text =   motif.option_info['menu_itemname_key_p' .. i],
-				x =      motif.option_info['menu_item_p' .. i .. '_pos'][1],
-				y =      motif.option_info['menu_item_p' .. i .. '_pos'][2],
-				scaleX = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][1],
-				scaleY = motif.option_info['menu_item_key_p' .. i .. '_font_scale'][2],
-				r =      motif.option_info['menu_item_key_p' .. i .. '_font'][4],
-				g =      motif.option_info['menu_item_key_p' .. i .. '_font'][5],
-				b =      motif.option_info['menu_item_key_p' .. i .. '_font'][6],
-				src =    motif.option_info['menu_item_key_p' .. i .. '_font'][7],
-				dst =    motif.option_info['menu_item_key_p' .. i .. '_font'][8],
-				height = motif.option_info['menu_item_key_p' .. i .. '_font_height'],
-				defsc =  motif.defaultOptions
-			})
-			txt_keyController[i]:draw()
-		end
-		--draw menu box
-		if motif.option_info.menu_boxbg_visible == 1 then
-			local coord4 = 0
-			for i = 1, 2 do
-				if #t > motif.option_info.menu_window_visibleitems and moveTxt == (#t - motif.option_info.menu_window_visibleitems) * motif.option_info.menu_key_item_spacing[2] then
-					coord4 = motif.option_info.menu_window_visibleitems * (motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2])
-				else
-					coord4 = #t * (motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2])
-				end
+			if i == player then
 				fillRect(
 					t_pos[i][1] + motif.option_info.menu_key_boxcursor_coords[1],
-					t_pos[i][2] + motif.option_info.menu_key_boxcursor_coords[2],
+					t_pos[i][2] + motif.option_info.menu_key_boxcursor_coords[2] + (cursorPosY - 1) * motif.option_info.menu_key_item_spacing[2],
 					motif.option_info.menu_key_boxcursor_coords[3] - motif.option_info.menu_key_boxcursor_coords[1] + 1,
-					coord4,
-					motif.option_info.menu_boxbg_col[1],
-					motif.option_info.menu_boxbg_col[2],
-					motif.option_info.menu_boxbg_col[3],
-					motif.option_info.menu_boxbg_alpha[1],
-					motif.option_info.menu_boxbg_alpha[2],
+					motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1 + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2]),
+					motif.option_info.menu_boxcursor_col[1],
+					motif.option_info.menu_boxcursor_col[2],
+					motif.option_info.menu_boxcursor_col[3],
+					src,
+					dst,
 					motif.defaultOptions,
 					false
 				)
 			end
 		end
-		--draw title
-		txt_title:draw()
-		--draw menu items
-		for i = 1, #t do
-			for j = 1, 2 do
-				if i > item - cursorPosY then
-					if t[i].itemname == 'configall' then
-						if j == 1 then --player1 side (left)
-							t[i].infodisplay = motif.option_info.menu_valuename_f1
-						else --player2 side (right)
-							t[i].infodisplay = motif.option_info.menu_valuename_f2
-						end
-					end
-					if i == item and j == player then --active item
-						--draw displayname
-						t[i].data[j]:update({
-							font =   motif.option_info.menu_item_active_font[1],
-							bank =   motif.option_info.menu_item_active_font[2],
-							align =  motif.option_info.menu_item_active_font[3],
-							text =   t[i].displayname,
-							x =      t_pos[j][1],
-							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-							scaleX = motif.option_info.menu_item_active_font_scale[1],
-							scaleY = motif.option_info.menu_item_active_font_scale[2],
-							r =      motif.option_info.menu_item_active_font[4],
-							g =      motif.option_info.menu_item_active_font[5],
-							b =      motif.option_info.menu_item_active_font[6],
-							src =    motif.option_info.menu_item_active_font[7],
-							dst =    motif.option_info.menu_item_active_font[8],
-							height = motif.option_info.menu_item_active_font_height,
-							defsc =  motif.defaultOptions
-						})
-						t[i].data[j]:draw()
-						--draw vardata
-						if t[i].vardata ~= nil then
-							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
-								t[i].vardata[j]:update({
-									font =   motif.option_info.menu_item_value_conflict_font[1],
-									bank =   motif.option_info.menu_item_value_conflict_font[2],
-									align =  motif.option_info.menu_item_value_conflict_font[3],
-									text =   t[i]['vardisplay' .. j],
-									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
-									scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
-									r =      motif.option_info.menu_item_value_conflict_font[4],
-									g =      motif.option_info.menu_item_value_conflict_font[5],
-									b =      motif.option_info.menu_item_value_conflict_font[6],
-									src =    motif.option_info.menu_item_value_conflict_font[7],
-									dst =    motif.option_info.menu_item_value_conflict_font[8],
-									height = motif.option_info.menu_item_value_conflict_font_height,
-									defsc =  motif.defaultOptions
-								})
-								t[i].vardata[j]:draw()
-								t_conflict[joyNum] = true
-							else
-								t[i].vardata[j]:update({
-									font =   motif.option_info.menu_item_value_active_font[1],
-									bank =   motif.option_info.menu_item_value_active_font[2],
-									align =  motif.option_info.menu_item_value_active_font[3],
-									text =   t[i]['vardisplay' .. j],
-									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									scaleX = motif.option_info.menu_item_value_active_font_scale[1],
-									scaleY = motif.option_info.menu_item_value_active_font_scale[2],
-									r =      motif.option_info.menu_item_value_active_font[4],
-									g =      motif.option_info.menu_item_value_active_font[5],
-									b =      motif.option_info.menu_item_value_active_font[6],
-									src =    motif.option_info.menu_item_value_active_font[7],
-									dst =    motif.option_info.menu_item_value_active_font[8],
-									height = motif.option_info.menu_item_value_active_font_height,
-									defsc =  motif.defaultOptions
-								})
-								t[i].vardata[j]:draw()
-							end
-						--draw infodata
-						elseif t[i].infodata ~= nil then
-							t[i].infodata[j]:update({
-								font =   motif.option_info.menu_item_info_active_font[1],
-								bank =   motif.option_info.menu_item_info_active_font[2],
-								align =  motif.option_info.menu_item_info_active_font[3],
-								text =   t[i].infodisplay,
-								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-								scaleX = motif.option_info.menu_item_value_active_font_scale[1],
-								scaleY = motif.option_info.menu_item_value_active_font_scale[2],
-								r =      motif.option_info.menu_item_info_active_font[4],
-								g =      motif.option_info.menu_item_info_active_font[5],
-								b =      motif.option_info.menu_item_info_active_font[6],
-								src =    motif.option_info.menu_item_info_active_font[7],
-								dst =    motif.option_info.menu_item_info_active_font[8],
-								height = motif.option_info.menu_item_info_active_font_height,
-								defsc =  motif.defaultOptions
-							})
-							t[i].infodata[j]:draw()
-						end
-					else --inactive item
-						--draw displayname
-						t[i].data[j]:update({
-							font =   motif.option_info.menu_item_font[1],
-							bank =   motif.option_info.menu_item_font[2],
-							align =  motif.option_info.menu_item_font[3],
-							text =   t[i].displayname,
-							x =      t_pos[j][1],
-							y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-							scaleX = motif.option_info.menu_item_font_scale[1],
-							scaleY = motif.option_info.menu_item_font_scale[2],
-							r =      motif.option_info.menu_item_font[4],
-							g =      motif.option_info.menu_item_font[5],
-							b =      motif.option_info.menu_item_font[6],
-							src =    motif.option_info.menu_item_font[7],
-							dst =    motif.option_info.menu_item_font[8],
-							height = motif.option_info.menu_item_font_height,
-							defsc =  motif.defaultOptions
-						})
-						t[i].data[j]:draw()
-						--draw vardata
-						if t[i].vardata ~= nil then
-							if t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] ~= nil and t_keyList[joyNum][tostring(t[i]['vardisplay' .. j])] > 1 then
-								t[i].vardata[j]:update({
-									font =   motif.option_info.menu_item_value_conflict_font[1],
-									bank =   motif.option_info.menu_item_value_conflict_font[2],
-									align =  motif.option_info.menu_item_value_conflict_font[3],
-									text =   t[i]['vardisplay' .. j],
-									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									scaleX = motif.option_info.menu_item_value_conflict_font_scale[1],
-									scaleY = motif.option_info.menu_item_value_conflict_font_scale[2],
-									r =      motif.option_info.menu_item_value_conflict_font[4],
-									g =      motif.option_info.menu_item_value_conflict_font[5],
-									b =      motif.option_info.menu_item_value_conflict_font[6],
-									src =    motif.option_info.menu_item_value_conflict_font[7],
-									dst =    motif.option_info.menu_item_value_conflict_font[8],
-									height = motif.option_info.menu_item_value_conflict_font_height,
-									defsc =  motif.defaultOptions
-								})
-								t[i].vardata[j]:draw()
-								t_conflict[joyNum] = true
-							else
-								t[i].vardata[j]:update({
-									font =   motif.option_info.menu_item_value_font[1],
-									bank =   motif.option_info.menu_item_value_font[2],
-									align =  motif.option_info.menu_item_value_font[3],
-									text =   t[i]['vardisplay' .. j],
-									x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-									y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-									scaleX = motif.option_info.menu_item_value_font_scale[1],
-									scaleY = motif.option_info.menu_item_value_font_scale[2],
-									r =      motif.option_info.menu_item_value_font[4],
-									g =      motif.option_info.menu_item_value_font[5],
-									b =      motif.option_info.menu_item_value_font[6],
-									src =    motif.option_info.menu_item_value_font[7],
-									dst =    motif.option_info.menu_item_value_font[8],
-									height = motif.option_info.menu_item_value_font_height,
-									defsc =  motif.defaultOptions
-								})
-								t[i].vardata[j]:draw()
-							end
-						--draw infodata
-						elseif t[i].infodata ~= nil then
-							t[i].infodata[j]:update({
-								font =   motif.option_info.menu_item_info_font[1],
-								bank =   motif.option_info.menu_item_info_font[2],
-								align =  motif.option_info.menu_item_info_font[3],
-								text =   t[i].infodisplay,
-								x =      t_pos[j][1] + motif.option_info.menu_key_item_spacing[1],
-								y =      t_pos[j][2] + (i - 1) * motif.option_info.menu_key_item_spacing[2] - moveTxt,
-								scaleX = motif.option_info.menu_item_value_active_font_scale[1],
-								scaleY = motif.option_info.menu_item_value_active_font_scale[2],
-								r =      motif.option_info.menu_item_info_font[4],
-								g =      motif.option_info.menu_item_info_font[5],
-								b =      motif.option_info.menu_item_info_font[6],
-								src =    motif.option_info.menu_item_info_font[7],
-								dst =    motif.option_info.menu_item_info_font[8],
-								height = motif.option_info.menu_item_info_font_height,
-								defsc =  motif.defaultOptions
-							})
-							t[i].infodata[j]:draw()
-						end
-					end
-				end
-			end
-		end
-		--draw menu cursor
-		if motif.option_info.menu_boxcursor_visible == 1 then
-			local src, dst = main.f_boxcursorAlpha(
-				motif.option_info.menu_boxcursor_alpharange[1],
-				motif.option_info.menu_boxcursor_alpharange[2],
-				motif.option_info.menu_boxcursor_alpharange[3],
-				motif.option_info.menu_boxcursor_alpharange[4],
-				motif.option_info.menu_boxcursor_alpharange[5],
-				motif.option_info.menu_boxcursor_alpharange[6]
-			)
-			for i = 1, 2 do
-				if i == player then
-					fillRect(
-						t_pos[i][1] + motif.option_info.menu_key_boxcursor_coords[1],
-						t_pos[i][2] + motif.option_info.menu_key_boxcursor_coords[2] + (cursorPosY - 1) * motif.option_info.menu_key_item_spacing[2],
-						motif.option_info.menu_key_boxcursor_coords[3] - motif.option_info.menu_key_boxcursor_coords[1] + 1,
-						motif.option_info.menu_key_boxcursor_coords[4] - motif.option_info.menu_key_boxcursor_coords[2] + 1 + main.f_oddRounding(motif.option_info.menu_key_boxcursor_coords[2]),
-						motif.option_info.menu_boxcursor_col[1],
-						motif.option_info.menu_boxcursor_col[2],
-						motif.option_info.menu_boxcursor_col[3],
-						src,
-						dst,
-						motif.defaultOptions,
-						false
-					)
-				end
-			end
-		end
-		--draw layerno = 1 backgrounds
-		bgDraw(motif.optionbgdef.bg, true)
-		main.f_cmdInput()
+	end
+	--draw layerno = 1 backgrounds
+	bgDraw(motif[bgdef].bg, true)
+	main.f_cmdInput()
+	if not skipClear then
 		refresh()
 	end
+	return true
 end
 
 return options

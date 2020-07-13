@@ -16,17 +16,21 @@ type stageCamera struct {
 	zoffset        int32
 	ztopscale      float32
 	drawOffsetY    float32
+	startzoom      float32
+	zoomin         float32
+	zoomout        float32
 	mugen_zoomout  float32
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		mugen_zoomout: 1, ztopscale: 1}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, mugen_zoomout: 1}
 }
 
 type Camera struct {
 	stageCamera
+	ZoomDelayEnable             bool
 	ZoomEnable                  bool
 	ZoomMin, ZoomMax, ZoomSpeed float32
 	zoomdelay                   float32
@@ -61,7 +65,7 @@ func (c *Camera) Init() {
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
 	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
-	c.MinScale = MaxF(c.ZoomMin, MinF(c.ZoomMax, MaxF(xminscl, yminscl)))
+	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, MaxF(xminscl, yminscl)))
 	c.screenZoff = float32(c.zoffset)*c.localscl -
 		c.drawOffsetY + 240 - float32(sys.gameWidth)*
 		float32(c.localcoord[1])/float32(c.localcoord[0])
@@ -89,7 +93,7 @@ func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
 		} else if sys.turbo < 1 {
 			sclmul = Pow(sclmul, sys.turbo)
 		}
-		return MaxF(c.MinScale, MinF(c.ZoomMax, scl*sclmul))
+		return MaxF(c.MinScale, MinF(c.zoomin, scl*sclmul))
 	}
 	return 1
 }
@@ -181,7 +185,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 			sclMul, 64))
 	}
 	// Zoom delay
-	if sys.zoomDelay && sclMul > 1 {
+	if c.ZoomDelayEnable && sclMul > 1 {
 		sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
 		if tmp*sclMul > sys.xmax-sys.xmin {
 			sclMul = (sys.xmax - sys.xmin) / tmp
