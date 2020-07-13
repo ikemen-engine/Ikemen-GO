@@ -1346,6 +1346,8 @@ function start.f_selectReset()
 	p1NumChars = 1
 	p2NumChars = 1
 	winner = 0
+	winCnt = 0
+	loseCnt = 0
 	matchNo = 0
 	if not challenger then
 		t_savedData = {
@@ -1442,8 +1444,6 @@ function start.f_selectArranged()
 	p2FaceOffset = 0
 	p1RowOffset = 0
 	p2RowOffset = 0
-	winCnt = 0
-	loseCnt = 0
 	stageList = 0
 	while true do --outer loop (moved back here after pressing ESC)
 		start.f_selectReset()
@@ -1578,8 +1578,6 @@ function start.f_selectArcade()
 	p2FaceOffset = 0
 	p1RowOffset = 0
 	p2RowOffset = 0
-	winCnt = 0
-	loseCnt = 0
 	--stageEnd = true
 	local teamMode = 0
 	local numChars = 0
@@ -1794,6 +1792,8 @@ function start.f_challenger()
 	local p2NumRatio_sav = p2NumRatio
 	local p1Cell_sav = p1Cell
 	local p2Cell_sav = p2Cell
+	local winCnt_sav = winCnt
+	local loseCnt_sav = loseCnt
 	local matchNo_sav = matchNo
 	local stageNo_sav = stageNo
 	local restoreTeam_sav = restoreTeam
@@ -1857,6 +1857,8 @@ function start.f_challenger()
 	p2NumRatio = p2NumRatio_sav
 	p1Cell = p1Cell_sav
 	p2Cell = p2Cell_sav
+	winCnt = winCnt_sav
+	loseCnt = loseCnt_sav
 	matchNo = matchNo_sav
 	stageNo = stageNo_sav
 	restoreTeam = restoreTeam_sav

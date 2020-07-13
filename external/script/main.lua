@@ -2030,7 +2030,7 @@ main.t_itemname = {
 			remapInput(main.playerInput, 1)
 		end
 		main.t_pIn[2] = 1
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		if main.roundTime == -1 then
 			main.roundTime = 99
 		end
@@ -2057,7 +2057,7 @@ main.t_itemname = {
 			remapInput(main.playerInput, 1)
 		end
 		main.t_pIn[2] = 1
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		main.stageMenu = true
 		main.p2Faces = true
 		main.p2SelectMenu = true
@@ -2149,7 +2149,7 @@ main.t_itemname = {
 			remapInput(main.playerInput, 1)
 		end
 		main.t_pIn[2] = 1
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
@@ -2178,7 +2178,7 @@ main.t_itemname = {
 	--SURVIVAL CO-OP
 	['survivalcoop'] = function(cursorPosY, moveTxt, item, t)
 		main.t_pIn[2] = 2
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		main.coop = true
 		main.p2Faces = true
 		main.p2SelectMenu = true
@@ -2303,7 +2303,7 @@ main.t_itemname = {
 			remapInput(main.playerInput, 1)
 		end
 		main.t_pIn[2] = 1
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		main.versusScreen = true
 		main.t_charparam.stage = true
 		main.t_charparam.music = true
@@ -2522,7 +2522,7 @@ main.t_itemname = {
 	--ONLINE SURVIVAL
 	['netplaysurvivalcoop'] = function(cursorPosY, moveTxt, item, t)
 		main.t_pIn[2] = 2
-		main.matchWins = {1, 0, 0}
+		main.matchWins = {1, 1, 0}
 		main.coop = true
 		main.p2Faces = true
 		main.p2SelectMenu = true
