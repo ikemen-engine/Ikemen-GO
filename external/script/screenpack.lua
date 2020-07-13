@@ -73,14 +73,16 @@ function main.f_localcoord()
 	setLifebarPortraitScale(main.LB_Localcoord[1] / main.LB_Viewport43[3] * main.LB_Scale)
 	setLifebarOffsetX(main.LB_OffsetX * main.LB_Scale)
 	--debug print
-	--[[print('main.SP_Localcoord = ' .. main.SP_Localcoord[1] .. ', ' .. main.SP_Localcoord[2])
+	--[[
+	print('main.SP_Localcoord = ' .. main.SP_Localcoord[1] .. ', ' .. main.SP_Localcoord[2])
 	print('main.SP_Viewport43 = ' .. main.SP_Viewport43[1] .. ', ' .. main.SP_Viewport43[2] .. ', ' .. main.SP_Viewport43[3] .. ', ' .. main.SP_Viewport43[4])
 	print('main.SP_OffsetX = ' .. main.SP_OffsetX)
 	print('main.LB_Localcoord = ' .. main.LB_Localcoord[1] .. ', ' .. main.LB_Localcoord[2])
 	print('main.LB_Viewport43 = ' .. main.LB_Viewport43[1] .. ', ' .. main.LB_Viewport43[2] .. ', ' .. main.LB_Viewport43[3] .. ', ' .. main.LB_Viewport43[4])
 	print('main.LB_Viewport = ' .. main.LB_Viewport[1] .. ', ' .. main.LB_Viewport[2] .. ', ' .. main.LB_Viewport[3] .. ', ' .. main.LB_Viewport[4])
 	print('main.LB_Scale = ' .. main.LB_Scale)
-	print('main.LB_OffsetX = ' .. main.LB_OffsetX)]]
+	print('main.LB_OffsetX = ' .. main.LB_OffsetX)
+	--]]
 end
 
 main.f_localcoord()

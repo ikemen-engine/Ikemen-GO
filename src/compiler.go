@@ -2614,11 +2614,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
 			vi, ok := c.vars[c.token[1:]]
 			if !ok {
-				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + "Is not defined")
+				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + " is not defined")
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + "It is illegal")
+			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + " is illegal")
 		}
 	}
 	c.token = c.tokenizer(in)

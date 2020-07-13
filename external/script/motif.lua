@@ -2202,10 +2202,14 @@ motif.glyphs_data = {}
 for k, v in pairs(motif.glyphs) do
 	--https://www.ssec.wisc.edu/~tomw/java/unicode.html#xE000
 	k = numberToRune(v[1] + 0xe000) --Private Use 0xe000 (57344) - 0xf8ff (63743)
-	anim = v[1] .. ', ' .. v[2] .. ', 0, 0, -1'
-	motif.glyphs_data[k] = animNew(motif.files.glyphs_data, anim)
-	--animSetScale(motif.glyphs_data[k], 1, 1)
-	animUpdate(motif.glyphs_data[k])
+	local anim = animNew(motif.files.glyphs_data, v[1] .. ', ' .. v[2] .. ', 0, 0, -1')
+	--animSetScale(anim, 1, 1)
+	animUpdate(anim)
+	motif.glyphs_data[k] = {
+		anim = anim,
+		--info = animGetSpriteInfo(anim, v[1], v[2]),
+		info = animGetSpriteInfo(anim),
+	}
 end
 
 if motif.vs_screen.p1_name_active_font == nil then

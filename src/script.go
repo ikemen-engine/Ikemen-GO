@@ -145,6 +145,40 @@ func systemScriptInit(l *lua.LState) {
 		a.Draw()
 		return 0
 	})
+	luaRegister(l, "animGetSpriteInfo", func(*lua.LState) int {
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		if len(a.anim.frames) == 0 {
+			return 0
+		}
+		var spr *Sprite
+		if l.GetTop() >= 3 {
+			spr = a.anim.sff.GetSprite(int16(numArg(l, 2)), int16(numArg(l, 3)))
+		} else {
+			spr = a.anim.spr
+		}
+		if spr == nil {
+			return 0
+		}
+		tbl := l.NewTable()
+		tbl.RawSetString("Group", lua.LNumber(spr.Group))
+		tbl.RawSetString("Number", lua.LNumber(spr.Number))
+		subt := l.NewTable()
+		for k, v := range spr.Size {
+			subt.RawSetInt(k+1, lua.LNumber(v))
+		}
+		tbl.RawSetString("Size", subt)
+		subt = l.NewTable()
+		for k, v := range spr.Offset {
+			subt.RawSetInt(k+1, lua.LNumber(v))
+		}
+		tbl.RawSetString("Offset", subt)
+		tbl.RawSetString("palidx", lua.LNumber(spr.palidx))
+		l.Push(tbl)
+		return 1
+	})
 	luaRegister(l, "animNew", func(*lua.LState) int {
 		s, ok := toUserData(l, 1).(*Sff)
 		if !ok {
@@ -1090,7 +1124,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "getCharVictoryQuote", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			v := int(-1)
+			v := -1
 			if l.GetTop() >= 2 {
 				v = int(numArg(l, 2))
 			} else {
@@ -1256,27 +1290,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.Push(lua.LBool(found))
 		return 1
-	})
-	luaRegister(l, "getSpriteInfo", func(*lua.LState) int {
-		var s *Sprite
-		var err error
-		def := strArg(l, 1)
-		err = LoadFile(&def, "", func(file string) error {
-			s, err = loadFromSff(file, int16(numArg(l, 2)), int16(numArg(l, 3)))
-			return err
-		})
-		if err != nil {
-			l.Push(lua.LNumber(0))
-			l.Push(lua.LNumber(0))
-			l.Push(lua.LNumber(0))
-			l.Push(lua.LNumber(0))
-			return 4
-		}
-		l.Push(lua.LNumber(s.Size[0]))
-		l.Push(lua.LNumber(s.Size[1]))
-		l.Push(lua.LNumber(s.Offset[0]))
-		l.Push(lua.LNumber(s.Offset[1]))
-		return 4
 	})
 	luaRegister(l, "getStageAttachedChar", func(*lua.LState) int {
 		attachedchardef := sys.sel.GetStageAttachedChar(int(numArg(l, 1)))

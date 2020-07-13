@@ -5,23 +5,6 @@ local options = {}
 local modified = false
 local needReload = false
 
-main.timeFramesPerCount = getTimeFramesPerCount()
-if config.RoundsNumSingle == -1 then
-	main.roundsNumSingle = getMatchWins()
-else
-	main.roundsNumSingle = config.RoundsNumSingle
-end
-if config.RoundsNumTeam == -1 then
-	main.roundsNumTeam = getMatchWins()
-else
-	main.roundsNumTeam = config.RoundsNumTeam
-end
-if config.MaxDrawGames == -2 then
-	main.maxDrawGames = getMatchMaxDrawGames()
-else
-	main.maxDrawGames = config.MaxDrawGames
-end
-
 --return string depending on bool
 function options.f_boolDisplay(bool, t, f)
 	t = t or motif.option_info.menu_valuename_yes
@@ -49,7 +32,7 @@ end
 --save configuration
 function options.f_saveCfg(reload)
 	--Data saving to config.json
-	local file = io.open("save/config.json","w+")
+	local file = io.open(main.flags['-config'], 'w+')
 	file:write(json.encode(config, {indent = true}))
 	file:close()
 	--Reload game if needed
@@ -264,9 +247,8 @@ options.t_itemname = {
 			config.ZoomDelay = false
 			config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
-			main.roundsNumSingle = getMatchWins()
-			main.roundsNumTeam = getMatchWins()
-			main.maxDrawGames = getMatchMaxDrawGames()
+			main.timeFramesPerCount = getTimeFramesPerCount()
+			main.f_updateRoundsNum()
 			options.f_resetVardisplay(options.menu)
 			setAllowDebugKeys(config.DebugKeys)
 			setAudioDucking(config.AudioDucking)

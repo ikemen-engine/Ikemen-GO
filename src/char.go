@@ -2825,7 +2825,7 @@ func (c *Char) roundsExisted() int32 {
 }
 func (c *Char) roundState() int32 {
 	switch {
-	case sys.matchOver() && sys.roundOver():
+	case sys.postMatchFlg:
 		return -1
 	case sys.intro > sys.lifebar.ro.ctrl_time+1:
 		return 0

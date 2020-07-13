@@ -2563,7 +2563,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	//fightfx scale
-	//TODO: below formula is not reliable on 320x180 localcoord
+	//TODO: mugen formula is unknown, below code is not reliable on 320x180 localcoord
 	/*var localcoord43 float32
 	if sys.lifebarLocalcoord[0] >= sys.lifebarLocalcoord[1] {
 		localcoord43 = (float32(sys.lifebarLocalcoord[1]) / 3) * 4
@@ -2572,7 +2572,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	}
 	if sc := float32(sys.lifebarLocalcoord[0]) / localcoord43 * 320 / float32(sys.lifebarLocalcoord[0]) * l.fx_scale; sc != 1 {
 		for _, a := range l.fat {
-			a.scale = [...]float32{sc, sc}
+			a.start_scale = [...]float32{sc, sc}
 		}
 	}*/
 	//Iterate over map in a stable iteration order

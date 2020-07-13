@@ -7,12 +7,14 @@ main = {}
 math.randomseed(os.time())
 
 main.flags = getCommandLineFlags()
+if main.flags['-config'] == nil then main.flags['-config'] = 'save/config.json' end
+if main.flags['-stats'] == nil then main.flags['-stats'] = 'save/stats.json' end
 
 --One-time load of the json routines
 json = (loadfile 'external/script/dkjson.lua')()
 
 --Data loading from config.json
-local file = io.open(main.flags['-config'] or "save/config.json","r")
+local file = io.open(main.flags['-config'], 'r')
 config = json.decode(file:read("*all"))
 file:close()
 
@@ -21,7 +23,7 @@ if config.SafeLoading then
 end
 
 --Data loading from stats.json
-file = io.open("save/stats.json","r")
+file = io.open(main.flags['-stats'], 'r')
 stats = json.decode(file:read("*all"))
 file:close()
 
@@ -1052,6 +1054,25 @@ function main.f_drawInput(t, info, background, category, controllerNo, keyBreak)
 	return input
 end
 
+--update rounds to win variables
+function main.f_updateRoundsNum()
+	if config.RoundsNumSingle == -1 then
+		main.roundsNumSingle = getMatchWins()
+	else
+		main.roundsNumSingle = config.RoundsNumSingle
+	end
+	if config.RoundsNumTeam == -1 then
+		main.roundsNumTeam = getMatchWins()
+	else
+		main.roundsNumTeam = config.RoundsNumTeam
+	end
+	if config.MaxDrawGames == -2 then
+		main.maxDrawGames = getMatchMaxDrawGames()
+	else
+		main.maxDrawGames = config.MaxDrawGames
+	end
+end
+
 --refresh screen every 0.02 during initial loading
 main.nextRefresh = os.clock() + 0.02
 function main.loadingRefresh(txt)
@@ -1071,12 +1092,17 @@ require('external.script.global')
 --; COMMAND LINE QUICK VS
 --;===========================================================
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
+	local chars = {}
+	local ref = 0
 	local p1TeamMode = 0
 	local p2TeamMode = 0
-	--add chars
 	local p1NumChars = 0
 	local p2NumChars = 0
 	local roundTime = config.RoundTime
+	loadLifebar(main.lifebarDef)
+	local frames = getTimeFramesPerCount()
+	main.f_updateRoundsNum()
+	local matchWins = {main.roundsNumSingle, main.roundsNumTeam, main.maxDrawGames}
 	local t = {}
 	for k, v in pairs(main.flags) do
 		if k:match('^-p[0-9]+$') then
@@ -1126,9 +1152,10 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 		elseif k:match('^-time$') then
 			roundTime = tonumber(v)
 		elseif k:match('^-rounds$') then
-			setMatchWins(tonumber(v))
+			matchWins[1] = tonumber(v)
+			matchWins[2] = tonumber(v)
 		elseif k:match('^-draws$') then
-			setMatchMaxDrawGames(tonumber(v))
+			matchWins[3] = tonumber(v)
 		end
 	end
 	if p1TeamMode == 0 and p1NumChars > 1 then
@@ -1137,8 +1164,6 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	if p2TeamMode == 0 and p2NumChars > 1 then
 		p2TeamMode = 1
 	end
-	loadLifebar(main.lifebarDef)
-	local frames = getTimeFramesPerCount()
 	local p1FramesMul = 1
 	local p2FramesMul = 1
 	if p1TeamMode == 3 then
@@ -1148,6 +1173,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 		p2FramesMul = p2NumChars
 	end
 	frames = frames * math.max(p1FramesMul, p2FramesMul)
+	if p2TeamMode == 0 then
+		setMatchWins(matchWins[1])
+	else
+		setMatchWins(matchWins[2])
+	end
+	setMatchMaxDrawGames(matchWins[3])
 	setTimeFramesPerCount(frames)
 	setRoundTime(math.max(-1, roundTime * frames))
 	setGuardBar(config.BarGuard)
@@ -1176,8 +1207,12 @@ if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	if main.debugLog then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	--iterate over the table in -p order ascending
 	for k, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
-		addChar(v.character)
-		selectChar(v.player, v.num - 1, v.pal)
+		if chars[v.character] == nil then
+			addChar(v.character)
+			chars[v.character] = ref
+			ref = ref + 1
+		end
+		selectChar(v.player, chars[v.character], v.pal)
 		setCom(v.num, v.ai)
 		overrideCharData(v.num, v.override)
 	end
@@ -1729,6 +1764,8 @@ loadDebugFont(config.DebugFont)
 txt_loading:draw()
 refresh()
 loadLifebar(motif.files.fight)
+main.timeFramesPerCount = getTimeFramesPerCount()
+main.f_updateRoundsNum()
 main.loadingRefresh(txt_loading)
 
 --print warning if training character is missing
@@ -2410,7 +2447,7 @@ main.t_itemname = {
 				sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 				config.IP[name] = address
 				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
-				local file = io.open("save/config.json","w+")
+				local file = io.open(main.flags['-config'], 'w+')
 				file:write(json.encode(config, {indent = true}))
 				file:close()
 			else
@@ -2558,7 +2595,7 @@ function main.f_deleteIP(item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 		resetKey()
 		config.IP[t[item].itemname:gsub('^ip_', '')] = nil
-		local file = io.open("save/config.json","w+")
+		local file = io.open(main.flags['-config'], 'w+')
 		file:write(json.encode(config, {indent = true}))
 		file:close()
 		for i = 1, #t do

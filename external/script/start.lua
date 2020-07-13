@@ -517,12 +517,12 @@ t_sortRanking['vs100kumite'] = t_sortRanking.survival
 
 --data saving to stats.json
 function f_saveStats()
-	local file = io.open("save/stats.json","w+")
+	local file = io.open(main.flags['-stats'], 'w+')
 	file:write(json.encode(stats, {indent = true}))
 	file:close()
 end
 
---store saved data in save/stats.json
+--store saved data to stats.json
 function start.f_storeSavedData(mode, cleared)
 	if stats.modes == nil then
 		stats.modes = {}
@@ -1507,7 +1507,7 @@ function start.f_selectArranged()
 				end
 				--no more matches left
 				if matchNo == lastMatch then
-					--store saved data in save/stats.json
+					--store saved data to stats.json
 					start.f_storeSavedData(gameMode(), true)
 					--credits
 					if motif.end_credits.enabled == 1 and main.f_fileExists(motif.end_credits.storyboard) then
@@ -1531,7 +1531,7 @@ function start.f_selectArranged()
 				end
 			--player lost
 			elseif winner ~= -1 then
-				--store saved data in save/stats.json
+				--store saved data to stats.json
 				start.f_storeSavedData(gameMode(), true and gameMode() ~= 'bossrush')
 				--game over
 				if motif.game_over_screen.enabled == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
@@ -1680,7 +1680,7 @@ function start.f_selectArcade()
 			elseif winner == 1 then --player won
 				--no more matches left
 				if matchNo == lastMatch then
-					--store saved data in save/stats.json
+					--store saved data to stats.json
 					start.f_storeSavedData(gameMode(), true)
 					--ending
 					if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') then --not timeattack
@@ -1714,7 +1714,7 @@ function start.f_selectArcade()
 				end
 			--player lost and doesn't have any credits left
 			elseif main.credits == 0 then
-				--store saved data in save/stats.json
+				--store saved data to stats.json
 				start.f_storeSavedData(gameMode(), false)
 				--game over
 				if motif.game_over_screen.enabled == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
@@ -1732,7 +1732,7 @@ function start.f_selectArcade()
 				--continue screen
 				if not gameMode('netplayteamcoop') then
 					if not continueFlag then
-						--store saved data in save/stats.json
+						--store saved data to stats.json
 						start.f_storeSavedData(gameMode(), false)
 						--game over
 						if motif.continue_screen.external_gameover == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
@@ -2362,13 +2362,21 @@ local t_p1TeamMenu = {
 	{data = text:create({}), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag, mode = 3, chars = p1NumTag},
 	{data = text:create({}), itemname = 'ratio', displayname = motif.select_info.teammenu_itemname_ratio, mode = 2, chars = p1NumRatio},
 }
-t_p1TeamMenu = main.f_tableClean(t_p1TeamMenu, main.t_sort.select_info)
+t_p1TeamMenuSorted = main.f_tableClean(t_p1TeamMenu, main.t_sort.select_info)
 
 function start.f_p1TeamMenu()
 	local t = {}
-	for k, v in ipairs(t_p1TeamMenu) do
+	for k, v in ipairs(t_p1TeamMenuSorted) do
 		if main.p1TeamMenu[v.itemname] then
 			table.insert(t, v)
+		end
+	end
+	if #t == 0 then --all valid team modes disabled by screenpack
+		for k, v in ipairs(t_p1TeamMenu) do
+			if main.p1TeamMenu[v.itemname] then
+				table.insert(t, v)
+				break
+			end
 		end
 	end
 	if #t == 1 then --only 1 team mode available, skip selection
@@ -2665,16 +2673,24 @@ local t_p2TeamMenu = {
 	{data = text:create({}), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag, mode = 3, chars = p2NumTag},
 	{data = text:create({}), itemname = 'ratio', displayname = motif.select_info.teammenu_itemname_ratio, mode = 2, chars = p2NumRatio},
 }
-t_p2TeamMenu = main.f_tableClean(t_p2TeamMenu, main.t_sort.select_info)
+t_p2TeamMenuSorted = main.f_tableClean(t_p2TeamMenu, main.t_sort.select_info)
 
 function start.f_p2TeamMenu()
 	if main.coop and not p1TeamEnd then
 		return
 	end
 	local t = {}
-	for k, v in ipairs(t_p1TeamMenu) do
+	for k, v in ipairs(t_p2TeamMenuSorted) do
 		if main.p2TeamMenu[v.itemname] then
 			table.insert(t, v)
+		end
+	end
+	if #t == 0 then --all valid team modes disabled by screenpack
+		for k, v in ipairs(t_p2TeamMenu) do
+			if main.p2TeamMenu[v.itemname] then
+				table.insert(t, v)
+				break
+			end
 		end
 	end
 	if #t == 1 then --only 1 team mode available, skip selection

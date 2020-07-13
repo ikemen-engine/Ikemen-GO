@@ -162,12 +162,12 @@ type Animation struct {
 	interpolate_blend_srcalpha float32
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
-	scale                      [2]float32
+	start_scale                [2]float32
 }
 
 func newAnimation(sff *Sff) *Animation {
 	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true,
-		remap: make(RemapPreset), scale: [...]float32{1, 1}}
+		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
 }
 func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	a := newAnimation(sff)
@@ -474,8 +474,8 @@ func (a *Animation) UpdateSprite() {
 	}
 	a.newframe, a.drawidx = false, a.current
 
-	a.scale_x = a.scale[0]
-	a.scale_y = a.scale[1]
+	a.scale_x = a.start_scale[0]
+	a.scale_y = a.start_scale[1]
 	a.angle = 0
 	a.interpolate_offset_x = 0
 	a.interpolate_offset_y = 0
