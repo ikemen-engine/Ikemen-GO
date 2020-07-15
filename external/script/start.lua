@@ -118,7 +118,7 @@ function start.f_makeRoster(t_ret)
 	local t_static = {}
 	local t_removable = {}
 	--Arcade / Time Attack
-	if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') or gameMode('timeattack') then
+	if gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') or gamemode('timeattack') then
 		t_static = main.t_orderChars
 		if p2Ratio then --Ratio
 			if main.t_selChars[start.t_p1Selected[1].ref + 1].ratiomatches ~= nil and main.t_selOptions[main.t_selChars[start.t_p1Selected[1].ref + 1].ratiomatches .. "_arcaderatiomatches"] ~= nil then --custom settings exists as char param
@@ -140,7 +140,7 @@ function start.f_makeRoster(t_ret)
 			end
 		end
 	--Survival
-	elseif gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+	elseif gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 		t_static = main.t_orderSurvival
 		if main.t_selChars[start.t_p1Selected[1].ref + 1].maxmatches ~= nil and main.t_selOptions[main.t_selChars[start.t_p1Selected[1].ref + 1].maxmatches .. "_survivalmaxmatches"] ~= nil then --custom settings exists as char param
 			t = start.f_unifySettings(main.t_selOptions[main.t_selChars[start.t_p1Selected[1].ref + 1].maxmatches .. "_survivalmaxmatches"], t_static)
@@ -148,19 +148,19 @@ function start.f_makeRoster(t_ret)
 			t = start.f_unifySettings(main.t_selOptions.survivalmaxmatches, t_static)
 		end
 	--Boss Rush
-	elseif gameMode('bossrush') then
+	elseif gamemode('bossrush') then
 		t_static = {main.t_bossChars}
 		for i = 1, math.ceil(#main.t_bossChars / p2NumChars) do --generate ratiomatches style table
 			table.insert(t, {['rmin'] = p2NumChars, ['rmax'] = p2NumChars, ['order'] = 1})
 		end
 	--VS 100 Kumite
-	elseif gameMode('vs100kumite') then
+	elseif gamemode('vs100kumite') then
 		t_static = {main.t_randomChars}
 		for i = 1, 100 do --generate ratiomatches style table for 100 matches
 			table.insert(t, {['rmin'] = p2NumChars, ['rmax'] = p2NumChars, ['order'] = 1})
 		end
 	else
-		panicError('LUA ERROR: ' .. gameMode() .. ' game mode unrecognized by start.f_makeRoster()')
+		panicError('LUA ERROR: ' .. gamemode() .. ' game mode unrecognized by start.f_makeRoster()')
 	end
 	--generate roster
 	t_removable = main.f_tableCopy(t_static) --copy into editable order table
@@ -170,7 +170,7 @@ function start.f_makeRoster(t_ret)
 			break
 		end
 		if t_removable[t[i].order] ~= nil then
-			if #t_removable[t[i].order] == 0 and gameMode('vs100kumite') then
+			if #t_removable[t[i].order] == 0 and gamemode('vs100kumite') then
 				t_removable = main.f_tableCopy(t_static) --ensure that there will be at least 100 matches in VS 100 Kumite mode
 			end
 			if #t_removable[t[i].order] >= 1 then --there is at least 1 character with this order available
@@ -203,7 +203,7 @@ function start.f_aiRamp(currentMatch)
 		t_aiRamp = {}
 	end
 	--Arcade
-	if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') or gameMode('timeattack') then
+	if gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') or gamemode('timeattack') then
 		if start.p2TeamMode == 0 then --Single
 			start_match = main.t_selOptions.arcadestart.wins
 			start_diff = main.t_selOptions.arcadestart.offset
@@ -220,7 +220,7 @@ function start.f_aiRamp(currentMatch)
 			end_match =  main.t_selOptions.teamend.wins
 			end_diff = main.t_selOptions.teamend.offset
 		end
-	elseif gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+	elseif gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 		start_match = main.t_selOptions.survivalstart.wins
 		start_diff = main.t_selOptions.survivalstart.offset
 		end_match =  main.t_selOptions.survivalend.wins
@@ -292,7 +292,7 @@ end
 function start.f_remapAI()
 	--Offset
 	local offset = 0
-	if config.AIRamping and (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') or gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop')) then
+	if config.AIRamping and (gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') or gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
 		offset = t_aiRamp[matchNo] - config.Difficulty
 	end
 	--Player 1
@@ -576,7 +576,7 @@ function start.f_setStage(num)
 		elseif main.t_charparam.stage and main.t_selChars[start.t_p2Selected[1].ref + 1].stage ~= nil then --stage assigned as character param
 			num = math.random(1, #main.t_selChars[start.t_p2Selected[1].ref + 1].stage)
 			num = main.t_selChars[start.t_p2Selected[1].ref + 1].stage[num]
-		elseif (gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[start.t_p2Selected[1].ref + 1].order] ~= nil then --stage assigned as stage order param
+		elseif (gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop')) and main.t_orderStages[main.t_selChars[start.t_p2Selected[1].ref + 1].order] ~= nil then --stage assigned as stage order param
 			num = math.random(1, #main.t_orderStages[main.t_selChars[start.t_p2Selected[1].ref + 1].order])
 			num = main.t_orderStages[main.t_selChars[start.t_p2Selected[1].ref + 1].order][num]
 		else --stage randomly selected
@@ -606,7 +606,7 @@ function start.f_setMusic(num)
 				loopstart = main.t_selStages[num][v][track].bgmloopstart
 				loopend = main.t_selStages[num][v][track].bgmloopend
 			end
-		elseif not gameMode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
+		elseif not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
 			if main.t_charparam.music and main.t_charparam.rivals and start.f_rivalsMatch(v) then --music assigned as rivals param
 				track = math.random(1, #main.t_selChars[start.t_p1Selected[1].ref + 1].rivals[matchNo][v])
 				music = main.t_selChars[start.t_p1Selected[1].ref + 1].rivals[matchNo][v][track].bgmusic
@@ -759,7 +759,7 @@ end
 --sets life recovery and ratio level
 function start.f_overrideCharData()
 	--round 2+ in survival mode
-	if matchNo >= 2 and (gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop')) then
+	if matchNo >= 2 and (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
 		local lastRound = #t_gameStats.match
 		local removedNum = 0
 		local p1Count = 0
@@ -789,12 +789,12 @@ function start.f_overrideCharData()
 				--only check P1 side characters
 				if player % 2 ~= 0 and player <= (p1NumChars + removedNum) * 2 then --odd value, team size check just in case
 					--in normal survival remove character from team if he/she has been defeated
-					if gameMode('survival') and (not t_gameStats.match[lastRound][player].win or t_gameStats.match[lastRound][player].ko) then
+					if gamemode('survival') and (not t_gameStats.match[lastRound][player].win or t_gameStats.match[lastRound][player].ko) then
 						table.remove(start.t_p1Selected, t_gameStats.match[lastRound][player].memberNo + 1 - removedNum)
 						removedNum = removedNum + 1
 						p1NumChars = p1NumChars - 1
 					--in coop modes defeated character can still fight
-					elseif gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+					elseif gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 						local life = t_gameStats.match[lastRound][player].life
 						if life <= 0 then
 							life = math.max(1, t_gameStats.match[lastRound][player].lifeMax * config.TurnsRecoveryBase)
@@ -1242,22 +1242,22 @@ end
 
 --return formatted record text table
 function start.f_getRecordText()
-	if motif.select_info['record_' .. gameMode() .. '_text'] == nil or stats.modes == nil or stats.modes[gameMode()] == nil or stats.modes[gameMode()].ranking == nil or stats.modes[gameMode()].ranking[1] == nil then
+	if motif.select_info['record_' .. gamemode() .. '_text'] == nil or stats.modes == nil or stats.modes[gamemode()] == nil or stats.modes[gamemode()].ranking == nil or stats.modes[gamemode()].ranking[1] == nil then
 		return {}
 	end
-	local text = motif.select_info['record_' .. gameMode() .. '_text']
+	local text = motif.select_info['record_' .. gamemode() .. '_text']
 	--time
-	text = start.f_clearTimeText(text, stats.modes[gameMode()].ranking[1].time)
+	text = start.f_clearTimeText(text, stats.modes[gamemode()].ranking[1].time)
 	--score
-	text = text:gsub('%%p', tostring(stats.modes[gameMode()].ranking[1].score))
+	text = text:gsub('%%p', tostring(stats.modes[gamemode()].ranking[1].score))
 	--char name
 	local name = '?' --in case character being removed from roster
-	if main.t_charDef[stats.modes[gameMode()].ranking[1].chars[1]] ~= nil then
-		name = main.t_selChars[main.t_charDef[stats.modes[gameMode()].ranking[1].chars[1]] + 1].displayname
+	if main.t_charDef[stats.modes[gamemode()].ranking[1].chars[1]] ~= nil then
+		name = main.t_selChars[main.t_charDef[stats.modes[gamemode()].ranking[1].chars[1]] + 1].displayname
 	end
 	text = text:gsub('%%c', name)
 	--player name
-	text = text:gsub('%%n', stats.modes[gameMode()].ranking[1].name)
+	text = text:gsub('%%n', stats.modes[gamemode()].ranking[1].name)
 	return main.f_extractText(text)
 end
 
@@ -1315,7 +1315,7 @@ function start.f_selectReset()
 		p2FaceY = motif.select_info.pos[2]
 	end
 	start.f_resetGrid()
-	if gameMode('netplayversus') or gameMode('netplayteamcoop') or gameMode('netplaysurvivalcoop') then
+	if gamemode('netplayversus') or gamemode('netplayteamcoop') or gamemode('netplaysurvivalcoop') then
 		start.p1TeamMode = 0
 		start.p2TeamMode = 0
 		stageNo = 0
@@ -1409,13 +1409,13 @@ function start.f_selectSimple()
 				return
 			end
 			if winner == -1 then break end --player exit the game via ESC
-			start.f_storeSavedData(gameMode(), winner == 1)
+			start.f_storeSavedData(gamemode(), winner == 1)
 			start.f_selectReset()
 			--main.f_cmdInput()
 			refresh()
 		end
 		esc(false) --reset ESC
-		if gameMode() == 'netplayversus' then
+		if gamemode('netplayversus') then
 			--resetRemapInput()
 			--main.reconnect = winner == -1
 		end
@@ -1493,7 +1493,7 @@ function start.f_selectArranged()
 			start.f_saveData()
 			if winner == -1 then break end --player exit the game via ESC
 			--player won in any mode or lost/draw in VS 100 Kumite mode
-			if winner == 1 or gameMode('vs100kumite') then
+			if winner == 1 or gamemode('vs100kumite') then
 				--infinite matches flag detected
 				if t_roster[matchNo + 1] ~= nil and t_roster[matchNo + 1][1] == -1 then
 					--remove flag
@@ -1508,7 +1508,7 @@ function start.f_selectArranged()
 				--no more matches left
 				if matchNo == lastMatch then
 					--store saved data to stats.json
-					start.f_storeSavedData(gameMode(), true)
+					start.f_storeSavedData(gamemode(), true)
 					--credits
 					if motif.end_credits.enabled == 1 and main.f_fileExists(motif.end_credits.storyboard) then
 						storyboard.f_storyboard(motif.end_credits.storyboard)
@@ -1532,7 +1532,7 @@ function start.f_selectArranged()
 			--player lost
 			elseif winner ~= -1 then
 				--store saved data to stats.json
-				start.f_storeSavedData(gameMode(), true and gameMode() ~= 'bossrush')
+				start.f_storeSavedData(gamemode(), true and gamemode() ~= 'bossrush')
 				--game over
 				if motif.game_over_screen.enabled == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
 					storyboard.f_storyboard(motif.game_over_screen.storyboard)
@@ -1549,7 +1549,7 @@ function start.f_selectArranged()
 			refresh()
 		end
 		esc(false) --reset ESC
-		if gameMode() == 'netplaysurvivalcoop' then
+		if gamemode('netplaysurvivalcoop') then
 			--resetRemapInput()
 			--main.reconnect = winner == -1
 		end
@@ -1602,7 +1602,7 @@ function start.f_selectArcade()
 				--generate AI ramping table
 				start.f_aiRamp(1)
 				--intro
-				if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') then --not timeattack
+				if gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') then --not timeattack
 					local tPos = main.t_selChars[start.t_p1Selected[1].ref + 1]
 					if tPos.intro ~= nil and main.f_fileExists(tPos.intro) then
 						storyboard.f_storyboard(tPos.intro)
@@ -1679,9 +1679,9 @@ function start.f_selectArcade()
 				--no more matches left
 				if matchNo == lastMatch then
 					--store saved data to stats.json
-					start.f_storeSavedData(gameMode(), true)
+					start.f_storeSavedData(gamemode(), true)
 					--ending
-					if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') then --not timeattack
+					if gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') then --not timeattack
 						local tPos = main.t_selChars[start.t_p1Selected[1].ref + 1]
 						if tPos.ending ~= nil and main.f_fileExists(tPos.ending) then
 							storyboard.f_storyboard(tPos.ending)
@@ -1713,7 +1713,7 @@ function start.f_selectArcade()
 			--player lost and doesn't have any credits left
 			elseif main.credits == 0 then
 				--store saved data to stats.json
-				start.f_storeSavedData(gameMode(), false)
+				start.f_storeSavedData(gamemode(), false)
 				--game over
 				if motif.game_over_screen.enabled == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
 					storyboard.f_storyboard(motif.game_over_screen.storyboard)
@@ -1728,10 +1728,10 @@ function start.f_selectArcade()
 			--player lost but can continue
 			else
 				--continue screen
-				if not gameMode('netplayteamcoop') then
+				if not gamemode('netplayteamcoop') then
 					if not continueFlag then
 						--store saved data to stats.json
-						start.f_storeSavedData(gameMode(), false)
+						start.f_storeSavedData(gamemode(), false)
 						--game over
 						if motif.continue_screen.external_gameover == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
 							storyboard.f_storyboard(motif.game_over_screen.storyboard)
@@ -1746,7 +1746,7 @@ function start.f_selectArcade()
 					end
 				end
 				--character selection
-				if (not main.quickContinue and not config.QuickContinue) or gameMode('netplayteamcoop') then --true if 'Quick Continue' is disabled or we're playing online
+				if (not main.quickContinue and not config.QuickContinue) or gamemode('netplayteamcoop') then --true if 'Quick Continue' is disabled or we're playing online
 					start.t_p1Selected = {}
 					p1SelEnd = false
 					selScreenEnd = false
@@ -1764,7 +1764,7 @@ function start.f_selectArcade()
 			refresh()
 		end
 		esc(false) --reset ESC
-		if gameMode() == 'netplayteamcoop' then
+		if gamemode() == 'netplayteamcoop' then
 			--resetRemapInput()
 			--main.reconnect = winner == -1
 		end
@@ -1801,7 +1801,7 @@ function start.f_challenger()
 	local p1NumChars_sav = p1NumChars
 	local p2TeamMode_sav = start.p2TeamMode
 	local p2NumChars_sav = p2NumChars
-	local gameMode = gameMode()
+	local gameMode = gamemode()
 	local p1score_sav = main.t_lifebar.p1score
 	local p2score_sav = main.t_lifebar.p2score
 	--temp mode data
@@ -1817,7 +1817,7 @@ function start.f_challenger()
 	main.t_lifebar.p1score = true
 	main.t_lifebar.p2score = true
 	main.f_resetCharparam()
-	setGameMode('teamversus')
+	setgamemode('teamversus')
 	--start challenger match
 	start.f_selectSimple()
 	--restore mode data
@@ -1832,7 +1832,7 @@ function start.f_challenger()
 	main.t_lifebar.p1score = p1score_sav
 	main.t_lifebar.p2score = p2score_sav
 	main.t_charparam = t_charparam_sav
-	setGameMode(gameMode)
+	setgamemode(gameMode)
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		challenger = false
 		start.f_selectReset()
@@ -3748,7 +3748,7 @@ local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
 end
 
 local function f_lowestRankingData(data)
-	if stats.modes == nil or stats.modes[gameMode()] == nil or stats.modes[gameMode()].ranking == nil or #stats.modes[gameMode()].ranking < motif.rankings.max_entries then
+	if stats.modes == nil or stats.modes[gamemode()] == nil or stats.modes[gamemode()].ranking == nil or #stats.modes[gamemode()].ranking < motif.rankings.max_entries then
 		if data == 'score' then
 			return 0
 		else --time
@@ -3756,7 +3756,7 @@ local function f_lowestRankingData(data)
 		end
 	end
 	local ret = 0
-	for k, v in ipairs(stats.modes[gameMode()].ranking) do
+	for k, v in ipairs(stats.modes[gamemode()].ranking) do
 		if k == 1 or (data == 'score' and ret > v[data]) or (data == 'time' and ret < v[data]) then
 			ret = v[data]
 		end
@@ -3790,7 +3790,7 @@ function start.f_resultInit()
 	local t = main.resultsTable
 	local stateType = ''
 	local winBgm = true
-	if gameMode('arcade') or gameMode('teamcoop') or gameMode('netplayteamcoop') then
+	if gamemode('arcade') or gamemode('teamcoop') or gamemode('netplayteamcoop') then
 		if winnerteam() ~= 1 or matchNo < lastMatch then
 			return false
 		end
@@ -3800,13 +3800,13 @@ function start.f_resultInit()
 		start.t_result.prefix = 'wintext'
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_winscreen
-	elseif gameMode('bossrush') then
+	elseif gamemode('bossrush') then
 		if winnerteam() ~= 1 or matchNo < lastMatch then
 			return false
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_resultBossRush
-	elseif gameMode('survival') or gameMode('survivalcoop') or gameMode('netplaysurvivalcoop') then
+	elseif gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 		if winnerteam() == 1 and (matchNo < lastMatch or (t_roster[matchNo + 1] ~= nil and t_roster[matchNo + 1][1] == -1)) then
 			return false
 		end
@@ -3818,7 +3818,7 @@ function start.f_resultInit()
 		else
 			stateType = '_win'
 		end
-	elseif gameMode('vs100kumite') then
+	elseif gamemode('vs100kumite') then
 		if matchNo < lastMatch then
 			return false
 		end
@@ -3830,7 +3830,7 @@ function start.f_resultInit()
 		else
 			stateType = '_win'
 		end
-	elseif gameMode('timeattack') then
+	elseif gamemode('timeattack') then
 		if winnerteam() ~= 1 or matchNo < lastMatch then
 			return false
 		end
@@ -3842,7 +3842,7 @@ function start.f_resultInit()
 		else
 			stateType = '_win'
 		end
-	elseif gameMode('timechallenge') then
+	elseif gamemode('timechallenge') then
 		if winnerteam() ~= 1 then
 			return false
 		end
@@ -3854,7 +3854,7 @@ function start.f_resultInit()
 		else
 			stateType = '_win'
 		end
-	elseif gameMode('scorechallenge') then
+	elseif gamemode('scorechallenge') then
 		if winnerteam() ~= 1 then
 			return false
 		end
@@ -4057,7 +4057,7 @@ function start.f_victoryInit()
 	}
 	if winnerteam() < 1 or not main.victoryScreen or motif.victory_screen.enabled == 0 then
 		return false
-	elseif gameMode('versus') or gameMode('netplayversus') then
+	elseif gamemode('versus') or gamemode('netplayversus') then
 		if motif.victory_screen.vs_enabled == 0 then
 			return false
 		end
@@ -4512,7 +4512,7 @@ function start.f_stageMusic()
 	if main.flags['-nomusic'] ~= nil then
 		return
 	end
-	if gameMode == 'demo' and (motif.demo_mode.fight_playbgm == 0 or motif.demo_mode.fight_stopbgm == 0) then
+	if gamemode('demo') and (motif.demo_mode.fight_playbgm == 0 or motif.demo_mode.fight_stopbgm == 0) then
 		return
 	end
 	if roundstart() then

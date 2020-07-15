@@ -960,18 +960,6 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 	})
-	luaRegister(l, "gameMode", func(*lua.LState) int {
-		if l.GetTop() == 0 {
-			l.Push(lua.LString(sys.gameMode))
-			return 1
-		}
-		ret := false
-		if sys.gameMode == strArg(l, 1) {
-			ret = true
-		}
-		l.Push(lua.LBool(ret))
-		return 1
-	})
 	luaRegister(l, "getCharAttachedInfo", func(*lua.LState) int {
 		def := strArg(l, 1)
 		idx := strings.Index(def, "/")
@@ -3308,7 +3296,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "gamemode", func(*lua.LState) int {
-		l.Push(lua.LString(sys.gameMode))
+		if l.GetTop() == 0 {
+			l.Push(lua.LString(sys.gameMode))
+			return 1
+		}
+		l.Push(lua.LBool(sys.gameMode == strArg(l, 1)))
 		return 1
 	})
 	luaRegister(l, "getplayerid", func(*lua.LState) int {

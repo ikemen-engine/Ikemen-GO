@@ -209,7 +209,7 @@ function loop()
 	else
 		main.f_cmdInput()
 		if esc() or main.f_input(main.t_players, {'m'}) then
-			if gameMode() == "" or gameMode() == "demo" or gameMode() == "randomtest" then
+			if gamemode('') or gamemode('demo') or gamemode('randomtest') then
 				endMatch()
 			else
 				menu.init()

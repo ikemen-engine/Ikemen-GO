@@ -222,7 +222,7 @@ function menu.init()
 	togglePause(true)
 	main.escMenu = true
 	main.f_bgReset(motif.optionbgdef.bg)
-	if gameMode() == 'training' then
+	if gamemode('training') then
 		sndPlay(motif.files.snd_data, motif.training_info.enter_snd[1], motif.training_info.enter_snd[2])
 		main.f_bgReset(motif.trainingbgdef.bg)
 		menu.currentMenu = {menu.training.loop, menu.training.loop}
@@ -239,7 +239,7 @@ end
 function menu.run()
 	local section = 'menu_info'
 	local bgdef = 'menubgdef'
-	if gameMode() == 'training' then
+	if gamemode('training') then
 		section = 'training_info'
 		bgdef = 'trainingbgdef'
 	end
