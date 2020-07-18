@@ -4132,6 +4132,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			helper_inheritjuggle, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "immortal",
+			helper_immortal, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
