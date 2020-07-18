@@ -870,12 +870,12 @@ NotHitBy{value: SCA; time: 1}
 [Statedef 5210; type: A; movetype: I; physics: N; anim: 5210; ctrl: 0;]
 
 if Time = 0 {
-	 PalFX{time: 3; add: 128, 128, 128}
-	 PosFreeze{}
-	 if p2dist X < Const240p(-20) {
+	PalFX{time: 3; add: 128, 128, 128}
+	PosFreeze{}
+	if p2dist X < Const240p(-20) {
 		Turn{}
-	 }
-	 NotHitBy{value: SCA; time: 15}
+	}
+	NotHitBy{value: SCA; time: 15}
 } else if Time < 4 {
 	if MajorVersion = 1 {
 		PosFreeze{}

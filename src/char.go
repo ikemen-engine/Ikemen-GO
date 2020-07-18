@@ -3447,10 +3447,14 @@ func (c *Char) mulYV(yv float32) {
 }
 func (c *Char) hitAdd(h int32) {
 	c.hitCount += h
-	for _, tid := range c.targets {
-		if t := sys.playerID(tid); t != nil {
-			t.getcombo += h
+	if len(c.targets) > 0 {
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil {
+				t.getcombo += h
+			}
 		}
+	} else if c.teamside < 2 { //in mugen HitAdd increases combo count even without targets
+		sys.chars[^c.teamside&1][0].getcombo += h
 	}
 }
 func (c *Char) newProj() *Projectile {
@@ -3998,7 +4002,8 @@ func (c *Char) lifeSet(life int32) {
 				}
 			}
 		} else {
-			c.life = 1
+			//in mugen even non-player helpers can die
+			//c.life = 1
 		}
 		c.redLife = 0
 	}
@@ -6269,7 +6274,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.teamside != c.teamside && e.scf(SCF_standby) == false &&
+		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
 		}

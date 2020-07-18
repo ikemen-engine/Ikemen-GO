@@ -1160,7 +1160,7 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 func (co *LifeBarCombo) step(combo, damage int32, percentage float32, dizzy bool) {
 	if co.resttime > 0 {
 		co.counterX -= co.counterX / co.showspeed
-	} else {
+	} else if combo < 2 {
 		co.counterX -= sys.lifebarFontScale * co.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
 		if co.counterX < co.start_x*2 {
 			co.counterX = co.start_x * 2
