@@ -2604,6 +2604,7 @@ const (
 	helper_remappal
 	helper_extendsmap
 	helper_inheritjuggle
+	helper_immortal
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -2700,6 +2701,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			extmap = exp[0].evalB(c)
 		case helper_inheritjuggle:
 			h.inheritJuggle = exp[0].evalI(c)
+		case helper_immortal:
+			h.immortal = exp[0].evalB(c)
 		}
 		return true
 	})

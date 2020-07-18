@@ -1598,6 +1598,7 @@ type Char struct {
 	mapDefault            map[string]float32
 	remapSpr              RemapPreset
 	clipboardText         []string
+	immortal              bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -3454,7 +3455,11 @@ func (c *Char) hitAdd(h int32) {
 			}
 		}
 	} else if c.teamside < 2 { //in mugen HitAdd increases combo count even without targets
-		sys.chars[^c.teamside&1][0].getcombo += h
+		for i, p := range sys.chars {
+			if len(p) > 0 && c.teamside == ^i&1 && (p[0].getcombo != 0 || p[0].ss.moveType == MT_H) {
+				p[0].getcombo += h
+			}
+		}
 	}
 }
 func (c *Char) newProj() *Projectile {
@@ -4001,9 +4006,8 @@ func (c *Char) lifeSet(life int32) {
 					sys.winType[^c.playerNo&1] = WT_N
 				}
 			}
-		} else {
-			//in mugen even non-player helpers can die
-			//c.life = 1
+		} else if c.immortal { //in mugen even non-player helpers can die
+			c.life = 1
 		}
 		c.redLife = 0
 	}
