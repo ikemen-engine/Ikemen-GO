@@ -6081,7 +6081,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		for _, c := range cl.runOrder {
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-				(getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0)) {
+				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
 					getter.inguarddist = true
