@@ -62,11 +62,11 @@ type LbText struct {
 	palfx *PalFX
 }
 
-func newLbText() *LbText {
-	return &LbText{font: [...]int32{-1, 0, 0, 255, 255, 255}, palfx: newPalFX()}
+func newLbText(align int32) *LbText {
+	return &LbText{font: [...]int32{-1, 0, align, 255, 255, 255}, palfx: newPalFX()}
 }
-func readLbText(pre string, is IniSection, str string, ln int16, f []*Fnt) *LbText {
-	txt := newLbText()
+func readLbText(pre string, is IniSection, str string, ln int16, f []*Fnt, align int32) *LbText {
+	txt := newLbText(align)
 	is.ReadI32(pre+"font", &txt.font[0], &txt.font[1], &txt.font[2],
 		&txt.font[3], &txt.font[4], &txt.font[5])
 	if _, ok := is[pre+"text"]; ok {
@@ -97,7 +97,7 @@ func readLbBgTextSnd(pre string, is IniSection,
 	sff *Sff, at AnimationTable, ln int16, f []*Fnt) LbBgTextSnd {
 	bts := newLbBgTextSnd()
 	is.ReadI32(pre+"pos", &bts.pos[0], &bts.pos[1])
-	bts.text = *readLbText(pre+"text.", is, "", ln, f)
+	bts.text = *readLbText(pre+"text.", is, "", ln, f, 0)
 	bts.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, ln)
 	is.ReadI32(pre+"time", &bts.time)
 	is.ReadI32(pre+"displaytime", &bts.displaytime)
@@ -195,7 +195,7 @@ func readHealthBar(pre string, is IniSection,
 			}
 		}
 	}
-	hb.value = *readLbText(pre+"value.", is, "%d", 0, f)
+	hb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
 	is.ReadBool("mid.freeze", &hb.mid_freeze)
 	is.ReadI32("mid.delay", &hb.mid_delay)
 	is.ReadF32("mid.mult", &hb.mid_mult)
@@ -380,8 +380,8 @@ func readPowerBar(pre string, is IniSection,
 			}
 		}
 	}
-	pb.counter = *readLbText(pre+"counter.", is, "", 0, f)
-	pb.value = *readLbText(pre+"value.", is, "", 0, f)
+	pb.counter = *readLbText(pre+"counter.", is, "", 0, f, 0)
+	pb.value = *readLbText(pre+"value.", is, "", 0, f, 0)
 	for i := range pb.level_snd {
 		if !is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
 			&pb.level_snd[i][1]) {
@@ -525,7 +525,7 @@ func readGuardBar(pre string, is IniSection,
 			}
 		}
 	}
-	gb.value = *readLbText(pre+"value.", is, "%d", 0, f)
+	gb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
 	is.ReadI32(pre+"draworder", &gb.draworder)
 	return gb
 }
@@ -657,7 +657,7 @@ func readStunBar(pre string, is IniSection,
 			}
 		}
 	}
-	sb.value = *readLbText(pre+"value.", is, "%d", 0, f)
+	sb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
 	is.ReadI32(pre+"draworder", &sb.draworder)
 	return sb
 }
@@ -896,7 +896,7 @@ func readLifeBarName(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarName {
 	nm := newLifeBarName()
 	is.ReadI32(pre+"pos", &nm.pos[0], &nm.pos[1])
-	nm.name = *readLbText(pre+"name.", is, "", 0, f)
+	nm.name = *readLbText(pre+"name.", is, "", 0, f, 0)
 	nm.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	nm.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	is.ReadI32(pre+"draworder", &nm.draworder)
@@ -943,7 +943,7 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	is.ReadI32(pre+"pos", &wi.pos[0], &wi.pos[1])
 	is.ReadI32(pre+"iconoffset", &wi.iconoffset[0], &wi.iconoffset[1])
 	is.ReadI32("useiconupto", &wi.useiconupto)
-	wi.counter = *readLbText(pre+"counter.", is, "", 0, f)
+	wi.counter = *readLbText(pre+"counter.", is, "", 0, f, 0)
 	wi.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
 	wi.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at, 0)
@@ -1063,7 +1063,7 @@ func readLifeBarTime(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarTime {
 	ti := newLifeBarTime()
 	is.ReadI32("pos", &ti.pos[0], &ti.pos[1])
-	ti.counter[0] = readLbText("counter.", is, "", 0, f)
+	ti.counter[0] = readLbText("counter.", is, "", 0, f, 0)
 	for k, _ := range is {
 		if match, _ := regexp.MatchString("counter[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
@@ -1071,7 +1071,7 @@ func readLifeBarTime(is IniSection,
 			if len(submatchall) == 1 {
 				v := Atoi(submatchall[0])
 				if _, ok := ti.counter[v]; !ok {
-					ti.counter[v] = readLbText("counter"+fmt.Sprintf("%v", v)+".", is, "", 0, f)
+					ti.counter[v] = readLbText("counter"+fmt.Sprintf("%v", v)+".", is, "", 0, f, 0)
 				}
 			}
 		}
@@ -1146,9 +1146,13 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 		co.pos[0] = sys.lifebarLocalcoord[0] - co.pos[0]
 		co.start_x = float32(sys.lifebarLocalcoord[0]) - co.start_x
 	}
-	co.counter = *readLbText(pre+"counter.", is, "", 2, f)
+	co.counter = *readLbText(pre+"counter.", is, "", 2, f, 0)
 	is.ReadBool(pre+"counter.shake", &co.counter_shake)
-	co.text = *readLbText(pre+"text.", is, "", 2, f)
+	if pre == "team2." {
+		co.text = *readLbText(pre+"text.", is, "", 2, f, -1)
+	} else {
+		co.text = *readLbText(pre+"text.", is, "", 2, f, 1)
+	}
 	is.ReadI32(pre+"displaytime", &co.displaytime)
 	is.ReadF32(pre+"showspeed", &co.showspeed)
 	co.showspeed = MaxF(1, co.showspeed)
@@ -1769,7 +1773,7 @@ func readLifeBarTimer(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarTimer {
 	tr := newLifeBarTimer()
 	is.ReadI32("pos", &tr.pos[0], &tr.pos[1])
-	tr.text = *readLbText("text.", is, "", 0, f)
+	tr.text = *readLbText("text.", is, "", 0, f, 0)
 	tr.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	tr.top = *ReadAnimLayout("top.", is, sff, at, 0)
 	return tr
@@ -1854,7 +1858,7 @@ func readLifeBarScore(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarScore {
 	sc := newLifeBarScore()
 	is.ReadI32(pre+"pos", &sc.pos[0], &sc.pos[1])
-	sc.text = *readLbText(pre+"text.", is, "", 0, f)
+	sc.text = *readLbText(pre+"text.", is, "", 0, f, 0)
 	sc.separator[0], _ = is.getString("format.integer.separator")
 	sc.separator[1], _ = is.getString("format.decimal.separator")
 	is.ReadI32("format.integer.pad", &sc.pad)
@@ -1949,7 +1953,7 @@ func readLifeBarMatch(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarMatch {
 	ma := newLifeBarMatch()
 	is.ReadI32("pos", &ma.pos[0], &ma.pos[1])
-	ma.text = *readLbText("text.", is, "", 0, f)
+	ma.text = *readLbText("text.", is, "", 0, f, 0)
 	ma.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	ma.top = *ReadAnimLayout("top.", is, sff, at, 0)
 	return ma
@@ -1992,7 +1996,7 @@ func readLifeBarAiLevel(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarAiLevel {
 	ai := newLifeBarAiLevel()
 	is.ReadI32(pre+"pos", &ai.pos[0], &ai.pos[1])
-	ai.text = *readLbText(pre+"text.", is, "", 0, f)
+	ai.text = *readLbText(pre+"text.", is, "", 0, f, 0)
 	ai.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	ai.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	return ai
@@ -2040,7 +2044,7 @@ func readLifeBarMode(is IniSection,
 		if _, ok := mo[sp[0]]; !ok {
 			mo[sp[0]] = newLifeBarMode()
 			is.ReadI32(sp[0]+".pos", &mo[sp[0]].pos[0], &mo[sp[0]].pos[1])
-			mo[sp[0]].text = *readLbText(sp[0]+".text.", is, "", 0, f)
+			mo[sp[0]].text = *readLbText(sp[0]+".text.", is, "", 0, f, 0)
 			mo[sp[0]].bg = *ReadAnimLayout(sp[0]+".bg.", is, sff, at, 0)
 			mo[sp[0]].top = *ReadAnimLayout(sp[0]+".top.", is, sff, at, 0)
 		}

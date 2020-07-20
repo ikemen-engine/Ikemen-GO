@@ -730,7 +730,7 @@ func ReadAnimTextSnd(pre string, is IniSection,
 func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 	ln int16, f []*Fnt) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
-	ats.text = *readLbText(pre, is, "", ln, f)
+	ats.text = *readLbText(pre, is, "", ln, f, 0)
 	ats.anim.lay = *newLayout(ln)
 	ats.anim.Read(pre, is, at, ln)
 	is.ReadI32(pre+"displaytime", &ats.displaytime)
