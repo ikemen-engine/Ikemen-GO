@@ -1378,7 +1378,9 @@ local motif =
 		menu_item_value_active_font_height = -1, --Ikemen feature
 		menu_item_spacing = {150, 13}, --Ikemen feature
 		--menu_itemname_back = 'Continue', --Ikemen feature
-		--menu_itemname_buttonconfig = 'Button Config', --Ikemen feature
+		--menu_itemname_keyboard = 'Key Config', --Ikemen feature
+		--menu_itemname_gamepad = 'Joystick Config', --Ikemen feature
+		--menu_itemname_inputdefault = 'Default', --Ikemen feature
 		--menu_itemname_commandlist = 'Command List', --Ikemen feature
 		--menu_itemname_characterchange = 'Character Change', --Ikemen feature
 		--menu_itemname_exit = 'Exit', --Ikemen feature
@@ -1987,7 +1989,7 @@ if t.victory_screen ~= nil then
 end
 
 --training_info section reuses menu_info values (excluding itemnames)
-motif.training_info = main.f_tableMerge(motif.menu_info, motif.training_info)
+motif.training_info = main.f_tableMerge(motif.training_info, motif.menu_info)
 if t.menu_info == nil then t.menu_info = {} end
 if t.training_info == nil then t.training_info = {} end
 for k, v in pairs(t.menu_info) do
