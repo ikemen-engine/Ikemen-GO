@@ -300,7 +300,7 @@ func (sh *SffHeader) Read(r io.Reader, lofs *uint32, tofs *uint32) error {
 		return err
 	}
 	if string(buf[:n]) != "ElecbyteSpr\x00" {
-		return Error("ElecbyteSprではありません")
+		return Error("Not ElecbyteSpr")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(r, binary.LittleEndian, x)
@@ -361,7 +361,7 @@ func (sh *SffHeader) Read(r io.Reader, lofs *uint32, tofs *uint32) error {
 			return err
 		}
 	default:
-		return Error("バージョンが不正です")
+		return Error("Unrecognized SFF version")
 	}
 	return nil
 }
@@ -454,7 +454,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 			ip := len(newSubHeaderOffset)
 			for size == 0 {
 				if int(indexOfPrevious) >= ip {
-					return nil, Error("linkが不正です")
+					return nil, Error("link is invalid")
 				}
 				ip = int(indexOfPrevious)
 				if h.Ver0 == 1 {
@@ -490,7 +490,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 		}
 	}
 	if i == int(h.NumberOfSprites) {
-		return nil, Error(fmt.Sprintf("%v, %v のスプライトが見つかりません", g, n))
+		return nil, Error(fmt.Sprintf("Sprite not found: %v, %v", g, n))
 	}
 	if h.Ver0 == 1 {
 		s.Pal = pl.Get(s.palidx)
@@ -622,7 +622,7 @@ func (s *Sprite) readPcxHeader(f *os.File, offset int64) error {
 		return err
 	}
 	if bpp != 8 {
-		return Error("256色でありません")
+		return Error("Not 256 colors")
 	}
 	var rect [4]uint16
 	if err := read(rect[:]); err != nil {
@@ -984,7 +984,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			}
 			return nil
 		default:
-			return Error("不明な形式です")
+			return Error("Unknown format")
 		}
 		s.SetPxl(px)
 	}

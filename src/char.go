@@ -2353,7 +2353,7 @@ func (c *Char) parent() *Char {
 	if c.parentIndex < 0 {
 		sys.warnConsole(c.warn() + "parent has been already destroyed")
 		if !sys.ignoreMostErrors {
-			sys.errLog.Println(c.name + " によるすでに削除された親ヘルパーへのリダイレクト")
+			sys.errLog.Println(c.name + " parent has been already destroyed")
 		}
 	}
 	return sys.chars[c.playerNo][Abs(c.parentIndex)]
@@ -2972,7 +2972,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			}
 		}
 		if !sys.ignoreMostErrors {
-			str := "存在しないサウンド: "
+			str := "Sound doesn't exist: "
 			if f {
 				str += "F:"
 			} else {
@@ -3048,7 +3048,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
 		sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
-		sys.errLog.Printf("存在しないステート: P%v:%v\n", pn+1, no)
+		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}

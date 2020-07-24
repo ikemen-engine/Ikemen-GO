@@ -1201,7 +1201,7 @@ func (ni *NetInput) writeI32(i32 int32) error {
 }
 func (ni *NetInput) Synchronize() error {
 	if !ni.IsConnected() || ni.st == NS_Error {
-		return Error("接続がありません。" + "\n" + "Error: Can not connect to the other player.")
+		return Error("Can not connect to the other player")
 	}
 	ni.Stop()
 	var seed int32
@@ -1226,7 +1226,7 @@ func (ni *NetInput) Synchronize() error {
 	if tmp, err := ni.readI32(); err != nil {
 		return err
 	} else if tmp != ni.time {
-		return Error("同期エラーです。" + "\n" + "Synchronization error.")
+		return Error("Synchronization error")
 	}
 	ni.buf[ni.locIn].reset(ni.time)
 	ni.buf[ni.remIn].reset(ni.time)

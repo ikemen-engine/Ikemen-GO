@@ -21,14 +21,14 @@ func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
 }
 func strArg(l *lua.LState, argi int) string {
 	if !lua.LVCanConvToString(l.Get(argi)) {
-		l.RaiseError("%v番目の引数が文字列ではありません。", argi)
+		l.RaiseError("\nArgument %v is not a string: %v\n", argi, l.Get(argi))
 	}
 	return l.ToString(argi)
 }
 func numArg(l *lua.LState, argi int) float64 {
 	num, ok := l.Get(argi).(lua.LNumber)
 	if !ok {
-		l.RaiseError("%v番目の引数が数ではありません。", argi)
+		l.RaiseError("\nArgument %v is not a number: %v\n", argi, l.Get(argi))
 	}
 	return float64(num)
 }
@@ -50,7 +50,7 @@ func toUserData(l *lua.LState, argi int) interface{} {
 	return nil
 }
 func userDataError(l *lua.LState, argi int, udtype interface{}) {
-	l.RaiseError("%v番目の引数が%Tではありません。", argi, udtype)
+	l.RaiseError("\nArgument %v is not a userdata of type: %T\n", argi, udtype)
 }
 
 type InputDialog interface {
@@ -187,7 +187,7 @@ func systemScriptInit(l *lua.LState) {
 		act := strArg(l, 2)
 		anim := NewAnim(s, act)
 		if anim == nil {
-			l.RaiseError("\n%v\n\nデータの読み込みに失敗しました。", act)
+			l.RaiseError("\nFailed to read the data: %v\n", act)
 		}
 		l.Push(newUserData(l, anim))
 		return 1
@@ -266,10 +266,10 @@ func systemScriptInit(l *lua.LState) {
 				case "color":
 					a.palfx.color = MaxF(0, MinF(1, float32(lua.LVAsNumber(value))/256))
 				default:
-					l.RaiseError("The table key (%v) is invalid.", k)
+					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
 			default:
-				l.RaiseError("The table key type (%v) is invalid.", fmt.Sprintf("%T\n", key))
+				l.RaiseError("\nInvalid table key type: %v\n", fmt.Sprintf("%T\n", key))
 			}
 		})
 		return 0
@@ -370,7 +370,7 @@ func systemScriptInit(l *lua.LState) {
 		//pn, anim_tbl (1 or more numbers), x, y, scaleX, scaleY, facing, window
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
-			l.RaiseError("charAnimDraw: the player number (%v) is not loaded.", pn)
+			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		window := &sys.scrrect
 		if l.GetTop() >= 11 {
@@ -394,7 +394,7 @@ func systemScriptInit(l *lua.LState) {
 		//pn, anim_tbl (1 or more numbers)
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
-			l.RaiseError("charAnimReset: the player number (%v) is not loaded.", pn)
+			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		tableArg(l, 2).ForEach(func(_, value lua.LValue) {
 			if anim := sys.chars[pn-1][0].getAnim(int32(lua.LVAsNumber(value)), false, false); anim != nil {
@@ -425,7 +425,7 @@ func systemScriptInit(l *lua.LState) {
 		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing, window
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
-			l.RaiseError("charSpriteDraw: the player number (%v) is not loaded.", pn)
+			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		window := &sys.scrrect
 		if l.GetTop() >= 11 {
@@ -605,7 +605,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "enterNetPlay", func(*lua.LState) int {
 		if sys.netInput != nil {
-			l.RaiseError("すでに通信中です。")
+			l.RaiseError("\nConnection already established.\n")
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
 		sys.netInput = NewNetInput()
@@ -1362,7 +1362,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("The player number (%v) is invalid.", pn)
+			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
 		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
 			switch k := key.(type) {
@@ -1383,10 +1383,10 @@ func systemScriptInit(l *lua.LState) {
 				case "attackRatio":
 					sys.ocd[pn-1].attackRatio = float32(lua.LVAsNumber(value))
 				default:
-					l.RaiseError("The table key (%v) is invalid.", k)
+					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
 			default:
-				l.RaiseError("The table key type (%v) is invalid.", fmt.Sprintf("%T\n", key))
+				l.RaiseError("\nInvalid table key type: %v\n", fmt.Sprintf("%T\n", key))
 			}
 		})
 		return 0
@@ -1471,7 +1471,7 @@ func systemScriptInit(l *lua.LState) {
 		src, dst := int(numArg(l, 1)), int(numArg(l, 2))
 		if src < 1 || src > len(sys.inputRemap) ||
 			dst < 1 || dst > len(sys.inputRemap) {
-			l.RaiseError("プレイヤー番号(%v, %v)が不正です。", src, dst)
+			l.RaiseError("\nInvalid player number: %v, %v\n", src, dst)
 		}
 		sys.inputRemap[src-1] = dst - 1
 		return 0
@@ -1536,7 +1536,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "selectChar", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", tn)
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		cn, pl, ret := int(numArg(l, 2)), int(numArg(l, 3)), 0
 		if pl >= 1 && pl <= 12 && sys.sel.AddSelectedChar(tn-1, cn, pl) {
@@ -1629,7 +1629,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setAutoguard", func(l *lua.LState) int {
 		pn := int(numArg(l, 1))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
+			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
 		sys.autoguard[pn-1] = boolArg(l, 2)
 		return 0
@@ -1642,7 +1642,7 @@ func systemScriptInit(l *lua.LState) {
 		pn := int(numArg(l, 1))
 		ailv := float32(numArg(l, 2))
 		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("プレイヤー番号(%v)が不正です。", pn)
+			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
 		if ailv > 0 {
 			sys.com[pn-1] = ailv
@@ -1692,7 +1692,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setHomeTeam", func(l *lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", tn)
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		sys.home = tn - 1
 		return 0
@@ -1822,10 +1822,10 @@ func systemScriptInit(l *lua.LState) {
 				case "lifebar":
 					sys.lifebar.active = lua.LVAsBool(value)
 				default:
-					l.RaiseError("The table key (%v) is invalid.", k)
+					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
 			default:
-				l.RaiseError("The table key type (%v) is invalid.", fmt.Sprintf("%T\n", key))
+				l.RaiseError("\nInvalid table key type: %v\n", fmt.Sprintf("%T\n", key))
 			}
 		})
 		return 0
@@ -1940,7 +1940,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setPowerShare", func(l *lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("チーム番号(%v)が不正です。", tn)
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		sys.powerShare[tn-1] = boolArg(l, 2)
 		return 0
@@ -1963,7 +1963,7 @@ func systemScriptInit(l *lua.LState) {
 		pn := int(numArg(l, 1))
 		rn := int32(numArg(l, 2))
 		if rn < 0 || rn > 4 {
-			l.RaiseError("The ratio number (%v) is invalid.", rn)
+			l.RaiseError("\nInvalid ratio number: %v\n", rn)
 		}
 		sys.ratioLevel[pn-1] = rn
 		return 0
@@ -1983,15 +1983,15 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
-			l.RaiseError("The team number (%v) is invalid. / チーム番号(%v)が不正です。", tn)
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		tm := TeamMode(numArg(l, 2))
 		if tm < 0 || tm > TM_LAST {
-			l.RaiseError("The mode number (%v) is invalid. / モード番号(%v)が不正です。", tm)
+			l.RaiseError("\nInvalid team mode: %v\n", tm)
 		}
 		nt := int32(numArg(l, 3))
 		if nt < 1 || nt > MaxSimul {
-			l.RaiseError("The team number (% v) is incorrect. / チーム人数(%v)が不正です。", nt)
+			l.RaiseError("\nInvalid team size: %v\n", nt)
 		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
 		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt

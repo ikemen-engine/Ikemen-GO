@@ -526,9 +526,7 @@ func (c *Compiler) operator(in *string) error {
 			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error(c.maeOp + "が不正です" +
-					" / " +
-					c.maeOp + " is invalid")
+				return Error(c.maeOp + " is invalid")
 			}
 			*in = c.token + " " + *in
 			c.token = c.maeOp
@@ -548,9 +546,7 @@ func (c *Compiler) integer2(in *string) (int32, error) {
 	}
 	for _, c := range istr {
 		if c < '0' || c > '9' {
-			return 0, Error(istr + "が整数でありません" +
-				" / " +
-				istr + " is not an integer")
+			return 0, Error(istr + " is not an integer")
 		}
 	}
 	i := Atoi(istr)
@@ -608,9 +604,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				(a < 'a' || a > 'z') {
 				return flg, nil
 			}
-			return 0, Error(string(a) + "が無効な値です" +
-				" / " +
-				string(a) + " is an invalid value")
+			return 0, Error(string(a) + " is an invalid value")
 		}
 	}
 	hitdefflg := flg
@@ -657,9 +651,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				}
 				return flg, nil
 			}
-			return 0, Error(a + "が無効な値です" +
-				" / " +
-				a + " is an invalid value")
+			return 0, Error(a + " is an invalid value")
 		}
 		if i == 0 {
 			hitdefflg = flg
@@ -694,9 +686,7 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 		case 'A', 'a':
 			flg |= int32(ST_A)
 		default:
-			return 0, Error(att + "が不正な属性値です" +
-				" / " +
-				att + " is an invalid attribute value")
+			return 0, Error(att + " is an invalid attribute value")
 		}
 	}
 	for len(*in) > 0 && (*in)[0] == ',' {
@@ -751,18 +741,14 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 }
 func (c *Compiler) kakkohiraku(in *string) error {
 	if c.tokenizer(in) != "(" {
-		return Error(c.token + "の次に'('がありません" +
-			" / " +
-			"Missing '(' after " + c.token)
+		return Error("Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizer(in)
 	return nil
 }
 func (c *Compiler) kakkohirakuCS(in *string) error {
 	if c.tokenizerCS(in) != "(" {
-		return Error(c.token + "の次に'('がありません" +
-			" / " +
-			"Missing '(' after " + c.token)
+		return Error("Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizerCS(in)
 	return nil
@@ -770,9 +756,7 @@ func (c *Compiler) kakkohirakuCS(in *string) error {
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
-		return Error(c.token + "の前に')'がありません" +
-			" / " +
-			"There is no ')' before " + c.token)
+		return Error("Missing ')' before " + c.token)
 	}
 	return nil
 }
@@ -792,9 +776,7 @@ func (c *Compiler) kyuushiki(in *string) (not bool, err error) {
 				continue
 			}
 		}
-		return false, Error("'='か'!='がありません" +
-			" / " +
-			"Missing '=' or '! ='")
+		return false, Error("Missing '=' or '!='")
 	}
 	c.token = c.tokenizer(in)
 	return
@@ -807,9 +789,7 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "[":
 		minop = OC_ge
 	default:
-		err = Error("'['か'('がありません" +
-			" / " +
-			"Missing '[' or '('")
+		err = Error("Missing '[' or '('")
 		return
 	}
 	var intf func(in *string) (int32, error)
@@ -822,9 +802,7 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 				c.token = c.tokenizer(in)
 			}
 			if len(c.token) == 0 || c.token[0] < '0' || c.token[0] > '9' {
-				return 0, Error("数字の読み込みエラーです" +
-					" / " +
-					"Error reading number")
+				return 0, Error("Error reading number")
 			}
 			i := Atoi(c.token)
 			if minus {
@@ -847,9 +825,7 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 		c.token = c.tokenizer(in)
 	}
 	if c.token != "," {
-		err = Error("','がありません" +
-			" / " +
-			"There is not ','")
+		err = Error("Missing ','")
 		return
 	}
 	if max, err = intf(in); err != nil {
@@ -869,9 +845,7 @@ func (c *Compiler) intRange(in *string) (minop OpCode, maxop OpCode,
 	case "]":
 		maxop = OC_le
 	default:
-		err = Error("']'か')'がありません" +
-			" / " +
-			"Missing ']' or ')'")
+		err = Error("Missing ']' or ')'")
 		return
 	}
 	c.token = c.tokenizer(in)
@@ -919,9 +893,7 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 		case "=":
 		default:
 			if hissu && !comma {
-				return Error("比較演算子がありません" +
-					"\n" +
-					"No comparison operator" +
+				return Error("No comparison operator" +
 					"\n[ECID 1]\n")
 			}
 			hikaku = false
@@ -965,9 +937,7 @@ func (c *Compiler) kyuushikiSuperDX(out *BytecodeExp, in *string,
 	n, err := c.integer2(in)
 	if err != nil {
 		if hissu && !hikaku {
-			return Error("比較演算子がありません" +
-				"\n" +
-				"No comparison operator" +
+			return Error("No comparison operator" +
 				"\n[ECID 2]\n")
 		}
 		if hikaku {
@@ -987,9 +957,7 @@ func (c *Compiler) oneArg(out *BytecodeExp, in *string,
 	mae := c.token
 	if c.token = c.tokenizer(in); c.token != "(" {
 		if len(defval) == 0 || defval[0].IsNone() {
-			return bvNone(), Error(mae + "の次に'('がありません" +
-				" / " +
-				"Missing '(' after " + mae)
+			return bvNone(), Error("Missing '(' after " + mae)
 		}
 		*in = c.token + " " + *in
 		bv = defval[0]
@@ -1114,9 +1082,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	text := func() error {
 		i := strings.Index(*in, "\"")
 		if c.token != "\"" || i < 0 {
-			return Error("\"で囲まれていません" +
-				" / " +
-				"Not enclosed in \"")
+			return Error("Not enclosed in \"")
 		}
 		c.token = (*in)[:i]
 		*in = (*in)[i+1:]
@@ -1164,9 +1130,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var err error
 	switch c.token {
 	case "":
-		return bvNone(), Error("空です" +
-			" / " +
-			"Empty")
+		return bvNone(), Error("Empty")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -1209,9 +1173,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_partner, OC_enemy, OC_enemynear:
 					be1.appendValue(BytecodeInt(0))
 				case OC_playerid:
-					return bvNone(), Error("playeridの次に'('がありません" +
-						" / " +
-						"There is no '(' after playerid")
+					return bvNone(), Error("Missing '(' after playerid")
 				}
 			}
 			if rd {
@@ -1220,9 +1182,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be1...)
 		}
 		if c.token != "," {
-			return bvNone(), Error(",がありません" +
-				" / " +
-				"Missing ','")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expValue(&be2, in, true); err != nil {
@@ -1238,9 +1198,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error(c.token + "が不正です" +
-					" / " +
-					c.token + " is invalid")
+				return bvNone(), Error(c.token + " is invalid")
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -1319,14 +1277,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv3, err = c.expBoolOr(&be3, in); err != nil {
@@ -1420,7 +1378,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_camerapos_y)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "camerazoom":
 		out.append(OC_camerazoom)
@@ -1433,7 +1391,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			i, ok := c.cmdl.Names[c.token]
 			if !ok {
-				return Error("コマンド\"" + c.token + "\"は存在しません")
+				return Error("Command doesn't exist: " + c.token)
 			}
 			out.appendI32Op(OC_command, int32(i))
 			return nil
@@ -1633,11 +1591,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			out.appendI32Op(OC_const_constants, int32(sys.stringPool[c.playerNo].Add(
 				strings.ToLower(c.token))))
-			//return bvNone(), Error(c.token + "が不正です")
+			//return bvNone(), Error(c.token + " is invalid")
 		}
 		*in = strings.TrimSpace(*in)
 		if len(*in) == 0 || (!sys.ignoreMostErrors && (*in)[0] != ')') {
-			return bvNone(), Error(c.token + "の次に')'がありません")
+			return bvNone(), Error("Missing ')' before " + c.token)
 		}
 		*in = (*in)[1:]
 	case "const240p":
@@ -1764,7 +1722,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "score":
 				out.append(OC_ex_gethitvar_score)
 			default:
-				return bvNone(), Error(c.token + "が不正です")
+				return bvNone(), Error(c.token + " is invalid")
 			}
 		}
 		c.token = c.tokenizer(in)
@@ -1796,7 +1754,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			} else if err := hda(); err != nil {
 				return bvNone(), err
 			} else if not && !sys.ignoreMostErrors {
-				return bvNone(), Error("旧バージョンのためhitdefattrに != は使えません")
+				return bvNone(), Error("hitdefattr doesn't support '!=' in this mugenversion")
 			}
 		}
 	case "hitfall":
@@ -1817,7 +1775,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "id":
 		out.append(OC_id)
@@ -1861,7 +1819,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		trname := c.token
 		if err := eqne2(func(not bool) error {
 			if len(c.token) == 0 {
-				return Error(trname + "の値が指定されていません")
+				return Error(trname + " value is not specified")
 			}
 			var mt MoveType
 			switch c.token[0] {
@@ -1872,7 +1830,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'h':
 				mt = MT_H
 			default:
-				return Error(c.token + "が無効な値です")
+				return Error(c.token + " is an invalid value")
 			}
 			if trname == "p2movetype" {
 				out.appendI32Op(OC_p2, 2+Btoi(not))
@@ -1944,7 +1902,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "power":
 		out.append(OC_power)
@@ -1997,7 +1955,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_screenpos_y)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "screenwidth":
 		out.append(OC_screenwidth)
@@ -2015,7 +1973,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		trname := c.token
 		if err := eqne2(func(not bool) error {
 			if len(c.token) == 0 {
-				return Error(trname + "の値が指定されていません")
+				return Error(trname + " value is not specified")
 			}
 			var st StateType
 			switch c.token[0] {
@@ -2028,7 +1986,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'l':
 				st = ST_L
 			default:
-				return Error(c.token + "が無効な値です")
+				return Error(c.token + " is an invalid value")
 			}
 			if trname == "p2statetype" {
 				out.appendI32Op(OC_p2, 2+Btoi(not))
@@ -2059,7 +2017,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "info.author":
 			opc = OC_const_stagevar_info_author
 		default:
-			return bvNone(), Error(svname + "が不正です")
+			return bvNone(), Error(svname + " is invalid")
 		}
 		if err := nameSub(opc); err != nil {
 			return bvNone(), err
@@ -2067,7 +2025,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "teammode":
 		if err := eqne(func() error {
 			if len(c.token) == 0 {
-				return Error("teammodeの値が指定されていません")
+				return Error("teammode value is not specified")
 			}
 			var tm TeamMode
 			switch c.token {
@@ -2080,7 +2038,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "tag":
 				tm = TM_Tag
 			default:
-				return Error(c.token + "が無効な値です")
+				return Error(c.token + " is an invalid value")
 			}
 			out.append(OC_teammode, OpCode(tm))
 			return nil
@@ -2107,7 +2065,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "win":
 		out.append(OC_ex_, OC_ex_win)
@@ -2135,16 +2093,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if not, err := c.kyuushiki(in); err != nil {
 			return bvNone(), err
 		} else if not && !sys.ignoreMostErrors {
-			return bvNone(), Error("animelemに != は使えません")
+			return bvNone(), Error("animelem doesn't support '!='")
 		}
 		if c.token == "-" {
-			return bvNone(), Error("マイナスが付くとエラーです")
+			return bvNone(), Error("'-' should not be used")
 		}
 		if n, err = c.integer2(in); err != nil {
 			return bvNone(), err
 		}
 		if n <= 0 {
-			return bvNone(), Error("animelemのは0より大きくなければいけません")
+			return bvNone(), Error("animelem must be greater than 0")
 		}
 		be1.appendValue(BytecodeInt(n))
 		if rd {
@@ -2162,16 +2120,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if not, err := c.kyuushiki(in); err != nil {
 			return bvNone(), err
 		} else if not && !sys.ignoreMostErrors {
-			return bvNone(), Error("timemodに != は使えません")
+			return bvNone(), Error("timemod doesn't support '!='")
 		}
 		if c.token == "-" {
-			return bvNone(), Error("マイナスが付くとエラーです")
+			return bvNone(), Error("'-' should not be used")
 		}
 		if n, err = c.integer2(in); err != nil {
 			return bvNone(), err
 		}
 		if n <= 0 {
-			return bvNone(), Error("timemodのは0より大きくなければいけません")
+			return bvNone(), Error("timemod must be greater than 0")
 		}
 		out.append(OC_time)
 		out.appendValue(BytecodeInt(n))
@@ -2190,7 +2148,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "p2bodydist":
 		c.token = c.tokenizer(in)
@@ -2202,7 +2160,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "rootdist":
 		c.token = c.tokenizer(in)
@@ -2214,7 +2172,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "parentdist":
 		c.token = c.tokenizer(in)
@@ -2226,7 +2184,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	case "pi":
 		bv = BytecodeFloat(float32(math.Pi))
@@ -2252,7 +2210,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
@@ -2319,7 +2277,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
@@ -2349,7 +2307,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
@@ -2379,7 +2337,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
@@ -2404,7 +2362,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("','がありません")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
@@ -2496,7 +2454,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "physics":
 		if err := eqne(func() error {
 			if len(c.token) == 0 {
-				return Error("physicsの値が指定されていません")
+				return Error("physics value not specified")
 			}
 			var st StateType
 			switch c.token[0] {
@@ -2509,7 +2467,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'n':
 				st = ST_N
 			default:
-				return Error(c.token + "が無効な値です")
+				return Error(c.token + " is an invalid value")
 			}
 			out.append(OC_ex_, OC_ex_physics, OpCode(st))
 			return nil
@@ -2556,7 +2514,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
-			return bvNone(), Error(c.token + "が不正です")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 		if rd {
 			out.append(OC_rdreset)
@@ -2584,10 +2542,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if not, err := c.kyuushiki(in); err != nil {
 				return bvNone(), err
 			} else if not && !sys.ignoreMostErrors {
-				return bvNone(), Error(trname + "に != は使えません")
+				return bvNone(), Error(trname + " doesn't support '!='")
 			}
 			if c.token == "-" {
-				return bvNone(), Error("マイナスが付くとエラーです")
+				return bvNone(), Error("'-' should not be used")
 			}
 			if n, err = c.integer2(in); err != nil {
 				return bvNone(), err
@@ -2614,11 +2572,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		} else if len(c.token) >= 2 && c.token[0] == '$' && c.token != "$_" {
 			vi, ok := c.vars[c.token[1:]]
 			if !ok {
-				return bvNone(), Error(c.token + "は定義されていません" + " / " + c.token + " is not defined")
+				return bvNone(), Error(c.token + " is not defined")
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + "が不正です" + " / " + c.token + " is illegal")
+			return bvNone(), Error(c.token + " is invalid")
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -2634,7 +2592,7 @@ func (c *Compiler) renzokuEnzansihaError(in *string) error {
 			}
 			fallthrough
 		case '=', '<', '>', '|', '&', '+', '*', '/', '%', '^':
-			return Error(c.tokenizer(in) + "が不正です")
+			return Error(c.tokenizer(in) + " is invalid")
 		}
 	}
 	return nil
@@ -2659,9 +2617,7 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	if len(c.maeOp) == 0 {
 		if opp := c.isOperator(c.token); opp == 0 {
 			if !sys.ignoreMostErrors || !c.usiroOp && c.token == "(" {
-				return bvNone(), Error("演算子がありません" +
-					"\n" +
-					"No comparison operator" +
+				return bvNone(), Error("No comparison operator" +
 					"\n" +
 					"Token = '" + c.token + "' String = '" + *in + "'" +
 					"\n[ECID 3]\n")
@@ -2673,9 +2629,7 @@ func (c *Compiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 			}
 			if c.usiroOp {
 				if c.isOperator(c.token) <= 0 {
-					return bvNone(), Error("演算子がありません" +
-						"\n" +
-						"No comparison operator" +
+					return bvNone(), Error("No comparison operator" +
 						"\n[ECID 4]\n")
 				}
 				if err := c.renzokuEnzansihaError(in); err != nil {
@@ -2821,7 +2775,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 	}
 	if c.token != "," {
 		if open != "(" {
-			return false, Error(",がありません")
+			return false, Error("Missing ','")
 		}
 		if err := c.kakkotojiru(); err != nil {
 			return false, err
@@ -2837,7 +2791,7 @@ func (c *Compiler) expRange(out *BytecodeExp, in *string,
 	}
 	close := c.token
 	if close != "]" && close != ")" {
-		return false, Error("]か)がありません")
+		return false, Error("Missing ']' or ')'")
 	}
 	c.token = c.tokenizer(in)
 	if bv.IsNone() || bv2.IsNone() || bv3.IsNone() {
@@ -3105,7 +3059,7 @@ func (c *Compiler) argExpression(in *string, vt ValueType) (BytecodeExp,
 	}
 	if len(c.token) > 0 {
 		if c.token != "," {
-			return nil, Error(c.token + "が不正です")
+			return nil, Error(c.token + " is invalid")
 		}
 		oldin := *in
 		if c.tokenizer(in) == "" {
@@ -3123,7 +3077,7 @@ func (c *Compiler) fullExpression(in *string, vt ValueType) (BytecodeExp,
 		return nil, err
 	}
 	if len(c.token) > 0 {
-		return nil, Error(c.token + "が不正です")
+		return nil, Error(c.token + " is invalid")
 	}
 	return be, nil
 }
@@ -3162,7 +3116,7 @@ func (c *Compiler) parseSection(
 				if sys.ignoreMostErrors {
 					continue
 				}
-				return nil, false, Error(name + "が重複しています")
+				return nil, false, Error(name + " is duplicated")
 			}
 			if sctrl != nil {
 				switch name {
@@ -3210,7 +3164,7 @@ func (c *Compiler) stateSec(is IniSection, f func() error) error {
 			str += k
 		}
 		if len(str) > 0 {
-			return Error(str + "は無効なキー名です")
+			return Error(str + " is an invalid key name")
 		}
 	}
 	return nil
@@ -3266,7 +3220,7 @@ func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 		return err
 	}
 	if mandatory && !f {
-		return Error(paramname + "が指定されていません" + "\n" + paramname + "not specified.")
+		return Error(paramname + " not specified")
 	}
 	return nil
 }
@@ -3274,7 +3228,7 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "postype", func(data string) error {
 		if len(data) == 0 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var pt PosType
 		if len(data) >= 2 && strings.ToLower(data[:2]) == "p2" {
@@ -3294,7 +3248,7 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 			case 'n':
 				pt = PT_N
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 		}
 		sc.add(id, sc.iToExp(int32(pt)))
@@ -3306,7 +3260,7 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "space", func(data string) error {
 		if len(data) <= 1 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var sp Space
 		if len(data) >= 2 {
@@ -3325,7 +3279,7 @@ func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "savedata", func(data string) error {
 		if len(data) <= 1 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var sv SaveData
 		if len(data) >= 2 {
@@ -3346,7 +3300,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 	prefix string, id byte, afterImage bool) error {
 	return c.stateParam(is, prefix+"trans", func(data string) error {
 		if len(data) == 0 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		tt := TT_default
 		data = strings.ToLower(data)
@@ -3378,7 +3332,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				}
 			}
 			if _error && (!afterImage || !sys.ignoreMostErrors) {
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 		}
 		var exp []BytecodeExp
@@ -3461,7 +3415,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			switch strings.ToLower(data)[0] {
 			case 's':
@@ -3475,7 +3429,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.stateType = ST_U
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			return nil
 		}); err != nil {
@@ -3483,7 +3437,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}
 		if err := c.stateParam(is, "movetype", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			switch strings.ToLower(data)[0] {
 			case 'i':
@@ -3495,7 +3449,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.moveType = MT_U
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			return nil
 		}); err != nil {
@@ -3503,7 +3457,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}
 		if err := c.stateParam(is, "physics", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			switch strings.ToLower(data)[0] {
 			case 's':
@@ -3517,7 +3471,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.physics = ST_U
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			return nil
 		}); err != nil {
@@ -3624,7 +3578,7 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 		}
 	}
 	if attr == -1 {
-		return Error("valueが指定されていません")
+		return Error("value parameter not specified")
 	}
 	if err := c.paramValue(is, sc, "time",
 		hitBy_time, VT_Int, 1, false); err != nil {
@@ -3731,7 +3685,7 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 			case "roundnotskip":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			return nil
 		}
@@ -3743,7 +3697,7 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if !f {
-			return Error("flagが指定されていません")
+			return Error("flag parameter not specified")
 		}
 		if err := c.stateParam(is, "flag2", func(data string) error {
 			return foo(data)
@@ -3787,7 +3741,7 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if !f {
-			return Error("valueが指定されていません")
+			return Error("value parameter not specified")
 		}
 		if err := c.paramValue(is, sc, "channel",
 			playSnd_channel, VT_Int, 1, false); err != nil {
@@ -4013,14 +3967,14 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "helpertype", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			switch strings.ToLower(data)[0] {
 			case 'n':
 			case 'p':
 				sc.add(helper_helpertype, sc.iToExp(1))
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			return nil
 		}); err != nil {
@@ -4028,7 +3982,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "name", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(helper_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -4498,7 +4452,7 @@ func (c *Compiler) palFXSub(is IniSection,
 			return err
 		}
 		if len(bes) < 3 {
-			return Error(prefix + "addの要素が足りません")
+			return Error(prefix + "add - not enough arguments")
 		}
 		sc.add(palFX_add, bes)
 		return nil
@@ -4511,7 +4465,7 @@ func (c *Compiler) palFXSub(is IniSection,
 			return err
 		}
 		if len(bes) < 3 {
-			return Error(prefix + "mulの要素が足りません")
+			return Error(prefix + "mul - not enough arguments")
 		}
 		sc.add(palFX_mul, bes)
 		return nil
@@ -4524,7 +4478,7 @@ func (c *Compiler) palFXSub(is IniSection,
 			return err
 		}
 		if len(bes) < 3 {
-			return Error(prefix + "sinaddの要素が足りません")
+			return Error(prefix + "sinadd - not enough arguments")
 		}
 		sc.add(palFX_sinadd, bes)
 		return nil
@@ -4708,7 +4662,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	htyp := func(id byte, data string) error {
 		if len(data) == 0 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var ht HitType
 		switch data[0] {
@@ -4721,7 +4675,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'N', 'n':
 			ht = HT_None
 		default:
-			return Error(data + "が無効な値です")
+			return Error(data + " is an invalid value")
 		}
 		sc.add(id, sc.iToExp(int32(ht)))
 		return nil
@@ -4738,7 +4692,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	reac := func(id byte, data string) error {
 		if len(data) == 0 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var ra Reaction
 		switch data[0] {
@@ -4755,7 +4709,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'D', 'd':
 			ra = RA_Diagup
 		default:
-			return Error(data + "が無効な値です")
+			return Error(data + " is an invalid value")
 		}
 		sc.add(id, sc.iToExp(int32(ra)))
 		return nil
@@ -4777,7 +4731,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	if err := c.stateParam(is, "affectteam", func(data string) error {
 		if len(data) == 0 {
-			return Error("値が指定されていません")
+			return Error("Value not specified")
 		}
 		var at int32
 		switch data[0] {
@@ -4788,7 +4742,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'F', 'f':
 			at = -1
 		default:
-			return Error(data + "が無効な値です")
+			return Error(data + " is an invalid value")
 		}
 		sc.add(hitDef_affectteam, sc.iToExp(at))
 		return nil
@@ -4888,7 +4842,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 			case 'D', 'd':
 				at = AT_Dodge
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 		}
 		sc.add(hitDef_priority, append(sc.beToExp(be), sc.iToExp(int32(at))...))
@@ -5086,7 +5040,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		in := data
 		if c.token = c.tokenizer(&in); c.token == "n" {
 			if c.token = c.tokenizer(&in); len(c.token) > 0 && c.token != "," {
-				return Error(c.token + "がエラーです")
+				return Error(c.token + " is invalid")
 			}
 		} else {
 			in = data
@@ -5100,7 +5054,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 			oldin := in
 			if c.token = c.tokenizer(&in); c.token == "n" {
 				if c.token = c.tokenizer(&in); len(c.token) > 0 {
-					return Error(c.token + "がエラーです")
+					return Error(c.token + " is invalid")
 				}
 			} else {
 				in = oldin
@@ -5215,7 +5169,7 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if attr == -1 {
-			return Error("reversal.attrが指定されていません")
+			return Error("reversal.attr parameter not specified")
 		}
 		sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
 		return c.hitDefSub(is, sc)
@@ -5563,7 +5517,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	set := func(data string) error {
 		data = strings.TrimSpace(data)
 		if data[0] != '(' {
-			return Error("'('がありません")
+			return Error("Missing '('")
 		}
 		var be BytecodeExp
 		c.token = c.tokenizer(&data)
@@ -5637,7 +5591,7 @@ func (c *Compiler) varSetSub(is IniSection,
 		if len(c.token) == 0 || c.token[len(c.token)-1] != '=' {
 			idx := strings.Index(data, "=")
 			if idx < 0 {
-				return Error("'='がありません")
+				return Error("Missing '='")
 			}
 			data = data[idx+1:]
 		}
@@ -5669,7 +5623,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	}
 	if err := c.stateParam(is, "var", func(data string) error {
 		if data[0] != 'v' {
-			return Error(data[:3] + "の'v'が小文字でありません")
+			return Error(data[:3] + "'v' is not lowercase")
 		}
 		b = true
 		v = true
@@ -5682,7 +5636,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	}
 	if err := c.stateParam(is, "fvar", func(data string) error {
 		if rd == OC_rdreset && data[0] != 'f' {
-			return Error(data[:4] + "の'f'が小文字でありません")
+			return Error(data[:4] + "'f' is not lowercase")
 		}
 		b = true
 		fv = true
@@ -5695,7 +5649,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	}
 	if err := c.stateParam(is, "sysvar", func(data string) error {
 		if data[3] != 'v' {
-			return Error(data[:6] + "の'v'が小文字でありません")
+			return Error(data[:6] + "'v' is not lowercase")
 		}
 		b = true
 		v = true
@@ -5718,7 +5672,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	if b {
 		return nil
 	}
-	return Error("valueが指定されていません")
+	return Error("value parameter not specified")
 }
 func (c *Compiler) varSet(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
@@ -5882,7 +5836,7 @@ func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase,
 			case 'F', 'f':
 				hmf = HMF_F
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			sc.add(bindToTarget_pos, append(exp, sc.iToExp(int32(hmf))...))
 			return nil
@@ -6361,7 +6315,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 		}
 		statetype := func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			var st StateType
 			switch strings.ToLower(data)[0] {
@@ -6374,7 +6328,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'l':
 				st = ST_L
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			sc.add(stateTypeSet_statetype, sc.iToExp(int32(st)))
 			return nil
@@ -6395,7 +6349,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "movetype", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			var mt MoveType
 			switch strings.ToLower(data)[0] {
@@ -6406,7 +6360,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'h':
 				mt = MT_H
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			sc.add(stateTypeSet_movetype, sc.iToExp(int32(mt)))
 			return nil
@@ -6415,7 +6369,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "physics", func(data string) error {
 			if len(data) == 0 {
-				return Error("値が指定されていません")
+				return Error("Value not specified")
 			}
 			var st StateType
 			switch strings.ToLower(data)[0] {
@@ -6428,7 +6382,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'n':
 				st = ST_N
 			default:
-				return Error(data + "が無効な値です")
+				return Error(data + " is an invalid value")
 			}
 			sc.add(stateTypeSet_physics, sc.iToExp(int32(st)))
 			return nil
@@ -6512,7 +6466,7 @@ func (c *Compiler) envColor(is IniSection, sc *StateControllerBase,
 				return err
 			}
 			if len(bes) < 3 {
-				return Error("valueの要素が足りません")
+				return Error("value - not enough arguments")
 			}
 			sc.add(envColor_value, bes)
 			return nil
@@ -6561,7 +6515,7 @@ func (c *Compiler) displayToClipboardSub(is IniSection,
 			_else = true
 		}
 		if _else {
-			return Error("\"で囲まれていません")
+			return Error("Not enclosed in \"")
 		}
 		sc.add(displayToClipboard_text,
 			sc.iToExp(int32(sys.stringPool[c.playerNo].Add(data))))
@@ -6570,7 +6524,7 @@ func (c *Compiler) displayToClipboardSub(is IniSection,
 		return err
 	}
 	if !b {
-		return Error("textが指定されていません")
+		return Error("text parameter not specified")
 	}
 	return nil
 }
@@ -6784,7 +6738,7 @@ func (c *Compiler) varRangeSet(is IniSection, sc *StateControllerBase,
 				return err
 			}
 			if !b {
-				return Error("valueが指定されていません")
+				return Error("value parameter not specified")
 			}
 		}
 		return nil
@@ -7121,7 +7075,7 @@ func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "path", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(loadFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7145,7 +7099,7 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 		}
 		if err := c.stateParam(is, "map", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7265,7 +7219,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "stagedef", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_stagedef, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7274,7 +7228,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p1def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p1def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7283,7 +7237,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p2def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p2def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7292,7 +7246,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p3def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p3def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7301,7 +7255,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p4def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p4def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7310,7 +7264,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p5def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p5def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7319,7 +7273,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p6def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p6def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7328,7 +7282,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p7def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p7def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7337,7 +7291,7 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "p8def", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7398,7 +7352,7 @@ func (c *Compiler) remapSprite(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "preset", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(remapSprite_preset, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7452,7 +7406,7 @@ func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.stateParam(is, "path", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("\"で囲まれていません")
+				return Error("Not enclosed in \"")
 			}
 			sc.add(saveFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
@@ -7650,8 +7604,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					var ok bool
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
-						return Error(data + "が無効な値です" +
-							"\n" + data + " is a invalid state controller")
+						return Error(data + " is a invalid state controller")
 					}
 				case "persistent":
 					if c.stateNo >= 0 {
@@ -7688,7 +7641,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						if sys.ignoreMostErrors {
 							break
 						}
-						return Error("トリガー名 (" + name + ") が不正です")
+						return Error("Invalid trigger name: " + name)
 					}
 					if len(trigger) < int(tn) {
 						trigger = append(trigger, make([][]BytecodeExp,
@@ -7731,10 +7684,10 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				return errmes(err)
 			}
 			if scf == nil {
-				return errmes(Error("typeが指定されていません"))
+				return errmes(Error("type parameter not specified"))
 			}
 			if len(trexist) == 0 || (!allUtikiri && trexist[0] == 0) {
-				return errmes(Error("trigger1がありません"))
+				return errmes(Error("Missing trigger1"))
 			}
 			var texp BytecodeExp
 			for _, e := range triggerall {
@@ -7840,9 +7793,9 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 }
 func (c *Compiler) yokisinaiToken() error {
 	if c.token == "" {
-		return Error("予期されていないファイル終端")
+		return Error("Missing token")
 	}
-	return Error("予期されていないトークン: " + c.token)
+	return Error("Unexpected token: " + c.token)
 }
 func (c *Compiler) nextLine() (string, bool) {
 	s := <-c.linechan
@@ -7870,16 +7823,16 @@ func (c *Compiler) scan(line *string) string {
 func (c *Compiler) needToken(t string) error {
 	if c.token != t {
 		if c.token == "" {
-			return Error(t + "が必要な場所で予期されていないファイル終端")
+			return Error(t + " token is missing")
 		}
-		return Error(t + "が必要な場所で予期されていないトークン: " + c.token)
+		return Error(t + " token is missing. Unexpected token: " + c.token)
 	}
 	return nil
 }
 func (c *Compiler) readString(line *string) (string, error) {
 	i := strings.Index(*line, "\"")
 	if i < 0 {
-		return "", Error("'\"' が閉じられていない")
+		return "", Error("Not enclosed in \"")
 	}
 	s := (*line)[:i]
 	*line = (*line)[i+1:]
@@ -7966,11 +7919,11 @@ func (c *Compiler) readKeyValue(is IniSection, end string,
 }
 func (c *Compiler) varNameCheck(nm string) (err error) {
 	if (nm[0] < 'a' || nm[0] > 'z') && nm[0] != '_' {
-		return Error("不正な名前: " + nm)
+		return Error("Invalid name: " + nm)
 	}
 	for _, c := range nm[1:] {
 		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '_' {
-			return Error("不正な名前: " + nm)
+			return Error("Invalid name: " + nm)
 		}
 	}
 	return nil
@@ -7988,7 +7941,7 @@ func (c *Compiler) varNames(end string, line *string) ([]string, error) {
 			if name != "_" {
 				for _, nm := range names {
 					if nm == name {
-						return nil, Error("同一の名前の使用: " + name)
+						return nil, Error("Duplicated name: " + name)
 					}
 				}
 			}
@@ -8009,7 +7962,7 @@ func (c *Compiler) varNames(end string, line *string) ([]string, error) {
 func (c *Compiler) inclNumVars(numVars *int32) error {
 	*numVars++
 	if *numVars > 256 {
-		return Error("ローカル変数量の上限 256 を超過")
+		return Error("Exceeded 256 local variable limit")
 	}
 	return nil
 }
@@ -8038,10 +7991,10 @@ func (c *Compiler) subBlock(line *string, root bool,
 			continue
 		case "persistent":
 			if sbc == nil {
-				return nil, Error("関数内でpersistentは使用できない")
+				return nil, Error("persistent cannot be used in a function")
 			}
 			if c.stateNo < 0 {
-				return nil, Error("マイナスステートでpersistentは使用できない")
+				return nil, Error("persistent cannot be used in a negative state")
 			}
 			if bl.persistentIndex >= 0 {
 				return nil, c.yokisinaiToken()
@@ -8059,7 +8012,7 @@ func (c *Compiler) subBlock(line *string, root bool,
 				return nil, err
 			}
 			if bl.persistent == 1 {
-				return nil, Error("persistent(1)は無意味なので禁止")
+				return nil, Error("persistent(1) is meaningless")
 			}
 			if bl.persistent <= 0 {
 				bl.persistent = math.MaxInt32
@@ -8135,11 +8088,11 @@ func (c *Compiler) callFunc(line *string, root bool,
 		if c.token == "" || c.token == "(" {
 			return c.yokisinaiToken()
 		}
-		return Error("未定義の関数: " + c.token)
+		return Error("Undefined function: " + c.token)
 	}
 	c.funcUsed[c.token] = true
 	if len(ret) > 0 && len(ret) != int(cf.numRets) {
-		return Error(fmt.Sprintf("代入と返り値の数の不一致: %v = %v",
+		return Error(fmt.Sprintf("Mismatch in number of assignments and return values: %v = %v",
 			len(ret), cf.numRets))
 	}
 	c.scan(line)
@@ -8363,7 +8316,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 					return err
 				}
 				if !assign {
-					return Error("値が利用されない式")
+					return Error("Expression with unused value")
 				}
 				if root {
 					if err := c.statementEnd(line); err != nil {
@@ -8453,7 +8406,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 			}
 			c.scan(&line)
 			if existInThisFile[c.stateNo] {
-				return errmes(Error(fmt.Sprintf("State %v の多重定義", c.stateNo)))
+				return errmes(Error(fmt.Sprintf("State %v overloaded", c.stateNo)))
 			}
 			existInThisFile[c.stateNo] = true
 			is := NewIniSection()
@@ -8494,8 +8447,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 				return errmes(err)
 			}
 			if c.funcUsed[name] {
-				return errmes(Error(
-					"同じファイル内で定義済み、またはすでに使用している関数の再定義: " + name))
+				return errmes(Error("Function already defined in the same file: " + name))
 			}
 			c.scan(&line)
 			if err := c.needToken("("); err != nil {
@@ -8519,9 +8471,9 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 			} else {
 				for _, r := range rets {
 					if r == "_" {
-						return errmes(Error("返り値名が _"))
+						return errmes(Error("The return value name is _"))
 					} else if _, ok := c.vars[r]; ok {
-						return errmes(Error("同一の名前の使用: " + r))
+						return errmes(Error("Duplicated name: " + r))
 					} else {
 						c.vars[r] = uint8(fun.numVars)
 					}
@@ -8536,12 +8488,12 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 				return errmes(err)
 			}
 			if c.funcUsed[name] {
-				return errmes(Error("内部で使用している関数と同名の関数を定義: " + name))
+				return errmes(Error("Function already defined in other file: " + name))
 			}
 			c.funcs[name] = fun
 			c.funcUsed[name] = true
 		default:
-			return errmes(Error("認識できないセクション名: " + c.token))
+			return errmes(Error("Unrecognized section (group) name: " + c.token))
 		}
 	}
 	return nil
