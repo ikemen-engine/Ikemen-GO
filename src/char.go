@@ -4231,14 +4231,10 @@ func (c *Char) hitFallDamage() {
 }
 func (c *Char) hitFallVel() {
 	if c.ss.moveType == MT_H {
-		scl := c.localscl
-		if c.ghv.playerNo != -1 {
-			scl = sys.chars[c.ghv.playerNo][0].localscl
-		}
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
-			c.setXV(c.ghv.fall.xvelocity / scl)
+			c.setXV(c.ghv.fall.xvelocity)
 		}
-		c.setYV(c.ghv.fall.yvelocity / scl)
+		c.setYV(c.ghv.fall.yvelocity)
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv float32) {
