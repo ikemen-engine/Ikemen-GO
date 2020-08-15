@@ -1698,94 +1698,84 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setKeyConfig", func(l *lua.LState) int {
-		//pn, joystick, buttons array
-		pn := int(numArg(l, 1)) - 1
-		cnt := pn
-		for i := 0; i < MaxSimul*2; i++ {
-			ok := false
-			if pn == 0 {
-				if i&1 == pn {
-					ok = true
-				}
-			} else if cnt == 0 {
-				cnt = pn
-				ok = true
-			}
-			if !ok {
-				cnt -= 1
-			} else {
-				tableArg(l, 3).ForEach(func(key, value lua.LValue) {
-					if int(numArg(l, 2)) == -1 {
-						btn := int(StringToKey(lua.LVAsString(value)))
-						switch int(lua.LVAsNumber(key)) {
-						case 1:
-							sys.keyConfig[i].dU = btn
-						case 2:
-							sys.keyConfig[i].dD = btn
-						case 3:
-							sys.keyConfig[i].dL = btn
-						case 4:
-							sys.keyConfig[i].dR = btn
-						case 5:
-							sys.keyConfig[i].kA = btn
-						case 6:
-							sys.keyConfig[i].kB = btn
-						case 7:
-							sys.keyConfig[i].kC = btn
-						case 8:
-							sys.keyConfig[i].kX = btn
-						case 9:
-							sys.keyConfig[i].kY = btn
-						case 10:
-							sys.keyConfig[i].kZ = btn
-						case 11:
-							sys.keyConfig[i].kS = btn
-						case 12:
-							sys.keyConfig[i].kD = btn
-						case 13:
-							sys.keyConfig[i].kW = btn
-						case 14:
-							sys.keyConfig[i].kM = btn
-						}
-					} else {
-						btn, err := strconv.Atoi(lua.LVAsString(value))
-						if err != nil {
-							btn = 999
-						}
-						switch int(lua.LVAsNumber(key)) {
-						case 1:
-							sys.joystickConfig[i].dU = btn
-						case 2:
-							sys.joystickConfig[i].dD = btn
-						case 3:
-							sys.joystickConfig[i].dL = btn
-						case 4:
-							sys.joystickConfig[i].dR = btn
-						case 5:
-							sys.joystickConfig[i].kA = btn
-						case 6:
-							sys.joystickConfig[i].kB = btn
-						case 7:
-							sys.joystickConfig[i].kC = btn
-						case 8:
-							sys.joystickConfig[i].kX = btn
-						case 9:
-							sys.joystickConfig[i].kY = btn
-						case 10:
-							sys.joystickConfig[i].kZ = btn
-						case 11:
-							sys.joystickConfig[i].kS = btn
-						case 12:
-							sys.joystickConfig[i].kD = btn
-						case 13:
-							sys.joystickConfig[i].kW = btn
-						case 14:
-							sys.joystickConfig[i].kM = btn
-						}
-					}
-				})
-			}
+		pn := int(numArg(l, 1))
+		joy := int(numArg(l, 2))
+		if pn < 1 || (joy == -1 && pn > len(sys.keyConfig)) || (joy >= 0 && pn > len(sys.joystickConfig)) {
+			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
+		if joy < -1 || joy > len(sys.joystickConfig) {
+			l.RaiseError("\nInvalid controller number: %v\n", joy)
+		}
+		tableArg(l, 3).ForEach(func(key, value lua.LValue) {
+			if joy == -1 {
+				btn := int(StringToKey(lua.LVAsString(value)))
+				switch int(lua.LVAsNumber(key)) {
+				case 1:
+					sys.keyConfig[pn-1].dU = btn
+				case 2:
+					sys.keyConfig[pn-1].dD = btn
+				case 3:
+					sys.keyConfig[pn-1].dL = btn
+				case 4:
+					sys.keyConfig[pn-1].dR = btn
+				case 5:
+					sys.keyConfig[pn-1].kA = btn
+				case 6:
+					sys.keyConfig[pn-1].kB = btn
+				case 7:
+					sys.keyConfig[pn-1].kC = btn
+				case 8:
+					sys.keyConfig[pn-1].kX = btn
+				case 9:
+					sys.keyConfig[pn-1].kY = btn
+				case 10:
+					sys.keyConfig[pn-1].kZ = btn
+				case 11:
+					sys.keyConfig[pn-1].kS = btn
+				case 12:
+					sys.keyConfig[pn-1].kD = btn
+				case 13:
+					sys.keyConfig[pn-1].kW = btn
+				case 14:
+					sys.keyConfig[pn-1].kM = btn
+				}
+			} else {
+				btn, err := strconv.Atoi(lua.LVAsString(value))
+				if err != nil {
+					btn = 999
+				}
+				switch int(lua.LVAsNumber(key)) {
+				case 1:
+					sys.joystickConfig[pn-1].dU = btn
+				case 2:
+					sys.joystickConfig[pn-1].dD = btn
+				case 3:
+					sys.joystickConfig[pn-1].dL = btn
+				case 4:
+					sys.joystickConfig[pn-1].dR = btn
+				case 5:
+					sys.joystickConfig[pn-1].kA = btn
+				case 6:
+					sys.joystickConfig[pn-1].kB = btn
+				case 7:
+					sys.joystickConfig[pn-1].kC = btn
+				case 8:
+					sys.joystickConfig[pn-1].kX = btn
+				case 9:
+					sys.joystickConfig[pn-1].kY = btn
+				case 10:
+					sys.joystickConfig[pn-1].kZ = btn
+				case 11:
+					sys.joystickConfig[pn-1].kS = btn
+				case 12:
+					sys.joystickConfig[pn-1].kD = btn
+				case 13:
+					sys.joystickConfig[pn-1].kW = btn
+				case 14:
+					sys.joystickConfig[pn-1].kM = btn
+				}
+			}
+		})
 		return 0
 	})
 	luaRegister(l, "setLife", func(*lua.LState) int {

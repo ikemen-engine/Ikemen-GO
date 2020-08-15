@@ -450,35 +450,25 @@ Debug Options:
 		}
 		return 999
 	}
-	for i := 0; i < MaxSimul; i++ {
-		for _, kc := range tmp.KeyConfig {
-			b := kc.Buttons
-			if kc.Joystick < 0 {
-				sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
-					stoki(b[0].(string)), stoki(b[1].(string)), stoki(b[2].(string)),
-					stoki(b[3].(string)), stoki(b[4].(string)), stoki(b[5].(string)),
-					stoki(b[6].(string)), stoki(b[7].(string)), stoki(b[8].(string)),
-					stoki(b[9].(string)), stoki(b[10].(string)), stoki(b[11].(string)),
-					stoki(b[12].(string)), stoki(b[13].(string))})
-			}
-		}
-		if _, ok := sys.cmdFlags["-nojoy"]; !ok {
-			for _, jc := range tmp.JoystickConfig {
-				b := jc.Buttons
-				if jc.Joystick >= 0 {
-					sys.joystickConfig = append(sys.joystickConfig, KeyConfig{jc.Joystick,
-						Atoi(b[0].(string)), Atoi(b[1].(string)), Atoi(b[2].(string)),
-						Atoi(b[3].(string)), Atoi(b[4].(string)), Atoi(b[5].(string)),
-						Atoi(b[6].(string)), Atoi(b[7].(string)), Atoi(b[8].(string)),
-						Atoi(b[9].(string)), Atoi(b[10].(string)), Atoi(b[11].(string)),
-						Atoi(b[12].(string)), Atoi(b[13].(string))})
-				}
-			}
-		}
+	for _, kc := range tmp.KeyConfig {
+		b := kc.Buttons
+		sys.keyConfig = append(sys.keyConfig, KeyConfig{kc.Joystick,
+			stoki(b[0].(string)), stoki(b[1].(string)), stoki(b[2].(string)),
+			stoki(b[3].(string)), stoki(b[4].(string)), stoki(b[5].(string)),
+			stoki(b[6].(string)), stoki(b[7].(string)), stoki(b[8].(string)),
+			stoki(b[9].(string)), stoki(b[10].(string)), stoki(b[11].(string)),
+			stoki(b[12].(string)), stoki(b[13].(string))})
 	}
-	for i := 0; i < MaxAttachedChar; i++ {
-		sys.keyConfig = append(sys.keyConfig, KeyConfig{-1, -1, -1, -1,
-			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1})
+	if _, ok := sys.cmdFlags["-nojoy"]; !ok {
+		for _, jc := range tmp.JoystickConfig {
+			b := jc.Buttons
+			sys.joystickConfig = append(sys.joystickConfig, KeyConfig{jc.Joystick,
+				Atoi(b[0].(string)), Atoi(b[1].(string)), Atoi(b[2].(string)),
+				Atoi(b[3].(string)), Atoi(b[4].(string)), Atoi(b[5].(string)),
+				Atoi(b[6].(string)), Atoi(b[7].(string)), Atoi(b[8].(string)),
+				Atoi(b[9].(string)), Atoi(b[10].(string)), Atoi(b[11].(string)),
+				Atoi(b[12].(string)), Atoi(b[13].(string))})
+		}
 	}
 	//os.Mkdir("debug", os.ModeSticky|0755)
 	log := createLog("Ikemen.log")
