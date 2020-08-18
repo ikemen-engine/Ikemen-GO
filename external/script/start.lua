@@ -1817,7 +1817,7 @@ function start.f_challenger()
 	main.t_lifebar.p1score = true
 	main.t_lifebar.p2score = true
 	main.f_resetCharparam()
-	setgamemode('teamversus')
+	setGameMode('teamversus')
 	--start challenger match
 	start.f_selectSimple()
 	--restore mode data
@@ -1832,7 +1832,7 @@ function start.f_challenger()
 	main.t_lifebar.p1score = p1score_sav
 	main.t_lifebar.p2score = p2score_sav
 	main.t_charparam = t_charparam_sav
-	setgamemode(gameMode)
+	setGameMode(gameMode)
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		challenger = false
 		start.f_selectReset()
