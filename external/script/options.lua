@@ -217,11 +217,16 @@ for select_line in io.lines(motif.files.select) do
 	table.insert(select_lines, parsed)
 end
 
---TODO: create a dedicated function
+--TODO: create a dedicated function for lsdir
+local unused_characted_added = false
 local ls_result_file = os.tmpname()
 os.execute("ls chars/ --format=single-column > " .. ls_result_file)
 for dir_char in io.lines(ls_result_file) do
-	if char_registred_by_name[dir_char:lower()] == nil then
+	if char_registred_by_name[dir_char:lower()] == nil and dir_char ~= "training" then
+		if unused_characted_added == false then
+			table.insert(select_characters, {special = "marker", name = "never included characters"})
+			unused_characted_added = true
+		end
 		data = {user_enabled = false, name=dir_char, config={}}
 		table.insert(select_characters, data)
 	end
@@ -263,16 +268,23 @@ options.t_itemname = {
 			for k, v in ipairs(select_characters) do
 				local itemname = "empty"
 
-				local f = function(cursorPosY, moveTxt, item, t)
-					if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
-						local char_data = select_characters[item]
-						char_data.user_enabled = not char_data.user_enabled
-						char_data["changed"] = true
-						t["items"][item]["selected"] = char_data.user_enabled
-						modified = true
-						needReload = true --TODO: do not require a reload
+				local f = nil
+				if v["special"] == nil then
+					f = function(cursorPosY, moveTxt, item, t)
+						if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+							local char_data = select_characters[item]
+							char_data.user_enabled = not char_data.user_enabled
+							char_data["changed"] = true
+							t["items"][item]["selected"] = char_data.user_enabled
+							modified = true
+							needReload = true --TODO: do not require a reload
+						end
+						return true
 					end
-					return true
+				else
+					f = function(cursorPosY, moveTxt, item, t)
+						return true
+					end
 				end
 
 				table.insert(submenu.items, {data = text:create({window = t_menuWindow}), displayname = v["name"], vardata = text:create({window = t_menuWindow}), selected = v["user_enabled"], func = f})
