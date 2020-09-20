@@ -41,6 +41,12 @@ function options.f_saveCfg(reload)
 	for k, v in ipairs(select_characters) do
 		if v["changed"] == true then
 			local chara_definition = file_def.rebuild_char(v)
+			if v.line == nil then
+				local new_line = {kind = "empty", initial_whitespace = ""}
+				table.insert(select_lines, last_character_line, new_line)
+				last_character_line = last_character_line + 1
+				v.line = new_line
+			end
 			if v.user_enabled == true then
 				v.line.kind = "data"
 				v.line.data = chara_definition
@@ -54,7 +60,7 @@ function options.f_saveCfg(reload)
 	end
 
 	if need_to_save_select then
-		select_compiled = file_def.rebuild_source_file(select_lines)
+		local select_compiled = file_def.rebuild_source_file(select_lines)
 		local file = io.open(motif.files.select, 'w+')
 		file:write(select_compiled)
 		file:close()
@@ -156,7 +162,6 @@ end
 
 local function f_externalShaderName()
 	if #config.ExternalShaders > 0 and config.PostProcessingShader ~= 0 then
-		print(config.ExternalShaders[1]:gsub('^.+/', ''))
 		return config.ExternalShaders[1]:gsub('^.+/', '')
 	end
 	return motif.option_info.menu_valuename_disabled
@@ -166,14 +171,18 @@ end
 local file_def = (loadfile 'external/script/file_def.lua')()
 local section = 0
 local slot = false
+local char_registred_by_name = {}
 select_lines = {}
 select_characters = {}
+last_character_line = nil
+
 for select_line in io.lines(motif.files.select) do
 	local parsed = file_def.parse_line(select_line)
 	if parsed["kind"] == "section" then
 		if parsed["section"]:lower() == "characters" then
 			section = 1
 		else
+			if section == 1 then last_character_line = #select_lines + 1 end
 			section = 0
 		end
 	elseif section == 1 then
@@ -186,9 +195,9 @@ for select_line in io.lines(motif.files.select) do
 				slot = false
 			elseif slot == false then -- ignore multiple character slot at the moment ;TODO: do not do this
 				local char_data = file_def.parse_char_line(data)
-				char_data["user_enabled"] = true
+				char_data["user_enabled"] = true --TODO: deduplicate those lines
 				char_data["line"] = parsed
-				char_data["changed"] = false
+				char_registred_by_name[char_data.name:lower()] = true
 				table.insert(select_characters, char_data)
 			end
 		elseif parsed["kind"] == "empty" then
@@ -198,7 +207,7 @@ for select_line in io.lines(motif.files.select) do
 						local char_data = file_def.parse_char_line(parsed["comment"]:sub(14))
 						char_data["user_enabled"] = false
 						char_data["line"] = parsed
-						char_data["changed"] = false
+						char_registred_by_name[char_data.name:lower()] = true
 						table.insert(select_characters, char_data)
 					end
 				end
@@ -206,6 +215,16 @@ for select_line in io.lines(motif.files.select) do
 		end
 	end
 	table.insert(select_lines, parsed)
+end
+
+--TODO: create a dedicated function
+local ls_result_file = os.tmpname()
+os.execute("ls chars/ --format=single-column > " .. ls_result_file)
+for dir_char in io.lines(ls_result_file) do
+	if char_registred_by_name[dir_char:lower()] == nil then
+		data = {user_enabled = false, name=dir_char, config={}}
+		table.insert(select_characters, data)
+	end
 end
 
 options.t_itemname = {
@@ -635,16 +654,6 @@ options.t_itemname = {
 					v.selected = true
 				else
 					v.selected = false
-				end
-			end
-			for k, v in pairs(t.submenu['shaders']) do
-				print("key " .. k)
-				print(v)
-				if type(v) == "table" then
-					for k2, v2 in pairs(v) do
-						print("--key " .. k2)
-						print(v2)
-					end
 				end
 			end
 			t.submenu[t.items[item].itemname].loop()
