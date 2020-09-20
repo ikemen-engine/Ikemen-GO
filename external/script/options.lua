@@ -35,6 +35,31 @@ function options.f_saveCfg(reload)
 	local file = io.open(main.flags['-config'], 'w+')
 	file:write(json.encode(config, {indent = true}))
 	file:close()
+
+	-- save change to select.def
+	local need_to_save_select = false
+	for k, v in ipairs(select_characters) do
+		if v["changed"] == true then
+			local chara_definition = file_def.rebuild_char(v)
+			if v.user_enabled == true then
+				v.line.kind = "data"
+				v.line.data = chara_definition
+			else
+				v.line.kind = "empty"
+				v.line.have_comment = true
+				v.line.comment = "CHARDISABLED:" .. chara_definition
+			end
+			need_to_save_select = true
+		end
+	end
+
+	if need_to_save_select then
+		select_compiled = file_def.rebuild_source_file(select_lines)
+		local file = io.open(motif.files.select, 'w+')
+		file:write(select_compiled)
+		file:close()
+	end
+
 	--Reload game if needed
 	if reload then
 		main.f_warning(main.f_extractText(motif.warning_info.text_reload_text), motif.option_info, motif.optionbgdef)
@@ -131,9 +156,56 @@ end
 
 local function f_externalShaderName()
 	if #config.ExternalShaders > 0 and config.PostProcessingShader ~= 0 then
+		print(config.ExternalShaders[1]:gsub('^.+/', ''))
 		return config.ExternalShaders[1]:gsub('^.+/', '')
 	end
 	return motif.option_info.menu_valuename_disabled
+end
+
+-- load characters data
+local file_def = (loadfile 'external/script/file_def.lua')()
+local section = 0
+local slot = false
+select_lines = {}
+select_characters = {}
+for select_line in io.lines(motif.files.select) do
+	local parsed = file_def.parse_line(select_line)
+	if parsed["kind"] == "section" then
+		if parsed["section"]:lower() == "characters" then
+			section = 1
+		else
+			section = 0
+		end
+	elseif section == 1 then
+		if parsed["kind"] == "data" then
+			data = parsed["data"]:lower()
+			if data:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
+				table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
+				slot = true
+			elseif slot and data:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
+				slot = false
+			elseif slot == false then -- ignore multiple character slot at the moment ;TODO: do not do this
+				local char_data = file_def.parse_char_line(data)
+				char_data["user_enabled"] = true
+				char_data["line"] = parsed
+				char_data["changed"] = false
+				table.insert(select_characters, char_data)
+			end
+		elseif parsed["kind"] == "empty" then
+			if parsed["comment"] ~= nil then
+				if #parsed.comment > 13 then
+					if parsed["comment"]:sub(1, 13) == "CHARDISABLED:" then
+						local char_data = file_def.parse_char_line(parsed["comment"]:sub(14))
+						char_data["user_enabled"] = false
+						char_data["line"] = parsed
+						char_data["changed"] = false
+						table.insert(select_characters, char_data)
+					end
+				end
+			end
+		end
+	end
+	table.insert(select_lines, parsed)
 end
 
 options.t_itemname = {
@@ -159,6 +231,34 @@ options.t_itemname = {
 			else
 				sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			end
+		end
+		return true
+	end,
+	-- characters management
+	['characters'] = function(cursorPosY, moveTxt, item, t)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			local submenu = {}
+			submenu["items"] = {}
+			submenu["submenu"] = {}
+			submenu["title"] = "select characters"
+			for k, v in ipairs(select_characters) do
+				local itemname = "empty"
+
+				local f = function(cursorPosY, moveTxt, item, t)
+					if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+						local char_data = select_characters[item]
+						char_data.user_enabled = not char_data.user_enabled
+						char_data["changed"] = true
+						t["items"][item]["selected"] = char_data.user_enabled
+						modified = true
+						needReload = true --TODO: do not require a reload
+					end
+					return true
+				end
+
+				table.insert(submenu.items, {data = text:create({window = t_menuWindow}), displayname = v["name"], vardata = text:create({window = t_menuWindow}), selected = v["user_enabled"], func = f})
+			end
+			options.createMenu(submenu, false, false, false)()
 		end
 		return true
 	end,
@@ -535,6 +635,16 @@ options.t_itemname = {
 					v.selected = true
 				else
 					v.selected = false
+				end
+			end
+			for k, v in pairs(t.submenu['shaders']) do
+				print("key " .. k)
+				print(v)
+				if type(v) == "table" then
+					for k2, v2 in pairs(v) do
+						print("--key " .. k2)
+						print(v2)
+					end
 				end
 			end
 			t.submenu[t.items[item].itemname].loop()
@@ -1126,6 +1236,7 @@ options.t_itemname = {
 		return true
 	end,
 }
+
 --external shaders
 options.t_shaders = {}
 for k, v in ipairs(getDirectoryFiles('external/shaders')) do
@@ -1233,6 +1344,10 @@ function options.createMenu(tbl, bool_bgreset, bool_main, bool_f1)
 					break
 				end
 				if not options.t_itemname.gamepad(cursorPosY, moveTxt, item, tbl) then
+					break
+				end
+			elseif t[item].func ~= nil then
+				if not t[item].func(cursorPosY, moveTxt, item, tbl) then
 					break
 				end
 			elseif options.t_itemname[t[item].itemname] ~= nil then

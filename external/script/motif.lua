@@ -1689,6 +1689,7 @@ function motif.setBaseOptionInfo()
 
 	motif.option_info.menu_itemname_empty = ""
 	motif.option_info.menu_itemname_portchange = "Port Change"
+	motif.option_info_menu_itemname_characters = "Manage Characters"
 	motif.option_info.menu_itemname_default = "Default Values"
 	motif.option_info.menu_itemname_empty = ""
 	motif.option_info.menu_itemname_savereturn = "Save and Return"
@@ -1793,6 +1794,7 @@ function motif.setBaseOptionInfo()
 		"menuengine_back",
 		"empty",
 		"portchange",
+		"characters",
 		"default",
 		"empty",
 		"savereturn",

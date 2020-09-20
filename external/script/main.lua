@@ -13,6 +13,8 @@ if main.flags['-stats'] == nil then main.flags['-stats'] = 'save/stats.json' end
 --One-time load of the json routines
 json = (loadfile 'external/script/dkjson.lua')()
 
+file_def = require('external.script.file_def')
+
 --Data loading from config.json
 local file = io.open(main.flags['-config'], 'r')
 config = json.decode(file:read("*all"))
@@ -1529,118 +1531,118 @@ local tmp = ''
 local section = 0
 local row = 0
 local slot = false
-local file = io.open(motif.files.select,"r")
-local content = file:read("*all")
-file:close()
-content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
-content = content:gsub('\n%s*\n', '\n')
-for line in content:gmatch('[^\r\n]+') do
---for line in io.lines("data/select.def") do
-	local lineCase = line:lower()
-	if lineCase:match('^%s*%[%s*characters%s*%]') then
-		main.t_selChars = {}
-		main.t_selGrid = {}
-		row = 0
-		section = 1
-	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
-		main.t_selStages = {}
-		row = 0
-		section = 2
-	elseif lineCase:match('^%s*%[%s*options%s*%]') then
-		main.t_selOptions = {
-			arcadestart = {wins = 0, offset = 0},
-			arcadeend = {wins = 0, offset = 0},
-			teamstart = {wins = 0, offset = 0},
-			teamend = {wins = 0, offset = 0},
-			survivalstart = {wins = 0, offset = 0},
-			survivalend = {wins = 0, offset = 0},
-			ratiostart = {wins = 0, offset = 0},
-			ratioend = {wins = 0, offset = 0},
-		}
-		row = 0
-		section = 3
-	elseif section == 1 then --[Characters]
-		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
-			table.insert(t_addExluded, line)
-		elseif lineCase:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
-			table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
-			slot = true
-		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
-			slot = false
-		else
-			chars = chars + 1
-			main.f_addChar(line, chars, true, slot)
+for line in io.lines(motif.files.select) do
+	line_parsed = file_def.parse_line(line)
+	if line_parsed["kind"] == "section" then
+		local line_section = line_parsed["section"]:lower()
+		if line_section == "characters" then
+			main.t_selChars = {}
+			main.t_selGrid = {}
+			row = 0
+			section = 1
+		elseif line_section == "extrastages" then
+			main.t_selStages = {}
+			row = 0
+			section = 2
+		elseif line_section == "options" then
+			main.t_selOptions = {
+				arcadestart = {wins = 0, offset = 0},
+				arcadeend = {wins = 0, offset = 0},
+				teamstart = {wins = 0, offset = 0},
+				teamend = {wins = 0, offset = 0},
+				survivalstart = {wins = 0, offset = 0},
+				survivalend = {wins = 0, offset = 0},
+				ratiostart = {wins = 0, offset = 0},
+				ratioend = {wins = 0, offset = 0},
+			}
+			row = 0
+			section = 3
 		end
-	elseif section == 2 then --[ExtraStages]
-		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
-			c = c:gsub('^%s*(.-)%s*$', '%1')
-			if i == 1 then
-				row = main.f_addStage(c)
-				table.insert(main.t_includeStage[1], row)
-				table.insert(main.t_includeStage[2], row)
-			elseif c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
-				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
-				c = c:gsub('%s+([0-9%s]+)$', function(m1)
-					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
-						if i == 1 then
-							bgmvolume = tonumber(c)
-						elseif i == 2 then
-							bgmloopstart = tonumber(c)
-						elseif i == 3 then
-							bgmloopend = tonumber(c)
-						else
-							break
-						end
-					end
-					return ''
-				end)
-				c = c:gsub('\\', '/')
-				local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
-				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
-				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
+	elseif line_parsed["kind"] == "data" then
+		data = line_parsed["data"]:lower()
+		if section == 1 then --[Characters]
+			if data:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
+				table.insert(t_addExluded, data)
+			elseif data:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
+				table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
+				slot = true
+			elseif slot and data:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
+				slot = false
 			else
-				local param, value = c:match('^(.-)%s*=%s*(.-)$')
-				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-					main.t_selStages[row][param] = tonumber(value)
-					if param:match('order') then
-						if main.t_orderStages[main.t_selStages[row].order] == nil then
-							main.t_orderStages[main.t_selStages[row].order] = {}
+				chars = chars + 1
+				main.f_addChar(data, chars, true, slot)
+			end
+		elseif section == 2 then --[ExtraStages]
+			for i, c in ipairs(main.f_strsplit(',', data)) do --split using "," delimiter
+				c = c:gsub('^%s*(.-)%s*$', '%1')
+				if i == 1 then
+					row = main.f_addStage(c)
+					table.insert(main.t_includeStage[1], row)
+					table.insert(main.t_includeStage[2], row)
+				elseif c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+					local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
+					c = c:gsub('%s+([0-9%s]+)$', function(m1)
+						for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
+							if i == 1 then
+								bgmvolume = tonumber(c)
+							elseif i == 2 then
+								bgmloopstart = tonumber(c)
+							elseif i == 3 then
+								bgmloopend = tonumber(c)
+							else
+								break
+							end
 						end
-						table.insert(main.t_orderStages[main.t_selStages[row].order], row)
+						return ''
+					end)
+					c = c:gsub('\\', '/')
+					local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
+					if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
+					table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
+				else
+					local param, value = c:match('^(.-)%s*=%s*(.-)$')
+					if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
+						main.t_selStages[row][param] = tonumber(value)
+						if param:match('order') then
+							if main.t_orderStages[main.t_selStages[row].order] == nil then
+								main.t_orderStages[main.t_selStages[row].order] = {}
+							end
+							table.insert(main.t_orderStages[main.t_selStages[row].order], row)
+						end
 					end
 				end
 			end
-		end
-	elseif section == 3 then --[Options]
-		if lineCase:match('%.maxmatches%s*=') then
-			local rowName, line = lineCase:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
-			rowName = rowName:gsub('%.', '_')
-			main.t_selOptions[rowName .. 'maxmatches'] = {}
-			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
-				main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
-			end
-		elseif lineCase:match('%.ratiomatches%s*=') then
-			local rowName, line = lineCase:match('^%s*(.-)%.ratiomatches%s*=%s*(.+)')
-			rowName = rowName:gsub('%.', '_')
-			main.t_selOptions[rowName .. 'ratiomatches'] = {}
-			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
-				local rmin, rmax, order = c:match('^%s*([0-9]+)-?([0-9]*)%s*:%s*([0-9]+)%s*$')
-				rmin = tonumber(rmin)
-				rmax = tonumber(rmax) or rmin
-				order = tonumber(order)
-				if rmin == nil or order == nil or rmin < 1 or rmin > 4 or rmax < 1 or rmax > 4 or rmin > rmax then
-					main.f_warning(main.f_extractText(motif.warning_info.text_ratio_text), motif.title_info, motif.titlebgdef)
-					main.t_selOptions[rowName .. 'ratiomatches'] = nil
-					break
+		elseif section == 3 then --[Options]
+			if data:match('%.maxmatches%s*=') then
+				local rowName, alt_line = data:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
+				rowName = rowName:gsub('%.', '_')
+				main.t_selOptions[rowName .. 'maxmatches'] = {}
+				for i, c in ipairs(main.f_strsplit(',', alt_line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
+					main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
 				end
-				if rmax == '' then
-					rmax = rmin
+			elseif data:match('%.ratiomatches%s*=') then
+				local rowName, alt_line = data:match('^%s*(.-)%.ratiomatches%s*=%s*(.+)')
+				rowName = rowName:gsub('%.', '_')
+				main.t_selOptions[rowName .. 'ratiomatches'] = {}
+				for i, c in ipairs(main.f_strsplit(',', alt_line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
+					local rmin, rmax, order = c:match('^%s*([0-9]+)-?([0-9]*)%s*:%s*([0-9]+)%s*$')
+					rmin = tonumber(rmin)
+					rmax = tonumber(rmax) or rmin
+					order = tonumber(order)
+					if rmin == nil or order == nil or rmin < 1 or rmin > 4 or rmax < 1 or rmax > 4 or rmin > rmax then
+						main.f_warning(main.f_extractText(motif.warning_info.text_ratio_text), motif.title_info, motif.titlebgdef)
+						main.t_selOptions[rowName .. 'ratiomatches'] = nil
+						break
+					end
+					if rmax == '' then
+						rmax = rmin
+					end
+					table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {['rmin'] = rmin, ['rmax'] = rmax, ['order'] = order})
 				end
-				table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {['rmin'] = rmin, ['rmax'] = rmax, ['order'] = order})
+			elseif data:match('%.airamp%.') then
+				local rowName, rowName2, wins, offset = data:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([0-9]+)%s*,%s*([0-9-]+)')
+				main.t_selOptions[rowName .. rowName2] = {wins = tonumber(wins), offset = tonumber(offset)}
 			end
-		elseif lineCase:match('%.airamp%.') then
-			local rowName, rowName2, wins, offset = lineCase:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([0-9]+)%s*,%s*([0-9-]+)')
-			main.t_selOptions[rowName .. rowName2] = {wins = tonumber(wins), offset = tonumber(offset)}
 		end
 	end
 end
