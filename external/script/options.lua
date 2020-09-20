@@ -178,7 +178,7 @@ for select_line in io.lines(motif.files.select) do
 		end
 	elseif section == 1 then
 		if parsed["kind"] == "data" then
-			data = parsed["data"]:lower()
+			data = parsed["data"]
 			if data:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
 				table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
 				slot = true

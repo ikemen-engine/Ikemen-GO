@@ -129,7 +129,7 @@ function file_def.parse_char_line(data)
 		if j == 1 then
 			result["name"] = c
 		else
-			table.insert(result.config, data)
+			table.insert(result.config, c)
 		end
 	end
 	return result
