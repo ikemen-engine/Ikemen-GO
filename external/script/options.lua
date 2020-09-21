@@ -250,12 +250,14 @@ function options.f_load_select()
 			local other_char_in_dir = {}
 			for k, file_name in ipairs(listFiles("chars/" .. char_dir)) do
 				if #file_name > 5 then
-					if file_name:sub(-4, -1) == ".def" then
-						-- add one char per variation
-						local data = {user_enabled = false, name=char_dir .. "/" .. file_name, folder_name=char_dir, config={}}
-						data["other_char_in_dir"] = other_char_in_dir
-						table.insert(other_char_in_dir, data)
-						table.insert(options.select_characters, data)
+					if file_name ~= "ending.def" and file_name ~= "intro.def" then
+						if file_name:sub(-4, -1) == ".def" then
+							-- add one char per variation
+							local data = {user_enabled = false, name=char_dir .. "/" .. file_name, folder_name=char_dir, config={}}
+							data["other_char_in_dir"] = other_char_in_dir
+							table.insert(other_char_in_dir, data)
+							table.insert(options.select_characters, data)
+						end
 					end
 				end
 			end
