@@ -110,6 +110,10 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "resetSelect", func(l *lua.LState) int {
+		sys.sel.Reset()
+		return 0
+	})
 	luaRegister(l, "addHotkey", func(*lua.LState) int {
 		l.Push(lua.LBool(func() bool {
 			k := StringToKey(strArg(l, 1))

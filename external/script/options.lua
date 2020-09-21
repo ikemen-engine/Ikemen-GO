@@ -64,6 +64,10 @@ function options.f_saveCfg(reload)
 		local file = io.open(motif.files.select, 'w+')
 		file:write(select_compiled)
 		file:close()
+
+		resetSelect()
+		load_select_def()
+		start.f_generateGrid()
 	end
 
 	--Reload game if needed
@@ -274,7 +278,6 @@ options.t_itemname = {
 							char_data["changed"] = true
 							t["items"][item]["selected"] = char_data.user_enabled
 							modified = true
-							needReload = true --TODO: do not require a reload
 						end
 						return true
 					end

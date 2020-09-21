@@ -2271,6 +2271,11 @@ func newSelect() *Select {
 		cellsize: [...]float32{29, 29}, cellscale: [...]float32{1, 1},
 		selectedStageNo: -1, aportrait: make(map[string]Anim)}
 }
+
+func (s *Select) Reset() {
+	*s = *newSelect()
+}
+
 func (s *Select) GetCharNo(i int) int {
 	n := i
 	if len(s.charlist) > 0 {
