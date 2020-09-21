@@ -175,7 +175,6 @@ end
 local file_def = (loadfile 'external/script/file_def.lua')()
 local section = 0
 local slot = false
-local char_registred_by_name = {}
 select_lines = {}
 select_characters = {}
 last_character_line = nil
@@ -201,7 +200,6 @@ for select_line in io.lines(motif.files.select) do
 				local char_data = file_def.parse_char_line(data)
 				char_data["user_enabled"] = true --TODO: deduplicate those lines
 				char_data["line"] = parsed
-				char_registred_by_name[char_data.name:lower()] = true
 				table.insert(select_characters, char_data)
 			end
 		elseif parsed["kind"] == "empty" then
@@ -211,7 +209,6 @@ for select_line in io.lines(motif.files.select) do
 						local char_data = file_def.parse_char_line(parsed["comment"]:sub(14))
 						char_data["user_enabled"] = false
 						char_data["line"] = parsed
-						char_registred_by_name[char_data.name:lower()] = true
 						table.insert(select_characters, char_data)
 					end
 				end
@@ -221,15 +218,64 @@ for select_line in io.lines(motif.files.select) do
 	table.insert(select_lines, parsed)
 end
 
+-- check if the file is in fact a folder that point to a custom .def file
+local char_registred_by_folder_name = {}
+for k, character_data in ipairs(select_characters) do
+	-- look for */*.def like line
+	local name = character_data["name"]
+	local splited = main.f_strsplit("/", name)
+	local folder_name = nil
+	if #splited == 2 then
+		folder_name = splited[1]
+	else
+		folder_name = name
+	end
+	character_data["folder_name"] = folder_name
+	char_registred_by_folder_name[folder_name:lower()] = true
+end
+
+-- look for character in chars/ but not in the
 local unused_characted_added = false
 for k, char_dir in ipairs(listSubDirectory("chars/")) do
-	if char_registred_by_name[char_dir:lower()] == nil and char_dir ~= "training" then
+	if char_registred_by_folder_name[char_dir:lower()] == nil and char_dir ~= "training" then
 		if unused_characted_added == false then
-			table.insert(select_characters, {special = "marker", name = "never included characters"})
+			table.insert(select_characters, {special = "marker", display_text = "never included characters"})
 			unused_characted_added = true
 		end
-		data = {user_enabled = false, name=char_dir, config={}}
-		table.insert(select_characters, data)
+		-- check for .def files in the subfolder TODO: do not include the .def file if useless
+		local other_char_in_dir = {}
+		for k, file_name in ipairs(listFiles("chars/" .. char_dir)) do
+			if #file_name > 5 then
+				if file_name:sub(-4, -1) == ".def" then
+					-- add one char per variation
+					local data = {user_enabled = false, name=char_dir .. "/" .. file_name, folder_name=char_dir, config={}}
+					data["other_char_in_dir"] = other_char_in_dir
+					table.insert(other_char_in_dir, data)
+					table.insert(select_characters, data)
+				end
+			end
+		end
+	end
+end
+
+-- generate the display_text value for characters
+local number_of_variation_in_folder = {}
+for k, char in ipairs(select_characters) do
+	if char["folder_name"] ~= nil then
+		if number_of_variation_in_folder[char["folder_name"]] == nil then
+			number_of_variation_in_folder[char["folder_name"]] = 0
+		end
+		number_of_variation_in_folder[char["folder_name"]] = number_of_variation_in_folder[char["folder_name"]] + 1
+	end
+end
+
+for k, char in ipairs(select_characters) do
+	if char["display_text"] == nil then
+		if number_of_variation_in_folder[char["folder_name"]] == 1 then
+			char["display_text"] = char["folder_name"]
+		else
+			char["display_text"] = char["name"]
+		end
 	end
 end
 
@@ -277,6 +323,11 @@ options.t_itemname = {
 							char_data.user_enabled = not char_data.user_enabled
 							char_data["changed"] = true
 							t["items"][item]["selected"] = char_data.user_enabled
+							if char_data.other_char_in_dir ~= nil then
+								for k, other_char_to_include in ipairs(char_data.other_char_in_dir) do
+									other_char_to_include.changed = true
+								end
+							end
 							modified = true
 						end
 						return true
@@ -287,7 +338,7 @@ options.t_itemname = {
 					end
 				end
 
-				table.insert(submenu.items, {data = text:create({window = t_menuWindow}), displayname = v["name"], vardata = text:create({window = t_menuWindow}), selected = v["user_enabled"], func = f})
+				table.insert(submenu.items, {data = text:create({window = t_menuWindow}), displayname = v["display_text"], vardata = text:create({window = t_menuWindow}), selected = v["user_enabled"], func = f})
 			end
 			options.createMenu(submenu, false, false, false)()
 		end

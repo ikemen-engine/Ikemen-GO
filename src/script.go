@@ -1171,17 +1171,32 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "listSubDirectory", func(*lua.LState) int {
-		files, err := ioutil.ReadDir(strArg(l, 1))
+		sub_path, err := ioutil.ReadDir(strArg(l, 1))
 		if err != nil {
 			l.Push(nil)
 		} else {
 			dir := l.NewTable()
-			for _, f := range files {
+			for _, f := range sub_path {
 				if f.IsDir() {
 					dir.Append(lua.LString(f.Name()))
 				}
 			}
 			l.Push(dir)
+		}
+		return 1
+	})
+	luaRegister(l, "listFiles", func(*lua.LState) int {
+		sub_path, err := ioutil.ReadDir(strArg(l, 1))
+		if err != nil {
+			l.Push(nil)
+		} else {
+			files := l.NewTable()
+			for _, f := range sub_path {
+				if !f.IsDir() {
+					files.Append(lua.LString(f.Name()))
+				}
+			}
+			l.Push(files)
 		}
 		return 1
 	})
