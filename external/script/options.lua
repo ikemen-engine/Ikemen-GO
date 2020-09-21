@@ -217,17 +217,14 @@ for select_line in io.lines(motif.files.select) do
 	table.insert(select_lines, parsed)
 end
 
---TODO: create a dedicated function for lsdir
 local unused_characted_added = false
-local ls_result_file = os.tmpname()
-os.execute("ls chars/ --format=single-column > " .. ls_result_file)
-for dir_char in io.lines(ls_result_file) do
-	if char_registred_by_name[dir_char:lower()] == nil and dir_char ~= "training" then
+for k, char_dir in ipairs(listSubDirectory("chars/")) do
+	if char_registred_by_name[char_dir:lower()] == nil and char_dir ~= "training" then
 		if unused_characted_added == false then
 			table.insert(select_characters, {special = "marker", name = "never included characters"})
 			unused_characted_added = true
 		end
-		data = {user_enabled = false, name=dir_char, config={}}
+		data = {user_enabled = false, name=char_dir, config={}}
 		table.insert(select_characters, data)
 	end
 end

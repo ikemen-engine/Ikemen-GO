@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
@@ -1163,6 +1164,21 @@ func systemScriptInit(l *lua.LState) {
 			return nil
 		})
 		l.Push(dir)
+		return 1
+	})
+	luaRegister(l, "listSubDirectory", func(*lua.LState) int {
+		files, err := ioutil.ReadDir(strArg(l, 1))
+		if err != nil {
+			l.Push(nil)
+		} else {
+			dir := l.NewTable()
+			for _, f := range files {
+				if f.IsDir() {
+					dir.Append(lua.LString(f.Name()))
+				}
+			}
+			l.Push(dir)
+		}
 		return 1
 	})
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
