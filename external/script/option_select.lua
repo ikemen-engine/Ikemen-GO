@@ -66,13 +66,8 @@ function option_select.f_load_select()
 	end
 
 	-- look for character in chars/ but not in the
-	local unused_characted_added = false
 	for k, char_dir in ipairs(listSubDirectory("chars/")) do
 		if char_registred_by_folder_name[char_dir:lower()] == nil and char_dir ~= "training" then
-			if unused_characted_added == false then
-				table.insert(option_select.select_characters, {special = "marker", display_text = "never included characters"})
-				unused_characted_added = true
-			end
 			-- check for .def files in the subfolder TODO: do not include the .def file if useless
 			local other_char_in_dir = {}
 			for k, file_name in ipairs(listFiles("chars/" .. char_dir)) do
@@ -113,4 +108,223 @@ function option_select.f_load_select()
 	end
 
 	option_select.should_load_select = false
+end
+
+--TODO:
+function option_select.f_generate_option_data(char_data)
+	local char_option_data = {option = {}}
+	local base_text = text:create({
+			font =   motif.option_info.menu_item_info_font[1],
+			bank =   motif.option_info.menu_item_info_font[2],
+			align =  1, -- alight to left
+			scaleX = 1,
+			scaleY = 1,
+			r =      motif.option_info.menu_item_info_font[4],
+			g =      motif.option_info.menu_item_info_font[5],
+			b =      motif.option_info.menu_item_info_font[6],
+			src =    motif.option_info.menu_item_info_font[7],
+			dst =    motif.option_info.menu_item_info_font[8],
+			height = motif.option_info.menu_item_info_font_height,
+			defsc =  motif.defaultOptions,
+			defsc = false,
+	})
+	table.insert(char_option_data.option, {displayname="base music option", data=base_text})
+	table.insert(char_option_data.option, {displayname="alt music option", data=base_text})
+	table.insert(char_option_data.option, {displayname="bad music option", data=base_text})
+	table.insert(char_option_data.option, {displayname="win music option", data=base_text})
+	table.insert(char_option_data.option, {displayname="lose music option", data=base_text})
+	char_option_data["cursorPosY"] = 1
+	char_option_data["moveTxt"] = 0
+	char_option_data["item"] = 1
+	return char_option_data
+end
+
+--TODO:
+function option_select.f_displayCharacterOption(base_x, base_y, option_char_data)
+	motif.character_edit_info.menu_pos = {base_x, base_y} --TODO: maybe not use base_x and base_y
+	motif.character_edit_info.is_absolute = true --TODO: maybe not use base_x and base_y
+
+	local t = {}
+	main.f_menuCommonDraw(
+		option_char_data.cursorPosY,
+		option_char_data.moveTxt,
+		option_char_data.item,
+	 	option_char_data.option,
+		'fadein',
+		'character_edit_info',
+		'character_edit_info',
+		'optionbgdef',
+	 	nil,
+	 	motif.defaultOptions,
+	 	false,
+	 	false,
+	 	{},
+	 	true,
+		true,
+		true
+ 	)
+
+	option_char_data.cursorPosY, option_char_data.moveTxt, option_char_data.item = main.f_menuCommonCalc(
+		option_char_data.cursorPosY,
+		option_char_data.moveTxt,
+		option_char_data.item,
+		option_char_data.option,
+		"character_edit_info",
+		{"$U"},
+		{"$D"}
+	)
+end
+
+
+function option_select.f_loop_character_edit()
+	--main.f_setLuaScale()
+
+	if option_select.should_load_select then
+		option_select.char_ref = 0
+		resetSelect()
+		option_select.f_load_select()
+	end
+
+
+	local char_display_base = {40, 130}
+	local portrait_scale = {1, 1}
+	local space_between_portrait = {105*portrait_scale[1], 105*portrait_scale[2]}
+	local displayable_element = {
+		math.floor((config.GameWidth - char_display_base[1]) / space_between_portrait[1]),
+		math.floor((config.GameHeight - char_display_base[2]) / space_between_portrait[2])
+	}
+	-- optimise the worst case time of navigation
+	--TODO: try to only use one screen (no scrolling)
+	local char_by_line = math.floor(math.sqrt(#option_select.select_characters))
+	if char_by_line > displayable_element[1] then
+		char_by_line = displayable_element[1]
+	end
+	local tile_size = {75*portrait_scale[1], 75*portrait_scale[2]}
+	local selected_char_id = 1 -- the currently select id in the list, starting by 1
+	local first_line_to_display = 1
+	local char_by_screen = displayable_element[2] * char_by_line
+	local background_enabled = {{10*portrait_scale[1], 10*portrait_scale[2]}, {170, 255, 170, 128, 0}}
+	local background_disabled = {{10*portrait_scale[1], 10*portrait_scale[2]}, {255, 170, 170, 128, 0}}
+	local background_selected_enabled = {{15*portrait_scale[1], 15*portrait_scale[2]}, {170, 255, 170, 200, 0}}
+	local background_selected_disabled = {{15*portrait_scale[1], 15*portrait_scale[2]}, {255, 170, 170, 200, 0}}
+	local in_sub_menu = false
+	local editing_character = nil
+	local continue = true
+
+	while continue do
+		main.f_disableLuaScale()
+		main.f_cmdInput()
+		if in_sub_menu == false then
+			-- update cursor
+			if main.f_input(main.t_players, {"$D"}) then
+				if selected_char_id + char_by_line <= #option_select.select_characters then
+					selected_char_id = selected_char_id + char_by_line
+				end
+			elseif main.f_input(main.t_players, {"$U"}) then
+				if selected_char_id - char_by_line >= 1 then
+					selected_char_id = selected_char_id - char_by_line
+				end
+			elseif main.f_input(main.t_players, {"$B"}) then
+				if selected_char_id > 1 then
+					selected_char_id = selected_char_id - 1
+				end
+			elseif main.f_input(main.t_players, {"$F"}) then
+				if selected_char_id < #option_select.select_characters then
+					selected_char_id = selected_char_id + 1
+				end
+			elseif main.f_input(main.t_players, {'pal', 's'}) then
+				in_sub_menu = true
+				editing_character = option_select.f_generate_option_data(nil) --TODO
+			elseif esc() then
+				continue = false
+			end
+		end
+
+		local first_visible_char = ((first_line_to_display - 1) * char_by_line) + 1
+		if selected_char_id >= first_visible_char + char_by_screen then
+			first_line_to_display = first_line_to_display + 1
+		elseif selected_char_id < first_visible_char then
+			first_line_to_display = first_line_to_display - 1
+		end
+		first_visible_char = ((first_line_to_display - 1) * char_by_line) + 1
+
+
+		-- draw
+		bgDraw(motif["optionbgdef"].bg, false)
+		local char_pos = {char_display_base[1], char_display_base[2]}
+		local char_place = {0, 0}
+		for char_ref = first_visible_char, math.min(#option_select.select_characters, first_visible_char + char_by_screen - 1 + char_by_line) do --TODO: math.max
+			char = option_select.select_characters[char_ref]
+			if char["loaded_id"] == nil then --TODO: randomselect
+				addChar(char.name)
+				char.loaded_id = option_select.char_ref
+				option_select.char_ref = option_select.char_ref + 1
+			end
+
+			-- draw background for each tile
+			local background_to_draw = nil
+			if char_ref == selected_char_id then
+				if char.user_enabled == true then
+					background_to_draw = background_selected_enabled
+				else
+					background_to_draw = background_selected_disabled
+				end
+			else
+				if char.user_enabled == true then
+					background_to_draw = background_enabled
+				else
+					background_to_draw = background_disabled
+				end
+			end
+
+			fillRect(
+				char_pos[1] - background_to_draw[1][1],
+				char_pos[2] - background_to_draw[1][2],
+				background_to_draw[1][1]*2+tile_size[1],
+				background_to_draw[1][2]*2+tile_size[2],
+				background_to_draw[2][1],
+				background_to_draw[2][2],
+				background_to_draw[2][3],
+				background_to_draw[2][4],
+				background_to_draw[2][5]
+			)
+
+			drawPortraitChar(
+				char.loaded_id,
+				motif.select_info.portrait_spr[1],
+				motif.select_info.portrait_spr[2],
+				char_pos[1],
+				char_pos[2],
+				portrait_scale[1],
+				portrait_scale[2],
+				char_pos[1],
+				char_pos[2],
+				tile_size[1],
+				tile_size[2],
+				false
+			)
+
+			char_pos[1] = char_pos[1] + space_between_portrait[1]
+			char_place[1] = char_place[1] + 1
+			if char_place[1] >= char_by_line then
+				char_place[1] = 0
+				char_place[2] = char_place[2] + 1
+				char_pos[1] = char_display_base[1]
+				char_pos[2] = char_pos[2] + space_between_portrait[2]
+			end
+
+		end
+
+		if in_sub_menu == true then
+			option_select.select_characters[selected_char_id].user_enabled = not option_select.select_characters[selected_char_id].user_enabled
+			option_select.select_characters[selected_char_id].changed = true
+			in_sub_menu = false
+			--TODO:
+			--option_select.f_displayCharacterOption(300, 100, editing_character)
+		end
+		bgDraw(motif["optionbgdef"].bg, true)
+		refresh()
+	end
+
+	main.f_disableLuaScale()
 end

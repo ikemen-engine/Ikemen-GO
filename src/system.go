@@ -1627,7 +1627,7 @@ func (s *System) draw(x, y, scl float32) {
 		s.drawwh.draw(0x3feff)
 		for _, t := range s.clsnText {
 			sys.debugFont.DrawText(t.text, t.x, t.y, 1/sys.widthScale,
-				1/sys.heightScale, 0, 1, &sys.scrrect, t.palfx)
+				1/sys.heightScale, 0, 1, &sys.scrrect, t.palfx, false)
 		}
 	}
 }
@@ -1692,7 +1692,7 @@ func (s *System) fight() (reload bool) {
 			*y += float32(s.debugFont.Size[1]) / s.heightScale
 			s.debugFont.DrawText(drawTxt, *x, *y,
 				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect,
-				s.debugFont.palfx)
+				s.debugFont.palfx, false)
 		}
 		s.allPalFX.enable = tmp
 	}

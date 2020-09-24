@@ -66,12 +66,6 @@ function options.f_saveCfg(reload)
 		local file = io.open(motif.files.select, 'w+')
 		file:write(select_compiled)
 		file:close()
-
-		resetSelect()
-		load_select_def()
-		start.f_generateGrid()
-
-		option_select.should_load_select = true
 	end
 
 	--Reload game if needed
@@ -204,42 +198,9 @@ options.t_itemname = {
 	-- characters management
 	['characters'] = function(cursorPosY, moveTxt, item, t)
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
-			if option_select.should_load_select then
-				option_select.f_load_select()
-			end
-			local submenu = {}
-			submenu["items"] = {}
-			submenu["submenu"] = {}
-			submenu["title"] = "select characters"
-			for k, v in ipairs(option_select.select_characters) do
-				local itemname = "empty"
-
-				local f = nil
-				if v["special"] == nil then
-					f = function(cursorPosY, moveTxt, item, t)
-						if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
-							local char_data = option_select.select_characters[item]
-							char_data.user_enabled = not char_data.user_enabled
-							char_data["changed"] = true
-							t["items"][item]["selected"] = char_data.user_enabled
-							if char_data.other_char_in_dir ~= nil then
-								for k, other_char_to_include in ipairs(char_data.other_char_in_dir) do
-									other_char_to_include.changed = true
-								end
-							end
-							modified = true
-						end
-						return true
-					end
-				else
-					f = function(cursorPosY, moveTxt, item, t)
-						return true
-					end
-				end
-
-				table.insert(submenu.items, {data = text:create({window = t_menuWindow}), displayname = v["display_text"], vardata = text:create({window = t_menuWindow}), selected = v["user_enabled"], func = f})
-			end
-			options.createMenu(submenu, false, false, false)()
+			option_select.f_loop_character_edit()
+			--TODO: let option_select.f_loop_character_edit control if modified should be set
+			modified = true
 		end
 		return true
 	end,
@@ -369,6 +330,13 @@ options.t_itemname = {
 			if modified then
 				options.f_saveCfg(needReload)
 			end
+
+			--TODO: do this only when the character edit screen was loaded at least once
+			option_select.should_load_select = true -- so character ID don't get mixed
+			resetSelect()
+			load_select_def()
+			start.f_generateGrid()
+
 			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t.items)
 			main.f_bgReset(motif.titlebgdef.bg)
 			if motif.music.option_bgm ~= '' then

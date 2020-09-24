@@ -534,6 +534,7 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.frameSkip {
 			ref, grp, idx, x, y := int(numArg(l, 1)), int16(numArg(l, 2)), int16(numArg(l, 3)), float32(numArg(l, 4)), float32(numArg(l, 5))
 			var xscl, yscl float32 = 1, 1
+			var scale = true
 			window := &sys.scrrect
 			if l.GetTop() >= 6 {
 				xscl = float32(numArg(l, 6))
@@ -541,6 +542,9 @@ func systemScriptInit(l *lua.LState) {
 					yscl = float32(numArg(l, 7))
 					if l.GetTop() >= 11 {
 						window = &[...]int32{int32(numArg(l, 8)), int32(numArg(l, 9)), int32(numArg(l, 10)), int32(numArg(l, 11))}
+						if l.GetTop() >= 12 {
+							scale = bool(boolArg(l, 12))
+						}
 					}
 				}
 			}
@@ -562,7 +566,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				p := c.portrait[[...]int16{grp, idx}]
-				p.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, p.Pal, nil, p.PalTex, window)
+				p.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, p.Pal, nil, p.PalTex, window, scale)
 			}
 		}
 		return 0
@@ -599,7 +603,7 @@ func systemScriptInit(l *lua.LState) {
 					yscl *= c.portrait_scale
 				}
 				p := c.portrait[[...]int16{grp, idx}]
-				p.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, p.Pal, nil, p.PalTex, window)
+				p.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, p.Pal, nil, p.PalTex, window, true)
 			}
 		}
 		return 0
@@ -2122,7 +2126,11 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.Draw()
+		var absolute = false
+		if l.GetTop() >= 2 {
+			absolute = boolArg(l, 2)
+		}
+		ts.Draw(absolute)
 		return 0
 	})
 	luaRegister(l, "textImgNew", func(*lua.LState) int {
@@ -2715,6 +2723,14 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gamewidth", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.gameWidth()))
+		return 1
+	})
+	luaRegister(l, "widthscale", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.widthScale))
+		return 1
+	})
+	luaRegister(l, "heightscale", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.heightScale))
 		return 1
 	})
 	luaRegister(l, "gethitvar", func(*lua.LState) int {
@@ -3572,13 +3588,13 @@ func legacyFunctions(l *lua.LState) {
 								(y+float32(j)*sys.sel.cellsize[1])/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[0]*c.portrait_scale)/float32(sys.luaSpriteScale),
 								(sys.sel.cellscale[1]*c.portrait_scale)/float32(sys.luaSpriteScale),
-								c.sportrait.Pal, nil, c.sportrait.PalTex, &sys.scrrect)
+								c.sportrait.Pal, nil, c.sportrait.PalTex, &sys.scrrect, true)
 						} else if c.def == "randomselect" && sys.sel.randomspr != nil {
 							sys.sel.randomspr.Draw(x+float32(i)*sys.sel.cellsize[0],
 								y+float32(j)*sys.sel.cellsize[1]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[0]/float32(sys.luaSpriteScale),
 								sys.sel.randomscl[1]/float32(sys.luaSpriteScale),
-								sys.sel.randomspr.Pal, nil, sys.sel.randomspr.PalTex, &sys.scrrect)
+								sys.sel.randomspr.Pal, nil, sys.sel.randomspr.PalTex, &sys.scrrect, true)
 						}
 					}
 				}
@@ -3598,7 +3614,7 @@ func legacyFunctions(l *lua.LState) {
 			}
 			c := sys.sel.GetChar(n)
 			if c != nil && c.lportrait != nil {
-				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal, nil, c.lportrait.PalTex, &sys.scrrect)
+				c.lportrait.Draw(x, y, xscl, yscl, c.lportrait.Pal, nil, c.lportrait.PalTex, &sys.scrrect, true)
 			}
 		}
 		return 0

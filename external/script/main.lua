@@ -379,9 +379,9 @@ function text:update(t)
 end
 
 --draw text
-function text:draw()
+function text:draw(absolute)
 	if self.font == -1 then return end
-	textImgDraw(self.ti)
+	textImgDraw(self.ti, absolute)
 end
 
 --create color
@@ -1517,6 +1517,7 @@ function main.f_addStage(file)
 end
 
 function load_select_def()
+	resetSelect()
 	main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
 	main.t_orderChars = {}
 	main.t_orderStages = {}
@@ -2988,13 +2989,18 @@ function main.f_menuCommonCalc(cursorPosY, moveTxt, item, t, section, keyPrev, k
 	return cursorPosY, moveTxt, item
 end
 
-function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData, section, bgdef, title, dataScale, rectScale, rectFix, t_footer, skipClear)
+function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData, section, bgdef, title, dataScale, rectScale, rectFix, t_footer, skipClear, skipInput, skipBackground)
+	if motif[section].is_absolute == nil then
+		motif[section].is_absolute = false
+	end
 	--draw clearcolor
 	if not skipClear then
 		clearColor(motif[bgdef].bgclearcolor[1], motif[bgdef].bgclearcolor[2], motif[bgdef].bgclearcolor[3])
 	end
 	--draw layerno = 0 backgrounds
-	bgDraw(motif[bgdef].bg, false)
+	if skipBackground ~= true then
+		bgDraw(motif[bgdef].bg, false)
+	end
 	--draw menu box
 	if motif[section].menu_boxbg_visible == 1 then
 		local coord4 = 0
@@ -3018,7 +3024,9 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 		)
 	end
 	--draw title
-	title:draw()
+	if title ~= nil then
+		title:draw()
+	end
 	--draw menu items
 	local items_shown = item + motif[section].menu_window_visibleitems - cursorPosY
 	if items_shown > #t or (motif[section].menu_window_visibleitems > 1 and items_shown < #t and (motif[section].menu_window_margins_y[1] ~= 0 or motif[section].menu_window_margins_y[2] ~= 0)) then
@@ -3045,7 +3053,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_selected_active_font_height,
 						defsc =  dataScale
 					})
-					t[i].data:draw()
+					t[i].data:draw(motif[section].is_absolute)
 				else
 					t[i].data:update({
 						font =   motif[section].menu_item_active_font[1],
@@ -3064,7 +3072,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_active_font_height,
 						defsc =  dataScale
 					})
-					t[i].data:draw()
+					t[i].data:draw(motif[section].is_absolute)
 				end
 				if t[i].vardata ~= nil then
 					t[i].vardata:update({
@@ -3084,7 +3092,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_value_active_font_height,
 						defsc =  dataScale
 					})
-					t[i].vardata:draw()
+					t[i].vardata:draw(motif[section].is_absolute)
 				end
 			else
 				if t[i].selected then
@@ -3105,7 +3113,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_selected_font_height,
 						defsc =  dataScale
 					})
-					t[i].data:draw()
+					t[i].data:draw(motif[section].is_absolute)
 				else
 					t[i].data:update({
 						font =   motif[section].menu_item_font[1],
@@ -3124,7 +3132,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_font_height,
 						defsc =  dataScale
 					})
-					t[i].data:draw()
+					t[i].data:draw(motif[section].is_absolute)
 				end
 				if t[i].vardata ~= nil then
 					t[i].vardata:update({
@@ -3144,7 +3152,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						height = motif[section].menu_item_value_font_height,
 						defsc =  dataScale
 					})
-					t[i].vardata:draw()
+					t[i].vardata:draw(motif[section].is_absolute)
 				end
 			end
 		end
@@ -3185,7 +3193,9 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 		end
 	end
 	--draw layerno = 1 backgrounds
-	bgDraw(motif[bgdef].bg, true)
+	if skipBackground ~= true then
+		bgDraw(motif[bgdef].bg, true)
+	end
 	--footer draw
 	if motif[section].footer_boxbg_visible == 1 then
 		fillRect(
@@ -3205,15 +3215,19 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 	for i = 1, #t_footer do
 		t_footer[i]:draw()
 	end
-	--draw fadein / fadeout
-	main.fadeActive = fadeColor(
-		fadeType,
-		main.fadeStart,
-		motif[fadeData][fadeType .. '_time'],
-		motif[fadeData][fadeType .. '_col'][1],
-		motif[fadeData][fadeType .. '_col'][2],
-		motif[fadeData][fadeType .. '_col'][3]
-	)
+
+	if motif[fadeData][fadeType .. "_time"] ~= nil then
+		--draw fadein / fadeout
+		main.fadeActive = fadeColor(
+			fadeType,
+			main.fadeStart,
+			motif[fadeData][fadeType .. '_time'],
+			motif[fadeData][fadeType .. '_col'][1],
+			motif[fadeData][fadeType .. '_col'][2],
+			motif[fadeData][fadeType .. '_col'][3]
+		)
+	end
+
 	--frame transition
 	if main.fadeActive then
 		commandBufReset(main.t_cmd[1])
@@ -3223,7 +3237,9 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 		commandBufReset(main.t_cmd[2])
 		return --skip last frame rendering
 	else
-		main.f_cmdInput()
+		if skipInput ~= true then
+			main.f_cmdInput()
+		end
 	end
 	if not skipClear then
 		refresh()
