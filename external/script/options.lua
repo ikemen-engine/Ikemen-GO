@@ -39,33 +39,35 @@ function options.f_saveCfg(reload)
 	file:close()
 
 	-- save change to select.def
-	local need_to_save_select = false
-	for k, v in ipairs(option_select.select_characters) do
-		if v["changed"] == true then
-			local chara_definition = file_def.rebuild_char(v)
-			if v.line == nil then
-				local new_line = {kind = "empty", initial_whitespace = ""}
-				table.insert(option_select.select_lines, option_select.last_character_line, new_line)
-				option_select.last_character_line = option_select.last_character_line + 1
-				v.line = new_line
+	if option_select.select_characters ~= nil then
+		local need_to_save_select = false
+		for k, v in ipairs(option_select.select_characters) do
+			if v["changed"] == true then
+				local chara_definition = file_def.rebuild_char(v)
+				if v.line == nil then
+					local new_line = {kind = "empty", initial_whitespace = ""}
+					table.insert(option_select.select_lines, option_select.last_character_line, new_line)
+					option_select.last_character_line = option_select.last_character_line + 1
+					v.line = new_line
+				end
+				if v.user_enabled == true then
+					v.line.kind = "data"
+					v.line.data = chara_definition
+				else
+					v.line.kind = "empty"
+					v.line.have_comment = true
+					v.line.comment = "CHARDISABLED:" .. chara_definition
+				end
+				need_to_save_select = true
 			end
-			if v.user_enabled == true then
-				v.line.kind = "data"
-				v.line.data = chara_definition
-			else
-				v.line.kind = "empty"
-				v.line.have_comment = true
-				v.line.comment = "CHARDISABLED:" .. chara_definition
-			end
-			need_to_save_select = true
 		end
-	end
 
-	if need_to_save_select then
-		local select_compiled = file_def.rebuild_source_file(option_select.select_lines)
-		local file = io.open(motif.files.select, 'w+')
-		file:write(select_compiled)
-		file:close()
+		if need_to_save_select then
+			local select_compiled = file_def.rebuild_source_file(option_select.select_lines)
+			local file = io.open(motif.files.select, 'w+')
+			file:write(select_compiled)
+			file:close()
+		end
 	end
 
 	--Reload game if needed
@@ -331,11 +333,7 @@ options.t_itemname = {
 				options.f_saveCfg(needReload)
 			end
 
-			--TODO: do this only when the character edit screen was loaded at least once
-			option_select.should_load_select = true -- so character ID don't get mixed
-			resetSelect()
-			load_select_def()
-			start.f_generateGrid()
+			option_select.reload_base_character()
 
 			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t.items)
 			main.f_bgReset(motif.titlebgdef.bg)
@@ -353,6 +351,9 @@ options.t_itemname = {
 			if needReload then
 				main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.option_info, motif.optionbgdef)
 			end
+
+			option_select.reload_base_character()
+
 			main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t.items)
 			main.f_bgReset(motif.titlebgdef.bg)
 			if motif.music.option_bgm ~= '' then
@@ -1271,6 +1272,7 @@ function options.createMenu(tbl, bool_bgreset, bool_main, bool_f1)
 					if needReload then
 						main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.option_info, motif.optionbgdef)
 					end
+					option_select.reload_base_character()
 					main.f_menuFade('option_info', 'fadeout', cursorPosY, moveTxt, item, t)
 					main.f_bgReset(motif.titlebgdef.bg)
 					if motif.music.option_bgm ~= '' then

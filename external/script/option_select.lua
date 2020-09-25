@@ -113,33 +113,49 @@ end
 --TODO:
 function option_select.f_generate_option_data(char_data)
 	local char_option_data = {option = {}}
+	--TODO: check if this is required
 	local base_text = text:create({
-			font =   motif.option_info.menu_item_info_font[1],
-			bank =   motif.option_info.menu_item_info_font[2],
+			font =   motif.character_edit_info.menu_item_info_font[1],
+			bank =   motif.character_edit_info.menu_item_info_font[2],
 			align =  1, -- alight to left
 			scaleX = 1,
 			scaleY = 1,
-			r =      motif.option_info.menu_item_info_font[4],
-			g =      motif.option_info.menu_item_info_font[5],
-			b =      motif.option_info.menu_item_info_font[6],
-			src =    motif.option_info.menu_item_info_font[7],
-			dst =    motif.option_info.menu_item_info_font[8],
-			height = motif.option_info.menu_item_info_font_height,
+			r =      motif.character_edit_info.menu_item_info_font[4],
+			g =      motif.character_edit_info.menu_item_info_font[5],
+			b =      motif.character_edit_info.menu_item_info_font[6],
+			src =    motif.character_edit_info.menu_item_info_font[7],
+			dst =    motif.character_edit_info.menu_item_info_font[8],
+			height = motif.character_edit_info.menu_item_info_font_height,
 			defsc =  motif.defaultOptions,
 			defsc = false,
 	})
-	table.insert(char_option_data.option, {displayname="base music option", data=base_text})
-	table.insert(char_option_data.option, {displayname="alt music option", data=base_text})
-	table.insert(char_option_data.option, {displayname="bad music option", data=base_text})
-	table.insert(char_option_data.option, {displayname="win music option", data=base_text})
-	table.insert(char_option_data.option, {displayname="lose music option", data=base_text})
+
+	--TODO: color
+	table.insert(char_option_data.option, {displayname=options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled"), data=base_text, onselected = function(entry)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.character_edit_info.cursor_move_snd[1], motif.character_edit_info.cursor_move_snd[2])
+			if char_data.user_enabled == false then
+				char_data.user_enabled = true
+			else
+				char_data.user_enabled = false
+			end
+			entry.displayname = options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled")
+			char_data.changed = true
+		end
+	end})
+
+	--TODO:
+	-- control ai level
+	-- some other binary option
+
 	char_option_data["cursorPosY"] = 1
 	char_option_data["moveTxt"] = 0
 	char_option_data["item"] = 1
+	char_option_data["first_frame"] = true
+	char_option_data.char_data = char_data
 	return char_option_data
 end
 
---TODO:
 function option_select.f_displayCharacterOption(base_x, base_y, option_char_data)
 	motif.character_edit_info.menu_pos = {base_x, base_y} --TODO: maybe not use base_x and base_y
 	motif.character_edit_info.is_absolute = true --TODO: maybe not use base_x and base_y
@@ -173,11 +189,23 @@ function option_select.f_displayCharacterOption(base_x, base_y, option_char_data
 		{"$U"},
 		{"$D"}
 	)
+
+	if option_char_data.first_frame == true then -- skip the first frame, when the button is still pressed
+		option_char_data.first_frame = false
+	else
+		local selected = option_char_data.option[option_char_data.item]
+		if selected.onselected ~= nil then
+			selected.onselected(selected)
+		end
+	end
+
+	return not esc()
 end
 
 
 function option_select.f_loop_character_edit()
-	--main.f_setLuaScale()
+	--TODO: show the shortcut here
+	--TODO: display character data in the right (mainly path to .def file). Maybe disable this on lower resolution
 
 	if option_select.should_load_select then
 		option_select.char_ref = 0
@@ -186,9 +214,10 @@ function option_select.f_loop_character_edit()
 	end
 
 
-	local char_display_base = {40, 130}
-	local portrait_scale = {1, 1}
-	local space_between_portrait = {105*portrait_scale[1], 105*portrait_scale[2]}
+	local portrait_scale = {heightscale(), heightscale()}
+	local char_display_base = {7.5*portrait_scale[1], 7.5*portrait_scale[1]}
+	local tile_size = {24*portrait_scale[1], 24*portrait_scale[2]} --was 75
+	local space_between_portrait = {(7.5+24)*portrait_scale[1], (7.5+24)*portrait_scale[2]}
 	local displayable_element = {
 		math.floor((config.GameWidth - char_display_base[1]) / space_between_portrait[1]),
 		math.floor((config.GameHeight - char_display_base[2]) / space_between_portrait[2])
@@ -199,14 +228,13 @@ function option_select.f_loop_character_edit()
 	if char_by_line > displayable_element[1] then
 		char_by_line = displayable_element[1]
 	end
-	local tile_size = {75*portrait_scale[1], 75*portrait_scale[2]}
 	local selected_char_id = 1 -- the currently select id in the list, starting by 1
 	local first_line_to_display = 1
 	local char_by_screen = displayable_element[2] * char_by_line
-	local background_enabled = {{10*portrait_scale[1], 10*portrait_scale[2]}, {170, 255, 170, 128, 0}}
-	local background_disabled = {{10*portrait_scale[1], 10*portrait_scale[2]}, {255, 170, 170, 128, 0}}
-	local background_selected_enabled = {{15*portrait_scale[1], 15*portrait_scale[2]}, {170, 255, 170, 200, 0}}
-	local background_selected_disabled = {{15*portrait_scale[1], 15*portrait_scale[2]}, {255, 170, 170, 200, 0}}
+	local background_enabled = {{2.5*portrait_scale[1], 2.5*portrait_scale[2]}, {170, 255, 170, 128, 0}}
+	local background_disabled = {{2.5*portrait_scale[1], 2.5*portrait_scale[2]}, {255, 170, 170, 128, 0}}
+	local background_selected_enabled = {{4*portrait_scale[1], 4*portrait_scale[2]}, {170, 255, 170, 200, 0}}
+	local background_selected_disabled = {{4*portrait_scale[1], 4*portrait_scale[2]}, {255, 170, 170, 200, 0}}
 	local in_sub_menu = false
 	local editing_character = nil
 	local continue = true
@@ -232,9 +260,12 @@ function option_select.f_loop_character_edit()
 				if selected_char_id < #option_select.select_characters then
 					selected_char_id = selected_char_id + 1
 				end
+			elseif main.f_input(main.t_players, {'b'}) then
+				option_select.select_characters[selected_char_id].user_enabled = not option_select.select_characters[selected_char_id].user_enabled
+				option_select.select_characters[selected_char_id].changed = true
 			elseif main.f_input(main.t_players, {'pal', 's'}) then
 				in_sub_menu = true
-				editing_character = option_select.f_generate_option_data(nil) --TODO
+				editing_character = option_select.f_generate_option_data(option_select.select_characters[selected_char_id])
 			elseif esc() then
 				continue = false
 			end
@@ -316,15 +347,22 @@ function option_select.f_loop_character_edit()
 		end
 
 		if in_sub_menu == true then
-			option_select.select_characters[selected_char_id].user_enabled = not option_select.select_characters[selected_char_id].user_enabled
-			option_select.select_characters[selected_char_id].changed = true
-			in_sub_menu = false
-			--TODO:
-			--option_select.f_displayCharacterOption(300, 100, editing_character)
+			if not option_select.f_displayCharacterOption(300, 100, editing_character) then
+				in_sub_menu = false
+			end
 		end
 		bgDraw(motif["optionbgdef"].bg, true)
 		refresh()
 	end
 
-	main.f_disableLuaScale()
+	main.f_setLuaScale()
+end
+
+function option_select.reload_base_character()
+	if option_select.should_load_select == false then
+		option_select.should_load_select = true
+		resetSelect()
+		load_select_def()
+		start.f_generateGrid()
+	end
 end

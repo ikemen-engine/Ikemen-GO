@@ -1072,7 +1072,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale float32, pal []uint32, fx *PalFX, pal
 			sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex)
 	} else {
 		s.glDraw(pal, 0, -x, -y, &notiling,
-			xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, 0, 0, 0,
+			xscale, xscale, yscale, 0, 0, 0, 0,
 			sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex)
 	}
 }
