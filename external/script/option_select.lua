@@ -220,7 +220,7 @@ function option_select.f_loop_character_edit()
 
 	local big_portrait_scale = {widthscale(), widthscale()}
 	local space_for_data_in_right = config.GameWidth/3
-	local portrait_size = {space_for_data_in_right, space_for_data_in_right*1.5}
+	local portrait_size = {space_for_data_in_right, space_for_data_in_right*1.3}
 	local big_portrait_pos = {0, 0} --TODO: center ?
 
 	local char_display_base = {7.5*portrait_scale[1] + space_for_data_in_right, 7.5*portrait_scale[1]}
@@ -247,26 +247,36 @@ function option_select.f_loop_character_edit()
 	local editing_character = nil
 	local continue = true
 
+	local big_portrait_transition_ongoing = true
+	local big_portrait_transition_new = selected_char_id
+	local big_portrait_transition_old = nil
+	local big_portrait_transition_progress = 0 -- float, from 0 to 1
+
 	while continue do
 		main.f_disableLuaScale()
 		main.f_cmdInput()
 		if in_sub_menu == false then
 			-- update cursor
+			local selected_another_portrait = false
 			if main.f_input(main.t_players, {"$D"}) then
 				if selected_char_id + char_by_line <= #option_select.select_characters then
 					selected_char_id = selected_char_id + char_by_line
+					selected_another_portrait = true
 				end
 			elseif main.f_input(main.t_players, {"$U"}) then
 				if selected_char_id - char_by_line >= 1 then
 					selected_char_id = selected_char_id - char_by_line
+					selected_another_portrait = true
 				end
 			elseif main.f_input(main.t_players, {"$B"}) then
 				if selected_char_id > 1 then
 					selected_char_id = selected_char_id - 1
+					selected_another_portrait = true
 				end
 			elseif main.f_input(main.t_players, {"$F"}) then
 				if selected_char_id < #option_select.select_characters then
 					selected_char_id = selected_char_id + 1
+					selected_another_portrait = true
 				end
 			elseif main.f_input(main.t_players, {'b'}) then
 				option_select.select_characters[selected_char_id].user_enabled = not option_select.select_characters[selected_char_id].user_enabled
@@ -353,20 +363,63 @@ function option_select.f_loop_character_edit()
 			end
 		end
 
+		-- big portrait
+		local big_portrait_temp_pos = big_portrait_pos
+		if big_portrait_transition_ongoing then
+			big_portrait_temp_pos = {
+				big_portrait_temp_pos[1],
+				big_portrait_temp_pos[2] + config.GameHeight * (1-(math.sin((big_portrait_transition_progress * math.pi) / 2))) --easeOutSine
+			}
+			if big_portrait_transition_old ~= nil then
+				local old_portrait_pos = {
+					big_portrait_pos[1],
+					big_portrait_pos[2] - config.GameHeight * (1 - math.cos((big_portrait_transition_progress * math.pi) / 2)) --easeInSine
+				}
+				drawPortraitChar(
+					big_portrait_transition_old - 1,
+					motif.select_info.p1_face_spr[1],
+					motif.select_info.p1_face_spr[2],
+					old_portrait_pos[1],
+					old_portrait_pos[2],
+					big_portrait_scale[1],
+					big_portrait_scale[2],
+					old_portrait_pos[1],
+					old_portrait_pos[2],
+					portrait_size[1],
+					portrait_size[2],
+					false
+				)
+			end
+			big_portrait_transition_progress = big_portrait_transition_progress + 0.04 --TODO: apply an ease-out function
+			if big_portrait_transition_progress >= 1 then
+				big_portrait_transition_progress = 1
+				big_portrait_transition_ongoing = false
+			end
+		end
+
 		drawPortraitChar(
-			selected_char_id - 1,
+			big_portrait_transition_new - 1,
 			motif.select_info.p1_face_spr[1],
 			motif.select_info.p1_face_spr[2],
-			big_portrait_pos[1],
-			big_portrait_pos[2],
+			big_portrait_temp_pos[1],
+			big_portrait_temp_pos[2],
 			big_portrait_scale[1],
 			big_portrait_scale[2],
-			big_portrait_pos[1],
-			big_portrait_pos[2],
+			big_portrait_temp_pos[1],
+			big_portrait_temp_pos[2],
 			portrait_size[1],
 			portrait_size[2],
 			false
 		)
+
+		if selected_char_id ~= big_portrait_transition_new and big_portrait_transition_ongoing == false then
+			big_portrait_transition_old = big_portrait_transition_new
+			big_portrait_transition_new = selected_char_id
+			big_portrait_transition_progress = 0
+			big_portrait_transition_ongoing = true
+		end
+
+
 
 		if in_sub_menu == true then
 			if not option_select.f_displayCharacterOption(300, 100, editing_character) then
