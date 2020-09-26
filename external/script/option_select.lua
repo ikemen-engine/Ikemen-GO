@@ -203,6 +203,8 @@ function option_select.f_displayCharacterOption(base_x, base_y, option_char_data
 end
 
 
+option_select.char_ref = 0
+--TODO: add scrolling animation
 function option_select.f_loop_character_edit()
 	--TODO: show the shortcut here
 	--TODO: display character data in the right (mainly path to .def file). Maybe disable this on lower resolution
@@ -215,7 +217,13 @@ function option_select.f_loop_character_edit()
 
 
 	local portrait_scale = {heightscale(), heightscale()}
-	local char_display_base = {7.5*portrait_scale[1], 7.5*portrait_scale[1]}
+
+	local big_portrait_scale = {widthscale(), widthscale()}
+	local space_for_data_in_right = config.GameWidth/3
+	local portrait_size = {space_for_data_in_right, space_for_data_in_right*1.5}
+	local big_portrait_pos = {0, 0} --TODO: center ?
+
+	local char_display_base = {7.5*portrait_scale[1] + space_for_data_in_right, 7.5*portrait_scale[1]}
 	local tile_size = {24*portrait_scale[1], 24*portrait_scale[2]} --was 75
 	local space_between_portrait = {(7.5+24)*portrait_scale[1], (7.5+24)*portrait_scale[2]}
 	local displayable_element = {
@@ -343,8 +351,22 @@ function option_select.f_loop_character_edit()
 				char_pos[1] = char_display_base[1]
 				char_pos[2] = char_pos[2] + space_between_portrait[2]
 			end
-
 		end
+
+		drawPortraitChar(
+			selected_char_id - 1,
+			motif.select_info.p1_face_spr[1],
+			motif.select_info.p1_face_spr[2],
+			big_portrait_pos[1],
+			big_portrait_pos[2],
+			big_portrait_scale[1],
+			big_portrait_scale[2],
+			big_portrait_pos[1],
+			big_portrait_pos[2],
+			portrait_size[1],
+			portrait_size[2],
+			false
+		)
 
 		if in_sub_menu == true then
 			if not option_select.f_displayCharacterOption(300, 100, editing_character) then
