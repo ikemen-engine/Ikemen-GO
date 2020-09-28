@@ -110,6 +110,44 @@ function option_select.f_load_select()
 	option_select.should_load_select = false
 end
 
+--TODO: reuse in option.lua
+function option_select.option_numerical_plage(data, min, max, accept_nil)
+	if accept_nil ~= true and data == nil then
+		data = min
+	end
+	local changed = false
+	if main.f_input(main.t_players, {'$F'}) then
+		changed = true
+		if data == nil then
+			data = min
+		else
+			data = data + 1
+			if data > max then
+				if accept_nil then
+					data = nil
+				else
+					data = min
+				end
+			end
+		end
+	elseif main.f_input(main.t_players, {'$B'}) then
+		changed = true
+		if data == nil then
+			data = max
+		else
+			data = data - 1
+			if data < min then
+				if accept_nil then
+					data = nil
+				else
+					data = max
+				end
+			end
+		end
+	end
+	return data, changed
+end
+
 --TODO:
 function option_select.f_generate_option_data(char_data)
 	local char_option_data = {option = {}}
@@ -139,6 +177,20 @@ function option_select.f_generate_option_data(char_data)
 			char_data.changed = true
 		end
 	end})
+
+	table.insert(char_option_data.option, {
+		displayname = "this ai level",
+		data=text:create({}),
+		vardisplay = char_data.option.named.ai or "undefined",
+		vardata = text:create({}),
+		onselected = function(entry)
+			char_data.option.named.ai, modified = option_select.option_numerical_plage(char_data.option.named.ai, 1, 8, true)
+			if modified then
+				char_data.changed = true
+			end
+			entry.vardisplay = char_data.option.named.ai or "undefined"
+		end
+	})
 
 	--TODO:
 	-- control ai level
