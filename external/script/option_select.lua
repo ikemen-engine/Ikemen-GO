@@ -161,7 +161,7 @@ function option_select.f_generate_option_data(char_data)
 	end
 
 	table.insert(char_option_data.option, {
-		displayname=options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled"),
+		displayname=options.f_boolDisplay(char_data.user_enabled, motif.character_edit_info.text_character_enabled, motif.character_edit_info.text_character_disabled),
 		data=text:create({}),
 		color = get_feedback_color(char_data.user_enabled),
 		onselected = function(entry)
@@ -172,28 +172,28 @@ function option_select.f_generate_option_data(char_data)
 			else
 				char_data.user_enabled = false
 			end
-			entry.displayname = options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled")
+			entry.displayname = options.f_boolDisplay(char_data.user_enabled, motif.character_edit_info.text_character_enabled, motif.character_edit_info.text_character_disabled)
 			entry.color = get_feedback_color(char_data.user_enabled)
 			char_data.changed = true
 		end
 	end})
 
 	table.insert(char_option_data.option, {
-		displayname = "this ai level",
+		displayname = motif.character_edit_info.text_this_ai_level,
 		data=text:create({}),
-		vardisplay = char_data.option.named.ai or "undefined",
+		vardisplay = char_data.option.named.ai or motif.character_edit_info.text_undefined,
 		vardata = text:create({}),
 		onselected = function(entry)
 			char_data.option.named.ai, modified = option_select.option_numerical_plage(char_data.option.named.ai, 1, 8, true)
 			if modified then
 				char_data.changed = true
 			end
-			entry.vardisplay = char_data.option.named.ai or "undefined"
+			entry.vardisplay = char_data.option.named.ai or motif.character_edit_info.text_undefined
 		end
 	})
 
 	table.insert(char_option_data.option, {
-		displayname = "return",
+		displayname = motif.character_edit_info.text_return,
 		data=text:create({}),
 		onselected = function(entry)
 			if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then

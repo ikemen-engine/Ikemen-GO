@@ -1347,6 +1347,11 @@ local motif =
 		cursor_move_snd = {100, 0},
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
+		text_character_enabled = "enabled",
+		text_characer_disabled = "disabled",
+		text_undefined = "undefined",
+		text_this_ai_level = "this ai level",
+		text_return = "return"
 	},
 	optionbgdef =
 	{
