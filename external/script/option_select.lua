@@ -113,25 +113,20 @@ end
 --TODO:
 function option_select.f_generate_option_data(char_data)
 	local char_option_data = {option = {}}
-	--TODO: check if this is required
-	local base_text = text:create({
-			font =   motif.character_edit_info.menu_item_info_font[1],
-			bank =   motif.character_edit_info.menu_item_info_font[2],
-			align =  1, -- alight to left
-			scaleX = 1,
-			scaleY = 1,
-			r =      motif.character_edit_info.menu_item_info_font[4],
-			g =      motif.character_edit_info.menu_item_info_font[5],
-			b =      motif.character_edit_info.menu_item_info_font[6],
-			src =    motif.character_edit_info.menu_item_info_font[7],
-			dst =    motif.character_edit_info.menu_item_info_font[8],
-			height = motif.character_edit_info.menu_item_info_font_height,
-			defsc =  motif.defaultOptions,
-			defsc = false,
-	})
 
-	--TODO: color
-	table.insert(char_option_data.option, {displayname=options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled"), data=base_text, onselected = function(entry)
+	function get_feedback_color(enabled)
+		color = {255, 0, 0}
+		if enabled then
+			color = {0, 255, 0}
+		end
+		return color
+	end
+
+	table.insert(char_option_data.option, {
+		displayname=options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled"),
+		data=text:create({}),
+		color = get_feedback_color(char_data.user_enabled),
+		onselected = function(entry)
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.character_edit_info.cursor_move_snd[1], motif.character_edit_info.cursor_move_snd[2])
 			if char_data.user_enabled == false then
@@ -140,6 +135,7 @@ function option_select.f_generate_option_data(char_data)
 				char_data.user_enabled = false
 			end
 			entry.displayname = options.f_boolDisplay(char_data.user_enabled, "enabled", "disabled")
+			entry.color = get_feedback_color(char_data.user_enabled)
 			char_data.changed = true
 		end
 	end})
@@ -390,7 +386,7 @@ function option_select.f_loop_character_edit()
 					false
 				)
 			end
-			big_portrait_transition_progress = big_portrait_transition_progress + 0.04 --TODO: apply an ease-out function
+			big_portrait_transition_progress = big_portrait_transition_progress + 0.04
 			if big_portrait_transition_progress >= 1 then
 				big_portrait_transition_progress = 1
 				big_portrait_transition_ongoing = false
