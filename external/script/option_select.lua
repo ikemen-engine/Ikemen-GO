@@ -192,8 +192,17 @@ function option_select.f_generate_option_data(char_data)
 		end
 	})
 
+	table.insert(char_option_data.option, {
+		displayname = "return",
+		data=text:create({}),
+		onselected = function(entry)
+			if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+				return true
+			end
+		end
+	})
+
 	--TODO:
-	-- control ai level
 	-- some other binary option
 
 	char_option_data["cursorPosY"] = 1
@@ -243,7 +252,9 @@ function option_select.f_displayCharacterOption(base_x, base_y, option_char_data
 	else
 		local selected = option_char_data.option[option_char_data.item]
 		if selected.onselected ~= nil then
-			selected.onselected(selected)
+			if selected.onselected(selected) == true then
+				return false
+			end
 		end
 	end
 
