@@ -1447,7 +1447,7 @@ type StateState struct {
 	moveType        MoveType
 	physics         StateType
 	ps              []int32
-	wakegawakaranai [len(sys.cgi)][]bool
+	wakegawakaranai [MaxSimul*2 + MaxAttachedChar][]bool
 	no, prevno      int32
 	time            int32
 	sb              StateBytecode
@@ -5960,17 +5960,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.atktmp = -1
 			for j := range pr {
 				p := &pr[j]
-				if (i == getter.playerNo && getter.helperIndex == 0 && p.platform == false) ||
+				if (i == getter.playerNo && getter.helperIndex == 0 && !p.platform) ||
 					p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
 					(getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) {
 					continue
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
-				if p.platform == false &&
+				if !p.platform &&
 					dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
 					getter.inguarddist = true
 				}
-				if p.platform == true {
+				if p.platform {
 					//Platformの足場上空判定
 					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
 						getter.platformPosY*getter.localscl >= (p.pos[1]+p.platformHeight[0])*p.localscl {

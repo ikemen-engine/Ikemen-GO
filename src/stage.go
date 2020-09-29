@@ -326,7 +326,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
 	var sclx_recip float32 = 1
 	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
-	if sclx != 0 && bg.autoresizeparallax == true {
+	if sclx != 0 && bg.autoresizeparallax {
 		tmp := 1 / sclx
 		if bg.xbottomzoomdelta != math.MaxFloat32 {
 			xbs *= MaxF(0, scl+(1-scl)*(1-bg.xbottomzoomdelta*(xbs/bg.xscale[0]))) * tmp
@@ -340,7 +340,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if bg.zoomdelta[0] != math.MaxFloat32 {
 		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
 		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
-		if bg.autoresizeparallax == false {
+		if !bg.autoresizeparallax {
 			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
 		}
 	}
@@ -642,7 +642,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
-		s.attachedchardef, ok = sec[0].getString("attachedchar")
+		s.attachedchardef, _ = sec[0].getString("attachedchar")
 		if main {
 			for k, v := range sec[0] {
 				if match, _ := regexp.MatchString("^round[0-9]+def$", k); match {

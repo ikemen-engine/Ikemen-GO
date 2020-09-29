@@ -152,7 +152,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 		case "map":
 			if mapflg {
 				mapflg = false
-				re := regexp.MustCompile("(\\S+)(?:\\s+(\\S+)(?:\\s+(\\S+))?)?")
+				re := regexp.MustCompile(`(\S+)(?:\s+(\S+)(?:\s+(\S+))?)?`)
 				ofs := uint16(0)
 				w := int32(0)
 				for ; i < len(lines); i++ {

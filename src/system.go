@@ -396,7 +396,7 @@ func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
 		window, err = glfw.CreateWindow(w, h, title, monitor, oldWindow)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to create window:", err)
+		return nil, fmt.Errorf("failed to create window: %w", err)
 	}
 	return window, nil
 }
@@ -919,7 +919,7 @@ func (s *System) nextRound() {
 			s.stageLoopNo = 0
 		}
 		keys := make([]int, 0)
-		for k, _ := range s.stageList {
+		for k := range s.stageList {
 			keys = append(keys, int(k))
 		}
 		sort.Ints(keys)
@@ -1381,9 +1381,9 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				s.intro >= rs4t-s.lifebar.ro.over_wintime {
 				s.intro--
 				if s.intro == rs4t-1 {
-					if s.time == 0 {
-						//s.intro -= s.lifebar.ro.over_wintime
-					}
+					/*if s.time == 0 {
+						s.intro -= s.lifebar.ro.over_wintime
+					}*/
 					if s.waitdown > 0 {
 						for _, p := range s.chars {
 							if len(p) > 0 && !p[0].over() {
@@ -2355,7 +2355,7 @@ func (s *Select) addChar(def string) {
 	} else {
 		def += ".def"
 	}
-	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
 		def = "chars/" + def
 	}
 	if def = FileExist(def); len(def) == 0 {
@@ -2487,7 +2487,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				ss.attachedchardef, ok = is.getString("attachedchar")
+				//ss.attachedchardef, ok = is.getString("attachedchar")
 			}
 		case "music":
 			if music {

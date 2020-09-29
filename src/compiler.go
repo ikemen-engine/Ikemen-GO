@@ -564,11 +564,11 @@ func (c *Compiler) number(token string) BytecodeValue {
 	if err != nil && f == 0 {
 		return bvNone()
 	}
-	if strings.Index(token, ".") >= 0 {
+	if strings.Contains(token, ".") {
 		c.usiroOp = false
 		return BytecodeValue{VT_Float, f}
 	}
-	if strings.IndexAny(token, "Ee") >= 0 {
+	if strings.ContainsAny(token, "Ee") {
 		return bvNone()
 	}
 	c.usiroOp = false
@@ -3203,7 +3203,7 @@ func (c *Compiler) stateSec(is IniSection, f func() error) error {
 	}
 	if !sys.ignoreMostErrors {
 		var str string
-		for k, _ := range is {
+		for k := range is {
 			if len(str) > 0 {
 				str += ", "
 			}
@@ -7892,12 +7892,12 @@ func (c *Compiler) readSentenceLine(line *string) (s string, assign bool,
 	for {
 		i := strings.IndexAny((*line)[offset:], ";#\"{}")
 		if i < 0 {
-			assign = assign || strings.Index((*line)[offset:], ":=") >= 0
+			assign = assign || strings.Contains((*line)[offset:], ":=")
 			s, *line = *line, ""
 			return
 		}
 		i += offset
-		assign = assign || strings.Index((*line)[offset:i], ":=") >= 0
+		assign = assign || strings.Contains((*line)[offset:i], ":=")
 		switch (*line)[i] {
 		case ';', '{', '}':
 			c.token = (*line)[i : i+1]

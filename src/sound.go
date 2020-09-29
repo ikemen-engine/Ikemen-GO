@@ -389,7 +389,6 @@ func (bgm *Bgm) Pause() {
 	speaker.Lock()
 	bgm.ctrl.Paused = true
 	speaker.Unlock()
-	return
 }
 
 // ------------------------------------------------------------------
@@ -586,7 +585,6 @@ func (s *Snd) stop(gn [2]int32) {
 			//break
 		}
 	}
-	return
 }
 
 func newWave() *Wave {

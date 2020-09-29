@@ -170,7 +170,7 @@ func readHealthBar(pre string, is IniSection,
 	hb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	hb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString(pre+"front[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -183,7 +183,7 @@ func readHealthBar(pre string, is IniSection,
 		}
 	}
 	hb.red[0] = ReadAnimLayout(pre+"red.", is, sff, at, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString(pre+"red[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -248,14 +248,14 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	hb.top.Action()
 	hb.mid.Action()
 	var rv int32
-	for k, _ := range hb.red {
+	for k := range hb.red {
 		if k > rv && redval >= k {
 			rv = k
 		}
 	}
 	hb.red[rv].Action()
 	var fv float32
-	for k, _ := range hb.front {
+	for k := range hb.front {
 		if k > fv && life >= k/100 {
 			fv = k
 		}
@@ -308,7 +308,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	//rr[2] -= Min(rr[2], lr[2])
 	var rv int32
 	if sys.lifebar.activeRl {
-		for k, _ := range hb.red {
+		for k := range hb.red {
 			if k > rv && redval >= k {
 				rv = k
 			}
@@ -319,7 +319,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	hb.mid.lay.DrawAnim(&mr, float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), sys.lifebarScale,
 		layerno, &hb.mid.anim, hb.mid.palfx)
 	var fv float32
-	for k, _ := range hb.front {
+	for k := range hb.front {
 		if k > fv && life >= k/100 {
 			fv = k
 		}
@@ -368,7 +368,7 @@ func readPowerBar(pre string, is IniSection,
 	pb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	pb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString(pre+"front[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -416,7 +416,7 @@ func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 	pb.top.Action()
 	pb.mid.Action()
 	var fv int32
-	for k, _ := range pb.front {
+	for k := range pb.front {
 		if k > fv && pbval >= k {
 			fv = k
 		}
@@ -462,7 +462,7 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 	pb.mid.lay.DrawAnim(&mr, float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
 		layerno, &pb.mid.anim, pb.mid.palfx)
 	var fv int32
-	for k, _ := range pb.front {
+	for k := range pb.front {
 		if k > fv && pbval >= k {
 			fv = k
 		}
@@ -513,7 +513,7 @@ func readGuardBar(pre string, is IniSection,
 	gb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	gb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	gb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString(pre+"front[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -549,7 +549,7 @@ func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
 	gb.top.Action()
 	gb.mid.Action()
 	var mv float32
-	for k, _ := range gb.front {
+	for k := range gb.front {
 		if k > mv && power >= k/100 {
 			mv = k
 		}
@@ -599,7 +599,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	gb.mid.lay.DrawAnim(&mr, float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 		layerno, &gb.mid.anim, gb.mid.palfx)
 	var mv float32
-	for k, _ := range gb.front {
+	for k := range gb.front {
 		if k > mv && power >= k/100 {
 			mv = k
 		}
@@ -645,7 +645,7 @@ func readStunBar(pre string, is IniSection,
 	sb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	sb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	sb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString(pre+"front[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -681,7 +681,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	sb.top.Action()
 	sb.mid.Action()
 	var mv float32
-	for k, _ := range sb.front {
+	for k := range sb.front {
 		if k > mv && power >= k/100 {
 			mv = k
 		}
@@ -731,7 +731,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	sb.mid.lay.DrawAnim(&mr, float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 		layerno, &sb.mid.anim, sb.mid.palfx)
 	var mv float32
-	for k, _ := range sb.front {
+	for k := range sb.front {
 		if k > mv && power >= k/100 {
 			mv = k
 		}
@@ -1064,7 +1064,7 @@ func readLifeBarTime(is IniSection,
 	ti := newLifeBarTime()
 	is.ReadI32("pos", &ti.pos[0], &ti.pos[1])
 	ti.counter[0] = readLbText("counter.", is, "", 0, f, 0)
-	for k, _ := range is {
+	for k := range is {
 		if match, _ := regexp.MatchString("counter[0-9]+\\.", k); match {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -1102,7 +1102,7 @@ func (ti *LifeBarTime) draw(layerno int16, f []*Fnt) {
 			time = fmt.Sprintf("%v", timeval)
 		}
 		var tv int32
-		for k, _ := range ti.counter {
+		for k := range ti.counter {
 			if k > tv && timeval >= k {
 				tv = k
 			}
@@ -2039,7 +2039,7 @@ func newLifeBarMode() *LifeBarMode {
 func readLifeBarMode(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) map[string]*LifeBarMode {
 	mo := make(map[string]*LifeBarMode)
-	for k, _ := range is {
+	for k := range is {
 		sp := strings.Split(k, ".")
 		if _, ok := mo[sp[0]]; !ok {
 			mo[sp[0]] = newLifeBarMode()
@@ -2147,7 +2147,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		"[timer]": -1, "[score]": -1, "[match]": -1, "[ailevel]": -1, "[mode]": -1,
 	}
 	strc := strings.ToLower(strings.TrimSpace(str))
-	for k, _ := range missing {
+	for k := range missing {
 		strc = strings.Replace(strc, ";"+k, "", -1)
 		if strings.Contains(strc, k) {
 			delete(missing, k)
@@ -2696,7 +2696,7 @@ func (l *Lifebar) step() {
 			}
 		}
 	}
-	for ti, _ := range sys.tmode {
+	for ti := range sys.tmode {
 		for i, v := range l.order[ti] {
 			//HealthBar
 			l.hb[l.ref[ti]][i*2+ti].step(v, l.hb[l.ref[ti]][v])

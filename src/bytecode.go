@@ -2349,7 +2349,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		case tagIn_self:
 			sti := exp[0].evalB(c)
-			if sti == true {
+			if sti {
 				tagSCF = 1
 			} else {
 				tagSCF = 0
@@ -2369,7 +2369,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		case tagIn_partnerctrl:
 			pctrls := exp[0].evalB(c)
-			if pctrls == true {
+			if pctrls {
 				partnerCtrlSetting = 1
 			} else {
 				partnerCtrlSetting = 0
@@ -2429,7 +2429,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagOut_self:
-			if exp[0].evalB(c) == true {
+			if exp[0].evalB(c) {
 				tagSCF = 1
 			} else {
 				tagSCF = 0
@@ -6185,9 +6185,9 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
-			zoompos[0] = exp[0].evalF(c) * c.localscl
+			zoompos[0] = exp[0].evalF(c) * crun.localscl
 			if len(exp) > 1 {
-				zoompos[1] = exp[1].evalF(c) * c.localscl
+				zoompos[1] = exp[1].evalF(c) * crun.localscl
 			}
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
@@ -6387,10 +6387,11 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 	})
 	if path != "" {
 		decodeFile, err := os.Open(filepath.Dir(c.gi().def) + "/" + path)
-		defer decodeFile.Close()
 		if err != nil {
+			defer decodeFile.Close()
 			return false
 		}
+		defer decodeFile.Close()
 		decoder := gob.NewDecoder(decodeFile)
 		switch data {
 		case SaveData_map:
