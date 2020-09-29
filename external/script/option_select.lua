@@ -143,14 +143,14 @@ function option_select.f_generate_option_data(char_data)
 	table.insert(char_option_data.option, {
 		displayname = motif.character_edit_info.text_this_ai_level,
 		data=text:create({}),
-		vardisplay = char_data.option.named.ai or motif.character_edit_info.text_undefined,
+		vardisplay = char_data.option.named.ai or motif.character_edit_info.text_default,
 		vardata = text:create({}),
 		onselected = function(entry)
 			char_data.option.named.ai, modified = options.option_numerical_plage(char_data.option.named.ai, 1, 8, motif.character_edit_info.cursor_move_snd, true)
 			if modified then
 				char_data.changed = true
 			end
-			entry.vardisplay = char_data.option.named.ai or motif.character_edit_info.text_undefined
+			entry.vardisplay = char_data.option.named.ai or motif.character_edit_info.text_default
 		end
 	})
 

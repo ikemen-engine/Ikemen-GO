@@ -1349,7 +1349,7 @@ local motif =
 		cancel_snd = {100, 2},
 		text_character_enabled = "enabled",
 		text_characer_disabled = "disabled",
-		text_undefined = "undefined",
+		text_default = "default",
 		text_this_ai_level = "this ai level",
 		text_return = "return"
 	},
