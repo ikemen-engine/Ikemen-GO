@@ -258,7 +258,7 @@ function option_select.f_loop_character_edit()
 	if char_by_line > displayable_element[1] then
 		char_by_line = displayable_element[1]
 	end
-	local extra_char_visible_top = math.ceil(space_between_portrait[2]/space_between_portrait[2]) * char_by_line
+	local extra_row_visible_top = math.ceil(space_between_portrait[2]/space_between_portrait[2])
 	local selected_char_id = 1 -- the currently select id in the list, starting by 1
 	local first_line_to_display = 1
 	local char_by_screen = displayable_element[2] * char_by_line
@@ -342,17 +342,17 @@ function option_select.f_loop_character_edit()
 		end
 
 		local first_line_to_display_transition = math.floor(current_y_transition_list)
+		local absolute_y_list_offset = current_y_transition_list*space_between_portrait[2]
 		local first_visible_chara_transition = (first_line_to_display_transition-1) * char_by_line + 1
 
-		local absolute_y_list_offset = -current_y_transition_list*space_between_portrait[2]
 
 
 
 		-- draw
 		bgDraw(motif["optionbgdef"].bg, false)
-		local char_pos = {char_display_base[1], char_display_base[2]+absolute_y_list_offset+first_line_to_display_transition*space_between_portrait[2]}
+		local char_pos = {char_display_base[1], char_display_base[2]-absolute_y_list_offset+(first_line_to_display_transition-extra_row_visible_top)*space_between_portrait[2]}
 		local char_place = {0, 0}
-		for char_ref = first_visible_chara_transition-extra_char_visible_top, math.min(#option_select.select_characters, first_visible_chara_transition + char_by_screen - 1 + char_by_line) do --TODO: math.max
+		for char_ref = first_visible_chara_transition-(extra_row_visible_top*char_by_line), math.min(#option_select.select_characters, first_visible_chara_transition + char_by_screen + (extra_row_visible_top+1)*char_by_line) do --TODO: math.max
 			if char_ref>=1 then
 				char = option_select.select_characters[char_ref]
 				if char["loaded_id"] == nil then --TODO: randomselect
