@@ -225,7 +225,6 @@ end
 
 
 option_select.char_ref = 0
---TODO: add scrolling animation
 function option_select.f_loop_character_edit()
 	--TODO: show the shortcut here
 	--TODO: display character data in the right (mainly path to .def file). Maybe disable this on lower resolution
@@ -245,8 +244,10 @@ function option_select.f_loop_character_edit()
 	local big_portrait_pos = {0, 0} --TODO: center ?
 
 	local char_display_base = {7.5*portrait_scale[1] + space_for_data_in_right, 7.5*portrait_scale[1]}
+
 	local tile_size = {24*portrait_scale[1], 24*portrait_scale[2]} --was 75
 	local space_between_portrait = {(7.5+24)*portrait_scale[1], (7.5+24)*portrait_scale[2]}
+
 	local displayable_element = {
 		math.floor((config.GameWidth - char_display_base[1]) / space_between_portrait[1]),
 		math.floor((config.GameHeight - char_display_base[2]) / space_between_portrait[2])
@@ -257,6 +258,7 @@ function option_select.f_loop_character_edit()
 	if char_by_line > displayable_element[1] then
 		char_by_line = displayable_element[1]
 	end
+	local extra_char_visible_top = math.ceil(space_between_portrait[2]/space_between_portrait[2]) * char_by_line
 	local selected_char_id = 1 -- the currently select id in the list, starting by 1
 	local first_line_to_display = 1
 	local char_by_screen = displayable_element[2] * char_by_line
@@ -272,6 +274,10 @@ function option_select.f_loop_character_edit()
 	local big_portrait_transition_new = selected_char_id
 	local big_portrait_transition_old = nil
 	local big_portrait_transition_progress = 0 -- float, from 0 to 1
+
+	local list_transition_scale = 2
+
+	local current_y_transition_list = first_line_to_display
 
 	while continue do
 		main.f_disableLuaScale()
@@ -310,70 +316,96 @@ function option_select.f_loop_character_edit()
 			end
 		end
 
+
 		local first_visible_char = ((first_line_to_display - 1) * char_by_line) + 1
-		if selected_char_id >= first_visible_char + char_by_screen then
+		if selected_char_id >= first_visible_char + char_by_screen - char_by_line then
 			first_line_to_display = first_line_to_display + 1
 		elseif selected_char_id < first_visible_char then
 			first_line_to_display = first_line_to_display - 1
 		end
 		first_visible_char = ((first_line_to_display - 1) * char_by_line) + 1
 
+		if first_line_to_display ~= current_y_transition_list then
+			if first_line_to_display > current_y_transition_list then
+				current_y_transition_list = current_y_transition_list + math.pow((first_line_to_display-current_y_transition_list)/2, 1.5) / list_transition_scale
+				current_y_transition_list = current_y_transition_list + 0.01 / list_transition_scale
+				if first_line_to_display < current_y_transition_list then
+					current_y_transition_list = first_line_to_display
+				end
+			else
+				current_y_transition_list = current_y_transition_list - math.pow((current_y_transition_list-first_line_to_display)/2, 1.5) / list_transition_scale
+				current_y_transition_list = current_y_transition_list - 0.01 / list_transition_scale
+				if first_line_to_display > current_y_transition_list then
+					current_y_transition_list = first_line_to_display
+				end
+			end
+		end
+
+		local first_line_to_display_transition = math.floor(current_y_transition_list)
+		local first_visible_chara_transition = (first_line_to_display_transition-1) * char_by_line + 1
+
+		local absolute_y_list_offset = -current_y_transition_list*space_between_portrait[2]
+
+
 
 		-- draw
 		bgDraw(motif["optionbgdef"].bg, false)
-		local char_pos = {char_display_base[1], char_display_base[2]}
+		local char_pos = {char_display_base[1], char_display_base[2]+absolute_y_list_offset+first_line_to_display_transition*space_between_portrait[2]}
 		local char_place = {0, 0}
-		for char_ref = first_visible_char, math.min(#option_select.select_characters, first_visible_char + char_by_screen - 1 + char_by_line) do --TODO: math.max
-			char = option_select.select_characters[char_ref]
-			if char["loaded_id"] == nil then --TODO: randomselect
-				addChar(char.name)
-				char.loaded_id = option_select.char_ref
-				option_select.char_ref = option_select.char_ref + 1
-			end
-
-			-- draw background for each tile
-			local background_to_draw = nil
-			if char_ref == selected_char_id then
-				if char.user_enabled == true then
-					background_to_draw = background_selected_enabled
-				else
-					background_to_draw = background_selected_disabled
+		for char_ref = first_visible_chara_transition-extra_char_visible_top, math.min(#option_select.select_characters, first_visible_chara_transition + char_by_screen - 1 + char_by_line) do --TODO: math.max
+			if char_ref>=1 then
+				char = option_select.select_characters[char_ref]
+				if char["loaded_id"] == nil then --TODO: randomselect
+					addChar(char.name)
+					char.loaded_id = option_select.char_ref
+					option_select.char_ref = option_select.char_ref + 1
 				end
-			else
-				if char.user_enabled == true then
-					background_to_draw = background_enabled
+
+
+				-- draw background for each tile
+				local background_to_draw = nil
+				if char_ref == selected_char_id then
+					if char.user_enabled == true then
+						background_to_draw = background_selected_enabled
+					else
+						background_to_draw = background_selected_disabled
+					end
 				else
-					background_to_draw = background_disabled
+					if char.user_enabled == true then
+						background_to_draw = background_enabled
+					else
+						background_to_draw = background_disabled
+					end
 				end
+
+				fillRect(
+					char_pos[1] - background_to_draw[1][1],
+					char_pos[2] - background_to_draw[1][2],
+					background_to_draw[1][1]*2+tile_size[1],
+					background_to_draw[1][2]*2+tile_size[2],
+					background_to_draw[2][1],
+					background_to_draw[2][2],
+					background_to_draw[2][3],
+					background_to_draw[2][4],
+					background_to_draw[2][5]
+				)
+
+				drawPortraitChar(
+					char.loaded_id,
+					motif.select_info.portrait_spr[1],
+					motif.select_info.portrait_spr[2],
+					char_pos[1],
+					char_pos[2],
+					portrait_scale[1],
+					portrait_scale[2],
+					char_pos[1],
+					char_pos[2],
+					tile_size[1],
+					tile_size[2],
+					false
+				)
+
 			end
-
-			fillRect(
-				char_pos[1] - background_to_draw[1][1],
-				char_pos[2] - background_to_draw[1][2],
-				background_to_draw[1][1]*2+tile_size[1],
-				background_to_draw[1][2]*2+tile_size[2],
-				background_to_draw[2][1],
-				background_to_draw[2][2],
-				background_to_draw[2][3],
-				background_to_draw[2][4],
-				background_to_draw[2][5]
-			)
-
-			drawPortraitChar(
-				char.loaded_id,
-				motif.select_info.portrait_spr[1],
-				motif.select_info.portrait_spr[2],
-				char_pos[1],
-				char_pos[2],
-				portrait_scale[1],
-				portrait_scale[2],
-				char_pos[1],
-				char_pos[2],
-				tile_size[1],
-				tile_size[2],
-				false
-			)
-
 			char_pos[1] = char_pos[1] + space_between_portrait[1]
 			char_place[1] = char_place[1] + 1
 			if char_place[1] >= char_by_line then
