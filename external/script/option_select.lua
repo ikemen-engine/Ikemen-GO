@@ -74,11 +74,18 @@ function option_select.f_load_select()
 				if #file_name > 5 then
 					if file_name ~= "ending.def" and file_name ~= "intro.def" then
 						if file_name:sub(-4, -1) == ".def" then
-							-- add one char per variation
-							local data = {user_enabled = false, name=char_dir .. "/" .. file_name, folder_name=char_dir, config={}}
-							data["other_char_in_dir"] = other_char_in_dir
-							table.insert(other_char_in_dir, data)
-							table.insert(option_select.select_characters, data)
+							local file_path = char_dir .. "/" .. file_name
+							if file_path:find(";") ~= nil then
+								print("warning: the character path \"" .. file_path .. "\" contain the \";\" character, that can't be used in character name. This character will be excluded")
+							elseif file_path:find(",") ~= nil then
+								print("warning: the character path \"" .. file_path .. "\" contain the \",\" character, that can't be used in character name. This character will be excluded")
+							else
+								-- add one char per variation
+								local data = {user_enabled = false, name=file_path, folder_name=char_dir, config={}}
+								data["other_char_in_dir"] = other_char_in_dir
+								table.insert(other_char_in_dir, data)
+								table.insert(option_select.select_characters, data)
+							end
 						end
 					end
 				end
