@@ -112,6 +112,10 @@ end
 
 --TODO:
 function option_select.f_generate_option_data(char_data)
+	if char_data.option == nil then
+		char_data.option = file_def.get_default_option()
+	end
+
 	local char_option_data = {option = {}}
 
 	function get_feedback_color(enabled)

@@ -187,6 +187,9 @@ function file_def.parse_arg(arg)
 end
 
 function file_def.arg_to_string(arg)
+	if arg == nil then
+		return ""
+	end
 	result = ""
 	main.f_printTable(arg, "arg_to_string.txt")
 	for k, v in ipairs(arg.numerical) do
@@ -210,4 +213,9 @@ function file_def.arg_to_string(arg)
 	end
 	return result:sub(1, -2)
 end
+
+function file_def.get_default_option()
+	return {numerical={}, named={}}
+end
+
 return file_def
