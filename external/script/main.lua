@@ -20,6 +20,9 @@ local file = io.open(main.flags['-config'], 'r')
 config = json.decode(file:read("*all"))
 file:close()
 
+GameWidth = config.GameWidth
+GameHeight = config.GameHeight
+
 if config.SafeLoading then
 	setGCPercent(-1)
 end

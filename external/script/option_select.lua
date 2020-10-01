@@ -250,7 +250,7 @@ function option_select.f_loop_character_edit()
 	local portrait_scale = {heightscale(), heightscale()}
 
 	local big_portrait_scale = {widthscale(), widthscale()}
-	local space_for_data_in_right = config.GameWidth/3
+	local space_for_data_in_right = GameWidth/3
 	local portrait_size = {space_for_data_in_right, space_for_data_in_right*1.3}
 	local big_portrait_pos = {0, 0} --TODO: center ?
 
@@ -260,8 +260,8 @@ function option_select.f_loop_character_edit()
 	local space_between_portrait = {(7.5+24)*portrait_scale[1], (7.5+24)*portrait_scale[2]}
 
 	local displayable_element = {
-		math.floor((config.GameWidth - char_display_base[1]) / space_between_portrait[1]),
-		math.floor((config.GameHeight - char_display_base[2]) / space_between_portrait[2])
+		math.floor((GameWidth - char_display_base[1]) / space_between_portrait[1]),
+		math.floor((GameHeight - char_display_base[2]) / space_between_portrait[2])
 	}
 	-- optimise the worst case time of navigation
 	--TODO: try to only use one screen (no scrolling)
@@ -432,12 +432,12 @@ function option_select.f_loop_character_edit()
 		if big_portrait_transition_ongoing then
 			big_portrait_temp_pos = {
 				big_portrait_temp_pos[1],
-				big_portrait_temp_pos[2] + config.GameHeight * (1-(math.sin((big_portrait_transition_progress * math.pi) / 2))) --easeOutSine
+				big_portrait_temp_pos[2] + GameHeight * (1-(math.sin((big_portrait_transition_progress * math.pi) / 2))) --easeOutSine
 			}
 			if big_portrait_transition_old ~= nil then
 				local old_portrait_pos = {
 					big_portrait_pos[1],
-					big_portrait_pos[2] - config.GameHeight * (1 - math.cos((big_portrait_transition_progress * math.pi) / 2)) --easeInSine
+					big_portrait_pos[2] - GameHeight * (1 - math.cos((big_portrait_transition_progress * math.pi) / 2)) --easeInSine
 				}
 				drawPortraitChar(
 					big_portrait_transition_old - 1,
@@ -486,7 +486,8 @@ function option_select.f_loop_character_edit()
 
 
 		if in_sub_menu == true then
-			if not option_select.f_displayCharacterOption(300, 100, editing_character) then
+			--TODO: fix not being in motif
+			if not option_select.f_displayCharacterOption(90*widthscale(), 30*heightscale(), editing_character) then
 				in_sub_menu = false
 			end
 		end
