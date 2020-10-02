@@ -300,6 +300,22 @@ rect = {}
 function text:create(t)
 	--default values
 	if t.window == nil then t.window = {} end
+	local window = nil
+	if t.defsc == true then
+		window = {
+			t.window[1] or 0,
+			t.window[2] or 0,
+			t.window[3] or GameWidth+1000,
+			t.window[4] or GameHeight+1000
+		}
+	else
+		window = {
+			t.window[1] or 0,
+			t.window[2] or 0,
+			t.window[3] or motif.info.localcoord[1],
+			t.window[4] or motif.info.localcoord[2]
+		}
+	end
 	local o = {
 		font = t.font or -1,
 		bank = t.bank or 0,
@@ -315,12 +331,7 @@ function text:create(t)
 		src = t.src or 255,
 		dst = t.dst or 0,
 		height = t.height or -1,
-		window = {
-			t.window[1] or 0, 
-			t.window[2] or 0,
-			t.window[3] or motif.info.localcoord[1],
-			t.window[4] or motif.info.localcoord[2]
-		},
+		window = window,
 		defsc = t.defsc or false
 	}
 	o.ti = textImgNew()
@@ -342,7 +353,11 @@ function text:create(t)
 	if o.defsc then main.f_disableLuaScale() end
 	textImgSetPos(o.ti, o.x + main.f_alignOffset(o.align), o.y)
 	textImgSetScale(o.ti, o.scaleX, o.scaleY)
-	textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3] - o.window[1], o.window[4] - o.window[2])
+	if o.defsc then
+		textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3], o.window[4], o.defsc)
+	else
+		textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3] - o.window[1], o.window[4] - o.window[2], o.defsc)
+	end
 	if o.defsc then main.f_setLuaScale() end
 	return o
 end
@@ -377,7 +392,11 @@ function text:update(t)
 	if self.defsc then main.f_disableLuaScale() end
 	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
 	textImgSetScale(self.ti, self.scaleX, self.scaleY)
-	textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
+	if self.defsc then
+		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3], self.window[4], self.defsc)
+	else
+		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2], self.defsc)
+	end
 	if self.defsc then main.f_setLuaScale() end
 end
 

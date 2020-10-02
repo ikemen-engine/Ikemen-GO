@@ -593,11 +593,18 @@ func NewTextSprite() *TextSprite {
 	return &TextSprite{align: 1, xscl: 1, yscl: 1, window: sys.scrrect, palfx: newPalFX()}
 }
 
-func (ts *TextSprite) SetWindow(x, y, w, h float32) {
-	ts.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
-	ts.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
-	ts.window[2] = int32(w*sys.widthScale + 0.5)
-	ts.window[3] = int32(h*sys.heightScale + 0.5)
+func (ts *TextSprite) SetWindow(x, y, w, h float32, absolute bool) {
+	if absolute {
+		ts.window[0] = int32(x)
+		ts.window[1] = int32(y)
+		ts.window[2] = int32(w + 0.5)
+		ts.window[3] = int32(h + 0.5)
+	} else {
+		ts.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
+		ts.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+		ts.window[2] = int32(w*sys.widthScale + 0.5)
+		ts.window[3] = int32(h*sys.heightScale + 0.5)
+	}
 }
 
 func (ts *TextSprite) Draw(absolute bool) {

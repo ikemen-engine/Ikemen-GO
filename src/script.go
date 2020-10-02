@@ -2204,8 +2204,12 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
+		var absolute = false
+		if l.GetTop() >= 6 {
+			absolute = boolArg(l, 6)
+		}
 		ts.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
-			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
+			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale), absolute)
 		return 0
 	})
 	luaRegister(l, "toggleClsnDraw", func(*lua.LState) int {
