@@ -290,6 +290,13 @@ function option_select.f_loop_character_edit()
 
 	local current_y_transition_list = first_line_to_display
 
+	--TODO: put all the array in motif
+	local nav_tip_select_char = navigation_tip.generate({
+		{name = "toggle activation", keys = {"b"}},
+		{name = "more configuration", keys = {"pal", "s"}},
+		{name = "return", keys = {"esc"}}
+	})
+
 	while continue do
 		main.f_disableLuaScale()
 		main.f_cmdInput()
@@ -490,6 +497,8 @@ function option_select.f_loop_character_edit()
 			if not option_select.f_displayCharacterOption(90*widthscale(), 30*heightscale(), editing_character) then
 				in_sub_menu = false
 			end
+		else
+			navigation_tip.draw(nav_tip_select_char)
 		end
 		bgDraw(motif["optionbgdef"].bg, true)
 		refresh()

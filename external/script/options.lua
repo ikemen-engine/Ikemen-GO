@@ -1297,6 +1297,13 @@ if motif.option_info.menu_window_margins_y[1] ~= 0 or motif.option_info.menu_win
 	}
 end
 
+t_menuWindow = {
+	t_menuWindow[1],
+	t_menuWindow[2] * (GameHeight/main.SP_Localcoord[2]),
+	t_menuWindow[3] * (GameWidth/main.SP_Localcoord[1]),
+	t_menuWindow[4] * (GameHeight/main.SP_Localcoord[2])
+}
+
 --dynamically generates all option screen menus and submenus using itemname data stored in main.t_sort table
 options.menu = {title = main.f_itemnameUpper(motif.option_info.title_text, motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 options.menu.loop = options.createMenu(options.menu, true, true, true)
@@ -1307,7 +1314,7 @@ for i = 1, #main.t_sort.option_info do
 		--populate shaders submenu
 		if main.t_sort.option_info[i]:match('_shaders_back$') and c == 'back' then
 			for k = #options.t_shaders, 1, -1 do
-				table.insert(t_pos.items, 1, {data = text:create({window = t_menuWindow}), itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, 1, {data = text:create({}), window = t_menuWindow, itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
 			end
 		end
 		--appending the menu table
@@ -1316,7 +1323,7 @@ for i = 1, #main.t_sort.option_info do
 				options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				options.menu.submenu[c].loop = options.createMenu(options.menu.submenu[c], false, false, false)
 				if not main.t_sort.option_info[i]:match(c .. '_') then
-					table.insert(options.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+					table.insert(options.menu.items, {data = text:create({}), window = t_menuWindow, itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
 				end
 			end
 			t_pos = options.menu.submenu[c]
@@ -1324,7 +1331,7 @@ for i = 1, #main.t_sort.option_info do
 			if t_pos.submenu[c] == nil or c == 'empty' then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				t_pos.submenu[c].loop = options.createMenu(t_pos.submenu[c], false, false, false)
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, {data = text:create({}), window = t_menuWindow, itemname = c, displayname = motif.option_info['menu_itemname_' .. main.t_sort.option_info[i]], vardata = text:create({}), vardisplay = options.f_vardisplay(c), selected = false})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -1584,6 +1591,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 	end
 	--draw layerno = 0 backgrounds
 	bgDraw(motif[bgdef].bg, false)
+	local window = text:get_default_window(motif.defaultOptions)
 	--draw player num
 	for i = 1, 2 do
 		txt_keyController[i]:update({
@@ -1601,6 +1609,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 			src =    motif.option_info['menu_item_key_p' .. i .. '_font'][7],
 			dst =    motif.option_info['menu_item_key_p' .. i .. '_font'][8],
 			height = motif.option_info['menu_item_key_p' .. i .. '_font_height'],
+			window = window,
 			defsc =  motif.defaultOptions
 		})
 		txt_keyController[i]:draw()
@@ -1659,6 +1668,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						src =    motif.option_info.menu_item_active_font[7],
 						dst =    motif.option_info.menu_item_active_font[8],
 						height = motif.option_info.menu_item_active_font_height,
+						window = window,
 						defsc =  motif.defaultOptions
 					})
 					t[i].data[j]:draw()
@@ -1680,6 +1690,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								src =    motif.option_info.menu_item_value_conflict_font[7],
 								dst =    motif.option_info.menu_item_value_conflict_font[8],
 								height = motif.option_info.menu_item_value_conflict_font_height,
+								window = window,
 								defsc =  motif.defaultOptions
 							})
 							t[i].vardata[j]:draw()
@@ -1700,6 +1711,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								src =    motif.option_info.menu_item_value_active_font[7],
 								dst =    motif.option_info.menu_item_value_active_font[8],
 								height = motif.option_info.menu_item_value_active_font_height,
+								window = window,
 								defsc =  motif.defaultOptions
 							})
 							t[i].vardata[j]:draw()
@@ -1721,6 +1733,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							src =    motif.option_info.menu_item_info_active_font[7],
 							dst =    motif.option_info.menu_item_info_active_font[8],
 							height = motif.option_info.menu_item_info_active_font_height,
+							window = window,
 							defsc =  motif.defaultOptions
 						})
 						t[i].infodata[j]:draw()
@@ -1742,6 +1755,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						src =    motif.option_info.menu_item_font[7],
 						dst =    motif.option_info.menu_item_font[8],
 						height = motif.option_info.menu_item_font_height,
+						window = window,
 						defsc =  motif.defaultOptions
 					})
 					t[i].data[j]:draw()
@@ -1763,6 +1777,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								src =    motif.option_info.menu_item_value_conflict_font[7],
 								dst =    motif.option_info.menu_item_value_conflict_font[8],
 								height = motif.option_info.menu_item_value_conflict_font_height,
+								window = window,
 								defsc =  motif.defaultOptions
 							})
 							t[i].vardata[j]:draw()
@@ -1783,6 +1798,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								src =    motif.option_info.menu_item_value_font[7],
 								dst =    motif.option_info.menu_item_value_font[8],
 								height = motif.option_info.menu_item_value_font_height,
+								window = window,
 								defsc =  motif.defaultOptions
 							})
 							t[i].vardata[j]:draw()
@@ -1804,6 +1820,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							src =    motif.option_info.menu_item_info_font[7],
 							dst =    motif.option_info.menu_item_info_font[8],
 							height = motif.option_info.menu_item_info_font_height,
+							window = window,
 							defsc =  motif.defaultOptions
 						})
 						t[i].infodata[j]:draw()

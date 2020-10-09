@@ -1353,6 +1353,15 @@ local motif =
 		text_this_ai_level = "this ai level",
 		text_return = "return"
 	},
+	navigation_tip = {
+		tip_font = {'f-6x9.def', 0, 1, 210, 210, 210, 255, 0}, --Ikemen feature
+		tip_font_scale = {widthscale(), widthscale()}, --Ikemen feature
+		tip_background = {0, 0, 0, 0, 100}, --Ikemen feature
+		tip_font_height = widthscale()*8, --Ikemen feature
+		tip_font_lower_diff = - widthscale()*1, --Ikemen feature
+		tip_extra_space_bottom = heightscale()*3, --Ikemen feature
+		tip_extra_space_top = heightscale()*3 --Ikemen feature
+	},
 	optionbgdef =
 	{
 		spr = '',

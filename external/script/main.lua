@@ -296,26 +296,28 @@ main.font_def = {}
 text = {}
 color = {}
 rect = {}
+
+function text:get_default_window(full_control)
+	if full_control == true then
+		return { 0, 0, GameWidth, GameHeight }
+	else
+		return { 0, 0, motif.info.localcoord[1], motif.info.localcoord[2] }
+	end
+end
+
 --create text
 function text:create(t)
 	--default values
 	if t.window == nil then t.window = {} end
-	local window = nil
-	if t.defsc == true then
-		window = {
-			t.window[1] or 0,
-			t.window[2] or 0,
-			t.window[3] or GameWidth+1000,
-			t.window[4] or GameHeight+1000
-		}
-	else
-		window = {
-			t.window[1] or 0,
-			t.window[2] or 0,
-			t.window[3] or motif.info.localcoord[1],
-			t.window[4] or motif.info.localcoord[2]
-		}
-	end
+	local default_window = text:get_default_window(t.defsc)
+
+	local window = {
+		t.window[1] or default_window[1],
+		t.window[2] or default_window[2],
+		t.window[3] or default_window[3],
+		t.window[4] or default_window[4],
+	}
+
 	local o = {
 		font = t.font or -1,
 		bank = t.bank or 0,
@@ -353,11 +355,7 @@ function text:create(t)
 	if o.defsc then main.f_disableLuaScale() end
 	textImgSetPos(o.ti, o.x + main.f_alignOffset(o.align), o.y)
 	textImgSetScale(o.ti, o.scaleX, o.scaleY)
-	if o.defsc then
-		textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3], o.window[4], o.defsc)
-	else
-		textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3] - o.window[1], o.window[4] - o.window[2], o.defsc)
-	end
+	textImgSetWindow(o.ti, o.window[1], o.window[2], o.window[3] - o.window[1], o.window[4] - o.window[2], o.defsc)
 	if o.defsc then main.f_setLuaScale() end
 	return o
 end
@@ -392,11 +390,7 @@ function text:update(t)
 	if self.defsc then main.f_disableLuaScale() end
 	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
 	textImgSetScale(self.ti, self.scaleX, self.scaleY)
-	if self.defsc then
-		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3], self.window[4], self.defsc)
-	else
-		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2], self.defsc)
-	end
+	textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2], self.defsc)
 	if self.defsc then main.f_setLuaScale() end
 end
 
@@ -1851,6 +1845,7 @@ end
 start = require('external.script.start')
 randomtest = require('external.script.randomtest')
 options = require('external.script.options')
+navigation_tip = require('external.script.navigation_tip')
 replay = require('external.script.replay')
 storyboard = require('external.script.storyboard')
 menu = require('external.script.menu')
@@ -2794,7 +2789,7 @@ for i = 1, #main.t_sort.title_info do
 				main.menu.submenu[c] = {title = main.f_itemnameUpper(motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]], motif.title_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				main.menu.submenu[c].loop = main.createMenu(main.menu.submenu[c], false, false, false, true, true, c == 'serverjoin')
 				if not main.t_sort.title_info[i]:match(c .. '_') then
-					table.insert(main.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+					table.insert(main.menu.items, {data = text:create({}), window = t_menuWindow, itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 				end
 			end
 			t_pos = main.menu.submenu[c]
@@ -2802,7 +2797,7 @@ for i = 1, #main.t_sort.title_info do
 			if t_pos.submenu[c] == nil then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]], motif.title_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				t_pos.submenu[c].loop = main.createMenu(t_pos.submenu[c], false, false, false, true, true, c == 'serverjoin')
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
+				table.insert(t_pos.items, {data = text:create({}), window = t_menuWindow, itemname = c, displayname = motif.title_info['menu_itemname_' .. main.t_sort.title_info[i]]})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -2813,13 +2808,13 @@ for i = 1, #main.t_sort.title_info do
 		if main.t_sort.title_info[i]:match('_bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k = 1, #main.t_bonusChars do
 				local name = getCharName(main.t_bonusChars[k])
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
+				table.insert(t_pos.items, {data = text:create({}), window = t_menuWindow, itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = name:upper()})
 			end
 		end
 		--add IP addresses for serverjoin submenu
 		if main.t_sort.title_info[i]:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(main.t_sort.title_info[i], '_') then
 			for k, v in pairs(config.IP) do
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'ip_' .. k, displayname = k})
+				table.insert(t_pos.items, {data = text:create({}), window = t_menuWindow, itemname = 'ip_' .. k, displayname = k})
 			end
 		end
 	end
@@ -3060,6 +3055,12 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 			if t[i].color ~= nil then
 				special_color = t[i].color
 			end
+			local window = nil
+			if t[i].window == nil then
+				window = text:get_default_window(dataScale)
+			else
+				window = t[i].window
+			end
 			if i == item then
 				if t[i].selected then
 					t[i].data:update({
@@ -3077,6 +3078,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_selected_active_font[7],
 						dst =    motif[section].menu_item_selected_active_font[8],
 						height = motif[section].menu_item_selected_active_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].data:draw(motif[section].is_absolute)
@@ -3096,6 +3098,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_active_font[7],
 						dst =    motif[section].menu_item_active_font[8],
 						height = motif[section].menu_item_active_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].data:draw(motif[section].is_absolute)
@@ -3116,6 +3119,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_value_active_font[7],
 						dst =    motif[section].menu_item_value_active_font[8],
 						height = motif[section].menu_item_value_active_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].vardata:draw(motif[section].is_absolute)
@@ -3137,6 +3141,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_selected_font[7],
 						dst =    motif[section].menu_item_selected_font[8],
 						height = motif[section].menu_item_selected_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].data:draw(motif[section].is_absolute)
@@ -3156,6 +3161,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_font[7],
 						dst =    motif[section].menu_item_font[8],
 						height = motif[section].menu_item_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].data:draw(motif[section].is_absolute)
@@ -3176,6 +3182,7 @@ function main.f_menuCommonDraw(cursorPosY, moveTxt, item, t, fadeType, fadeData,
 						src =    motif[section].menu_item_value_font[7],
 						dst =    motif[section].menu_item_value_font[8],
 						height = motif[section].menu_item_value_font_height,
+						window = window,
 						defsc =  dataScale
 					})
 					t[i].vardata:draw(motif[section].is_absolute)
