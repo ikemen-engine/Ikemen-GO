@@ -330,7 +330,15 @@ function option_select.f_loop_character_edit()
 				in_sub_menu = true
 				editing_character = option_select.f_generate_option_data(option_select.select_characters[selected_char_id])
 			elseif esc() then
-				continue = false
+				local number_of_selected_character = 0
+				for id in ipairs(option_select.select_characters) do
+					if option_select.select_characters[id].user_enabled then
+						number_of_selected_character = number_of_selected_character + 1
+					end
+				end
+				if number_of_selected_character ~= 0 then
+					continue = false
+				end
 			end
 		end
 
