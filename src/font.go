@@ -75,7 +75,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 
 	//Error is not a valid fnt file
 	if string(buf[:n]) != "ElecbyteFnt\x00" {
-		return nil, Error("ElecbyteFntではありません")
+		return nil, Error("Not ElecbyteFnt")
 	}
 
 	read := func(x interface{}) error {
