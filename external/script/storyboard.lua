@@ -5,6 +5,7 @@ local storyboard = {}
 storyboard.t_storyboard = {} --stores all parsed storyboards (we parse each of them only once)
 
 local function f_reset(t)
+	main.f_setStoryboardScale(t.info.localcoord)
 	for k, v in pairs(t.scene) do
 		if t.scene[k].bg_name ~= '' then
 			bgReset(t.scene[k].bg)
@@ -27,9 +28,8 @@ local function f_reset(t)
 	end
 end
 
-local function f_play(t)
+local function f_play(t, attract)
 	playBGM('')
-	main.f_cmdInput()
 	if main.debugLog then main.f_printTable(t, 'debug/t_storyboard.txt') end
 	--loop through scenes in order
 	for k, v in ipairs(t.sceneOrder) do
@@ -38,9 +38,14 @@ local function f_play(t)
 			local fadeStart = getFrameCount()
 			for i = 0, t.scene[v].end_time do
 				--end storyboard
-				if (esc() or main.f_input(main.t_players, {'pal', 's', 'm'})) and t.scenedef.skipbutton > 0 then
-					main.f_cmdInput()
+				if esc() or (attract and main.credits > 0) or (not attract and main.f_input(main.t_players, {'pal', 's', 'm'})) and t.scenedef.skipbutton > 0 then
 					return
+				end
+				--credits
+				if getKey(motif.attract_mode.credits_key) then
+					sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
+					main.credits = main.credits + 1
+					resetKey()
 				end
 				--play bgm
 				if i == 0 and t.scene[v].bgm ~= nil then
@@ -75,12 +80,12 @@ local function f_play(t)
 								t.scene[v].layer[k2].text_data,
 								t.scene[v].layer[k2].text,
 								t.scene[v].layer[k2].counter,
-								(t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1]) * 320 / t.info.localcoord[1],
-								(t.scene[v].layerall_pos[2] + t.scene[v].layer[k2].offset[2]) * 240 / t.info.localcoord[2],
+								t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1],
+								t.scene[v].layerall_pos[2] + t.scene[v].layer[k2].offset[2],
 								main.font_def[t.scene[v].layer[k2].font[1] .. t.scene[v].layer[k2].font_height],
 								t.scene[v].layer[k2].textdelay,
 								main.f_lineLength(
-									(t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1]) * 320 / t.info.localcoord[1],
+									t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1],
 									t.info.localcoord[1],
 									t.scene[v].layer[k2].font[3],
 									t.scene[v].layer[k2].textwindow,
@@ -221,7 +226,7 @@ local function f_parse(path)
 								palfx_invertall = 0, --Ikemen feature
 								palfx_color = 256, --Ikemen feature
 								textdelay = 2,
-								textwindow = {}, --Ikemen feature
+								textwindow = nil, --Ikemen feature
 								offset = {0, 0},
 								starttime = 0,
 								--endtime = 0,
@@ -299,6 +304,8 @@ local function f_parse(path)
 	--;===========================================================
 	--merge tables
 	t = main.f_tableMerge(t_default, t)
+	--localcoord
+	main.f_setStoryboardScale(t.info.localcoord)
 	--scenedef spr
 	if not t.scenedef.spr:match('^data/') then
 		if main.f_fileExists(t.fileDir .. t.scenedef.spr) then
@@ -360,10 +367,9 @@ local function f_parse(path)
 				t.scene[k].layer[k2].anim_data = main.f_animFromTable(
 					t.anim[t_layer[k2].anim],
 					t.scenedef.spr_data,
-					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
+					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1] + main.storyboardOffsetX,
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]
 				)
-				animSetScale(t.scene[k].layer[k2].anim_data, 320/t.info.localcoord[1], 240/t.info.localcoord[2])
 				--palfx
 				animSetPalFX(t.scene[k].layer[k2].anim_data, {
 					time = t.scene[k].layer[k2].palfx_time,
@@ -381,17 +387,15 @@ local function f_parse(path)
 					bank =   t_layer[k2].font[2],
 					align =  t_layer[k2].font[3],
 					text =   t_layer[k2].text,
-					x =      (t.scene[k].layerall_pos[1] + t_layer[k2].offset[1]) * 320 / t.info.localcoord[1],
-					y =      (t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]) * 240 / t.info.localcoord[2],
-					scaleX = t_layer[k2].font_scale[1] * 320 / t.info.localcoord[1],
-					scaleY = t_layer[k2].font_scale[2] * 240 / t.info.localcoord[2],
+					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
+					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
+					scaleX = t_layer[k2].font_scale[1],
+					scaleY = t_layer[k2].font_scale[2],
 					r =      t_layer[k2].font[4],
 					g =      t_layer[k2].font[5],
 					b =      t_layer[k2].font[6],
-					src =    t_layer[k2].font[7],
-					dst =    t_layer[k2].font[8],
 					height = t_layer[k2].font_height,
-					window = t_layer[k2].textwindow
+					window = t_layer[k2].textwindow,
 				})
 			end
 			--endtime
@@ -403,16 +407,24 @@ local function f_parse(path)
 	return t
 end
 
-function storyboard.f_storyboard(path)
-	main.f_disableLuaScale()
+function storyboard.f_storyboard(path, attract)
 	path = path:gsub('\\', '/')
+	if not main.f_fileExists(path) then
+		return
+	end
+	main.f_cmdBufReset()
+	main.f_disableLuaScale()
 	if storyboard.t_storyboard[path] == nil then
 		storyboard.t_storyboard[path] = f_parse(path)
 	else
 		f_reset(storyboard.t_storyboard[path])
 	end
-	f_play(storyboard.t_storyboard[path])
+	f_play(storyboard.t_storyboard[path], attract or false)
+	main.f_cmdBufReset()
 	main.f_setLuaScale()
+	if attract and main.credits > 0 then
+		return true
+	end
 end
 
 return storyboard

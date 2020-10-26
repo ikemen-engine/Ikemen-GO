@@ -4,6 +4,7 @@
 --key, ctrl, alt, shift, pause, function
 addHotkey('c', true, false, false, true, 'toggleClsnDraw()')
 addHotkey('d', true, false, false, true, 'toggleDebugDraw()')
+addHotkey('d', false, false, true, true, 'toggleDebugDraw(true)')
 addHotkey('s', true, false, false, true, 'changeSpeed()')
 addHotkey('KP_PLUS', true, false, false, true, 'changeSpeed(1)')
 addHotkey('KP_MINUS', true, false, false, true, 'changeSpeed(-1)')
@@ -154,7 +155,7 @@ end
 function stateInfo()
 	return string.format(
 		'State No: %d (P%d); CTRL: %s; Type: %s; MoveType: %s; Physics: %s; Time: %d',
-		stateno(), stateowner(), boolToInt(ctrl()), statetype(), movetype(), physics(), time()
+		stateno(), stateowner(), boolToInt(ctrl()), statetype(), movetype(), physics(), time()-1
 	)
 end
 
@@ -167,9 +168,19 @@ local endFlag = false
 
 --function called during match via config.json CommonLua
 function loop()
-	if start == nil then --match started via command line
+	if start == nil then --match started via command line without -loadmotif flag
+		if esc() then
+			endMatch()
+			os.exit()
+		end
 		togglePostMatch(false)
 		return
+	end
+	--credits
+	if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
+		sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
+		main.credits = main.credits + 1
+		resetKey()
 	end
 	--music
 	start.f_stageMusic()
@@ -181,11 +192,18 @@ function loop()
 			start.victoryInit = false
 			start.resultInit = false
 			start.continueInit = false
+			start.hiscoreInit = false
 			endFlag = false
 		end
+		start.turnsRecoveryInit = false
+		start.rankInit = false
+		start.dialogueInit = false
 	end
+	--dialogue
+	if indialogue() then
+		start.f_dialogue()
 	--match end
-	if matchover() and roundover() then
+	elseif matchover() and roundover() then
 		if not endFlag then
 			resetMatchData()
 			endFlag = true
@@ -202,17 +220,42 @@ function loop()
 		end
 		togglePostMatch(false)
 	end
-	--escMenu
-	if main.escMenu then
+	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 then
+		--turns life recovery
+		start.f_turnsRecovery()
+		--rank
+		start.f_rank()
+	end
+	--pause menu
+	if main.pauseMenu then
 		playerBufReset()
-		menu.run()
+		menu.f_run()
 	else
 		main.f_cmdInput()
-		if esc() or main.f_input(main.t_players, {'m'}) then
-			if gamemode('') or gamemode('demo') or gamemode('randomtest') then
+		--esc / m
+		if (esc() or main.f_input(main.t_players, {'m'})) and not start.challengerInit then
+			if network() or gamemode('demo') or gamemode('randomtest') or (not config.EscOpensMenu and esc()) then
 				endMatch()
 			else
-				menu.init()
+				menu.f_init()
+			end
+		--demo mode
+		elseif gamemode('demo') and ((motif.attract_mode.enabled == 1 and main.credits > 0 and not getSoundPlaying(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal'})) or gametime() >= motif.demo_mode.fight_endtime) then
+			endMatch()
+		--challenger
+		elseif gamemode('arcade') then
+			if start.challenger > 0 then
+				start.f_challenger()
+			else
+				--TODO: detecting players that are part of P1 team
+				--[[for i = 1, #main.t_cmd do
+					if commandGetState(main.t_cmd[i], '/s') then
+						print(i)
+					end
+				end]]
+				if main.f_input(main.t_players, {'s'}) and main.playerInput ~= 1 then
+					start.challenger = main.playerInput
+				end
 			end
 		end
 	end

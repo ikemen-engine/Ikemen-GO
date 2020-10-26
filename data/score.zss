@@ -3,18 +3,18 @@
 #===============================================================================
 [Statedef -4]
 
-if !Const(Default.Enable.Score) {
-	#do nothing, global code disabled locally
+if !Const(Default.Enable.Score) || TeamSide = 0 {
+	#do nothing, global code disabled locally or executed by stage
 } else if RoundState = 0 {
 	MapSet{map: "_iksys_scoreVitalBase"; value: 0}
 	MapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 0}
-	MapSet{map: "_iksys_scoreAttackTypeFlag"; value: 0}
-	MapSet{map: "_iksys_scoreAttackType"; value: 0}
-	MapSet{map: "_iksys_scoreAttackTypeBonus"; value: 0}
-	MapSet{map: "_iksys_scoreAttackTypeFrames"; value: 0}
-	MapSet{map: "_iksys_scoreDamageCount"; value: 0}
+	MapSet{map: "_iksys_scoreReceivedDamage"; value: 0}
+	MapSet{map: "_iksys_scoreDamageBonus"; value: 0}
+	MapSet{map: "_iksys_scoreDamageFrames"; value: 0}
+	MapSet{map: "_iksys_scoreDamageID"; value: 0}
 	MapSet{map: "_iksys_scoreComboCount"; value: 0}
 	MapSet{map: "_iksys_scoreFirstAttackFlag"; value: 0}
+	MapSet{map: "_iksys_scoreMoveCounteredFlag"; value: 0}
 	MapSet{map: "_iksys_scoreWinFlag"; value: 0}
 } else if RoundState = 4 && !IsHelper {
 	# score: time vital bonus
@@ -24,28 +24,28 @@ if !Const(Default.Enable.Score) {
 			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
 			ScoreAdd{value: round(Map(_iksys_scoreVitalBase) / (enemy,RoundsExisted + 1), -2)}
 		} else {
-			let _timeRatio = 100 * TimeLeft / (TimeLeft + TimeRound);
-			let _p1TagNum = 1;
-			let _p2TagNum = 1;
+			let timeRatio = 100 * TimeRemaining / (TimeRemaining + TimeElapsed);
+			let p1TagNum = 1;
+			let p2TagNum = 1;
 			if TeamMode = Tag {
-				let _p1TagNum = NumPartner + 1;
+				let p1TagNum = NumPartner + 1;
 			}
 			if enemy,TeamMode = Tag {
-				let _p2TagNum = enemy,NumPartner + 1;
+				let p2TagNum = enemy,NumPartner + 1;
 			}
-			if $_p1TagNum > $_p2TagNum {
+			if $p1TagNum > $p2TagNum {
 				# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
-				let _timeRatio = $_timeRatio * $_p2TagNum / $_p1TagNum;
+				let timeRatio = $timeRatio * $p2TagNum / $p1TagNum;
 			}
-			if $_timeRatio > 90 {
+			if $timeRatio > 90 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 10, -2)}
-			} else if $_timeRatio > 85 {
+			} else if $timeRatio > 85 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 8, -2)}
-			} else if $_timeRatio > 80 {
+			} else if $timeRatio > 80 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 5, -2)}
-			} else if $_timeRatio > 70 {
+			} else if $timeRatio > 70 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 4, -2)}
-			} else if $_timeRatio > 60 {
+			} else if $timeRatio > 60 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 2, -2)}
 			} else {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 1, -2)}
@@ -53,74 +53,78 @@ if !Const(Default.Enable.Score) {
 		}
 	}
 	# score: consecutive wins bonus
-	if NumPartner = 0 || ID < Partner,ID {
+	if PlayerNo = TeamSide {
 		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_scoreConsecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" && !Cheated {
 			ScoreAdd{value: 30000 + (ConsecutiveWins - 1) * 10000}
 			MapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 1}
 		}
 	}
-} else if RoundState > 0 {
-	# set attack type
-	ignorehitpause if MoveHit && target,GetHitVar(guarded) = 0 && target,GetHitVar(score) = 0 {
-		if DamageCount != Map(_iksys_scoreAttackTypeFlag) {
-			if HitDefAttr = SCA, HA {
-				MapSet{map: "_iksys_scoreAttackType"; value: 30}
-			} else if HitDefAttr = SCA, SA {
-				MapSet{map: "_iksys_scoreAttackType"; value: 20}
-			} else if HitDefAttr = SCA, NA {
-				MapSet{map: "_iksys_scoreAttackType"; value: 10}
-			}
-			MapSet{map: "_iksys_scoreAttackTypeFlag"; value: DamageCount}
-		}
-		if HitDefAttr = SCA, HT {
-			MapSet{map: "_iksys_scoreAttackType"; value: 31}
-		} else if HitDefAttr = SCA, ST {
-			MapSet{map: "_iksys_scoreAttackType"; value: 21}
-		} else if HitDefAttr = SCA, NT {
-			MapSet{map: "_iksys_scoreAttackType"; value: 11}
-		} else if HitDefAttr = SCA, HP {
-			MapSet{map: "_iksys_scoreAttackType"; value: 32}
-		} else if HitDefAttr = SCA, SP {
-			MapSet{map: "_iksys_scoreAttackType"; value: 22}
-		} else if HitDefAttr = SCA, NP {
-			MapSet{map: "_iksys_scoreAttackType"; value: 12}
-		}
-	}
-	# calculate attack type bonus and in how many frames it will be added
-	if Map(_iksys_scoreAttackType) != 0 && DamageCount != Map(_iksys_scoreDamageCount) {
-		if Map(_iksys_scoreAttackType) >= 30 {
-			MapAdd{map: "_iksys_scoreAttackTypeBonus"; value: (DamageCount - Map(_iksys_scoreDamageCount)) * 10}
-			#MapSet{map: "_iksys_scoreAttackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
-			MapSet{map: "_iksys_scoreAttackTypeFrames"; value: 1}
-		} else if Map(_iksys_scoreAttackType) >= 20 {
-			MapAdd{map: "_iksys_scoreAttackTypeBonus"; value: (DamageCount - Map(_iksys_scoreDamageCount)) * 9}
-			#MapSet{map: "_iksys_scoreAttackTypeFrames"; value: Min(20, target,GetHitVar(hittime))}
-			MapSet{map: "_iksys_scoreAttackTypeFrames"; value: 1}
-		} else if Map(_iksys_scoreAttackType) >= 10 {
-			MapAdd{map: "_iksys_scoreAttackTypeBonus"; value: (DamageCount - Map(_iksys_scoreDamageCount)) * 8}
-			MapSet{map: "_iksys_scoreAttackTypeFrames"; value: 1}
-		}
-		MapSet{map: "_iksys_scoreAttackType"; value: 0}
-		MapSet{map: "_iksys_scoreDamageCount"; value: DamageCount}
-	}
+} else ignorehitpause if RoundState > 0 {
 	# score: damage bonus
-	if Map(_iksys_scoreAttackTypeFrames) > 0 {
-		ScoreAdd{value: round(Map(_iksys_scoreAttackTypeBonus) / Map(_iksys_scoreAttackTypeFrames), -2)}
-		MapAdd{map: "_iksys_scoreAttackTypeBonus"; value: 0 - Map(_iksys_scoreAttackTypeBonus) / Map(_iksys_scoreAttackTypeFrames)}
-		MapAdd{map: "_iksys_scoreAttackTypeFrames"; value: -1}
+	if ReceivedDamage != Map(_iksys_scoreReceivedDamage) {
+		if ReceivedDamage > 0 && GetHitVar(score) = 0 && GetHitVar(playerno) != 0 && playerID(GetHitVar(id)),TeamSide != TeamSide {
+			# normal attacks
+			if GetHitVar(attr) = [Const(AttrStandingHyperAttack), Const(AttrAerialHyperAttack)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 10}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingSuperAttack), Const(AttrAerialSuperAttack)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 9}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingNormalAttack), Const(AttrAerialNormalAttack)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 8}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			# throws
+			} else if GetHitVar(attr) = [Const(AttrStandingHyperThrow), Const(AttrAerialHyperThrow)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 10}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingSuperThrow), Const(AttrAerialSuperThrow)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 9}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingNormalThrow), Const(AttrAerialNormalThrow)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 8}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			# projectiles
+			} else if GetHitVar(attr) = [Const(AttrStandingHyperProjectile), Const(AttrAerialHyperProjectile)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 10}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingSuperProjectile), Const(AttrAerialSuperProjectile)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 9}
+				#MapSet{map: "_iksys_scoreDamageFrames"; value: min(20, GetHitVar(hittime))}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			} else if GetHitVar(attr) = [Const(AttrStandingNormalProjectile), Const(AttrAerialNormalProjectile)] {
+				MapAdd{map: "_iksys_scoreDamageBonus"; value: (ReceivedDamage - Map(_iksys_scoreReceivedDamage)) * 8}
+				MapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+			}
+			MapSet{map: "_iksys_scoreDamageID"; value: GetHitVar(id)}
+		}
+		MapSet{map: "_iksys_scoreReceivedDamage"; value: ReceivedDamage}
 	}
-	# score: counter bonus
-	ignorehitpause if MoveCountered = 1 {
-		ScoreAdd{value: 100}
+	if Map(_iksys_scoreDamageFrames) > 0 {
+		ScoreAdd{value: round(Map(_iksys_scoreDamageBonus) / Map(_iksys_scoreDamageFrames), -2); redirectid: Map(_iksys_scoreDamageID)}
+		MapAdd{map: "_iksys_scoreDamageBonus"; value: 0 - Map(_iksys_scoreDamageBonus) / Map(_iksys_scoreDamageFrames)}
+		MapAdd{map: "_iksys_scoreDamageFrames"; value: -1}
 	}
 	# score: first attack bonus
-	ignorehitpause if FirstAttack && Map(_iksys_scoreFirstAttackFlag) = 0 {
+	if FirstAttack && Map(_iksys_scoreFirstAttackFlag) = 0 {
 		ScoreAdd{value: 1500}
 		MapSet{map: "_iksys_scoreFirstAttackFlag"; value: 1}
 	}
-	if (NumPartner = 0 || ID < Partner,ID) && !IsHelper {
+	# score: counter bonus
+	if MoveCountered = 1 && Map(_iksys_scoreMoveCounteredFlag) = 0 {
+		ScoreAdd{value: 100}
+		MapSet{map: "_iksys_scoreMoveCounteredFlag"; value: 1}
+	} else if MoveCountered = 0 && Map(_iksys_scoreMoveCounteredFlag) = 1 {
+		MapSet{map: "_iksys_scoreMoveCounteredFlag"; value: 0}
+	}
+	# code executed only by P1 and P2
+	if PlayerNo = TeamSide && !IsHelper {
 		# score: combo bonus
-		ignorehitpause if ComboCount != Map(_iksys_scoreComboCount) {
+		if ComboCount != Map(_iksys_scoreComboCount) {
 			if ComboCount = 0 && Map(_iksys_scoreComboCount) >= 2 {
 				if Map(_iksys_scoreComboCount) = 2 {
 					ScoreAdd{value: 300}
@@ -149,35 +153,20 @@ if !Const(Default.Enable.Score) {
 				} else if Map(_iksys_scoreComboCount) = 14 {
 					ScoreAdd{value: 4500}
 				} else {
-					ScoreAdd{value: Min(10000, 5000 + (Map(_iksys_scoreComboCount) - 15) * 1000)}
+					ScoreAdd{value: min(10000, 5000 + (Map(_iksys_scoreComboCount) - 15) * 1000)}
 				}
 			}
 			MapSet{map: "_iksys_scoreComboCount"; value: ComboCount}
 		}
 		# score: win type bonus
 		if Win && Map(_iksys_scoreWinFlag) = 0 && !Cheated {
-			if WinPerfect = 1 {
+			if WinPerfect {
 				ScoreAdd{value: 15000}
 			}
-			if WinTime {
-				ScoreAdd{value: 0}
-			} else if WinKO {
-				ScoreAdd{value: 0}
-			}
-			if WinNormal {
-				ScoreAdd{value: 0}
-			} else if WinSpecial {
-				ScoreAdd{value: 0}
-			} else if WinHyper {
+			if WinHyper {
 				ScoreAdd{value: 10000}
-			} else if WinCheese {
-				ScoreAdd{value: 0}
-			} else if WinThrow {
-				ScoreAdd{value: 0}
-			} else if WinSuicide {
-				ScoreAdd{value: 0}
-			} else if WinTeammate {
-				ScoreAdd{value: 0}
+			} else if WinSpecial {
+				ScoreAdd{value: 3000}
 			}
 			MapSet{map: "_iksys_scoreWinFlag"; value: 1}
 		}

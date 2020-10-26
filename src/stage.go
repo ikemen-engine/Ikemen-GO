@@ -567,7 +567,7 @@ type Stage struct {
 	nameLow         string
 	displaynameLow  string
 	authorLow       string
-	attachedchardef string
+	attachedchardef []string
 	sff             *Sff
 	at              AnimationTable
 	bg              []*backGround
@@ -592,13 +592,17 @@ type Stage struct {
 	bgmtriggeralt   int32
 	mainstage       bool
 	stageCamera     stageCamera
+	stageTime       int32
+	constants       map[string]float32
+	p1p3dist        float32
 }
 
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: float32(math.NaN()),
 		rightbound: float32(math.NaN()), screenleft: 15, screenright: 15,
 		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1},
-		bgmratiolife: 30, stageCamera: *newStageCamera()}
+		bgmratiolife: 30, stageCamera: *newStageCamera(),
+		constants: make(map[string]float32), p1p3dist: 25}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.sdw.yscale = 0.4
@@ -642,10 +646,13 @@ func loadStage(def string, main bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
-		s.attachedchardef, ok = sec[0].getString("attachedchar")
+		if tmp, ok := sec[0].getString("attachedchar"); ok {
+			s.attachedchardef = append(s.attachedchardef, tmp)
+		}
 		if main {
+			r, _ := regexp.Compile("^round[0-9]+def$")
 			for k, v := range sec[0] {
-				if match, _ := regexp.MatchString("^round[0-9]+def$", k); match {
+				if r.MatchString(k) {
 					re := regexp.MustCompile("[0-9]+")
 					submatchall := re.FindAllString(k, -1)
 					if len(submatchall) == 1 {
@@ -656,6 +663,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadBool("roundloop", &sys.stageLoop)
 		}
 	}
+	if sec := defmap["constants"]; len(sec) > 0 {
+		for key, value := range sec[0] {
+			s.constants[key] = float32(Atof(value))
+		}
+	}
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
 		sec[0].ReadI32("p1starty", &s.p[0].starty)
@@ -663,6 +675,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("p2starty", &s.p[1].starty)
 		sec[0].ReadF32("leftbound", &s.leftbound)
 		sec[0].ReadF32("rightbound", &s.rightbound)
+		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
 		sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
@@ -977,6 +990,7 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 	}
 }
 func (s *Stage) action() {
+	s.stageTime++
 	s.bgct.step(s)
 	s.bga.action()
 	link, zlink := 0, -1
@@ -1065,4 +1079,5 @@ func (s *Stage) reset() {
 	for i := len(s.bgc) - 1; i >= 0; i-- {
 		s.bgct.add(&s.bgc[i])
 	}
+	s.stageTime = 0
 }

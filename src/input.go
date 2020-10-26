@@ -597,12 +597,8 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 	case glfw.Press:
 		sys.keyState[key] = true
 		sys.keyInput = key
-		if key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0 {
-			sys.esc = true
-			if sys.netInput != nil || len(sys.commonLua) == 0 || sys.gameMode == "" {
-				sys.endMatch = true
-			}
-		}
+		sys.esc = sys.esc ||
+			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			if sys.netInput == nil && (!sys.paused || sys.step || v.Pause) {
 				v.Activate = v.Activate || k.Test(key, mk)

@@ -1,0 +1,79 @@
+#Rank code adopted from Shiyo Kakuge's add004
+#===============================================================================
+#Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[Statedef -4]
+
+if !Const(Default.Enable.Rank) || TeamSide = 0 {
+	#do nothing, global code disabled locally or executed by stage
+} else if IsHelper {
+	# parry detection
+	ignorehitpause if HelperName = "Parry Detection" && MoveHit = 1 {
+		MapSet{map: "_iksys_rankParryStateNo"; value: root,StateNo; redirectid: root,ID}
+	}
+} else if RoundState = 0 {
+	MapSet{map: "_iksys_rankParryStateNo"; value: 0}
+	MapSet{map: "_iksys_rankLifeFlag"; value: 0}
+	MapSet{map: "_iksys_rankHitOverriddenStateNo"; value: 0}
+	MapSet{map: "_iksys_rankFirstAttackFlag"; value: 0}
+	MapSet{map: "_iksys_rankComboCount"; value: 0}
+	MapSet{map: "_iksys_rankWinFlag"; value: 0}
+} else ignorehitpause if RoundState > 0 {
+	# life (v_Tech_Life)
+	if Win && Alive && Map(_iksys_rankLifeFlag) = 0 {
+		RankAdd{value: float(Life) / LifeMax / (NumPartner + 1) * 30; type: "life"; max: 30}
+		MapSet{map: "_iksys_rankLifeFlag"; value: 1}
+	}
+	# enemy in GetHit or Dizzy states (v_Tech_Attack)
+	if StateNo = Const(StateStandGetHit_shaking) || StateNo = Const(StateCrouchGetHit_shaking) || StateNo = Const(StateAirGetHit_shaking) || StateNo = Const(StateTrippedGetHit_shaking) || GetHitVar(isbound) || Dizzy {
+		RankAdd{value: 0.05 / (enemy,NumPartner + 1); type: "attack"; max: 36; redirectid: enemy,ID}
+	}
+	# blocking states or parry (v_Tech_Guard)
+	if HitOverridden {
+		MapSet{map: "_iksys_rankHitOverriddenStateNo"; value: StateNo}
+	} else if Map(_iksys_rankHitOverriddenStateNo) > 0 && Map(_iksys_rankHitOverriddenStateNo) != StateNo {
+		MapSet{map: "_iksys_rankHitOverriddenStateNo"; value: 0}
+	}
+	if StateNo = [Const(StateGuard_start), Const(StateAirGuardHit_knockedAway)] || Map(_iksys_rankHitOverriddenStateNo) > 0 || Map(_iksys_rankParryStateNo) > 0 {
+		RankAdd{value: 0.05 / (enemy,NumPartner + 1); type: "guard"; max: 31}
+	}
+	# parry (v_Tech_Parry)
+	if Map(_iksys_rankHitOverriddenStateNo) > 0 || Map(_iksys_rankParryStateNo) > 0 {
+		RankAdd{value: 0.001 / (enemy,NumPartner + 1); type: "tech"; max: 38}
+	}
+	if Map(_iksys_rankParryStateNo) > 0 && Map(_iksys_rankParryStateNo) != StateNo {
+		MapSet{map: "_iksys_rankParryStateNo"; value: 0}
+	}
+	# no guard (v_Tech_NoGuard)
+	if InGuardDist && StateNo = [Const(StateWalk), Const(StateGuard_start) - 1] {
+	  RankAdd{value: 0.00001 / (enemy,NumPartner + 1); type: "tech"; max: 38}
+	}
+	# first attack (is_First_Attack)
+	if FirstAttack && Map(_iksys_rankFirstAttackFlag) = 0 {
+		RankAdd{value: 5; type: "tech"; max: 38; icon: "fa"}
+		MapSet{map: "_iksys_rankFirstAttackFlag"; value: 1}
+	}
+	# code executed only by P1 and P2
+	if PlayerNo = TeamSide {
+		if Win && RoundState > 3 {
+			AssertSpecial{flag: nobardisplay}
+		}
+		# max combo (v_Tech_MaxCombo)
+		if min(25, ComboCount) > Map(_iksys_rankComboCount) {
+			RankAdd{value: ComboCount - Map(_iksys_rankComboCount); type: "tech"; max: 38}
+			MapSet{map: "_iksys_rankComboCount"; value: ComboCount}
+		}
+		# win type (bonus_tech)
+		if Win && Map(_iksys_rankWinFlag) = 0 {
+			if WinPerfect { #is_Perfect
+				RankAdd{value: 15; type: "tech"; max: 38; icon: "p"}
+			}
+			if WinHyper { #is_Hyper_Finish
+				RankAdd{value: 20; type: "tech"; max: 38; icon: "hf"}
+			} else if WinSpecial { #is_Special_Finish
+				RankAdd{value: 10; type: "tech"; max: 38; icon: "sf"}
+			}
+			MapSet{map: "_iksys_rankWinFlag"; value: 1}
+		}
+	}
+}

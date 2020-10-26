@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -328,6 +329,7 @@ const (
 	OC_const_constants
 	OC_const_gamemode
 	OC_const_ratiolevel
+	OC_const_stage_constants
 )
 const (
 	OC_st_var OpCode = iota + OC_var*2
@@ -359,13 +361,8 @@ const (
 	OC_ex_winko
 	OC_ex_wintime
 	OC_ex_winperfect
-	OC_ex_winnormal
 	OC_ex_winspecial
 	OC_ex_winhyper
-	OC_ex_wincheese
-	OC_ex_winthrow
-	OC_ex_winsuicide
-	OC_ex_winteammate
 	OC_ex_lose
 	OC_ex_loseko
 	OC_ex_losetime
@@ -414,17 +411,16 @@ const (
 	OC_ex_gethitvar_attr
 	OC_ex_gethitvar_dizzypoints
 	OC_ex_gethitvar_guardpoints
+	OC_ex_gethitvar_id
+	OC_ex_gethitvar_playerno
 	OC_ex_gethitvar_redlife
 	OC_ex_gethitvar_score
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animlength
-	OC_ex_attack
 	OC_ex_cheated
 	OC_ex_combocount
 	OC_ex_consecutivewins
-	OC_ex_damagecount
-	OC_ex_defence
 	OC_ex_dizzy
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
@@ -435,32 +431,38 @@ const (
 	OC_ex_guardbreak
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
+	OC_ex_helpername
+	OC_ex_hitoverridden
 	OC_ex_incustomstate
+	OC_ex_indialogue
+	OC_ex_ishost
 	OC_ex_localscale
 	OC_ex_maparray
 	OC_ex_max
 	OC_ex_min
 	OC_ex_memberno
 	OC_ex_movecountered
-	OC_ex_networkplayer
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
 	OC_ex_rand
+	OC_ex_rank
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_redlife
 	OC_ex_round
 	OC_ex_roundtype
-	OC_ex_scorecurrent
-	OC_ex_scoreround
+	OC_ex_score
 	OC_ex_scoretotal
 	OC_ex_selfstatenoexist
 	OC_ex_stagebackedge
 	OC_ex_stagefrontedge
+	OC_ex_stagetime
 	OC_ex_standby
-	OC_ex_timeleft
-	OC_ex_timeround
+	OC_ex_teamleader
+	OC_ex_teamsize
+	OC_ex_timeelapsed
+	OC_ex_timeremaining
 	OC_ex_timetotal
 )
 const (
@@ -1214,7 +1216,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
 			i++
 		case OC_teammode:
-			if c.teamside == 2 {
+			if c.teamside == -1 {
 				sys.bcStack.PushB(TM_Single == TeamMode(be[i]))
 			} else {
 				sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
@@ -1526,28 +1528,26 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p5name:
-		p5 := sys.charList.enemyNear(c, 1, true, false)
-		sys.bcStack.PushB(p5 != nil && !(p5.scf(SCF_ko) && p5.scf(SCF_over)) &&
-			p5.gi().nameLow ==
-				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
-					unsafe.Pointer(&be[*i]))])
+		p5 := c.partner(1)
+		sys.bcStack.PushB(p5 != nil && p5.gi().nameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 1, true, false)
+		p6 := sys.charList.enemyNear(c, 2, true, false)
 		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
 			p6.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p7name:
-		p7 := sys.charList.enemyNear(c, 1, true, false)
-		sys.bcStack.PushB(p7 != nil && !(p7.scf(SCF_ko) && p7.scf(SCF_over)) &&
-			p7.gi().nameLow ==
-				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
-					unsafe.Pointer(&be[*i]))])
+		p7 := c.partner(2)
+		sys.bcStack.PushB(p7 != nil && p7.gi().nameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 1, true, false)
+		p8 := sys.charList.enemyNear(c, 3, true, false)
 		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
 			p8.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1568,16 +1568,21 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_constants:
+		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+			unsafe.Pointer(&be[*i]))]])
+		*i += 4
 	case OC_const_gamemode:
 		sys.bcStack.PushB(sys.gameMode ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
-	case OC_const_constants:
-		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
-		*i += 4
 	case OC_const_ratiolevel:
 		sys.bcStack.PushI(c.ratioLevel())
+	case OC_const_stage_constants:
+		sys.bcStack.PushF(sys.stage.constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+			unsafe.Pointer(&be[*i]))]])
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -1608,20 +1613,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.winTime())
 	case OC_ex_winperfect:
 		sys.bcStack.PushB(c.winPerfect())
-	case OC_ex_winnormal:
-		sys.bcStack.PushB(c.winNormal())
 	case OC_ex_winspecial:
-		sys.bcStack.PushB(c.winSpecial())
+		sys.bcStack.PushB(c.winType(WT_S))
 	case OC_ex_winhyper:
-		sys.bcStack.PushB(c.winHyper())
-	case OC_ex_wincheese:
-		sys.bcStack.PushB(c.winCheese())
-	case OC_ex_winthrow:
-		sys.bcStack.PushB(c.winThrow())
-	case OC_ex_winsuicide:
-		sys.bcStack.PushB(c.winSuicide())
-	case OC_ex_winteammate:
-		sys.bcStack.PushB(c.winTeammate())
+		sys.bcStack.PushB(c.winType(WT_H))
 	case OC_ex_lose:
 		sys.bcStack.PushB(c.lose())
 	case OC_ex_loseko:
@@ -1714,6 +1709,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.dizzypoints)
 	case OC_ex_gethitvar_guardpoints:
 		sys.bcStack.PushI(c.ghv.guardpoints)
+	case OC_ex_gethitvar_id:
+		sys.bcStack.PushI(c.ghv.id)
+	case OC_ex_gethitvar_playerno:
+		sys.bcStack.PushI(int32(c.ghv.playerNo) + 1)
 	case OC_ex_gethitvar_redlife:
 		sys.bcStack.PushI(c.ghv.redlife)
 	case OC_ex_gethitvar_score:
@@ -1728,18 +1727,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
-	case OC_ex_attack:
-		sys.bcStack.PushF(c.attackMul * 100)
 	case OC_ex_cheated:
 		sys.bcStack.PushB(c.cheated)
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:
 		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
-	case OC_ex_damagecount:
-		sys.bcStack.PushI(c.damageCount)
-	case OC_ex_defence:
-		sys.bcStack.PushF(float32(c.finalDefence) * 100)
 	case OC_ex_dizzy:
 		sys.bcStack.PushB(c.scf(SCF_dizzy))
 	case OC_ex_dizzypoints:
@@ -1762,8 +1755,19 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPoints)
 	case OC_ex_guardpointsmax:
 		sys.bcStack.PushI(c.guardPointsMax)
+	case OC_ex_helpername:
+		sys.bcStack.PushB(c.helperIndex != 0 && strings.ToLower(c.name) ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_ex_hitoverridden:
+		sys.bcStack.PushB(c.hoIdx >= 0)
 	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
+	case OC_ex_indialogue:
+		sys.bcStack.PushB(sys.dialogueFlg)
+	case OC_ex_ishost:
+		sys.bcStack.PushB(c.isHost())
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
@@ -1781,8 +1785,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_movecountered:
 		sys.bcStack.PushI(c.moveCountered())
-	case OC_ex_networkplayer:
-		sys.bcStack.PushI(c.networkPlayer())
 	case OC_ex_pausetime:
 		sys.bcStack.PushI(c.pauseTime())
 	case OC_ex_physics:
@@ -1793,6 +1795,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_rand:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
+	case OC_ex_rank:
+		sys.bcStack.PushF(c.rank())
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
 	case OC_ex_receivedhits:
@@ -1804,24 +1808,28 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		be.round(sys.bcStack.Top(), v2)
 	case OC_ex_roundtype:
 		sys.bcStack.PushI(c.roundType())
-	case OC_ex_scorecurrent:
-		sys.bcStack.PushF(c.scoreCurrent)
-	case OC_ex_scoreround:
-		sys.bcStack.PushF(scoreRound(c.teamside))
+	case OC_ex_score:
+		sys.bcStack.PushF(c.score())
 	case OC_ex_scoretotal:
-		sys.bcStack.PushF(scoreTotal(c.teamside))
+		sys.bcStack.PushF(c.scoreTotal())
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
 	case OC_ex_stagebackedge:
 		sys.bcStack.PushF(c.stageBackEdge())
 	case OC_ex_stagefrontedge:
 		sys.bcStack.PushF(c.stageFrontEdge())
+	case OC_ex_stagetime:
+		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:
 		sys.bcStack.PushB(c.scf(SCF_standby))
-	case OC_ex_timeleft:
-		sys.bcStack.PushI(timeLeft())
-	case OC_ex_timeround:
-		sys.bcStack.PushI(timeRound())
+	case OC_ex_teamleader:
+		sys.bcStack.PushI(int32(c.teamLeader()))
+	case OC_ex_teamsize:
+		sys.bcStack.PushI(c.teamSize())
+	case OC_ex_timeelapsed:
+		sys.bcStack.PushI(timeElapsed())
+	case OC_ex_timeremaining:
+		sys.bcStack.PushI(timeRemaining())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
 	default:
@@ -2318,17 +2326,16 @@ const (
 	tagIn_partner
 	tagIn_ctrl
 	tagIn_partnerctrl
+	tagIn_leader
 	tagIn_redirectid
 )
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
 	crun := c
-
 	var tagSCF int = -1
 	var partnerNo int32 = -1
 	var partnerStateNo int32 = -1
 	var partnerCtrlSetting int = -1
-
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:
@@ -2374,6 +2381,11 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			} else {
 				partnerCtrlSetting = 0
 			}
+		case tagIn_leader:
+			ld := int(exp[0].evalI(c)) - 1
+			if ld&1 == crun.playerNo&1 && ld >= crun.teamside && ld <= int(sys.numSimul[crun.teamside])*2-^crun.teamside&1-1 {
+				sys.teamLeader[crun.playerNo&1] = ld
+			}
 		case tagIn_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2383,14 +2395,13 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	// Data ajusments.
+	// Data adjustments
 	if tagSCF == -1 && partnerNo == -1 {
 		tagSCF = 1
 	}
 	if tagSCF == 1 {
 		crun.unsetSCF(SCF_standby)
 	}
-
 	// Partner
 	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
 		partner := crun.partnerV2(partnerNo)
@@ -2406,7 +2417,6 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		}
 	}
-
 	return false
 }
 
@@ -2425,7 +2435,6 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	var tagSCF int = -1
 	var partnerNo int32 = -1
 	var partnerStateNo int32 = -1
-
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagOut_self:
@@ -2472,7 +2481,6 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	if tagSCF == 1 {
 		crun.setSCF(SCF_standby)
 	}
-
 	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
 		partner := crun.partnerV2(partnerNo)
 		partner.setSCF(SCF_standby)
@@ -2480,7 +2488,6 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 			partner.changeState(partnerStateNo, -1, -1, false)
 		}
 	}
-
 	return false
 }
 
@@ -2709,7 +2716,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	if h == nil {
 		return false
 	}
-	if crun.minus == -2 {
+	if crun.minus == -2 || crun.minus == -4 {
 		h.localscl = (320 / float32(crun.localcoord))
 		h.localcoord = crun.localcoord
 	} else {
@@ -2767,6 +2774,7 @@ const (
 	explod_sprpriority
 	explod_ontop
 	explod_strictontop
+	explod_under
 	explod_shadow
 	explod_removeongethit
 	explod_trans
@@ -2890,6 +2898,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if e.ontop {
 				e.sprpriority = 0
 			}
+		case explod_under:
+			if !e.ontop {
+				e.under = exp[0].evalB(c)
+			}
 		case explod_shadow:
 			e.shadow[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
@@ -2934,7 +2946,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	if e == nil {
 		return false
 	}
-	if c.minus == -2 {
+	if c.minus == -2 || c.minus == -4 { //TODO: isn't this supposed to check crun instead of c?
 		e.localscl = (320 / float32(crun.localcoord))
 	} else {
 		e.localscl = crun.localscl
@@ -3072,11 +3084,22 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalB(c)
 				eachExpl(func(e *Explod) {
 					e.ontop = t
+					if e.ontop && e.under {
+						e.under = false
+					}
 				})
 			case explod_strictontop:
 				eachExpl(func(e *Explod) {
 					if e.ontop {
 						e.sprpriority = 0
+					}
+				})
+			case explod_under:
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					e.under = t
+					if e.under && e.ontop {
+						e.ontop = false
 					}
 				})
 			case explod_shadow:
@@ -3146,7 +3169,6 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	crun := c
 	var e *Explod
 	var i int
-
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if e == nil {
 			if id == gameMakeAnim_redirectid {
@@ -3683,10 +3705,10 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.affectteam = exp[0].evalI(c)
 	case hitDef_teamside:
 		n := exp[0].evalI(c)
-		if n > 3 {
-			hd.teamside = 3
-		} else if n < 1 {
-			hd.teamside = 1
+		if n > 2 {
+			hd.teamside = 2
+		} else if n < 0 {
+			hd.teamside = 0
 		} else {
 			hd.teamside = int(n)
 		}
@@ -4208,7 +4230,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	if p.aimg.time != 0 {
 		p.aimg.setupPalFX()
 	}
-	if crun.minus == -2 {
+	if crun.minus == -2 || crun.minus == -4 {
 		p.localscl = (320 / float32(crun.localcoord))
 	} else {
 		p.localscl = crun.localscl
@@ -6208,6 +6230,36 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type dialogue StateControllerBase
+
+const (
+	dialogue_hidebars byte = iota
+	dialogue_text
+	dialogue_redirectid
+)
+
+func (sc dialogue) Run(c *Char, _ []int32) bool {
+	crun := c
+	reset := true
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case dialogue_hidebars:
+			sys.dialogueBarsFlg = exp[0].evalB(c)
+		case dialogue_text:
+			crun.appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
+			reset = false
+		case dialogue_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type dizzyPointsAdd StateControllerBase
 
 const (
@@ -6355,6 +6407,109 @@ func (sc guardPointsSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type hitScaleSet StateControllerBase
+
+const (
+	hitScaleSet_id byte = iota
+	hitScaleSet_damagemul
+	hitScaleSet_damageadd
+	hitScaleSet_damagemin
+	hitScaleSet_damagemax
+	hitScaleSet_stunmul
+	hitScaleSet_stunadd
+	hitScaleSet_stunmin
+	hitScaleSet_stunmax
+	hitScaleSet_redirectid
+)
+
+func (sc hitScaleSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	var eid int32
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case hitScaleSet_id:
+			eid = exp[0].evalI(c)
+			if _, ok := crun.hitScale[eid]; !ok {
+				crun.hitScale[eid] = [2]*HitScale{newHitScale(), newHitScale()}
+			}
+		case hitScaleSet_damagemul:
+			crun.hitScale[eid][0].mul = exp[0].evalF(c)
+		case hitScaleSet_damageadd:
+			crun.hitScale[eid][0].add = exp[0].evalI(c)
+		case hitScaleSet_damagemin:
+			crun.hitScale[eid][0].min = exp[0].evalI(c)
+		case hitScaleSet_damagemax:
+			crun.hitScale[eid][0].max = exp[0].evalI(c)
+		case hitScaleSet_stunmul:
+			crun.hitScale[eid][1].mul = exp[0].evalF(c)
+		case hitScaleSet_stunadd:
+			crun.hitScale[eid][1].add = exp[0].evalI(c)
+		case hitScaleSet_stunmin:
+			crun.hitScale[eid][1].min = exp[0].evalI(c)
+		case hitScaleSet_stunmax:
+			crun.hitScale[eid][1].max = exp[0].evalI(c)
+		case hitScaleSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type lifebarAction StateControllerBase
+
+const (
+	lifebarAction_top byte = iota
+	lifebarAction_time
+	lifebarAction_timemul
+	lifebarAction_anim
+	lifebarAction_spr
+	lifebarAction_snd
+	lifebarAction_text
+	lifebarAction_redirectid
+)
+
+func (sc lifebarAction) Run(c *Char, _ []int32) bool {
+	crun := c
+	var top bool
+	var text string
+	var timemul float32 = 1
+	var time, anim int32 = -1, -1
+	spr := [2]int32{-1, -1}
+	snd := [2]int32{-1, -1}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case lifebarAction_top:
+			top = exp[0].evalB(c)
+		case lifebarAction_timemul:
+			timemul = float32(exp[0].evalF(c))
+		case lifebarAction_time:
+			time = int32(exp[0].evalI(c))
+		case lifebarAction_anim:
+			anim = int32(exp[0].evalI(c))
+		case lifebarAction_spr:
+			spr = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+		case lifebarAction_snd:
+			snd = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+		case lifebarAction_text:
+			text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case lifebarAction_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	crun.appendLifebarAction(text, snd, spr, anim, time, timemul, top)
 	return false
 }
 
@@ -6574,6 +6729,43 @@ func (sc printToConsole) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type rankAdd StateControllerBase
+
+const (
+	rankAdd_value byte = iota
+	rankAdd_max
+	rankAdd_type
+	rankAdd_icon
+	rankAdd_redirectid
+)
+
+func (sc rankAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	var val, max float32
+	var typ, ico string
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case rankAdd_icon:
+			ico = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case rankAdd_type:
+			typ = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case rankAdd_max:
+			max = exp[0].evalF(c)
+		case rankAdd_value:
+			val = exp[0].evalF(c)
+		case rankAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	crun.rankAdd(val, max, typ, ico)
 	return false
 }
 

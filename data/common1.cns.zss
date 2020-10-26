@@ -1,5 +1,6 @@
 # Zantei State Script
-
+# Syntax highlighter for Notepad++: https://github.com/K4thos/npp_zss
+#-------------------------------------------------------------------------------
 # 文字コードは utf-8
 # && と || は短絡評価
 # ignorehitpause{} で囲んだ部分はヒットポーズ中でも実行される

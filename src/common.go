@@ -250,7 +250,7 @@ func FileExist(filename string) string {
 
 //SearchFile returns the directory that file is located
 //This search on deffile directory, then it keep looking on other dirs
-func SearchFile(file string, deffile string) string {
+func SearchFile(file string, deffile string, dirs bool) string {
 	var fp string
 	file = strings.Replace(file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
@@ -261,7 +261,7 @@ func SearchFile(file string, deffile string) string {
 	} else {
 		fp = defdir + "/" + file
 	}
-	if fp = FileExist(fp); len(fp) == 0 {
+	if fp = FileExist(fp); len(fp) == 0 && dirs {
 		_else := false
 		if defdir != "data" {
 			fp = "data/" + file
@@ -286,7 +286,7 @@ func SearchFile(file string, deffile string) string {
 }
 
 func LoadFile(file *string, deffile string, load func(string) error) error {
-	fp := SearchFile(*file, deffile)
+	fp := SearchFile(*file, deffile, true)
 	if err := load(fp); err != nil {
 		return Error(deffile + ":\n" + fp + "\n" + err.Error())
 	}
@@ -713,8 +713,6 @@ type AnimTextSnd struct {
 	text        LbText
 	anim        AnimLayout
 	displaytime int32
-	time        int32
-	sndtime     int32
 }
 
 func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
@@ -738,15 +736,19 @@ func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
 func (ats *AnimTextSnd) Action() { ats.anim.Action() }
 
-func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
+/*func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.Draw(x, y, layerno)
 	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
 		len(ats.text.text) > 0 {
-		ats.text.lay.DrawText(x, y, 1, layerno, ats.text.text,
-			f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
+		for k, v := range strings.Split(ats.text.text, "\\n") {
+			ats.text.lay.DrawText(x, y+
+				float32(k)*(float32(f[ats.text.font[0]].Size[1])*sys.lifebarFontScale+
+					float32(f[ats.text.font[0]].Spacing[1])*sys.lifebarFontScale),
+				1, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
+		}
 	}
-}
+}*/
 
 // Draw but with a scaled setting used for lifebar localcoord
 func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
@@ -754,8 +756,12 @@ func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale 
 		ats.anim.DrawScaled(x, y, layerno, scale)
 	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
 		len(ats.text.text) > 0 {
-		ats.text.lay.DrawText(x, y, scale, layerno, ats.text.text,
-			f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
+		for k, v := range strings.Split(ats.text.text, "\\n") {
+			ats.text.lay.DrawText(x, y+
+				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebarFontScale+
+					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebarFontScale),
+				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx)
+		}
 	}
 }
 
@@ -764,10 +770,11 @@ func (ats *AnimTextSnd) NoDisplay() bool {
 	return len(ats.anim.anim.frames) == 0 &&
 		(ats.text.font[0] < 0 || len(ats.text.text) == 0)
 }
-func (ats *AnimTextSnd) End(dt int32) bool {
+func (ats *AnimTextSnd) End(dt int32, inf bool) bool {
 	if ats.displaytime < 0 {
 		return len(ats.anim.anim.frames) == 0 || ats.anim.anim.loopend ||
-			(ats.anim.anim.frames[ats.anim.anim.current].Time == -1 && ats.anim.anim.current == int32(len(ats.anim.anim.frames)-1))
+			(inf && ats.anim.anim.frames[ats.anim.anim.current].Time == -1 &&
+				ats.anim.anim.current == int32(len(ats.anim.anim.frames)-1))
 	}
 	return dt >= ats.displaytime
 }

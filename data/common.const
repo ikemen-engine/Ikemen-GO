@@ -1,8 +1,10 @@
 [Constants]
 
 ; Negative state global code toggle
+Default.Enable.Action = 1
 Default.Enable.Dizzy = 1
 Default.Enable.GuardBreak = 1
+Default.Enable.Rank = 1
 Default.Enable.Score = 1
 Default.Enable.Tag = 1
 
@@ -14,6 +16,14 @@ Super.TargetDefenceMul = 1.5
 Default.LifeToGuardPointsMul = -1.5
 Default.LifeToDizzyPointsMul = 0
 Default.LifeToRedLifeMul = 0.25
+
+; tag.zss options
+TagInTime = 20                 ; tag-in time (MvCI: default distance = TagInTime * TagInVelX, base: total switch time)
+TagInVelX = 12.5               ; tag-in Vel X (MvCI: set to, base: max vel)
+TagCommandAIChance = 50        ; affects default AI switching probability (used in MvCI ver only)
+TagCounterSwitchPower = 1000   ; counter switch power cost (used in MvCI ver only)
+TagRedLifeRegenFrames = 30     ; red life regeneration interval (in frames)
+TagRedLifeRegenPercent = 0.005 ; red life regenerated each interval (percentage of max life)
 
 ; Character Reserved Action Numbers
 AnimStanding = 0
@@ -113,6 +123,12 @@ AnimContinueScreen = 5500 ;opt
 AnimYesToContinue = 5510 ;opt
 AnimNoToContinue = 5520 ;opt
 
+; tag.zss anims
+AnimTagEnteringScreen = 100
+AnimTagLeavingScreen = 100
+AnimTagJumpingIn = 42
+AnimTagLanding = 47
+
 ; common1.cns / common1.cns.zss states
 StateStand = 0
 StateStandToCrouch = 10
@@ -210,7 +226,36 @@ FxPowerUpEffect = 130
 FxDizzyEffect = 5300
 FxGuardBreakSpark = 5400
 FxGuardBreakShockwave = 5410
+FxTagSwitchAI = 5600
+FxTagSwitchP1 = 5601
+FxTagSwitchP2 = 5602
 FxBackgroundColor = 9000
+
+; fight.def
+MsgFirstAttack = 401
+MsgCounterHit = 402
+MsgTechnical = 403
+MsgReversal = 404
+MsgDanger = 405
+MsgDizzy = 406
+MsgCombo3 = 407
+MsgCombo5 = 408
+MsgCombo10 = 409
+MsgCombo15 = 410
+MsgCombo20 = 411
+MsgCombo25 = 412
+MsgWinSpecial = 413
+MsgWinHyper = 414
+MsgWinPerfect = 415
+MsgPartnerAssist = 416 ;not used
+MsgPartnerChange = 417
+MsgPartnerDown = 418
+MsgPartnerAssistOK = 419 ;not used
+MsgActiveSwitch = 420
+MsgCounterSwitch = 421
+MsgGuardBreak = 422
+MsgParry = 423
+MsgJustDefend = 424 ;not used
 
 ; GetHitVar(attr)
 AttrStandingNormalAttack = 65

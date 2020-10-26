@@ -18,6 +18,7 @@ go.sum
 go.mod
 
 # Distribution and debug files
+*.png
 Ikemen.log
 Ikemen_GO.exe
 OpenAL32.dll

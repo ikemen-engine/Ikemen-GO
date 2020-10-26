@@ -29,7 +29,7 @@ const (
 	SCF_disabled
 )
 
-type CharSpecialFlag uint32
+type CharSpecialFlag uint64
 
 const (
 	CSF_nostandguard CharSpecialFlag = 1 << iota
@@ -51,6 +51,10 @@ const (
 	CSF_nofastrecoverfromliedown
 	CSF_nofallcount
 	CSF_nofalldefenceup
+	CSF_noturntarget
+	CSF_noinput
+	CSF_nopowerbardisplay
+	CSF_autoguard
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -69,7 +73,8 @@ const (
 		CSF_nojugglecheck | CSF_noautoturn | CSF_nowalk | CSF_nobrake |
 		CSF_nocrouch | CSF_nostand | CSF_nojump | CSF_noairjump |
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
-		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup
+		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
+		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard
 )
 
 type GlobalSpecialFlag uint32
@@ -86,7 +91,12 @@ const (
 	GSF_nokosnd
 	GSF_nokoslow
 	GSF_noko
+	GSF_nokovelocity
 	GSF_roundnotskip
+	GSF_assertspecial GlobalSpecialFlag = GSF_intro | GSF_roundnotover |
+		GSF_nomusic | GSF_nobardisplay | GSF_nobg | GSF_nofg |
+		GSF_globalnoshadow | GSF_timerfreeze | GSF_nokosnd | GSF_nokoslow |
+		GSF_noko | GSF_nokovelocity | GSF_roundnotskip
 )
 
 type PosType int32
@@ -544,6 +554,7 @@ type HitDef struct {
 	guard_kill                 bool
 	forcenofall                bool
 	lhit                       bool
+	attackerID                 int32
 	dizzypoints                int32
 	guardpoints                int32
 	redlife                    int32
@@ -552,7 +563,7 @@ type HitDef struct {
 
 func (hd *HitDef) clear() {
 	*hd = HitDef{hitflag: int32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
-		animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
+		teamside: -1, animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
 		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
 		hitsound: [...]int32{IErr, 0}, guardsound: [...]int32{IErr, 0},
 		ground_type: HT_High, air_type: HT_Unknown, air_hittime: 20,
@@ -618,6 +629,7 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
+	id             int32
 	dizzypoints    int32
 	guardpoints    int32
 	redlife        int32
@@ -872,6 +884,7 @@ type Explod struct {
 	pausemovetime  int32
 	anim           *Animation
 	ontop          bool
+	under          bool
 	alpha          [2]int32
 	ownpal         bool
 	playerId       int32
@@ -1056,6 +1069,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	sprs := &sys.sprites
 	if e.ontop {
 		sprs = &sys.topSprites
+	} else if e.under {
+		sprs = &sys.bottomSprites
 	}
 	var pfx *PalFX
 	if e.anim.sff != sys.lifebar.fsff {
@@ -1442,12 +1457,13 @@ func (cgi *CharGlobalInfo) clearPCTime() {
 	cgi.pcid = 0
 }
 
+// StateState contains the state variables like stateNo, prevStateNo, time, stateType, moveType, and physics of the current state.
 type StateState struct {
 	stateType       StateType
 	moveType        MoveType
 	physics         StateType
 	ps              []int32
-	wakegawakaranai [len(sys.cgi)][]bool
+	wakegawakaranai [MaxSimul*2 + MaxAttachedChar][]bool
 	no, prevno      int32
 	time            int32
 	sb              StateBytecode
@@ -1513,10 +1529,8 @@ type CharSystemVar struct {
 	finalDefence  float64
 	cheated       bool
 	counterHit    bool
-	damageCount   int32
 	firstAttack   bool
 	getcombodmg   int32
-	scoreCurrent  float32
 }
 
 type Char struct {
@@ -1598,7 +1612,9 @@ type Char struct {
 	mapDefault            map[string]float32
 	remapSpr              RemapPreset
 	clipboardText         []string
+	dialogue              []string
 	immortal              bool
+	hitScale              map[int32][2]*HitScale
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1628,6 +1644,7 @@ func (c *Char) init(n int, idx int32) {
 	} else {
 		c.mapArray = make(map[string]float32)
 		c.remapSpr = make(RemapPreset)
+		c.hitScale = make(map[int32][2]*HitScale)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -1719,7 +1736,7 @@ func (c *Char) clear2() {
 		defenceMul:    1,
 		customDefence: 1}
 	c.oldPos, c.drawPos = c.pos, c.pos
-	if c.helperIndex == 0 && c.teamside < 2 {
+	if c.helperIndex == 0 && c.teamside != -1 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
 			c.palfx.clear()
 		} else {
@@ -2403,7 +2420,7 @@ func (c *Char) partner(n int32) *Char {
 			p += 2
 		}
 	}
-	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
+	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
 		return sys.chars[p][0]
 	}
 	sys.warnConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
@@ -2418,7 +2435,7 @@ func (c *Char) partnerV2(n int32) *Char {
 	if p>>1 > int(c.numPartner()) {
 		p -= int(c.numPartner()*2) + 2
 	}
-	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside < 2 {
+	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
 		return sys.chars[p][0]
 	}
 	return nil
@@ -2428,10 +2445,16 @@ func (c *Char) enemy(n int32) *Char {
 		sys.warnConsole(c.warn() + fmt.Sprintf("has no enemy: %v", n))
 		return nil
 	}
-	if c.teamside == 3-1 {
+	if c.teamside == -1 {
 		return sys.chars[n][0]
 	}
-	return sys.chars[n*2+int32(^c.playerNo&1)][0]
+	for i := n*2 + int32(^c.playerNo&1); i < sys.numSimul[^c.playerNo&1]*2; i += 2 {
+		if !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+			return sys.chars[i][0]
+		}
+	}
+	//return sys.chars[n*2+int32(^c.playerNo&1)][0]
+	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
 	return sys.charList.enemyNear(c, n, false, true)
@@ -2501,13 +2524,10 @@ func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }
 func (c *Char) comboCount() int32 {
-	var v int32
-	for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
-		for j := range sys.chars[i] {
-			v = Min(999, Max(sys.chars[i][j].getcombo, v))
-		}
+	if c.teamside == -1 {
+		return 0
 	}
-	return v
+	return sys.lifebar.co[c.teamside].combo
 }
 func (c *Char) command(pn, i int) bool {
 	if !c.keyctrl[0] || c.cmd == nil {
@@ -2581,7 +2601,7 @@ func (c *Char) getPlayerID(pn int) int32 {
 	return 0
 }
 func (c *Char) getPower() int32 {
-	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
+	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
 		return sys.chars[c.playerNo&1][0].power
 	}
 	return sys.chars[c.playerNo][0].power
@@ -2613,6 +2633,9 @@ func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	}
 	id := hid.ToI()
 	return BytecodeBool(c.helperIndex != 0 && (id == math.MinInt32 || c.helperId == id))
+}
+func (c *Char) isHost() bool {
+	return sys.netInput != nil && sys.netInput.host
 }
 func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
@@ -2656,32 +2679,22 @@ func (c *Char) moveReversed() int32 {
 	}
 	return 0
 }
-func (c *Char) networkPlayer() int32 {
-	if sys.netInput == nil || sys.com[c.playerNo] > 0 {
-		return 0
-	}
-	if sys.home == 0 { //Versus style modes
-		if c.teamside == 0 {
-			return 1 //host
-		} else if c.teamside == 1 {
-			return 2 //client
-		}
-	} else if c.teamside == 0 { //Co-op, players side
-		if c.playerNo == 0 {
-			return 1 //host
-		}
-		return 2 //client
-	}
-	return 0
-}
 func (c *Char) numEnemy() int32 {
-	if sys.tmode[^c.playerNo&1] != TM_Simul && sys.tmode[^c.playerNo&1] != TM_Tag {
-		return 1
+	var n int32
+	if c.teamside == -1 {
+		for i := 0; i < int(sys.numSimul[0]+sys.numSimul[1]); i++ {
+			if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+				n += 1
+			}
+		}
+		return n
 	}
-	if c.teamside == 3-1 {
-		return sys.numSimul[0] + sys.numSimul[1]
+	for i := ^c.playerNo & 1; i < int(sys.numSimul[^c.playerNo&1]*2); i += 2 {
+		if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+			n += 1
+		}
 	}
-	return sys.numSimul[^c.playerNo&1]
+	return n
 }
 func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
 	if eid.IsSF() {
@@ -2708,7 +2721,7 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 	return BytecodeInt(n)
 }
 func (c *Char) numPartner() int32 {
-	if (sys.tmode[c.playerNo&1] != TM_Simul && sys.tmode[c.playerNo&1] != TM_Tag) || c.teamside >= 2 {
+	if (sys.tmode[c.playerNo&1] != TM_Simul && sys.tmode[c.playerNo&1] != TM_Tag) || c.teamside == -1 {
 		return 0
 	}
 	return sys.numSimul[c.playerNo&1] - 1
@@ -2819,7 +2832,7 @@ func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
 }
 func (c *Char) roundsExisted() int32 {
-	if c.teamside >= 2 {
+	if c.teamside == -1 {
 		return sys.round - 1
 	}
 	return sys.roundsExisted[c.playerNo&1]
@@ -2835,8 +2848,7 @@ func (c *Char) roundState() int32 {
 	case sys.intro >= 0 || sys.finish == FT_NotYet:
 		return 2
 	case sys.intro < -(sys.lifebar.ro.over_hittime+
-		sys.lifebar.ro.over_waittime) && (sys.chars[c.playerNo][0].scf(SCF_over) ||
-		sys.chars[c.playerNo][0].scf(SCF_ko)):
+		sys.lifebar.ro.over_waittime) && sys.fightOver:
 		return 4
 	default:
 		return 3
@@ -2883,6 +2895,27 @@ func (c *Char) stageBackEdge() float32 {
 	}
 	return c.pos[0] - sys.cam.XMin/c.localscl
 }
+func (c *Char) teamLeader() int {
+	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {
+		return c.playerNo + 1
+	}
+	return sys.teamLeader[c.playerNo&1] + 1
+}
+func (c *Char) teamSize() int32 {
+	if c.teamside == -1 {
+		var n int32
+		for i := MaxSimul * 2; i < len(sys.chars); i++ {
+			if len(sys.chars[i]) > 0 {
+				n += 1
+			}
+		}
+		return n
+	}
+	if sys.tmode[c.playerNo&1] == TM_Turns {
+		return sys.numTurns[c.playerNo&1]
+	}
+	return sys.numSimul[c.playerNo&1]
+}
 func (c *Char) time() int32 {
 	return c.ss.time
 }
@@ -2890,7 +2923,7 @@ func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) win() bool {
-	if c.teamside >= 2 {
+	if c.teamside == -1 {
 		return false
 	}
 	return sys.winTeam == c.playerNo&1
@@ -2904,26 +2937,8 @@ func (c *Char) winTime() bool {
 func (c *Char) winPerfect() bool {
 	return c.win() && sys.winType[c.playerNo&1] >= WT_PN
 }
-func (c *Char) winNormal() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_N || sys.winType[c.playerNo&1] == WT_PN)
-}
-func (c *Char) winSpecial() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_S || sys.winType[c.playerNo&1] == WT_PS)
-}
-func (c *Char) winHyper() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_H || sys.winType[c.playerNo&1] == WT_PH)
-}
-func (c *Char) winCheese() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_C || sys.winType[c.playerNo&1] == WT_PC)
-}
-func (c *Char) winThrow() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_Throw || sys.winType[c.playerNo&1] == WT_PThrow)
-}
-func (c *Char) winSuicide() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_Suicide || sys.winType[c.playerNo&1] == WT_PSuicide)
-}
-func (c *Char) winTeammate() bool {
-	return c.win() && (sys.winType[c.playerNo&1] == WT_Teammate || sys.winType[c.playerNo&1] == WT_PTeammate)
+func (c *Char) winType(wt WinType) bool {
+	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
 func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	ch = Min(255, ch)
@@ -3005,7 +3020,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 // Furimuki = Turn around
 func (c *Char) furimuki() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if c.rdDistX(sys.charList.enemyNear(c, 0, true, false), c).ToF() < 0 {
+		if e := sys.charList.enemyNear(c, 0, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5, false)
@@ -3291,6 +3306,15 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 			}
 		}
 		*td = append(*td, i)
+	} else if e.under {
+		td := &sys.underexplDrawlist[c.playerNo]
+		for ii, te := range *td {
+			if te < 0 {
+				(*td)[ii] = i
+				return
+			}
+		}
+		*td = append(*td, i)
 	} else {
 		ed := &sys.explDrawlist[c.playerNo]
 		for ii, ex := range *ed {
@@ -3331,6 +3355,7 @@ func (c *Char) removeExplod(id int32) {
 	}
 	remove(&sys.explDrawlist[c.playerNo], true)
 	remove(&sys.topexplDrawlist[c.playerNo], false)
+	remove(&sys.underexplDrawlist[c.playerNo], true)
 }
 func (c *Char) enemyExplodsRemove(en int) {
 	remove := func(drawlist *[]int, drop bool) {
@@ -3349,6 +3374,7 @@ func (c *Char) enemyExplodsRemove(en int) {
 	}
 	remove(&sys.explDrawlist[en], true)
 	remove(&sys.topexplDrawlist[en], false)
+	remove(&sys.underexplDrawlist[en], true)
 }
 func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	if n == -2 {
@@ -3399,13 +3425,13 @@ func (c *Char) setPosY(y float32) {
 	c.pos[1] = y
 }
 func (c *Char) posReset() {
-	if c.teamside >= 2 {
+	if c.teamside == -1 {
 		c.facing = 1
 		c.setX(0)
 	} else {
 		c.facing = 1 - 2*float32(c.playerNo&1)
 		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
-			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*P1P3Dist) / c.localscl)
+			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*sys.stage.p1p3dist) / c.localscl)
 	}
 	c.setY(0)
 	c.setXV(0)
@@ -3452,12 +3478,17 @@ func (c *Char) hitAdd(h int32) {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				t.getcombo += h
+				if c.teamside != -1 {
+					sys.lifebar.co[c.teamside].combo += h
+				}
 			}
 		}
-	} else if c.teamside < 2 { //in mugen HitAdd increases combo count even without targets
+	} else if c.teamside != -1 {
+		//in mugen HitAdd increases combo count even without targets
 		for i, p := range sys.chars {
 			if len(p) > 0 && c.teamside == ^i&1 && (p[0].getcombo != 0 || p[0].ss.moveType == MT_H) {
 				p[0].getcombo += h
+				sys.lifebar.co[c.teamside].combo += h
 			}
 		}
 	}
@@ -3595,10 +3626,11 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !math.IsNaN(float64(hd.snap[1])) {
 		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
 	}
-	if hd.teamside == 0 {
+	if hd.teamside == -1 {
 		hd.teamside = c.teamside + 1
 	}
 	hd.playerNo = c.ss.sb.playerNo
+	hd.attackerID = c.id
 }
 func (c *Char) setFEdge(fe float32) {
 	c.edge[0] = fe
@@ -3815,10 +3847,9 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 	}
 }
 func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
-	c.damageCount -= add
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
-			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1))
+			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c))
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 		}
@@ -3865,7 +3896,7 @@ func (c *Char) targetScoreAdd(tar []int32, s float32) {
 func (c *Char) targetState(tar []int32, state int32) {
 	if state >= 0 {
 		pn := c.ss.sb.playerNo
-		if c.minus == -2 {
+		if c.minus == -2 || c.minus == -4 {
 			pn = c.playerNo
 		}
 		for _, tid := range tar {
@@ -3943,11 +3974,12 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	}
 }
 func (c *Char) computeDamage(damage float64, kill, absolute bool,
-	atkmul float32) int32 {
+	atkmul float32, attacker *Char) int32 {
 	if damage == 0 || !absolute && atkmul == 0 {
 		return 0
 	}
 	if !absolute {
+		damage = float64(attacker.scaleHit(int32(damage), c.id, 0))
 		damage *= float64(atkmul) / c.finalDefence
 	}
 	damage = math.Ceil(damage)
@@ -3982,7 +4014,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 }
 func (c *Char) lifeSet(life int32) {
 	if c.life = Max(0, Min(c.lifeMax, life)); c.life == 0 {
-		if c.player && c.teamside < 2 {
+		if c.player && c.teamside != -1 {
 			if c.alive() && c.helperIndex == 0 {
 				if c.ss.moveType != MT_H {
 					if c.playerNo == c.ss.sb.playerNo {
@@ -4022,14 +4054,14 @@ func (c *Char) setPower(pow int32) {
 	}
 }
 func (c *Char) powerAdd(add int32) {
-	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
+	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
 		sys.chars[c.playerNo&1][0].setPower(c.getPower() + add)
 	} else {
 		sys.chars[c.playerNo][0].setPower(c.getPower() + add)
 	}
 }
 func (c *Char) powerSet(pow int32) {
-	if sys.powerShare[c.playerNo&1] && c.teamside < 2 {
+	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
 		sys.chars[c.playerNo&1][0].setPower(pow)
 	} else {
 		sys.chars[c.playerNo][0].setPower(pow)
@@ -4051,6 +4083,38 @@ func (c *Char) guardPointsSet(set int32) {
 		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
 	}
 }
+func (c *Char) rank() float32 {
+	if c.teamside == -1 {
+		return 0
+	}
+	var r float32
+	for _, v := range sys.lifebar.sc[c.teamside].rankPoints {
+		r += v
+	}
+	return r
+}
+func (c *Char) rankAdd(val, max float32, typ, ico string) {
+	if c.teamside == -1 {
+		return
+	}
+	if _, ok := sys.lifebar.sc[c.teamside].rankPoints[typ]; !ok {
+		sys.lifebar.sc[c.teamside].rankPoints[typ] = 0
+	}
+	if max == 0 {
+		sys.lifebar.sc[c.teamside].rankPoints[typ] += val
+	} else {
+		sys.lifebar.sc[c.teamside].rankPoints[typ] = MinF(sys.lifebar.sc[c.teamside].rankPoints[typ]+val, max)
+	}
+	if ico != "" {
+		var unique map[string]bool = make(map[string]bool)
+		for _, v := range sys.lifebar.sc[c.teamside].rankIcons {
+			unique[v] = true
+		}
+		if _, ok := unique[ico]; !ok {
+			sys.lifebar.sc[c.teamside].rankIcons = append(sys.lifebar.sc[c.teamside].rankIcons, ico)
+		}
+	}
+}
 func (c *Char) redLifeAdd(add float64, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {
@@ -4066,8 +4130,28 @@ func (c *Char) redLifeSet(set int32) {
 		c.redLife = Max(0, Min(c.lifeMax-c.life, set))
 	}
 }
-func (c *Char) scoreAdd(s float32) {
-	sys.chars[c.playerNo][0].scoreCurrent = MaxF(MinF(sys.chars[c.playerNo][0].scoreCurrent+s, sys.lifebar.sc[0].max), sys.lifebar.sc[0].min)
+func (c *Char) score() float32 {
+	if c.teamside == -1 {
+		return 0
+	}
+	return sys.lifebar.sc[c.teamside].scorePoints
+}
+func (c *Char) scoreAdd(val float32) {
+	if c.teamside == -1 {
+		return
+	}
+	sys.lifebar.sc[c.teamside].scorePoints += val
+}
+func (c *Char) scoreTotal() float32 {
+	if c.teamside == -1 {
+		return 0
+	}
+	s := sys.scoreStart[c.teamside]
+	for _, v := range sys.scoreRounds {
+		s += v[c.teamside]
+	}
+	s += c.score()
+	return s
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
@@ -4230,6 +4314,7 @@ func (c *Char) hitFallDamage() {
 	}
 }
 func (c *Char) hitFallVel() {
+	//TODO: localcoord problem when HitDef is not assigned (e.g. F1)
 	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
 			c.setXV(c.ghv.fall.xvelocity)
@@ -4326,6 +4411,40 @@ func (c *Char) remapSpritePreset(preset string) {
 	}
 }
 
+type HitScale struct {
+	mul float32
+	add int32
+	min int32
+	max int32
+}
+
+func newHitScale() *HitScale {
+	return &HitScale{}
+}
+func (c *Char) scaleHit(value, id int32, index int) int32 {
+	ret := value
+	var hs *HitScale
+	matched := false
+	if v, ok := c.hitScale[id]; ok {
+		hs = v[index]
+		matched = true
+	} else if v, ok := c.hitScale[-1]; ok {
+		hs = v[index]
+		matched = true
+	}
+	if matched {
+		ret += hs.add
+		if hs.mul != 0 {
+			ret = int32(math.Ceil(float64(ret) * float64(hs.mul)))
+		}
+		ret = Max(hs.min, ret)
+		if hs.max != 0 {
+			ret = Min(hs.max, ret)
+		}
+	}
+	return ret
+}
+
 // MapSet() sets a map to a specific value.
 func (c *Char) mapSet(s string, Value float32, scType int32) {
 	if s == "" {
@@ -4374,6 +4493,51 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 			}
 		}
 	}
+}
+
+func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time int32, timemul float32, top bool) {
+	if c.teamside == -1 {
+		return
+	}
+	if _, ok := sys.lifebar.missing["[action]"]; ok {
+		return
+	}
+	if snd[0] != -1 {
+		sys.lifebar.snd.play(snd)
+	}
+	index := 0
+	if !top {
+		for k, v := range sys.lifebar.ac[c.teamside].messages {
+			if v.del {
+				sys.lifebar.ac[c.teamside].messages = removeLbMsg(sys.lifebar.ac[c.teamside].messages, k)
+				break
+			}
+			index++
+		}
+	}
+	if time == -1 {
+		time = sys.lifebar.ac[c.teamside].displaytime
+	}
+	msg := newLbMsg(text, int32(float32(time)*timemul), c.teamside)
+	if anim != -1 || spr[0] != -1 {
+		delete(sys.lifebar.ac[c.teamside].is, fmt.Sprintf("team%v.front.anim", c.teamside+1))
+		delete(sys.lifebar.ac[c.teamside].is, fmt.Sprintf("team%v.front.spr", c.teamside+1))
+		if anim != -1 {
+			sys.lifebar.ac[c.teamside].is[fmt.Sprintf("team%v.front.anim", c.teamside+1)] = fmt.Sprintf("%v", anim)
+		} else {
+			sys.lifebar.ac[c.teamside].is[fmt.Sprintf("team%v.front.spr", c.teamside+1)] = fmt.Sprintf("%v,%v", spr[0], spr[1])
+		}
+		msg.bg = *ReadAnimLayout(fmt.Sprintf("team%v.bg.", c.teamside+1), sys.lifebar.ac[c.teamside].is, sys.lifebar.sff, sys.lifebar.at, 0)
+		msg.front = *ReadAnimLayout(fmt.Sprintf("team%v.front.", c.teamside+1), sys.lifebar.ac[c.teamside].is, sys.lifebar.sff, sys.lifebar.at, 0)
+	}
+	sys.lifebar.ac[c.teamside].messages = insertLbMsg(sys.lifebar.ac[c.teamside].messages, msg, index)
+}
+
+func (c *Char) appendDialogue(s string, reset bool) {
+	if reset {
+		c.dialogue = nil
+	}
+	c.dialogue = append(c.dialogue, s)
 }
 
 func (c *Char) appendToClipboard(pn, sn int, a ...interface{}) {
@@ -4716,7 +4880,7 @@ func (c *Char) action() {
 	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
-		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0) &&
+		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
 		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
 			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
 			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
@@ -4837,10 +5001,8 @@ func (c *Char) action() {
 		}
 	}
 	c.minus = -4
-	if c.ss.sb.playerNo == c.playerNo {
-		if sb, ok := c.gi().states[-4]; ok {
-			sb.run(c)
-		}
+	if sb, ok := c.gi().states[-4]; ok {
+		sb.run(c)
 	}
 	if !p {
 		c.minus = -3
@@ -5023,14 +5185,23 @@ func (c *Char) update(cvmin, cvmax,
 				} else {
 					c.comboExtraFrameWindow--
 				}
-				//c.ghv.attr = 0
-				//c.ghv.dizzypoints = 0
-				//c.ghv.guardpoints = 0
-				//c.ghv.score = 0
+				c.ghv.attr = 0
+				c.ghv.dizzypoints = 0
+				c.ghv.guardpoints = 0
+				c.ghv.id = 0
+				c.ghv.playerNo = -1
+				c.ghv.score = 0
 			}
 			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 {
 				c.makeDust(0, 0)
+			}
+		}
+		for k, _ := range c.hitScale {
+			if k != -1 {
+				if p := sys.playerID(k); p != nil /*&& p.player*/ && p.ss.moveType != MT_H {
+					delete(c.hitScale, k)
+				}
 			}
 		}
 	}
@@ -5463,6 +5634,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.sprPriority = hd.p2sprpriority
 			getter.ghv.hitid = hd.id
 			getter.ghv.playerNo = hd.playerNo
+			getter.ghv.id = hd.attackerID
 		}
 		if Abs(hitType) == 1 {
 			if hd.pausetime > 0 {
@@ -5523,6 +5695,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
+				ghv.id = hd.attackerID
 				ghv.dizzypoints = hd.dizzypoints
 				ghv.guardpoints = hd.guardpoints
 				ghv.redlife = hd.redlife
@@ -5531,7 +5704,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
 					ghv.hitshaketime = Max(0, hd.guard_shaketime)
-					ghv.hittime = Max(0, hd.guard_hittime)
+					ghv.hittime = Max(0, c.scaleHit(hd.guard_hittime, getter.id, 1))
 					ghv.slidetime = hd.guard_slidetime
 					ghv.guarded = true
 					if getter.ss.stateType == ST_A {
@@ -5549,13 +5722,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					ghv.hitshaketime = Max(0, hd.shaketime)
 					ghv.slidetime = hd.ground_slidetime
 					if getter.ss.stateType == ST_A {
-						ghv.hittime = hd.air_hittime
+						ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
 						ghv.ctrltime = hd.air_hittime
 						ghv.xvel = hd.air_velocity[0] * c.localscl / getter.localscl
 						ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
 						ghv.fallf = hd.air_fall
 					} else if getter.ss.stateType == ST_L {
-						ghv.hittime = hd.down_hittime
+						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
 						if getter.movedY {
@@ -5576,9 +5749,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							ghv.yvel = -0.001 * c.localscl / getter.localscl //新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
 						}
 						if ghv.yvel != 0 {
-							ghv.hittime = hd.air_hittime
+							ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
 						} else {
-							ghv.hittime = hd.ground_hittime
+							ghv.hittime = c.scaleHit(hd.ground_hittime, getter.id, 1)
 						}
 					}
 					if ghv.hittime < 0 {
@@ -5677,34 +5850,36 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				kill = hd.guard_kill
 			}
 			getter.ghv.damage += getter.computeDamage(
-				float64(absdamage)*float64(hits), kill, false, attackMul)
+				float64(absdamage)*float64(hits), kill, false, attackMul, c)
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
-					getter.ghv.fallf = true
-					if getter.ghv.fall.animtype < RA_Back {
-						getter.ghv.fall.animtype = RA_Back
-					}
-					if getter.ss.stateType == ST_A {
-						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+					if c.player && !sys.sf(GSF_nokovelocity) {
+						getter.ghv.fallf = true
+						if getter.ghv.fall.animtype < RA_Back {
+							getter.ghv.fall.animtype = RA_Back
 						}
-						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
-							if getter.ghv.yvel > -3*getter.localscl*(320/float32(sys.gameWidth)) {
-								getter.ghv.yvel = -3 * getter.localscl * (320 / float32(sys.gameWidth))
+						if getter.ss.stateType == ST_A {
+							if getter.ghv.xvel < 0 {
+								getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
 							}
-						}
-					} else {
-						if getter.ghv.yvel == 0 {
-							getter.ghv.xvel *= 0.66
-						}
-						if getter.ghv.xvel < 0 {
-							getter.ghv.xvel -= 2.5 * getter.localscl * (320 / float32(sys.gameWidth))
-						}
-						if getter.ghv.yvel <= 0 {
-							getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
-							if getter.ghv.yvel > -6*getter.localscl*(320/float32(sys.gameWidth)) {
-								getter.ghv.yvel = -6 * getter.localscl * (320 / float32(sys.gameWidth))
+							if getter.ghv.yvel <= 0 {
+								getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+								if getter.ghv.yvel > -3*getter.localscl*(320/float32(sys.gameWidth)) {
+									getter.ghv.yvel = -3 * getter.localscl * (320 / float32(sys.gameWidth))
+								}
+							}
+						} else {
+							if getter.ghv.yvel == 0 {
+								getter.ghv.xvel *= 0.66
+							}
+							if getter.ghv.xvel < 0 {
+								getter.ghv.xvel -= 2.5 * getter.localscl * (320 / float32(sys.gameWidth))
+							}
+							if getter.ghv.yvel <= 0 {
+								getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+								if getter.ghv.yvel > -6*getter.localscl*(320/float32(sys.gameWidth)) {
+									getter.ghv.yvel = -6 * getter.localscl * (320 / float32(sys.gameWidth))
+								}
 							}
 						}
 					}
@@ -5780,12 +5955,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.powerAdd(hd.hitgivepower)
 					getter.dizzyPointsAdd(hd.dizzypoints)
 				}
-				if getter.ss.moveType == MT_A && c.teamside < 2 {
-					sys.lifebar.co[c.teamside].counterHits += 1
+				if getter.ss.moveType == MT_A {
 					c.counterHit = true
 				}
-				if !sys.lifebar.co[0].firstAttack && !sys.lifebar.co[1].firstAttack && c.teamside < 2 {
-					sys.lifebar.co[c.teamside].firstAttack = true
+				if !sys.lifebar.ro.firstAttack[0] && !sys.lifebar.ro.firstAttack[1] &&
+					ghvset && getter.hoIdx < 0 && c.teamside != -1 {
+					sys.lifebar.ro.firstAttack[c.teamside] = true
 					sys.chars[c.playerNo][0].firstAttack = true
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
@@ -5922,6 +6097,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.setDefPhase()
 			}
 			getter.getcombo += hd.numhits * hits
+			if c.teamside != -1 {
+				sys.lifebar.co[c.teamside].combo += hd.numhits * hits
+			}
 			//getter.getcombodmg += hd.hitdamage
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
@@ -6144,9 +6322,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 										Btoi(c.gi().ver[0] == 1))
 								}
 								c.uniqHitCount++
-								if c.hitdef.hitdamage > 0 {
-									c.damageCount += c.hitdef.hitdamage
-								}
 							} else {
 								if mvh {
 									c.mctype = MC_Guarded
