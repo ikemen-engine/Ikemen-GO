@@ -308,6 +308,7 @@ Debug Options:
 		DebugMode                  bool
 		Difficulty                 int
 		ExternalShaders            []string
+		FontShaderVer              string
 		ForceStageZoomin           float32
 		ForceStageZoomout          float32
 		Fullscreen                 bool
@@ -411,6 +412,9 @@ Debug Options:
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
 	sys.fullscreen = tmp.Fullscreen
+	if len(tmp.FontShaderVer) > 1 {
+		sys.fontShaderVer = tmp.FontShaderVer
+	}
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
 	sys.legacyMode = tmp.LegacyMode

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/K4thos/glfont"
+	"github.com/Windblade-GR01/glfont"
 	findfont "github.com/flopp/go-findfont"
 )
 
@@ -342,6 +342,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	} else {
 		f.Size[1] = uint16(height)
 	}
+	glfont.FontShaderVer = "#version " + sys.fontShaderVer
 	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight))
 	if err != nil {
 		panic(err)

@@ -1,12 +1,13 @@
 MIT License
 
-Original work Copyright (c) 2016 Suehiro
-Modified work Copyright (c) 2018 K4thos
-Modified work Copyright (c) 2018 ShinLucho
-Modified work Copyright (c) 2018 NeatUnsou
-Modified work Copyright (c) 2019 Windblade
-Modified work Copyright (c) 2019 Dan
-Modified work Copyright (c) 2019 Kidcy
+Copyright (c) 2016 Suehiro
+Copyright (c) 2018 K4thos
+Copyright (c) 2018 ShinLucho
+Copyright (c) 2018 NeatUnsou
+Copyright (c) 2019 Windblade
+Copyright (c) 2019 Dan
+Copyright (c) 2019 Kidcy
+Copyright (c) 2020 Wintermourn
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
