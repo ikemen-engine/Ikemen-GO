@@ -2836,7 +2836,6 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		end
 		if cnt == 1 then
 			main.f_default()
-			main.f_unlock()
 			main.t_itemname[f](t, item)()
 			resetRemapInput()
 			return
@@ -2864,7 +2863,9 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, main.group, main.background, main.txt_title, false, motif.defaultLocalcoord, true, t_footer)
 			end
 			if main.menu.f ~= nil and not main.fadeActive then
+				main.f_unlock(false)
 				main.menu.f()
+				main.f_unlock(false)
 				main.menu.f = nil
 			else
 				if bool_main then
@@ -2935,7 +2936,6 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					end
 					if f ~= '' then
 						main.f_default()
-						main.f_unlock()
 						main.menu.f = main.t_itemname[f](t, item)
 						resetRemapInput()
 						if main.menu.f ~= nil then
@@ -3103,20 +3103,20 @@ function main.f_connect(server, t)
 end
 
 --asserts content unlock conditions
-function main.f_unlock()
+function main.f_unlock(permanent)
 	for group, t in pairs(main.t_unlockLua) do
 		local t_del = {}
 		for k, v in pairs(t) do
 			local bool = assert(loadstring('return ' .. v))()
 			if type(bool) == 'boolean' then
 				if group == 'chars' then
-					if bool then main.f_unlockChar(k, 0, false) end
+					main.f_unlockChar(k, bool, false)
 				elseif group == 'stages' then
-					if bool then main.f_unlockStage(k, 0) end
+					main.f_unlockStage(k, bool)
 				elseif group == 'modes' then
 					--already handled via t_del cleaning
 				end
-				if bool then
+				if bool and permanent or group == 'modes' then
 					table.insert(t_del, k)
 				end
 			else
@@ -3131,18 +3131,37 @@ function main.f_unlock()
 end
 
 --unlock characters (select screen grid only)
-function main.f_unlockChar(num, flag, reset)
-	main.t_selChars[num].hidden = flag
-	start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = flag
-	if reset then
-		start.f_resetGrid()
+function main.f_unlockChar(num, bool, reset)
+	if bool then
+		if main.t_selChars[num].hidden ~= 0 then
+			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
+			main.t_selChars[num].hidden = 0
+			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
+			if reset then start.f_resetGrid() end
+		end
+	elseif main.t_selChars[num].hidden_default == nil then
+		return
+	elseif main.t_selChars[num].hidden ~= main.t_selChars[num].hidden_default then
+		main.t_selChars[num].hidden = main.t_selChars[num].hidden_default
+		start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
+		if reset then start.f_resetGrid() end
 	end
 end
 
 --unlock stages (stage selection menu only)
-function main.f_unlockStage(num, flag)
-	main.t_selStages[num].hidden = flag
-	main.f_updateSelectableStages()
+function main.f_unlockStage(num, bool)
+	if bool then
+		if main.t_selStages[num].hidden ~= 0 then
+			main.t_selStages[num].hidden_default = main.t_selStages[num].hidden
+			main.t_selStages[num].hidden = 0
+			main.f_updateSelectableStages()
+		end
+	elseif main.t_selStages[num].hidden_default == nil then
+		return
+	elseif main.t_selStages[num].hidden ~= main.t_selStages[num].hidden_default then
+		main.t_selStages[num].hidden = main.t_selStages[num].hidden_default
+		main.f_updateSelectableStages()
+	end
 end
 
 main.t_hiscoreData = {
@@ -3612,7 +3631,7 @@ for _, v in ipairs(t_modules) do
 end
 
 --assert(loadstring(main.lua))()
-main.f_unlock()
+main.f_unlock(false)
 
 --;===========================================================
 --; INITIALIZE LOOPS
