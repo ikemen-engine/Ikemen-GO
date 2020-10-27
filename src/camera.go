@@ -19,13 +19,13 @@ type stageCamera struct {
 	startzoom      float32
 	zoomin         float32
 	zoomout        float32
-	mugen_zoomout  float32
+	mugenZoomOut   float32
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, mugen_zoomout: 1}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, mugenZoomOut: 1}
 }
 
 type Camera struct {
@@ -47,8 +47,8 @@ func newCamera() *Camera {
 	return &Camera{ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Init() {
-	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.mugen_zoomout)*100*c.mugen_zoomout)*(1/c.mugen_zoomout)*(1/c.mugen_zoomout)*1.6
-	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.mugen_zoomout)*100*c.mugen_zoomout)*(1/c.mugen_zoomout)*(1/c.mugen_zoomout)*1.6
+	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.mugenZoomOut)*100*c.mugenZoomOut)*(1/c.mugenZoomOut)*(1/c.mugenZoomOut)*1.6
+	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.mugenZoomOut)*100*c.mugenZoomOut)*(1/c.mugenZoomOut)*(1/c.mugenZoomOut)*1.6
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()

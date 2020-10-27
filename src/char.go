@@ -590,9 +590,9 @@ func (hd *HitDef) testAttr(attr int32) bool {
 }
 
 type GetHitVar struct {
-	hitBy          [][2]int32
-	hit1           [2]int32
-	hit2           [2]int32
+	hitBy [][2]int32
+	//hit1           [2]int32
+	//hit2           [2]int32
 	attr           int32
 	_type          HitType
 	airanimtype    Reaction
@@ -1442,6 +1442,7 @@ func (cgi *CharGlobalInfo) clearPCTime() {
 	cgi.pcid = 0
 }
 
+// StateState contains the state data like, type, move, and physics.
 type StateState struct {
 	stateType       StateType
 	moveType        MoveType
@@ -2568,12 +2569,6 @@ func (c *Char) gameHeight() float32 {
 func (c *Char) gameWidth() float32 {
 	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
 }
-func (c *Char) getDizzyPoints() int32 {
-	return sys.chars[c.playerNo][0].dizzyPoints
-}
-func (c *Char) getGuardPoints() int32 {
-	return sys.chars[c.playerNo][0].guardPoints
-}
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
 		return sys.chars[pn-1][0].id
@@ -3003,7 +2998,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 }
 
 // Furimuki = Turn around
-func (c *Char) furimuki() {
+func (c *Char) turn() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		if c.rdDistX(sys.charList.enemyNear(c, 0, true, false), c).ToF() < 0 {
 			switch c.ss.stateType {
@@ -3065,7 +3060,7 @@ func (c *Char) stateChange2() bool {
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
-		c.furimuki()
+		c.turn()
 	}
 	if anim >= 0 {
 		c.changeAnim(anim, ffx)
@@ -4786,7 +4781,7 @@ func (c *Char) action() {
 		}
 		if !c.hitPause() {
 			if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
-				c.furimuki()
+				c.turn()
 			}
 			if !sys.roundEnd() {
 				if c.alive() && c.life > 0 {

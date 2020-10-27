@@ -353,7 +353,7 @@ func (c *Compiler) tokenizer(in *string) string {
 	return strings.ToLower(c.tokenizerCS(in))
 }
 
-func (_ *Compiler) tokenizerCS(in *string) string {
+func (*Compiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
 		return ""
@@ -491,7 +491,7 @@ func (_ *Compiler) tokenizerCS(in *string) string {
 	*in = (*in)[i:]
 	return token
 }
-func (_ *Compiler) isOperator(token string) int {
+func (*Compiler) isOperator(token string) int {
 	switch token {
 	case "", ",", ")", "]":
 		return -1
@@ -758,6 +758,7 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	c.token = c.tokenizer(in)
 	return nil
 }
+/* TODO: Case sensitive maps
 func (c *Compiler) kakkohirakuCS(in *string) error {
 	if c.tokenizerCS(in) != "(" {
 		return Error(c.token + "の次に'('がありません" +
@@ -766,7 +767,7 @@ func (c *Compiler) kakkohirakuCS(in *string) error {
 	}
 	c.token = c.tokenizerCS(in)
 	return nil
-}
+}*/
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
@@ -2940,7 +2941,7 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 	}
 }
-func (_ *Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
+func (*Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
 	ef expFunc, opf func(v1 *BytecodeValue, v2 BytecodeValue),
 	opc OpCode) error {
 	var be BytecodeExp
@@ -8373,7 +8374,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
+			case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
 		}
 		break
 	}

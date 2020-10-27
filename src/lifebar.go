@@ -494,7 +494,8 @@ type GuardBar struct {
 	front       map[float32]*AnimLayout
 	midpower    float32
 	midpowerMin float32
-	prevLevel   int32
+	// TODO: Add a effect similar to the one were life is removed.
+	//prevLevel   int32
 	draworder   int32
 }
 
@@ -1229,7 +1230,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		text := strings.Replace(co.text.text, "%i", fmt.Sprintf("%d", co.cur), 1)
 		text = strings.Replace(text, "%d", fmt.Sprintf("%d", co.curd), 1)
 		//split float value, round to decimal place
-		s := strings.Split(fmt.Sprintf("%s", fmt.Sprintf("%.[2]*[1]f", co.curp, co.places)), ".")
+		s := strings.Split(fmt.Sprintf("%.[2]*[1]f", co.curp, co.places), ".")
 		//decimal separator
 		if co.places > 0 {
 			if len(s) > 1 {

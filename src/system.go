@@ -32,57 +32,6 @@ const (
 	Mp3SampleRate   = 44100
 )
 
-// System vars are accessed globally through the program
-var sys = System{
-	randseed:           int32(time.Now().UnixNano()),
-	scrrect:            [...]int32{0, 0, 320, 240},
-	gameWidth:          320,
-	gameHeight:         240,
-	widthScale:         1,
-	heightScale:        1,
-	brightness:         256,
-	roundTime:          -1,
-	lifeMul:            1,
-	singleVsTeamLife:   1,
-	turnsRecoveryBase:  0.125,
-	turnsRecoveryBonus: 0.275,
-	mixer:              *newMixer(),
-	bgm:                *newBgm(),
-	sounds:             newSounds(16),
-	allPalFX:           *newPalFX(),
-	bgPalFX:            *newPalFX(),
-	sel:                *newSelect(),
-	keyState:           make(map[glfw.Key]bool),
-	match:              1,
-	listenPort:         "7500",
-	loader:             *newLoader(),
-	numSimul:           [...]int32{2, 2}, numTurns: [...]int32{2, 2},
-	ignoreMostErrors:      true,
-	superpmap:             *newPalFX(),
-	stageList:             make(map[int32]*Stage),
-	wincnt:                wincntMap(make(map[string][]int32)),
-	wincntFileName:        "save/autolevel.save",
-	powerShare:            [...]bool{true, true},
-	oldNextAddTime:        1,
-	commandLine:           make(chan string),
-	cam:                   *newCamera(),
-	statusDraw:            true,
-	mainThreadTask:        make(chan func(), 65536),
-	workpal:               make([]uint32, 256),
-	errLog:                log.New(os.Stderr, "", 0),
-	audioClose:            make(chan bool, 1),
-	keyInput:              glfw.KeyUnknown,
-	comboExtraFrameWindow: 1,
-	fontShaderVer:         "150 core",
-	//FLAC_FrameWait:          -1,
-	luaSpriteScale:       1,
-	luaPortraitScale:     1,
-	lifebarScale:         1,
-	lifebarPortraitScale: 1,
-	vRetrace:             1,
-	consoleType:          1,
-}
-
 type TeamMode int32
 
 const (
@@ -93,6 +42,7 @@ const (
 	TM_LAST = TM_Tag
 )
 
+// System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	randseed                int32
 	scrrect                 [4]int32
@@ -235,7 +185,6 @@ type System struct {
 	accel                   float32
 	clsnSpr                 Sprite
 	clsnDraw                bool
-	musicDraw               bool
 	statusDraw              bool
 	mainThreadTask          chan func()
 	explodMax               int
@@ -328,6 +277,59 @@ type System struct {
 	legacyMode      bool
 }
 
+// sys
+// The only instance of a System struct.
+// Do not create more than 1.
+var sys System = System{
+	randseed:           int32(time.Now().UnixNano()),
+	scrrect:            [...]int32{0, 0, 320, 240},
+	gameWidth:          320,
+	gameHeight:         240,
+	widthScale:         1,
+	heightScale:        1,
+	brightness:         256,
+	roundTime:          -1,
+	lifeMul:            1,
+	singleVsTeamLife:   1,
+	turnsRecoveryBase:  0.125,
+	turnsRecoveryBonus: 0.275,
+	mixer:              *newMixer(),
+	bgm:                *newBgm(),
+	sounds:             newSounds(16),
+	allPalFX:           *newPalFX(),
+	bgPalFX:            *newPalFX(),
+	sel:                *newSelect(),
+	keyState:           make(map[glfw.Key]bool),
+	match:              1,
+	listenPort:         "7500",
+	loader:             *newLoader(),
+	numSimul:           [...]int32{2, 2}, numTurns: [...]int32{2, 2},
+	ignoreMostErrors:      true,
+	superpmap:             *newPalFX(),
+	stageList:             make(map[int32]*Stage),
+	wincnt:                wincntMap(make(map[string][]int32)),
+	wincntFileName:        "save/autolevel.save",
+	powerShare:            [...]bool{true, true},
+	oldNextAddTime:        1,
+	commandLine:           make(chan string),
+	cam:                   *newCamera(),
+	statusDraw:            true,
+	mainThreadTask:        make(chan func(), 65536),
+	workpal:               make([]uint32, 256),
+	errLog:                log.New(os.Stderr, "", 0),
+	audioClose:            make(chan bool, 1),
+	keyInput:              glfw.KeyUnknown,
+	comboExtraFrameWindow: 1,
+	fontShaderVer:         "150 core",
+	//FLAC_FrameWait:          -1,
+	luaSpriteScale:       1,
+	luaPortraitScale:     1,
+	lifebarScale:         1,
+	lifebarPortraitScale: 1,
+	vRetrace:             1,
+	consoleType:          1,
+}
+
 type Window struct {
 	*glfw.Window
 	title      string
@@ -400,9 +402,12 @@ func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
 	}
 	return window, nil
 }
-func (w *Window) destroy() {
-	w.Window.Destroy()
-}
+
+// Unused.
+// TODO: Check on what this was used.
+//func (w *Window) destroy() {
+//	w.Window.Destroy()
+//}
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
@@ -429,7 +434,6 @@ func (s *System) resetOverrideCharData() {
 		s.ocd[i] = OverrideCharData{life: 0, lifeMax: 0, power: 0,
 			dizzyPoints: 0, guardPoints: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
-	return
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -1024,7 +1028,7 @@ func (s *System) commandUpdate() {
 			}
 			if act && !r.sf(CSF_noautoturn) &&
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
-				r.furimuki()
+				r.turn()
 			}
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
@@ -1381,9 +1385,9 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				s.intro >= rs4t-s.lifebar.ro.over_wintime {
 				s.intro--
 				if s.intro == rs4t-1 {
-					/*if s.time == 0 {
-						s.intro -= s.lifebar.ro.over_wintime
-					}*/
+					//if s.time == 0 {
+					//s.intro -= s.lifebar.ro.over_wintime
+					//}
 					if s.waitdown > 0 {
 						for _, p := range s.chars {
 							if len(p) > 0 && !p[0].over() {
@@ -2183,7 +2187,7 @@ func (wm *wincntMap) update() {
 	}
 }
 func (wm wincntMap) getItem(def string) []int32 {
-	lv, _ := wm[def]
+	lv := wm[def]
 	if len(lv) < MaxPalNo {
 		lv = append(lv, make([]int32, MaxPalNo-len(lv))...)
 	}
@@ -2238,13 +2242,13 @@ type SelectStage struct {
 	attachedchardef string
 	stagebgm        IniSection
 	portrait        map[[2]int16]*Sprite
-	portrait_scale  float32
+	portraitScale   float32
 	xscale          float32
 	yscale          float32
 }
 
 func newSelectStage() *SelectStage {
-	return &SelectStage{portrait: make(map[[2]int16]*Sprite), portrait_scale: 1,
+	return &SelectStage{portrait: make(map[[2]int16]*Sprite), portraitScale: 1,
 		xscale: 1, yscale: 1}
 }
 
@@ -2487,7 +2491,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				//ss.attachedchardef, ok = is.getString("attachedchar")
+				ss.attachedchardef, _ = is.getString("attachedchar")
 			}
 		case "music":
 			if music {
@@ -2515,10 +2519,10 @@ func (s *Select) AddStage(def string) error {
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				if ok := is.ReadF32("localcoord", &ss.portrait_scale); ok {
-					ss.portrait_scale = (320 / ss.portrait_scale)
+				if ok := is.ReadF32("localcoord", &ss.portraitScale); ok {
+					ss.portraitScale = (320 / ss.portraitScale)
 				}
-				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
+				if ok := is.ReadF32("portraitscale", &ss.portraitScale); !ok {
 					is.ReadF32("xscale", &ss.xscale)
 					is.ReadF32("yscale", &ss.yscale)
 				}

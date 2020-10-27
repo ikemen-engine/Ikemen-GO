@@ -16,6 +16,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// Data handlers
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
 	l.Register(name, f)
 }
@@ -32,6 +33,15 @@ func numArg(l *lua.LState, argi int) float64 {
 	}
 	return float64(num)
 }
+
+func intArg(l *lua.LState, argi int) int32 {
+	num, ok := l.Get(argi).(lua.LNumber)
+	if !ok {
+		l.RaiseError("The %vth argument is not a number.", argi)
+	}
+	return int32(num)
+}
+
 func boolArg(l *lua.LState, argi int) bool {
 	return l.ToBool(argi)
 }
@@ -96,10 +106,13 @@ func (cli *commandLineInput) GetStr() string {
 	return cli.str
 }
 
+// -------------------------------------------------------------------------------------------------
 // System Script
 func systemScriptInit(l *lua.LState) {
 	triggerFunctions(l)
 	legacyFunctions(l)
+	luaTrigger.intAnim(l)
+	luaTrigger.intCharData(l)
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			c = strings.Trim(c, "\r")
@@ -589,9 +602,9 @@ func systemScriptInit(l *lua.LState) {
 						return nil
 					})
 				}
-				if c.portrait_scale != 1 {
-					xscl *= c.portrait_scale
-					yscl *= c.portrait_scale
+				if c.portraitScale != 1 {
+					xscl *= c.portraitScale
+					yscl *= c.portraitScale
 				}
 				p := c.portrait[[...]int16{grp, idx}]
 				p.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, p.Pal, nil, p.PalTex, window)
@@ -696,7 +709,7 @@ func systemScriptInit(l *lua.LState) {
 				x1 += float32(sys.gameWidth-320) / 2
 				y1 += float32(sys.gameHeight - 240)
 			}
-		} else {
+			//} else {
 			//ws = sys.widthScale
 			//hs = sys.heightScale
 		}
@@ -972,7 +985,7 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			def += ".def"
 		}
-		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
 			def = "chars/" + def
 		}
 		if def = FileExist(def); len(def) == 0 {
@@ -3167,16 +3180,20 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	//timemod
-	luaRegister(l, "topedge", func(*lua.LState) int {
+	luaRegister(l, "topEdge", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.topEdge()))
 		return 1
 	})
-	luaRegister(l, "uniqhitcount", func(*lua.LState) int {
+	luaRegister(l, "uniqHitCount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.uniqHitCount))
 		return 1
 	})
 	luaRegister(l, "var", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.varGet(int32(numArg(l, 1))).ToI()))
+		return 1
+	})
+	luaRegister(l, "vel", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.vel[0]))
 		return 1
 	})
 	luaRegister(l, "velX", func(*lua.LState) int {
@@ -3191,49 +3208,50 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.win()))
 		return 1
 	})
-	luaRegister(l, "winko", func(*lua.LState) int {
+	luaRegister(l, "winKo", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winKO()))
 		return 1
 	})
-	luaRegister(l, "wintime", func(*lua.LState) int {
+	luaRegister(l, "winTime", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winTime()))
 		return 1
 	})
-	luaRegister(l, "winperfect", func(*lua.LState) int {
+	luaRegister(l, "winPerfect", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winPerfect()))
 		return 1
 	})
-	luaRegister(l, "winnormal", func(*lua.LState) int {
+	luaRegister(l, "winNormal", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winNormal()))
 		return 1
 	})
-	luaRegister(l, "winspecial", func(*lua.LState) int {
+	luaRegister(l, "winSpecial", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winSpecial()))
 		return 1
 	})
-	luaRegister(l, "winhyper", func(*lua.LState) int {
+	luaRegister(l, "winHyper", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winHyper()))
 		return 1
 	})
-	luaRegister(l, "wincheese", func(*lua.LState) int {
+	luaRegister(l, "winCheese", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winCheese()))
 		return 1
 	})
-	luaRegister(l, "winthrow", func(*lua.LState) int {
+	luaRegister(l, "winThrow", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winThrow()))
 		return 1
 	})
-	luaRegister(l, "winsuicide", func(*lua.LState) int {
+	luaRegister(l, "winSuicide", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winSuicide()))
 		return 1
 	})
-	luaRegister(l, "winteammate", func(*lua.LState) int {
+	luaRegister(l, "winTeammate", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.winTeammate()))
 		return 1
 	})
 
-	// new triggers
-	luaRegister(l, "animelemlength", func(*lua.LState) int {
+	// ---------------------------------------------------------------------------------------------
+	// New triggers
+	luaRegister(l, "animElemLength", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
 			l.Push(lua.LNumber(f.Time))
 		} else {
@@ -3241,7 +3259,7 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
-	luaRegister(l, "animlength", func(*lua.LState) int {
+	luaRegister(l, "animLength", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.anim.totaltime))
 		return 1
 	})
@@ -3253,15 +3271,15 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.cheated))
 		return 1
 	})
-	luaRegister(l, "combocount", func(*lua.LState) int {
+	luaRegister(l, "comboCount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.comboCount()))
 		return 1
 	})
-	luaRegister(l, "consecutivewins", func(*lua.LState) int {
+	luaRegister(l, "consecutiveWins", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.consecutiveWins[sys.debugWC.teamside]))
 		return 1
 	})
-	luaRegister(l, "damagecount", func(*lua.LState) int {
+	luaRegister(l, "damageCount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.damageCount))
 		return 1
 	})
@@ -3273,19 +3291,19 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.scf(SCF_dizzy)))
 		return 1
 	})
-	luaRegister(l, "dizzypoints", func(*lua.LState) int {
+	luaRegister(l, "dizzyPoints", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.dizzyPoints))
 		return 1
 	})
-	luaRegister(l, "dizzypointsmax", func(*lua.LState) int {
+	luaRegister(l, "dizzyPointsmMax", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.dizzyPointsMax))
 		return 1
 	})
-	luaRegister(l, "firstattack", func(*lua.LState) int {
+	luaRegister(l, "firstAttack", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.firstAttack))
 		return 1
 	})
-	luaRegister(l, "gamemode", func(*lua.LState) int {
+	luaRegister(l, "gameMode", func(*lua.LState) int {
 		if l.GetTop() == 0 {
 			l.Push(lua.LString(sys.gameMode))
 			return 1
@@ -3293,31 +3311,31 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.gameMode == strArg(l, 1)))
 		return 1
 	})
-	luaRegister(l, "getplayerid", func(*lua.LState) int {
+	luaRegister(l, "getPlayerId", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.getPlayerID(int(numArg(l, 1)))))
 		return 1
 	})
-	luaRegister(l, "guardbreak", func(*lua.LState) int {
+	luaRegister(l, "guardBreak", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.scf(SCF_guardbreak)))
 		return 1
 	})
-	luaRegister(l, "guardpoints", func(*lua.LState) int {
+	luaRegister(l, "guardPoints", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.guardPoints))
 		return 1
 	})
-	luaRegister(l, "guardpointsmax", func(*lua.LState) int {
+	luaRegister(l, "guardPointsMax", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.guardPointsMax))
 		return 1
 	})
-	luaRegister(l, "incustomstate", func(*lua.LState) int {
+	luaRegister(l, "inCustomState", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.ss.sb.playerNo != sys.debugWC.playerNo))
 		return 1
 	})
-	luaRegister(l, "localscale", func(*lua.LState) int {
+	luaRegister(l, "localScale", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.localscl))
 		return 1
 	})
-	luaRegister(l, "majorversion", func(*lua.LState) int {
+	luaRegister(l, "majorVersion", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.gi().ver[0]))
 		return 1
 	})
@@ -3325,20 +3343,20 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.mapArray[strArg(l, 1)]))
 		return 1
 	})
-	luaRegister(l, "memberno", func(*lua.LState) int {
+	luaRegister(l, "memberNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.memberNo))
 		return 1
 	})
-	luaRegister(l, "movecountered", func(*lua.LState) int {
+	luaRegister(l, "moveCountered", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveCountered()))
 		return 1
 	})
-	luaRegister(l, "networkplayer", func(*lua.LState) int {
+	luaRegister(l, "networkPlayer", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.networkPlayer()))
 		return 1
 	})
 	//p5name, p6name, p7name, p8name
-	luaRegister(l, "pausetime", func(*lua.LState) int {
+	luaRegister(l, "pauseTime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.pauseTime()))
 		return 1
 	})
@@ -3357,52 +3375,53 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LString(s))
 		return 1
 	})
-	luaRegister(l, "playerno", func(*lua.LState) int {
+	luaRegister(l, "playerNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.playerNo + 1))
 		return 1
 	})
-	luaRegister(l, "ratiolevel", func(*lua.LState) int {
+	luaRegister(l, "ratioLevel", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ratioLevel()))
 		return 1
 	})
-	luaRegister(l, "receivedhits", func(*lua.LState) int {
+	luaRegister(l, "receivedHits", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.getcombo))
 		return 1
 	})
-	luaRegister(l, "receiveddamage", func(*lua.LState) int {
+	luaRegister(l, "receivedDamage", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.getcombodmg))
 		return 1
 	})
-	luaRegister(l, "redlife", func(*lua.LState) int {
+	luaRegister(l, "redLife", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.redLife))
 		return 1
 	})
-	luaRegister(l, "roundtype", func(*lua.LState) int {
+	luaRegister(l, "roundType", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.roundType()))
 		return 1
 	})
-	luaRegister(l, "scorecurrent", func(*lua.LState) int {
+	luaRegister(l, "scoreCurrent", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.scoreCurrent))
 		return 1
 	})
-	luaRegister(l, "scoreround", func(*lua.LState) int {
+	luaRegister(l, "scoreRound", func(*lua.LState) int {
 		l.Push(lua.LNumber(scoreRound(sys.debugWC.teamside)))
 		return 1
 	})
-	luaRegister(l, "scoretotal", func(*lua.LState) int {
-		l.Push(lua.LNumber(scoreTotal(sys.debugWC.teamside)))
-		return 1
-	})
-	luaRegister(l, "selfstatenoexist", func(*lua.LState) int {
+	luaRegister(l, "scoreTotal",
+		func(*lua.LState) int {
+			l.Push(lua.LNumber(scoreTotal(sys.debugWC.teamside)))
+			return 1
+		})
+	luaRegister(l, "selfStateNoExist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.selfStatenoExist(
 			BytecodeInt(int32(numArg(l, 1)))).ToB()))
 		return 1
 	})
-	luaRegister(l, "stagebackedge", func(*lua.LState) int {
+	luaRegister(l, "stageBackEdge", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.stageBackEdge()))
 		return 1
 	})
-	luaRegister(l, "stagefrontedge", func(*lua.LState) int {
+	luaRegister(l, "stageFrontEdge", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.stageFrontEdge()))
 		return 1
 	})
@@ -3410,49 +3429,49 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.scf(SCF_standby)))
 		return 1
 	})
-	luaRegister(l, "timeleft", func(*lua.LState) int {
+	luaRegister(l, "timeLeft", func(*lua.LState) int {
 		l.Push(lua.LNumber(timeLeft()))
 		return 1
 	})
-	luaRegister(l, "timeround", func(*lua.LState) int {
+	luaRegister(l, "timeRound", func(*lua.LState) int {
 		l.Push(lua.LNumber(timeRound()))
 		return 1
 	})
-	luaRegister(l, "timetotal", func(*lua.LState) int {
+	luaRegister(l, "timeTotal", func(*lua.LState) int {
 		l.Push(lua.LNumber(timeTotal()))
 		return 1
 	})
 
 	// lua/debug only triggers
-	luaRegister(l, "animelemcount", func(*lua.LState) int {
+	luaRegister(l, "animelemCount", func(*lua.LState) int {
 		l.Push(lua.LNumber(len(sys.debugWC.anim.frames)))
 		return 1
 	})
-	luaRegister(l, "animelemtimesum", func(*lua.LState) int {
+	luaRegister(l, "animElemTimeSum", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.anim.time))
 		return 1
 	})
-	luaRegister(l, "animtimesum", func(*lua.LState) int {
+	luaRegister(l, "animTimeSum", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.anim.sumtime))
 		return 1
 	})
-	luaRegister(l, "animowner", func(*lua.LState) int {
+	luaRegister(l, "animOwner", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animPN) + 1)
 		return 1
 	})
-	luaRegister(l, "gameend", func(*lua.LState) int {
+	luaRegister(l, "gameEnd", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.gameEnd))
 		return 1
 	})
-	luaRegister(l, "gamespeed", func(*lua.LState) int {
+	luaRegister(l, "gameSpeed", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.gameSpeed * sys.accel * 100))
 		return 1
 	})
-	luaRegister(l, "localcoord", func(*lua.LState) int {
+	luaRegister(l, "localCoord", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.localcoord))
 		return 1
 	})
-	luaRegister(l, "matchtime", func(*lua.LState) int {
+	luaRegister(l, "matchTime", func(*lua.LState) int {
 		var ti int32
 		for _, v := range sys.timerRounds {
 			ti += v
@@ -3464,39 +3483,39 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.paused && !sys.step))
 		return 1
 	})
-	luaRegister(l, "roundover", func(*lua.LState) int {
+	luaRegister(l, "roundOver", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.roundOver()))
 		return 1
 	})
-	luaRegister(l, "roundstart", func(*lua.LState) int {
+	luaRegister(l, "roundStart", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.tickCount == 1))
 		return 1
 	})
-	luaRegister(l, "selectno", func(*lua.LState) int {
+	luaRegister(l, "selectNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.selectNo))
 		return 1
 	})
-	luaRegister(l, "spritegroup", func(*lua.LState) int {
+	luaRegister(l, "spriteGroup", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.curFrame.Group))
 		return 1
 	})
-	luaRegister(l, "spritenumber", func(*lua.LState) int {
+	luaRegister(l, "spriteNumber", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.curFrame.Number))
 		return 1
 	})
-	luaRegister(l, "stateowner", func(*lua.LState) int {
+	luaRegister(l, "stateOwner", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ss.sb.playerNo + 1))
 		return 1
 	})
-	luaRegister(l, "stateownerid", func(*lua.LState) int {
+	luaRegister(l, "stateOwnerId", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.chars[sys.debugWC.ss.sb.playerNo][0].id))
 		return 1
 	})
-	luaRegister(l, "stateownername", func(*lua.LState) int {
+	luaRegister(l, "stateOwnerName", func(*lua.LState) int {
 		l.Push(lua.LString(sys.chars[sys.debugWC.ss.sb.playerNo][0].name))
 		return 1
 	})
-	luaRegister(l, "tickcount", func(*lua.LState) int {
+	luaRegister(l, "tickCount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.tickCount))
 		return 1
 	})
@@ -3504,7 +3523,7 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.vRetrace))
 		return 1
 	})
-	luaRegister(l, "winnerteam", func(*lua.LState) int {
+	luaRegister(l, "winnerTeam", func(*lua.LState) int {
 		var winp int32 = -1
 		if sys.matchOver() && sys.roundOver() {
 			w1 := sys.wins[0] >= sys.matchWins[0]
@@ -3518,6 +3537,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 }
 
+// -------------------------------------------------------------------------------------------------
 // Legacy functions (unused)
 func legacyFunctions(l *lua.LState) {
 	luaRegister(l, "drawFace", func(l *lua.LState) int {

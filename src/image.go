@@ -938,6 +938,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			px = make([]byte, datasize-4)
 			if err := binary.Read(f, binary.LittleEndian, px); err != nil {
 				panic(err)
+				//return err
 			}
 		}
 		switch format {

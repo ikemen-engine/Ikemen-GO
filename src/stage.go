@@ -404,8 +404,8 @@ type bgCtrl struct {
 	x, y         float32
 	v            [3]int32
 	positionlink bool
-	flag         bool
-	idx          int
+	//flag         bool
+	idx int
 }
 
 func newBgCtrl() *bgCtrl {
@@ -705,9 +705,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			s.stageCamera.zoomin = sys.cam.ZoomMax
 		}
-		sec[0].ReadF32("zoomout", &s.stageCamera.mugen_zoomout)
+		sec[0].ReadF32("zoomout", &s.stageCamera.mugenZoomOut)
 		if sys.cam.ZoomMin == 0 {
-			s.stageCamera.zoomout = s.stageCamera.mugen_zoomout
+			s.stageCamera.zoomout = s.stageCamera.mugenZoomOut
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}

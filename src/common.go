@@ -601,10 +601,10 @@ func (l *Layout) Read(pre string, is IniSection) {
 func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
 		/*if l.facing < 0 {
-			x += sys.lifebarFontScale
+			//x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale
+			//y += sys.lifebarFontScale
 		}*/
 		paltex := s.PalTex
 		s.Draw(x+l.offset[0], y+l.offset[1],
@@ -615,10 +615,10 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	a *Animation, palfx *PalFX) {
 	if l.layerno == ln {
 		/*if l.facing < 0 {
-			x += sys.lifebarFontScale
+			//x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale
+			//y += sys.lifebarFontScale
 		}*/
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
@@ -630,10 +630,10 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32, palfx *PalFX) {
 	if l.layerno == ln {
 		/*if l.facing < 0 {
-			x += sys.lifebarFontScale
+			//x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale
+			//y += sys.lifebarFontScale
 		}*/
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
@@ -713,8 +713,8 @@ type AnimTextSnd struct {
 	text        LbText
 	anim        AnimLayout
 	displaytime int32
-	time        int32
-	sndtime     int32
+	//time        int32
+	//sndtime     int32
 }
 
 func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
@@ -748,7 +748,7 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
 	}
 }
 
-// DrawScaled is Draw but with a scaled setting used for lifebar localcoord
+// DrawScaled it's Draw but with a scaled setting used for lifebar localcoord
 func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.DrawScaled(x, y, layerno, scale)

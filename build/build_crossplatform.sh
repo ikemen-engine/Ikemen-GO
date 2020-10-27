@@ -1,6 +1,5 @@
 #!/bin/sh
 cd ..
-export GOPATH=$PWD/go
 export CGO_ENABLED=1
 IS_WINDOWS="0"
 
@@ -40,9 +39,9 @@ else
 fi;
 
 if [ "$IS_WINDOWS" = "1" ]; then
-	go build -ldflags "-H windowsgui" -o ./bin/$BINARY_NAME ./src
+	go build -i -tags al_cmpt -ldflags "-H windowsgui" -o ./bin/$BINARY_NAME ./src
 else
-	go build -o ./bin/$BINARY_NAME ./src
+	go build -i -tags al_cmpt -o ./bin/$BINARY_NAME ./src
 fi
 
 chmod +x ./bin/$BINARY_NAME

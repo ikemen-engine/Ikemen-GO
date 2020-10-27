@@ -7,6 +7,7 @@
 #
 # @author Daniel Porto 
 # https://github.com/danielporto
+# and edited by Gacel to allow to use on AppVeyor
 ###############################################################################
 
 # Parameters explained:

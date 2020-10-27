@@ -17,6 +17,9 @@ get.
 go.sum
 go.mod
 
+# Temp
+src/lua_triggers.go
+
 # Distribution and debug files
 Ikemen.log
 Ikemen_GO.exe

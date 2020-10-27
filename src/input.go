@@ -621,8 +621,7 @@ func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
 	sys.keyString = string(char)
 }
 
-/* TODO: Why this did exist?
-func joystickCallback(joy, event glfw.PeripheralEvent) {
+/*func joystickCallback(joy, event glfw.PeripheralEvent) {
 	if event == glfw.Connected {
 		// The joystick was connected
 	} else if event == glfw.Disconnected {
