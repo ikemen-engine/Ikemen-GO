@@ -1124,7 +1124,7 @@ func readLifeBarTime(is IniSection,
 	ti := newLifeBarTime()
 	is.ReadI32("pos", &ti.pos[0], &ti.pos[1])
 	ti.counter[0] = readLbText("counter.", is, "", 0, f, 0)
-	r, _ := regexp.Compile("counter[0-9]+\\.")
+	r, _ := regexp.Compile(`counter[0-9]+\.`)
 	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")

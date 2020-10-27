@@ -755,6 +755,7 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	c.token = c.tokenizer(in)
 	return nil
 }
+
 /* TODO: Case sensitive maps
 func (c *Compiler) kakkohirakuCS(in *string) error {
 	if c.tokenizerCS(in) != "(" {
@@ -8365,6 +8366,8 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 	c.scan(line)
 	for {
 		switch c.token {
+		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
+		// Break
 		case "", "[":
 			if !root {
 				return c.yokisinaiToken()
@@ -8531,7 +8534,6 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-			case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
 		}
 		break
 	}
