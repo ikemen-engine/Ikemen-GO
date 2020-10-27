@@ -52,7 +52,7 @@ func loadFnt(filename string, height int32) (*Fnt, error) {
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/")
+	filename = SearchFile(filename, "font/", true)
 
 	fp, err := os.Open(filename)
 
@@ -75,7 +75,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 
 	//Error is not a valid fnt file
 	if string(buf[:n]) != "ElecbyteFnt\x00" {
-		return nil, Error("ElecbyteFntではありません")
+		return nil, Error("Not ElecbyteFnt")
 	}
 
 	read := func(x interface{}) error {
@@ -252,7 +252,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/")
+	filename = SearchFile(filename, "font/", true)
 
 	content, err := LoadText(filename)
 
@@ -326,7 +326,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 
 func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	//Search in local directory
-	fileDir := SearchFile(filename, fontfile)
+	fileDir := SearchFile(filename, fontfile, true)
 	//Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
@@ -357,7 +357,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 }
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, fontfile)
+	fileDir := SearchFile(filename, fontfile, true)
 	sff, err := loadSff(fileDir, false)
 
 	if err != nil {

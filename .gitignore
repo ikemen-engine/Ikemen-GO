@@ -21,6 +21,7 @@ go.mod
 src/lua_triggers.go
 
 # Distribution and debug files
+*.png
 Ikemen.log
 Ikemen_GO.exe
 OpenAL32.dll

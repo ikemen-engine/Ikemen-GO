@@ -1,4 +1,4 @@
-#Guard Break code adopted from add004 by Shiyo Kakuge
+#Guard Break code adopted from Shiyo Kakuge's add004
 #===============================================================================
 #StateGuardBreakHit
 #===============================================================================
@@ -19,7 +19,6 @@ if Time = 0 {
 		scale: Const240p(0.15), Const240p(4.5);
 		trans: add;
 		alpha: 256, 256;
-		ignorehitpause: 1;
 		pausemovetime: -1;
 		ignorehitpause: 1;
 	}
@@ -38,7 +37,6 @@ if Time < 13 {
 		accel: Const240p(0.038), 0;
 		facing: ifelse(Random < 500, 1, -1);
 		vfacing: ifelse(Random < 500, 1, -1);
-		ignorehitpause: 1;
 		pausemovetime: -1;
 		ignorehitpause: 1;
 	}
@@ -53,10 +51,10 @@ persistent(0) if Time = 0 {
 		pos: 0, ScreenHeight / 2; #color 0 (blue)
 		scale: ScreenWidth, 7.5 * ScreenWidth / 320.0;
 		bindtime: -1;
-		ignorehitpause: 1;
 		supermovetime: -1;
 		pausemovetime: -1;
 		ownpal: 1;
+		ignorehitpause: 1;
 	}
 	Pause{time: 13; movetime: 13}
 	StateTypeSet{physics: StateType}
@@ -108,7 +106,7 @@ if Time <= 80 {
 	}
 }
 
-if Animtime = 0 || Time > 99 {
+if AnimTime = 0 || Time > 99 {
 	if StateType = S {
 		SelfState{value: Const(StateStand); ctrl: 1}
 	} else {
@@ -121,8 +119,8 @@ if Animtime = 0 || Time > 99 {
 #===============================================================================
 [Statedef -2]
 
-if !Const(Default.Enable.GuardBreak) || IsHelper {
-	#do nothing, global code disabled locally (or executed by helper)
+if !Const(Default.Enable.GuardBreak) || IsHelper || TeamSide = 0 {
+	#do nothing, global code disabled locally or executed by helper/stage
 } else if RoundState = 0 {
 	GuardPointsSet{value: GuardPointsMax}
 	MapSet{map: "_iksys_guardPointsCounter"; value: 0}
@@ -136,10 +134,8 @@ if !Const(Default.Enable.GuardBreak) || IsHelper {
 		ignorehitpause if GuardPoints = 0 && !GuardBreak {
 			ChangeState{value: Const(StateGuardBreakHit)}
 		}
-	} else if MoveType != H {
-		if Map(_iksys_guardPointsCounter) > 0 {
-			MapAdd{map: "_iksys_guardPointsCounter"; value: -1}
-		}
+	} else if Map(_iksys_guardPointsCounter) > 0 && MoveType != H && GetHitVar(isbound) = 0 && !Standby {
+		MapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 	}
 	ignorehitpause if GuardBreak && StateNo != [Const(StateGuardBreakHit), Const(StateGuardBreakRecover)] {
 		GuardPointsSet{value: GuardPointsMax}

@@ -128,7 +128,7 @@ func RenderInit() {
 		gl.GetObjectParameterivARB(shader, gl.OBJECT_COMPILE_STATUS_ARB, &ok)
 		if ok == 0 {
 			chk(errLog(shader))
-			panic(Error("コンパイルエラー\nShader compile error"))
+			panic(Error("Shader compile error"))
 		}
 		return
 	}
@@ -141,7 +141,7 @@ func RenderInit() {
 		gl.GetObjectParameterivARB(program, gl.OBJECT_LINK_STATUS_ARB, &ok)
 		if ok == 0 {
 			chk(errLog(program))
-			panic(Error("リンクエラー / Link error"))
+			panic(Error("Link error"))
 		}
 		return
 	}

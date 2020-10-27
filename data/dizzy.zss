@@ -1,4 +1,4 @@
-#Dizzy code adopted from add004 by Shiyo Kakuge
+#Dizzy code adopted from Shiyo Kakuge's add004
 #===============================================================================
 #Functions
 #===============================================================================
@@ -13,16 +13,16 @@ if !NumHelper(Const(StateDizzyBirdsHelper)) {
 		pos: -3 * ScreenWidth, ScreenHeight / 2; #color 3 (red)
 		scale: ScreenWidth, 7.5 * ScreenWidth / 320.0;
 		bindtime: -1;
-		ignorehitpause: 1;
 		supermovetime: -1;
 		pausemovetime: -1;
 		ownpal: 1;
+		ignorehitpause: 1;
 	}
 	Helper{
 		id: Const(StateDizzyBirdsHelper);
 		stateno: Const(StateDizzyBirdsHelper);
 		ownpal: 1;
-		size.height: ifelse(Life < 200, 3, rand(0, 2))
+		size.height: ifelse(Life < 200, 3, rand(0, 2));
 	}
 }
 
@@ -49,7 +49,7 @@ Explod{
 	anim: F (60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
 	postype: p1;
 	pos: 0, 0;
-	facing: facing;
+	facing: Facing;
 	sprpriority: ifelse($vely <= Const240p(14), -10, 10);
 }
 PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
@@ -275,8 +275,8 @@ if Time > 8 {
 #===============================================================================
 [Statedef -2]
 
-if !Const(Default.Enable.Dizzy) || IsHelper {
-	#do nothing, global code disabled locally (or executed by helper)
+if !Const(Default.Enable.Dizzy) || IsHelper || TeamSide = 0 {
+	#do nothing, global code disabled locally or executed by helper/stage
 } else if RoundState = 0 {
 	DizzyPointsSet{value: DizzyPointsMax}
 	MapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
@@ -284,7 +284,7 @@ if !Const(Default.Enable.Dizzy) || IsHelper {
 } else if RoundState = 2 && Alive {
 	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
 		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
-	} else if MoveType != H && Map(_iksys_dizzyPointsCounter) > 0 {
+	} else if Map(_iksys_dizzyPointsCounter) > 0 && MoveType != H && GetHitVar(isbound) = 0 && !Standby {
 		MapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
 	}
 	ignorehitpause if DizzyPoints = 0 {

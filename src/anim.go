@@ -1020,3 +1020,37 @@ func (a *Anim) Draw() {
 func (a *Anim) ResetFrames() {
 	a.anim.Reset()
 }
+
+type PreloadedAnims map[[2]int16]*Animation
+
+func NewPreloadedAnims() PreloadedAnims {
+	return PreloadedAnims(make(map[[2]int16]*Animation))
+}
+func (pa PreloadedAnims) get(grp, idx int16) *Animation {
+	a := pa[[...]int16{grp, idx}]
+	if a == nil {
+		return a
+	}
+	ret := &Animation{}
+	*ret = *a
+	return ret
+}
+func (pa PreloadedAnims) addAnim(anim *Animation, no int32) {
+	pa[[...]int16{int16(no), -1}] = anim
+}
+func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx int16) {
+	if sff.GetSprite(grp, idx) == nil {
+		return
+	}
+	anim := newAnimation(sff)
+	anim.mask = 0
+	af := newAnimFrame()
+	af.Group, af.Number = grp, idx
+	anim.frames = append(anim.frames, *af)
+	pa[[...]int16{grp, idx}] = anim
+}
+func (pa PreloadedAnims) updateSff(sff *Sff) {
+	for _, v := range pa {
+		v.sff = sff
+	}
+}

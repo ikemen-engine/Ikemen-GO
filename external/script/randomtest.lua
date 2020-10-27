@@ -205,7 +205,7 @@ function randomtest.randSel(pno, winner)
 		team = math.random(0, 1) * 2
 	end
 	setTeamMode(pno, team, math.random(1, 4))
-	start['p' .. pno .. 'TeamMode'] = team
+	start.p[pno].teamMode = team
 	local tmp = 0
 	while tmp < 2 do
 		tmp = selectChar(pno, roster[nextChar], getCharRandomPalette(roster[nextChar]))
@@ -243,6 +243,7 @@ end
 
 -- This is executed first
 function randomtest.run()
+	clearColor(0, 0, 0)
 	randomtest.init()
 	refresh()
 	while not esc() do
@@ -253,6 +254,7 @@ function randomtest.run()
 		loadStart()
 		local oldwinner = winner
 		winner = game()
+		clearColor(0, 0, 0)
 		if winner < 0 or esc() then break end
 		oldwins = wins
 		wins = wins + 1
@@ -266,6 +268,9 @@ function randomtest.run()
 		end
 		refresh()
 	end
+	main.f_bgReset(motif[main.background].bg)
+	main.f_fadeReset('fadein', motif[main.group])
+	main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 end
 
 return randomtest

@@ -40,12 +40,11 @@ func main() {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
 		player := 1
+		r1, _ := regexp.Compile("^-[h%?]")
+		r2, _ := regexp.Compile("^-")
 		for _, a := range os.Args[1:] {
-			match, _ := regexp.MatchString("^-", a)
-			if match {
-				help, _ := regexp.MatchString("^-[h%?]", a)
-				if help {
-					text := `Options (case sensitive):
+			if r1.MatchString(a) {
+				text := `Options (case sensitive):
 -h -?                   Help
 -log <logfile>          Records match data to <logfile>
 -r <path>               Loads motif <path>. eg. -r motifdir or -r motifdir/system.def
@@ -74,12 +73,12 @@ Debug Options:
 -speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
-					//dialog.Message(text).Title("I.K.E.M.E.N Command line options").Info()
-					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
-					var s string
-					fmt.Scanln(&s)
-					os.Exit(0)
-				}
+				//dialog.Message(text).Title("I.K.E.M.E.N Command line options").Info()
+				fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
+				var s string
+				fmt.Scanln(&s)
+				os.Exit(0)
+			} else if r2.MatchString(a) {
 				sys.cmdFlags[a] = ""
 				key = a
 			} else if key == "" {
@@ -117,8 +116,10 @@ Debug Options:
 		"loop()"
     ],
 	"CommonStates": [
+		"data/action.zss",
 		"data/dizzy.zss",
 		"data/guardbreak.zss",
+		"data/rank.zss",
 		"data/score.zss",
 		"data/tag.zss"
     ],
@@ -127,9 +128,11 @@ Debug Options:
 	"Credits": 10,
 	"DebugFont": "font/debug-bold.def",
 	"DebugKeys": true,
-	"DebugMode": false,
 	"Difficulty": 8,
+	"EscOpensMenu": true,
 	"ExternalShaders": [],
+	"FirstRun": true,
+	"FontShaderVer": "150 core",
 	"ForceStageZoomin": 0,
 	"ForceStageZoomout": 0,
 	"Fullscreen": false,
@@ -137,7 +140,6 @@ Debug Options:
 	"GameHeight": 480,
 	"GameSpeed": 100,
 	"IP": {},
-	"LegacyMode": false,
 	"LifebarFontScale": 1,
 	"LifeMul": 100,
 	"ListenPort": "7500",
@@ -149,6 +151,7 @@ Debug Options:
 	"MaxExplod": 512,
 	"MaxHelper": 56,
 	"MaxPlayerProjectile": 256,
+	"Modules": [],
 	"Motif": "data/system.def",
 	"MSAA": false,
 	"NumSimul": [
@@ -163,11 +166,8 @@ Debug Options:
 		2,
 		4
 	],
+	"Players": 4,
 	"PostProcessingShader": 0,
-	"PreloadingBig": true,
-	"PreloadingSmall": true,
-	"PreloadingStage": true,
-	"PreloadingVersus": true,
 	"QuickContinue": false,
 	"RatioAttack": [
 		0.82,
@@ -181,14 +181,18 @@ Debug Options:
 		1.17,
 		1.4
 	],
+	"RatioRecoveryBase": 0,
+	"RatioRecoveryBonus": 20,
+	"RoundsNumSimul": 2,
 	"RoundsNumSingle": 2,
-	"RoundsNumTeam": 2,
+	"RoundsNumTag": 2,
 	"RoundTime": 99,
-	"SafeLoading": false,
 	"ScreenshotFolder": "",
-	"SingleVsTeamLife": 100,
+	"StartStage" : "stages/stage0.def",
 	"System": "external/script/main.lua",
-	"TeamLifeAdjustment": false,
+	"Team1VS2Life": 100,
+	"TeamDuplicates": true,
+	"TeamLifeShare": false,
 	"TeamPowerShare": true,
 	"TrainingChar": "chars/training/training.def",
 	"TurnsRecoveryBase": 0,
@@ -241,6 +245,44 @@ Debug Options:
 				"RIGHTBRACKET",
 				"Not used"
 			]
+		},
+		{
+			"Joystick": -1,
+			"Buttons": [
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used"
+			]
+		},
+		{
+			"Joystick": -1,
+			"Buttons": [
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used",
+				"Not used"
+			]
 		}
 	],
 	"JoystickConfig": [
@@ -281,6 +323,44 @@ Debug Options:
 				"-12",
 				"6"
 			]
+		},
+		{
+			"Joystick": 2,
+			"Buttons": [
+				"10",
+				"12",
+				"13",
+				"11",
+				"0",
+				"1",
+				"4",
+				"2",
+				"3",
+				"5",
+				"7",
+				"-10",
+				"-12",
+				"6"
+			]
+		},
+		{
+			"Joystick": 3,
+			"Buttons": [
+				"10",
+				"12",
+				"13",
+				"11",
+				"0",
+				"1",
+				"4",
+				"2",
+				"3",
+				"5",
+				"7",
+				"-10",
+				"-12",
+				"6"
+			]
 		}
 	]
 }
@@ -305,9 +385,10 @@ Debug Options:
 		Credits                    int
 		DebugFont                  string
 		DebugKeys                  bool
-		DebugMode                  bool
 		Difficulty                 int
+		EscOpensMenu               bool
 		ExternalShaders            []string
+		FirstRun                   bool
 		FontShaderVer              string
 		ForceStageZoomin           float32
 		ForceStageZoomout          float32
@@ -316,7 +397,6 @@ Debug Options:
 		GameHeight                 int32
 		GameSpeed                  float32
 		IP                         map[string]string
-		LegacyMode                 bool
 		LifebarFontScale           float32
 		LifeMul                    float32
 		ListenPort                 string
@@ -328,27 +408,29 @@ Debug Options:
 		MaxExplod                  int
 		MaxHelper                  int32
 		MaxPlayerProjectile        int
+		Modules                    []string
 		Motif                      string
 		MSAA                       bool
 		NumSimul                   [2]int
 		NumTag                     [2]int
 		NumTurns                   [2]int
+		Players                    int
 		PostProcessingShader       int32
-		PreloadingBig              bool
-		PreloadingSmall            bool
-		PreloadingStage            bool
-		PreloadingVersus           bool
 		QuickContinue              bool
 		RatioAttack                [4]float32
 		RatioLife                  [4]float32
+		RatioRecoveryBase          float32
+		RatioRecoveryBonus         float32
+		RoundsNumSimul             int32
 		RoundsNumSingle            int32
-		RoundsNumTeam              int32
+		RoundsNumTag               int32
 		RoundTime                  int32
-		SafeLoading                bool
 		ScreenshotFolder           string
-		SingleVsTeamLife           float32
+		StartStage                 string
 		System                     string
-		TeamLifeAdjustment         bool
+		Team1VS2Life               float32
+		TeamDuplicates             bool
+		TeamLifeShare              bool
 		TeamPowerShare             bool
 		TrainingChar               string
 		TurnsRecoveryBase          float32
@@ -408,19 +490,17 @@ Debug Options:
 	sys.commonStates = tmp.CommonStates
 	sys.consoleType = tmp.ConsoleType
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
-	sys.debugDraw = tmp.DebugMode
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
-	sys.fullscreen = tmp.Fullscreen
 	if len(tmp.FontShaderVer) > 1 {
 		sys.fontShaderVer = tmp.FontShaderVer
 	}
+	sys.fullscreen = tmp.Fullscreen
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
-	sys.legacyMode = tmp.LegacyMode
-	sys.lifeAdjustment = tmp.TeamLifeAdjustment
 	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.lifeMul = tmp.LifeMul / 100
+	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}
 	sys.listenPort = tmp.ListenPort
 	sys.loseSimul = tmp.LoseSimul
 	sys.loseTag = tmp.LoseTag
@@ -437,9 +517,7 @@ Debug Options:
 	} else {
 		sys.screenshotFolder = tmp.ScreenshotFolder
 	}
-	sys.singleVsTeamLife = tmp.SingleVsTeamLife / 100
-	sys.turnsRecoveryBase = tmp.TurnsRecoveryBase / 100
-	sys.turnsRecoveryBonus = tmp.TurnsRecoveryBonus / 100
+	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
 	sys.wavVolume = tmp.VolumeSfx
 	sys.windowMainIconLocation = append(sys.windowMainIconLocation, tmp.WindowIcon)

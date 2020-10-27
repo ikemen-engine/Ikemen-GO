@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/timshannon/go-openal/openal"
+	"github.com/Windblade-GR01/go-openal/openal"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
@@ -407,7 +407,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "RIFF" {
-		return nil, Error("RIFFではありません")
+		return nil, Error("Not RIFF")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
@@ -443,19 +443,19 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 				return nil, err
 			}
 			if fmtID != 1 {
-				return nil, Error("リニアPCMではありません")
+				return nil, Error("Not a linear PCM")
 			}
 			if err := read(&w.Channels); err != nil {
 				return nil, err
 			}
 			if w.Channels < 1 || w.Channels > 2 {
-				return nil, Error("チャンネル数が不正です")
+				return nil, Error(fmt.Sprintf("Invalid number of channels: %d", w.Channels))
 			}
 			if err := read(&w.SamplesPerSec); err != nil {
 				return nil, err
 			}
 			if w.SamplesPerSec < 1 || w.SamplesPerSec >= 0xfffff {
-				return nil, Error(fmt.Sprintf("周波数が不正です %d", w.SamplesPerSec))
+				return nil, Error(fmt.Sprintf("Invalid frequency: %d", w.SamplesPerSec))
 			}
 			var musi uint32
 			if err := read(&musi); err != nil {
@@ -469,7 +469,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 				return nil, err
 			}
 			if w.BytesPerSample != 8 && w.BytesPerSample != 16 {
-				return nil, Error("bit数が不正です")
+				return nil, Error(fmt.Sprintf("Invalid bit number: %d", w.BytesPerSample))
 			}
 			w.BytesPerSample >>= 3
 		case "data":
@@ -484,7 +484,7 @@ func ReadWave(f *os.File, ofs int64) (*Wave, error) {
 	}
 	if fmtSize == 0 {
 		if dataSize > 0 {
-			return nil, Error("fmt がありません")
+			return nil, Error("fmt is missing")
 		}
 		return nil, nil
 	}
@@ -516,7 +516,7 @@ func LoadSnd(filename string) (*Snd, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("ElecbyteSndではありません")
+		return nil, Error("Not ElecbyteSnd")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
@@ -602,7 +602,7 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("ElecbyteSndではありません")
+		return nil, Error("Not ElecbyteSnd")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)

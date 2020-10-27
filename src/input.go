@@ -597,12 +597,8 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 	case glfw.Press:
 		sys.keyState[key] = true
 		sys.keyInput = key
-		if key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0 {
-			sys.esc = true
-			if sys.netInput != nil || len(sys.commonLua) == 0 || sys.gameMode == "" {
-				sys.endMatch = true
-			}
-		}
+		sys.esc = sys.esc ||
+			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			if sys.netInput == nil && (!sys.paused || sys.step || v.Pause) {
 				v.Activate = v.Activate || k.Test(key, mk)
@@ -1201,7 +1197,7 @@ func (ni *NetInput) writeI32(i32 int32) error {
 }
 func (ni *NetInput) Synchronize() error {
 	if !ni.IsConnected() || ni.st == NS_Error {
-		return Error("接続がありません。" + "\n" + "Error: Can not connect to the other player.")
+		return Error("Can not connect to the other player")
 	}
 	ni.Stop()
 	var seed int32
@@ -1226,7 +1222,7 @@ func (ni *NetInput) Synchronize() error {
 	if tmp, err := ni.readI32(); err != nil {
 		return err
 	} else if tmp != ni.time {
-		return Error("同期エラーです。" + "\n" + "Synchronization error.")
+		return Error("Synchronization error")
 	}
 	ni.buf[ni.locIn].reset(ni.time)
 	ni.buf[ni.remIn].reset(ni.time)

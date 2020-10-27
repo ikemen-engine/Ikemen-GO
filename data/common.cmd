@@ -1,4 +1,14 @@
 [Command]
+name = "TagShiftBack"
+command = d
+time = 1
+
+[Command]
+name = "TagShiftFwd"
+command = w
+time = 1
+
+[Command]
 name = "x"
 command = x
 time = 1
