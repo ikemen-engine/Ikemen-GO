@@ -26,7 +26,6 @@ OpenAL32.dll
 save/*
 debug/*
 chars/*
-font/*
 sound/*
 stages/*
 wip/*
