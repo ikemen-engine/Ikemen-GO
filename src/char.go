@@ -5191,7 +5191,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.makeDust(0, 0)
 			}
 		}
-		for k, _ := range c.hitScale {
+		for k := range c.hitScale {
 			if k != -1 {
 				if p := sys.playerID(k); p != nil /*&& p.player*/ && p.ss.moveType != MT_H {
 					delete(c.hitScale, k)

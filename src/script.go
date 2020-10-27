@@ -2181,8 +2181,8 @@ func systemScriptInit(l *lua.LState) {
 				}
 			}
 		}
-		xscl *= c.portrait_scale
-		yscl *= c.portrait_scale
+		xscl *= c.portraitScale
+		yscl *= c.portraitScale
 		c.portrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, c.portrait.Pal, nil, c.portrait.PalTex, window)
 		return 0
 	})

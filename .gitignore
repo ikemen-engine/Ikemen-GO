@@ -15,13 +15,11 @@ releaseconf.xml.backup
 Ikemen_GO.xml.backup
 get.
 go.sum
-go.mod
 
 # Temp
 src/lua_triggers.go
 
 # Distribution and debug files
-*.png
 Ikemen.log
 Ikemen_GO.exe
 OpenAL32.dll

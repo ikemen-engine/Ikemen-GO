@@ -173,7 +173,7 @@ func readHealthBar(pre string, is IniSection,
 	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	hb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	r, _ := regexp.Compile(pre + "front[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -188,7 +188,7 @@ func readHealthBar(pre string, is IniSection,
 	hb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	hb.red[0] = ReadAnimLayout(pre+"red.", is, sff, at, 0)
 	r, _ = regexp.Compile(pre + "red[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -389,7 +389,7 @@ func readPowerBar(pre string, is IniSection,
 	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	pb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	r, _ := regexp.Compile(pre + "front[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -553,7 +553,7 @@ func readGuardBar(pre string, is IniSection,
 	gb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	gb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	r, _ := regexp.Compile(pre + "front[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -696,7 +696,7 @@ func readStunBar(pre string, is IniSection,
 	sb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	sb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
 	r, _ := regexp.Compile(pre + "front[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -1125,7 +1125,7 @@ func readLifeBarTime(is IniSection,
 	is.ReadI32("pos", &ti.pos[0], &ti.pos[1])
 	ti.counter[0] = readLbText("counter.", is, "", 0, f, 0)
 	r, _ := regexp.Compile("counter[0-9]+\\.")
-	for k, _ := range is {
+	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
 			submatchall := re.FindAllString(k, -1)
@@ -2355,7 +2355,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		"[timer]": -1, "[score]": -1, "[match]": -1, "[ailevel]": -1, "[mode]": -1,
 	}
 	strc := strings.ToLower(strings.TrimSpace(str))
-	for k, _ := range l.missing {
+	for k := range l.missing {
 		strc = strings.Replace(strc, ";"+k, "", -1)
 		if strings.Contains(strc, k) {
 			delete(l.missing, k)

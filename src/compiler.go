@@ -7054,7 +7054,7 @@ func (c *Compiler) dialogue(is IniSection, sc *StateControllerBase,
 		}
 		keys := make([]string, 0)
 		r, _ := regexp.Compile("^text[0-9]+$")
-		for k, _ := range is {
+		for k := range is {
 			if r.MatchString(k) {
 				keys = append(keys, k)
 			}
