@@ -22,7 +22,7 @@ for i = 1, 2 do
 	start.p[i].teamMode = 0
 	start.p[i].numChars = 0
 end
---temporary data (active only during 1 LaunchFight call)
+--temporary data (active only during 1 launchFight call)
 start.challenger = 0
 --cell data
 start.c = {}
@@ -1548,7 +1548,7 @@ function start.f_selectChallenger()
 		start.exit = true
 		return false
 	end
-	local ok = LaunchFight{challenger = true}
+	local ok = launchFight{challenger = true}
 	--restore values
 	main.f_default()
 	main.t_itemname.arcade()
@@ -1567,7 +1567,7 @@ function start.f_selectChallenger()
 	return true
 end
 
-function LaunchFight(data)
+function launchFight(data)
 	--arguments
 	local t = {}
 	t.p1numchars = start.p[1].numChars
@@ -1620,7 +1620,7 @@ function LaunchFight(data)
 	end
 	--select P1 chars
 	if #start.p[1].t_selected == 0 then
-		panicError("\n" .. "LaunchFight(): no valid P1 characters\n")
+		panicError("\n" .. "launchFight(): no valid P1 characters\n")
 		start.exit = true
 		return false --return to main menu
 	end
@@ -1692,7 +1692,7 @@ function LaunchFight(data)
 			end
 			--team conversion if 'single' param is set on randomly added chars
 			if onlyme and #start.p[2].t_selected > 1 then
-				panicError("Unexpected LaunchFight state.\nPlease write down everything that lead to this error and report it to K4thos.\n")
+				panicError("Unexpected launchFight state.\nPlease write down everything that lead to this error and report it to K4thos.\n")
 				--[[for i = 1, #start.p[2].t_selected do
 					if not start.f_getCharData(start.p[2].t_selected[i].ref).single then
 						table.insert(main.t_availableChars[t.order], start.p[2].t_selected[i].ref)
@@ -1708,7 +1708,7 @@ function LaunchFight(data)
 		if #start.p[2].t_selected < start.p[2].numChars then
 			start.p[2].t_selected = {}
 			start.p[2].t_selTemp = {}
-			print("LaunchFight(): not enough P2 characters, skipping execution")
+			print("launchFight(): not enough P2 characters, skipping execution")
 			setMatchNo(matchno() + 1)
 			return true --continue lua code execution
 		end
@@ -1783,7 +1783,7 @@ function LaunchFight(data)
 	return ok
 end
 
-function LaunchStoryboard(path)
+function launchStoryboard(path)
 	if path == nil or not main.f_fileExists(path) then
 		return false
 	end

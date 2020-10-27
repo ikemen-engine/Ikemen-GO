@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -1752,10 +1751,6 @@ func systemScriptInit(l *lua.LState) {
 		if sys.gameSpeed != 100 { //not speedtest
 			sys.gameSpeed = float32(numArg(l, 1))
 		}
-		return 0
-	})
-	luaRegister(l, "setGCPercent", func(*lua.LState) int {
-		debug.SetGCPercent(int(numArg(l, 1)))
 		return 0
 	})
 	luaRegister(l, "setGuardBar", func(l *lua.LState) int {
