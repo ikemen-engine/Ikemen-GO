@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -248,13 +247,13 @@ type Bgm struct {
 	defaultbgmLoopStart int
 	defaultbgmLoopEnd   int
 	loop                int
-	sampleRate          beep.SampleRate
-	streamer            beep.StreamSeekCloser
-	ctrl                *beep.Ctrl
-	resampler           *beep.Resampler
-	volume              *effects.Volume
-	format              string
-	tempfile            io.ReadCloser
+	// TODO: Use this.
+	//sampleRate          beep.SampleRate
+	streamer  beep.StreamSeekCloser
+	ctrl      *beep.Ctrl
+	resampler *beep.Resampler
+	volume    *effects.Volume
+	format    string
 }
 
 func newBgm() *Bgm {
@@ -389,7 +388,6 @@ func (bgm *Bgm) Pause() {
 	speaker.Lock()
 	bgm.ctrl.Paused = true
 	speaker.Unlock()
-	return
 }
 
 // ------------------------------------------------------------------
@@ -586,7 +584,6 @@ func (s *Snd) stop(gn [2]int32) {
 			//break
 		}
 	}
-	return
 }
 
 func newWave() *Wave {

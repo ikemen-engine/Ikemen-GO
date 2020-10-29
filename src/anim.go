@@ -4,6 +4,7 @@ import (
 	"strings"
 )
 
+// AnimFrame holds frame data, used in animation tables.
 type AnimFrame struct {
 	Time          int32
 	Group, Number int16
@@ -133,15 +134,16 @@ func (af *AnimFrame) Clsn2() []float32 {
 }
 
 type Animation struct {
-	sff                        *Sff
-	spr                        *Sprite
-	frames                     []AnimFrame
-	tile                       [4]int32
-	loopstart                  int32
-	interpolate_offset         []int32
-	interpolate_scale          []int32
-	interpolate_angle          []int32
-	interpolate_blend          []int32
+	sff                *Sff
+	spr                *Sprite
+	frames             []AnimFrame
+	tile               [4]int32
+	loopstart          int32
+	interpolate_offset []int32
+	interpolate_scale  []int32
+	interpolate_angle  []int32
+	interpolate_blend  []int32
+	// Current frame
 	current                    int32
 	drawidx                    int32
 	time                       int32

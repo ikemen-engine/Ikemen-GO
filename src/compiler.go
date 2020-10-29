@@ -137,7 +137,6 @@ func newCompiler() *Compiler {
 		"guardbreakset":        c.guardBreakSet,
 		"guardpointsadd":       c.guardPointsAdd,
 		"guardpointsset":       c.guardPointsSet,
-		"hitscaleset":          c.hitScaleSet,
 		"lifebaraction":        c.lifebarAction,
 		"loadfile":             c.loadFile,
 		"mapset":               c.mapSet,
@@ -362,7 +361,7 @@ func (c *Compiler) tokenizer(in *string) string {
 	return strings.ToLower(c.tokenizerCS(in))
 }
 
-func (_ *Compiler) tokenizerCS(in *string) string {
+func (*Compiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
 		return ""
@@ -500,7 +499,7 @@ func (_ *Compiler) tokenizerCS(in *string) string {
 	*in = (*in)[i:]
 	return token
 }
-func (_ *Compiler) isOperator(token string) int {
+func (*Compiler) isOperator(token string) int {
 	switch token {
 	case "", ",", ")", "]":
 		return -1
@@ -569,11 +568,11 @@ func (c *Compiler) number(token string) BytecodeValue {
 	if err != nil && f == 0 {
 		return bvNone()
 	}
-	if strings.Index(token, ".") >= 0 {
+	if strings.Contains(token, ".") {
 		c.usiroOp = false
 		return BytecodeValue{VT_Float, f}
 	}
-	if strings.IndexAny(token, "Ee") >= 0 {
+	if strings.ContainsAny(token, "Ee") {
 		return bvNone()
 	}
 	c.usiroOp = false
@@ -755,13 +754,15 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	c.token = c.tokenizer(in)
 	return nil
 }
+
+/* TODO: Case sensitive maps
 func (c *Compiler) kakkohirakuCS(in *string) error {
 	if c.tokenizerCS(in) != "(" {
 		return Error("Missing '(' after " + c.token)
 	}
 	c.token = c.tokenizerCS(in)
 	return nil
-}
+}*/
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
@@ -2928,7 +2929,7 @@ func (c *Compiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue,
 		}
 	}
 }
-func (_ *Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
+func (*Compiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
 	ef expFunc, opf func(v1 *BytecodeValue, v2 BytecodeValue),
 	opc OpCode) error {
 	var be BytecodeExp
@@ -3191,7 +3192,7 @@ func (c *Compiler) stateSec(is IniSection, f func() error) error {
 	}
 	if !sys.ignoreMostErrors {
 		var str string
-		for k, _ := range is {
+		for k := range is {
 			if len(str) > 0 {
 				str += ", "
 			}
@@ -7053,7 +7054,7 @@ func (c *Compiler) dialogue(is IniSection, sc *StateControllerBase,
 		}
 		keys := make([]string, 0)
 		r, _ := regexp.Compile("^text[0-9]+$")
-		for k, _ := range is {
+		for k := range is {
 			if r.MatchString(k) {
 				keys = append(keys, k)
 			}
@@ -8049,12 +8050,12 @@ func (c *Compiler) readSentenceLine(line *string) (s string, assign bool,
 	for {
 		i := strings.IndexAny((*line)[offset:], ";#\"{}")
 		if i < 0 {
-			assign = assign || strings.Index((*line)[offset:], ":=") >= 0
+			assign = assign || strings.Contains((*line)[offset:], ":=")
 			s, *line = *line, ""
 			return
 		}
 		i += offset
-		assign = assign || strings.Index((*line)[offset:i], ":=") >= 0
+		assign = assign || strings.Contains((*line)[offset:i], ":=")
 		switch (*line)[i] {
 		case ';', '{', '}':
 			c.token = (*line)[i : i+1]
@@ -8364,6 +8365,8 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 	c.scan(line)
 	for {
 		switch c.token {
+		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
+		// Break
 		case "", "[":
 			if !root {
 				return c.yokisinaiToken()
@@ -8530,7 +8533,6 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			}
-		case "varset", "varadd", "parentvarset", "parentvaradd", "rootvarset", "rootvaradd":
 		}
 		break
 	}

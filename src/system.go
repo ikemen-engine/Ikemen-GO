@@ -31,7 +31,9 @@ const (
 	Mp3SampleRate   = 44100
 )
 
-// System vars are accessed globally through the program
+// sys
+// The only instance of a System struct.
+// Do not create more than 1.
 var sys = System{
 	randseed:          int32(time.Now().UnixNano()),
 	scrrect:           [...]int32{0, 0, 320, 240},
@@ -91,6 +93,7 @@ const (
 	TM_LAST = TM_Tag
 )
 
+// System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	randseed                int32
 	scrrect                 [4]int32
@@ -399,13 +402,16 @@ func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
 		window, err = glfw.CreateWindow(w, h, title, monitor, oldWindow)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to create window:", err)
+		return nil, fmt.Errorf("failed to create window: %w", err)
 	}
 	return window, nil
 }
-func (w *Window) destroy() {
-	w.Window.Destroy()
-}
+
+// Unused.
+// TODO: Check on what this was used.
+//func (w *Window) destroy() {
+//	w.Window.Destroy()
+//}
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
@@ -432,7 +438,6 @@ func (s *System) resetOverrideCharData() {
 		s.ocd[i] = OverrideCharData{life: 0, lifeMax: 0, power: 0,
 			dizzyPoints: 0, guardPoints: 0, lifeRatio: 1.0, attackRatio: 1.0}
 	}
-	return
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -930,7 +935,7 @@ func (s *System) nextRound() {
 	}
 	if s.stageLoop && !s.roundResetFlg {
 		keys := make([]int, 0)
-		for k, _ := range s.stageList {
+		for k := range s.stageList {
 			keys = append(keys, int(k))
 		}
 		sort.Ints(keys)
@@ -1043,7 +1048,7 @@ func (s *System) commandUpdate() {
 			}
 			if act && !r.sf(CSF_noautoturn) &&
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
-				r.furimuki()
+				r.turn()
 			}
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
@@ -2216,7 +2221,7 @@ func (wm *wincntMap) update() {
 	}
 }
 func (wm wincntMap) getItem(def string) []int32 {
-	lv, _ := wm[def]
+	lv := wm[def]
 	if len(lv) < MaxPalNo {
 		lv = append(lv, make([]int32, MaxPalNo-len(lv))...)
 	}
@@ -2273,14 +2278,14 @@ type SelectStage struct {
 	spr             string
 	attachedchardef string
 	stagebgm        IniSection
-	portrait_scale  float32
+	portraitScale   float32
 	portrait        *Sprite
 	xscale          float32
 	yscale          float32
 }
 
 func newSelectStage() *SelectStage {
-	return &SelectStage{portrait_scale: 1, xscale: 1, yscale: 1}
+	return &SelectStage{portraitScale: 1, xscale: 1, yscale: 1}
 }
 
 type Select struct {
@@ -2376,7 +2381,7 @@ func (s *Select) addChar(def string) {
 	} else {
 		def += ".def"
 	}
-	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
 		def = "chars/" + def
 	}
 	if def = FileExist(def); len(def) == 0 {
@@ -2524,7 +2529,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				ss.attachedchardef, ok = is.getString("attachedchar")
+				ss.attachedchardef, _ = is.getString("attachedchar")
 			}
 		case "music":
 			if music {
@@ -2550,10 +2555,10 @@ func (s *Select) AddStage(def string) error {
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				if ok := is.ReadF32("localcoord", &ss.portrait_scale); ok {
-					ss.portrait_scale = 320 / ss.portrait_scale
+				if ok := is.ReadF32("localcoord", &ss.portraitScale); ok {
+					ss.portraitScale = 320 / ss.portraitScale
 				}
-				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
+				if ok := is.ReadF32("portraitscale", &ss.portraitScale); !ok {
 					is.ReadF32("xscale", &ss.xscale)
 					is.ReadF32("yscale", &ss.yscale)
 				}

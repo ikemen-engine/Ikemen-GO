@@ -617,13 +617,13 @@ func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
 	sys.keyString = string(char)
 }
 
-func joystickCallback(joy, event glfw.PeripheralEvent) {
+/*func joystickCallback(joy, event glfw.PeripheralEvent) {
 	if event == glfw.Connected {
 		// The joystick was connected
 	} else if event == glfw.Disconnected {
 		// The joystick was disconnected
 	}
-}
+}*/
 
 var joystick = [...]glfw.Joystick{glfw.Joystick1, glfw.Joystick2,
 	glfw.Joystick3, glfw.Joystick4, glfw.Joystick5, glfw.Joystick6,
@@ -2024,46 +2024,46 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32) bool {
 			if in < len(sys.joystickConfig) {
 				joyS := sys.joystickConfig[in].Joy
 				if joyS >= 0 {
-					if L == false {
+					if !L {
 						L = sys.joystickConfig[in].L()
 					}
-					if R == false {
+					if !R {
 						R = sys.joystickConfig[in].R()
 					}
-					if U == false {
+					if !U {
 						U = sys.joystickConfig[in].U()
 					}
-					if D == false {
+					if !D {
 						D = sys.joystickConfig[in].D()
 					}
-					if a == false {
+					if !a {
 						a = sys.joystickConfig[in].a()
 					}
-					if b == false {
+					if !b {
 						b = sys.joystickConfig[in].b()
 					}
-					if c == false {
+					if !c {
 						c = sys.joystickConfig[in].c()
 					}
-					if x == false {
+					if !x {
 						x = sys.joystickConfig[in].x()
 					}
-					if y == false {
+					if !y {
 						y = sys.joystickConfig[in].y()
 					}
-					if z == false {
+					if !z {
 						z = sys.joystickConfig[in].z()
 					}
-					if s == false {
+					if !s {
 						s = sys.joystickConfig[in].s()
 					}
-					if d == false {
+					if !d {
 						d = sys.joystickConfig[in].d()
 					}
-					if w == false {
+					if !w {
 						w = sys.joystickConfig[in].w()
 					}
-					if m == false {
+					if !m {
 						m = sys.joystickConfig[in].m()
 					}
 				}

@@ -28,8 +28,8 @@ type Fnt struct {
 	offset    [2]int32
 	ttf       *glfont.Font
 	palfx     *PalFX
-	alphaSrc  int32
-	alphaDst  int32
+	//alphaSrc  int32
+	//alphaDst  int32
 	PalName   string
 }
 
@@ -152,7 +152,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 		case "map":
 			if mapflg {
 				mapflg = false
-				re := regexp.MustCompile("(\\S+)(?:\\s+(\\S+)(?:\\s+(\\S+))?)?")
+				re := regexp.MustCompile(`(\S+)(?:\s+(\S+)(?:\s+(\S+))?)?`)
 				ofs := uint16(0)
 				w := int32(0)
 				for ; i < len(lines); i++ {
@@ -442,13 +442,13 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	return &fci.img[0]
 }
 
-func (f *Fnt) calculateTrans() int32 {
+/*func (f *Fnt) calculateTrans() int32 {
 	alphaSrc := int32(sys.brightness * f.alphaSrc >> 8)
 	separator := int32(1 << 9)
 	alphaDst := int32(f.alphaDst << 10)
 
 	return alphaSrc | separator | alphaDst
-}
+}*/
 
 func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	pal []uint32, window *[4]int32) float32 {

@@ -601,9 +601,9 @@ func (hd *HitDef) testAttr(attr int32) bool {
 }
 
 type GetHitVar struct {
-	hitBy          [][2]int32
-	hit1           [2]int32
-	hit2           [2]int32
+	hitBy [][2]int32
+	//hit1           [2]int32
+	//hit2           [2]int32
 	attr           int32
 	_type          HitType
 	airanimtype    Reaction
@@ -2588,12 +2588,6 @@ func (c *Char) gameHeight() float32 {
 func (c *Char) gameWidth() float32 {
 	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
 }
-func (c *Char) getDizzyPoints() int32 {
-	return sys.chars[c.playerNo][0].dizzyPoints
-}
-func (c *Char) getGuardPoints() int32 {
-	return sys.chars[c.playerNo][0].guardPoints
-}
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
 		return sys.chars[pn-1][0].id
@@ -3018,7 +3012,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 }
 
 // Furimuki = Turn around
-func (c *Char) furimuki() {
+func (c *Char) turn() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		if e := sys.charList.enemyNear(c, 0, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
@@ -3080,7 +3074,7 @@ func (c *Char) stateChange2() bool {
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
-		c.furimuki()
+		c.turn()
 	}
 	if anim >= 0 {
 		c.changeAnim(anim, ffx)
@@ -4950,7 +4944,7 @@ func (c *Char) action() {
 		}
 		if !c.hitPause() {
 			if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
-				c.furimuki()
+				c.turn()
 			}
 			if !sys.roundEnd() {
 				if c.alive() && c.life > 0 {
@@ -5197,7 +5191,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.makeDust(0, 0)
 			}
 		}
-		for k, _ := range c.hitScale {
+		for k := range c.hitScale {
 			if k != -1 {
 				if p := sys.playerID(k); p != nil /*&& p.player*/ && p.ss.moveType != MT_H {
 					delete(c.hitScale, k)
@@ -6138,17 +6132,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.atktmp = -1
 			for j := range pr {
 				p := &pr[j]
-				if (i == getter.playerNo && getter.helperIndex == 0 && p.platform == false) ||
+				if (i == getter.playerNo && getter.helperIndex == 0 && !p.platform) ||
 					p.id < 0 || p.hits < 0 || p.hitdef.affectteam != 0 &&
 					(getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) {
 					continue
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
-				if p.platform == false &&
+				if !p.platform &&
 					dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
 					getter.inguarddist = true
 				}
-				if p.platform == true {
+				if p.platform {
 					//Platformの足場上空判定
 					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
 						getter.platformPosY*getter.localscl >= (p.pos[1]+p.platformHeight[0])*p.localscl {

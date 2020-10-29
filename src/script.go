@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// Data handlers
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
 	l.Register(name, f)
 }
@@ -32,6 +32,15 @@ func numArg(l *lua.LState, argi int) float64 {
 	}
 	return float64(num)
 }
+
+func intArg(l *lua.LState, argi int) int32 {
+	num, ok := l.Get(argi).(lua.LNumber)
+	if !ok {
+		l.RaiseError("The %vth argument is not a number.", argi)
+	}
+	return int32(num)
+}
+
 func boolArg(l *lua.LState, argi int) bool {
 	return l.ToBool(argi)
 }
@@ -53,6 +62,7 @@ func userDataError(l *lua.LState, argi int, udtype interface{}) {
 	l.RaiseError("\nArgument %v is not a userdata of type: %T\n", argi, udtype)
 }
 
+// -------------------------------------------------------------------------------------------------
 // System Script
 func systemScriptInit(l *lua.LState) {
 	triggerFunctions(l)
@@ -698,9 +708,6 @@ func systemScriptInit(l *lua.LState) {
 				x1 += float32(sys.gameWidth-320) / 2
 				y1 += float32(sys.gameHeight - 240)
 			}
-		} else {
-			//ws = sys.widthScale
-			//hs = sys.heightScale
 		}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)
@@ -973,7 +980,7 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			def += ".def"
 		}
-		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && strings.Index(def[:idx], ":") < 0) {
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
 			def = "chars/" + def
 		}
 		if def = FileExist(def); len(def) == 0 {
@@ -1746,10 +1753,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "setGCPercent", func(*lua.LState) int {
-		debug.SetGCPercent(int(numArg(l, 1)))
-		return 0
-	})
 	luaRegister(l, "setGuardBar", func(l *lua.LState) int {
 		sys.lifebar.activeGb = boolArg(l, 1)
 		return 0
@@ -2170,8 +2173,8 @@ func systemScriptInit(l *lua.LState) {
 				}
 			}
 		}
-		xscl *= c.portrait_scale
-		yscl *= c.portrait_scale
+		xscl *= c.portraitScale
+		yscl *= c.portraitScale
 		c.portrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, c.portrait.Pal, nil, c.portrait.PalTex, window)
 		return 0
 	})

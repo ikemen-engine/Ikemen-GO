@@ -126,7 +126,7 @@ Debug Options:
 	"ConsoleType": 1,
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
-	"DebugFont": "font/f-4x6.def",
+	"DebugFont": "font/default-3x5-bold.def",
 	"DebugKeys": true,
 	"Difficulty": 8,
 	"EscOpensMenu": true,

@@ -23,7 +23,7 @@ if [ ! -d ./bin ]; then
 	mkdir bin
 fi
 
-go build -i -o ./bin/$BINARY_NAME ./src
+go build -i -tags al_cmpt -o ./bin/$BINARY_NAME ./src
 chmod +x ./bin/$BINARY_NAME
 
 cp ./build/Ikemen_GO.command ./bin/Ikemen_GO.command

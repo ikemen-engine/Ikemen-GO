@@ -40,6 +40,8 @@ func (bgct *bgcTimeLine) stepBGDef(s *BGDef) {
 	}
 }
 
+// BGDef is used on screenpacks lifebars and stages.
+// Also contains the SFF.
 type BGDef struct {
 	def        string
 	localcoord [2]float32

@@ -623,20 +623,20 @@ func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
 	be.append(op)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
-func (_ BytecodeExp) neg(v *BytecodeValue) {
+func (BytecodeExp) neg(v *BytecodeValue) {
 	if v.t == VT_Float {
 		v.v *= -1
 	} else {
 		v.SetI(-v.ToI())
 	}
 }
-func (_ BytecodeExp) not(v *BytecodeValue) {
+func (BytecodeExp) not(v *BytecodeValue) {
 	v.SetI(^v.ToI())
 }
-func (_ BytecodeExp) blnot(v *BytecodeValue) {
+func (BytecodeExp) blnot(v *BytecodeValue) {
 	v.SetB(!v.ToB())
 }
-func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
+func (BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(Pow(v1.ToF(), v2.ToF()))
 	} else if v2.ToF() < 0 {
@@ -662,14 +662,14 @@ func (_ BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 		v1.SetI(i)
 	}
 }
-func (_ BytecodeExp) mul(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) mul(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(v1.ToF() * v2.ToF())
 	} else {
 		v1.SetI(v1.ToI() * v2.ToI())
 	}
 }
-func (_ BytecodeExp) div(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) div(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(v1.ToF() / v2.ToF())
 	} else if v2.ToI() == 0 {
@@ -678,130 +678,130 @@ func (_ BytecodeExp) div(v1 *BytecodeValue, v2 BytecodeValue) {
 		v1.SetI(v1.ToI() / v2.ToI())
 	}
 }
-func (_ BytecodeExp) mod(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) mod(v1 *BytecodeValue, v2 BytecodeValue) {
 	if v2.ToI() == 0 {
 		*v1 = BytecodeSF()
 	} else {
 		v1.SetI(v1.ToI() % v2.ToI())
 	}
 }
-func (_ BytecodeExp) add(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) add(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(v1.ToF() + v2.ToF())
 	} else {
 		v1.SetI(v1.ToI() + v2.ToI())
 	}
 }
-func (_ BytecodeExp) sub(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) sub(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetF(v1.ToF() - v2.ToF())
 	} else {
 		v1.SetI(v1.ToI() - v2.ToI())
 	}
 }
-func (_ BytecodeExp) gt(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) gt(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() > v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() > v2.ToI())
 	}
 }
-func (_ BytecodeExp) ge(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) ge(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() >= v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() >= v2.ToI())
 	}
 }
-func (_ BytecodeExp) lt(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) lt(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() < v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() < v2.ToI())
 	}
 }
-func (_ BytecodeExp) le(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) le(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() <= v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() <= v2.ToI())
 	}
 }
-func (_ BytecodeExp) eq(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) eq(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() == v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() == v2.ToI())
 	}
 }
-func (_ BytecodeExp) ne(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) ne(v1 *BytecodeValue, v2 BytecodeValue) {
 	if ValueType(Min(int32(v1.t), int32(v2.t))) == VT_Float {
 		v1.SetB(v1.ToF() != v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() != v2.ToI())
 	}
 }
-func (_ BytecodeExp) and(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) and(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(v1.ToI() & v2.ToI())
 }
-func (_ BytecodeExp) xor(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) xor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(v1.ToI() ^ v2.ToI())
 }
-func (_ BytecodeExp) or(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) or(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(v1.ToI() | v2.ToI())
 }
-func (_ BytecodeExp) bland(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) bland(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() && v2.ToB())
 }
-func (_ BytecodeExp) blxor(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) blxor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() != v2.ToB())
 }
-func (_ BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) blor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetB(v1.ToB() || v2.ToB())
 }
-func (_ BytecodeExp) abs(v1 *BytecodeValue) {
+func (BytecodeExp) abs(v1 *BytecodeValue) {
 	if v1.t == VT_Float {
 		v1.v = math.Abs(v1.v)
 	} else {
 		v1.SetI(Abs(v1.ToI()))
 	}
 }
-func (_ BytecodeExp) exp(v1 *BytecodeValue) {
+func (BytecodeExp) exp(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Exp(v1.v)))
 }
-func (_ BytecodeExp) ln(v1 *BytecodeValue) {
+func (BytecodeExp) ln(v1 *BytecodeValue) {
 	if v1.v <= 0 {
 		*v1 = BytecodeSF()
 	} else {
 		v1.SetF(float32(math.Log(v1.v)))
 	}
 }
-func (_ BytecodeExp) log(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) log(v1 *BytecodeValue, v2 BytecodeValue) {
 	if v1.v <= 0 || v2.v <= 0 {
 		*v1 = BytecodeSF()
 	} else {
 		v1.SetF(float32(math.Log(v2.v) / math.Log(v1.v)))
 	}
 }
-func (_ BytecodeExp) cos(v1 *BytecodeValue) {
+func (BytecodeExp) cos(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Cos(v1.v)))
 }
-func (_ BytecodeExp) sin(v1 *BytecodeValue) {
+func (BytecodeExp) sin(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Sin(v1.v)))
 }
-func (_ BytecodeExp) tan(v1 *BytecodeValue) {
+func (BytecodeExp) tan(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Tan(v1.v)))
 }
-func (_ BytecodeExp) acos(v1 *BytecodeValue) {
+func (BytecodeExp) acos(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Acos(v1.v)))
 }
-func (_ BytecodeExp) asin(v1 *BytecodeValue) {
+func (BytecodeExp) asin(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Asin(v1.v)))
 }
-func (_ BytecodeExp) atan(v1 *BytecodeValue) {
+func (BytecodeExp) atan(v1 *BytecodeValue) {
 	v1.SetF(float32(math.Atan(v1.v)))
 }
-func (_ BytecodeExp) floor(v1 *BytecodeValue) {
+func (BytecodeExp) floor(v1 *BytecodeValue) {
 	if v1.t == VT_Float {
 		f := math.Floor(v1.v)
 		if math.IsNaN(f) {
@@ -811,7 +811,7 @@ func (_ BytecodeExp) floor(v1 *BytecodeValue) {
 		}
 	}
 }
-func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
+func (BytecodeExp) ceil(v1 *BytecodeValue) {
 	if v1.t == VT_Float {
 		f := math.Ceil(v1.v)
 		if math.IsNaN(f) {
@@ -821,24 +821,24 @@ func (_ BytecodeExp) ceil(v1 *BytecodeValue) {
 		}
 	}
 }
-func (_ BytecodeExp) max(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) max(v1 *BytecodeValue, v2 BytecodeValue) {
 	if v1.v >= v2.v {
 		v1.SetF(float32(v1.v))
 	} else {
 		v1.SetF(float32(v2.v))
 	}
 }
-func (_ BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
 	if v1.v <= v2.v {
 		v1.SetF(float32(v1.v))
 	} else {
 		v1.SetF(float32(v2.v))
 	}
 }
-func (_ BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(RandI(int32(v1.v), int32(v2.v)))
 }
-func (_ BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) round(v1 *BytecodeValue, v2 BytecodeValue) {
 	shift := math.Pow(10, v2.v)
 	v1.SetF(float32(math.Floor((v1.v*shift)+0.5) / shift))
 }
@@ -1852,7 +1852,7 @@ type StateController interface {
 }
 type NullStateController struct{}
 
-func (_ NullStateController) Run(_ *Char, _ []int32) bool { return false }
+func (NullStateController) Run(_ *Char, _ []int32) bool { return false }
 
 var nullStateController NullStateController
 
@@ -1990,18 +1990,18 @@ type StateControllerBase []byte
 func newStateControllerBase() *StateControllerBase {
 	return (*StateControllerBase)(&[]byte{})
 }
-func (_ StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
+func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
-func (_ StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
+/*func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
 	for _, v := range f {
 		var be BytecodeExp
 		be.appendValue(BytecodeFloat(v))
 		exp = append(exp, be)
 	}
 	return
-}
-func (_ StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
+}*/
+func (StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	for _, v := range i {
 		var be BytecodeExp
 		be.appendValue(BytecodeInt(v))
@@ -2356,7 +2356,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		case tagIn_self:
 			sti := exp[0].evalB(c)
-			if sti == true {
+			if sti {
 				tagSCF = 1
 			} else {
 				tagSCF = 0
@@ -2376,7 +2376,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		case tagIn_partnerctrl:
 			pctrls := exp[0].evalB(c)
-			if pctrls == true {
+			if pctrls {
 				partnerCtrlSetting = 1
 			} else {
 				partnerCtrlSetting = 0
@@ -2438,7 +2438,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagOut_self:
-			if exp[0].evalB(c) == true {
+			if exp[0].evalB(c) {
 				tagSCF = 1
 			} else {
 				tagSCF = 0
@@ -6207,9 +6207,9 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
-			zoompos[0] = exp[0].evalF(c) * c.localscl
+			zoompos[0] = exp[0].evalF(c) * crun.localscl
 			if len(exp) > 1 {
-				zoompos[1] = exp[1].evalF(c) * c.localscl
+				zoompos[1] = exp[1].evalF(c) * crun.localscl
 			}
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
@@ -6542,10 +6542,11 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 	})
 	if path != "" {
 		decodeFile, err := os.Open(filepath.Dir(c.gi().def) + "/" + path)
-		defer decodeFile.Close()
 		if err != nil {
+			defer decodeFile.Close()
 			return false
 		}
+		defer decodeFile.Close()
 		decoder := gob.NewDecoder(decodeFile)
 		switch data {
 		case SaveData_map:

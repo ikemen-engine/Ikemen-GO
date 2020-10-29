@@ -326,7 +326,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
 	var sclx_recip float32 = 1
 	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
-	if sclx != 0 && bg.autoresizeparallax == true {
+	if sclx != 0 && bg.autoresizeparallax {
 		tmp := 1 / sclx
 		if bg.xbottomzoomdelta != math.MaxFloat32 {
 			xbs *= MaxF(0, scl+(1-scl)*(1-bg.xbottomzoomdelta*(xbs/bg.xscale[0]))) * tmp
@@ -340,7 +340,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if bg.zoomdelta[0] != math.MaxFloat32 {
 		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
 		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
-		if bg.autoresizeparallax == false {
+		if !bg.autoresizeparallax {
 			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
 		}
 	}
@@ -404,8 +404,8 @@ type bgCtrl struct {
 	x, y         float32
 	v            [3]int32
 	positionlink bool
-	flag         bool
-	idx          int
+	//flag         bool
+	idx int
 }
 
 func newBgCtrl() *bgCtrl {
@@ -718,9 +718,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			s.stageCamera.zoomin = sys.cam.ZoomMax
 		}
-		sec[0].ReadF32("zoomout", &s.stageCamera.mugen_zoomout)
+		sec[0].ReadF32("zoomout", &s.stageCamera.mugenZoomOut)
 		if sys.cam.ZoomMin == 0 {
-			s.stageCamera.zoomout = s.stageCamera.mugen_zoomout
+			s.stageCamera.zoomout = s.stageCamera.mugenZoomOut
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
