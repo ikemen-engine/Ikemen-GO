@@ -3973,6 +3973,10 @@ function start.f_dialogueRedirection(str)
 	player(start.t_dialogue.player)
 	if redirection == 'self' then
 		return start.t_dialogue.player
+	elseif redirection == 'playerno' then
+		if player(tonumber(val)) then
+			return tonumber(val)
+		end
 	elseif redirection == 'partner' then
 		if val == '' then val = 0 end
 		if partner(tonumber(val)) then
@@ -3981,10 +3985,6 @@ function start.f_dialogueRedirection(str)
 	elseif redirection == 'enemy' then
 		if val == '' then val = 0 end
 		if enemy(tonumber(val)) then
-			return playerno()
-		end
-	elseif redirection == 'playerid' then
-		if playerid(tonumber(val)) then
 			return playerno()
 		end
 	elseif redirection == 'enemyname' then
@@ -4067,7 +4067,7 @@ function start.f_dialogueParse()
 						end
 						for i, str in ipairs(main.f_strsplit(',', val)) do --split using "," delimiter
 							str = str:lower()
-							if i == 1 and (str:match('^self') or str:match('^partner') or str:match('^enemy') or str:match('^playerid') or str:match('^enemyname') or str:match('^partnername')) then
+							if i == 1 and (str:match('^self') or str:match('^playerno') or str:match('^partner') or str:match('^enemy') or str:match('^enemyname') or str:match('^partnername')) then
 								t_token.redirection = str
 								t_token.pn = start.f_dialogueRedirection(str)
 							else
