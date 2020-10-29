@@ -2563,7 +2563,14 @@ function start.f_selectChar(player, t)
 end
 
 function start.f_selectVersus()
-	if not main.versusScreen or not main.charparam.vsscreen or start.f_getCharData(start.p[1].t_selected[1].ref).vsscreen == 0 then
+	local ok = true
+	for _, v in ipairs(start.p[2].t_selected) do
+		if start.f_getCharData(v.ref).vsscreen == 0 then
+			ok = false
+			break
+		end
+	end
+	if not main.versusScreen or not ok then
 		start.f_selectChar(1, start.p[1].t_selected)
 		start.f_selectChar(2, start.p[2].t_selected)
 		return true
@@ -3043,9 +3050,7 @@ function start.f_victoryInit()
 	end
 	if start.t_victory.winnerNo == -1 or start.t_victory.winnerRef == -1 then
 		return false
-	elseif not main.charparam.winscreen then
-		return false
-	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then --winscreen assigned as character param
+	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
 		return false
 	end
 	clearAllSound()
@@ -3812,8 +3817,15 @@ function start.f_rankInit()
 		p2score = 0,
 		counter = 0,
 	}
-	if motif.rank_info.enabled == 0 then
+	if motif.rank_info.enabled == 0 or not main.rankDisplay then
 		return false
+	end
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			if start.f_getCharData(v.ref).rank == 0 then
+				return false
+			end
+		end
 	end
 	for side = 1, 2 do
 		animReset(motif.rank_info['p' .. side .. '_bg_data'])

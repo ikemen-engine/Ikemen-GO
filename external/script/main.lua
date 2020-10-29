@@ -2062,14 +2062,11 @@ function main.f_default()
 	main.charparam = { --which select.def charparam should be used
 		ai = false,
 		arcadepath = false,
-		lifebar = true,
 		music = false,
 		rounds = false,
 		single = false,
 		stage = false,
 		time = false,
-		vsscreen = true,
-		winscreen = true,
 	}
 	main.continueScreen = false --if continue screen should be shown
 	main.coop = false --if mode should be recognized as coop
@@ -2104,6 +2101,7 @@ function main.f_default()
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
 	main.quickContinue = false --if continuing should skip player selection
+	main.rankDisplay = true --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
 	main.roundTime = config.RoundTime --sets round time
@@ -2198,6 +2196,7 @@ main.t_itemname = {
 		main.charparam.stage = true
 		main.charparam.time = true
 		main.forceChar[2] = {main.t_bonusChars[item]}
+		main.rankDisplay = false
 		main.selectMenu[2] = true
 		main.teamMenu[1].single = true
 		main.teamMenu[2].single = true
