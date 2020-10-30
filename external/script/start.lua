@@ -3143,6 +3143,20 @@ local txt_yes = text:create({})
 local txt_no = text:create({})
 local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay', {defsc = false, fixloc = false})
 
+start.t_continueCounts = {}
+for k, v in pairs(motif.continue_screen) do
+	local n = k:match('^counter_([0-9]+)_skiptime$')
+	if n ~= nil then
+		start.t_continueCounts[tonumber(n)] = {
+			skiptime = v,
+			snd = {motif.continue_screen.counter_default_snd[1], motif.continue_screen.counter_default_snd[2]}
+		}
+		if motif.continue_screen['counter_' .. n .. '_snd'] ~= nil then
+			start.t_continueCounts[tonumber(n)].snd = motif.continue_screen['counter_' .. n .. '_snd']
+		end
+	end
+end
+
 start.continueInit = false
 function start.f_continueInit()
 	if start.continueInit then
@@ -3229,9 +3243,9 @@ function start.f_continue()
 					end
 				--counter anim time skip on button press
 				elseif main.f_input({1}, {'pal'}) and start.t_continue.counter >= motif.continue_screen.counter_starttime + motif.continue_screen.counter_skipstart then
-					for i = 9, 0, -1 do
-						if start.t_continue.counter < motif.continue_screen['counter_' .. i .. '_skiptime'] then
-							while start.t_continue.counter < motif.continue_screen['counter_' .. i .. '_skiptime'] do
+					for _, v in main.f_sortKeys(start.t_continueCounts, function(t, a, b) return a > b end) do --iterate over the table in descending order
+						if start.t_continue.counter < v.skiptime then
+							while start.t_continue.counter < v.skiptime do
 								start.t_continue.counter = start.t_continue.counter + 1
 								animUpdate(motif.continue_screen.counter_data)
 							end
@@ -3240,9 +3254,9 @@ function start.f_continue()
 					end
 				end
 				--counter anim snd play
-				for i = 9, 0, -1 do
-					if start.t_continue.counter == motif.continue_screen['counter_' .. i .. '_skiptime'] then
-						sndPlay(motif.files.snd_data, motif.continue_screen['counter_' .. i .. '_snd'][1], motif.continue_screen['counter_' .. i .. '_snd'][2])
+				for _, v in main.f_sortKeys(start.t_continueCounts, function(t, a, b) return a > b end) do --iterate over the table in descending order
+					if start.t_continue.counter == v.skiptime then
+						sndPlay(motif.files.snd_data, v.snd[1], v.snd[2])
 						break
 					end
 				end
