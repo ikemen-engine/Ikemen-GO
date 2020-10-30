@@ -1574,6 +1574,7 @@ local motif =
 	rank_info =
 	{
 		enabled = 0, --Ikemen feature
+		bars_display = 0, --Ikemen feature
 		snd_time = 0, --Ikemen feature
 		snd = {-1, 0}, --Ikemen feature
 		p1_score_offset = {0, 0}, --Ikemen feature

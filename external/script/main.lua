@@ -3251,9 +3251,9 @@ function main.f_demoStart()
 		setAllowDebugKeys(false)
 	end
 	if motif.demo_mode.fight_bars_display == 1 then
-		setLifebarElements({['bars'] = true})
+		setLifebarElements({bars = true})
 	else
-		setLifebarElements({['bars'] = false})
+		setLifebarElements({bars = false})
 	end
 	setGameMode('demo')
 	for i = 1, 2 do

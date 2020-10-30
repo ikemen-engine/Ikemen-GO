@@ -186,6 +186,7 @@ function loop()
 	start.f_stageMusic()
 	--match start
 	if roundstart() then
+		setLifebarElements({bars = main.lifebar.bars})
 		if roundno() == 1 then
 			speedMul = 1
 			speedAdd = 0

@@ -3871,6 +3871,9 @@ function start.f_rankInit()
 		end
 		start.t_rank['p' .. side .. 'score'] = scoretotal() - score()
 	end
+	if motif.rank_info.bars_display == 0 then
+		setLifebarElements({bars = false})
+	end
 	start.t_rank.active = true
 	return true
 end
