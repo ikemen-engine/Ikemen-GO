@@ -1139,6 +1139,7 @@ local motif =
 		title_font_scale = {1.0, 1.0},
 		title_font_height = -1, --Ikemen feature
 		title_text = 'OPTIONS', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1321,6 +1322,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'REPLAY SELECT', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1372,6 +1374,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'PAUSE', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2740,9 +2743,9 @@ motif.defaultHiscore = true --t.hiscore_info == nil
 motif.defaultInfobox = false --t.infobox == nil
 motif.defaultLoading = false --t.title_info.loading_font == nil
 motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
-motif.defaultMenu = true --t.menu_info == nil
-motif.defaultOptions = true --t.option_info.menu_item_font == nil
-motif.defaultReplay = true --t.replay_info == nil
+motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
+motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
+motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = true --t.warning_info == nil
 
 if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
