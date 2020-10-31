@@ -830,6 +830,15 @@ function main.f_tableExists(t)
 	return t
 end
 
+--initialize table array size
+function main.f_tableArray(size, val)
+	local t = {}
+	for i = 1, size do
+		table.insert(t, val or i)
+	end
+	return t
+end
+
 --iterate over the table in order
 -- basic usage, just sort by the keys:
 --for k, v in main.f_sortKeys(t) do
@@ -1611,11 +1620,10 @@ function main.f_addChar(line, playable, slot)
 		table.insert(main.t_orderSurvival[num], row - 1)
 		--boss rush mode
 		if main.t_selChars[row].boss ~= nil and main.t_selChars[row].boss == 1 then
-			--[[if main.t_bossChars[main.t_selChars[row].order] == nil then
+			if main.t_bossChars[main.t_selChars[row].order] == nil then
 				main.t_bossChars[main.t_selChars[row].order] = {}
 			end
-			table.insert(main.t_bossChars[main.t_selChars[row].order], row - 1)]]
-			table.insert(main.t_bossChars, row - 1)
+			table.insert(main.t_bossChars[main.t_selChars[row].order], row - 1)
 		end
 		--bonus games mode
 		if main.t_selChars[row].bonus ~= nil and main.t_selChars[row].bonus == 1 then
@@ -1836,7 +1844,7 @@ for line in content:gmatch('[^\r\n]+') do
 				if rmax == '' then
 					rmax = rmin
 				end
-				table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {['rmin'] = rmin, ['rmax'] = rmax, ['order'] = order})
+				table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {rmin = rmin, rmax = rmax, order = order})
 			end
 		elseif lineCase:match('%.airamp%.') then
 			local rowName, rowName2, wins, offset = lineCase:match('^%s*(.-)%.airamp%.(.-)%s*=%s*([%.0-9-]+)%s*,%s*([%.0-9-]+)')
@@ -1866,14 +1874,22 @@ if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeatta
 if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.arcaderatiomatches == nil then
 	main.t_selOptions.arcaderatiomatches = {
-		{['rmin'] = 1, ['rmax'] = 3, ['order'] = 1},
-		{['rmin'] = 3, ['rmax'] = 3, ['order'] = 1},
-		{['rmin'] = 2, ['rmax'] = 2, ['order'] = 1},
-		{['rmin'] = 2, ['rmax'] = 2, ['order'] = 1},
-		{['rmin'] = 1, ['rmax'] = 1, ['order'] = 2},
-		{['rmin'] = 3, ['rmax'] = 3, ['order'] = 1},
-		{['rmin'] = 1, ['rmax'] = 2, ['order'] = 3}
+		{rmin = 1, rmax = 3, order = 1},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 1, rmax = 1, order = 2},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 1, rmax = 2, order = 3},
 	}
+end
+if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
+	local size = 1
+	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
+	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
+	for k, v in pairs(main.t_bossChars) do
+		main.t_selOptions.bossrushmaxmatches[k] = #v
+	end
 end
 
 --add excluded characters once all slots are filled

@@ -120,10 +120,8 @@ function start.f_makeRoster(t_ret)
 		end
 	--Boss Rush
 	elseif gamemode('bossrush') then
-		t_static = {main.t_bossChars}
-		for i = 1, math.ceil(#main.t_bossChars / start.p[2].numChars) do --generate ratiomatches style table
-			table.insert(t, {['rmin'] = start.p[2].numChars, ['rmax'] = start.p[2].numChars, ['order'] = 1})
-		end
+		t_static = main.t_bossChars
+		t = start.f_unifySettings(main.t_selOptions.bossrushmaxmatches, t_static)
 	--VS 100 Kumite
 	elseif gamemode('vs100kumite') then
 		t_static = {main.t_randomChars}
