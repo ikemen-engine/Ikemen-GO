@@ -3307,8 +3307,12 @@ end
 
 --attract mode loop
 function main.f_attractMode()
+	main.credits = 0
 	while true do --outer loop
-		main.credits = 0
+		--back in outer loop after clearing whole mode or via esc
+		if main.credits > 0 then
+			main.credits = main.credits - 1
+		end
 		local startScreen, skip = false, false
 		while true do --inner loop (attract mode)
 			--logo storyboard
@@ -3347,6 +3351,10 @@ function main.f_attractMode()
 			--attract storyboard
 			if motif.attract_mode.storyboard ~= '' then
 				storyboard.f_storyboard(motif.attract_mode.storyboard, false)
+			end
+			--eat credit
+			if main.credits > 0 then
+				main.credits = main.credits - 1
 			end
 			--enter menu
 			main.menu.loop()
@@ -3777,6 +3785,7 @@ main.f_unlock(false)
 --; INITIALIZE LOOPS
 --;===========================================================
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
+	main.f_default()
 	main.f_commandLine()
 end
 

@@ -254,7 +254,7 @@ function loop()
 						print(i)
 					end
 				end]]
-				if main.f_input(main.t_players, {'s'}) and main.playerInput ~= 1 then
+				if main.f_input(main.t_players, {'s'}) and main.playerInput ~= 1 and (motif.attract_mode.enabled == 0 or main.credits ~= 0) then
 					start.challenger = main.playerInput
 				end
 			end

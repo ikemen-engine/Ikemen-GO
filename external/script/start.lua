@@ -3665,6 +3665,9 @@ function start.f_challengerInit()
 	if motif.challenger_info.enabled == 0 then
 		return false
 	end
+	if motif.attract_mode.enabled == 1 and main.credits > 0 then
+		main.credits = main.credits - 1
+	end
 	main.f_playerInput(start.challenger, 2)
 	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.challengerbgdef.bg)
