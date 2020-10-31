@@ -148,8 +148,10 @@ end
 --return table with key names
 function main.f_extractKeys(str)
 	local t = {}
-	for i, c in ipairs(main.f_strsplit('%s*&%s*', str)) do --split string using "%s*&%s*" delimiter
-		t[i] = c
+	if str ~= nil then
+		for i, c in ipairs(main.f_strsplit('%s*&%s*', str)) do --split string using "%s*&%s*" delimiter
+			t[i] = c
+		end
 	end
 	return t
 end
@@ -976,23 +978,28 @@ end
 --Convert DEF string to table
 function main.f_extractText(txt, var1, var2, var3, var4)
 	local t = {var1 or '', var2 or '', var3 or '', var4 or ''}
-	local tmp = ''
+	local str = ''
 	--replace %s, %i with variables
 	local cnt = 0
-	tmp = txt:gsub('(%%[is])', function(m1)
+	str = txt:gsub('%%([0-9]*)[is]', function(m1)
 		cnt = cnt + 1
 		if t[cnt] ~= nil then
+			if m1 ~= '' then
+				while string.len(t[cnt]) < tonumber(m1) do
+					t[cnt] = '0' .. t[cnt]
+				end
+			end
 			return t[cnt]
 		end
 	end)
 	--store each line in different row
 	t = {}
-	tmp = tmp:gsub('\n', '\\n')
-	for i, c in ipairs(main.f_strsplit('\\n', tmp)) do --split string using "\n" delimiter
+	str = str:gsub('\n', '\\n')
+	for i, c in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
 		t[i] = c
 	end
 	if #t == 0 then
-		t[1] = tmp
+		t[1] = str
 	end
 	return t
 end
@@ -2833,7 +2840,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				cnt = cnt + 1
 			end
 		end
-		if cnt == 1 then
+		if cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
 			main.f_default()
 			main.t_itemname[f](t, item)()
 			resetRemapInput()
@@ -2849,9 +2856,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			end
 		end
 		if bool_bgreset then
-			main.f_bgReset(motif[main.background].bg)
+			if motif.attract_mode.enabled == 0 then
+				main.f_bgReset(motif[main.background].bg)
+				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+			end
 			main.f_fadeReset('fadein', motif[main.group])
-			main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 		end
 		main.menu.f = nil
 		while true do
@@ -3163,6 +3172,7 @@ function main.f_unlockStage(num, bool)
 	end
 end
 
+--hiscore rendering
 main.t_hiscoreData = {
 	arcade = {mode = 'arcade', data = 'score', title = motif.select_info.title_arcade_text},
 	bossrush = {mode = 'bossrush', data = 'score', title = motif.select_info.title_bossrush_text},
@@ -3191,9 +3201,115 @@ function main.f_hiscoreDisplay(itemname)
 	return true
 end
 
+--attract mode start screen
+local txt_attract_credits = main.f_createTextImg(motif.attract_mode, 'credits', {defsc = false})
+local txt_attract_timer = main.f_createTextImg(motif.attract_mode, 'start_timer', {defsc = false})
+local txt_attract_insert = main.f_createTextImg(motif.attract_mode, 'start_insert', {defsc = false})
+local txt_attract_press = main.f_createTextImg(motif.attract_mode, 'start_press', {defsc = false})
+function main.f_attractStart()
+	local timerActive = main.credits ~= 0
+	local timer = 0
+	local counter = 0 - motif.attract_mode.fadein_time
+	local press_blinktime, insert_blinktime = 0, 0
+	local press_switched, insert_switched = false, false
+	txt_attract_insert:update({text = motif.attract_mode.start_insert_text})
+	txt_attract_press:update({text = motif.attract_mode.start_press_text})
+	main.f_cmdBufReset()
+	clearColor(motif.attractbgdef.bgclearcolor[1], motif.attractbgdef.bgclearcolor[2], motif.attractbgdef.bgclearcolor[3])
+	main.f_bgReset(motif.attractbgdef.bg)
+	main.f_fadeReset('fadein', motif.attract_mode)
+	while true do
+		counter = counter + 1
+		--draw layerno = 0 backgrounds
+		bgDraw(motif.attractbgdef.bg, false)
+		--draw text
+		if main.credits ~= 0 then
+			if motif.attract_mode.start_press_blinktime > 0 and main.fadeType == 'fadein' then
+				if press_blinktime < motif.attract_mode.start_press_blinktime then
+					press_blinktime = press_blinktime + 1
+				elseif press_switched then
+					txt_attract_press:update({text = motif.attract_mode.start_press_text})
+					press_switched = false
+					press_blinktime = 0
+				else
+					txt_attract_press:update({text = ''})
+					press_switched = true
+					press_blinktime = 0
+				end
+			end
+			txt_attract_press:draw()
+		else
+			if motif.attract_mode.start_insert_blinktime > 0 and main.fadeType == 'fadein' then
+				if insert_blinktime < motif.attract_mode.start_insert_blinktime then
+					insert_blinktime = insert_blinktime + 1
+				elseif insert_switched then
+					txt_attract_insert:update({text = motif.attract_mode.start_insert_text})
+					insert_switched = false
+					insert_blinktime = 0
+				else
+					txt_attract_insert:update({text = ''})
+					insert_switched = true
+					insert_blinktime = 0
+				end
+			end
+			txt_attract_insert:draw()
+		end
+		--draw timer
+		if motif.attract_mode.start_timer_enabled == 1 and timerActive then
+			local num = main.f_round((motif.attract_mode.start_timer_count * motif.attract_mode.start_timer_framespercount - timer + motif.attract_mode.start_timer_displaytime) / motif.attract_mode.start_timer_framespercount)
+			if num <= -1 then
+				timerActive = false
+				timer = -1
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(0))})
+			else
+				timer = timer + 1
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(math.max(0, num)))})
+			end
+			if timer >= motif.attract_mode.start_timer_displaytime then
+				txt_attract_timer:draw()
+			end
+		end
+		--draw credits text
+		if main.credits ~= -1 then
+			txt_attract_credits:update({text = main.f_extractText(motif.attract_mode.credits_text, main.credits)[1]})
+			txt_attract_credits:draw()
+		end
+		--credits
+		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
+			sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
+			main.credits = main.credits + 1
+			resetKey()
+			timerActive = true
+			timer = motif.attract_mode.start_timer_displaytime
+		end
+		--draw layerno = 1 backgrounds
+		bgDraw(motif.attractbgdef.bg, true)
+		--draw fadein / fadeout
+		if main.fadeType == 'fadein' and not main.fadeActive and ((main.credits ~= 0 and main.f_input(main.t_players, {'s'})) or (not timerActive and counter >= motif.attract_mode.start_time)) then
+			if main.credits ~= 0 then
+				sndPlay(motif.files.snd_data, motif.attract_mode.start_done_snd[1], motif.attract_mode.start_done_snd[2])
+			end
+			main.f_fadeReset('fadeout', motif.attract_mode)
+		end
+		main.f_fadeColor(motif.attract_mode)
+		--frame transition
+		main.f_cmdInput()
+		if esc() --[[or main.f_input(main.t_players, {'m'})]] then
+			esc(false)
+			return false
+		end
+		if not main.fadeActive and main.fadeType == 'fadeout' then
+			return main.credits ~= 0
+		end
+		main.f_refresh()
+	end
+end
+
+--attract mode loop
 function main.f_attractMode()
 	while true do --outer loop
 		main.credits = 0
+		local startScreen, skip = false, false
 		while true do --inner loop (attract mode)
 			--logo storyboard
 			if motif.files.logo_storyboard ~= '' and storyboard.f_storyboard(motif.files.logo_storyboard, true) then
@@ -3201,10 +3317,6 @@ function main.f_attractMode()
 			end
 			--intro storyboard
 			if motif.files.intro_storyboard ~= '' and storyboard.f_storyboard(motif.files.intro_storyboard, true) then
-				break
-			end
-			--attract storyboard
-			if motif.attract_mode.storyboard ~= '' and storyboard.f_storyboard(motif.attract_mode.storyboard, true) then
 				break
 			end
 			--demo
@@ -3216,11 +3328,29 @@ function main.f_attractMode()
 				main.f_refresh()
 			end
 			if main.credits > 0 then break end
+			--start
+			if main.f_attractStart() then
+				startScreen = true
+				break
+			end
 			--demo
 			main.f_demoStart()
 			if main.credits > 0 then break end
+			--hiscores
+			start.hiscoreInit = false
+			while start.f_hiscore(main.t_hiscoreData.arcade, true, -1, false) do
+				main.f_refresh()
+			end
+			if main.credits > 0 then break end
 		end
-		main.menu.loop()
+		if not skip and (startScreen or main.f_attractStart()) then
+			--attract storyboard
+			if motif.attract_mode.storyboard ~= '' then
+				storyboard.f_storyboard(motif.attract_mode.storyboard, false)
+			end
+			--enter menu
+			main.menu.loop()
+		end
 	end
 end
 
@@ -3232,6 +3362,7 @@ function main.f_setCredits()
 	main.credits = config.Credits - 1
 end
 
+--demo mode
 function main.f_demo()
 	if main.fadeActive or motif.demo_mode.enabled == 0 then
 		demoFrameCounter = 0
@@ -3291,6 +3422,7 @@ function main.f_demoStart()
 	main.f_fadeReset('fadein', motif.demo_mode)
 end
 
+--common menu calculations
 function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, section, keyPrev, keyNext)
 	local startItem = 1
 	for _, v in ipairs(t) do
@@ -3355,6 +3487,7 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, section, keyPrev, k
 	return cursorPosY, moveTxt, item
 end
 
+--common menu draw
 local rect_boxcursor = rect:create({})
 local rect_boxbg = rect:create({})
 function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, title, dataScale, rectScale, rectFix, footer_txt, skipClear)
@@ -3537,6 +3670,11 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			animDraw(motif[section].menu_arrow_down_data)
 		end
 	end
+	--draw credits text
+	if motif.attract_mode.enabled == 1 and main.credits ~= -1 then
+		txt_attract_credits:update({text = main.f_extractText(motif.attract_mode.credits_text, main.credits)[1]})
+		txt_attract_credits:draw()
+	end
 	--draw layerno = 1 backgrounds
 	bgDraw(motif[bgdef].bg, true)
 	--draw footer overlay
@@ -3571,6 +3709,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	end
 end
 
+--reset background
 function main.f_bgReset(data)
 	main.t_animUpdate = {}
 	alpha1cur = 0
@@ -3580,6 +3719,7 @@ function main.f_bgReset(data)
 	bgReset(data)
 end
 
+--reset fade
 function main.f_fadeReset(fadeType, fadeGroup)
 	main.fadeType = fadeType
 	main.fadeGroup = fadeGroup
@@ -3594,6 +3734,7 @@ function main.f_fadeReset(fadeType, fadeGroup)
 	end
 end
 
+--play music
 function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
 	if main.flags['-nomusic'] ~= nil then
 		return

@@ -3628,7 +3628,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.hiscorebgdef.bg, true)
 	--draw fadein / fadeout
-	if main.fadeType == 'fadein' and not start.t_hiscore.input and ((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or main.f_input(main.t_players, {'pal', 's'})) then
+	if main.fadeType == 'fadein' and not main.fadeActive and not start.t_hiscore.input and (((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal', 's'}))) or (motif.attract_mode.enabled == 1 and main.credits > 0)) then
 		main.f_fadeReset('fadeout', motif.hiscore_info)
 	end
 	main.f_fadeColor(motif.hiscore_info)
