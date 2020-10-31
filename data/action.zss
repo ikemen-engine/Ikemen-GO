@@ -42,7 +42,7 @@ if !Const(Default.Enable.Action) || TeamSide = 0 {
 	}
 	# Reversal
 	if MoveReversed = 1 {
-		LifebarAction{spr: Const(MsgReversal), 0}
+		LifebarAction{spr: Const(MsgReversal), 0; redirectid: enemy,ID}
 	}
 	# Hit Overridden (Parry)
 	if HitOverridden {

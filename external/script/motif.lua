@@ -834,27 +834,10 @@ local motif =
 		counter_offset = {0, 0}, --Ikemen feature
 		counter_facing = 1, --Ikemen feature
 		counter_scale = {1.0, 1.0}, --Ikemen feature
+		counter_default_snd = {-1, 0}, --Ikemen feature
 		counter_skipstart = 0, --Ikemen feature
-		counter_9_skiptime = 0, --Ikemen feature
-		counter_9_snd = {-1, 0}, --Ikemen feature
-		counter_8_skiptime = 0, --Ikemen feature
-		counter_8_snd = {-1, 0}, --Ikemen feature
-		counter_7_skiptime = 0, --Ikemen feature
-		counter_7_snd = {-1, 0}, --Ikemen feature
-		counter_6_skiptime = 0, --Ikemen feature
-		counter_6_snd = {-1, 0}, --Ikemen feature
-		counter_5_skiptime = 0, --Ikemen feature
-		counter_5_snd = {-1, 0}, --Ikemen feature
-		counter_4_skiptime = 0, --Ikemen feature
-		counter_4_snd = {-1, 0}, --Ikemen feature
-		counter_3_skiptime = 0, --Ikemen feature
-		counter_3_snd = {-1, 0}, --Ikemen feature
-		counter_2_skiptime = 0, --Ikemen feature
-		counter_2_snd = {-1, 0}, --Ikemen feature
-		counter_1_skiptime = 0, --Ikemen feature
-		counter_1_snd = {-1, 0}, --Ikemen feature
-		counter_0_skiptime = 0, --Ikemen feature
-		counter_0_snd = {-1, 0}, --Ikemen feature
+		--counter_<num>_skiptime = 0, --Ikemen feature
+		--counter_<num>_snd = {-1, 0}, --Ikemen feature
 		counter_end_skiptime = 0, --Ikemen feature
 		counter_end_snd = {-1, 0}, --Ikemen feature
 	},
@@ -1156,6 +1139,7 @@ local motif =
 		title_font_scale = {1.0, 1.0},
 		title_font_height = -1, --Ikemen feature
 		title_text = 'OPTIONS', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1338,6 +1322,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'REPLAY SELECT', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1389,6 +1374,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'PAUSE', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1505,6 +1491,34 @@ local motif =
 		options_key = 'F11', --Ikemen feature
 		credits_snd = {-1, 0}, --Ikemen feature
 		storyboard = '', --Ikemen feature
+		start_time = 600, --Ikemen feature
+		start_insert_text = 'Insert coin', --Ikemen feature
+		start_insert_offset = {159, 185}, --Ikemen feature
+		start_insert_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		start_insert_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_insert_font_height = -1, --Ikemen feature
+		start_insert_blinktime = 30, --Ikemen feature
+		start_press_text = 'Press Start', --Ikemen feature
+		start_press_offset = {159, 185}, --Ikemen feature
+		start_press_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		start_press_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_press_font_height = -1, --Ikemen feature
+		start_press_blinktime = 30, --Ikemen feature
+		start_timer_enabled = 1, --Ikemen feature
+		start_timer_offset = {310, 234}, --Ikemen feature
+		start_timer_font = {'f-4x6.fnt', 0, -1, 255, 255, 255}, --Ikemen feature
+		start_timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_timer_font_height = -1, --Ikemen feature
+		start_timer_font_text = '%s', --Ikemen feature
+		start_timer_count = 60, --Ikemen feature
+		start_timer_framespercount = 60, --Ikemen feature
+		start_timer_displaytime = 10, --Ikemen feature
+		start_done_snd = {100, 1}, --Ikemen feature
+		credits_text = 'Credits: %2i', --Ikemen feature
+		credits_offset = {159, 234}, --Ikemen feature
+		credits_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		credits_font_scale = {1.0, 1.0}, --Ikemen feature
+		credits_font_height = -1, --Ikemen feature
 		title_offset = {159, 19}, --Ikemen feature
 		title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1588,6 +1602,7 @@ local motif =
 	rank_info =
 	{
 		enabled = 0, --Ikemen feature
+		bars_display = 0, --Ikemen feature
 		snd_time = 0, --Ikemen feature
 		snd = {-1, 0}, --Ikemen feature
 		p1_score_offset = {0, 0}, --Ikemen feature
@@ -1700,7 +1715,7 @@ local motif =
 		fadeout_time = 50, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = nil, --Ikemen feature
-		time = 600,
+		time = 360,
 		pos = {0, 0}, --Ikemen feature
 		title_offset = {0, 0}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
@@ -2757,9 +2772,9 @@ motif.defaultHiscore = true --t.hiscore_info == nil
 motif.defaultInfobox = false --t.infobox == nil
 motif.defaultLoading = false --t.title_info.loading_font == nil
 motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
-motif.defaultMenu = true --t.menu_info == nil
-motif.defaultOptions = true --t.option_info.menu_item_font == nil
-motif.defaultReplay = true --t.replay_info == nil
+motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
+motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
+motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = true --t.warning_info == nil
 
 if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end

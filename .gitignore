@@ -26,6 +26,11 @@ OpenAL32.dll
 save/*
 debug/*
 chars/*
+font/*
+!/font/default-3x5-bold.def
+!/font/default-3x5-bold.sff
+!/font/default-3x5.def
+!/font/default-3x5.sff
 sound/*
 stages/*
 wip/*

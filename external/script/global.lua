@@ -186,6 +186,7 @@ function loop()
 	start.f_stageMusic()
 	--match start
 	if roundstart() then
+		setLifebarElements({bars = main.lifebar.bars})
 		if roundno() == 1 then
 			speedMul = 1
 			speedAdd = 0
@@ -253,7 +254,7 @@ function loop()
 						print(i)
 					end
 				end]]
-				if main.f_input(main.t_players, {'s'}) and main.playerInput ~= 1 then
+				if main.f_input(main.t_players, {'s'}) and main.playerInput ~= 1 and (motif.attract_mode.enabled == 0 or main.credits ~= 0) then
 					start.challenger = main.playerInput
 				end
 			end
