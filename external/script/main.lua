@@ -3309,10 +3309,6 @@ end
 function main.f_attractMode()
 	main.credits = 0
 	while true do --outer loop
-		--back in outer loop after clearing whole mode or via esc
-		if main.credits > 0 then
-			main.credits = main.credits - 1
-		end
 		local startScreen, skip = false, false
 		while true do --inner loop (attract mode)
 			--logo storyboard
@@ -3358,6 +3354,8 @@ function main.f_attractMode()
 			end
 			--enter menu
 			main.menu.loop()
+		elseif main.credits > 0 then
+			main.credits = main.credits - 1
 		end
 	end
 end
