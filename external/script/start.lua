@@ -2440,7 +2440,7 @@ function start.f_selectMenu(side, cmd, player, member)
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				start.c[player].randCnt = 0
 				sel_ref = start.f_randomChar(side)
-				if start.c[player].randRef ~= sel_ref then
+				if start.c[player].randRef ~= sel_ref or start.p[side].t_selTemp[member].anim_data == nil then
 					getAnim = true
 					start.c[player].randRef = sel_ref
 				end
