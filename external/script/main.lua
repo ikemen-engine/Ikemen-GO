@@ -2017,7 +2017,7 @@ function main.f_menuWindow(t)
 			t.menu_pos[2] + (t.menu_window_visibleitems - 1) * t.menu_item_spacing[2] + t.menu_window_margins_y[2]
 		}
 	end
-	return {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}
+	return {0, 0, main.SP_Localcoord[1], math.max(240, main.SP_Localcoord[2])}
 end
 
 --Load additional scripts
