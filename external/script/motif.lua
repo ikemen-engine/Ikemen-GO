@@ -2576,7 +2576,7 @@ function motif.f_loadSprData(t, v)
 		animSetScale(t[v.s .. 'data'], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
 		animUpdate(t[v.s .. 'data'])
 	else --create dummy data
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1, -1, 0, 0, -1')
+		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
 		animUpdate(t[v.s .. 'data'])
 	end
 	animSetWindow(t[v.s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])

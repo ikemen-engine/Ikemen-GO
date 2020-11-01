@@ -689,6 +689,9 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, de
 		anim = anim .. '\n'
 	end
 	if defsc then main.f_disableLuaScale() end
+	if anim == '' then
+		anim = '-1,0, 0,0, -1'
+	end
 	local data = animNew(sff, anim)
 	animSetScale(data, scaleX, scaleY)
 	animUpdate(data)
