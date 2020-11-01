@@ -1355,9 +1355,6 @@ function start.f_game(lua)
 		os.exit()
 	end
 	main.t_pIn[2] = p2In
-	if winner ~= winnerteam() then
-		panicError("winner = " .. winner .. "; winnerteam = " .. winnerteam()) --TODO: just in case there is a difference, get rid of it if no errors
-	end
 	return winner, tbl
 end
 
@@ -1884,11 +1881,12 @@ function start.f_selectScreen()
 					local y = v.cursor[2]
 					local t = start.t_grid[y + 1][x + 1]
 					--retrieve proper cell coordinates in case of random selection
-					if (t.char == 'randomselect' or t.hidden == 3) --[[and not config.TeamDuplicates]] then
-						x = start.f_getCharData(v.ref).col - 1
-						y = start.f_getCharData(v.ref).row - 1
-						t = start.t_grid[y + 1][x + 1]
-					end
+					--TODO: doesn't work with slot feature
+					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not config.TeamDuplicates]] then
+					--	x = start.f_getCharData(v.ref).col - 1
+					--	y = start.f_getCharData(v.ref).row - 1
+					--	t = start.t_grid[y + 1][x + 1]
+					--end
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
 						main.f_animPosDraw(

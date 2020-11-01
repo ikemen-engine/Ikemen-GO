@@ -339,7 +339,7 @@ local motif =
 		p1_face_offset = {0, 0},
 		p1_face_facing = 1,
 		p1_face_scale = {1.0, 1.0},
-		p1_face_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_face_window = {},
 		p1_face_spacing = {0, 0}, --Ikemen feature
 		p2_face_num = 1, --Ikemen feature
 		p2_face_pos = {0, 0},
@@ -350,7 +350,7 @@ local motif =
 		p2_face_offset = {0, 0},
 		p2_face_facing = -1,
 		p2_face_scale = {1.0, 1.0},
-		p2_face_window = {0, 0, config.GameWidth, config.GameHeight},
+		p2_face_window = {},
 		p2_face_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_face_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_face_spr = {9000, 1}, --Ikemen feature
@@ -397,7 +397,7 @@ local motif =
 		stage_portrait_random_spr = {}, --Ikemen feature
 		stage_portrait_random_offset = {0, 0}, --Ikemen feature
 		stage_portrait_random_scale = {1.0, 1.0}, --Ikemen feature
-		stage_portrait_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		stage_portrait_window = {}, --Ikemen feature
 		teammenu_move_wrapping = 1,
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
@@ -691,7 +691,7 @@ local motif =
 		p1_offset = {0, 0},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		p1_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
 		p2_num = 1, --Ikemen feature
 		p2_pos = {0, 0},
@@ -702,7 +702,7 @@ local motif =
 		p2_offset = {0, 0},
 		p2_facing = -1,
 		p2_scale = {1.0, 1.0},
-		p2_window = {0, 0, config.GameWidth, config.GameHeight},
+		p2_window = {},
 		p2_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 1}, --Ikemen feature
@@ -872,7 +872,7 @@ local motif =
 		p1_offset = {100, 20},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		p1_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 0, 1, 255, 255, 255},
@@ -885,7 +885,7 @@ local motif =
 		p2_offset = {100, 20}, --Ikemen feature
 		p2_facing = 1, --Ikemen feature
 		p2_scale = {1.0, 1.0}, --Ikemen feature
-		p2_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_window = {}, --Ikemen feature
 		p2_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 2}, --Ikemen feature
@@ -904,7 +904,7 @@ local motif =
 		winquote_font_height = -1, --Ikemen feature
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
-		winquote_window = {0, 0, config.GameWidth, config.GameHeight},
+		winquote_window = {},
 		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
@@ -1677,12 +1677,12 @@ local motif =
 		p1_face_offset = {0, 0}, --Ikemen feature
 		p1_face_facing = 1, --Ikemen feature
 		p1_face_scale = {1.0, 1.0}, --Ikemen feature
-		p1_face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p1_face_window = {}, --Ikemen feature
 		p2_face_spr = {9000, 0}, --Ikemen feature
 		p2_face_offset = {0, 0}, --Ikemen feature
 		p2_face_facing = -1, --Ikemen feature
 		p2_face_scale = {1.0, 1.0}, --Ikemen feature
-		p2_face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_face_window = {}, --Ikemen feature
 		p1_name_offset = {0, 0}, --Ikemen feature
 		p1_name_font = {-1, 0, 1, 255, 255, 255}, --Ikemen feature
 		p1_name_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1697,14 +1697,14 @@ local motif =
 		p1_text_font_height = -1, --Ikemen feature
 		p1_text_delay = 2, --Ikemen feature
 		p1_text_textwrap = 'w', --Ikemen feature
-		p1_text_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p1_text_window = {}, --Ikemen feature
 		p2_text_offset = {20, 192}, --Ikemen feature
 		p2_text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		p2_text_font_scale = {1.0, 1.0}, --Ikemen feature
 		p2_text_font_height = -1, --Ikemen feature
 		p2_text_delay = 2, --Ikemen feature
 		p2_text_textwrap = 'w', --Ikemen feature
-		p2_text_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_text_window = {}, --Ikemen feature
 	},
 	hiscore_info =
 	{
@@ -1793,7 +1793,7 @@ local motif =
 		face_offset = {0, 0}, --Ikemen feature
 		face_facing = 1, --Ikemen feature
 		face_scale = {1.0, 1.0}, --Ikemen feature
-		face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		face_window = {}, --Ikemen feature
 		face_num = 1, --Ikemen feature
 		face_spacing = {0, 0}, --Ikemen feature
 		face_bg_anim = nil, --Ikemen feature
@@ -2424,15 +2424,17 @@ if motif.victory_screen.enabled == 0 then
 end
 
 --adjust window parameters
-local t_facingWindow = {
+for k, v in pairs({
 	select_info = {'p1_face_window', 'p2_face_window', 'stage_portrait_window'},
 	vs_screen = {'p1_window', 'p2_window'},
 	victory_screen = {'p1_window', 'p2_window', 'winquote_window'},
-	hiscore_info = {'face_window'},
 	dialogue_info = {'p1_face_window', 'p2_face_window', 'p1_text_window', 'p2_text_window'},
-}
-for k, v in pairs(t_facingWindow) do
+	hiscore_info = {'face_window'},
+}) do
 	for _, param in ipairs(v) do
+		if t[k] == nil or t[k][param] == nil then
+			motif[k][param] = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+		end
 		main.windowCoords(motif[k][param], param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window')
 	end
 end
@@ -2574,7 +2576,7 @@ function motif.f_loadSprData(t, v)
 		animSetScale(t[v.s .. 'data'], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
 		animUpdate(t[v.s .. 'data'])
 	else --create dummy data
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1, -1, 0, 0, -1')
+		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
 		animUpdate(t[v.s .. 'data'])
 	end
 	animSetWindow(t[v.s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
