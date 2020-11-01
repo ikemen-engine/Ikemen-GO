@@ -183,9 +183,6 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, s)
 		}
 		act := strArg(l, 2)
-		if act == "" {
-			act = "-1,0, 0,0, -1"
-		}
 		anim := NewAnim(s, act)
 		if anim == nil {
 			l.RaiseError("\nFailed to read the data: %v\n", act)
