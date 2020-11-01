@@ -183,7 +183,9 @@ local function f_parse(path)
 				t.anim[row] = {}
 				pos = t.anim[row]
 			else --matched other []
-				t[row] = {}
+				if t[row] == nil then
+					t[row] = {}
+				end
 				pos = t[row]
 			end
 		else --matched non [] line
