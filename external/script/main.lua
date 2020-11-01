@@ -79,7 +79,7 @@ function main.f_commandAdd(name, cmd, tim, buf)
 		return
 	end
 	for i = 1, #main.t_cmd do
-		commandAdd(main.t_cmd[i], name, cmd, tim, buf)
+		commandAdd(main.t_cmd[i], name, cmd, tim or 15, buf or 1)
 	end
 	main.t_commands[name] = 0
 end
