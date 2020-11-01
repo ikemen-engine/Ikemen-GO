@@ -1355,9 +1355,6 @@ function start.f_game(lua)
 		os.exit()
 	end
 	main.t_pIn[2] = p2In
-	if winner ~= winnerteam() then
-		panicError("winner = " .. winner .. "; winnerteam = " .. winnerteam()) --TODO: just in case there is a difference, get rid of it if no errors
-	end
 	return winner, tbl
 end
 
