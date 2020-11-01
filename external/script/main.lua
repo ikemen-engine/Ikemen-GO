@@ -1544,6 +1544,7 @@ function main.f_charParam(t, c)
 	end
 end
 
+main.dummySff = sffNew()
 function main.f_addChar(line, playable, slot)
 	table.insert(main.t_selChars, {})
 	local row = #main.t_selChars
@@ -1648,6 +1649,9 @@ function main.f_addChar(line, playable, slot)
 					break
 				end
 			end
+		end
+		if main.t_selChars[row].cell_data == nil then
+			main.t_selChars[row].cell_data = animNew(main.dummySff, '-1, 0, 0, 0, -1')
 		end
 	end
 	--slots
