@@ -79,7 +79,7 @@ function main.f_commandAdd(name, cmd, tim, buf)
 		return
 	end
 	for i = 1, #main.t_cmd do
-		commandAdd(main.t_cmd[i], name, cmd, tim, buf)
+		commandAdd(main.t_cmd[i], name, cmd, tim or 15, buf or 1)
 	end
 	main.t_commands[name] = 0
 end
@@ -2003,17 +2003,20 @@ for k, v in pairs(main.t_selOptions) do
 	local mode = k:match('^(.+)maxmatches$')
 	if mode ~= nil then
 		local orderOK = false
-		for i = 1, #main.t_selOptions[k] do
-			if mode == 'survival' and (main.t_selOptions[k][i] > 0 or main.t_selOptions[k][i] == -1) and main.t_orderSurvival[i] ~= nil and #main.t_orderSurvival[i] > 0 then
+		for i, num in ipairs(main.t_selOptions[k]) do
+			if mode == 'bossrush' then
 				orderOK = true
 				break
-			elseif main.t_selOptions[k][i] > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
+			elseif mode == 'survival' and (num > 0 or num == -1) and main.t_orderSurvival[i] ~= nil and #main.t_orderSurvival[i] > 0 then
+				orderOK = true
+				break
+			elseif num > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
 				orderOK = true
 				break
 			end
 		end
 		if not orderOK then
-			main.f_warning(main.f_extractText(motif.warning_info.text_order_text), motif.title_info, motif.titlebgdef)
+			main.f_warning(main.f_extractText(motif.warning_info.text_order_text, mode .. '.maxmatches'), motif.title_info, motif.titlebgdef)
 			os.exit()
 		end
 	end
