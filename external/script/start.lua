@@ -2977,7 +2977,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 				table.insert(t, {
 					ref = selectno(),
 					anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-					anim_data = start.f_animGet(selectno(), side, #t, motif.victory_screen, '', '', true, true),
+					anim_data = start.f_animGet(selectno(), side, #t + 1, motif.victory_screen, '', '', true, true),
 					slide_dist = {0, 0},
 				})
 				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
@@ -2998,7 +2998,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 					table.insert(t, {
 						ref = k,
 						anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-						anim_data = start.f_animGet(k, side, #t, motif.victory_screen, '', '', true, true),
+						anim_data = start.f_animGet(k, side, #t + 1, motif.victory_screen, '', '', true, true),
 						slide_dist = {0, 0},
 					})
 					t_matchList[k] = (t_matchList[k] or 0) + 1
