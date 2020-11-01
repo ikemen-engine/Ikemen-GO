@@ -2302,7 +2302,7 @@ type Select struct {
 
 func newSelect() *Select {
 	return &Select{selectedStageNo: -1, stagePreload: [...]int16{-1, -1},
-		spritePreload: [][2]int16{[...]int16{9000, 1}}}
+		spritePreload: [][2]int16{[...]int16{9000, 0}, [...]int16{9000, 1}}}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i

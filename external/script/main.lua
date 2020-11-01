@@ -1651,7 +1651,7 @@ function main.f_addChar(line, playable, slot)
 			end
 		end
 		if main.t_selChars[row].cell_data == nil then
-			main.t_selChars[row].cell_data = animNew(main.dummySff, '-1, 0, 0, 0, -1')
+			main.t_selChars[row].cell_data = animNew(main.dummySff, '-1,0, 0,0, -1')
 		end
 	end
 	--slots
