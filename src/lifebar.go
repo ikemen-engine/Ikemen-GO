@@ -1653,12 +1653,10 @@ func (ro *LifeBarRound) act() bool {
 		if !ro.introState[0] || !ro.introState[1] {
 			if sys.round == 1 && sys.intro == ro.ctrl_time && len(sys.commonLua) > 0 {
 				for _, p := range sys.chars {
-					if len(p) > 0 {
-						if len(p[0].dialogue) > 0 {
-							sys.posReset()
-							sys.dialogueFlg = true
-							return false
-						}
+					if len(p) > 0 && len(p[0].dialogue) > 0 {
+						sys.posReset()
+						sys.dialogueFlg = true
+						return false
 					}
 				}
 			}

@@ -1170,14 +1170,13 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.pausetime = ^s.pausetime
 			s.pause = s.pausetime
 		}
-		// in mugen 1.1 assertspecial flags are reset during pause (TODO: test if it's also the case for intro, roundnotover, noko)
-		s.unsetSF(GSF_assertspecial)
-		/*if s.super <= 0 && s.pause <= 0 {
+		// in mugen 1.1 most global assertspecial flags are reset during pause
+		// TODO: test if roundnotover and noko should reset (keep intro active)
+		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {
-			s.unsetSF(GSF_roundnotover)
-			s.unsetSF(GSF_roundnotskip)
-		}*/
+			s.unsetSF(GSF_assertspecialpause)
+		}
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
@@ -1286,7 +1285,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				for _, p := range s.chars {
 					if len(p) > 0 {
 						p[0].unsetSCF(SCF_over)
-						if !p[0].scf(SCF_standby) {
+						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
 							if p[0].ss.no == 0 {
 								p[0].setCtrl(true)
 							} else {
@@ -1307,7 +1306,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 			ko := [...]bool{true, true}
 			for ii := range ko {
-				for i := ii; i < len(s.chars); i += 2 {
+				for i := ii; i < MaxSimul*2; i += 2 {
 					if len(s.chars[i]) > 0 && s.chars[i][0].teamside != -1 {
 						if s.chars[i][0].alive() {
 							ko[ii] = false
@@ -1320,13 +1319,13 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 				if ko[ii] {
 					i := ii ^ 1
-					for ; i < len(s.chars); i += 2 {
+					for ; i < MaxSimul*2; i += 2 {
 						if len(s.chars[i]) > 0 && s.chars[i][0].life <
 							s.chars[i][0].lifeMax {
 							break
 						}
 					}
-					if i >= len(s.chars) {
+					if i >= MaxSimul*2 {
 						s.winType[ii^1].SetPerfect()
 					}
 				}
@@ -1335,7 +1334,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			if s.time == 0 {
 				l := [2]float32{}
 				for i := 0; i < 2; i++ {
-					for j := i; j < len(s.chars); j += 2 {
+					for j := i; j < MaxSimul*2; j += 2 {
 						if len(s.chars[j]) > 0 {
 							if s.tmode[i] == TM_Simul || s.tmode[i] == TM_Tag {
 								l[i] += (float32(s.chars[j][0].life) /
@@ -1350,7 +1349,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 				if l[0] > l[1] {
 					p := true
-					for i := 0; i < len(s.chars); i += 2 {
+					for i := 0; i < MaxSimul*2; i += 2 {
 						if len(s.chars[i]) > 0 &&
 							s.chars[i][0].life < s.chars[i][0].lifeMax {
 							p = false
@@ -1364,7 +1363,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winTeam = 0
 				} else if l[0] < l[1] {
 					p := true
-					for i := 1; i < len(s.chars); i += 2 {
+					for i := 1; i < MaxSimul*2; i += 2 {
 						if len(s.chars[i]) > 0 &&
 							s.chars[i][0].life < s.chars[i][0].lifeMax {
 							p = false

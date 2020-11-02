@@ -93,10 +93,9 @@ const (
 	GSF_noko
 	GSF_nokovelocity
 	GSF_roundnotskip
-	GSF_assertspecial GlobalSpecialFlag = GSF_intro | GSF_roundnotover |
-		GSF_nomusic | GSF_nobardisplay | GSF_nobg | GSF_nofg |
-		GSF_globalnoshadow | GSF_timerfreeze | GSF_nokosnd | GSF_nokoslow |
-		GSF_noko | GSF_nokovelocity | GSF_roundnotskip
+	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
+		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
+		GSF_noko | GSF_roundnotskip
 )
 
 type PosType int32
@@ -2635,7 +2634,10 @@ func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
-	return sys.winTeam == 1^c.teamside
+	if c.teamside == -1 {
+		return false
+	}
+	return sys.winTeam == ^c.playerNo&1
 }
 func (c *Char) loseKO() bool {
 	return c.lose() && sys.finish == FT_KO
@@ -4147,6 +4149,12 @@ func (c *Char) scoreTotal() float32 {
 	s += c.score()
 	return s
 }
+func (c *Char) consecutiveWins() int32 {
+	if c.teamside == -1 {
+		return 0
+	}
+	return sys.consecutiveWins[c.teamside]
+}
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
 }
@@ -4475,15 +4483,31 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 			c.mapArray[key] += Value
 		}
 	case 6:
-		for i, p := range sys.chars {
-			if len(p) > 0 && c.teamside == i&1 {
-				p[0].mapArray[key] = Value
+		if c.teamside == -1 {
+			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].mapArray[key] = Value
+				}
+			}
+		} else {
+			for i := c.teamside; i < MaxSimul*2; i += 2 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].mapArray[key] = Value
+				}
 			}
 		}
 	case 7:
-		for i, p := range sys.chars {
-			if len(p) > 0 && c.teamside == i&1 {
-				p[0].mapArray[key] += Value
+		if c.teamside == -1 {
+			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].mapArray[key] += Value
+				}
+			}
+		} else {
+			for i := c.teamside; i < MaxSimul*2; i += 2 {
+				if len(sys.chars[i]) > 0 {
+					sys.chars[i][0].mapArray[key] += Value
+				}
 			}
 		}
 	}

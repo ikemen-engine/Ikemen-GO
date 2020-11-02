@@ -130,6 +130,7 @@ MapSet{map: "_iksys_tagLeavingPosX"; value: Pos X} #TODO: won't be needed once t
  anim: Const(AnimStanding); velset: 0, 0; ctrl: 0;]
 
 AssertSpecial{flag: invisible; flag2: noautoturn}
+PlayerPush{value: 0}
 
 #===============================================================================
 #StateTagJumpingIn

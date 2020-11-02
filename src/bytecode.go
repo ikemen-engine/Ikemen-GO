@@ -1732,7 +1732,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:
-		sys.bcStack.PushI(sys.consecutiveWins[c.teamside])
+		sys.bcStack.PushI(c.consecutiveWins())
 	case OC_ex_dizzy:
 		sys.bcStack.PushB(c.scf(SCF_dizzy))
 	case OC_ex_dizzypoints:
@@ -2382,9 +2382,11 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 				partnerCtrlSetting = 0
 			}
 		case tagIn_leader:
-			ld := int(exp[0].evalI(c)) - 1
-			if ld&1 == crun.playerNo&1 && ld >= crun.teamside && ld <= int(sys.numSimul[crun.teamside])*2-^crun.teamside&1-1 {
-				sys.teamLeader[crun.playerNo&1] = ld
+			if crun.teamside != -1 {
+				ld := int(exp[0].evalI(c)) - 1
+				if ld&1 == crun.playerNo&1 && ld >= crun.teamside && ld <= int(sys.numSimul[crun.teamside])*2-^crun.teamside&1-1 {
+					sys.teamLeader[crun.playerNo&1] = ld
+				}
 			}
 		case tagIn_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
