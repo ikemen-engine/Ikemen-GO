@@ -485,11 +485,13 @@ func systemScriptInit(l *lua.LState) {
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
-						lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1,
-							scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
-						lay.DrawSprite((float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale,
-							float32(numArg(l, 4))*sys.lifebarScale, lay.layerno, sprite, pfx,
-							sys.chars[pn-1][0].localscl, window)
+						x := (float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale
+						y := float32(numArg(l, 4))*sys.lifebarScale
+						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
+						facing := int8(numArg(l, 7))
+						fscale := sys.chars[pn-1][0].localscl
+						sprite.Draw(x, y, scale[0]*float32(facing)*fscale,
+							scale[1]*fscale, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
 					}
 				}
