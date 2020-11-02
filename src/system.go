@@ -1617,7 +1617,6 @@ func (s *System) draw(x, y, scl float32) {
 			if len(p) > 0 {
 				if len(p[0].dialogue) > 0 {
 					sys.lifebar.ro.cur = 3
-					sys.dialogueBarsFlg = true
 					sys.dialogueFlg = true
 					break
 				}
