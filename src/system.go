@@ -2050,7 +2050,7 @@ func (s *System) fight() (reload bool) {
 			} else {
 				for i, tm := range s.tmode {
 					if s.chars[i][0].win() || !s.chars[i][0].lose() && tm != TM_Turns {
-						for j := i; j < MaxSimul*2; j += 2 {
+						for j := i; j < len(s.chars); j += 2 {
 							if len(s.chars[j]) > 0 {
 								if s.chars[j][0].win() {
 									s.chars[j][0].life = Max(1, int32(math.Ceil(math.Pow(lvmul,
