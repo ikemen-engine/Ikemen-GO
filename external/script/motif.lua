@@ -2395,6 +2395,10 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 	main.f_loadingRefresh()
 end
 --file:close()
+
+if main.t_sort.select_info.teammenu == nil then
+	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
+end
 if main.debugLog then main.f_printTable(main.t_sort, 'debug/t_sort.txt') end
 
 --;===========================================================
