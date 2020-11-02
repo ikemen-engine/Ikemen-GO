@@ -2418,7 +2418,7 @@ function start.f_selectMenu(side, cmd, player, member)
 				anim_data = start.f_animGet(sel_ref, side, member, motif.select_info, '_face', '', true, false),
 				slide_dist = {0, 0},
 			})
-		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell --[[and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2]] then
+		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= sel_ref then
 			start.p[side].t_selTemp[member].ref = sel_ref
 			start.p[side].t_selTemp[member].cell = start.c[player].cell
 			start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
@@ -2977,7 +2977,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 				table.insert(t, {
 					ref = selectno(),
 					anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-					anim_data = start.f_animGet(selectno(), side, #t, motif.victory_screen, '', '', true, true),
+					anim_data = start.f_animGet(selectno(), side, #t + 1, motif.victory_screen, '', '', true, true),
 					slide_dist = {0, 0},
 				})
 				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
@@ -2998,7 +2998,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 					table.insert(t, {
 						ref = k,
 						anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-						anim_data = start.f_animGet(k, side, #t, motif.victory_screen, '', '', true, true),
+						anim_data = start.f_animGet(k, side, #t + 1, motif.victory_screen, '', '', true, true),
 						slide_dist = {0, 0},
 					})
 					t_matchList[k] = (t_matchList[k] or 0) + 1

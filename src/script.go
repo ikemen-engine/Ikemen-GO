@@ -1459,7 +1459,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 5 {
 			loopstart = int(numArg(l, 5))
 		}
-		if l.GetTop() >= 6 {
+		if l.GetTop() >= 6 && numArg(l, 6) > 1 {
 			loopend = int(numArg(l, 6))
 		}
 		sys.bgm.Open(strArg(l, 1), isdefault, loop, volume, loopstart, loopend)

@@ -766,16 +766,22 @@ function main.f_tableRemove(t, value)
 end
 
 --merge 2 tables into 1 overwriting values
-function main.f_tableMerge(t1, t2)
+function main.f_tableMerge(t1, t2, key)
 	for k, v in pairs(t2) do
 		if type(v) == "table" then
 			if type(t1[k] or false) == "table" then
-				main.f_tableMerge(t1[k] or {}, t2[k] or {})
+				main.f_tableMerge(t1[k] or {}, t2[k] or {}, k)
 			else
 				t1[k] = v
 			end
 		elseif type(t1[k] or false) == "table" then
 			t1[k][1] = v
+		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and not (key or k):match('_font$') then
+			if type(t1[k]) == "string" then
+				t1[k] = tostring(v)
+			else
+				panicError("\nmain.f_tableMerge: " .. (key or k) .. " = " .. v .. " (" .. type(t1[k]) .. " expected, got " .. type(v) .. ")\n")
+			end
 		else
 			t1[k] = v
 		end
