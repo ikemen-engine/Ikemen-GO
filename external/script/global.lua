@@ -173,7 +173,11 @@ function loop()
 			endMatch()
 			os.exit()
 		end
+		if indialogue() then
+			dialogueReset()
+		end
 		togglePostMatch(false)
+		toggleDialogueBars(false)
 		return
 	end
 	--credits

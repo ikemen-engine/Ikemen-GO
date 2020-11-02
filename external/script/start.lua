@@ -3982,8 +3982,11 @@ function start.f_dialogueInit()
 		counter = 0,
 	}
 	if motif.dialogue_info.enabled == 0 then
+		start.dialogueInit = false
+		dialogueReset()
 		return false
 	end
+	toggleDialogueBars(true)
 	start.f_dialogueParse()
 	for side = 1, 2 do
 		animReset(motif.dialogue_info['p' .. side .. '_bg_data'])

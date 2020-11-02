@@ -2319,6 +2319,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "toggleDialogueBars", func(*lua.LState) int {
+		if l.GetTop() >= 1 {
+			sys.dialogueBarsFlg = boolArg(l, 1)
+		} else {
+			sys.dialogueBarsFlg = !sys.dialogueBarsFlg
+		}
+		return 0
+	})
 	luaRegister(l, "toggleFullscreen", func(*lua.LState) int {
 		fs := !sys.window.fullscreen
 		if l.GetTop() >= 1 {
