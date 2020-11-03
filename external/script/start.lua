@@ -1299,6 +1299,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 							end
 						else --select
 							main.t_selGrid[cell].slot = v[math.random(1, #v)]
+							start.selRef = start.f_selGrid(cell).char_ref
 						end
 						start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
 						start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
@@ -2409,17 +2410,17 @@ function start.f_selectMenu(side, cmd, player, member)
 		start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
 		--update temp data
 		local getAnim = false
-		local sel_ref = start.f_selGrid(start.c[player].cell + 1).char_ref
+		start.selRef = start.f_selGrid(start.c[player].cell + 1).char_ref
 		if start.p[side].t_selTemp[member] == nil then
 			table.insert(start.p[side].t_selTemp, {
-				ref = sel_ref,
+				ref = start.selRef,
 				cell = start.c[player].cell,
 				anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim'],
-				anim_data = start.f_animGet(sel_ref, side, member, motif.select_info, '_face', '', true, false),
+				anim_data = start.f_animGet(start.selRef, side, member, motif.select_info, '_face', '', true, false),
 				slide_dist = {0, 0},
 			})
-		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= sel_ref then
-			start.p[side].t_selTemp[member].ref = sel_ref
+		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.selRef then
+			start.p[side].t_selTemp[member].ref = start.selRef
 			start.p[side].t_selTemp[member].cell = start.c[player].cell
 			start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
 			start.p[side].t_selTemp[member].slide_dist = {0, 0}
@@ -2428,22 +2429,22 @@ function start.f_selectMenu(side, cmd, player, member)
 		if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
 			if start.c[player].randCnt < motif.select_info.cell_random_switchtime then
 				start.c[player].randCnt = start.c[player].randCnt + 1
-				sel_ref = start.c[player].randRef or sel_ref
+				start.selRef = start.c[player].randRef or start.selRef
 			else
 				if motif.select_info.random_move_snd_cancel == 1 then
 					sndStop(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				end
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				start.c[player].randCnt = 0
-				sel_ref = start.f_randomChar(side)
-				if start.c[player].randRef ~= sel_ref or start.p[side].t_selTemp[member].anim_data == nil then
+				start.selRef = start.f_randomChar(side)
+				if start.c[player].randRef ~= start.selRef or start.p[side].t_selTemp[member].anim_data == nil then
 					getAnim = true
-					start.c[player].randRef = sel_ref
+					start.c[player].randRef = start.selRef
 				end
 			end
 		end
 		if getAnim then
-			start.p[side].t_selTemp[member].anim_data = start.f_animGet(sel_ref, side, member, motif.select_info, '_face', '', true, false)
+			start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.selRef, side, member, motif.select_info, '_face', '', true, false)
 		end
 		--draw active cursor
 		if start.f_selGrid(start.c[player].cell + 1).hidden ~= 1 then
@@ -2461,22 +2462,22 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			local pal = main.f_btnPalNo(main.t_cmd[cmd])
 			if timerSelect ~= -1 then
-				start.f_playWave(sel_ref, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
+				start.f_playWave(start.selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
 			end
 			start.p[side].t_selected[member] = {
-				ref = sel_ref,
-				pal = start.f_selectPal(sel_ref, main.f_btnPalNo(main.t_cmd[cmd])),
+				ref = start.selRef,
+				pal = start.f_selectPal(start.selRef, main.f_btnPalNo(main.t_cmd[cmd])),
 				cursor = {start.c[player].selX, start.c[player].selY},
 				ratio = start.f_getRatio(side),
 				pn = start.f_getPlayerNo(side, member),
 			}
-			start.p[side].t_selTemp[member].ref = sel_ref
+			start.p[side].t_selTemp[member].ref = start.selRef
 			if start.p[side].t_selTemp[member].anim ~= (motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']) then
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(sel_ref, side, member, motif.select_info, '_face', '_done', false, false)
+				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.selRef, side, member, motif.select_info, '_face', '_done', false, false)
 				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
 			end
 			if not config.TeamDuplicates then
-				t_reservedChars[side][sel_ref] = true
+				t_reservedChars[side][start.selRef] = true
 			end
 			start.p[side].t_cursor[start.p[side].numChars - member + 1] = {x = start.c[player].selX, y = start.c[player].selY}
 			if main.f_tableLength(start.p[side].t_selected) == start.p[side].numChars then --if all characters have been chosen
