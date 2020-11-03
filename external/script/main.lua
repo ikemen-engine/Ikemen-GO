@@ -1399,9 +1399,13 @@ function main.f_commandLine()
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		if main.t_charDef[v.character:lower()] == nil then
-			addChar(v.character)
-			main.t_charDef[v.character:lower()] = ref
-			ref = ref + 1
+			if main.flags['-loadmotif'] ~= nil then
+				main.f_addChar(v.character, true, false)
+			else
+				addChar(v.character)
+				main.t_charDef[v.character:lower()] = ref
+				ref = ref + 1
+			end
 		end
 		selectChar(v.player, main.t_charDef[v.character:lower()], v.pal)
 		setCom(v.num, v.ai)
