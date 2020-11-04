@@ -5320,11 +5320,9 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 
-		for k, hs := range c.activeHitScale {
+		for k := range c.activeHitScale {
 			if p := sys.playerID(k); p != nil && p.ss.moveType != MT_H {
 				delete(c.activeHitScale, k)
-			} else if p.ss.moveType != MT_H {
-				hitScaletimeAdvance(hs)
 			}
 		}
 		for k, hs := range c.nextHitScale {
