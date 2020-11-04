@@ -6475,9 +6475,9 @@ func (sc hitScaleSet) Run(c *Char, _ []int32) bool {
 		case hitScaleSet_addType:
 			tempHitScale.addType = exp[0].evalI(c)
 		case hitScaleSet_min:
-			tempHitScale.min = exp[0].evalI(c)
+			tempHitScale.min = exp[0].evalF(c)
 		case hitScaleSet_max:
-			tempHitScale.max = exp[0].evalI(c)
+			tempHitScale.max = exp[0].evalF(c)
 		case hitScaleSet_time:
 			tempHitScale.time = exp[0].evalI(c)
 		case hitScaleSet_reset:

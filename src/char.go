@@ -4423,8 +4423,8 @@ type HitScale struct {
 	mul     float32
 	add     int32
 	addType int32
-	min     int32
-	max     int32
+	min     float32
+	max     float32
 	time    int32
 }
 
@@ -4537,10 +4537,10 @@ func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
 
 	// Get Max/Min.
 	if hs.min != -math.MaxInt32 {
-		retDamage = Max(hs.min*baseDamage, retDamage)
+		retDamage = Max(int32(math.Round(float64(hs.min)*float64(baseDamage))), retDamage)
 	}
 	if hs.max != math.MaxInt32 {
-		retDamage = Min(hs.max*baseDamage, retDamage)
+		retDamage = Min(int32(math.Round(float64(hs.max)*float64(baseDamage))), retDamage)
 	}
 
 	// Convert the heal back to negative damage.

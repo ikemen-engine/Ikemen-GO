@@ -125,6 +125,7 @@ func newCompiler() *Compiler {
 		"explodbindtime":       c.explodBindTime,
 		"movehitreset":         c.moveHitReset,
 		"hitadd":               c.hitAdd,
+		"hitscaleset":          c.hitScaleSet,
 		"offset":               c.offset,
 		"victoryquote":         c.victoryQuote,
 		"zoom":                 c.zoom,
