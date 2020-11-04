@@ -2503,14 +2503,14 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			--anim update
 			local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-			if done_anim ~= nil and start.p[side].t_selTemp[member].anim ~= done_anim then
+			if done_anim ~= nil and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
 				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
 			elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
 				start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character
-				start.p[side].t_selTemp[member].ref = start.c[player].selRef
 			end
+			start.p[side].t_selTemp[member].ref = start.c[player].selRef
 			main.f_cmdInput()
 			return #start.p[side].t_selCmd > 1 or start.p[side].selEnd
 		end
