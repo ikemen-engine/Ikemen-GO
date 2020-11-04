@@ -930,7 +930,9 @@ func (s *System) nextRound() {
 		s.roundType = [2]RoundType{RT_Final, RT_Final}
 	}
 	var roundRef int32
-	if s.round > 1 {
+	if s.round == 1 {
+		s.stageLoopNo = 0
+	} else {
 		roundRef = s.round
 	}
 	if s.stageLoop && !s.roundResetFlg {
@@ -2091,7 +2093,6 @@ func (s *System) fight() (reload bool) {
 			reset()
 		}
 		if s.reloadFlg {
-			s.reloadFlg = false
 			return true
 		}
 		debugInput()
