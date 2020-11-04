@@ -1679,7 +1679,6 @@ func (s *System) fight() (reload bool) {
 	var dialogue [len(s.chars)][]string
 	var mapArray [len(s.chars)]map[string]float32
 	var remapSpr [len(s.chars)]RemapPreset
-	var hitScale [len(s.chars)]map[int32][2]*HitScale
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
 		pow[pn] = s.chars[pn][0].power
@@ -1703,10 +1702,11 @@ func (s *System) fight() (reload bool) {
 		for k, v := range s.chars[pn][0].remapSpr {
 			remapSpr[pn][k] = v
 		}
-		hitScale[pn] = make(map[int32][2]*HitScale)
-		for k, v := range s.chars[pn][0].hitScale {
-			hitScale[pn][k] = v
-		}
+
+		// Reset hitScale.
+		s.chars[pn][0].defaultHitScale = newHitScaleArray()
+		s.chars[pn][0].activeHitScale = make(map[int32][3]*HitScale)
+		s.chars[pn][0].nextHitScale = make(map[int32][3]*HitScale)
 	}
 	s.debugWC = sys.chars[0][0]
 	debugInput := func() {
@@ -1925,7 +1925,11 @@ func (s *System) fight() (reload bool) {
 					p[0].mapArray[k] = v
 				}
 				p[0].remapSpr = make(RemapPreset)
-				p[0].hitScale = make(map[int32][2]*HitScale)
+
+				// Reset hitScale
+				p[0].defaultHitScale = newHitScaleArray()
+				p[0].activeHitScale = make(map[int32][3]*HitScale)
+				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 			if p[0].ocd().guardPoints != 0 {
 				p[0].guardPoints = p[0].ocd().guardPoints
@@ -1970,10 +1974,11 @@ func (s *System) fight() (reload bool) {
 				for k, v := range remapSpr[i] {
 					p[0].remapSpr[k] = v
 				}
-				p[0].hitScale = make(map[int32][2]*HitScale)
-				for k, v := range hitScale[i] {
-					p[0].hitScale[k] = v
-				}
+
+				// Reset hitScale
+				p[0].defaultHitScale = newHitScaleArray()
+				p[0].activeHitScale = make(map[int32][3]*HitScale)
+				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 		}
 		s.resetFrameTime()

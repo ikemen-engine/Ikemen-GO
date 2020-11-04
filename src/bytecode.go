@@ -1993,6 +1993,7 @@ func newStateControllerBase() *StateControllerBase {
 func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
+
 /*func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
 	for _, v := range f {
 		var be BytecodeExp
@@ -2007,6 +2008,14 @@ func (StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 		be.appendValue(BytecodeInt(v))
 		exp = append(exp, be)
 	}
+	return
+}
+
+// Converts a bool to a []BytecodeExp
+func (StateControllerBase) bToExp(i bool) (exp []BytecodeExp) {
+	var be BytecodeExp
+	be.appendValue(BytecodeBool(i))
+	exp = append(exp, be)
 	return
 }
 func (scb *StateControllerBase) add(id byte, exp []BytecodeExp) {
@@ -6414,43 +6423,70 @@ type hitScaleSet StateControllerBase
 
 const (
 	hitScaleSet_id byte = iota
-	hitScaleSet_damagemul
-	hitScaleSet_damageadd
-	hitScaleSet_damagemin
-	hitScaleSet_damagemax
-	hitScaleSet_stunmul
-	hitScaleSet_stunadd
-	hitScaleSet_stunmin
-	hitScaleSet_stunmax
+	hitScaleSet_affects_damage
+	hitScaleSet_affects_hitTime
+	hitScaleSet_affects_pauseTime
+	hitScaleSet_mul
+	hitScaleSet_add
+	hitScaleSet_addType
+	hitScaleSet_min
+	hitScaleSet_max
+	hitScaleSet_time
+	hitScaleSet_reset
+	hitScaleSet_force
 	hitScaleSet_redirectid
 )
 
+// Takes the values given by Compiler.hitScaleSet and executes it.
 func (sc hitScaleSet) Run(c *Char, _ []int32) bool {
-	crun := c
-	var eid int32
+	var crun = c
+	// Default values
+	var affects = []bool{false, false, false}
+	// Target of the hitScale, -1 is default.
+	var target int32 = -1
+	var targetArray [3]*HitScale
+	// Do we reset everithng back to default?
+	var resetAll = false
+	var reset = false
+	// If false we wait to hit to apply hitScale.
+	// If true we apply on call.
+	var force = false
+	// Holder variables
+	var tempHitScale = newHitScale()
+
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
+		// What is hitScale ging to affect.
+		case hitScaleSet_affects_damage:
+			affects[0] = true
+		case hitScaleSet_affects_hitTime:
+			affects[1] = true
+		case hitScaleSet_affects_pauseTime:
+			affects[2] = true
+		// ID of the char to apply to.
 		case hitScaleSet_id:
-			eid = exp[0].evalI(c)
-			if _, ok := crun.hitScale[eid]; !ok {
-				crun.hitScale[eid] = [2]*HitScale{newHitScale(), newHitScale()}
+			target = exp[0].evalI(c)
+		case hitScaleSet_mul:
+			tempHitScale.mul = exp[0].evalF(c)
+		case hitScaleSet_add:
+			tempHitScale.add = exp[0].evalI(c)
+		case hitScaleSet_addType:
+			tempHitScale.addType = exp[0].evalI(c)
+		case hitScaleSet_min:
+			tempHitScale.min = exp[0].evalI(c)
+		case hitScaleSet_max:
+			tempHitScale.max = exp[0].evalI(c)
+		case hitScaleSet_time:
+			tempHitScale.time = exp[0].evalI(c)
+		case hitScaleSet_reset:
+			if exp[0].evalI(c) == 1 {
+				reset = true
+			} else if exp[0].evalI(c) == 2 {
+				resetAll = true
 			}
-		case hitScaleSet_damagemul:
-			crun.hitScale[eid][0].mul = exp[0].evalF(c)
-		case hitScaleSet_damageadd:
-			crun.hitScale[eid][0].add = exp[0].evalI(c)
-		case hitScaleSet_damagemin:
-			crun.hitScale[eid][0].min = exp[0].evalI(c)
-		case hitScaleSet_damagemax:
-			crun.hitScale[eid][0].max = exp[0].evalI(c)
-		case hitScaleSet_stunmul:
-			crun.hitScale[eid][1].mul = exp[0].evalF(c)
-		case hitScaleSet_stunadd:
-			crun.hitScale[eid][1].add = exp[0].evalI(c)
-		case hitScaleSet_stunmin:
-			crun.hitScale[eid][1].min = exp[0].evalI(c)
-		case hitScaleSet_stunmax:
-			crun.hitScale[eid][1].max = exp[0].evalI(c)
+		case hitScaleSet_force:
+			force = exp[0].evalB(c)
+		// Genric redirectId.
 		case hitScaleSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6460,7 +6496,52 @@ func (sc hitScaleSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+
+	// ----------------------------------------------------------------------
+
+	if resetAll {
+		for _, hs := range crun.defaultHitScale {
+			hs.reset()
+		}
+		crun.nextHitScale = make(map[int32][3]*HitScale)
+		crun.activeHitScale = make(map[int32][3]*HitScale)
+	}
+
+	targetArray = getHitScaleTarget(crun, target, force, reset)
+
+	// Apply the new values and activate it.
+	for i, hs := range targetArray {
+		if affects[i] {
+			if reset {
+				if ahs, ok := crun.activeHitScale[target]; ok {
+					ahs[int32(i)].reset()
+				}
+			}
+			hs.copy(tempHitScale)
+			hs.active = true
+		}
+	}
+
 	return false
+}
+
+func getHitScaleTarget(char *Char, target int32, force bool, reset bool) [3]*HitScale {
+	// Get our targets.
+	if target <= -1 {
+		return char.defaultHitScale
+	} else { //Check if target exists.
+		if force {
+			if _, ok := char.activeHitScale[target]; !ok {
+				char.activeHitScale[target] = newHitScaleArray()
+			}
+			return char.activeHitScale[target]
+		} else {
+			if _, ok := char.nextHitScale[target]; !ok {
+				char.nextHitScale[target] = newHitScaleArray()
+			}
+			return char.nextHitScale[target]
+		}
+	}
 }
 
 type lifebarAction StateControllerBase
