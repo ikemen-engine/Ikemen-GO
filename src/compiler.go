@@ -125,6 +125,7 @@ func newCompiler() *Compiler {
 		"explodbindtime":       c.explodBindTime,
 		"movehitreset":         c.moveHitReset,
 		"hitadd":               c.hitAdd,
+		"hitscaleset":          c.hitScaleSet,
 		"offset":               c.offset,
 		"victoryquote":         c.victoryQuote,
 		"zoom":                 c.zoom,
@@ -7141,55 +7142,156 @@ func (c *Compiler) guardPointsSet(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-func (c *Compiler) hitScaleSet(is IniSection, sc *StateControllerBase,
-	_ int8) (StateController, error) {
+
+// Parse hitScaleSet ini section.
+func (c *Compiler) hitScaleSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*hitScaleSet)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			hitScaleSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if _, ok := is["id"]; !ok {
-			c.scAdd(sc, hitScaleSet_id, "-1", VT_Int, 1)
-		} else if err := c.paramValue(is, sc, "id",
+		// Parse affects
+		if err := c.stateParam(is, "affects", func(data string) error {
+			// We do really need to add string support.
+			var arrayData []string
+			var err2 error
+
+			if arrayData, err2 = cnsStringArray(data); err2 != nil {
+				return err2
+			}
+
+			// Send values in the array to hitScaleSet.run().
+			for _, str := range arrayData {
+				switch str {
+				case "damage":
+					sc.add(hitScaleSet_affects_damage, sc.bToExp(true))
+				case "hitTime":
+					sc.add(hitScaleSet_affects_hitTime, sc.bToExp(true))
+				case "pauseTime":
+					sc.add(hitScaleSet_affects_pauseTime, sc.bToExp(true))
+				default:
+					return Error("Invalid 'affects' value.")
+				}
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		if err := c.paramValue(is, sc, "id",
 			hitScaleSet_id, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "damagemul",
-			hitScaleSet_damagemul, VT_Float, 1, false); err != nil {
+		// Parse reset, valid values are 0, 1 and 2.
+		// If the value is not valid throw a error.
+		if err := c.stateParam(is, "reset", func(data string) error {
+			var reset = Atoi(strings.TrimSpace(data))
+
+			if reset < 0 && reset > 2 {
+				sc.add(hitScaleSet_reset, sc.iToExp(reset))
+				return nil
+			} else {
+				return Error(`Invalid "reset" value.`)
+			}
+		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "damageadd",
-			hitScaleSet_damageadd, VT_Int, 1, false); err != nil {
+
+		if err := c.paramValue(is, sc, "force",
+			hitScaleSet_force, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "damagemin",
-			hitScaleSet_damagemin, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "mul",
+			hitScaleSet_mul, VT_Float, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "damagemax",
-			hitScaleSet_damagemax, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "add",
+			hitScaleSet_add, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "stunmul",
-			hitScaleSet_stunmul, VT_Float, 1, false); err != nil {
+		// The only valid values of addType are "mulFirst" and "addFirst"
+		if err := c.stateParam(is, "addType", func(data string) error {
+			var push = 0
+			// Change sting to lowecase and remove quotes
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			} else {
+				data, _ = strconv.Unquote(data)
+			}
+
+			if data == "addFirst" {
+				push = 1
+			} else if data == "mulFirst" {
+				push = 2
+			} else {
+				return Error(`Invalid "addType" value.`)
+			}
+
+			sc.add(hitScaleSet_addType, sc.iToExp(int32(push)))
+
+			return nil
+		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "stunadd",
-			hitScaleSet_stunadd, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "min",
+			hitScaleSet_min, VT_Float, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "stunmin",
-			hitScaleSet_stunmin, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "max",
+			hitScaleSet_max, VT_Float, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "stunmax",
-			hitScaleSet_stunmax, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "time",
+			hitScaleSet_time, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil
 	})
 	return *ret, err
 }
+
+// Parses multiple strings separated by ','
+func cnsStringArray(arg string) ([]string, error) {
+	// Split the plain text string array into substrings,
+	var strArray = strings.Split(arg, ",")
+	// If "1" it means we are inside a string,
+	var inString = 0
+	// The array that we return with parsed strings.
+	var fullStrArray []string = make([]string, len(strArray))
+	// When comes the inevitable moment a when user makes a typo.
+	var formatError = false
+
+	// Iterate the string array.
+	for i, values := range strArray {
+		for _, char := range values {
+			if char == '"' { // Open/close string.
+				inString++
+			} else if inString == 1 { // Add any char to the array if we are inside a string.
+				fullStrArray[i] += string(char)
+			} else if char != ' ' { // If anything that is not whitespace is outside the declaration is bad syntax.
+				formatError = true
+			}
+		}
+
+		// Do the string was closed?
+		if inString != 2 {
+			if inString%2 != 0 {
+				return nil, Error("String not closed.")
+			} else if inString > 2 { // Do we have more than 1 string without using ','?
+				return nil, Error("Lack of ',' separator.")
+			} else {
+				return nil, Error("WARNING: Unknown string array error.")
+			}
+		} else if formatError {
+			return nil, Error("Wrong format on string array.")
+		} else { // All's good.
+			inString = 0
+		}
+	} // Return the parsed string array,
+	return fullStrArray, nil
+}
+
 func (c *Compiler) lifebarAction(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*lifebarAction)(sc), c.stateSec(is, func() error {

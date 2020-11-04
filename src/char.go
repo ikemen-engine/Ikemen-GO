@@ -1613,7 +1613,9 @@ type Char struct {
 	clipboardText         []string
 	dialogue              []string
 	immortal              bool
-	hitScale              map[int32][2]*HitScale
+	defaultHitScale       [3]*HitScale
+	nextHitScale          map[int32][3]*HitScale
+	activeHitScale        map[int32][3]*HitScale
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1643,7 +1645,10 @@ func (c *Char) init(n int, idx int32) {
 	} else {
 		c.mapArray = make(map[string]float32)
 		c.remapSpr = make(RemapPreset)
-		c.hitScale = make(map[int32][2]*HitScale)
+
+		c.defaultHitScale = newHitScaleArray()
+		c.activeHitScale = make(map[int32][3]*HitScale)
+		c.nextHitScale = make(map[int32][3]*HitScale)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -4414,37 +4419,136 @@ func (c *Char) remapSpritePreset(preset string) {
 }
 
 type HitScale struct {
-	mul float32
-	add int32
-	min int32
-	max int32
+	active  bool
+	mul     float32
+	add     int32
+	addType int32
+	min     float32
+	max     float32
+	time    int32
 }
 
 func newHitScale() *HitScale {
-	return &HitScale{}
-}
-func (c *Char) scaleHit(value, id int32, index int) int32 {
-	ret := value
-	var hs *HitScale
-	matched := false
-	if v, ok := c.hitScale[id]; ok {
-		hs = v[index]
-		matched = true
-	} else if v, ok := c.hitScale[-1]; ok {
-		hs = v[index]
-		matched = true
+	return &HitScale{
+		active:  false,
+		mul:     1,
+		add:     0,
+		addType: 0,
+		min:     -math.MaxInt32,
+		max:     math.MaxInt32,
+		time:    1,
 	}
-	if matched {
-		ret += hs.add
-		if hs.mul != 0 {
-			ret = int32(math.Ceil(float64(ret) * float64(hs.mul)))
-		}
-		ret = Max(hs.min, ret)
-		if hs.max != 0 {
-			ret = Min(hs.max, ret)
+}
+
+func newHitScaleArray() [3]*HitScale {
+	var ret [3]*HitScale
+	for i := 0; i < 3; i++ {
+		ret[i] = &HitScale{
+			active:  false,
+			mul:     1,
+			add:     0,
+			addType: 0,
+			min:     -math.MaxInt32,
+			max:     math.MaxInt32,
+			time:    1,
 		}
 	}
 	return ret
+}
+
+// Mixes current hitScale values with the new ones.
+func (hs *HitScale) mix(nhs *HitScale) {
+	hs.mul *= nhs.mul
+	hs.add += nhs.add
+	hs.addType = nhs.addType
+	hs.min = nhs.min
+	hs.max = nhs.max
+	hs.time = nhs.time
+}
+
+func (hs *HitScale) copy(nhs *HitScale) {
+	hs.mul = nhs.mul
+	hs.add = nhs.add
+	hs.addType = nhs.addType
+	hs.min = nhs.min
+	hs.max = nhs.max
+	hs.time = nhs.time
+}
+
+// Resets defaultHitScale to the defaut values.
+func (hs *HitScale) reset() {
+	hs.active = false
+	hs.mul = 1
+	hs.add = 0
+	hs.addType = 0
+	hs.min = -math.MaxInt32
+	hs.max = math.MaxInt32
+	hs.time = 1
+}
+
+// Parses the timer of a hitScaleArray.
+func hitScaletimeAdvance(hsa [3]*HitScale) {
+	for _, hs := range hsa {
+		if hs.active && hs.time > 0 {
+			hs.time--
+		} else if hs.time == 0 {
+			hs.reset()
+			hs.time = -1
+		}
+	}
+}
+
+// Scales a hit based on hit scale.
+func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
+	var hs *HitScale
+	var ahs *HitScale
+	var heal = false
+	var retDamage = baseDamage
+
+	// Check if we are healing.
+	if baseDamage < 0 {
+		baseDamage *= -1
+		heal = true
+	}
+
+	// Get the values we want to scale.
+	if t, ok := c.nextHitScale[id]; ok && t[index].active {
+		hs = t[index]
+	} else {
+		hs = c.defaultHitScale[index]
+	}
+
+	// Get the current hitScale of the char,
+	// if one does not exist create one.
+	if _, ok := c.activeHitScale[id]; !ok {
+		c.activeHitScale[id] = newHitScaleArray()
+	}
+	ahs = c.activeHitScale[id][index]
+
+	// Calculate damage.
+	if hs.addType != 0 {
+		retDamage = int32(math.Round(float64(retDamage)*float64(ahs.mul))) + ahs.add
+	} else {
+		retDamage = int32(math.Round(float64(retDamage+ahs.add) * float64(ahs.mul)))
+	}
+
+	// Apply scale for the next hit.
+	ahs.mix(hs)
+
+	// Get Max/Min.
+	if hs.min != -math.MaxInt32 {
+		retDamage = Max(int32(math.Round(float64(hs.min)*float64(baseDamage))), retDamage)
+	}
+	if hs.max != math.MaxInt32 {
+		retDamage = Min(int32(math.Round(float64(hs.max)*float64(baseDamage))), retDamage)
+	}
+
+	// Convert the heal back to negative damage.
+	if heal {
+		return retDamage * -1
+	} else { // If it's not a heal, do nothing and just return it.
+		return retDamage
+	}
 }
 
 // MapSet() sets a map to a specific value.
@@ -5215,13 +5319,20 @@ func (c *Char) update(cvmin, cvmax,
 				c.makeDust(0, 0)
 			}
 		}
-		for k := range c.hitScale {
-			if k != -1 {
-				if p := sys.playerID(k); p != nil /*&& p.player*/ && p.ss.moveType != MT_H {
-					delete(c.hitScale, k)
-				}
+
+		for k := range c.activeHitScale {
+			if p := sys.playerID(k); p != nil && p.ss.moveType != MT_H {
+				delete(c.activeHitScale, k)
 			}
 		}
+		for k, hs := range c.nextHitScale {
+			if p := sys.playerID(k); p != nil && p.ss.moveType != MT_H {
+				delete(c.nextHitScale, k)
+			} else if p.ss.moveType != MT_H {
+				hitScaletimeAdvance(hs)
+			}
+		}
+		hitScaletimeAdvance(c.defaultHitScale)
 	}
 	c.finalDefence = float64(((float32(c.gi().data.defence) * c.customDefence * c.defenceMul) / 100))
 	if sys.tickNextFrame() {
@@ -5562,6 +5673,7 @@ func (cl *CharList) update(cvmin, cvmax,
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32
+	// hit() function definition start.
 	hit := func(c *Char, hd *HitDef, pos [2]float32,
 		projf, attackMul float32, hits int32) (hitType int32) {
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
