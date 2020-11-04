@@ -659,8 +659,10 @@ local motif =
 		record_font_height = -1, --Ikemen feature
 		record_scorechallenge_text = '', --Ikemen feature
 		record_timechallenge_text = '', --Ikemen feature
-		p1_select_snd = {-1, 0}, --Ikemen feature
-		p2_select_snd = {-1, 0}, --Ikemen feature
+		p1_swap_snd = {-1, 0}, --Ikemen feature
+		p2_swap_snd = {-1, 0}, --Ikemen feature
+		p1_select_snd = {-1, 0}, --Ikemen feature (uses character's SND file)
+		p2_select_snd = {-1, 0}, --Ikemen feature (uses character's SND file)
 	},
 	selectbgdef =
 	{

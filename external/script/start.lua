@@ -1284,6 +1284,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 								main.t_selGrid[cell].slot = v[1]
 								ok = true
 							end
+							sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
 						elseif cmdType == 'previous' then
 							local ok = false
 							for i = #v, 1, -1 do
@@ -1297,6 +1298,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 								main.t_selGrid[cell].slot = v[#v]
 								ok = true
 							end
+							sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
 						else --select
 							main.t_selGrid[cell].slot = v[math.random(1, #v)]
 							start.c[player].selRef = start.f_selGrid(cell).char_ref
