@@ -1121,11 +1121,11 @@ function start.f_startCell()
 end
 
 --returns t_selChars table out of cell number
-function start.f_selGrid(cell)
+function start.f_selGrid(cell, slot)
 	if #main.t_selGrid[cell].chars == 0 then
 		return {}
 	end
-	return main.t_selChars[main.t_selGrid[cell].chars[main.t_selGrid[cell].slot]]
+	return main.t_selChars[main.t_selGrid[cell].chars[(slot or main.t_selGrid[cell].slot)]]
 end
 
 --returns t_selChars table out of char ref
@@ -1273,32 +1273,46 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 					if main.f_input({cmd}, {k}) then
 						if cmdType == 'next' then
 							local ok = false
-							for i = 1, #v do
-								if v[i] > main.t_selGrid[cell].slot then
+							for i = main.t_selGrid[cell].slot + 1, #v do
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
 								end
 							end
 							if not ok then
-								main.t_selGrid[cell].slot = v[1]
-								ok = true
+								for i = 1, main.t_selGrid[cell].slot - 1 do
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+										main.t_selGrid[cell].slot = v[i]
+										ok = true
+										break
+									end
+								end
 							end
-							sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
+							if ok then
+								sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
+							end
 						elseif cmdType == 'previous' then
 							local ok = false
-							for i = #v, 1, -1 do
-								if v[i] < main.t_selGrid[cell].slot then
+							for i = main.t_selGrid[cell].slot -1, 1, -1 do
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
 								end
 							end
 							if not ok then
-								main.t_selGrid[cell].slot = v[#v]
-								ok = true
+								for i = #v, main.t_selGrid[cell].slot + 1, -1 do
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+										main.t_selGrid[cell].slot = v[i]
+										ok = true
+										break
+									end
+								end
 							end
-							sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
+							if ok then
+								sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_swap_snd'][1], motif.select_info['p' .. side .. '_swap_snd'][2])
+							end
 						else --select
 							main.t_selGrid[cell].slot = v[math.random(1, #v)]
 							start.c[player].selRef = start.f_selGrid(cell).char_ref
@@ -1337,8 +1351,10 @@ for i = 1, motif.select_info.rows * motif.select_info.columns do
 		start.t_grid[row][col].char = start.f_selGrid(i).char
 		start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
 		start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
-		start.f_selGrid(i).row = row
-		start.f_selGrid(i).col = col
+		for j = 1, #main.t_selGrid[i].chars do
+			start.f_selGrid(i, j).row = row
+			start.f_selGrid(i, j).col = col
+		end
 	end
 end
 if main.debugLog then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
