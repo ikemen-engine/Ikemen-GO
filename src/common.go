@@ -567,6 +567,7 @@ type Layout struct {
 	vfacing int8
 	layerno int16
 	scale   [2]float32
+	window  [4]int32
 }
 
 func newLayout(ln int16) *Layout {
@@ -597,6 +598,9 @@ func (l *Layout) Read(pre string, is IniSection) {
 	is.ReadI32(pre+"layerno", &ln)
 	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
+	window := sys.scrrect
+	is.ReadI32(pre+"window", &window[0], &window[1], &window[2], &window[3])
+	l.window = [4]int32{window[0], window[1], window[2] - window[0], window[3] - window[1]}
 }
 func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
@@ -607,7 +611,7 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 			//y += sys.lifebarFontScale
 		}*/
 		paltex := s.PalTex
-		s.Draw(x+l.offset[0], y+l.offset[1],
+		s.Draw(x+l.offset[0]*sys.lifebarScale, y+l.offset[1]*sys.lifebarScale,
 			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx, paltex, window)
 	}
 }
@@ -638,7 +642,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a,
-			&sys.scrrect, palfx)
+			&l.window, palfx)
 	}
 }
 
@@ -686,12 +690,12 @@ func (al *AnimLayout) Action() {
 	al.anim.Action()
 }
 func (al *AnimLayout) Draw(x, y float32, layerno int16) {
-	al.lay.DrawAnim(&sys.scrrect, x, y, 1, layerno, &al.anim, al.palfx)
+	al.lay.DrawAnim(&al.lay.window, x, y, 1, layerno, &al.anim, al.palfx)
 }
 
 // DrawScaled allows to set a custom scale with the draw (For lifebar localcoord)
 func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
-	al.lay.DrawAnim(&sys.scrrect, x, y, scale, layerno, &al.anim, al.palfx)
+	al.lay.DrawAnim(&al.lay.window, x, y, scale, layerno, &al.anim, al.palfx)
 }
 
 func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {

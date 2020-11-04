@@ -120,10 +120,8 @@ function start.f_makeRoster(t_ret)
 		end
 	--Boss Rush
 	elseif gamemode('bossrush') then
-		t_static = {main.t_bossChars}
-		for i = 1, math.ceil(#main.t_bossChars / start.p[2].numChars) do --generate ratiomatches style table
-			table.insert(t, {['rmin'] = start.p[2].numChars, ['rmax'] = start.p[2].numChars, ['order'] = 1})
-		end
+		t_static = main.t_bossChars
+		t = start.f_unifySettings(main.t_selOptions.bossrushmaxmatches, t_static)
 	--VS 100 Kumite
 	elseif gamemode('vs100kumite') then
 		t_static = {main.t_randomChars}
@@ -1357,9 +1355,6 @@ function start.f_game(lua)
 		os.exit()
 	end
 	main.t_pIn[2] = p2In
-	if winner ~= winnerteam() then
-		panicError("winner = " .. winner .. "; winnerteam = " .. winnerteam()) --TODO: just in case there is a difference, get rid of it if no errors
-	end
 	return winner, tbl
 end
 
@@ -1886,11 +1881,12 @@ function start.f_selectScreen()
 					local y = v.cursor[2]
 					local t = start.t_grid[y + 1][x + 1]
 					--retrieve proper cell coordinates in case of random selection
-					if (t.char == 'randomselect' or t.hidden == 3) --[[and not config.TeamDuplicates]] then
-						x = start.f_getCharData(v.ref).col - 1
-						y = start.f_getCharData(v.ref).row - 1
-						t = start.t_grid[y + 1][x + 1]
-					end
+					--TODO: doesn't work with slot feature
+					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not config.TeamDuplicates]] then
+					--	x = start.f_getCharData(v.ref).col - 1
+					--	y = start.f_getCharData(v.ref).row - 1
+					--	t = start.t_grid[y + 1][x + 1]
+					--end
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
 						main.f_animPosDraw(
@@ -2422,7 +2418,7 @@ function start.f_selectMenu(side, cmd, player, member)
 				anim_data = start.f_animGet(sel_ref, side, member, motif.select_info, '_face', '', true, false),
 				slide_dist = {0, 0},
 			})
-		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell --[[and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2]] then
+		elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= sel_ref then
 			start.p[side].t_selTemp[member].ref = sel_ref
 			start.p[side].t_selTemp[member].cell = start.c[player].cell
 			start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
@@ -2440,7 +2436,7 @@ function start.f_selectMenu(side, cmd, player, member)
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				start.c[player].randCnt = 0
 				sel_ref = start.f_randomChar(side)
-				if start.c[player].randRef ~= sel_ref then
+				if start.c[player].randRef ~= sel_ref or start.p[side].t_selTemp[member].anim_data == nil then
 					getAnim = true
 					start.c[player].randRef = sel_ref
 				end
@@ -2563,7 +2559,14 @@ function start.f_selectChar(player, t)
 end
 
 function start.f_selectVersus()
-	if not main.versusScreen or not main.charparam.vsscreen or start.f_getCharData(start.p[1].t_selected[1].ref).vsscreen == 0 then
+	local ok = true
+	for _, v in ipairs(start.p[2].t_selected) do
+		if start.f_getCharData(v.ref).vsscreen == 0 then
+			ok = false
+			break
+		end
+	end
+	if not main.versusScreen or not ok then
 		start.f_selectChar(1, start.p[1].t_selected)
 		start.f_selectChar(2, start.p[2].t_selected)
 		return true
@@ -2974,7 +2977,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 				table.insert(t, {
 					ref = selectno(),
 					anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-					anim_data = start.f_animGet(selectno(), side, #t, motif.victory_screen, '', '', true, true),
+					anim_data = start.f_animGet(selectno(), side, #t + 1, motif.victory_screen, '', '', true, true),
 					slide_dist = {0, 0},
 				})
 				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
@@ -2995,7 +2998,7 @@ function start.f_victoryOrder(side, allow_ko, num)
 					table.insert(t, {
 						ref = k,
 						anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-						anim_data = start.f_animGet(k, side, #t, motif.victory_screen, '', '', true, true),
+						anim_data = start.f_animGet(k, side, #t + 1, motif.victory_screen, '', '', true, true),
 						slide_dist = {0, 0},
 					})
 					t_matchList[k] = (t_matchList[k] or 0) + 1
@@ -3043,9 +3046,7 @@ function start.f_victoryInit()
 	end
 	if start.t_victory.winnerNo == -1 or start.t_victory.winnerRef == -1 then
 		return false
-	elseif not main.charparam.winscreen then
-		return false
-	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then --winscreen assigned as character param
+	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
 		return false
 	end
 	clearAllSound()
@@ -3138,6 +3139,20 @@ local txt_yes = text:create({})
 local txt_no = text:create({})
 local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay', {defsc = false, fixloc = false})
 
+start.t_continueCounts = {}
+for k, v in pairs(motif.continue_screen) do
+	local n = k:match('^counter_([0-9]+)_skiptime$')
+	if n ~= nil then
+		start.t_continueCounts[tonumber(n)] = {
+			skiptime = v,
+			snd = {motif.continue_screen.counter_default_snd[1], motif.continue_screen.counter_default_snd[2]}
+		}
+		if motif.continue_screen['counter_' .. n .. '_snd'] ~= nil then
+			start.t_continueCounts[tonumber(n)].snd = motif.continue_screen['counter_' .. n .. '_snd']
+		end
+	end
+end
+
 start.continueInit = false
 function start.f_continueInit()
 	if start.continueInit then
@@ -3224,9 +3239,9 @@ function start.f_continue()
 					end
 				--counter anim time skip on button press
 				elseif main.f_input({1}, {'pal'}) and start.t_continue.counter >= motif.continue_screen.counter_starttime + motif.continue_screen.counter_skipstart then
-					for i = 9, 0, -1 do
-						if start.t_continue.counter < motif.continue_screen['counter_' .. i .. '_skiptime'] then
-							while start.t_continue.counter < motif.continue_screen['counter_' .. i .. '_skiptime'] do
+					for _, v in main.f_sortKeys(start.t_continueCounts, function(t, a, b) return a > b end) do --iterate over the table in descending order
+						if start.t_continue.counter < v.skiptime then
+							while start.t_continue.counter < v.skiptime do
 								start.t_continue.counter = start.t_continue.counter + 1
 								animUpdate(motif.continue_screen.counter_data)
 							end
@@ -3235,9 +3250,9 @@ function start.f_continue()
 					end
 				end
 				--counter anim snd play
-				for i = 9, 0, -1 do
-					if start.t_continue.counter == motif.continue_screen['counter_' .. i .. '_skiptime'] then
-						sndPlay(motif.files.snd_data, motif.continue_screen['counter_' .. i .. '_snd'][1], motif.continue_screen['counter_' .. i .. '_snd'][2])
+				for _, v in main.f_sortKeys(start.t_continueCounts, function(t, a, b) return a > b end) do --iterate over the table in descending order
+					if start.t_continue.counter == v.skiptime then
+						sndPlay(motif.files.snd_data, v.snd[1], v.snd[2])
 						break
 					end
 				end
@@ -3609,7 +3624,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.hiscorebgdef.bg, true)
 	--draw fadein / fadeout
-	if main.fadeType == 'fadein' and not start.t_hiscore.input and ((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or main.f_input(main.t_players, {'pal', 's'})) then
+	if main.fadeType == 'fadein' and not main.fadeActive and not start.t_hiscore.input and (((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal', 's'}))) or (motif.attract_mode.enabled == 1 and main.credits > 0)) then
 		main.f_fadeReset('fadeout', motif.hiscore_info)
 	end
 	main.f_fadeColor(motif.hiscore_info)
@@ -3645,6 +3660,9 @@ function start.f_challengerInit()
 	}
 	if motif.challenger_info.enabled == 0 then
 		return false
+	end
+	if motif.attract_mode.enabled == 1 and main.credits > 0 then
+		main.credits = main.credits - 1
 	end
 	main.f_playerInput(start.challenger, 2)
 	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
@@ -3812,8 +3830,15 @@ function start.f_rankInit()
 		p2score = 0,
 		counter = 0,
 	}
-	if motif.rank_info.enabled == 0 then
+	if motif.rank_info.enabled == 0 or not main.rankDisplay then
 		return false
+	end
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			if start.f_getCharData(v.ref).rank == 0 then
+				return false
+			end
+		end
 	end
 	for side = 1, 2 do
 		animReset(motif.rank_info['p' .. side .. '_bg_data'])
@@ -3844,6 +3869,9 @@ function start.f_rankInit()
 			start.t_rank['p' .. side .. 'rank'].rank = math.max(1, math.min(main.f_tableLength(motif.rank_info.rank), math.floor(total / 8)))
 		end
 		start.t_rank['p' .. side .. 'score'] = scoretotal() - score()
+	end
+	if motif.rank_info.bars_display == 0 then
+		setLifebarElements({bars = false})
 	end
 	start.t_rank.active = true
 	return true
@@ -3954,8 +3982,11 @@ function start.f_dialogueInit()
 		counter = 0,
 	}
 	if motif.dialogue_info.enabled == 0 then
+		start.dialogueInit = false
+		dialogueReset()
 		return false
 	end
+	toggleDialogueBars(true)
 	start.f_dialogueParse()
 	for side = 1, 2 do
 		animReset(motif.dialogue_info['p' .. side .. '_bg_data'])
@@ -3973,6 +4004,10 @@ function start.f_dialogueRedirection(str)
 	player(start.t_dialogue.player)
 	if redirection == 'self' then
 		return start.t_dialogue.player
+	elseif redirection == 'playerno' then
+		if player(tonumber(val)) then
+			return tonumber(val)
+		end
 	elseif redirection == 'partner' then
 		if val == '' then val = 0 end
 		if partner(tonumber(val)) then
@@ -3981,10 +4016,6 @@ function start.f_dialogueRedirection(str)
 	elseif redirection == 'enemy' then
 		if val == '' then val = 0 end
 		if enemy(tonumber(val)) then
-			return playerno()
-		end
-	elseif redirection == 'playerid' then
-		if playerid(tonumber(val)) then
 			return playerno()
 		end
 	elseif redirection == 'enemyname' then
@@ -4067,7 +4098,7 @@ function start.f_dialogueParse()
 						end
 						for i, str in ipairs(main.f_strsplit(',', val)) do --split using "," delimiter
 							str = str:lower()
-							if i == 1 and (str:match('^self') or str:match('^partner') or str:match('^enemy') or str:match('^playerid') or str:match('^enemyname') or str:match('^partnername')) then
+							if i == 1 and (str:match('^self') or str:match('^playerno') or str:match('^partner') or str:match('^enemy') or str:match('^enemyname') or str:match('^partnername')) then
 								t_token.redirection = str
 								t_token.pn = start.f_dialogueRedirection(str)
 							else

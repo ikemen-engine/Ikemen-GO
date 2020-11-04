@@ -485,11 +485,13 @@ func systemScriptInit(l *lua.LState) {
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
-						lay := Layout{facing: int8(numArg(l, 7)), vfacing: 1, layerno: 1,
-							scale: [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}}
-						lay.DrawSprite((float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale,
-							float32(numArg(l, 4))*sys.lifebarScale, lay.layerno, sprite, pfx,
-							sys.chars[pn-1][0].localscl, window)
+						x := (float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale
+						y := float32(numArg(l, 4))*sys.lifebarScale
+						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
+						facing := int8(numArg(l, 7))
+						fscale := sys.chars[pn-1][0].localscl
+						sprite.Draw(x, y, scale[0]*float32(facing)*fscale,
+							scale[1]*fscale, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
 					}
 				}
@@ -1459,7 +1461,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 5 {
 			loopstart = int(numArg(l, 5))
 		}
-		if l.GetTop() >= 6 {
+		if l.GetTop() >= 6 && numArg(l, 6) > 1 {
 			loopend = int(numArg(l, 6))
 		}
 		sys.bgm.Open(strArg(l, 1), isdefault, loop, volume, loopstart, loopend)
@@ -2316,6 +2318,14 @@ func systemScriptInit(l *lua.LState) {
 			}
 			sys.debugRef[0] = pn
 			sys.debugRef[1] = hn
+		}
+		return 0
+	})
+	luaRegister(l, "toggleDialogueBars", func(*lua.LState) int {
+		if l.GetTop() >= 1 {
+			sys.dialogueBarsFlg = boolArg(l, 1)
+		} else {
+			sys.dialogueBarsFlg = !sys.dialogueBarsFlg
 		}
 		return 0
 	})

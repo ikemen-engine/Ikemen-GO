@@ -55,9 +55,6 @@ if !Const(Default.Enable.Rank) || TeamSide = 0 {
 	}
 	# code executed only by P1 and P2
 	if PlayerNo = TeamSide {
-		if Win && RoundState > 3 {
-			AssertSpecial{flag: nobardisplay}
-		}
 		# max combo (v_Tech_MaxCombo)
 		if min(25, ComboCount) > Map(_iksys_rankComboCount) {
 			RankAdd{value: ComboCount - Map(_iksys_rankComboCount); type: "tech"; max: 38}

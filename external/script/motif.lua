@@ -339,7 +339,7 @@ local motif =
 		p1_face_offset = {0, 0},
 		p1_face_facing = 1,
 		p1_face_scale = {1.0, 1.0},
-		p1_face_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_face_window = {},
 		p1_face_spacing = {0, 0}, --Ikemen feature
 		p2_face_num = 1, --Ikemen feature
 		p2_face_pos = {0, 0},
@@ -350,7 +350,7 @@ local motif =
 		p2_face_offset = {0, 0},
 		p2_face_facing = -1,
 		p2_face_scale = {1.0, 1.0},
-		p2_face_window = {0, 0, config.GameWidth, config.GameHeight},
+		p2_face_window = {},
 		p2_face_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_face_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_face_spr = {9000, 1}, --Ikemen feature
@@ -397,7 +397,7 @@ local motif =
 		stage_portrait_random_spr = {}, --Ikemen feature
 		stage_portrait_random_offset = {0, 0}, --Ikemen feature
 		stage_portrait_random_scale = {1.0, 1.0}, --Ikemen feature
-		stage_portrait_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		stage_portrait_window = {}, --Ikemen feature
 		teammenu_move_wrapping = 1,
 		teammenu_itemname_single = 'Single', --Ikemen feature
 		teammenu_itemname_simul = 'Simul', --Ikemen feature
@@ -691,7 +691,7 @@ local motif =
 		p1_offset = {0, 0},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		p1_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
 		p2_num = 1, --Ikemen feature
 		p2_pos = {0, 0},
@@ -702,7 +702,7 @@ local motif =
 		p2_offset = {0, 0},
 		p2_facing = -1,
 		p2_scale = {1.0, 1.0},
-		p2_window = {0, 0, config.GameWidth, config.GameHeight},
+		p2_window = {},
 		p2_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 1}, --Ikemen feature
@@ -834,27 +834,10 @@ local motif =
 		counter_offset = {0, 0}, --Ikemen feature
 		counter_facing = 1, --Ikemen feature
 		counter_scale = {1.0, 1.0}, --Ikemen feature
+		counter_default_snd = {-1, 0}, --Ikemen feature
 		counter_skipstart = 0, --Ikemen feature
-		counter_9_skiptime = 0, --Ikemen feature
-		counter_9_snd = {-1, 0}, --Ikemen feature
-		counter_8_skiptime = 0, --Ikemen feature
-		counter_8_snd = {-1, 0}, --Ikemen feature
-		counter_7_skiptime = 0, --Ikemen feature
-		counter_7_snd = {-1, 0}, --Ikemen feature
-		counter_6_skiptime = 0, --Ikemen feature
-		counter_6_snd = {-1, 0}, --Ikemen feature
-		counter_5_skiptime = 0, --Ikemen feature
-		counter_5_snd = {-1, 0}, --Ikemen feature
-		counter_4_skiptime = 0, --Ikemen feature
-		counter_4_snd = {-1, 0}, --Ikemen feature
-		counter_3_skiptime = 0, --Ikemen feature
-		counter_3_snd = {-1, 0}, --Ikemen feature
-		counter_2_skiptime = 0, --Ikemen feature
-		counter_2_snd = {-1, 0}, --Ikemen feature
-		counter_1_skiptime = 0, --Ikemen feature
-		counter_1_snd = {-1, 0}, --Ikemen feature
-		counter_0_skiptime = 0, --Ikemen feature
-		counter_0_snd = {-1, 0}, --Ikemen feature
+		--counter_<num>_skiptime = 0, --Ikemen feature
+		--counter_<num>_snd = {-1, 0}, --Ikemen feature
 		counter_end_skiptime = 0, --Ikemen feature
 		counter_end_snd = {-1, 0}, --Ikemen feature
 	},
@@ -889,7 +872,7 @@ local motif =
 		p1_offset = {100, 20},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
-		p1_window = {0, 0, config.GameWidth, config.GameHeight},
+		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 0, 1, 255, 255, 255},
@@ -902,7 +885,7 @@ local motif =
 		p2_offset = {100, 20}, --Ikemen feature
 		p2_facing = 1, --Ikemen feature
 		p2_scale = {1.0, 1.0}, --Ikemen feature
-		p2_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_window = {}, --Ikemen feature
 		p2_spacing = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 2}, --Ikemen feature
@@ -921,7 +904,7 @@ local motif =
 		winquote_font_height = -1, --Ikemen feature
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
-		winquote_window = {0, 0, config.GameWidth, config.GameHeight},
+		winquote_window = {},
 		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
@@ -1156,6 +1139,7 @@ local motif =
 		title_font_scale = {1.0, 1.0},
 		title_font_height = -1, --Ikemen feature
 		title_text = 'OPTIONS', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1338,6 +1322,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'REPLAY SELECT', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1389,6 +1374,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'PAUSE', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1505,6 +1491,34 @@ local motif =
 		options_key = 'F11', --Ikemen feature
 		credits_snd = {-1, 0}, --Ikemen feature
 		storyboard = '', --Ikemen feature
+		start_time = 600, --Ikemen feature
+		start_insert_text = 'Insert coin', --Ikemen feature
+		start_insert_offset = {159, 185}, --Ikemen feature
+		start_insert_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		start_insert_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_insert_font_height = -1, --Ikemen feature
+		start_insert_blinktime = 30, --Ikemen feature
+		start_press_text = 'Press Start', --Ikemen feature
+		start_press_offset = {159, 185}, --Ikemen feature
+		start_press_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		start_press_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_press_font_height = -1, --Ikemen feature
+		start_press_blinktime = 30, --Ikemen feature
+		start_timer_enabled = 1, --Ikemen feature
+		start_timer_offset = {310, 234}, --Ikemen feature
+		start_timer_font = {'f-4x6.fnt', 0, -1, 255, 255, 255}, --Ikemen feature
+		start_timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		start_timer_font_height = -1, --Ikemen feature
+		start_timer_font_text = '%s', --Ikemen feature
+		start_timer_count = 60, --Ikemen feature
+		start_timer_framespercount = 60, --Ikemen feature
+		start_timer_displaytime = 10, --Ikemen feature
+		start_done_snd = {100, 1}, --Ikemen feature
+		credits_text = 'Credits: %2i', --Ikemen feature
+		credits_offset = {159, 234}, --Ikemen feature
+		credits_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
+		credits_font_scale = {1.0, 1.0}, --Ikemen feature
+		credits_font_height = -1, --Ikemen feature
 		title_offset = {159, 19}, --Ikemen feature
 		title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1588,6 +1602,7 @@ local motif =
 	rank_info =
 	{
 		enabled = 0, --Ikemen feature
+		bars_display = 0, --Ikemen feature
 		snd_time = 0, --Ikemen feature
 		snd = {-1, 0}, --Ikemen feature
 		p1_score_offset = {0, 0}, --Ikemen feature
@@ -1662,12 +1677,12 @@ local motif =
 		p1_face_offset = {0, 0}, --Ikemen feature
 		p1_face_facing = 1, --Ikemen feature
 		p1_face_scale = {1.0, 1.0}, --Ikemen feature
-		p1_face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p1_face_window = {}, --Ikemen feature
 		p2_face_spr = {9000, 0}, --Ikemen feature
 		p2_face_offset = {0, 0}, --Ikemen feature
 		p2_face_facing = -1, --Ikemen feature
 		p2_face_scale = {1.0, 1.0}, --Ikemen feature
-		p2_face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_face_window = {}, --Ikemen feature
 		p1_name_offset = {0, 0}, --Ikemen feature
 		p1_name_font = {-1, 0, 1, 255, 255, 255}, --Ikemen feature
 		p1_name_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1682,14 +1697,14 @@ local motif =
 		p1_text_font_height = -1, --Ikemen feature
 		p1_text_delay = 2, --Ikemen feature
 		p1_text_textwrap = 'w', --Ikemen feature
-		p1_text_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p1_text_window = {}, --Ikemen feature
 		p2_text_offset = {20, 192}, --Ikemen feature
 		p2_text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		p2_text_font_scale = {1.0, 1.0}, --Ikemen feature
 		p2_text_font_height = -1, --Ikemen feature
 		p2_text_delay = 2, --Ikemen feature
 		p2_text_textwrap = 'w', --Ikemen feature
-		p2_text_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature
+		p2_text_window = {}, --Ikemen feature
 	},
 	hiscore_info =
 	{
@@ -1700,7 +1715,7 @@ local motif =
 		fadeout_time = 50, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = nil, --Ikemen feature
-		time = 600,
+		time = 360,
 		pos = {0, 0}, --Ikemen feature
 		title_offset = {0, 0}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
@@ -1778,7 +1793,7 @@ local motif =
 		face_offset = {0, 0}, --Ikemen feature
 		face_facing = 1, --Ikemen feature
 		face_scale = {1.0, 1.0}, --Ikemen feature
-		face_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		face_window = {}, --Ikemen feature
 		face_num = 1, --Ikemen feature
 		face_spacing = {0, 0}, --Ikemen feature
 		face_bg_anim = nil, --Ikemen feature
@@ -1879,7 +1894,7 @@ local motif =
 		title_font_height = -1, --Ikemen feature
 		text_chars_text = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
 		text_stages_text = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
-		text_order_text = "Incorrect 'maxmatches' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
+		text_order_text = "Incorrect '%s' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
 		text_ratio_text = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def.", --Ikemen feature
 		text_training_text = "Training character (" .. config.TrainingChar .. ") not found.\nPress any key to exit the program.", --Ikemen feature
 		text_reload_text = 'Some selected options require Ikemen to be restarted.\nPress any key to exit the program.', --Ikemen feature
@@ -2380,6 +2395,10 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 	main.f_loadingRefresh()
 end
 --file:close()
+
+if main.t_sort.select_info.teammenu == nil then
+	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
+end
 if main.debugLog then main.f_printTable(main.t_sort, 'debug/t_sort.txt') end
 
 --;===========================================================
@@ -2409,15 +2428,17 @@ if motif.victory_screen.enabled == 0 then
 end
 
 --adjust window parameters
-local t_facingWindow = {
+for k, v in pairs({
 	select_info = {'p1_face_window', 'p2_face_window', 'stage_portrait_window'},
 	vs_screen = {'p1_window', 'p2_window'},
 	victory_screen = {'p1_window', 'p2_window', 'winquote_window'},
-	hiscore_info = {'face_window'},
 	dialogue_info = {'p1_face_window', 'p2_face_window', 'p1_text_window', 'p2_text_window'},
-}
-for k, v in pairs(t_facingWindow) do
+	hiscore_info = {'face_window'},
+}) do
 	for _, param in ipairs(v) do
+		if t[k] == nil or t[k][param] == nil then
+			motif[k][param] = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+		end
 		main.windowCoords(motif[k][param], param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window')
 	end
 end
@@ -2559,7 +2580,7 @@ function motif.f_loadSprData(t, v)
 		animSetScale(t[v.s .. 'data'], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
 		animUpdate(t[v.s .. 'data'])
 	else --create dummy data
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1, -1, 0, 0, -1')
+		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
 		animUpdate(t[v.s .. 'data'])
 	end
 	animSetWindow(t[v.s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
@@ -2757,9 +2778,9 @@ motif.defaultHiscore = true --t.hiscore_info == nil
 motif.defaultInfobox = false --t.infobox == nil
 motif.defaultLoading = false --t.title_info.loading_font == nil
 motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
-motif.defaultMenu = true --t.menu_info == nil
-motif.defaultOptions = true --t.option_info.menu_item_font == nil
-motif.defaultReplay = true --t.replay_info == nil
+motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
+motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
+motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = true --t.warning_info == nil
 
 if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
