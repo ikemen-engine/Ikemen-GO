@@ -134,7 +134,16 @@ MapSet{map: "_iksys_tagLeavingPosX"; value: Pos X} #TODO: won't be needed once t
  anim: Const(AnimStanding); velset: 0, 0; ctrl: 0;]
 
 AssertSpecial{flag: invisible; flag2: noautoturn}
-PlayerPush{value: 0}
+ScreenBound{value: 0; movecamera: 0, 0}
+
+# force Standby character to always stay outside visible area
+if Facing != playerID(GetPlayerID(TeamLeader)),Facing {
+	Turn{}
+}
+PosSet{
+	x: playerID(GetPlayerID(TeamLeader)),Pos X - 8 * playerID(GetPlayerID(TeamLeader)),Facing;
+	y: playerID(GetPlayerID(TeamLeader)),Pos Y - playerID(GetPlayerID(TeamLeader)),ScreenPos Y;
+}
 
 #===============================================================================
 #StateTagJumpingIn
@@ -251,8 +260,8 @@ if !Const(Default.Enable.Tag) || IsHelper || TeamSide = 0 {
 		} else if $beingHit = 0 {
 			AssertSpecial{flag: noinput; flag2: noturntarget}
 			# on screen, at the round start / during round
-			if RoundState = 2 && (Ctrl || Map(_iksys_tagIntroFlag) = 0) && (StateNo = Const(StateStand) ||
-				(Pos Y >= 0 && StateNo != [Const(StateTagLeavingScreen), Const(StateTagWaitingOutside)])) {
+			if RoundState = 2 && (Ctrl || Standby || Map(_iksys_tagIntroFlag) = 0) && (StateNo = Const(StateStand) ||
+				(Pos Y >= 0 && StateNo != [Const(StateTagEnteringScreen), Const(StateTagWaitingOutside)])) {
 				MapSet{map: "_iksys_tagIntroFlag"; value: 1}
 				MapSet{map: "_iksys_tagLeavingPosX"; value: Pos X + 0.0001}
 				ChangeState{value: Const(StateTagLeavingScreen); ctrl: 0}
