@@ -123,7 +123,7 @@ PlayerPush{value: 0}
 VelSet{x: Const(velocity.run.fwd.x); y: 0}
 
 if BackEdgeDist < -Const240p(160) || FrontEdgeDist < -Const240p(160) || Map(_iksys_tagLeavingPosX) = Pos X {
-	PosAdd{x: -StageBackEdge - Const240p(320)} # move character outside visible area (hides attached helpers)
+	PosAdd{x: StageFrontEdge + Const240p(320)} # move character outside visible area (hides attached helpers)
 	TagOut{stateno: Const(StateTagWaitingOutside)}
 }
 MapSet{map: "_iksys_tagLeavingPosX"; value: Pos X} #TODO: won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
