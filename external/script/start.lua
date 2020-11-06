@@ -479,12 +479,7 @@ start.t_clearCondition = {
 --data saving to stats.json
 local function f_saveStats()
 	if main.debugLog then main.f_printTable(stats, 'debug/t_stats.txt') end
-	local data = json.encode(stats, {indent = true})
-	if data ~= nil then
-		local file = io.open(main.flags['-stats'], 'w+')
-		file:write(data)
-		file:close()
-	end
+	main.f_fileWrite(main.flags['-stats'], json.encode(stats, {indent = true}))
 end
 
 --stats data

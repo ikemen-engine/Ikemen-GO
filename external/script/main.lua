@@ -13,19 +13,42 @@ if main.flags['-stats'] == nil then main.flags['-stats'] = 'save/stats.json' end
 --One-time load of the json routines
 json = (loadfile 'external/script/dkjson.lua')()
 
---Data loading from config.json
-local file = io.open(main.flags['-config'], 'r')
-config = json.decode(file:read("*all"))
-file:close()
-
---Data loading from stats.json
-file = io.open(main.flags['-stats'], 'r')
-stats = json.decode(file:read("*all"))
-file:close()
-
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+
+--return file content
+function main.f_fileRead(path, mode)
+	local file = io.open(path, mode or 'r')
+	if file == nil then
+		panicError("\nFile not found: " .. path)
+		return
+	end
+	local str = file:read("*all")
+	file:close()
+	return str
+end
+
+--write to file
+function main.f_fileWrite(path, str, mode)
+	if str == nil then
+		return
+	end
+	local file = io.open(path, mode or 'w+')
+	if file == nil then
+		panicError("\nFile not found: " .. path)
+		return
+	end
+	file:write(str)
+	file:close()
+end
+
+--Data loading from config.json
+config = json.decode(main.f_fileRead(main.flags['-config']))
+
+--Data loading from stats.json
+stats = json.decode(main.f_fileRead(main.flags['-stats']))
+
 --add default commands
 main.t_commands = {
 	['$U'] = 0, ['$D'] = 0, ['$B'] = 0, ['$F'] = 0, ['a'] = 0, ['b'] = 0, ['c'] = 0, ['x'] = 0, ['y'] = 0, ['z'] = 0, ['s'] = 0, ['d'] = 0, ['w'] = 0, ['m'] = 0, ['/s'] = 0, ['/d'] = 0, ['/w'] = 0}
@@ -193,7 +216,6 @@ end
 
 --prints "t" table content into "toFile" file
 function main.f_printTable(t, toFile)
-	local toFile = toFile or 'debug/table_print.txt'
 	local txt = ''
 	local print_t_cache = {}
 	local function sub_print_t(t, indent)
@@ -225,18 +247,12 @@ function main.f_printTable(t, toFile)
 	else
 		sub_print_t(t, '  ')
 	end
-	local file = io.open(toFile,"w+")
-	if file == nil then return end
-	file:write(txt)
-	file:close()
+	main.f_fileWrite(toFile or 'debug/table_print.txt', txt)
 end
 
 --prints "v" variable into "toFile" file
 function main.f_printVar(v, toFile)
-	local toFile = toFile or 'debug/var_print.txt'
-	local file = io.open(toFile,"w+")
-	file:write(v)
-	file:close()
+	main.f_fileWrite(toFile or 'debug/var_print.txt', v)
 end
 
 --split strings
@@ -310,9 +326,7 @@ main.motifDir, main.motifFile = main.motifDef:match('^(.-)[^/\\]+$')
 setMotifDir(main.motifDir)
 
 --lifebar
-local file = io.open(main.motifDef, 'r')
-main.motifData = file:read("*all")
-file:close()
+main.motifData = main.f_fileRead(main.motifDef)
 local fileDir = main.motifDef:match('^(.-)[^/\\]+$')
 if main.flags['-lifebar'] ~= nil then
 	main.lifebarDef = main.flags['-lifebar']
@@ -328,9 +342,7 @@ elseif main.f_fileExists('data/' .. main.lifebarDef) then
 else
 	main.lifebarDef = 'data/fight.def'
 end
-file = io.open(main.lifebarDef, 'r')
-main.lifebarData = file:read("*all")
-file:close()
+main.lifebarData = main.f_fileRead(main.lifebarDef)
 refresh()
 
 --localcoord
@@ -1744,9 +1756,7 @@ local tmp = ''
 local section = 0
 local row = 0
 local slot = false
-local file = io.open(motif.files.select,"r")
-local content = file:read("*all")
-file:close()
+local content = main.f_fileRead(motif.files.select)
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
@@ -2319,9 +2329,7 @@ main.t_itemname = {
 				sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 				config.IP[name] = address
 				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
-				local file = io.open(main.flags['-config'], 'w+')
-				file:write(json.encode(config, {indent = true}))
-				file:close()
+				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
 			else
 				sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
 			end
@@ -2829,9 +2837,7 @@ function main.f_deleteIP(item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 		resetKey()
 		config.IP[t[item].itemname:gsub('^ip_', '')] = nil
-		local file = io.open(main.flags['-config'], 'w+')
-		file:write(json.encode(config, {indent = true}))
-		file:close()
+		main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
 		for i = 1, #t do
 			if t[i].itemname == t[item].itemname then
 				table.remove(t, i)
