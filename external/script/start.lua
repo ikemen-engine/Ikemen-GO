@@ -2057,7 +2057,7 @@ function start.f_selectScreen()
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.bg, true)
 		--draw fadein / fadeout
-		main.f_fadeColor(motif.select_info)
+		main.f_fadeAnim(motif.select_info)
 		--frame transition
 		if main.fadeActive then
 			main.f_cmdBufReset()
@@ -2725,7 +2725,7 @@ function start.f_selectVersus()
 			--draw layerno = 1 backgrounds
 			bgDraw(motif.versusbgdef.bg, true)
 			--draw fadein / fadeout
-			main.f_fadeColor(motif.vs_screen)
+			main.f_fadeAnim(motif.vs_screen)
 			--frame transition
 			if main.fadeActive then
 				main.f_cmdBufReset()
@@ -2938,7 +2938,7 @@ function start.f_result()
 	if main.fadeType == 'fadein' and (start.t_result.counter >= (t.show_time or t.pose_time) or main.f_input({1}, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', t)
 	end
-	main.f_fadeColor(t)
+	main.f_fadeAnim(t)
 	--frame transition
 	main.f_cmdInput()
 	if esc() or main.f_input(main.t_players, {'m'}) then
@@ -3132,7 +3132,7 @@ function start.f_victory()
 	if main.fadeType == 'fadein' and (start.t_victory.counter >= motif.victory_screen.time or main.f_input({1}, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', motif.victory_screen)
 	end
-	main.f_fadeColor(motif.victory_screen)
+	main.f_fadeAnim(motif.victory_screen)
 	--frame transition
 	main.f_cmdInput()
 	if esc() or main.f_input(main.t_players, {'m'}) then
@@ -3401,7 +3401,7 @@ function start.f_continue()
 	if main.fadeType == 'fadein' and (start.t_continue.counter > motif.continue_screen.counter_endtime or start.t_continue.continue or (main.f_input({1}, start.t_continue.t_btnSkip) and (motif.continue_screen.legacymode_enabled == 1 or start.t_continue.counter >= motif.continue_screen.counter_end_skiptime))) then
 		main.f_fadeReset('fadeout', motif.continue_screen)
 	end
-	main.f_fadeColor(motif.continue_screen)
+	main.f_fadeAnim(motif.continue_screen)
 	--frame transition
 	main.f_cmdInput()
 	if esc() or main.f_input(main.t_players, {'m'}) then
@@ -3646,7 +3646,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	if main.fadeType == 'fadein' and not main.fadeActive and not start.t_hiscore.input and (((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal', 's'}))) or (motif.attract_mode.enabled == 1 and main.credits > 0)) then
 		main.f_fadeReset('fadeout', motif.hiscore_info)
 	end
-	main.f_fadeColor(motif.hiscore_info)
+	main.f_fadeAnim(motif.hiscore_info)
 	--frame transition
 	main.f_cmdInput()
 	if esc() or main.f_input(main.t_players, {'m'}) then
@@ -3730,7 +3730,7 @@ function start.f_challenger()
 	if main.fadeType == 'fadein' and start.t_challenger.counter >= motif.challenger_info.time then
 		main.f_fadeReset('fadeout', motif.challenger_info)
 	end
-	main.f_fadeColor(motif.challenger_info)
+	main.f_fadeAnim(motif.challenger_info)
 	--frame transition
 	if not main.fadeActive and main.fadeType == 'fadeout' then
 		clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])

@@ -614,8 +614,17 @@ function main.f_animPosDraw(a, x, y, f, instant)
 	end
 end
 
---calls fadeColor
-function main.f_fadeColor(t)
+--screen fade animation
+function main.f_fadeAnim(t)
+	--draw fade anim
+	if main.fadeCnt > 0 then
+		if t[main.fadeType .. '_data'] ~= nil then
+			animUpdate(t[main.fadeType .. '_data'])
+			animDraw(t[main.fadeType .. '_data'])
+		end
+		main.fadeCnt = main.fadeCnt - 1
+	end
+	--draw fadein / fadeout
 	main.fadeActive = fadeColor(
 		main.fadeType,
 		main.fadeStart,
@@ -3333,7 +3342,7 @@ function main.f_attractStart()
 			end
 			main.f_fadeReset('fadeout', motif.attract_mode)
 		end
-		main.f_fadeColor(motif.attract_mode)
+		main.f_fadeAnim(motif.attract_mode)
 		--frame transition
 		main.f_cmdInput()
 		if esc() --[[or main.f_input(main.t_players, {'m'})]] then
@@ -3733,16 +3742,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	for i = 1, #footer_txt do
 		footer_txt[i]:draw()
 	end
-	--draw fade anim
-	if main.fadeCnt > 0 then
-		if motif[section][main.fadeType .. '_data'] ~= nil then
-			animUpdate(motif[section][main.fadeType .. '_data'])
-			animDraw(motif[section][main.fadeType .. '_data'])
-		end
-		main.fadeCnt = main.fadeCnt - 1
-	end
 	--draw fadein / fadeout
-	main.f_fadeColor(main.fadeGroup)
+	main.f_fadeAnim(main.fadeGroup)
 	--frame transition
 	if main.fadeActive or main.fadeCnt > 0 then
 		main.f_cmdBufReset()
