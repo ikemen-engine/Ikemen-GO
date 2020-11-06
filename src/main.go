@@ -188,7 +188,7 @@ Debug Options:
 	"RoundsNumTag": 2,
 	"RoundTime": 99,
 	"ScreenshotFolder": "",
-	"StartStage" : "stages/stage0.def",
+	"StartStage" : "stages/stage0-720.def",
 	"System": "external/script/main.lua",
 	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
