@@ -946,8 +946,13 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rect.Max.X-rect.Min.X),
 					int32(rect.Max.Y-rect.Min.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE,
 					unsafe.Pointer(&rgba.Pix[0]))
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+				if sys.pngFilter {
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+				} else {
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+				}
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 				gl.Disable(gl.TEXTURE_2D)
