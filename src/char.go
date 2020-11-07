@@ -1613,6 +1613,7 @@ type Char struct {
 	clipboardText         []string
 	dialogue              []string
 	immortal              bool
+	kovelocity            bool
 	defaultHitScale       [3]*HitScale
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
@@ -1641,6 +1642,7 @@ func (c *Char) init(n int, idx int32) {
 	c.animPN = c.playerNo
 	if c.helperIndex == 0 {
 		c.player = true
+		c.kovelocity = true
 		c.keyctrl = [...]bool{true, true, true, true}
 	} else {
 		c.mapArray = make(map[string]float32)
@@ -5983,7 +5985,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				float64(absdamage)*float64(hits), kill, false, attackMul, c)
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
-					if c.player && !sys.sf(GSF_nokovelocity) {
+					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						getter.ghv.fallf = true
 						if getter.ghv.fall.animtype < RA_Back {
 							getter.ghv.fall.animtype = RA_Back
