@@ -129,7 +129,7 @@ local motif =
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
 		footer3_text = 'v0.96', --Ikemen feature
-		footer_overlay_coords = {0, main.SP_Localcoord[2] - 7, main.SP_Localcoord[1] - 1, main.SP_Localcoord[2] - 1}, --Ikemen feature (0, 233, 319, 239)
+		footer_overlay_window = {0, main.SP_Localcoord[2] - 7, main.SP_Localcoord[1] - 1, main.SP_Localcoord[2] - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_overlay_col = {0, 0, 64}, --Ikemen feature
 		footer_overlay_alpha = {255, 100}, --Ikemen feature
 		connecting_offset = {main.f_round(10 * main.SP_Localcoord[1] / 320), 40}, --Ikemen feature
@@ -138,7 +138,7 @@ local motif =
 		connecting_font_height = -1, --Ikemen feature
 		connecting_host_text = 'Waiting for player 2... (%s)', --Ikemen feature
 		connecting_join_text = 'Now connecting to %s... (%s)', --Ikemen feature
-		connecting_overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		connecting_overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		connecting_overlay_col = {0, 0, 0}, --Ikemen feature
 		connecting_overlay_alpha = {20, 100}, --Ikemen feature
 		input_ip_name_text = 'Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.', --Ikemen feature
@@ -228,7 +228,7 @@ local motif =
 		text_font = {'default-3x5.def', 0, 1, 191, 191, 191},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_font_height = -1, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
@@ -809,7 +809,7 @@ local motif =
 		move_snd = {100, 0}, --Ikemen feature
 		done_snd = {100, 1}, --Ikemen feature
 		cancel_snd = {100, 2}, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_continue = {5500, 5300}, --Ikemen feature
@@ -907,7 +907,7 @@ local motif =
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
@@ -933,7 +933,7 @@ local motif =
 		wintext_font_height = -1, --Ikemen feature
 		wintext_displaytime = -1,
 		wintext_layerno = 2,
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state = {180}, --Ikemen feature
@@ -969,7 +969,7 @@ local motif =
 		winstext_displaytime = -1,
 		winstext_layerno = 2,
 		roundstowin = 5,
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -999,7 +999,7 @@ local motif =
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		roundstowin = 51, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1028,7 +1028,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1057,7 +1057,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1086,7 +1086,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1115,7 +1115,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state = {180}, --Ikemen feature
@@ -1417,7 +1417,7 @@ local motif =
 		menu_arrow_down_facing = 1, --Ikemen feature
 		menu_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
 		menu_title_uppercase = 1, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		cursor_move_snd = {100, 0}, --Ikemen feature
@@ -1443,7 +1443,7 @@ local motif =
 		movelist_window_width = 300, --Ikemen feature
 		movelist_window_margins_y = {20, 1}, --Ikemen feature
 		movelist_window_visibleitems = 18, --Ikemen feature
-		movelist_overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		movelist_overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		movelist_overlay_col = {0, 0, 0}, --Ikemen feature
 		movelist_overlay_alpha = {20, 100}, --Ikemen feature
 		movelist_arrow_up_anim = nil, --Ikemen feature
@@ -1592,7 +1592,7 @@ local motif =
 		text_font_height = -1, --Ikemen feature
 		text_displaytime = 0, --Ikemen feature
 		text_layerno = 2, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {0, 0}, --Ikemen feature
 	},
@@ -1607,6 +1607,8 @@ local motif =
 		bars_display = 0, --Ikemen feature
 		snd_time = 0, --Ikemen feature
 		snd = {-1, 0}, --Ikemen feature
+		p1_pos = {0, 0}, --Ikemen feature
+		p2_pos = {0, 0}, --Ikemen feature
 		p1_score_offset = {0, 0}, --Ikemen feature
 		p1_score_font = {'f-4x6.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		p1_score_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1644,7 +1646,8 @@ local motif =
 		--p<pn>_gauge_<type>_offset  = {0, 0}, --Ikemen feature
 		--p<pn>_gauge_<type>_facing = 1, --Ikemen feature
 		--p<pn>_gauge_<type>_scale = {1.0, 1.0}, --Ikemen feature
-		--p<pn>_gauge_<type>_range = 0, --Ikemen feature
+		--p<pn>_gauge_<type>_window = {}, --Ikemen feature
+		--p<pn>_gauge_<type>_ticks = 0, --Ikemen feature
 		--p<pn>_gauge_<type>_max = 0, --Ikemen feature
 		--p<pn>_icon_<icon>_anim = nil, --Ikemen feature
 		--p<pn>_icon_<icon>_spr = {}, --Ikemen feature
@@ -1820,7 +1823,7 @@ local motif =
 		window_width = 300, --Ikemen feature
 		window_margins_y = {20, 1}, --Ikemen feature
 		window_visibleitems = 10, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		move_snd = {100, 0}, --Ikemen feature
@@ -1909,7 +1912,7 @@ local motif =
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_font_height = -1, --Ikemen feature
-		overlay_coords = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
@@ -2681,11 +2684,11 @@ motif.rank_info.icon = {}
 motif.rank_info.rank = {}
 for k, _ in pairs(motif.rank_info) do
 	local ok = false
-	if k:match('_anim$') then
-		t_rankParams[k:gsub('anim$', '')] = true
+	if k:match('^p[1-2].+_anim$') then
+		t_rankParams[k:gsub('anim$', '')] = k:match('^p([1-2])')
 		ok = true
-	elseif k:match('_spr$') then
-		t_rankParams[k:gsub('spr$', '')] = true
+	elseif k:match('^p[1-2].+_spr$') then
+		t_rankParams[k:gsub('spr$', '')] = k:match('^p([1-2])')
 		ok = true
 	end
 	if ok then
@@ -2697,8 +2700,8 @@ for k, _ in pairs(motif.rank_info) do
 		end
 	end
 end
-for k, _ in pairs(t_rankParams) do
-	motif.f_loadSprData(motif.rank_info, {s = k, x = 0, y = 0})
+for k, v in pairs(t_rankParams) do
+	motif.f_loadSprData(motif.rank_info, {s = k, x = motif.rank_info['p' .. v .. '_pos'][1], y = motif.rank_info['p' .. v .. '_pos'][2]})
 end
 
 --dialogue spr/anim data
