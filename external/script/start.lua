@@ -1850,7 +1850,7 @@ function start.f_selectScreen()
 		main.txt_mainSelect:draw()
 		--draw portraits
 		for side = 1, 2 do
-			if #start.p[side].t_selCmd > 0 and (not main.cpuSide[side] or main.f_tableLength(start.p[side].t_selected) > 0 or main.t_pIn[side] ~= side) then
+			if #start.p[side].t_selTemp > 0 then
 				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.select_info, '_face', true)
 			end
 		end
@@ -1939,7 +1939,7 @@ function start.f_selectScreen()
 		end
 		--draw names
 		for side = 1, 2 do
-			if #start.p[side].t_selCmd > 0 and (not main.cpuSide[side] or main.f_tableLength(start.p[side].t_selected) > 0 or main.t_pIn[side] ~= side) then
+			if #start.p[side].t_selTemp > 0 then
 				start.f_drawNames(
 					start.p[side].t_selTemp,
 					t_txt_name[side],
