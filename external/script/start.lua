@@ -3747,7 +3747,7 @@ function start.f_stageMusic()
 	if main.flags['-nomusic'] ~= nil or gamemode('') then
 		return
 	end
-	if gamemode('demo') and (motif.demo_mode.fight_playbgm == 0 or motif.demo_mode.fight_stopbgm == 0) then
+	if gamemode('demo') and motif.demo_mode.fight_playbgm == 0 then
 		return
 	end
 	if roundstart() then
@@ -3929,18 +3929,28 @@ function start.f_rank()
 				for k, _ in pairs(motif.rank_info.gauge) do
 					local v = 'p' .. side .. '_gauge_' .. k
 					local t_gauge = t['p' .. side .. 'gauge_' .. k]
-					t_gauge.temp = math.min(t_gauge.ratio, t_gauge.temp + t_gauge.ratio / 30)
-					local subX = 0
-					if motif.rank_info[v .. '_facing'] == -1 then
-						subX = t_gauge.temp * motif.rank_info[v .. '_range']
+					if not paused() then
+						t_gauge.temp = math.min(t_gauge.ratio, t_gauge.temp + t_gauge.ratio / motif.rank_info[v .. '_ticks'] or 30)
 					end
-					animSetWindow(
-						motif.rank_info[v .. '_data'],
-						(motif.rank_info[v .. '_offset'][1] - subX) * motif.rank_info[v .. '_scale'][1],
-						motif.rank_info[v .. '_offset'][2] * motif.rank_info[v .. '_scale'][2],
-						t_gauge.temp * motif.rank_info[v .. '_range'] * motif.rank_info[v .. '_scale'][1],
-						motif.rank_info[v .. '_range'] * motif.rank_info[v .. '_scale'][2]
-					)
+					local window = motif.rank_info[v .. '_window'] or {0, 0, 0, 0}
+					local length = window[3] - window[1]
+					if motif.rank_info[v .. '_facing'] == -1 then
+						animSetWindow(
+							motif.rank_info[v .. '_data'],
+							window[1] + (1 - t_gauge.temp) * length + (t_gauge.ratio - t_gauge.temp) * length - 1,
+							window[2],
+							t_gauge.temp * length,
+							window[4] - window[2]
+						)
+					else
+						animSetWindow(
+							motif.rank_info[v .. '_data'],
+							window[1],
+							window[2],
+							t_gauge.temp * length,
+							window[4] - window[2]
+						)
+					end
 					animUpdate(motif.rank_info[v .. '_data'])
 					animDraw(motif.rank_info[v .. '_data'])
 				end
@@ -4010,9 +4020,11 @@ function start.f_dialogueInit()
 	for side = 1, 2 do
 		animReset(motif.dialogue_info['p' .. side .. '_bg_data'])
 		animUpdate(motif.dialogue_info['p' .. side .. '_bg_data'])
-		player(side)
-		start['txt_dialogue_p' .. side .. '_name']:update({text = name()})
 	end
+	player(start.t_dialogue.player)
+	start.txt_dialogue_p1_name:update({text = name()})
+	enemy(0)
+	start.txt_dialogue_p2_name:update({text = name()})
 	start.t_dialogue.active = true
 	return true
 end

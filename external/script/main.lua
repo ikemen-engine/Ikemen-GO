@@ -21,7 +21,7 @@ json = (loadfile 'external/script/dkjson.lua')()
 function main.f_fileRead(path, mode)
 	local file = io.open(path, mode or 'r')
 	if file == nil then
-		panicError("\nFile not found: " .. path)
+		panicError("\nFile doesn't exist: " .. path)
 		return
 	end
 	local str = file:read("*all")
@@ -36,7 +36,7 @@ function main.f_fileWrite(path, str, mode)
 	end
 	local file = io.open(path, mode or 'w+')
 	if file == nil then
-		panicError("\nFile not found: " .. path)
+		panicError("\nFile doesn't exist: " .. path)
 		return
 	end
 	file:write(str)
@@ -572,14 +572,14 @@ end
 --create overlay based on usual motif parameters
 function main.f_createOverlay(t, prefix, mod)
 	local mod = mod or {}
-	if t[prefix .. '_coords'] == nil then t[prefix .. '_coords'] = {} end
+	if t[prefix .. '_window'] == nil then t[prefix .. '_window'] = {} end
 	if t[prefix .. '_col'] == nil then t[prefix .. '_col'] = {} end
 	if t[prefix .. '_alpha'] == nil then t[prefix .. '_alpha'] = {} end
 	return rect:create({
-		x1 =     t[prefix .. '_coords'][1],
-		y1 =     t[prefix .. '_coords'][2],
-		x2 =     t[prefix .. '_coords'][3] - t[prefix .. '_coords'][1] + 1,
-		y2 =     t[prefix .. '_coords'][4] - t[prefix .. '_coords'][2] + 1,
+		x1 =     t[prefix .. '_window'][1],
+		y1 =     t[prefix .. '_window'][2],
+		x2 =     t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
+		y2 =     t[prefix .. '_window'][4] - t[prefix .. '_window'][2] + 1,
 		r =      t[prefix .. '_col'][1],
 		g =      t[prefix .. '_col'][2],
 		b =      t[prefix .. '_col'][3],
@@ -1114,11 +1114,11 @@ function main.windowCoords(t, substract)
 end
 
 --warning display
-function main.f_warning(t, info, background, font_info, title, coords, col, alpha, defaultscale)
+function main.f_warning(t, info, background, font_info, title, window, col, alpha, defaultscale)
 	if defaultscale == nil then defaultscale = motif.defaultWarning end
 	font_info = font_info or motif.warning_info
 	title = title or main.txt_warningTitle
-	coords = coords or motif.warning_info.overlay_coords
+	window = window or motif.warning_info.overlay_window
 	col = col or motif.warning_info.overlay_col
 	alpha = alpha or motif.warning_info.overlay_alpha
 	resetKey()
@@ -1139,10 +1139,10 @@ function main.f_warning(t, info, background, font_info, title, coords, col, alph
 		bgDraw(background.bg, false)
 		--draw overlay
 		main.overlay_warning:update({
-			x1 =  coords[1],
-			y1 =  coords[2],
-			x2 =  coords[3] - coords[1] + 1,
-			y2 =  coords[4] - coords[2] + 1,
+			x1 =  window[1],
+			y1 =  window[2],
+			x2 =  window[3] - window[1] + 1,
+			y2 =  window[4] - window[2] + 1,
 			r =   col[1],
 			g =   col[2],
 			b =   col[3],
@@ -1532,9 +1532,14 @@ if motif.select_info.stage_portrait_spr[1] ~= -1 then
 	preloadList('stage', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
 
+main.t_validParams = {
+	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, winscreen = true, rank = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true},
+	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
+}
+
 --add characters and stages using select.def
 function main.f_charParam(t, c)
-	if c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 		c = c:gsub('%s+([0-9%s]+)$', function(m1)
 			for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1554,22 +1559,21 @@ function main.f_charParam(t, c)
 		local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
 		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
-	elseif c:match('lifebar%s*=') then --lifebar
-		if t.lifebar == nil then
-			t.lifebar = c:match('=%s*(.-)%s*$')
-		end
-	elseif c:match('[0-9]+%s*=%s*[^%s]') then --num = string (unused)
-		local var1, var2 = c:match('([0-9]+)%s*=%s*(.+)%s*$')
-		t[tonumber(var1)] = var2
-	elseif c:match('%.[Dd][Ee][Ff]') then --stage
+	elseif c:match('%.[Dd][Ee][Ff]$') then --stage
 		c = c:gsub('\\', '/')
 		if t.stage == nil then
 			t.stage = {}
+		end
+		if not main.f_fileExists(c) then
+			panicError("\nStage doesn't exist: " .. c)
 		end
 		table.insert(t.stage, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
+			if main.t_validParams.char[param] == nil then
+				panicError("\nUnrecognized character parameter: " .. param)
+			end
 			t[param] = tonumber(value)
 			if t[param] == nil then
 				t[param] = value
@@ -1818,7 +1822,7 @@ for line in content:gmatch('[^\r\n]+') do
 				row = main.f_addStage(c)
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
-			elseif c:match('music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
 				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 				c = c:gsub('%s+([0-9%s]+)$', function(m1)
 					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1841,6 +1845,9 @@ for line in content:gmatch('[^\r\n]+') do
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
+					if main.t_validParams.stage[param] == nil then
+						panicError("\nUnrecognized stage parameter: " .. param)
+					end
 					main.t_selStages[row][param] = tonumber(value)
 					if param:match('order') then
 						if main.t_orderStages[main.t_selStages[row].order] == nil then
@@ -2951,7 +2958,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						motif[main.background],
 						motif.infobox,
 						txt_infoboxTitle,
-						motif.infobox.overlay_coords,
+						motif.infobox.overlay_window,
 						motif.infobox.overlay_col,
 						motif.infobox.overlay_alpha,
 						motif.defaultInfobox
@@ -3438,11 +3445,7 @@ function main.f_demoStart()
 	if motif.demo_mode.debuginfo == 0 and config.DebugKeys then
 		setAllowDebugKeys(false)
 	end
-	if motif.demo_mode.fight_bars_display == 1 then
-		setLifebarElements({bars = true})
-	else
-		setLifebarElements({bars = false})
-	end
+	main.lifebar.bars = motif.demo_mode.fight_bars_display == 1
 	setGameMode('demo')
 	for i = 1, 2 do
 		setCom(i, 8)
@@ -3452,6 +3455,9 @@ function main.f_demoStart()
 	end
 	local stage = start.f_setStage()
 	start.f_setMusic(stage)
+	if motif.demo_mode.fight_stopbgm == 1 then
+		main.f_playBGM(true) --stop music
+	end
 	clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
 	loadStart()
 	game()
@@ -3735,7 +3741,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	--draw layerno = 1 backgrounds
 	bgDraw(motif[bgdef].bg, true)
 	--draw footer overlay
-	if motif[section].footer_overlay_coords ~= nil then
+	if motif[section].footer_overlay_window ~= nil then
 		overlay_footer:draw()
 	end
 	--draw footer text
