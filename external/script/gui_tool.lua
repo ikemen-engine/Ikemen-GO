@@ -5,7 +5,6 @@ function gui_tool.create_message(title, body)
 
 	lines = {}
 	actual_line = ""
-	actual_line_length = 0
 	maximal_line_length = GameWidth/2
 	if GameWidth < 500 then
 		maximal_line_length = GameWidth
@@ -14,20 +13,30 @@ function gui_tool.create_message(title, body)
 	for char_id = 1, #body do
 		char = body:sub(char_id, char_id)
 		actual_line = actual_line .. char
-		actual_line_length = actual_line_length + character_width
+		actual_line_length = character_width * #actual_line
 		if actual_line_length >= maximal_line_length then
+			-- soft wrap
+			last_char_non_last_word = 0
+			for line_char_id = 1, #actual_line do
+				line_char = actual_line:sub(line_char_id, line_char_id)
+				if line_char == " " then
+					last_char_non_last_word = line_char_id
+				end
+			end
+			next_actual_line = actual_line:sub(last_char_non_last_word, #actual_line)
+			actual_line = actual_line:sub(1, last_char_non_last_word)
 			table.insert(lines, actual_line)
-			--TODO: softwrap
 			if actual_line_length > longest_line_length then
 				longest_line_length = actual_line_length
 			end
 			actual_line_length = 0
-			actual_line = ""
+			actual_line = next_actual_line
 		end
 	end
 
-	if actual_line_length ~= 0 then
+	if #actual_line ~= 0 then
 		table.insert(lines, actual_line)
+		actual_line_length = character_width * #actual_line
 		if actual_line_length > longest_line_length then
 			longest_line_length = actual_line_length
 		end
