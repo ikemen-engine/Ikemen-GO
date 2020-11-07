@@ -300,7 +300,7 @@ function option_select.f_loop_character_edit()
 	while continue do
 		main.f_disableLuaScale()
 		main.f_cmdInput()
-		if in_sub_menu == false then
+		if not(in_sub_menu or displaying_message) then
 			-- update cursor
 			local selected_another_portrait = false
 			if main.f_input(main.t_players, {"$D"}) then
@@ -330,6 +330,7 @@ function option_select.f_loop_character_edit()
 				in_sub_menu = true
 				editing_character = option_select.f_generate_option_data(option_select.select_characters[selected_char_id])
 			elseif esc() then
+				-- check that at least one character is enabled
 				local number_of_selected_character = 0
 				for id in ipairs(option_select.select_characters) do
 					if option_select.select_characters[id].user_enabled then
@@ -338,7 +339,14 @@ function option_select.f_loop_character_edit()
 				end
 				if number_of_selected_character ~= 0 then
 					continue = false
+				else
+					displayed_image = gui_tool.create_message(motif.character_edit_info.text_no_selected_char_title, motif.character_edit_info.text_no_selected_char_body)
+					displaying_message = true
 				end
+			end
+		elseif displaying_message then
+			if esc() then
+				displaying_message = false
 			end
 		end
 
@@ -498,7 +506,9 @@ function option_select.f_loop_character_edit()
 			big_portrait_transition_ongoing = true
 		end
 
-
+		if displaying_message then
+			gui_tool.display_message(displayed_image)
+		end
 
 		if in_sub_menu == true then
 			--TODO: fix not being in motif

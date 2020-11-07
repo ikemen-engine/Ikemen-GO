@@ -2212,6 +2212,20 @@ func systemScriptInit(l *lua.LState) {
 			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale), absolute)
 		return 0
 	})
+	luaRegister(l, "textGetFontWidth", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if ok {
+			l.Push(lua.LNumber(ts.fnt.Size[0]))
+		}
+		return 1
+	})
+	luaRegister(l, "textGetFontHeight", func(*lua.LState) int {
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if ok {
+			l.Push(lua.LNumber(ts.fnt.Size[1]))
+		}
+		return 1
+	})
 	luaRegister(l, "toggleClsnDraw", func(*lua.LState) int {
 		if l.GetTop() >= 1 {
 			sys.clsnDraw = boolArg(l, 1)

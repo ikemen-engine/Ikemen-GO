@@ -25,6 +25,7 @@ function main.f_setLuaScale()
 	setLuaSpriteScale(main.SP_Viewport43[3] / 320)
 	setLuaSpriteOffsetX(main.SP_OffsetX)
 	setLuaPortraitScale(main.SP_Viewport43[3] / main.SP_Localcoord[1])
+	main.lua_scale_enabled = true
 end
 
 --disable localcoord screenpack scaling
@@ -32,6 +33,23 @@ function main.f_disableLuaScale()
 	setLuaSpriteScale(1)
 	setLuaSpriteOffsetX(0)
 	setLuaPortraitScale(1)
+	main.lua_scale_enabled = false
+end
+
+--return a save of the status of localcoord. Can be restored via f_restoreLuaScale
+function main.f_backupLuaScale()
+	return main.lua_scale_enabled
+end
+
+--restore the lua scale from the result of a previous f_backupLuaScale call.
+function main.f_restoreLuaScale(value)
+	if value ~= main.lua_scale_enabled then
+		if value then
+			main.f_setLuaScale()
+		else
+			main.f_disableLuaScale()
+		end
+	end
 end
 
 --calculate and set screenpack / lifebar localcoord

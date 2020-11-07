@@ -400,6 +400,14 @@ function text:draw(absolute)
 	textImgDraw(self.ti, absolute)
 end
 
+function text:get_font_width(a)
+	return textGetFontWidth(self.ti)
+end
+
+function text:get_font_height()
+	return textGetFontHeight(self.ti)
+end
+
 --create color
 function color:new(r, g, b, src, dst)
 	local n = {r = r or 255, g = g or 255, b = b or 255, src = src or 255, dst = dst or 0}
@@ -1846,6 +1854,7 @@ start = require('external.script.start')
 randomtest = require('external.script.randomtest')
 options = require('external.script.options')
 navigation_tip = require('external.script.navigation_tip')
+gui_tool = require('external.script.gui_tool')
 replay = require('external.script.replay')
 storyboard = require('external.script.storyboard')
 menu = require('external.script.menu')

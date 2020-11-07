@@ -1,5 +1,4 @@
 navigation_tip = {}
-navigation_tip.generation = 0
 
 function navigation_tip.generate(data) -- TODO: transform this to keyboard keys
 	result = ""

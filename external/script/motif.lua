@@ -1351,7 +1351,9 @@ local motif =
 		text_character_disabled = "disabled",
 		text_default = "default",
 		text_this_ai_level = "this ai level",
-		text_return = "return"
+		text_return = "return",
+		text_no_selected_char_title = "warning",
+		text_no_selected_char_body = "you need to select at least one character.",
 	},
 	navigation_tip = {
 		tip_font = {'f-6x9.def', 0, 1, 210, 210, 210, 255, 0}, --Ikemen feature
@@ -1361,6 +1363,14 @@ local motif =
 		tip_font_lower_diff = - widthscale()*1, --Ikemen feature
 		tip_extra_space_bottom = heightscale()*3, --Ikemen feature
 		tip_extra_space_top = heightscale()*3 --Ikemen feature
+	},
+	message = {
+		title_font = {'f-6x9.def', 0, 1, 210, 210, 210, 255, 0},
+		title_font_scale = {widthscale(), widthscale()},
+		body_font = {'f-6x9.def', 0, 1, 210, 210, 210, 255, 0},
+		body_font_scale = {widthscale(), widthscale()},
+		body_color = {20, 20, 20, 230, 0},
+		title_color = {20, 20, 50, 230, 0},
 	},
 	optionbgdef =
 	{
