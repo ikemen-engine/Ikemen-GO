@@ -2963,7 +2963,7 @@ for i = 1, 2 do
 	table.insert(t_txt_winquoteName, main.f_createTextImg(motif.victory_screen, 'p' .. i .. '_name', {defsc = false}))
 end
 
-function start.f_victoryOrder(side, allow_ko, num)
+function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local allow_ko = allow_ko or 0
 	local t = {}
 	local t_matchList = {}
@@ -2995,8 +2995,8 @@ function start.f_victoryOrder(side, allow_ko, num)
 				if #t >= num then break end
 				table.insert(t, {
 					ref = selectno(),
-					anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-					anim_data = start.f_animGet(selectno(), side, #t + 1, motif.victory_screen, '', '', true, true),
+					anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
+					anim_data = start.f_animGet(selectno(), paramSide, #t + 1, motif.victory_screen, '', '', true, true),
 					slide_dist = {0, 0},
 				})
 				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
@@ -3016,8 +3016,8 @@ function start.f_victoryOrder(side, allow_ko, num)
 				for i = 1, v - (t_matchList[k] or 0) do
 					table.insert(t, {
 						ref = k,
-						anim = motif.victory_screen['p' .. side .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. side .. '_anim'],
-						anim_data = start.f_animGet(k, side, #t + 1, motif.victory_screen, '', '', true, true),
+						anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
+						anim_data = start.f_animGet(k, paramSide, #t + 1, motif.victory_screen, '', '', true, true),
 						slide_dist = {0, 0},
 					})
 					t_matchList[k] = (t_matchList[k] or 0) + 1
@@ -3058,9 +3058,9 @@ function start.f_victoryInit()
 	end
 	for side = 1, 2 do
 		if winnerteam() == side then
-			start.t_victory.winnerNo, start.t_victory.winnerRef, start.t_victory.team1 = start.f_victoryOrder(side, motif.victory_screen.winner_teamko_enabled, motif.victory_screen.p1_num)
+			start.t_victory.winnerNo, start.t_victory.winnerRef, start.t_victory.team1 = start.f_victoryOrder(side, 1, motif.victory_screen.winner_teamko_enabled, motif.victory_screen.p1_num)
 		else
-			start.t_victory.loserNo, start.t_victory.loserRef, start.t_victory.team2 = start.f_victoryOrder(side, true, motif.victory_screen.p2_num)
+			start.t_victory.loserNo, start.t_victory.loserRef, start.t_victory.team2 = start.f_victoryOrder(side, 2, true, motif.victory_screen.p2_num)
 		end
 	end
 	if start.t_victory.winnerNo == -1 or start.t_victory.winnerRef == -1 then
@@ -3930,7 +3930,7 @@ function start.f_rank()
 					local v = 'p' .. side .. '_gauge_' .. k
 					local t_gauge = t['p' .. side .. 'gauge_' .. k]
 					if not paused() then
-						t_gauge.temp = math.min(t_gauge.ratio, t_gauge.temp + t_gauge.ratio / motif.rank_info[v .. '_ticks'] or 30)
+						t_gauge.temp = math.min(t_gauge.ratio, t_gauge.temp + t_gauge.ratio / (motif.rank_info[v .. '_ticks'] or 30))
 					end
 					local window = motif.rank_info[v .. '_window'] or {0, 0, 0, 0}
 					local length = window[3] - window[1]
