@@ -1533,7 +1533,7 @@ if motif.select_info.stage_portrait_spr[1] ~= -1 then
 end
 
 main.t_validParams = {
-	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, winscreen = true, rank = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true},
+	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, winscreen = true, rank = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
 	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
 }
 
@@ -1571,7 +1571,7 @@ function main.f_charParam(t, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-			if main.t_validParams.char[param] == nil then
+			if main.t_validParams.char[param] == nil and not param:match('maxmatches$') and not param:match('ratiomatches$') then
 				panicError("\nUnrecognized character parameter: " .. param)
 			end
 			t[param] = tonumber(value)
