@@ -1501,6 +1501,9 @@ local t_preload = {
 	{typ = 'spr', arg = motif.victory_screen.p1_face_done_spr},
 	{typ = 'anim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
 	{typ = 'spr', arg = motif.victory_screen.p2_face_done_spr},
+	--hiscore_info
+	{typ = 'anim', arg = {motif.hiscore_info.face_anim, nil}},
+	{typ = 'spr', arg = motif.hiscore_info.face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
