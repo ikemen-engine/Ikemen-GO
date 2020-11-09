@@ -418,7 +418,6 @@ const (
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animlength
-	OC_ex_cheated
 	OC_ex_combocount
 	OC_ex_consecutivewins
 	OC_ex_dizzy
@@ -1727,8 +1726,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
-	case OC_ex_cheated:
-		sys.bcStack.PushB(c.cheated)
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:

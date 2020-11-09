@@ -310,7 +310,6 @@ var triggerMap = map[string]int{
 	//new triggers
 	"animelemlength":   1,
 	"animlength":       1,
-	"cheated":          1,
 	"combocount":       1,
 	"consecutivewins":  1,
 	"dizzy":            1,
@@ -2406,8 +2405,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_animelemlength)
 	case "animlength":
 		out.append(OC_ex_, OC_ex_animlength)
-	case "cheated":
-		out.append(OC_ex_, OC_ex_cheated)
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":

@@ -1395,17 +1395,6 @@ func systemScriptInit(l *lua.LState) {
 		sys.loadStart()
 		return 0
 	})
-	luaRegister(l, "markCheat", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			side := int(numArg(l, 1)) - 1
-			for _, p := range sys.chars {
-				if len(p) > 0 && p[0].teamside == side {
-					p[0].cheated = true
-				}
-			}
-		}
-		return 0
-	})
 	luaRegister(l, "numberToRune", func(l *lua.LState) int {
 		l.Push(lua.LString(string('A' - 1 + int(numArg(l, 1)))))
 		return 1
@@ -3448,10 +3437,6 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "animlength", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.anim.totaltime))
-		return 1
-	})
-	luaRegister(l, "cheated", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.cheated))
 		return 1
 	})
 	luaRegister(l, "combocount", func(*lua.LState) int {

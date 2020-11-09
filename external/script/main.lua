@@ -3318,10 +3318,10 @@ function main.f_attractStart()
 			if num <= -1 then
 				timerActive = false
 				timer = -1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(0))})
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(0))})
 			else
 				timer = timer + 1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(math.max(0, num)))})
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
 			end
 			if timer >= motif.attract_mode.start_timer_displaytime then
 				txt_attract_timer:draw()
@@ -3339,6 +3339,16 @@ function main.f_attractStart()
 			resetKey()
 			timerActive = true
 			timer = motif.attract_mode.start_timer_displaytime
+		end
+		--options
+		if motif.attract_mode.enabled == 1 and getKey(motif.attract_mode.options_key) then
+			main.f_default()
+			main.menu.f = main.t_itemname.options()
+			sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
+			main.f_fadeReset('fadeout', motif[main.group])
+			resetKey()
+			main.menu.f()
+			return false
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.bg, true)

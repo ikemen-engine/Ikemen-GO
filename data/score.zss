@@ -18,7 +18,7 @@ if !Const(Default.Enable.Score) || TeamSide = 0 {
 	MapSet{map: "_iksys_scoreWinFlag"; value: 0}
 } else if RoundState = 4 && !IsHelper {
 	# score: time vital bonus
-	if Win && Map(_iksys_scoreVitalBase) = 0 && Alive && !Cheated {
+	if Win && Map(_iksys_scoreVitalBase) = 0 && Alive {
 		MapSet{map: "_iksys_scoreVitalBase"; value: float(Life) / LifeMax / (NumPartner + 1) * 10000}
 		if TeamMode = Turns && RoundsExisted = 0 && enemy,RoundsExisted > 0 {
 			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
@@ -38,15 +38,15 @@ if !Const(Default.Enable.Score) || TeamSide = 0 {
 				let timeRatio = $timeRatio * $p2TagNum / $p1TagNum;
 			}
 			if $timeRatio > 90 {
-				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 10, -2)}
-			} else if $timeRatio > 85 {
-				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 8, -2)}
-			} else if $timeRatio > 80 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 5, -2)}
-			} else if $timeRatio > 70 {
+			} else if $timeRatio > 85 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 4, -2)}
-			} else if $timeRatio > 60 {
+			} else if $timeRatio > 80 {
+				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 2.5, -2)}
+			} else if $timeRatio > 70 {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 2, -2)}
+			} else if $timeRatio > 60 {
+				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 1.5, -2)}
 			} else {
 				ScoreAdd{value: round(Map(_iksys_scoreVitalBase) * 1, -2)}
 			}
@@ -54,7 +54,7 @@ if !Const(Default.Enable.Score) || TeamSide = 0 {
 	}
 	# score: consecutive wins bonus
 	if PlayerNo = TeamSide {
-		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_scoreConsecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" && !Cheated {
+		if Win && MatchOver && ConsecutiveWins > 0 && Map(_iksys_scoreConsecutiveWinsFlag) = 0 && !IsHomeTeam && enemy,AILevel > 0 && GameMode != "scorechallenge" {
 			ScoreAdd{value: 30000 + (ConsecutiveWins - 1) * 10000}
 			MapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 1}
 		}
@@ -159,7 +159,7 @@ if !Const(Default.Enable.Score) || TeamSide = 0 {
 			MapSet{map: "_iksys_scoreComboCount"; value: ComboCount}
 		}
 		# score: win type bonus
-		if Win && Map(_iksys_scoreWinFlag) = 0 && !Cheated {
+		if Win && Map(_iksys_scoreWinFlag) = 0 {
 			if WinPerfect {
 				ScoreAdd{value: 15000}
 			}

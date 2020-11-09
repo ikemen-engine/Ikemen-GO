@@ -1526,7 +1526,6 @@ type CharSystemVar struct {
 	defenceMul    float32
 	customDefence float32
 	finalDefence  float64
-	cheated       bool
 	counterHit    bool
 	firstAttack   bool
 	getcombodmg   int32
