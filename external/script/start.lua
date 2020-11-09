@@ -3868,7 +3868,7 @@ function start.f_rankInit()
 		end
 		start.t_rank['p' .. side .. 'rank'].total = total
 		player(side)
-		if ailevel() == 0 and start.t_savedData.debugflag[side] then
+		if ailevel() == 0 and start.t_savedData.debugflag ~= nil and start.t_savedData.debugflag[side] then
 			start.t_rank['p' .. side .. 'rank'].rank = 1 --using debug keys disables rank grading
 		else
 			start.t_rank['p' .. side .. 'rank'].rank = math.max(1, math.min(main.f_tableLength(motif.rank_info.rank), math.floor(total / 8)))

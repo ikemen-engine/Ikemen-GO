@@ -109,7 +109,7 @@ function stand(p)
 end
 
 function debugFlag(side)
-	if start ~= nil then
+	if start ~= nil and start.t_savedData.debugFlag ~= nil then
 		start.t_savedData.debugflag[side] = true
 	end
 end

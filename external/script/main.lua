@@ -3383,11 +3383,11 @@ function main.f_attractMode()
 		local startScreen = false
 		while true do --inner loop (attract mode)
 			--logo storyboard
-			if motif.files.logo_storyboard ~= '' and storyboard.f_storyboard(motif.files.logo_storyboard, true) then
+			if motif.attract_mode.logo_storyboard ~= '' and storyboard.f_storyboard(motif.attract_mode.logo_storyboard, true) then
 				break
 			end
 			--intro storyboard
-			if motif.files.intro_storyboard ~= '' and storyboard.f_storyboard(motif.files.intro_storyboard, true) then
+			if motif.attract_mode.intro_storyboard ~= '' and storyboard.f_storyboard(motif.attract_mode.intro_storyboard, true) then
 				break
 			end
 			--demo
@@ -3416,8 +3416,8 @@ function main.f_attractMode()
 		end
 		if startScreen or main.f_attractStart() then
 			--attract storyboard
-			if motif.attract_mode.storyboard ~= '' then
-				storyboard.f_storyboard(motif.attract_mode.storyboard, false)
+			if motif.attract_mode.start_storyboard ~= '' then
+				storyboard.f_storyboard(motif.attract_mode.start_storyboard, false)
 			end
 			--eat credit
 			if main.credits > 0 then

@@ -1204,11 +1204,11 @@ local motif =
 		menu_valuename_disabled = 'Disabled', --Ikemen feature
 		keymenu_p1_pos = {39, 33}, --Ikemen feature
 		keymenu_p2_pos = {178, 33}, --Ikemen feature
-		keymenu_item_p1_pos = {91, 33}, --Ikemen feature
+		keymenu_item_p1_offset = {52, 0}, --Ikemen feature
 		keymenu_item_p1_font = {'f-6x9.def', 0, 0, 0, 247, 247}, --Ikemen feature
 		keymenu_item_p1_font_scale = {1.0, 1.0}, --Ikemen feature
 		keymenu_item_p1_font_height = -1, --Ikemen feature
-		keymenu_item_p2_pos = {230, 33}, --Ikemen feature
+		keymenu_item_p2_offset = {52, 0}, --Ikemen feature
 		keymenu_item_p2_font = {'f-6x9.def', 0, 0, 247, 0, 0}, --Ikemen feature
 		keymenu_item_p2_font_scale = {1.0, 1.0}, --Ikemen feature
 		keymenu_item_p2_font_height = -1, --Ikemen feature
@@ -1492,7 +1492,9 @@ local motif =
 		credits_key = '', --Ikemen feature
 		options_key = 'F11', --Ikemen feature
 		credits_snd = {-1, 0}, --Ikemen feature
-		storyboard = '', --Ikemen feature
+		logo_storyboard = '', --Ikemen feature
+		intro_storyboard = '', --Ikemen feature
+		start_storyboard = '', --Ikemen feature
 		start_time = 600, --Ikemen feature
 		start_insert_text = 'Insert coin', --Ikemen feature
 		start_insert_offset = {159, 185}, --Ikemen feature
@@ -1516,7 +1518,7 @@ local motif =
 		start_timer_framespercount = 60, --Ikemen feature
 		start_timer_displaytime = 10, --Ikemen feature
 		start_done_snd = {100, 1}, --Ikemen feature
-		credits_text = 'Credits: %2i', --Ikemen feature
+		credits_text = 'CREDITS: %2i', --Ikemen feature
 		credits_offset = {159, 234}, --Ikemen feature
 		credits_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		credits_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1610,13 +1612,13 @@ local motif =
 		p1_pos = {0, 0}, --Ikemen feature
 		p2_pos = {0, 0}, --Ikemen feature
 		p1_score_offset = {0, 0}, --Ikemen feature
-		p1_score_font = {'f-4x6.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		p1_score_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		p1_score_font_scale = {1.0, 1.0}, --Ikemen feature
 		p1_score_font_height = -1, --Ikemen feature
 		p1_score_text = '%s', --Ikemen feature
 		p1_score_displaytime = 0, --Ikemen feature
 		p2_score_offset = {0, 0}, --Ikemen feature
-		p2_score_font = {'f-4x6.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		p2_score_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		p2_score_font_scale = {1.0, 1.0}, --Ikemen feature
 		p2_score_font_height = -1, --Ikemen feature
 		p2_score_text = '%s', --Ikemen feature
@@ -2494,6 +2496,9 @@ for k, v in ipairs({
 	{t = {'default_ending',   'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.default_ending.storyboard,   'data/' .. motif.default_ending.storyboard}},
 	{t = {'end_credits',      'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.end_credits.storyboard,      'data/' .. motif.end_credits.storyboard}},
 	{t = {'game_over_screen', 'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.game_over_screen.storyboard, 'data/' .. motif.game_over_screen.storyboard}},
+	{t = {'attract_mode',     'logo_storyboard'},  skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.logo_storyboard,       'data/' .. motif.attract_mode.logo_storyboard}},
+	{t = {'attract_mode',     'intro_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.intro_storyboard}},
+	{t = {'attract_mode',     'start_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.start_storyboard}},
 }) do
 	local skip = false
 	for j = 1, #v.skip do
