@@ -3947,14 +3947,16 @@ function start.f_rank()
 			if t.counter >= motif.rank_info['p' .. side .. '_icon_displaytime'] then
 				local i = 1
 				for k, _ in pairs(motif.rank_info.icon) do
-					main.f_animPosDraw(
-						motif.rank_info['p' .. side .. '_icon_' .. k .. '_data'],
-						motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][1] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][1],
-						motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][2] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][2],
-						motif.rank_info['p' .. side .. '_icon_' .. k .. '_facing'],
-						true
-					)
-					i = i + 1
+					if main.f_tableHasValue(t['p' .. side .. 'rank'].icons, k) then
+						main.f_animPosDraw(
+							motif.rank_info['p' .. side .. '_icon_' .. k .. '_data'],
+							motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][1] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][1],
+							motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][2] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][2],
+							motif.rank_info['p' .. side .. '_icon_' .. k .. '_facing'],
+							true
+						)
+						i = i + 1
+					end
 				end
 			end
 			break

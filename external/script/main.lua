@@ -2281,6 +2281,7 @@ main.t_itemname = {
 		main.t_pIn[2] = 1
 		main.charparam.ai = true
 		main.charparam.music = true
+		main.charparam.rounds = true
 		main.charparam.single = true
 		main.charparam.stage = true
 		main.charparam.time = true
