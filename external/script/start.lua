@@ -478,13 +478,13 @@ function start.f_storeStats()
 		stats.modes = {}
 	end
 	--play time
-	stats.playtime = (stats.playtime or 0) + start.t_savedData.time.total / 60
+	stats.playtime = main.f_round((stats.playtime or 0) + start.t_savedData.time.total / 60, 2)
 	--mode play time
 	if stats.modes[gamemode()] == nil then
 		stats.modes[gamemode()] = {}
 	end
 	local t = stats.modes[gamemode()]
-	t.playtime = (t.playtime or 0) + start.t_savedData.time.total / 60
+	t.playtime = main.f_round((t.playtime or 0) + start.t_savedData.time.total / 60, 2)
 	if start.t_sortRanking[gamemode()] == nil or main.t_hiscoreData[gamemode()] == nil then
 		return cleared, -1 --mode can't be cleared
 	end
@@ -511,7 +511,7 @@ function start.f_storeStats()
 		t.ranking,
 		{
 			score = start.t_savedData.score.total[1],
-			time = start.t_savedData.time.total / 60,
+			time = main.f_round(start.t_savedData.time.total / 60, 2),
 			name = start.t_savedData.name or '',
 			chars = f_listCharRefs(start.p[1].t_selected),
 			tmode = start.p[1].teamMode,
