@@ -82,6 +82,8 @@ local function f_play(t, attract)
 								t.scene[v].layer[k2].counter,
 								t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1],
 								t.scene[v].layerall_pos[2] + t.scene[v].layer[k2].offset[2],
+								t.scene[v].layer[k2].spacing[1],
+								t.scene[v].layer[k2].spacing[2],
 								main.font_def[t.scene[v].layer[k2].font[1] .. t.scene[v].layer[k2].font_height],
 								t.scene[v].layer[k2].textdelay,
 								main.f_lineLength(
@@ -230,6 +232,7 @@ local function f_parse(path)
 								textdelay = 2,
 								textwindow = nil, --Ikemen feature
 								offset = {0, 0},
+								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
 								--endtime = 0,
 								counter = 0, --used internally by main.f_textRender

@@ -3102,6 +3102,8 @@ function start.f_victory()
 		start.t_victory.textcnt,
 		motif.victory_screen.winquote_offset[1],
 		motif.victory_screen.winquote_offset[2],
+		motif.victory_screen.winquote_spacing[1],
+		motif.victory_screen.winquote_spacing[2],
 		main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
 		motif.victory_screen.winquote_delay,
 		main.f_lineLength(
@@ -4210,6 +4212,8 @@ function start.f_dialogue()
 				t_parsed.cnt,
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][1],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][2],
+				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][1],
+				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][2],
 				main.font_def[motif.dialogue_info['p' .. t_parsed.side .. '_text_font'][1] .. motif.dialogue_info['p' .. t_parsed.side .. '_text_font_height']],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_delay'],
 				main.f_lineLength(

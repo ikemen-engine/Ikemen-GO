@@ -928,7 +928,7 @@ function main.f_lineLength(startX, maxWidth, align, window, windowWrap)
 end
 
 --draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
-function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_colors)
+function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_def, delay, length, t_colors)
 	if data.font == -1 then return end
 	local delay = delay or 0
 	local length = length or 0
@@ -994,7 +994,6 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_
 		elseif i == #t then
 			retDone = true
 		end
-		local offseX = 0
 		--TODO: colors support
 		--[[if t_colors[subEnd - 1] ~= nil then
 			data:update({
@@ -1005,8 +1004,8 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_
 		end]]
 		data:update({
 			text = t[i],
-			x = x + offseX,
-			y = y + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY) * (i - 1),
+			x = x + spacingX * (i - 1),
+			y = y + (main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY) + spacingY) * (i - 1),
 		})
 		data:draw()
 		retLength = retLength + string.len(t[i])
