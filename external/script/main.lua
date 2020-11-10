@@ -928,7 +928,7 @@ function main.f_lineLength(startX, maxWidth, align, window, windowWrap)
 end
 
 --draw string letter by letter + wrap lines. Returns true after finishing rendering last letter.
-function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_colors)
+function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_def, delay, length, t_colors)
 	if data.font == -1 then return end
 	local delay = delay or 0
 	local length = length or 0
@@ -994,7 +994,6 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_
 		elseif i == #t then
 			retDone = true
 		end
-		local offseX = 0
 		--TODO: colors support
 		--[[if t_colors[subEnd - 1] ~= nil then
 			data:update({
@@ -1005,8 +1004,8 @@ function main.f_textRender(data, str, counter, x, y, font_def, delay, length, t_
 		end]]
 		data:update({
 			text = t[i],
-			x = x + offseX,
-			y = y + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY) * (i - 1),
+			x = x + spacingX * (i - 1),
+			y = y + (main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY) + spacingY) * (i - 1),
 		})
 		data:draw()
 		retLength = retLength + string.len(t[i])
@@ -1501,6 +1500,9 @@ local t_preload = {
 	{typ = 'spr', arg = motif.victory_screen.p1_face_done_spr},
 	{typ = 'anim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
 	{typ = 'spr', arg = motif.victory_screen.p2_face_done_spr},
+	--hiscore_info
+	{typ = 'anim', arg = {motif.hiscore_info.face_anim, nil}},
+	{typ = 'spr', arg = motif.hiscore_info.face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
@@ -3318,10 +3320,10 @@ function main.f_attractStart()
 			if num <= -1 then
 				timerActive = false
 				timer = -1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(0))})
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(0))})
 			else
 				timer = timer + 1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%s', tostring(math.max(0, num)))})
+				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
 			end
 			if timer >= motif.attract_mode.start_timer_displaytime then
 				txt_attract_timer:draw()
@@ -3339,6 +3341,16 @@ function main.f_attractStart()
 			resetKey()
 			timerActive = true
 			timer = motif.attract_mode.start_timer_displaytime
+		end
+		--options
+		if motif.attract_mode.enabled == 1 and getKey(motif.attract_mode.options_key) then
+			main.f_default()
+			main.menu.f = main.t_itemname.options()
+			sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
+			main.f_fadeReset('fadeout', motif[main.group])
+			resetKey()
+			main.menu.f()
+			return false
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.bg, true)
@@ -3370,11 +3382,11 @@ function main.f_attractMode()
 		local startScreen = false
 		while true do --inner loop (attract mode)
 			--logo storyboard
-			if motif.files.logo_storyboard ~= '' and storyboard.f_storyboard(motif.files.logo_storyboard, true) then
+			if motif.attract_mode.logo_storyboard ~= '' and storyboard.f_storyboard(motif.attract_mode.logo_storyboard, true) then
 				break
 			end
 			--intro storyboard
-			if motif.files.intro_storyboard ~= '' and storyboard.f_storyboard(motif.files.intro_storyboard, true) then
+			if motif.attract_mode.intro_storyboard ~= '' and storyboard.f_storyboard(motif.attract_mode.intro_storyboard, true) then
 				break
 			end
 			--demo
@@ -3403,8 +3415,8 @@ function main.f_attractMode()
 		end
 		if startScreen or main.f_attractStart() then
 			--attract storyboard
-			if motif.attract_mode.storyboard ~= '' then
-				storyboard.f_storyboard(motif.attract_mode.storyboard, false)
+			if motif.attract_mode.start_storyboard ~= '' then
+				storyboard.f_storyboard(motif.attract_mode.start_storyboard, false)
 			end
 			--eat credit
 			if main.credits > 0 then

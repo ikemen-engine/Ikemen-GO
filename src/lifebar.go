@@ -1394,9 +1394,9 @@ func readLifeBarAction(pre string, is IniSection, f []*Fnt) *LifeBarAction {
 		ac.start_x = float32(sys.lifebarLocalcoord[0]) - ac.start_x
 	}
 	if pre == "team2." {
-		ac.text = *readLbText(pre+"text.", is, "", 0, f, -1)
+		ac.text = *readLbText(pre+"text.", is, "", 2, f, -1)
 	} else {
-		ac.text = *readLbText(pre+"text.", is, "", 0, f, 1)
+		ac.text = *readLbText(pre+"text.", is, "", 2, f, 1)
 	}
 	is.ReadI32(pre+"displaytime", &ac.displaytime)
 	is.ReadF32(pre+"showspeed", &ac.showspeed)

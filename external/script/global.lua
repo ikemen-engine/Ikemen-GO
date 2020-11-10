@@ -26,17 +26,17 @@ addHotkey('7', true, false, false, true, 'toggleAI(7)')
 addHotkey('7', true, true, false, true, 'togglePlayer(7)')
 addHotkey('8', true, false, false, true, 'toggleAI(8)')
 addHotkey('8', true, true, false, true, 'togglePlayer(8)')
-addHotkey('F1', false, false, false, false, 'kill(2);kill(4);kill(6);kill(8);markCheat(1);resetScore(1)')
-addHotkey('F1', true, false, false, false, 'kill(1);kill(3);kill(5);kill(7);markCheat(2);resetScore(2)')
-addHotkey('F2', false, false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1);kill(5,1);kill(6,1);kill(7,1);kill(8,1);markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
-addHotkey('F2', true, false, false, false, 'kill(1,1);kill(3,1);kill(5,1);kill(7,1);markCheat(2);resetScore(2)')
-addHotkey('F2', false, false, true, false, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1);markCheat(1);resetScore(1)')
-addHotkey('F3', false, false, false, false, 'powMax(1);powMax(2);markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
-addHotkey('F3', true, false, true, false, 'toggleMaxPowerMode();markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
+addHotkey('F1', false, false, false, false, 'kill(2);kill(4);kill(6);kill(8);debugFlag(1)')
+addHotkey('F1', true, false, false, false, 'kill(1);kill(3);kill(5);kill(7);debugFlag(2)')
+addHotkey('F2', false, false, false, false, 'kill(1,1);kill(2,1);kill(3,1);kill(4,1);kill(5,1);kill(6,1);kill(7,1);kill(8,1);debugFlag(1);debugFlag(2)')
+addHotkey('F2', true, false, false, false, 'kill(1,1);kill(3,1);kill(5,1);kill(7,1);debugFlag(2)')
+addHotkey('F2', false, false, true, false, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1);debugFlag(1)')
+addHotkey('F3', false, false, false, false, 'powMax(1);powMax(2);debugFlag(1);debugFlag(2)')
+addHotkey('F3', true, false, true, false, 'toggleMaxPowerMode();debugFlag(1);debugFlag(2)')
 addHotkey('F4', false, false, false, false, 'roundReset()')
 addHotkey('F4', false, false, true, false, 'reload()')
-addHotkey('F5', false, false, false, false, 'setTime(0);markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
-addHotkey('SPACE', false, false, false, false, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());markCheat(1);resetScore(1);markCheat(2);resetScore(2)')
+addHotkey('F5', false, false, false, false, 'setTime(0);debugFlag(1);debugFlag(2)')
+addHotkey('SPACE', false, false, false, false, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());debugFlag(1);debugFlag(2)')
 addHotkey('i', true, false, false, true, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
 addHotkey('PAUSE', false, false, false, true, 'togglePause()')
 addHotkey('PAUSE', true, false, false, true, 'step()')
@@ -105,6 +105,12 @@ function stand(p)
 	if player(p) then
 		selfState(0)
 		playerid(oldid)
+	end
+end
+
+function debugFlag(side)
+	if start ~= nil and start.t_savedData.debugFlag ~= nil then
+		start.t_savedData.debugflag[side] = true
 	end
 end
 

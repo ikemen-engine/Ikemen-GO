@@ -2038,10 +2038,8 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
 					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
-					tmp.RawSetString("cheated", lua.LBool(p[0].cheated))
 					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
 					p[0].firstAttack = false
-					p[0].cheated = false
 				}
 			}
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)

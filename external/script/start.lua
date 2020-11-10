@@ -38,7 +38,6 @@ local t_aiRamp = {}
 local t_gameStats = {}
 local t_recordText = {}
 local t_reservedChars = {{}, {}}
-local t_savedData = {}
 local t_victoryBGM = {}
 local timerSelect = 0
 local winCnt = 0
@@ -363,8 +362,8 @@ function start.f_setRounds(roundTime, t_rounds)
 		end
 	end
 	--timer / score counter
-	local timer = t_savedData.time.total
-	local t_score = {t_savedData.score.total[1], t_savedData.score.total[2]}
+	local timer = start.t_savedData.time.total
+	local t_score = {start.t_savedData.score.total[1], start.t_savedData.score.total[2]}
 	if start.challenger > 0 and gamemode('teamversus') then
 		timer = 0
 		t_score = {0, 0}
@@ -374,6 +373,7 @@ function start.f_setRounds(roundTime, t_rounds)
 end
 
 --save data between matches
+start.t_savedData = {}
 function start.f_saveData()
 	if main.debugLog then main.f_printTable(t_gameStats, 'debug/t_gameStats.txt') end
 	if winnerteam() == -1 then
@@ -381,47 +381,33 @@ function start.f_saveData()
 	end
 	--win/lose matches count, total score
 	if winnerteam() == 1 then
-		t_savedData.win[1] = t_savedData.win[1] + 1
-		t_savedData.lose[2] = t_savedData.lose[2] + 1
-		t_savedData.score.total[1] = t_gameStats.p1score
+		start.t_savedData.win[1] = start.t_savedData.win[1] + 1
+		start.t_savedData.lose[2] = start.t_savedData.lose[2] + 1
+		start.t_savedData.score.total[1] = t_gameStats.p1score
 	else --if winnerteam() == 2 then
-		t_savedData.win[2] = t_savedData.win[2] + 1
-		t_savedData.lose[1] = t_savedData.lose[1] + 1
+		start.t_savedData.win[2] = start.t_savedData.win[2] + 1
+		start.t_savedData.lose[1] = start.t_savedData.lose[1] + 1
 		if main.resetScore and matchno() ~= -1 then --loosing sets score for the next match to lose count
-			t_savedData.score.total[1] = t_savedData.lose[1]
+			start.t_savedData.score.total[1] = start.t_savedData.lose[1]
+			start.t_savedData.debugflag[1] = false
 		else
-			t_savedData.score.total[1] = t_gameStats.p1score
+			start.t_savedData.score.total[1] = t_gameStats.p1score
 		end
 	end
-	t_savedData.score.total[2] = t_gameStats.p2score
+	start.t_savedData.score.total[2] = t_gameStats.p2score
 	--total time
-	t_savedData.time.total = t_savedData.time.total + t_gameStats.matchTime
+	start.t_savedData.time.total = start.t_savedData.time.total + t_gameStats.matchTime
 	--time in each round
-	table.insert(t_savedData.time.matches, t_gameStats.timerRounds)
+	table.insert(start.t_savedData.time.matches, t_gameStats.timerRounds)
 	--score in each round
-	table.insert(t_savedData.score.matches, t_gameStats.scoreRounds)
-	--individual characters
-	local t_cheat = {false, false}
-	for round = 1, #t_gameStats.match do
-		for c, v in ipairs(t_gameStats.match[round]) do
-			--cheat flag
-			if v.cheated then
-				t_cheat[v.teamside + 1] = true
-			end
+	table.insert(start.t_savedData.score.matches, t_gameStats.scoreRounds)
+	--max consecutive wins
+	for side = 1, 2 do
+		if getConsecutiveWins(side) > start.t_savedData.consecutive[side] then
+			start.t_savedData.consecutive[side] = getConsecutiveWins(side)
 		end
 	end
-	--max consecutive wins, cheat flags
-	for i = 1, #t_cheat do
-		if t_cheat[i] then
-			setConsecutiveWins(i, 0)
-		elseif getConsecutiveWins(i) > t_savedData.consecutive[i] then
-			t_savedData.consecutive[i] = getConsecutiveWins(i)
-		end
-		if not t_savedData.debugflag[i] and t_cheat[i] then
-			t_savedData.debugflag[i] = true
-		end
-	end
-	if main.debugLog then main.f_printTable(t_savedData, 'debug/t_savedData.txt') end
+	if main.debugLog then main.f_printTable(start.t_savedData, 'debug/t_savedData.txt') end
 end
 
 --return sorted and capped table
@@ -492,13 +478,13 @@ function start.f_storeStats()
 		stats.modes = {}
 	end
 	--play time
-	stats.playtime = (stats.playtime or 0) + t_savedData.time.total / 60
+	stats.playtime = (stats.playtime or 0) + start.t_savedData.time.total / 60
 	--mode play time
 	if stats.modes[gamemode()] == nil then
 		stats.modes[gamemode()] = {}
 	end
 	local t = stats.modes[gamemode()]
-	t.playtime = (t.playtime or 0) + t_savedData.time.total / 60
+	t.playtime = (t.playtime or 0) + start.t_savedData.time.total / 60
 	if start.t_sortRanking[gamemode()] == nil or main.t_hiscoreData[gamemode()] == nil then
 		return cleared, -1 --mode can't be cleared
 	end
@@ -508,31 +494,31 @@ function start.f_storeStats()
 	elseif t.clear == nil then
 		t.clear = 0
 	end
-	if main.t_hiscoreData[gamemode()].data == 'score' and t_savedData.score.total[1] == 0 then
+	if main.t_hiscoreData[gamemode()].data == 'score' and start.t_savedData.score.total[1] == 0 then
 		return cleared, -1
 	end
-	if main.t_hiscoreData[gamemode()].data == 'win' and t_savedData.win[1] == 0 then
+	if main.t_hiscoreData[gamemode()].data == 'win' and start.t_savedData.win[1] == 0 then
 		return cleared, -1
 	end
 	if not cleared and (gamemode('bossrush') or gamemode('scorechallenge') or gamemode('timechallenge')) then
 		return cleared, -1 --only winning these modes produces ranking data
 	end
-	if t_savedData.debugflag[1] and (gamemode('bossrush') or gamemode('survival') or gamemode('survivalcoop') or gamemode('vs100kumite') or gamemode('timeattack') or gamemode('timechallenge')) then
-		--return cleared, -1 --in modes where objective is not score gathering but beating time or win count, using debug keys makes the data invalid
+	if start.t_savedData.debugflag[1] then
+		return cleared, -1 --using debug keys disables high score table registering
 	end
 	--rankings
 	t.ranking = f_formattedTable(
 		t.ranking,
 		{
-			score = t_savedData.score.total[1],
-			time = t_savedData.time.total / 60,
-			name = t_savedData.name or '',
+			score = start.t_savedData.score.total[1],
+			time = start.t_savedData.time.total / 60,
+			name = start.t_savedData.name or '',
 			chars = f_listCharRefs(start.p[1].t_selected),
 			tmode = start.p[1].teamMode,
 			ailevel = config.Difficulty,
-			win = t_savedData.win[1],
-			lose = t_savedData.lose[1],
-			consecutive = t_savedData.consecutive[1],
+			win = start.t_savedData.win[1],
+			lose = start.t_savedData.lose[1],
+			consecutive = start.t_savedData.consecutive[1],
 			flag = true,
 		},
 		start.t_sortRanking[gamemode()],
@@ -1525,7 +1511,7 @@ function start.f_selectReset()
 	winCnt = 0
 	loseCnt = 0
 	if start.challenger == 0 then
-		t_savedData = {
+		start.t_savedData = {
 			win = {0, 0},
 			lose = {0, 0},
 			time = {total = 0, matches = {}},
@@ -2037,10 +2023,10 @@ function start.f_selectScreen()
 			local num = main.f_round((motif.select_info.timer_count * motif.select_info.timer_framespercount - timerSelect + motif.select_info.timer_displaytime) / motif.select_info.timer_framespercount)
 			if num <= -1 then
 				timerSelect = -1
-				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%s', tostring(0))})
+				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%i', tostring(0))})
 			else
 				timerSelect = timerSelect + 1
-				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%s', tostring(math.max(0, num)))})
+				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
 			end
 			if timerSelect >= motif.select_info.timer_displaytime then
 				txt_timerSelect:draw()
@@ -3116,6 +3102,8 @@ function start.f_victory()
 		start.t_victory.textcnt,
 		motif.victory_screen.winquote_offset[1],
 		motif.victory_screen.winquote_offset[2],
+		motif.victory_screen.winquote_spacing[1],
+		motif.victory_screen.winquote_spacing[2],
 		main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
 		motif.victory_screen.winquote_delay,
 		main.f_lineLength(
@@ -3625,10 +3613,10 @@ function start.f_hiscore(t, playMusic, place, infinite)
 				start.t_hiscore.input = false
 			end
 			start.t_hiscore.timer = -1
-			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%s', tostring(0))})
+			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%i', tostring(0))})
 		else
 			start.t_hiscore.timer = start.t_hiscore.timer + 1
-			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%s', tostring(math.max(0, num)))})
+			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
 		end
 		if start.t_hiscore.timer >= motif.hiscore_info.timer_displaytime then
 			start.txt_hiscore_timer:draw()
@@ -3882,8 +3870,8 @@ function start.f_rankInit()
 		end
 		start.t_rank['p' .. side .. 'rank'].total = total
 		player(side)
-		if ailevel() == 0 and cheated() then
-			start.t_rank['p' .. side .. 'rank'].rank = 1
+		if ailevel() == 0 and start.t_savedData.debugflag ~= nil and start.t_savedData.debugflag[side] then
+			start.t_rank['p' .. side .. 'rank'].rank = 1 --using debug keys disables rank grading
 		else
 			start.t_rank['p' .. side .. 'rank'].rank = math.max(1, math.min(main.f_tableLength(motif.rank_info.rank), math.floor(total / 8)))
 		end
@@ -4224,6 +4212,8 @@ function start.f_dialogue()
 				t_parsed.cnt,
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][1],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][2],
+				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][1],
+				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][2],
 				main.font_def[motif.dialogue_info['p' .. t_parsed.side .. '_text_font'][1] .. motif.dialogue_info['p' .. t_parsed.side .. '_text_font_height']],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_delay'],
 				main.f_lineLength(
