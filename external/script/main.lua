@@ -1299,6 +1299,8 @@ require('external.script.global')
 
 if main.debugLog then main.f_printTable(main.flags, "debug/flags.txt") end
 
+loadDebugFont(config.DebugFont)
+
 --;===========================================================
 --; COMMAND LINE QUICK VS
 --;===========================================================
@@ -1314,7 +1316,9 @@ function main.f_commandLine()
 	local t_numChars = {0, 0}
 	local t_matchWins = {single = main.roundsNumSingle, simul = main.roundsNumSimul, tag = main.roundsNumTag, draw = main.maxDrawGames}
 	local roundTime = config.RoundTime
-	loadLifebar(main.lifebarDef)
+	if main.flags['-loadmotif'] == nil then
+		loadLifebar(main.lifebarDef)
+	end
 	local frames = getTimeFramesPerCount()
 	main.f_updateRoundsNum()
 	local t = {}
@@ -1409,7 +1413,6 @@ function main.f_commandLine()
 		addStage(stage)
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
-	loadDebugFont(config.DebugFont)
 	selectStart()
 	setMatchNo(1)
 	selectStage(main.t_stageDef[stage:lower()])
@@ -1464,6 +1467,10 @@ motif = require('external.script.motif')
 local txt_loading = main.f_createTextImg(motif.title_info, 'loading', {defsc = motif.defaultLoading})
 txt_loading:draw()
 refresh()
+loadLifebar(motif.files.fight)
+main.f_loadingRefresh(txt_loading)
+main.timeFramesPerCount = getTimeFramesPerCount()
+main.f_updateRoundsNum()
 
 main.txt_warning = text:create({})
 main.txt_warningTitle = main.f_createTextImg(motif.warning_info, 'title', {defsc = motif.defaultWarning})
@@ -2013,17 +2020,6 @@ if main.debugLog then
 	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
 	main.f_printTable(config, "debug/config.txt")
 end
-
---Debug stuff
-loadDebugFont(config.DebugFont)
-
---Assign Lifebar
-txt_loading:draw()
-refresh()
-loadLifebar(motif.files.fight)
-main.timeFramesPerCount = getTimeFramesPerCount()
-main.f_updateRoundsNum()
-main.f_loadingRefresh(txt_loading)
 
 --print warning if training character is missing
 if main.t_charDef[config.TrainingChar] == nil then
