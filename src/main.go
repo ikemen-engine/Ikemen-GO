@@ -18,11 +18,23 @@ import (
 func init() {
 	runtime.LockOSThread()
 }
+
+// Checks if error is not null, if there is an error it displays a error dialogue box and crashes the program.
 func chk(err error) {
 	if err != nil {
+		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
 		panic(err)
 	}
 }
+
+// Extended version of 'chk()'
+func chkEX(err error, txt string) {
+	if err != nil {
+		dialog.Message(txt + err.Error()).Title("I.K.E.M.E.N Error").Error()
+		panic(Error(txt + err.Error()))
+	}
+}
+
 func createLog(p string) *os.File {
 	f, err := os.Create(p)
 	if err != nil {
@@ -167,6 +179,7 @@ Debug Options:
 		4
 	],
 	"Players": 4,
+	"PngSpriteFilter": true,
 	"PostProcessingShader": 0,
 	"QuickContinue": false,
 	"RatioAttack": [
@@ -201,7 +214,9 @@ Debug Options:
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
 	"VRetrace": 1, 
-	"WindowIcon": "external/icons/IkemenCylia.png",
+	"WindowIcon": [
+		"external/icons/IkemenCylia.png"
+	],
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
 	"ZoomActive": true,
@@ -415,6 +430,7 @@ Debug Options:
 		NumTag                     [2]int
 		NumTurns                   [2]int
 		Players                    int
+		PngSpriteFilter            bool
 		PostProcessingShader       int32
 		QuickContinue              bool
 		RatioAttack                [4]float32
@@ -439,7 +455,7 @@ Debug Options:
 		VolumeMaster               int
 		VolumeSfx                  int
 		VRetrace                   int
-		WindowIcon                 string
+		WindowIcon                 []string
 		WindowTitle                string
 		XinputTriggerSensitivity   float32
 		ZoomActive                 bool
@@ -464,7 +480,7 @@ Debug Options:
 			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
 			bytes = bytes[3:]
 		}
-		chk(json.Unmarshal(bytes, &tmp))
+		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
@@ -508,6 +524,7 @@ Debug Options:
 	sys.multisampleAntialiasing = tmp.MSAA
 	sys.playerProjectileMax = tmp.MaxPlayerProjectile
 	sys.postProcessingShader = tmp.PostProcessingShader
+	sys.pngFilter = tmp.PngSpriteFilter
 	sys.powerShare = [...]bool{tmp.TeamPowerShare, tmp.TeamPowerShare}
 	tmp.ScreenshotFolder = strings.TrimSpace(tmp.ScreenshotFolder)
 	if tmp.ScreenshotFolder != "" {
@@ -520,7 +537,7 @@ Debug Options:
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
 	sys.wavVolume = tmp.VolumeSfx
-	sys.windowMainIconLocation = append(sys.windowMainIconLocation, tmp.WindowIcon)
+	sys.windowMainIconLocation = tmp.WindowIcon
 	sys.windowTitle = tmp.WindowTitle
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
 	stoki := func(key string) int {
@@ -553,9 +570,18 @@ Debug Options:
 		}
 	}
 	//os.Mkdir("debug", os.ModeSticky|0755)
+
+	// Check if the main lua file exists.
+	if !fileExists(tmp.System) {
+		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
+		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
+		panic(err)
+	}
+
 	log := createLog("Ikemen.log")
 	defer closeLog(log)
 	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
+	// Display error logs.
 	if err := sys.luaLState.DoFile(tmp.System); err != nil {
 		fmt.Fprintln(log, err)
 		switch err.(type) {
@@ -574,4 +600,13 @@ Debug Options:
 		sys.gameEnd = true
 	}
 	<-sys.audioClose
+}
+
+// fileExists checks if a file exists and is not a directory before we use it
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

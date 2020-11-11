@@ -21,6 +21,7 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -81,6 +82,7 @@ var sys = System{
 	lifebarPortraitScale: 1,
 	vRetrace:             1,
 	consoleType:          1,
+	pngFilter:            false,
 }
 
 type TeamMode int32
@@ -332,6 +334,8 @@ type System struct {
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
+	// Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
+	pngFilter bool
 }
 
 type Window struct {
@@ -513,11 +517,16 @@ func (s *System) init(w, h int32) *lua.LState {
 	// So now that we have a window we add a icon.
 	if len(s.windowMainIconLocation) > 0 {
 		// First we initialize arrays.
-		f := make([]io.ReadCloser, len(s.windowMainIconLocation))
+		var f = make([]io.ReadCloser, len(s.windowMainIconLocation))
 		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
 		// And then we load them.
 		for i, iconLocation := range s.windowMainIconLocation {
-			f[i], _ = os.Open(iconLocation)
+			f[i], err = os.Open(iconLocation)
+			if err != nil {
+				var dErr = "Icon file can not be found.\nPanic: " + err.Error()
+				dialog.Message(dErr).Title("I.K.E.M.E.N Error").Error()
+				panic(Error(dErr))
+			}
 			s.windowMainIcon[i], _, err = image.Decode(f[i])
 		}
 		s.window.Window.SetIcon(s.windowMainIcon)
