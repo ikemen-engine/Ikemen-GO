@@ -769,6 +769,32 @@ func systemScriptInit(l *lua.LState) {
 				}
 				sys.await(FPS)
 			}
+			for i := range sys.cgi {
+				num := len(sys.lifebar.fa[sys.tmode[i&1]])
+				if sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag {
+					num = int(math.Min(float64(num), float64(sys.numSimul[i&1])*2))
+				}
+				if i < num {
+					ref := sys.tmode[i&1]
+					if sys.tmode[i&1] == TM_Simul {
+						if sys.numSimul[i&1] == 3 {
+							ref = 4
+						} else if sys.numSimul[i&1] >= 4 {
+							ref = 5
+						}
+					} else if sys.tmode[i&1] == TM_Tag {
+						if sys.numSimul[i&1] == 3 {
+							ref = 6
+						} else if sys.numSimul[i&1] >= 4 {
+							ref = 7
+						}
+					}
+					fa := sys.lifebar.fa[ref][i]
+					fa.face = sys.cgi[i].sff.getOwnPalSprite(
+						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
+					fa.scale = sys.cgi[i].portraitscale
+				}
+			}
 			runtime.GC()
 			return nil
 		}
