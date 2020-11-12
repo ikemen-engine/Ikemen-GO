@@ -829,16 +829,15 @@ type LifeBarFace struct {
 	teammate_face_spr [2]int32
 	teammate_face     []*Sprite
 	teammate_face_lay Layout
-	numko             int32
-	scale             float32
 	teammate_scale    []float32
+	numko             int32
 	draworder         int32
 	old_spr, old_pal  [2]int32
 }
 
 func newLifeBarFace() *LifeBarFace {
 	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1},
-		scale: 1, draworder: 1}
+		draworder: 1}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
@@ -895,6 +894,8 @@ func (fa *LifeBarFace) reset() {
 	fa.teammate_bg2.Reset()
 	fa.teammate_top.Reset()
 	fa.teammate_ko.Reset()
+	fa.old_spr = [2]int32{}
+	fa.old_pal = [2]int32{}
 }
 func (fa *LifeBarFace) bgDraw(layerno int16) {
 	fa.bg.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
@@ -927,7 +928,7 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 			sys.brightness = 256
 		}
 		fa.face_lay.DrawSprite((float32(fa.pos[0])+sys.lifebarOffsetX)*sys.lifebarScale, float32(fa.pos[1])*sys.lifebarScale, layerno,
-			far.face, pfx, far.scale*sys.lifebarPortraitScale, &fa.face_lay.window)
+			far.face, pfx, sys.cgi[ref].portraitscale*sys.lifebarPortraitScale, &fa.face_lay.window)
 		if !sys.chars[ref][0].alive() {
 			fa.ko.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
 		}
