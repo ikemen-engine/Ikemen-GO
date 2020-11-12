@@ -1448,6 +1448,7 @@ type CharGlobalInfo struct {
 	portraitscale    float32
 	constants        map[string]float32
 	remapPreset      map[string]RemapPreset
+	remappedpal      [2]int32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -2269,6 +2270,7 @@ func (c *Char) loadPallet() {
 			break
 		}
 	}
+	c.gi().remappedpal = [...]int32{1, c.gi().palno}
 }
 func (c *Char) clearHitCount() {
 	c.hitCount, c.uniqHitCount = 0, 0
@@ -4376,6 +4378,9 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 			}
 		}
 		c.gi().sff.palList.SwapPalMap(&pfx.remap)
+	}
+	if src[0] == 1 && src[1] == c.gi().palno {
+		c.gi().remappedpal = [...]int32{dst[0], dst[1]}
 	}
 }
 func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {

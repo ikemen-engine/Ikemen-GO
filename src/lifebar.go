@@ -833,6 +833,7 @@ type LifeBarFace struct {
 	scale             float32
 	teammate_scale    []float32
 	draworder         int32
+	old_spr, old_pal  [2]int32
 }
 
 func newLifeBarFace() *LifeBarFace {
@@ -902,12 +903,23 @@ func (fa *LifeBarFace) bgDraw(layerno int16) {
 	fa.bg2.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
 }
 func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
-	fspr := far.face
-	if fspr != nil {
+	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
+	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
+		if mn, ok := mg[number]; ok {
+			group, number = mn[0], mn[1]
+		}
+	}
+	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
+		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
+		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
+		far.old_spr = [...]int32{int32(group), int32(number)}
+		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
+	}
+	if far.face != nil {
 		pfx := sys.chars[ref][0].getPalfx()
 		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
-		fspr.Pal = nil
-		fspr.Pal = fspr.GetPal(&sys.cgi[ref].sff.palList)
+		far.face.Pal = nil
+		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
 		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
 
 		ob := sys.brightness

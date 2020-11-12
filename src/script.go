@@ -793,6 +793,8 @@ func systemScriptInit(l *lua.LState) {
 					fa.face = sys.cgi[i].sff.getOwnPalSprite(
 						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
 					fa.scale = sys.cgi[i].portraitscale
+					fa.old_spr = [...]int32{fa.face_spr[0], fa.face_spr[1]}
+					fa.old_pal = [...]int32{sys.cgi[i].remappedpal[0], sys.cgi[i].remappedpal[1]}
 				}
 			}
 			runtime.GC()
