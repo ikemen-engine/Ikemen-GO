@@ -536,8 +536,8 @@ function start.f_storeStats()
 end
 
 --sets stage
-function start.f_setStage(num)
-	if not main.stageMenu and not continue() then
+function start.f_setStage(num, assigned)
+	if not assigned and not main.stageMenu and not continue() then
 		if main.charparam.stage and start.f_getCharData(start.p[2].t_selected[1].ref).stage ~= nil then --stage assigned as character param
 			num = math.random(1, #start.f_getCharData(start.p[2].t_selected[1].ref).stage)
 			num = start.f_getCharData(start.p[2].t_selected[1].ref).stage[num]
@@ -1721,7 +1721,7 @@ function launchFight(data)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
-		stageNo = start.f_setStage(stageNo)
+		stageNo = start.f_setStage(stageNo, t.stage ~= '')
 		start.f_setMusic(stageNo, t.music)
 		if not start.f_selectVersus() then break end
 		saveData = true

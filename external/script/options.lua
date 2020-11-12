@@ -146,6 +146,7 @@ options.t_itemname = {
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
 			config.Players = 4
+			config.PngSpriteFilter = true
 			config.PostProcessingShader = 0
 			config.QuickContinue = false
 			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
