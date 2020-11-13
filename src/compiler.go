@@ -324,6 +324,7 @@ var triggerMap = map[string]int{
 	"hitoverridden":    1,
 	"incustomstate":    1,
 	"indialogue":       1,
+	"isasserted":       1,
 	"localscale":       1,
 	"majorversion":     1,
 	"map":              1,
@@ -2444,6 +2445,91 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_incustomstate)
 	case "indialogue":
 		out.append(OC_ex_, OC_ex_indialogue)
+	case "isasserted":
+		if err := c.kakkohiraku(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "nostandguard":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nostandguard))
+		case "nocrouchguard":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nocrouchguard))
+		case "noairguard":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noairguard))
+		case "noshadow":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noshadow))
+		case "invisible":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_invisible))
+		case "unguardable":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_unguardable))
+		case "nojugglecheck":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nojugglecheck))
+		case "noautoturn":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noautoturn))
+		case "nowalk":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nowalk))
+		case "nobrake":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nobrake))
+		case "nocrouch":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nocrouch))
+		case "nostand":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nostand))
+		case "nojump":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nojump))
+		case "noairjump":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noairjump))
+		case "nohardcodedkeys":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nohardcodedkeys))
+		case "nogetupfromliedown":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nogetupfromliedown))
+		case "nofastrecoverfromliedown":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofastrecoverfromliedown))
+		case "nofallcount":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofallcount))
+		case "nofalldefenceup":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofalldefenceup))
+		case "noturntarget":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noturntarget))
+		case "noinput":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noinput))
+		case "nopowerbardisplay":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nopowerbardisplay))
+		case "autoguard":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_autoguard))
+		case "intro":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
+		case "roundnotover":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotover))
+		case "nomusic":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nomusic))
+		case "nobardisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
+		case "nobg":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobg))
+		case "nofg":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofg))
+		case "globalnoshadow":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
+		case "timerfreeze":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_timerfreeze))
+		case "nokosnd":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokosnd))
+		case "nokoslow":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokoslow))
+		case "noko":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_noko))
+		case "nokovelocity":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokovelocity))
+		case "roundnotskip":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
+		default:
+			return bvNone(), Error(c.token + " is invalid")
+		}
+		c.token = c.tokenizer(in)
+		if err := c.kakkotojiru(); err != nil {
+			return bvNone(), err
+		}
 	case "ishost":
 		out.append(OC_ex_, OC_ex_ishost)
 	case "localscale":

@@ -2887,6 +2887,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.redlife)
 		case "score":
 			ln = lua.LNumber(c.ghv.score)
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
 		l.Push(ln)
 		return 1
@@ -3471,6 +3473,85 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "indialogue", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.dialogueFlg))
+		return 1
+	})
+	luaRegister(l, "isasserted", func(*lua.LState) int {
+		switch strArg(l, 1) {
+		case "nostandguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostandguard)))
+		case "nocrouchguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouchguard)))
+		case "noairguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairguard)))
+		case "noshadow":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noshadow)))
+		case "invisible":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_invisible)))
+		case "unguardable":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_unguardable)))
+		case "nojugglecheck":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojugglecheck)))
+		case "noautoturn":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noautoturn)))
+		case "nowalk":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nowalk)))
+		case "nobrake":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nobrake)))
+		case "nocrouch":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouch)))
+		case "nostand":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostand)))
+		case "nojump":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojump)))
+		case "noairjump":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairjump)))
+		case "nohardcodedkeys":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nohardcodedkeys)))
+		case "nogetupfromliedown":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nogetupfromliedown)))
+		case "nofastrecoverfromliedown":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofastrecoverfromliedown)))
+		case "nofallcount":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofallcount)))
+		case "nofalldefenceup":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofalldefenceup)))
+		case "noturntarget":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noturntarget)))
+		case "noinput":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noinput)))
+		case "nopowerbardisplay":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nopowerbardisplay)))
+		case "autoguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
+		case "intro":
+			l.Push(lua.LBool(sys.sf(GSF_intro)))
+		case "roundnotover":
+			l.Push(lua.LBool(sys.sf(GSF_roundnotover)))
+		case "nomusic":
+			l.Push(lua.LBool(sys.sf(GSF_nomusic)))
+		case "nobardisplay":
+			l.Push(lua.LBool(sys.sf(GSF_nobardisplay)))
+		case "nobg":
+			l.Push(lua.LBool(sys.sf(GSF_nobg)))
+		case "nofg":
+			l.Push(lua.LBool(sys.sf(GSF_nofg)))
+		case "globalnoshadow":
+			l.Push(lua.LBool(sys.sf(GSF_globalnoshadow)))
+		case "timerfreeze":
+			l.Push(lua.LBool(sys.sf(GSF_timerfreeze)))
+		case "nokosnd":
+			l.Push(lua.LBool(sys.sf(GSF_nokosnd)))
+		case "nokoslow":
+			l.Push(lua.LBool(sys.sf(GSF_nokoslow)))
+		case "noko":
+			l.Push(lua.LBool(sys.sf(GSF_noko)))
+		case "nokovelocity":
+			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
+		case "roundnotskip":
+			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "ishost", func(*lua.LState) int {
