@@ -17,7 +17,7 @@ Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver g
 Default.LifeToDizzyPointsMul = 0    ; multiplier for dizzy points the receiver gets when an attack successfully hits (overridden by dizzypoints HitDef option)
 Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when an attack successfully hits (overridden by redlife HitDef option)
 
-Input.PauseOnHitPause = 1           ; controls if inputs should be retained during super pause
+Input.PauseOnHitPause = 1           ; controls if inputs should be retained during hit pause
 
 ; tag.zss options
 TagInTime = 20                 ; tag-in time (MvCI: default distance = TagInTime * TagInVelX, base: total switch time)
