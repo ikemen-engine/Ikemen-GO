@@ -40,7 +40,7 @@ function options.f_saveCfg(reload)
 	end
 end
 
-options.txt_title = main.f_createTextImg(motif.option_info, 'title', {defsc = false--[[motif.defaultOptions]]}) --TODO: title font assignment exists in mugen
+options.txt_title = main.f_createTextImg(motif.option_info, 'title', {defsc = motif.defaultOptionsTitle})
 
 --;===========================================================
 --; LOOPS
