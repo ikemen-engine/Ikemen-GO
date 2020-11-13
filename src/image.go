@@ -1234,7 +1234,10 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 				return nil, nil, err
 			}
 		}
-		if _, ok := preloadSpr[[...]int16{spriteList[i].Group, spriteList[i].Number}]; ok {
+		if _, ok := preloadSpr[[...]int16{spriteList[i].Group, spriteList[i].Number}]; ok || (prev == nil && spriteList[i].palidx < 0) {
+			if ok {
+				ok = sff.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] == nil
+			}
 			//sprite
 			if size == 0 {
 				if int(indexOfPrevious) < i {
@@ -1258,51 +1261,57 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 						return nil, nil, err
 					}
 				}
-				//palette
-				plXofs = xofs
-				if h.Ver0 == 1 {
-					spriteList[i].Pal = pl.Get(spriteList[i].palidx)
-					spriteList[i].palidx = 0
-				} else if spriteList[i].rle > -11 {
-					plSize = 0
-					plIndexOfPrevious = uint16(spriteList[i].palidx)
-					ip := plIndexOfPrevious + 1
-					for plSize == 0 && ip != plIndexOfPrevious {
-						ip = plIndexOfPrevious
-						plShofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
-						f.Seek(int64(plShofs)+6, 0)
-						if err := read(&plIndexOfPrevious); err != nil {
-							return nil, nil, err
+				if ok {
+					//palette
+					plXofs = xofs
+					if h.Ver0 == 1 {
+						spriteList[i].Pal = pl.Get(spriteList[i].palidx)
+						if spriteList[i].palidx >= MaxPalNo { //just in case
+							spriteList[i].palidx = 0
 						}
-						if err := read(&plXofs); err != nil {
-							return nil, nil, err
+					} else if spriteList[i].rle > -11 {
+						plSize = 0
+						plIndexOfPrevious = uint16(spriteList[i].palidx)
+						ip := plIndexOfPrevious + 1
+						for plSize == 0 && ip != plIndexOfPrevious {
+							ip = plIndexOfPrevious
+							plShofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
+							f.Seek(int64(plShofs)+6, 0)
+							if err := read(&plIndexOfPrevious); err != nil {
+								return nil, nil, err
+							}
+							if err := read(&plXofs); err != nil {
+								return nil, nil, err
+							}
+							if err := read(&plSize); err != nil {
+								return nil, nil, err
+							}
 						}
-						if err := read(&plSize); err != nil {
-							return nil, nil, err
+						f.Seek(int64(lofs+plXofs), 0)
+						spriteList[i].Pal = make([]uint32, 256)
+						var rgba [4]byte
+						for j := 0; j < int(plSize)/4 && j < len(spriteList[i].Pal); j++ {
+							if err := read(rgba[:]); err != nil {
+								return nil, nil, err
+							}
+							if h.Ver2 == 0 {
+								rgba[3] = 255
+							}
+							spriteList[i].Pal[j] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 						}
+						spriteList[i].palidx = 0
 					}
-					f.Seek(int64(lofs+plXofs), 0)
-					spriteList[i].Pal = make([]uint32, 256)
-					var rgba [4]byte
-					for j := 0; j < int(plSize)/4 && j < len(spriteList[i].Pal); j++ {
-						if err := read(rgba[:]); err != nil {
-							return nil, nil, err
-						}
-						if h.Ver2 == 0 {
-							rgba[3] = 255
-						}
-						spriteList[i].Pal[j] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
-					}
-					spriteList[i].palidx = 0
 				}
-				prev = spriteList[i]
+				if prev == nil {
+					prev = spriteList[i]
+				}
 			}
-			if sff.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] == nil {
+			if ok {
 				sff.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] = spriteList[i]
-			}
-			preloadSprNum--
-			if preloadSprNum == 0 {
-				break
+				preloadSprNum--
+				if preloadSprNum == 0 {
+					break
+				}
 			}
 		}
 		if h.Ver0 == 1 {
