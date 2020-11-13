@@ -1851,6 +1851,14 @@ func (c *Char) load(def string) error {
 	}
 
 	gi.constants = make(map[string]float32)
+	gi.constants["default.attack.lifetopowermul"] = 0.7
+	gi.constants["default.gethit.lifetopowermul"] = 0.6
+	gi.constants["super.targetdefencemul"] = 1.5
+	gi.constants["default.lifetoguardpointsmul"] = -1.5
+	gi.constants["default.lifetodizzypointsmul"] = 0
+	gi.constants["default.lifetoredlifemul"] = 0.25
+	gi.constants["input.pauseonhitpause"] = 1
+
 	str, err = LoadText(sys.commonConst)
 	if err != nil {
 		return err
