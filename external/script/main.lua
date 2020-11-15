@@ -1430,6 +1430,9 @@ function main.f_commandLine()
 				ref = ref + 1
 			end
 		end
+		if main.t_charDef[v.character:lower()] == nil then
+			panicError("\nUnable to add character. No such file or directory: " .. v.character .. "\n")
+		end
 		selectChar(v.player, main.t_charDef[v.character:lower()], v.pal)
 		setCom(v.num, v.ai)
 		if v.ai == 0 and t_teamMode[v.player] == 3 then

@@ -153,13 +153,12 @@ type HealthBar struct {
 	mid_mult   float32
 	mid_steps  float32
 	gethit     bool
-	draworder  int32
 }
 
 func newHealthBar() *HealthBar {
 	return &HealthBar{oldlife: 1, midlife: 1, midlifeMin: 1,
 		red: make(map[int32]*AnimLayout), front: make(map[float32]*AnimLayout),
-		mid_freeze: true, mid_delay: 30, mid_mult: 1.0, mid_steps: 8.0, draworder: 1}
+		mid_freeze: true, mid_delay: 30, mid_mult: 1.0, mid_steps: 8.0}
 }
 func readHealthBar(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *HealthBar {
@@ -207,7 +206,6 @@ func readHealthBar(pre string, is IniSection,
 	is.ReadF32("mid.mult", &hb.mid_mult)
 	is.ReadF32("mid.steps", &hb.mid_steps)
 	hb.mid_steps = MaxF(1, hb.mid_steps)
-	is.ReadI32(pre+"draworder", &hb.draworder)
 	return hb
 }
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
@@ -369,13 +367,12 @@ type PowerBar struct {
 	midpower    float32
 	midpowerMin float32
 	prevLevel   int32
-	draworder   int32
 	levelbars   bool
 }
 
 func newPowerBar() *PowerBar {
 	return &PowerBar{level_snd: [...][2]int32{{-1}, {-1}, {-1}},
-		front: make(map[int32]*AnimLayout), draworder: 1}
+		front: make(map[int32]*AnimLayout)}
 }
 func readPowerBar(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *PowerBar {
@@ -411,7 +408,6 @@ func readPowerBar(pre string, is IniSection,
 				&pb.level_snd[i][1])
 		}
 	}
-	is.ReadI32(pre+"draworder", &pb.draworder)
 	is.ReadBool(pre+"levelbars", &pb.levelbars)
 	return pb
 }
@@ -534,11 +530,10 @@ type GuardBar struct {
 	midpowerMin float32
 	// TODO: Add a effect similar to the one were life is removed.
 	//prevLevel   int32
-	draworder int32
 }
 
 func newGuardBar() (gb *GuardBar) {
-	gb = &GuardBar{front: make(map[float32]*AnimLayout), draworder: 1}
+	gb = &GuardBar{front: make(map[float32]*AnimLayout)}
 	return
 }
 func readGuardBar(pre string, is IniSection,
@@ -567,7 +562,6 @@ func readGuardBar(pre string, is IniSection,
 	}
 	gb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	gb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
-	is.ReadI32(pre+"draworder", &gb.draworder)
 	return gb
 }
 func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
@@ -677,11 +671,10 @@ type StunBar struct {
 	shift       AnimLayout
 	midpower    float32
 	midpowerMin float32
-	draworder   int32
 }
 
 func newStunBar() (sb *StunBar) {
-	sb = &StunBar{front: make(map[float32]*AnimLayout), draworder: 1}
+	sb = &StunBar{front: make(map[float32]*AnimLayout)}
 	return
 }
 func readStunBar(pre string, is IniSection,
@@ -710,7 +703,6 @@ func readStunBar(pre string, is IniSection,
 	}
 	sb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	sb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
-	is.ReadI32(pre+"draworder", &sb.draworder)
 	return sb
 }
 func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
@@ -831,13 +823,11 @@ type LifeBarFace struct {
 	teammate_face_lay Layout
 	teammate_scale    []float32
 	numko             int32
-	draworder         int32
 	old_spr, old_pal  [2]int32
 }
 
 func newLifeBarFace() *LifeBarFace {
-	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1},
-		draworder: 1}
+	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
@@ -864,7 +854,6 @@ func readLifeBarFace(pre string, is IniSection,
 	is.ReadI32(pre+"teammate.face.spr", &fa.teammate_face_spr[0],
 		&fa.teammate_face_spr[1])
 	fa.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is, 0)
-	is.ReadI32(pre+"draworder", &fa.draworder)
 	return fa
 }
 func (fa *LifeBarFace) step() {
@@ -959,11 +948,10 @@ type LifeBarName struct {
 	name      LbText
 	bg        AnimLayout
 	top       AnimLayout
-	draworder int32
 }
 
 func newLifeBarName() *LifeBarName {
-	return &LifeBarName{draworder: 1}
+	return &LifeBarName{}
 }
 func readLifeBarName(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarName {
@@ -972,7 +960,6 @@ func readLifeBarName(pre string, is IniSection,
 	nm.name = *readLbText(pre+"name.", is, "", 0, f, 0)
 	nm.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	nm.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
-	is.ReadI32(pre+"draworder", &nm.draworder)
 	return nm
 }
 func (nm *LifeBarName) step() {
@@ -3089,65 +3076,86 @@ func (l *Lifebar) draw(layerno int16) {
 	}
 	if sys.statusDraw && l.active {
 		if !sys.sf(GSF_nobardisplay) && l.activeBars {
+			//HealthBar
+			for ti, _ := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					l.hb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				}
+			}
+			for ti, _ := range sys.tmode {
+				for i, v := range l.order[ti] {
+					l.hb[l.ref[ti]][i*2+ti].draw(layerno, v, l.hb[l.ref[ti]][v], l.fnt[:])
+				}
+			}
+			//PowerBar
+			for ti, tm := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
+							if i == 0 {
+								l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+							}
+						} else {
+							l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+						}
+					}
+				}
+			}
 			for ti, tm := range sys.tmode {
 				for i, v := range l.order[ti] {
-					//HealthBar
-					for j := range l.hb[l.ref[ti]] {
-						if l.hb[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							l.hb[l.ref[ti]][i*2+ti].bgDraw(layerno)
-							l.hb[l.ref[ti]][i*2+ti].draw(layerno, v, l.hb[l.ref[ti]][v], l.fnt[:])
-							break
-						}
-					}
-					//PowerBar
-					for j := range l.pb[l.ref[ti]] {
-						if l.pb[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
-								if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
-									if i == 0 {
-										l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
-										l.pb[l.ref[ti]][i*2+ti].draw(layerno, i*2+ti, l.pb[l.ref[ti]][i*2+ti], l.fnt[:])
-									}
-								} else {
-									l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
-									l.pb[l.ref[ti]][i*2+ti].draw(layerno, v, l.pb[l.ref[ti]][v], l.fnt[:])
-								}
+					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
+							if i == 0 {
+								l.pb[l.ref[ti]][i*2+ti].draw(layerno, i*2+ti, l.pb[l.ref[ti]][i*2+ti], l.fnt[:])
 							}
-							break
+						} else {
+							l.pb[l.ref[ti]][i*2+ti].draw(layerno, v, l.pb[l.ref[ti]][v], l.fnt[:])
 						}
 					}
-					//GuardBar
-					for j := range l.gb[l.ref[ti]] {
-						if l.gb[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							l.gb[l.ref[ti]][i*2+ti].bgDraw(layerno)
-							l.gb[l.ref[ti]][i*2+ti].draw(layerno, v, l.gb[l.ref[ti]][v], l.fnt[:])
-							break
-						}
-					}
-					//StunBar
-					for j := range l.sb[l.ref[ti]] {
-						if l.sb[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							l.sb[l.ref[ti]][i*2+ti].bgDraw(layerno)
-							l.sb[l.ref[ti]][i*2+ti].draw(layerno, v, l.sb[l.ref[ti]][v], l.fnt[:])
-							break
-						}
-					}
-					//LifeBarFace
-					for j := range l.fa[l.ref[ti]] {
-						if l.fa[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							l.fa[l.ref[ti]][i*2+ti].bgDraw(layerno)
-							l.fa[l.ref[ti]][i*2+ti].draw(layerno, v, l.fa[l.ref[ti]][v])
-							break
-						}
-					}
-					//LifeBarName
-					for j := range l.nm[l.ref[ti]] {
-						if l.nm[l.ref[ti]][i*2+ti].draworder == int32(j+1) {
-							l.nm[l.ref[ti]][i*2+ti].bgDraw(layerno)
-							l.nm[l.ref[ti]][i*2+ti].draw(layerno, v, l.fnt[:])
-							break
-						}
-					}
+				}
+			}
+			//GuardBar
+			for ti, _ := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					l.gb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				}
+			}
+			for ti, _ := range sys.tmode {
+				for i, v := range l.order[ti] {
+					l.gb[l.ref[ti]][i*2+ti].draw(layerno, v, l.gb[l.ref[ti]][v], l.fnt[:])
+				}
+			}
+			//StunBar
+			for ti, _ := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					l.sb[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				}
+			}
+			for ti, _ := range sys.tmode {
+				for i, v := range l.order[ti] {
+					l.sb[l.ref[ti]][i*2+ti].draw(layerno, v, l.sb[l.ref[ti]][v], l.fnt[:])
+				}
+			}
+			//LifeBarFace
+			for ti, _ := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					l.fa[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				}
+			}
+			for ti, _ := range sys.tmode {
+				for i, v := range l.order[ti] {
+					l.fa[l.ref[ti]][i*2+ti].draw(layerno, v, l.fa[l.ref[ti]][v])
+				}
+			}
+			//LifeBarName
+			for ti, _ := range sys.tmode {
+				for i, _ := range l.order[ti] {
+					l.nm[l.ref[ti]][i*2+ti].bgDraw(layerno)
+				}
+			}
+			for ti, _ := range sys.tmode {
+				for i, v := range l.order[ti] {
+					l.nm[l.ref[ti]][i*2+ti].draw(layerno, v, l.fnt[:])
 				}
 			}
 			//LifeBarTime
@@ -3160,9 +3168,14 @@ func (l *Lifebar) draw(layerno int16) {
 			//LifeBarRatio
 			for ti, tm := range sys.tmode {
 				if tm == TM_Turns {
-					rl := sys.chars[ti][0].ratioLevel()
-					if rl > 0 {
+					if rl := sys.chars[ti][0].ratioLevel(); rl > 0 {
 						l.ra[ti].bgDraw(layerno)
+					}
+				}
+			}
+			for ti, tm := range sys.tmode {
+				if tm == TM_Turns {
+					if rl := sys.chars[ti][0].ratioLevel(); rl > 0 {
 						l.ra[ti].draw(layerno, rl-1)
 					}
 				}
@@ -3173,6 +3186,8 @@ func (l *Lifebar) draw(layerno int16) {
 			//LifeBarScore
 			for i := range l.sc {
 				l.sc[i].bgDraw(layerno)
+			}
+			for i := range l.sc {
 				l.sc[i].draw(layerno, l.fnt[:], i)
 			}
 			//LifeBarMatch
@@ -3181,6 +3196,8 @@ func (l *Lifebar) draw(layerno int16) {
 			//LifeBarAiLevel
 			for i := range l.ai {
 				l.ai[i].bgDraw(layerno)
+			}
+			for i := range l.ai {
 				l.ai[i].draw(layerno, l.fnt[:], sys.com[sys.chars[i][0].playerNo])
 			}
 
