@@ -1482,12 +1482,13 @@ func (ac *LifeBarAction) draw(layerno int16, f []*Fnt, side int) {
 						((1 - sys.lifebarFontScale) * sys.lifebarFontScale)
 				}
 			} else {
-				tmp := ac.text.lay.offset[0]
+				x -= float32(f[ac.text.font[0]].TextWidth(v.text))*
+					ac.text.lay.scale[0]*sys.lifebarFontScale
+				/*tmp := ac.text.lay.offset[0]
 				if ac.pos[0] == 0 {
 					tmp *= sys.lifebarFontScale
 				}
-				x -= tmp + float32(f[ac.text.font[0]].TextWidth(v.text))*
-					ac.text.lay.scale[0]*sys.lifebarFontScale
+				x -= tmp*/
 			}
 			ac.text.lay.DrawText(x+sys.lifebarOffsetX+float32(k)*float32(ac.spacing[0])*sys.lifebarFontScale,
 				float32(ac.pos[1])+float32(k)*float32(ac.spacing[1])*sys.lifebarFontScale+
@@ -2440,6 +2441,9 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 								height = Atoi(is[fmt.Sprintf("font%v.height", i)])
 							}
 							l.fnt[i], err = loadFnt(filename, height)
+							if err != nil {
+								err = fmt.Errorf("Failed to load %v font: %v", filename, err)
+							}
 							return err
 						}); err != nil {
 						return nil, err
