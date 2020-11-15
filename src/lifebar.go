@@ -1341,15 +1341,12 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 					length = lt
 				}
 			}
-			tmp := co.text.lay.offset[0]
-			if lt := haba(counter); lt > length {
-				length = lt
-				tmp += co.counter.lay.offset[0]
-			}
-			if co.pos[0] == 0 {
+			x -= length
+			/*tmp := c.text_lay.offset[0]
+			if c.pos[0] == 0 {
 				tmp *= sys.lifebarFontScale
 			}
-			x -= tmp + length
+			x -= tmp*/
 		}
 		for k, v := range lines {
 			co.text.lay.DrawText(x+sys.lifebarOffsetX, float32(co.pos[1])+

@@ -821,7 +821,7 @@ function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scal
 		local x = offsetX
 		local f = font
 		if active_font ~= nil and active_row ~= nil then
-			if i == active_row and active_font[1] ~= -1 then
+			if i == active_row then
 				f = active_font
 			else
 				f = font
@@ -1134,7 +1134,7 @@ end
 --returns char ref out of def filename
 function start.f_getCharRef(def)
 	if main.t_charDef[def:lower()] == nil then
-		if not main.f_addChar(def .. ', exclude = 1', true) then
+		if not main.f_addChar(def .. ', exclude = 1', true, false) then
 			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
 		end
 	end
