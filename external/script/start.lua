@@ -820,7 +820,7 @@ function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scal
 	for i = 1, #t do
 		local x = offsetX
 		local f = font
-		if active_font and active_row then
+		if active_font ~= nil and active_row ~= nil then
 			if i == active_row and active_font[1] ~= -1 then
 				f = active_font
 			else
@@ -925,7 +925,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 	end
 	--otherwise render portraits in order, up to the 'num' limit
 	for member = #t_portraits, 1, -1 do
-		if member <= t['p' .. side .. subname .. '_num'] or (last and main.coop) then
+		if member <= t['p' .. side .. subname .. '_num'] --[[or (last and main.coop)]] then
 			if t_portraits[member].anim_data ~= nil then
 				local v = t_portraits[member]
 				for i = 1, 2 do
