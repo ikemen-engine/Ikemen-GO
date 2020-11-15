@@ -933,9 +933,15 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 						v.slide_dist[i] = math.min(v.slide_dist[i] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_slide_speed'])[i] or 0), (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_slide_dist'])[i] or 0))
 					end
 				end
+				local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
+				if t['p' .. side .. subname .. '_justify'] == 1 then
+					x = x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * #t_portraits)
+				else
+					x = x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
+				end
 				main.f_animPosDraw(
 					v.anim_data,
-					t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][1] + main.f_round(v.slide_dist[1]),
+					x + main.f_round(v.slide_dist[1]),
 					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
 					t['p' .. side .. subname .. '_facing'],
 					true
@@ -1128,7 +1134,9 @@ end
 --returns char ref out of def filename
 function start.f_getCharRef(def)
 	if main.t_charDef[def:lower()] == nil then
-		main.f_addChar(def .. ', exclude = 1', false)
+		if not main.f_addChar(def .. ', exclude = 1', true) then
+			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
+		end
 	end
 	return main.t_charDef[def:lower()]
 end

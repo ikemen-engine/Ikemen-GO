@@ -1193,6 +1193,8 @@ type LifeBarCombo struct {
 	start_x       float32
 	counter       LbText
 	counter_shake bool
+	counter_time  int32
+	counter_mult  float32
 	text          LbText
 	displaytime   int32
 	showspeed     float32
@@ -1209,7 +1211,8 @@ type LifeBarCombo struct {
 }
 
 func newLifeBarCombo() *LifeBarCombo {
-	return &LifeBarCombo{displaytime: 90, showspeed: 8, hidespeed: 4}
+	return &LifeBarCombo{displaytime: 90, showspeed: 8, hidespeed: 4,
+		counter_time: 7, counter_mult: 1.0/20}
 }
 func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 	co := newLifeBarCombo()
@@ -1221,6 +1224,8 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 	}
 	co.counter = *readLbText(pre+"counter.", is, "", 2, f, 0)
 	is.ReadBool(pre+"counter.shake", &co.counter_shake)
+	is.ReadI32(pre+"counter.time", &co.counter_time)
+	is.ReadF32(pre+"counter.mult", &co.counter_mult)
 	if pre == "team2." {
 		co.text = *readLbText(pre+"text.", is, "", 2, f, -1)
 	} else {
@@ -1259,7 +1264,7 @@ func (co *LifeBarCombo) step(combo, damage int32, percentage float32, dizzy bool
 			co.cur = combo
 			co.resttime = co.displaytime
 			if co.counter_shake {
-				co.shaketime = 15
+				co.shaketime = co.counter_time
 			}
 		}
 		if co.oldd != damage {
@@ -1354,7 +1359,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		}
 	}
 	if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) {
-		z := 1 + float32(co.shaketime)*(1.0/20)*
+		z := 1 + float32(co.shaketime)*co.counter_mult*
 			float32(math.Sin(float64(co.shaketime)*(math.Pi/2.5)))
 		co.counter.lay.DrawText((x+sys.lifebarOffsetX)/z, float32(co.pos[1])/z, z*sys.lifebarScale, layerno,
 			counter, f[co.counter.font[0]], co.counter.font[1], -1, co.counter.palfx)

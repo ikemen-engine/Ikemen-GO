@@ -131,7 +131,6 @@ options.t_itemname = {
 			config.LifebarFontScale = 1
 			config.LifeMul = 100
 			config.ListenPort = "7500"
-			config.LocalcoordScalingType = 1
 			config.LoseSimul = true
 			config.LoseTag = false
 			config.MaxDrawGames = -2
@@ -170,7 +169,7 @@ options.t_itemname = {
 			config.VolumeMaster = 80
 			config.VolumeSfx = 80
 			config.VRetrace = 1
-			--config.WindowIcon = "external/icons/IkemenCylia.png"
+			--config.WindowIcon = {"external/icons/IkemenCylia.png"}
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
 			config.ZoomActive = true
@@ -1428,17 +1427,17 @@ end
 function options.f_keyCfgReset(cfgType)
 	t_keyList = {}
 	for i = 1, #config[cfgType] do
-		joyNum = config[cfgType][i].Joystick
-		if t_keyList[joyNum] == nil then
-			t_keyList[joyNum] = {} --creates subtable for each controller (1 for all keyboard configs, new one for each gamepad)
-			t_conflict[joyNum] = false --set default conflict flag for each controller
+		local jn = config[cfgType][i].Joystick
+		if t_keyList[jn] == nil then
+			t_keyList[jn] = {} --creates subtable for each controller (1 for all keyboard configs, new one for each gamepad)
+			t_conflict[jn] = false --set default conflict flag for each controller
 		end
 		for k, v in ipairs(t_keyCfg) do
 			if config[cfgType][i].Buttons[t_btnNameNum[v.itemname]] ~= nil then
 				local btn = tostring(config[cfgType][i].Buttons[t_btnNameNum[v.itemname]])
 				t_keyCfg[k]['vardisplay' .. i] = btn
 				if btn ~= tostring(motif.option_info.menu_valuename_nokey) then --if button is not disabled
-					t_keyList[joyNum][btn] = (t_keyList[joyNum][btn] or 0) + 1
+					t_keyList[jn][btn] = (t_keyList[jn][btn] or 0) + 1
 				end
 			end
 		end
@@ -1620,12 +1619,14 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 			local pn = key:match('^F([0-9]+)$')
 			if pn ~= nil then
 				pn = tonumber(pn)
+				key = ''
 			end
 			if main.f_input(main.t_players, {'pal', 's'}) or (pn ~= nil and pn >= 1 and pn <= #config[cfgType]) then
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				if pn ~= nil then
 					player = pn
 					side = main.f_playerSide(player)
+					joyNum = config[cfgType][player].Joystick
 				end
 				if cfgType == 'JoystickConfig' and getJoystickPresent(joyNum) == false then
 					main.f_warning(main.f_extractText(motif.warning_info.text_pad_text), motif.option_info, motif.optionbgdef)

@@ -152,6 +152,11 @@ if RoundState = 3 {
 	AssertSpecial{flag: noturntarget}
 }
 
+# the character cannot be hit until he has fully entered the stage
+if BackEdgeBodyDist <= 0 {
+	NotHitBy{value: SCA; time: 2}
+}
+
 if Time = 0 {
 	if Facing != playerID(GetPlayerID(TeamLeader)),Facing {
 		Turn{}
