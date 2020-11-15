@@ -821,7 +821,7 @@ function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scal
 		local x = offsetX
 		local f = font
 		if active_font and active_row then
-			if i == active_row then
+			if i == active_row and active_font[1] ~= -1 then
 				f = active_font
 			else
 				f = font
