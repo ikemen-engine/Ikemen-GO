@@ -1263,7 +1263,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						if cmdType == 'next' then
 							local ok = false
 							for i = main.t_selGrid[cell].slot + 1, #v do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
@@ -1271,7 +1271,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 							end
 							if not ok then
 								for i = 1, main.t_selGrid[cell].slot - 1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 										main.t_selGrid[cell].slot = v[i]
 										ok = true
 										break
@@ -1284,7 +1284,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						elseif cmdType == 'previous' then
 							local ok = false
 							for i = main.t_selGrid[cell].slot -1, 1, -1 do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
@@ -1292,7 +1292,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 							end
 							if not ok then
 								for i = #v, main.t_selGrid[cell].slot + 1, -1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 										main.t_selGrid[cell].slot = v[i]
 										ok = true
 										break
@@ -1308,6 +1308,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						end
 						start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
 						start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
+						start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
 						return cmdType == 'select'
 					end
 				end
@@ -1490,6 +1491,7 @@ function start.f_selectReset()
 			main.t_selGrid[i].slot = 1
 			start.t_grid[row][col].char = start.f_selGrid(i).char
 			start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
+			start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
 		end
 		col = col + 1
 	end
