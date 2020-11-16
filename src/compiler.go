@@ -4222,6 +4222,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			helper_kovelocity, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "preserve",
+			helper_preserve, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

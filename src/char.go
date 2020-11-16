@@ -1614,6 +1614,7 @@ type Char struct {
 	dialogue              []string
 	immortal              bool
 	kovelocity            bool
+	preserve              bool
 	defaultHitScale       [3]*HitScale
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale

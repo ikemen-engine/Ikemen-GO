@@ -300,7 +300,7 @@ func (sh *SffHeader) Read(r io.Reader, lofs *uint32, tofs *uint32) error {
 		return err
 	}
 	if string(buf[:n]) != "ElecbyteSpr\x00" {
-		return Error("Not ElecbyteSpr")
+		return Error("Unrecognized SFF file, invalid header")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(r, binary.LittleEndian, x)

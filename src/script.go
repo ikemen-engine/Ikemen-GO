@@ -485,8 +485,8 @@ func systemScriptInit(l *lua.LState) {
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
-						x := (float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale
-						y := float32(numArg(l, 4))*sys.lifebarScale
+						x := (float32(numArg(l, 3)) + sys.lifebarOffsetX) * sys.lifebarScale
+						y := float32(numArg(l, 4)) * sys.lifebarScale
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
 						fscale := sys.chars[pn-1][0].localscl
@@ -1537,7 +1537,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.resetGblEffect()
 		for i, p := range sys.chars {
 			if len(p) > 0 {
-				sys.playerClear(i)
+				sys.playerClear(i, boolArg(l, 1))
 			}
 		}
 		return 0

@@ -944,10 +944,10 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 }
 
 type LifeBarName struct {
-	pos       [2]int32
-	name      LbText
-	bg        AnimLayout
-	top       AnimLayout
+	pos  [2]int32
+	name LbText
+	bg   AnimLayout
+	top  AnimLayout
 }
 
 func newLifeBarName() *LifeBarName {
@@ -1199,7 +1199,7 @@ type LifeBarCombo struct {
 
 func newLifeBarCombo() *LifeBarCombo {
 	return &LifeBarCombo{displaytime: 90, showspeed: 8, hidespeed: 4,
-		counter_time: 7, counter_mult: 1.0/20}
+		counter_time: 7, counter_mult: 1.0 / 20}
 }
 func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 	co := newLifeBarCombo()
@@ -1469,8 +1469,8 @@ func (ac *LifeBarAction) draw(layerno int16, f []*Fnt, side int) {
 						((1 - sys.lifebarFontScale) * sys.lifebarFontScale)
 				}
 			} else {
-				x -= float32(f[ac.text.font[0]].TextWidth(v.text))*
-					ac.text.lay.scale[0]*sys.lifebarFontScale
+				x -= float32(f[ac.text.font[0]].TextWidth(v.text)) *
+					ac.text.lay.scale[0] * sys.lifebarFontScale
 				/*tmp := ac.text.lay.offset[0]
 				if ac.pos[0] == 0 {
 					tmp *= sys.lifebarFontScale
@@ -3077,19 +3077,19 @@ func (l *Lifebar) draw(layerno int16) {
 	if sys.statusDraw && l.active {
 		if !sys.sf(GSF_nobardisplay) && l.activeBars {
 			//HealthBar
-			for ti, _ := range sys.tmode {
-				for i, _ := range l.order[ti] {
+			for ti := range sys.tmode {
+				for i := range l.order[ti] {
 					l.hb[l.ref[ti]][i*2+ti].bgDraw(layerno)
 				}
 			}
-			for ti, _ := range sys.tmode {
+			for ti := range sys.tmode {
 				for i, v := range l.order[ti] {
 					l.hb[l.ref[ti]][i*2+ti].draw(layerno, v, l.hb[l.ref[ti]][v], l.fnt[:])
 				}
 			}
 			//PowerBar
 			for ti, tm := range sys.tmode {
-				for i, _ := range l.order[ti] {
+				for i := range l.order[ti] {
 					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
 						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
 							if i == 0 {
@@ -3115,45 +3115,45 @@ func (l *Lifebar) draw(layerno int16) {
 				}
 			}
 			//GuardBar
-			for ti, _ := range sys.tmode {
-				for i, _ := range l.order[ti] {
+			for ti := range sys.tmode {
+				for i := range l.order[ti] {
 					l.gb[l.ref[ti]][i*2+ti].bgDraw(layerno)
 				}
 			}
-			for ti, _ := range sys.tmode {
+			for ti := range sys.tmode {
 				for i, v := range l.order[ti] {
 					l.gb[l.ref[ti]][i*2+ti].draw(layerno, v, l.gb[l.ref[ti]][v], l.fnt[:])
 				}
 			}
 			//StunBar
-			for ti, _ := range sys.tmode {
-				for i, _ := range l.order[ti] {
+			for ti := range sys.tmode {
+				for i := range l.order[ti] {
 					l.sb[l.ref[ti]][i*2+ti].bgDraw(layerno)
 				}
 			}
-			for ti, _ := range sys.tmode {
+			for ti := range sys.tmode {
 				for i, v := range l.order[ti] {
 					l.sb[l.ref[ti]][i*2+ti].draw(layerno, v, l.sb[l.ref[ti]][v], l.fnt[:])
 				}
 			}
 			//LifeBarFace
-			for ti, _ := range sys.tmode {
-				for i, _ := range l.order[ti] {
+			for ti := range sys.tmode {
+				for i := range l.order[ti] {
 					l.fa[l.ref[ti]][i*2+ti].bgDraw(layerno)
 				}
 			}
-			for ti, _ := range sys.tmode {
+			for ti := range sys.tmode {
 				for i, v := range l.order[ti] {
 					l.fa[l.ref[ti]][i*2+ti].draw(layerno, v, l.fa[l.ref[ti]][v])
 				}
 			}
 			//LifeBarName
-			for ti, _ := range sys.tmode {
-				for i, _ := range l.order[ti] {
+			for ti := range sys.tmode {
+				for i := range l.order[ti] {
 					l.nm[l.ref[ti]][i*2+ti].bgDraw(layerno)
 				}
 			}
-			for ti, _ := range sys.tmode {
+			for ti := range sys.tmode {
 				for i, v := range l.order[ti] {
 					l.nm[l.ref[ti]][i*2+ti].draw(layerno, v, l.fnt[:])
 				}

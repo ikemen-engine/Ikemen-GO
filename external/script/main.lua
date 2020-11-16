@@ -334,7 +334,7 @@ else
 	main.lifebarDef = main.motifData:match('\n%s*fight%s*=%s*(.-%.def)%s*')
 end
 if main.f_fileExists(main.lifebarDef) then
-	main.lifebarDef = main.lifebarDef
+	--do nothing
 elseif main.f_fileExists(fileDir .. main.lifebarDef) then
 	main.lifebarDef = fileDir .. main.lifebarDef
 elseif main.f_fileExists('data/' .. main.lifebarDef) then
@@ -1470,7 +1470,7 @@ motif = require('external.script.motif')
 local txt_loading = main.f_createTextImg(motif.title_info, 'loading', {defsc = motif.defaultLoading})
 txt_loading:draw()
 refresh()
-loadLifebar(motif.files.fight)
+loadLifebar(main.lifebarDef)
 main.f_loadingRefresh(txt_loading)
 main.timeFramesPerCount = getTimeFramesPerCount()
 main.f_updateRoundsNum()

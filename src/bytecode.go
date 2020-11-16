@@ -2629,6 +2629,7 @@ const (
 	helper_inheritjuggle
 	helper_immortal
 	helper_kovelocity
+	helper_preserve
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -2729,6 +2730,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			h.immortal = exp[0].evalB(c)
 		case helper_kovelocity:
 			h.kovelocity = exp[0].evalB(c)
+		case helper_preserve:
+			h.preserve = exp[0].evalB(c)
 		}
 		return true
 	})
