@@ -334,6 +334,7 @@ type System struct {
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
+	brightnessOld   int32
 	// Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
 	pngFilter bool
 }
@@ -1544,7 +1545,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 func (s *System) draw(x, y, scl float32) {
 	ecol := uint32(s.envcol[2]&0xff | s.envcol[1]&0xff<<8 |
 		s.envcol[0]&0xff<<16)
-	ob := s.brightness
+	s.brightnessOld = s.brightness
 	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
 	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
 	fade := func(rect [4]int32, color uint32, alpha int32) {
@@ -1625,11 +1626,10 @@ func (s *System) draw(x, y, scl float32) {
 	s.lifebar.draw(1)
 	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
 	s.lifebar.draw(2)
-	//Lua code executed before drawing fade and clsns
-	for _, str := range s.commonLua {
-		if err := s.luaLState.DoString(str); err != nil {
-			s.luaLState.RaiseError(err.Error())
-		}
+}
+func (s *System) drawTop() {
+	fade := func(rect [4]int32, color uint32, alpha int32) {
+		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
 	fadeout := sys.intro + sys.lifebar.ro.over_hittime + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
@@ -1659,7 +1659,7 @@ func (s *System) draw(x, y, scl float32) {
 		rect[1] = s.scrrect[3] - rect[3]
 		fade(rect, s.lifebar.ro.shutter_col, 255)
 	}
-	s.brightness = ob
+	s.brightness = s.brightnessOld
 	if s.clsnDraw {
 		s.clsnSpr.Pal[0] = 0xff0000ff
 		s.drawc1.draw(0x3feff)
@@ -2146,6 +2146,15 @@ func (s *System) fight() (reload bool) {
 				s.drawScale = s.cam.Scale
 			}
 			s.draw(dx, dy, dscl)
+		}
+		//Lua code executed before drawing fade, clsns and debug
+		for _, str := range s.commonLua {
+			if err := s.luaLState.DoString(str); err != nil {
+				s.luaLState.RaiseError(err.Error())
+			}
+		}
+		if !s.frameSkip {
+			s.drawTop()
 			drawDebug()
 		}
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {
