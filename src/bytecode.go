@@ -434,6 +434,8 @@ const (
 	OC_ex_hitoverridden
 	OC_ex_incustomstate
 	OC_ex_indialogue
+	OC_ex_isassertedchar
+	OC_ex_isassertedglobal
 	OC_ex_ishost
 	OC_ex_localscale
 	OC_ex_maparray
@@ -1763,6 +1765,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
+	case OC_ex_isassertedchar:
+		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
+		*i += 4
+	case OC_ex_isassertedglobal:
+		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
+		*i += 4
 	case OC_ex_ishost:
 		sys.bcStack.PushB(c.isHost())
 	case OC_ex_localscale:
@@ -2621,6 +2629,7 @@ const (
 	helper_inheritjuggle
 	helper_immortal
 	helper_kovelocity
+	helper_preserve
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -2721,6 +2730,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			h.immortal = exp[0].evalB(c)
 		case helper_kovelocity:
 			h.kovelocity = exp[0].evalB(c)
+		case helper_preserve:
+			h.preserve = exp[0].evalB(c)
 		}
 		return true
 	})

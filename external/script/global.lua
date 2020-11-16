@@ -205,6 +205,9 @@ function loop()
 			start.continueInit = false
 			start.hiscoreInit = false
 			endFlag = false
+			if indialogue() then
+				dialogueReset()
+			end
 		end
 		start.turnsRecoveryInit = false
 		start.rankInit = false
@@ -216,7 +219,7 @@ function loop()
 	--match end
 	elseif matchover() and roundover() then
 		if not endFlag then
-			resetMatchData()
+			resetMatchData(false)
 			endFlag = true
 		end
 		--victory screen

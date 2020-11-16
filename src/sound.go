@@ -516,7 +516,7 @@ func LoadSnd(filename string) (*Snd, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("Not ElecbyteSnd")
+		return nil, Error("Unrecognized SND file, invalid header")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
@@ -602,7 +602,7 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 		return nil, err
 	}
 	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("Not ElecbyteSnd")
+		return nil, Error("Unrecognized SND file, invalid header")
 	}
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)

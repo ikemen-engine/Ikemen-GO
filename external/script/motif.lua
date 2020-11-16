@@ -341,6 +341,7 @@ local motif =
 		p1_face_scale = {1.0, 1.0},
 		p1_face_window = {},
 		p1_face_spacing = {0, 0}, --Ikemen feature
+		p1_face_justify = 0, --Ikemen feature
 		p2_face_num = 1, --Ikemen feature
 		p2_face_pos = {0, 0},
 		p2_face_anim = nil, --Ikemen feature
@@ -352,6 +353,7 @@ local motif =
 		p2_face_scale = {1.0, 1.0},
 		p2_face_window = {},
 		p2_face_spacing = {0, 0}, --Ikemen feature
+		p2_face_justify = 0, --Ikemen feature
 		--p<pn>_member<num>_face_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_face_spr = {9000, 1}, --Ikemen feature
 		--p<pn>_member<num>_face_done_anim = nil, --Ikemen feature
@@ -695,6 +697,7 @@ local motif =
 		p1_scale = {1.0, 1.0},
 		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
+		p1_justify = 0, --Ikemen feature
 		p2_num = 1, --Ikemen feature
 		p2_pos = {0, 0},
 		p2_anim = nil, --Ikemen feature
@@ -706,6 +709,7 @@ local motif =
 		p2_scale = {1.0, 1.0},
 		p2_window = {},
 		p2_spacing = {0, 0}, --Ikemen feature
+		p2_justify = 0, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 1}, --Ikemen feature
 		--p<pn>_member<num>_done_anim = nil, --Ikemen feature
@@ -720,15 +724,18 @@ local motif =
 		p1_name_font_scale = {1.0, 1.0},
 		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
+		--p1_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		--p1_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_name_active_font_height = -1, --Ikemen feature
 		p2_name_pos = {0, 0},
 		p2_name_offset = {0, 0},
 		p2_name_font = {-1, 0, 0, 255, 255, 255},
 		p2_name_font_scale = {1.0, 1.0},
 		p2_name_font_height = -1, --Ikemen feature
 		p2_name_spacing = {0, 14},
-		--p<pn>_name_active_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
-		--p<pn>_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		--p<pn>_name_active_font_height = -1, --Ikemen feature
+		--p2_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		--p2_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_name_active_font_height = -1, --Ikemen feature
 		p1_cursor_move_snd = {100, 0}, --Ikemen feature
 		p1_cursor_done_snd = {100, 1}, --Ikemen feature
 		p2_cursor_move_snd = {100, 0}, --Ikemen feature
@@ -772,6 +779,7 @@ local motif =
 	continue_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		legacymode_enabled = 1, --Ikemen feature
 		gameover_enabled = 1, --Ikemen feature
 		fadein_time = 8, --Ikemen feature
@@ -856,6 +864,7 @@ local motif =
 	victory_screen =
 	{
 		enabled = 0,
+		sounds_enabled = 0, --Ikemen feature
 		cpu_enabled = 1, --Ikemen feature
 		vs_enabled = 1, --Ikemen feature
 		loser_name_enabled = 0, --Ikemen feature
@@ -876,6 +885,7 @@ local motif =
 		p1_scale = {1.0, 1.0},
 		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
+		p1_justify = 0, --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 0, 1, 255, 255, 255},
 		p1_name_font_scale = {1.0, 1.0},
@@ -889,6 +899,7 @@ local motif =
 		p2_scale = {1.0, 1.0}, --Ikemen feature
 		p2_window = {}, --Ikemen feature
 		p2_spacing = {0, 0}, --Ikemen feature
+		p2_justify = 0, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 2}, --Ikemen feature
 		--p<pn>_member<num>_offset = {0, 0}, --Ikemen feature
@@ -920,6 +931,7 @@ local motif =
 	win_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -955,6 +967,7 @@ local motif =
 	survival_results_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -985,6 +998,7 @@ local motif =
 	vs100_kumite_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1015,6 +1029,7 @@ local motif =
 	time_attack_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1044,6 +1059,7 @@ local motif =
 	time_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1073,6 +1089,7 @@ local motif =
 	score_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1102,6 +1119,7 @@ local motif =
 	boss_rush_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -2623,48 +2641,48 @@ end
 --select screen spr/anim data
 motif.f_loadCursorData()
 
-t = motif.select_info
+local t_pos = motif.select_info
 for _, v in ipairs({
-	{s = 'cell_bg_',                      x = 0,                                                   y = 0},
-	{s = 'cell_random_',                  x = 0,                                                   y = 0},
-	{s = 'p1_teammenu_bg_',               x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_single_',        x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_simul_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_turns_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_tag_',           x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_ratio_',         x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_selftitle_',        x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_enemytitle_',       x = t.p1_teammenu_pos[1],                                y = t.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_item_cursor_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_value_icon_',       x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_value_empty_icon_', x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio1_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio2_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio3_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio4_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio5_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio6_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p1_teammenu_ratio7_icon_',      x = t.p1_teammenu_pos[1] + t.p1_teammenu_item_offset[1], y = t.p1_teammenu_pos[2] + t.p1_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_bg_',               x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_single_',        x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_simul_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_turns_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_tag_',           x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_ratio_',         x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_selftitle_',        x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_enemytitle_',       x = t.p2_teammenu_pos[1],                                y = t.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_item_cursor_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_value_icon_',       x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_value_empty_icon_', x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio1_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio2_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio3_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio4_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio5_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio6_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'p2_teammenu_ratio7_icon_',      x = t.p2_teammenu_pos[1] + t.p2_teammenu_item_offset[1], y = t.p2_teammenu_pos[2] + t.p2_teammenu_item_offset[2]},
-	{s = 'stage_portrait_random_',        x = t.stage_pos[1] + t.stage_portrait_offset[1],         y = t.stage_pos[2] + t.stage_portrait_offset[2]},
-	{s = 'stage_portrait_bg_',            x = t.stage_pos[1] + t.stage_portrait_offset[1],         y = t.stage_pos[2] + t.stage_portrait_offset[2]},
+	{s = 'cell_bg_',                      x = 0,                                                           y = 0},
+	{s = 'cell_random_',                  x = 0,                                                           y = 0},
+	{s = 'p1_teammenu_bg_',               x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_single_',        x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_simul_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_turns_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_tag_',           x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_bg_ratio_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_selftitle_',        x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_enemytitle_',       x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
+	{s = 'p1_teammenu_item_cursor_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_value_icon_',       x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_value_empty_icon_', x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio1_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio2_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio3_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio4_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio5_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio6_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p1_teammenu_ratio7_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_bg_',               x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_single_',        x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_simul_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_turns_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_tag_',           x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_bg_ratio_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_selftitle_',        x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_enemytitle_',       x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
+	{s = 'p2_teammenu_item_cursor_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_value_icon_',       x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_value_empty_icon_', x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio1_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio2_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio3_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio4_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio5_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio6_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'p2_teammenu_ratio7_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
+	{s = 'stage_portrait_random_',        x = t_pos.stage_pos[1] + t_pos.stage_portrait_offset[1],         y = t_pos.stage_pos[2] + t_pos.stage_portrait_offset[2]},
+	{s = 'stage_portrait_bg_',            x = t_pos.stage_pos[1] + t_pos.stage_portrait_offset[1],         y = t_pos.stage_pos[2] + t_pos.stage_portrait_offset[2]},
 }) do
 	motif.f_loadSprData(motif.select_info, v)
 end
@@ -2793,6 +2811,7 @@ motif.defaultLoading = false --t.title_info.loading_font == nil
 motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
 motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
 motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
+motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil or motif.defaultOptions
 motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = true --t.warning_info == nil
 

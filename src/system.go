@@ -334,6 +334,7 @@ type System struct {
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
+	brightnessOld   int32
 	// Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
 	pngFilter bool
 }
@@ -893,14 +894,24 @@ func (s *System) clearAllSound() {
 	s.mixer.bufClear()
 	s.stopAllSound()
 }
-func (s *System) playerClear(pn int) {
+func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.chars[pn]) > 0 {
+		p := s.chars[pn][0]
 		for _, h := range s.chars[pn][1:] {
-			h.destroy()
+			if destroy || !h.preserve {
+				h.destroy()
+			}
 			h.sounds = h.sounds[:0]
 		}
-		p := s.chars[pn][0]
-		p.children = p.children[:0]
+		if destroy {
+			p.children = p.children[:0]
+		} else {
+			for i, ch := range p.children {
+				if ch != nil && !ch.preserve {
+					p.children[i] = nil
+				}
+			}
+		}
 		p.targets = p.targets[:0]
 		p.sounds = p.sounds[:0]
 	}
@@ -975,7 +986,7 @@ func (s *System) nextRound() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			s.nextCharId = Max(s.nextCharId, p[0].id+1)
-			s.playerClear(i)
+			s.playerClear(i, false)
 			p[0].posReset()
 			p[0].setCtrl(false)
 			p[0].clearState()
@@ -1065,7 +1076,7 @@ func (s *System) commandUpdate() {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
 					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
-					hp := c.hitPause()
+					hp := c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
 						if !act && s.super <= s.superendcmdbuftime {
@@ -1259,7 +1270,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.intro = s.lifebar.ro.ctrl_time
 					for i, p := range s.chars {
 						if len(p) > 0 {
-							s.playerClear(i)
+							s.playerClear(i, false)
 							p[0].selfState(0, -1, -1, 0, false)
 						}
 					}
@@ -1534,7 +1545,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 func (s *System) draw(x, y, scl float32) {
 	ecol := uint32(s.envcol[2]&0xff | s.envcol[1]&0xff<<8 |
 		s.envcol[0]&0xff<<16)
-	ob := s.brightness
+	s.brightnessOld = s.brightness
 	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
 	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
 	fade := func(rect [4]int32, color uint32, alpha int32) {
@@ -1615,11 +1626,10 @@ func (s *System) draw(x, y, scl float32) {
 	s.lifebar.draw(1)
 	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
 	s.lifebar.draw(2)
-	//Lua code executed before drawing fade and clsns
-	for _, str := range s.commonLua {
-		if err := s.luaLState.DoString(str); err != nil {
-			s.luaLState.RaiseError(err.Error())
-		}
+}
+func (s *System) drawTop() {
+	fade := func(rect [4]int32, color uint32, alpha int32) {
+		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
 	fadeout := sys.intro + sys.lifebar.ro.over_hittime + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
@@ -1649,7 +1659,7 @@ func (s *System) draw(x, y, scl float32) {
 		rect[1] = s.scrrect[3] - rect[3]
 		fade(rect, s.lifebar.ro.shutter_col, 255)
 	}
-	s.brightness = ob
+	s.brightness = s.brightnessOld
 	if s.clsnDraw {
 		s.clsnSpr.Pal[0] = 0xff0000ff
 		s.drawc1.draw(0x3feff)
@@ -1677,7 +1687,7 @@ func (s *System) fight() (reload bool) {
 		s.allPalFX.enable = false
 		for i, p := range s.chars {
 			if len(p) > 0 {
-				s.playerClear(i)
+				s.playerClear(i, true)
 			}
 		}
 		s.wincnt.update()
@@ -1831,9 +1841,9 @@ func (s *System) fight() (reload bool) {
 		if len(p) > 0 {
 			p[0].clear2()
 			level[i] = s.wincnt.getLevel(i)
-			if s.powerShare[i&1] {
+			if s.powerShare[i&1] && p[0].teamside != -1 {
 				pmax := Max(s.cgi[i&1].data.power, s.cgi[i].data.power)
-				for j := i & 1; j < len(s.chars); j += 2 {
+				for j := i & 1; j < MaxSimul*2; j += 2 {
 					if len(s.chars[j]) > 0 {
 						s.chars[j][0].powerMax = pmax
 					}
@@ -1866,48 +1876,50 @@ func (s *System) fight() (reload bool) {
 			} else {
 				lm = float32(p[0].gi().data.life) * p[0].ocd().lifeRatio * s.lifeMul
 			}
-			switch s.tmode[i&1] {
-			case TM_Single:
-				switch s.tmode[(i+1)&1] {
-				case TM_Simul, TM_Tag:
-					lm *= s.team1VS2Life
-				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && s.lifeShare[i&1] {
-						lm = lm * float32(s.numTurns[(i+1)&1]) /
-							float32(s.matchWins[(i+1)&1])
-					}
-				}
-			case TM_Simul, TM_Tag:
-				switch s.tmode[(i+1)&1] {
-				case TM_Simul, TM_Tag:
-					if s.numSimul[(i+1)&1] < s.numSimul[i&1] && s.lifeShare[i&1] {
-						lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
-					}
-				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && s.lifeShare[i&1] {
-						lm = lm * float32(s.numTurns[(i+1)&1]) /
-							float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
-					}
-				default:
-					if s.lifeShare[i&1] {
-						lm /= float32(s.numSimul[i&1])
-					}
-				}
-			case TM_Turns:
-				switch s.tmode[(i+1)&1] {
+			if p[0].teamside != -1 {
+				switch s.tmode[i&1] {
 				case TM_Single:
-					if s.matchWins[i&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
-						lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
+					switch s.tmode[(i+1)&1] {
+					case TM_Simul, TM_Tag:
+						lm *= s.team1VS2Life
+					case TM_Turns:
+						if s.numTurns[(i+1)&1] < s.matchWins[(i+1)&1] && s.lifeShare[i&1] {
+							lm = lm * float32(s.numTurns[(i+1)&1]) /
+								float32(s.matchWins[(i+1)&1])
+						}
 					}
 				case TM_Simul, TM_Tag:
-					if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
-						lm = lm * s.team1VS2Life *
-							float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
-							float32(s.numTurns[i&1])
+					switch s.tmode[(i+1)&1] {
+					case TM_Simul, TM_Tag:
+						if s.numSimul[(i+1)&1] < s.numSimul[i&1] && s.lifeShare[i&1] {
+							lm = lm * float32(s.numSimul[(i+1)&1]) / float32(s.numSimul[i&1])
+						}
+					case TM_Turns:
+						if s.numTurns[(i+1)&1] < s.numSimul[i&1]*s.matchWins[(i+1)&1] && s.lifeShare[i&1] {
+							lm = lm * float32(s.numTurns[(i+1)&1]) /
+								float32(s.numSimul[i&1]*s.matchWins[(i+1)&1])
+						}
+					default:
+						if s.lifeShare[i&1] {
+							lm /= float32(s.numSimul[i&1])
+						}
 					}
 				case TM_Turns:
-					if s.numTurns[(i+1)&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
-						lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
+					switch s.tmode[(i+1)&1] {
+					case TM_Single:
+						if s.matchWins[i&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
+							lm = lm * float32(s.matchWins[i&1]) / float32(s.numTurns[i&1])
+						}
+					case TM_Simul, TM_Tag:
+						if s.numSimul[(i+1)&1]*s.matchWins[i&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
+							lm = lm * s.team1VS2Life *
+								float32(s.numSimul[(i+1)&1]*s.matchWins[i&1]) /
+								float32(s.numTurns[i&1])
+						}
+					case TM_Turns:
+						if s.numTurns[(i+1)&1] < s.numTurns[i&1] && s.lifeShare[i&1] {
+							lm = lm * float32(s.numTurns[(i+1)&1]) / float32(s.numTurns[i&1])
+						}
 					}
 				}
 			}
@@ -2134,6 +2146,15 @@ func (s *System) fight() (reload bool) {
 				s.drawScale = s.cam.Scale
 			}
 			s.draw(dx, dy, dscl)
+		}
+		//Lua code executed before drawing fade, clsns and debug
+		for _, str := range s.commonLua {
+			if err := s.luaLState.DoString(str); err != nil {
+				s.luaLState.RaiseError(err.Error())
+			}
+		}
+		if !s.frameSkip {
+			s.drawTop()
 			drawDebug()
 		}
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {
@@ -2487,7 +2508,11 @@ func (s *Select) addChar(def string) {
 	}
 	LoadFile(&fp, def, func(file string) error {
 		var selPal []int32
-		sc.sff, selPal, _ = preloadSff(file, true, listSpr)
+		var err error
+		sc.sff, selPal, err = preloadSff(file, true, listSpr)
+		if err != nil {
+			panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
+		}
 		sc.anims.updateSff(sc.sff)
 		for _, v := range s.spritePreload {
 			sc.anims.addSprite(sc.sff, v[0], v[1])

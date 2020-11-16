@@ -9,13 +9,15 @@ Default.Enable.Score = 1
 Default.Enable.Tag = 1
 
 ; Rules
-Default.Attack.LifeToPowerMul = 0.7
-Default.GetHit.LifeToPowerMul = 0.6
-Super.TargetDefenceMul = 1.5
+Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
+Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
+Super.TargetDefenceMul = 1.5        ; multiplier for how much damage a super does when you combo into it (ignored if SuperPause p2defmul option is set)
 
-Default.LifeToGuardPointsMul = -1.5
-Default.LifeToDizzyPointsMul = 0
-Default.LifeToRedLifeMul = 0.25
+Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver gets when an attack is blocked (overridden by guardpoints HitDef option)
+Default.LifeToDizzyPointsMul = 0    ; multiplier for dizzy points the receiver gets when an attack successfully hits (overridden by dizzypoints HitDef option)
+Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when an attack successfully hits (overridden by redlife HitDef option)
+
+Input.PauseOnHitPause = 1           ; controls if inputs should be retained during hit pause
 
 ; tag.zss options
 TagInTime = 20                 ; tag-in time (MvCI: default distance = TagInTime * TagInVelX, base: total switch time)

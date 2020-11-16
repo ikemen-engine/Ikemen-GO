@@ -155,7 +155,6 @@ Debug Options:
 	"LifebarFontScale": 1,
 	"LifeMul": 100,
 	"ListenPort": "7500",
-	"LocalcoordScalingType": 1,
 	"LoseSimul": true,
 	"LoseTag": false,
 	"MaxAfterImage": 128,
@@ -415,7 +414,6 @@ Debug Options:
 		LifebarFontScale           float32
 		LifeMul                    float32
 		ListenPort                 string
-		LocalcoordScalingType      int32
 		LoseSimul                  bool
 		LoseTag                    bool
 		MaxAfterImage              int32

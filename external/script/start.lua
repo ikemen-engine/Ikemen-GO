@@ -536,8 +536,8 @@ function start.f_storeStats()
 end
 
 --sets stage
-function start.f_setStage(num)
-	if not main.stageMenu and not continue() then
+function start.f_setStage(num, assigned)
+	if not assigned and not main.stageMenu and not continue() then
 		if main.charparam.stage and start.f_getCharData(start.p[2].t_selected[1].ref).stage ~= nil then --stage assigned as character param
 			num = math.random(1, #start.f_getCharData(start.p[2].t_selected[1].ref).stage)
 			num = start.f_getCharData(start.p[2].t_selected[1].ref).stage[num]
@@ -820,7 +820,7 @@ function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scal
 	for i = 1, #t do
 		local x = offsetX
 		local f = font
-		if active_font and active_row then
+		if active_font ~= nil and active_row ~= nil then
 			if i == active_row then
 				f = active_font
 			else
@@ -925,7 +925,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 	end
 	--otherwise render portraits in order, up to the 'num' limit
 	for member = #t_portraits, 1, -1 do
-		if member <= t['p' .. side .. subname .. '_num'] or (last and main.coop) then
+		if member <= t['p' .. side .. subname .. '_num'] --[[or (last and main.coop)]] then
 			if t_portraits[member].anim_data ~= nil then
 				local v = t_portraits[member]
 				for i = 1, 2 do
@@ -933,9 +933,15 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 						v.slide_dist[i] = math.min(v.slide_dist[i] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_slide_speed'])[i] or 0), (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_slide_dist'])[i] or 0))
 					end
 				end
+				local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
+				if t['p' .. side .. subname .. '_justify'] == 1 then
+					x = x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * #t_portraits)
+				else
+					x = x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
+				end
 				main.f_animPosDraw(
 					v.anim_data,
-					t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][1] + main.f_round(v.slide_dist[1]),
+					x + main.f_round(v.slide_dist[1]),
 					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
 					t['p' .. side .. subname .. '_facing'],
 					true
@@ -1128,7 +1134,9 @@ end
 --returns char ref out of def filename
 function start.f_getCharRef(def)
 	if main.t_charDef[def:lower()] == nil then
-		main.f_addChar(def .. ', exclude = 1', false)
+		if not main.f_addChar(def .. ', exclude = 1', true, false) then
+			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
+		end
 	end
 	return main.t_charDef[def:lower()]
 end
@@ -1255,7 +1263,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						if cmdType == 'next' then
 							local ok = false
 							for i = main.t_selGrid[cell].slot + 1, #v do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
@@ -1263,7 +1271,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 							end
 							if not ok then
 								for i = 1, main.t_selGrid[cell].slot - 1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 										main.t_selGrid[cell].slot = v[i]
 										ok = true
 										break
@@ -1276,7 +1284,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						elseif cmdType == 'previous' then
 							local ok = false
 							for i = main.t_selGrid[cell].slot -1, 1, -1 do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 									main.t_selGrid[cell].slot = v[i]
 									ok = true
 									break
@@ -1284,7 +1292,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 							end
 							if not ok then
 								for i = #v, main.t_selGrid[cell].slot + 1, -1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden ~= 2 then
+									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
 										main.t_selGrid[cell].slot = v[i]
 										ok = true
 										break
@@ -1300,6 +1308,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						end
 						start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
 						start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
+						start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
 						return cmdType == 'select'
 					end
 				end
@@ -1482,6 +1491,7 @@ function start.f_selectReset()
 			main.t_selGrid[i].slot = 1
 			start.t_grid[row][col].char = start.f_selGrid(i).char
 			start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
+			start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
 		end
 		col = col + 1
 	end
@@ -1721,7 +1731,7 @@ function launchFight(data)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
-		stageNo = start.f_setStage(stageNo)
+		stageNo = start.f_setStage(stageNo, t.stage ~= '')
 		start.f_setMusic(stageNo, t.music)
 		if not start.f_selectVersus() then break end
 		saveData = true
@@ -2890,6 +2900,10 @@ function start.f_resultInit()
 			end
 		end
 	end
+	if main.resultsTable.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
+	end
 	clearColor(motif.resultsbgdef.bgclearcolor[1], motif.resultsbgdef.bgclearcolor[2], motif.resultsbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.resultsbgdef.bg)
 	main.f_fadeReset('fadein', t)
@@ -2930,10 +2944,12 @@ function start.f_result()
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		esc(false)
 		start.t_result.active = false
+		toggleNoSound(false)
 		return false
 	end
 	if not main.fadeActive and main.fadeType == 'fadeout' then
 		start.t_result.active = false
+		toggleNoSound(false)
 		return false
 	end
 	return true
@@ -3054,8 +3070,10 @@ function start.f_victoryInit()
 	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
 		return false
 	end
-	clearAllSound()
-	toggleNoSound(true)
+	if motif.victory_screen.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
+	end
 	clearColor(motif.victorybgdef.bgclearcolor[1], motif.victorybgdef.bgclearcolor[2], motif.victorybgdef.bgclearcolor[3])
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
@@ -3181,6 +3199,10 @@ function start.f_continueInit()
 		start.t_continue.t_btnSkip = {'s'}
 	else
 		start.t_continue.t_btnSkip = {'pal', 's'}
+	end
+	if motif.continue_screen.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
 	end
 	clearColor(motif.continuebgdef.bgclearcolor[1], motif.continuebgdef.bgclearcolor[2], motif.continuebgdef.bgclearcolor[3])
 	main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
@@ -3310,12 +3332,12 @@ function start.f_continue()
 							break
 						end
 					end
-				end
-				player(i) --assign sys.debugWC to player i
-				for j = 1, numpartner() do
-					for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
-						if charChangeState(j * 2 + i, v) then
-							break
+					player(i) --assign sys.debugWC to player i
+					for j = 1, numpartner() do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
+							if charChangeState(j * 2 + i, v) then
+								break
+							end
 						end
 					end
 				end
@@ -3395,11 +3417,13 @@ function start.f_continue()
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		esc(false)
 		start.t_continue.active = false
+		toggleNoSound(false)
 		return false
 	end
 	if not main.fadeActive and main.fadeType == 'fadeout' then
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
+		toggleNoSound(false)
 		return false
 	end
 	return true

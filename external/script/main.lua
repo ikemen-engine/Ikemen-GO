@@ -334,7 +334,7 @@ else
 	main.lifebarDef = main.motifData:match('\n%s*fight%s*=%s*(.-%.def)%s*')
 end
 if main.f_fileExists(main.lifebarDef) then
-	main.lifebarDef = main.lifebarDef
+	--do nothing
 elseif main.f_fileExists(fileDir .. main.lifebarDef) then
 	main.lifebarDef = fileDir .. main.lifebarDef
 elseif main.f_fileExists('data/' .. main.lifebarDef) then
@@ -1423,12 +1423,15 @@ function main.f_commandLine()
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		if main.t_charDef[v.character:lower()] == nil then
 			if main.flags['-loadmotif'] ~= nil then
-				main.f_addChar(v.character, true, false)
+				main.f_addChar(v.character, true, true)
 			else
 				addChar(v.character)
 				main.t_charDef[v.character:lower()] = ref
 				ref = ref + 1
 			end
+		end
+		if main.t_charDef[v.character:lower()] == nil then
+			panicError("\nUnable to add character. No such file or directory: " .. v.character .. "\n")
 		end
 		selectChar(v.player, main.t_charDef[v.character:lower()], v.pal)
 		setCom(v.num, v.ai)
@@ -1467,7 +1470,7 @@ motif = require('external.script.motif')
 local txt_loading = main.f_createTextImg(motif.title_info, 'loading', {defsc = motif.defaultLoading})
 txt_loading:draw()
 refresh()
-loadLifebar(motif.files.fight)
+loadLifebar(main.lifebarDef)
 main.f_loadingRefresh(txt_loading)
 main.timeFramesPerCount = getTimeFramesPerCount()
 main.f_updateRoundsNum()
@@ -1592,7 +1595,7 @@ function main.f_charParam(t, c)
 end
 
 main.dummySff = sffNew()
-function main.f_addChar(line, playable, slot)
+function main.f_addChar(line, playable, loading, slot)
 	table.insert(main.t_selChars, {})
 	local row = #main.t_selChars
 	local slot = slot or false
@@ -1720,7 +1723,9 @@ function main.f_addChar(line, playable, slot)
 			table.insert(main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]], #main.t_selGrid[#main.t_selGrid].chars)
 		end
 	end
-	main.f_loadingRefresh(txt_loading)
+	if loading then
+		main.f_loadingRefresh(txt_loading)
+	end
 	return valid
 end
 
@@ -1815,7 +1820,7 @@ for line in content:gmatch('[^\r\n]+') do
 		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
 			slot = false
 		else
-			main.f_addChar(line, true, slot)
+			main.f_addChar(line, true, true, slot)
 		end
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
@@ -1951,12 +1956,12 @@ for i = #main.t_selGrid, motif.select_info.rows * motif.select_info.columns - 1 
 	addChar('dummyChar')
 end
 for i = 1, #t_addExluded do
-	main.f_addChar(t_addExluded[i], true)
+	main.f_addChar(t_addExluded[i], true, true)
 end
 
 --add Training by stupa if not included in select.def
 if main.t_charDef[config.TrainingChar] == nil then
-	main.f_addChar(config.TrainingChar .. ', exclude = 1', false)
+	main.f_addChar(config.TrainingChar .. ', exclude = 1', false, true)
 end
 
 --add remaining character parameters

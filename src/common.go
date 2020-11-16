@@ -604,12 +604,13 @@ func (l *Layout) Read(pre string, is IniSection) {
 }
 func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
-		/*if l.facing < 0 {
-			//x += sys.lifebarFontScale
+		//TODO: test "phantom pixel"
+		if l.facing < 0 {
+			x += sys.lifebarFontScale * sys.lifebarScale
 		}
 		if l.vfacing < 0 {
-			//y += sys.lifebarFontScale
-		}*/
+			y += sys.lifebarFontScale * sys.lifebarScale
+		}
 		paltex := s.PalTex
 		s.Draw(x+l.offset[0]*sys.lifebarScale, y+l.offset[1]*sys.lifebarScale,
 			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx, paltex, window)
@@ -618,12 +619,13 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	a *Animation, palfx *PalFX) {
 	if l.layerno == ln {
-		/*if l.facing < 0 {
-			//x += sys.lifebarFontScale
+		//TODO: test "phantom pixel"
+		if l.facing < 0 {
+			x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			//y += sys.lifebarFontScale
-		}*/
+			y += sys.lifebarFontScale
+		}
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
 			l.scale[1]*float32(l.vfacing),
@@ -633,12 +635,13 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32, palfx *PalFX) {
 	if l.layerno == ln {
-		/*if l.facing < 0 {
-			//x += sys.lifebarFontScale
+		//TODO: test "phantom pixel"
+		if l.facing < 0 {
+			x += sys.lifebarFontScale
 		}
 		if l.vfacing < 0 {
-			//y += sys.lifebarFontScale
-		}*/
+			y += sys.lifebarFontScale
+		}
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a,

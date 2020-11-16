@@ -485,8 +485,8 @@ func systemScriptInit(l *lua.LState) {
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
-						x := (float32(numArg(l, 3))+sys.lifebarOffsetX)*sys.lifebarScale
-						y := float32(numArg(l, 4))*sys.lifebarScale
+						x := (float32(numArg(l, 3)) + sys.lifebarOffsetX) * sys.lifebarScale
+						y := float32(numArg(l, 4)) * sys.lifebarScale
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
 						fscale := sys.chars[pn-1][0].localscl
@@ -768,34 +768,6 @@ func systemScriptInit(l *lua.LState) {
 					return nil
 				}
 				sys.await(FPS)
-			}
-			for i := range sys.cgi {
-				num := len(sys.lifebar.fa[sys.tmode[i&1]])
-				if sys.tmode[i&1] == TM_Simul || sys.tmode[i&1] == TM_Tag {
-					num = int(math.Min(float64(num), float64(sys.numSimul[i&1])*2))
-				}
-				if i < num {
-					ref := sys.tmode[i&1]
-					if sys.tmode[i&1] == TM_Simul {
-						if sys.numSimul[i&1] == 3 {
-							ref = 4
-						} else if sys.numSimul[i&1] >= 4 {
-							ref = 5
-						}
-					} else if sys.tmode[i&1] == TM_Tag {
-						if sys.numSimul[i&1] == 3 {
-							ref = 6
-						} else if sys.numSimul[i&1] >= 4 {
-							ref = 7
-						}
-					}
-					fa := sys.lifebar.fa[ref][i]
-					fa.face = sys.cgi[i].sff.getOwnPalSprite(
-						int16(fa.face_spr[0]), int16(fa.face_spr[1]))
-					fa.scale = sys.cgi[i].portraitscale
-					fa.old_spr = [...]int32{fa.face_spr[0], fa.face_spr[1]}
-					fa.old_pal = [...]int32{sys.cgi[i].remappedpal[0], sys.cgi[i].remappedpal[1]}
-				}
 			}
 			runtime.GC()
 			return nil
@@ -1565,7 +1537,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.resetGblEffect()
 		for i, p := range sys.chars {
 			if len(p) > 0 {
-				sys.playerClear(i)
+				sys.playerClear(i, boolArg(l, 1))
 			}
 		}
 		return 0
@@ -2915,6 +2887,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.redlife)
 		case "score":
 			ln = lua.LNumber(c.ghv.score)
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
 		l.Push(ln)
 		return 1
@@ -3499,6 +3473,85 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "indialogue", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.dialogueFlg))
+		return 1
+	})
+	luaRegister(l, "isasserted", func(*lua.LState) int {
+		switch strArg(l, 1) {
+		case "nostandguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostandguard)))
+		case "nocrouchguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouchguard)))
+		case "noairguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairguard)))
+		case "noshadow":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noshadow)))
+		case "invisible":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_invisible)))
+		case "unguardable":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_unguardable)))
+		case "nojugglecheck":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojugglecheck)))
+		case "noautoturn":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noautoturn)))
+		case "nowalk":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nowalk)))
+		case "nobrake":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nobrake)))
+		case "nocrouch":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouch)))
+		case "nostand":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostand)))
+		case "nojump":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojump)))
+		case "noairjump":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairjump)))
+		case "nohardcodedkeys":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nohardcodedkeys)))
+		case "nogetupfromliedown":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nogetupfromliedown)))
+		case "nofastrecoverfromliedown":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofastrecoverfromliedown)))
+		case "nofallcount":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofallcount)))
+		case "nofalldefenceup":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofalldefenceup)))
+		case "noturntarget":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noturntarget)))
+		case "noinput":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noinput)))
+		case "nopowerbardisplay":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nopowerbardisplay)))
+		case "autoguard":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
+		case "intro":
+			l.Push(lua.LBool(sys.sf(GSF_intro)))
+		case "roundnotover":
+			l.Push(lua.LBool(sys.sf(GSF_roundnotover)))
+		case "nomusic":
+			l.Push(lua.LBool(sys.sf(GSF_nomusic)))
+		case "nobardisplay":
+			l.Push(lua.LBool(sys.sf(GSF_nobardisplay)))
+		case "nobg":
+			l.Push(lua.LBool(sys.sf(GSF_nobg)))
+		case "nofg":
+			l.Push(lua.LBool(sys.sf(GSF_nofg)))
+		case "globalnoshadow":
+			l.Push(lua.LBool(sys.sf(GSF_globalnoshadow)))
+		case "timerfreeze":
+			l.Push(lua.LBool(sys.sf(GSF_timerfreeze)))
+		case "nokosnd":
+			l.Push(lua.LBool(sys.sf(GSF_nokosnd)))
+		case "nokoslow":
+			l.Push(lua.LBool(sys.sf(GSF_nokoslow)))
+		case "noko":
+			l.Push(lua.LBool(sys.sf(GSF_noko)))
+		case "nokovelocity":
+			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
+		case "roundnotskip":
+			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "ishost", func(*lua.LState) int {
