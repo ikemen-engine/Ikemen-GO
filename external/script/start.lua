@@ -2900,6 +2900,10 @@ function start.f_resultInit()
 			end
 		end
 	end
+	if main.resultsTable.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
+	end
 	clearColor(motif.resultsbgdef.bgclearcolor[1], motif.resultsbgdef.bgclearcolor[2], motif.resultsbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.resultsbgdef.bg)
 	main.f_fadeReset('fadein', t)
@@ -2940,10 +2944,12 @@ function start.f_result()
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		esc(false)
 		start.t_result.active = false
+		toggleNoSound(false)
 		return false
 	end
 	if not main.fadeActive and main.fadeType == 'fadeout' then
 		start.t_result.active = false
+		toggleNoSound(false)
 		return false
 	end
 	return true
@@ -3064,8 +3070,10 @@ function start.f_victoryInit()
 	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
 		return false
 	end
-	clearAllSound()
-	toggleNoSound(true)
+	if motif.victory_screen.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
+	end
 	clearColor(motif.victorybgdef.bgclearcolor[1], motif.victorybgdef.bgclearcolor[2], motif.victorybgdef.bgclearcolor[3])
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
@@ -3191,6 +3199,10 @@ function start.f_continueInit()
 		start.t_continue.t_btnSkip = {'s'}
 	else
 		start.t_continue.t_btnSkip = {'pal', 's'}
+	end
+	if motif.continue_screen.sounds_enabled == 0 then
+		clearAllSound()
+		toggleNoSound(true)
 	end
 	clearColor(motif.continuebgdef.bgclearcolor[1], motif.continuebgdef.bgclearcolor[2], motif.continuebgdef.bgclearcolor[3])
 	main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
@@ -3320,12 +3332,12 @@ function start.f_continue()
 							break
 						end
 					end
-				end
-				player(i) --assign sys.debugWC to player i
-				for j = 1, numpartner() do
-					for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
-						if charChangeState(j * 2 + i, v) then
-							break
+					player(i) --assign sys.debugWC to player i
+					for j = 1, numpartner() do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
+							if charChangeState(j * 2 + i, v) then
+								break
+							end
 						end
 					end
 				end
@@ -3405,11 +3417,13 @@ function start.f_continue()
 	if esc() or main.f_input(main.t_players, {'m'}) then
 		esc(false)
 		start.t_continue.active = false
+		toggleNoSound(false)
 		return false
 	end
 	if not main.fadeActive and main.fadeType == 'fadeout' then
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
+		toggleNoSound(false)
 		return false
 	end
 	return true

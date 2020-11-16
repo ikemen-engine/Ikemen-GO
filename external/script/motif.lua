@@ -779,6 +779,7 @@ local motif =
 	continue_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		legacymode_enabled = 1, --Ikemen feature
 		gameover_enabled = 1, --Ikemen feature
 		fadein_time = 8, --Ikemen feature
@@ -863,6 +864,7 @@ local motif =
 	victory_screen =
 	{
 		enabled = 0,
+		sounds_enabled = 0, --Ikemen feature
 		cpu_enabled = 1, --Ikemen feature
 		vs_enabled = 1, --Ikemen feature
 		loser_name_enabled = 0, --Ikemen feature
@@ -929,6 +931,7 @@ local motif =
 	win_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -964,6 +967,7 @@ local motif =
 	survival_results_screen =
 	{
 		enabled = 1,
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -994,6 +998,7 @@ local motif =
 	vs100_kumite_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1024,6 +1029,7 @@ local motif =
 	time_attack_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1053,6 +1059,7 @@ local motif =
 	time_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1082,6 +1089,7 @@ local motif =
 	score_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
@@ -1111,6 +1119,7 @@ local motif =
 	boss_rush_results_screen =
 	{
 		enabled = 1, --Ikemen feature
+		sounds_enabled = 1, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = nil, --Ikemen feature
