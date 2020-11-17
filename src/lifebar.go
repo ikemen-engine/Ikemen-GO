@@ -69,7 +69,7 @@ func readLbText(pre string, is IniSection, str string, ln int16, f []*Fnt, align
 	txt := newLbText(align)
 	is.ReadI32(pre+"font", &txt.font[0], &txt.font[1], &txt.font[2],
 		&txt.font[3], &txt.font[4], &txt.font[5])
-	if txt.font[0] >= 0 && (int(txt.font[0]) >= len(f) || f[txt.font[0]] == nil) {
+	if txt.font[0] >= 0 && int(txt.font[0]) < len(f) && f[txt.font[0]] == nil {
 		sys.warnConsole(fmt.Sprintf("WARNING: Missing font assigned to %v lifebar parameter: %v\n", pre+"font", txt.font[0]))
 		sys.errLog.Printf("Missing font assigned to %v lifebar parameter: %v\n", pre+"font", txt.font[0])
 	}
