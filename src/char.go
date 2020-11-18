@@ -4780,7 +4780,8 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				//c.selfState(5050, -1, -1, -1, false)
+				sys.warnConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
+				c.selfState(5050, -1, -1, -1, false)
 				c.setBindTime(0)
 				return
 			}
