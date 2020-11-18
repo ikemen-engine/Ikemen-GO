@@ -1073,18 +1073,12 @@ func loadSff(filename string, char bool) (*Sff, error) {
 		return binary.Read(f, binary.LittleEndian, x)
 	}
 	if s.header.Ver0 != 1 {
-		uniquePals := make(map[[2]int16]bool)
+		uniquePals := make(map[[2]int16]int)
 		for i := 0; i < int(s.header.NumberOfPalettes); i++ {
 			f.Seek(int64(s.header.FirstPaletteHeaderOffset)+int64(i*16), 0)
 			var gn_ [3]int16
 			if err := read(gn_[:]); err != nil {
 				return nil, err
-			}
-			if uniquePals[[...]int16{gn_[0], gn_[1]}] {
-				sys.warnConsole(fmt.Sprintf("WARNING: %v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes))
-				sys.errLog.Printf("%v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
-			} else {
-				uniquePals[[...]int16{gn_[0], gn_[1]}] = true
 			}
 			var link uint16
 			if err := read(&link); err != nil {
@@ -1099,7 +1093,12 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			}
 			var pal []uint32
 			var idx int
-			if siz == 0 {
+			if old, ok := uniquePals[[...]int16{gn_[0], gn_[1]}]; ok {
+				idx = old
+				pal = s.palList.Get(old)
+				sys.warnConsole(fmt.Sprintf("WARNING: %v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes))
+				sys.errLog.Printf("%v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
+			} else if siz == 0 {
 				idx = int(link)
 				pal = s.palList.Get(idx)
 			} else {
@@ -1117,6 +1116,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 				}
 				idx = i
 			}
+			uniquePals[[...]int16{gn_[0], gn_[1]}] = idx
 			s.palList.SetSource(i, pal)
 			s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] = idx
 			if i <= MaxPalNo &&
