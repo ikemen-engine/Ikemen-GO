@@ -116,6 +116,7 @@ options.t_itemname = {
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
 			--config.DebugFont = "font/f-4x6.def"
+			--config.DebugFontScale = 1
 			config.DebugKeys = true
 			config.Difficulty = 8
 			config.EscOpensMenu = true
@@ -923,6 +924,23 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	--Default
+	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+			options.f_keyDefault()
+			for pn = 1, #config.KeyConfig do
+				setKeyConfig(pn, config.KeyConfig[pn].Joystick, config.KeyConfig[pn].Buttons)
+			end
+			if main.flags['-nojoy'] == nil then
+				for pn = 1, #config.JoystickConfig do
+					setKeyConfig(pn, config.JoystickConfig[pn].Joystick, config.JoystickConfig[pn].Buttons)
+				end
+			end
+			modified = true
+		end
+		return true
+	end,
 	--Players
 	['players'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) and config.Players < 8 then
@@ -938,23 +956,6 @@ options.t_itemname = {
 			t.items[item].vardisplay = config.Players
 			main.f_setPlayers(config.Players, true)
 			motif.f_loadCursorData()
-			modified = true
-		end
-		return true
-	end,
-	--Default
-	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'pal', 's'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-			options.f_keyDefault()
-			for pn = 1, #config.KeyConfig do
-				setKeyConfig(pn, config.KeyConfig[pn].Joystick, config.KeyConfig[pn].Buttons)
-			end
-			if main.flags['-nojoy'] == nil then
-				for pn = 1, #config.JoystickConfig do
-					setKeyConfig(pn, config.JoystickConfig[pn].Joystick, config.JoystickConfig[pn].Buttons)
-				end
-			end
 			modified = true
 		end
 		return true

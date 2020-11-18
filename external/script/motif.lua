@@ -330,8 +330,8 @@ local motif =
 		title_bonus_text = 'Bonus', --Ikemen feature
 		title_watch_text = 'Watch Mode', --Ikemen feature
 		--title_replay_text = 'Replay', --Ikemen feature
-		p1_face_num = 1, --Ikemen feature
 		p1_face_pos = {0, 0},
+		p1_face_num = 1, --Ikemen feature
 		p1_face_anim = nil, --Ikemen feature
 		p1_face_spr = {9000, 1},
 		p1_face_done_anim = nil, --Ikemen feature
@@ -341,9 +341,9 @@ local motif =
 		p1_face_scale = {1.0, 1.0},
 		p1_face_window = {},
 		p1_face_spacing = {0, 0}, --Ikemen feature
-		p1_face_justify = 0, --Ikemen feature
-		p2_face_num = 1, --Ikemen feature
+		p1_face_padding = 0, --Ikemen feature
 		p2_face_pos = {0, 0},
+		p2_face_num = 1, --Ikemen feature
 		p2_face_anim = nil, --Ikemen feature
 		p2_face_done_anim = nil, --Ikemen feature
 		p2_face_done_spr = {9000, 1}, --Ikemen feature
@@ -353,7 +353,7 @@ local motif =
 		p2_face_scale = {1.0, 1.0},
 		p2_face_window = {},
 		p2_face_spacing = {0, 0}, --Ikemen feature
-		p2_face_justify = 0, --Ikemen feature
+		p2_face_padding = 0, --Ikemen feature
 		--p<pn>_member<num>_face_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_face_spr = {9000, 1}, --Ikemen feature
 		--p<pn>_member<num>_face_done_anim = nil, --Ikemen feature
@@ -686,8 +686,8 @@ local motif =
 		match_font = {-1, 0, 0, 255, 255, 255},
 		match_font_scale = {1.0, 1.0},
 		match_font_height = -1, --Ikemen feature
-		p1_num = 1, --Ikemen feature
 		p1_pos = {0, 0},
+		p1_num = 1, --Ikemen feature
 		p1_anim = nil, --Ikemen feature
 		p1_spr = {9000, 1},
 		p1_done_anim = nil, --Ikemen feature
@@ -697,9 +697,9 @@ local motif =
 		p1_scale = {1.0, 1.0},
 		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
-		p1_justify = 0, --Ikemen feature
-		p2_num = 1, --Ikemen feature
+		p1_padding = 0, --Ikemen feature
 		p2_pos = {0, 0},
+		p2_num = 1, --Ikemen feature
 		p2_anim = nil, --Ikemen feature
 		p2_spr = {9000, 1},
 		p2_done_anim = nil, --Ikemen feature
@@ -709,7 +709,7 @@ local motif =
 		p2_scale = {1.0, 1.0},
 		p2_window = {},
 		p2_spacing = {0, 0}, --Ikemen feature
-		p2_justify = 0, --Ikemen feature
+		p2_padding = 0, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 1}, --Ikemen feature
 		--p<pn>_member<num>_done_anim = nil, --Ikemen feature
@@ -876,8 +876,8 @@ local motif =
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = nil, --Ikemen feature
 		time = 300,
-		p1_num = 1, --Ikemen feature
 		p1_pos = {0, 0},
+		p1_num = 1, --Ikemen feature
 		p1_anim = nil, --Ikemen feature
 		p1_spr = {9000, 2},
 		p1_offset = {100, 20},
@@ -885,13 +885,13 @@ local motif =
 		p1_scale = {1.0, 1.0},
 		p1_window = {},
 		p1_spacing = {0, 0}, --Ikemen feature
-		p1_justify = 0, --Ikemen feature
+		p1_padding = 0, --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 0, 1, 255, 255, 255},
 		p1_name_font_scale = {1.0, 1.0},
 		p1_name_font_height = -1, --Ikemen feature
-		p2_num = 0, --Ikemen feature
 		p2_pos = {0, 0}, --Ikemen feature
+		p2_num = 0, --Ikemen feature
 		p2_anim = nil, --Ikemen feature
 		p2_spr = {9000, 2}, --Ikemen feature
 		p2_offset = {100, 20}, --Ikemen feature
@@ -899,7 +899,7 @@ local motif =
 		p2_scale = {1.0, 1.0}, --Ikemen feature
 		p2_window = {}, --Ikemen feature
 		p2_spacing = {0, 0}, --Ikemen feature
-		p2_justify = 0, --Ikemen feature
+		p2_padding = 0, --Ikemen feature
 		--p<pn>_member<num>_anim = nil, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 2}, --Ikemen feature
 		--p<pn>_member<num>_offset = {0, 0}, --Ikemen feature
@@ -1311,8 +1311,8 @@ local motif =
 		--menu_itemname_audioducking = 'Audio Ducking', --Ikemen feature
 		--menu_itemname_keyboard = 'Key Config', --Ikemen feature
 		--menu_itemname_gamepad = 'Joystick Config', --Ikemen feature
-		--menu_itemname_players = 'Players', --Ikemen feature
 		--menu_itemname_inputdefault = 'Default', --Ikemen feature
+		--menu_itemname_players = 'Players', --Ikemen feature
 		--menu_itemname_debugkeys = 'Debug Keys', --Ikemen feature
 		--menu_itemname_helpermax = 'HelperMax', --Ikemen feature
 		--menu_itemname_projectilemax = 'PlayerProjectileMax', --Ikemen feature
@@ -2113,12 +2113,12 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuinput = "Input Settings"
 	motif.option_info.menu_itemname_menuinput_keyboard = "Key Config"
 	motif.option_info.menu_itemname_menuinput_gamepad = "Joystick Config"
-	motif.option_info.menu_itemname_menuinput_players = "Players"
 	motif.option_info.menu_itemname_menuinput_empty = ""
 	motif.option_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.option_info.menu_itemname_menuinput_back = "Back"
 
 	motif.option_info.menu_itemname_menuengine = "Engine Settings"
+	motif.option_info.menu_itemname_menuengine_players = "Players"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
@@ -2226,11 +2226,11 @@ function motif.setBaseOptionInfo()
 		"menuinput",
 		"menuinput_keyboard",
 		"menuinput_gamepad",
-		"menuinput_players",
 		"menuinput_empty",
 		"menuinput_inputdefault",
 		"menuinput_back",
 		"menuengine",
+		"menuengine_players",
 		"menuengine_debugkeys",
 		"menuengine_empty",
 		"menuengine_helpermax",

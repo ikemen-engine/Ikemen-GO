@@ -816,8 +816,12 @@ function start.f_getName(ref, hidden)
 end
 
 --draw character names
-function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
-	for i = 1, #t do
+function start.f_drawNames(t, data, hidden, reversed, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
+	local first, last, add = 1, #t, 1
+	if reversed then
+		first, last, add = #t, 1, -1
+	end
+	for i = first, last, add do
 		local x = offsetX
 		local f = font
 		if active_font ~= nil and active_row ~= nil then
@@ -934,7 +938,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 					end
 				end
 				local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
-				if t['p' .. side .. subname .. '_justify'] == 1 then
+				if t['p' .. side .. subname .. '_padding'] == 1 then
 					x = x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * #t_portraits)
 				else
 					x = x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
@@ -1940,6 +1944,7 @@ function start.f_selectScreen()
 					start.p[side].t_selTemp,
 					t_txt_name[side],
 					not main.cpuSide[side],
+					false,
 					motif.select_info['p' .. side .. '_name_font'],
 					motif.select_info['p' .. side .. '_name_offset'][1],
 					motif.select_info['p' .. side .. '_name_offset'][2],
@@ -2701,6 +2706,7 @@ function start.f_selectVersus()
 				start.f_drawNames(
 					start.p[side].t_selTemp,
 					t_txt_nameVS[side],
+					false,
 					false,
 					motif.vs_screen['p' .. side .. '_name_font'],
 					motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1],
