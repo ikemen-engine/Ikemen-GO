@@ -1219,6 +1219,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 	var newSubHeaderOffset []uint32
 	newSubHeaderOffset = append(newSubHeaderOffset, shofs)
 	preloadSprNum := len(preloadSpr)
+	preloadRef := make(map[int]bool)
 	for i := 0; i < len(spriteList); i++ {
 		spriteList[i] = newSprite()
 		newSubHeaderOffset = append(newSubHeaderOffset, shofs)
@@ -1240,13 +1241,16 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 			}
 			//sprite
 			if size == 0 {
-				if int(indexOfPrevious) < i {
+				if ok := preloadRef[int(indexOfPrevious)]; ok {
 					dst, src := spriteList[i], spriteList[int(indexOfPrevious)]
 					sys.mainThreadTask <- func() {
 						dst.shareCopy(src)
 					}
+					spriteList[i].palidx = spriteList[int(indexOfPrevious)].palidx
+				//} else if int(indexOfPrevious) < i {
+					//TODO: read previously skipped sprite and palette
 				} else {
-					spriteList[i].palidx = 0 // 不正な sff の場合の index out of range 防止
+					spriteList[i].palidx = 0 //index out of range
 				}
 			} else {
 				switch h.Ver0 {
@@ -1306,6 +1310,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 					prev = spriteList[i]
 				}
 			}
+			preloadRef[i] = true
 			if ok {
 				sff.sprites[[...]int16{spriteList[i].Group, spriteList[i].Number}] = spriteList[i]
 				preloadSprNum--
