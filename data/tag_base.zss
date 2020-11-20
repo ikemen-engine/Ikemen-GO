@@ -69,7 +69,7 @@ Explod{
 #===============================================================================
 #StateTagEnteringScreen
 #===============================================================================
-[Statedef 5600; type: S; movetype: U; physics: N;
+[Statedef 5600; type: S; movetype: H; physics: N;
  anim: Const(AnimTagEnteringScreen); sprpriority: 2; ctrl: 0;]
 
 ScreenBound{value: 0; movecamera: 1, 1}
@@ -116,7 +116,7 @@ persistent(0) {
 	Turn{}
 }
 
-VelSet{x: Const(velocity.run.fwd.x); y: 0}
+VelSet{x: min(Const(velocity.run.fwd.x), Const240p(Const(TagInVelX))); y: 0}
 
 if BackEdgeDist < -Const240p(160) || FrontEdgeDist < -Const240p(160) || Map(_iksys_tagLeavingPosX) = Pos X {
 	ChangeState{value: Const(StateTagWaitingOutside)}
@@ -126,7 +126,7 @@ MapSet{map: "_iksys_tagLeavingPosX"; value: Pos X} #TODO: won't be needed once t
 #===============================================================================
 #StateTagWaitingOutside
 #===============================================================================
-[Statedef 5611; type: U; movetype: U; physics: N;
+[Statedef 5611; type: A; movetype: I; physics: N;
  anim: Const(AnimStanding); velset: 0, 0; ctrl: 0;]
 
 AssertSpecial{flag: invisible; flag2: noautoturn}
