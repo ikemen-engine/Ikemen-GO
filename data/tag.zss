@@ -97,6 +97,7 @@ if Time = 0 {
 
 # regain control in place where the switch was initiated or right after entering screen, in case of Counter Switch
 if !Ctrl && BackEdgeBodyDist >= 0 && (floor(Map(_iksys_tagSwitchDist)) <= Const(size.ground.front) || Map(_iksys_tagRegainCtrl) = 1) {
+	StateTypeSet{movetype: I} # disables countermeasure against global states triggering when character is off-screen
 	CtrlSet{value: 1}
 	MapSet{map: "_iksys_tagRegainCtrl"; value: 0}
 }
