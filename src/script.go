@@ -511,6 +511,10 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "clearConsole", func(*lua.LState) int {
+		sys.consoleText = nil
+		return 0
+	})
 	luaRegister(l, "clearAllSound", func(l *lua.LState) int {
 		sys.clearAllSound()
 		return 0
@@ -1330,11 +1334,16 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "loadDebugFont", func(l *lua.LState) int {
+		ts := NewTextSprite()
 		f, err := loadFnt(strArg(l, 1), -1)
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
-		sys.debugFont = f
+		ts.fnt = f
+		if l.GetTop() >= 2 {
+			ts.xscl, ts.yscl = float32(numArg(l, 2)), float32(numArg(l, 2))
+		}
+		sys.debugFont = ts
 		return 0
 	})
 	luaRegister(l, "loadDebugInfo", func(l *lua.LState) int {
@@ -2186,7 +2195,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.palfx.setColor(float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)))
+		ts.SetColor(int32(numArg(l, 2)), int32(numArg(l, 3)), int32(numArg(l, 4)))
 		return 0
 	})
 	luaRegister(l, "textImgSetFont", func(*lua.LState) int {

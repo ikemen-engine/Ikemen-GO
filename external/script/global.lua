@@ -36,7 +36,7 @@ addHotkey('F3', true, false, true, false, 'toggleMaxPowerMode();debugFlag(1);deb
 addHotkey('F4', false, false, false, false, 'roundReset()')
 addHotkey('F4', false, false, true, false, 'reload()')
 addHotkey('F5', false, false, false, false, 'setTime(0);debugFlag(1);debugFlag(2)')
-addHotkey('SPACE', false, false, false, false, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());debugFlag(1);debugFlag(2)')
+addHotkey('SPACE', false, false, false, false, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());debugFlag(1);debugFlag(2);clearConsole()')
 addHotkey('i', true, false, false, true, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
 addHotkey('PAUSE', false, false, false, true, 'togglePause()')
 addHotkey('PAUSE', true, false, false, true, 'step()')

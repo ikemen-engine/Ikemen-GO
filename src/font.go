@@ -243,9 +243,6 @@ func loadFntV1(filename string) (*Fnt, error) {
 			fci.img[i].Offset[0], fci.img[i].Offset[1], fci.img[i].Pal = 0, 0, p[:]
 		}
 	}
-
-	f.palfx.setColor(255, 255, 255)
-
 	return f, nil
 }
 
@@ -279,9 +276,6 @@ func loadFntV2(filename string, height int32) (*Fnt, error) {
 			}
 		}
 	}
-
-	f.palfx.setColor(255, 255, 255)
-
 	return f, nil
 }
 
@@ -488,10 +482,10 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 }
 
 func (f *Fnt) Print(txt string, x, y, xscl, yscl float32, bank, align int32,
-	window *[4]int32, palfx *PalFX) {
+	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, align, false, window, palfx.frgba)
+			f.DrawTtf(txt, x, y, xscl, yscl, align, false, window, frgba)
 		} else {
 			f.DrawText(txt, x, y, xscl, yscl, bank, align, window, palfx)
 		}
@@ -573,10 +567,18 @@ type TextSprite struct {
 	x, y, xscl, yscl float32
 	window           [4]int32
 	palfx            *PalFX
+	frgba            [4]float32 //ttf fonts
 }
 
 func NewTextSprite() *TextSprite {
-	return &TextSprite{align: 1, xscl: 1, yscl: 1, window: sys.scrrect, palfx: newPalFX()}
+	return &TextSprite{
+		align: 1,
+		xscl: 1,
+		yscl: 1,
+		window: sys.scrrect,
+		palfx: newPalFX(),
+		frgba: [...]float32{1.0, 1.0, 1.0, 1.0},
+	}
 }
 
 func (ts *TextSprite) SetWindow(x, y, w, h float32) {
@@ -586,10 +588,16 @@ func (ts *TextSprite) SetWindow(x, y, w, h float32) {
 	ts.window[3] = int32(h*sys.heightScale + 0.5)
 }
 
+func (ts *TextSprite) SetColor(r, g, b int32) {
+	ts.palfx.setColor(r, g, b)
+	ts.frgba = [...]float32{float32(r) / 255, float32(g) / 255,
+		float32(b) / 255, 1.0}
+}
+
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		if ts.fnt.Type == "truetype" {
-			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.palfx.frgba)
+			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.frgba)
 		} else {
 			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx)
 		}

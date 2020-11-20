@@ -1299,7 +1299,7 @@ require('external.script.global')
 
 if main.debugLog then main.f_printTable(main.flags, "debug/flags.txt") end
 
-loadDebugFont(config.DebugFont)
+loadDebugFont(config.DebugFont, config.DebugFontScale)
 
 --;===========================================================
 --; COMMAND LINE QUICK VS
