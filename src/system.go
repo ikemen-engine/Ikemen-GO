@@ -1727,7 +1727,7 @@ func (s *System) drawDebug() {
 			s.debugRef[1] = 0
 		}
 		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
-		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1]) * sys.debugFont.yscl /s.heightScale*
+		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
 			(float32(len(s.listLFunc))+float32(len(s.debugWC.clipboardText))+1)
 		for i, f := range s.listLFunc {
 			if f != nil {

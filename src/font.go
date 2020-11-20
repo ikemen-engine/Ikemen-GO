@@ -556,7 +556,7 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 	win := [4]int32{(*window)[0], sys.scrrect[3] - ((*window)[1] + (*window)[3]),
 		(*window)[2], (*window)[3]}
 
-	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3]) //r, g, b, a
+	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])
 	f.ttf.Printf(x, y, (xscl+yscl)/2, align, blend, win, strings.Replace(txt, "%", "%%", -1)) //x, y, scale, align, blend, window, string, printf args
 }
 
@@ -572,12 +572,12 @@ type TextSprite struct {
 
 func NewTextSprite() *TextSprite {
 	return &TextSprite{
-		align: 1,
-		xscl: 1,
-		yscl: 1,
+		align:  1,
+		xscl:   1,
+		yscl:   1,
 		window: sys.scrrect,
-		palfx: newPalFX(),
-		frgba: [...]float32{1.0, 1.0, 1.0, 1.0},
+		palfx:  newPalFX(),
+		frgba:  [...]float32{1.0, 1.0, 1.0, 1.0},
 	}
 }
 
