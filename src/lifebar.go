@@ -890,8 +890,10 @@ func (fa *LifeBarFace) reset() {
 	fa.teammate_bg2.Reset()
 	fa.teammate_top.Reset()
 	fa.teammate_ko.Reset()
-	fa.old_spr = [2]int32{}
-	fa.old_pal = [2]int32{}
+	if !sys.roundResetFlg {
+		fa.old_spr = [2]int32{}
+		fa.old_pal = [2]int32{}
+	}
 }
 func (fa *LifeBarFace) bgDraw(layerno int16) {
 	fa.bg.DrawScaled(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
