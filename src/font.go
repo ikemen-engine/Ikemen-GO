@@ -485,7 +485,7 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl float32, bank, align int32,
 	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, align, false, window, frgba)
+			f.DrawTtf(txt, x, y, xscl, yscl, align, true, window, frgba)
 		} else {
 			f.DrawText(txt, x, y, xscl, yscl, bank, align, window, palfx)
 		}
