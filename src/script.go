@@ -409,6 +409,17 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(false))
 		return 1
 	})
+	luaRegister(l, "charMapSet", func(*lua.LState) int {
+		pn := int(numArg(l, 1))
+		var scType int32
+		if l.GetTop() >= 4 {
+			scType = int32(numArg(l, 1))
+		}
+		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+			sys.chars[pn-1][0].mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
+		}
+		return 0
+	})
 	luaRegister(l, "charSndPlay", func(l *lua.LState) int {
 		//pn, group_no, sound_no, volumescale, commonSnd, channel, lowpriority, freqmul, loop, pan
 		pn := int(numArg(l, 1))
@@ -610,6 +621,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		sys.dialogueFlg = false
+		sys.dialogueForce = 0
 		sys.dialogueBarsFlg = false
 		return 0
 	})
@@ -938,6 +950,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.resetGblEffect()
 				sys.resetOverrideCharData()
 				sys.dialogueFlg = false
+				sys.dialogueForce = 0
 				sys.dialogueBarsFlg = false
 				sys.noSoundFlg = false
 				sys.postMatchFlg = false
@@ -1047,12 +1060,12 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getCharDialogue", func(*lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn != -1 && (pn < 1 || pn > MaxSimul*2+MaxAttachedChar) {
+		pn := sys.dialogueForce
+		if pn != 0 && (pn < 1 || pn > MaxSimul*2+MaxAttachedChar) {
 			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
 		tbl := l.NewTable()
-		if pn == -1 {
+		if pn == 0 {
 			r := make([]int, 0)
 			for i, p := range sys.chars {
 				if len(p) > 0 && len(p[0].dialogue) > 0 {

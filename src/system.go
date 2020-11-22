@@ -331,6 +331,7 @@ type System struct {
 	endMatch        bool
 	continueFlg     bool
 	dialogueFlg     bool
+	dialogueForce   int
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool

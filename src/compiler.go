@@ -7144,6 +7144,10 @@ func (c *Compiler) dialogue(is IniSection, sc *StateControllerBase,
 			dialogue_hidebars, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "force",
+			dialogue_force, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		var keys []int
 		r, _ := regexp.Compile("^text[0-9]+$")
 		for k := range is {

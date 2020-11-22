@@ -4088,7 +4088,7 @@ function start.f_dialogueRedirection(str)
 end
 
 function start.f_dialogueParse()
-	local t_text, pn = getCharDialogue(-1)
+	local t_text, pn = getCharDialogue()
 	start.t_dialogue.player = pn
 	start.t_dialogue.face[1].pn = start.t_dialogue.player
 	start.t_dialogue.face[2].pn = start.f_dialogueRedirection('enemy(0)')
@@ -4204,6 +4204,9 @@ function start.f_dialogueTokens(key, t)
 			--change state
 			elseif v.param == 'state' then --pn, state_no
 				charChangeState(v.pn, v.value[1] or 0)
+			--map operation
+			elseif v.param == 'map' then --pn, map_name, value, map_type
+				charMapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 0)
 			end
 		end
 	end
