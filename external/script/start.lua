@@ -4206,7 +4206,7 @@ function start.f_dialogueTokens(key, t)
 				charChangeState(v.pn, v.value[1] or 0)
 			--map operation
 			elseif v.param == 'map' then --pn, map_name, value, map_type
-				charMapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 0)
+				charMapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 'set')
 			end
 		end
 	end

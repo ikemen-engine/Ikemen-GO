@@ -412,8 +412,8 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "charMapSet", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
 		var scType int32
-		if l.GetTop() >= 4 {
-			scType = int32(numArg(l, 1))
+		if l.GetTop() >= 4 && strArg(l, 4) == "add" {
+			scType = 1
 		}
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
 			sys.chars[pn-1][0].mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
