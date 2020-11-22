@@ -182,12 +182,14 @@ if !Ctrl && BackEdgeBodyDist >= 0 && Map(_iksys_tagRegainCtrl) = 1 {
 	MapSet{map: "_iksys_tagRegainCtrl"; value: 0}
 }
 
-if AnimElem = 2, = 0 {
+if AnimElemTime(2) = 0 && Map(_iksys_tagJumpingInState) = 0 {
 	VelSet{x: Const240p(4); y: -Const240p(8.75)}
-} else if AnimElem = 2, >= 0 {
+	MapSet{map: "_iksys_tagJumpingInState"; value: 1}
+} else if AnimElemTime(2) > 0 {
 	Gravity{}
 	if Vel Y >= 0 && Pos Y > 0 {
 		VelSet{x: 0; y: 0}
+		MapSet{map: "_iksys_tagJumpingInState"; value: 0}
 		ChangeState{value: Const(StateTagLanding)}
 	}
 }
@@ -215,6 +217,7 @@ if !Const(Default.Enable.Tag) || IsHelper || TeamSide = 0 {
 	#do nothing, global code disabled locally or executed by helper/stage
 } else if RoundState = 0 && TeamMode = Tag {
 	MapSet{map: "_iksys_tagActive"; value: 1}
+	MapSet{map: "_iksys_tagJumpingInState"; value: 0}
 	MapSet{map: "_iksys_tagLastID"; value: 0}
 	if PlayerNo = TeamLeader {
 		MapSet{map: "_iksys_tagIntroFlag"; value: 1}
