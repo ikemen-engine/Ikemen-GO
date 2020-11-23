@@ -880,8 +880,8 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, spscale)
 		t['p' .. side .. subname .. prefix .. '_spr'],
 		{9000, 1},
 	}) do
-		if v[1] ~= nil then
-			local a = animGetAnimation(ref, v[1], v[2], loop)
+		if v[1] ~= nil and v[1] ~= -1 then
+			local a = animGetPreloadedData('char', ref, v[1], v[2], loop)
 			if a ~= nil then
 				animSetScale(
 					a,
@@ -1975,16 +1975,10 @@ function start.f_selectScreen()
 					animDraw(motif.select_info.stage_portrait_random_data)
 				--draw stage portrait loaded from stage SFF
 				else
-					stagePortraitDraw(
-						stageListNo,
+					main.f_animPosDraw(
+						main.t_selStages[stageListNo].anim_data,
 						motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
-						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2],
-						motif.select_info.stage_portrait_scale[1] --[[* motif.select_info.stage_portrait_facing]],
-						motif.select_info.stage_portrait_scale[2],
-						motif.select_info.stage_portrait_window[1],
-						motif.select_info.stage_portrait_window[2],
-						motif.select_info.stage_portrait_window[3],
-						motif.select_info.stage_portrait_window[4]
+						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2]
 					)
 				end
 				if main.f_input(main.t_players, {'pal', 's'}) then
@@ -2517,7 +2511,7 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			--anim update
 			local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-			if done_anim ~= nil and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
+			if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
 				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
 			elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
@@ -2536,6 +2530,7 @@ end
 --; STAGE MENU
 --;===========================================================
 function start.f_stageMenu()
+	local n = stageListNo
 	if timerSelect == -1 then
 		selectStage(main.t_selectableStages[math.random(1, #main.t_selectableStages)])
 		stageEnd = true
@@ -2560,6 +2555,10 @@ function start.f_stageMenu()
 			stageListNo = stageListNo + 1
 			if stageListNo > #main.t_selectableStages then stageListNo = 0 end
 		end
+	end
+	if n ~= stageListNo and stageListNo > 0 then
+		animReset(main.t_selStages[stageListNo].anim_data)
+		animUpdate(main.t_selStages[stageListNo].anim_data)
 	end
 end
 
@@ -3488,10 +3487,11 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					{motif.hiscore_info.face_anim, -1},
 					motif.hiscore_info.face_spr,
 				}) do
-					if v[1] ~= nil then
-						local a = animGetAnimation(main.t_charDef[def], v[1], v[2], true)
+					if v[1] ~= -1 then
+						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
 							animSetScale(a, motif.hiscore_info.face_scale[1], motif.hiscore_info.face_scale[2])
+							animUpdate(a)
 							table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = a, chardata = true})
 							break
 						end

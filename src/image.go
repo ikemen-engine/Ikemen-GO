@@ -376,7 +376,8 @@ type Sprite struct {
 func newSprite() *Sprite {
 	return &Sprite{palidx: -1}
 }
-func loadFromSff(filename string, g, n int16) (*Sprite, error) {
+
+/*func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 	s := newSprite()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -499,7 +500,7 @@ func loadFromSff(filename string, g, n int16) (*Sprite, error) {
 		s.palidx = -1
 	}
 	return s, nil
-}
+}*/
 func (s *Sprite) shareCopy(src *Sprite) {
 	s.Pal = src.Pal
 	s.Tex = src.Tex
@@ -1322,7 +1323,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 	}
 	//selectable palettes
 	var selPal []int32
-	if h.Ver0 != 1 {
+	if h.Ver0 != 1 && char {
 		//for i := 0; i < MaxPalNo; i++ {
 		for i := 0; i < int(h.NumberOfPalettes); i++ {
 			f.Seek(int64(h.FirstPaletteHeaderOffset)+int64(i*16), 0)

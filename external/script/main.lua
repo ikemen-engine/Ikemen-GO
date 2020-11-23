@@ -1486,48 +1486,47 @@ local t_preloadAnim = {}
 local t_preloadSpr = {}
 local t_preload = {
 	--select_info
-	{typ = 'anim', arg = {motif.select_info.portrait_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.portrait_spr},
-	{typ = 'anim', arg = {motif.select_info.p1_face_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p1_face_spr},
-	{typ = 'anim', arg = {motif.select_info.p2_face_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p2_face_spr},
-	{typ = 'anim', arg = {motif.select_info.p1_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'anim', arg = {motif.select_info.p2_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p2_face_done_spr},
+	{typ = 'canim', arg = {motif.select_info.portrait_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.portrait_spr},
+	{typ = 'canim', arg = {motif.select_info.p1_face_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
+	{typ = 'canim', arg = {motif.select_info.p2_face_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
+	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
+	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
 	--vs_screen
-	{typ = 'anim', arg = {motif.vs_screen.p1_anim, nil}},
-	{typ = 'spr', arg = motif.vs_screen.p1_spr},
-	{typ = 'anim', arg = {motif.vs_screen.p2_anim, nil}},
-	{typ = 'spr', arg = motif.vs_screen.p2_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p1_anim, nil}},
+	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p2_anim, nil}},
+	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
 	--victory_screen
-	{typ = 'anim', arg = {motif.victory_screen.p1_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p1_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p2_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p2_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p2_face_done_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p1_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p2_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'anim', arg = {motif.hiscore_info.face_anim, nil}},
-	{typ = 'spr', arg = motif.hiscore_info.face_spr},
+	{typ = 'canim', arg = {motif.hiscore_info.face_anim, nil}},
+	{typ = 'cspr', arg = motif.hiscore_info.face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'anim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
-			table.insert(t_preload, {typ = 'spr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'anim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
-			table.insert(t_preload, {typ = 'spr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
+			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
+			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
 		end
 	end
 end
-
 for _, t in ipairs(t_preload) do
 	if t.arg ~= nil and t.arg[1] ~= nil and t.arg[1] >= 0 then
-		if t.typ == 'anim' then
+		if t.typ == 'canim' then
 			t_preloadAnim[t.arg[1]] = t.arg[1]
 		else
 			t_preloadSpr[t.arg[1] .. ',' .. t.arg[2]] = {t.arg[1], t.arg[2]}
@@ -1535,13 +1534,16 @@ for _, t in ipairs(t_preload) do
 	end
 end
 for _, v in pairs(t_preloadAnim) do
-	preloadList('anim', v)
+	preloadList('canim', v)
 end
 for _, v in pairs(t_preloadSpr) do
-	preloadList('spr', v[1], v[2])
+	preloadList('cspr', v[1], v[2])
 end
 if motif.select_info.stage_portrait_spr[1] ~= -1 then
-	preloadList('stage', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
+	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
+end
+if motif.select_info.stage_portrait_anim ~= -1 then
+	preloadList('sanim', motif.select_info.stage_portrait_anim)
 end
 
 main.t_validParams = {
@@ -1687,8 +1689,8 @@ function main.f_addChar(line, playable, loading, slot)
 		end
 		--cell data
 		for _, v in pairs({{motif.select_info.portrait_anim, -1}, motif.select_info.portrait_spr}) do
-			if v[1] ~= nil then
-				main.t_selChars[row].cell_data = animGetAnimation(main.t_selChars[row].char_ref, v[1], v[2])
+			if v[1] ~= -1 then
+				main.t_selChars[row].cell_data = animGetPreloadedData('char', main.t_selChars[row].char_ref, v[1], v[2])
 				if main.t_selChars[row].cell_data ~= nil then
 					animSetScale(
 						main.t_selChars[row].cell_data,
@@ -1696,6 +1698,7 @@ function main.f_addChar(line, playable, loading, slot)
 						motif.select_info.portrait_scale[2] * main.t_selChars[row].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
 						false
 					)
+					animUpdate(main.t_selChars[row].cell_data)
 					break
 				end
 			end
@@ -1760,6 +1763,32 @@ function main.f_addStage(file)
 		if main.t_selStages[stageNo].attachedChar ~= nil then
 			main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
 		end
+	end
+	--anim data
+	for _, v in pairs({{motif.select_info.stage_portrait_anim, -1}, motif.select_info.stage_portrait_spr}) do
+		if v[1] ~= -1 then
+			main.t_selStages[stageNo].anim_data = animGetPreloadedData('stage', stageNo, v[1], v[2])
+			if main.t_selStages[stageNo].anim_data ~= nil then
+				animSetScale(
+					main.t_selStages[stageNo].anim_data,
+					motif.select_info.stage_portrait_scale[1] * main.t_selStages[stageNo].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+					motif.select_info.stage_portrait_scale[2] * main.t_selStages[stageNo].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+					false
+				)
+				animSetWindow(
+					main.t_selStages[stageNo].anim_data,
+					motif.select_info.stage_portrait_window[1],
+					motif.select_info.stage_portrait_window[2],
+					motif.select_info.stage_portrait_window[3],
+					motif.select_info.stage_portrait_window[4]
+				)
+				animUpdate(main.t_selStages[stageNo].anim_data)
+				break
+			end
+		end
+	end
+	if main.t_selStages[stageNo].anim_data == nil then
+		main.t_selStages[stageNo].anim_data = animNew(main.dummySff, '-1,0, 0,0, -1')
 	end
 	return stageNo
 end
@@ -3796,6 +3825,7 @@ function main.f_fadeReset(fadeType, fadeGroup)
 	main.fadeCnt = 0
 	if fadeGroup[fadeType .. '_data'] ~= nil then
 		animReset(fadeGroup[fadeType .. '_data'])
+		animUpdate(fadeGroup[fadeType .. '_data'])
 		main.fadeCnt = animGetLength(fadeGroup[fadeType .. '_data'])
 		if fadeType == 'fadeout' and main.fadeCnt > fadeGroup[fadeType .. '_time'] then
 			main.fadeStart = main.fadeStart + main.fadeCnt - fadeGroup[fadeType .. '_time']

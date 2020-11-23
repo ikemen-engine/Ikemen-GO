@@ -2312,31 +2312,32 @@ type SelectStage struct {
 	spr             string
 	attachedchardef string
 	stagebgm        IniSection
-	portraitScale   float32
-	portrait        *Sprite
-	xscale          float32
-	yscale          float32
+	portrait_scale  float32
+	anims           PreloadedAnims
+	sff             *Sff
 }
 
 func newSelectStage() *SelectStage {
-	return &SelectStage{portraitScale: 1, xscale: 1, yscale: 1}
+	return &SelectStage{portrait_scale: 1, anims: NewPreloadedAnims()}
 }
 
 type Select struct {
-	charlist        []SelectChar
-	stagelist       []SelectStage
-	selected        [2][][2]int
-	selectedStageNo int
-	animPreload     []int32
-	spritePreload   [][2]int16
-	stagePreload    [2]int16
-	cdefOverwrite   [MaxSimul * 2]string
-	sdefOverwrite   string
+	charlist           []SelectChar
+	stagelist          []SelectStage
+	selected           [2][][2]int
+	selectedStageNo    int
+	charAnimPreload    []int32
+	stageAnimPreload   []int32
+	charSpritePreload  map[[2]int16]bool
+	stageSpritePreload map[[2]int16]bool
+	cdefOverwrite      [MaxSimul * 2]string
+	sdefOverwrite      string
 }
 
 func newSelect() *Select {
-	return &Select{selectedStageNo: -1, stagePreload: [...]int16{-1, -1},
-		spritePreload: [][2]int16{[...]int16{9000, 0}, [...]int16{9000, 1}}}
+	return &Select{selectedStageNo: -1,
+		charSpritePreload: map[[2]int16]bool{[...]int16{9000, 0}: true,
+			[...]int16{9000, 1}: true}, stageSpritePreload: make(map[[2]int16]bool)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -2481,8 +2482,8 @@ func (s *Select) addChar(def string) {
 		}
 	}
 	listSpr := make(map[[2]int16]bool)
-	for _, v := range s.spritePreload {
-		listSpr[[...]int16{v[0], v[1]}] = true
+	for k := range s.charSpritePreload {
+		listSpr[[...]int16{k[0], k[1]}] = true
 	}
 	sff := newSff()
 	//preload animations
@@ -2493,7 +2494,7 @@ func (s *Select) addChar(def string) {
 		}
 		lines, i := SplitAndTrim(str, "\n"), 0
 		at := ReadAnimationTable(sff, lines, &i)
-		for _, v := range s.animPreload {
+		for _, v := range s.charAnimPreload {
 			if anim := at.get(v); anim != nil {
 				sc.anims.addAnim(anim, v)
 				for _, fr := range anim.frames {
@@ -2516,8 +2517,8 @@ func (s *Select) addChar(def string) {
 			panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
 		}
 		sc.anims.updateSff(sc.sff)
-		for _, v := range s.spritePreload {
-			sc.anims.addSprite(sc.sff, v[0], v[1])
+		for k := range s.charSpritePreload {
+			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
 		if len(sc.pal) == 0 {
 			sc.pal = selPal
@@ -2578,30 +2579,48 @@ func (s *Select) AddStage(def string) error {
 			if bgdef {
 				bgdef = false
 				ss.spr = is["spr"]
-				if s.stagePreload[0] == -1 {
-					ss.portrait = newSprite()
-				} else {
-					LoadFile(&ss.spr, def, func(file string) error {
-						var err error
-						if ss.portrait, err = loadFromSff(file, s.stagePreload[0], s.stagePreload[1]); err != nil {
-							ss.portrait = newSprite()
-						}
-						return nil
-					})
-				}
 			}
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				if ok := is.ReadF32("localcoord", &ss.portraitScale); ok {
-					ss.portraitScale = 320 / ss.portraitScale
-				}
-				if ok := is.ReadF32("portraitscale", &ss.portraitScale); !ok {
-					is.ReadF32("xscale", &ss.xscale)
-					is.ReadF32("yscale", &ss.yscale)
+				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
+					localcoord := float32(320)
+					is.ReadF32("localcoord", &localcoord)
+					ss.portrait_scale = 320 / localcoord
 				}
 			}
 		}
+	}
+	if len(s.stageSpritePreload) > 0 || len(s.stageAnimPreload) > 0 {
+		listSpr := make(map[[2]int16]bool)
+		for k := range s.stageSpritePreload {
+			listSpr[[...]int16{k[0], k[1]}] = true
+		}
+		sff := newSff()
+		//preload animations
+		i = 0
+		at := ReadAnimationTable(sff, lines, &i)
+		for _, v := range s.stageAnimPreload {
+			if anim := at.get(v); anim != nil {
+				ss.anims.addAnim(anim, v)
+				for _, fr := range anim.frames {
+					listSpr[[...]int16{fr.Group, fr.Number}] = true
+				}
+			}
+		}
+		//preload portion of sff file
+		LoadFile(&ss.spr, def, func(file string) error {
+			var err error
+			ss.sff, _, err = preloadSff(file, false, listSpr)
+			if err != nil {
+				panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
+			}
+			ss.anims.updateSff(ss.sff)
+			for k := range s.stageSpritePreload {
+				ss.anims.addSprite(ss.sff, k[0], k[1])
+			}
+			return nil
+		})
 	}
 	return nil
 }
@@ -2747,8 +2766,8 @@ func (l *Loader) loadChar(pn int) int {
 			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
 				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
 				var err error
-				fa.teammate_face[i], err = loadFromSff(file,
-					int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
+				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
+					int16(fa.teammate_face_spr[1]))
 				return err
 			})
 		}

@@ -111,21 +111,6 @@ func systemScriptInit(l *lua.LState) {
 		a.Draw()
 		return 0
 	})
-	luaRegister(l, "animGetAnimation", func(l *lua.LState) int {
-		c := sys.sel.GetChar(int(numArg(l, 1)))
-		if anim := c.anims.get(int16(numArg(l, 2)), int16(numArg(l, 3))); anim != nil {
-			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
-			a.palfx.clear()
-			a.palfx.time = -1
-			if l.GetTop() >= 4 && !boolArg(l, 4) && a.anim.totaltime == a.anim.looptime {
-				a.anim.totaltime = -1
-				a.anim.looptime = 0
-			}
-			l.Push(newUserData(l, a))
-			return 1
-		}
-		return 0
-	})
 	luaRegister(l, "animGetLength", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
@@ -142,6 +127,26 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sum))
 		l.Push(lua.LNumber(a.anim.totaltime))
 		return 2
+	})
+	luaRegister(l, "animGetPreloadedData", func(l *lua.LState) int {
+		var anim *Animation
+		if strArg(l, 1) == "char" {
+			anim = sys.sel.GetChar(int(numArg(l, 2))).anims.get(int16(numArg(l, 3)), int16(numArg(l, 4)))
+		} else if strArg(l, 1) == "stage" {
+			anim = sys.sel.GetStage(int(numArg(l, 2))).anims.get(int16(numArg(l, 3)), int16(numArg(l, 4)))
+		}
+		if anim != nil {
+			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
+			a.palfx.clear()
+			a.palfx.time = -1
+			if l.GetTop() >= 5 && !boolArg(l, 5) && a.anim.totaltime == a.anim.looptime {
+				a.anim.totaltime = -1
+				a.anim.looptime = 0
+			}
+			l.Push(newUserData(l, a))
+			return 1
+		}
+		return 0
 	})
 	luaRegister(l, "animGetSpriteInfo", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)
@@ -1475,12 +1480,14 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "preloadList", func(*lua.LState) int {
-		if strArg(l, 1) == "anim" {
-			sys.sel.animPreload = append(sys.sel.animPreload, int32(numArg(l, 2)))
-		} else if strArg(l, 1) == "stage" {
-			sys.sel.stagePreload = [...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))}
-		} else {
-			sys.sel.spritePreload = append(sys.sel.spritePreload, [...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))})
+		if strArg(l, 1) == "canim" {
+			sys.sel.charAnimPreload = append(sys.sel.charAnimPreload, int32(numArg(l, 2)))
+		} else if strArg(l, 1) == "cspr" {
+			sys.sel.charSpritePreload[[...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))}] = true
+		} else if strArg(l, 1) == "sanim" {
+			sys.sel.stageAnimPreload = append(sys.sel.stageAnimPreload, int32(numArg(l, 2)))
+		} else if strArg(l, 1) == "sspr" {
+			sys.sel.stageSpritePreload[[...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))}] = true
 		}
 		return 0
 	})
@@ -2141,29 +2148,6 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "sszRandom", func(l *lua.LState) int {
 		l.Push(lua.LNumber(Random()))
 		return 1
-	})
-	luaRegister(l, "stagePortraitDraw", func(l *lua.LState) int {
-		//ref, x, y, scaleX * facing, scaleY, window
-		if sys.frameSkip {
-			return 0
-		}
-		c := sys.sel.GetStage(int(numArg(l, 1)))
-		x, y := float32(numArg(l, 2)), float32(numArg(l, 3))
-		var xscl, yscl float32 = 1, 1
-		window := &sys.scrrect
-		if l.GetTop() >= 4 {
-			xscl = float32(numArg(l, 4))
-			if l.GetTop() >= 5 {
-				yscl = float32(numArg(l, 5))
-				if l.GetTop() >= 9 {
-					window = &[...]int32{int32(numArg(l, 6)), int32(numArg(l, 7)), int32(numArg(l, 8)), int32(numArg(l, 9))}
-				}
-			}
-		}
-		xscl *= c.portraitScale
-		yscl *= c.portraitScale
-		c.portrait.Draw(x/float32(sys.luaSpriteScale)+float32(sys.luaSpriteOffsetX), y/float32(sys.luaSpriteScale), xscl/sys.luaPortraitScale, yscl/sys.luaPortraitScale, c.portrait.Pal, nil, c.portrait.PalTex, window)
-		return 0
 	})
 	luaRegister(l, "step", func(*lua.LState) int {
 		sys.step = true
