@@ -957,7 +957,7 @@ func (s *System) nextRound() {
 		roundRef = s.round
 	}
 	if s.stageLoop && !s.roundResetFlg {
-		keys := make([]int, 0)
+		var keys []int
 		for k := range s.stageList {
 			keys = append(keys, int(k))
 		}
@@ -2357,30 +2357,6 @@ func (s *Select) GetChar(i int) *SelectChar {
 	return &s.charlist[n]
 }
 func (s *Select) SelectStage(n int) { s.selectedStageNo = n }
-func (s *Select) GetStageName(n int) string {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	if n == 0 {
-		return "Random"
-	}
-	return s.stagelist[n-1].name
-}
-func (s *Select) GetStageAttachedChar(n int) string {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	return s.stagelist[n-1].attachedchardef
-}
-func (s *Select) GetStageBgm(n int) IniSection {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	return s.stagelist[n-1].stagebgm
-}
 func (s *Select) GetStage(n int) *SelectStage {
 	if len(s.stagelist) == 0 {
 		return nil

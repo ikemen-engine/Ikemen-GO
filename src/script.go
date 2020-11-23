@@ -319,7 +319,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
+		a.SetWindow(float32(numArg(l, 2)/sys.luaSpriteScale+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
 			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
 		return 0
 	})
@@ -415,6 +415,7 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "charMapSet", func(*lua.LState) int {
+		//pn, map_name, value, map_type
 		pn := int(numArg(l, 1))
 		var scType int32
 		if l.GetTop() >= 4 && strArg(l, 4) == "add" {
@@ -716,25 +717,13 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "fillRect", func(l *lua.LState) int {
-		x1 := float32(numArg(l, 1))
-		y1 := float32(numArg(l, 2))
-		x2 := float32(numArg(l, 3))
-		y2 := float32(numArg(l, 4))
-		var ws, hs float32 = 1, 1
-		if l.GetTop() >= 10 && boolArg(l, 10) { //auto scaling
-			if l.GetTop() >= 11 && boolArg(l, 11) { //use screenpack localcoord
-				ws = float32(sys.scrrect[2]) / MinF(float32(sys.luaLocalcoord[0]), float32(sys.gameWidth))
-				hs = float32(sys.scrrect[3]) / MinF(float32(sys.luaLocalcoord[1]), float32(sys.gameHeight))
-			} else {
-				ws = float32(sys.scrrect[2]) / float32(sys.gameWidth)
-				hs = float32(sys.scrrect[3]) / float32(sys.gameHeight)
-				x1 += float32(sys.gameWidth-320) / 2
-				y1 += float32(sys.gameHeight - 240)
-			}
-		}
+		rect := [4]int32{int32((numArg(l, 1)/sys.luaSpriteScale + sys.luaSpriteOffsetX + float64(sys.gameWidth-320)/2) * float64(sys.widthScale)),
+			int32((numArg(l, 2)/sys.luaSpriteScale + float64(sys.gameHeight-240)) * float64(sys.heightScale)),
+			int32((numArg(l, 3) / sys.luaSpriteScale) * float64(sys.widthScale)),
+			int32((numArg(l, 4) / sys.luaSpriteScale) * float64(sys.heightScale))}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)
-		FillRect([4]int32{int32(x1 * ws), int32(y1 * hs), int32(x2 * ws), int32(y2 * hs)}, col, a)
+		FillRect(rect, col, a)
 		return 0
 	})
 	luaRegister(l, "fontGetDef", func(l *lua.LState) int {
@@ -1066,6 +1055,9 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getCharDialogue", func(*lua.LState) int {
 		pn := sys.dialogueForce
+		if l.GetTop() >= 1 {
+			pn = int(numArg(l, 1))
+		}
 		if pn != 0 && (pn < 1 || pn > MaxSimul*2+MaxAttachedChar) {
 			l.RaiseError("\nInvalid player number: %v\n", pn)
 		}
@@ -1312,22 +1304,19 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(found))
 		return 1
 	})
-	luaRegister(l, "getStageAttachedChar", func(*lua.LState) int {
-		attachedchardef := sys.sel.GetStageAttachedChar(int(numArg(l, 1)))
-		l.Push(lua.LString(attachedchardef))
-		return 1
-	})
-	luaRegister(l, "getStageBgm", func(*lua.LState) int {
-		stagebgm := sys.sel.GetStageBgm(int(numArg(l, 1)))
+	luaRegister(l, "getStageInfo", func(*lua.LState) int {
+		c := sys.sel.GetStage(int(numArg(l, 1)))
 		tbl := l.NewTable()
-		for k, v := range stagebgm {
-			tbl.RawSetString(k, lua.LString(v))
+		tbl.RawSetString("name", lua.LString(c.name))
+		tbl.RawSetString("def", lua.LString(c.def))
+		tbl.RawSetString("portrait_scale", lua.LNumber(c.portrait_scale))
+		tbl.RawSetString("attachedchardef", lua.LString(c.attachedchardef))
+		subt := l.NewTable()
+		for k, v := range c.stagebgm {
+			subt.RawSetString(k, lua.LString(v))
 		}
+		tbl.RawSetString("stagebgm", subt)
 		l.Push(tbl)
-		return 1
-	})
-	luaRegister(l, "getStageName", func(*lua.LState) int {
-		l.Push(lua.LString(sys.sel.GetStageName(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "getStageNo", func(*lua.LState) int {
@@ -2238,7 +2227,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.SetWindow(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
+		ts.SetWindow(float32(numArg(l, 2)/sys.luaSpriteScale+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
 			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
 		return 0
 	})

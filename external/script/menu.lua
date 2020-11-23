@@ -118,7 +118,7 @@ function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 			tbl.reset = false
 			main.f_cmdInput()
 		else
-			main.f_menuCommonDraw(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, section, bgdef, txt_title, motif.defaultMenu, motif.defaultMenu, false, {}, true)
+			main.f_menuCommonDraw(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, section, bgdef, txt_title, motif.defaultMenu, {}, true)
 		end
 		tbl.cursorPosY, tbl.moveTxt, tbl.item = main.f_menuCommonCalc(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, section, {'$U'}, {'$D'})
 		txt_title:update({text = tbl.title})
@@ -355,8 +355,8 @@ end
 for _, v in ipairs({'menu_info', 'training_info'}) do
 	menu[v .. '_txt_title'] = main.f_createTextImg(motif[v], 'movelist_title', {defsc = motif.defaultMenu, addX = motif[v].movelist_pos[1], addY = motif[v].movelist_pos[2]})
 	menu[v .. '_txt_text'] = main.f_createTextImg(motif[v], 'movelist_text', {defsc = motif.defaultMenu, addX = motif[v].movelist_pos[1], addY = motif[v].movelist_pos[2]})
-	menu[v .. '_overlay'] = main.f_createOverlay(motif[v], 'overlay', {defsc = false, fixloc = motif.defaultLocalcoord})
-	menu[v .. '_movelist_overlay'] = main.f_createOverlay(motif[v], 'movelist_overlay', {defsc = false, fixloc = motif.defaultLocalcoord})
+	menu[v .. '_overlay'] = main.f_createOverlay(motif[v], 'overlay')
+	menu[v .. '_movelist_overlay'] = main.f_createOverlay(motif[v], 'movelist_overlay')
 	--menu[v .. '_t_movelistWindow'] = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}
 	if motif[v].movelist_window_margins_y[1] ~= 0 or motif[v].movelist_window_margins_y[2] ~= 0 then
 		local data = menu[v .. '_txt_text']

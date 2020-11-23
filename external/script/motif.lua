@@ -141,16 +141,25 @@ local motif =
 		connecting_overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		connecting_overlay_col = {0, 0, 0}, --Ikemen feature
 		connecting_overlay_alpha = {20, 100}, --Ikemen feature
-		input_ip_name_text = 'Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.', --Ikemen feature
-		input_ip_address_text = 'Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.', --Ikemen feature
+		textinput_offset = {25, 32}, --Ikemen feature
+		textinput_font = {'default-3x5.def', 0, 1, 191, 191, 191},
+		textinput_font_scale = {1.0, 1.0}, --Ikemen feature
+		textinput_font_height = -1, --Ikemen feature
+		textinput_name_text = 'Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.', --Ikemen feature
+		textinput_address_text = 'Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.', --Ikemen feature
+		textinput_overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
+		textinput_overlay_alpha = {20, 100}, --Ikemen feature
 		menu_key_next = '$D&$F', --Ikemen feature
 		menu_key_previous = '$U&$B', --Ikemen feature
 		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_key_hiscore = 's', --Ikemen feature
 		menu_pos = {159, 158},
+		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {-1, 0, 0, 191, 191, 191},
 		menu_item_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
 		menu_item_font_height = -1, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
 		menu_item_active_font = {-1, 0, 0, 255, 255, 255},
 		menu_item_active_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
 		menu_item_active_font_height = -1, --Ikemen feature
@@ -218,12 +227,11 @@ local motif =
 	},
 	infobox =
 	{
-		title = '', --Ikemen feature
 		title_offset = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
-		text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* I.K.E.M.E.N GO source code: https://osdn.net/users/supersuehiro/\n* Feedback: https://mugenguild.com/forum/topics/ikemen-go-184152.0.html", --Ikemen feature (requires new 'text = ' entry under [Infobox] section)
+		title_text = '', --Ikemen feature
 		text_offset = {25, 32}, --Ikemen feature
 		text_font = {'default-3x5.def', 0, 1, 191, 191, 191},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -232,8 +240,8 @@ local motif =
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
-	infobox_text = '', --not used in Ikemen
-	ja_infobox_text = '', --not used in Ikemen
+	infobox_text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* Original repo source code: https://osdn.net/users/supersuehiro/\n* Bug reports: https://github.com/Windblade-GR01/Ikemen-GO/issues\n* Features wiki: https://github.com/K4thos/Ikemen_GO/wiki",
+	ja_infobox_text = "", --not used in Ikemen
 	select_info =
 	{
 		fadein_time = 10,
@@ -1163,34 +1171,43 @@ local motif =
 		title_text = 'OPTIONS', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_font_height = -1, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_active_font_height = -1, --Ikemen feature
+		menu_item_selected_offset = {0, 0}, --Ikemen feature
 		menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247}, --Ikemen feature
 		menu_item_selected_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_selected_font_height = -1, --Ikemen feature
+		menu_item_selected_active_offset = {0, 0}, --Ikemen feature
 		menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247}, --Ikemen feature
 		menu_item_selected_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_selected_active_font_height = -1, --Ikemen feature
+		menu_item_value_offset = {150, 0}, --Ikemen feature
 		menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		menu_item_value_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_font_height = -1, --Ikemen feature
+		menu_item_value_active_offset = {150, 0}, --Ikemen feature
 		menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255}, --Ikemen feature
 		menu_item_value_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_active_font_height = -1, --Ikemen feature
+		menu_item_value_conflict_offset = {150, 0}, --Ikemen feature
 		menu_item_value_conflict_font = {'f-6x9.def', 0, -1, 247, 0, 0}, --Ikemen feature
 		menu_item_value_conflict_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_conflict_font_height = -1, --Ikemen feature
+		menu_item_info_offset = {150, 0}, --Ikemen feature
 		menu_item_info_font = {'f-6x9.def', 0, -1, 247, 247, 0}, --Ikemen feature
 		menu_item_info_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_info_font_height = -1, --Ikemen feature
+		menu_item_info_active_offset = {150, 0}, --Ikemen feature
 		menu_item_info_active_font = {'f-6x9.def', 0, -1, 247, 247, 0}, --Ikemen feature
 		menu_item_info_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_info_active_font_height = -1, --Ikemen feature
-		menu_item_spacing = {150, 14}, --Ikemen feature
+		menu_item_spacing = {0, 14}, --Ikemen feature
 		menu_window_margins_y = {0, 0}, --Ikemen feature
 		menu_window_visibleitems = 13, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
@@ -1232,7 +1249,13 @@ local motif =
 		keymenu_item_p2_font = {'f-6x9.def', 0, 0, 247, 0, 0}, --Ikemen feature
 		keymenu_item_p2_font_scale = {1.0, 1.0}, --Ikemen feature
 		keymenu_item_p2_font_height = -1, --Ikemen feature
-		keymenu_item_spacing = {101, 12}, --Ikemen feature
+		--unassigned 'keymenu.item' parameters use corresponding 'menu.item' values
+		keymenu_item_spacing = {0, 12}, --Ikemen feature
+		keymenu_item_value_offset = {101, 0}, --Ikemen feature
+		keymenu_item_value_active_offset = {101, 0}, --Ikemen feature
+		keymenu_item_value_conflict_offset = {101, 0}, --Ikemen feature
+		keymenu_item_info_offset = {101, 0}, --Ikemen feature
+		keymenu_item_info_active_offset = {101, 0}, --Ikemen feature
 		keymenu_boxcursor_coords = {-5, -9, 106, 2}, --Ikemen feature
 		keymenu_itemname_playerno = 'PLAYER %i', --Ikemen feature
 		keymenu_itemname_configall = 'Config all', --Ikemen feature
@@ -1252,10 +1275,16 @@ local motif =
 		keymenu_itemname_menu = 'Menu', --Ikemen feature
 		keymenu_itemname_back = 'Back', --Ikemen feature
 		keymenu_itemname_page = 'Page', --Ikemen feature
-		input_port_text = 'Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
-		input_reswidth_text = 'Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
-		input_resheight_text = 'Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
-		input_key_text = 'Press a key to assign to entry.\nPress SPACE to disable key.\nPress ESC to cancel.', --Ikemen feature
+		textinput_offset = {25, 32}, --Ikemen feature
+		textinput_font = {'default-3x5.def', 0, 1, 191, 191, 191},
+		textinput_font_scale = {1.0, 1.0}, --Ikemen feature
+		textinput_font_height = -1, --Ikemen feature
+		textinput_port_text = 'Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
+		textinput_reswidth_text = 'Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
+		textinput_resheight_text = 'Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
+		textinput_overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
+		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
+		textinput_overlay_alpha = {20, 100}, --Ikemen feature
 		cursor_move_snd = {100, 0},
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
@@ -1346,13 +1375,15 @@ local motif =
 		title_text = 'REPLAY SELECT', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_font_height = -1, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_active_font_height = -1, --Ikemen feature
-		menu_item_spacing = {150, 14}, --Ikemen feature
+		menu_item_spacing = {0, 14}, --Ikemen feature
 		menu_window_margins_y = {0, 0}, --Ikemen feature
 		menu_window_visibleitems = 13, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
@@ -1398,25 +1429,31 @@ local motif =
 		title_text = 'PAUSE', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_font_height = -1, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_active_font_height = -1, --Ikemen feature
+		menu_item_selected_offset = {0, 0}, --Ikemen feature
 		menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247}, --Ikemen feature
 		menu_item_selected_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_selected_font_height = -1, --Ikemen feature
+		menu_item_selected_active_offset = {0, 0}, --Ikemen feature
 		menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247}, --Ikemen feature
 		menu_item_selected_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_selected_active_font_height = -1, --Ikemen feature
+		menu_item_value_offset = {150, 0}, --Ikemen feature
 		menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		menu_item_value_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_font_height = -1, --Ikemen feature
+		menu_item_value_active_offset = {150, 0}, --Ikemen feature
 		menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255}, --Ikemen feature
 		menu_item_value_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_value_active_font_height = -1, --Ikemen feature
-		menu_item_spacing = {150, 14}, --Ikemen feature
+		menu_item_spacing = {0, 14}, --Ikemen feature
 		menu_window_margins_y = {0, 0}, --Ikemen feature
 		menu_window_visibleitems = 13, --Ikemen feature
 		menu_boxcursor_visible = 1, --Ikemen feature
@@ -1447,14 +1484,14 @@ local motif =
 		movelist_pos = {10, 20}, --Ikemen feature
 		movelist_title_offset = {150, 0}, --Ikemen feature
 		movelist_title_font = {'Open_Sans.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		movelist_title_font_scale = {0.3, 0.3}, --Ikemen feature
+		movelist_title_font_scale = {0.4, 0.4}, --Ikemen feature
 		movelist_title_font_height = -1, --Ikemen feature
 		movelist_title_text = '%s', --Ikemen feature
 		movelist_title_uppercase = 0, --Ikemen feature
 		movelist_text_offset = {0, 12}, --Ikemen feature
 		movelist_text_font = {'Open_Sans.def', 0, 1, 255, 255, 255}, --Ikemen feature
-		movelist_text_font_scale = {0.3, 0.3}, --Ikemen feature
-		movelist_text_font_height = 36, --Ikemen feature
+		movelist_text_font_scale = {0.4, 0.4}, --Ikemen feature
+		movelist_text_font_height = -1, --Ikemen feature
 		movelist_text_spacing = {1, 1}, --Ikemen feature
 		movelist_text_text = 'Command List not found.', --Ikemen feature
 		movelist_glyphs_offset = {0, 2}, --Ikemen feature
@@ -1552,9 +1589,11 @@ local motif =
 		menu_key_previous = '$U&$B', --Ikemen feature
 		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_pos = {159, 158}, --Ikemen feature
+		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 0, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_font_height = -1, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
 		menu_item_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		menu_item_active_font_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_active_font_height = -1, --Ikemen feature
@@ -1916,11 +1955,15 @@ local motif =
 	},
 	warning_info =
 	{
-		title = 'WARNING', --Ikemen feature
 		title_offset = {159, 19}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
+		title_text = 'WARNING', --Ikemen feature
+		text_offset = {25, 33}, --Ikemen feature
+		text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
+		text_font_scale = {1.0, 1.0}, --Ikemen feature
+		text_font_height = -1, --Ikemen feature
 		text_chars_text = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
 		text_stages_text = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
 		text_order_text = "Incorrect '%s' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
@@ -1932,13 +1975,11 @@ local motif =
 		text_keys_text = 'Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset.', --Ikemen feature
 		text_pad_text = 'Controller not detected.\nCheck if your controller is plugged in.', --Ikemen feature
 		text_shaders_text = 'No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from "./external/shaders" directory.', --Ikemen feature
-		text_offset = {25, 33}, --Ikemen feature
-		text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
-		text_font_scale = {1.0, 1.0}, --Ikemen feature
-		text_font_height = -1, --Ikemen feature
 		overlay_window = {0, 0, config.GameWidth, config.GameHeight}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
+		done_snd = {100, 0}, --Ikemen feature
+		cancel_snd = {100, 2}, --Ikemen feature
 	},
 	glyphs =
 	{
@@ -2324,7 +2365,9 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 		line = line:match('%[(.-)%s*%]%s*$') --match text between []
 		line = line:gsub('[%. ]', '_') --change . and space to _
 		group = tostring(line:lower())
-		if group:match('^begin_action_[0-9]+$') then --matched anim
+		if group:match('infobox_text$') then
+			t[group] = ''
+		elseif group:match('^begin_action_[0-9]+$') then --matched anim
 			group = tonumber(group:match('^begin_action_([0-9]+)$'))
 			t.anim[group] = {}
 			pos = t.anim[group]
@@ -2334,6 +2377,12 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 			pos = t[group]
 			pos_sort = main.t_sort[group]
 			def_pos = motif[group]
+		end
+	elseif type(t[group]) == 'string' then
+		if t[group] == '' then
+			t[group] = line
+		else
+			t[group] = t[group] .. '\n' .. line
 		end
 	else --matched non [] line
 		local param, value = line:match('^%s*([^=]-)%s*=%s*(.-)%s*$')
@@ -2450,6 +2499,18 @@ end
 
 --merge tables
 motif = main.f_tableMerge(motif, t)
+
+--keymenu.item parameters use corresponding menu.item values if not assigned
+local t_keymenu = {}
+if t.option_info == nil then
+	t.option_info = {}
+end
+for k, v in pairs(motif.option_info) do
+	if k:match('^menu_item_') and t.option_info['keymenu' .. k:match('^menu(_item_.+)$')] == nil and motif.option_info['keymenu' .. k:match('^menu(_item_.+)$')] == nil then
+		t_keymenu['keymenu' .. k:match('^menu(_item_.+)$')] = v
+	end
+end
+motif.option_info = main.f_tableMerge(motif.option_info, t_keymenu)
 
 if motif.victory_screen.enabled == 0 then
 	motif.victory_screen.cpu_enabled = 0
@@ -2804,17 +2865,11 @@ if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or 
 end
 
 --disabled scaling if element uses default values (non-existing in mugen)
-motif.defaultConnecting = true --t.title_info == nil
-motif.defaultFooter = false --t.title_info.footer1_font == nil
-motif.defaultHiscore = true --t.hiscore_info == nil
-motif.defaultInfobox = false --t.infobox == nil
-motif.defaultLoading = false --t.title_info.loading_font == nil
-motif.defaultLocalcoord = main.SP_Localcoord[1] ~= config.GameWidth or main.SP_Localcoord[2] ~= config.GameHeight
 motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
 motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
 motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil or motif.defaultOptions
 motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
-motif.defaultWarning = true --t.warning_info == nil
+motif.defaultWarning = t.warning_info == nil
 
 if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
 
