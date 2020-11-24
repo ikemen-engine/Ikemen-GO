@@ -127,9 +127,9 @@ const (
 )
 
 type ClsnText struct {
-	x, y  float32
-	text  string
-	palfx *PalFX
+	x, y    float32
+	text    string
+	r, g, b int32
 }
 
 type ClsnRect [][4]float32
@@ -4780,7 +4780,8 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				//c.selfState(5050, -1, -1, -1, false)
+				sys.warnConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
+				c.selfState(5050, -1, -1, -1, false)
 				c.setBindTime(0)
 				return
 			}
@@ -5558,14 +5559,12 @@ func (c *Char) cueDraw() {
 		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl + 240 - float32(sys.gameHeight)
 		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
 		y += -c.height()*(320/float32(c.localcoord)) + float32(sys.gameHeight-240)
-		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), palfx: newPalFX()})
+		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
-				y += float32(sys.debugFont.Size[1]) / sys.heightScale
-				palfx := newPalFX()
-				palfx.setColor(255, 191, 255)
+				y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
 				jg := t.ghv.getJuggle(c.id, c.gi().data.airjuggle)
-				sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("Target %d %d", tid, jg), palfx: palfx})
+				sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("Target %d: %d", tid, jg), r: 255, g: 191, b: 255})
 			}
 		}
 	}

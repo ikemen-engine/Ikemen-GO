@@ -816,8 +816,12 @@ function start.f_getName(ref, hidden)
 end
 
 --draw character names
-function start.f_drawNames(t, data, hidden, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
-	for i = 1, #t do
+function start.f_drawNames(t, data, hidden, reversed, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
+	local first, last, add = 1, #t, 1
+	if reversed then
+		first, last, add = #t, 1, -1
+	end
+	for i = first, last, add do
 		local x = offsetX
 		local f = font
 		if active_font ~= nil and active_row ~= nil then
@@ -876,8 +880,8 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, spscale)
 		t['p' .. side .. subname .. prefix .. '_spr'],
 		{9000, 1},
 	}) do
-		if v[1] ~= nil then
-			local a = animGetAnimation(ref, v[1], v[2], loop)
+		if v[1] ~= nil and v[1] ~= -1 then
+			local a = animGetPreloadedData('char', ref, v[1], v[2], loop)
 			if a ~= nil then
 				animSetScale(
 					a,
@@ -934,7 +938,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 					end
 				end
 				local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
-				if t['p' .. side .. subname .. '_justify'] == 1 then
+				if t['p' .. side .. subname .. '_padding'] == 1 then
 					x = x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * #t_portraits)
 				else
 					x = x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
@@ -1545,8 +1549,12 @@ function start.f_selectChallenger()
 	local loseCnt_sav = loseCnt
 	local stageNo_sav = getStageNo()
 	local matchNo_sav = matchno()
+	local p1cmd = main.t_remaps[1]
+	local p2cmd = main.t_remaps[start.challenger]
 	--start challenger match
 	main.f_default()
+	main.f_playerInput(p1cmd, 1)
+	main.f_playerInput(p2cmd, 2)
 	main.t_itemname.versus()
 	start.f_selectReset()
 	if not start.f_selectScreen() then
@@ -1556,6 +1564,8 @@ function start.f_selectChallenger()
 	local ok = launchFight{challenger = true}
 	--restore values
 	main.f_default()
+	main.f_playerInput(1, p1cmd) --one sided remap
+	main.playerInput = p1cmd --main.f_playerInput called via main.t_itemname.arcade()
 	main.t_itemname.arcade()
 	if not ok then
 		return false
@@ -1809,12 +1819,12 @@ end
 --;===========================================================
 --; SELECT SCREEN
 --;===========================================================
-local txt_recordSelect = main.f_createTextImg(motif.select_info, 'record', {defsc = false})
-local txt_timerSelect = main.f_createTextImg(motif.select_info, 'timer', {defsc = false})
-local txt_selStage = main.f_createTextImg(motif.select_info, 'stage_active', {defsc = false})
+local txt_recordSelect = main.f_createTextImg(motif.select_info, 'record')
+local txt_timerSelect = main.f_createTextImg(motif.select_info, 'timer')
+local txt_selStage = main.f_createTextImg(motif.select_info, 'stage_active')
 local t_txt_name = {}
 for i = 1, 2 do
-	table.insert(t_txt_name, main.f_createTextImg(motif.select_info, 'p' .. i .. '_name', {defsc = false}))
+	table.insert(t_txt_name, main.f_createTextImg(motif.select_info, 'p' .. i .. '_name'))
 end
 
 function start.f_selectScreen()
@@ -1940,6 +1950,7 @@ function start.f_selectScreen()
 					start.p[side].t_selTemp,
 					t_txt_name[side],
 					not main.cpuSide[side],
+					false,
 					motif.select_info['p' .. side .. '_name_font'],
 					motif.select_info['p' .. side .. '_name_offset'][1],
 					motif.select_info['p' .. side .. '_name_offset'][2],
@@ -1970,16 +1981,10 @@ function start.f_selectScreen()
 					animDraw(motif.select_info.stage_portrait_random_data)
 				--draw stage portrait loaded from stage SFF
 				else
-					stagePortraitDraw(
-						stageListNo,
+					main.f_animPosDraw(
+						main.t_selStages[stageListNo].anim_data,
 						motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
-						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2],
-						motif.select_info.stage_portrait_scale[1] --[[* motif.select_info.stage_portrait_facing]],
-						motif.select_info.stage_portrait_scale[2],
-						motif.select_info.stage_portrait_window[1],
-						motif.select_info.stage_portrait_window[2],
-						motif.select_info.stage_portrait_window[3],
-						motif.select_info.stage_portrait_window[4]
+						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2]
 					)
 				end
 				if main.f_input(main.t_players, {'pal', 's'}) then
@@ -2007,7 +2012,7 @@ function start.f_selectScreen()
 				if stageListNo == 0 then
 					t_txt[1] = motif.select_info.stage_random_text
 				else
-					t_txt = main.f_extractText(motif.select_info.stage_text, stageListNo, getStageName(main.t_selectableStages[stageListNo]))
+					t_txt = main.f_extractText(motif.select_info.stage_text, stageListNo, main.t_selStages[main.t_selectableStages[stageListNo]].name)
 				end
 				for i = 1, #t_txt do
 					txt_selStage:update({
@@ -2076,8 +2081,8 @@ local t_txt_teamSelfTitle = {}
 local t_txt_teamEnemyTitle = {}
 local t_teamMenu = {}
 for i = 1, 2 do
-	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {defsc = false, addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
-	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {defsc = false, addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
+	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
+	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
 	table.insert(t_teamMenu, {
 		{data = text:create({}), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single, mode = 0, chars = 1},
 		{data = text:create({}), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul, mode = 1, chars = start.p[i].numSimul},
@@ -2512,7 +2517,7 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			--anim update
 			local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-			if done_anim ~= nil and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
+			if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
 				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
 			elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
@@ -2531,6 +2536,7 @@ end
 --; STAGE MENU
 --;===========================================================
 function start.f_stageMenu()
+	local n = stageListNo
 	if timerSelect == -1 then
 		selectStage(main.t_selectableStages[math.random(1, #main.t_selectableStages)])
 		stageEnd = true
@@ -2556,15 +2562,19 @@ function start.f_stageMenu()
 			if stageListNo > #main.t_selectableStages then stageListNo = 0 end
 		end
 	end
+	if n ~= stageListNo and stageListNo > 0 then
+		animReset(main.t_selStages[stageListNo].anim_data)
+		animUpdate(main.t_selStages[stageListNo].anim_data)
+	end
 end
 
 --;===========================================================
 --; VERSUS SCREEN
 --;===========================================================
-local txt_matchNo = main.f_createTextImg(motif.vs_screen, 'match', {defsc = false})
+local txt_matchNo = main.f_createTextImg(motif.vs_screen, 'match')
 local t_txt_nameVS = {}
 for i = 1, 2 do
-	table.insert(t_txt_nameVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_name', {defsc = false}))
+	table.insert(t_txt_nameVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_name'))
 end
 
 function start.f_selectChar(player, t)
@@ -2702,6 +2712,7 @@ function start.f_selectVersus()
 					start.p[side].t_selTemp,
 					t_txt_nameVS[side],
 					false,
+					false,
 					motif.vs_screen['p' .. side .. '_name_font'],
 					motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1],
 					motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2],
@@ -2741,13 +2752,13 @@ end
 --;===========================================================
 --; RESULT SCREEN
 --;===========================================================
-local txt_winscreen = main.f_createTextImg(motif.win_screen, 'wintext', {defsc = false})
-local txt_resultSurvival = main.f_createTextImg(motif.survival_results_screen, 'winstext', {defsc = false})
-local txt_resultVS100 = main.f_createTextImg(motif.vs100_kumite_results_screen, 'winstext', {defsc = false})
-local txt_resultTimeAttack = main.f_createTextImg(motif.time_attack_results_screen, 'winstext', {defsc = false})
-local txt_resultTimeChallenge = main.f_createTextImg(motif.time_challenge_results_screen, 'winstext', {defsc = false})
-local txt_resultScoreChallenge = main.f_createTextImg(motif.score_challenge_results_screen, 'winstext', {defsc = false})
-local txt_resultBossRush = main.f_createTextImg(motif.boss_rush_results_screen, 'winstext', {defsc = false})
+local txt_winscreen = main.f_createTextImg(motif.win_screen, 'wintext')
+local txt_resultSurvival = main.f_createTextImg(motif.survival_results_screen, 'winstext')
+local txt_resultVS100 = main.f_createTextImg(motif.vs100_kumite_results_screen, 'winstext')
+local txt_resultTimeAttack = main.f_createTextImg(motif.time_attack_results_screen, 'winstext')
+local txt_resultTimeChallenge = main.f_createTextImg(motif.time_challenge_results_screen, 'winstext')
+local txt_resultScoreChallenge = main.f_createTextImg(motif.score_challenge_results_screen, 'winstext')
+local txt_resultBossRush = main.f_createTextImg(motif.boss_rush_results_screen, 'winstext')
 
 local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
 	if t[prefix .. '_layerno'] ~= layerNo then
@@ -2797,7 +2808,7 @@ function start.f_resultInit()
 	end
 	start.t_result.counter = 0 - main.resultsTable.fadein_time
 	local t = main.resultsTable
-	start.t_result.overlay = main.f_createOverlay(t, 'overlay', {defsc = false, fixloc = false})
+	start.t_result.overlay = main.f_createOverlay(t, 'overlay')
 	if winnerteam() == 1 then
 		winCnt = winCnt + 1
 	else
@@ -2958,11 +2969,11 @@ end
 --;===========================================================
 --; VICTORY SCREEN
 --;===========================================================
-local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote', {defsc = false})
-local overlay_winquote = main.f_createOverlay(motif.victory_screen, 'overlay', {defsc = false, fixloc = false})
+local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote')
+local overlay_winquote = main.f_createOverlay(motif.victory_screen, 'overlay')
 local t_txt_winquoteName = {}
 for i = 1, 2 do
-	table.insert(t_txt_winquoteName, main.f_createTextImg(motif.victory_screen, 'p' .. i .. '_name', {defsc = false}))
+	table.insert(t_txt_winquoteName, main.f_createTextImg(motif.victory_screen, 'p' .. i .. '_name'))
 end
 
 function start.f_victoryOrder(side, paramSide, allow_ko, num)
@@ -3158,11 +3169,11 @@ end
 --;===========================================================
 --; CONTINUE SCREEN
 --;===========================================================
-local txt_credits = main.f_createTextImg(motif.continue_screen, 'credits', {defsc = false})
-local txt_continue = main.f_createTextImg(motif.continue_screen, 'continue', {defsc = false, addX = motif.continue_screen.pos[1], addY = motif.continue_screen.pos[2]})
+local txt_credits = main.f_createTextImg(motif.continue_screen, 'credits')
+local txt_continue = main.f_createTextImg(motif.continue_screen, 'continue', {addX = motif.continue_screen.pos[1], addY = motif.continue_screen.pos[2]})
 local txt_yes = text:create({})
 local txt_no = text:create({})
-local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay', {defsc = false, fixloc = false})
+local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay')
 
 start.t_continueCounts = {}
 for k, v in pairs(motif.continue_screen) do
@@ -3432,9 +3443,9 @@ end
 --;===========================================================
 --; HISCORE
 --;===========================================================
-local overlay_hiscore = main.f_createOverlay(motif.hiscore_info, 'overlay', {defsc = false, fixloc = false})
+local overlay_hiscore = main.f_createOverlay(motif.hiscore_info, 'overlay')
 for _, v in ipairs({'title', 'rank_title', 'rank_text', 'rank_text_active', 'rank_text_active2', 'data_title', 'data_text', 'data_text_active', 'data_text_active2', 'name_title', 'name_text', 'name_text_active', 'name_text_active2', 'face_title', 'timer'}) do
-	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {defsc = false, addX = motif.hiscore_info.pos[1], addY = motif.hiscore_info.pos[2]})
+	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {addX = motif.hiscore_info.pos[1], addY = motif.hiscore_info.pos[2]})
 end
 
 start.hiscoreInit = false
@@ -3482,10 +3493,11 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					{motif.hiscore_info.face_anim, -1},
 					motif.hiscore_info.face_spr,
 				}) do
-					if v[1] ~= nil then
-						local a = animGetAnimation(main.t_charDef[def], v[1], v[2], true)
+					if v[1] ~= -1 then
+						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
 							animSetScale(a, motif.hiscore_info.face_scale[1], motif.hiscore_info.face_scale[2])
+							animUpdate(a)
 							table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = a, chardata = true})
 							break
 						end
@@ -3676,8 +3688,8 @@ end
 --;===========================================================
 --; CHALLENGER
 --;===========================================================
-local txt_challenger = main.f_createTextImg(motif.challenger_info, 'text', {defsc = false})
-local overlay_challenger = main.f_createOverlay(motif.challenger_info, 'overlay', {defsc = false, fixloc = false})
+local txt_challenger = main.f_createTextImg(motif.challenger_info, 'text')
+local overlay_challenger = main.f_createOverlay(motif.challenger_info, 'overlay')
 
 start.challengerInit = false
 function start.f_challengerInit()
@@ -3695,7 +3707,6 @@ function start.f_challengerInit()
 	if motif.attract_mode.enabled == 1 and main.credits > 0 then
 		main.credits = main.credits - 1
 	end
-	main.f_playerInput(start.challenger, 2)
 	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.challengerbgdef.bg)
 	main.f_fadeReset('fadein', motif.challenger_info)
@@ -3844,7 +3855,7 @@ end
 --; RANK
 --;===========================================================
 for i = 1, 2 do
-	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score', {defsc = false})
+	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score')
 end
 
 start.rankInit = false
@@ -3999,8 +4010,8 @@ end
 --; DIALOGUE
 --;===========================================================
 for i = 1, 2 do
-	start['txt_dialogue_p' .. i .. '_name'] = main.f_createTextImg(motif.dialogue_info, 'p' .. i .. '_name', {defsc = false})
-	start['txt_dialogue_p' .. i .. '_text'] = main.f_createTextImg(motif.dialogue_info, 'p' .. i .. '_text', {defsc = false})
+	start['txt_dialogue_p' .. i .. '_name'] = main.f_createTextImg(motif.dialogue_info, 'p' .. i .. '_name')
+	start['txt_dialogue_p' .. i .. '_text'] = main.f_createTextImg(motif.dialogue_info, 'p' .. i .. '_text')
 end
 
 start.dialogueInit = false
@@ -4082,7 +4093,7 @@ function start.f_dialogueRedirection(str)
 end
 
 function start.f_dialogueParse()
-	local t_text, pn = getCharDialogue(-1)
+	local t_text, pn = getCharDialogue()
 	start.t_dialogue.player = pn
 	start.t_dialogue.face[1].pn = start.t_dialogue.player
 	start.t_dialogue.face[2].pn = start.f_dialogueRedirection('enemy(0)')
@@ -4198,6 +4209,9 @@ function start.f_dialogueTokens(key, t)
 			--change state
 			elseif v.param == 'state' then --pn, state_no
 				charChangeState(v.pn, v.value[1] or 0)
+			--map operation
+			elseif v.param == 'map' then --pn, map_name, value, map_type
+				charMapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 'set')
 			end
 		end
 	end

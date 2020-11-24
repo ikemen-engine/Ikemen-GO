@@ -110,7 +110,7 @@ type System struct {
 	team1VS2Life            float32
 	turnsRecoveryRate       float32
 	lifebarFontScale        float32
-	debugFont               *Fnt
+	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
 	mixer                   Mixer
@@ -331,6 +331,7 @@ type System struct {
 	endMatch        bool
 	continueFlg     bool
 	dialogueFlg     bool
+	dialogueForce   int
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
@@ -956,7 +957,7 @@ func (s *System) nextRound() {
 		roundRef = s.round
 	}
 	if s.stageLoop && !s.roundResetFlg {
-		keys := make([]int, 0)
+		var keys []int
 		for k := range s.stageList {
 			keys = append(keys, int(k))
 		}
@@ -1671,9 +1672,101 @@ func (s *System) drawTop() {
 		s.drawc2mtk.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xff404040
 		s.drawwh.draw(0x3feff)
+	}
+}
+func (s *System) drawDebug() {
+	put := func(x, y *float32, txt string) {
+		for txt != "" {
+			w, drawTxt := int32(0), ""
+			for i, r := range txt {
+				w += s.debugFont.fnt.CharWidth(r) + s.debugFont.fnt.Spacing[0]
+				if w > s.scrrect[2] {
+					drawTxt, txt = txt[:i], txt[i:]
+					break
+				}
+			}
+			if drawTxt == "" {
+				drawTxt, txt = txt, ""
+			}
+			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / s.heightScale
+			s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/s.widthScale,
+				s.debugFont.yscl/s.heightScale, 0, 1, &s.scrrect,
+				s.debugFont.palfx, s.debugFont.frgba)
+		}
+	}
+	if s.debugDraw {
+		//Player Info
+		x := (320-float32(s.gameWidth))/2 + 1
+		y := 240 - float32(s.gameHeight)
+		if s.statusLFunc != nil {
+			s.debugFont.SetColor(255, 255, 255)
+			for i, p := range s.chars {
+				if len(p) > 0 {
+					top := s.luaLState.GetTop()
+					if s.luaLState.CallByParam(lua.P{Fn: s.statusLFunc, NRet: 1,
+						Protect: true}, lua.LNumber(i+1)) == nil {
+						l, ok := s.luaLState.Get(-1).(lua.LString)
+						if ok && len(l) > 0 {
+							put(&x, &y, string(l))
+						}
+					}
+					s.luaLState.SetTop(top)
+				}
+			}
+		}
+		//Console
+		y = MaxF(y, 48+240-float32(s.gameHeight))
+		s.debugFont.SetColor(255, 255, 255)
+		for _, s := range s.consoleText {
+			put(&x, &y, s)
+		}
+		//Data
+		pn := s.debugRef[0]
+		hn := s.debugRef[1]
+		if pn >= len(s.chars) || hn >= len(s.chars[pn]) {
+			s.debugRef[0] = 0
+			s.debugRef[1] = 0
+		}
+		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
+		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
+			(float32(len(s.listLFunc))+float32(len(s.debugWC.clipboardText))+1)
+		for i, f := range s.listLFunc {
+			if f != nil {
+				if i == 1 {
+					s.debugFont.SetColor(199, 199, 219)
+				} else if i > 1 && s.debugWC.ss.sb.playerNo != s.debugWC.playerNo {
+					s.debugFont.SetColor(255, 255, 127)
+				} else {
+					s.debugFont.SetColor(255, 255, 255)
+				}
+				top := s.luaLState.GetTop()
+				if s.luaLState.CallByParam(lua.P{Fn: f, NRet: 1,
+					Protect: true}) == nil {
+					s, ok := s.luaLState.Get(-1).(lua.LString)
+					if ok && len(s) > 0 {
+						if i == 1 && (sys.debugWC == nil || sys.debugWC.sf(CSF_destroy)) {
+							put(&x, &y, string(s)+" disabled")
+							break
+						}
+						put(&x, &y, string(s))
+					}
+				}
+				s.luaLState.SetTop(top)
+			}
+		}
+		//Clipboard
+		s.debugFont.SetColor(255, 255, 255)
+		for _, s := range s.debugWC.clipboardText {
+			put(&x, &y, s)
+		}
+	}
+	//Clsn
+	if s.clsnDraw {
 		for _, t := range s.clsnText {
-			sys.debugFont.DrawText(t.text, t.x, t.y, 1/sys.widthScale,
-				1/sys.heightScale, 0, 1, &sys.scrrect, t.palfx)
+			s.debugFont.SetColor(t.r, t.g, t.b)
+			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
+				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
+				s.debugFont.palfx, s.debugFont.frgba)
 		}
 	}
 }
@@ -1735,97 +1828,6 @@ func (s *System) fight() (reload bool) {
 				s.errLog.Println(err.Error())
 			}
 		default:
-		}
-	}
-	put := func(x, y *float32, txt string) {
-		tmp := s.allPalFX.enable
-		s.allPalFX.enable = false
-		for txt != "" {
-			w, drawTxt := int32(0), ""
-			for i, r := range txt {
-				w += s.debugFont.CharWidth(r) + s.debugFont.Spacing[0]
-				if w > s.scrrect[2] {
-					drawTxt, txt = txt[:i], txt[i:]
-					break
-				}
-			}
-			if drawTxt == "" {
-				drawTxt, txt = txt, ""
-			}
-			*y += float32(s.debugFont.Size[1]) / s.heightScale
-			s.debugFont.DrawText(drawTxt, *x, *y,
-				1/s.widthScale, 1/s.heightScale, 0, 1, &sys.scrrect,
-				s.debugFont.palfx)
-		}
-		s.allPalFX.enable = tmp
-	}
-	drawDebug := func() {
-		if s.debugDraw && s.debugFont != nil {
-			//Player Info
-			x := (320-float32(s.gameWidth))/2 + 1
-			y := 240 - float32(s.gameHeight)
-			if s.statusLFunc != nil {
-				s.debugFont.palfx.setColor(255, 255, 255)
-				for i, p := range s.chars {
-					if len(p) > 0 {
-						top := s.luaLState.GetTop()
-						if s.luaLState.CallByParam(lua.P{Fn: s.statusLFunc, NRet: 1,
-							Protect: true}, lua.LNumber(i+1)) == nil {
-							l, ok := s.luaLState.Get(-1).(lua.LString)
-							if ok && len(l) > 0 {
-								put(&x, &y, string(l))
-							}
-						}
-						s.luaLState.SetTop(top)
-					}
-				}
-			}
-			//Console
-			y = MaxF(y, 48+240-float32(s.gameHeight))
-			s.debugFont.palfx.setColor(255, 255, 255)
-			for _, s := range s.consoleText {
-				put(&x, &y, s)
-			}
-			//Data
-			pn := s.debugRef[0]
-			hn := s.debugRef[1]
-			if pn >= len(s.chars) || hn >= len(s.chars[pn]) {
-				s.debugRef[0] = 0
-				s.debugRef[1] = 0
-			}
-			s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
-			y = float32(s.gameHeight) - float32(s.debugFont.Size[1])/s.heightScale*
-				(float32(len(s.listLFunc))+float32(len(s.debugWC.clipboardText))+1)
-			for i, f := range s.listLFunc {
-				if f != nil {
-					if i == 1 {
-						s.debugFont.palfx.setColor(199, 199, 219)
-					} else if i > 1 && s.debugWC.ss.sb.playerNo != s.debugWC.playerNo {
-						s.debugFont.palfx.setColor(255, 255, 127)
-					} else {
-						s.debugFont.palfx.setColor(255, 255, 255)
-					}
-					top := s.luaLState.GetTop()
-					if s.luaLState.CallByParam(lua.P{Fn: f, NRet: 1,
-						Protect: true}) == nil {
-						s, ok := s.luaLState.Get(-1).(lua.LString)
-						if ok && len(s) > 0 {
-							if i == 1 && (sys.debugWC == nil || sys.debugWC.sf(CSF_destroy)) {
-								put(&x, &y, string(s)+" disabled")
-								break
-							}
-							put(&x, &y, string(s))
-
-						}
-					}
-					s.luaLState.SetTop(top)
-				}
-			}
-			//Clipboard
-			s.debugFont.palfx.setColor(255, 255, 255)
-			for _, s := range s.debugWC.clipboardText {
-				put(&x, &y, s)
-			}
 		}
 	}
 	if err := s.synchronize(); err != nil {
@@ -2155,7 +2157,7 @@ func (s *System) fight() (reload bool) {
 		}
 		if !s.frameSkip {
 			s.drawTop()
-			drawDebug()
+			s.drawDebug()
 		}
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {
 			break
@@ -2310,31 +2312,32 @@ type SelectStage struct {
 	spr             string
 	attachedchardef string
 	stagebgm        IniSection
-	portraitScale   float32
-	portrait        *Sprite
-	xscale          float32
-	yscale          float32
+	portrait_scale  float32
+	anims           PreloadedAnims
+	sff             *Sff
 }
 
 func newSelectStage() *SelectStage {
-	return &SelectStage{portraitScale: 1, xscale: 1, yscale: 1}
+	return &SelectStage{portrait_scale: 1, anims: NewPreloadedAnims()}
 }
 
 type Select struct {
-	charlist        []SelectChar
-	stagelist       []SelectStage
-	selected        [2][][2]int
-	selectedStageNo int
-	animPreload     []int32
-	spritePreload   [][2]int16
-	stagePreload    [2]int16
-	cdefOverwrite   [MaxSimul * 2]string
-	sdefOverwrite   string
+	charlist           []SelectChar
+	stagelist          []SelectStage
+	selected           [2][][2]int
+	selectedStageNo    int
+	charAnimPreload    []int32
+	stageAnimPreload   []int32
+	charSpritePreload  map[[2]int16]bool
+	stageSpritePreload map[[2]int16]bool
+	cdefOverwrite      [MaxSimul * 2]string
+	sdefOverwrite      string
 }
 
 func newSelect() *Select {
-	return &Select{selectedStageNo: -1, stagePreload: [...]int16{-1, -1},
-		spritePreload: [][2]int16{[...]int16{9000, 0}, [...]int16{9000, 1}}}
+	return &Select{selectedStageNo: -1,
+		charSpritePreload: map[[2]int16]bool{[...]int16{9000, 0}: true,
+			[...]int16{9000, 1}: true}, stageSpritePreload: make(map[[2]int16]bool)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -2354,30 +2357,6 @@ func (s *Select) GetChar(i int) *SelectChar {
 	return &s.charlist[n]
 }
 func (s *Select) SelectStage(n int) { s.selectedStageNo = n }
-func (s *Select) GetStageName(n int) string {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	if n == 0 {
-		return "Random"
-	}
-	return s.stagelist[n-1].name
-}
-func (s *Select) GetStageAttachedChar(n int) string {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	return s.stagelist[n-1].attachedchardef
-}
-func (s *Select) GetStageBgm(n int) IniSection {
-	n %= len(s.stagelist) + 1
-	if n < 0 {
-		n += len(s.stagelist) + 1
-	}
-	return s.stagelist[n-1].stagebgm
-}
 func (s *Select) GetStage(n int) *SelectStage {
 	if len(s.stagelist) == 0 {
 		return nil
@@ -2479,8 +2458,8 @@ func (s *Select) addChar(def string) {
 		}
 	}
 	listSpr := make(map[[2]int16]bool)
-	for _, v := range s.spritePreload {
-		listSpr[[...]int16{v[0], v[1]}] = true
+	for k := range s.charSpritePreload {
+		listSpr[[...]int16{k[0], k[1]}] = true
 	}
 	sff := newSff()
 	//preload animations
@@ -2491,7 +2470,7 @@ func (s *Select) addChar(def string) {
 		}
 		lines, i := SplitAndTrim(str, "\n"), 0
 		at := ReadAnimationTable(sff, lines, &i)
-		for _, v := range s.animPreload {
+		for _, v := range s.charAnimPreload {
 			if anim := at.get(v); anim != nil {
 				sc.anims.addAnim(anim, v)
 				for _, fr := range anim.frames {
@@ -2514,8 +2493,8 @@ func (s *Select) addChar(def string) {
 			panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
 		}
 		sc.anims.updateSff(sc.sff)
-		for _, v := range s.spritePreload {
-			sc.anims.addSprite(sc.sff, v[0], v[1])
+		for k := range s.charSpritePreload {
+			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
 		if len(sc.pal) == 0 {
 			sc.pal = selPal
@@ -2576,30 +2555,48 @@ func (s *Select) AddStage(def string) error {
 			if bgdef {
 				bgdef = false
 				ss.spr = is["spr"]
-				if s.stagePreload[0] == -1 {
-					ss.portrait = newSprite()
-				} else {
-					LoadFile(&ss.spr, def, func(file string) error {
-						var err error
-						if ss.portrait, err = loadFromSff(file, s.stagePreload[0], s.stagePreload[1]); err != nil {
-							ss.portrait = newSprite()
-						}
-						return nil
-					})
-				}
 			}
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
-				if ok := is.ReadF32("localcoord", &ss.portraitScale); ok {
-					ss.portraitScale = 320 / ss.portraitScale
-				}
-				if ok := is.ReadF32("portraitscale", &ss.portraitScale); !ok {
-					is.ReadF32("xscale", &ss.xscale)
-					is.ReadF32("yscale", &ss.yscale)
+				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
+					localcoord := float32(320)
+					is.ReadF32("localcoord", &localcoord)
+					ss.portrait_scale = 320 / localcoord
 				}
 			}
 		}
+	}
+	if len(s.stageSpritePreload) > 0 || len(s.stageAnimPreload) > 0 {
+		listSpr := make(map[[2]int16]bool)
+		for k := range s.stageSpritePreload {
+			listSpr[[...]int16{k[0], k[1]}] = true
+		}
+		sff := newSff()
+		//preload animations
+		i = 0
+		at := ReadAnimationTable(sff, lines, &i)
+		for _, v := range s.stageAnimPreload {
+			if anim := at.get(v); anim != nil {
+				ss.anims.addAnim(anim, v)
+				for _, fr := range anim.frames {
+					listSpr[[...]int16{fr.Group, fr.Number}] = true
+				}
+			}
+		}
+		//preload portion of sff file
+		LoadFile(&ss.spr, def, func(file string) error {
+			var err error
+			ss.sff, _, err = preloadSff(file, false, listSpr)
+			if err != nil {
+				panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
+			}
+			ss.anims.updateSff(ss.sff)
+			for k := range s.stageSpritePreload {
+				ss.anims.addSprite(ss.sff, k[0], k[1])
+			}
+			return nil
+		})
 	}
 	return nil
 }
@@ -2745,8 +2742,8 @@ func (l *Loader) loadChar(pn int) int {
 			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
 				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
 				var err error
-				fa.teammate_face[i], err = loadFromSff(file,
-					int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1]))
+				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
+					int16(fa.teammate_face_spr[1]))
 				return err
 			})
 		}

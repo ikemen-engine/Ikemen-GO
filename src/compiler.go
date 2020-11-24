@@ -7144,16 +7144,24 @@ func (c *Compiler) dialogue(is IniSection, sc *StateControllerBase,
 			dialogue_hidebars, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		keys := make([]string, 0)
+		if err := c.paramValue(is, sc, "force",
+			dialogue_force, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		var keys []int
 		r, _ := regexp.Compile("^text[0-9]+$")
 		for k := range is {
 			if r.MatchString(k) {
-				keys = append(keys, k)
+				re := regexp.MustCompile("[0-9]+")
+				submatchall := re.FindAllString(k, -1)
+				if len(submatchall) == 1 {
+					keys = append(keys, int(Atoi(submatchall[0])))
+				}
 			}
 		}
-		sort.Strings(keys)
+		sort.Ints(keys)
 		for _, key := range keys {
-			if err := c.stateParam(is, key, func(data string) error {
+			if err := c.stateParam(is, fmt.Sprintf("text%v", key), func(data string) error {
 				if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 					return Error("Not enclosed in \"")
 				}

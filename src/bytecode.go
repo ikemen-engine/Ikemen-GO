@@ -6256,6 +6256,7 @@ type dialogue StateControllerBase
 
 const (
 	dialogue_hidebars byte = iota
+	dialogue_force
 	dialogue_text
 	dialogue_redirectid
 )
@@ -6263,10 +6264,13 @@ const (
 func (sc dialogue) Run(c *Char, _ []int32) bool {
 	crun := c
 	reset := true
+	force := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case dialogue_hidebars:
 			sys.dialogueBarsFlg = exp[0].evalB(c)
+		case dialogue_force:
+			force = exp[0].evalB(c)
 		case dialogue_text:
 			crun.appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
 			reset = false
@@ -6279,6 +6283,10 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if force {
+		sys.dialogueFlg = true
+		sys.dialogueForce = crun.playerNo + 1
+	}
 	return false
 }
 

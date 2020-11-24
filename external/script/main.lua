@@ -162,8 +162,10 @@ end
 
 --remap active players input
 function main.f_playerInput(src, dst)
-	--main.t_remaps[src] = dst
-	--remapInput(src, dst)
+	if start.challenger == 0 then
+		main.t_remaps[src] = dst
+		remapInput(src, dst)
+	end
 	main.t_remaps[dst] = src
 	remapInput(dst, src)
 end
@@ -378,8 +380,8 @@ function text:create(t)
 	if t.window == nil then t.window = {} end
 	t.window[1] = t.window[1] or 0
 	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or motif.info.localcoord[1]
-	t.window[4] = t.window[4] or motif.info.localcoord[2]
+	t.window[3] = t.window[3] or config.GameWidth
+	t.window[4] = t.window[4] or config.GameHeight
 	t.defsc = t.defsc or false
 	t.ti = textImgNew()
 	setmetatable(t, self)
@@ -524,7 +526,6 @@ function rect:create(t)
 	t.color = t.color or color:new(t.r, t.g, t.b, t.src, t.dst)
 	t.r, t.g, t.b, t.src, t.dst = t.color:unpack()
 	t.defsc = t.defsc or false
-	t.fixloc = t.fixloc or false --TODO: workaround implemented to fix rect rendering on localcoord < 240p
 	setmetatable(t, self)
 	self.__index = self
 	return t
@@ -542,7 +543,9 @@ end
 
 --draw rect
 function rect:draw()
-	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst, self.defsc, self.fixloc)
+	if self.defsc then main.f_disableLuaScale() end
+	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst)
+	if self.defsc then main.f_setLuaScale() end
 end
 
 --create textImg based on usual motif parameters
@@ -565,7 +568,7 @@ function main.f_createTextImg(t, prefix, mod)
 		b =      t[prefix .. '_font'][6],
 		height = t[prefix .. '_font_height'],
 		--window = t[prefix .. '_window'],
-		defsc = mod.defsc or false
+		defsc = mod.defsc or false,
 	})
 end
 
@@ -586,7 +589,6 @@ function main.f_createOverlay(t, prefix, mod)
 		src =    t[prefix .. '_alpha'][1],
 		dst =    t[prefix .. '_alpha'][2],
 		defsc =  mod.defsc or false,
-		fixloc = mod.fixloc or false
 	})
 end
 
@@ -1112,146 +1114,6 @@ function main.windowCoords(t, substract)
 	end
 end
 
---warning display
-function main.f_warning(t, info, background, font_info, title, window, col, alpha, defaultscale)
-	if defaultscale == nil then defaultscale = motif.defaultWarning end
-	font_info = font_info or motif.warning_info
-	title = title or main.txt_warningTitle
-	window = window or motif.warning_info.overlay_window
-	col = col or motif.warning_info.overlay_col
-	alpha = alpha or motif.warning_info.overlay_alpha
-	resetKey()
-	esc(false)
-	while true do
-		main.f_cmdInput()
-		if esc() or main.f_input(main.t_players, {'m'}) then
-			sndPlay(motif.files.snd_data, info.cancel_snd[1], info.cancel_snd[2])
-			return false
-		elseif getKey() ~= '' then
-			sndPlay(motif.files.snd_data, info.cursor_move_snd[1], info.cursor_move_snd[2])
-			resetKey()
-			return true
-		end
-		--draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
-		--draw layerno = 0 backgrounds
-		bgDraw(background.bg, false)
-		--draw overlay
-		main.overlay_warning:update({
-			x1 =  window[1],
-			y1 =  window[2],
-			x2 =  window[3] - window[1] + 1,
-			y2 =  window[4] - window[2] + 1,
-			r =   col[1],
-			g =   col[2],
-			b =   col[3],
-			src = alpha[1],
-			dst = alpha[2],
-		})
-		main.overlay_warning:draw()
-		--draw title
-		title:draw()
-		--draw text
-		for i = 1, #t do
-			main.txt_warning:update({
-				font =   font_info.text_font[1],
-				bank =   font_info.text_font[2],
-				align =  font_info.text_font[3],
-				text =   t[i],
-				x =      font_info.text_offset[1],
-				y =      font_info.text_offset[2] + main.f_ySpacing(font_info, 'text_font') * (i - 1),
-				scaleX = font_info.text_font_scale[1],
-				scaleY = font_info.text_font_scale[2],
-				r =      font_info.text_font[4],
-				g =      font_info.text_font[5],
-				b =      font_info.text_font[6],
-				height = font_info.text_font_height,
-				defsc =  defaultscale,
-			})
-			main.txt_warning:draw()
-		end
-		--draw layerno = 1 backgrounds
-		bgDraw(background.bg, true)
-		--end loop
-		refresh()
-	end
-end
-
---input display
-function main.f_drawInput(t, info, background, category, controllerNo, keyBreak)
-	category = category or 'string'
-	controllerNo = controllerNo or 0
-	keyBreak = keyBreak or ''
-	if category == 'string' then
-		table.insert(t, '')
-	end
-	local input = ''
-	local btnReleased = 0
-	resetKey()
-	while true do
-		if esc() --[[or main.f_input(main.t_players, {'m'})]] then
-			input = ''
-			break
-		end
-		if category == 'keyboard' then
-			input = getKey()
-			if input ~= '' then
-				break
-			end
-		elseif category == 'gamepad' then
-			if getJoystickPresent(controllerNo) == false then
-				break
-			end
-			if getKey() == keyBreak then
-				input = keyBreak
-				break
-			end
-			local tmp = getKey()
-			if tonumber(tmp) == nil then --button released
-				if btnReleased == 0 then
-					btnReleased = 1
-				elseif btnReleased == 2 then
-					break
-				end
-			elseif btnReleased == 1 then --button pressed after releasing button once
-				input = tmp
-				btnReleased = 2
-			end
-		else --string
-			if getKey('RETURN') then
-				break
-			elseif getKey('BACKSPACE') then
-				input = input:match('^(.-).?$')
-			else
-				input = input .. getKeyText()
-			end
-			t[#t] = input
-			resetKey()
-		end
-		--draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
-		--draw layerno = 0 backgrounds
-		bgDraw(background.bg, false)
-		--draw overlay
-		main.overlay_input:draw()
-		--draw text
-		for i = 1, #t do
-			main.txt_input:update({
-				text = t[i],
-				y =    motif.infobox.text_offset[2] + main.f_ySpacing(motif.infobox, 'text_font') * (i - 1),
-			})
-			main.txt_input:draw()
-		end
-		--draw layerno = 1 backgrounds
-		bgDraw(background.bg, true)
-		--end loop
-		main.f_cmdInput()
-		refresh()
-	end
-	main.f_cmdInput()
-	return input
-end
-
 --update rounds to win variables
 main.roundsNumSingle = {}
 main.roundsNumSimul = {}
@@ -1299,7 +1161,7 @@ require('external.script.global')
 
 if main.debugLog then main.f_printTable(main.flags, "debug/flags.txt") end
 
-loadDebugFont(config.DebugFont)
+loadDebugFont(config.DebugFont, config.DebugFontScale)
 
 --;===========================================================
 --; COMMAND LINE QUICK VS
@@ -1322,6 +1184,7 @@ function main.f_commandLine()
 	local frames = getTimeFramesPerCount()
 	main.f_updateRoundsNum()
 	local t = {}
+	local t_assignedPals = {}
 	for k, v in pairs(main.flags) do
 		if k:match('^-p[0-9]+$') then
 			local num = tonumber(k:match('^-p([0-9]+)'))
@@ -1330,7 +1193,18 @@ function main.f_commandLine()
 			local pal = 1
 			if main.flags['-p' .. num .. '.color'] ~= nil or main.flags['-p' .. num .. '.pal'] ~= nil then
 				pal = tonumber(main.flags['-p' .. num .. '.color']) or tonumber(main.flags['-p' .. num .. '.pal'])
+			elseif t_assignedPals[v] ~= nil then
+				for i = 1, 12 do
+					if t_assignedPals[v][i] == nil then
+						pal = i
+						break
+					end
+				end
 			end
+			if t_assignedPals[v] == nil then
+				t_assignedPals[v] = {}
+			end
+			t_assignedPals[v][pal] = true
 			local ai = 0
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
 				ai = tonumber(main.flags['-p' .. num .. '.ai'])
@@ -1467,7 +1341,7 @@ main.t_unlockLua = {chars = {}, stages = {}, modes = {}}
 
 motif = require('external.script.motif')
 
-local txt_loading = main.f_createTextImg(motif.title_info, 'loading', {defsc = motif.defaultLoading})
+local txt_loading = main.f_createTextImg(motif.title_info, 'loading')
 txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
@@ -1475,59 +1349,52 @@ main.f_loadingRefresh(txt_loading)
 main.timeFramesPerCount = getTimeFramesPerCount()
 main.f_updateRoundsNum()
 
-main.txt_warning = text:create({})
-main.txt_warningTitle = main.f_createTextImg(motif.warning_info, 'title', {defsc = motif.defaultWarning})
-main.txt_input = main.f_createTextImg(motif.infobox, 'text', {defsc = motif.defaultInfobox})
-main.overlay_warning = main.f_createOverlay(motif.warning_info, 'overlay', {defsc = false, fixloc = false})
-main.overlay_input = main.f_createOverlay(motif.infobox, 'overlay', {defsc = false, fixloc = false})
-
 --generate preload list
 local t_preloadAnim = {}
 local t_preloadSpr = {}
 local t_preload = {
 	--select_info
-	{typ = 'anim', arg = {motif.select_info.portrait_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.portrait_spr},
-	{typ = 'anim', arg = {motif.select_info.p1_face_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p1_face_spr},
-	{typ = 'anim', arg = {motif.select_info.p2_face_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p2_face_spr},
-	{typ = 'anim', arg = {motif.select_info.p1_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'anim', arg = {motif.select_info.p2_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.select_info.p2_face_done_spr},
+	{typ = 'canim', arg = {motif.select_info.portrait_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.portrait_spr},
+	{typ = 'canim', arg = {motif.select_info.p1_face_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
+	{typ = 'canim', arg = {motif.select_info.p2_face_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
+	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
+	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
 	--vs_screen
-	{typ = 'anim', arg = {motif.vs_screen.p1_anim, nil}},
-	{typ = 'spr', arg = motif.vs_screen.p1_spr},
-	{typ = 'anim', arg = {motif.vs_screen.p2_anim, nil}},
-	{typ = 'spr', arg = motif.vs_screen.p2_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p1_anim, nil}},
+	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p2_anim, nil}},
+	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
 	--victory_screen
-	{typ = 'anim', arg = {motif.victory_screen.p1_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p1_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p2_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p2_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'anim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
-	{typ = 'spr', arg = motif.victory_screen.p2_face_done_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p1_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p2_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
+	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
+	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'anim', arg = {motif.hiscore_info.face_anim, nil}},
-	{typ = 'spr', arg = motif.hiscore_info.face_spr},
+	{typ = 'canim', arg = {motif.hiscore_info.face_anim, nil}},
+	{typ = 'cspr', arg = motif.hiscore_info.face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'anim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
-			table.insert(t_preload, {typ = 'spr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'anim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
-			table.insert(t_preload, {typ = 'spr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
+			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
+			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
 		end
 	end
 end
-
 for _, t in ipairs(t_preload) do
 	if t.arg ~= nil and t.arg[1] ~= nil and t.arg[1] >= 0 then
-		if t.typ == 'anim' then
+		if t.typ == 'canim' then
 			t_preloadAnim[t.arg[1]] = t.arg[1]
 		else
 			t_preloadSpr[t.arg[1] .. ',' .. t.arg[2]] = {t.arg[1], t.arg[2]}
@@ -1535,13 +1402,139 @@ for _, t in ipairs(t_preload) do
 	end
 end
 for _, v in pairs(t_preloadAnim) do
-	preloadList('anim', v)
+	preloadList('canim', v)
 end
 for _, v in pairs(t_preloadSpr) do
-	preloadList('spr', v[1], v[2])
+	preloadList('cspr', v[1], v[2])
 end
 if motif.select_info.stage_portrait_spr[1] ~= -1 then
-	preloadList('stage', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
+	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
+end
+if motif.select_info.stage_portrait_anim ~= -1 then
+	preloadList('sanim', motif.select_info.stage_portrait_anim)
+end
+
+--warning display
+local txt_warning = main.f_createTextImg(motif.warning_info, 'text', {defsc = motif.defaultWarning})
+local txt_warningTitle = main.f_createTextImg(motif.warning_info, 'title', {defsc = motif.defaultWarning})
+local overlay_warning = main.f_createOverlay(motif.warning_info, 'overlay')
+function main.f_warning(t, background, info, title, txt, overlay)
+	local info = info or motif.warning_info
+	local title = title or txt_warningTitle
+	local txt = txt or txt_warning
+	local overlay = overlay or overlay_warning
+	local cancel_snd = info.cancel_snd or motif.warning_info.cancel_snd
+	local done_snd = info.done_snd or motif.warning_info.done_snd
+	resetKey()
+	esc(false)
+	while true do
+		main.f_cmdInput()
+		if esc() or main.f_input(main.t_players, {'m'}) then
+			sndPlay(motif.files.snd_data, cancel_snd[1], cancel_snd[2])
+			return false
+		elseif getKey() ~= '' then
+			sndPlay(motif.files.snd_data, done_snd[1], done_snd[2])
+			resetKey()
+			return true
+		end
+		--draw clearcolor
+		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		--draw layerno = 0 backgrounds
+		bgDraw(background.bg, false)
+		--draw overlay
+		overlay:draw()
+		--draw title
+		title:draw()
+		--draw text
+		for i = 1, #t do
+			txt:update({
+				text = t[i],
+				y = info.text_offset[2] + main.f_ySpacing(info, 'text_font') * (i - 1),
+			})
+			txt:draw()
+		end
+		--draw layerno = 1 backgrounds
+		bgDraw(background.bg, true)
+		--end loop
+		refresh()
+	end
+end
+
+--input display
+local txt_textinput = main.f_createTextImg(motif.title_info, 'textinput')
+local overlay_textinput = main.f_createOverlay(motif.title_info, 'textinput_overlay')
+function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, category, controllerNo, keyBreak)
+	category = category or 'string'
+	controllerNo = controllerNo or 0
+	keyBreak = keyBreak or ''
+	if category == 'string' then
+		table.insert(t, '')
+	end
+	local input = ''
+	local btnReleased = 0
+	resetKey()
+	while true do
+		if esc() --[[or main.f_input(main.t_players, {'m'})]] then
+			input = ''
+			break
+		end
+		if category == 'keyboard' then
+			input = getKey()
+			if input ~= '' then
+				break
+			end
+		elseif category == 'gamepad' then
+			if getJoystickPresent(controllerNo) == false then
+				break
+			end
+			if getKey() == keyBreak then
+				input = keyBreak
+				break
+			end
+			local tmp = getKey()
+			if tonumber(tmp) == nil then --button released
+				if btnReleased == 0 then
+					btnReleased = 1
+				elseif btnReleased == 2 then
+					break
+				end
+			elseif btnReleased == 1 then --button pressed after releasing button once
+				input = tmp
+				btnReleased = 2
+			end
+		else --string
+			if getKey('RETURN') then
+				break
+			elseif getKey('BACKSPACE') then
+				input = input:match('^(.-).?$')
+			else
+				input = input .. getKeyText()
+			end
+			t[#t] = input
+			resetKey()
+		end
+		--draw clearcolor
+		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		--draw layerno = 0 backgrounds
+		bgDraw(background.bg, false)
+		--draw overlay
+		overlay:draw()
+		--draw text
+		for i = 1, #t do
+			txt:update({
+				text = t[i],
+				y = offsetY + spacingY * (i - 1),
+			})
+			txt:draw()
+		end
+		--draw layerno = 1 backgrounds
+		bgDraw(background.bg, true)
+		--end loop
+		main.f_cmdInput()
+		refresh()
+	end
+	main.f_cmdInput()
+	return input
 end
 
 main.t_validParams = {
@@ -1687,8 +1680,8 @@ function main.f_addChar(line, playable, loading, slot)
 		end
 		--cell data
 		for _, v in pairs({{motif.select_info.portrait_anim, -1}, motif.select_info.portrait_spr}) do
-			if v[1] ~= nil then
-				main.t_selChars[row].cell_data = animGetAnimation(main.t_selChars[row].char_ref, v[1], v[2])
+			if v[1] ~= -1 then
+				main.t_selChars[row].cell_data = animGetPreloadedData('char', main.t_selChars[row].char_ref, v[1], v[2])
 				if main.t_selChars[row].cell_data ~= nil then
 					animSetScale(
 						main.t_selChars[row].cell_data,
@@ -1696,6 +1689,7 @@ function main.f_addChar(line, playable, loading, slot)
 						motif.select_info.portrait_scale[2] * main.t_selChars[row].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
 						false
 					)
+					animUpdate(main.t_selChars[row].cell_data)
 					break
 				end
 			end
@@ -1732,14 +1726,26 @@ end
 function main.f_addStage(file)
 	file = file:gsub('\\', '/')
 	addStage(file)
-	table.insert(main.t_selStages, {name = getStageName(#main.t_selStages + 1), def = file})
-	local stageNo = #main.t_selStages
-	main.t_stageDef[file:lower()] = stageNo
-	local t_bgmusic = getStageBgm(stageNo)
-	for k, v in pairs(t_bgmusic) do
+	local stageNo = #main.t_selStages + 1
+	local t_info = getStageInfo(stageNo)
+	table.insert(main.t_selStages, {
+		name = t_info.name,
+		def = file,
+		dir = t_info.def:gsub('[^/]+%.def$', ''),
+		portrait_scale = t_info.portrait_scale,
+	})
+	--attachedchar
+	if t_info.attachedchardef ~= '' then
+		main.t_selStages[stageNo].attachedChar = getCharAttachedInfo(t_info.attachedchardef)
+		if main.t_selStages[stageNo].attachedChar ~= nil then
+			main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
+		end
+	end
+	--music
+	for k, v in pairs(t_info.stagebgm) do
 		if k:match('^bgmusic') or k:match('^bgmvolume') or k:match('^bgmloop') then
 			local tmp1, tmp2, tmp3 = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
-			if t_bgmusic['bgmusic' .. tmp2 .. tmp3] ~= nil and t_bgmusic['bgmusic' .. tmp2 .. tmp3] ~= '' then
+			if t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= nil and t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= '' then
 				if main.t_selStages[stageNo]['music' .. tmp3] == nil then
 					main.t_selStages[stageNo]['music' .. tmp3] = {}
 					table.insert(main.t_selStages[stageNo]['music' .. tmp3], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
@@ -1754,12 +1760,32 @@ function main.f_addStage(file)
 			main.t_selStages[stageNo][k:gsub('%.', '_')] = main.f_dataType(v)
 		end
 	end
-	local attachedChar = getStageAttachedChar(stageNo)
-	if attachedChar ~= '' then
-		main.t_selStages[stageNo].attachedChar = getCharAttachedInfo(attachedChar)
-		if main.t_selStages[stageNo].attachedChar ~= nil then
-			main.t_selStages[stageNo].attachedChar.dir = main.t_selStages[stageNo].attachedChar.def:gsub('[^/]+%.def$', '')
+	main.t_stageDef[file:lower()] = stageNo
+	--anim data
+	for _, v in pairs({{motif.select_info.stage_portrait_anim, -1}, motif.select_info.stage_portrait_spr}) do
+		if v[1] ~= -1 then
+			main.t_selStages[stageNo].anim_data = animGetPreloadedData('stage', stageNo, v[1], v[2])
+			if main.t_selStages[stageNo].anim_data ~= nil then
+				animSetScale(
+					main.t_selStages[stageNo].anim_data,
+					motif.select_info.stage_portrait_scale[1] * main.t_selStages[stageNo].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+					motif.select_info.stage_portrait_scale[2] * main.t_selStages[stageNo].portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+					false
+				)
+				animSetWindow(
+					main.t_selStages[stageNo].anim_data,
+					motif.select_info.stage_portrait_window[1],
+					motif.select_info.stage_portrait_window[2],
+					motif.select_info.stage_portrait_window[3],
+					motif.select_info.stage_portrait_window[4]
+				)
+				animUpdate(main.t_selStages[stageNo].anim_data)
+				break
+			end
 		end
+	end
+	if main.t_selStages[stageNo].anim_data == nil then
+		main.t_selStages[stageNo].anim_data = animNew(main.dummySff, '-1,0, 0,0, -1')
 	end
 	return stageNo
 end
@@ -1894,7 +1920,7 @@ for line in content:gmatch('[^\r\n]+') do
 				rmax = tonumber(rmax) or rmin
 				order = tonumber(order)
 				if rmin == nil or order == nil or rmin < 1 or rmin > 4 or rmax < 1 or rmax > 4 or rmin > rmax then
-					main.f_warning(main.f_extractText(motif.warning_info.text_ratio_text), motif.title_info, motif.titlebgdef)
+					main.f_warning(main.f_extractText(motif.warning_info.text_ratio_text), motif.titlebgdef)
 					main.t_selOptions[rowName .. 'ratiomatches'] = nil
 					break
 				end
@@ -2028,19 +2054,19 @@ end
 
 --print warning if training character is missing
 if main.t_charDef[config.TrainingChar] == nil then
-	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.title_info, motif.titlebgdef)
+	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.titlebgdef)
 	os.exit()
 end
 
 --print warning if no characters can be randomly chosen
 if #main.t_randomChars == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_chars_text), motif.title_info, motif.titlebgdef)
+	main.f_warning(main.f_extractText(motif.warning_info.text_chars_text), motif.titlebgdef)
 	os.exit()
 end
 
 --print warning if no stages have been added
 if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_stages_text), motif.title_info, motif.titlebgdef)
+	main.f_warning(main.f_extractText(motif.warning_info.text_stages_text), motif.titlebgdef)
 	os.exit()
 end
 
@@ -2062,7 +2088,7 @@ for k, v in pairs(main.t_selOptions) do
 			end
 		end
 		if not orderOK then
-			main.f_warning(main.f_extractText(motif.warning_info.text_order_text, mode .. '.maxmatches'), motif.title_info, motif.titlebgdef)
+			main.f_warning(main.f_extractText(motif.warning_info.text_order_text, mode .. '.maxmatches'), motif.titlebgdef)
 			os.exit()
 		end
 	end
@@ -2115,20 +2141,24 @@ else
 	main.background = 'titlebgdef'
 end
 
-main.txt_title = main.f_createTextImg(motif[main.group], 'title', {defsc = false})
-main.txt_mainSelect = main.f_createTextImg(motif.select_info, 'title', {defsc = false})
+main.txt_title = main.f_createTextImg(motif[main.group], 'title')
+main.txt_mainSelect = main.f_createTextImg(motif.select_info, 'title')
 local t_footer = {}
 if motif.attract_mode.enabled == 0 then
 	for i = 1, 3 do
-		table.insert(t_footer, main.f_createTextImg(motif.title_info, 'footer' .. i, {defsc = motif.defaultFooter}))
+		table.insert(t_footer, main.f_createTextImg(motif.title_info, 'footer' .. i))
 	end
 end
-local txt_infoboxTitle = main.f_createTextImg(motif.infobox, 'title', {defsc = motif.defaultInfobox})
-local overlay_footer = main.f_createOverlay(motif.title_info, 'footer_overlay', {defsc = motif.defaultLocalcoord, fixloc = true})
+
+local txt_infoboxTitle = main.f_createTextImg(motif.infobox, 'title')
+local txt_infobox = main.f_createTextImg(motif.infobox, 'text')
+local overlay_infobox = main.f_createOverlay(motif.infobox, 'overlay')
+local overlay_footer = main.f_createOverlay(motif.title_info, 'footer_overlay')
 
 function main.f_default()
 	for i = 1, config.Players do
 		main.t_pIn[i] = i
+		main.t_remaps[i] = i
 	end
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
@@ -2341,10 +2371,24 @@ main.t_itemname = {
 	--JOIN (NEW ADDRESS)
 	['joinadd'] = function(t, item)
 		sndPlay(motif.files.snd_data, motif[main.group].cursor_move_snd[1], motif[main.group].cursor_move_snd[2])
-		local name = main.f_drawInput(main.f_extractText(motif.title_info.input_ip_name_text), motif[main.group], motif[main.background], 'string')
+		local name = main.f_drawInput(
+			main.f_extractText(motif.title_info.textinput_name_text),
+			txt_textinput,
+			overlay_textinput,
+			motif[main.group].textinput_offset[2],
+			main.f_ySpacing(motif.title_info, 'textinput_font'),
+			motif[main.background]
+		)
 		if name ~= '' then
 			sndPlay(motif.files.snd_data, motif[main.group].cursor_move_snd[1], motif[main.group].cursor_move_snd[2])
-			local address = main.f_drawInput(main.f_extractText(motif.title_info.input_ip_address_text), motif[main.group], motif[main.background], 'string')
+			local address = main.f_drawInput(
+				main.f_extractText(motif.title_info.textinput_address_text),
+				txt_textinput,
+				overlay_textinput,
+				motif[main.group].textinput_offset[2],
+				main.f_ySpacing(motif.title_info, 'textinput_font'),
+				motif[main.background]
+			)
 			if address:match('^[0-9%.]+$') then
 				sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 				config.IP[name] = address
@@ -2356,6 +2400,7 @@ main.t_itemname = {
 		else
 			sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
 		end
+		return t
 	end,
 	--NETPLAY SURVIVAL
 	['netplaysurvivalcoop'] = function()
@@ -2904,8 +2949,12 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		end
 		if cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
 			main.f_default()
-			main.t_itemname[f](t, item)()
-			resetRemapInput()
+			main.menu.f = main.t_itemname[f](t, item)
+			main.f_unlock(false)
+			main.menu.f()
+			main.f_default()
+			main.f_unlock(false)
+			main.menu.f = nil
 			return
 		end
 		--more than 1 item, continue loop
@@ -2930,11 +2979,12 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				tbl.reset = false
 				main.f_cmdInput()
 			else
-				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, main.group, main.background, main.txt_title, false, motif.defaultLocalcoord, true, t_footer)
+				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, main.group, main.background, main.txt_title, false, t_footer)
 			end
 			if main.menu.f ~= nil and not main.fadeActive then
 				main.f_unlock(false)
 				main.menu.f()
+				main.f_default()
 				main.f_unlock(false)
 				main.menu.f = nil
 			else
@@ -2957,15 +3007,12 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					end
 				elseif bool_f1 and getKey('F1') then
 					main.f_warning(
-						main.f_extractText(motif.infobox.text),
-						motif[main.group],
+						main.f_extractText(motif.infobox_text),
 						motif[main.background],
 						motif.infobox,
 						txt_infoboxTitle,
-						motif.infobox.overlay_window,
-						motif.infobox.overlay_col,
-						motif.infobox.overlay_alpha,
-						motif.defaultInfobox
+						txt_infobox,
+						overlay_infobox
 					)
 				elseif main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
 					sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
@@ -3006,8 +3053,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					end
 					if f ~= '' then
 						main.f_default()
-						main.menu.f = main.t_itemname[f](t, item)
-						resetRemapInput()
+						if f == 'joinadd' then
+							tbl.items = main.t_itemname[f](t, item)
+						else
+							main.menu.f = main.t_itemname[f](t, item)
+						end
 						if main.menu.f ~= nil then
 							sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 							main.f_fadeReset('fadeout', motif[main.group])
@@ -3114,7 +3164,7 @@ function main.f_replay()
 	main.f_playBGM(false, motif.music.replay_bgm, motif.music.replay_bgm_loop, motif.music.replay_bgm_volume, motif.music.replay_bgm_loopstart, motif.music.replay_bgm_loopend)
 	main.close = false
 	while true do
-		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, 'replay_info', 'replaybgdef', txt_titleReplay, motif.defaultReplay, motif.defaultReplay, false, {})
+		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, 'replay_info', 'replaybgdef', txt_titleReplay, motif.defaultReplay, {})
 		cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, 'replay_info', {'$U'}, {'$D'})
 		if main.close and not main.fadeActive then
 			main.f_bgReset(motif[main.background].bg)
@@ -3142,8 +3192,8 @@ function main.f_replay()
 	end
 end
 
-local txt_connecting = main.f_createTextImg(motif.title_info, 'connecting', {defsc = motif.defaultConnecting})
-local overlay_connecting = main.f_createOverlay(motif.title_info, 'connecting_overlay', {defsc = false, fixloc = false})
+local txt_connecting = main.f_createTextImg(motif.title_info, 'connecting')
+local overlay_connecting = main.f_createOverlay(motif.title_info, 'connecting_overlay')
 function main.f_connect(server, t)
 	enterNetPlay(server)
 	while not connected() do
@@ -3264,10 +3314,10 @@ function main.f_hiscoreDisplay(itemname)
 end
 
 --attract mode start screen
-local txt_attract_credits = main.f_createTextImg(motif.attract_mode, 'credits', {defsc = false})
-local txt_attract_timer = main.f_createTextImg(motif.attract_mode, 'start_timer', {defsc = false})
-local txt_attract_insert = main.f_createTextImg(motif.attract_mode, 'start_insert', {defsc = false})
-local txt_attract_press = main.f_createTextImg(motif.attract_mode, 'start_press', {defsc = false})
+local txt_attract_credits = main.f_createTextImg(motif.attract_mode, 'credits')
+local txt_attract_timer = main.f_createTextImg(motif.attract_mode, 'start_timer')
+local txt_attract_insert = main.f_createTextImg(motif.attract_mode, 'start_insert')
+local txt_attract_press = main.f_createTextImg(motif.attract_mode, 'start_press')
 function main.f_attractStart()
 	local timerActive = main.credits ~= 0
 	local timer = 0
@@ -3567,7 +3617,7 @@ end
 --common menu draw
 local rect_boxcursor = rect:create({})
 local rect_boxbg = rect:create({})
-function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, title, dataScale, rectScale, rectFix, footer_txt, skipClear)
+function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, title, defsc, footer_txt, skipClear)
 	--draw clearcolor
 	if not skipClear then
 		clearColor(motif[bgdef].bgclearcolor[1], motif[bgdef].bgclearcolor[2], motif[bgdef].bgclearcolor[3])
@@ -3586,8 +3636,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			b =      motif[section].menu_boxbg_col[3],
 			src =    motif[section].menu_boxbg_alpha[1],
 			dst =    motif[section].menu_boxbg_alpha[2],
-			defsc =  rectScale,
-			fixloc = rectFix,
+			defsc =  defsc,
 		})
 		rect_boxbg:draw()
 	end
@@ -3607,15 +3656,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_selected_active_font[2],
 						align =  motif[section].menu_item_selected_active_font[3],
 						text =   t[i].displayname,
-						x =      motif[section].menu_pos[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_selected_active_font_scale[1],
 						scaleY = motif[section].menu_item_selected_active_font_scale[2],
 						r =      motif[section].menu_item_selected_active_font[4],
 						g =      motif[section].menu_item_selected_active_font[5],
 						b =      motif[section].menu_item_selected_active_font[6],
 						height = motif[section].menu_item_selected_active_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].data:draw()
 				else
@@ -3624,15 +3673,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_active_font[2],
 						align =  motif[section].menu_item_active_font[3],
 						text =   t[i].displayname,
-						x =      motif[section].menu_pos[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_active_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_active_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_active_font_scale[1],
 						scaleY = motif[section].menu_item_active_font_scale[2],
 						r =      motif[section].menu_item_active_font[4],
 						g =      motif[section].menu_item_active_font[5],
 						b =      motif[section].menu_item_active_font[6],
 						height = motif[section].menu_item_active_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].data:draw()
 				end
@@ -3642,15 +3691,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_value_active_font[2],
 						align =  motif[section].menu_item_value_active_font[3],
 						text =   t[i].vardisplay,
-						x =      motif[section].menu_pos[1] + motif[section].menu_item_spacing[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_value_active_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_value_active_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_value_active_font_scale[1],
 						scaleY = motif[section].menu_item_value_active_font_scale[2],
 						r =      motif[section].menu_item_value_active_font[4],
 						g =      motif[section].menu_item_value_active_font[5],
 						b =      motif[section].menu_item_value_active_font[6],
 						height = motif[section].menu_item_value_active_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].vardata:draw()
 				end
@@ -3661,15 +3710,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_selected_font[2],
 						align =  motif[section].menu_item_selected_font[3],
 						text =   t[i].displayname,
-						x =      motif[section].menu_pos[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_selected_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_selected_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_selected_font_scale[1],
 						scaleY = motif[section].menu_item_selected_font_scale[2],
 						r =      motif[section].menu_item_selected_font[4],
 						g =      motif[section].menu_item_selected_font[5],
 						b =      motif[section].menu_item_selected_font[6],
 						height = motif[section].menu_item_selected_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].data:draw()
 				else
@@ -3678,15 +3727,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_font[2],
 						align =  motif[section].menu_item_font[3],
 						text =   t[i].displayname,
-						x =      motif[section].menu_pos[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_font_scale[1],
 						scaleY = motif[section].menu_item_font_scale[2],
 						r =      motif[section].menu_item_font[4],
 						g =      motif[section].menu_item_font[5],
 						b =      motif[section].menu_item_font[6],
 						height = motif[section].menu_item_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].data:draw()
 				end
@@ -3696,15 +3745,15 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						bank =   motif[section].menu_item_value_font[2],
 						align =  motif[section].menu_item_value_font[3],
 						text =   t[i].vardisplay,
-						x =      motif[section].menu_pos[1] + motif[section].menu_item_spacing[1],
-						y =      motif[section].menu_pos[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
+						x =      motif[section].menu_pos[1] + motif[section].menu_item_value_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
+						y =      motif[section].menu_pos[2] + motif[section].menu_item_value_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
 						scaleX = motif[section].menu_item_value_font_scale[1],
 						scaleY = motif[section].menu_item_value_font_scale[2],
 						r =      motif[section].menu_item_value_font[4],
 						g =      motif[section].menu_item_value_font[5],
 						b =      motif[section].menu_item_value_font[6],
 						height = motif[section].menu_item_value_font_height,
-						defsc =  dataScale,
+						defsc =  defsc,
 					})
 					t[i].vardata:draw()
 				end
@@ -3722,7 +3771,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			motif[section].menu_boxcursor_alpharange[6]
 		)
 		rect_boxcursor:update({
-			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
+			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
 			y1 =     motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
 			x2 =     motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
 			y2 =     motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
@@ -3731,8 +3780,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			b =      motif[section].menu_boxcursor_col[3],
 			src =    src,
 			dst =    dst,
-			defsc =  rectScale,
-			fixloc = rectFix,
+			defsc =  defsc,
 		})
 		rect_boxcursor:draw()
 	end
@@ -3796,6 +3844,7 @@ function main.f_fadeReset(fadeType, fadeGroup)
 	main.fadeCnt = 0
 	if fadeGroup[fadeType .. '_data'] ~= nil then
 		animReset(fadeGroup[fadeType .. '_data'])
+		animUpdate(fadeGroup[fadeType .. '_data'])
 		main.fadeCnt = animGetLength(fadeGroup[fadeType .. '_data'])
 		if fadeType == 'fadeout' and main.fadeCnt > fadeGroup[fadeType .. '_time'] then
 			main.fadeStart = main.fadeStart + main.fadeCnt - fadeGroup[fadeType .. '_time']

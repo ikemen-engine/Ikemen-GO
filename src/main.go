@@ -139,6 +139,7 @@ Debug Options:
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
 	"DebugFont": "font/default-3x5-bold.def",
+	"DebugFontScale": 1,
 	"DebugKeys": true,
 	"Difficulty": 8,
 	"EscOpensMenu": true,
@@ -398,6 +399,7 @@ Debug Options:
 		ControllerStickSensitivity float32
 		Credits                    int
 		DebugFont                  string
+		DebugFontScale             float32
 		DebugKeys                  bool
 		Difficulty                 int
 		EscOpensMenu               bool
