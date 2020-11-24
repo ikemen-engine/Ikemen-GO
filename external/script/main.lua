@@ -162,8 +162,10 @@ end
 
 --remap active players input
 function main.f_playerInput(src, dst)
-	--main.t_remaps[src] = dst
-	--remapInput(src, dst)
+	if start.challenger == 0 then
+		main.t_remaps[src] = dst
+		remapInput(src, dst)
+	end
 	main.t_remaps[dst] = src
 	remapInput(dst, src)
 end
@@ -2156,6 +2158,7 @@ local overlay_footer = main.f_createOverlay(motif.title_info, 'footer_overlay')
 function main.f_default()
 	for i = 1, config.Players do
 		main.t_pIn[i] = i
+		main.t_remaps[i] = i
 	end
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
@@ -2946,8 +2949,12 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		end
 		if cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
 			main.f_default()
-			main.t_itemname[f](t, item)()
-			resetRemapInput()
+			main.menu.f = main.t_itemname[f](t, item)
+			main.f_unlock(false)
+			main.menu.f()
+			main.f_default()
+			main.f_unlock(false)
+			main.menu.f = nil
 			return
 		end
 		--more than 1 item, continue loop
@@ -2977,6 +2984,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			if main.menu.f ~= nil and not main.fadeActive then
 				main.f_unlock(false)
 				main.menu.f()
+				main.f_default()
 				main.f_unlock(false)
 				main.menu.f = nil
 			else
@@ -3050,7 +3058,6 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						else
 							main.menu.f = main.t_itemname[f](t, item)
 						end
-						resetRemapInput()
 						if main.menu.f ~= nil then
 							sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 							main.f_fadeReset('fadeout', motif[main.group])

@@ -1549,8 +1549,12 @@ function start.f_selectChallenger()
 	local loseCnt_sav = loseCnt
 	local stageNo_sav = getStageNo()
 	local matchNo_sav = matchno()
+	local p1cmd = main.t_remaps[1]
+	local p2cmd = main.t_remaps[start.challenger]
 	--start challenger match
 	main.f_default()
+	main.f_playerInput(p1cmd, 1)
+	main.f_playerInput(p2cmd, 2)
 	main.t_itemname.versus()
 	start.f_selectReset()
 	if not start.f_selectScreen() then
@@ -1560,6 +1564,8 @@ function start.f_selectChallenger()
 	local ok = launchFight{challenger = true}
 	--restore values
 	main.f_default()
+	main.f_playerInput(1, p1cmd) --one sided remap
+	main.playerInput = p1cmd --main.f_playerInput called via main.t_itemname.arcade()
 	main.t_itemname.arcade()
 	if not ok then
 		return false
@@ -3701,7 +3707,6 @@ function start.f_challengerInit()
 	if motif.attract_mode.enabled == 1 and main.credits > 0 then
 		main.credits = main.credits - 1
 	end
-	main.f_playerInput(start.challenger, 2)
 	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.challengerbgdef.bg)
 	main.f_fadeReset('fadein', motif.challenger_info)
