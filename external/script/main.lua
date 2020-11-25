@@ -380,8 +380,8 @@ function text:create(t)
 	if t.window == nil then t.window = {} end
 	t.window[1] = t.window[1] or 0
 	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or config.GameWidth
-	t.window[4] = t.window[4] or config.GameHeight
+	t.window[3] = t.window[3] or math.max(config.GameWidth, motif.info.localcoord[1])
+	t.window[4] = t.window[4] or math.max(config.GameHeight, motif.info.localcoord[2])
 	t.defsc = t.defsc or false
 	t.ti = textImgNew()
 	setmetatable(t, self)
