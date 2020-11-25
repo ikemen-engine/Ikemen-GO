@@ -1858,6 +1858,7 @@ func (c *Char) load(def string) error {
 	gi.constants["default.lifetoguardpointsmul"] = -1.5
 	gi.constants["default.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.25
+	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
 
 	str, err = LoadText(sys.commonConst)
@@ -2473,7 +2474,7 @@ func (c *Char) enemy(n int32) *Char {
 	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, false, true)
+	return sys.charList.enemyNear(c, n, c.gi().constants["default.ignoredefeatedenemies"] != 0, false)
 }
 func (c *Char) p2() *Char {
 	p2 := sys.charList.enemyNear(c, 0, true, false)
