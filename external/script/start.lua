@@ -2441,15 +2441,15 @@ function start.f_selectMenu(side, cmd, player, member)
 			getAnim = true
 		end
 		if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
-			if start.c[player].randCnt < motif.select_info.cell_random_switchtime then
-				start.c[player].randCnt = start.c[player].randCnt + 1
+			if start.c[player].randCnt > 0 then
+				start.c[player].randCnt = start.c[player].randCnt - 1
 				start.c[player].selRef = start.c[player].randRef or start.c[player].selRef
 			else
 				if motif.select_info.random_move_snd_cancel == 1 then
 					sndStop(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				end
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
-				start.c[player].randCnt = 0
+				start.c[player].randCnt = motif.select_info.cell_random_switchtime
 				start.c[player].selRef = start.f_randomChar(side)
 				if start.c[player].randRef ~= start.c[player].selRef or start.p[side].t_selTemp[member].anim_data == nil then
 					getAnim = true
