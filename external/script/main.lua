@@ -621,8 +621,8 @@ function main.f_fadeAnim(t)
 	--draw fade anim
 	if main.fadeCnt > 0 then
 		if t[main.fadeType .. '_data'] ~= nil then
-			animUpdate(t[main.fadeType .. '_data'])
 			animDraw(t[main.fadeType .. '_data'])
+			animUpdate(t[main.fadeType .. '_data'])
 		end
 		main.fadeCnt = main.fadeCnt - 1
 	end

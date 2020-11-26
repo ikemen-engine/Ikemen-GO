@@ -1838,9 +1838,11 @@ function start.f_selectScreen()
 	local stageActiveCount = 0
 	local stageActiveType = 'stage_active'
 	timerSelect = 0
+	local escFlag = false
 	while not selScreenEnd do
-		if esc() or main.f_input(main.t_players, {'m'}) then
-			return false
+		if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+			main.f_fadeReset('fadeout', motif.select_info)
+			escFlag = true
 		end
 		--credits
 		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
@@ -2060,7 +2062,7 @@ function start.f_selectScreen()
 		--draw fadein / fadeout
 		main.f_fadeAnim(motif.select_info)
 		--frame transition
-		if main.fadeActive then
+		if main.fadeActive or main.fadeCnt > 0 then
 			main.f_cmdBufReset()
 		elseif main.fadeType == 'fadeout' then
 			main.f_cmdBufReset()
@@ -2071,7 +2073,7 @@ function start.f_selectScreen()
 		end
 		main.f_refresh()
 	end
-	return true
+	return not escFlag
 end
 
 --;===========================================================
@@ -2616,10 +2618,11 @@ function start.f_selectVersus()
 		end
 		orderTime = motif.vs_screen.time_order * orderTime
 		local counter = 0 - motif.vs_screen.fadein_time
+		local escFlag = false
 		while true do
-			if esc() or main.f_input(main.t_players, {'m'}) then
-				esc(true) --force Esc detection
-				return false
+			if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+				main.f_fadeReset('fadeout', motif.vs_screen)
+				escFlag = true
 			elseif confirmed[1] and confirmed[2] then
 				if main.fadeType == 'fadein' and (counter >= motif.vs_screen.time or main.f_input({1}, main.f_extractKeys(motif.vs_screen.p1_key_accept))) then
 					main.f_fadeReset('fadeout', motif.vs_screen)
@@ -2734,7 +2737,7 @@ function start.f_selectVersus()
 			--draw fadein / fadeout
 			main.f_fadeAnim(motif.vs_screen)
 			--frame transition
-			if main.fadeActive then
+			if main.fadeActive or main.fadeCnt > 0 then
 				main.f_cmdBufReset()
 			elseif main.fadeType == 'fadeout' then
 				main.f_cmdBufReset()
@@ -2745,7 +2748,8 @@ function start.f_selectVersus()
 			end
 			main.f_refresh()
 		end
-		return true
+		esc(escFlag) --force Esc detection
+		return not escFlag
 	end
 end
 
@@ -2798,6 +2802,7 @@ function start.f_resultInit()
 	start.resultInit = true
 	start.t_result = {
 		active = false,
+		escFlag = false,
 		prefix = 'winstext',
 		resultText = {},
 		txt = nil,
@@ -2951,17 +2956,20 @@ function start.f_result()
 	end
 	main.f_fadeAnim(t)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_result.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_result.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', t)
+		start.t_result.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
 		start.t_result.active = false
 		toggleNoSound(false)
 		return false
+	else
+		main.f_cmdInput()
 	end
 	return true
 end
@@ -3049,6 +3057,7 @@ function start.f_victoryInit()
 	start.victoryInit = true
 	start.t_victory = {
 		active = false,
+		escFlag = false,
 		winquote = '',
 		textcnt = 0,
 		textend = false,
@@ -3151,17 +3160,20 @@ function start.f_victory()
 	end
 	main.f_fadeAnim(motif.victory_screen)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_victory.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_victory.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', motif.victory_screen)
+		start.t_victory.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
 		start.t_victory.active = false
 		toggleNoSound(false)
 		return false
+	else
+		main.f_cmdInput()
 	end
 	return true
 end
@@ -3198,6 +3210,7 @@ function start.f_continueInit()
 	start.continueInit = true
 	start.t_continue = {
 		active = false,
+		escFlag = false,
 		continue = false,
 		flag = true,
 		selected = false,
@@ -3424,18 +3437,21 @@ function start.f_continue()
 	end
 	main.f_fadeAnim(motif.continue_screen)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_continue.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_continue.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', motif.continue_screen)
+		start.t_continue.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
 		toggleNoSound(false)
 		return false
+	else
+		main.f_cmdInput()
 	end
 	return true
 end
@@ -3456,6 +3472,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	start.hiscoreInit = true
 	start.t_hiscore = {
 		active = false,
+		escFlag = false,
 		rankActiveCount = 0,
 		dataActiveCount = 0,
 		nameActiveCount = 0,
@@ -3672,15 +3689,19 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	end
 	main.f_fadeAnim(motif.hiscore_info)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_hiscore.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_hiscore.active = false
-		return false
+		main.f_fadeReset('fadeout', motif.continue_screen)
+		start.t_hiscore.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
 		start.t_hiscore.active = false
 		return false
+	else
+		main.f_cmdInput()
 	end
 	return true
 end
