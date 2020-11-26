@@ -3488,6 +3488,7 @@ func (c *Char) mulYV(yv float32) {
 }
 func (c *Char) hitAdd(h int32) {
 	c.hitCount += h
+	c.uniqHitCount += h
 	if len(c.targets) > 0 {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
