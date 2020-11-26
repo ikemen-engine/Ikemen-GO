@@ -1383,7 +1383,7 @@ func captureScreen() {
 		} else {
 			filename = fmt.Sprintf("ikemen%d.png", i)
 		}
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
+		if _, err := os.Stat(sys.screenshotFolder + filename); os.IsNotExist(err) {
 			file, _ := os.Create(sys.screenshotFolder + filename)
 			defer file.Close()
 			png.Encode(file, img)
