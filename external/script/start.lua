@@ -2991,8 +2991,8 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local playerNo = -1
 	local selectNo = -1
 	local ok = false
-	--generate table out characters present in the last match
-	for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+	--generate table out of characters present in the last match
+	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and teamside() == side then --assign sys.debugWC
 			local insert = false
 			if win() then --win team
@@ -3815,7 +3815,7 @@ function start.f_stageMusic()
 		if start.p[2].teamMode == 1 or start.p[2].teamMode == 3 then --p2 simul or tag
 			p2cnt = #start.p[2].t_selected
 		end
-		for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+		for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 			player(i) --assign sys.debugWC to player i
 			if life() / lifemax() * 100 <= start.t_music.bgmratio_life then
 				if teamside() == 1 then
@@ -3857,7 +3857,7 @@ function start.f_turnsRecovery()
 		return
 	end
 	start.turnsRecoveryInit = true
-	for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
 			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
 			local base = lifemax() * config.TurnsRecoveryBase / 100
