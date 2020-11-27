@@ -55,6 +55,7 @@ const (
 	CSF_noinput
 	CSF_nopowerbardisplay
 	CSF_autoguard
+	CSF_animfreeze
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -74,7 +75,8 @@ const (
 		CSF_nocrouch | CSF_nostand | CSF_nojump | CSF_noairjump |
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
-		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard
+		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
+		CSF_animfreeze
 )
 
 type GlobalSpecialFlag uint32
@@ -5389,7 +5391,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 }
 func (c *Char) tick() {
-	if c.acttmp > 0 && c.anim != nil {
+	if c.acttmp > 0 && !c.sf(CSF_animfreeze) && c.anim != nil {
 		c.anim.Action()
 	}
 	if c.bindTime > 0 {

@@ -3518,6 +3518,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nopowerbardisplay)))
 		case "autoguard":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
+		case "animfreeze":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
 		case "roundnotover":
