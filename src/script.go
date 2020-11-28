@@ -136,9 +136,11 @@ func systemScriptInit(l *lua.LState) {
 			anim = sys.sel.GetStage(int(numArg(l, 2))).anims.get(int16(numArg(l, 3)), int16(numArg(l, 4)))
 		}
 		if anim != nil {
-			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
-			a.palfx.clear()
-			a.palfx.time = -1
+			pfx := newPalFX()
+			pfx.clear()
+			pfx.time = -1
+			//TODO: palette changing depending on palette currently loaded on character
+			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: pfx}
 			if l.GetTop() >= 5 && !boolArg(l, 5) && a.anim.totaltime == a.anim.looptime {
 				a.anim.totaltime = -1
 				a.anim.looptime = 0

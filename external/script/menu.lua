@@ -191,6 +191,7 @@ for k, v in pairs(
 					end
 				end
 				t_pos = menu[v.id].submenu[c]
+				t_pos.name = c
 			else --following strings
 				if t_pos.submenu[c] == nil or c == 'empty' then
 					t_pos.submenu[c] = {}

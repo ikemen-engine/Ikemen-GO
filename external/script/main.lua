@@ -2936,7 +2936,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		local cnt = 0
 		local f = ''
 		for _, v in ipairs(tbl.items) do
-			if v.itemname:match('^bonus_') or v.itemname == 'joinadd' then
+			if tbl.name == 'bonusgames' --[[or tbl.name == 'storymode']] or v.itemname == 'joinadd' then
 				skip = true
 				break
 			elseif v.itemname ~= 'back' and main.t_unlockLua.modes[v.itemname] == nil then
@@ -2954,8 +2954,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			main.menu.f()
 			main.f_default()
 			main.f_unlock(false)
+			t = main.f_hiddenItems(tbl.items)
 			main.menu.f = nil
-			return
+			if #tbl.items <= cnt then
+				return
+			end
 		end
 		--more than 1 item, continue loop
 		if bool_main then
@@ -2986,6 +2989,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				main.menu.f()
 				main.f_default()
 				main.f_unlock(false)
+				t = main.f_hiddenItems(tbl.items)
 				main.menu.f = nil
 			else
 				if bool_main then
@@ -3106,6 +3110,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
 				
 			end
 			t_pos = main.menu.submenu[c]
+			t_pos.name = c
 		else --following strings
 			if t_pos.submenu[c] == nil then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
@@ -3236,7 +3241,7 @@ function main.f_unlock(permanent)
 				elseif group == 'modes' then
 					--already handled via t_del cleaning
 				end
-				if bool and permanent or group == 'modes' then
+				if bool and (permanent or group == 'modes') then
 					table.insert(t_del, k)
 				end
 			else

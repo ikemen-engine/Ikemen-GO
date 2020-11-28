@@ -1455,8 +1455,8 @@ function start.f_selectMode()
 					if motif.files.intro_storyboard ~= '' and motif.attract_mode.enabled == 0 then
 						storyboard.f_storyboard(motif.files.intro_storyboard)
 					end
-					start.exit = true
 				end
+				start.exit = main.exitSelect or not main.selectMenu[1]
 			end
 			if start.exit then
 				main.f_bgReset(motif[main.background].bg)

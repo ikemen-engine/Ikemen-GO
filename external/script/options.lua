@@ -760,9 +760,6 @@ options.t_itemname = {
 					config.GameWidth = width
 					config.GameHeight = height
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-					if (height / 3 * 4) ~= width then
-						main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.optionbgdef)
-					end
 					modified = true
 					needReload = true
 				else
@@ -1133,9 +1130,6 @@ for k, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.GameWidth = tonumber(width)
 				config.GameHeight = tonumber(height)
-				if (config.GameHeight / 3 * 4) ~= config.GameWidth then
-					main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.optionbgdef)
-				end
 				modified = true
 				needReload = true
 				return false
@@ -1326,6 +1320,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 				end
 			end
 			t_pos = options.menu.submenu[c]
+			t_pos.name = c
 		else --following strings
 			if t_pos.submenu[c] == nil or c == 'empty' then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
