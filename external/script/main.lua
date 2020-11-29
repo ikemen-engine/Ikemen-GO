@@ -579,16 +579,16 @@ function main.f_createOverlay(t, prefix, mod)
 	if t[prefix .. '_col'] == nil then t[prefix .. '_col'] = {} end
 	if t[prefix .. '_alpha'] == nil then t[prefix .. '_alpha'] = {} end
 	return rect:create({
-		x1 =     t[prefix .. '_window'][1],
-		y1 =     t[prefix .. '_window'][2],
-		x2 =     t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
-		y2 =     t[prefix .. '_window'][4] - t[prefix .. '_window'][2] + 1,
-		r =      t[prefix .. '_col'][1],
-		g =      t[prefix .. '_col'][2],
-		b =      t[prefix .. '_col'][3],
-		src =    t[prefix .. '_alpha'][1],
-		dst =    t[prefix .. '_alpha'][2],
-		defsc =  mod.defsc or false,
+		x1 =    t[prefix .. '_window'][1],
+		y1 =    t[prefix .. '_window'][2],
+		x2 =    t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
+		y2 =    t[prefix .. '_window'][4] - t[prefix .. '_window'][2] + 1,
+		r =     t[prefix .. '_col'][1],
+		g =     t[prefix .. '_col'][2],
+		b =     t[prefix .. '_col'][3],
+		src =   t[prefix .. '_alpha'][1],
+		dst =   t[prefix .. '_alpha'][2],
+		defsc = mod.defsc or false,
 	})
 end
 
@@ -2910,6 +2910,7 @@ function main.f_deleteIP(item, t)
 			end
 		end
 	end
+	return t
 end
 
 --return table without hidden modes (present in main.t_unlockLua.modes table)
@@ -2947,16 +2948,17 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				cnt = cnt + 1
 			end
 		end
-		if cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
+		if main.t_itemname[f] ~= nil and cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
 			main.f_default()
 			main.menu.f = main.t_itemname[f](t, item)
 			main.f_unlock(false)
 			main.menu.f()
 			main.f_default()
 			main.f_unlock(false)
+			local itemNum = #t
 			t = main.f_hiddenItems(tbl.items)
 			main.menu.f = nil
-			if #tbl.items <= cnt then
+			if itemNum == #t then
 				return
 			end
 		end
@@ -3029,7 +3031,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_fadeReset('fadeout', motif[main.group])
 					resetKey()
 				elseif bool_del and getKey('DELETE') then
-					main.f_deleteIP(item, t)
+					tbl.items = main.f_deleteIP(item, t)
 				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_hiscore)) and main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
 				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_accept)) then
@@ -3047,7 +3049,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 							f = 'bonus'
 						elseif f:match('^ip_') then
 							f = 'serverconnect'
-						elseif tbl.submenu[f].loop ~= nil then
+						elseif tbl.submenu[f].loop ~= nil and #tbl.submenu[f].items > 0 then
 							sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 							tbl.submenu[f].loop()
 							f = ''
@@ -3059,7 +3061,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						main.f_default()
 						if f == 'joinadd' then
 							tbl.items = main.t_itemname[f](t, item)
-						else
+						elseif main.t_itemname[f] ~= nil then
 							main.menu.f = main.t_itemname[f](t, item)
 						end
 						if main.menu.f ~= nil then
@@ -3120,6 +3122,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
+				t_pos.name = c
 			end
 		end
 		lastNum = j
@@ -3632,16 +3635,16 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	--draw menu box
 	if motif[section].menu_boxbg_visible == 1 then
 		rect_boxbg:update({
-			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
-			y1 =     motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
-			x2 =     motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =     math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
-			r =      motif[section].menu_boxbg_col[1],
-			g =      motif[section].menu_boxbg_col[2],
-			b =      motif[section].menu_boxbg_col[3],
-			src =    motif[section].menu_boxbg_alpha[1],
-			dst =    motif[section].menu_boxbg_alpha[2],
-			defsc =  defsc,
+			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
+			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
+			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
+			y2 =    math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			r =     motif[section].menu_boxbg_col[1],
+			g =     motif[section].menu_boxbg_col[2],
+			b =     motif[section].menu_boxbg_col[3],
+			src =   motif[section].menu_boxbg_alpha[1],
+			dst =   motif[section].menu_boxbg_alpha[2],
+			defsc = defsc,
 		})
 		rect_boxbg:draw()
 	end
@@ -3776,16 +3779,16 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			motif[section].menu_boxcursor_alpharange[6]
 		)
 		rect_boxcursor:update({
-			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
-			y1 =     motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
-			x2 =     motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =     motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
-			r =      motif[section].menu_boxcursor_col[1],
-			g =      motif[section].menu_boxcursor_col[2],
-			b =      motif[section].menu_boxcursor_col[3],
-			src =    src,
-			dst =    dst,
-			defsc =  defsc,
+			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
+			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
+			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			r =     motif[section].menu_boxcursor_col[1],
+			g =     motif[section].menu_boxcursor_col[2],
+			b =     motif[section].menu_boxcursor_col[3],
+			src =   src,
+			dst =   dst,
+			defsc = defsc,
 		})
 		rect_boxcursor:draw()
 	end

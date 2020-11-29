@@ -208,6 +208,7 @@ for k, v in pairs(
 				end
 				if j > lastNum then
 					t_pos = t_pos.submenu[c]
+					t_pos.name = c
 				end
 			end
 			lastNum = j

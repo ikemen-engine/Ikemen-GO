@@ -1329,6 +1329,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
+				t_pos.name = c
 			end
 		end
 		lastNum = j
@@ -1364,18 +1365,18 @@ local t_keyCfg = {
 t_keyCfg = main.f_tableClean(t_keyCfg, main.f_tableExists(main.t_sort.option_info).keymenu)
 
 local rect_boxbg = rect:create({
-	r =      motif.option_info.menu_boxbg_col[1],
-	g =      motif.option_info.menu_boxbg_col[2],
-	b =      motif.option_info.menu_boxbg_col[3],
-	src =    motif.option_info.menu_boxbg_alpha[1],
-	dst =    motif.option_info.menu_boxbg_alpha[2],
-	defsc =  motif.defaultOptions,
+	r =     motif.option_info.menu_boxbg_col[1],
+	g =     motif.option_info.menu_boxbg_col[2],
+	b =     motif.option_info.menu_boxbg_col[3],
+	src =   motif.option_info.menu_boxbg_alpha[1],
+	dst =   motif.option_info.menu_boxbg_alpha[2],
+	defsc = motif.defaultOptions,
 })
 local rect_boxcursor = rect:create({
-	r =      motif.option_info.menu_boxcursor_col[1],
-	g =      motif.option_info.menu_boxcursor_col[2],
-	b =      motif.option_info.menu_boxcursor_col[3],
-	defsc =  motif.defaultOptions,
+	r =     motif.option_info.menu_boxcursor_col[1],
+	g =     motif.option_info.menu_boxcursor_col[2],
+	b =     motif.option_info.menu_boxcursor_col[3],
+	defsc = motif.defaultOptions,
 })
 
 local txt_keyController = f_keyCfgText()
