@@ -158,6 +158,16 @@ local motif =
 		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_key_hiscore = 's', --Ikemen feature
 		menu_pos = {159, 158},
+		--menu_bg_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {-1, 0, 0, 191, 191, 191},
 		menu_item_font_scale = {1.0, 1.0}, --broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
@@ -424,31 +434,16 @@ local motif =
 		p1_teammenu_bg_offset = {0, 0},
 		p1_teammenu_bg_facing = 1,
 		p1_teammenu_bg_scale = {1.0, 1.0},
-		p1_teammenu_bg_single_anim = -1, --Ikemen feature
-		p1_teammenu_bg_single_spr = {}, --Ikemen feature
-		p1_teammenu_bg_single_offset = {0, 0}, --Ikemen feature
-		p1_teammenu_bg_single_facing = 1, --Ikemen feature
-		p1_teammenu_bg_single_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_bg_simul_anim = -1, --Ikemen feature
-		p1_teammenu_bg_simul_spr = {}, --Ikemen feature
-		p1_teammenu_bg_simul_offset = {0, 0}, --Ikemen feature
-		p1_teammenu_bg_simul_facing = 1, --Ikemen feature
-		p1_teammenu_bg_simul_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_bg_turns_anim = -1, --Ikemen feature
-		p1_teammenu_bg_turns_spr = {}, --Ikemen feature
-		p1_teammenu_bg_turns_offset = {0, 0}, --Ikemen feature
-		p1_teammenu_bg_turns_facing = 1, --Ikemen feature
-		p1_teammenu_bg_turns_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_bg_tag_anim = -1, --Ikemen feature
-		p1_teammenu_bg_tag_spr = {}, --Ikemen feature
-		p1_teammenu_bg_tag_offset = {0, 0}, --Ikemen feature
-		p1_teammenu_bg_tag_facing = 1, --Ikemen feature
-		p1_teammenu_bg_tag_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_bg_ratio_anim = -1, --Ikemen feature
-		p1_teammenu_bg_ratio_spr = {}, --Ikemen feature
-		p1_teammenu_bg_ratio_offset = {0, 0}, --Ikemen feature
-		p1_teammenu_bg_ratio_facing = 1, --Ikemen feature
-		p1_teammenu_bg_ratio_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_<itemname>_anim = -1, --Ikemen feature
+		--p1_teammenu_bg_<itemname>_spr = {}, --Ikemen feature
+		--p1_teammenu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--p1_teammenu_bg_<itemname>_facing = 1, --Ikemen feature
+		--p1_teammenu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--p1_teammenu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--p1_teammenu_bg_active_<itemname>_spr = {}, --Ikemen feature
+		--p1_teammenu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--p1_teammenu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--p1_teammenu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		p1_teammenu_selftitle_anim = -1,
 		p1_teammenu_selftitle_spr = {},
 		p1_teammenu_selftitle_offset = {0, 0},
@@ -539,31 +534,16 @@ local motif =
 		p2_teammenu_bg_offset = {0, 0},
 		p2_teammenu_bg_facing = 1,
 		p2_teammenu_bg_scale = {1.0, 1.0},
-		p2_teammenu_bg_single_anim = -1, --Ikemen feature
-		p2_teammenu_bg_single_spr = {}, --Ikemen feature
-		p2_teammenu_bg_single_offset = {0, 0}, --Ikemen feature
-		p2_teammenu_bg_single_facing = 1, --Ikemen feature
-		p2_teammenu_bg_single_scale = {1.0, 1.0}, --Ikemen feature
-		p2_teammenu_bg_simul_anim = -1, --Ikemen feature
-		p2_teammenu_bg_simul_spr = {}, --Ikemen feature
-		p2_teammenu_bg_simul_offset = {0, 0}, --Ikemen feature
-		p2_teammenu_bg_simul_facing = 1, --Ikemen feature
-		p2_teammenu_bg_simul_scale = {1.0, 1.0}, --Ikemen feature
-		p2_teammenu_bg_turns_anim = -1, --Ikemen feature
-		p2_teammenu_bg_turns_spr = {}, --Ikemen feature
-		p2_teammenu_bg_turns_offset = {0, 0}, --Ikemen feature
-		p2_teammenu_bg_turns_facing = 1, --Ikemen feature
-		p2_teammenu_bg_turns_scale = {1.0, 1.0}, --Ikemen feature
-		p2_teammenu_bg_tag_anim = -1, --Ikemen feature
-		p2_teammenu_bg_tag_spr = {}, --Ikemen feature
-		p2_teammenu_bg_tag_offset = {0, 0}, --Ikemen feature
-		p2_teammenu_bg_tag_facing = 1, --Ikemen feature
-		p2_teammenu_bg_tag_scale = {1.0, 1.0}, --Ikemen feature
-		p2_teammenu_bg_ratio_anim = -1, --Ikemen feature
-		p2_teammenu_bg_ratio_spr = {}, --Ikemen feature
-		p2_teammenu_bg_ratio_offset = {0, 0}, --Ikemen feature
-		p2_teammenu_bg_ratio_facing = 1, --Ikemen feature
-		p2_teammenu_bg_ratio_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_<itemname>_anim = -1, --Ikemen feature
+		--p2_teammenu_bg_<itemname>_spr = {}, --Ikemen feature
+		--p2_teammenu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--p2_teammenu_bg_<itemname>_facing = 1, --Ikemen feature
+		--p2_teammenu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--p2_teammenu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--p2_teammenu_bg_active_<itemname>_spr = {}, --Ikemen feature
+		--p2_teammenu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--p2_teammenu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--p2_teammenu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		p2_teammenu_selftitle_anim = -1,
 		p2_teammenu_selftitle_spr = {},
 		p2_teammenu_selftitle_offset = {0, 0},
@@ -1174,6 +1154,16 @@ local motif =
 		title_text = 'OPTIONS', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		--menu_bg_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1244,6 +1234,16 @@ local motif =
 		menu_valuename_disabled = 'Disabled', --Ikemen feature
 		keymenu_p1_pos = {39, 33}, --Ikemen feature
 		keymenu_p2_pos = {178, 33}, --Ikemen feature
+		--keymenu_bg_<itemname>_anim = -1, --Ikemen feature
+		--keymenu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--keymenu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--keymenu_bg_<itemname>_facing = 1, --Ikemen feature
+		--keymenu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--keymenu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--keymenu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--keymenu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--keymenu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--keymenu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		keymenu_item_p1_offset = {52, 0}, --Ikemen feature
 		keymenu_item_p1_font = {'f-6x9.def', 0, 0, 0, 247, 247}, --Ikemen feature
 		keymenu_item_p1_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1378,6 +1378,16 @@ local motif =
 		title_text = 'REPLAY SELECT', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		--menu_bg_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1432,6 +1442,16 @@ local motif =
 		title_text = 'PAUSE', --Ikemen feature
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
+		--menu_bg_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1592,6 +1612,16 @@ local motif =
 		menu_key_previous = '$U&$B', --Ikemen feature
 		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_pos = {159, 158}, --Ikemen feature
+		--menu_bg_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
+		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
+		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
+		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		menu_item_offset = {0, 0}, --Ikemen feature
 		menu_item_font = {'f-6x9.def', 0, 0, 191, 191, 191}, --Ikemen feature
 		menu_item_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2433,6 +2463,22 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 						pos_sort[subt] = {}
 					end
 					table.insert(pos_sort[subt], append)
+					for i = 1, 2 do
+						if i == 1 or subt == 'teammenu' then
+							local prefix = ''
+							if subt == 'teammenu' then
+								prefix = 'p' .. i .. '_'
+							end
+							for _, v in ipairs({'_bg_', '_bg_active_'}) do
+								local bg = param:gsub('_itemname_', v)
+								def_pos[prefix .. bg .. '_anim'] = -1
+								def_pos[prefix .. bg .. '_spr'] = {-1, 0}
+								def_pos[prefix .. bg .. '_offset'] = {0, 0}
+								def_pos[prefix .. bg .. '_facing'] = 1
+								def_pos[prefix .. bg .. '_scale'] = {1.0, 1.0}
+							end
+						end
+					end
 					pos[param] = value
 				elseif value:match('.+,.+') then --multiple values
 					for i, c in ipairs(main.f_strsplit(',', value)) do --split value using "," delimiter
@@ -2710,11 +2756,6 @@ for _, v in ipairs({
 	{s = 'cell_bg_',                      x = 0,                                                           y = 0},
 	{s = 'cell_random_',                  x = 0,                                                           y = 0},
 	{s = 'p1_teammenu_bg_',               x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_single_',        x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_simul_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_turns_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_tag_',           x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
-	{s = 'p1_teammenu_bg_ratio_',         x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_selftitle_',        x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_enemytitle_',       x = t_pos.p1_teammenu_pos[1],                                    y = t_pos.p1_teammenu_pos[2]},
 	{s = 'p1_teammenu_item_cursor_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
@@ -2728,11 +2769,6 @@ for _, v in ipairs({
 	{s = 'p1_teammenu_ratio6_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
 	{s = 'p1_teammenu_ratio7_icon_',      x = t_pos.p1_teammenu_pos[1] + t_pos.p1_teammenu_item_offset[1], y = t_pos.p1_teammenu_pos[2] + t_pos.p1_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_bg_',               x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_single_',        x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_simul_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_turns_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_tag_',           x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
-	{s = 'p2_teammenu_bg_ratio_',         x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_selftitle_',        x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_enemytitle_',       x = t_pos.p2_teammenu_pos[1],                                    y = t_pos.p2_teammenu_pos[2]},
 	{s = 'p2_teammenu_item_cursor_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
@@ -2818,6 +2854,34 @@ for k, v in pairs(motif.glyphs) do
 	}
 end
 
+--default menus
+if main.t_sort.option_info == nil or main.t_sort.option_info.menu == nil or #main.t_sort.option_info.menu == 0 then
+	motif.setBaseOptionInfo()
+end
+if main.t_sort.menu_info == nil or main.t_sort.menu_info.menu == nil or #main.t_sort.menu_info.menu == 0 then
+	motif.setBaseMenuInfo()
+end
+if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or #main.t_sort.training_info.menu == 0 then
+	motif.setBaseTrainingInfo()
+end
+
+--menus spr/anim data
+for group_k, group_t in pairs(main.t_sort) do
+	for subt_k, subt_t in pairs(group_t) do
+		for _, v in ipairs(subt_t) do
+			if subt_k == 'teammenu' then
+				for i = 1, 2 do
+					motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+					motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+				end
+			else--if subt_k == 'menu' or subt_k == 'keymenu' then
+				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['menu_pos'][1], y = motif[group_k].menu_pos[2]})
+				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['menu_pos'][1], y = motif[group_k].menu_pos[2]})
+			end
+		end
+	end
+end
+
 --commands
 for k, v in ipairs({
 	motif.title_info.menu_key_next,
@@ -2853,17 +2917,6 @@ for k, v in ipairs({
 	for i, cmd in ipairs (main.f_extractKeys(v)) do
 		main.f_commandAdd(cmd, cmd)
 	end
-end
-
---default menus
-if main.t_sort.option_info == nil or main.t_sort.option_info.menu == nil or #main.t_sort.option_info.menu == 0 then
-	motif.setBaseOptionInfo()
-end
-if main.t_sort.menu_info == nil or main.t_sort.menu_info.menu == nil or #main.t_sort.menu_info.menu == 0 then
-	motif.setBaseMenuInfo()
-end
-if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or #main.t_sort.training_info.menu == 0 then
-	motif.setBaseTrainingInfo()
 end
 
 --disabled scaling if element uses default values (non-existing in mugen)

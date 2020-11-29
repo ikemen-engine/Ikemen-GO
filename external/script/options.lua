@@ -1307,7 +1307,19 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 		--populate shaders submenu
 		if suffix:match('_shaders_back$') and c == 'back' then
 			for k = #options.t_shaders, 1, -1 do
-				table.insert(t_pos.items, 1, {data = text:create({window = t_menuWindow}), itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
+				table.insert(t_pos.items, 1, {
+					data = text:create({window = t_menuWindow}),
+					itemname = itemname,
+					displayname = options.t_shaders[k].filename,
+					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+					vardata = text:create({window = t_menuWindow}),
+					vardisplay = options.f_vardisplay(c),
+					selected = false,
+				})
+				--creating anim data out of appended menu items
+				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
+				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
 			end
 		end
 		--appending the menu table
@@ -1316,7 +1328,14 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 				options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
 				if not suffix:match(c .. '_') then
-					table.insert(options.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+					table.insert(options.menu.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = c,
+						displayname = motif.option_info['menu_itemname_' .. suffix],
+						paramname = 'menu_itemname_' .. suffix,
+						vardata = text:create({window = t_menuWindow}),
+						vardisplay = options.f_vardisplay(c), selected = false,
+					})
 				end
 			end
 			t_pos = options.menu.submenu[c]
@@ -1325,7 +1344,15 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 			if t_pos.submenu[c] == nil or c == 'empty' then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = c,
+					displayname = motif.option_info['menu_itemname_' .. suffix],
+					paramname = 'menu_itemname_' .. suffix,
+					vardata = text:create({window = t_menuWindow}),
+					vardisplay = options.f_vardisplay(c),
+					selected = false,
+				})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
@@ -1726,6 +1753,11 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 					end
 				end
 				if i == item and j == side then --active item
+					--draw active item background
+					if t[i].paramname ~= nil then
+						animDraw(motif.option_info['keymenu_bg_active_' .. t[i].itemname .. '_data'])
+						animUpdate(motif.option_info['keymenu_bg_active_' .. t[i].itemname .. '_data'])
+					end
 					--draw displayname
 					t[i].data[j]:update({
 						font =   motif.option_info.keymenu_item_active_font[1],
@@ -1801,6 +1833,11 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						t[i].infodata[j]:draw()
 					end
 				else --inactive item
+					--draw active item background
+					if t[i].paramname ~= nil then
+						animDraw(motif.option_info['keymenu_bg_' .. t[i].itemname .. '_data'])
+						animUpdate(motif.option_info['keymenu_bg_' .. t[i].itemname .. '_data'])
+					end
 					--draw displayname
 					t[i].data[j]:update({
 						font =   motif.option_info.keymenu_item_font[1],

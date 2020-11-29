@@ -187,7 +187,15 @@ for k, v in pairs(
 						menu[v.id].submenu[c].loop = menu.f_createMenu(menu[v.id].submenu[c], v.section, v.bgdef, menu[v.txt_title], false)
 					end
 					if not suffix:match(c .. '_') then
-						table.insert(menu[v.id].items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif[v.section]['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = menu.f_vardisplay(c), selected = false})
+						table.insert(menu[v.id].items, {
+							data = text:create({window = t_menuWindow}),
+							itemname = c,
+							displayname = motif[v.section]['menu_itemname_' .. suffix],
+							paramname = 'menu_itemname_' .. suffix,
+							vardata = text:create({window = t_menuWindow}),
+							vardisplay = menu.f_vardisplay(c),
+							selected = false,
+						})
 					end
 				end
 				t_pos = menu[v.id].submenu[c]
@@ -204,7 +212,15 @@ for k, v in pairs(
 						t_pos.submenu[c].items = {}
 						t_pos.submenu[c].loop = menu.f_createMenu(t_pos.submenu[c], v.section, v.bgdef, menu[v.txt_title], false)
 					end
-					table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif[v.section]['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = menu.f_vardisplay(c), selected = false})
+					table.insert(t_pos.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = c,
+						displayname = motif[v.section]['menu_itemname_' .. suffix],
+						paramname = 'menu_itemname_' .. suffix,
+						vardata = text:create({window = t_menuWindow}),
+						vardisplay = menu.f_vardisplay(c),
+						selected = false,
+					})
 				end
 				if j > lastNum then
 					t_pos = t_pos.submenu[c]

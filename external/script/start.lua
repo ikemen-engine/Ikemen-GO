@@ -2221,15 +2221,6 @@ function start.f_teamMenu(side)
 		--Draw team background
 		main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_data']] = 1
 		animDraw(motif.select_info['p' .. side .. '_teammenu_bg_data'])
-		--Draw team active element background
-		main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_' .. t[start.p[side].teamMenu].itemname .. '_data']] = 1
-		animDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[start.p[side].teamMenu].itemname .. '_data'])
-		--Draw team cursor
-		main.f_animPosDraw(
-			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
-		)
 		--Draw team title
 		if side == 2 and main.cpuSide[2] then
 			main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_enemytitle_data']] = 1
@@ -2252,7 +2243,10 @@ function start.f_teamMenu(side)
 					end
 					t_teamActiveCount[side] = 0
 				end
-				--Draw team active font
+				--Draw team active item background
+				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data']] = 1
+				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
+				--Draw team active item font
 				t[i].data:update({
 					font =   motif.select_info[t_teamActiveType[side] .. '_font'][1],
 					bank =   motif.select_info[t_teamActiveType[side] .. '_font'][2],
@@ -2269,7 +2263,10 @@ function start.f_teamMenu(side)
 				})
 				t[i].data:draw()
 			else
-				--Draw team not active font
+				--Draw team not active item background
+				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data']] = 1
+				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
+				--Draw team not active item font
 				t[i].data:update({
 					font =   motif.select_info['p' .. side .. '_teammenu_item_font'][1],
 					bank =   motif.select_info['p' .. side .. '_teammenu_item_font'][2],
@@ -2340,6 +2337,12 @@ function start.f_teamMenu(side)
 				animDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
 			end
 		end
+		--Draw team cursor
+		main.f_animPosDraw(
+			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
+		)
 		--Confirmed team selection
 		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_accept'])) then
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
