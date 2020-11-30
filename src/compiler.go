@@ -2419,7 +2419,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
 	case "gamemode":
-		if err := nameSub(OC_const_gamemode); err != nil {
+		if err := nameSubEx(OC_ex_gamemode); err != nil {
 			return bvNone(), err
 		}
 	case "getplayerid":
@@ -2582,7 +2582,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "rank":
 		out.append(OC_ex_, OC_ex_rank)
 	case "ratiolevel":
-		out.append(OC_const_, OC_const_ratiolevel)
+		out.append(OC_ex_, OC_ex_ratiolevel)
 	case "receiveddamage":
 		out.append(OC_ex_, OC_ex_receiveddamage)
 	case "receivedhits":

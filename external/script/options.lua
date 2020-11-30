@@ -7,13 +7,10 @@ local needReload = false
 
 --return string depending on bool
 function options.f_boolDisplay(bool, t, f)
-	t = t or motif.option_info.menu_valuename_yes
-	f = f or motif.option_info.menu_valuename_no
 	if bool == true then
-		return t
-	else
-		return f
+		return t or motif.option_info.menu_valuename_yes
 	end
+	return f or motif.option_info.menu_valuename_no
 end
 
 --return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument

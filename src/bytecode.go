@@ -327,8 +327,6 @@ const (
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
 	OC_const_constants
-	OC_const_gamemode
-	OC_const_ratiolevel
 	OC_const_stage_constants
 )
 const (
@@ -425,6 +423,7 @@ const (
 	OC_ex_dizzypointsmax
 	OC_ex_firstattack
 	OC_ex_float
+	OC_ex_gamemode
 	OC_ex_getplayerid
 	OC_ex_groundangle
 	OC_ex_guardbreak
@@ -448,6 +447,7 @@ const (
 	OC_ex_playerno
 	OC_ex_rand
 	OC_ex_rank
+	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_redlife
@@ -1573,13 +1573,6 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])
 		*i += 4
-	case OC_const_gamemode:
-		sys.bcStack.PushB(sys.gameMode ==
-			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
-				unsafe.Pointer(&be[*i]))])
-		*i += 4
-	case OC_const_ratiolevel:
-		sys.bcStack.PushI(c.ratioLevel())
 	case OC_const_stage_constants:
 		sys.bcStack.PushF(sys.stage.constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])
@@ -1744,6 +1737,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.firstAttack)
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
+	case OC_ex_gamemode:
+		sys.bcStack.PushB(strings.ToLower(sys.gameMode) ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_ex_getplayerid:
 		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
 	case OC_ex_groundangle:
@@ -1802,6 +1800,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		be.random(sys.bcStack.Top(), v2)
 	case OC_ex_rank:
 		sys.bcStack.PushF(c.rank())
+	case OC_ex_ratiolevel:
+		sys.bcStack.PushI(c.ratioLevel())
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.getcombodmg)
 	case OC_ex_receivedhits:

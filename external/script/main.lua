@@ -289,6 +289,14 @@ function main.f_escapePattern(str)
 	return str:gsub('([^%w])', '%%%1')
 end
 
+--return argument or default value
+function main.f_arg(arg, default)
+	if arg ~= nil then
+		return arg
+	end
+	return default
+end
+
 --command line global flags
 if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
@@ -1464,9 +1472,9 @@ end
 local txt_textinput = main.f_createTextImg(motif.title_info, 'textinput')
 local overlay_textinput = main.f_createOverlay(motif.title_info, 'textinput_overlay')
 function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, category, controllerNo, keyBreak)
-	category = category or 'string'
-	controllerNo = controllerNo or 0
-	keyBreak = keyBreak or ''
+	local category = category or 'string'
+	local controllerNo = controllerNo or 0
+	local keyBreak = keyBreak or ''
 	if category == 'string' then
 		table.insert(t, '')
 	end
@@ -2157,7 +2165,7 @@ function main.f_default()
 	main.elimination = false --if single lose should stop further lua execution
 	main.exitSelect = false --if "clearing" the mode (matchno == -1) should go back to main menu
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
-	main.hiscore = false --if hiscore screen should be shown
+	main.hiscoreScreen = false --if hiscore screen should be shown
 	main.lifebar = { --which lifebar elements should be rendered
 		bars = true,
 		lifebar = true,

@@ -1589,11 +1589,11 @@ function launchFight(data)
 	t.p1teammode = start.p[1].teamMode
 	t.p2numchars = start.p[2].numChars
 	t.p2teammode = start.p[2].teamMode
-	t.challenger = data.challenger or false
-	t.continue = data.continue or main.continueScreen
-	t.quickcontinue = data.quickcontinue or (main.quickContinue and config.QuickContinue)
+	t.challenger = main.f_arg(data.challenger, false)
+	t.continue = main.f_arg(data.continue, main.continueScreen)
+	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue and config.QuickContinue)
 	t.order = data.order or 1
-	t.orderskip = data.orderskip or true
+	t.orderskip = main.f_arg(data.orderskip, true)
 	t.p1char = data.p1char or {}
 	start.p[1].numChars = data.p1numchars or math.max(start.p[1].numChars, #t.p1char)
 	start.p[1].teamMode = start.f_stringToTeamMode(data.p1teammode) or start.p[1].teamMode
@@ -1608,6 +1608,9 @@ function launchFight(data)
 	t.music = data.music or nil
 	t.stage = data.stage or ''
 	t.ai = data.ai or nil
+	t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
+	t.victoryscreen = main.f_arg(data.victoryscreen, main.victoryScreen)
+	t.rankdisplay = main.f_arg(data.rankdisplay, main.rankDisplay)
 	--t.frames = data.frames or getTimeFramesPerCount()
 	t.roundtime = data.time or nil
 	t.lua = data.lua or ''
@@ -1743,9 +1746,15 @@ function launchFight(data)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
 		stageNo = start.f_setStage(stageNo, t.stage ~= '')
 		start.f_setMusic(stageNo, t.music)
-		if not start.f_selectVersus() then break end
+		if not start.f_selectVersus(t.vsscreen) then break end
 		saveData = true
+		local victoryScreen = main.victoryScreen
+		local rankDisplay = main.rankDisplay
+		main.victoryScreen = t.victoryscreen
+		main.rankDisplay = t.rankdisplay
 		_, t_gameStats = start.f_game(t.lua)
+		main.victoryScreen = victoryScreen
+		main.rankDisplay = rankDisplay
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		--here comes a new challenger
 		if start.challenger > 0 then
@@ -2588,7 +2597,7 @@ function start.f_selectChar(player, t)
 	end
 end
 
-function start.f_selectVersus()
+function start.f_selectVersus(enabled)
 	local ok = true
 	for _, v in ipairs(start.p[2].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
@@ -2596,7 +2605,7 @@ function start.f_selectVersus()
 			break
 		end
 	end
-	if not main.versusScreen or not ok then
+	if not enabled or not ok then
 		start.f_selectChar(1, start.p[1].t_selected)
 		start.f_selectChar(2, start.p[2].t_selected)
 		return true
@@ -3090,7 +3099,7 @@ function start.f_victoryInit()
 	end
 	if start.t_victory.winnerNo == -1 or start.t_victory.winnerRef == -1 then
 		return false
-	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
+	elseif start.f_getCharData(start.t_victory.winnerRef).victoryscreen == 0 then
 		return false
 	end
 	if motif.victory_screen.sounds_enabled == 0 then
@@ -3491,7 +3500,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	if input then
 		table.insert(start.t_hiscore.letters, 1)
 	end
-	if not motif.hiscore_info.enabled == 0 or stats.modes == nil or stats.modes[gameMode] == nil or stats.modes[gameMode].ranking == nil then
+	if motif.hiscore_info.enabled == 0 or stats.modes == nil or stats.modes[gameMode] == nil or stats.modes[gameMode].ranking == nil then
 		return false
 	end
 	main.f_cmdBufReset()
@@ -3901,7 +3910,7 @@ function start.f_rankInit()
 	end
 	for side = 1, 2 do
 		for _, v in ipairs(start.p[side].t_selected) do
-			if start.f_getCharData(v.ref).rank == 0 then
+			if start.f_getCharData(v.ref).rankdisplay == 0 then
 				return false
 			end
 		end
