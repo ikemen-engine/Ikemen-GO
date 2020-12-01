@@ -2781,8 +2781,8 @@ for _, v in ipairs({
 	{s = 'p2_teammenu_ratio5_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_ratio6_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
 	{s = 'p2_teammenu_ratio7_icon_',      x = t_pos.p2_teammenu_pos[1] + t_pos.p2_teammenu_item_offset[1], y = t_pos.p2_teammenu_pos[2] + t_pos.p2_teammenu_item_offset[2]},
-	{s = 'stage_portrait_random_',        x = t_pos.stage_pos[1] + t_pos.stage_portrait_offset[1],         y = t_pos.stage_pos[2] + t_pos.stage_portrait_offset[2]},
-	{s = 'stage_portrait_bg_',            x = t_pos.stage_pos[1] + t_pos.stage_portrait_offset[1],         y = t_pos.stage_pos[2] + t_pos.stage_portrait_offset[2]},
+	{s = 'stage_portrait_random_',        x = t_pos.stage_pos[1],                                          y = t_pos.stage_pos[2]},
+	{s = 'stage_portrait_bg_',            x = t_pos.stage_pos[1],                                          y = t_pos.stage_pos[2]},
 }) do
 	motif.f_loadSprData(motif.select_info, v)
 end
