@@ -200,7 +200,7 @@ end
 
 main.debugLog = false
 if main.f_isdir('debug') then
-	main.debugLog = true
+	--main.debugLog = true
 end
 
 --check if file exists
@@ -1731,7 +1731,7 @@ function main.f_addChar(line, playable, loading, slot)
 	return valid
 end
 
-function main.f_addStage(file)
+function main.f_addStage(file, hidden)
 	file = file:gsub('\\', '/')
 	addStage(file)
 	local stageNo = #main.t_selStages + 1
@@ -1791,6 +1791,9 @@ function main.f_addStage(file)
 				break
 			end
 		end
+	end
+	if hidden ~= nil and hidden ~= 0 then
+		main.t_selStages[stageNo].hidden = hidden
 	end
 	if main.t_selStages[stageNo].anim_data == nil then
 		main.t_selStages[stageNo].anim_data = animNew(main.dummySff, '-1,0, 0,0, -1')
@@ -1859,15 +1862,17 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
 		local unlock = ''
+		local hidden = 0 --TODO: temporary flag, won't be used once stage selection screen is ready
 		line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
 			unlock = m1
+			hidden = 1
 			return ''
 		end)
 		--parse rest of the line
 		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 			c = c:gsub('^%s*(.-)%s*$', '%1')
 			if i == 1 then
-				row = main.f_addStage(c)
+				row = main.f_addStage(c, hidden)
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
 			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory

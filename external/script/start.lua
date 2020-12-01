@@ -1974,11 +1974,11 @@ function start.f_selectScreen()
 			end
 		end
 		--team and character selection complete
-		if start.p[1].selEnd and start.p[1].animDelay <= 0 and start.p[2].selEnd and start.p[2].animDelay <= 0 and start.p[1].teamEnd and start.p[2].teamEnd then
+		if start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			restoreCursor = true
 			if main.stageMenu and not stageEnd then --Stage select
 				start.f_stageMenu()
-			elseif main.fadeType == 'fadein' then
+			elseif start.p[1].animDelay <= 0 and start.p[2].animDelay <= 0 and main.fadeType == 'fadein' then
 				main.f_fadeReset('fadeout', motif.select_info)
 			end
 			--draw stage portrait
@@ -2531,12 +2531,14 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			--anim update
 			local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-			if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
-				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
-			elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
-				start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character
+			if done_anim ~= -1 then
+				if start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
+					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
+					start.p[side].animDelay = math.min(120, math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
+				elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
+					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
+					start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character --dupa
+				end
 			end
 			start.p[side].t_selTemp[member].ref = start.c[player].selRef
 			main.f_cmdInput()
