@@ -2071,14 +2071,9 @@ function start.f_selectScreen()
 		--draw fadein / fadeout
 		main.f_fadeAnim(motif.select_info)
 		--frame transition
-		if main.fadeActive or main.fadeCnt > 0 then
-			main.f_cmdBufReset()
-		elseif main.fadeType == 'fadeout' then
-			main.f_cmdBufReset()
+		if not main.f_frameChange() then
 			selScreenEnd = true
 			break --skip last frame rendering
-		else
-			main.f_cmdInput()
 		end
 		main.f_refresh()
 	end
@@ -2751,14 +2746,9 @@ function start.f_selectVersus(enabled)
 			--draw fadein / fadeout
 			main.f_fadeAnim(motif.vs_screen)
 			--frame transition
-			if main.fadeActive or main.fadeCnt > 0 then
-				main.f_cmdBufReset()
-			elseif main.fadeType == 'fadeout' then
-				main.f_cmdBufReset()
+			if not main.f_frameChange() then
 				clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
 				break
-			else
-				main.f_cmdInput()
 			end
 			main.f_refresh()
 		end
@@ -2975,15 +2965,10 @@ function start.f_result()
 		main.f_fadeReset('fadeout', t)
 		start.t_result.escFlag = true
 	end
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		start.t_result.active = false
 		toggleNoSound(false)
 		return false
-	else
-		main.f_cmdInput()
 	end
 	return true
 end
@@ -3179,15 +3164,10 @@ function start.f_victory()
 		main.f_fadeReset('fadeout', motif.victory_screen)
 		start.t_victory.escFlag = true
 	end
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		start.t_victory.active = false
 		toggleNoSound(false)
 		return false
-	else
-		main.f_cmdInput()
 	end
 	return true
 end
@@ -3456,16 +3436,11 @@ function start.f_continue()
 		main.f_fadeReset('fadeout', motif.continue_screen)
 		start.t_continue.escFlag = true
 	end
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
 		toggleNoSound(false)
 		return false
-	else
-		main.f_cmdInput()
 	end
 	return true
 end
@@ -3708,14 +3683,9 @@ function start.f_hiscore(t, playMusic, place, infinite)
 		main.f_fadeReset('fadeout', motif.continue_screen)
 		start.t_hiscore.escFlag = true
 	end
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		start.t_hiscore.active = false
 		return false
-	else
-		main.f_cmdInput()
 	end
 	return true
 end

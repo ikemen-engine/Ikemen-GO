@@ -3649,6 +3649,19 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, section, keyPrev, k
 	return cursorPosY, moveTxt, item
 end
 
+--frame change command buffer and fadeout signal
+function main.f_frameChange()
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
+		return false --fadeout ended
+	else
+		main.f_cmdInput()
+	end
+	return true
+end
+
 --common menu draw
 local rect_boxcursor = rect:create({})
 local rect_boxbg = rect:create({})
@@ -3860,13 +3873,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	--draw fadein / fadeout
 	main.f_fadeAnim(main.fadeGroup)
 	--frame transition
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		return --skip last frame rendering
-	else
-		main.f_cmdInput()
 	end
 	if not skipClear then
 		refresh()
