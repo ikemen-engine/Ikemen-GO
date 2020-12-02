@@ -405,7 +405,7 @@ func readPowerBar(pre string, is IniSection,
 		}
 	}
 	pb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
-	pb.counter = *readLbText(pre+"counter.", is, "", 0, f, 0)
+	pb.counter = *readLbText(pre+"counter.", is, "%i", 0, f, 0)
 	pb.value = *readLbText(pre+"value.", is, "", 0, f, 0)
 	for i := range pb.level_snd {
 		if !is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
@@ -509,14 +509,9 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 	pb.shift.lay.DrawAnim(&pr, float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
 		layerno, &pb.shift.anim, pb.shift.palfx)
 	if pb.counter.font[0] >= 0 && int(pb.counter.font[0]) < len(f) && f[pb.counter.font[0]] != nil {
-		counter := pb.counter.text
-		if counter == "" {
-			counter = fmt.Sprintf("%v", level)
-		} else {
-			counter = strings.Replace(counter, "%i", fmt.Sprintf("%v", level), 1)
-		}
 		pb.counter.lay.DrawText(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
-			layerno, counter, f[pb.counter.font[0]], pb.counter.font[1], pb.counter.font[2], pb.counter.palfx, pb.counter.frgba)
+			layerno, strings.Replace(pb.counter.text, "%i", fmt.Sprintf("%v", level), 1), f[pb.counter.font[0]],
+			pb.counter.font[1], pb.counter.font[2], pb.counter.palfx, pb.counter.frgba)
 	}
 	if pb.value.font[0] >= 0 && int(pb.value.font[0]) < len(f) && f[pb.value.font[0]] != nil {
 		text := strings.Replace(pb.value.text, "%d", fmt.Sprintf("%v", pbval), 1)
@@ -1020,7 +1015,7 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	is.ReadI32(pre+"pos", &wi.pos[0], &wi.pos[1])
 	is.ReadI32(pre+"iconoffset", &wi.iconoffset[0], &wi.iconoffset[1])
 	is.ReadI32("useiconupto", &wi.useiconupto)
-	wi.counter = *readLbText(pre+"counter.", is, "", 0, f, 0)
+	wi.counter = *readLbText(pre+"counter.", is, "%i", 0, f, 0)
 	wi.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
 	wi.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at, 0)
@@ -1084,14 +1079,9 @@ func (wi *LifeBarWinIcon) draw(layerno int16, f []*Fnt, side int) {
 	}
 	if len(wi.wins) > int(wi.useiconupto) {
 		if wi.counter.font[0] >= 0 && int(wi.counter.font[0]) < len(f) && f[wi.counter.font[0]] != nil {
-			counter := wi.counter.text
-			if counter == "" {
-				counter = fmt.Sprintf("%v", len(wi.wins))
-			} else {
-				counter = strings.Replace(counter, "%i", fmt.Sprintf("%v", len(wi.wins)), 1)
-			}
 			wi.counter.lay.DrawText(float32(wi.pos[0])+sys.lifebarOffsetX, float32(wi.pos[1]), sys.lifebarScale,
-				layerno, counter, f[wi.counter.font[0]], wi.counter.font[1], wi.counter.font[2], wi.counter.palfx, wi.counter.frgba)
+				layerno, strings.Replace(wi.counter.text, "%i", fmt.Sprintf("%v", len(wi.wins)), 1),
+				f[wi.counter.font[0]], wi.counter.font[1], wi.counter.font[2], wi.counter.palfx, wi.counter.frgba)
 		}
 	} else {
 		i := 0
@@ -1232,7 +1222,7 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 		co.pos[0] = sys.lifebarLocalcoord[0] - co.pos[0]
 		co.start_x = float32(sys.lifebarLocalcoord[0]) - co.start_x
 	}
-	co.counter = *readLbText(pre+"counter.", is, "", 2, f, 0)
+	co.counter = *readLbText(pre+"counter.", is, "%i", 2, f, 0)
 	is.ReadBool(pre+"counter.shake", &co.counter_shake)
 	is.ReadI32(pre+"counter.time", &co.counter_time)
 	is.ReadF32(pre+"counter.mult", &co.counter_mult)
@@ -1305,12 +1295,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 	if co.resttime <= 0 && co.counterX == co.start_x*2 {
 		return
 	}
-	counter := co.counter.text
-	if counter == "" {
-		counter = fmt.Sprintf("%v", co.cur)
-	} else if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) && f[co.counter.font[0]] != nil {
-		counter = strings.Replace(counter, "%i", fmt.Sprintf("%v", co.cur), 1)
-	}
+	counter := strings.Replace(co.counter.text, "%i", fmt.Sprintf("%v", co.cur), 1)
 	var x float32
 	if side == 0 {
 		if co.start_x <= 0 {
