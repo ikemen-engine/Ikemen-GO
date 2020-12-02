@@ -200,7 +200,7 @@ end
 
 main.debugLog = false
 if main.f_isdir('debug') then
-	--main.debugLog = true
+	main.debugLog = true
 end
 
 --check if file exists
@@ -1999,7 +1999,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training by stupa if not included in select.def
-if main.t_charDef[config.TrainingChar] == nil then
+if main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_addChar(config.TrainingChar .. ', exclude = 1', false, true)
 end
 
@@ -2044,7 +2044,7 @@ end
 main.f_updateSelectableStages()
 
 --print warning if training character is missing
-if main.t_charDef[config.TrainingChar] == nil then
+if main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.titlebgdef)
 	os.exit()
 end
@@ -2748,7 +2748,7 @@ main.t_itemname = {
 	['training'] = function()
 		main.f_playerInput(main.playerInput, 1)
 		main.cpuSide[2] = false
-		main.forceChar[2] = {main.t_charDef[config.TrainingChar]}
+		main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
 		main.lifebar.p1score = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
