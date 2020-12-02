@@ -4322,7 +4322,11 @@ function start.f_dialogue()
 			t.endtime = t.counter + motif.dialogue_info.endtime
 		end
 	end
-	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_cancel))) then
+	local key_cancel = main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_cancel))
+	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and key_cancel) then
+		if key_cancel then
+			charSndStop()
+		end
 		dialogueReset()
 		start.dialogueInit = false
 		t.active = false
