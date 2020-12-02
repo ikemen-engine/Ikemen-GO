@@ -1194,7 +1194,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.pause = s.pausetime
 		}
 		// in mugen 1.1 most global assertspecial flags are reset during pause
-		// TODO: test if roundnotover and noko should reset (keep intro active)
+		// TODO: test if roundnotover should reset (keep intro and noko active)
 		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {

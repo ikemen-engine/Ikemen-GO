@@ -97,7 +97,7 @@ const (
 	GSF_roundnotskip
 	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
 		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
-		GSF_noko | GSF_roundnotskip
+		GSF_roundnotskip
 )
 
 type PosType int32
