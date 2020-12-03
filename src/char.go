@@ -1800,12 +1800,10 @@ func (c *Char) load(def string) error {
 				info = false
 				c.name, _, _ = is.getText("name")
 				var ok bool
-				gi.displayname, ok, _ = is.getText("displayname")
-				if !ok {
+				if gi.displayname, ok, _ = is.getText("displayname"); !ok {
 					gi.displayname = c.name
 				}
-				gi.lifebarname, ok, _ = is.getText("lifebarname")
-				if !ok {
+				if gi.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
 					gi.lifebarname = gi.displayname
 				}
 				gi.author, _, _ = is.getText("author")

@@ -894,6 +894,7 @@ func systemScriptInit(l *lua.LState) {
 				for i := 0; i < 2; i++ {
 					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
 						sys.lifebar.fa[TM_Turns][i].numko++
+						sys.lifebar.nm[TM_Turns][i].numko++
 						sys.roundsExisted[i] = 0
 					}
 				}

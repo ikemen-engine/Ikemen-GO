@@ -2284,6 +2284,7 @@ func (wm wincntMap) getLevel(p int) int32 {
 type SelectChar struct {
 	def            string
 	name           string
+	lifebarname    string
 	author         string
 	sprite         string
 	anim           string
@@ -2415,6 +2416,9 @@ func (s *Select) addChar(def string) {
 				if sc.name, ok, _ = is.getText("displayname"); !ok {
 					sc.name, _, _ = is.getText("name")
 				}
+				if sc.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
+					sc.lifebarname = sc.name
+				}
 				sc.author, _, _ = is.getText("author")
 				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
 				is.ReadI32("localcoord", &sc.localcoord)
@@ -2537,10 +2541,8 @@ func (s *Select) AddStage(def string) error {
 			if info {
 				info = false
 				var ok bool
-				ss.name, ok, _ = is.getText("displayname")
-				if !ok {
-					ss.name, ok, _ = is.getText("name")
-					if !ok {
+				if ss.name, ok, _ = is.getText("displayname"); !ok {
+					if ss.name, ok, _ = is.getText("name"); !ok {
 						ss.name = def
 					}
 				}
