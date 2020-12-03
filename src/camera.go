@@ -9,8 +9,12 @@ type stageCamera struct {
 	boundhigh      int32
 	verticalfollow float32
 	tension        int32
+	tensionlow     int32 //TODO: not implemented
 	floortension   int32
+	overdrawhigh   int32 //TODO: not implemented
 	overdrawlow    int32
+	cuthigh        int32 //TODO: not implemented
+	cutlow         int32
 	localcoord     [2]int32
 	localscl       float32
 	zoffset        int32
@@ -24,6 +28,7 @@ type stageCamera struct {
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
+		cuthigh: math.MinInt32, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, mugenZoomOut: 1}
 }

@@ -202,6 +202,8 @@ type System struct {
 	paused, step            bool
 	roundResetFlg           bool
 	reloadFlg               bool
+	reloadStageFlg          bool
+	reloadLifebarFlg        bool
 	reloadCharSlot          [MaxSimul*2 + MaxAttachedChar]bool
 	shortcutScripts         map[ShortcutKey]*ShortcutScript
 	turbo                   float32
@@ -1194,7 +1196,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.pause = s.pausetime
 		}
 		// in mugen 1.1 most global assertspecial flags are reset during pause
-		// TODO: test if roundnotover and noko should reset (keep intro active)
+		// TODO: test if roundnotover should reset (keep intro and noko active)
 		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {
@@ -2006,7 +2008,8 @@ func (s *System) fight() (reload bool) {
 		}
 		s.resetFrameTime()
 		s.nextRound()
-		s.roundResetFlg, s.reloadFlg, s.introSkipped = false, false, false
+		s.roundResetFlg, s.introSkipped = false, false
+		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
 		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
 		scl = s.cam.startzoom
 		s.cam.Update(scl, x, y)
@@ -2284,6 +2287,7 @@ func (wm wincntMap) getLevel(p int) int32 {
 type SelectChar struct {
 	def            string
 	name           string
+	lifebarname    string
 	author         string
 	sprite         string
 	anim           string
@@ -2415,6 +2419,9 @@ func (s *Select) addChar(def string) {
 				if sc.name, ok, _ = is.getText("displayname"); !ok {
 					sc.name, _, _ = is.getText("name")
 				}
+				if sc.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
+					sc.lifebarname = sc.name
+				}
 				sc.author, _, _ = is.getText("author")
 				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
 				is.ReadI32("localcoord", &sc.localcoord)
@@ -2537,10 +2544,8 @@ func (s *Select) AddStage(def string) error {
 			if info {
 				info = false
 				var ok bool
-				ss.name, ok, _ = is.getText("displayname")
-				if !ok {
-					ss.name, ok, _ = is.getText("name")
-					if !ok {
+				if ss.name, ok, _ = is.getText("displayname"); !ok {
+					if ss.name, ok, _ = is.getText("name"); !ok {
 						ss.name = def
 					}
 				}

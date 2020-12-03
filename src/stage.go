@@ -705,13 +705,18 @@ func loadStage(def string, main bool) (*Stage, error) {
 	var boundlow int32
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
+		//sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
 		sec[0].ReadI32("boundleft", &s.stageCamera.boundleft)
 		sec[0].ReadI32("boundright", &s.stageCamera.boundright)
 		sec[0].ReadI32("boundhigh", &s.stageCamera.boundhigh)
 		sec[0].ReadF32("verticalfollow", &s.stageCamera.verticalfollow)
 		sec[0].ReadI32("tension", &s.stageCamera.tension)
+		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) //TODO: not implemented
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
+		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
+		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
+		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
@@ -859,6 +864,16 @@ func loadStage(def string, main bool) (*Stage, error) {
 				(ratio1/ratio2-1), float32(Max(0, s.stageCamera.overdrawlow)))
 	}
 	s.stageCamera.drawOffsetY += float32(boundlow) * s.localscl
+	//TODO: test if it works reasonably close to mugen
+	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
+		if s.stageCamera.cutlow == math.MinInt32 {
+			//if omitted, the engine attempts to guess a reasonable set of values
+			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1] - s.stageCamera.zoffset) / s.localscl
+		} else {
+			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
+			s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
+		}
+	}
 	s.mainstage = main
 	return s, nil
 }

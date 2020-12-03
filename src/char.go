@@ -55,6 +55,7 @@ const (
 	CSF_noinput
 	CSF_nopowerbardisplay
 	CSF_autoguard
+	CSF_animfreeze
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -74,7 +75,8 @@ const (
 		CSF_nocrouch | CSF_nostand | CSF_nojump | CSF_noairjump |
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
-		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard
+		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
+		CSF_animfreeze
 )
 
 type GlobalSpecialFlag uint32
@@ -95,7 +97,7 @@ const (
 	GSF_roundnotskip
 	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
 		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
-		GSF_noko | GSF_roundnotskip
+		GSF_roundnotskip
 )
 
 type PosType int32
@@ -1798,12 +1800,10 @@ func (c *Char) load(def string) error {
 				info = false
 				c.name, _, _ = is.getText("name")
 				var ok bool
-				gi.displayname, ok, _ = is.getText("displayname")
-				if !ok {
+				if gi.displayname, ok, _ = is.getText("displayname"); !ok {
 					gi.displayname = c.name
 				}
-				gi.lifebarname, ok, _ = is.getText("lifebarname")
-				if !ok {
+				if gi.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
 					gi.lifebarname = gi.displayname
 				}
 				gi.author, _, _ = is.getText("author")
@@ -1858,6 +1858,7 @@ func (c *Char) load(def string) error {
 	gi.constants["default.lifetoguardpointsmul"] = -1.5
 	gi.constants["default.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.25
+	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
 
 	str, err = LoadText(sys.commonConst)
@@ -2473,7 +2474,7 @@ func (c *Char) enemy(n int32) *Char {
 	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, false, true)
+	return sys.charList.enemyNear(c, n, c.gi().constants["default.ignoredefeatedenemies"] != 0, false)
 }
 func (c *Char) p2() *Char {
 	p2 := sys.charList.enemyNear(c, 0, true, false)
@@ -3487,6 +3488,7 @@ func (c *Char) mulYV(yv float32) {
 }
 func (c *Char) hitAdd(h int32) {
 	c.hitCount += h
+	c.uniqHitCount += h
 	if len(c.targets) > 0 {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
@@ -5387,7 +5389,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 }
 func (c *Char) tick() {
-	if c.acttmp > 0 && c.anim != nil {
+	if c.acttmp > 0 && !c.sf(CSF_animfreeze) && c.anim != nil {
 		c.anim.Action()
 	}
 	if c.bindTime > 0 {

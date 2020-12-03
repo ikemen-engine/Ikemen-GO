@@ -289,6 +289,14 @@ function main.f_escapePattern(str)
 	return str:gsub('([^%w])', '%%%1')
 end
 
+--return argument or default value
+function main.f_arg(arg, default)
+	if arg ~= nil then
+		return arg
+	end
+	return default
+end
+
 --command line global flags
 if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
@@ -380,8 +388,8 @@ function text:create(t)
 	if t.window == nil then t.window = {} end
 	t.window[1] = t.window[1] or 0
 	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or config.GameWidth
-	t.window[4] = t.window[4] or config.GameHeight
+	t.window[3] = t.window[3] or math.max(config.GameWidth, motif.info.localcoord[1])
+	t.window[4] = t.window[4] or math.max(config.GameHeight, motif.info.localcoord[2])
 	t.defsc = t.defsc or false
 	t.ti = textImgNew()
 	setmetatable(t, self)
@@ -579,16 +587,16 @@ function main.f_createOverlay(t, prefix, mod)
 	if t[prefix .. '_col'] == nil then t[prefix .. '_col'] = {} end
 	if t[prefix .. '_alpha'] == nil then t[prefix .. '_alpha'] = {} end
 	return rect:create({
-		x1 =     t[prefix .. '_window'][1],
-		y1 =     t[prefix .. '_window'][2],
-		x2 =     t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
-		y2 =     t[prefix .. '_window'][4] - t[prefix .. '_window'][2] + 1,
-		r =      t[prefix .. '_col'][1],
-		g =      t[prefix .. '_col'][2],
-		b =      t[prefix .. '_col'][3],
-		src =    t[prefix .. '_alpha'][1],
-		dst =    t[prefix .. '_alpha'][2],
-		defsc =  mod.defsc or false,
+		x1 =    t[prefix .. '_window'][1],
+		y1 =    t[prefix .. '_window'][2],
+		x2 =    t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
+		y2 =    t[prefix .. '_window'][4] - t[prefix .. '_window'][2] + 1,
+		r =     t[prefix .. '_col'][1],
+		g =     t[prefix .. '_col'][2],
+		b =     t[prefix .. '_col'][3],
+		src =   t[prefix .. '_alpha'][1],
+		dst =   t[prefix .. '_alpha'][2],
+		defsc = mod.defsc or false,
 	})
 end
 
@@ -621,8 +629,8 @@ function main.f_fadeAnim(t)
 	--draw fade anim
 	if main.fadeCnt > 0 then
 		if t[main.fadeType .. '_data'] ~= nil then
-			animUpdate(t[main.fadeType .. '_data'])
 			animDraw(t[main.fadeType .. '_data'])
+			animUpdate(t[main.fadeType .. '_data'])
 		end
 		main.fadeCnt = main.fadeCnt - 1
 	end
@@ -1464,9 +1472,9 @@ end
 local txt_textinput = main.f_createTextImg(motif.title_info, 'textinput')
 local overlay_textinput = main.f_createOverlay(motif.title_info, 'textinput_overlay')
 function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, category, controllerNo, keyBreak)
-	category = category or 'string'
-	controllerNo = controllerNo or 0
-	keyBreak = keyBreak or ''
+	local category = category or 'string'
+	local controllerNo = controllerNo or 0
+	local keyBreak = keyBreak or ''
 	if category == 'string' then
 		table.insert(t, '')
 	end
@@ -1723,7 +1731,7 @@ function main.f_addChar(line, playable, loading, slot)
 	return valid
 end
 
-function main.f_addStage(file)
+function main.f_addStage(file, hidden)
 	file = file:gsub('\\', '/')
 	addStage(file)
 	local stageNo = #main.t_selStages + 1
@@ -1783,6 +1791,9 @@ function main.f_addStage(file)
 				break
 			end
 		end
+	end
+	if hidden ~= nil and hidden ~= 0 then
+		main.t_selStages[stageNo].hidden = hidden
 	end
 	if main.t_selStages[stageNo].anim_data == nil then
 		main.t_selStages[stageNo].anim_data = animNew(main.dummySff, '-1,0, 0,0, -1')
@@ -1851,15 +1862,17 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
 		local unlock = ''
+		local hidden = 0 --TODO: temporary flag, won't be used once stage selection screen is ready
 		line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
 			unlock = m1
+			hidden = 1
 			return ''
 		end)
 		--parse rest of the line
 		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 			c = c:gsub('^%s*(.-)%s*$', '%1')
 			if i == 1 then
-				row = main.f_addStage(c)
+				row = main.f_addStage(c, hidden)
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
 			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
@@ -1986,7 +1999,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training by stupa if not included in select.def
-if main.t_charDef[config.TrainingChar] == nil then
+if main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_addChar(config.TrainingChar .. ', exclude = 1', false, true)
 end
 
@@ -2030,30 +2043,8 @@ function main.f_updateSelectableStages()
 end
 main.f_updateSelectableStages()
 
---Save debug tables
-if main.debugLog then
-	main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
-	main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
-	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
-	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
-	main.f_printTable(main.t_selStoryMode, "debug/t_selStoryMode.txt")
-	main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
-	main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
-	main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
-	main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
-	main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
-	main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
-	main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
-	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
-	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
-	main.f_printTable(main.t_selectableStages, "debug/t_selectableStages.txt")
-	main.f_printTable(main.t_selGrid, "debug/t_selGrid.txt")
-	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
-	main.f_printTable(config, "debug/config.txt")
-end
-
 --print warning if training character is missing
-if main.t_charDef[config.TrainingChar] == nil then
+if main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.titlebgdef)
 	os.exit()
 end
@@ -2179,7 +2170,7 @@ function main.f_default()
 	main.elimination = false --if single lose should stop further lua execution
 	main.exitSelect = false --if "clearing" the mode (matchno == -1) should go back to main menu
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
-	main.hiscore = false --if hiscore screen should be shown
+	main.hiscoreScreen = false --if hiscore screen should be shown
 	main.lifebar = { --which lifebar elements should be rendered
 		bars = true,
 		lifebar = true,
@@ -2757,7 +2748,7 @@ main.t_itemname = {
 	['training'] = function()
 		main.f_playerInput(main.playerInput, 1)
 		main.cpuSide[2] = false
-		main.forceChar[2] = {main.t_charDef[config.TrainingChar]}
+		main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
 		main.lifebar.p1score = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
@@ -2910,6 +2901,7 @@ function main.f_deleteIP(item, t)
 			end
 		end
 	end
+	return t
 end
 
 --return table without hidden modes (present in main.t_unlockLua.modes table)
@@ -2936,7 +2928,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		local cnt = 0
 		local f = ''
 		for _, v in ipairs(tbl.items) do
-			if v.itemname:match('^bonus_') or v.itemname == 'joinadd' then
+			if tbl.name == 'bonusgames' --[[or tbl.name == 'storymode']] or v.itemname == 'joinadd' then
 				skip = true
 				break
 			elseif v.itemname ~= 'back' and main.t_unlockLua.modes[v.itemname] == nil then
@@ -2947,15 +2939,19 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				cnt = cnt + 1
 			end
 		end
-		if cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
+		if main.t_itemname[f] ~= nil and cnt == 1 --[[and motif.attract_mode.enabled == 0]] then
 			main.f_default()
 			main.menu.f = main.t_itemname[f](t, item)
 			main.f_unlock(false)
 			main.menu.f()
 			main.f_default()
 			main.f_unlock(false)
+			local itemNum = #t
+			t = main.f_hiddenItems(tbl.items)
 			main.menu.f = nil
-			return
+			if itemNum == #t then
+				return
+			end
 		end
 		--more than 1 item, continue loop
 		if bool_main then
@@ -2986,6 +2982,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				main.menu.f()
 				main.f_default()
 				main.f_unlock(false)
+				t = main.f_hiddenItems(tbl.items)
 				main.menu.f = nil
 			else
 				if bool_main then
@@ -3025,7 +3022,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_fadeReset('fadeout', motif[main.group])
 					resetKey()
 				elseif bool_del and getKey('DELETE') then
-					main.f_deleteIP(item, t)
+					tbl.items = main.f_deleteIP(item, t)
 				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_hiscore)) and main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
 				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_accept)) then
@@ -3043,7 +3040,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 							f = 'bonus'
 						elseif f:match('^ip_') then
 							f = 'serverconnect'
-						elseif tbl.submenu[f].loop ~= nil then
+						elseif tbl.submenu[f].loop ~= nil and #tbl.submenu[f].items > 0 then
 							sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
 							tbl.submenu[f].loop()
 							f = ''
@@ -3055,7 +3052,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						main.f_default()
 						if f == 'joinadd' then
 							tbl.items = main.t_itemname[f](t, item)
-						else
+						elseif main.t_itemname[f] ~= nil then
 							main.menu.f = main.t_itemname[f](t, item)
 						end
 						if main.menu.f ~= nil then
@@ -3100,41 +3097,79 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
 				main.menu.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
 				main.menu.submenu[c].loop = main.f_createMenu(main.menu.submenu[c], false, false, true, c == 'serverjoin')
 				if not suffix:match(c .. '_') then
-					table.insert(main.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif[main.group]['menu_itemname_' .. suffix]})
+					table.insert(main.menu.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = c,
+						displayname = motif[main.group]['menu_itemname_' .. suffix],
+						paramname = 'menu_itemname_' .. suffix,
+					})
 					if c == 'bonusgames' then bonusUpper = main.menu.items[#main.menu.items].displayname == main.menu.items[#main.menu.items].displayname:upper() end
 				end
 				
 			end
 			t_pos = main.menu.submenu[c]
+			t_pos.name = c
 		else --following strings
 			if t_pos.submenu[c] == nil then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
 				t_pos.submenu[c].loop = main.f_createMenu(t_pos.submenu[c], false, false, true, c == 'serverjoin')
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif[main.group]['menu_itemname_' .. suffix]})
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = c,
+					displayname = motif[main.group]['menu_itemname_' .. suffix],
+					paramname = 'menu_itemname_' .. suffix,
+				})
 				if c == 'bonusgames' then bonusUpper = t_pos.items[#t_pos.items].displayname == t_pos.items[#t_pos.items].displayname:upper() end
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
+				t_pos.name = c
 			end
 		end
 		lastNum = j
 		--add bonus character names to bonusgames submenu
 		if suffix:match('bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(suffix, '_') then
 			for k = 1, #main.t_bonusChars do
-				local name = start.f_getCharData(main.t_bonusChars[k]).name 
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'bonus_' .. name:gsub('%s+', '_'), displayname = main.f_itemnameUpper(name, bonusUpper)})
+				local name = start.f_getCharData(main.t_bonusChars[k]).name
+				local itemname = 'bonus_' .. name:gsub('%s+', '_')
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = itemname,
+					displayname = main.f_itemnameUpper(name, bonusUpper),
+					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+				})
+				--creating anim data out of appended menu items
+				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
 			end
 		end
 		--add story arcs to storymode submenu
 		if suffix:match('storymode_back$') and c == 'storymode' then --j == main.f_countSubstring(suffix, '_') then
 			for k, v in ipairs(main.t_selStoryMode) do
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = v.name:gsub('%s+', '_'), displayname = v.displayname})
+				local itemname = v.name:gsub('%s+', '_')
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = itemname,
+					displayname = v.displayname,
+					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+				})
+				--creating anim data out of appended menu items
+				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
 			end
 		end
 		--add IP addresses for serverjoin submenu
 		if suffix:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(suffix, '_') then
 			for k, v in pairs(config.IP) do
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = 'ip_' .. k, displayname = k})
+				local itemname = 'ip_' .. k
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = itemname,
+					displayname = k,
+					--paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+				})
+				--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
 			end
 		end
 	end
@@ -3236,7 +3271,7 @@ function main.f_unlock(permanent)
 				elseif group == 'modes' then
 					--already handled via t_del cleaning
 				end
-				if bool and permanent or group == 'modes' then
+				if bool and (permanent or group == 'modes') then
 					table.insert(t_del, k)
 				end
 			else
@@ -3614,6 +3649,19 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, section, keyPrev, k
 	return cursorPosY, moveTxt, item
 end
 
+--frame change command buffer and fadeout signal
+function main.f_frameChange()
+	if main.fadeActive or main.fadeCnt > 0 then
+		main.f_cmdBufReset()
+	elseif main.fadeType == 'fadeout' then
+		main.f_cmdBufReset()
+		return false --fadeout ended
+	else
+		main.f_cmdInput()
+	end
+	return true
+end
+
 --common menu draw
 local rect_boxcursor = rect:create({})
 local rect_boxbg = rect:create({})
@@ -3627,16 +3675,16 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	--draw menu box
 	if motif[section].menu_boxbg_visible == 1 then
 		rect_boxbg:update({
-			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
-			y1 =     motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
-			x2 =     motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =     math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
-			r =      motif[section].menu_boxbg_col[1],
-			g =      motif[section].menu_boxbg_col[2],
-			b =      motif[section].menu_boxbg_col[3],
-			src =    motif[section].menu_boxbg_alpha[1],
-			dst =    motif[section].menu_boxbg_alpha[2],
-			defsc =  defsc,
+			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
+			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
+			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
+			y2 =    math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			r =     motif[section].menu_boxbg_col[1],
+			g =     motif[section].menu_boxbg_col[2],
+			b =     motif[section].menu_boxbg_col[3],
+			src =   motif[section].menu_boxbg_alpha[1],
+			dst =   motif[section].menu_boxbg_alpha[2],
+			defsc = defsc,
 		})
 		rect_boxbg:draw()
 	end
@@ -3650,6 +3698,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	for i = 1, items_shown do
 		if i > item - cursorPosY then
 			if i == item then
+				--Draw active item background
+				if t[i].paramname ~= nil then
+					animDraw(motif[section][t[i].paramname:gsub('menu_itemname_', 'menu_bg_active_') .. '_data'])
+					animUpdate(motif[section][t[i].paramname:gsub('menu_itemname_', 'menu_bg_active_') .. '_data'])
+				end
+				--Draw active item font
 				if t[i].selected then
 					t[i].data:update({
 						font =   motif[section].menu_item_selected_active_font[1],
@@ -3704,6 +3758,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 					t[i].vardata:draw()
 				end
 			else
+				--Draw not active item background
+				if t[i].paramname ~= nil then
+					animDraw(motif[section][t[i].paramname:gsub('menu_itemname_', 'menu_bg_') .. '_data'])
+					animUpdate(motif[section][t[i].paramname:gsub('menu_itemname_', 'menu_bg_') .. '_data'])
+				end
+				--Draw not active item font
 				if t[i].selected then
 					t[i].data:update({
 						font =   motif[section].menu_item_selected_font[1],
@@ -3771,16 +3831,16 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			motif[section].menu_boxcursor_alpharange[6]
 		)
 		rect_boxcursor:update({
-			x1 =     motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
-			y1 =     motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
-			x2 =     motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =     motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
-			r =      motif[section].menu_boxcursor_col[1],
-			g =      motif[section].menu_boxcursor_col[2],
-			b =      motif[section].menu_boxcursor_col[3],
-			src =    src,
-			dst =    dst,
-			defsc =  defsc,
+			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
+			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
+			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			r =     motif[section].menu_boxcursor_col[1],
+			g =     motif[section].menu_boxcursor_col[2],
+			b =     motif[section].menu_boxcursor_col[3],
+			src =   src,
+			dst =   dst,
+			defsc = defsc,
 		})
 		rect_boxcursor:draw()
 	end
@@ -3813,13 +3873,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	--draw fadein / fadeout
 	main.f_fadeAnim(main.fadeGroup)
 	--frame transition
-	if main.fadeActive or main.fadeCnt > 0 then
-		main.f_cmdBufReset()
-	elseif main.fadeType == 'fadeout' then
-		main.f_cmdBufReset()
+	if not main.f_frameChange() then
 		return --skip last frame rendering
-	else
-		main.f_cmdInput()
 	end
 	if not skipClear then
 		refresh()
@@ -3894,6 +3949,27 @@ main.f_unlock(false)
 --;===========================================================
 --; INITIALIZE LOOPS
 --;===========================================================
+if main.debugLog then
+	main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
+	main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
+	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
+	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
+	main.f_printTable(main.t_selStoryMode, "debug/t_selStoryMode.txt")
+	main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
+	main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
+	main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
+	main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
+	main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
+	main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
+	main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
+	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
+	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
+	main.f_printTable(main.t_selectableStages, "debug/t_selectableStages.txt")
+	main.f_printTable(main.t_selGrid, "debug/t_selGrid.txt")
+	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
+	main.f_printTable(config, "debug/config.txt")
+end
+
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	main.f_default()
 	main.f_commandLine()

@@ -7,13 +7,10 @@ local needReload = false
 
 --return string depending on bool
 function options.f_boolDisplay(bool, t, f)
-	t = t or motif.option_info.menu_valuename_yes
-	f = f or motif.option_info.menu_valuename_no
 	if bool == true then
-		return t
-	else
-		return f
+		return t or motif.option_info.menu_valuename_yes
 	end
+	return f or motif.option_info.menu_valuename_no
 end
 
 --return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument
@@ -760,9 +757,6 @@ options.t_itemname = {
 					config.GameWidth = width
 					config.GameHeight = height
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-					if (height / 3 * 4) ~= width then
-						main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.optionbgdef)
-					end
 					modified = true
 					needReload = true
 				else
@@ -1133,9 +1127,6 @@ for k, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 				config.GameWidth = tonumber(width)
 				config.GameHeight = tonumber(height)
-				if (config.GameHeight / 3 * 4) ~= config.GameWidth then
-					main.f_warning(main.f_extractText(motif.warning_info.text_res_text), motif.optionbgdef)
-				end
 				modified = true
 				needReload = true
 				return false
@@ -1313,7 +1304,19 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 		--populate shaders submenu
 		if suffix:match('_shaders_back$') and c == 'back' then
 			for k = #options.t_shaders, 1, -1 do
-				table.insert(t_pos.items, 1, {data = text:create({window = t_menuWindow}), itemname = options.t_shaders[k].path .. options.t_shaders[k].filename, displayname = options.t_shaders[k].filename, vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
+				table.insert(t_pos.items, 1, {
+					data = text:create({window = t_menuWindow}),
+					itemname = itemname,
+					displayname = options.t_shaders[k].filename,
+					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+					vardata = text:create({window = t_menuWindow}),
+					vardisplay = options.f_vardisplay(c),
+					selected = false,
+				})
+				--creating anim data out of appended menu items
+				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
+				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
 			end
 		end
 		--appending the menu table
@@ -1322,18 +1325,35 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 				options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
 				if not suffix:match(c .. '_') then
-					table.insert(options.menu.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+					table.insert(options.menu.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = c,
+						displayname = motif.option_info['menu_itemname_' .. suffix],
+						paramname = 'menu_itemname_' .. suffix,
+						vardata = text:create({window = t_menuWindow}),
+						vardisplay = options.f_vardisplay(c), selected = false,
+					})
 				end
 			end
 			t_pos = options.menu.submenu[c]
+			t_pos.name = c
 		else --following strings
 			if t_pos.submenu[c] == nil or c == 'empty' then
 				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 				t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
-				table.insert(t_pos.items, {data = text:create({window = t_menuWindow}), itemname = c, displayname = motif.option_info['menu_itemname_' .. suffix], vardata = text:create({window = t_menuWindow}), vardisplay = options.f_vardisplay(c), selected = false})
+				table.insert(t_pos.items, {
+					data = text:create({window = t_menuWindow}),
+					itemname = c,
+					displayname = motif.option_info['menu_itemname_' .. suffix],
+					paramname = 'menu_itemname_' .. suffix,
+					vardata = text:create({window = t_menuWindow}),
+					vardisplay = options.f_vardisplay(c),
+					selected = false,
+				})
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]
+				t_pos.name = c
 			end
 		end
 		lastNum = j
@@ -1369,18 +1389,18 @@ local t_keyCfg = {
 t_keyCfg = main.f_tableClean(t_keyCfg, main.f_tableExists(main.t_sort.option_info).keymenu)
 
 local rect_boxbg = rect:create({
-	r =      motif.option_info.menu_boxbg_col[1],
-	g =      motif.option_info.menu_boxbg_col[2],
-	b =      motif.option_info.menu_boxbg_col[3],
-	src =    motif.option_info.menu_boxbg_alpha[1],
-	dst =    motif.option_info.menu_boxbg_alpha[2],
-	defsc =  motif.defaultOptions,
+	r =     motif.option_info.menu_boxbg_col[1],
+	g =     motif.option_info.menu_boxbg_col[2],
+	b =     motif.option_info.menu_boxbg_col[3],
+	src =   motif.option_info.menu_boxbg_alpha[1],
+	dst =   motif.option_info.menu_boxbg_alpha[2],
+	defsc = motif.defaultOptions,
 })
 local rect_boxcursor = rect:create({
-	r =      motif.option_info.menu_boxcursor_col[1],
-	g =      motif.option_info.menu_boxcursor_col[2],
-	b =      motif.option_info.menu_boxcursor_col[3],
-	defsc =  motif.defaultOptions,
+	r =     motif.option_info.menu_boxcursor_col[1],
+	g =     motif.option_info.menu_boxcursor_col[2],
+	b =     motif.option_info.menu_boxcursor_col[3],
+	defsc = motif.defaultOptions,
 })
 
 local txt_keyController = f_keyCfgText()
@@ -1730,6 +1750,11 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 					end
 				end
 				if i == item and j == side then --active item
+					--draw active item background
+					if t[i].paramname ~= nil then
+						animDraw(motif.option_info['keymenu_bg_active_' .. t[i].itemname .. '_data'])
+						animUpdate(motif.option_info['keymenu_bg_active_' .. t[i].itemname .. '_data'])
+					end
 					--draw displayname
 					t[i].data[j]:update({
 						font =   motif.option_info.keymenu_item_active_font[1],
@@ -1805,6 +1830,11 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						t[i].infodata[j]:draw()
 					end
 				else --inactive item
+					--draw active item background
+					if t[i].paramname ~= nil then
+						animDraw(motif.option_info['keymenu_bg_' .. t[i].itemname .. '_data'])
+						animUpdate(motif.option_info['keymenu_bg_' .. t[i].itemname .. '_data'])
+					end
 					--draw displayname
 					t[i].data[j]:update({
 						font =   motif.option_info.keymenu_item_font[1],

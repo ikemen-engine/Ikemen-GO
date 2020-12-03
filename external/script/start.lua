@@ -1455,8 +1455,8 @@ function start.f_selectMode()
 					if motif.files.intro_storyboard ~= '' and motif.attract_mode.enabled == 0 then
 						storyboard.f_storyboard(motif.files.intro_storyboard)
 					end
-					start.exit = true
 				end
+				start.exit = main.exitSelect or not main.selectMenu[1]
 			end
 			if start.exit then
 				main.f_bgReset(motif[main.background].bg)
@@ -1589,11 +1589,11 @@ function launchFight(data)
 	t.p1teammode = start.p[1].teamMode
 	t.p2numchars = start.p[2].numChars
 	t.p2teammode = start.p[2].teamMode
-	t.challenger = data.challenger or false
-	t.continue = data.continue or main.continueScreen
-	t.quickcontinue = data.quickcontinue or (main.quickContinue and config.QuickContinue)
+	t.challenger = main.f_arg(data.challenger, false)
+	t.continue = main.f_arg(data.continue, main.continueScreen)
+	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue and config.QuickContinue)
 	t.order = data.order or 1
-	t.orderskip = data.orderskip or true
+	t.orderskip = main.f_arg(data.orderskip, true)
 	t.p1char = data.p1char or {}
 	start.p[1].numChars = data.p1numchars or math.max(start.p[1].numChars, #t.p1char)
 	start.p[1].teamMode = start.f_stringToTeamMode(data.p1teammode) or start.p[1].teamMode
@@ -1608,6 +1608,9 @@ function launchFight(data)
 	t.music = data.music or nil
 	t.stage = data.stage or ''
 	t.ai = data.ai or nil
+	t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
+	t.victoryscreen = main.f_arg(data.victoryscreen, main.victoryScreen)
+	t.rankdisplay = main.f_arg(data.rankdisplay, main.rankDisplay)
 	--t.frames = data.frames or getTimeFramesPerCount()
 	t.roundtime = data.time or nil
 	t.lua = data.lua or ''
@@ -1743,9 +1746,15 @@ function launchFight(data)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
 		stageNo = start.f_setStage(stageNo, t.stage ~= '')
 		start.f_setMusic(stageNo, t.music)
-		if not start.f_selectVersus() then break end
+		if not start.f_selectVersus(t.vsscreen) then break end
 		saveData = true
+		local victoryScreen = main.victoryScreen
+		local rankDisplay = main.rankDisplay
+		main.victoryScreen = t.victoryscreen
+		main.rankDisplay = t.rankdisplay
 		_, t_gameStats = start.f_game(t.lua)
+		main.victoryScreen = victoryScreen
+		main.rankDisplay = rankDisplay
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		--here comes a new challenger
 		if start.challenger > 0 then
@@ -1838,9 +1847,11 @@ function start.f_selectScreen()
 	local stageActiveCount = 0
 	local stageActiveType = 'stage_active'
 	timerSelect = 0
+	local escFlag = false
 	while not selScreenEnd do
-		if esc() or main.f_input(main.t_players, {'m'}) then
-			return false
+		if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+			main.f_fadeReset('fadeout', motif.select_info)
+			escFlag = true
 		end
 		--credits
 		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
@@ -1963,11 +1974,11 @@ function start.f_selectScreen()
 			end
 		end
 		--team and character selection complete
-		if start.p[1].selEnd and start.p[1].animDelay <= 0 and start.p[2].selEnd and start.p[2].animDelay <= 0 and start.p[1].teamEnd and start.p[2].teamEnd then
+		if start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			restoreCursor = true
 			if main.stageMenu and not stageEnd then --Stage select
 				start.f_stageMenu()
-			elseif main.fadeType == 'fadein' then
+			elseif start.p[1].animDelay <= 0 and start.p[2].animDelay <= 0 and main.fadeType == 'fadein' then
 				main.f_fadeReset('fadeout', motif.select_info)
 			end
 			--draw stage portrait
@@ -2060,18 +2071,13 @@ function start.f_selectScreen()
 		--draw fadein / fadeout
 		main.f_fadeAnim(motif.select_info)
 		--frame transition
-		if main.fadeActive then
-			main.f_cmdBufReset()
-		elseif main.fadeType == 'fadeout' then
-			main.f_cmdBufReset()
+		if not main.f_frameChange() then
 			selScreenEnd = true
 			break --skip last frame rendering
-		else
-			main.f_cmdInput()
 		end
 		main.f_refresh()
 	end
-	return true
+	return not escFlag
 end
 
 --;===========================================================
@@ -2219,15 +2225,6 @@ function start.f_teamMenu(side)
 		--Draw team background
 		main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_data']] = 1
 		animDraw(motif.select_info['p' .. side .. '_teammenu_bg_data'])
-		--Draw team active element background
-		main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_' .. t[start.p[side].teamMenu].itemname .. '_data']] = 1
-		animDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[start.p[side].teamMenu].itemname .. '_data'])
-		--Draw team cursor
-		main.f_animPosDraw(
-			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
-		)
 		--Draw team title
 		if side == 2 and main.cpuSide[2] then
 			main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_enemytitle_data']] = 1
@@ -2250,7 +2247,10 @@ function start.f_teamMenu(side)
 					end
 					t_teamActiveCount[side] = 0
 				end
-				--Draw team active font
+				--Draw team active item background
+				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data']] = 1
+				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
+				--Draw team active item font
 				t[i].data:update({
 					font =   motif.select_info[t_teamActiveType[side] .. '_font'][1],
 					bank =   motif.select_info[t_teamActiveType[side] .. '_font'][2],
@@ -2267,7 +2267,10 @@ function start.f_teamMenu(side)
 				})
 				t[i].data:draw()
 			else
-				--Draw team not active font
+				--Draw team not active item background
+				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data']] = 1
+				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
+				--Draw team not active item font
 				t[i].data:update({
 					font =   motif.select_info['p' .. side .. '_teammenu_item_font'][1],
 					bank =   motif.select_info['p' .. side .. '_teammenu_item_font'][2],
@@ -2338,6 +2341,12 @@ function start.f_teamMenu(side)
 				animDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
 			end
 		end
+		--Draw team cursor
+		main.f_animPosDraw(
+			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
+		)
 		--Confirmed team selection
 		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_accept'])) then
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
@@ -2441,15 +2450,15 @@ function start.f_selectMenu(side, cmd, player, member)
 			getAnim = true
 		end
 		if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
-			if start.c[player].randCnt < motif.select_info.cell_random_switchtime then
-				start.c[player].randCnt = start.c[player].randCnt + 1
+			if start.c[player].randCnt > 0 then
+				start.c[player].randCnt = start.c[player].randCnt - 1
 				start.c[player].selRef = start.c[player].randRef or start.c[player].selRef
 			else
 				if motif.select_info.random_move_snd_cancel == 1 then
 					sndStop(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
 				end
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
-				start.c[player].randCnt = 0
+				start.c[player].randCnt = motif.select_info.cell_random_switchtime
 				start.c[player].selRef = start.f_randomChar(side)
 				if start.c[player].randRef ~= start.c[player].selRef or start.p[side].t_selTemp[member].anim_data == nil then
 					getAnim = true
@@ -2517,12 +2526,14 @@ function start.f_selectMenu(side, cmd, player, member)
 			end
 			--anim update
 			local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-			if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
-				start.p[side].animDelay = math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data))
-			elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
-				start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character
+			if done_anim ~= -1 then
+				if start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
+					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false, false)
+					start.p[side].animDelay = math.min(120, math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
+				elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
+					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
+					start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character --dupa
+				end
 			end
 			start.p[side].t_selTemp[member].ref = start.c[player].selRef
 			main.f_cmdInput()
@@ -2583,7 +2594,7 @@ function start.f_selectChar(player, t)
 	end
 end
 
-function start.f_selectVersus()
+function start.f_selectVersus(enabled)
 	local ok = true
 	for _, v in ipairs(start.p[2].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
@@ -2591,7 +2602,7 @@ function start.f_selectVersus()
 			break
 		end
 	end
-	if not main.versusScreen or not ok then
+	if not enabled or not ok then
 		start.f_selectChar(1, start.p[1].t_selected)
 		start.f_selectChar(2, start.p[2].t_selected)
 		return true
@@ -2616,10 +2627,11 @@ function start.f_selectVersus()
 		end
 		orderTime = motif.vs_screen.time_order * orderTime
 		local counter = 0 - motif.vs_screen.fadein_time
+		local escFlag = false
 		while true do
-			if esc() or main.f_input(main.t_players, {'m'}) then
-				esc(true) --force Esc detection
-				return false
+			if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+				main.f_fadeReset('fadeout', motif.vs_screen)
+				escFlag = true
 			elseif confirmed[1] and confirmed[2] then
 				if main.fadeType == 'fadein' and (counter >= motif.vs_screen.time or main.f_input({1}, main.f_extractKeys(motif.vs_screen.p1_key_accept))) then
 					main.f_fadeReset('fadeout', motif.vs_screen)
@@ -2734,18 +2746,14 @@ function start.f_selectVersus()
 			--draw fadein / fadeout
 			main.f_fadeAnim(motif.vs_screen)
 			--frame transition
-			if main.fadeActive then
-				main.f_cmdBufReset()
-			elseif main.fadeType == 'fadeout' then
-				main.f_cmdBufReset()
+			if not main.f_frameChange() then
 				clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
 				break
-			else
-				main.f_cmdInput()
 			end
 			main.f_refresh()
 		end
-		return true
+		esc(escFlag) --force Esc detection
+		return not escFlag
 	end
 end
 
@@ -2798,6 +2806,7 @@ function start.f_resultInit()
 	start.resultInit = true
 	start.t_result = {
 		active = false,
+		escFlag = false,
 		prefix = 'winstext',
 		resultText = {},
 		txt = nil,
@@ -2951,14 +2960,12 @@ function start.f_result()
 	end
 	main.f_fadeAnim(t)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_result.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_result.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', t)
+		start.t_result.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if not main.f_frameChange() then
 		start.t_result.active = false
 		toggleNoSound(false)
 		return false
@@ -2983,8 +2990,8 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local playerNo = -1
 	local selectNo = -1
 	local ok = false
-	--generate table out characters present in the last match
-	for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+	--generate table out of characters present in the last match
+	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and teamside() == side then --assign sys.debugWC
 			local insert = false
 			if win() then --win team
@@ -3049,6 +3056,7 @@ function start.f_victoryInit()
 	start.victoryInit = true
 	start.t_victory = {
 		active = false,
+		escFlag = false,
 		winquote = '',
 		textcnt = 0,
 		textend = false,
@@ -3078,7 +3086,7 @@ function start.f_victoryInit()
 	end
 	if start.t_victory.winnerNo == -1 or start.t_victory.winnerRef == -1 then
 		return false
-	elseif start.f_getCharData(start.t_victory.winnerRef).winscreen == 0 then
+	elseif start.f_getCharData(start.t_victory.winnerRef).victoryscreen == 0 then
 		return false
 	end
 	if motif.victory_screen.sounds_enabled == 0 then
@@ -3151,14 +3159,12 @@ function start.f_victory()
 	end
 	main.f_fadeAnim(motif.victory_screen)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_victory.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_victory.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', motif.victory_screen)
+		start.t_victory.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if not main.f_frameChange() then
 		start.t_victory.active = false
 		toggleNoSound(false)
 		return false
@@ -3198,6 +3204,7 @@ function start.f_continueInit()
 	start.continueInit = true
 	start.t_continue = {
 		active = false,
+		escFlag = false,
 		continue = false,
 		flag = true,
 		selected = false,
@@ -3424,14 +3431,12 @@ function start.f_continue()
 	end
 	main.f_fadeAnim(motif.continue_screen)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_continue.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_continue.active = false
-		toggleNoSound(false)
-		return false
+		main.f_fadeReset('fadeout', motif.continue_screen)
+		start.t_continue.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if not main.f_frameChange() then
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
 		toggleNoSound(false)
@@ -3456,6 +3461,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	start.hiscoreInit = true
 	start.t_hiscore = {
 		active = false,
+		escFlag = false,
 		rankActiveCount = 0,
 		dataActiveCount = 0,
 		nameActiveCount = 0,
@@ -3471,7 +3477,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	if input then
 		table.insert(start.t_hiscore.letters, 1)
 	end
-	if not motif.hiscore_info.enabled == 0 or stats.modes == nil or stats.modes[gameMode] == nil or stats.modes[gameMode].ranking == nil then
+	if motif.hiscore_info.enabled == 0 or stats.modes == nil or stats.modes[gameMode] == nil or stats.modes[gameMode].ranking == nil then
 		return false
 	end
 	main.f_cmdBufReset()
@@ -3672,13 +3678,12 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	end
 	main.f_fadeAnim(motif.hiscore_info)
 	--frame transition
-	main.f_cmdInput()
-	if esc() or main.f_input(main.t_players, {'m'}) then
+	if not start.t_hiscore.escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
 		esc(false)
-		start.t_hiscore.active = false
-		return false
+		main.f_fadeReset('fadeout', motif.continue_screen)
+		start.t_hiscore.escFlag = true
 	end
-	if not main.fadeActive and main.fadeType == 'fadeout' then
+	if not main.f_frameChange() then
 		start.t_hiscore.active = false
 		return false
 	end
@@ -3794,7 +3799,7 @@ function start.f_stageMusic()
 		if start.p[2].teamMode == 1 or start.p[2].teamMode == 3 then --p2 simul or tag
 			p2cnt = #start.p[2].t_selected
 		end
-		for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+		for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 			player(i) --assign sys.debugWC to player i
 			if life() / lifemax() * 100 <= start.t_music.bgmratio_life then
 				if teamside() == 1 then
@@ -3836,7 +3841,7 @@ function start.f_turnsRecovery()
 		return
 	end
 	start.turnsRecoveryInit = true
-	for i = 1, #start.p[1].t_selected + #start.p[2].t_selected do
+	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
 			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
 			local base = lifemax() * config.TurnsRecoveryBase / 100
@@ -3877,7 +3882,7 @@ function start.f_rankInit()
 	end
 	for side = 1, 2 do
 		for _, v in ipairs(start.p[side].t_selected) do
-			if start.f_getCharData(v.ref).rank == 0 then
+			if start.f_getCharData(v.ref).rankdisplay == 0 then
 				return false
 			end
 		end
@@ -4317,7 +4322,11 @@ function start.f_dialogue()
 			t.endtime = t.counter + motif.dialogue_info.endtime
 		end
 	end
-	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_cancel))) then
+	local key_cancel = main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_cancel))
+	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and key_cancel) then
+		if key_cancel then
+			charSndStop()
+		end
 		dialogueReset()
 		start.dialogueInit = false
 		t.active = false

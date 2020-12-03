@@ -136,9 +136,11 @@ func systemScriptInit(l *lua.LState) {
 			anim = sys.sel.GetStage(int(numArg(l, 2))).anims.get(int16(numArg(l, 3)), int16(numArg(l, 4)))
 		}
 		if anim != nil {
-			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
-			a.palfx.clear()
-			a.palfx.time = -1
+			pfx := newPalFX()
+			pfx.clear()
+			pfx.time = -1
+			//TODO: palette changing depending on palette currently loaded on character
+			a := &Anim{anim: anim, window: sys.scrrect, xscl: 1, yscl: 1, palfx: pfx}
 			if l.GetTop() >= 5 && !boolArg(l, 5) && a.anim.totaltime == a.anim.looptime {
 				a.anim.totaltime = -1
 				a.anim.looptime = 0
@@ -862,6 +864,16 @@ func systemScriptInit(l *lua.LState) {
 							b = false
 						}
 					}
+					if sys.reloadStageFlg {
+						sys.stage = nil
+					}
+					if sys.reloadLifebarFlg {
+						lb, err := loadLifebar(sys.lifebar.deffile)
+						if err != nil {
+							l.RaiseError(err.Error())
+						}
+						sys.lifebar = *lb
+					}
 					sys.loaderReset()
 					winp = -2
 				} else if sys.esc {
@@ -892,6 +904,7 @@ func systemScriptInit(l *lua.LState) {
 				for i := 0; i < 2; i++ {
 					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
 						sys.lifebar.fa[TM_Turns][i].numko++
+						sys.lifebar.nm[TM_Turns][i].numko++
 						sys.roundsExisted[i] = 0
 					}
 				}
@@ -1506,6 +1519,8 @@ func systemScriptInit(l *lua.LState) {
 			for i := range sys.reloadCharSlot {
 				sys.reloadCharSlot[i] = true
 			}
+			sys.reloadStageFlg = true
+			sys.reloadLifebarFlg = true
 		}
 		return 0
 	})
@@ -3518,6 +3533,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nopowerbardisplay)))
 		case "autoguard":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
+		case "animfreeze":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
 		case "roundnotover":
