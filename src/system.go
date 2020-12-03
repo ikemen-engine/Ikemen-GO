@@ -202,6 +202,8 @@ type System struct {
 	paused, step            bool
 	roundResetFlg           bool
 	reloadFlg               bool
+	reloadStageFlg          bool
+	reloadLifebarFlg        bool
 	reloadCharSlot          [MaxSimul*2 + MaxAttachedChar]bool
 	shortcutScripts         map[ShortcutKey]*ShortcutScript
 	turbo                   float32
@@ -2006,7 +2008,8 @@ func (s *System) fight() (reload bool) {
 		}
 		s.resetFrameTime()
 		s.nextRound()
-		s.roundResetFlg, s.reloadFlg, s.introSkipped = false, false, false
+		s.roundResetFlg, s.introSkipped = false, false
+		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
 		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
 		scl = s.cam.startzoom
 		s.cam.Update(scl, x, y)

@@ -2347,6 +2347,7 @@ type Lifebar struct {
 	activeGb   bool
 	activeSb   bool
 	fx_scale   float32
+	deffile    string
 }
 
 func loadLifebar(deffile string) (*Lifebar, error) {
@@ -2916,6 +2917,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			}
 		}
 	}
+	l.deffile = deffile
 	return l, nil
 }
 func (l *Lifebar) step() {

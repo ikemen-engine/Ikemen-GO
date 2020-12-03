@@ -864,6 +864,16 @@ func systemScriptInit(l *lua.LState) {
 							b = false
 						}
 					}
+					if sys.reloadStageFlg {
+						sys.stage = nil
+					}
+					if sys.reloadLifebarFlg {
+						lb, err := loadLifebar(sys.lifebar.deffile)
+						if err != nil {
+							l.RaiseError(err.Error())
+						}
+						sys.lifebar = *lb
+					}
 					sys.loaderReset()
 					winp = -2
 				} else if sys.esc {
@@ -1509,6 +1519,8 @@ func systemScriptInit(l *lua.LState) {
 			for i := range sys.reloadCharSlot {
 				sys.reloadCharSlot[i] = true
 			}
+			sys.reloadStageFlg = true
+			sys.reloadLifebarFlg = true
 		}
 		return 0
 	})

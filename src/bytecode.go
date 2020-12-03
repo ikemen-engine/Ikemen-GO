@@ -6737,6 +6737,7 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			} else {
 				sys.sel.sdefOverwrite = filepath.Dir(c.gi().def) + "/" + s
 			}
+			//sys.reloadStageFlg = true
 			reloadFlag = true
 		case matchRestart_p1def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
