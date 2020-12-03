@@ -935,7 +935,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
 			// TODO: Check why ths channel operation uses too much memory.
-			// sys.mainThreadTask <- func() {
+			sys.mainThreadTask <- func() {
 				gl.Enable(gl.TEXTURE_2D)
 				s.Tex = newTexture()
 				gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
@@ -953,7 +953,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 				gl.Disable(gl.TEXTURE_2D)
-			// }
+			}
 			return nil
 		default:
 			return Error("Unknown format")
