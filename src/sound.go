@@ -568,12 +568,13 @@ func LoadSnd(filename string) (*Snd, error) {
 func (s *Snd) Get(gn [2]int32) *Wave {
 	return s.table[gn]
 }
-func (s *Snd) play(gn [2]int32) bool {
+func (s *Snd) play(gn [2]int32, volumescale int32) bool {
 	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
 	}
 	c.sound = s.Get(gn)
+	c.SetVolume(volumescale * 64 / 25)
 	return c.sound != nil
 }
 func (s *Snd) stop(gn [2]int32) {

@@ -2532,7 +2532,7 @@ function start.f_selectMenu(side, cmd, player, member)
 					start.p[side].animDelay = math.min(120, math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
 				elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
 					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true, false)
-					start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character --dupa
+					start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character
 				end
 			end
 			start.p[side].t_selTemp[member].ref = start.c[player].selRef
@@ -4207,7 +4207,7 @@ function start.f_dialogueTokens(key, t)
 				end
 			--play sound
 			elseif v.param == 'sound' then --pn, group_no, sound_no, volumescale
-				charSndPlay(v.pn, v.value[1] or -1, v.value[2] or 0, v.value[3] or 255)
+				charSndPlay(v.pn, v.value[1] or -1, v.value[2] or 0, v.value[3] or 100)
 			--change anim
 			elseif v.param == 'anim' then --pn, anim_no, anim_elem
 				charChangeAnim(v.pn, v.value[1] or 0, v.value[2] or 0)

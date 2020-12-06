@@ -4642,7 +4642,7 @@ func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time in
 		return
 	}
 	if snd[0] != -1 {
-		sys.lifebar.snd.play(snd)
+		sys.lifebar.snd.play(snd, 100)
 	}
 	index := 0
 	if !top {

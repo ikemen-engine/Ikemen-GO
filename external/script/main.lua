@@ -3918,7 +3918,7 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 	local bgmLoopstart = bgmLoopstart or 0
 	local bgmLoopend = bgmLoopend or 0
 	if interrupt or bgm ~= '' then
-		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+		playBGM(bgm, true, bgmLoop, math.min(100, bgmVolume), bgmLoopstart, bgmLoopend)
 	end
 end
 

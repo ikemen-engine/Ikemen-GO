@@ -49,13 +49,13 @@ local function f_play(t, attract)
 				end
 				--play bgm
 				if i == 0 and t.scene[v].bgm ~= nil then
-					playBGM(t.scene[v].bgm, true, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
+					playBGM(t.scene[v].bgm, true, t.scene[v].bgm_loop, math.min(100, t.scene[v].bgm_volume), t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
 					for k2, v2 in main.f_sortKeys(t.scene[v].sound) do
 						if i == v2.starttime then
-							sndPlay(t.scenedef.snd_data, v2.value[1], v2.value[2])
+							sndPlay(t.scenedef.snd_data, v2.value[1], v2.value[2], v2.volumescale, v2.pan)
 						end
 					end
 				end
@@ -248,8 +248,8 @@ local function f_parse(path)
 							{
 								value = {-1, -1},
 								starttime = 0,
-								volumescale = 100, --not supported yet
-								pan = 0 --not supported yet
+								volumescale = 100,
+								pan = 0 --TODO: not implemented yet
 							}
 						end
 						pos_val = pos.sound[num]
