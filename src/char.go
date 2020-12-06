@@ -4689,8 +4689,8 @@ func (c *Char) appendToClipboard(pn, sn int, a ...interface{}) {
 				c.clipboardText = append(c.clipboardText, str)
 			}
 		}
-		if len(c.clipboardText) > 10 {
-			c.clipboardText = c.clipboardText[len(c.clipboardText)-10:]
+		if len(c.clipboardText) > 3 {
+			c.clipboardText = c.clipboardText[len(c.clipboardText)-3:]
 		}
 	}
 }

@@ -46,7 +46,7 @@ if !Const(Default.Enable.Action) || TeamSide = 0 {
 	}
 	# Hit Overridden (Parry)
 	if HitOverridden {
-		LifebarAction{spr: Const(MsgParry), 0}
+		#LifebarAction{spr: Const(MsgParry), 0}
 	}
 	# Danger
 	if Life > 0 && float(Life) / LifeMax <= 0.3 && Map(_iksys_actionDangerFlag) = 0 {
