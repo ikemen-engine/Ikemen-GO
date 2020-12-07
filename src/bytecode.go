@@ -5622,7 +5622,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.customDefence = exp[0].evalF(c)
+			crun.customDefense = exp[0].evalF(c)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6552,12 +6552,12 @@ func getHitScaleTarget(char *Char, target int32, force bool, reset bool) [3]*Hit
 		return char.defaultHitScale
 	} else { //Check if target exists.
 		if force {
-			if _, ok := char.activeHitScale[target]; !ok {
+			if _, ok := char.activeHitScale[target]; !ok || reset {
 				char.activeHitScale[target] = newHitScaleArray()
 			}
 			return char.activeHitScale[target]
 		} else {
-			if _, ok := char.nextHitScale[target]; !ok {
+			if _, ok := char.nextHitScale[target]; !ok || reset {
 				char.nextHitScale[target] = newHitScaleArray()
 			}
 			return char.nextHitScale[target]

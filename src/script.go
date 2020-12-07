@@ -3717,7 +3717,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "defence", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.finalDefence * 100))
+		l.Push(lua.LNumber(sys.debugWC.finalDefense * 100))
 		return 1
 	})
 	luaRegister(l, "displayname", func(*lua.LState) int {

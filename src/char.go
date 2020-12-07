@@ -1526,12 +1526,15 @@ type CharSystemVar struct {
 	veloff        float32
 	width, edge   [2]float32
 	attackMul     float32
-	defenceMul    float32
-	customDefence float32
-	finalDefence  float64
-	counterHit    bool
-	firstAttack   bool
-	getcombodmg   int32
+	// Defense parameters
+	superDefenseMul float32
+	fallDefenseMul  float32
+	customDefense   float32
+	finalDefense    float64
+
+	counterHit  bool
+	firstAttack bool
+	getcombodmg int32
 }
 
 type Char struct {
@@ -1686,8 +1689,9 @@ func (c *Char) clear1() {
 	c.fallTime = 0
 	c.varRangeSet(0, int32(NumVar)-1, 0)
 	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
-	c.defenceMul = 1
-	c.customDefence = 1
+	c.superDefenseMul = 1
+	c.fallDefenseMul = 1
+	c.customDefense = 1
 	c.key = -1
 	c.id = -1
 	c.helperId = 0
@@ -1740,10 +1744,11 @@ func (c *Char) clear2() {
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
 		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
-		width:         [...]float32{c.defFW(), c.defBW()},
-		attackMul:     float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
-		defenceMul:    1,
-		customDefence: 1}
+		width:           [...]float32{c.defFW(), c.defBW()},
+		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
+		fallDefenseMul:  1,
+		superDefenseMul: 1,
+		customDefense:   1}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 && c.teamside != -1 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -3895,7 +3900,7 @@ func (c *Char) targetRedLifeAdd(tar []int32, add float64, absolute bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			if !absolute {
-				add /= c.finalDefence
+				add /= c.finalDefense
 			}
 			t.redLifeAdd(math.Ceil(add), true)
 		}
@@ -3995,7 +4000,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	}
 	if !absolute {
 		damage = float64(attacker.scaleHit(int32(damage), c.id, 0))
-		damage *= float64(atkmul) / c.finalDefence
+		damage *= float64(atkmul) / c.finalDefense
 	}
 	damage = math.Ceil(damage)
 	min, max := float64(c.life-c.lifeMax), float64(Max(0, c.life-Btoi(!kill)))
@@ -4010,7 +4015,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {
-			add /= c.finalDefence
+			add /= c.finalDefense
 		}
 		add = math.Floor(add)
 		max := float64(c.lifeMax - c.life)
@@ -4133,7 +4138,7 @@ func (c *Char) rankAdd(val, max float32, typ, ico string) {
 func (c *Char) redLifeAdd(add float64, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {
-			add /= c.finalDefence
+			add /= c.finalDefense
 		}
 		c.redLifeSet(c.redLife + int32(add))
 	}
@@ -5272,7 +5277,7 @@ func (c *Char) update(cvmin, cvmax,
 			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
 			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) && c.ss.time == 1 {
 				if !c.sf(CSF_nofalldefenceup) {
-					c.defenceMul *= c.gi().data.fall.defence_mul
+					c.fallDefenseMul = c.gi().data.fall.defence_mul
 				}
 				if !c.sf(CSF_nofallcount) {
 					c.ghv.fallcount++
@@ -5311,7 +5316,8 @@ func (c *Char) update(cvmin, cvmax,
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.defenceMul = 1
+				c.superDefenseMul = 1
+				c.fallDefenseMul = 1
 				c.ghv.hittime = -1
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false
@@ -5352,7 +5358,7 @@ func (c *Char) update(cvmin, cvmax,
 		}
 		hitScaletimeAdvance(c.defaultHitScale)
 	}
-	c.finalDefence = float64(((float32(c.gi().data.defence) * c.customDefence * c.defenceMul) / 100))
+	c.finalDefense = float64(((float32(c.gi().data.defence) * c.customDefense * c.superDefenseMul * c.fallDefenseMul) / 100))
 	if sys.tickNextFrame() {
 		c.pushed = false
 	}
@@ -5621,7 +5627,7 @@ func (c *Char) cueDraw() {
 			c.exitTarget(false)
 		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
-			c.defenceMul *= sys.superp2defmul
+			c.superDefenseMul = sys.superp2defmul
 		}
 		c.minus = 2
 		c.oldPos = c.pos
