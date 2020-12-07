@@ -38,7 +38,6 @@ local t_aiRamp = {}
 local t_gameStats = {}
 local t_recordText = {}
 local t_reservedChars = {{}, {}}
-local t_victoryBGM = {}
 local timerSelect = 0
 local winCnt = 0
 local loseCnt = 0
@@ -555,28 +554,20 @@ end
 --sets music
 function start.f_setMusic(num, path)
 	start.t_music = {music = {}, musicalt = {}, musiclife = {}, musicvictory = {}}
-	t_victoryBGM = {}
+	local side = 2
 	for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
 		local track = 0
 		local music = ''
 		local volume = 100
 		local loopstart = 0
 		local loopend = 0
-		if main.stageMenu then --game modes with stage selection screen
-			if main.t_selStages[num] ~= nil and main.t_selStages[num][v] ~= nil then --music assigned as stage param
-				track = math.random(1, #main.t_selStages[num][v])
-				music = main.t_selStages[num][v][track].bgmusic
-				volume = main.t_selStages[num][v][track].bgmvolume
-				loopstart = main.t_selStages[num][v][track].bgmloopstart
-				loopend = main.t_selStages[num][v][track].bgmloopend
-			end
-		elseif not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
-			if main.charparam.music and start.f_getCharData(start.p[2].t_selected[1].ref)[v] ~= nil then --music assigned as character param
-				track = math.random(1, #start.f_getCharData(start.p[2].t_selected[1].ref)[v])
-				music = start.f_getCharData(start.p[2].t_selected[1].ref)[v][track].bgmusic
-				volume = start.f_getCharData(start.p[2].t_selected[1].ref)[v][track].bgmvolume
-				loopstart = start.f_getCharData(start.p[2].t_selected[1].ref)[v][track].bgmloopstart
-				loopend = start.f_getCharData(start.p[2].t_selected[1].ref)[v][track].bgmloopend
+		if not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
+			if (main.charparam.music or (v == 'musicvictory' and main.victoryScreen)) and start.f_getCharData(start.p[side].t_selected[1].ref)[v] ~= nil then --music assigned as character param
+				track = math.random(1, #start.f_getCharData(start.p[side].t_selected[1].ref)[v])
+				music = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmusic
+				volume = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmvolume
+				loopstart = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopstart
+				loopend = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopend
 			elseif main.t_selStages[num] ~= nil and main.t_selStages[num][v] ~= nil then --music assigned as stage param
 				track = math.random(1, #main.t_selStages[num][v])
 				music = main.t_selStages[num][v][track].bgmusic
@@ -588,15 +579,15 @@ function start.f_setMusic(num, path)
 		if (v == 'music' or v == 'musicalt') and path ~= nil then
 			music = path
 		end
-		if v == 'musicvictory' then
-			table.insert(t_victoryBGM, music ~= '')
-		end
 		if music ~= '' or v == 'music' then
 			if v == 'musicvictory' then
-				start.t_music[v][#t_victoryBGM] = {bgmusic = music, bgmvolume = volume, bgmloopstart = loopstart, bgmloopend = loopend}
+				start.t_music[v][side] = {bgmusic = music, bgmvolume = volume, bgmloopstart = loopstart, bgmloopend = loopend}
 			else
 				start.t_music[v] = {bgmusic = music, bgmvolume = volume, bgmloopstart = loopstart, bgmloopend = loopend}
 			end
+		end
+		if v == 'musicvictory' then
+			side = 1
 		end
 	end
 	for k, v in pairs({bgmtrigger_alt = 0, bgmratio_life = 30, bgmtrigger_life = 0}) do
@@ -3096,7 +3087,7 @@ function start.f_victoryInit()
 	clearColor(motif.victorybgdef.bgclearcolor[1], motif.victorybgdef.bgclearcolor[2], motif.victorybgdef.bgclearcolor[3])
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
-	if not t_victoryBGM[winnerteam()] then
+	if start.t_music.musicvictory[winnerteam()] == nil then
 		main.f_playBGM(false, motif.music.victory_bgm, motif.music.victory_bgm_loop, motif.music.victory_bgm_volume, motif.music.victory_bgm_loopstart, motif.music.victory_bgm_loopend)
 	end
 	start.f_resetTempData(motif.victory_screen, '', true)
