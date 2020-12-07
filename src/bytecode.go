@@ -4951,6 +4951,8 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 				} else {
 					crun.unsetSF(CSF_movecamera_y)
 				}
+			} else {
+				crun.unsetSF(CSF_movecamera_y)
 			}
 		case screenBound_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

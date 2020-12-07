@@ -2138,7 +2138,11 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, s)
 		}
-		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
+		volumescale := int32(100)
+		if l.GetTop() >= 4 {
+			volumescale = int32(numArg(l, 4))
+		}
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale)
 		return 0
 	})
 	luaRegister(l, "sndStop", func(l *lua.LState) int {

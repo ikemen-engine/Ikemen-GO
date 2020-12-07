@@ -535,7 +535,7 @@ func (c *Compiler) operator(in *string) error {
 			if opp < 0 || ((!c.usiroOp || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error(c.maeOp + " is invalid")
+				return Error("Invalid data: " + c.maeOp)
 			}
 			*in = c.token + " " + *in
 			c.token = c.maeOp
@@ -613,7 +613,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				(a < 'a' || a > 'z') {
 				return flg, nil
 			}
-			return 0, Error(string(a) + " is an invalid value")
+			return 0, Error("Invalid value: " + string(a))
 		}
 	}
 	hitdefflg := flg
@@ -660,7 +660,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				}
 				return flg, nil
 			}
-			return 0, Error(a + " is an invalid value")
+			return 0, Error("Invalid value: " + a)
 		}
 		if i == 0 {
 			hitdefflg = flg
@@ -695,7 +695,7 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 		case 'A', 'a':
 			flg |= int32(ST_A)
 		default:
-			return 0, Error(att + " is an invalid attribute value")
+			return 0, Error("Invalid attribute value: " + att)
 		}
 	}
 	for len(*in) > 0 && (*in)[0] == ',' {
@@ -1152,7 +1152,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	var err error
 	switch c.token {
 	case "":
-		return bvNone(), Error("Empty")
+		return bvNone(), Error("Nothing assigned")
 	case "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
@@ -1220,7 +1220,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error(c.token + " is invalid")
+				return bvNone(), Error("Invalid data: " + c.token)
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -1400,7 +1400,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_camerapos_y)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "camerazoom":
 		out.append(OC_camerazoom)
@@ -1613,7 +1613,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			out.appendI32Op(OC_const_constants, int32(sys.stringPool[c.playerNo].Add(
 				strings.ToLower(c.token))))
-			//return bvNone(), Error(c.token + " is invalid")
+			//return bvNone(), Error("Invalid data: " + c.token)
 		}
 		*in = strings.TrimSpace(*in)
 		if len(*in) == 0 || (!sys.ignoreMostErrors && (*in)[0] != ')') {
@@ -1748,7 +1748,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "score":
 				out.append(OC_ex_gethitvar_score)
 			default:
-				return bvNone(), Error(c.token + " is invalid")
+				return bvNone(), Error("Invalid data: " + c.token)
 			}
 		}
 		c.token = c.tokenizer(in)
@@ -1801,7 +1801,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "id":
 		out.append(OC_id)
@@ -1856,7 +1856,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'h':
 				mt = MT_H
 			default:
-				return Error(c.token + " is an invalid value")
+				return Error("Invalid value: " + c.token)
 			}
 			if trname == "p2movetype" {
 				out.appendI32Op(OC_p2, 2+Btoi(not))
@@ -1928,7 +1928,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "power":
 		out.append(OC_power)
@@ -1981,7 +1981,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_screenpos_y)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "screenwidth":
 		out.append(OC_screenwidth)
@@ -2012,7 +2012,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'l':
 				st = ST_L
 			default:
-				return Error(c.token + " is an invalid value")
+				return Error("Invalid value: " + c.token)
 			}
 			if trname == "p2statetype" {
 				out.appendI32Op(OC_p2, 2+Btoi(not))
@@ -2043,7 +2043,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "info.author":
 			opc = OC_const_stagevar_info_author
 		default:
-			return bvNone(), Error(svname + " is invalid")
+			return bvNone(), Error("Invalid data: " + svname)
 		}
 		if err := nameSub(opc); err != nil {
 			return bvNone(), err
@@ -2064,7 +2064,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "tag":
 				tm = TM_Tag
 			default:
-				return Error(c.token + " is an invalid value")
+				return Error("Invalid value: " + c.token)
 			}
 			out.append(OC_teammode, OpCode(tm))
 			return nil
@@ -2091,7 +2091,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "win":
 		out.append(OC_ex_, OC_ex_win)
@@ -2164,7 +2164,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "p2bodydist":
 		c.token = c.tokenizer(in)
@@ -2176,7 +2176,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "rootdist":
 		c.token = c.tokenizer(in)
@@ -2188,7 +2188,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "parentdist":
 		c.token = c.tokenizer(in)
@@ -2200,7 +2200,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	case "pi":
 		bv = BytecodeFloat(float32(math.Pi))
@@ -2526,7 +2526,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "roundnotskip":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
 		default:
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(); err != nil {
@@ -2570,7 +2570,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case 'n':
 				st = ST_N
 			default:
-				return Error(c.token + " is an invalid value")
+				return Error("Invalid value: " + c.token)
 			}
 			out.append(OC_ex_, OC_ex_physics, OpCode(st))
 			return nil
@@ -2635,7 +2635,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.maeOp) > 0 {
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 		if rd {
 			out.append(OC_rdreset)
@@ -2697,7 +2697,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error(c.token + " is invalid")
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -2713,7 +2713,7 @@ func (c *Compiler) renzokuEnzansihaError(in *string) error {
 			}
 			fallthrough
 		case '=', '<', '>', '|', '&', '+', '*', '/', '%', '^':
-			return Error(c.tokenizer(in) + " is invalid")
+			return Error("Invalid data: " + c.tokenizer(in))
 		}
 	}
 	return nil
@@ -3180,7 +3180,7 @@ func (c *Compiler) argExpression(in *string, vt ValueType) (BytecodeExp,
 	}
 	if len(c.token) > 0 {
 		if c.token != "," {
-			return nil, Error(c.token + " is invalid")
+			return nil, Error("Invalid data: " + c.token)
 		}
 		oldin := *in
 		if c.tokenizer(in) == "" {
@@ -3198,7 +3198,7 @@ func (c *Compiler) fullExpression(in *string, vt ValueType) (BytecodeExp,
 		return nil, err
 	}
 	if len(c.token) > 0 {
-		return nil, Error(c.token + " is invalid")
+		return nil, Error("Invalid data: " + c.token)
 	}
 	return be, nil
 }
@@ -3285,7 +3285,7 @@ func (c *Compiler) stateSec(is IniSection, f func() error) error {
 			str += k
 		}
 		if len(str) > 0 {
-			return Error(str + " is an invalid key name")
+			return Error("Invalid key name: " + str)
 		}
 	}
 	return nil
@@ -3369,7 +3369,7 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 			case 'n':
 				pt = PT_N
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 		}
 		sc.add(id, sc.iToExp(int32(pt)))
@@ -3453,7 +3453,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				}
 			}
 			if _error && (!afterImage || !sys.ignoreMostErrors) {
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 		}
 		var exp []BytecodeExp
@@ -3550,7 +3550,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.stateType = ST_U
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			return nil
 		}); err != nil {
@@ -3570,7 +3570,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.moveType = MT_U
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			return nil
 		}); err != nil {
@@ -3592,7 +3592,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			case 'u':
 				sbc.physics = ST_U
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			return nil
 		}); err != nil {
@@ -3817,7 +3817,7 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 			case "roundnotskip":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			return nil
 		}
@@ -4106,7 +4106,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase,
 			case 'p':
 				sc.add(helper_helpertype, sc.iToExp(1))
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			return nil
 		}); err != nil {
@@ -4820,7 +4820,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'N', 'n':
 			ht = HT_None
 		default:
-			return Error(data + " is an invalid value")
+			return Error("Invalid value: " + data)
 		}
 		sc.add(id, sc.iToExp(int32(ht)))
 		return nil
@@ -4854,7 +4854,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'D', 'd':
 			ra = RA_Diagup
 		default:
-			return Error(data + " is an invalid value")
+			return Error("Invalid value: " + data)
 		}
 		sc.add(id, sc.iToExp(int32(ra)))
 		return nil
@@ -4887,7 +4887,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		case 'F', 'f':
 			at = -1
 		default:
-			return Error(data + " is an invalid value")
+			return Error("Invalid value: " + data)
 		}
 		sc.add(hitDef_affectteam, sc.iToExp(at))
 		return nil
@@ -4986,7 +4986,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 			case 'D', 'd':
 				at = AT_Dodge
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 		}
 		sc.add(hitDef_priority, append(sc.beToExp(be), sc.iToExp(int32(at))...))
@@ -5183,7 +5183,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		in := data
 		if c.token = c.tokenizer(&in); c.token == "n" {
 			if c.token = c.tokenizer(&in); len(c.token) > 0 && c.token != "," {
-				return Error(c.token + " is invalid")
+				return Error("Invalid data: " + c.token)
 			}
 		} else {
 			in = data
@@ -5197,7 +5197,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 			oldin := in
 			if c.token = c.tokenizer(&in); c.token == "n" {
 				if c.token = c.tokenizer(&in); len(c.token) > 0 {
-					return Error(c.token + " is invalid")
+					return Error("Invalid data: " + c.token)
 				}
 			} else {
 				in = oldin
@@ -5975,7 +5975,7 @@ func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase,
 			case 'F', 'f':
 				hmf = HMF_F
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			sc.add(bindToTarget_pos, append(exp, sc.iToExp(int32(hmf))...))
 			return nil
@@ -6465,7 +6465,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'l':
 				st = ST_L
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			sc.add(stateTypeSet_statetype, sc.iToExp(int32(st)))
 			return nil
@@ -6497,7 +6497,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'h':
 				mt = MT_H
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			sc.add(stateTypeSet_movetype, sc.iToExp(int32(mt)))
 			return nil
@@ -6519,7 +6519,7 @@ func (c *Compiler) stateTypeSet(is IniSection, sc *StateControllerBase,
 			case 'n':
 				st = ST_N
 			default:
-				return Error(data + " is an invalid value")
+				return Error("Invalid value: " + data)
 			}
 			sc.add(stateTypeSet_physics, sc.iToExp(int32(st)))
 			return nil
@@ -8014,7 +8014,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					var ok bool
 					scf, ok = c.scmap[strings.ToLower(data)]
 					if !ok {
-						return Error(data + " is a invalid state controller")
+						return Error("Invalid state controller: " + data)
 					}
 				case "persistent":
 					if c.stateNo >= 0 {
@@ -8233,9 +8233,9 @@ func (c *Compiler) scan(line *string) string {
 func (c *Compiler) needToken(t string) error {
 	if c.token != t {
 		if c.token == "" {
-			return Error(t + " token is missing")
+			return Error("Missing token: " + t)
 		}
-		return Error(t + " token is missing. Unexpected token: " + c.token)
+		return Error(fmt.Sprintf("Wrong token: expected %v, got %v", t, c.token))
 	}
 	return nil
 }

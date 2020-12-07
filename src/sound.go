@@ -554,7 +554,7 @@ func LoadSnd(filename string) (*Snd, error) {
 			if !ok {
 				tmp, err := ReadWave(f, int64(subHeaderOffset))
 				if err != nil {
-					sys.warnConsole(fmt.Sprintf("WARNING: %v sound can't be read: %v,%v", filename, num[0], num[1]))
+					sys.appendToConsole(fmt.Sprintf("WARNING: %v sound can't be read: %v,%v", filename, num[0], num[1]))
 					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
 				} else {
 					s.table[num] = tmp
@@ -568,12 +568,13 @@ func LoadSnd(filename string) (*Snd, error) {
 func (s *Snd) Get(gn [2]int32) *Wave {
 	return s.table[gn]
 }
-func (s *Snd) play(gn [2]int32) bool {
+func (s *Snd) play(gn [2]int32, volumescale int32) bool {
 	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
 	}
 	c.sound = s.Get(gn)
+	c.SetVolume(volumescale * 64 / 25)
 	return c.sound != nil
 }
 func (s *Snd) stop(gn [2]int32) {

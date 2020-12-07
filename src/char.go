@@ -2386,11 +2386,11 @@ func (c *Char) unsetSF(csf CharSpecialFlag) {
 }
 func (c *Char) parent() *Char {
 	if c.parentIndex == IErr {
-		sys.warnConsole(c.warn() + "has no parent")
+		sys.appendToConsole(c.warn() + "has no parent")
 		return nil
 	}
 	if c.parentIndex < 0 {
-		sys.warnConsole(c.warn() + "parent has been already destroyed")
+		sys.appendToConsole(c.warn() + "parent has been already destroyed")
 		if !sys.ignoreMostErrors {
 			sys.errLog.Println(c.name + " parent has been already destroyed")
 		}
@@ -2399,7 +2399,7 @@ func (c *Char) parent() *Char {
 }
 func (c *Char) root() *Char {
 	if c.helperIndex == 0 {
-		sys.warnConsole(c.warn() + "has no root")
+		sys.appendToConsole(c.warn() + "has no root")
 		return nil
 	}
 	return sys.chars[c.playerNo][0]
@@ -2410,7 +2410,7 @@ func (c *Char) helper(id int32) *Char {
 			return h
 		}
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
 	return nil
 }
 func (c *Char) target(id int32) *Char {
@@ -2420,14 +2420,14 @@ func (c *Char) target(id int32) *Char {
 		}
 	}
 	if id != -1 {
-		sys.warnConsole(c.warn() + fmt.Sprintf("has no target: %v", id))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no target: %v", id))
 	}
 	return nil
 }
 func (c *Char) partner(n int32) *Char {
 	n = Max(0, n)
 	if int(n) > len(sys.chars)/2-2 {
-		sys.warnConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 		return nil
 	}
 	// X>>1 = X/2
@@ -2445,7 +2445,7 @@ func (c *Char) partner(n int32) *Char {
 	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
 		return sys.chars[p][0]
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 	return nil
 }
 func (c *Char) partnerV2(n int32) *Char {
@@ -2464,7 +2464,7 @@ func (c *Char) partnerV2(n int32) *Char {
 }
 func (c *Char) enemy(n int32) *Char {
 	if n < 0 || n >= c.numEnemy() {
-		sys.warnConsole(c.warn() + fmt.Sprintf("has no enemy: %v", n))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no enemy: %v", n))
 		return nil
 	}
 	if c.teamside == -1 {
@@ -3000,9 +3000,9 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	if w == nil {
 		if log {
 			if f {
-				sys.warnConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
 			} else {
-				sys.warnConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
 			}
 		}
 		if !sys.ignoreMostErrors {
@@ -3052,7 +3052,7 @@ func (c *Char) turn() {
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest >= 2500 {
-		sys.warnConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after 2500 loops): %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after 2500 loops): %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
 		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
 			c.name, c.ss.prevno, c.ss.no, no)
 		return false
@@ -3081,7 +3081,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
-		sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
@@ -3410,9 +3410,9 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	if a == nil {
 		if log {
 			if ffx {
-				sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
 			} else {
-				sys.warnConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
 			}
 		}
 		if !sys.ignoreMostErrors {
@@ -3683,28 +3683,28 @@ func (c *Char) varGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumVar) {
 		return BytecodeInt(c.ivar[i])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumFvar) {
 		return BytecodeFloat(c.fvar[i])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysVar) {
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarGet(i int32) BytecodeValue {
 	if i >= 0 && i < int32(NumSysFvar) {
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varSet(i, v int32) BytecodeValue {
@@ -3712,7 +3712,7 @@ func (c *Char) varSet(i, v int32) BytecodeValue {
 		c.ivar[i] = v
 		return BytecodeInt(v)
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
@@ -3720,7 +3720,7 @@ func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i] = v
 		return BytecodeFloat(v)
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarSet(i, v int32) BytecodeValue {
@@ -3728,7 +3728,7 @@ func (c *Char) sysVarSet(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] = v
 		return BytecodeInt(v)
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
@@ -3736,7 +3736,7 @@ func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] = v
 		return BytecodeFloat(v)
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varAdd(i, v int32) BytecodeValue {
@@ -3744,7 +3744,7 @@ func (c *Char) varAdd(i, v int32) BytecodeValue {
 		c.ivar[i] += v
 		return BytecodeInt(c.ivar[i])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
@@ -3752,7 +3752,7 @@ func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i] += v
 		return BytecodeFloat(c.fvar[i])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
@@ -3760,7 +3760,7 @@ func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
 		c.ivar[i+int32(NumVar)] += v
 		return BytecodeInt(c.ivar[i+int32(NumVar)])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
@@ -3768,7 +3768,7 @@ func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
 		c.fvar[i+int32(NumFvar)] += v
 		return BytecodeFloat(c.fvar[i+int32(NumFvar)])
 	}
-	sys.warnConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
+	sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v out of range", i))
 	return BytecodeSF()
 }
 func (c *Char) varRangeSet(s, e, v int32) {
@@ -4368,14 +4368,14 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
 	if !ok || si < 0 {
-		sys.warnConsole(c.warn() + fmt.Sprintf("has no source palette for RemapPal: %v,%v", src[0], src[1]))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no source palette for RemapPal: %v,%v", src[0], src[1]))
 		return
 	}
 	var di int
 	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
 	if !ok || di < 0 {
-		sys.warnConsole(c.warn() + fmt.Sprintf("has no dest palette for RemapPal: %v,%v", dst[0], dst[1]))
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no dest palette for RemapPal: %v,%v", dst[0], dst[1]))
 		di = si
 	}
 	if pfx.remap == nil {
@@ -4647,7 +4647,7 @@ func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time in
 		return
 	}
 	if snd[0] != -1 {
-		sys.lifebar.snd.play(snd)
+		sys.lifebar.snd.play(snd, 100)
 	}
 	index := 0
 	if !top {
@@ -4694,8 +4694,8 @@ func (c *Char) appendToClipboard(pn, sn int, a ...interface{}) {
 				c.clipboardText = append(c.clipboardText, str)
 			}
 		}
-		if len(c.clipboardText) > 10 {
-			c.clipboardText = c.clipboardText[len(c.clipboardText)-10:]
+		if len(c.clipboardText) > sys.clipboardRows {
+			c.clipboardText = c.clipboardText[len(c.clipboardText)-sys.clipboardRows:]
 		}
 	}
 }
@@ -4787,7 +4787,7 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
-				sys.warnConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
 				c.selfState(5050, -1, -1, -1, false)
 				c.setBindTime(0)
 				return
@@ -6577,7 +6577,7 @@ func (cl *CharList) get(id int32) *Char {
 func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	if n < 0 {
 		if log {
-			sys.warnConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
+			sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
 		}
 		return nil
 	}
@@ -6608,7 +6608,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	if int(n) >= len(*cache) {
 		if log {
-			sys.warnConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
+			sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
 		}
 		return nil
 	}

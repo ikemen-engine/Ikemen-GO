@@ -1093,7 +1093,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			if old, ok := uniquePals[[...]int16{gn_[0], gn_[1]}]; ok {
 				idx = old
 				pal = s.palList.Get(old)
-				sys.warnConsole(fmt.Sprintf("WARNING: %v duplicated palette: %v,%v (%v/%v)", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes))
+				sys.appendToConsole(fmt.Sprintf("WARNING: %v duplicated palette: %v,%v (%v/%v)", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes))
 				sys.errLog.Printf("%v duplicated palette: %v,%v (%v/%v)\n", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
 			} else if siz == 0 {
 				idx = int(link)

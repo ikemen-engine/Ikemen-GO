@@ -135,9 +135,10 @@ Debug Options:
 		"data/score.zss",
 		"data/tag.zss"
     ],
-	"ConsoleType": 1,
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
+	"DebugClipboardRows": 2,
+	"DebugConsoleRows": 15,
 	"DebugFont": "font/default-3x5-bold.def",
 	"DebugFontScale": 1,
 	"DebugKeys": true,
@@ -395,9 +396,10 @@ Debug Options:
 		CommonConst                string
 		CommonLua                  []string
 		CommonStates               []string
-		ConsoleType                int
 		ControllerStickSensitivity float32
 		Credits                    int
+		DebugClipboardRows         int
+		DebugConsoleRows           int
 		DebugFont                  string
 		DebugFontScale             float32
 		DebugKeys                  bool
@@ -504,7 +506,8 @@ Debug Options:
 	sys.commonConst = tmp.CommonConst
 	sys.commonLua = tmp.CommonLua
 	sys.commonStates = tmp.CommonStates
-	sys.consoleType = tmp.ConsoleType
+	sys.clipboardRows = tmp.DebugClipboardRows
+	sys.consoleRows = tmp.DebugConsoleRows
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders

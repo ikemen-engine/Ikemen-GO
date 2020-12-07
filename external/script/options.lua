@@ -119,9 +119,10 @@ options.t_itemname = {
 			--	"data/score.zss",
 			--	"data/tag.zss"
 			--}
-			config.ConsoleType = 1
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
+			--config.DebugClipboardRows = 2
+			--config.DebugConsoleRows = 15
 			--config.DebugFont = "font/f-4x6.def"
 			--config.DebugFontScale = 1
 			config.DebugKeys = true
