@@ -81,7 +81,8 @@ var sys = System{
 	lifebarScale:         1,
 	lifebarPortraitScale: 1,
 	vRetrace:             1,
-	consoleType:          1,
+	consoleRows:          15,
+	clipboardRows:        2,
 	pngFilter:            false,
 }
 
@@ -324,7 +325,8 @@ type System struct {
 	maxPowerMode    bool
 	clsnText        []ClsnText
 	consoleText     []string
-	consoleType     int
+	consoleRows     int
+	clipboardRows   int
 	luaLState       *lua.LState
 	statusLFunc     *lua.LFunction
 	listLFunc       []*lua.LFunction
@@ -799,8 +801,8 @@ func (s *System) unsetSF(gsf GlobalSpecialFlag) {
 }
 func (s *System) appendToConsole(str string) {
 	s.consoleText = append(s.consoleText, str)
-	if len(s.consoleText) > 15 {
-		s.consoleText = s.consoleText[len(s.consoleText)-15:]
+	if len(s.consoleText) > s.consoleRows {
+		s.consoleText = s.consoleText[len(s.consoleText)-s.consoleRows:]
 	}
 }
 func (s *System) printToConsole(pn, sn int, a ...interface{}) {
@@ -810,20 +812,6 @@ func (s *System) printToConsole(pn, sn int, a ...interface{}) {
 			fmt.Printf("%s\n", str)
 			s.appendToConsole(str)
 		}
-	}
-}
-func (s *System) warnConsole(str string) {
-	if s.consoleType == 1 {
-		s.appendToConsole(str)
-		return
-	}
-	if s.consoleType == 2 {
-		fmt.Printf("%s\n", str)
-		return
-	}
-	if s.consoleType == 3 {
-		s.appendToConsole(str)
-		fmt.Printf("%s\n", str)
 	}
 }
 func (s *System) loadTime(start time.Time, str string, shell, console bool) {
@@ -1731,7 +1719,7 @@ func (s *System) drawDebug() {
 		}
 		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
 		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
-			(float32(len(s.listLFunc))+float32(len(s.debugWC.clipboardText))+1)
+			(float32(len(s.listLFunc))+float32(s.clipboardRows))-1*s.heightScale
 		for i, f := range s.listLFunc {
 			if f != nil {
 				if i == 1 {
