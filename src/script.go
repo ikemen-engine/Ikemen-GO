@@ -2901,6 +2901,14 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.redlife)
 		case "score":
 			ln = lua.LNumber(c.ghv.score)
+		case "hitdamage":
+			ln = lua.LNumber(c.ghv.hitdamage)
+		case "guarddamage":
+			ln = lua.LNumber(c.ghv.guarddamage)
+		case "hitpower":
+			ln = lua.LNumber(c.ghv.hitpower)
+		case "guardpower":
+			ln = lua.LNumber(c.ghv.guardpower)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

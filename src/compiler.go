@@ -1747,6 +1747,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_redlife)
 			case "score":
 				out.append(OC_ex_gethitvar_score)
+			case "hitdamage":
+				out.append(OC_ex_gethitvar_hitdamage)
+			case "guarddamage":
+				out.append(OC_ex_gethitvar_guarddamage)
+			case "hitpower":
+				out.append(OC_ex_gethitvar_hitpower)
+			case "guardpower":
+				out.append(OC_ex_gethitvar_guardpower)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}

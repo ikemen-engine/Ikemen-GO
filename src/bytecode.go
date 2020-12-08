@@ -413,6 +413,10 @@ const (
 	OC_ex_gethitvar_playerno
 	OC_ex_gethitvar_redlife
 	OC_ex_gethitvar_score
+	OC_ex_gethitvar_hitdamage
+	OC_ex_gethitvar_guarddamage
+	OC_ex_gethitvar_hitpower
+	OC_ex_gethitvar_guardpower
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animlength
@@ -1711,6 +1715,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.redlife)
 	case OC_ex_gethitvar_score:
 		sys.bcStack.PushF(c.ghv.score)
+	case OC_ex_gethitvar_hitdamage:
+		sys.bcStack.PushI(c.ghv.hitdamage)
+	case OC_ex_gethitvar_guarddamage:
+		sys.bcStack.PushI(c.ghv.guarddamage)
+	case OC_ex_gethitvar_hitpower:
+		sys.bcStack.PushI(c.ghv.hitpower)
+	case OC_ex_gethitvar_guardpower:
+		sys.bcStack.PushI(c.ghv.guardpower)
 	case OC_ex_ailevelf:
 		sys.bcStack.PushF(c.aiLevel())
 	case OC_ex_animelemlength:
