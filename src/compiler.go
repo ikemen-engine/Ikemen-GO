@@ -2628,6 +2628,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_timeelapsed)
 	case "timeremaining":
 		out.append(OC_ex_, OC_ex_timeremaining)
+	case "timeleft":
+		out.append(OC_ex_, OC_ex_timeremaining) // Only here for backwards compatibility purposes, going to be deprecated once Add004 updates.
 	case "timetotal":
 		out.append(OC_ex_, OC_ex_timetotal)
 	case "drawpalno":
