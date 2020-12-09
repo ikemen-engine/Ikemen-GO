@@ -1739,11 +1739,14 @@ function launchFight(data)
 		start.f_setMusic(stageNo, t.music)
 		if not start.f_selectVersus(t.vsscreen) then break end
 		saveData = true
+		local continueScreen = main.continueScreen
 		local victoryScreen = main.victoryScreen
 		local rankDisplay = main.rankDisplay
+		main.continueScreen = t.continue
 		main.victoryScreen = t.victoryscreen
 		main.rankDisplay = t.rankdisplay
 		_, t_gameStats = start.f_game(t.lua)
+		main.continueScreen = continueScreen
 		main.victoryScreen = victoryScreen
 		main.rankDisplay = rankDisplay
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
