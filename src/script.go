@@ -868,11 +868,7 @@ func systemScriptInit(l *lua.LState) {
 						sys.stage = nil
 					}
 					if sys.reloadLifebarFlg {
-						lb, err := loadLifebar(sys.lifebar.deffile)
-						if err != nil {
-							l.RaiseError(err.Error())
-						}
-						sys.lifebar = *lb
+						sys.lifebar.reloadLifebar()
 					}
 					sys.loaderReset()
 					winp = -2
