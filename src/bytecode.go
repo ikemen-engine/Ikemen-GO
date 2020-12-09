@@ -3435,7 +3435,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 func (sc palFX) Run(c *Char, _ []int32) bool {
 	crun := c
 	if !crun.ownpal {
-		return true
+		return false
 	}
 	pf := crun.palfx
 	if pf == nil {
