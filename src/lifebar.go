@@ -2920,6 +2920,26 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	l.deffile = deffile
 	return l, nil
 }
+func (l *Lifebar) reloadLifebar() {
+	lb, _ := loadLifebar(l.deffile)
+	lb.ti.framespercount = l.ti.framespercount
+	lb.ro.match_maxdrawgames = l.ro.match_maxdrawgames
+	lb.ro.match_wins = l.ro.match_wins
+	lb.tr.active = l.tr.active
+	lb.sc[0].active = l.sc[0].active
+	lb.sc[1].active = l.sc[1].active
+	lb.ma.active = l.ma.active
+	lb.ai[0].active = l.ai[0].active
+	lb.ai[1].active = l.ai[1].active
+	lb.active = l.active
+	lb.activeBars = l.activeBars
+	lb.activeMode = l.activeMode
+	lb.activeRl = l.activeRl
+	lb.activeGb = l.activeGb
+	lb.activeSb = l.activeSb
+	lb.fx_scale = l.fx_scale
+	sys.lifebar = *lb
+}
 func (l *Lifebar) step() {
 	if sys.paused && !sys.step {
 		return
