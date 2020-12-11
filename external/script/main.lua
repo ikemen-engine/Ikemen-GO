@@ -396,7 +396,9 @@ function text:create(t)
 	self.__index = self
 	if t.font ~= -1 then
 		if main.font[t.font .. t.height] == nil then
+			--main.f_loadingRefresh(main.txt_loading)
 			main.font[t.font .. t.height] = fontNew(t.font, t.height)
+			main.f_loadingRefresh(main.txt_loading)
 		end
 		if main.font_def[t.font .. t.height] == nil then
 			main.font_def[t.font .. t.height] = fontGetDef(main.font[t.font .. t.height])
@@ -1349,11 +1351,11 @@ main.t_unlockLua = {chars = {}, stages = {}, modes = {}}
 
 motif = require('external.script.motif')
 
-local txt_loading = main.f_createTextImg(motif.title_info, 'loading')
-txt_loading:draw()
+main.txt_loading = main.f_createTextImg(motif.title_info, 'loading')
+main.txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
-main.f_loadingRefresh(txt_loading)
+main.f_loadingRefresh(main.txt_loading)
 main.timeFramesPerCount = getTimeFramesPerCount()
 main.f_updateRoundsNum()
 
@@ -1726,7 +1728,7 @@ function main.f_addChar(line, playable, loading, slot)
 		end
 	end
 	if loading then
-		main.f_loadingRefresh(txt_loading)
+		main.f_loadingRefresh(main.txt_loading)
 	end
 	return valid
 end
@@ -3986,7 +3988,8 @@ if main.flags['-stresstest'] ~= nil then
 	os.exit()
 end
 
-main.f_loadingRefresh(txt_loading)
+main.f_loadingRefresh(main.txt_loading)
+main.txt_loading = nil
 --sleep(1)
 
 if config.FirstRun then
