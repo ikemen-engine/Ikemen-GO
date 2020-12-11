@@ -1735,6 +1735,9 @@ end
 
 function main.f_addStage(file, hidden)
 	file = file:gsub('\\', '/')
+	if file:match('/$') then
+		return
+	end
 	addStage(file)
 	local stageNo = #main.t_selStages + 1
 	local t_info = getStageInfo(stageNo)
