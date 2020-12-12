@@ -2505,7 +2505,12 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 						end
 					end
 				else --single value
-					pos[param] = main.f_dataType(value)
+					if param:match('_offset$') or param:match('_dist$') or param:match('_speed$') then --precaution in case of optional params without default values
+						pos[param] = {}
+						table.insert(pos[param], tonumber(value))
+					else
+						pos[param] = main.f_dataType(value)
+					end
 				end
 			end
 		elseif param == nil then --only valid lines left are animations
