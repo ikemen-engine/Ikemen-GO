@@ -13,7 +13,7 @@ type stageCamera struct {
 	floortension   int32
 	overdrawhigh   int32 //TODO: not implemented
 	overdrawlow    int32
-	cuthigh        int32 //TODO: not implemented
+	cuthigh        int32
 	cutlow         int32
 	localcoord     [2]int32
 	localscl       float32

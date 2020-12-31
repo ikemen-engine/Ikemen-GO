@@ -1719,7 +1719,7 @@ func (s *System) drawDebug() {
 		}
 		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
 		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
-			(float32(len(s.listLFunc))+float32(s.clipboardRows))-1*s.heightScale
+			(float32(len(s.listLFunc))+float32(s.clipboardRows)) - 1*s.heightScale
 		for i, f := range s.listLFunc {
 			if f != nil {
 				if i == 1 {
@@ -2730,6 +2730,7 @@ func (l *Loader) loadChar(pn int) int {
 		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
 		fa.numko, fa.teammate_face, fa.teammate_scale = 0, make([]*Sprite, nsel), make([]float32, nsel)
+		sys.lifebar.nm[sys.tmode[pn&1]][pn].numko = 0
 		for i, ci := range idx {
 			sprite := sys.sel.charlist[ci].sprite
 			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {

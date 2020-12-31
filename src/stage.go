@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strings"
@@ -656,7 +657,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 					re := regexp.MustCompile("[0-9]+")
 					submatchall := re.FindAllString(k, -1)
 					if len(submatchall) == 1 {
-						sys.stageList[Atoi(submatchall[0])], sys.loader.err = loadStage(v, false)
+						var err error
+						sys.stageList[Atoi(submatchall[0])], err = loadStage(v, false)
+						if err != nil {
+							return nil, fmt.Errorf("Failed to load %v:\n%v\n", def, err)
+						}
 					}
 				}
 			}
@@ -715,7 +720,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
-		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
+		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		if sys.cam.ZoomMax == 0 {
@@ -868,10 +873,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
 		if s.stageCamera.cutlow == math.MinInt32 {
 			//if omitted, the engine attempts to guess a reasonable set of values
-			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1] - s.stageCamera.zoffset) / s.localscl
+			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1]-s.stageCamera.zoffset) / s.localscl
 		} else {
 			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
 			s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
+			if s.stageCamera.cuthigh != math.MinInt32 {
+				//TODO: cuthigh part of the formula is likely not accurate
+				maxy := 0 - float32(s.stageCamera.localcoord[1]-240)*s.localscl
+				s.stageCamera.drawOffsetY += MinF(maxy, float32(s.stageCamera.cuthigh)*s.localscl)
+			}
 		}
 	}
 	s.mainstage = main

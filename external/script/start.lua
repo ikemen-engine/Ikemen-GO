@@ -897,16 +897,17 @@ end
 
 --calculate portraits slide.dist offset
 local function f_slideDistCalc(slide_dist, t_dist, t_speed)
+	if t_dist == nil or t_speed == nil then
+		return
+	end
 	for i = 1, 2 do
-		if t_dist ~= nil and t_speed ~= nil then
-			if (t_dist[i] or 0) > 0 then
-				if slide_dist[i] < (t_dist[i] or 0) then
-					slide_dist[i] = math.min(slide_dist[i] + (t_speed[i] or 0), t_dist[i] or 0)
-				end
-			elseif (t_dist[i] or 0) < 0 then
-				if slide_dist[i] > (t_dist[i] or 0) then
-					slide_dist[i] = math.max(slide_dist[i] - (t_speed[i] or 0), t_dist[i] or 0)
-				end
+		if (t_dist[i] or 0) > 0 then
+			if slide_dist[i] < (t_dist[i] or 0) then
+				slide_dist[i] = math.min(slide_dist[i] + (t_speed[i] or 0), t_dist[i] or 0)
+			end
+		elseif (t_dist[i] or 0) < 0 then
+			if slide_dist[i] > (t_dist[i] or 0) then
+				slide_dist[i] = math.max(slide_dist[i] - (t_speed[i] or 0), t_dist[i] or 0)
 			end
 		end
 	end

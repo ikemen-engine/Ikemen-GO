@@ -1510,14 +1510,12 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "reload", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.reloadFlg = true
-			for i := range sys.reloadCharSlot {
-				sys.reloadCharSlot[i] = true
-			}
-			sys.reloadStageFlg = true
-			sys.reloadLifebarFlg = true
+		sys.reloadFlg = true
+		for i := range sys.reloadCharSlot {
+			sys.reloadCharSlot[i] = true
 		}
+		sys.reloadStageFlg = true
+		sys.reloadLifebarFlg = true
 		return 0
 	})
 	luaRegister(l, "remapInput", func(l *lua.LState) int {
@@ -1530,9 +1528,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "removeDizzy", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.unsetSCF(SCF_dizzy)
-		}
+		sys.debugWC.unsetSCF(SCF_dizzy)
 		return 0
 	})
 	luaRegister(l, "replayRecord", func(*lua.LState) int {
@@ -1584,9 +1580,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "roundReset", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.roundResetFlg = true
-		}
+		sys.roundResetFlg = true
 		return 0
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
@@ -1656,27 +1650,21 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1, false)
-		}
+		sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1, false)
 		return 0
 	})
 	luaRegister(l, "setAccel", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.accel = float32(numArg(l, 1))
-		}
+		sys.accel = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setAILevel", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			level := float32(numArg(l, 1))
-			sys.com[sys.debugWC.playerNo] = level
-			for _, c := range sys.chars[sys.debugWC.playerNo] {
-				if level == 0 {
-					c.key = sys.debugWC.playerNo
-				} else {
-					c.key = ^sys.debugWC.playerNo
-				}
+		level := float32(numArg(l, 1))
+		sys.com[sys.debugWC.playerNo] = level
+		for _, c := range sys.chars[sys.debugWC.playerNo] {
+			if level == 0 {
+				c.key = sys.debugWC.playerNo
+			} else {
+				c.key = ^sys.debugWC.playerNo
 			}
 		}
 		return 0
@@ -1732,9 +1720,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setDizzyPoints", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.dizzyPointsSet(int32(numArg(l, 1)))
-		}
+		sys.debugWC.dizzyPointsSet(int32(numArg(l, 1)))
 		return 0
 	})
 	luaRegister(l, "setGameMode", func(*lua.LState) int {
@@ -1752,9 +1738,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.guardPointsSet(int32(numArg(l, 1)))
-		}
+		sys.debugWC.guardPointsSet(int32(numArg(l, 1)))
 		return 0
 	})
 	luaRegister(l, "setHomeTeam", func(l *lua.LState) int {
@@ -1847,7 +1831,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setLife", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil && sys.debugWC.alive() {
+		if sys.debugWC.alive() {
 			sys.debugWC.lifeSet(int32(numArg(l, 1)))
 		}
 		return 0
@@ -2012,9 +1996,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setPower", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.setPower(int32(numArg(l, 1)))
-		}
+		sys.debugWC.setPower(int32(numArg(l, 1)))
 		return 0
 	})
 	luaRegister(l, "setPowerShare", func(l *lua.LState) int {
@@ -2026,9 +2008,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setRedLife", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.debugWC.redLifeSet(int32(numArg(l, 1)))
-		}
+		sys.debugWC.redLifeSet(int32(numArg(l, 1)))
 		return 0
 	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
@@ -2080,9 +2060,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setTime", func(*lua.LState) int {
-		if sys.netInput == nil && sys.fileInput == nil {
-			sys.time = int32(numArg(l, 1))
-		}
+		sys.time = int32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setTimeFramesPerCount", func(l *lua.LState) int {
@@ -2336,12 +2314,10 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "togglePause", func(*lua.LState) int {
-		if sys.netInput == nil {
-			if l.GetTop() >= 1 {
-				sys.paused = boolArg(l, 1)
-			} else {
-				sys.paused = !sys.paused
-			}
+		if l.GetTop() >= 1 {
+			sys.paused = boolArg(l, 1)
+		} else {
+			sys.paused = !sys.paused
 		}
 		return 0
 	})

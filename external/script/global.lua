@@ -247,7 +247,7 @@ function loop()
 	else
 		main.f_cmdInput()
 		--esc / m
-		if (esc() or main.f_input(main.t_players, {'m'})) and not start.challengerInit then
+		if (esc() or (main.f_input(main.t_players, {'m'})) and not network()) and not start.challengerInit then
 			if network() or gamemode('demo') or gamemode('randomtest') or (not config.EscOpensMenu and esc()) then
 				endMatch()
 			else
