@@ -1532,14 +1532,24 @@ type LifeBarRound struct {
 	round_sndtime      int32
 	round_default      AnimTextSnd
 	round              [9]AnimTextSnd
+	round_default_top  AnimTextSnd
+	round_default_bg   [9]AnimLayout
 	round_final        AnimTextSnd
 	fight_time         int32
 	fight_sndtime      int32
 	fight              AnimTextSnd
+	fight_top          AnimTextSnd
+	fight_bg           [9]AnimLayout
 	ctrl_time          int32
 	ko_time            int32
 	ko_sndtime         int32
 	ko, dko, to        AnimTextSnd
+	ko_top             AnimTextSnd
+	ko_bg              [9]AnimLayout
+	dko_top            AnimTextSnd
+	dko_bg             [9]AnimLayout
+	to_top             AnimTextSnd
+	to_bg              [9]AnimLayout
 	slow_time          int32
 	slow_fadetime      int32
 	slow_speed         float32
@@ -1587,6 +1597,10 @@ func readLifeBarRound(is IniSection,
 	}
 	is.ReadI32("round.time", &ro.round_time)
 	is.ReadI32("round.sndtime", &ro.round_sndtime)
+	ro.round_default_top = *ReadAnimTextSnd("round.default.top.", is, sff, at, 2, f)
+	for i := range ro.round_default_bg {
+		ro.round_default_bg[i] = *ReadAnimLayout(fmt.Sprintf("round.default.bg%v.", i), is, sff, at, 2)
+	}
 	ro.round_default = *ReadAnimTextSnd("round.default.", is, sff, at, 2, f)
 	for i := range ro.round {
 		ro.round[i] = *ReadAnimTextSnd(fmt.Sprintf("round%v.", i+1), is, sff, at, 2, f)
@@ -1595,14 +1609,30 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("fight.time", &ro.fight_time)
 	is.ReadI32("fight.sndtime", &ro.fight_sndtime)
 	ro.fight = *ReadAnimTextSnd("fight.", is, sff, at, 2, f)
+	ro.fight_top = *ReadAnimTextSnd("fight.top.", is, sff, at, 2, f)
+	for i := range ro.fight_bg {
+		ro.fight_bg[i] = *ReadAnimLayout(fmt.Sprintf("fight.bg%v.", i), is, sff, at, 2)
+	}
 	if is.ReadI32("ctrl.time", &tmp) {
 		ro.ctrl_time = Max(1, tmp)
 	}
 	is.ReadI32("ko.time", &ro.ko_time)
 	is.ReadI32("ko.sndtime", &ro.ko_sndtime)
 	ro.ko = *ReadAnimTextSnd("ko.", is, sff, at, 1, f)
+	ro.ko_top = *ReadAnimTextSnd("ko.top.", is, sff, at, 1, f)
+	for i := range ro.ko_bg {
+		ro.ko_bg[i] = *ReadAnimLayout(fmt.Sprintf("ko.bg%v.", i), is, sff, at, 2)
+	}
 	ro.dko = *ReadAnimTextSnd("dko.", is, sff, at, 1, f)
+	ro.dko_top = *ReadAnimTextSnd("dko.top.", is, sff, at, 1, f)
+	for i := range ro.dko_bg {
+		ro.dko_bg[i] = *ReadAnimLayout(fmt.Sprintf("dko.bg%v.", i), is, sff, at, 2)
+	}
 	ro.to = *ReadAnimTextSnd("to.", is, sff, at, 1, f)
+	ro.to_top = *ReadAnimTextSnd("to.top.", is, sff, at, 1, f)
+	for i := range ro.to_bg {
+		ro.to_bg[i] = *ReadAnimLayout(fmt.Sprintf("to.bg%v.", i), is, sff, at, 2)
+	}
 	is.ReadI32("slow.time", &ro.slow_time)
 	if is.ReadI32("slow.fadetime", &tmp) {
 		ro.slow_fadetime = Min(ro.slow_time, tmp)
@@ -1678,6 +1708,7 @@ func readLifeBarRound(is IniSection,
 }
 func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
+	ro.fight_top.Reset()
 	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, ro.fight_sndtime, 0
 	sys.timerCount = append(sys.timerCount, sys.gameTime)
 	ro.timerActive = true
@@ -1718,16 +1749,28 @@ func (ro *LifeBarRound) act() bool {
 				if ro.wt[0] <= 0 {
 					ro.dt[0]++
 					if sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
+						ro.round_default_top.Action()
 						ro.round_final.Action()
 						ro.round_default.Action()
-						ro.introState[0] = ro.round_final.End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true)
+						for i := len(ro.round_default_bg) - 1; i >= 0; i-- {
+							ro.round_default_bg[i].Action()
+						}
+						ro.introState[0] = ro.round_final.End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true) && ro.round_default_top.End(ro.dt[0], true)
 					} else if int(sys.round) <= len(ro.round) {
+						ro.round_default_top.Action()
 						ro.round[sys.round-1].Action()
 						ro.round_default.Action()
-						ro.introState[0] = ro.round[sys.round-1].End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true)
+						for i := len(ro.round_default_bg) - 1; i >= 0; i-- {
+							ro.round_default_bg[i].Action()
+						}
+						ro.introState[0] = ro.round[sys.round-1].End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true) && ro.round_default_top.End(ro.dt[0], true)
 					} else {
+						ro.round_default_top.Action()
 						ro.round_default.Action()
-						ro.introState[0] = ro.round_default.End(ro.dt[0], true)
+						for i := len(ro.round_default_bg) - 1; i >= 0; i-- {
+							ro.round_default_bg[i].Action()
+						}
+						ro.introState[0] = ro.round_default.End(ro.dt[0], true) && ro.round_default_top.End(ro.dt[0], true)
 					}
 				}
 				ro.wt[0]--
@@ -1744,7 +1787,11 @@ func (ro *LifeBarRound) act() bool {
 				ro.swt[1]--
 				if ro.wt[1] <= 0 {
 					ro.dt[1]++
+					ro.fight_top.Action()
 					ro.fight.Action()
+					for i := len(ro.fight_bg) - 1; i >= 0; i-- {
+						ro.fight_bg[i].Action()
+					}
 					if ro.fight.End(ro.dt[1], true) && ro.swt[1] < 0 {
 						ro.cur, ro.wt[2], ro.swt[2], ro.dt[2] = 2, ro.ko_time, ro.ko_sndtime, 0
 						ro.wt[3], ro.swt[3], ro.dt[3] = ro.win_time, ro.win_sndtime, 0
@@ -1838,14 +1885,34 @@ func (ro *LifeBarRound) act() bool {
 }
 func (ro *LifeBarRound) reset() {
 	ro.round_default.Reset()
+	ro.round_default_top.Reset()
+	for i := range ro.round_default_bg {
+		ro.round_default_bg[i].Reset()
+	}
 	for i := range ro.round {
 		ro.round[i].Reset()
 	}
 	ro.round_final.Reset()
 	ro.fight.Reset()
+	ro.fight_top.Reset()
+	for i := range ro.fight_bg {
+		ro.fight_bg[i].Reset()
+	}
 	ro.ko.Reset()
+	ro.ko_top.Reset()
+	for i := range ro.ko_bg {
+		ro.ko_bg[i].Reset()
+	}
 	ro.dko.Reset()
+	ro.dko_top.Reset()
+	for i := range ro.dko_bg {
+		ro.dko_bg[i].Reset()
+	}
 	ro.to.Reset()
+	ro.to_top.Reset()
+	for i := range ro.to_bg {
+		ro.to_bg[i].Reset()
+	}
 	ro.win.Reset()
 	ro.win2.Reset()
 	ro.win3.Reset()
@@ -1863,6 +1930,9 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 	if !ro.introState[0] && ro.wt[0] < 0 && sys.intro <= ro.ctrl_time {
 		tmp := ro.round_default.text.text
 		ro.round_default.text.text = OldSprintf(tmp, sys.round)
+		for i := range ro.round_default_bg {
+			ro.round_default_bg[i].DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+		}
 		ro.round_default.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]),
 			layerno, f, sys.lifebarScale)
 		ro.round_default.text.text = tmp
@@ -1880,19 +1950,37 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 				layerno, f, sys.lifebarScale)
 			ro.round[sys.round-1].text.text = tmp
 		}
+		ro.round_default_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]),
+			layerno, f, sys.lifebarScale)
 	}
 	if !ro.introState[1] && ro.wt[1] < 0 {
+		for i := range ro.fight_bg { //240z
+			ro.fight_bg[i].DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale) //240z
+		}
 		ro.fight.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+		ro.fight_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 	}
 	if ro.cur == 2 {
 		if /*ro.wt[2] < 0 && sys.intro < -ro.ko_time-10*/ ro.wt[2] < -ro.ko_time-10 {
 			switch sys.finish {
 			case FT_KO:
+				for i := range ro.ko_bg {
+					ro.ko_bg[i].DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+				}
 				ro.ko.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+				ro.ko_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 			case FT_DKO:
+				for i := range ro.dko_bg {
+					ro.dko_bg[i].DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+				}
 				ro.dko.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+				ro.dko_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 			default:
+				for i := range ro.to_bg {
+					ro.to_bg[i].DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+				}
 				ro.to.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+				ro.to_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 			}
 		}
 		if ro.wt[3] < 0 {
