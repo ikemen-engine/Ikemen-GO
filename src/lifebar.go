@@ -1533,7 +1533,7 @@ type LifeBarRound struct {
 	round_default      AnimTextSnd
 	round              [9]AnimTextSnd
 	round_default_top  AnimTextSnd
-	round_default_bg   [9]AnimLayout
+	round_default_bg   [16]AnimLayout
 	round_final        AnimTextSnd
 	fight_time         int32
 	fight_sndtime      int32
