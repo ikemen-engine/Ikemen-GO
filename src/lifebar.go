@@ -1533,23 +1533,23 @@ type LifeBarRound struct {
 	round_default      AnimTextSnd
 	round              [9]AnimTextSnd
 	round_default_top  AnimTextSnd
-	round_default_bg   [16]AnimLayout
+	round_default_bg   [32]AnimLayout
 	round_final        AnimTextSnd
 	fight_time         int32
 	fight_sndtime      int32
 	fight              AnimTextSnd
 	fight_top          AnimTextSnd
-	fight_bg           [16]AnimLayout
+	fight_bg           [32]AnimLayout
 	ctrl_time          int32
 	ko_time            int32
 	ko_sndtime         int32
 	ko, dko, to        AnimTextSnd
 	ko_top             AnimTextSnd
-	ko_bg              [16]AnimLayout
+	ko_bg              [32]AnimLayout
 	dko_top            AnimTextSnd
-	dko_bg             [16]AnimLayout
+	dko_bg             [32]AnimLayout
 	to_top             AnimTextSnd
-	to_bg              [16]AnimLayout
+	to_bg              [32]AnimLayout
 	slow_time          int32
 	slow_fadetime      int32
 	slow_speed         float32
