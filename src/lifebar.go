@@ -1830,11 +1830,23 @@ func (ro *LifeBarRound) act() bool {
 			}
 			switch sys.finish {
 			case FT_KO:
+				ro.ko_top.Action()
 				f(&ro.ko, 2)
+				for i := len(ro.ko_bg) - 1; i >= 0; i-- {
+					ro.ko_bg[i].Action()
+				}
 			case FT_DKO:
+				ro.dko_top.Action()
 				f(&ro.dko, 2)
+				for i := len(ro.dko_bg) - 1; i >= 0; i-- {
+					ro.dko_bg[i].Action()
+				}
 			default:
+				ro.to_top.Action()
 				f(&ro.to, 2)
+				for i := len(ro.to_bg) - 1; i >= 0; i-- {
+					ro.to_bg[i].Action()
+				}
 			}
 			if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
 				if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
