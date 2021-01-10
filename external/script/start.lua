@@ -2637,7 +2637,7 @@ function start.f_selectVersus(enabled)
 				main.f_fadeReset('fadeout', motif.vs_screen)
 				escFlag = true
 			elseif confirmed[1] and confirmed[2] then
-				if main.fadeType == 'fadein' and (counter >= motif.vs_screen.time or main.f_input({1}, main.f_extractKeys(motif.vs_screen.p1_key_accept))) then
+				if main.fadeType == 'fadein' and (counter >= motif.vs_screen.time or main.f_input(main.t_players, main.f_extractKeys(motif.vs_screen.p1_key_accept))) then
 					main.f_fadeReset('fadeout', motif.vs_screen)
 				end
 			elseif counter >= motif.vs_screen.time + orderTime then
@@ -3158,7 +3158,7 @@ function start.f_victory()
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.victorybgdef.bg, true)
 	--draw fadein / fadeout
-	if main.fadeType == 'fadein' and (start.t_victory.counter >= motif.victory_screen.time or main.f_input({1}, {'pal', 's'})) then
+	if main.fadeType == 'fadein' and (start.t_victory.counter >= motif.victory_screen.time or main.f_input(main.t_players, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', motif.victory_screen)
 	end
 	main.f_fadeAnim(motif.victory_screen)
