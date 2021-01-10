@@ -10,7 +10,7 @@ if !Const(Default.Enable.Action) || TeamSide = 0 {
 	ignorehitpause if HelperName = "Parry Detection" && MoveHit = 1 {
 		if TeamSide = 1 {
 			LifebarAction{spr: Const(MsgParry), 0}
-		else if TeamSide = 2 {
+		} else if TeamSide = 2 {
 			LifebarAction{spr: Const(MsgParry), 0}
 		}
 	}
