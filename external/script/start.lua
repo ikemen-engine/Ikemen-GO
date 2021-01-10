@@ -1457,7 +1457,7 @@ function start.f_selectMode()
 						storyboard.f_storyboard(motif.files.intro_storyboard)
 					end
 				end
-				start.exit = main.exitSelect or not main.selectMenu[1]
+				start.exit = start.exit or main.exitSelect or not main.selectMenu[1]
 			end
 			if start.exit then
 				main.f_bgReset(motif[main.background].bg)
@@ -3854,7 +3854,7 @@ function start.f_turnsRecovery()
 				base = lifemax() * config.RatioRecoveryBase / 100
 			end
 			if (not matchover() and teammode() == 'turns') or (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
-				setLife(math.min(lifemax(), life() + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) + base + bonus)))
+				setLife(math.min(lifemax(), life() + base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)))
 			end
 		end
 	end
