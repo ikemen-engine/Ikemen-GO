@@ -575,7 +575,7 @@ func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
 	if !sys.lifebar.activeGb {
 		return
 	}
-	power := float32(sys.chars[ref][0].power) / float32(sys.chars[ref][0].powerMax)
+	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
 	gb.shift.anim.srcAlpha = int16(255 * (1 - power))
 	gb.shift.anim.dstAlpha = int16(255 * power)
 	gbr.midpower -= 1.0 / 144
@@ -716,7 +716,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	if !sys.lifebar.activeSb {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].power)/float32(sys.chars[ref][0].powerMax)
+	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
 	sb.shift.anim.srcAlpha = int16(255 * power)
 	sb.shift.anim.dstAlpha = int16(255 * (1 - power))
 	sbr.midpower -= 1.0 / 144
@@ -735,7 +735,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	sb.mid.Action()
 	var mv float32
 	for k := range sb.front {
-		if k > mv && power >= k/100 {
+		if k > mv && (1-power) >= k/100 {
 			mv = k
 		}
 	}
