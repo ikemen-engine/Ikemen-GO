@@ -1798,11 +1798,11 @@ func (ro *LifeBarRound) act() bool {
 						} else {
 							ro.round_default_top.Action()
 						}
-						if len(ro.round_final.anim.anim.frames) > 0 {
-							ro.round_final.Action()
-						} else {
-							ro.round_default.Action()
-						}
+						//if len(ro.round_final.anim.anim.frames) > 0 {
+						ro.round_final.Action()
+						//} else {
+						ro.round_default.Action()
+						//}
 						if len(ro.round_final_bg[0].anim.frames) > 0 {
 							for i := len(ro.round_final_bg) - 1; i >= 0; i-- {
 								ro.round_final_bg[i].Action()
