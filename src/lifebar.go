@@ -735,7 +735,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	sb.mid.Action()
 	var mv float32
 	for k := range sb.front {
-		if k > mv && (1-power) >= k/100 {
+		if k > mv && power >= k/100 {
 			mv = k
 		}
 	}
