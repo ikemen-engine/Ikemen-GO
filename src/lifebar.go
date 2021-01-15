@@ -531,7 +531,7 @@ type GuardBar struct {
 	top         AnimLayout
 	mid         AnimLayout
 	warn        AnimLayout
-	warn_val    int32
+	warn_range  [2]int32
 	value       LbText
 	front       map[float32]*AnimLayout
 	shift       AnimLayout
@@ -571,7 +571,7 @@ func readGuardBar(pre string, is IniSection,
 	}
 	gb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	gb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
-	is.ReadI32(pre+"warn.val", &gb.warn_val)
+	is.ReadI32(pre+"warn.range", &gb.warn_range[0], &gb.warn_range[1])
 	gb.warn = *ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 	return gb
 }
@@ -668,7 +668,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 		gb.value.lay.DrawText(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 			layerno, text, f[gb.value.font[0]], gb.value.font[1], gb.value.font[2], gb.value.palfx, gb.value.frgba)
 	}
-	if power < float32(gb.warn_val)/100 {
+	if power < float32(gb.warn_range[0])/100 && power > float32(gb.warn_range[1])/100 {
 		gb.warn.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
 	}
 	gb.top.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
@@ -682,7 +682,7 @@ type StunBar struct {
 	bg2         AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
-	warn_val    int32
+	warn_range  [2]int32
 	warn        AnimLayout
 	value       LbText
 	front       map[float32]*AnimLayout
@@ -721,7 +721,7 @@ func readStunBar(pre string, is IniSection,
 	}
 	sb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	sb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
-	is.ReadI32(pre+"warn.val", &sb.warn_val)
+	is.ReadI32(pre+"warn.range", &sb.warn_range[0], &sb.warn_range[1])
 	sb.warn = *ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 	return sb
 }
@@ -818,7 +818,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 		sb.value.lay.DrawText(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 			layerno, text, f[sb.value.font[0]], sb.value.font[1], sb.value.font[2], sb.value.palfx, sb.value.frgba)
 	}
-	if power > float32(sb.warn_val)/100 {
+	if power > float32(sb.warn_range[0])/100 && power < float32(sb.warn_range[1])/100 {
 		sb.warn.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
 	}
 	sb.top.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
