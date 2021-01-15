@@ -530,6 +530,8 @@ type GuardBar struct {
 	bg2         AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
+	warn        AnimLayout
+	warn_val    int32
 	value       LbText
 	front       map[float32]*AnimLayout
 	shift       AnimLayout
@@ -569,6 +571,8 @@ func readGuardBar(pre string, is IniSection,
 	}
 	gb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	gb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
+	is.ReadI32(pre+"warn.val", &gb.warn_val)
+	gb.warn = *ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 	return gb
 }
 func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
@@ -600,6 +604,7 @@ func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
 	}
 	gb.front[mv].Action()
 	gb.shift.Action()
+	gb.warn.Action()
 }
 func (gb *GuardBar) reset() {
 	gb.bg0.Reset()
@@ -613,6 +618,7 @@ func (gb *GuardBar) reset() {
 	gb.shift.Reset()
 	gb.shift.anim.srcAlpha = 0
 	gb.shift.anim.dstAlpha = 255
+	gb.warn.Reset()
 }
 func (gb *GuardBar) bgDraw(layerno int16) {
 	if !sys.lifebar.activeGb {
@@ -662,6 +668,9 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 		gb.value.lay.DrawText(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 			layerno, text, f[gb.value.font[0]], gb.value.font[1], gb.value.font[2], gb.value.palfx, gb.value.frgba)
 	}
+	if power < float32(gb.warn_val)/100 {
+		gb.warn.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
+	}
 	gb.top.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
 }
 
@@ -673,6 +682,8 @@ type StunBar struct {
 	bg2         AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
+	warn_val    int32
+	warn        AnimLayout
 	value       LbText
 	front       map[float32]*AnimLayout
 	shift       AnimLayout
@@ -710,6 +721,8 @@ func readStunBar(pre string, is IniSection,
 	}
 	sb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	sb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
+	is.ReadI32(pre+"warn.val", &sb.warn_val)
+	sb.warn = *ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 	return sb
 }
 func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
@@ -741,6 +754,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	}
 	sb.front[mv].Action()
 	sb.shift.Action()
+	sb.warn.Action()
 }
 func (sb *StunBar) reset() {
 	sb.bg0.Reset()
@@ -754,6 +768,7 @@ func (sb *StunBar) reset() {
 	sb.shift.Reset()
 	sb.shift.anim.srcAlpha = 255
 	sb.shift.anim.dstAlpha = 0
+	sb.warn.Reset()
 }
 func (sb *StunBar) bgDraw(layerno int16) {
 	if !sys.lifebar.activeSb {
@@ -802,6 +817,9 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 		sb.value.lay.DrawText(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 			layerno, text, f[sb.value.font[0]], sb.value.font[1], sb.value.font[2], sb.value.palfx, sb.value.frgba)
+	}
+	if power > float32(sb.warn_val)/100 {
+		sb.warn.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
 	}
 	sb.top.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
 }
