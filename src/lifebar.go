@@ -148,6 +148,8 @@ type HealthBar struct {
 	red        map[int32]*AnimLayout
 	front      map[float32]*AnimLayout
 	shift      AnimLayout
+	warn       AnimLayout
+	warn_range [2]int32
 	value      LbText
 	oldlife    float32
 	midlife    float32
@@ -212,6 +214,8 @@ func readHealthBar(pre string, is IniSection,
 	is.ReadF32("mid.mult", &hb.mid_mult)
 	is.ReadF32("mid.steps", &hb.mid_steps)
 	hb.mid_steps = MaxF(1, hb.mid_steps)
+	is.ReadI32(pre+"warn.range", &hb.warn_range[0], &hb.warn_range[1])
+	hb.warn = *ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 	return hb
 }
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
@@ -274,6 +278,7 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	}
 	hb.front[fv].Action()
 	hb.shift.Action()
+	hb.warn.Action()
 }
 func (hb *HealthBar) reset() {
 	hb.bg0.Reset()
@@ -290,6 +295,7 @@ func (hb *HealthBar) reset() {
 	for _, v := range hb.red {
 		v.Reset()
 	}
+	hb.warn.Reset()
 }
 func (hb *HealthBar) bgDraw(layerno int16) {
 	hb.bg0.DrawScaled(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
@@ -355,6 +361,9 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 			layerno, text, f[hb.value.font[0]], hb.value.font[1], hb.value.font[2], hb.value.palfx, hb.value.frgba)
 	}
 	hb.top.DrawScaled(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
+	if life < float32(hb.warn_range[0])/100 && life > float32(hb.warn_range[1])/100 {
+		hb.warn.DrawScaled(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
+	}
 }
 
 type PowerBar struct {
@@ -537,7 +546,6 @@ type GuardBar struct {
 	shift       AnimLayout
 	midpower    float32
 	midpowerMin float32
-	// TODO: Add a effect similar to the one were life is removed.
 	//prevLevel   int32
 }
 
