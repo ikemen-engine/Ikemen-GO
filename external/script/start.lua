@@ -2014,7 +2014,10 @@ function start.f_selectScreen()
 				if stageListNo == 0 then
 					t_txt[1] = motif.select_info.stage_random_text
 				else
-					t_txt = main.f_extractText(motif.select_info.stage_text, stageListNo, main.t_selStages[main.t_selectableStages[stageListNo]].name)
+					for i = 1, #main.t_selectableStages do
+						t_txt[i] = motif.select_info.stage_text:gsub('%%i', tostring(stageListNo))
+						t_txt[i] = t_txt[i]:gsub('%%s', main.t_selStages[main.t_selectableStages[stageListNo]].name)
+					end
 				end
 				for i = 1, #t_txt do
 					txt_selStage:update({
