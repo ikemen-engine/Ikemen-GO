@@ -1548,7 +1548,7 @@ function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, catego
 end
 
 main.t_validParams = {
-	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, winscreen = true, rank = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
+	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, victoryscreen = true, rankdisplay = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
 	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
 }
 
