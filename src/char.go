@@ -6023,11 +6023,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.ghv.guardpower += hd.guardgivepower
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
+					getter.ghv.fallf = true
+					if getter.ghv.fall.animtype < RA_Back {
+						getter.ghv.fall.animtype = RA_Back
+					}
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
-						getter.ghv.fallf = true
-						if getter.ghv.fall.animtype < RA_Back {
-							getter.ghv.fall.animtype = RA_Back
-						}
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
 								getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
