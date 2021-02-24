@@ -639,6 +639,7 @@ type GetHitVar struct {
 	guarddamage    int32
 	hitpower       int32
 	guardpower     int32
+	fatal          bool
 }
 
 func (ghv *GetHitVar) clear() {
@@ -5864,6 +5865,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
+				ghv.fatal = false
 				hitdamage = hd.hitdamage
 				guarddamage = hd.guarddamage
 				if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
@@ -6023,11 +6025,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.ghv.guardpower += hd.guardgivepower
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
+					getter.ghv.fatal = true
+					getter.ghv.fallf = true
+					if getter.ghv.fall.animtype < RA_Back {
+						getter.ghv.fall.animtype = RA_Back
+					}
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
-						getter.ghv.fallf = true
-						if getter.ghv.fall.animtype < RA_Back {
-							getter.ghv.fall.animtype = RA_Back
-						}
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
 								getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
