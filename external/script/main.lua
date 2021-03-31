@@ -682,12 +682,13 @@ end
 
 --generate anim from table
 function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, defsc)
-	x = x or 0
-	y = y or 0
-	scaleX = scaleX or 1.0
-	scaleY = scaleY or 1.0
-	facing = facing or '0'
-	infFrame = infFrame or 1
+	local t = t or {}
+	local x = x or 0
+	local y = y or 0
+	local scaleX = scaleX or 1.0
+	local scaleY = scaleY or 1.0
+	local facing = facing or '0'
+	local infFrame = infFrame or 1
 	local facing_sav = ''
 	local anim = ''
 	local length = 0
@@ -3250,7 +3251,10 @@ function main.f_connect(server, t)
 		overlay_connecting:draw()
 		--draw text
 		for i = 1, #t do
-			txt_connecting:update({text = t[i]})
+			txt_connecting:update({
+				text = t[i],
+				y = motif[main.group].connecting_offset[2] + main.f_ySpacing(motif.title_info, 'connecting_font') * (i - 1),
+			})
 			txt_connecting:draw()
 		end
 		--draw layerno = 1 backgrounds
