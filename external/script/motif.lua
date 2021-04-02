@@ -1883,7 +1883,7 @@ local motif =
 		name_text_active2_font_scale = {1.0, 1.0}, --Ikemen feature
 		name_text_active2_font_height = -1, --Ikemen feature
 		name_text_uppercase = 1, --Ikemen feature
-		name_text_glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}, --Ikemen feature
+		name_text_glyphs = {}, --Ikemen feature
 		face_title_offset = {0, 0}, --Ikemen feature
 		face_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		face_title_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2552,6 +2552,11 @@ end
 
 --merge tables
 motif = main.f_tableMerge(motif, t)
+
+--default hiscore glyphs
+if #motif.hiscore_info.name_text_glyphs == 0 then
+	motif.hiscore_info.name_text_glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}
+end
 
 --keymenu.item parameters use corresponding menu.item values if not assigned
 local t_keymenu = {}
