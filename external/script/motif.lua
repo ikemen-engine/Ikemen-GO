@@ -131,7 +131,7 @@ local motif =
 		footer3_font = {'default-3x5.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
-		footer3_text = 'v0.96.0', --Ikemen feature
+		footer3_text = 'v0.96.1', --Ikemen feature
 		footer_overlay_window = {0, main.SP_Localcoord[2] - 7, main.SP_Localcoord[1] - 1, main.SP_Localcoord[2] - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_overlay_col = {0, 0, 64}, --Ikemen feature
 		footer_overlay_alpha = {255, 100}, --Ikemen feature
@@ -1883,7 +1883,7 @@ local motif =
 		name_text_active2_font_scale = {1.0, 1.0}, --Ikemen feature
 		name_text_active2_font_height = -1, --Ikemen feature
 		name_text_uppercase = 1, --Ikemen feature
-		name_text_glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}, --Ikemen feature
+		name_text_glyphs = {}, --Ikemen feature
 		face_title_offset = {0, 0}, --Ikemen feature
 		face_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		face_title_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2552,6 +2552,11 @@ end
 
 --merge tables
 motif = main.f_tableMerge(motif, t)
+
+--default hiscore glyphs
+if #motif.hiscore_info.name_text_glyphs == 0 then
+	motif.hiscore_info.name_text_glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}
+end
 
 --keymenu.item parameters use corresponding menu.item values if not assigned
 local t_keymenu = {}

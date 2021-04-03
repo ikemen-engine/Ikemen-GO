@@ -1,3 +1,5 @@
+Ikemen GO engine and scripts are licensed under a MIT License
+
 MIT License
 
 Copyright (c) 2016 Suehiro
@@ -9,6 +11,8 @@ Copyright (c) 2019 Dan
 Copyright (c) 2019 Kidcy
 Copyright (c) 2020 Wintermourn
 Copyright (c) 2020 Shiyo Kakuge
+Copyright (c) 2021 Kamekaze
+Copyright (c) 2021 two4teezee
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,3 +44,19 @@ SOFTWARE.
 それに限定されるものではありません。 作者または著作権者は、契約行為、不法行為、またはそれ以外であろうと、
 ソフトウェアに起因または関連し、あるいはソフトウェアの使用またはその他の扱いによって生じる一切の請求、損害、
 その他の義務について何らの責任も負わないものとします。
+
+==============================================================================
+
+Electbyte's Mugen screenpack and font files are licensed under a Creative
+Commons Noncommercial License, with optional attribution.
+http://creativecommons.org/licenses/by-nc/3.0/
+
+==============================================================================
+
+Work contributed to Ikemen GO by various artists is licensed under a Creative
+Commons Attribution 3.0 Unported License.
+http://creativecommons.org/licenses/by/3.0/deed.en_US
+The license applies to following assets:
+- lifebar messages, rank backgrounds and icons by President Devon and Rurouni
+- command list glyphs by Rurouni
+- dizzy, guard break, tag switch effects by Shiyo Kakuge
