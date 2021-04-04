@@ -29,3 +29,4 @@ chmod +x ./bin/$BINARY_NAME
 cp ./build/Ikemen_GO.command ./bin/Ikemen_GO.command
 cp -r ./external/ ./bin/external/
 cp -r ./data/ ./bin/data/
+cp -r ./font/ ./bin/font/
