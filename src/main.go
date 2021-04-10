@@ -46,15 +46,20 @@ func closeLog(f *os.File) {
 	f.Close()
 }
 func main() {
+	// Make save directories, if they don't exist
 	os.Mkdir("save", os.ModeSticky|0755)
 	os.Mkdir("save/replays", os.ModeSticky|0755)
+
+	// If there are command line arguments
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
 		player := 1
 		r1, _ := regexp.Compile("^-[h%?]")
 		r2, _ := regexp.Compile("^-")
+		// Loop through arguments
 		for _, a := range os.Args[1:] {
+			// If getting help about command line options
 			if r1.MatchString(a) {
 				text := `Options (case sensitive):
 -h -?                   Help
@@ -90,26 +95,40 @@ Debug Options:
 				var s string
 				fmt.Scanln(&s)
 				os.Exit(0)
+				// If a control argument starting with - (eg. -p3, -s, -rounds)
 			} else if r2.MatchString(a) {
+				// Set a blank value for the key to start with
 				sys.cmdFlags[a] = ""
+				// Prepare the key for the next argument
 				key = a
+				// If an argument with no key
 			} else if key == "" {
+				// Set p1/p2's name
 				sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
 				player += 1
+				// If a key is prepared for this argument
 			} else {
+				// Set the argument for this key
 				sys.cmdFlags[key] = a
 				key = ""
 			}
 		}
 	}
+
+	// Initialize OpenGL
 	chk(glfw.Init())
 	defer glfw.Terminate()
+
+	// Try reading stats
 	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
+		// If there was an error reading, write an empty json file
 		f, err := os.Create("save/stats.json")
 		chk(err)
 		f.Write([]byte("{}"))
 		chk(f.Close())
 	}
+
+	// Default Config
 	defcfg := []byte(strings.Join(strings.Split(
 		`{
 	"AIRamping": true,
@@ -472,11 +491,16 @@ Debug Options:
 			Buttons  []interface{}
 		}
 	}{}
+	// Unmarshal default config string into a struct
 	chk(json.Unmarshal(defcfg, &tmp))
+
+	// Config file path
 	cfgPath := "save/config.json"
+	// If a different config file is defined in the command line parameters, use it instead
 	if _, ok := sys.cmdFlags["-config"]; ok {
 		cfgPath = sys.cmdFlags["-config"]
 	}
+	// Load the config file, overwriting the defaults
 	if bytes, err := ioutil.ReadFile(cfgPath); err == nil {
 		if len(bytes) >= 3 &&
 			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
@@ -484,8 +508,11 @@ Debug Options:
 		}
 		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
+
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
+
+	// Set each config property to the system object
 	sys.afterImageMax = tmp.MaxAfterImage
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.audioDucking = tmp.AudioDucking
@@ -572,6 +599,7 @@ Debug Options:
 				Atoi(b[12].(string)), Atoi(b[13].(string))})
 		}
 	}
+
 	//os.Mkdir("debug", os.ModeSticky|0755)
 
 	// Check if the main lua file exists.
@@ -583,9 +611,12 @@ Debug Options:
 
 	log := createLog("Ikemen.log")
 	defer closeLog(log)
+	// Initialize game and create window
 	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
-	// Display error logs.
+
+	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(tmp.System); err != nil {
+		// Display error logs.
 		fmt.Fprintln(log, err)
 		switch err.(type) {
 		case *lua.ApiError:
@@ -599,6 +630,8 @@ Debug Options:
 			panic(err)
 		}
 	}
+
+	// Shutdown
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
