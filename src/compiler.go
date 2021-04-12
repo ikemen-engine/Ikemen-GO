@@ -8921,10 +8921,14 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 	}
 	return nil
 }
+
+// Compile a character definition file
 func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	error) {
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
+
+	/* Load initial data from definition file */
 	str, err := LoadText(def)
 	if err != nil {
 		return nil, err
@@ -8933,9 +8937,11 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	var st [11]string
 	info, files := true, true
 	for i < len(lines) {
+		// Parse each ini section
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "info":
+			// Read info section for the mugen version of the character
 			if info {
 				info = false
 				sys.cgi[pn].ver = [2]uint16{}
@@ -8954,6 +8960,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				}
 			}
 		case "files":
+			// Read files section to find the command and state filenames
 			if files {
 				files = false
 				cmd, stcommon = is["cmd"], is["stcommon"]
@@ -8964,6 +8971,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			}
 		}
 	}
+
+	// Load the command file
 	if err := LoadFile(&cmd, def, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
@@ -8975,6 +8984,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}); err != nil {
 		return nil, err
 	}
+
+	// Initialize command list data
 	if sys.chars[pn][0].cmd == nil {
 		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
 		b := NewCommandBuffer()
@@ -8984,11 +8995,14 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 	c.cmdl = &sys.chars[pn][0].cmd[pn]
 	remap, defaults, ckr := true, true, NewCommandKeyRemap()
+
 	var cmds []IniSection
 	for i < len(lines) {
+		// Read ini sections of command file
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "remap":
+			// Read controller remap
 			if remap {
 				remap = false
 				rm := func(name string, k, nk *CommandKey) {
@@ -9027,6 +9041,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("m", &ckr.m, &ckr.nm)
 			}
 		case "defaults":
+			// Read default command time and buffer time
 			if defaults {
 				defaults = false
 				is.ReadI32("command.time", &c.cmdl.DefaultTime)
@@ -9036,11 +9051,13 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				}
 			}
 		default:
+			// Read input commands
 			if len(name) >= 7 && name[:7] == "command" {
 				cmds = append(cmds, is)
 			}
 		}
 	}
+	// Parse input commands
 	for _, is := range cmds {
 		name, _, err := is.getText("name")
 		if err != nil {
@@ -9060,9 +9077,12 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		}
 		c.cmdl.Add(*cm)
 	}
+
+	/* Compile states */
 	sys.stringPool[pn].Clear()
 	sys.cgi[pn].wakewakaLength = 0
 	c.funcUsed = make(map[string]bool)
+	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, def); err != nil {
@@ -9070,14 +9090,17 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			}
 		}
 	}
+	// Compile states in command file
 	if err := c.stateCompile(states, cmd, def); err != nil {
 		return nil, err
 	}
+	// Compile states in common state file
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, def); err != nil {
 			return nil, err
 		}
 	}
+	// Compile common states from config
 	for _, s := range sys.commonStates {
 		if err := c.stateCompile(states, s, def); err != nil {
 			return nil, err

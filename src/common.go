@@ -294,6 +294,8 @@ func LoadFile(file *string, deffile string, load func(string) error) error {
 	return nil
 }
 
+// Split string on separator, and remove all
+// leading and trailing white space from each line
 func SplitAndTrim(str, sep string) (ss []string) {
 	ss = strings.Split(str, sep)
 	for i, s := range ss {
