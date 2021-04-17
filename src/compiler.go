@@ -3541,6 +3541,8 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 		return nil
 	})
 }
+
+// Interprets an IniSection of statedef properties and sets them to a StateBytecode
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
@@ -3689,6 +3691,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		return nil
 	})
 }
+
 func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	attr, two := int32(-1), false
 	var err error
@@ -7939,13 +7942,17 @@ func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil
 }
+
+// Compile a state file
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	filename, def string) error {
 	var str string
 	zss := HasExtension(filename, "^\\.[Zz][Ss][Ss]$")
 	fnz := filename
+	// Load state file
 	if err := LoadFile(&filename, def, func(filename string) error {
 		var err error
+		// If this is a zss file
 		if zss {
 			b, err := ioutil.ReadFile(filename)
 			if err != nil {
@@ -7954,9 +7961,12 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			str = string(b)
 			return c.stateCompileZ(states, fnz, str)
 		}
+
+		// Try reading as an st file
 		str, err = LoadText(filename)
 		return err
 	}); err != nil {
+		// If filename doesn't exist, see if a zss file exists
 		fnz += ".zss"
 		if err := LoadFile(&fnz, def, func(filename string) error {
 			b, err := ioutil.ReadFile(filename)
@@ -7974,21 +7984,31 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	errmes := func(err error) error {
 		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
 	}
+	// Keep a map of states that have already been found in this file
 	existInThisFile := make(map[int32]bool)
 	c.vars = make(map[string]uint8)
+	// Loop through state file lines
 	for ; c.i < len(c.lines); c.i++ {
+		/* Find a statedef, skipping over other lines until finding one */
+		// Get the current line, without comments
 		line := strings.ToLower(strings.TrimSpace(
 			strings.SplitN(c.lines[c.i], ";", 2)[0]))
+		// If this is not a line starting a statedef, continue to the next line
 		if len(line) < 11 || line[0] != '[' || line[len(line)-1] != ']' ||
 			line[1:10] != "statedef " {
 			continue
 		}
+
 		c.stateNo = Atoi(line[10:])
+
+		// Skip if this state has already been added
 		if existInThisFile[c.stateNo] {
 			continue
 		}
 		existInThisFile[c.stateNo] = true
+
 		c.i++
+		// Parse the statedef properties
 		is, _, err := c.parseSection(nil)
 		if err != nil {
 			return errmes(err)
@@ -7997,12 +8017,17 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
 			*sbc = states[c.stateNo]
 		}
+		// Interpret the statedef properties
 		if err := c.stateDef(is, sbc); err != nil {
 			return errmes(err)
 		}
+
+		// Continue looping through state file lines to define the current state
 		for c.i++; c.i < len(c.lines); c.i++ {
+			// Get the current line, without comments
 			line := strings.ToLower(strings.TrimSpace(
 				strings.SplitN(c.lines[c.i], ";", 2)[0]))
+			// If this is not a line starting an sctrl, continue to the next line
 			if line == "" || line[0] != '[' || line[len(line)-1] != ']' {
 				continue
 			}
@@ -8011,13 +8036,17 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				break
 			}
 			c.i++
+
+			// Create this sctrl and get its properties
 			c.block = newStateBlock()
 			sc := newStateControllerBase()
 			var scf scFunc
 			var triggerall []BytecodeExp
+			// Flag if this trigger can never be true
 			allUtikiri := false
 			var trigger [][]BytecodeExp
 			var trexist []int8
+			// Parse each line of the sctrl to get triggers and settings
 			is, ihp, err := c.parseSection(func(name, data string) error {
 				switch name {
 				case "type":
@@ -8048,6 +8077,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					if err != nil {
 						return err
 					}
+					// If triggerall = 0 is encountered, flag it
 					if len(be) == 2 && be[0] == OC_int8 {
 						if be[1] == 0 {
 							allUtikiri = true
@@ -8056,6 +8086,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						triggerall = append(triggerall, be)
 					}
 				default:
+					// Get the trigger number
 					tn, ok := readDigit(name[7:])
 					if !ok || tn < 1 || tn > 65536 {
 						if sys.ignoreMostErrors {
@@ -8063,6 +8094,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						}
 						return Error("Invalid trigger name: " + name)
 					}
+					// Add more entries to the trigger collection if needed
 					if len(trigger) < int(tn) {
 						trigger = append(trigger, make([][]BytecodeExp,
 							int(tn)-len(trigger))...)
@@ -8071,6 +8103,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
 					}
 					tn--
+					// Parse trigger condition into a bytecode expression
 					be, err := c.fullExpression(&data, VT_Bool)
 					if err != nil {
 						if sys.ignoreMostErrors {
@@ -8087,8 +8120,11 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 						}
 						return err
 					}
+					// If trigger is a constant int value
 					if len(be) == 2 && be[0] == OC_int8 {
+						// If trigger is always false (0)
 						if be[1] == 0 {
+							// trexist == -1 means this specific trigger set can never be true
 							trexist[tn] = -1
 						} else if trexist[tn] == 0 {
 							trexist[tn] = 1
@@ -8103,12 +8139,16 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			if err != nil {
 				return errmes(err)
 			}
+
+			// Check that the sctrl has a valid type parameter
 			if scf == nil {
 				return errmes(Error("type parameter not specified"))
 			}
 			if len(trexist) == 0 || (!allUtikiri && trexist[0] == 0) {
 				return errmes(Error("Missing trigger1"))
 			}
+
+			/* Create trigger bytecode */
 			var texp BytecodeExp
 			for _, e := range triggerall {
 				texp.append(e...)
@@ -8166,14 +8206,20 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				}
 			}
 			c.block.trigger = texp
+
+			// Ignorehitpause
 			_ihp := int8(-1)
 			if ihp {
 				_ihp = int8(Btoi(c.block.ignorehitpause >= -1))
 			}
+
+			// For this sctrl type, call the function to construct the sctrl
 			sctrl, err := scf(is, sc, _ihp)
 			if err != nil {
 				return errmes(err)
 			}
+
+			// Check if the triggers can ever be true before appending the new sctrl
 			appending := true
 			if len(c.block.trigger) == 0 {
 				appending = false
@@ -8189,6 +8235,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				}
 			}
 			if appending {
+				// If the trigger is always true
 				if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
 					c.block.ignorehitpause < -1 {
 					if _, ok := sctrl.(NullStateController); !ok {
@@ -8205,12 +8252,14 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				}
 			}
 		}
+
 		if _, ok := states[c.stateNo]; !ok || c.stateNo < 0 {
 			states[c.stateNo] = *sbc
 		}
 	}
 	return nil
 }
+
 func (c *Compiler) yokisinaiToken() error {
 	if c.token == "" {
 		return Error("Missing token")
@@ -8921,10 +8970,14 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 	}
 	return nil
 }
+
+// Compile a character definition file
 func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	error) {
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
+
+	/* Load initial data from definition file */
 	str, err := LoadText(def)
 	if err != nil {
 		return nil, err
@@ -8933,9 +8986,11 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	var st [11]string
 	info, files := true, true
 	for i < len(lines) {
+		// Parse each ini section
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "info":
+			// Read info section for the mugen version of the character
 			if info {
 				info = false
 				sys.cgi[pn].ver = [2]uint16{}
@@ -8954,6 +9009,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				}
 			}
 		case "files":
+			// Read files section to find the command and state filenames
 			if files {
 				files = false
 				cmd, stcommon = is["cmd"], is["stcommon"]
@@ -8964,6 +9020,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			}
 		}
 	}
+
+	// Load the command file
 	if err := LoadFile(&cmd, def, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
@@ -8975,6 +9033,8 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}); err != nil {
 		return nil, err
 	}
+
+	// Initialize command list data
 	if sys.chars[pn][0].cmd == nil {
 		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
 		b := NewCommandBuffer()
@@ -8984,11 +9044,14 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 	c.cmdl = &sys.chars[pn][0].cmd[pn]
 	remap, defaults, ckr := true, true, NewCommandKeyRemap()
+
 	var cmds []IniSection
 	for i < len(lines) {
+		// Read ini sections of command file
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "remap":
+			// Read controller remap
 			if remap {
 				remap = false
 				rm := func(name string, k, nk *CommandKey) {
@@ -9027,6 +9090,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				rm("m", &ckr.m, &ckr.nm)
 			}
 		case "defaults":
+			// Read default command time and buffer time
 			if defaults {
 				defaults = false
 				is.ReadI32("command.time", &c.cmdl.DefaultTime)
@@ -9036,11 +9100,13 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 				}
 			}
 		default:
+			// Read input commands
 			if len(name) >= 7 && name[:7] == "command" {
 				cmds = append(cmds, is)
 			}
 		}
 	}
+	// Parse input commands
 	for _, is := range cmds {
 		name, _, err := is.getText("name")
 		if err != nil {
@@ -9060,9 +9126,12 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		}
 		c.cmdl.Add(*cm)
 	}
+
+	/* Compile states */
 	sys.stringPool[pn].Clear()
 	sys.cgi[pn].wakewakaLength = 0
 	c.funcUsed = make(map[string]bool)
+	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, def); err != nil {
@@ -9070,14 +9139,17 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 			}
 		}
 	}
+	// Compile states in command file
 	if err := c.stateCompile(states, cmd, def); err != nil {
 		return nil, err
 	}
+	// Compile states in common state file
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, def); err != nil {
 			return nil, err
 		}
 	}
+	// Compile common states from config
 	for _, s := range sys.commonStates {
 		if err := c.stateCompile(states, s, def); err != nil {
 			return nil, err

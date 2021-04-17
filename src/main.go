@@ -45,16 +45,80 @@ func createLog(p string) *os.File {
 func closeLog(f *os.File) {
 	f.Close()
 }
+
 func main() {
+	// Make save directories, if they don't exist
 	os.Mkdir("save", os.ModeSticky|0755)
 	os.Mkdir("save/replays", os.ModeSticky|0755)
+
+	processCommandLine()
+
+	// Initialize OpenGL
+	chk(glfw.Init())
+	defer glfw.Terminate()
+
+	// Try reading stats
+	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
+		// If there was an error reading, write an empty json file
+		f, err := os.Create("save/stats.json")
+		chk(err)
+		f.Write([]byte("{}"))
+		chk(f.Close())
+	}
+
+	// Setup config values, and get a reference to the config object for the main script and window size
+	tmp := setupConfig()
+
+	//os.Mkdir("debug", os.ModeSticky|0755)
+
+	// Check if the main lua file exists.
+	if !fileExists(tmp.System) {
+		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
+		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
+		panic(err)
+	}
+
+	log := createLog("Ikemen.log")
+	defer closeLog(log)
+	// Initialize game and create window
+	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
+
+	// Begin processing game using its lua scripts
+	if err := sys.luaLState.DoFile(tmp.System); err != nil {
+		// Display error logs.
+		fmt.Fprintln(log, err)
+		switch err.(type) {
+		case *lua.ApiError:
+			errstr := strings.Split(err.Error(), "\n")[0]
+			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
+				dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+				panic(err)
+			}
+		default:
+			dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+			panic(err)
+		}
+	}
+
+	// Shutdown
+	if !sys.gameEnd {
+		sys.gameEnd = true
+	}
+	<-sys.audioClose
+}
+
+// Loops through given comand line arguments and processes them for later use by the game
+func processCommandLine() {
+	// If there are command line arguments
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
 		player := 1
 		r1, _ := regexp.Compile("^-[h%?]")
 		r2, _ := regexp.Compile("^-")
+		// Loop through arguments
 		for _, a := range os.Args[1:] {
+			// If getting help about command line options
 			if r1.MatchString(a) {
 				text := `Options (case sensitive):
 -h -?                   Help
@@ -90,26 +154,122 @@ Debug Options:
 				var s string
 				fmt.Scanln(&s)
 				os.Exit(0)
+				// If a control argument starting with - (eg. -p3, -s, -rounds)
 			} else if r2.MatchString(a) {
+				// Set a blank value for the key to start with
 				sys.cmdFlags[a] = ""
+				// Prepare the key for the next argument
 				key = a
+				// If an argument with no key
 			} else if key == "" {
+				// Set p1/p2's name
 				sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
 				player += 1
+				// If a key is prepared for this argument
 			} else {
+				// Set the argument for this key
 				sys.cmdFlags[key] = a
 				key = ""
 			}
 		}
 	}
-	chk(glfw.Init())
-	defer glfw.Terminate()
-	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
-		f, err := os.Create("save/stats.json")
-		chk(err)
-		f.Write([]byte("{}"))
-		chk(f.Close())
+}
+
+type configSettings struct {
+	AIRamping                  bool
+	AIRandomColor              bool
+	AudioDucking               bool
+	AutoGuard                  bool
+	BarGuard                   bool
+	BarRedLife                 bool
+	BarStun                    bool
+	Borderless                 bool
+	ComboExtraFrameWindow      int32
+	CommonAir                  string
+	CommonCmd                  string
+	CommonConst                string
+	CommonLua                  []string
+	CommonStates               []string
+	ControllerStickSensitivity float32
+	Credits                    int
+	DebugClipboardRows         int
+	DebugConsoleRows           int
+	DebugFont                  string
+	DebugFontScale             float32
+	DebugKeys                  bool
+	Difficulty                 int
+	EscOpensMenu               bool
+	ExternalShaders            []string
+	FirstRun                   bool
+	FontShaderVer              string
+	ForceStageZoomin           float32
+	ForceStageZoomout          float32
+	Fullscreen                 bool
+	GameWidth                  int32
+	GameHeight                 int32
+	GameSpeed                  float32
+	IP                         map[string]string
+	LifebarFontScale           float32
+	LifeMul                    float32
+	ListenPort                 string
+	LoseSimul                  bool
+	LoseTag                    bool
+	MaxAfterImage              int32
+	MaxDrawGames               int32
+	MaxExplod                  int
+	MaxHelper                  int32
+	MaxPlayerProjectile        int
+	Modules                    []string
+	Motif                      string
+	MSAA                       bool
+	NumSimul                   [2]int
+	NumTag                     [2]int
+	NumTurns                   [2]int
+	Players                    int
+	PngSpriteFilter            bool
+	PostProcessingShader       int32
+	QuickContinue              bool
+	RatioAttack                [4]float32
+	RatioLife                  [4]float32
+	RatioRecoveryBase          float32
+	RatioRecoveryBonus         float32
+	RoundsNumSimul             int32
+	RoundsNumSingle            int32
+	RoundsNumTag               int32
+	RoundTime                  int32
+	ScreenshotFolder           string
+	StartStage                 string
+	System                     string
+	Team1VS2Life               float32
+	TeamDuplicates             bool
+	TeamLifeShare              bool
+	TeamPowerShare             bool
+	TrainingChar               string
+	TurnsRecoveryBase          float32
+	TurnsRecoveryBonus         float32
+	VolumeBgm                  int
+	VolumeMaster               int
+	VolumeSfx                  int
+	VRetrace                   int
+	WindowIcon                 []string
+	WindowTitle                string
+	XinputTriggerSensitivity   float32
+	ZoomActive                 bool
+	ZoomDelay                  bool
+	ZoomSpeed                  float32
+	KeyConfig                  []struct {
+		Joystick int
+		Buttons  []interface{}
 	}
+	JoystickConfig []struct {
+		Joystick int
+		Buttons  []interface{}
+	}
+}
+
+// Sets default config settings, then attemps to load existing config from disk
+func setupConfig() configSettings {
+	// Default Config
 	defcfg := []byte(strings.Join(strings.Split(
 		`{
 	"AIRamping": true,
@@ -381,102 +541,18 @@ Debug Options:
 	]
 }
 `, "\n"), "\r\n"))
-	tmp := struct {
-		AIRamping                  bool
-		AIRandomColor              bool
-		AudioDucking               bool
-		AutoGuard                  bool
-		BarGuard                   bool
-		BarRedLife                 bool
-		BarStun                    bool
-		Borderless                 bool
-		ComboExtraFrameWindow      int32
-		CommonAir                  string
-		CommonCmd                  string
-		CommonConst                string
-		CommonLua                  []string
-		CommonStates               []string
-		ControllerStickSensitivity float32
-		Credits                    int
-		DebugClipboardRows         int
-		DebugConsoleRows           int
-		DebugFont                  string
-		DebugFontScale             float32
-		DebugKeys                  bool
-		Difficulty                 int
-		EscOpensMenu               bool
-		ExternalShaders            []string
-		FirstRun                   bool
-		FontShaderVer              string
-		ForceStageZoomin           float32
-		ForceStageZoomout          float32
-		Fullscreen                 bool
-		GameWidth                  int32
-		GameHeight                 int32
-		GameSpeed                  float32
-		IP                         map[string]string
-		LifebarFontScale           float32
-		LifeMul                    float32
-		ListenPort                 string
-		LoseSimul                  bool
-		LoseTag                    bool
-		MaxAfterImage              int32
-		MaxDrawGames               int32
-		MaxExplod                  int
-		MaxHelper                  int32
-		MaxPlayerProjectile        int
-		Modules                    []string
-		Motif                      string
-		MSAA                       bool
-		NumSimul                   [2]int
-		NumTag                     [2]int
-		NumTurns                   [2]int
-		Players                    int
-		PngSpriteFilter            bool
-		PostProcessingShader       int32
-		QuickContinue              bool
-		RatioAttack                [4]float32
-		RatioLife                  [4]float32
-		RatioRecoveryBase          float32
-		RatioRecoveryBonus         float32
-		RoundsNumSimul             int32
-		RoundsNumSingle            int32
-		RoundsNumTag               int32
-		RoundTime                  int32
-		ScreenshotFolder           string
-		StartStage                 string
-		System                     string
-		Team1VS2Life               float32
-		TeamDuplicates             bool
-		TeamLifeShare              bool
-		TeamPowerShare             bool
-		TrainingChar               string
-		TurnsRecoveryBase          float32
-		TurnsRecoveryBonus         float32
-		VolumeBgm                  int
-		VolumeMaster               int
-		VolumeSfx                  int
-		VRetrace                   int
-		WindowIcon                 []string
-		WindowTitle                string
-		XinputTriggerSensitivity   float32
-		ZoomActive                 bool
-		ZoomDelay                  bool
-		ZoomSpeed                  float32
-		KeyConfig                  []struct {
-			Joystick int
-			Buttons  []interface{}
-		}
-		JoystickConfig []struct {
-			Joystick int
-			Buttons  []interface{}
-		}
-	}{}
+
+	// Unmarshal default config string into a struct
+	tmp := configSettings{}
 	chk(json.Unmarshal(defcfg, &tmp))
+
+	// Config file path
 	cfgPath := "save/config.json"
+	// If a different config file is defined in the command line parameters, use it instead
 	if _, ok := sys.cmdFlags["-config"]; ok {
 		cfgPath = sys.cmdFlags["-config"]
 	}
+	// Load the config file, overwriting the defaults
 	if bytes, err := ioutil.ReadFile(cfgPath); err == nil {
 		if len(bytes) >= 3 &&
 			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
@@ -484,8 +560,11 @@ Debug Options:
 		}
 		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
+
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
+
+	// Set each config property to the system object
 	sys.afterImageMax = tmp.MaxAfterImage
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.audioDucking = tmp.AudioDucking
@@ -572,37 +651,8 @@ Debug Options:
 				Atoi(b[12].(string)), Atoi(b[13].(string))})
 		}
 	}
-	//os.Mkdir("debug", os.ModeSticky|0755)
 
-	// Check if the main lua file exists.
-	if !fileExists(tmp.System) {
-		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
-		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
-		panic(err)
-	}
-
-	log := createLog("Ikemen.log")
-	defer closeLog(log)
-	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
-	// Display error logs.
-	if err := sys.luaLState.DoFile(tmp.System); err != nil {
-		fmt.Fprintln(log, err)
-		switch err.(type) {
-		case *lua.ApiError:
-			errstr := strings.Split(err.Error(), "\n")[0]
-			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
-				panic(err)
-			}
-		default:
-			dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
-			panic(err)
-		}
-	}
-	if !sys.gameEnd {
-		sys.gameEnd = true
-	}
-	<-sys.audioClose
+	return tmp
 }
 
 // fileExists checks if a file exists and is not a directory before we use it
