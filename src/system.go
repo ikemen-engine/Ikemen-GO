@@ -1760,9 +1760,15 @@ func (s *System) drawDebug() {
 		}
 	}
 }
+
+// Starts and runs gameplay
+// Called to start each match, on hard reset with shift+F4, and
+// at the start of any round where a new character tags in for turns mode
 func (s *System) fight() (reload bool) {
+	// Reset variables
 	s.gameTime, s.paused, s.accel = 0, false, 1
 	s.aiInput = [len(s.aiInput)]AiInput{}
+	// Defer resetting variables on return
 	defer func() {
 		s.oldNextAddTime = 1
 		s.nomusic = false
@@ -1781,6 +1787,7 @@ func (s *System) fight() (reload bool) {
 	var dialogue [len(s.chars)][]string
 	var mapArray [len(s.chars)]map[string]float32
 	var remapSpr [len(s.chars)]RemapPreset
+	// Anonymous function to assign initial character values
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
 		pow[pn] = s.chars[pn][0].power
@@ -1810,6 +1817,7 @@ func (s *System) fight() (reload bool) {
 		s.chars[pn][0].activeHitScale = make(map[int32][3]*HitScale)
 		s.chars[pn][0].nextHitScale = make(map[int32][3]*HitScale)
 	}
+
 	s.debugWC = sys.chars[0][0]
 	debugInput := func() {
 		select {
@@ -1820,6 +1828,8 @@ func (s *System) fight() (reload bool) {
 		default:
 		}
 	}
+
+	// Synchronize with external inputs (netplay, replays, etc)
 	if err := s.synchronize(); err != nil {
 		s.errLog.Println(err.Error())
 		s.esc = true
@@ -1828,6 +1838,8 @@ func (s *System) fight() (reload bool) {
 		defer s.netInput.Stop()
 	}
 	s.wincnt.init()
+
+	// Initialize super meter values, and max power for teams sharing meter
 	var level [len(s.chars)]int32
 	for i, p := range s.chars {
 		if len(p) > 0 {
@@ -1859,9 +1871,12 @@ func (s *System) fight() (reload bool) {
 			level[i] -= maxlv
 		}
 	}
+
+	// Initialize each character
 	lvmul := math.Pow(2, 1.0/12)
 	for i, p := range s.chars {
 		if len(p) > 0 {
+			// Get max life, and adjust based on team mode
 			var lm float32
 			if p[0].ocd().lifeMax != 0 {
 				lm = float32(p[0].ocd().lifeMax) * p[0].ocd().lifeRatio * s.lifeMul
@@ -1917,9 +1932,12 @@ func (s *System) fight() (reload bool) {
 			}
 			foo := math.Pow(lvmul, float64(-level[i]))
 			p[0].lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
+
 			if s.roundsExisted[i&1] > 0 {
+				/* If character already existed for a round, presumably because of turns mode, just update life */
 				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
+				/* If round 1 or a new character in turns mode, initialize values */
 				if p[0].ocd().life != 0 {
 					p[0].life = p[0].ocd().life
 				} else {
@@ -1944,6 +1962,7 @@ func (s *System) fight() (reload bool) {
 				p[0].activeHitScale = make(map[int32][3]*HitScale)
 				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
+
 			if p[0].ocd().guardPoints != 0 {
 				p[0].guardPoints = p[0].ocd().guardPoints
 			} else {
@@ -1958,14 +1977,17 @@ func (s *System) fight() (reload bool) {
 			copyVar(i)
 		}
 	}
+
 	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
 		s.bgm.Open(s.stage.bgmusic, true, 1, 100, 0, 0)
 	}
+
 	oldWins, oldDraws := s.wins, s.draws
 	oldTeamLeader := s.teamLeader
 	var x, y, newx, newy, l, r float32
 	var scl, sclmul float32
+	// Anonymous function to reset values, called at the start of each round
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
 		s.teamLeader = oldTeamLeader
@@ -2003,6 +2025,8 @@ func (s *System) fight() (reload bool) {
 		s.cam.Update(scl, x, y)
 	}
 	reset()
+
+	// Loop until end of match
 	fin := false
 	for !s.endMatch {
 		s.step = false
@@ -2013,6 +2037,8 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 		}
+
+		// If next round
 		if s.roundOver() && !fin {
 			s.round++
 			for i := range s.roundsExisted {
@@ -2050,8 +2076,10 @@ func (s *System) fight() (reload bool) {
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
 			s.scoreRounds = append(s.scoreRounds, [2]float32{s.lifebar.sc[0].scorePoints, s.lifebar.sc[1].scorePoints})
 			oldTeamLeader = s.teamLeader
+			
 			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.chars[0][0].win()) &&
 				(s.tmode[1] != TM_Turns || s.chars[1][0].win()) {
+				/* Prepare for the next round */
 				for i, p := range s.chars {
 					if len(p) > 0 {
 						if s.tmode[i&1] != TM_Turns || !p[0].win() {
@@ -2066,6 +2094,7 @@ func (s *System) fight() (reload bool) {
 				oldWins, oldDraws = s.wins, s.draws
 				reset()
 			} else {
+				/* End match, or prepare for a new character in turns mode */
 				for i, tm := range s.tmode {
 					if s.chars[i][0].win() || !s.chars[i][0].lose() && tm != TM_Turns {
 						for j := i; j < len(s.chars); j += 2 {
@@ -2082,13 +2111,19 @@ func (s *System) fight() (reload bool) {
 						s.chars[i][0].life = 0
 					}
 				}
+				// If match isn't over, presumably this is turns mode,
+				// so break to restart fight for the next character
 				if !s.matchOver() {
 					break
 				}
+
+				// Otherwise match is over
 				s.postMatchFlg = true
 				fin = true
 			}
 		}
+
+		// Update camera
 		scl = s.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
@@ -2100,18 +2135,27 @@ func (s *System) fight() (reload bool) {
 			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 		}
 		y = s.cam.YBound(scl, newy)
+
+		// If frame is ready to tick and not paused
 		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
 			(s.pause <= 0 || !s.pausebg) {
+			// Update stage
 			s.stage.action()
 		}
+
+		// Update game state
 		newx, newy = x, y
 		l, r, sclmul = s.action(&newx, &newy, scl)
+
+		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
 			reset()
 		}
+		// Shift+F4 pressed to restart match
 		if s.reloadFlg {
 			return true
 		}
+
 		debugInput()
 		if !s.addFrameTime(s.turbo) {
 			if !s.eventUpdate() {
@@ -2119,6 +2163,7 @@ func (s *System) fight() (reload bool) {
 			}
 			continue
 		}
+		// Render frame
 		if !s.frameSkip {
 			dx, dy, dscl := x, y, scl
 			if s.enableZoomstate {
@@ -2146,22 +2191,30 @@ func (s *System) fight() (reload bool) {
 				s.luaLState.RaiseError(err.Error())
 			}
 		}
+		// Render debug elements
 		if !s.frameSkip {
 			s.drawTop()
 			s.drawDebug()
 		}
+
+		// Break if finished
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {
 			break
 		}
+
+		// Update system; break if update returns false (game ended)
 		if !s.update() {
 			break
 		}
+
+		// If end match selected from menu/end of attract mode match/etc
 		if s.endMatch {
 			s.esc = true
 		} else if s.esc {
 			s.endMatch = s.netInput != nil || len(sys.commonLua) == 0
 		}
 	}
+
 	return false
 }
 
