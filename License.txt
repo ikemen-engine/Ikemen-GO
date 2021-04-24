@@ -1,5 +1,3 @@
-Ikemen GO engine and scripts are licensed under a MIT License
-
 MIT License
 
 Copyright (c) 2016 Suehiro
@@ -32,6 +30,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+The MIT License applies to the Ikemen GO engine and the scripts in this repo.
+
+==============================================================================
+
 以下に定める条件に従い、本ソフトウェアおよび関連文書のファイル（以下「ソフトウェア」）
 の複製を取得するすべての人に対し、ソフトウェアを無制限に扱うことを無償で許可します。
 これには、ソフトウェアの複製を使用、複写、変更、結合、掲載、頒布、サブライセンス、および
@@ -47,16 +49,13 @@ SOFTWARE.
 
 ==============================================================================
 
-Electbyte's Mugen screenpack and font files are licensed under a Creative
-Commons Noncommercial License, with optional attribution.
-http://creativecommons.org/licenses/by-nc/3.0/
+Work contributed to Ikemen GO by various artists is licensed under a Creative Commons Attribution 3.0 Unported License.
+http://creativecommons.org/licenses/by/3.0/deed.en_US
+The license applies to following assets:
+- The "default-3x5" font by Gacel.
+- The icon/logo of the engine by Cylia Margatroid.
 
 ==============================================================================
 
-Work contributed to Ikemen GO by various artists is licensed under a Creative
-Commons Attribution 3.0 Unported License.
-http://creativecommons.org/licenses/by/3.0/deed.en_US
-The license applies to following assets:
-- lifebar messages, rank backgrounds and icons by President Devon and Rurouni
-- command list glyphs by Rurouni
-- dizzy, guard break, tag switch effects by Shiyo Kakuge
+On release builds the engine is packed with more assets that could have different licences.
+If you are using a release build check the "AssetLicence.txt" file for more info.
