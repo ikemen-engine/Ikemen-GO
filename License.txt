@@ -32,7 +32,7 @@ SOFTWARE.
 
 The MIT License applies to the Ikemen GO engine and the scripts in this repo.
 
-==============================================================================
+----------------------------------------------------------------------------
 
 以下に定める条件に従い、本ソフトウェアおよび関連文書のファイル（以下「ソフトウェア」）
 の複製を取得するすべての人に対し、ソフトウェアを無制限に扱うことを無償で許可します。
@@ -47,7 +47,7 @@ The MIT License applies to the Ikemen GO engine and the scripts in this repo.
 ソフトウェアに起因または関連し、あるいはソフトウェアの使用またはその他の扱いによって生じる一切の請求、損害、
 その他の義務について何らの責任も負わないものとします。
 
-==============================================================================
+----------------------------------------------------------------------------
 
 Work contributed to Ikemen GO by various artists is licensed under a Creative Commons Attribution 3.0 Unported License.
 http://creativecommons.org/licenses/by/3.0/deed.en_US
@@ -55,7 +55,7 @@ The license applies to following assets:
 - The "default-3x5" font by Gacel.
 - The icon/logo of the engine by Cylia Margatroid.
 
-==============================================================================
+----------------------------------------------------------------------------
 
 On release builds the engine is packed with more assets that could have different licences.
-If you are using a release build check the "AssetLicence.txt" file for more info.
+If you are using a release build check the "ScreenpackLicence.txt" file for more info.
