@@ -2670,9 +2670,7 @@ main.f_loadingRefresh()
 motif.files.glyphs_data = sffNew(motif.files.glyphs)
 main.f_loadingRefresh()
 
---data
-local anim = ''
-local facing = ''
+--generates motif background data
 for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
@@ -2706,6 +2704,8 @@ function motif.f_animFacing(var)
 end
 
 --creates sprite data out of table values
+local anim = ''
+local facing = ''
 function motif.f_loadSprData(t, v)
 	if t[v.s .. 'offset'] == nil then t[v.s .. 'offset'] = {0, 0} end
 	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end
