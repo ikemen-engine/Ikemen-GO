@@ -21,6 +21,7 @@ mv ./Ikemen_GO-Elecbyte-Screenpack/chars ./bin/chars
 mv ./Ikemen_GO-Elecbyte-Screenpack/data ./bin/data
 mv ./Ikemen_GO-Elecbyte-Screenpack/font ./bin/font
 mv ./Ikemen_GO-Elecbyte-Screenpack/stages ./bin/stages
+mv ./Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt ./bin/ScreenpackLicence.txt
 rm -rf Ikemen_GO-Elecbyte-Screenpack
 
 rsync -a ./external ./bin/
