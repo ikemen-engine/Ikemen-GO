@@ -49,16 +49,16 @@ mv ./Ikemen_GO_Win_x64.exe ./Ikemen_GO.exe
 mv ./soft_oal_x64.dll ./OpenAL32.dll
 
 7z a -tzip ./release/Ikemen_GO_Win_x64.zip ./chars ./data ./font ./save ./external sound ./stages License.txt ScreenpackLicence.txt 'Ikemen_GO.exe' 'OpenAL32.dll'
-7z a -tzip ./release/Ikemen_GO_Win_x64_Binaries_only.zip ./external ../data ../font License.txt ScreenpackLicence.txt 'Ikemen_GO.exe' 'OpenAL32.dll'
+7z a -tzip ./release/Ikemen_GO_Win_x64_Binaries_only.zip ./external ../data ../font License.txt 'Ikemen_GO.exe' 'OpenAL32.dll'
 
 mv ./Ikemen_GO.exe ./Ikemen_GO_Win_x64.exe
 mv ./OpenAL32.dll ./soft_oal_x64.dll
 
 7z a -tzip ./release/Ikemen_GO_Mac.zip ./chars ./data ./font ./save ./external sound ./stages License.txt ScreenpackLicence.txt Ikemen_GO.command Ikemen_GO_mac
-7z a -tzip ./release/Ikemen_GO_Mac_Binaries_only.zip ./external ../data ../font License.txt ScreenpackLicence.txt Ikemen_GO.command Ikemen_GO_mac
+7z a -tzip ./release/Ikemen_GO_Mac_Binaries_only.zip ./external ../data ../font License.txt Ikemen_GO.command Ikemen_GO_mac
 
 7z a -tzip ./release/Ikemen_GO_Linux.zip ./chars ./data ./font ./save ./external sound ./stages License.txt ScreenpackLicence.txt Ikemen_GO.command Ikemen_GO_linux
-7z a -tzip ./release/Ikemen_GO_Linux_Binaries_only.zip ./external ../data ../font License.txt ScreenpackLicence.txt Ikemen_GO.command Ikemen_GO_linux
+7z a -tzip ./release/Ikemen_GO_Linux_Binaries_only.zip ./external ../data ../font License.txt Ikemen_GO.command Ikemen_GO_linux
 
 echo "------------------------------------------------------------"
 echo "Packaging finished."
