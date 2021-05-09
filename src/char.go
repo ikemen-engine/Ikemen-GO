@@ -3197,7 +3197,7 @@ func (c *Char) newHelper() (h *Char) {
 		if i >= sys.helperMax {
 			return
 		}
-		h = newChar(c.playerNo, i)
+		h = sys.gameState.addChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
 	h.id, h.helperId = sys.newCharId(), 0
