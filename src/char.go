@@ -1005,7 +1005,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		e.anim = nil
 		return
 	}
-	if sys.chars[playerNo][0].scf(SCF_disabled) {
+	if sys.getChar(playerNo, 0).scf(SCF_disabled) {
 		return
 	}
 	var c *Char
@@ -1213,7 +1213,7 @@ func (p *Projectile) setPos(pos [2]float32) {
 	p.pos, p.oldPos, p.newPos = pos, pos, pos
 }
 func (p *Projectile) paused(playerNo int) bool {
-	//if !sys.chars[playerNo][0].pause() {
+	//if !sys.getChar(playerNo, 0).pause() {
 	if sys.super > 0 {
 		if p.supermovetime == 0 {
 			return true
@@ -1229,14 +1229,15 @@ func (p *Projectile) paused(playerNo int) bool {
 func (p *Projectile) update(playerNo int) {
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		rem := true
+		c := sys.getChar(playerNo, 0)
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
 				if p.hits == -1 {
 					if p.hitanim != p.anim || p.hitanim_fflg != p.anim_fflg {
-						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_fflg, true)
+						p.ani = c.getAnim(p.hitanim, p.hitanim_fflg, true)
 					}
 				} else if p.cancelanim != p.anim || p.cancelanim_fflg != p.anim_fflg {
-					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_fflg, true)
+					p.ani = c.getAnim(p.cancelanim, p.cancelanim_fflg, true)
 				}
 			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
@@ -1249,7 +1250,7 @@ func (p *Projectile) update(playerNo int) {
 				p.removetime == 0 ||
 				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
 				if p.remanim != p.anim || p.remanim_fflg != p.anim_fflg {
-					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_fflg, true)
+					p.ani = c.getAnim(p.remanim, p.remanim_fflg, true)
 				}
 			} else {
 				rem = false
@@ -2319,25 +2320,27 @@ func (c *Char) setYV(yv float32) {
 }
 func (c *Char) changeAnim(animNo int32, ffx bool) {
 	if a := c.getAnim(animNo, ffx, true); a != nil {
+		p := sys.getChar(c.animPN, 0)
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
 		c.animNo = animNo
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale}
+		c.clsnScale = [...]float32{p.size.xscale,
+			p.size.yscale}
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
 	}
 }
 func (c *Char) changeAnim2(animNo int32, ffx bool) {
-	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, ffx, true); a != nil {
+	if a := sys.getChar(c.ss.sb.playerNo, 0).getAnim(animNo, ffx, true); a != nil {
+		p := sys.getChar(c.animPN, 0)
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
 		c.animNo = animNo
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale}
+		c.clsnScale = [...]float32{p.size.xscale,
+			p.size.yscale}
 		a.sff = sys.cgi[c.playerNo].sff
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
@@ -2400,14 +2403,14 @@ func (c *Char) parent() *Char {
 			sys.errLog.Println(c.name + " parent has been already destroyed")
 		}
 	}
-	return sys.chars[c.playerNo][Abs(c.parentIndex)]
+	return sys.getChar(c.playerNo, int(Abs(c.parentIndex)))
 }
 func (c *Char) root() *Char {
 	if c.helperIndex == 0 {
 		sys.appendToConsole(c.warn() + "has no root")
 		return nil
 	}
-	return sys.chars[c.playerNo][0]
+	return sys.getChar(c.playerNo, 0)
 }
 func (c *Char) helper(id int32) *Char {
 	for _, h := range sys.chars[c.playerNo][1:] {
@@ -2447,8 +2450,8 @@ func (c *Char) partner(n int32) *Char {
 			p += 2
 		}
 	}
-	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
-		return sys.chars[p][0]
+	if len(sys.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
+		return sys.getChar(p, 0)
 	}
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 	return nil
@@ -2462,8 +2465,8 @@ func (c *Char) partnerV2(n int32) *Char {
 	if p>>1 > int(c.numPartner()) {
 		p -= int(c.numPartner()*2) + 2
 	}
-	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
-		return sys.chars[p][0]
+	if len(sys.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
+		return sys.getChar(p, 0)
 	}
 	return nil
 }
@@ -2473,14 +2476,15 @@ func (c *Char) enemy(n int32) *Char {
 		return nil
 	}
 	if c.teamside == -1 {
-		return sys.chars[n][0]
+		return sys.getChar(int(n), 0)
 	}
 	for i := n*2 + int32(^c.playerNo&1); i < sys.numSimul[^c.playerNo&1]*2; i += 2 {
-		if !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
-			return sys.chars[i][0]
+		p := sys.getChar(int(i), 0)
+		if !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
+			return p
 		}
 	}
-	//return sys.chars[n*2+int32(^c.playerNo&1)][0]
+	//return sys.getChar(int(n*2+int32(^c.playerNo&1)), 0)
 	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
@@ -2521,7 +2525,7 @@ func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
 	if c != wc {
 		return c.selfAnimExist(anim)
 	}
-	return sys.chars[c.ss.sb.playerNo][0].selfAnimExist(anim)
+	return sys.getChar(c.ss.sb.playerNo, 0).selfAnimExist(anim)
 }
 func (c *Char) animTime() int32 {
 	if c.anim != nil {
@@ -2617,15 +2621,15 @@ func (c *Char) gameWidth() float32 {
 }
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-		return sys.chars[pn-1][0].id
+		return sys.getChar(pn-1, 0).id
 	}
 	return 0
 }
 func (c *Char) getPower() int32 {
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
-		return sys.chars[c.playerNo&1][0].power
+		return sys.getChar(c.playerNo&1, 0).power
 	}
-	return sys.chars[c.playerNo][0].power
+	return sys.getChar(c.playerNo, 0).power
 }
 func (c *Char) hitDefAttr(attr int32) bool {
 	return c.ss.moveType == MT_A && c.hitdef.testAttr(attr)
@@ -2707,14 +2711,16 @@ func (c *Char) numEnemy() int32 {
 	var n int32
 	if c.teamside == -1 {
 		for i := 0; i < int(sys.numSimul[0]+sys.numSimul[1]); i++ {
-			if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+			p := sys.getChar(i, 0)
+			if len(sys.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
 				n += 1
 			}
 		}
 		return n
 	}
 	for i := ^c.playerNo & 1; i < int(sys.numSimul[^c.playerNo&1]*2); i += 2 {
-		if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+		p := sys.getChar(i, 0)
+		if len(sys.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
 			n += 1
 		}
 	}
@@ -3066,7 +3072,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
 		c.enemyExplodsRemove(c.ss.sb.playerNo)
 	}
-	if newLs := 320 / float32(sys.chars[pn][0].localcoord); c.localscl != newLs {
+	if newLs := 320 / float32(sys.getChar(pn, 0).localcoord); c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
 		c.pos[1] *= lsRatio
@@ -3187,8 +3193,8 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 func (c *Char) newHelper() (h *Char) {
 	i := int32(0)
 	for ; int(i) < len(sys.chars[c.playerNo]); i++ {
-		if sys.chars[c.playerNo][i].helperIndex < 0 {
-			h = sys.chars[c.playerNo][i]
+		if sys.getChar(c.playerNo, int(i)).helperIndex < 0 {
+			h = sys.getChar(c.playerNo, int(i))
 			h.init(c.playerNo, i)
 			break
 		}
@@ -3439,7 +3445,7 @@ func (c *Char) setPosX(x float32) {
 		if c.player {
 			for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
 				for j := range sys.chars[i] {
-					sys.chars[i][j].enemyNearClear()
+					sys.getChar(i, j).enemyNearClear()
 				}
 			}
 		}
@@ -4082,16 +4088,16 @@ func (c *Char) setPower(pow int32) {
 }
 func (c *Char) powerAdd(add int32) {
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
-		sys.chars[c.playerNo&1][0].setPower(c.getPower() + add)
+		sys.getChar(c.playerNo&1, 0).setPower(c.getPower() + add)
 	} else {
-		sys.chars[c.playerNo][0].setPower(c.getPower() + add)
+		sys.getChar(c.playerNo, 0).setPower(c.getPower() + add)
 	}
 }
 func (c *Char) powerSet(pow int32) {
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
-		sys.chars[c.playerNo&1][0].setPower(pow)
+		sys.getChar(c.playerNo&1, 0).setPower(pow)
 	} else {
-		sys.chars[c.playerNo][0].setPower(pow)
+		sys.getChar(c.playerNo, 0).setPower(pow)
 	}
 }
 func (c *Char) dizzyPointsAdd(add int32) {
@@ -4619,13 +4625,13 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] = Value
+					sys.getChar(i, 0).mapArray[key] = Value
 				}
 			}
 		} else {
 			for i := c.teamside; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] = Value
+					sys.getChar(i, 0).mapArray[key] = Value
 				}
 			}
 		}
@@ -4633,13 +4639,13 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] += Value
+					sys.getChar(i, 0).mapArray[key] += Value
 				}
 			}
 		} else {
 			for i := c.teamside; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] += Value
+					sys.getChar(i, 0).mapArray[key] += Value
 				}
 			}
 		}
@@ -4908,7 +4914,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	}
 	return sys.clsnHantei(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
-		clsn2, [...]float32{c.clsnScale[0] * (320 / float32(sys.chars[c.animPN][0].localcoord)), c.clsnScale[1] * (320 / float32(sys.chars[c.animPN][0].localcoord))},
+		clsn2, [...]float32{c.clsnScale[0] * (320 / float32(sys.getChar(c.animPN, 0).localcoord)), c.clsnScale[1] * (320 / float32(sys.getChar(c.animPN, 0).localcoord))},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -4927,10 +4933,12 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	} else {
 		clsn2 = c.curFrame.Clsn2()
 	}
-	return sys.clsnHantei(clsn1, [...]float32{sys.chars[atk.animPN][0].clsnScale[0] * (320 / float32(sys.chars[atk.animPN][0].localcoord)), sys.chars[atk.animPN][0].clsnScale[1] * (320 / float32(sys.chars[atk.animPN][0].localcoord))},
+	atkAnimP := sys.getChar(atk.animPN, 0)
+	animP := sys.getChar(c.animPN, 0)
+	return sys.clsnHantei(clsn1, [...]float32{atkAnimP.clsnScale[0] * (320 / float32(atkAnimP.localcoord)), atkAnimP.clsnScale[1] * (320 / float32(atkAnimP.localcoord))},
 		[...]float32{atk.pos[0]*atk.localscl + atk.offsetX()*atk.localscl,
 			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl},
-		atk.facing, clsn2, [...]float32{sys.chars[c.animPN][0].clsnScale[0] * (320 / float32(sys.chars[c.animPN][0].localcoord)), sys.chars[c.animPN][0].clsnScale[1] * (320 / float32(sys.chars[c.animPN][0].localcoord))},
+		atk.facing, clsn2, [...]float32{animP.clsnScale[0] * (320 / float32(animP.localcoord)), animP.clsnScale[1] * (320 / float32(animP.localcoord))},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -5426,11 +5434,11 @@ func (c *Char) tick() {
 			c.cmd[0].Buffer = NewCommandBuffer()
 			for i := range c.cmd {
 				c.cmd[i].Buffer = c.cmd[0].Buffer
-				c.cmd[i].CopyList(sys.chars[c.playerNo][0].cmd[i])
+				c.cmd[i].CopyList(sys.getChar(c.playerNo, 0).cmd[i])
 				c.cmd[i].BufReset()
 			}
 		} else {
-			c.cmd = sys.chars[c.playerNo][0].cmd
+			c.cmd = sys.getChar(c.playerNo, 0).cmd
 		}
 	}
 	if c.hitdefContact {
@@ -5549,7 +5557,7 @@ func (c *Char) cueDraw() {
 	}
 	if sys.clsnDraw && c.curFrame != nil {
 		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
-		xs, ys := c.facing*c.clsnScale[0]*(320/float32(sys.chars[c.animPN][0].localcoord)), c.clsnScale[1]*(320/float32(sys.chars[c.animPN][0].localcoord))
+		xs, ys := c.facing*c.clsnScale[0]*(320/float32(sys.getChar(c.animPN, 0).localcoord)), c.clsnScale[1]*(320/float32(sys.getChar(c.animPN, 0).localcoord))
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
 		}
@@ -6134,7 +6142,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if !sys.lifebar.ro.firstAttack[0] && !sys.lifebar.ro.firstAttack[1] &&
 					ghvset && getter.hoIdx < 0 && c.teamside != -1 {
 					sys.lifebar.ro.firstAttack[c.teamside] = true
-					sys.chars[c.playerNo][0].firstAttack = true
+					sys.getChar(c.playerNo, 0).firstAttack = true
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
@@ -6306,7 +6314,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if len(sys.projs[i]) == 0 {
 				continue
 			}
-			c := sys.chars[i][0]
+			c := sys.getChar(i, 0)
 			orgatktmp := c.atktmp
 			c.atktmp = -1
 			for j := range pr {

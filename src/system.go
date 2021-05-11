@@ -897,10 +897,15 @@ func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 	}
 	return false
 }
+
 func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
 }
+func (s *System) getChar(pn int, index int) *Char {
+	return s.chars[pn][index]
+}
+
 func (s *System) resetGblEffect() {
 	s.allPalFX.clear()
 	s.bgPalFX.clear()
@@ -926,7 +931,7 @@ func (s *System) clearAllSound() {
 }
 func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.chars[pn]) > 0 {
-		p := s.chars[pn][0]
+		p := s.getChar(pn, 0)
 		for _, h := range s.chars[pn][1:] {
 			if destroy || !h.preserve {
 				h.destroy()
@@ -1240,8 +1245,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	}
 	fightOver := true
 	for i := 0; i < MaxSimul*2; i += 2 {
-		if len(s.chars[i]) > 0 && !s.chars[i][0].scf(SCF_over) &&
-			!s.chars[i][0].scf(SCF_ko) {
+		if len(s.chars[i]) > 0 && !s.getChar(i, 0).scf(SCF_over) &&
+			!s.getChar(i, 0).scf(SCF_ko) {
 			fightOver = false
 			break
 		}
@@ -1359,8 +1364,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			ko := [...]bool{true, true}
 			for ii := range ko {
 				for i := ii; i < MaxSimul*2; i += 2 {
-					if len(s.chars[i]) > 0 && s.chars[i][0].teamside != -1 {
-						if s.chars[i][0].alive() {
+					if len(s.chars[i]) > 0 && s.getChar(i, 0).teamside != -1 {
+						if s.getChar(i, 0).alive() {
 							ko[ii] = false
 						} else if (s.tmode[i&1] == TM_Simul && s.loseSimul && s.com[i] == 0) ||
 							(s.tmode[i&1] == TM_Tag && s.loseTag) {
@@ -1372,8 +1377,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				if ko[ii] {
 					i := ii ^ 1
 					for ; i < MaxSimul*2; i += 2 {
-						if len(s.chars[i]) > 0 && s.chars[i][0].life <
-							s.chars[i][0].lifeMax {
+						if len(s.chars[i]) > 0 && s.getChar(i, 0).life <
+							s.getChar(i, 0).lifeMax {
 							break
 						}
 					}
@@ -1388,13 +1393,12 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				for i := 0; i < 2; i++ {
 					for j := i; j < MaxSimul*2; j += 2 {
 						if len(s.chars[j]) > 0 {
+							p := s.getChar(j, 0)
 							if s.tmode[i] == TM_Simul || s.tmode[i] == TM_Tag {
-								l[i] += (float32(s.chars[j][0].life) /
-									float32(s.numSimul[i])) /
-									float32(s.chars[j][0].lifeMax)
+								l[i] += (float32(p.life) / float32(s.numSimul[i])) /
+									float32(p.lifeMax)
 							} else {
-								l[i] += float32(s.chars[j][0].life) /
-									float32(s.chars[j][0].lifeMax)
+								l[i] += float32(p.life) / float32(p.lifeMax)
 							}
 						}
 					}
@@ -1403,7 +1407,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					p := true
 					for i := 0; i < MaxSimul*2; i += 2 {
 						if len(s.chars[i]) > 0 &&
-							s.chars[i][0].life < s.chars[i][0].lifeMax {
+							s.getChar(i, 0).life < s.getChar(i, 0).lifeMax {
 							p = false
 							break
 						}
@@ -1417,7 +1421,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					p := true
 					for i := 1; i < MaxSimul*2; i += 2 {
 						if len(s.chars[i]) > 0 &&
-							s.chars[i][0].life < s.chars[i][0].lifeMax {
+							s.getChar(i, 0).life < s.getChar(i, 0).lifeMax {
 							p = false
 							break
 						}
@@ -1469,7 +1473,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		if s.roundEnd() || fin() {
 			inclWinCount := func() {
-				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+				w := [...]bool{!s.getChar(1, 0).win(), !s.getChar(0, 0).win()}
 				if !w[0] || !w[1] ||
 					s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
@@ -1503,7 +1507,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 				if s.waitdown <= 0 || s.intro < rs4t-s.lifebar.ro.over_wintime {
 					if s.waitdown >= 0 {
-						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+						w := [...]bool{!s.getChar(1, 0).win(), !s.getChar(0, 0).win()}
 						if !w[0] || !w[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
@@ -1756,7 +1760,7 @@ func (s *System) drawDebug() {
 			s.debugRef[0] = 0
 			s.debugRef[1] = 0
 		}
-		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
+		s.debugWC = s.getChar(s.debugRef[0], s.debugRef[1])
 		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
 			(float32(len(s.listLFunc))+float32(s.clipboardRows)) - 1*s.heightScale
 		for i, f := range s.listLFunc {
@@ -1828,36 +1832,38 @@ func (s *System) fight() (reload bool) {
 	var remapSpr [len(s.chars)]RemapPreset
 	// Anonymous function to assign initial character values
 	copyVar := func(pn int) {
-		life[pn] = s.chars[pn][0].life
-		pow[pn] = s.chars[pn][0].power
-		gpow[pn] = s.chars[pn][0].guardPoints
-		spow[pn] = s.chars[pn][0].dizzyPoints
-		rlife[pn] = s.chars[pn][0].redLife
-		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
-			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
+		p := s.getChar(pn, 0)
+
+		life[pn] = p.life
+		pow[pn] = p.power
+		gpow[pn] = p.guardPoints
+		spow[pn] = p.dizzyPoints
+		rlife[pn] = p.redLife
+		if len(ivar[pn]) < len(p.ivar) {
+			ivar[pn] = make([]int32, len(p.ivar))
 		}
-		copy(ivar[pn], s.chars[pn][0].ivar[:])
-		if len(fvar[pn]) < len(s.chars[pn][0].fvar) {
-			fvar[pn] = make([]float32, len(s.chars[pn][0].fvar))
+		copy(ivar[pn], p.ivar[:])
+		if len(fvar[pn]) < len(p.fvar) {
+			fvar[pn] = make([]float32, len(p.fvar))
 		}
-		copy(fvar[pn], s.chars[pn][0].fvar[:])
-		copy(dialogue[pn], s.chars[pn][0].dialogue[:])
+		copy(fvar[pn], p.fvar[:])
+		copy(dialogue[pn], p.dialogue[:])
 		mapArray[pn] = make(map[string]float32)
-		for k, v := range s.chars[pn][0].mapArray {
+		for k, v := range p.mapArray {
 			mapArray[pn][k] = v
 		}
 		remapSpr[pn] = make(RemapPreset)
-		for k, v := range s.chars[pn][0].remapSpr {
+		for k, v := range p.remapSpr {
 			remapSpr[pn][k] = v
 		}
 
 		// Reset hitScale.
-		s.chars[pn][0].defaultHitScale = newHitScaleArray()
-		s.chars[pn][0].activeHitScale = make(map[int32][3]*HitScale)
-		s.chars[pn][0].nextHitScale = make(map[int32][3]*HitScale)
+		p.defaultHitScale = newHitScaleArray()
+		p.activeHitScale = make(map[int32][3]*HitScale)
+		p.nextHitScale = make(map[int32][3]*HitScale)
 	}
 
-	s.debugWC = sys.chars[0][0]
+	s.debugWC = sys.getChar(0, 0)
 	debugInput := func() {
 		select {
 		case cl := <-s.commandLine:
@@ -1888,7 +1894,7 @@ func (s *System) fight() (reload bool) {
 				pmax := Max(s.cgi[i&1].data.power, s.cgi[i].data.power)
 				for j := i & 1; j < MaxSimul*2; j += 2 {
 					if len(s.chars[j]) > 0 {
-						s.chars[j][0].powerMax = pmax
+						s.getChar(j, 0).powerMax = pmax
 					}
 				}
 			}
@@ -2116,8 +2122,8 @@ func (s *System) fight() (reload bool) {
 			s.scoreRounds = append(s.scoreRounds, [2]float32{s.lifebar.sc[0].scorePoints, s.lifebar.sc[1].scorePoints})
 			oldTeamLeader = s.teamLeader
 			
-			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.chars[0][0].win()) &&
-				(s.tmode[1] != TM_Turns || s.chars[1][0].win()) {
+			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.getChar(0, 0).win()) &&
+				(s.tmode[1] != TM_Turns || s.getChar(1, 0).win()) {
 				/* Prepare for the next round */
 				for i, p := range s.chars {
 					if len(p) > 0 {
@@ -2135,19 +2141,21 @@ func (s *System) fight() (reload bool) {
 			} else {
 				/* End match, or prepare for a new character in turns mode */
 				for i, tm := range s.tmode {
-					if s.chars[i][0].win() || !s.chars[i][0].lose() && tm != TM_Turns {
+					firstP := s.getChar(i, 0)
+					if firstP.win() || !firstP.lose() && tm != TM_Turns {
 						for j := i; j < len(s.chars); j += 2 {
+							p := s.getChar(j, 0)
 							if len(s.chars[j]) > 0 {
-								if s.chars[j][0].win() {
-									s.chars[j][0].life = Max(1, int32(math.Ceil(math.Pow(lvmul,
-										float64(level[i]))*float64(s.chars[j][0].life))))
+								if p.win() {
+									p.life = Max(1, int32(math.Ceil(math.Pow(lvmul,
+										float64(level[i]))*float64(p.life))))
 								} else {
-									s.chars[j][0].life = Max(1, s.cgi[j].data.life)
+									p.life = Max(1, s.cgi[j].data.life)
 								}
 							}
 						}
 					} else {
-						s.chars[i][0].life = 0
+						firstP.life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,
@@ -2783,7 +2791,7 @@ func (l *Loader) loadChar(pn int) int {
 
 	var p *Char
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
-		p = sys.chars[pn][0]
+		p = sys.getChar(pn, 0)
 		p.key = pn
 		if sys.com[pn] != 0 {
 			p.key ^= -1
@@ -2792,9 +2800,10 @@ func (l *Loader) loadChar(pn int) int {
 		p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
-			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
+			existingP := sys.getChar(pn, 0)
+			p.power = existingP.power
+			p.guardPoints = existingP.guardPoints
+			p.dizzyPoints = existingP.dizzyPoints
 		}
 	}
 	p.memberNo = memberNo
@@ -2853,15 +2862,16 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	cdef := sys.stageList[0].attachedchardef[atcpn]
 	var p *Char
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
-		p = sys.chars[pn][0]
+		p = sys.getChar(pn, 0)
 		//p.key = -pn
 	} else {
 		p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
-			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
+			existingP := sys.getChar(pn, 0)
+			p.power = existingP.power
+			p.guardPoints = existingP.guardPoints
+			p.dizzyPoints = existingP.dizzyPoints
 		}
 	}
 	p.memberNo = -atcpn

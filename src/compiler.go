@@ -9035,14 +9035,15 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 
 	// Initialize command list data
-	if sys.chars[pn][0].cmd == nil {
-		sys.chars[pn][0].cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
+	p := sys.getChar(pn, 0)
+	if p.cmd == nil {
+		p.cmd = make([]CommandList, MaxSimul*2+MaxAttachedChar)
 		b := NewCommandBuffer()
-		for i := range sys.chars[pn][0].cmd {
-			sys.chars[pn][0].cmd[i] = *NewCommandList(b)
+		for i := range p.cmd {
+			p.cmd[i] = *NewCommandList(b)
 		}
 	}
-	c.cmdl = &sys.chars[pn][0].cmd[pn]
+	c.cmdl = &p.cmd[pn]
 	remap, defaults, ckr := true, true, NewCommandKeyRemap()
 
 	var cmds []IniSection

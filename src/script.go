@@ -424,7 +424,7 @@ func systemScriptInit(l *lua.LState) {
 			scType = 1
 		}
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			sys.chars[pn-1][0].mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
+			sys.getChar(pn-1, 0).mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
 		}
 		return 0
 	})
@@ -437,7 +437,7 @@ func systemScriptInit(l *lua.LState) {
 		f, lw, lp := false, false, false
 		var g, n, ch, vo int32 = -1, 0, -1, 100
 		var p, fr float32 = 0, 1
-		x := &sys.chars[pn-1][0].pos[0]
+		x := &sys.getChar(pn-1, 0).pos[0]
 		if l.GetTop() >= 2 {
 			g = int32(numArg(l, 2))
 		}
@@ -465,7 +465,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 10 {
 			p = float32(numArg(l, 10))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, x, false)
+		sys.getChar(pn-1, 0).playSound(f, lw, lp, g, n, ch, vo, p, fr, x, false)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
@@ -477,7 +477,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
-		sys.chars[pn-1][0].sounds = sys.chars[pn-1][0].sounds[:0]
+		sys.getChar(pn-1, 0).sounds = sys.getChar(pn-1, 0).sounds[:0]
 		return 0
 	})
 	luaRegister(l, "charSpriteDraw", func(l *lua.LState) int {
@@ -499,7 +499,7 @@ func systemScriptInit(l *lua.LState) {
 				} else {
 					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)))
 					if fspr := sprite; fspr != nil {
-						pfx := sys.chars[pn-1][0].getPalfx()
+						pfx := sys.getChar(pn-1, 0).getPalfx()
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
@@ -508,7 +508,7 @@ func systemScriptInit(l *lua.LState) {
 						y := float32(numArg(l, 4)) * sys.lifebarScale
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
-						fscale := sys.chars[pn-1][0].localscl
+						fscale := sys.getChar(pn-1, 0).localscl
 						sprite.Draw(x, y, scale[0]*float32(facing)*fscale,
 							scale[1]*fscale, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
@@ -823,17 +823,17 @@ func systemScriptInit(l *lua.LState) {
 				sys.charList.clear()
 				for i := 0; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
 				for i := 1; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
 				for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
 				for i, c := range sys.chars {
@@ -1119,7 +1119,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			for k, v := range sys.chars[pn-1][0].dialogue {
+			for k, v := range sys.getChar(pn-1, 0).dialogue {
 				tbl.RawSetInt(k+1, lua.LString(v))
 			}
 		}
@@ -1153,14 +1153,15 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		v := -1
+		p := sys.getChar(pn-1, 0)
 		if l.GetTop() >= 2 {
 			v = int(numArg(l, 2))
 		} else {
-			v = int(sys.chars[pn-1][0].winquote)
+			v = int(p.winquote)
 		}
 		if v < 0 || v >= MaxQuotes {
 			t := []int{}
-			for i, q := range sys.cgi[sys.chars[pn-1][0].playerNo].quotes {
+			for i, q := range sys.cgi[p.playerNo].quotes {
 				if q != "" {
 					t = append(t, i)
 				}
@@ -1172,8 +1173,8 @@ func systemScriptInit(l *lua.LState) {
 				v = -1
 			}
 		}
-		if len(sys.cgi[sys.chars[pn-1][0].playerNo].quotes) == MaxQuotes && v != -1 {
-			l.Push(lua.LString(sys.cgi[sys.chars[pn-1][0].playerNo].quotes[v]))
+		if len(sys.cgi[p.playerNo].quotes) == MaxQuotes && v != -1 {
+			l.Push(lua.LString(sys.cgi[p.playerNo].quotes[v]))
 		} else {
 			l.Push(lua.LString(""))
 		}
@@ -1497,9 +1498,10 @@ func systemScriptInit(l *lua.LState) {
 			if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 				return 0
 			}
-			for j := range sys.chars[pn-1][0].cmd {
-				sys.chars[pn-1][0].cmd[j].BufReset()
-				sys.chars[pn-1][0].setSF(CSF_nohardcodedkeys)
+			p := sys.getChar(pn-1, 0)
+			for j := range p.cmd {
+				p.cmd[j].BufReset()
+				p.setSF(CSF_nohardcodedkeys)
 			}
 		} else {
 			for _, p := range sys.chars {
@@ -2285,7 +2287,7 @@ func systemScriptInit(l *lua.LState) {
 					hn = 0
 					break
 				}
-				if sys.chars[pn][hn] != nil && !sys.chars[pn][hn].sf(CSF_destroy) {
+				if sys.getChar(pn, hn) != nil && !sys.getChar(pn, hn).sf(CSF_destroy) {
 					break
 				}
 			}
@@ -2416,7 +2418,7 @@ func triggerFunctions(l *lua.LState) {
 		pn := int(numArg(l, 1))
 		ret := false
 		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			sys.debugWC, ret = sys.chars[pn-1][0], true
+			sys.debugWC, ret = sys.getChar(pn-1, 0), true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
@@ -3797,11 +3799,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "stateownerid", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.chars[sys.debugWC.ss.sb.playerNo][0].id))
+		l.Push(lua.LNumber(sys.getChar(sys.debugWC.ss.sb.playerNo, 0).id))
 		return 1
 	})
 	luaRegister(l, "stateownername", func(*lua.LState) int {
-		l.Push(lua.LString(sys.chars[sys.debugWC.ss.sb.playerNo][0].name))
+		l.Push(lua.LString(sys.getChar(sys.debugWC.ss.sb.playerNo, 0).name))
 		return 1
 	})
 	luaRegister(l, "tickcount", func(*lua.LState) int {

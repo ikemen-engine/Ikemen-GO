@@ -6291,7 +6291,7 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 		case dialogue_force:
 			force = exp[0].evalB(c)
 		case dialogue_text:
-			sys.chars[crun.playerNo][0].appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
+			sys.getChar(crun.playerNo, 0).appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
 			reset = false
 		case dialogue_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
