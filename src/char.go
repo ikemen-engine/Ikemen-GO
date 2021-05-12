@@ -1557,6 +1557,7 @@ type Char struct {
 	parentIndex     int32
 	playerNo        int
 	teamside        int
+	stateIdx        int
 	keyctrl         [4]bool
 	player          bool
 	animPN          int

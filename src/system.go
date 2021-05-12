@@ -106,6 +106,7 @@ func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
 	state.chars = append(state.chars, &Char{aimg: *newAfterImage()})
 	index = len(state.chars) - 1
 	state.chars[index].init(n, idx)
+	state.chars[index].stateIdx = index
 	return index, state.chars[index]
 }
 
@@ -113,7 +114,9 @@ func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
 // Return its index in the chars slice
 func (state *GameState) appendChar(c *Char) (index int) {
 	state.chars = append(state.chars, c)
-	return len(state.chars) - 1
+	index = len(state.chars) - 1
+	c.stateIdx = index
+	return index
 }
 
 // Remove Char objects from the game state
@@ -159,6 +162,11 @@ func (state *GameState) removeCharSlice(removedChars []int) {
 					}
 				}
 			}
+		}
+
+		// Loop through chars and update their indices
+		for i, c := range state.chars {
+			c.stateIdx = i
 		}
 	}
 }
@@ -2875,8 +2883,8 @@ func (l *Loader) loadChar(pn int) int {
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
 
-	pidx -= len(sys.chars[pn])
 	sys.gameState.removeCharSlice(sys.chars[pn])
+	pidx = p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
@@ -2950,8 +2958,8 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	p.teamside = -1
 	sys.com[pn] = 8
 
-	pidx -= len(sys.chars[pn])
 	sys.gameState.removeCharSlice(sys.chars[pn])
+	pidx = p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
