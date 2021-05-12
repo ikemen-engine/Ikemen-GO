@@ -102,30 +102,54 @@ type GameState struct {
 
 // Create a new Char and add it to the game state
 // Return a pointer to the new character
-func (state *GameState) addChar(n int, idx int32) (c *Char) {
+func (state *GameState) addChar(n int, idx int32) (index int) {
 	state.chars = append(state.chars, &Char{aimg: *newAfterImage()})
-	c = state.chars[len(state.chars) - 1]
-	c.init(n, idx)
-	return c
+	index = len(state.chars) - 1
+	state.chars[index].init(n, idx)
+	return index
 }
 
 // Remove Char objects from the game state
 // Parameter is presumably a slice from sys.chars
-func (state *GameState) removeCharSlice(removedChars []*Char) {
+func (state *GameState) removeCharSlice(removedChars []int) {
 	if (removedChars == nil || state.chars == nil) {
 		return;
 	}
 	if (len(removedChars) > 0) {
-		// Loop through removedChars, remove each element from the game state chars
-		for _, char := range removedChars {
-			for i := 0; i < len(state.chars); {
-				if (state.chars[i] == char) {
-					// If element is found, remove
-					state.chars = append(state.chars[:i], state.chars[i+1:]...)
-					break
-				} else {
-					// Else increment
-					i++
+		// Duplicate so we don't edit the original collection
+		removed := make([]int, 0)
+		removed = append (removed, removedChars...)
+		// Sort the removed chars ascending
+		sort.Slice(removed, func(p, q int) bool { 
+			return removed[p] < removed[q] })
+
+		// Loop through removed, remove each element from the game state chars
+		oi := 0
+		for _, cidx := range removed {
+			idx := cidx - oi
+			if (idx >= len(state.chars)) {
+				panic("Tried removing a character index not in the game state")
+			}
+			// If element is found, remove
+			state.chars = append(state.chars[:idx], state.chars[idx+1:]...)
+			oi++
+		}
+		
+		// Sort the removed chars descending
+		sort.Slice(removed, func(p, q int) bool { 
+			return removed[p] > removed[q] })
+
+		// Loop through all System chars and adjust their indices as needed
+		for i := range sys.chars {
+			for j := range sys.chars[i] {
+				// Loop through the indices that were removed and
+				// reduce the value to close gaps
+				for oi, cidx := range removed {
+					oi = len(removed) - oi
+					if (sys.chars[i][j] > cidx) {
+						sys.chars[i][j] -= oi
+						break
+					}
 				}
 			}
 		}
@@ -184,7 +208,7 @@ type System struct {
 
 	// Game State
 	gameState               GameState
-	chars                   [MaxSimul*2 + MaxAttachedChar][]*Char
+	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
@@ -748,7 +772,8 @@ func (s *System) playSound() {
 	if s.mixer.write() {
 		s.sounds.mixSounds()
 		for _, ch := range s.chars {
-			for _, c := range ch {
+			for _, cidx := range ch {
+				c := sys.gameState.chars[cidx]
 				c.sounds.mixSounds()
 			}
 		}
@@ -902,8 +927,35 @@ func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
 }
+// Get a Char from the game state using the System chars collection
 func (s *System) getChar(pn int, index int) *Char {
-	return s.chars[pn][index]
+	if (index >= len(s.chars[pn])) {
+		return nil
+	}
+	cidx := s.chars[pn][index]
+	if (cidx >= len(s.gameState.chars)) {
+		return nil
+	}
+	return s.gameState.chars[cidx]
+}
+// Get all player Chars
+func (s *System) getPlayers() []*Char {
+	result := make([]*Char, 0)
+	for pn := range s.chars {
+		result = append(result, s.getChar(pn, 0))
+	}
+	return result
+}
+// Get a player and all of its associated Char objects, presumably all helpers
+func (s *System) getPlayerEtAl(pn int) []*Char {
+	result := make([]*Char, 0)
+	if (pn >= len(s.chars) || pn < 0) {
+		panic("Invalid player index")
+	}
+	for idx := range s.chars[pn] {
+		result = append(result, s.getChar(pn, idx))
+	}
+	return result
 }
 
 func (s *System) resetGblEffect() {
@@ -918,7 +970,8 @@ func (s *System) resetGblEffect() {
 }
 func (s *System) stopAllSound() {
 	for _, p := range s.chars {
-		for _, c := range p {
+		for _, cidx := range p {
+			c := sys.gameState.chars[cidx]
 			c.sounds = c.sounds[:0]
 		}
 	}
@@ -932,7 +985,8 @@ func (s *System) clearAllSound() {
 func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.chars[pn]) > 0 {
 		p := s.getChar(pn, 0)
-		for _, h := range s.chars[pn][1:] {
+		for _, cidx := range s.chars[pn][1:] {
+			h := sys.gameState.chars[cidx]
 			if destroy || !h.preserve {
 				h.destroy()
 			}
@@ -1018,23 +1072,23 @@ func (s *System) nextRound() {
 	}
 	s.cam.ResetZoomdelay()
 	s.cam.Update(1, 0, 0)
-	for i, p := range s.chars {
-		if len(p) > 0 {
-			s.nextCharId = Max(s.nextCharId, p[0].id+1)
+	for i, p := range s.getPlayers() {
+		if p != nil {
+			s.nextCharId = Max(s.nextCharId, p.id+1)
 			s.playerClear(i, false)
-			p[0].posReset()
-			p[0].setCtrl(false)
-			p[0].clearState()
-			p[0].clear2()
-			p[0].varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
-			p[0].fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
-			for j := range p[0].cmd {
-				p[0].cmd[j].BufReset()
+			p.posReset()
+			p.setCtrl(false)
+			p.clearState()
+			p.clear2()
+			p.varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
+			p.fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
+			for j := range p.cmd {
+				p.cmd[j].BufReset()
 			}
 			if s.roundsExisted[i&1] == 0 {
 				s.cgi[i].sff.palList.ResetRemap()
 				if s.cgi[i].sff.header.Ver0 == 1 {
-					p[0].remapPal(p[0].getPalfx(),
+					p.remapPal(p.getPalfx(),
 						[...]int32{1, 1}, [...]int32{1, s.cgi[i].drawpalno})
 				}
 			}
@@ -1042,9 +1096,9 @@ func (s *System) nextRound() {
 			s.cgi[i].unhittable = 0
 		}
 	}
-	for _, p := range s.chars {
-		if len(p) > 0 {
-			p[0].selfState(5900, 0, -1, 0, false)
+	for _, p := range s.getPlayers() {
+		if p != nil {
+			p.selfState(5900, 0, -1, 0, false)
 		}
 	}
 }
@@ -1090,7 +1144,7 @@ func (s *System) resetFrameTime() {
 func (s *System) commandUpdate() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
-			r := p[0]
+			r := sys.gameState.chars[p[0]]
 			if r.ctrlOver() || r.sf(CSF_noinput) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
@@ -1107,7 +1161,8 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
 				r.turn()
 			}
-			for _, c := range p {
+			for _, cidx := range p {
+				c := sys.gameState.chars[cidx]
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
 					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
@@ -1136,9 +1191,10 @@ func (s *System) commandUpdate() {
 				} else {
 					cc = -1
 				}
-				for j := range p {
-					if p[j].helperIndex >= 0 {
-						p[j].cpucmd = cc
+				for _, cidx := range p {
+					c := sys.gameState.chars[cidx]
+					if c.helperIndex >= 0 {
+						c.cpucmd = cc
 					}
 				}
 			}
@@ -1175,9 +1231,9 @@ func (s *System) charUpdate(cvmin, cvmax,
 	}
 }
 func (s *System) posReset() {
-	for _, p := range s.chars {
-		if len(p) > 0 {
-			p[0].posReset()
+	for _, p := range s.getPlayers() {
+		if p != nil {
+			p.posReset()
 		}
 	}
 }
@@ -1303,10 +1359,10 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.fadeintime = 0
 					s.resetGblEffect()
 					s.intro = s.lifebar.ro.ctrl_time
-					for i, p := range s.chars {
-						if len(p) > 0 {
+					for i, p := range s.getPlayers() {
+						if p != nil {
 							s.playerClear(i, false)
-							p[0].selfState(0, -1, -1, 0, false)
+							p.selfState(0, -1, -1, 0, false)
 						}
 					}
 					ox := *x
@@ -1339,14 +1395,14 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 			s.intro--
 			if s.intro == 0 {
-				for _, p := range s.chars {
-					if len(p) > 0 {
-						p[0].unsetSCF(SCF_over)
-						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
-							if p[0].ss.no == 0 {
-								p[0].setCtrl(true)
+				for _, p := range s.getPlayers() {
+					if p != nil {
+						p.unsetSCF(SCF_over)
+						if !p.scf(SCF_standby) || p.teamside == -1 {
+							if p.ss.no == 0 {
+								p.setCtrl(true)
 							} else {
-								p[0].selfState(0, -1, -1, 1, false)
+								p.selfState(0, -1, -1, 1, false)
 							}
 						}
 					}
@@ -1454,7 +1510,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			if ft != s.finish {
 				for i, p := range sys.chars {
 					if len(p) > 0 && ko[^i&1] {
-						for _, h := range p {
+						for _, cidx := range p {
+							h := sys.gameState.chars[cidx]
 							for _, tid := range h.targets {
 								if t := sys.playerID(tid); t != nil {
 									if t.ghv.attr&int32(AT_AH) != 0 {
@@ -1498,8 +1555,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				s.intro--
 				if s.intro == rs4t-1 {
 					if s.waitdown > 0 {
-						for _, p := range s.chars {
-							if len(p) > 0 && !p[0].over() {
+						for _, p := range s.getPlayers() {
+							if p != nil && !p.over() {
 								s.intro = rs4t
 							}
 						}
@@ -1521,26 +1578,26 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							s.draws++
 						}
 					}
-					for _, p := range s.chars {
-						if len(p) > 0 {
+					for _, p := range s.getPlayers() {
+						if p != nil {
 							//default life recovery, used only if externalized Lua implementaion is disabled
-							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
-								p[0].alive() && !s.matchOver() &&
+							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p.win() &&
+								p.alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
-								p[0].life += int32((float32(p[0].lifeMax) *
+								p.life += int32((float32(p.lifeMax) *
 									float32(s.time) / 60) * s.turnsRecoveryRate)
-								if p[0].life > p[0].lifeMax {
-									p[0].life = p[0].lifeMax
+								if p.life > p.lifeMax {
+									p.life = p.lifeMax
 								}
 							}
-							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() {
-								p[0].setSCF(SCF_over)
-								if p[0].win() {
-									p[0].selfState(180, -1, -1, 1, false)
-								} else if p[0].lose() {
-									p[0].selfState(170, -1, -1, 1, false)
+							if !p.scf(SCF_over) && !p.hitPause() && p.alive() {
+								p.setSCF(SCF_over)
+								if p.win() {
+									p.selfState(180, -1, -1, 1, false)
+								} else if p.lose() {
+									p.selfState(170, -1, -1, 1, false)
 								} else {
-									p[0].selfState(175, -1, -1, 1, false)
+									p.selfState(175, -1, -1, 1, false)
 								}
 							}
 						}
@@ -1667,9 +1724,9 @@ func (s *System) drawTop() {
 	}
 	fadeout := sys.intro + sys.lifebar.ro.over_hittime + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
-		for _, p := range sys.chars {
-			if len(p) > 0 {
-				if len(p[0].dialogue) > 0 {
+		for _, p := range sys.getPlayers() {
+			if p != nil {
+				if len(p.dialogue) > 0 {
 					sys.lifebar.ro.cur = 3
 					sys.dialogueFlg = true
 					break
@@ -1886,11 +1943,11 @@ func (s *System) fight() (reload bool) {
 
 	// Initialize super meter values, and max power for teams sharing meter
 	var level [len(s.chars)]int32
-	for i, p := range s.chars {
-		if len(p) > 0 {
-			p[0].clear2()
+	for i, p := range s.getPlayers() {
+		if p != nil {
+			p.clear2()
 			level[i] = s.wincnt.getLevel(i)
-			if s.powerShare[i&1] && p[0].teamside != -1 {
+			if s.powerShare[i&1] && p.teamside != -1 {
 				pmax := Max(s.cgi[i&1].data.power, s.cgi[i].data.power)
 				for j := i & 1; j < MaxSimul*2; j += 2 {
 					if len(s.chars[j]) > 0 {
@@ -1919,16 +1976,16 @@ func (s *System) fight() (reload bool) {
 
 	// Initialize each character
 	lvmul := math.Pow(2, 1.0/12)
-	for i, p := range s.chars {
-		if len(p) > 0 {
+	for i, p := range s.getPlayers() {
+		if p != nil {
 			// Get max life, and adjust based on team mode
 			var lm float32
-			if p[0].ocd().lifeMax != 0 {
-				lm = float32(p[0].ocd().lifeMax) * p[0].ocd().lifeRatio * s.lifeMul
+			if p.ocd().lifeMax != 0 {
+				lm = float32(p.ocd().lifeMax) * p.ocd().lifeRatio * s.lifeMul
 			} else {
-				lm = float32(p[0].gi().data.life) * p[0].ocd().lifeRatio * s.lifeMul
+				lm = float32(p.gi().data.life) * p.ocd().lifeRatio * s.lifeMul
 			}
-			if p[0].teamside != -1 {
+			if p.teamside != -1 {
 				switch s.tmode[i&1] {
 				case TM_Single:
 					switch s.tmode[(i+1)&1] {
@@ -1976,49 +2033,49 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 			foo := math.Pow(lvmul, float64(-level[i]))
-			p[0].lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
+			p.lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
 
 			if s.roundsExisted[i&1] > 0 {
 				/* If character already existed for a round, presumably because of turns mode, just update life */
-				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
+				p.life = Min(p.lifeMax, int32(math.Ceil(foo*float64(p.life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
 				/* If round 1 or a new character in turns mode, initialize values */
-				if p[0].ocd().life != 0 {
-					p[0].life = p[0].ocd().life
+				if p.ocd().life != 0 {
+					p.life = p.ocd().life
 				} else {
-					p[0].life = p[0].lifeMax
+					p.life = p.lifeMax
 				}
 				if s.round == 1 {
 					if s.maxPowerMode {
-						p[0].power = p[0].powerMax
+						p.power = p.powerMax
 					} else {
-						p[0].power = p[0].ocd().power //p[0].power = 0
+						p.power = p.ocd().power //p.power = 0
 					}
 				}
-				p[0].dialogue = []string{}
-				p[0].mapArray = make(map[string]float32)
-				for k, v := range p[0].mapDefault {
-					p[0].mapArray[k] = v
+				p.dialogue = []string{}
+				p.mapArray = make(map[string]float32)
+				for k, v := range p.mapDefault {
+					p.mapArray[k] = v
 				}
-				p[0].remapSpr = make(RemapPreset)
+				p.remapSpr = make(RemapPreset)
 
 				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
+				p.defaultHitScale = newHitScaleArray()
+				p.activeHitScale = make(map[int32][3]*HitScale)
+				p.nextHitScale = make(map[int32][3]*HitScale)
 			}
 
-			if p[0].ocd().guardPoints != 0 {
-				p[0].guardPoints = p[0].ocd().guardPoints
+			if p.ocd().guardPoints != 0 {
+				p.guardPoints = p.ocd().guardPoints
 			} else {
-				p[0].guardPoints = p[0].guardPointsMax
+				p.guardPoints = p.guardPointsMax
 			}
-			if p[0].ocd().dizzyPoints != 0 {
-				p[0].dizzyPoints = p[0].ocd().dizzyPoints
+			if p.ocd().dizzyPoints != 0 {
+				p.dizzyPoints = p.ocd().dizzyPoints
 			} else {
-				p[0].dizzyPoints = p[0].dizzyPointsMax
+				p.dizzyPoints = p.dizzyPointsMax
 			}
-			p[0].redLife = 0
+			p.redLife = 0
 			copyVar(i)
 		}
 	}
@@ -2036,29 +2093,29 @@ func (s *System) fight() (reload bool) {
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
 		s.teamLeader = oldTeamLeader
-		for i, p := range s.chars {
-			if len(p) > 0 {
-				p[0].life = life[i]
-				p[0].power = pow[i]
-				p[0].guardPoints = gpow[i]
-				p[0].dizzyPoints = spow[i]
-				p[0].redLife = rlife[i]
-				copy(p[0].ivar[:], ivar[i])
-				copy(p[0].fvar[:], fvar[i])
-				copy(p[0].dialogue[:], dialogue[i])
-				p[0].mapArray = make(map[string]float32)
+		for i, p := range s.getPlayers() {
+			if p != nil {
+				p.life = life[i]
+				p.power = pow[i]
+				p.guardPoints = gpow[i]
+				p.dizzyPoints = spow[i]
+				p.redLife = rlife[i]
+				copy(p.ivar[:], ivar[i])
+				copy(p.fvar[:], fvar[i])
+				copy(p.dialogue[:], dialogue[i])
+				p.mapArray = make(map[string]float32)
 				for k, v := range mapArray[i] {
-					p[0].mapArray[k] = v
+					p.mapArray[k] = v
 				}
-				p[0].remapSpr = make(RemapPreset)
+				p.remapSpr = make(RemapPreset)
 				for k, v := range remapSpr[i] {
-					p[0].remapSpr[k] = v
+					p.remapSpr[k] = v
 				}
 
 				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
+				p.defaultHitScale = newHitScaleArray()
+				p.activeHitScale = make(map[int32][3]*HitScale)
+				p.nextHitScale = make(map[int32][3]*HitScale)
 			}
 		}
 		s.resetFrameTime()
@@ -2091,31 +2148,31 @@ func (s *System) fight() (reload bool) {
 			}
 			s.clearAllSound()
 			tbl_roundNo := s.luaLState.NewTable()
-			for _, p := range s.chars {
-				if len(p) > 0 {
+			for _, p := range s.getPlayers() {
+				if p != nil {
 					tmp := s.luaLState.NewTable()
-					tmp.RawSetString("name", lua.LString(p[0].name))
-					tmp.RawSetString("id", lua.LNumber(p[0].id))
-					tmp.RawSetString("memberNo", lua.LNumber(p[0].memberNo))
-					tmp.RawSetString("selectNo", lua.LNumber(p[0].selectNo))
-					tmp.RawSetString("teamside", lua.LNumber(p[0].teamside))
-					tmp.RawSetString("life", lua.LNumber(p[0].life))
-					tmp.RawSetString("lifeMax", lua.LNumber(p[0].lifeMax))
-					tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
-					tmp.RawSetString("aiLevel", lua.LNumber(p[0].aiLevel()))
-					tmp.RawSetString("palno", lua.LNumber(p[0].palno()))
-					tmp.RawSetString("win", lua.LBool(p[0].win()))
-					tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
-					tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
-					tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
-					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_S)))
-					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_H)))
-					tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
-					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
-					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
-					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
-					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
-					p[0].firstAttack = false
+					tmp.RawSetString("name", lua.LString(p.name))
+					tmp.RawSetString("id", lua.LNumber(p.id))
+					tmp.RawSetString("memberNo", lua.LNumber(p.memberNo))
+					tmp.RawSetString("selectNo", lua.LNumber(p.selectNo))
+					tmp.RawSetString("teamside", lua.LNumber(p.teamside))
+					tmp.RawSetString("life", lua.LNumber(p.life))
+					tmp.RawSetString("lifeMax", lua.LNumber(p.lifeMax))
+					tmp.RawSetString("winquote", lua.LNumber(p.winquote))
+					tmp.RawSetString("aiLevel", lua.LNumber(p.aiLevel()))
+					tmp.RawSetString("palno", lua.LNumber(p.palno()))
+					tmp.RawSetString("win", lua.LBool(p.win()))
+					tmp.RawSetString("winKO", lua.LBool(p.winKO()))
+					tmp.RawSetString("winTime", lua.LBool(p.winTime()))
+					tmp.RawSetString("winPerfect", lua.LBool(p.winPerfect()))
+					tmp.RawSetString("winSpecial", lua.LBool(p.winType(WT_S)))
+					tmp.RawSetString("winHyper", lua.LBool(p.winType(WT_H)))
+					tmp.RawSetString("drawgame", lua.LBool(p.drawgame()))
+					tmp.RawSetString("ko", lua.LBool(p.scf(SCF_ko)))
+					tmp.RawSetString("ko_round_middle", lua.LBool(p.scf(SCF_ko_round_middle)))
+					tmp.RawSetString("firstAttack", lua.LBool(p.firstAttack))
+					tbl_roundNo.RawSetInt(p.playerNo+1, tmp)
+					p.firstAttack = false
 				}
 			}
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
@@ -2125,14 +2182,14 @@ func (s *System) fight() (reload bool) {
 			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.getChar(0, 0).win()) &&
 				(s.tmode[1] != TM_Turns || s.getChar(1, 0).win()) {
 				/* Prepare for the next round */
-				for i, p := range s.chars {
-					if len(p) > 0 {
-						if s.tmode[i&1] != TM_Turns || !p[0].win() {
-							p[0].life = p[0].lifeMax
-						} else if p[0].life <= 0 {
-							p[0].life = 1
+				for i, p := range s.getPlayers() {
+					if p != nil {
+						if s.tmode[i&1] != TM_Turns || !p.win() {
+							p.life = p.lifeMax
+						} else if p.life <= 0 {
+							p.life = 1
 						}
-						p[0].redLife = 0
+						p.redLife = 0
 						copyVar(i)
 					}
 				}
@@ -2321,11 +2378,11 @@ func (wm *wincntMap) update() {
 		wm.setItem(i, item)
 	}
 	if sys.autolevel && sys.matchOver() {
-		for i, p := range sys.chars {
-			if len(p) > 0 {
-				if p[0].win() {
+		for i, p := range sys.getPlayers() {
+			if p != nil {
+				if p.win() {
 					win(i)
-				} else if p[0].lose() {
+				} else if p.lose() {
 					lose(i)
 				}
 			}
@@ -2790,14 +2847,19 @@ func (l *Loader) loadChar(pn int) int {
 	}
 
 	var p *Char
+	var pidx int
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.getChar(pn, 0)
 		p.key = pn
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
+
+		sys.gameState.chars = append(sys.gameState.chars, p)
+		pidx = len(sys.gameState.chars) - 1
 	} else {
-		p = sys.gameState.addChar(pn, 0)
+		pidx = sys.gameState.addChar(pn, 0)
+		p = sys.gameState.chars[pidx]
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2809,9 +2871,12 @@ func (l *Loader) loadChar(pn int) int {
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
+
+	pidx -= len(sys.chars[pn])
 	sys.gameState.removeCharSlice(sys.chars[pn])
-	sys.chars[pn] = make([]*Char, 1)
-	sys.chars[pn][0] = p
+
+	sys.chars[pn] = make([]int, 1)
+	sys.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
@@ -2861,11 +2926,16 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	}()
 	cdef := sys.stageList[0].attachedchardef[atcpn]
 	var p *Char
+	var pidx int
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.getChar(pn, 0)
 		//p.key = -pn
+		
+		sys.gameState.chars = append(sys.gameState.chars, p)
+		pidx = len(sys.gameState.chars) - 1
 	} else {
-		p = sys.gameState.addChar(pn, 0)
+		pidx = sys.gameState.addChar(pn, 0)
+		p = sys.gameState.chars[pidx]
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2878,9 +2948,12 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	p.selectNo = -atcpn
 	p.teamside = -1
 	sys.com[pn] = 8
+
+	pidx -= len(sys.chars[pn])
 	sys.gameState.removeCharSlice(sys.chars[pn])
-	sys.chars[pn] = make([]*Char, 1)
-	sys.chars[pn][0] = p
+
+	sys.chars[pn] = make([]int, 1)
+	sys.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {

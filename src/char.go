@@ -2413,7 +2413,8 @@ func (c *Char) root() *Char {
 	return sys.getChar(c.playerNo, 0)
 }
 func (c *Char) helper(id int32) *Char {
-	for _, h := range sys.chars[c.playerNo][1:] {
+	for _, cidx := range sys.chars[c.playerNo][1:] {
+		h := sys.gameState.chars[cidx]
 		if !h.sf(CSF_destroy) && (id <= 0 || id == h.helperId) {
 			return h
 		}
@@ -2743,7 +2744,8 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	var id, n int32 = hid.ToI(), 0
-	for _, h := range sys.chars[c.playerNo][1:] {
+	for _, cidx := range sys.chars[c.playerNo][1:] {
+		h := sys.gameState.chars[cidx]
 		if !h.sf(CSF_destroy) && (id <= 0 || h.helperId == id) {
 			n++
 		}
@@ -3203,8 +3205,9 @@ func (c *Char) newHelper() (h *Char) {
 		if i >= sys.helperMax {
 			return
 		}
-		h = sys.gameState.addChar(c.playerNo, i)
-		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
+		hidx := sys.gameState.addChar(c.playerNo, i)
+		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], hidx)
+		h = sys.gameState.chars[hidx]
 	}
 	h.id, h.helperId = sys.newCharId(), 0
 	h.copyParent(c)
@@ -3516,9 +3519,9 @@ func (c *Char) hitAdd(h int32) {
 		}
 	} else if c.teamside != -1 {
 		//in mugen HitAdd increases combo count even without targets
-		for i, p := range sys.chars {
-			if len(p) > 0 && c.teamside == ^i&1 && (p[0].getcombo != 0 || p[0].ss.moveType == MT_H) {
-				p[0].getcombo += h
+		for i, p := range sys.getPlayers() {
+			if p != nil && c.teamside == ^i&1 && (p.getcombo != 0 || p.ss.moveType == MT_H) {
+				p.getcombo += h
 				sys.lifebar.co[c.teamside].combo += h
 			}
 		}

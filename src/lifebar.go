@@ -1801,8 +1801,8 @@ func (ro *LifeBarRound) act() bool {
 	} else {
 		if !ro.introState[0] || !ro.introState[1] {
 			if sys.round == 1 && sys.intro == ro.ctrl_time && len(sys.commonLua) > 0 {
-				for _, p := range sys.chars {
-					if len(p) > 0 && len(p[0].dialogue) > 0 {
+				for _, p := range sys.getPlayers() {
+					if p != nil && len(p.dialogue) > 0 {
 						sys.posReset()
 						sys.dialogueFlg = true
 						return false
@@ -3254,7 +3254,8 @@ func (l *Lifebar) step() {
 	//LifeBarCombo
 	cb, cd, cp, st := [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
 	for i, ch := range sys.chars {
-		for _, c := range ch {
+		for _, cidx := range ch {
+			c := sys.gameState.chars[cidx]
 			if c.alive() || !c.scf(SCF_over) {
 				if c.getcombo > cb[^i&1] {
 					cb[^i&1] = Min(999, Max(c.getcombo, cb[^i&1]))
