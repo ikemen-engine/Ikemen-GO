@@ -2413,8 +2413,7 @@ func (c *Char) root() *Char {
 	return sys.getChar(c.playerNo, 0)
 }
 func (c *Char) helper(id int32) *Char {
-	for _, cidx := range sys.chars[c.playerNo][1:] {
-		h := sys.gameState.chars[cidx]
+	for _, h := range sys.getPlayerHelpers(c.playerNo) {
 		if !h.sf(CSF_destroy) && (id <= 0 || id == h.helperId) {
 			return h
 		}
@@ -2744,8 +2743,7 @@ func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	var id, n int32 = hid.ToI(), 0
-	for _, cidx := range sys.chars[c.playerNo][1:] {
-		h := sys.gameState.chars[cidx]
+	for _, h := range sys.getPlayerHelpers(c.playerNo) {
 		if !h.sf(CSF_destroy) && (id <= 0 || h.helperId == id) {
 			n++
 		}
@@ -3205,9 +3203,9 @@ func (c *Char) newHelper() (h *Char) {
 		if i >= sys.helperMax {
 			return
 		}
-		hidx := sys.gameState.addChar(c.playerNo, i)
+		var hidx int
+		hidx, h = sys.gameState.addChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], hidx)
-		h = sys.gameState.chars[hidx]
 	}
 	h.id, h.helperId = sys.newCharId(), 0
 	h.copyParent(c)

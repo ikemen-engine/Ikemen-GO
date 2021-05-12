@@ -520,9 +520,8 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "clear", func(*lua.LState) int {
-		for _, p := range sys.chars {
-			for _, cidx := range p {
-				c := sys.gameState.chars[cidx]
+		for pn := range sys.chars {
+			for _, c := range sys.getPlayerEtAl(pn) {
 				//for i := range c.clipboardText {
 				//	c.clipboardText[i] = nil
 				//}

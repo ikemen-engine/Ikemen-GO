@@ -101,12 +101,19 @@ type GameState struct {
 }
 
 // Create a new Char and add it to the game state
-// Return a pointer to the new character
-func (state *GameState) addChar(n int, idx int32) (index int) {
+// Return a pointer to the new character and its index in the chars slice
+func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
 	state.chars = append(state.chars, &Char{aimg: *newAfterImage()})
 	index = len(state.chars) - 1
 	state.chars[index].init(n, idx)
-	return index
+	return index, state.chars[index]
+}
+
+// Add a Char to the game state
+// Return its index in the chars slice
+func (state *GameState) appendChar(c *Char) (index int) {
+	state.chars = append(state.chars, c)
+	return len(state.chars) - 1
 }
 
 // Remove Char objects from the game state
@@ -771,9 +778,8 @@ func (s *System) soundWrite() {
 func (s *System) playSound() {
 	if s.mixer.write() {
 		s.sounds.mixSounds()
-		for _, ch := range s.chars {
-			for _, cidx := range ch {
-				c := sys.gameState.chars[cidx]
+		for pn := range s.chars {
+			for _, c := range s.getPlayerEtAl(pn) {
 				c.sounds.mixSounds()
 			}
 		}
@@ -957,6 +963,10 @@ func (s *System) getPlayerEtAl(pn int) []*Char {
 	}
 	return result
 }
+// Get the associated Char objects of a player, presumably all helpers
+func (s *System) getPlayerHelpers(pn int) []*Char {
+	return s.getPlayerEtAl(pn)[1:]
+}
 
 func (s *System) resetGblEffect() {
 	s.allPalFX.clear()
@@ -969,9 +979,8 @@ func (s *System) resetGblEffect() {
 	s.specialFlag = 0
 }
 func (s *System) stopAllSound() {
-	for _, p := range s.chars {
-		for _, cidx := range p {
-			c := sys.gameState.chars[cidx]
+	for pn := range s.chars {
+		for _, c := range s.getPlayerEtAl(pn) {
 			c.sounds = c.sounds[:0]
 		}
 	}
@@ -985,8 +994,7 @@ func (s *System) clearAllSound() {
 func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.chars[pn]) > 0 {
 		p := s.getChar(pn, 0)
-		for _, cidx := range s.chars[pn][1:] {
-			h := sys.gameState.chars[cidx]
+		for _, h := range s.getPlayerHelpers(pn) {
 			if destroy || !h.preserve {
 				h.destroy()
 			}
@@ -1144,7 +1152,7 @@ func (s *System) resetFrameTime() {
 func (s *System) commandUpdate() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
-			r := sys.gameState.chars[p[0]]
+			r := s.getChar(i, 0)
 			if r.ctrlOver() || r.sf(CSF_noinput) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
@@ -1161,8 +1169,7 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
 				r.turn()
 			}
-			for _, cidx := range p {
-				c := sys.gameState.chars[cidx]
+			for _, c := range s.getPlayerEtAl(i) {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
 					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
@@ -1191,8 +1198,7 @@ func (s *System) commandUpdate() {
 				} else {
 					cc = -1
 				}
-				for _, cidx := range p {
-					c := sys.gameState.chars[cidx]
+				for _, c := range s.getPlayerEtAl(i) {
 					if c.helperIndex >= 0 {
 						c.cpucmd = cc
 					}
@@ -1508,12 +1514,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 			if ft != s.finish {
-				for i, p := range sys.chars {
+				for i, p := range s.chars {
 					if len(p) > 0 && ko[^i&1] {
-						for _, cidx := range p {
-							h := sys.gameState.chars[cidx]
+						for _, h := range s.getPlayerEtAl(i) {
 							for _, tid := range h.targets {
-								if t := sys.playerID(tid); t != nil {
+								if t := s.playerID(tid); t != nil {
 									if t.ghv.attr&int32(AT_AH) != 0 {
 										s.winTrigger[i&1] = WT_H
 									} else if t.ghv.attr&int32(AT_AS) != 0 &&
@@ -1724,7 +1729,7 @@ func (s *System) drawTop() {
 	}
 	fadeout := sys.intro + sys.lifebar.ro.over_hittime + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
-		for _, p := range sys.getPlayers() {
+		for _, p := range s.getPlayers() {
 			if p != nil {
 				if len(p.dialogue) > 0 {
 					sys.lifebar.ro.cur = 3
@@ -1920,7 +1925,7 @@ func (s *System) fight() (reload bool) {
 		p.nextHitScale = make(map[int32][3]*HitScale)
 	}
 
-	s.debugWC = sys.getChar(0, 0)
+	s.debugWC = s.getChar(0, 0)
 	debugInput := func() {
 		select {
 		case cl := <-s.commandLine:
@@ -2855,11 +2860,9 @@ func (l *Loader) loadChar(pn int) int {
 			p.key ^= -1
 		}
 
-		sys.gameState.chars = append(sys.gameState.chars, p)
-		pidx = len(sys.gameState.chars) - 1
+		pidx = sys.gameState.appendChar(p)
 	} else {
-		pidx = sys.gameState.addChar(pn, 0)
-		p = sys.gameState.chars[pidx]
+		pidx, p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2931,11 +2934,9 @@ func (l *Loader) loadAttachedChar(pn int) int {
 		p = sys.getChar(pn, 0)
 		//p.key = -pn
 		
-		sys.gameState.chars = append(sys.gameState.chars, p)
-		pidx = len(sys.gameState.chars) - 1
+		pidx = sys.gameState.appendChar(p)
 	} else {
-		pidx = sys.gameState.addChar(pn, 0)
-		p = sys.gameState.chars[pidx]
+		pidx, p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)

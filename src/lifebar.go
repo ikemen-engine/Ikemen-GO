@@ -3253,9 +3253,8 @@ func (l *Lifebar) step() {
 	l.ti.step()
 	//LifeBarCombo
 	cb, cd, cp, st := [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
-	for i, ch := range sys.chars {
-		for _, cidx := range ch {
-			c := sys.gameState.chars[cidx]
+	for i := range sys.chars {
+		for _, c := range sys.getPlayerEtAl(i) {
 			if c.alive() || !c.scf(SCF_over) {
 				if c.getcombo > cb[^i&1] {
 					cb[^i&1] = Min(999, Max(c.getcombo, cb[^i&1]))
