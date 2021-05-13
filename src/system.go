@@ -2865,7 +2865,6 @@ func (l *Loader) loadChar(pn int) int {
 	}
 
 	var p *Char
-	var pidx int
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.getChar(pn, 0)
 		p.key = pn
@@ -2873,9 +2872,9 @@ func (l *Loader) loadChar(pn int) int {
 			p.key ^= -1
 		}
 
-		pidx = sys.gameState.appendChar(p)
+		sys.gameState.appendChar(p)
 	} else {
-		pidx, p = sys.gameState.addChar(pn, 0)
+		_, p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2889,7 +2888,7 @@ func (l *Loader) loadChar(pn int) int {
 	p.teamside = p.playerNo & 1
 
 	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx = p.stateIdx
+	pidx := p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
@@ -2942,14 +2941,13 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	}()
 	cdef := sys.stageList[0].attachedchardef[atcpn]
 	var p *Char
-	var pidx int
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.getChar(pn, 0)
 		//p.key = -pn
 		
-		pidx = sys.gameState.appendChar(p)
+		sys.gameState.appendChar(p)
 	} else {
-		pidx, p = sys.gameState.addChar(pn, 0)
+		_, p = sys.gameState.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2964,7 +2962,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	sys.com[pn] = 8
 
 	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx = p.stateIdx
+	pidx := p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
