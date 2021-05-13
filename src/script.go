@@ -881,7 +881,7 @@ func systemScriptInit(l *lua.LState) {
 					// Match is restarting
 					for i, b := range sys.reloadCharSlot {
 						if b {
-							sys.gameState.removeCharSlice(sys.chars[i])
+							sys.gameState.removeCharSlice(sys.chars[i]...)
 							sys.chars[i] = []int{}
 							b = false
 						}

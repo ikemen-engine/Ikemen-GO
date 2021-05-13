@@ -100,7 +100,7 @@ type GameState struct {
 	chars                   []*Char
 }
 
-// Create a new Char and add it to the game state
+// Create a new Char and add it to the game state.
 // Return a pointer to the new character and its index in the chars slice
 func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
 	state.chars = append(state.chars, &Char{aimg: *newAfterImage()})
@@ -110,7 +110,7 @@ func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
 	return index, state.chars[index]
 }
 
-// Add a Char to the game state
+// Add a Char to the game state.
 // Return its index in the chars slice
 func (state *GameState) appendChar(c *Char) (index int) {
 	state.chars = append(state.chars, c)
@@ -119,9 +119,9 @@ func (state *GameState) appendChar(c *Char) (index int) {
 	return index
 }
 
-// Remove Char objects from the game state
+// Remove Char objects from the game state.
 // Parameter is presumably a slice from sys.chars
-func (state *GameState) removeCharSlice(removedChars []int) {
+func (state *GameState) removeCharSlice(removedChars ...int) {
 	if (removedChars == nil || state.chars == nil) {
 		return;
 	}
@@ -140,6 +140,9 @@ func (state *GameState) removeCharSlice(removedChars []int) {
 			if (idx >= len(state.chars)) {
 				panic("Tried removing a character index not in the game state")
 			}
+			
+			// Clear state index from element
+			state.chars[idx].stateIdx = -1
 			// If element is found, remove
 			state.chars = append(state.chars[:idx], state.chars[idx+1:]...)
 			oi++
@@ -154,8 +157,8 @@ func (state *GameState) removeCharSlice(removedChars []int) {
 			for j := range sys.chars[i] {
 				// Loop through the indices that were removed and
 				// reduce the value to close gaps
-				for oi, cidx := range removed {
-					oi = len(removed) - oi
+				for k, cidx := range removed {
+					oi := len(removed) - k
 					if (sys.chars[i][j] > cidx) {
 						sys.chars[i][j] -= oi
 						break
@@ -163,6 +166,8 @@ func (state *GameState) removeCharSlice(removedChars []int) {
 				}
 			}
 		}
+		// Do the same with CharList
+		sys.charList.removeSet(removed...)
 
 		// Loop through chars and update their indices
 		for i, c := range state.chars {
@@ -2815,7 +2820,7 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.tmode[pn&1] == TM_Simul || sys.tmode[pn&1] == TM_Tag {
 		if pn>>1 >= int(sys.numSimul[pn&1]) {
 			sys.cgi[pn].states = nil
-			sys.gameState.removeCharSlice(sys.chars[pn])
+			sys.gameState.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			result = 1
 		}
@@ -2883,7 +2888,7 @@ func (l *Loader) loadChar(pn int) int {
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
 
-	sys.gameState.removeCharSlice(sys.chars[pn])
+	sys.gameState.removeCharSlice(sys.chars[pn]...)
 	pidx = p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
@@ -2891,13 +2896,13 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn])
+			sys.gameState.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn])
+			sys.gameState.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new char: %v", cdef)
 			return -1
@@ -2958,7 +2963,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	p.teamside = -1
 	sys.com[pn] = 8
 
-	sys.gameState.removeCharSlice(sys.chars[pn])
+	sys.gameState.removeCharSlice(sys.chars[pn]...)
 	pidx = p.stateIdx
 
 	sys.chars[pn] = make([]int, 1)
@@ -2966,13 +2971,13 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn])
+			sys.gameState.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn])
+			sys.gameState.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
 			return -1
@@ -3050,7 +3055,7 @@ func (l *Loader) load() {
 				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
 				for j := i + 2; j < len(sys.chars); j += 2 {
 					if !charDone[j] {
-						sys.gameState.removeCharSlice(sys.chars[j])
+						sys.gameState.removeCharSlice(sys.chars[j]...)
 						sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
 						sys.cgi[j].wakewakaLength = 0
 					}

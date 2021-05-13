@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"strings"
 	"unsafe"
 
@@ -5656,61 +5657,134 @@ func (c *Char) cueDraw() {
 }
 
 type CharList struct {
-	runOrder, drawOrder []*Char
-	idMap               map[int32]*Char
+	runOrder, drawOrder []int
+	idMap               map[int32]int
 }
 
 func (cl *CharList) clear() {
-	*cl = CharList{idMap: make(map[int32]*Char)}
+	*cl = CharList{idMap: make(map[int32]int)}
 	sys.nextCharId = sys.helperMax
 }
 func (cl *CharList) add(c *Char) {
-	cl.runOrder = append(cl.runOrder, c)
+	// Append to run order
+	cl.runOrder = append(cl.runOrder, c.stateIdx)
+	
+	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
-		if cl.drawOrder[i] == nil {
-			cl.drawOrder[i] = c
+		if cl.drawOrder[i] == -1 {
+			cl.drawOrder[i] = c.stateIdx
 			break
 		}
 	}
+	// Otherwise appends to the end
 	if i >= len(cl.drawOrder) {
-		cl.drawOrder = append(cl.drawOrder, c)
+		cl.drawOrder = append(cl.drawOrder, c.stateIdx)
 	}
-	cl.idMap[c.id] = c
+
+	cl.idMap[c.id] = c.stateIdx
 }
 func (cl *CharList) delete(dc *Char) {
-	for i, c := range cl.runOrder {
-		if c == dc {
-			delete(cl.idMap, c.id)
+	for i, cidx := range cl.runOrder {
+		if cidx == dc.stateIdx {
+			delete(cl.idMap, dc.id)
 			cl.runOrder = append(cl.runOrder[:i], cl.runOrder[i+1:]...)
 			break
 		}
 	}
-	for i, c := range cl.drawOrder {
-		if c == dc {
-			cl.drawOrder[i] = nil
+	for i, cidx := range cl.drawOrder {
+		if cidx == dc.stateIdx {
+			cl.drawOrder[i] = -1
 			break
 		}
 	}
 }
+
+// Removes entries from the CharList and adjusts the other indices to close gaps
+func (cl *CharList) removeSet(removedChars ...int) {
+	// Sort the removed chars descending
+	removed := make([]int, 0)
+	removed = append (removed, removedChars...)
+	sort.Slice(removed, func(p, q int) bool { 
+		return removed[p] > removed[q] })
+
+	for i := 0; i < len(cl.runOrder); {
+		adjustRunOrder := func() bool {
+			for k, cidx := range removed {
+				oi := len(removed) - k
+				if (cl.runOrder[i] == cidx) {
+					// Remove if equal
+					cl.runOrder = append(cl.runOrder[:i], cl.runOrder[i+1:]...)
+					return true
+				} else if (cl.runOrder[i] > cidx) {
+					// Reduce to close gaps if higher
+					cl.runOrder[i] -= oi
+					return false
+				}
+			}
+			return false
+		}
+		if (!adjustRunOrder()) {
+			i++
+		}
+	}
+
+	for i := range cl.drawOrder {
+		for k, cidx := range removed {
+			oi := len(removed) - k
+			if (cl.drawOrder[i] == cidx) {
+				// Set to unused if equal
+				cl.drawOrder[i] = -1
+				break
+			} else if (cl.drawOrder[i] > cidx) {
+				// Reduce to close gaps if higher
+				cl.drawOrder[i] -= oi
+				break
+			}
+		}
+	}
+
+	var keys []int32
+    for key := range cl.idMap {
+        keys = append(keys, key)
+	}
+	for _, id := range keys {
+		for k, cidx := range removed {
+			oi := len(removed) - k
+			if (cl.idMap[id] == cidx) {
+				// Remove if equal
+				delete(cl.idMap, id)
+				break
+			} else if (cl.idMap[id] > cidx) {
+				// Reduce to close gaps if higher
+				cl.idMap[id] -= oi
+				break
+			}
+		}
+	}
+}
+
 func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
 	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].action()
+		c := sys.gameState.chars[cl.runOrder[i]]
+		if c.ss.moveType == MT_A {
+			c.action()
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].action()
+		c := sys.gameState.chars[cl.runOrder[i]]
+		c.action()
 	}
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
 }
 func (cl *CharList) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
-	ro := make([]*Char, len(cl.runOrder))
+	ro := make([]int, len(cl.runOrder))
 	copy(ro, cl.runOrder)
-	for _, c := range ro {
+	for _, cidx := range ro {
+		c := sys.gameState.chars[cidx]
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}
 }
@@ -6435,7 +6509,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		gl += getter.pos[0] * getter.localscl
 		gr += getter.pos[0] * getter.localscl
 		getter.enemyNearClear()
-		for _, c := range cl.runOrder {
+		for _, cidx := range cl.runOrder {
+			c := sys.gameState.chars[cidx]
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
@@ -6574,10 +6649,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 }
 func (cl *CharList) getHit() {
-	for _, c := range cl.runOrder {
+	for _, cidx := range cl.runOrder {
+		c := sys.gameState.chars[cidx]
 		cl.clsn(c, false)
 	}
-	for _, c := range cl.runOrder {
+	for _, cidx := range cl.runOrder {
+		c := sys.gameState.chars[cidx]
 		cl.clsn(c, true)
 	}
 }
@@ -6588,14 +6665,15 @@ func (cl *CharList) tick() {
 			sys.cgi[i].unhittable--
 		}
 	}
-	for _, c := range cl.runOrder {
+	for _, cidx := range cl.runOrder {
+		c := sys.gameState.chars[cidx]
 		c.tick()
 	}
 }
 func (cl *CharList) cueDraw() {
-	for _, c := range cl.drawOrder {
-		if c != nil {
-			c.cueDraw()
+	for _, cidx := range cl.drawOrder {
+		if cidx != -1 {
+			sys.gameState.chars[cidx].cueDraw()
 		}
 	}
 }
@@ -6603,7 +6681,8 @@ func (cl *CharList) get(id int32) *Char {
 	if id < 0 {
 		return nil
 	}
-	return cl.idMap[id]
+	cidx := cl.idMap[id]
+	return sys.gameState.chars[cidx]
 }
 func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	if n < 0 {
@@ -6631,7 +6710,8 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 			}
 		}
 	}
-	for _, e := range cl.runOrder {
+	for _, cidx := range cl.runOrder {
+		e := sys.gameState.chars[cidx]
 		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)
