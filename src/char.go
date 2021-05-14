@@ -1588,7 +1588,7 @@ type Char struct {
 	children        []*Char
 	targets         []int32
 	targetsOfHitdef []int32
-	enemynear       [2][]*Char
+	enemynear       [2][]int32
 	pos             [2]float32
 	drawPos         [2]float32
 	oldPos          [2]float32
@@ -6697,19 +6697,19 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	cache := &c.enemynear[Btoi(p2)]
 	if int(n) < len(*cache) {
-		return (*cache)[n]
+		return cl.get((*cache)[n])
 	}
 	*cache = (*cache)[:0]
 	var add func(*Char, int)
 	add = func(e *Char, idx int) {
 		for i := idx; i <= int(n); i++ {
 			if i >= len(*cache) {
-				*cache = append(*cache, e)
+				*cache = append(*cache, e.id)
 				return
 			}
-			if AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
-				add((*cache)[i], i+1)
-				(*cache)[i] = e
+			if AbsF(c.distX(e, c)) < AbsF(c.distX(cl.get((*cache)[i]), c)) {
+				add(cl.get((*cache)[i]), i+1)
+				(*cache)[i] = e.id
 				return
 			}
 		}
@@ -6727,5 +6727,5 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 		}
 		return nil
 	}
-	return (*cache)[n]
+	return cl.get((*cache)[n])
 }
