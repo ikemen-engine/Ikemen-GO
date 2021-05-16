@@ -1818,7 +1818,7 @@ func (ro *LifeBarRound) act() bool {
 				ro.swt[0]--
 				if ro.wt[0] <= 0 {
 					ro.dt[0]++
-					if sys.roundType[0] == RT_Final {
+					if sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
 						if len(ro.round_final_top.anim.frames) > 0 {
 							ro.round_final_top.Action()
 						} else {
