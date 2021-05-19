@@ -1585,7 +1585,7 @@ type Char struct {
 	hoIdx           int
 	mctype          MoveContact
 	mctime          int32
-	children        []*Char
+	children        []int32
 	targets         []int32
 	targetsOfHitdef []int32
 	enemynear       [2][]int32
@@ -1735,13 +1735,13 @@ func (c *Char) copyParent(p *Char) {
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
-	for i, chi := range c.children {
-		if chi == nil {
-			c.children[i] = ch
+	for i, cid := range c.children {
+		if cid < 0 {
+			c.children[i] = ch.id
 			return
 		}
 	}
-	c.children = append(c.children, ch)
+	c.children = append(c.children, ch.id)
 }
 func (c *Char) enemyNearClear() {
 	c.enemynear[0] = c.enemynear[0][:0]
@@ -3157,15 +3157,15 @@ func (c *Char) destroy() {
 		}
 		if c.parentIndex >= 0 {
 			if p := c.parent(); p != nil {
-				for i, ch := range p.children {
-					if ch == c {
-						p.children[i] = nil
+				for i, cid := range p.children {
+					if cid == c.id {
+						p.children[i] = -1
 					}
 				}
 			}
 		}
-		for _, ch := range c.children {
-			if ch != nil {
+		for _, cid := range c.children {
+			if ch := sys.playerID(cid); ch != nil {
 				ch.parentIndex *= -1
 			}
 		}
@@ -3184,8 +3184,8 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 		c.removeExplod(-1)
 	}
 	if recursive {
-		for _, ch := range c.children {
-			if ch != nil {
+		for _, cid := range c.children {
+			if ch := sys.playerID(cid); ch != nil {
 				ch.destroySelf(recursive, removeexplods)
 			}
 		}

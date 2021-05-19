@@ -1016,9 +1016,10 @@ func (s *System) playerClear(pn int, destroy bool) {
 		if destroy {
 			p.children = p.children[:0]
 		} else {
-			for i, ch := range p.children {
+			for i, cid := range p.children {
+				ch := sys.playerID(cid);
 				if ch != nil && !ch.preserve {
-					p.children[i] = nil
+					p.children[i] = -1
 				}
 			}
 		}
