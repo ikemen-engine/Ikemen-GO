@@ -6681,8 +6681,12 @@ func (cl *CharList) get(id int32) *Char {
 	if id < 0 {
 		return nil
 	}
-	cidx := cl.idMap[id]
-	return sys.gameState.chars[cidx]
+	// If key exists in the id map
+	if cidx, ok := cl.idMap[id]; ok {
+		return sys.gameState.chars[cidx]
+	}
+	// Else return nil
+	return nil
 }
 func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	if n < 0 {
