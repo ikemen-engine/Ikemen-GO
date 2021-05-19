@@ -838,7 +838,6 @@ func systemScriptInit(l *lua.LState) {
 				}
 				for i, c := range sys.getPlayers() {
 					if c != nil {
-						p[i] = c
 						sys.charList.add(c)
 						if sys.roundsExisted[i&1] == 0 {
 							c.loadPallet()
@@ -905,6 +904,14 @@ func systemScriptInit(l *lua.LState) {
 						winp = Btoi(w1) + Btoi(w2)*2
 					}
 				}
+
+				// Set players, for use outside this anonymous function
+				for i, c := range sys.getPlayers() {
+					if c != nil {
+						p[i] = c
+					}
+				}
+
 				return winp, nil
 			}
 
@@ -930,6 +937,7 @@ func systemScriptInit(l *lua.LState) {
 					sys.gameEnd {
 					break
 				}
+				// Reset roundsExisted to 0 if the losing side is on turns mode
 				for i := 0; i < 2; i++ {
 					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
 						sys.lifebar.fa[TM_Turns][i].numko++
