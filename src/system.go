@@ -97,23 +97,23 @@ const (
 )
 
 type GameState struct {
-	chars                   []*Char
+	chars                   []Char
 }
 
 // Create a new Char and add it to the game state.
 // Return a pointer to the new character and its index in the chars slice
 func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
-	state.chars = append(state.chars, &Char{aimg: *newAfterImage()})
+	state.chars = append(state.chars, Char{aimg: *newAfterImage()})
 	index = len(state.chars) - 1
 	state.chars[index].init(n, idx)
 	state.chars[index].stateIdx = index
-	return index, state.chars[index]
+	return index, &state.chars[index]
 }
 
 // Add a Char to the game state.
 // Return its index in the chars slice
 func (state *GameState) appendChar(c *Char) (index int) {
-	state.chars = append(state.chars, c)
+	state.chars = append(state.chars, *c)
 	index = len(state.chars) - 1
 	c.stateIdx = index
 	return index
@@ -170,8 +170,8 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 		sys.charList.removeSet(removed...)
 
 		// Loop through chars and update their indices
-		for i, c := range state.chars {
-			c.stateIdx = i
+		for i := range state.chars {
+			state.chars[i].stateIdx = i
 		}
 	}
 }
@@ -955,7 +955,7 @@ func (s *System) getChar(pn int, index int) *Char {
 	if (cidx >= len(s.gameState.chars)) {
 		return nil
 	}
-	return s.gameState.chars[cidx]
+	return &s.gameState.chars[cidx]
 }
 // Get all player Chars
 func (s *System) getPlayers() []*Char {
@@ -2889,7 +2889,8 @@ func (l *Loader) loadChar(pn int) int {
 	p.teamside = p.playerNo & 1
 
 	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx := p.stateIdx
+	pidx := len(sys.gameState.chars) - 1
+	p = &sys.gameState.chars[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
@@ -2963,7 +2964,8 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	sys.com[pn] = 8
 
 	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx := p.stateIdx
+	pidx := len(sys.gameState.chars) - 1
+	p = &sys.gameState.chars[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
