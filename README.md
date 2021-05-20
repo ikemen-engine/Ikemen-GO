@@ -66,5 +66,5 @@ Ikemen is an acronym of:
 Itumademo Kanseishinai Eienni Mikansei ENgine
 
 ## Licence
-[MIT Licence](LICENSE.txt)
+[MIT Licence](License.txt)
 
