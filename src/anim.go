@@ -165,6 +165,8 @@ type Animation struct {
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
 	start_scale                [2]float32
+
+	nilAnim                    bool
 }
 
 func newAnimation(sff *Sff) *Animation {

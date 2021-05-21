@@ -1547,7 +1547,7 @@ type CharSystemVar struct {
 type Char struct {
 	name            string
 	palfx           *PalFX
-	anim            *Animation
+	anim            Animation
 	curFrame        *AnimFrame
 	cmd             []CommandList
 	ss              StateState
@@ -1687,7 +1687,7 @@ func (c *Char) clearState() {
 	c.hitdefContact = false
 }
 func (c *Char) clear1() {
-	c.anim = nil
+	c.anim = Animation{nilAnim: true}
 	c.cmd = nil
 	c.curFrame = nil
 	c.clearState()
@@ -2323,34 +2323,34 @@ func (c *Char) setYV(yv float32) {
 func (c *Char) changeAnim(animNo int32, ffx bool) {
 	if a := c.getAnim(animNo, ffx, true); a != nil {
 		p := sys.getChar(c.animPN, 0)
-		c.anim = a
+		c.anim = *a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{p.size.xscale,
 			p.size.yscale}
 		if c.hitPause() {
-			c.curFrame = a.CurrentFrame()
+			c.curFrame = c.anim.CurrentFrame()
 		}
 	}
 }
 func (c *Char) changeAnim2(animNo int32, ffx bool) {
 	if a := sys.getChar(c.ss.sb.playerNo, 0).getAnim(animNo, ffx, true); a != nil {
 		p := sys.getChar(c.animPN, 0)
-		c.anim = a
+		c.anim = *a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.ss.sb.playerNo
 		c.animNo = animNo
 		c.clsnScale = [...]float32{p.size.xscale,
 			p.size.yscale}
-		a.sff = sys.cgi[c.playerNo].sff
+		c.anim.sff = sys.cgi[c.playerNo].sff
 		if c.hitPause() {
-			c.curFrame = a.CurrentFrame()
+			c.curFrame = c.anim.CurrentFrame()
 		}
 	}
 }
 func (c *Char) setAnimElem(e int32) {
-	if c.anim != nil {
+	if !c.anim.nilAnim {
 		c.anim.SetAnimElem(e)
 		c.curFrame = c.anim.CurrentFrame()
 	}
@@ -2509,13 +2509,13 @@ func (c *Char) alive() bool {
 	return !c.scf(SCF_ko)
 }
 func (c *Char) animElemNo(time int32) BytecodeValue {
-	if c.anim != nil && time >= -c.anim.sumtime {
+	if !c.anim.nilAnim && time >= -c.anim.sumtime {
 		return BytecodeInt(c.anim.AnimElemNo(time))
 	}
 	return BytecodeSF()
 }
 func (c *Char) animElemTime(e int32) BytecodeValue {
-	if e >= 1 && c.anim != nil && int(e) <= len(c.anim.frames) {
+	if e >= 1 && !c.anim.nilAnim && int(e) <= len(c.anim.frames) {
 		return BytecodeInt(c.anim.AnimElemTime(e))
 	}
 	return BytecodeSF()
@@ -2530,7 +2530,7 @@ func (c *Char) animExist(wc *Char, anim BytecodeValue) BytecodeValue {
 	return sys.getChar(c.ss.sb.playerNo, 0).selfAnimExist(anim)
 }
 func (c *Char) animTime() int32 {
-	if c.anim != nil {
+	if !c.anim.nilAnim {
 		return c.anim.AnimTime()
 	}
 	return 0
@@ -3552,9 +3552,9 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.anim = 0
 	}
 	p.ani = c.getAnim(p.anim, p.anim_fflg, true)
-	if p.ani == nil && c.anim != nil {
+	if p.ani == nil && !c.anim.nilAnim {
 		p.ani = &Animation{}
-		*p.ani = *c.anim
+		*p.ani = c.anim
 		p.ani.SetAnimElem(1)
 		p.anim = c.animNo
 	}
@@ -5193,7 +5193,7 @@ func (c *Char) action() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
 				c.changeState(5120, -1, -1, false)
 			}
-			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
+			for c.ss.no == 140 && (c.anim.nilAnim || len(c.anim.frames) == 0 ||
 				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, false)
@@ -5212,7 +5212,7 @@ func (c *Char) action() {
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
-			if c.anim != nil {
+			if !c.anim.nilAnim {
 				c.curFrame = c.anim.CurrentFrame()
 			} else {
 				c.curFrame = nil
@@ -5278,7 +5278,7 @@ func (c *Char) update(cvmin, cvmax,
 			c.bind()
 		}
 		if c.acttmp > 0 {
-			if c.anim != nil {
+			if !c.anim.nilAnim {
 				c.anim.UpdateSprite()
 			}
 			if c.ss.moveType == MT_H {
@@ -5417,7 +5417,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 }
 func (c *Char) tick() {
-	if c.acttmp > 0 && !c.sf(CSF_animfreeze) && c.anim != nil {
+	if c.acttmp > 0 && !c.sf(CSF_animfreeze) && !c.anim.nilAnim {
 		c.anim.Action()
 	}
 	if c.bindTime > 0 {
@@ -5598,7 +5598,7 @@ func (c *Char) cueDraw() {
 			}
 		}
 	}
-	if c.anim != nil {
+	if !c.anim.nilAnim {
 		pos := [...]float32{c.drawPos[0]*c.localscl + c.offsetX()*c.localscl, c.drawPos[1]*c.localscl + c.offsetY()*c.localscl}
 		scl := [...]float32{c.facing * c.size.xscale * (320 / float32(c.localcoord)), c.size.yscale * (320 / float32(c.localcoord))}
 		agl := float32(0)
@@ -5612,7 +5612,7 @@ func (c *Char) cueDraw() {
 		}
 		rec := sys.tickNextFrame() && c.acttmp > 0
 		sdf := func() *SprData {
-			sd := &SprData{c.anim, c.getPalfx(), pos,
+			sd := &SprData{&c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, agl, 0, 0, c.angleScalse, false,
 				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / float32(c.localcoord))}
 			if !c.sf(CSF_trans) {
