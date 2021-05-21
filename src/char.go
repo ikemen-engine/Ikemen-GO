@@ -1548,7 +1548,7 @@ type Char struct {
 	name            string
 	palfx           *PalFX
 	anim            Animation
-	curFrame        *AnimFrame
+	curFrame        AnimFrame
 	cmd             []CommandList
 	ss              StateState
 	key             int
@@ -1689,7 +1689,7 @@ func (c *Char) clearState() {
 func (c *Char) clear1() {
 	c.anim = Animation{nilAnim: true}
 	c.cmd = nil
-	c.curFrame = nil
+	c.curFrame = AnimFrame{nilAnim: true}
 	c.clearState()
 	c.hoIdx = -1
 	c.mctype, c.mctime = MC_Hit, 0
@@ -2320,6 +2320,17 @@ func (c *Char) setYV(yv float32) {
 		c.movedY = true
 	}
 }
+func (c *Char) setCurrentFrameFromAnim(){
+	if !c.anim.nilAnim {
+		cf := c.anim.CurrentFrame()
+		if (cf != nil) {
+			c.curFrame = *cf
+			return
+		}
+	}
+	
+	c.curFrame = AnimFrame{nilAnim: true}
+}
 func (c *Char) changeAnim(animNo int32, ffx bool) {
 	if a := c.getAnim(animNo, ffx, true); a != nil {
 		p := sys.getChar(c.animPN, 0)
@@ -2330,7 +2341,7 @@ func (c *Char) changeAnim(animNo int32, ffx bool) {
 		c.clsnScale = [...]float32{p.size.xscale,
 			p.size.yscale}
 		if c.hitPause() {
-			c.curFrame = c.anim.CurrentFrame()
+			c.setCurrentFrameFromAnim()
 		}
 	}
 }
@@ -2345,14 +2356,14 @@ func (c *Char) changeAnim2(animNo int32, ffx bool) {
 			p.size.yscale}
 		c.anim.sff = sys.cgi[c.playerNo].sff
 		if c.hitPause() {
-			c.curFrame = c.anim.CurrentFrame()
+			c.setCurrentFrameFromAnim()
 		}
 	}
 }
 func (c *Char) setAnimElem(e int32) {
 	if !c.anim.nilAnim {
 		c.anim.SetAnimElem(e)
-		c.curFrame = c.anim.CurrentFrame()
+		c.setCurrentFrameFromAnim()
 	}
 }
 func (c *Char) setCtrl(ctrl bool) {
@@ -4902,7 +4913,7 @@ func (c *Char) offsetY() float32 {
 	return float32(c.size.draw.offset[1]) + c.offset[1]
 }
 func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
-	if p.ani == nil || c.curFrame == nil {
+	if p.ani == nil || c.curFrame.nilAnim {
 		return false
 	}
 	frm := p.ani.CurrentFrame()
@@ -4922,7 +4933,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) || c.scf(SCF_disabled) {
+	if atk.curFrame.nilAnim || c.curFrame.nilAnim || c.scf(SCF_standby) || atk.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return false
 	}
 	var clsn1, clsn2 []float32
@@ -5212,11 +5223,7 @@ func (c *Char) action() {
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
-			if !c.anim.nilAnim {
-				c.curFrame = c.anim.CurrentFrame()
-			} else {
-				c.curFrame = nil
-			}
+			c.setCurrentFrameFromAnim()
 		}
 		if c.ghv.damage != 0 {
 			if c.ss.moveType == MT_H {
@@ -5558,7 +5565,7 @@ func (c *Char) cueDraw() {
 	if c.helperIndex < 0 || c.scf(SCF_disabled) {
 		return
 	}
-	if sys.clsnDraw && c.curFrame != nil {
+	if sys.clsnDraw && !c.curFrame.nilAnim {
 		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
 		xs, ys := c.facing*c.clsnScale[0]*(320/float32(sys.getChar(c.animPN, 0).localcoord)), c.clsnScale[1]*(320/float32(sys.getChar(c.animPN, 0).localcoord))
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {

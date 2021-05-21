@@ -13,6 +13,8 @@ type AnimFrame struct {
 	DstAlpha      byte
 	H, V          int8
 	Ex            [][]float32
+
+	nilAnim                    bool
 }
 
 func newAnimFrame() *AnimFrame {
