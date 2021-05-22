@@ -36,7 +36,7 @@ const (
 // The only instance of a System struct.
 // Do not create more than 1.
 var sys = System{
-	randseed:          int32(time.Now().UnixNano()),
+	gs:                GameState{randseed:int32(time.Now().UnixNano())},
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
@@ -97,6 +97,7 @@ const (
 )
 
 type GameState struct {
+	randseed                int32
 	charArray               []Char
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
@@ -180,7 +181,6 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
-	randseed                int32
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
 	widthScale, heightScale float32

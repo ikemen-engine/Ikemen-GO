@@ -17,14 +17,14 @@ const (
 )
 
 func Random() int32 {
-	w := sys.randseed / 127773
-	sys.randseed = (sys.randseed-w*127773)*16807 - w*2836
-	if sys.randseed <= 0 {
-		sys.randseed += IMax - Btoi(sys.randseed == 0)
+	w := sys.gs.randseed / 127773
+	sys.gs.randseed = (sys.gs.randseed-w*127773)*16807 - w*2836
+	if sys.gs.randseed <= 0 {
+		sys.gs.randseed += IMax - Btoi(sys.gs.randseed == 0)
 	}
-	return sys.randseed
+	return sys.gs.randseed
 }
-func Srand(s int32)             { sys.randseed = s }
+func Srand(s int32)             { sys.gs.randseed = s }
 func Rand(min, max int32) int32 { return min + Random()/(IMax/(max-min+1)+1) }
 
 func RandF32(min, max float32) float32 {
