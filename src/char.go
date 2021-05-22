@@ -2258,13 +2258,13 @@ func (c *Char) loadPallet() {
 	for {
 		if c.gi().palExist[i] {
 			j := 0
-			for ; j < len(sys.chars); j++ {
-				if j != c.playerNo && len(sys.chars[j]) > 0 &&
+			for ; j < len(sys.gs.chars); j++ {
+				if j != c.playerNo && len(sys.gs.chars[j]) > 0 &&
 					sys.cgi[j].def == c.gi().def && sys.cgi[j].drawpalno == i+1 {
 					break
 				}
 			}
-			if j >= len(sys.chars) {
+			if j >= len(sys.gs.chars) {
 				c.gi().drawpalno = i + 1
 				if !c.gi().palExist[c.gi().palno-1] {
 					c.gi().palno = c.gi().drawpalno
@@ -2447,7 +2447,7 @@ func (c *Char) target(id int32) *Char {
 }
 func (c *Char) partner(n int32) *Char {
 	n = Max(0, n)
-	if int(n) > len(sys.chars)/2-2 {
+	if int(n) > len(sys.gs.chars)/2-2 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
 		return nil
 	}
@@ -2463,7 +2463,7 @@ func (c *Char) partner(n int32) *Char {
 			p += 2
 		}
 	}
-	if len(sys.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
+	if len(sys.gs.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
 		return sys.getChar(p, 0)
 	}
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
@@ -2471,14 +2471,14 @@ func (c *Char) partner(n int32) *Char {
 }
 func (c *Char) partnerV2(n int32) *Char {
 	n = Max(0, n)
-	if int(n) > len(sys.chars)/2-2 {
+	if int(n) > len(sys.gs.chars)/2-2 {
 		return nil
 	}
 	var p int = (c.playerNo + int(n)<<1) + 2
 	if p>>1 > int(c.numPartner()) {
 		p -= int(c.numPartner()*2) + 2
 	}
-	if len(sys.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
+	if len(sys.gs.chars[p]) > 0 && sys.getChar(p, 0).teamside != -1 {
 		return sys.getChar(p, 0)
 	}
 	return nil
@@ -2633,7 +2633,7 @@ func (c *Char) gameWidth() float32 {
 	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
 }
 func (c *Char) getPlayerID(pn int) int32 {
-	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
+	if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
 		return sys.getChar(pn-1, 0).id
 	}
 	return 0
@@ -2725,7 +2725,7 @@ func (c *Char) numEnemy() int32 {
 	if c.teamside == -1 {
 		for i := 0; i < int(sys.numSimul[0]+sys.numSimul[1]); i++ {
 			p := sys.getChar(i, 0)
-			if len(sys.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
+			if len(sys.gs.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
 				n += 1
 			}
 		}
@@ -2733,7 +2733,7 @@ func (c *Char) numEnemy() int32 {
 	}
 	for i := ^c.playerNo & 1; i < int(sys.numSimul[^c.playerNo&1]*2); i += 2 {
 		p := sys.getChar(i, 0)
-		if len(sys.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
+		if len(sys.gs.chars[i]) > 0 && !p.scf(SCF_standby) && !p.scf(SCF_disabled) {
 			n += 1
 		}
 	}
@@ -2947,8 +2947,8 @@ func (c *Char) teamLeader() int {
 func (c *Char) teamSize() int32 {
 	if c.teamside == -1 {
 		var n int32
-		for i := MaxSimul * 2; i < len(sys.chars); i++ {
-			if len(sys.chars[i]) > 0 {
+		for i := MaxSimul * 2; i < len(sys.gs.chars); i++ {
+			if len(sys.gs.chars[i]) > 0 {
 				n += 1
 			}
 		}
@@ -3205,20 +3205,20 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 }
 func (c *Char) newHelper() (h *Char) {
 	i := int32(0)
-	for ; int(i) < len(sys.chars[c.playerNo]); i++ {
+	for ; int(i) < len(sys.gs.chars[c.playerNo]); i++ {
 		if sys.getChar(c.playerNo, int(i)).helperIndex < 0 {
 			h = sys.getChar(c.playerNo, int(i))
 			h.init(c.playerNo, i)
 			break
 		}
 	}
-	if int(i) >= len(sys.chars[c.playerNo]) {
+	if int(i) >= len(sys.gs.chars[c.playerNo]) {
 		if i >= sys.helperMax {
 			return
 		}
 		var hidx int
 		hidx, h = sys.gs.addChar(c.playerNo, i)
-		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], hidx)
+		sys.gs.chars[c.playerNo] = append(sys.gs.chars[c.playerNo], hidx)
 	}
 	h.id, h.helperId = sys.newCharId(), 0
 	h.copyParent(c)
@@ -3457,8 +3457,8 @@ func (c *Char) setPosX(x float32) {
 		c.pos[0] = x
 		c.enemyNearClear()
 		if c.player {
-			for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
-				for j := range sys.chars[i] {
+			for i := ^c.playerNo & 1; i < len(sys.gs.chars); i += 2 {
+				for j := range sys.gs.chars[i] {
 					sys.getChar(i, j).enemyNearClear()
 				}
 			}
@@ -4638,13 +4638,13 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 	case 6:
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
-				if len(sys.chars[i]) > 0 {
+				if len(sys.gs.chars[i]) > 0 {
 					sys.getChar(i, 0).mapArray[key] = Value
 				}
 			}
 		} else {
 			for i := c.teamside; i < MaxSimul*2; i += 2 {
-				if len(sys.chars[i]) > 0 {
+				if len(sys.gs.chars[i]) > 0 {
 					sys.getChar(i, 0).mapArray[key] = Value
 				}
 			}
@@ -4652,13 +4652,13 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 	case 7:
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
-				if len(sys.chars[i]) > 0 {
+				if len(sys.gs.chars[i]) > 0 {
 					sys.getChar(i, 0).mapArray[key] += Value
 				}
 			}
 		} else {
 			for i := c.teamside; i < MaxSimul*2; i += 2 {
-				if len(sys.chars[i]) > 0 {
+				if len(sys.gs.chars[i]) > 0 {
 					sys.getChar(i, 0).mapArray[key] += Value
 				}
 			}
@@ -5440,7 +5440,7 @@ func (c *Char) tick() {
 	}
 	if c.cmd == nil {
 		if c.keyctrl[0] {
-			c.cmd = make([]CommandList, len(sys.chars))
+			c.cmd = make([]CommandList, len(sys.gs.chars))
 			c.cmd[0].Buffer = NewCommandBuffer()
 			for i := range c.cmd {
 				c.cmd[i].Buffer = c.cmd[0].Buffer

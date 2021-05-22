@@ -2146,8 +2146,8 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 				ro.drawn_top.DrawScaled(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				var inter []interface{}
-				for i := sys.winTeam; i < len(sys.chars); i += 2 {
-					if len(sys.chars[i]) > 0 {
+				for i := sys.winTeam; i < len(sys.gs.chars); i += 2 {
+					if len(sys.gs.chars[i]) > 0 {
 						inter = append(inter, sys.cgi[i].displayname)
 					}
 				}
@@ -3253,7 +3253,7 @@ func (l *Lifebar) step() {
 	l.ti.step()
 	//LifeBarCombo
 	cb, cd, cp, st := [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
-	for i := range sys.chars {
+	for i := range sys.gs.chars {
 		for _, c := range sys.getPlayerEtAl(i) {
 			if c.alive() || !c.scf(SCF_over) {
 				if c.getcombo > cb[^i&1] {
