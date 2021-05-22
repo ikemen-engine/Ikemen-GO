@@ -227,7 +227,7 @@ type System struct {
 	loader                  Loader
 
 	// Game State
-	gameState               GameState
+	gs                      GameState
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
@@ -952,10 +952,10 @@ func (s *System) getChar(pn int, index int) *Char {
 		return nil
 	}
 	cidx := s.chars[pn][index]
-	if (cidx >= len(s.gameState.chars)) {
+	if (cidx >= len(s.gs.chars)) {
 		return nil
 	}
-	return &s.gameState.chars[cidx]
+	return &s.gs.chars[cidx]
 }
 // Get all player Chars
 func (s *System) getPlayers() []*Char {
@@ -2821,7 +2821,7 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.tmode[pn&1] == TM_Simul || sys.tmode[pn&1] == TM_Tag {
 		if pn>>1 >= int(sys.numSimul[pn&1]) {
 			sys.cgi[pn].states = nil
-			sys.gameState.removeCharSlice(sys.chars[pn]...)
+			sys.gs.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			result = 1
 		}
@@ -2873,9 +2873,9 @@ func (l *Loader) loadChar(pn int) int {
 			p.key ^= -1
 		}
 
-		sys.gameState.appendChar(p)
+		sys.gs.appendChar(p)
 	} else {
-		_, p = sys.gameState.addChar(pn, 0)
+		_, p = sys.gs.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2888,22 +2888,22 @@ func (l *Loader) loadChar(pn int) int {
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
 
-	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx := len(sys.gameState.chars) - 1
-	p = &sys.gameState.chars[pidx]
+	sys.gs.removeCharSlice(sys.chars[pn]...)
+	pidx := len(sys.gs.chars) - 1
+	p = &sys.gs.chars[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn]...)
+			sys.gs.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn]...)
+			sys.gs.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new char: %v", cdef)
 			return -1
@@ -2947,9 +2947,9 @@ func (l *Loader) loadAttachedChar(pn int) int {
 		p = sys.getChar(pn, 0)
 		//p.key = -pn
 		
-		sys.gameState.appendChar(p)
+		sys.gs.appendChar(p)
 	} else {
-		_, p = sys.gameState.addChar(pn, 0)
+		_, p = sys.gs.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -2963,22 +2963,22 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	p.teamside = -1
 	sys.com[pn] = 8
 
-	sys.gameState.removeCharSlice(sys.chars[pn]...)
-	pidx := len(sys.gameState.chars) - 1
-	p = &sys.gameState.chars[pidx]
+	sys.gs.removeCharSlice(sys.chars[pn]...)
+	pidx := len(sys.gs.chars) - 1
+	p = &sys.gs.chars[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn]...)
+			sys.gs.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.gameState.removeCharSlice(sys.chars[pn]...)
+			sys.gs.removeCharSlice(sys.chars[pn]...)
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
 			return -1
@@ -3056,7 +3056,7 @@ func (l *Loader) load() {
 				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
 				for j := i + 2; j < len(sys.chars); j += 2 {
 					if !charDone[j] {
-						sys.gameState.removeCharSlice(sys.chars[j]...)
+						sys.gs.removeCharSlice(sys.chars[j]...)
 						sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
 						sys.cgi[j].wakewakaLength = 0
 					}

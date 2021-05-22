@@ -3217,7 +3217,7 @@ func (c *Char) newHelper() (h *Char) {
 			return
 		}
 		var hidx int
-		hidx, h = sys.gameState.addChar(c.playerNo, i)
+		hidx, h = sys.gs.addChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], hidx)
 	}
 	h.id, h.helperId = sys.newCharId(), 0
@@ -5775,13 +5775,13 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
 	for i := 0; i < len(cl.runOrder); i++ {
-		c := &sys.gameState.chars[cl.runOrder[i]]
+		c := &sys.gs.chars[cl.runOrder[i]]
 		if c.ss.moveType == MT_A {
 			c.action()
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		c := &sys.gameState.chars[cl.runOrder[i]]
+		c := &sys.gs.chars[cl.runOrder[i]]
 		c.action()
 	}
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
@@ -5791,7 +5791,7 @@ func (cl *CharList) update(cvmin, cvmax,
 	ro := make([]int, len(cl.runOrder))
 	copy(ro, cl.runOrder)
 	for _, cidx := range ro {
-		c := &sys.gameState.chars[cidx]
+		c := &sys.gs.chars[cidx]
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}
 }
@@ -6517,7 +6517,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		gr += getter.pos[0] * getter.localscl
 		getter.enemyNearClear()
 		for _, cidx := range cl.runOrder {
-			c := &sys.gameState.chars[cidx]
+			c := &sys.gs.chars[cidx]
 			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
@@ -6657,11 +6657,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 }
 func (cl *CharList) getHit() {
 	for _, cidx := range cl.runOrder {
-		c := &sys.gameState.chars[cidx]
+		c := &sys.gs.chars[cidx]
 		cl.clsn(c, false)
 	}
 	for _, cidx := range cl.runOrder {
-		c := &sys.gameState.chars[cidx]
+		c := &sys.gs.chars[cidx]
 		cl.clsn(c, true)
 	}
 }
@@ -6673,14 +6673,14 @@ func (cl *CharList) tick() {
 		}
 	}
 	for _, cidx := range cl.runOrder {
-		c := &sys.gameState.chars[cidx]
+		c := &sys.gs.chars[cidx]
 		c.tick()
 	}
 }
 func (cl *CharList) cueDraw() {
 	for _, cidx := range cl.drawOrder {
 		if cidx != -1 {
-			c := &sys.gameState.chars[cidx]
+			c := &sys.gs.chars[cidx]
 			c.cueDraw()
 		}
 	}
@@ -6691,7 +6691,7 @@ func (cl *CharList) get(id int32) *Char {
 	}
 	// If key exists in the id map
 	if cidx, ok := cl.idMap[id]; ok {
-		return &sys.gameState.chars[cidx]
+		return &sys.gs.chars[cidx]
 	}
 	// Else return nil
 	return nil
@@ -6723,7 +6723,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 		}
 	}
 	for _, cidx := range cl.runOrder {
-		e := &sys.gameState.chars[cidx]
+		e := &sys.gs.chars[cidx]
 		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
 			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
 			add(e, 0)

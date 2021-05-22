@@ -641,7 +641,7 @@ func systemScriptInit(l *lua.LState) {
 		if sys.netInput != nil {
 			l.RaiseError("\nConnection already established.\n")
 		}
-		sys.gameState.chars = nil
+		sys.gs.chars = nil
 		sys.chars = [len(sys.chars)][]int{}
 		sys.netInput = NewNetInput()
 		if host := strArg(l, 1); host != "" {
@@ -655,7 +655,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "enterReplay", func(*lua.LState) int {
 		glfw.SwapInterval(1) //broken frame skipping when set to 0
-		sys.gameState.chars = nil
+		sys.gs.chars = nil
 		sys.chars = [len(sys.chars)][]int{}
 		sys.fileInput = OpenFileInput(strArg(l, 1))
 		return 0
@@ -880,7 +880,7 @@ func systemScriptInit(l *lua.LState) {
 					// Match is restarting
 					for i, b := range sys.reloadCharSlot {
 						if b {
-							sys.gameState.removeCharSlice(sys.chars[i]...)
+							sys.gs.removeCharSlice(sys.chars[i]...)
 							sys.chars[i] = []int{}
 							b = false
 						}
