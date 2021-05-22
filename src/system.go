@@ -97,25 +97,25 @@ const (
 )
 
 type GameState struct {
-	chars                   []Char
+	charArray               []Char
 	charList                CharList
 }
 
 // Create a new Char and add it to the game state.
 // Return a pointer to the new character and its index in the chars slice
 func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
-	state.chars = append(state.chars, Char{aimg: *newAfterImage()})
-	index = len(state.chars) - 1
-	state.chars[index].init(n, idx)
-	state.chars[index].stateIdx = index
-	return index, &state.chars[index]
+	state.charArray = append(state.charArray, Char{aimg: *newAfterImage()})
+	index = len(state.charArray) - 1
+	state.charArray[index].init(n, idx)
+	state.charArray[index].stateIdx = index
+	return index, &state.charArray[index]
 }
 
 // Add a Char to the game state.
 // Return its index in the chars slice
 func (state *GameState) appendChar(c *Char) (index int) {
-	state.chars = append(state.chars, *c)
-	index = len(state.chars) - 1
+	state.charArray = append(state.charArray, *c)
+	index = len(state.charArray) - 1
 	c.stateIdx = index
 	return index
 }
@@ -123,7 +123,7 @@ func (state *GameState) appendChar(c *Char) (index int) {
 // Remove Char objects from the game state.
 // Parameter is presumably a slice from sys.chars
 func (state *GameState) removeCharSlice(removedChars ...int) {
-	if (removedChars == nil || state.chars == nil) {
+	if (removedChars == nil || state.charArray == nil) {
 		return;
 	}
 	if (len(removedChars) > 0) {
@@ -138,14 +138,14 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 		oi := 0
 		for _, cidx := range removed {
 			idx := cidx - oi
-			if (idx >= len(state.chars)) {
+			if (idx >= len(state.charArray)) {
 				panic("Tried removing a character index not in the game state")
 			}
 			
 			// Clear state index from element
-			state.chars[idx].stateIdx = -1
+			state.charArray[idx].stateIdx = -1
 			// If element is found, remove
-			state.chars = append(state.chars[:idx], state.chars[idx+1:]...)
+			state.charArray = append(state.charArray[:idx], state.charArray[idx+1:]...)
 			oi++
 		}
 		
@@ -171,8 +171,8 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 		sys.gs.charList.removeSet(removed...)
 
 		// Loop through chars and update their indices
-		for i := range state.chars {
-			state.chars[i].stateIdx = i
+		for i := range state.charArray {
+			state.charArray[i].stateIdx = i
 		}
 	}
 }
@@ -952,10 +952,10 @@ func (s *System) getChar(pn int, index int) *Char {
 		return nil
 	}
 	cidx := s.chars[pn][index]
-	if (cidx >= len(s.gs.chars)) {
+	if (cidx >= len(s.gs.charArray)) {
 		return nil
 	}
-	return &s.gs.chars[cidx]
+	return &s.gs.charArray[cidx]
 }
 // Get all player Chars
 func (s *System) getPlayers() []*Char {
@@ -2889,8 +2889,8 @@ func (l *Loader) loadChar(pn int) int {
 	p.teamside = p.playerNo & 1
 
 	sys.gs.removeCharSlice(sys.chars[pn]...)
-	pidx := len(sys.gs.chars) - 1
-	p = &sys.gs.chars[pidx]
+	pidx := len(sys.gs.charArray) - 1
+	p = &sys.gs.charArray[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
@@ -2964,8 +2964,8 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	sys.com[pn] = 8
 
 	sys.gs.removeCharSlice(sys.chars[pn]...)
-	pidx := len(sys.gs.chars) - 1
-	p = &sys.gs.chars[pidx]
+	pidx := len(sys.gs.charArray) - 1
+	p = &sys.gs.charArray[pidx]
 
 	sys.chars[pn] = make([]int, 1)
 	sys.chars[pn][0] = pidx
