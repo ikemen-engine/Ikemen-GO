@@ -950,7 +950,7 @@ func (e *Explod) setPos(c *Char) {
 		case PT_P1:
 			pPos(c)
 		case PT_P2:
-			if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
+			if p2 := sys.gs.charList.enemyNear(c, 0, true, false); p2 != nil {
 				pPos(p2)
 			}
 		case PT_F, PT_B:
@@ -2501,10 +2501,10 @@ func (c *Char) enemy(n int32) *Char {
 	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, c.gi().constants["default.ignoredefeatedenemies"] != 0, false)
+	return sys.gs.charList.enemyNear(c, n, c.gi().constants["default.ignoredefeatedenemies"] != 0, false)
 }
 func (c *Char) p2() *Char {
-	p2 := sys.charList.enemyNear(c, 0, true, false)
+	p2 := sys.gs.charList.enemyNear(c, 0, true, false)
 	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
 		return nil
 	}
@@ -3063,7 +3063,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 // Furimuki = Turn around
 func (c *Char) turn() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if e := sys.charList.enemyNear(c, 0, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
+		if e := sys.gs.charList.enemyNear(c, 0, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5, false)
@@ -3181,7 +3181,7 @@ func (c *Char) destroy() {
 			}
 		}
 		c.children = c.children[:0]
-		sys.charList.delete(c)
+		sys.gs.charList.delete(c)
 		c.helperIndex = -1
 		c.setSF(CSF_destroy)
 	}
@@ -3223,7 +3223,7 @@ func (c *Char) newHelper() (h *Char) {
 	h.id, h.helperId = sys.newCharId(), 0
 	h.copyParent(c)
 	c.addChild(h)
-	sys.charList.add(h)
+	sys.gs.charList.add(h)
 	return
 }
 func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
@@ -3237,7 +3237,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		p[1] = c.pos[1]*c.localscl/localscl + pos[1]
 		*dstFacing *= c.facing
 	case PT_P2:
-		if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
+		if p2 := sys.gs.charList.enemyNear(c, 0, true, false); p2 != nil {
 			p[0] = p2.pos[0]*p2.localscl/localscl + pos[0]*p2.facing
 			p[1] = p2.pos[1]*p2.localscl/localscl + pos[1]
 			if isProj {

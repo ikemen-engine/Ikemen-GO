@@ -820,7 +820,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Reset and setup characters
-				sys.charList.clear()
+				sys.gs.charList.clear()
 				for i := 0; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
 						sys.getChar(i, 0).id = sys.newCharId()
@@ -838,7 +838,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 				for i, c := range sys.getPlayers() {
 					if c != nil {
-						sys.charList.add(c)
+						sys.gs.charList.add(c)
 						if sys.roundsExisted[i&1] == 0 {
 							c.loadPallet()
 						}
@@ -3100,7 +3100,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LString(""))
 			}
 		} else {
-			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
+			if p := sys.gs.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
 				!(p.scf(SCF_ko) && p.scf(SCF_over)) {
 				l.Push(lua.LString(p.name))
 			} else {

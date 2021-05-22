@@ -98,6 +98,7 @@ const (
 
 type GameState struct {
 	chars                   []Char
+	charList                CharList
 }
 
 // Create a new Char and add it to the game state.
@@ -167,7 +168,7 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 			}
 		}
 		// Do the same with CharList
-		sys.charList.removeSet(removed...)
+		sys.gs.charList.removeSet(removed...)
 
 		// Loop through chars and update their indices
 		for i := range state.chars {
@@ -229,7 +230,6 @@ type System struct {
 	// Game State
 	gs                      GameState
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
-	charList                CharList
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
 	numSimul, numTurns      [2]int32
@@ -842,7 +842,7 @@ func (s *System) anyButton() bool {
 	return s.anyHardButton()
 }
 func (s *System) playerID(id int32) *Char {
-	return s.charList.get(id)
+	return s.gs.charList.get(id)
 }
 func (s *System) matchOver() bool {
 	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
@@ -1223,7 +1223,7 @@ func (s *System) commandUpdate() {
 }
 func (s *System) charUpdate(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
-	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+	s.gs.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1239,7 +1239,7 @@ func (s *System) charUpdate(cvmin, cvmax,
 				}
 			}
 		}
-		s.charList.getHit()
+		s.gs.charList.getHit()
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id != IErr {
@@ -1247,7 +1247,7 @@ func (s *System) charUpdate(cvmin, cvmax,
 				}
 			}
 		}
-		s.charList.tick()
+		s.gs.charList.tick()
 	}
 }
 func (s *System) posReset() {
@@ -1313,7 +1313,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(*x, &cvmin, &cvmax,
+		s.gs.charList.action(*x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
 		s.nomusic = s.sf(GSF_nomusic)
 	} else {
@@ -1344,7 +1344,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	s.charList.cueDraw()
+	s.gs.charList.cueDraw()
 	explUpdate := func(edl *[len(s.chars)][]int, drop bool) {
 		for i, el := range *edl {
 			for j := len(el) - 1; j >= 0; j-- {
