@@ -36,7 +36,7 @@ const (
 // The only instance of a System struct.
 // Do not create more than 1.
 var sys = System{
-	gs:                GameState{randseed:int32(time.Now().UnixNano())},
+	gs:                GameState{randseed:int32(time.Now().UnixNano()), cam: *newCamera()},
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
@@ -66,7 +66,6 @@ var sys = System{
 	powerShare:            [...]bool{true, true},
 	oldNextAddTime:        1,
 	commandLine:           make(chan string),
-	cam:                   *newCamera(),
 	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
@@ -101,6 +100,7 @@ type GameState struct {
 	charArray               []Char
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
+	cam                     Camera
 }
 
 // Create a new Char and add it to the game state.
@@ -300,7 +300,6 @@ type System struct {
 	enableZoomstate         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
-	cam                     Camera
 	finish                  FinishType
 	waitdown                int32
 	slowtime                int32
@@ -1085,15 +1084,15 @@ func (s *System) nextRound() {
 			swap = true
 		}
 	}
-	s.cam.stageCamera = s.stage.stageCamera
-	s.cam.Init()
+	s.gs.cam.stageCamera = s.stage.stageCamera
+	s.gs.cam.Init()
 	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
 	s.screenright = float32(s.stage.screenright) * s.stage.localscl
 	if s.stage.resetbg || swap {
 		s.stage.reset()
 	}
-	s.cam.ResetZoomdelay()
-	s.cam.Update(1, 0, 0)
+	s.gs.cam.ResetZoomdelay()
+	s.gs.cam.Update(1, 0, 0)
 	for i, p := range s.getPlayers() {
 		if p != nil {
 			s.nextCharId = Max(s.nextCharId, p.id+1)
@@ -1269,16 +1268,16 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
-	s.cam.Update(scl, *x, *y)
+	s.gs.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
 	leftest, rightest = *x, *x
-	if s.cam.verticalfollow > 0 {
-		lowest = s.cam.ScreenPos[1]
+	if s.gs.cam.verticalfollow > 0 {
+		lowest = s.gs.cam.ScreenPos[1]
 	}
 	if s.tickFrame() {
-		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
-		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
-			float32(s.gameWidth)/s.cam.Scale - s.screenright
+		s.xmin = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] + s.screenleft
+		s.xmax = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] +
+			float32(s.gameWidth)/s.gs.cam.Scale - s.screenright
 		if s.xmin > s.xmax {
 			s.xmin = (s.xmin + s.xmax) / 2
 			s.xmax = s.xmin
@@ -1367,7 +1366,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	explUpdate(&s.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
-	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
+	sclMul = s.gs.cam.action(x, y, leftest, rightest, lowest, highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 	introSkip := false
 	if s.tickNextFrame() {
@@ -1389,10 +1388,10 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					*x = 0
 					leftest = MaxF(float32(Min(s.stage.p[0].startx,
 						s.stage.p[1].startx))*s.stage.localscl,
-						-(float32(s.gameWidth)/2)/s.cam.BaseScale()+s.screenleft) - ox
+						-(float32(s.gameWidth)/2)/s.gs.cam.BaseScale()+s.screenleft) - ox
 					rightest = MinF(float32(Max(s.stage.p[0].startx,
 						s.stage.p[1].startx))*s.stage.localscl,
-						(float32(s.gameWidth)/2)/s.cam.BaseScale()-s.screenright) - ox
+						(float32(s.gameWidth)/2)/s.gs.cam.BaseScale()-s.screenright) - ox
 					introSkip = true
 					s.introSkipped = true
 				}
@@ -1648,8 +1647,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if introSkip {
 		sclMul = 1 / scl
 	}
-	leftest = (leftest - s.screenleft) * s.cam.BaseScale()
-	rightest = (rightest + s.screenright) * s.cam.BaseScale()
+	leftest = (leftest - s.screenleft) * s.gs.cam.BaseScale()
+	rightest = (rightest + s.screenright) * s.gs.cam.BaseScale()
 	return
 }
 func (s *System) draw(x, y, scl float32) {
@@ -1684,20 +1683,20 @@ func (s *System) draw(x, y, scl float32) {
 		}
 		if !s.sf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
-				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
+				s.shadows.drawReflection(x, y, scl*s.gs.cam.BaseScale())
 			}
-			s.shadows.draw(x, y, scl*s.cam.BaseScale())
+			s.shadows.draw(x, y, scl*s.gs.cam.BaseScale())
 		}
 		off := s.envShake.getOffset()
 		yofs, yofs2 := float32(s.gameHeight), float32(0)
-		if scl > 1 && s.cam.verticalfollow > 0 {
-			yofs = s.cam.screenZoff + float32(s.gameHeight-240)
-			yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
+		if scl > 1 && s.gs.cam.verticalfollow > 0 {
+			yofs = s.gs.cam.screenZoff + float32(s.gameHeight-240)
+			yofs2 = (240 - s.gs.cam.screenZoff) * (1 - 1/scl)
 		}
 		yofs *= 1/scl - 1
 		rect := s.scrrect
-		if off < (yofs-y+s.cam.boundH)*scl {
-			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
+		if off < (yofs-y+s.gs.cam.boundH)*scl {
+			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.gs.cam.boundH)*scl-off)*
 				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
 			fade(rect, 0, 255)
 		}
@@ -1707,7 +1706,7 @@ func (s *System) draw(x, y, scl float32) {
 			rect[1] = s.scrrect[3] - rect[3]
 			fade(rect, 0, 255)
 		}
-		bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
+		bl, br := MinF(x, s.gs.cam.boundL), MaxF(x, s.gs.cam.boundR)
 		xofs := float32(s.gameWidth) * (1/scl - 1) / 2
 		rect = s.scrrect
 		if x-xofs < bl {
@@ -1721,20 +1720,20 @@ func (s *System) draw(x, y, scl float32) {
 			rect[0] = s.scrrect[2] - rect[2]
 			fade(rect, 0, 255)
 		}
-		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
+		s.bottomSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
 		FillRect(s.scrrect, ecol, 255)
 	}
 	if s.envcol_time == 0 || s.envcol_under {
-		s.sprites.draw(x, y, scl*s.cam.BaseScale())
+		s.sprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		if s.envcol_time == 0 && !s.sf(GSF_nofg) {
 			s.stage.draw(true, bgx, bgy, scl)
 		}
 	}
 	s.lifebar.draw(1)
-	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
+	s.topSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 	s.lifebar.draw(2)
 }
 func (s *System) drawTop() {
@@ -2142,8 +2141,8 @@ func (s *System) fight() (reload bool) {
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
 		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
-		scl = s.cam.startzoom
-		s.cam.Update(scl, x, y)
+		scl = s.gs.cam.startzoom
+		s.gs.cam.Update(scl, x, y)
 	}
 	reset()
 
@@ -2247,17 +2246,17 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Update camera
-		scl = s.cam.ScaleBound(scl, sclmul)
+		scl = s.gs.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
 		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
 			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
 		}
-		x = s.cam.XBound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
-		if !s.cam.ZoomEnable {
+		x = s.gs.cam.XBound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
+		if !s.gs.cam.ZoomEnable {
 			// Pos X の誤差が出ないように精度を落とす
 			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 		}
-		y = s.cam.YBound(scl, newy)
+		y = s.gs.cam.YBound(scl, newy)
 
 		// If frame is ready to tick and not paused
 		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
@@ -2295,8 +2294,8 @@ func (s *System) fight() (reload bool) {
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
 					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
 				}
-				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				dscl = MaxF(s.gs.cam.MinScale, s.drawScale/s.gs.cam.BaseScale())
+				dx = s.gs.cam.XBound(dscl, x+s.zoomPosXLag/scl)
 				dy = y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0
@@ -2304,7 +2303,7 @@ func (s *System) fight() (reload bool) {
 				s.zoomPosYLag = 0
 				s.zoomScale = 1
 				s.zoomPos = [2]float32{0, 0}
-				s.drawScale = s.cam.Scale
+				s.drawScale = s.gs.cam.Scale
 			}
 			s.draw(dx, dy, dscl)
 		}

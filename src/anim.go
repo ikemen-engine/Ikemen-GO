@@ -868,8 +868,8 @@ func (dl DrawList) draw(x, y, scl float32) {
 			p = [...]float32{s.pos[0], s.pos[1] + float32(sys.gameHeight-240)}
 			cs = 1
 		} else {
-			p = [...]float32{sys.cam.Offset[0]/cs - (x - s.pos[0]),
-				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/cs -
+			p = [...]float32{sys.gs.cam.Offset[0]/cs - (x - s.pos[0]),
+				(sys.gs.cam.GroundLevel()+sys.gs.cam.Offset[1]-sys.envShake.getOffset())/cs -
 					(y - s.pos[1])}
 		}
 		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
@@ -931,8 +931,8 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		}
 		color = color&0xff*alpha<<8&0xff0000 |
 			color&0xff00*alpha>>8&0xff00 | color&0xff0000*alpha>>24&0xff
-		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
-			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
+		s.anim.ShadowDraw(sys.gs.cam.Offset[0]-(x-s.pos[0])*scl,
+			sys.gs.cam.GroundLevel()+sys.gs.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
 			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle, s.yangle, s.xangle,
 			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl)
@@ -955,8 +955,8 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		if s.anim.srcAlpha == 1 && s.anim.dstAlpha == 255 {
 			s.anim.srcAlpha = 0
 		}
-		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
-			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
+		s.anim.Draw(&sys.scrrect, sys.gs.cam.Offset[0]/scl-(x-s.pos[0]),
+			(sys.gs.cam.GroundLevel()+sys.gs.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
 			s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl)
 	}

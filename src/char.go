@@ -138,10 +138,10 @@ type ClsnText struct {
 type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
-	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
-	y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
-	xs *= sys.cam.Scale
-	ys *= sys.cam.Scale
+	x = (x - sys.gs.cam.Pos[0]) * sys.gs.cam.Scale
+	y = (y-sys.gs.cam.Pos[1])*sys.gs.cam.Scale + sys.gs.cam.GroundLevel()
+	xs *= sys.gs.cam.Scale
+	ys *= sys.gs.cam.Scale
 	for i := 0; i+3 < len(clsn); i += 4 {
 		rect := [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
 			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
@@ -928,16 +928,16 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 	lPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		e.setX(sys.gs.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.gs.cam.Scale)
+		e.setY(sys.gs.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.gs.cam.Scale)
 		if e.bindtime == 0 {
 			e.bindtime = 1
 		}
 	}
 	rPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl +
-			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		e.setX(sys.gs.cam.ScreenPos[0]/e.localscl +
+			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.gs.cam.Scale))
+		e.setY(sys.gs.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.gs.cam.Scale)
 		if e.bindtime == 0 {
 			e.bindtime = 1
 		}
@@ -1117,16 +1117,16 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		//		switch e.postype {
 		//		case PT_L:
 		//			for i := range e.pos {
-		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//				e.pos[i] = sys.gs.cam.ScreenPos[i] + e.offset[i]/sys.gs.cam.Scale
 		//			}
 		//		case PT_R:
-		//			e.pos[0] = sys.cam.ScreenPos[0] +
-		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
-		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
+		//			e.pos[0] = sys.gs.cam.ScreenPos[0] +
+		//				(float32(sys.gameWidth)+e.offset[0])/sys.gs.cam.Scale
+		//			e.pos[1] = sys.gs.cam.ScreenPos[1] + e.offset[1]/sys.gs.cam.Scale
 		//		}
 		//	} else if e.space == Space_screen {
 		//		for i := range e.pos {
-		//			e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//			e.pos[i] = sys.gs.cam.ScreenPos[i] + e.offset[i]/sys.gs.cam.Scale
 		//		}
 		//	}
 		//}
@@ -1243,9 +1243,9 @@ func (p *Projectile) update(playerNo int) {
 			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
 				p.velocity[0]*p.facing < 0 &&
-					p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
+					p.pos[0] < sys.gs.cam.XMin/p.localscl-float32(p.stagebound) ||
 				p.velocity[0]*p.facing > 0 &&
-					p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
+					p.pos[0] > sys.gs.cam.XMax/p.localscl+float32(p.stagebound) ||
 				p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
 				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
 				p.removetime == 0 ||
@@ -2562,7 +2562,7 @@ func (c *Char) backEdgeDist() float32 {
 	return c.pos[0] - sys.xmin/c.localscl
 }
 func (c *Char) bottomEdge() float32 {
-	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
+	return sys.gs.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
@@ -2627,10 +2627,10 @@ func (c *Char) frontEdgeDist() float32 {
 	return c.pos[0] - sys.xmin/c.localscl
 }
 func (c *Char) gameHeight() float32 {
-	return 240 / c.localscl / sys.cam.Scale
+	return 240 / c.localscl / sys.gs.cam.Scale
 }
 func (c *Char) gameWidth() float32 {
-	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
+	return float32(sys.gameWidth) / c.localscl / sys.gs.cam.Scale
 }
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
@@ -2676,7 +2676,7 @@ func (c *Char) isHost() bool {
 	return sys.netInput != nil && sys.netInput.host
 }
 func (c *Char) leftEdge() float32 {
-	return sys.cam.ScreenPos[0] / c.localscl
+	return sys.gs.cam.ScreenPos[0] / c.localscl
 }
 func (c *Char) lose() bool {
 	if c.teamside == -1 {
@@ -2872,7 +2872,7 @@ func (c *Char) ratioLevel() int32 {
 	return sys.ratioLevel[int32(c.memberNo)*2+1]
 }
 func (c *Char) rightEdge() float32 {
-	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
+	return sys.gs.cam.ScreenPos[0]/c.localscl + c.gameWidth()
 }
 func (c *Char) roundsExisted() int32 {
 	if c.teamside == -1 {
@@ -2908,10 +2908,10 @@ func (c *Char) roundType() int32 {
 	return 0
 }
 func (c *Char) screenPosX() float32 {
-	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
+	return (c.pos[0]*c.localscl - sys.gs.cam.ScreenPos[0]) // * sys.gs.cam.Scale
 }
 func (c *Char) screenPosY() float32 {
-	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
+	return (c.pos[1]*c.localscl - sys.gs.cam.ScreenPos[1]) // * sys.gs.cam.Scale
 }
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
@@ -2928,15 +2928,15 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 }
 func (c *Char) stageFrontEdge() float32 {
 	if c.facing > 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
+		return sys.gs.cam.XMax/c.localscl - c.pos[0]
 	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
+	return c.pos[0] - sys.gs.cam.XMin/c.localscl
 }
 func (c *Char) stageBackEdge() float32 {
 	if c.facing < 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
+		return sys.gs.cam.XMax/c.localscl - c.pos[0]
 	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
+	return c.pos[0] - sys.gs.cam.XMin/c.localscl
 }
 func (c *Char) teamLeader() int {
 	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {
@@ -2963,7 +2963,7 @@ func (c *Char) time() int32 {
 	return c.ss.time
 }
 func (c *Char) topEdge() float32 {
-	return sys.cam.ScreenPos[1] / c.localscl
+	return sys.gs.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) win() bool {
 	if c.teamside == -1 {
@@ -3474,7 +3474,7 @@ func (c *Char) posReset() {
 		c.setX(0)
 	} else {
 		c.facing = 1 - 2*float32(c.playerNo&1)
-		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
+		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.gs.cam.startx)*
 			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*sys.stage.p1p3dist) / c.localscl)
 	}
 	c.setY(0)
@@ -5592,8 +5592,8 @@ func (c *Char) cueDraw() {
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
 		//debug clsnText
-		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
-		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl + 240 - float32(sys.gameHeight)
+		x = (x-sys.gs.cam.Pos[0])*sys.gs.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
+		y = (y-sys.gs.cam.Pos[1])*sys.gs.cam.Scale + sys.gs.cam.GroundLevel() + c.height()*c.localscl + 240 - float32(sys.gameHeight)
 		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
 		y += -c.height()*(320/float32(c.localcoord)) + float32(sys.gameHeight-240)
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})

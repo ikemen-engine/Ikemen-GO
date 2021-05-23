@@ -1086,11 +1086,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge())
 		case OC_camerapos_x:
-			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
+			sys.bcStack.PushF(sys.gs.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
+			sys.bcStack.PushF(sys.gs.cam.Pos[1] / oc.localscl)
 		case OC_camerazoom:
-			sys.bcStack.PushF(sys.cam.Scale)
+			sys.bcStack.PushF(sys.gs.cam.Scale)
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_command:
@@ -1178,7 +1178,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
-			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.cam.Pos[0]/oc.localscl))
+			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.gs.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
 			sys.bcStack.PushF((c.pos[1] - c.platformPosY) * c.localscl / oc.localscl)
 		case OC_power:
@@ -3275,7 +3275,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case posSet_x:
-			crun.setX(sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*lclscround)
+			crun.setX(sys.gs.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*lclscround)
 		case posSet_y:
 			crun.setY(exp[0].evalF(c)*lclscround + crun.platformPosY)
 		case posSet_z:

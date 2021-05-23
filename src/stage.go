@@ -358,7 +358,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
-	if !sys.cam.ZoomEnable {
+	if !sys.gs.cam.ZoomEnable {
 		if bg.rasterx[1] == bg.rasterx[0] &&
 			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
 			x = float32(math.Floor(float64(x/bgscl))) * bgscl
@@ -723,16 +723,16 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
-		if sys.cam.ZoomMax == 0 {
+		if sys.gs.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
 		} else {
-			s.stageCamera.zoomin = sys.cam.ZoomMax
+			s.stageCamera.zoomin = sys.gs.cam.ZoomMax
 		}
 		sec[0].ReadF32("zoomout", &s.stageCamera.mugenZoomOut)
-		if sys.cam.ZoomMin == 0 {
+		if sys.gs.cam.ZoomMin == 0 {
 			s.stageCamera.zoomout = s.stageCamera.mugenZoomOut
 		} else {
-			s.stageCamera.zoomout = sys.cam.ZoomMin
+			s.stageCamera.zoomout = sys.gs.cam.ZoomMin
 		}
 		var tmp int32
 		if sec[0].ReadI32("tensionhigh", &tmp) {
@@ -1054,7 +1054,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		if yofs < 0 {
 			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
 			if scl > 1 {
-				tmp += (sys.cam.screenZoff + float32(sys.gameHeight-240)) * (1/scl - 1)
+				tmp += (sys.gs.cam.screenZoff + float32(sys.gameHeight-240)) * (1/scl - 1)
 			} else {
 				tmp += float32(sys.gameHeight) * (1/scl - 1)
 			}
@@ -1076,7 +1076,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			}
 		}
 	}
-	if !sys.cam.ZoomEnable {
+	if !sys.gs.cam.ZoomEnable {
 		for i, p := range pos {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}

@@ -2126,19 +2126,19 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
-		sys.cam.ZoomEnable = boolArg(l, 1)
+		sys.gs.cam.ZoomEnable = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setZoomMax", func(l *lua.LState) int {
-		sys.cam.ZoomMax = float32(numArg(l, 1))
+		sys.gs.cam.ZoomMax = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomMin", func(l *lua.LState) int {
-		sys.cam.ZoomMin = float32(numArg(l, 1))
+		sys.gs.cam.ZoomMin = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomSpeed", func(l *lua.LState) int {
-		sys.cam.ZoomSpeed = 12 - float32(numArg(l, 1))
+		sys.gs.cam.ZoomSpeed = 12 - float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "sleep", func(l *lua.LState) int {
@@ -2563,15 +2563,15 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "cameraposX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Pos[0]))
+		l.Push(lua.LNumber(sys.gs.cam.Pos[0]))
 		return 1
 	})
 	luaRegister(l, "cameraposY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Pos[1]))
+		l.Push(lua.LNumber(sys.gs.cam.Pos[1]))
 		return 1
 	})
 	luaRegister(l, "camerazoom", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Scale))
+		l.Push(lua.LNumber(sys.gs.cam.Scale))
 		return 1
 	})
 	luaRegister(l, "canrecover", func(*lua.LState) int {
@@ -3230,7 +3230,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "posX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.pos[0] - sys.cam.Pos[0]))
+		l.Push(lua.LNumber(sys.debugWC.pos[0] - sys.gs.cam.Pos[0]))
 		return 1
 	})
 	luaRegister(l, "posY", func(*lua.LState) int {
