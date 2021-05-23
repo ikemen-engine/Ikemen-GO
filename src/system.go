@@ -276,6 +276,9 @@ type System struct {
 
 	// Game State
 	gs                      GameState
+	savedGs                 *GameState
+	saveStateFlag           bool
+	loadStateFlag           bool
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
 	numSimul, numTurns      [2]int32
@@ -1076,6 +1079,9 @@ func (s *System) playerClear(pn int, destroy bool) {
 func (s *System) nextRound() {
 	s.resetGblEffect()
 	s.lifebar.reset()
+	s.savedGs = nil
+	s.saveStateFlag = false
+	s.loadStateFlag = false
 	s.finish = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_N, WT_N}
@@ -2197,6 +2203,18 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 		}
+
+		// Save/load state
+		if (s.saveStateFlag) {
+			s.savedGs = s.gs.clone()
+
+		} else if s.loadStateFlag {
+			if (s.savedGs != nil) {
+				s.gs = *s.savedGs.clone()
+			}
+		}
+		s.saveStateFlag = false;
+		s.loadStateFlag = false;
 
 		// If next round
 		if s.roundOver() && !fin {

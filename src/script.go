@@ -1629,6 +1629,14 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundResetFlg = true
 		return 0
 	})
+	luaRegister(l, "saveState", func(*lua.LState) int {
+		sys.saveStateFlag = true
+		return 0
+	})
+	luaRegister(l, "loadState", func(*lua.LState) int {
+		sys.loadStateFlag = true
+		return 0
+	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
