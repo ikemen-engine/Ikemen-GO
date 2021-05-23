@@ -101,6 +101,7 @@ type GameState struct {
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
 	cam                     Camera
+	ac                      activeCamera
 }
 
 // Create a new Char and add it to the game state.
@@ -2105,8 +2106,7 @@ func (s *System) fight() (reload bool) {
 
 	oldWins, oldDraws := s.wins, s.draws
 	oldTeamLeader := s.teamLeader
-	var x, y, newx, newy, l, r float32
-	var scl, sclmul float32
+	s.gs.ac = activeCamera{}
 	// Anonymous function to reset values, called at the start of each round
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
@@ -2140,9 +2140,8 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
-		scl = s.gs.cam.startzoom
-		s.gs.cam.Update(scl, x, y)
+		s.gs.ac.reset(&s.gs.cam)
+		s.gs.cam.Update(s.gs.ac.scl, s.gs.ac.x, s.gs.ac.y)
 	}
 	reset()
 
@@ -2246,17 +2245,18 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Update camera
-		scl = s.gs.cam.ScaleBound(scl, sclmul)
-		tmp := (float32(s.gameWidth) / 2) / scl
-		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
-			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
+		ac := &s.gs.ac
+		ac.scl = s.gs.cam.ScaleBound(ac.scl, ac.sclmul)
+		tmp := (float32(s.gameWidth) / 2) / ac.scl
+		if AbsF((ac.l+ac.r)-(ac.newx-ac.x)*2) >= tmp/2 {
+			tmp = MaxF(0, MinF(tmp, MaxF((ac.newx-ac.x)-ac.l, ac.r-(ac.newx-ac.x))))
 		}
-		x = s.gs.cam.XBound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
+		ac.x = s.gs.cam.XBound(ac.scl, MinF(ac.x+ac.l+tmp, MaxF(ac.x+ac.r-tmp, ac.newx)))
 		if !s.gs.cam.ZoomEnable {
 			// Pos X の誤差が出ないように精度を落とす
-			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
+			ac.x = float32(math.Ceil(float64(ac.x)*4-0.5) / 4)
 		}
-		y = s.gs.cam.YBound(scl, newy)
+		ac.y = s.gs.cam.YBound(ac.scl, ac.newy)
 
 		// If frame is ready to tick and not paused
 		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
@@ -2266,8 +2266,8 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Update game state
-		newx, newy = x, y
-		l, r, sclmul = s.action(&newx, &newy, scl)
+		ac.newx, ac.newy = ac.x, ac.y
+		ac.l, ac.r, ac.sclmul = s.action(&ac.newx, &ac.newy, ac.scl)
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
@@ -2287,16 +2287,16 @@ func (s *System) fight() (reload bool) {
 		}
 		// Render frame
 		if !s.frameSkip {
-			dx, dy, dscl := x, y, scl
+			dx, dy, dscl := ac.x, ac.y, ac.scl
 			if s.enableZoomstate {
 				if !s.debugPaused() {
 					s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
-					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
+					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*ac.scl-s.drawScale)*s.zoomlag) * s.zoomScale * ac.scl
 				}
 				dscl = MaxF(s.gs.cam.MinScale, s.drawScale/s.gs.cam.BaseScale())
-				dx = s.gs.cam.XBound(dscl, x+s.zoomPosXLag/scl)
-				dy = y + s.zoomPosYLag
+				dx = s.gs.cam.XBound(dscl, ac.x+s.zoomPosXLag/ac.scl)
+				dy = ac.y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0
 				s.zoomPosXLag = 0
