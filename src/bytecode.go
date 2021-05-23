@@ -1114,7 +1114,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushF(c.gameHeight())
 			}
 		case OC_gametime:
-			sys.bcStack.PushI(sys.gameTime)
+			sys.bcStack.PushI(sys.gs.gameTime)
 		case OC_gamewidth:
 			if c.gi().ver[0] == 1 && c.gi().ver[1] == 0 {
 				sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
@@ -7002,7 +7002,7 @@ func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeAdd_value:
-			sys.time = Min(sys.roundTime, sys.time+exp[0].evalI(c))
+			sys.gs.time = Min(sys.roundTime, sys.gs.time+exp[0].evalI(c))
 		}
 		return true
 	})
@@ -7020,7 +7020,7 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeSet_value:
-			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+			sys.gs.time = Min(sys.roundTime, exp[0].evalI(c))
 		}
 		return true
 	})

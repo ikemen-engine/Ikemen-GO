@@ -2106,7 +2106,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setTime", func(*lua.LState) int {
-		sys.time = int32(numArg(l, 1))
+		sys.gs.time = int32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setTimeFramesPerCount", func(l *lua.LState) int {
@@ -2822,7 +2822,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "gametime", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.gameTime))
+		l.Push(lua.LNumber(sys.gs.gameTime))
 		return 1
 	})
 	luaRegister(l, "gamewidth", func(*lua.LState) int {

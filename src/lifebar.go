@@ -1232,8 +1232,8 @@ func (ti *LifeBarTime) draw(layerno int16, f []*Fnt) {
 		ti.counter[0].font[0] >= 0 && int(ti.counter[0].font[0]) < len(f) && f[ti.counter[0].font[0]] != nil {
 		var timeval int32 = -1
 		time := "o"
-		if sys.time >= 0 {
-			timeval = int32(math.Ceil(float64(sys.time) / float64(ti.framespercount)))
+		if sys.gs.time >= 0 {
+			timeval = int32(math.Ceil(float64(sys.gs.time) / float64(ti.framespercount)))
 			time = fmt.Sprintf("%v", timeval)
 		}
 		var tv int32
@@ -1789,7 +1789,7 @@ func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
 	ro.fight_top.Reset()
 	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, ro.fight_sndtime, 0
-	sys.timerCount = append(sys.timerCount, sys.gameTime)
+	sys.timerCount = append(sys.timerCount, sys.gs.gameTime)
 	ro.timerActive = true
 }
 func (ro *LifeBarRound) act() bool {
@@ -1893,11 +1893,11 @@ func (ro *LifeBarRound) act() bool {
 				ro.wt[1]--
 			}
 		}
-		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.time == 0) {
+		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.gs.time == 0) {
 			if ro.timerActive {
-				if sys.gameTime-sys.timerCount[sys.round-1] > 0 {
-					sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
-					sys.timerRounds = append(sys.timerRounds, sys.roundTime-sys.time)
+				if sys.gs.gameTime-sys.timerCount[sys.round-1] > 0 {
+					sys.timerCount[sys.round-1] = sys.gs.gameTime - sys.timerCount[sys.round-1]
+					sys.timerRounds = append(sys.timerRounds, sys.roundTime-sys.gs.time)
 				} else {
 					sys.timerCount[sys.round-1] = 0
 				}
@@ -2292,7 +2292,7 @@ func (tr *LifeBarTimer) bgDraw(layerno int16) {
 }
 func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	if tr.active && sys.lifebar.ti.framespercount > 0 &&
-		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil && sys.time >= 0 {
+		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil && sys.gs.time >= 0 {
 		text := tr.text.text
 		totalSec := float64(timeTotal()) / 60
 		h := math.Floor(totalSec / 3600)
@@ -2318,11 +2318,11 @@ func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	}
 }
 func timeElapsed() int32 {
-	return sys.roundTime - sys.time
+	return sys.roundTime - sys.gs.time
 }
 func timeRemaining() int32 {
-	if sys.time >= 0 {
-		return sys.time
+	if sys.gs.time >= 0 {
+		return sys.gs.time
 	}
 	return -1
 }

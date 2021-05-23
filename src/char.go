@@ -4343,7 +4343,7 @@ func (c *Char) angleSet(a float32) {
 	c.angle = a
 }
 func (c *Char) ctrlOver() bool {
-	return sys.time == 0 ||
+	return sys.gs.time == 0 ||
 		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
@@ -6666,7 +6666,7 @@ func (cl *CharList) getHit() {
 	}
 }
 func (cl *CharList) tick() {
-	sys.gameTime++
+	sys.gs.gameTime++
 	for i := range sys.cgi {
 		if sys.cgi[i].unhittable > 0 {
 			sys.cgi[i].unhittable--

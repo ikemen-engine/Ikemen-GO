@@ -97,6 +97,8 @@ const (
 
 type GameState struct {
 	randseed                int32
+	time                    int32
+	gameTime                int32
 	charArray               []Char
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
@@ -214,13 +216,11 @@ type System struct {
 	com                     [MaxSimul*2 + MaxAttachedChar]float32
 	autolevel               bool
 	home                    int
-	gameTime                int32
 	match                   int32
 	inputRemap              [MaxSimul*2 + MaxAttachedChar]int
 	listenPort              string
 	round                   int32
 	intro                   int32
-	time                    int32
 	winTeam                 int
 	winType                 [2]WinType
 	winTrigger              [2]WinType
@@ -1047,7 +1047,7 @@ func (s *System) nextRound() {
 	s.fadeouttime = s.lifebar.ro.fadeout_time
 	s.winskipped = false
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
-	s.time = s.roundTime
+	s.gs.time = s.roundTime
 	s.nextCharId = s.helperMax
 	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
 		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins[0]-1) {
@@ -1429,9 +1429,9 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 		}
-		if s.intro == 0 && s.time > 0 && !s.sf(GSF_timerfreeze) &&
+		if s.intro == 0 && s.gs.time > 0 && !s.sf(GSF_timerfreeze) &&
 			(s.super <= 0 || !s.superpausebg) && (s.pause <= 0 || !s.pausebg) {
-			s.time--
+			s.gs.time--
 		}
 		fin := func() bool {
 			if s.intro > 0 {
@@ -1464,7 +1464,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 			ft := s.finish
-			if s.time == 0 {
+			if s.gs.time == 0 {
 				l := [2]float32{}
 				for i := 0; i < 2; i++ {
 					for j := i; j < MaxSimul*2; j += 2 {
@@ -1545,7 +1545,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					}
 				}
 			}
-			return ko[0] || ko[1] || s.time == 0
+			return ko[0] || ko[1] || s.gs.time == 0
 		}
 		if s.roundEnd() || fin() {
 			inclWinCount := func() {
@@ -1600,11 +1600,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					for _, p := range s.getPlayers() {
 						if p != nil {
 							//default life recovery, used only if externalized Lua implementaion is disabled
-							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p.win() &&
+							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.gs.time > 0 && p.win() &&
 								p.alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
 								p.life += int32((float32(p.lifeMax) *
-									float32(s.time) / 60) * s.turnsRecoveryRate)
+									float32(s.gs.time) / 60) * s.turnsRecoveryRate)
 								if p.life > p.lifeMax {
 									p.life = p.lifeMax
 								}
@@ -1633,7 +1633,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
 			spd = 1
-		} else if !s.sf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
+		} else if !s.sf(GSF_nokoslow) && s.gs.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
 			if s.slowtime < s.lifebar.ro.slow_fadetime {
 				spd += (float32(1) - s.lifebar.ro.slow_speed) * float32(s.lifebar.ro.slow_fadetime-s.slowtime) / float32(s.lifebar.ro.slow_fadetime)
@@ -1885,7 +1885,7 @@ func (s *System) drawDebug() {
 // at the start of any round where a new character tags in for turns mode
 func (s *System) fight() (reload bool) {
 	// Reset variables
-	s.gameTime, s.paused, s.accel = 0, false, 1
+	s.gs.gameTime, s.paused, s.accel = 0, false, 1
 	s.aiInput = [len(s.aiInput)]AiInput{}
 	// Defer resetting variables on return
 	defer func() {
