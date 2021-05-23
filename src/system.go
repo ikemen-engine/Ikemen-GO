@@ -110,6 +110,27 @@ type GameState struct {
 	ac                      activeCamera
 }
 
+func (gs *GameState) clone() (result *GameState) {
+	result = &GameState{}
+	*result = *gs
+	
+	// Manually copy references that shallow copy poorly, as needed
+	// Pointers, slices, maps, functions, channels etc
+	result.charArray = make([]Char, len(gs.charArray))
+	for i := range gs.charArray {
+		result.charArray[i] = *gs.charArray[i].clone()
+	}
+
+	for i := range gs.chars {
+		result.chars[i] = make([]int, len(gs.chars[i]))
+		copy(result.chars[i], gs.chars[i])
+	}
+
+	result.charList = *gs.charList.clone()
+
+	return
+}
+
 // Create a new Char and add it to the game state.
 // Return a pointer to the new character and its index in the chars slice
 func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
