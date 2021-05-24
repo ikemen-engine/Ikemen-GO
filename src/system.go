@@ -128,6 +128,26 @@ func (gs *GameState) clone() (result *GameState) {
 
 	result.charList = *gs.charList.clone()
 
+	for i := range gs.explods {
+		result.explods[i] = make([]Explod, len(gs.explods[i]))
+		copy(result.explods[i], gs.explods[i])
+	}
+
+	for i := range gs.explDrawlist {
+		result.explDrawlist[i] = make([]int, len(gs.explDrawlist[i]))
+		copy(result.explDrawlist[i], gs.explDrawlist[i])
+	}
+
+	for i := range gs.topexplDrawlist {
+		result.topexplDrawlist[i] = make([]int, len(gs.topexplDrawlist[i]))
+		copy(result.topexplDrawlist[i], gs.topexplDrawlist[i])
+	}
+
+	for i := range gs.underexplDrawlist {
+		result.underexplDrawlist[i] = make([]int, len(gs.underexplDrawlist[i]))
+		copy(result.underexplDrawlist[i], gs.underexplDrawlist[i])
+	}
+
 	return
 }
 
