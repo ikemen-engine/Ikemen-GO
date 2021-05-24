@@ -102,6 +102,10 @@ type GameState struct {
 	charArray               []Char
 	chars                   [MaxSimul*2 + MaxAttachedChar][]int
 	charList                CharList
+	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
+	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
+	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
+	underexplDrawlist       [MaxSimul*2 + MaxAttachedChar][]int
 	cam                     Camera
 	ac                      activeCamera
 }
@@ -308,10 +312,6 @@ type System struct {
 	fadeintime              int32
 	fadeouttime             int32
 	projs                   [MaxSimul*2 + MaxAttachedChar][]Projectile
-	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
-	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
-	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
-	underexplDrawlist       [MaxSimul*2 + MaxAttachedChar][]int
 	changeStateNest         int32
 	sprites                 DrawList
 	topSprites              DrawList
@@ -1027,10 +1027,10 @@ func (s *System) playerClear(pn int, destroy bool) {
 		p.sounds = p.sounds[:0]
 	}
 	s.projs[pn] = s.projs[pn][:0]
-	s.explods[pn] = s.explods[pn][:0]
-	s.explDrawlist[pn] = s.explDrawlist[pn][:0]
-	s.topexplDrawlist[pn] = s.topexplDrawlist[pn][:0]
-	s.underexplDrawlist[pn] = s.underexplDrawlist[pn][:0]
+	s.gs.explods[pn] = s.gs.explods[pn][:0]
+	s.gs.explDrawlist[pn] = s.gs.explDrawlist[pn][:0]
+	s.gs.topexplDrawlist[pn] = s.gs.topexplDrawlist[pn][:0]
+	s.gs.underexplDrawlist[pn] = s.gs.underexplDrawlist[pn][:0]
 }
 func (s *System) nextRound() {
 	s.resetGblEffect()
@@ -1349,8 +1349,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		for i, el := range *edl {
 			for j := len(el) - 1; j >= 0; j-- {
 				if el[j] >= 0 {
-					s.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
-					if s.explods[i][el[j]].id == IErr {
+					s.gs.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
+					if s.gs.explods[i][el[j]].id == IErr {
 						if drop {
 							el = append(el[:j], el[j+1:]...)
 							(*edl)[i] = el
@@ -1362,9 +1362,9 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	explUpdate(&s.explDrawlist, true)
-	explUpdate(&s.topexplDrawlist, false)
-	explUpdate(&s.underexplDrawlist, true)
+	explUpdate(&s.gs.explDrawlist, true)
+	explUpdate(&s.gs.topexplDrawlist, false)
+	explUpdate(&s.gs.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
 	sclMul = s.gs.cam.action(x, y, leftest, rightest, lowest, highest,

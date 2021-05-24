@@ -2753,7 +2753,7 @@ func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	var id, n int32 = eid.ToI(), 0
-	for _, e := range sys.explods[c.playerNo] {
+	for _, e := range sys.gs.explods[c.playerNo] {
 		if e.matchId(id, c.id) {
 			n++
 		}
@@ -3316,28 +3316,28 @@ func (c *Char) newExplod() (*Explod, int) {
 		expl.id, expl.playerId, expl.palfx = -1, c.id, c.getPalfx()
 		return expl
 	}
-	for i := range sys.explods[c.playerNo] {
-		if sys.explods[c.playerNo][i].id == IErr {
-			return explinit(&sys.explods[c.playerNo][i]), i
+	for i := range sys.gs.explods[c.playerNo] {
+		if sys.gs.explods[c.playerNo][i].id == IErr {
+			return explinit(&sys.gs.explods[c.playerNo][i]), i
 		}
 	}
-	i := len(sys.explods[c.playerNo])
+	i := len(sys.gs.explods[c.playerNo])
 	if i < sys.explodMax {
-		sys.explods[c.playerNo] = append(sys.explods[c.playerNo], Explod{})
-		return explinit(&sys.explods[c.playerNo][i]), i
+		sys.gs.explods[c.playerNo] = append(sys.gs.explods[c.playerNo], Explod{})
+		return explinit(&sys.gs.explods[c.playerNo][i]), i
 	}
 	return nil, -1
 }
 func (c *Char) getExplods(id int32) (expls []*Explod) {
-	for i, e := range sys.explods[c.playerNo] {
+	for i, e := range sys.gs.explods[c.playerNo] {
 		if e.matchId(id, c.id) {
-			expls = append(expls, &sys.explods[c.playerNo][i])
+			expls = append(expls, &sys.gs.explods[c.playerNo][i])
 		}
 	}
 	return
 }
 func (c *Char) insertExplodEx(i int, rp [2]int32) {
-	e := &sys.explods[c.playerNo][i]
+	e := &sys.gs.explods[c.playerNo][i]
 	if e.anim.nilAnim {
 		e.id = IErr
 		return
@@ -3351,7 +3351,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		c.forceRemapPal(e.palfx, rp)
 	}
 	if e.ontop {
-		td := &sys.topexplDrawlist[c.playerNo]
+		td := &sys.gs.topexplDrawlist[c.playerNo]
 		for ii, te := range *td {
 			if te < 0 {
 				(*td)[ii] = i
@@ -3360,7 +3360,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		}
 		*td = append(*td, i)
 	} else if e.under {
-		td := &sys.underexplDrawlist[c.playerNo]
+		td := &sys.gs.underexplDrawlist[c.playerNo]
 		for ii, te := range *td {
 			if te < 0 {
 				(*td)[ii] = i
@@ -3369,9 +3369,9 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		}
 		*td = append(*td, i)
 	} else {
-		ed := &sys.explDrawlist[c.playerNo]
+		ed := &sys.gs.explDrawlist[c.playerNo]
 		for ii, ex := range *ed {
-			pid := sys.explods[c.playerNo][ex].playerId
+			pid := sys.gs.explods[c.playerNo][ex].playerId
 			if pid >= c.id && (pid > c.id || ex < i) {
 				*ed = append(*ed, 0)
 				copy((*ed)[ii+1:], (*ed)[ii:])
@@ -3386,9 +3386,9 @@ func (c *Char) insertExplod(i int) {
 	c.insertExplodEx(i, [...]int32{-1, 0})
 }
 func (c *Char) explodBindTime(id, time int32) {
-	for i, e := range sys.explods[c.playerNo] {
+	for i, e := range sys.gs.explods[c.playerNo] {
 		if e.matchId(id, c.id) {
-			sys.explods[c.playerNo][i].bindtime = time
+			sys.gs.explods[c.playerNo][i].bindtime = time
 		}
 	}
 }
@@ -3396,8 +3396,8 @@ func (c *Char) removeExplod(id int32) {
 	remove := func(drawlist *[]int, drop bool) {
 		for i := len(*drawlist) - 1; i >= 0; i-- {
 			ei := (*drawlist)[i]
-			if ei >= 0 && sys.explods[c.playerNo][ei].matchId(id, c.id) {
-				sys.explods[c.playerNo][ei].id = IErr
+			if ei >= 0 && sys.gs.explods[c.playerNo][ei].matchId(id, c.id) {
+				sys.gs.explods[c.playerNo][ei].id = IErr
 				if drop {
 					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
 				} else {
@@ -3406,17 +3406,17 @@ func (c *Char) removeExplod(id int32) {
 			}
 		}
 	}
-	remove(&sys.explDrawlist[c.playerNo], true)
-	remove(&sys.topexplDrawlist[c.playerNo], false)
-	remove(&sys.underexplDrawlist[c.playerNo], true)
+	remove(&sys.gs.explDrawlist[c.playerNo], true)
+	remove(&sys.gs.topexplDrawlist[c.playerNo], false)
+	remove(&sys.gs.underexplDrawlist[c.playerNo], true)
 }
 func (c *Char) enemyExplodsRemove(en int) {
 	remove := func(drawlist *[]int, drop bool) {
 		for i := len(*drawlist) - 1; i >= 0; i-- {
 			ei := (*drawlist)[i]
-			if ei >= 0 && sys.explods[en][ei].bindtime != 0 &&
-				sys.explods[en][ei].bindId == c.id {
-				sys.explods[en][ei].id = IErr
+			if ei >= 0 && sys.gs.explods[en][ei].bindtime != 0 &&
+				sys.gs.explods[en][ei].bindId == c.id {
+				sys.gs.explods[en][ei].id = IErr
 				if drop {
 					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
 				} else {
@@ -3425,9 +3425,9 @@ func (c *Char) enemyExplodsRemove(en int) {
 			}
 		}
 	}
-	remove(&sys.explDrawlist[en], true)
-	remove(&sys.topexplDrawlist[en], false)
-	remove(&sys.underexplDrawlist[en], true)
+	remove(&sys.gs.explDrawlist[en], true)
+	remove(&sys.gs.topexplDrawlist[en], false)
+	remove(&sys.gs.underexplDrawlist[en], true)
 }
 func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	if n == -2 {
