@@ -889,7 +889,7 @@ type Explod struct {
 	shadow         [3]int32
 	supermovetime  int32
 	pausemovetime  int32
-	anim           *Animation
+	anim           Animation
 	ontop          bool
 	under          bool
 	alpha          [2]int32
@@ -999,11 +999,11 @@ func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
 }
 func (e *Explod) update(oldVer bool, playerNo int) {
-	if e.anim == nil {
+	if e.anim.nilAnim {
 		e.id = IErr
 	}
 	if e.id == IErr {
-		e.anim = nil
+		e.anim = Animation{nilAnim: true}
 		return
 	}
 	if sys.getChar(playerNo, 0).scf(SCF_disabled) {
@@ -1015,7 +1015,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	if sys.tickNextFrame() &&
 		c != nil && e.removeongethit && c.sf(CSF_gethit) {
-		e.id, e.anim = IErr, nil
+		e.id, e.anim = IErr, Animation{nilAnim: true}
 		return
 	}
 	p := false
@@ -1031,7 +1031,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
 			act && e.removetime < -1 && e.anim.loopend {
-			e.id, e.anim = IErr, nil
+			e.id, e.anim = IErr, Animation{nilAnim: true}
 			return
 		}
 	}
@@ -1104,7 +1104,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		sdwalp = 256
 	}
 	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
-	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
+	sprs.add(&SprData{&e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, agl, yagl, xagl, [...]float32{1, 1},
 		screen, playerNo == sys.superplayer, oldVer, e.facing, 1},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
@@ -3329,7 +3329,7 @@ func (c *Char) getExplods(id int32) (expls []*Explod) {
 }
 func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	e := &sys.explods[c.playerNo][i]
-	if e.anim == nil {
+	if e.anim.nilAnim {
 		e.id = IErr
 		return
 	}
@@ -4352,7 +4352,7 @@ func (c *Char) over() bool {
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
-		e.anim = c.getAnim(120, true, false)
+		e.anim = *c.getAnim(120, true, false)
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
 		e.offset = [...]float32{x, y}
@@ -6180,7 +6180,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				off[1] += p1.hitdef.sparkxy[1] * c.localscl
 			}
 			if e, i := c.newExplod(); e != nil {
-				e.anim = c.getAnim(animNo, ffx, false)
+				e.anim = *c.getAnim(animNo, ffx, false)
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
