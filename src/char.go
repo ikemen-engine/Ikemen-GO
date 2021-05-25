@@ -995,6 +995,13 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 }
+func (e *Explod) setAnim(a *Animation) {
+	if (a != nil) {
+		e.anim = *a
+	} else {
+		e.anim = Animation{nilAnim: true}
+	}
+}
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
 }
@@ -1003,7 +1010,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		e.id = IErr
 	}
 	if e.id == IErr {
-		e.anim = Animation{nilAnim: true}
+		e.setAnim(nil)
 		return
 	}
 	if sys.getChar(playerNo, 0).scf(SCF_disabled) {
@@ -1015,7 +1022,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	if sys.tickNextFrame() &&
 		c != nil && e.removeongethit && c.sf(CSF_gethit) {
-		e.id, e.anim = IErr, Animation{nilAnim: true}
+		e.id = IErr
+		e.setAnim(nil)
 		return
 	}
 	p := false
@@ -1031,7 +1039,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
 			act && e.removetime < -1 && e.anim.loopend {
-			e.id, e.anim = IErr, Animation{nilAnim: true}
+			e.id = IErr
+			e.setAnim(nil)
 			return
 		}
 	}
@@ -4352,7 +4361,7 @@ func (c *Char) over() bool {
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
-		e.anim = *c.getAnim(120, true, false)
+		e.setAnim(c.getAnim(120, true, false))
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
 		e.offset = [...]float32{x, y}
@@ -6180,7 +6189,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				off[1] += p1.hitdef.sparkxy[1] * c.localscl
 			}
 			if e, i := c.newExplod(); e != nil {
-				e.anim = *c.getAnim(animNo, ffx, false)
+				e.setAnim(c.getAnim(animNo, ffx, false))
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true

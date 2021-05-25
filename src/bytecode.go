@@ -2964,7 +2964,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case explod_anim:
-			e.anim = *crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			e.setAnim(crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false))
 		case explod_angle:
 			e.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3168,7 +3168,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
 				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-				eachExpl(func(e *Explod) { e.anim = *anim })
+				eachExpl(func(e *Explod) { e.setAnim(anim) })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -3245,7 +3245,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		case gameMakeAnim_under:
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
-			e.anim = *crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			e.setAnim(crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false))
 		}
 		return true
 	})
