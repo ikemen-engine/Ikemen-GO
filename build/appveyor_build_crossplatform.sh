@@ -16,7 +16,7 @@ echo "------------------------------------------------------------"
 export GOOS=darwin
 export CC=o64-clang 
 export CXX=o64-clang++
-go build -i -o ./bin/Ikemen_GO_mac ./src
+go build -i -tags al_cmpt -o ./bin/Ikemen_GO_mac ./src
 
 echo "------------------------------------------------------------"
 echo "Building windows x64 binary..."
