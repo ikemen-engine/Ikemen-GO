@@ -200,6 +200,7 @@ local motif =
 		cursor_move_snd = {100, 0},
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
+		--cursor_<itemname>_snd = {-1, 0}, --Ikemen feature
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_teamarcade = 'TEAM ARCADE',
 		--menu_itemname_teamcoop = 'TEAM CO-OP',
@@ -2550,6 +2551,11 @@ for k, v in pairs(t.menu_info) do
 	end
 end
 
+--trainingbgdef section reuses menubgdef values if not defined
+if t.trainingbgdef == nil then
+	t.trainingbgdef = t.menubgdef
+end
+
 --merge tables
 motif = main.f_tableMerge(motif, t)
 
@@ -2665,30 +2671,20 @@ main.f_loadingRefresh()
 motif.files.glyphs_data = sffNew(motif.files.glyphs)
 main.f_loadingRefresh()
 
---data
-local anim = ''
-local facing = ''
-for k, v in ipairs({'titlebgdef', 'selectbgdef', 'versusbgdef', 'continuebgdef', 'victorybgdef', 'resultsbgdef', 'optionbgdef', 'replaybgdef', 'menubgdef', 'trainingbgdef', 'attractbgdef', 'challengerbgdef', 'hiscorebgdef', 'tournamentbgdef'}) do
-	if v == 'trainingbgdef' and t.trainingbgdef == nil then
-		motif[v] = motif.menubgdef
-	else
+--motif background data
+for k, _ in pairs(motif) do
+	if k:match('bgdef$') then
 		--optional sff paths and data
-		if motif[v].spr ~= '' then
-			if not motif[v].spr:match('^data/') then
-				if main.f_fileExists(motif.fileDir .. motif[v].spr) then
-					motif[v].spr = motif.fileDir .. motif[v].spr
-				elseif main.f_fileExists('data/' .. motif[v].spr) then
-					motif[v].spr = 'data/' .. motif[v].spr
-				end
-			end
-			motif[v].spr_data = sffNew(motif[v].spr)
+		if motif[k].spr ~= '' then
+			motif[k].spr = main.f_filePath(motif[k].spr, motif.fileDir, 'data/')
+			motif[k].spr_data = sffNew(motif[k].spr)
 			main.f_loadingRefresh()
 		else
-			motif[v].spr = motif.files.spr
-			motif[v].spr_data = motif.files.spr_data
+			motif[k].spr = motif.files.spr
+			motif[k].spr_data = motif.files.spr_data
 		end
 		--backgrounds
-		motif[v].bg = bgNew(motif[v].spr_data, motif.def, v:match('^(.+)def$'))
+		motif[k].bg = bgNew(motif[k].spr_data, motif.def, k:match('^(.+)def$'))
 		main.f_loadingRefresh()
 	end
 end
@@ -2703,6 +2699,8 @@ function motif.f_animFacing(var)
 end
 
 --creates sprite data out of table values
+local anim = ''
+local facing = ''
 function motif.f_loadSprData(t, v)
 	if t[v.s .. 'offset'] == nil then t[v.s .. 'offset'] = {0, 0} end
 	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end

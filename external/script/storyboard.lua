@@ -312,23 +312,11 @@ local function f_parse(path)
 	--localcoord
 	main.f_setStoryboardScale(t.info.localcoord)
 	--scenedef spr
-	if not t.scenedef.spr:match('^data/') then
-		if main.f_fileExists(t.fileDir .. t.scenedef.spr) then
-			t.scenedef.spr = t.fileDir .. t.scenedef.spr
-		elseif main.f_fileExists('data/' .. t.scenedef.spr) then
-			t.scenedef.spr = 'data/' .. t.scenedef.spr
-		end
-	end
-	t.scenedef.spr_data = sffNew(t.scenedef.spr)
+	t.scenedef.spr = main.f_filePath(t.scenedef.spr, t.fileDir, 'data/')
+	t.spr_data = {[t.scenedef.spr] = sffNew(t.scenedef.spr)}
 	--scenedef snd
 	if t.scenedef.snd ~= '' then
-		if not t.scenedef.snd:match('^data/') then
-			if main.f_fileExists(t.fileDir .. t.scenedef.snd) then
-				t.scenedef.snd = t.fileDir .. t.scenedef.snd
-			elseif main.f_fileExists('data/' .. t.scenedef.snd) then
-				t.scenedef.snd = 'data/' .. t.scenedef.snd
-			end
-		end
+		t.scenedef.snd = main.f_filePath(t.scenedef.snd, t.fileDir, 'data/')
 		t.scenedef.snd_data = sndNew(t.scenedef.snd)
 	end
 	--loop through scenes
@@ -336,12 +324,7 @@ local function f_parse(path)
 	for k, v in main.f_sortKeys(t.scene) do
 		--bgm
 		if t.scene[k].bgm ~= nil then
-			if t.scene[k].bgm:match('^data/') then
-			elseif main.f_fileExists(t.fileDir .. t.scene[k].bgm) then
-				t.scene[k].bgm = t.fileDir .. t.scene[k].bgm
-			elseif main.f_fileExists('music/' .. t.scene[k].bgm) then
-				t.scene[k].bgm = 'music/' .. t.scene[k].bgm
-			end
+			t.scene[k].bgm = main.f_filePath(t.scene[k].bgm, t.fileDir, 'music/')
 		end
 		--default values
 		if #t.scene[k].clearcolor == 0 then
@@ -361,7 +344,16 @@ local function f_parse(path)
 		prev_k = k
 		--backgrounds
 		if t.scene[k].bg_name ~= '' then
-			t.scene[k].bg = bgNew(t.scenedef.spr_data, t.def, t.scene[k].bg_name:lower())
+			local spr_def = t.scene[k].bg_name .. 'def'
+			if t[spr_def] ~= nil and t[spr_def].spr ~= nil then --custom spr associated with bg.name is declared
+				t[spr_def].spr = main.f_filePath(t[spr_def].spr, t.fileDir, 'data/')
+				if t.spr_data[t[spr_def].spr] == nil then --sff data not created yet
+					t.spr_data[t[spr_def].spr] = sffNew(t[spr_def].spr)
+				end
+				t.scene[k].bg = bgNew(t.spr_data[t[spr_def].spr], t.def, t.scene[k].bg_name:lower())
+			else
+				t.scene[k].bg = bgNew(t.spr_data[t.scenedef.spr], t.def, t.scene[k].bg_name:lower())
+			end
 			bgReset(t.scene[k].bg)
 		end
 		--loop through scene layers
@@ -371,7 +363,7 @@ local function f_parse(path)
 			if t_layer[k2].anim ~= -1 and t.anim[t_layer[k2].anim] ~= nil then
 				t.scene[k].layer[k2].anim_data = main.f_animFromTable(
 					t.anim[t_layer[k2].anim],
-					t.scenedef.spr_data,
+					t.spr_data[t.scenedef.spr],
 					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1] + main.storyboardOffsetX,
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]
 				)
