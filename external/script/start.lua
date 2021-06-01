@@ -1503,6 +1503,8 @@ function start.f_selectReset()
 	if gamemode('netplayversus') or gamemode('netplayteamcoop') or gamemode('netplaysurvivalcoop') then
 		start.p[1].teamMode = 0
 		start.p[2].teamMode = 0
+		start.p[1].teamMenu = 1
+		start.p[2].teamMenu = 1
 		stageListNo = 0
 	end
 	for side = 1, 2 do

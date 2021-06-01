@@ -6623,7 +6623,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	for _, e := range cl.runOrder {
 		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
-			(p2 && !e.scf(SCF_ko_round_middle) || !p2 && e.helperIndex == 0) {
+			(p2 && !e.scf(SCF_ko_round_middle) || (!p2 && e.helperIndex == 0 && e.teamside < 2)) {
 			add(e, 0)
 		}
 	}

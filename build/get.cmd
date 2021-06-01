@@ -1,14 +1,13 @@
 @echo off
+
 cd ..
 set CGO_ENABLED=1
 set GOOS=windows
 
 echo Downloading dependencies...
-echo. 
 
 if not exist go.mod (
 	go mod init github.com/Windblade-GR01/Ikemen_GO/src
-	echo. 
 )
 
 go get -u github.com/yuin/gopher-lua
