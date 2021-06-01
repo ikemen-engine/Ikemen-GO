@@ -8,52 +8,7 @@ bin/*
 
 # Compilation files
 src/*.syso
-releaseconf.xml.backup
-Ikemen_GO.xml.backup
 go.sum
 
 # Temp
 src/lua_triggers.go
-
-# Distribution and debug files
-Ikemen.log
-Ikemen_GO.exe
-OpenAL32.dll
-save/*
-debug/*
-chars/*
-!/font/default-3x5-bold.def
-!/font/default-3x5-bold.sff
-!/font/default-3x5.def
-!/font/default-3x5.sff
-sound/*
-stages/*
-wip/*
-data/work
-data/big
-data/kfm
-data/mugen1
-data/common.snd
-data/common1.cns
-data/continue.sff
-data/continue.snd
-data/credits.def
-data/credits.sff
-data/debug.zss
-data/fight.def
-data/fight.sff
-data/fight.snd
-data/fightfx.air
-data/fightfx.sff
-data/gameover.def
-data/gameover.sff
-data/glyphs.sff
-data/intro.def
-data/intro.sff
-data/logo.def
-data/logo.sff
-data/select.def
-data/system.def
-data/system.sff
-data/system.snd
-data/tournament.sff
