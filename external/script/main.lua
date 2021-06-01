@@ -216,6 +216,19 @@ function main.f_fileExists(file)
 	return false
 end
 
+--add missing relative file path
+function main.f_filePath(path, dir, defaultDir)
+	path = path:gsub('\\', '/')
+	if not path:match('^data/') then
+		if main.f_fileExists(dir .. path) then
+			return dir .. path
+		elseif main.f_fileExists(defaultDir .. path) then
+			return defaultDir .. path
+		end
+	end
+	return path
+end
+
 --prints "t" table content into "toFile" file
 function main.f_printTable(t, toFile)
 	local txt = ''
@@ -1639,14 +1652,8 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
 			if playable then
 				for _, v in ipairs({'intro', 'ending', 'arcadepath', 'ratiopath'}) do
-					local path = main.t_selChars[row][v]
-					if path ~= '' then
-						path = path:gsub('\\', '/')
-						if main.f_fileExists(main.t_selChars[row].dir .. path) then
-							main.t_selChars[row][v] = main.t_selChars[row].dir .. path
-						elseif main.f_fileExists('data/' .. path) then
-							main.t_selChars[row][v] = 'data/' .. path
-						end
+					if main.t_selChars[row][v] ~= '' then
+						main.t_selChars[row][v] = main.f_filePath(main.t_selChars[row][v], main.t_selChars[row].dir, 'data/')
 					end
 				end
 				main.t_selChars[row].order = 1

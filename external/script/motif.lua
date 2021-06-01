@@ -2676,13 +2676,7 @@ for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
 		if motif[k].spr ~= '' then
-			if not motif[k].spr:match('^data/') then
-				if main.f_fileExists(motif.fileDir .. motif[k].spr) then
-					motif[k].spr = motif.fileDir .. motif[k].spr
-				elseif main.f_fileExists('data/' .. motif[k].spr) then
-					motif[k].spr = 'data/' .. motif[k].spr
-				end
-			end
+			motif[k].spr = main.f_filePath(motif[k].spr, motif.fileDir, 'data/')
 			motif[k].spr_data = sffNew(motif[k].spr)
 			main.f_loadingRefresh()
 		else
