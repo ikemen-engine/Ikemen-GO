@@ -3047,7 +3047,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						elseif f:match('^ip_') then
 							f = 'serverconnect'
 						elseif tbl.submenu[f].loop ~= nil and #tbl.submenu[f].items > 0 then
-							sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+							if motif.title_info['cursor_' .. f .. '_snd'] ~= nil then
+								sndPlay(motif.files.snd_data, motif.title_info['cursor_' .. f .. '_snd'][1], motif.title_info['cursor_' .. f .. '_snd'][2])
+							else
+								sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+							end
 							tbl.submenu[f].loop()
 							f = ''
 						else
@@ -3062,7 +3066,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 							main.menu.f = main.t_itemname[f](t, item)
 						end
 						if main.menu.f ~= nil then
-							sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
+							if motif.title_info['cursor_' .. f .. '_snd'] ~= nil then
+								sndPlay(motif.files.snd_data, motif.title_info['cursor_' .. f .. '_snd'][1], motif.title_info['cursor_' .. f .. '_snd'][2])
+							else
+								sndPlay(motif.files.snd_data, motif.title_info.cursor_done_snd[1], motif.title_info.cursor_done_snd[2])
+							end
 							main.f_fadeReset('fadeout', motif[main.group])
 						end
 					end

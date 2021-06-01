@@ -200,6 +200,7 @@ local motif =
 		cursor_move_snd = {100, 0},
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
+		--cursor_<itemname>_snd = {-1, 0}, --Ikemen feature
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_teamarcade = 'TEAM ARCADE',
 		--menu_itemname_teamcoop = 'TEAM CO-OP',
@@ -2670,7 +2671,7 @@ main.f_loadingRefresh()
 motif.files.glyphs_data = sffNew(motif.files.glyphs)
 main.f_loadingRefresh()
 
---generates motif background data
+--motif background data
 for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
