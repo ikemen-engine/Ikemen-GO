@@ -1,14 +1,14 @@
 local start = {}
---team side specific
-start.p = {{}, {}}
 
---temporary data (active only during 1 launchFight call)
-start.challenger = 0
---cell data
+--team side specific data storage
+start.p = {{}, {}}
+--cell data storage
 start.c = {}
 for i = 1, --[[config.Players]]8 do
 	table.insert(start.c, {selX = 0, selY = 0, cell = -1, randCnt = 0, randRef = nil})
 end
+--globally accessible temp data
+start.challenger = 0
 --local variables
 local restoreCursor = false
 local selScreenEnd = false
@@ -22,6 +22,9 @@ local timerSelect = 0
 local winCnt = 0
 local loseCnt = 0
 
+--;===========================================================
+--; COMMON FUNCTIONS
+--;===========================================================
 --default values hard reset
 function start.f_hardReset()
 	stageListNo = 0
@@ -49,9 +52,6 @@ function start.f_hardReset()
 end
 start.f_hardReset() --default values reset after starting the game
 
---;===========================================================
---; COMMON FUNCTIONS
---;===========================================================
 --converts '.maxmatches' style table (key = order, value = max matches) to the same structure as '.ratiomatches' (key = match number, value = subtable with char num and order data)
 function start.f_unifySettings(t, t_chars)
 	local ret = {}
