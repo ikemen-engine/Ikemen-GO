@@ -1,27 +1,7 @@
 local start = {}
 --team side specific
 start.p = {{}, {}}
-for i = 1, 2 do
-	--default team count after starting the game
-	start.p[i].numRatio = 1
-	start.p[i].numSimul = math.max(2, config.NumSimul[1])
-	start.p[i].numTag = math.max(2, config.NumTag[1])
-	start.p[i].numTurns = math.max(2, config.NumTurns[1])
-	--default team mode after starting the game
-	start.p[i].teamMenu = 1
-	--cursor pos
-	start.p[i].t_cursor = {}
-	--other player data flags
-	start.p[i].ratio = false
-	start.p[i].selEnd = false
-	start.p[i].teamEnd = false
-	--selected data
-	start.p[i].t_selected = {}
-	start.p[i].t_selTemp = {}
-	start.p[i].t_selCmd = {}
-	start.p[i].teamMode = 0
-	start.p[i].numChars = 0
-end
+
 --temporary data (active only during 1 launchFight call)
 start.challenger = 0
 --cell data
@@ -41,6 +21,33 @@ local t_reservedChars = {{}, {}}
 local timerSelect = 0
 local winCnt = 0
 local loseCnt = 0
+
+--default values hard reset
+function start.f_hardReset()
+	stageListNo = 0
+	for i = 1, 2 do
+		--default team count
+		start.p[i].numRatio = 1
+		start.p[i].numSimul = math.max(2, config.NumSimul[1])
+		start.p[i].numTag = math.max(2, config.NumTag[1])
+		start.p[i].numTurns = math.max(2, config.NumTurns[1])
+		--default team mode
+		start.p[i].teamMenu = 1
+		--cursor pos
+		start.p[i].t_cursor = {}
+		--other player data flags
+		start.p[i].ratio = false
+		start.p[i].selEnd = false
+		start.p[i].teamEnd = false
+		--selected data
+		start.p[i].t_selected = {}
+		start.p[i].t_selTemp = {}
+		start.p[i].t_selCmd = {}
+		start.p[i].teamMode = 0
+		start.p[i].numChars = 0
+	end
+end
+start.f_hardReset() --default values reset after starting the game
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -1499,13 +1506,6 @@ function start.f_selectReset()
 			start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
 		end
 		col = col + 1
-	end
-	if gamemode('netplayversus') or gamemode('netplayteamcoop') or gamemode('netplaysurvivalcoop') then
-		start.p[1].teamMode = 0
-		start.p[2].teamMode = 0
-		start.p[1].teamMenu = 1
-		start.p[2].teamMenu = 1
-		stageListNo = 0
 	end
 	for side = 1, 2 do
 		start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])

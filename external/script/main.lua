@@ -2540,6 +2540,7 @@ main.t_itemname = {
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		if main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname])) then
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -2553,6 +2554,7 @@ main.t_itemname = {
 	--SERVER HOST
 	['serverhost'] = function(t, item)
 		if main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort())) then
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -3237,6 +3239,7 @@ function main.f_replay()
 		elseif main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 			enterReplay(t[item].itemname)
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
