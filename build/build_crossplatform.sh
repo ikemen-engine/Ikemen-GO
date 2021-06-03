@@ -53,7 +53,6 @@ function varWin32() {
 
 function varWin64() {
 	export GOOS=windows
-	export GOARCH=amd64
 	export CC=x86_64-w64-mingw32-gcc
 	export CXX=x86_64-w64-mingw32-g++
 	binName="IkemenGO.exe"
@@ -61,14 +60,12 @@ function varWin64() {
 
 function varMacOS() {
 	export GOOS=darwin
-	export GOARCH=amd64
 	export CC=o64-clang 
 	export CXX=o64-clang++
 	binName="IkemenGO_mac"
 }
 function varLinux() {
 	export GOOS=linux
-	export GOARCH=amd64
 	#export CC=gcc
 	#export CXX=g++
 	binName="IkemenGO_linux"
