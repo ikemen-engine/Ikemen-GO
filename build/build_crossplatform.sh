@@ -39,7 +39,7 @@ function main() {
 	esac
 
 	# Mark file as executable.
-	# chmod +x ./bin/$binName
+	chmod +x ./bin/$binName
 }
 
 # Export Variables
@@ -76,21 +76,21 @@ function varLinux() {
 
 # Build functions.
 function build() {
-	echo "buildNormal"
-	echo "$binName"
-	#go build -o ./bin/$binName ./src
+	#echo "buildNormal"
+	#echo "$binName"
+	go build -o ./bin/$binName ./src
 }
 
 function buildAlt() {
-	echo "buildAlt"
-	echo "$binName"
-	#go build -tags al_cmpt -o ./bin/$binName ./src
+	#echo "buildAlt"
+	#echo "$binName"
+	go build -tags al_cmpt -o ./bin/$binName ./src
 }
 
 function buildWin() {
-	echo "buildWin"
-	echo "$binName"
-	#go build -ldflags "-H windowsgui" -o ./bin/$binName ./src
+	#echo "buildWin"
+	#echo "$binName"
+	go build -ldflags "-H windowsgui" -o ./bin/$binName ./src
 }
 
 # Exec Main
