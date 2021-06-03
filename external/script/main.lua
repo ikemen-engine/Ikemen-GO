@@ -219,7 +219,7 @@ end
 --add missing relative file path
 function main.f_filePath(path, dir, defaultDir)
 	path = path:gsub('\\', '/')
-	if not path:match('^data/') then
+	if not path:lower():match('^data/') then
 		if main.f_fileExists(dir .. path) then
 			return dir .. path
 		elseif main.f_fileExists(defaultDir .. path) then
@@ -3392,6 +3392,7 @@ function main.f_attractStart()
 	clearColor(motif.attractbgdef.bgclearcolor[1], motif.attractbgdef.bgclearcolor[2], motif.attractbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.attractbgdef.bg)
 	main.f_fadeReset('fadein', motif.attract_mode)
+	main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 	while true do
 		counter = counter + 1
 		--draw layerno = 0 backgrounds
