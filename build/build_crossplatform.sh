@@ -1,47 +1,97 @@
-#!/bin/sh
-cd ..
-export CGO_ENABLED=1
-IS_WINDOWS="0"
+#!/bin/bash
+binName="IkemenGO-generic"
+cmpt=0
 
-if [ -n "$OS" ];    then 
-    case "$OS" in
-    "windows")
-        export GOOS=windows
-        export CC=x86_64-w64-mingw32-gcc
-        export CXX=x86_64-w64-mingw32-g++
-        BINARY_NAME="Ikemen_GO_Win_x64.exe";
-		IS_WINDOWS="1"
-
-        ;;
-    "mac") 
-        export GOOS=darwin
-        export CC=o64-clang 
-        export CXX=o64-clang++
-        BINARY_NAME="Ikemen_GO_mac"; 
-		
-        ;;
-    "linux") 
-        BINARY_NAME="Ikemen_GO_linux"; 
-		
-        ;;
-	"windows32")
-	    export GOOS=windows
-		export GOARCH=386
-        export CC=i686-w64-mingw32-gcc
-        export CXX=i686-w64-mingw32-g++
-        BINARY_NAME="Ikemen_GO_Win_x86.exe";
-		IS_WINDOWS="1"		
-        
+# Main function.
+function main() {
+	# Go to the main folder.
+	cd ..
+	# Enable CGO.
+	export CGO_ENABLED=1
+	
+	# CMPT flag.
+	if [[ "${2,,}" == "cmpt"  ]]; then
+		cmpt=1
+	fi
+	
+	# Build
+	case "${1,,}" in
+		"win64")
+			varWin64
+			buildWin
 		;;
-    esac 
-else 
-    BINARY_NAME="Ikemen_GO";  
-fi;
+		"win32")
+			varWin32
+			buildWin
+		;;
+		"macos")
+			varMacOS
+			buildAlt
+		;;
+		"linux")
+			varLinux
+			if [[ cmpt -eq 1 ]]; then
+				buildAlt
+			else
+				build
+			fi
+		;;
+	esac
 
-if [ "$IS_WINDOWS" = "1" ]; then
-	go build -i -tags al_cmpt -ldflags "-H windowsgui" -o ./bin/$BINARY_NAME ./src
-else
-	go build -i -tags al_cmpt -o ./bin/$BINARY_NAME ./src
-fi
+	# Mark file as executable.
+	# chmod +x ./bin/$binName
+}
 
-chmod +x ./bin/$BINARY_NAME
+# Export Variables
+function varWin32() {
+	export GOOS=windows
+	export GOARCH=386
+	export CC=i686-w64-mingw32-gcc
+	export CXX=i686-w64-mingw32-g++
+	binName="IkemenGO_x86.exe"
+}
+
+function varWin64() {
+	export GOOS=windows
+	export GOARCH=amd64
+	export CC=x86_64-w64-mingw32-gcc
+	export CXX=x86_64-w64-mingw32-g++
+	binName="IkemenGO.exe"
+}
+
+function varMacOS() {
+	export GOOS=darwin
+	export GOARCH=amd64
+	export CC=o64-clang 
+	export CXX=o64-clang++
+	binName="IkemenGO_mac"
+}
+function varLinux() {
+	export GOOS=linux
+	export GOARCH=amd64
+	#export CC=gcc
+	#export CXX=g++
+	binName="IkemenGO_linux"
+}
+
+# Build functions.
+function build() {
+	echo "buildNormal"
+	echo "$binName"
+	#go build -o ./bin/$binName ./src
+}
+
+function buildAlt() {
+	echo "buildAlt"
+	echo "$binName"
+	#go build -tags al_cmpt -o ./bin/$binName ./src
+}
+
+function buildWin() {
+	echo "buildWin"
+	echo "$binName"
+	#go build -ldflags "-H windowsgui" -o ./bin/$binName ./src
+}
+
+# Exec Main
+main $1 $2

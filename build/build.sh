@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 cd ..
 export CGO_ENABLED=1
 

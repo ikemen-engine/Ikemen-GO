@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Windblade-GR01/go-openal/openal"
+	"github.com/ikemen-engine/go-openal/openal"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"

@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Windblade-GR01/go-openal/openal"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/ikemen-engine/go-openal/openal"
 	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -2076,7 +2076,7 @@ func (s *System) fight() (reload bool) {
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
 			s.scoreRounds = append(s.scoreRounds, [2]float32{s.lifebar.sc[0].scorePoints, s.lifebar.sc[1].scorePoints})
 			oldTeamLeader = s.teamLeader
-			
+
 			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.chars[0][0].win()) &&
 				(s.tmode[1] != TM_Turns || s.chars[1][0].win()) {
 				/* Prepare for the next round */
