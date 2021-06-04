@@ -1976,31 +1976,6 @@ for k, v in ipairs(main.t_selStoryMode) do
 	main.t_unlockLua.modes[v.name] = v.unlock
 end
 
---add default maxmatches / ratiomatches values if config is missing in select.def
-if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.arcaderatiomatches == nil then
-	main.t_selOptions.arcaderatiomatches = {
-		{rmin = 1, rmax = 3, order = 1},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 1, rmax = 1, order = 2},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 1, rmax = 2, order = 3},
-	}
-end
-if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
-	local size = 1
-	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
-	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
-	for k, v in pairs(main.t_bossChars) do
-		main.t_selOptions.bossrushmaxmatches[k] = #v
-	end
-end
-
 --add excluded characters once all slots are filled
 for i = #main.t_selGrid, motif.select_info.rows * motif.select_info.columns - 1 do
 	table.insert(main.t_selChars, {})
@@ -2055,6 +2030,31 @@ function main.f_updateSelectableStages()
 	end
 end
 main.f_updateSelectableStages()
+
+--add default maxmatches / ratiomatches values if config is missing in select.def
+if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.arcaderatiomatches == nil then
+	main.t_selOptions.arcaderatiomatches = {
+		{rmin = 1, rmax = 3, order = 1},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 1, rmax = 1, order = 2},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 1, rmax = 2, order = 3},
+	}
+end
+if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
+	local size = 1
+	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
+	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
+	for k, v in pairs(main.t_bossChars) do
+		main.t_selOptions.bossrushmaxmatches[k] = #v
+	end
+end
 
 --print warning if training character is missing
 if main.t_charDef[config.TrainingChar:lower()] == nil then
