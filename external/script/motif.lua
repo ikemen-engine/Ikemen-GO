@@ -1348,6 +1348,7 @@ local motif =
 		--menu_itemname_inputdefault = 'Default', --Ikemen feature
 		--menu_itemname_players = 'Players', --Ikemen feature
 		--menu_itemname_debugkeys = 'Debug Keys', --Ikemen feature
+		--menu_itemname_debugmode = 'Debug Mode', --Ikemen feature
 		--menu_itemname_helpermax = 'HelperMax', --Ikemen feature
 		--menu_itemname_projectilemax = 'PlayerProjectileMax', --Ikemen feature
 		--menu_itemname_explodmax = 'ExplodMax', --Ikemen feature
@@ -2195,6 +2196,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuengine = "Engine Settings"
 	motif.option_info.menu_itemname_menuengine_players = "Players"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
+	motif.option_info.menu_itemname_menuengine_debugmode = "Debug Mode"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
 	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
@@ -2307,6 +2309,7 @@ function motif.setBaseOptionInfo()
 		"menuengine",
 		"menuengine_players",
 		"menuengine_debugkeys",
+		"menuengine_debugmode",
 		"menuengine_empty",
 		"menuengine_helpermax",
 		"menuengine_projectilemax",

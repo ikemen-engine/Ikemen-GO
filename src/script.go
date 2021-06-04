@@ -82,7 +82,7 @@ func systemScriptInit(l *lua.LState) {
 				return false
 			}
 			sk := *NewShortcutKey(k, boolArg(l, 2), boolArg(l, 3), boolArg(l, 4))
-			sys.shortcutScripts[sk] = &ShortcutScript{Pause: boolArg(l, 5), Script: strArg(l, 6)}
+			sys.shortcutScripts[sk] = &ShortcutScript{Pause: boolArg(l, 5), DebugKey: boolArg(l, 6), Script: strArg(l, 7)}
 			return true
 		}()))
 		return 1
@@ -1703,6 +1703,10 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setAllowDebugKeys", func(l *lua.LState) int {
+		sys.allowDebugKeys = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setAllowDebugMode", func(l *lua.LState) int {
 		d := boolArg(l, 1)
 		if !d {
 			if sys.clsnDraw {
@@ -1712,7 +1716,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.debugDraw = false
 			}
 		}
-		sys.allowDebugKeys = d
+		sys.allowDebugMode = d
 		return 0
 	})
 	luaRegister(l, "setAudioDucking", func(l *lua.LState) int {
@@ -2258,6 +2262,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "toggleClsnDraw", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
 		if l.GetTop() >= 1 {
 			sys.clsnDraw = boolArg(l, 1)
 		} else {
@@ -2266,6 +2273,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "toggleDebugDraw", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
 		if l.GetTop() >= 1 {
 			sys.debugDraw = !sys.debugDraw
 			return 0

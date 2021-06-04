@@ -197,6 +197,7 @@ type configSettings struct {
 	DebugFont                  string
 	DebugFontScale             float32
 	DebugKeys                  bool
+	DebugMode                  bool
 	Difficulty                 int
 	EscOpensMenu               bool
 	ExternalShaders            []string
@@ -302,6 +303,7 @@ func setupConfig() configSettings {
 	"DebugFont": "font/default-3x5-bold.def",
 	"DebugFontScale": 1,
 	"DebugKeys": true,
+	"DebugMode": true,
 	"Difficulty": 8,
 	"EscOpensMenu": true,
 	"ExternalShaders": [],
@@ -567,6 +569,7 @@ func setupConfig() configSettings {
 	// Set each config property to the system object
 	sys.afterImageMax = tmp.MaxAfterImage
 	sys.allowDebugKeys = tmp.DebugKeys
+	sys.allowDebugMode = tmp.DebugMode
 	sys.audioDucking = tmp.AudioDucking
 	sys.bgmVolume = tmp.VolumeBgm
 	sys.borderless = tmp.Borderless

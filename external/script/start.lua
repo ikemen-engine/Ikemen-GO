@@ -1594,7 +1594,7 @@ function launchFight(data)
 	t.p2teammode = start.p[2].teamMode
 	t.challenger = main.f_arg(data.challenger, false)
 	t.continue = main.f_arg(data.continue, main.continueScreen)
-	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue and config.QuickContinue)
+	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue or config.QuickContinue)
 	t.order = data.order or 1
 	t.orderskip = main.f_arg(data.orderskip, true)
 	t.p1char = data.p1char or {}

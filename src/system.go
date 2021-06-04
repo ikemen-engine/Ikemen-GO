@@ -257,6 +257,7 @@ type System struct {
 	loseTag                 bool
 	fullscreen              bool
 	allowDebugKeys          bool
+	allowDebugMode          bool
 	commonAir               string
 	commonCmd               string
 	keyInput                glfw.Key

@@ -2206,7 +2206,7 @@ function main.f_default()
 	main.numSimul = {config.NumSimul[1], config.NumSimul[2]} --min/max number of simul characters
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
-	main.quickContinue = false --if continuing should skip player selection
+	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = true --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
@@ -3017,7 +3017,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					if not bool_main or esc() then
 						break
 					end
-				elseif bool_f1 and getKey('F1') then
+				elseif bool_f1 and (getKey('F1') or config.FirstRun) then
+					if config.FirstRun then
+						config.FirstRun = false
+						options.f_saveCfg(false)
+					end
 					main.f_warning(
 						main.f_extractText(motif.infobox_text),
 						motif[main.background],
@@ -3571,6 +3575,7 @@ function main.f_demoStart()
 	main.f_default()
 	if motif.demo_mode.debuginfo == 0 and config.DebugKeys then
 		setAllowDebugKeys(false)
+		setAllowDebugMode(false)
 	end
 	main.lifebar.bars = motif.demo_mode.fight_bars_display == 1
 	setGameMode('demo')
@@ -3589,6 +3594,7 @@ function main.f_demoStart()
 	loadStart()
 	game()
 	setAllowDebugKeys(config.DebugKeys)
+	setAllowDebugMode(config.DebugMode)
 	refresh()
 	if motif.attract_mode.enabled == 0 then
 		if introWaitCycles >= motif.demo_mode.intro_waitcycles then
@@ -4017,11 +4023,6 @@ end
 main.f_loadingRefresh(main.txt_loading)
 main.txt_loading = nil
 --sleep(1)
-
-if config.FirstRun then
-	config.FirstRun = false
-	options.f_saveCfg(false)
-end
 
 if motif.attract_mode.enabled == 1 then
 	main.f_attractMode()
