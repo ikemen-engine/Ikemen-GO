@@ -384,6 +384,7 @@ local motif =
 		--p<pn>_member<num>_face_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_face_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_face_slide_dist = {0, 0}, --Ikemen feature
+		name_random_text = 'Random', --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 4, 1, 255, 255, 255},
 		p1_name_font_scale = {1.0, 1.0},

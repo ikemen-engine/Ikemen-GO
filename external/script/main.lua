@@ -1617,7 +1617,6 @@ function main.f_addChar(line, playable, loading, slot)
 	local row = #main.t_selChars
 	local slot = slot or false
 	local valid = false
-	local tmp = ''
 	--store 'unlock' param and get rid of everything that follows it
 	local unlock = ''
 	line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
@@ -1633,13 +1632,12 @@ function main.f_addChar(line, playable, loading, slot)
 			--nClock = os.clock()
 			addChar(c)
 			--print(c .. ": " .. os.clock() - nClock)
-			tmp = getCharName(row - 1)
-			if tmp == '' then
+			if getCharName(row - 1) == '' then
 				playable = false
 				break
 			end
 			main.t_charDef[c:lower()] = row - 1
-			if tmp == 'Random' then
+			if c:lower() == 'randomselect' then
 				main.t_selChars[row].char = c:lower()
 				playable = false
 				break
