@@ -10,7 +10,9 @@ if [ ! -f ./go.mod ]; then
 	echo ""
 fi
 
-go get -u github.com/faiface/beep
+go get -u github.com/golang/freetype
+
+go get -u github.com/faiface/beep v1.0.2
 go get -u github.com/flopp/go-findfont
 go get -u github.com/go-gl/gl
 go get -u github.com/go-gl/glfw/v3.3/glfw
