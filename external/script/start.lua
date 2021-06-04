@@ -2246,7 +2246,14 @@ function start.f_teamMenu(side)
 			animDraw(motif.select_info['p' .. side .. '_teammenu_selftitle_data'])
 			t_txt_teamSelfTitle[side]:draw()
 		end
+		--Draw team cursor
+		main.f_animPosDraw(
+			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
+		)
 		for i = 1, #t do
+			--Draw team items
 			if i == start.p[side].teamMenu then
 				if t_teamActiveCount[side] < motif.select_info['p' .. side .. '_teammenu_item_active_switchtime'] then --delay change
 					t_teamActiveCount[side] = t_teamActiveCount[side] + 1
@@ -2352,12 +2359,6 @@ function start.f_teamMenu(side)
 				animDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
 			end
 		end
-		--Draw team cursor
-		main.f_animPosDraw(
-			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
-		)
 		--Confirmed team selection
 		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_accept'])) then
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
