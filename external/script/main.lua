@@ -1632,7 +1632,7 @@ function main.f_addChar(line, playable, loading, slot)
 			--nClock = os.clock()
 			addChar(c)
 			--print(c .. ": " .. os.clock() - nClock)
-			if getCharName(row - 1) == '' then
+			if getCharName(row - 1) == 'dummyslot' then
 				playable = false
 				break
 			end

@@ -2431,6 +2431,7 @@ func (s *Select) addChar(def string) {
 	idx := strings.Index(def, "/")
 	if len(def) >= 4 && strings.ToLower(def[len(def)-4:]) == ".def" {
 		if idx < 0 {
+			sc.name = "dummyslot"
 			return
 		}
 	} else if idx < 0 {
@@ -2442,10 +2443,12 @@ func (s *Select) addChar(def string) {
 		def = "chars/" + def
 	}
 	if def = FileExist(def); len(def) == 0 {
+		sc.name = "dummyslot"
 		return
 	}
 	str, err := LoadText(def)
 	if err != nil {
+		sc.name = "dummyslot"
 		return
 	}
 	sc.def = def
