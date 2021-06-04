@@ -3790,14 +3790,14 @@ function start.f_stageMusic()
 	end
 	if roundstart() then
 		if roundno() == 1 then
-			main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.volume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
+			main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
 			start.bgmstate = 0
 		elseif start.bgmstate ~= 1 then
 			if start.t_music.musicalt.bgmusic ~= nil and (start.t_music.bgmtrigger_alt == 0 or roundtype() == 3) then
-				main.f_playBGM(true, start.t_music.musicalt.bgmusic, 1, start.t_music.musicalt.volume, start.t_music.musicalt.bgmloopstart, start.t_music.musicalt.bgmloopend)
+				main.f_playBGM(true, start.t_music.musicalt.bgmusic, 1, start.t_music.musicalt.bgmvolume, start.t_music.musicalt.bgmloopstart, start.t_music.musicalt.bgmloopend)
 				start.bgmstate = 1
 			elseif start.bgmstate == 2 then
-				main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.volume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
+				main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
 				start.bgmstate = 0
 			end
 		end
@@ -3828,16 +3828,16 @@ function start.f_stageMusic()
 			bglife = (p1cnt <= 0 and player(1) and roundtype() >= 2) or (p2cnt <= 0 and player(2) and roundtype() >= 2)
 		end
 		if bglife then
-			main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.volume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
+			main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.bgmvolume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
 			start.bgmstate = 2
 		end
 	--elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and matchover() then
 	elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and roundstate() == 3 then
 		if start.t_music.musicvictory[1] ~= nil and player(1) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 1
-			main.f_playBGM(true, start.t_music.musicvictory[1].bgmusic, 1, start.t_music.musicvictory[1].volume, start.t_music.musicvictory[1].bgmloopstart, start.t_music.musicvictory[1].bgmloopend)
+			main.f_playBGM(true, start.t_music.musicvictory[1].bgmusic, 1, start.t_music.musicvictory[1].bgmvolume, start.t_music.musicvictory[1].bgmloopstart, start.t_music.musicvictory[1].bgmloopend)
 			start.bgmstate = -1
 		elseif start.t_music.musicvictory[2] ~= nil and player(2) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 2
-			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].volume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
+			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].bgmvolume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
 			start.bgmstate = -1
 		end
 	end
