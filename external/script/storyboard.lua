@@ -49,7 +49,7 @@ local function f_play(t, attract)
 				end
 				--play bgm
 				if i == 0 and t.scene[v].bgm ~= nil then
-					playBGM(t.scene[v].bgm, true, t.scene[v].bgm_loop, math.min(100, t.scene[v].bgm_volume), t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
+					playBGM(t.scene[v].bgm, true, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
