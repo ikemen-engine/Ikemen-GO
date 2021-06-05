@@ -31,16 +31,16 @@ fi
 
 echo "------------------------------------------------------------"
 echo "Building linux binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build_crossplatform.sh Linux cmpt' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Linux cmpt' 
 
 echo "------------------------------------------------------------"
 echo "Building mac binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build_crossplatform.sh MacOS' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh MacOS' 
 
 echo "------------------------------------------------------------"
 echo "Building windows x64 binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build_crossplatform.sh Win64' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win64' 
 
 echo "------------------------------------------------------------"
 echo "Building windows x86 binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build_crossplatform.sh Win32' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win32' 
