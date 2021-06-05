@@ -28,8 +28,11 @@ import (
 const (
 	MaxSimul        = 32
 	MaxAttachedChar = 2
-	FPS             = 60
-	Mp3SampleRate   = 44100
+)
+
+var (
+	FPS           = 60
+	Mp3SampleRate = 44100
 )
 
 // sys
@@ -84,6 +87,8 @@ var sys = System{
 	consoleRows:          15,
 	clipboardRows:        2,
 	pngFilter:            false,
+
+	maxBgmVolume: 0,
 }
 
 type TeamMode int32
@@ -342,6 +347,8 @@ type System struct {
 	brightnessOld   int32
 	// Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
 	pngFilter bool
+
+	maxBgmVolume int
 }
 
 type Window struct {
@@ -1640,9 +1647,10 @@ func (s *System) drawTop() {
 	} else if s.fadeouttime > 0 && fadeout < s.fadeouttime-1 && !s.dialogueFlg {
 		fade(s.scrrect, s.lifebar.ro.fadeout_col, 256*(s.lifebar.ro.fadeout_time-s.fadeouttime)/s.lifebar.ro.fadeout_time)
 		s.fadeouttime--
-	} else if s.clsnDraw {
+	} // ToDo: Add this back as a option.
+	/*else if s.clsnDraw {
 		fade(s.scrrect, 0, 0)
-	}
+	}*/
 	if s.shuttertime > 0 {
 		rect := s.scrrect
 		rect[3] = s.shuttertime * ((s.scrrect[3] + 1) >> 1) / s.lifebar.ro.shutter_time

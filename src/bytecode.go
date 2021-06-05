@@ -1632,7 +1632,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_ishometeam:
 		sys.bcStack.PushB(c.teamside == sys.home)
 	case OC_ex_tickspersecond:
-		sys.bcStack.PushI(FPS)
+		sys.bcStack.PushI(int32(FPS))
 	case OC_ex_const240p:
 		*sys.bcStack.Top() = c.constp(320, sys.bcStack.Top().ToF())
 	case OC_ex_const480p:
@@ -1815,9 +1815,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_ratiolevel:
 		sys.bcStack.PushI(c.ratioLevel())
 	case OC_ex_receiveddamage:
-		sys.bcStack.PushI(c.getcombodmg)
+		sys.bcStack.PushI(c.comboDmg)
 	case OC_ex_receivedhits:
-		sys.bcStack.PushI(c.getcombo)
+		sys.bcStack.PushI(c.receivedHits)
 	case OC_ex_redlife:
 		sys.bcStack.PushI(c.redLife)
 	case OC_ex_round:
@@ -2258,7 +2258,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			x = nil
 			p = exp[0].evalF(c)
 		case playSnd_volume:
-			vo = vo + exp[0].evalI(c)*(25/64)
+			vo = vo + int32(float64(exp[0].evalI(c))*(25.0/64.0))
 		case playSnd_volumescale:
 			vo = exp[0].evalI(c)
 		case playSnd_freqmul:

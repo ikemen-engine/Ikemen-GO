@@ -1021,7 +1021,8 @@ func systemScriptInit(l *lua.LState) {
 		}
 		lines, i, info, files, name, sound := SplitAndTrim(str, "\n"), 0, true, true, "", ""
 		for i < len(lines) {
-			is, name, _ := ReadIniSection(lines, &i)
+			var is IniSection
+			is, name, _ = ReadIniSection(lines, &i)
 			switch name {
 			case "info":
 				if info {
@@ -3639,11 +3640,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "receivedhits", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getcombo))
+		l.Push(lua.LNumber(sys.debugWC.receivedHits))
 		return 1
 	})
 	luaRegister(l, "receiveddamage", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getcombodmg))
+		l.Push(lua.LNumber(sys.debugWC.comboDmg))
 		return 1
 	})
 	luaRegister(l, "redlife", func(*lua.LState) int {

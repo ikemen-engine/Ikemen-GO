@@ -276,6 +276,14 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 	}
 	speaker.Clear()
 
+	if bgmVolume > 250 {
+		if sys.maxBgmVolume <= 0 {
+			bgmVolume = 100
+		} else {
+			bgmVolume = sys.maxBgmVolume
+		}
+	}
+
 	if HasExtension(bgm.filename, "^\\.[Oo][Gg][Gg]$") {
 		bgm.ReadVorbis(loop, bgmVolume)
 	} else if HasExtension(bgm.filename, "^\\.[Mm][Pp]3$") {
