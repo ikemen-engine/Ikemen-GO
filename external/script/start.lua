@@ -3000,37 +3000,45 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local t_matchList = {}
 	local playerNo = -1
 	local selectNo = -1
-	local ok = false
-	--generate table out of characters present in the last match
+	local foundLeader = false
+	local f_appendTable = function(ref)
+		if #t >= num then return false end
+		table.insert(t, {
+			ref = ref,
+			anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
+			anim_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '', '', true, true),
+			slide_dist = {0, 0},
+		})
+		t_matchList[ref] = (t_matchList[ref] or 0) + 1
+		return true
+	end
+	--winner who made last hit takes priority
+	local lastHitter = lasthitter(winnerteam())
+	if player(lastHitter) and teamside() == side then --assign sys.debugWC
+		playerNo = lastHitter
+		selectNo = selectno()
+		foundLeader = true
+		f_appendTable(selectNo)
+	end
+	--generate table out of remaining characters present in the last match
 	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and teamside() == side then --assign sys.debugWC
-			local insert = false
-			if win() then --win team
-				if alive() and not ok then --first not KOed win team member
+			if lose() then --member of lose team
+				if not foundLeader then
 					playerNo = i
 					selectNo = selectno()
-					insert = true
-					ok = true
-				elseif alive() or allow_ko == 1 then --other win team members
-					insert = true
+					foundLeader = true
 				end
-			else --lose team
-				if not ok then
+				if not f_appendTable(selectno()) then break end
+			elseif i ~= lastHitter then --member of win team (but skip winner who made last hit)
+				if alive() and not foundLeader then --first not KOed member
 					playerNo = i
 					selectNo = selectno()
-					ok = true
+					foundLeader = true
+					if not f_appendTable(selectNo) then break end
+				elseif alive() or allow_ko == 1 then --other team members
+					if not f_appendTable(selectno()) then break end
 				end
-				insert = true
-			end
-			if insert then
-				if #t >= num then break end
-				table.insert(t, {
-					ref = selectno(),
-					anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
-					anim_data = start.f_animGet(selectno(), paramSide, #t + 1, motif.victory_screen, '', '', true, true),
-					slide_dist = {0, 0},
-				})
-				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
 			end
 		end
 	end
@@ -3045,13 +3053,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 		for k, v in pairs(t_teamList) do
 			if t_matchList[k] == nil or t_matchList[k] < v then
 				for i = 1, v - (t_matchList[k] or 0) do
-					table.insert(t, {
-						ref = k,
-						anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
-						anim_data = start.f_animGet(k, paramSide, #t + 1, motif.victory_screen, '', '', true, true),
-						slide_dist = {0, 0},
-					})
-					t_matchList[k] = (t_matchList[k] or 0) + 1
+					f_appendTable(k)
 				end
 			end
 		end

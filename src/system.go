@@ -138,6 +138,7 @@ type System struct {
 	round                   int32
 	intro                   int32
 	time                    int32
+	lastHitter              [2]int
 	winTeam                 int
 	winType                 [2]WinType
 	winTrigger              [2]WinType
@@ -920,6 +921,7 @@ func (s *System) nextRound() {
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_N, WT_N}
 	s.winTrigger = [...]WinType{WT_N, WT_N}
+	s.lastHitter = [2]int{-1, -1}
 	s.fightOver = false
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time

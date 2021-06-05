@@ -802,6 +802,11 @@ function main.f_tableWrap(t, l)
     end
 end
 
+--shift table elements
+function main.f_tableShift(t, old, new)
+	table.insert(t, new, table.remove(t, old))
+end
+
 --remove from table
 function main.f_tableRemove(t, value)
 	for k, v in pairs(t) do
