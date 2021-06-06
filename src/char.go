@@ -5931,6 +5931,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						} else {
 							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
 						}
+						ghv.fallf = hd.ground_fall
 						if !hd.down_bounce {
 							ghv.fall.xvelocity = float32(math.NaN())
 							ghv.fall.yvelocity = 0
