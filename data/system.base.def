@@ -1,4 +1,4 @@
-; Ver 0.96.4
+; Ver 0.97.0
 ; This file contains all the default value for System.def
 ; This file is meant to be a guide, it should not be used as-is.
 [Info]
@@ -226,7 +226,8 @@
 	;menu.itemname.freebattle = "QUICK MATCH"
 	;menu.itemname.storymode = "STORY MODE"
 	;menu.itemname.serverhost = "HOST GAME"
-	;menu.itemname.serverjoin = "JOIN GAME"	;menu.itemname.joinadd = "NEW ADDRESS"
+	;menu.itemname.serverjoin = "JOIN GAME"
+	;menu.itemname.joinadd = "NEW ADDRESS"
 	;menu.itemname.netplayversus = "VERSUS 2P"
 	;menu.itemname.netplayteamcoop = "ARCADE CO-OP"
 	;menu.itemname.netplaysurvivalcoop = "SURVIVAL CO-OP"
@@ -242,6 +243,8 @@
 	;menu.itemname.replay = "REPLAY"
 	;menu.itemname.back = "BACK"
 	;menu.unlock.<itemname> = "true"
+
+	;cursor.<itemname>.snd = -1, 0 ; mode selection sound
 
 [TitleBgDef] ;Ikemen feature
 	spr = ""
@@ -376,6 +379,8 @@
 	p2.name.font.scale = 1.0, 1.0
 	p2.name.spacing = 0, 14
 
+	name.randomselect.text = "Random"
+	
 	stage.pos = 0, 0
 	stage.active.font = -1, 0, 0, 255, 255, 255
 	stage.active.font.scale = 1.0, 1.0
@@ -1518,6 +1523,7 @@
 	;menu.itemname.inputdefault = "Default"
 	;menu.itemname.players = "Players"
 	;menu.itemname.debugkeys = "Debug Keys"
+	;menu.itemname.debugmode = "Debug Mode"
 	;menu.itemname.helpermax = "HelperMax"
 	;menu.itemname.projectilemax = "PlayerProjectileMax"
 	;menu.itemname.explodmax = "ExplodMax"
