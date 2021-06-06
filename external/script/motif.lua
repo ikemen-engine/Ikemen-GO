@@ -4,6 +4,8 @@
 local width = math.max(config.GameWidth, main.SP_Localcoord[1])
 local height = math.max(config.GameHeight, main.SP_Localcoord[2])
 
+local verInfo = main.f_fileRead("external/script/version", "r")
+
 --This pre-made table (3/4 of the whole file) contains all default values used in screenpack. New table from parsed DEF file is merged on top of this one.
 --This is important because there are more params available in Ikemen. Whole screenpack code refers to these values.
 local motif =
@@ -131,7 +133,7 @@ local motif =
 		footer3_font = {'default-3x5.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
-		footer3_text = 'v0.96.2', --Ikemen feature
+		footer3_text = verInfo, --Ikemen feature
 		footer_overlay_window = {0, main.SP_Localcoord[2] - 7, main.SP_Localcoord[1] - 1, main.SP_Localcoord[2] - 1}, --Ikemen feature (0, 233, 319, 239)
 		footer_overlay_col = {0, 0, 64}, --Ikemen feature
 		footer_overlay_alpha = {255, 100}, --Ikemen feature

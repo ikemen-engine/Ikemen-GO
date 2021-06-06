@@ -219,19 +219,20 @@ func readHealthBar(pre string, is IniSection,
 	return hb
 }
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
-	life := float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
+	var life float32 = float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
 	//redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
-	redval := sys.chars[ref][0].redLife
-	gethit := (sys.chars[ref][0].getcombo != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
+	var redVal int32 = sys.chars[ref][0].redLife
+	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
+
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
-	if !hb.mid_freeze && gethit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
+	if !hb.mid_freeze && getHit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
 		hbr.mlifetime = hb.mid_delay
 		hbr.midlife = hbr.oldlife
 		hbr.midlifeMin = hbr.oldlife
 	}
-	hb.gethit = gethit
-	if hb.mid_freeze && gethit && len(hb.mid.anim.frames) > 0 {
+	hb.gethit = getHit
+	if hb.mid_freeze && getHit && len(hb.mid.anim.frames) > 0 {
 		if hbr.mlifetime < hb.mid_delay {
 			hbr.mlifetime = hb.mid_delay
 			hbr.midlife = hbr.oldlife
@@ -265,7 +266,7 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	hb.mid.Action()
 	var rv int32
 	for k := range hb.red {
-		if k > rv && redval >= k {
+		if k > rv && redVal >= k {
 			rv = k
 		}
 	}
@@ -1260,6 +1261,7 @@ type LifeBarCombo struct {
 	counterX      float32
 	shaketime     int32
 	combo         int32
+	fakeCombo     int32
 }
 
 func newLifeBarCombo() *LifeBarCombo {
@@ -1291,15 +1293,19 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
 	is.ReadI32("format.decimal.places", &co.places)
 	return co
 }
-func (co *LifeBarCombo) step(combo, damage int32, percentage float32, dizzy bool) {
-	if combo > 0 {
-		combo = co.combo
+func (co *LifeBarCombo) step(combo, fakeCombo, damage int32, percentage float32, dizzy bool) {
+	if fakeCombo > 0 {
+		fakeCombo = co.fakeCombo
 	} else {
+		co.fakeCombo = 0
+	}
+	if combo <= 0 {
 		co.combo = 0
 	}
+
 	if co.resttime > 0 {
 		co.counterX -= co.counterX / co.showspeed
-	} else if combo < 2 {
+	} else if fakeCombo < 2 {
 		co.counterX -= sys.lifebarFontScale * co.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
 		if co.counterX < co.start_x*2 {
 			co.counterX = co.start_x * 2
@@ -1311,9 +1317,9 @@ func (co *LifeBarCombo) step(combo, damage int32, percentage float32, dizzy bool
 	if AbsF(co.counterX) < 1 && !dizzy {
 		co.resttime--
 	}
-	if combo >= 2 {
-		if co.old != combo {
-			co.cur = combo
+	if fakeCombo >= 2 {
+		if co.old != fakeCombo {
+			co.cur = fakeCombo
 			co.resttime = co.displaytime
 			if co.counter_shake {
 				co.shaketime = co.counter_time
@@ -1326,13 +1332,14 @@ func (co *LifeBarCombo) step(combo, damage int32, percentage float32, dizzy bool
 			co.curp = percentage
 		}
 	}
-	co.old = combo
+	co.old = fakeCombo
 	co.oldd = damage
 	co.oldp = percentage
 }
 func (co *LifeBarCombo) reset() {
 	co.cur, co.old, co.curd, co.oldd, co.curp, co.oldp, co.resttime = 0, 0, 0, 0, 0, 0, 0
 	co.combo = 0
+	co.fakeCombo = 0
 	co.counterX = co.start_x * 2
 	co.shaketime = 0
 }
@@ -3106,11 +3113,12 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 1; i < len(l.pb); i++ {
 				if i == l.missing[k] {
 					for j := 0; j < 2; j++ {
-						if i == 4 || i == 5 {
+						switch i {
+						case 4, 5:
 							l.pb[i][j] = l.pb[1][j]
-						} else if i == 6 || i == 7 {
+						case 6, 7:
 							l.pb[i][j] = l.pb[3][j]
-						} else {
+						default:
 							l.pb[i][j] = l.pb[0][j]
 						}
 					}
@@ -3120,11 +3128,12 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 1; i < len(l.gb); i++ {
 				if i == l.missing[k] {
 					for j := 0; j < 2; j++ {
-						if i == 4 || i == 5 {
+						switch i {
+						case 4, 5:
 							l.gb[i][j] = l.gb[1][j]
-						} else if i == 6 || i == 7 {
+						case 6, 7:
 							l.gb[i][j] = l.gb[3][j]
-						} else {
+						default:
 							l.gb[i][j] = l.gb[0][j]
 						}
 					}
@@ -3134,11 +3143,12 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			for i := 1; i < len(l.sb); i++ {
 				if i == l.missing[k] {
 					for j := 0; j < 2; j++ {
-						if i == 4 || i == 5 {
+						switch i {
+						case 4, 5:
 							l.sb[i][j] = l.sb[1][j]
-						} else if i == 6 || i == 7 {
+						case 6, 7:
 							l.sb[i][j] = l.sb[3][j]
-						} else {
+						default:
 							l.sb[i][j] = l.sb[0][j]
 						}
 					}
@@ -3242,23 +3252,27 @@ func (l *Lifebar) step() {
 	//LifeBarTime
 	l.ti.step()
 	//LifeBarCombo
-	cb, cd, cp, st := [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
+	cb, fcb, cd, cp, st := [2]int32{}, [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
 	for i, ch := range sys.chars {
 		for _, c := range ch {
 			if c.alive() || !c.scf(SCF_over) {
-				if c.getcombo > cb[^i&1] {
-					cb[^i&1] = Min(999, Max(c.getcombo, cb[^i&1]))
-					cd[^i&1] = Max(c.getcombodmg, cd[^i&1])
+				// Fake Combo
+				if c.receivedHits > cb[^i&1] {
+					cb[^i&1] = Min(999, Max(c.fakeReceivedHits, cb[^i&1]))
+				}
+				if c.fakeReceivedHits > fcb[^i&1] {
+					fcb[^i&1] = Min(999, Max(c.fakeReceivedHits, fcb[^i&1]))
+					cd[^i&1] = Max(c.fakeComboDmg, cd[^i&1])
 					cp[^i&1] = float32(cd[^i&1]) / float32(c.lifeMax) * 100
 				}
-				if c.getcombo > 0 && !st[^i&1] && c.scf(SCF_dizzy) {
+				if c.fakeReceivedHits > 0 && !st[^i&1] && c.scf(SCF_dizzy) {
 					st[^i&1] = true
 				}
 			}
 		}
 	}
 	for i := range l.co {
-		l.co[i].step(cb[i], cd[i], cp[i], st[i])
+		l.co[i].step(cb[i], fcb[i], cd[i], cp[i], st[i])
 	}
 	//LifeBarAction
 	for i := range l.ac {

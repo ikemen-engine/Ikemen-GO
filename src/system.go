@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Windblade-GR01/go-openal/openal"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/ikemen-engine/go-openal/openal"
 	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -28,8 +28,11 @@ import (
 const (
 	MaxSimul        = 32
 	MaxAttachedChar = 2
-	FPS             = 60
-	Mp3SampleRate   = 44100
+)
+
+var (
+	FPS           = 60
+	Mp3SampleRate = 44100
 )
 
 // sys
@@ -84,6 +87,8 @@ var sys = System{
 	consoleRows:          15,
 	clipboardRows:        2,
 	pngFilter:            false,
+
+	maxBgmVolume: 0,
 }
 
 type TeamMode int32
@@ -344,6 +349,8 @@ type System struct {
 	brightnessOld   int32
 	// Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
 	pngFilter bool
+
+	maxBgmVolume int
 }
 
 type Window struct {
@@ -1643,9 +1650,10 @@ func (s *System) drawTop() {
 	} else if s.fadeouttime > 0 && fadeout < s.fadeouttime-1 && !s.dialogueFlg {
 		fade(s.scrrect, s.lifebar.ro.fadeout_col, 256*(s.lifebar.ro.fadeout_time-s.fadeouttime)/s.lifebar.ro.fadeout_time)
 		s.fadeouttime--
-	} else if s.clsnDraw {
+	} // ToDo: Add this back as a option.
+	/*else if s.clsnDraw {
 		fade(s.scrrect, 0, 0)
-	}
+	}*/
 	if s.shuttertime > 0 {
 		rect := s.scrrect
 		rect[3] = s.shuttertime * ((s.scrrect[3] + 1) >> 1) / s.lifebar.ro.shutter_time
@@ -2079,7 +2087,7 @@ func (s *System) fight() (reload bool) {
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
 			s.scoreRounds = append(s.scoreRounds, [2]float32{s.lifebar.sc[0].scorePoints, s.lifebar.sc[1].scorePoints})
 			oldTeamLeader = s.teamLeader
-			
+
 			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.chars[0][0].win()) &&
 				(s.tmode[1] != TM_Turns || s.chars[1][0].win()) {
 				/* Prepare for the next round */

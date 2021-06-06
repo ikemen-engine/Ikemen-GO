@@ -8,7 +8,6 @@ bin/*
 
 # Compilation files
 src/*.syso
-go.sum
 
 # Temp
 src/lua_triggers.go

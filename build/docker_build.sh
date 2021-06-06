@@ -30,16 +30,17 @@ if [ ! -d ./bin ]; then
 fi
 
 echo "------------------------------------------------------------"
-docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x get.sh'
-
-echo "------------------------------------------------------------"
 echo "Building linux binary..."
-docker run --rm -e OS=linux -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
-
-echo "------------------------------------------------------------"
-echo "Building windows binary..."
-docker run --rm -e OS=windows -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build  && bash -x build_crossplatform.sh' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Linux cmpt' 
 
 echo "------------------------------------------------------------"
 echo "Building mac binary..."
-docker run --rm -e OS=mac -v $(pwd):/code -it windblade/ikemen-dev:latest bash -c 'cd /code/build && bash -x build_crossplatform.sh' 
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh MacOS' 
+
+echo "------------------------------------------------------------"
+echo "Building windows x64 binary..."
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win64' 
+
+echo "------------------------------------------------------------"
+echo "Building windows x86 binary..."
+docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win32' 

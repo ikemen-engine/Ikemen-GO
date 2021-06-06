@@ -179,6 +179,7 @@ type configSettings struct {
 	AIRamping                  bool
 	AIRandomColor              bool
 	AudioDucking               bool
+	AudioSampleRate            int32
 	AutoGuard                  bool
 	BarGuard                   bool
 	BarRedLife                 bool
@@ -209,6 +210,7 @@ type configSettings struct {
 	GameWidth                  int32
 	GameHeight                 int32
 	GameSpeed                  float32
+	Framerate                  int32
 	IP                         map[string]string
 	LifebarFontScale           float32
 	LifeMul                    float32
@@ -251,6 +253,8 @@ type configSettings struct {
 	VolumeBgm                  int
 	VolumeMaster               int
 	VolumeSfx                  int
+	VolumeWarning              bool
+	MaxBgmVolume               int
 	VRetrace                   int
 	WindowIcon                 []string
 	WindowTitle                string
@@ -274,8 +278,9 @@ func setupConfig() configSettings {
 	defcfg := []byte(strings.Join(strings.Split(
 		`{
 	"AIRamping": true,
-	"AIRandomColor": true,
+	"AIRandomColor": false,
 	"AudioDucking": false,
+	"AudioSampleRate": 44100,
 	"AutoGuard": false,
 	"BarGuard": false,
 	"BarRedLife": true,
@@ -311,6 +316,7 @@ func setupConfig() configSettings {
 	"FontShaderVer": "150 core",
 	"ForceStageZoomin": 0,
 	"ForceStageZoomout": 0,
+	"Framerate": 60,
 	"Fullscreen": false,
 	"GameWidth": 640,
 	"GameHeight": 480,
@@ -366,7 +372,7 @@ func setupConfig() configSettings {
 	"ScreenshotFolder": "",
 	"StartStage" : "stages/stage0-720.def",
 	"System": "external/script/main.lua",
-	"Team1VS2Life": 100,
+	"Team1VS2Life": 150,
 	"TeamDuplicates": true,
 	"TeamLifeShare": false,
 	"TeamPowerShare": true,
@@ -376,9 +382,13 @@ func setupConfig() configSettings {
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
+	"VolumeWarning": true,
+	"MaxBgmVolume": 0,
 	"VRetrace": 1, 
 	"WindowIcon": [
-		"external/icons/IkemenCylia.png"
+		"external/icons/IkemenCylia_256.png",
+		"external/icons/IkemenCylia_96.png",
+		"external/icons/IkemenCylia_48.png"
 	],
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
@@ -571,7 +581,17 @@ func setupConfig() configSettings {
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.allowDebugMode = tmp.DebugMode
 	sys.audioDucking = tmp.AudioDucking
+	switch tmp.AudioSampleRate {
+	case 44100, 48000:
+		Mp3SampleRate = int(tmp.AudioSampleRate)
+	default:
+		Mp3SampleRate = 44100
+	}
 	sys.bgmVolume = tmp.VolumeBgm
+	//sys.volumeWarning = tmp.VolumeWarning
+	if tmp.MaxBgmVolume <= 400 {
+		sys.maxBgmVolume = tmp.MaxBgmVolume
+	}
 	sys.borderless = tmp.Borderless
 	sys.cam.ZoomDelayEnable = tmp.ZoomDelay
 	sys.cam.ZoomEnable = tmp.ZoomActive
@@ -597,6 +617,10 @@ func setupConfig() configSettings {
 		sys.fontShaderVer = tmp.FontShaderVer
 	}
 	sys.fullscreen = tmp.Fullscreen
+
+	if tmp.Framerate > 0 || tmp.Framerate <= 840 {
+		FPS = int(tmp.Framerate)
+	}
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
 	sys.lifebarFontScale = tmp.LifebarFontScale

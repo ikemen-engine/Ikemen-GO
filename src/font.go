@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Windblade-GR01/glfont"
+	"github.com/ikemen-engine/glfont"
 	findfont "github.com/flopp/go-findfont"
 )
 
