@@ -253,7 +253,7 @@ type configSettings struct {
 	VolumeBgm                  int
 	VolumeMaster               int
 	VolumeSfx                  int
-	VolumeWarning              int
+	VolumeWarning              bool
 	MaxBgmVolume               int
 	VRetrace                   int
 	WindowIcon                 []string
@@ -589,7 +589,7 @@ func setupConfig() configSettings {
 	}
 	sys.bgmVolume = tmp.VolumeBgm
 	//sys.volumeWarning = tmp.VolumeWarning
-	if tmp.MaxBgmVolume <= 500 {
+	if tmp.MaxBgmVolume <= 400 {
 		sys.maxBgmVolume = tmp.MaxBgmVolume
 	}
 	sys.borderless = tmp.Borderless
