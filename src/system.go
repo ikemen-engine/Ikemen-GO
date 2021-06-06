@@ -1198,7 +1198,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.charList.action(*x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
-		s.nomusic = s.sf(GSF_nomusic)
+		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
