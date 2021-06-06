@@ -806,7 +806,7 @@ function start.f_getName(ref, hidden)
 	end
 	local tmp = start.f_getCharData(ref).name
 	if start.f_getCharData(ref).char == 'randomselect' or (hidden and start.f_getCharData(ref).hidden == 3) then
-		tmp = motif.select_info.name_random_text
+		tmp = motif.select_info.name_randomselect_text
 	elseif hidden and start.f_getCharData(ref).hidden == 2 then
 		tmp = ''
 	end
