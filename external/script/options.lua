@@ -126,6 +126,7 @@ options.t_itemname = {
 			--config.DebugFont = "font/f-4x6.def"
 			--config.DebugFontScale = 1
 			config.DebugKeys = true
+			config.DebugMode = true
 			config.Difficulty = 8
 			config.EscOpensMenu = true
 			config.ExternalShaders = {}
@@ -189,6 +190,7 @@ options.t_itemname = {
 			main.f_updateRoundsNum()
 			options.f_resetVardisplay(options.menu)
 			setAllowDebugKeys(config.DebugKeys)
+			setAllowDebugMode(config.DebugMode)
 			setAudioDucking(config.AudioDucking)
 			setGameSpeed(config.GameSpeed / 100)
 			setLifeShare(1, config.TeamLifeShare)
@@ -994,6 +996,21 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	--Debug Mode
+	['debugmode'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.DebugMode then
+				config.DebugMode = false
+			else
+				config.DebugMode = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.DebugMode, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
+			setAllowDebugMode(config.DebugMode)
+			modified = true
+		end
+		return true
+	end,
 	--HelperMax
 	['helpermax'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) then
@@ -1243,6 +1260,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'bgmvolume' then return config.VolumeBgm .. '%' end
 	if itemname == 'credits' then return options.f_definedDisplay(config.Credits, {[0] = motif.option_info.menu_valuename_disabled}, config.Credits) end
 	if itemname == 'debugkeys' then return options.f_boolDisplay(config.DebugKeys, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
+	if itemname == 'debugmode' then return options.f_boolDisplay(config.DebugMode, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'difficulty' then return config.Difficulty end
 	if itemname == 'explodmax' then return config.MaxExplod end
 	if itemname == 'fullscreen' then return options.f_boolDisplay(config.Fullscreen) end

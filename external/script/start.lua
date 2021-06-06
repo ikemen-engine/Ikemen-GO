@@ -1,34 +1,14 @@
 local start = {}
---team side specific
+
+--team side specific data storage
 start.p = {{}, {}}
-for i = 1, 2 do
-	--default team count after starting the game
-	start.p[i].numRatio = 1
-	start.p[i].numSimul = math.max(2, config.NumSimul[1])
-	start.p[i].numTag = math.max(2, config.NumTag[1])
-	start.p[i].numTurns = math.max(2, config.NumTurns[1])
-	--default team mode after starting the game
-	start.p[i].teamMenu = 1
-	--cursor pos
-	start.p[i].t_cursor = {}
-	--other player data flags
-	start.p[i].ratio = false
-	start.p[i].selEnd = false
-	start.p[i].teamEnd = false
-	--selected data
-	start.p[i].t_selected = {}
-	start.p[i].t_selTemp = {}
-	start.p[i].t_selCmd = {}
-	start.p[i].teamMode = 0
-	start.p[i].numChars = 0
-end
---temporary data (active only during 1 launchFight call)
-start.challenger = 0
---cell data
+--cell data storage
 start.c = {}
 for i = 1, --[[config.Players]]8 do
 	table.insert(start.c, {selX = 0, selY = 0, cell = -1, randCnt = 0, randRef = nil})
 end
+--globally accessible temp data
+start.challenger = 0
 --local variables
 local restoreCursor = false
 local selScreenEnd = false
@@ -45,6 +25,33 @@ local loseCnt = 0
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
+--default values hard reset
+function start.f_hardReset()
+	stageListNo = 0
+	for i = 1, 2 do
+		--default team count
+		start.p[i].numRatio = 1
+		start.p[i].numSimul = math.max(2, config.NumSimul[1])
+		start.p[i].numTag = math.max(2, config.NumTag[1])
+		start.p[i].numTurns = math.max(2, config.NumTurns[1])
+		--default team mode
+		start.p[i].teamMenu = 1
+		--cursor pos
+		start.p[i].t_cursor = {}
+		--other player data flags
+		start.p[i].ratio = false
+		start.p[i].selEnd = false
+		start.p[i].teamEnd = false
+		--selected data
+		start.p[i].t_selected = {}
+		start.p[i].t_selTemp = {}
+		start.p[i].t_selCmd = {}
+		start.p[i].teamMode = 0
+		start.p[i].numChars = 0
+	end
+end
+start.f_hardReset() --default values reset after starting the game
+
 --converts '.maxmatches' style table (key = order, value = max matches) to the same structure as '.ratiomatches' (key = match number, value = subtable with char num and order data)
 function start.f_unifySettings(t, t_chars)
 	local ret = {}
@@ -799,7 +806,7 @@ function start.f_getName(ref, hidden)
 	end
 	local tmp = start.f_getCharData(ref).name
 	if start.f_getCharData(ref).char == 'randomselect' or (hidden and start.f_getCharData(ref).hidden == 3) then
-		tmp = 'Random'
+		tmp = motif.select_info.name_random_text
 	elseif hidden and start.f_getCharData(ref).hidden == 2 then
 		tmp = ''
 	end
@@ -1500,13 +1507,6 @@ function start.f_selectReset()
 		end
 		col = col + 1
 	end
-	if gamemode('netplayversus') or gamemode('netplayteamcoop') or gamemode('netplaysurvivalcoop') then
-		start.p[1].teamMode = 0
-		start.p[2].teamMode = 0
-		start.p[1].teamMenu = 1
-		start.p[2].teamMenu = 1
-		stageListNo = 0
-	end
 	for side = 1, 2 do
 		start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
 		start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
@@ -1594,7 +1594,7 @@ function launchFight(data)
 	t.p2teammode = start.p[2].teamMode
 	t.challenger = main.f_arg(data.challenger, false)
 	t.continue = main.f_arg(data.continue, main.continueScreen)
-	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue and config.QuickContinue)
+	t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue or config.QuickContinue)
 	t.order = data.order or 1
 	t.orderskip = main.f_arg(data.orderskip, true)
 	t.p1char = data.p1char or {}
@@ -2246,7 +2246,14 @@ function start.f_teamMenu(side)
 			animDraw(motif.select_info['p' .. side .. '_teammenu_selftitle_data'])
 			t_txt_teamSelfTitle[side]:draw()
 		end
+		--Draw team cursor
+		main.f_animPosDraw(
+			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
+			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
+		)
 		for i = 1, #t do
+			--Draw team items
 			if i == start.p[side].teamMenu then
 				if t_teamActiveCount[side] < motif.select_info['p' .. side .. '_teammenu_item_active_switchtime'] then --delay change
 					t_teamActiveCount[side] = t_teamActiveCount[side] + 1
@@ -2352,12 +2359,6 @@ function start.f_teamMenu(side)
 				animDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
 			end
 		end
-		--Draw team cursor
-		main.f_animPosDraw(
-			motif.select_info['p' .. side .. '_teammenu_item_cursor_data'],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
-			(start.p[side].teamMenu - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
-		)
 		--Confirmed team selection
 		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_accept'])) then
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
@@ -2999,37 +3000,45 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local t_matchList = {}
 	local playerNo = -1
 	local selectNo = -1
-	local ok = false
-	--generate table out of characters present in the last match
+	local foundLeader = false
+	local f_appendTable = function(ref)
+		if #t >= num then return false end
+		table.insert(t, {
+			ref = ref,
+			anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
+			anim_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '', '', true, true),
+			slide_dist = {0, 0},
+		})
+		t_matchList[ref] = (t_matchList[ref] or 0) + 1
+		return true
+	end
+	--winner who made last hit takes priority
+	local lastHitter = lasthitter(winnerteam())
+	if player(lastHitter) and teamside() == side then --assign sys.debugWC
+		playerNo = lastHitter
+		selectNo = selectno()
+		foundLeader = true
+		f_appendTable(selectNo)
+	end
+	--generate table out of remaining characters present in the last match
 	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and teamside() == side then --assign sys.debugWC
-			local insert = false
-			if win() then --win team
-				if alive() and not ok then --first not KOed win team member
+			if lose() then --member of lose team
+				if not foundLeader then
 					playerNo = i
 					selectNo = selectno()
-					insert = true
-					ok = true
-				elseif alive() or allow_ko == 1 then --other win team members
-					insert = true
+					foundLeader = true
 				end
-			else --lose team
-				if not ok then
+				if not f_appendTable(selectno()) then break end
+			elseif i ~= lastHitter then --member of win team (but skip winner who made last hit)
+				if alive() and not foundLeader then --first not KOed member
 					playerNo = i
 					selectNo = selectno()
-					ok = true
+					foundLeader = true
+					if not f_appendTable(selectNo) then break end
+				elseif alive() or allow_ko == 1 then --other team members
+					if not f_appendTable(selectno()) then break end
 				end
-				insert = true
-			end
-			if insert then
-				if #t >= num then break end
-				table.insert(t, {
-					ref = selectno(),
-					anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
-					anim_data = start.f_animGet(selectno(), paramSide, #t + 1, motif.victory_screen, '', '', true, true),
-					slide_dist = {0, 0},
-				})
-				t_matchList[selectno()] = (t_matchList[selectno()] or 0) + 1
 			end
 		end
 	end
@@ -3044,13 +3053,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 		for k, v in pairs(t_teamList) do
 			if t_matchList[k] == nil or t_matchList[k] < v then
 				for i = 1, v - (t_matchList[k] or 0) do
-					table.insert(t, {
-						ref = k,
-						anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
-						anim_data = start.f_animGet(k, paramSide, #t + 1, motif.victory_screen, '', '', true, true),
-						slide_dist = {0, 0},
-					})
-					t_matchList[k] = (t_matchList[k] or 0) + 1
+					f_appendTable(k)
 				end
 			end
 		end
@@ -3790,14 +3793,14 @@ function start.f_stageMusic()
 	end
 	if roundstart() then
 		if roundno() == 1 then
-			main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.volume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
+			main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
 			start.bgmstate = 0
 		elseif start.bgmstate ~= 1 then
 			if start.t_music.musicalt.bgmusic ~= nil and (start.t_music.bgmtrigger_alt == 0 or roundtype() == 3) then
-				main.f_playBGM(true, start.t_music.musicalt.bgmusic, 1, start.t_music.musicalt.volume, start.t_music.musicalt.bgmloopstart, start.t_music.musicalt.bgmloopend)
+				main.f_playBGM(true, start.t_music.musicalt.bgmusic, 1, start.t_music.musicalt.bgmvolume, start.t_music.musicalt.bgmloopstart, start.t_music.musicalt.bgmloopend)
 				start.bgmstate = 1
 			elseif start.bgmstate == 2 then
-				main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.volume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
+				main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
 				start.bgmstate = 0
 			end
 		end
@@ -3828,16 +3831,16 @@ function start.f_stageMusic()
 			bglife = (p1cnt <= 0 and player(1) and roundtype() >= 2) or (p2cnt <= 0 and player(2) and roundtype() >= 2)
 		end
 		if bglife then
-			main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.volume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
+			main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.bgmvolume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
 			start.bgmstate = 2
 		end
 	--elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and matchover() then
 	elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and roundstate() == 3 then
 		if start.t_music.musicvictory[1] ~= nil and player(1) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 1
-			main.f_playBGM(true, start.t_music.musicvictory[1].bgmusic, 1, start.t_music.musicvictory[1].volume, start.t_music.musicvictory[1].bgmloopstart, start.t_music.musicvictory[1].bgmloopend)
+			main.f_playBGM(true, start.t_music.musicvictory[1].bgmusic, 1, start.t_music.musicvictory[1].bgmvolume, start.t_music.musicvictory[1].bgmloopstart, start.t_music.musicvictory[1].bgmloopend)
 			start.bgmstate = -1
 		elseif start.t_music.musicvictory[2] ~= nil and player(2) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 2
-			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].volume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
+			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].bgmvolume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
 			start.bgmstate = -1
 		end
 	end

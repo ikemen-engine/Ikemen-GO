@@ -219,7 +219,7 @@ end
 --add missing relative file path
 function main.f_filePath(path, dir, defaultDir)
 	path = path:gsub('\\', '/')
-	if not path:match('^data/') then
+	if not path:lower():match('^data/') then
 		if main.f_fileExists(dir .. path) then
 			return dir .. path
 		elseif main.f_fileExists(defaultDir .. path) then
@@ -800,6 +800,11 @@ function main.f_tableWrap(t, l)
         table.insert(t, 1, t[#t])
         table.remove(t, #t)
     end
+end
+
+--shift table elements
+function main.f_tableShift(t, old, new)
+	table.insert(t, new, table.remove(t, old))
 end
 
 --remove from table
@@ -1617,7 +1622,6 @@ function main.f_addChar(line, playable, loading, slot)
 	local row = #main.t_selChars
 	local slot = slot or false
 	local valid = false
-	local tmp = ''
 	--store 'unlock' param and get rid of everything that follows it
 	local unlock = ''
 	line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
@@ -1633,13 +1637,12 @@ function main.f_addChar(line, playable, loading, slot)
 			--nClock = os.clock()
 			addChar(c)
 			--print(c .. ": " .. os.clock() - nClock)
-			tmp = getCharName(row - 1)
-			if tmp == '' then
+			if getCharName(row - 1) == 'dummyslot' then
 				playable = false
 				break
 			end
 			main.t_charDef[c:lower()] = row - 1
-			if tmp == 'Random' then
+			if c:lower() == 'randomselect' then
 				main.t_selChars[row].char = c:lower()
 				playable = false
 				break
@@ -1976,31 +1979,6 @@ for k, v in ipairs(main.t_selStoryMode) do
 	main.t_unlockLua.modes[v.name] = v.unlock
 end
 
---add default maxmatches / ratiomatches values if config is missing in select.def
-if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.arcaderatiomatches == nil then
-	main.t_selOptions.arcaderatiomatches = {
-		{rmin = 1, rmax = 3, order = 1},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 1, rmax = 1, order = 2},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 1, rmax = 2, order = 3},
-	}
-end
-if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
-	local size = 1
-	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
-	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
-	for k, v in pairs(main.t_bossChars) do
-		main.t_selOptions.bossrushmaxmatches[k] = #v
-	end
-end
-
 --add excluded characters once all slots are filled
 for i = #main.t_selGrid, motif.select_info.rows * motif.select_info.columns - 1 do
 	table.insert(main.t_selChars, {})
@@ -2055,6 +2033,31 @@ function main.f_updateSelectableStages()
 	end
 end
 main.f_updateSelectableStages()
+
+--add default maxmatches / ratiomatches values if config is missing in select.def
+if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
+if main.t_selOptions.arcaderatiomatches == nil then
+	main.t_selOptions.arcaderatiomatches = {
+		{rmin = 1, rmax = 3, order = 1},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 2, rmax = 2, order = 1},
+		{rmin = 1, rmax = 1, order = 2},
+		{rmin = 3, rmax = 3, order = 1},
+		{rmin = 1, rmax = 2, order = 3},
+	}
+end
+if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
+	local size = 1
+	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
+	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
+	for k, v in pairs(main.t_bossChars) do
+		main.t_selOptions.bossrushmaxmatches[k] = #v
+	end
+end
 
 --print warning if training character is missing
 if main.t_charDef[config.TrainingChar:lower()] == nil then
@@ -2206,7 +2209,7 @@ function main.f_default()
 	main.numSimul = {config.NumSimul[1], config.NumSimul[2]} --min/max number of simul characters
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
-	main.quickContinue = false --if continuing should skip player selection
+	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = true --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
@@ -2540,6 +2543,7 @@ main.t_itemname = {
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		if main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname])) then
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -2553,6 +2557,7 @@ main.t_itemname = {
 	--SERVER HOST
 	['serverhost'] = function(t, item)
 		if main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort())) then
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -3015,7 +3020,11 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					if not bool_main or esc() then
 						break
 					end
-				elseif bool_f1 and getKey('F1') then
+				elseif bool_f1 and (getKey('F1') or config.FirstRun) then
+					if config.FirstRun then
+						config.FirstRun = false
+						options.f_saveCfg(false)
+					end
 					main.f_warning(
 						main.f_extractText(motif.infobox_text),
 						motif[main.background],
@@ -3237,6 +3246,7 @@ function main.f_replay()
 		elseif main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 			enterReplay(t[item].itemname)
+			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -3389,6 +3399,7 @@ function main.f_attractStart()
 	clearColor(motif.attractbgdef.bgclearcolor[1], motif.attractbgdef.bgclearcolor[2], motif.attractbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.attractbgdef.bg)
 	main.f_fadeReset('fadein', motif.attract_mode)
+	main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 	while true do
 		counter = counter + 1
 		--draw layerno = 0 backgrounds
@@ -3567,6 +3578,7 @@ function main.f_demoStart()
 	main.f_default()
 	if motif.demo_mode.debuginfo == 0 and config.DebugKeys then
 		setAllowDebugKeys(false)
+		setAllowDebugMode(false)
 	end
 	main.lifebar.bars = motif.demo_mode.fight_bars_display == 1
 	setGameMode('demo')
@@ -3585,6 +3597,7 @@ function main.f_demoStart()
 	loadStart()
 	game()
 	setAllowDebugKeys(config.DebugKeys)
+	setAllowDebugMode(config.DebugMode)
 	refresh()
 	if motif.attract_mode.enabled == 0 then
 		if introWaitCycles >= motif.demo_mode.intro_waitcycles then
@@ -4013,11 +4026,6 @@ end
 main.f_loadingRefresh(main.txt_loading)
 main.txt_loading = nil
 --sleep(1)
-
-if config.FirstRun then
-	config.FirstRun = false
-	options.f_saveCfg(false)
-end
 
 if motif.attract_mode.enabled == 1 then
 	main.f_attractMode()

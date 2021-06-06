@@ -968,6 +968,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	if s.Tex == nil {
 		return
 	}
+	x, y = float32(math.Round(float64(x))), float32(math.Round(float64(y)))
 	neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
 	if trans == -2 {
 		padd[0] *= -1
