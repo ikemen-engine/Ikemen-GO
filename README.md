@@ -63,7 +63,8 @@ https://github.com/K4thos/Ikemen-GO-Plus
 
 ## What I.K.E.M.E.N means.
 Ikemen is an acronym of:  
-Itumademo Kanseishinai Eienni Mikansei ENgine
+**I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine  
+**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン
 
 ## Licence
 [MIT Licence](License.txt)
