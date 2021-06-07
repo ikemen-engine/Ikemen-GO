@@ -5494,11 +5494,12 @@ func (c *Char) tick() {
 		if c.stchtmp {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
-			if c.movedY {
-				c.changeStateEx(5020, pn, -1, 0, false)
-			} else {
+			// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/Windblade-GR01/Ikemen-GO/issues/272
+			//if c.movedY {
+			//	c.changeStateEx(5020, pn, -1, 0, false)
+			//} else {
 				c.changeStateEx(5080, pn, -1, 0, false)
-			}
+			//}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -5926,11 +5927,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						if getter.movedY {
-							ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
-						} else {
+						// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/Windblade-GR01/Ikemen-GO/issues/272
+						//if getter.movedY {
+						//	ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
+						//} else {
 							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
-						}
+						//}
 						ghv.fallf = hd.ground_fall
 						if !hd.down_bounce {
 							ghv.fall.xvelocity = float32(math.NaN())
