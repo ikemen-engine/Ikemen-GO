@@ -379,7 +379,7 @@ type PowerBar struct {
 	shift       AnimLayout
 	counter     LbText
 	value       LbText
-	level_snd   [3][2]int32
+	level_snd   [9][2]int32
 	midpower    float32
 	midpowerMin float32
 	prevLevel   int32
@@ -387,7 +387,7 @@ type PowerBar struct {
 }
 
 func newPowerBar() *PowerBar {
-	return &PowerBar{level_snd: [...][2]int32{{-1}, {-1}, {-1}},
+	return &PowerBar{level_snd: [9][2]int32{{-1}, {-1}, {-1}},
 		front: make(map[int32]*AnimLayout)}
 }
 func readPowerBar(pre string, is IniSection,
@@ -446,7 +446,7 @@ func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 		pbr.midpower = pbr.midpowerMin
 	}
 	if level > pbr.prevLevel {
-		i := Min(2, level-1)
+		i := Min(9, level-1)
 		snd.play(pb.level_snd[i], 100)
 	}
 	pbr.prevLevel = level
