@@ -3014,7 +3014,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	end
 	--winner who made last hit takes priority
 	local lastHitter = lasthitter(winnerteam())
-	if player(lastHitter) and teamside() == side then --assign sys.debugWC
+	if player(lastHitter) and winnerteam() == side then --assign sys.debugWC
 		playerNo = lastHitter
 		selectNo = selectno()
 		foundLeader = true
@@ -3023,7 +3023,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	--generate table out of remaining characters present in the last match
 	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
 		if player(i) and teamside() == side then --assign sys.debugWC
-			if lose() then --member of lose team
+			if side ~= winnerteam() then --member of lose team
 				if not foundLeader then
 					playerNo = i
 					selectNo = selectno()

@@ -1735,7 +1735,8 @@ func (s *System) drawDebug() {
 			if f != nil {
 				if i == 1 {
 					s.debugFont.SetColor(199, 199, 219)
-				} else if i > 1 && s.debugWC.ss.sb.playerNo != s.debugWC.playerNo {
+				} else if (i == 2 && s.debugWC.animPN != s.debugWC.playerNo) ||
+					(i == 3 && s.debugWC.ss.sb.playerNo != s.debugWC.playerNo) {
 					s.debugFont.SetColor(255, 255, 127)
 				} else {
 					s.debugFont.SetColor(255, 255, 255)
