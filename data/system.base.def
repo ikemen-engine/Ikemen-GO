@@ -379,7 +379,7 @@
 	p2.name.font.scale = 1.0, 1.0
 	p2.name.spacing = 0, 14
 
-	name.randomselect.text = "Random"
+	name.random.text = "Random"
 	
 	stage.pos = 0, 0
 	stage.active.font = -1, 0, 0, 255, 255, 255
