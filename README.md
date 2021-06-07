@@ -62,9 +62,10 @@ Ikemen GO Plus, K4thos fork of Ikemen (Some features were borrowed from his repo
 https://github.com/K4thos/Ikemen-GO-Plus
 
 ## What I.K.E.M.E.N means.
-Ikemen is an acronym of:  
-**I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine  
-**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン
+Ikemen is an acronym of:
+
+**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン  
+**I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine
 
 ## Licence
 [MIT Licence](License.txt)
