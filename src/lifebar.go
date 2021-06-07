@@ -446,7 +446,7 @@ func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 		pbr.midpower = pbr.midpowerMin
 	}
 	if level > pbr.prevLevel {
-		i := Min(9, level-1)
+		i := Min(8, level-1)
 		snd.play(pb.level_snd[i], 100)
 	}
 	pbr.prevLevel = level
