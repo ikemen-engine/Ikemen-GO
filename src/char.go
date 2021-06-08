@@ -4050,6 +4050,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		}
 		if add < 0 {
 			c.comboDmg -= int32(add)
+			c.fakeComboDmg -= int32(add)
 		}
 		c.lifeSet(c.life + int32(add))
 	}
@@ -4085,7 +4086,7 @@ func (c *Char) lifeSet(life int32) {
 		}
 		c.redLife = 0
 	}
-	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul * 2 { //attacker and receiver from opposite teams
+	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul*2 { //attacker and receiver from opposite teams
 		sys.lastHitter[^c.playerNo&1] = c.ghv.playerNo
 	}
 }
@@ -5498,7 +5499,7 @@ func (c *Char) tick() {
 			//if c.movedY {
 			//	c.changeStateEx(5020, pn, -1, 0, false)
 			//} else {
-				c.changeStateEx(5080, pn, -1, 0, false)
+			c.changeStateEx(5080, pn, -1, 0, false)
 			//}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
@@ -5931,7 +5932,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						//if getter.movedY {
 						//	ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
 						//} else {
-							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
 						//}
 						ghv.fallf = hd.ground_fall
 						if !hd.down_bounce {

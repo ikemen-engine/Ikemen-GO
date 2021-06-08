@@ -2681,7 +2681,7 @@ main.f_loadingRefresh()
 for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
-		if motif[k].spr ~= '' then
+		if motif[k].spr ~= nil and motif[k].spr ~= '' then
 			motif[k].spr = main.f_filePath(motif[k].spr, motif.fileDir, 'data/')
 			motif[k].spr_data = sffNew(motif[k].spr)
 			main.f_loadingRefresh()
