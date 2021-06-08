@@ -500,6 +500,14 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		return
 	}
 
+	//not existing characters treated as space
+	for i, c := range txt {
+		if c != ' ' && f.images[c] == nil {
+			//txt = strings.Replace(txt, string(c), " ", -1)
+			txt = txt[:i] + string(' ') + txt[i+1:]
+		}
+	}
+
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
