@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/binary"
+	"math"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/ikemen-engine/glfont"
 	findfont "github.com/flopp/go-findfont"
+	"github.com/ikemen-engine/glfont"
 )
 
 // FntCharImage stores sprite and position
@@ -516,6 +517,8 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	} else if align < 0 {
 		x -= float32(f.TextWidth(txt)) * xscl
 	}
+
+	x, y = float32(math.Round(float64(x))), float32(math.Round(float64(y)))
 
 	if bank < 0 || len(f.palettes) <= int(bank) {
 		bank = 0

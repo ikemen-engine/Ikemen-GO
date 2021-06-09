@@ -372,7 +372,7 @@ func setupConfig() configSettings {
 	"ScreenshotFolder": "",
 	"StartStage" : "stages/stage0-720.def",
 	"System": "external/script/main.lua",
-	"Team1VS2Life": 150,
+	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
 	"TeamLifeShare": false,
 	"TeamPowerShare": true,
