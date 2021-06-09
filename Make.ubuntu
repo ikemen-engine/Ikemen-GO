@@ -1,0 +1,2 @@
+TARG=Ikemen_GO_test
+GOFLAGS=-tags al_cmpt
