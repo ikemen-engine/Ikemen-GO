@@ -844,6 +844,8 @@ type LifeBarFace struct {
 	face_spr          [2]int32
 	face              *Sprite
 	face_lay          Layout
+	paletteshare      bool
+	palfxshare        bool
 	teammate_pos      [2]int32
 	teammate_spacing  [2]int32
 	teammate_bg       AnimLayout
@@ -861,7 +863,7 @@ type LifeBarFace struct {
 }
 
 func newLifeBarFace() *LifeBarFace {
-	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
+	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}, paletteshare: true}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
@@ -876,6 +878,8 @@ func readLifeBarFace(pre string, is IniSection,
 	fa.ko = *ReadAnimLayout(pre+"ko.", is, sff, at, 0)
 	is.ReadI32(pre+"face.spr", &fa.face_spr[0], &fa.face_spr[1])
 	fa.face_lay = *ReadLayout(pre+"face.", is, 0)
+	is.ReadBool(pre+"face.paletteshare", &fa.paletteshare)
+	is.ReadBool(pre+"face.palfxshare", &fa.palfxshare)
 	is.ReadI32(pre+"teammate.pos", &fa.teammate_pos[0], &fa.teammate_pos[1])
 	is.ReadI32(pre+"teammate.spacing", &fa.teammate_spacing[0],
 		&fa.teammate_spacing[1])
@@ -945,11 +949,15 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
 	}
 	if far.face != nil {
-		pfx := sys.chars[ref][0].getPalfx()
-		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
 		far.face.Pal = nil
 		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
-		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
+		pfx := newPalFX()
+		if far.palfxshare {
+			pfx = sys.chars[ref][0].getPalfx()
+		}
+		if far.paletteshare {
+			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+		}
 
 		ob := sys.brightness
 		if ref == sys.superplayer {
