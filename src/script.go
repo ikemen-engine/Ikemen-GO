@@ -2118,7 +2118,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
-		sys.cam.ZoomEnable = boolArg(l, 1)
+		sys.cam.ZoomActive = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setZoomMax", func(l *lua.LState) int {

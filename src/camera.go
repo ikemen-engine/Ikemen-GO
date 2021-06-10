@@ -35,6 +35,7 @@ func newStageCamera() *stageCamera {
 
 type Camera struct {
 	stageCamera
+	ZoomActive                  bool
 	ZoomDelayEnable             bool
 	ZoomEnable                  bool
 	ZoomMin, ZoomMax, ZoomSpeed float32
@@ -52,6 +53,7 @@ func newCamera() *Camera {
 	return &Camera{ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Init() {
+	c.ZoomEnable = c.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
 	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.mugenZoomOut)*100*c.mugenZoomOut)*(1/c.mugenZoomOut)*(1/c.mugenZoomOut)*1.6
 	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.mugenZoomOut)*100*c.mugenZoomOut)*(1/c.mugenZoomOut)*(1/c.mugenZoomOut)*1.6
 	c.halfWidth = float32(sys.gameWidth) / 2
