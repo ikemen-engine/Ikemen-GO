@@ -2759,9 +2759,6 @@ main.t_itemname = {
 		setGameMode('timechallenge')
 		return start.f_selectMode
 	end,
-	--TOURNAMENT
-	['tournament'] = function()
-	end,
 	--TRAINING
 	['training'] = function()
 		main.f_playerInput(main.playerInput, 1)

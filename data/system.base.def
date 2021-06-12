@@ -87,11 +87,6 @@
 	hiscore.bgm.loop = 1
 	hiscore.bgm.loopstart = 0
 	hiscore.bgm.loopend = 0
-	tournament.bgm = ""
-	tournament.bgm.volume = 100
-	tournament.bgm.loop = 1
-	tournament.bgm.loopstart = 0
-	tournament.bgm.loopend = 0
 
 [Title Info]
 	fadein.time = 10
@@ -231,7 +226,6 @@
 	;menu.itemname.netplayversus = "VERSUS 2P"
 	;menu.itemname.netplayteamcoop = "ARCADE CO-OP"
 	;menu.itemname.netplaysurvivalcoop = "SURVIVAL CO-OP"
-	;menu.itemname.tournament = "TOURNAMENT" ; Not implemented yet.
 	;menu.itemname.trials = "TRIALS" ; Not implemented yet.
 	;menu.itemname.timeattack = "TIME ATTACK"
 	;menu.itemname.bossrush = "BOSS RUSH"
@@ -530,7 +524,6 @@
 	title.netplayversus.text = "Online Versus"
 	title.netplayteamcoop.text = "Online Cooperative"
 	title.netplaysurvivalcoop.text = "Online Survival"
-	;title.tournament.text = "Tournament Mode" ; Not implemented yet.
 	title.training.text = "Training Mode"
 	title.timeattack.text = "Time Attack"
 	title.survival.text = "Survival"
@@ -2092,59 +2085,6 @@
 [HiscoreBgDef] ;Ikemen feature
 	spr = ""
 	bgclearcolor = 0, 0, 0 
-
-[Tournament Info] ;Ikemen feature
-	fadein.time = 15 
-	fadein.col = 0, 0, 0
-	fadein.anim = -1
-	fadeout.time = 15
-	fadeout.col = 0, 0, 0
-	fadeout.anim = -1
-	;p<1-16>.spacing = 0, 0
-	;p<1-16>.bg.anim = -1
-	;p<1-16>.bg.spr = 
-	;p<1-16>.bg.offset = 0, 0
-	;p<1-16>.bg.facing = 1
-	;p<1-16>.bg.scale = 1.0, 1.0
-	;p<1-16>.face.anim = -1
-	;p<1-16>.face.spr = 9000, 0
-	;p<1-16>.face.offset = 0, 0
-	;p<1-16>.face.facing = 1
-	;p<1-16>.face.scale = 1.0, 1.0
-	;p<1-16>.ko.anim = -1
-	;p<1-16>.ko.spr = 
-	;p<1-16>.ko.offset = 0, 0
-	;p<1-16>.ko.facing = 1
-	;p<1-16>.ko.scale = 1.0, 1.0
-	;round1.match<1-16>.team<1-2>.anim = -1
-	;round1.match<1-16>.team<1-2>.spr = 
-	;round1.match<1-16>.team<1-2>.offset = 0, 0
-	;round1.match<1-16>.team<1-2>.facing 1
-	;round1.match<1-16>.team<1-2>.scale = 1.0, 1.0
-	;round2.match<1-8>.team<1-2>.anim = -1
-	;round2.match<1-8>.team<1-2>.spr = 
-	;round2.match<1-8>.team<1-2>.offset = 0, 0
-	;round2.match<1-8>.team<1-2>.facing 1
-	;round2.match<1-8>.team<1-2>.scale = 1.0, 1.0
-	;round3.match<1-4>.team<1-2>.anim = -1
-	;round3.match<1-4>.team<1-2>.spr = 
-	;round3.match<1-4>.team<1-2>.offset = 0, 0
-	;round3.match<1-4>.team<1-2>.facing 1
-	;round3.match<1-4>.team<1-2>.scale = 1.0, 1.0
-	;round4.match1.team<1-2>.anim = -1
-	;round4.match1.team<1-2>.spr = 
-	;round4.match1.team<1-2>.offset = 0, 0
-	;round4.match1.team<1-2>.facing 1
-	;round4.match1.team<1-2>.scale = 1.0, 1.0
-	;trophy.anim = -1
-	;trophy.spr = 
-	;trophy.offset = 0, 0
-	;trophy.facing = 1
-	;trophy.scale = 1.0, 1.0
-
-[TournamentBgDef] ;Ikemen feature
-	spr = ""
-	bgclearcolor = 0, 0, 0
 
 [Warning Info] ;Ikemen feature
 	title.offset = 159, 19
