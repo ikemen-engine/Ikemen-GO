@@ -923,7 +923,7 @@
 	p1.state.yes = 5510, 180
 	p1.state.no = 5520, 170
 
-	p2.state.continue = 
+	p2.state.continue = -1
 	p2.state.yes = 
 	p2.state.no = 
 	
@@ -931,7 +931,7 @@
 	p1.teammate.state.yes = 
 	p1.teammate.state.no = 
 	
-	p2.teammate.state.continue = 
+	p2.teammate.state.continue = -1
 	p2.teammate.state.yes = 
 	p2.teammate.state.no = 
 	
