@@ -56,6 +56,7 @@ const (
 	CSF_nopowerbardisplay
 	CSF_autoguard
 	CSF_animfreeze
+	CSF_postroundinput
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -76,7 +77,7 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze
+		CSF_animfreeze | CSF_postroundinput
 )
 
 type GlobalSpecialFlag uint32
