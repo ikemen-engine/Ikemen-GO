@@ -696,9 +696,11 @@ func (s *System) soundWrite() {
 func (s *System) playSound() {
 	if s.mixer.write() {
 		s.sounds.mixSounds()
-		for _, ch := range s.chars {
-			for _, c := range ch {
-				c.sounds.mixSounds()
+		if !s.noSoundFlg {
+			for _, ch := range s.chars {
+				for _, c := range ch {
+					c.sounds.mixSounds()
+				}
 			}
 		}
 	}
@@ -1512,9 +1514,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.turbo = spd
 	}
-	if !s.noSoundFlg {
-		s.playSound()
-	}
+	s.playSound()
 	if introSkip {
 		sclMul = 1 / scl
 	}
