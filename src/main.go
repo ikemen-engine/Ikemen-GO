@@ -286,7 +286,7 @@ func setupConfig() configSettings {
 	"BarRedLife": true,
 	"BarStun": false,
 	"Borderless": false,
-	"ComboExtraFrameWindow": 1,
+	"ComboExtraFrameWindow": 0,
 	"CommonAir": "data/common.air",
 	"CommonCmd": "data/common.cmd",
 	"CommonConst": "data/common.const",

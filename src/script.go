@@ -3415,6 +3415,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.vel[1]))
 		return 1
 	})
+	luaRegister(l, "velZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.vel[2]))
+		return 1
+	})
 	luaRegister(l, "win", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.win()))
 		return 1
@@ -3767,7 +3771,7 @@ func triggerFunctions(l *lua.LState) {
 		if tn < 1 || tn > 2 {
 			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
-		l.Push(lua.LNumber(sys.lastHitter[tn - 1] + 1))
+		l.Push(lua.LNumber(sys.lastHitter[tn-1] + 1))
 		return 1
 	})
 	luaRegister(l, "localcoord", func(*lua.LState) int {

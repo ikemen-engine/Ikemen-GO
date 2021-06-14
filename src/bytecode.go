@@ -470,6 +470,8 @@ const (
 	OC_ex_timeelapsed
 	OC_ex_timeremaining
 	OC_ex_timetotal
+	OC_ex_pos_z
+	OC_ex_vel_z
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1852,6 +1854,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(timeRemaining())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
+	case OC_ex_pos_z:
+		sys.bcStack.PushF(c.pos[2] * c.localscl / oc.localscl)
+	case OC_ex_vel_z:
+		sys.bcStack.PushF(c.vel[2] * c.localscl / oc.localscl)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -3282,7 +3288,11 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.setY(exp[0].evalF(c)*lclscround + crun.platformPosY)
 		case posSet_z:
-			exp[0].run(c)
+			if crun.size.z.enable {
+				crun.setZ(exp[0].evalF(c) * lclscround)
+			} else {
+				exp[0].run(c)
+			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3308,7 +3318,11 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.addY(exp[0].evalF(c) * lclscround)
 		case posSet_z:
-			exp[0].run(c)
+			if crun.size.z.enable {
+				crun.addZ(exp[0].evalF(c) * lclscround)
+			} else {
+				exp[0].run(c)
+			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3334,7 +3348,11 @@ func (sc velSet) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.setYV(exp[0].evalF(c) * lclscround)
 		case posSet_z:
-			exp[0].run(c)
+			if crun.size.z.enable {
+				crun.setZV(exp[0].evalF(c) * lclscround)
+			} else {
+				exp[0].run(c)
+			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3360,7 +3378,11 @@ func (sc velAdd) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.addYV(exp[0].evalF(c) * lclscround)
 		case posSet_z:
-			exp[0].run(c)
+			if crun.size.z.enable {
+				crun.addZV(exp[0].evalF(c) * lclscround)
+			} else {
+				exp[0].run(c)
+			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3385,7 +3407,11 @@ func (sc velMul) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.mulYV(exp[0].evalF(c))
 		case posSet_z:
-			exp[0].run(c)
+			if crun.size.z.enable {
+				crun.mulZV(exp[0].evalF(c))
+			} else {
+				exp[0].run(c)
+			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

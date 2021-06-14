@@ -1935,7 +1935,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_pos_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_pos_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -2098,7 +2098,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_vel_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_vel_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

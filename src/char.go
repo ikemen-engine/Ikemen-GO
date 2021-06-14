@@ -244,7 +244,8 @@ type CharSize struct {
 		offset [2]float32
 	}
 	z struct {
-		width float32
+		width  float32
+		enable bool
 	}
 }
 
@@ -265,6 +266,7 @@ func (cs *CharSize) init() {
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
 	cs.z.width = 3
+	cs.z.enable = false
 	cs.attack.z.width = [...]float32{4, 4}
 }
 
@@ -1591,10 +1593,10 @@ type Char struct {
 	targets         []int32
 	targetsOfHitdef []int32
 	enemynear       [2][]*Char
-	pos             [2]float32
-	drawPos         [2]float32
-	oldPos          [2]float32
-	vel             [2]float32
+	pos             [3]float32
+	drawPos         [3]float32
+	oldPos          [3]float32
+	vel             [3]float32
 	facing          float32
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
@@ -2019,6 +2021,11 @@ func (c *Char) load(def string) error {
 				is.ReadF32("draw.offset",
 					&c.size.draw.offset[0], &c.size.draw.offset[1])
 				is.ReadF32("z.width", &c.size.z.width)
+				var ztemp int32 = 0
+				is.ReadI32("z.enable", &ztemp)
+				if ztemp == 1 {
+					c.size.z.enable = true
+				}
 				is.ReadF32("attack.z.width",
 					&c.size.attack.z.width[0], &c.size.attack.z.width[1])
 			}
@@ -2312,15 +2319,6 @@ func (c *Char) setSprPriority(sprpriority int32) {
 }
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
-}
-func (c *Char) setXV(xv float32) {
-	c.vel[0] = xv
-}
-func (c *Char) setYV(yv float32) {
-	c.vel[1] = yv
-	if yv != 0 {
-		c.movedY = true
-	}
 }
 func (c *Char) changeAnim(animNo int32, ffx bool) {
 	if a := c.getAnim(animNo, ffx, true); a != nil {
@@ -3075,11 +3073,13 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
 		c.pos[1] *= lsRatio
+		c.pos[2] *= lsRatio
 		c.oldPos = c.pos
 		c.drawPos = c.pos
 
 		c.vel[0] *= lsRatio
 		c.vel[1] *= lsRatio
+		c.vel[2] *= lsRatio
 
 		c.ghv.xvel *= lsRatio
 		c.ghv.yvel *= lsRatio
@@ -3272,7 +3272,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
-	h.vel = [2]float32{}
+	h.vel = [3]float32{}
 	if h.ownpal {
 		h.palfx = newPalFX()
 		tmp := c.getPalfx().remap
@@ -3440,6 +3440,8 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 	}
 	return
 }
+
+// Position functions
 func (c *Char) setPosX(x float32) {
 	if c.pos[0] != x {
 		c.pos[0] = x
@@ -3456,6 +3458,9 @@ func (c *Char) setPosX(x float32) {
 func (c *Char) setPosY(y float32) {
 	c.pos[1] = y
 }
+func (c *Char) setPosZ(z float32) {
+	c.pos[2] = z
+}
 func (c *Char) posReset() {
 	if c.teamside == -1 {
 		c.facing = 1
@@ -3466,8 +3471,10 @@ func (c *Char) posReset() {
 			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*sys.stage.p1p3dist) / c.localscl)
 	}
 	c.setY(0)
+	c.setZ(0)
 	c.setXV(0)
 	c.setYV(0)
+	c.setZV(0)
 }
 func (c *Char) setX(x float32) {
 	c.oldPos[0], c.drawPos[0] = x, x
@@ -3480,6 +3487,10 @@ func (c *Char) setY(y float32) {
 		c.movedY = true
 	}
 }
+func (c *Char) setZ(z float32) {
+	c.oldPos[2], c.drawPos[1] = z, z
+	c.setPosZ(z)
+}
 func (c *Char) addX(x float32) {
 	c.setX(c.pos[0] + c.facing*x)
 }
@@ -3489,6 +3500,11 @@ func (c *Char) addY(y float32) {
 		c.movedY = true
 	}
 }
+func (c *Char) addZ(z float32) {
+	c.setZ(c.pos[2] + z)
+}
+
+// Velocity functions
 func (c *Char) addXV(xv float32) {
 	c.vel[0] += xv
 }
@@ -3498,12 +3514,33 @@ func (c *Char) addYV(yv float32) {
 		c.movedY = true
 	}
 }
+func (c *Char) setXV(xv float32) {
+	c.vel[0] = xv
+}
+func (c *Char) setYV(yv float32) {
+	c.vel[1] = yv
+	if yv != 0 {
+		c.movedY = true
+	}
+}
+func (c *Char) setZV(zv float32) {
+	c.vel[2] = zv
+}
+func (c *Char) addZV(zv float32) {
+	c.vel[2] += zv
+}
 func (c *Char) mulXV(xv float32) {
 	c.vel[0] *= xv
 }
 func (c *Char) mulYV(yv float32) {
 	c.vel[1] *= yv
 }
+func (c *Char) mulZV(zv float32) {
+	c.vel[2] *= zv
+}
+
+// --------------------
+
 func (c *Char) hitAdd(h int32) {
 	c.hitCount += h
 	c.uniqHitCount += h
@@ -4732,6 +4769,8 @@ func (c *Char) inGuardState() bool {
 func (c *Char) gravity() {
 	c.vel[1] += c.gi().movement.yaccel * (320 / float32(c.localcoord)) / c.localscl
 }
+
+// Updates pos based on multiple factors
 func (c *Char) posUpdate() {
 	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
 		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1]))}
@@ -4745,12 +4784,15 @@ func (c *Char) posUpdate() {
 			c.setPosX(c.oldPos[0] + c.velOff)
 		}
 	} else {
+		// Controls speed
 		if nobind[0] {
 			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + c.velOff)
 		}
 		if nobind[1] {
 			c.setPosY(c.oldPos[1] + c.vel[1])
 		}
+		c.setPosZ(c.oldPos[2] + c.vel[2])
+
 		switch c.ss.physics {
 		case ST_S:
 			c.vel[0] *= c.gi().movement.stand.friction
@@ -4930,10 +4972,23 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
+
+
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	if atk.curFrame == nil || c.curFrame == nil || c.scf(SCF_standby) || atk.scf(SCF_standby) || c.scf(SCF_disabled) {
+	// Nil anim & stanby check.
+	if atk.curFrame == nil || c.curFrame == nil ||
+		c.scf(SCF_standby) || atk.scf(SCF_standby) ||
+		c.scf(SCF_disabled) && atk.scf(SCF_disabled) {
 		return false
 	}
+
+	// Z axis check.
+	if c.size.z.enable && atk.size.z.enable && 
+		((c.pos[2]-c.size.z.width)*c.localscl > (atk.pos[2]+atk.size.z.width)*atk.localscl ||
+		(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
+		return false
+	}
+
 	var clsn1, clsn2 []float32
 	if c1atk {
 		clsn1 = atk.curFrame.Clsn1()
@@ -5408,7 +5463,7 @@ func (c *Char) update(cvmin, cvmax,
 			spd = 0
 		}
 		if !c.sf(CSF_posfreeze) {
-			for i := 0; i < 2; i++ {
+			for i := 0; i < 3; i++ {
 				c.drawPos[i] = c.pos[i] - (c.pos[i]-c.oldPos[i])*(1-spd)
 			}
 		}
@@ -6549,10 +6604,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
+
 			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
-				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) {
+				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) &&
+				// Z axis check
+				!(c.size.z.enable && getter.size.z.enable &&
+					((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
+						(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
+				// Normal collsion check
 				cl, cr := -c.width[0]*c.localscl, c.width[1]*c.localscl
 				if c.facing > 0 {
 					cl, cr = -cr, -cl
