@@ -2508,6 +2508,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_autoguard))
 		case "animfreeze":
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_animfreeze))
+		case "postroundinput":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_postroundinput))
 		case "intro":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
 		case "roundnotover":
@@ -3806,6 +3808,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase,
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_autoguard)))
 			case "animfreeze":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_animfreeze)))
+			case "postroundinput":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_postroundinput)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
 			case "roundnotover":

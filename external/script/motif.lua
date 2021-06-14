@@ -95,11 +95,6 @@ local motif =
 		hiscore_bgm_loop = 1, --Ikemen feature
 		hiscore_bgm_loopstart = 0, --Ikemen feature
 		hiscore_bgm_loopend = 0, --Ikemen feature
-		tournament_bgm = '', --Ikemen feature
-		tournament_bgm_volume = 100, --Ikemen feature
-		tournament_bgm_loop = 1, --Ikemen feature
-		tournament_bgm_loopstart = 0, --Ikemen feature
-		tournament_bgm_loopend = 0, --Ikemen feature
 	},
 	title_info =
 	{
@@ -217,7 +212,6 @@ local motif =
 		--menu_itemname_netplayversus = 'VERSUS 2P', --Ikemen feature
 		--menu_itemname_netplayteamcoop = 'ARCADE CO-OP', --Ikemen feature
 		--menu_itemname_netplaysurvivalcoop = 'SURVIVAL CO-OP', --Ikemen feature
-		--menu_itemname_tournament = 'TOURNAMENT', --Ikemen feature (not implemented yet)
 		--menu_itemname_training = 'TRAINING',
 		--menu_itemname_trials = 'TRIALS', --Ikemen feature (not implemented yet)
 		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
@@ -342,7 +336,6 @@ local motif =
 		title_netplayversus_text = 'Online Versus', --Ikemen feature
 		title_netplayteamcoop_text = 'Online Cooperative', --Ikemen feature
 		title_netplaysurvivalcoop_text = 'Online Survival', --Ikemen feature
-		title_tournament_text = 'Tournament Mode', --Ikemen feature (not implemented yet)
 		title_training_text = 'Training Mode', --Ikemen feature
 		title_timeattack_text = 'Time Attack', --Ikemen feature
 		title_survival_text = 'Survival', --Ikemen feature
@@ -819,13 +812,13 @@ local motif =
 		p1_state_continue = {5500, 5300}, --Ikemen feature
 		p1_state_yes = {5510, 180}, --Ikemen feature
 		p1_state_no = {5520, 170}, --Ikemen feature
-		p2_state_continue = {}, --Ikemen feature
+		p2_state_continue = {-1}, --Ikemen feature
 		p2_state_yes = {}, --Ikemen feature
 		p2_state_no = {}, --Ikemen feature
 		p1_teammate_state_continue = {}, --Ikemen feature
 		p1_teammate_state_yes = {}, --Ikemen feature
 		p1_teammate_state_no = {}, --Ikemen feature
-		p2_teammate_state_continue = {}, --Ikemen feature
+		p2_teammate_state_continue = {-1}, --Ikemen feature
 		p2_teammate_state_yes = {}, --Ikemen feature
 		p2_teammate_state_no = {}, --Ikemen feature
 		credits_text = 'Credits: %i', --Ikemen feature
@@ -1936,61 +1929,6 @@ local motif =
 		spr = '', --Ikemen feature
 		bgclearcolor = {0, 0, 0}, --Ikemen feature
 	},
-	tournament_info =
-	{
-		fadein_time = 15, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 15, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		--p<1-16>_spacing = {0, 0}, --Ikemen feature
-		--p<1-16>_bg_anim = -1, --Ikemen feature
-		--p<1-16>_bg_spr = {}, --Ikemen feature
-		--p<1-16>_bg_offset = {0, 0}, --Ikemen feature
-		--p<1-16>_bg_facing = 1, --Ikemen feature
-		--p<1-16>_bg_scale = {1.0, 1.0}, --Ikemen feature
-		--p<1-16>_face_anim = -1, --Ikemen feature
-		--p<1-16>_face_spr = {9000, 0}, --Ikemen feature
-		--p<1-16>_face_offset = {0, 0}, --Ikemen feature
-		--p<1-16>_face_facing = 1, --Ikemen feature
-		--p<1-16>_face_scale = {1.0, 1.0}, --Ikemen feature
-		--p<1-16>_ko_anim = -1, --Ikemen feature
-		--p<1-16>_ko_spr = {}, --Ikemen feature
-		--p<1-16>_ko_offset = {0, 0}, --Ikemen feature
-		--p<1-16>_ko_facing = 1, --Ikemen feature
-		--p<1-16>_ko_scale = {1.0, 1.0}, --Ikemen feature
-		--round1_match<1-16>_team<1-2>_anim = -1, --Ikemen feature
-		--round1_match<1-16>_team<1-2>_spr = {}, --Ikemen feature
-		--round1_match<1-16>_team<1-2>_offset = {0, 0}, --Ikemen feature
-		--round1_match<1-16>_team<1-2>_facing 1, --Ikemen feature
-		--round1_match<1-16>_team<1-2>_scale = {1.0, 1.0}, --Ikemen feature
-		--round2_match<1-8>_team<1-2>_anim = -1, --Ikemen feature
-		--round2_match<1-8>_team<1-2>_spr = {}, --Ikemen feature
-		--round2_match<1-8>_team<1-2>_offset = {0, 0}, --Ikemen feature
-		--round2_match<1-8>_team<1-2>_facing 1, --Ikemen feature
-		--round2_match<1-8>_team<1-2>_scale = {1.0, 1.0}, --Ikemen feature
-		--round3_match<1-4>_team<1-2>_anim = -1, --Ikemen feature
-		--round3_match<1-4>_team<1-2>_spr = {}, --Ikemen feature
-		--round3_match<1-4>_team<1-2>_offset = {0, 0}, --Ikemen feature
-		--round3_match<1-4>_team<1-2>_facing 1, --Ikemen feature
-		--round3_match<1-4>_team<1-2>_scale = {1.0, 1.0}, --Ikemen feature
-		--round4_match1_team<1-2>_anim = -1, --Ikemen feature
-		--round4_match1_team<1-2>_spr = {}, --Ikemen feature
-		--round4_match1_team<1-2>_offset = {0, 0}, --Ikemen feature
-		--round4_match1_team<1-2>_facing 1, --Ikemen feature
-		--round4_match1_team<1-2>_scale = {1.0, 1.0}, --Ikemen feature
-		--trophy_anim = -1, --Ikemen feature
-		--trophy_spr = {}, --Ikemen feature
-		--trophy_offset = {0, 0}, --Ikemen feature
-		--trophy_facing = 1, --Ikemen feature
-		--trophy_scale = {1.0, 1.0}, --Ikemen feature
-	},
-	tournamentbgdef =
-	{
-		spr = '', --Ikemen feature
-		bgclearcolor = {0, 0, 0}, --Ikemen feature
-	},
 	warning_info =
 	{
 		title_offset = {159, 19}, --Ikemen feature
@@ -2645,7 +2583,6 @@ for k, v in ipairs({
 	{t = {'music',            'continue_end_bgm'}, skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.continue_end_bgm,      'music/' .. motif.music.continue_end_bgm}},
 	{t = {'music',            'results_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.results_bgm,           'music/' .. motif.music.results_bgm}},
 	{t = {'music',            'hiscore_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.hiscore_bgm,           'music/' .. motif.music.hiscore_bgm}},
-	{t = {'music',            'tournament_bgm'},   skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.tournament_bgm,        'music/' .. motif.music.tournament_bgm}},
 	{t = {'default_ending',   'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.default_ending.storyboard,   'data/' .. motif.default_ending.storyboard}},
 	{t = {'end_credits',      'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.end_credits.storyboard,      'data/' .. motif.end_credits.storyboard}},
 	{t = {'game_over_screen', 'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.game_over_screen.storyboard, 'data/' .. motif.game_over_screen.storyboard}},
@@ -2753,7 +2690,7 @@ function motif.f_loadCursorData()
 end
 
 --creates fadein/fadeout anim data
-for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100_kumite_results_screen', 'time_attack_results_screen', 'time_challenge_results_screen', 'score_challenge_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info', 'tournament_info'}) do
+for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100_kumite_results_screen', 'time_attack_results_screen', 'time_challenge_results_screen', 'score_challenge_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
 		motif.f_loadSprData(motif[v], {s = 'fadein_', x = 0, y = 0})
 	end

@@ -372,7 +372,7 @@ func setupConfig() configSettings {
 	"ScreenshotFolder": "",
 	"StartStage" : "stages/stage0-720.def",
 	"System": "external/script/main.lua",
-	"Team1VS2Life": 150,
+	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
 	"TeamLifeShare": false,
 	"TeamPowerShare": true,
@@ -594,7 +594,7 @@ func setupConfig() configSettings {
 	}
 	sys.borderless = tmp.Borderless
 	sys.cam.ZoomDelayEnable = tmp.ZoomDelay
-	sys.cam.ZoomEnable = tmp.ZoomActive
+	sys.cam.ZoomActive = tmp.ZoomActive
 	sys.cam.ZoomMax = tmp.ForceStageZoomin
 	sys.cam.ZoomMin = tmp.ForceStageZoomout
 	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed

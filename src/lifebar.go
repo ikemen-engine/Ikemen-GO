@@ -379,7 +379,7 @@ type PowerBar struct {
 	shift       AnimLayout
 	counter     LbText
 	value       LbText
-	level_snd   [3][2]int32
+	level_snd   [9][2]int32
 	midpower    float32
 	midpowerMin float32
 	prevLevel   int32
@@ -387,7 +387,7 @@ type PowerBar struct {
 }
 
 func newPowerBar() *PowerBar {
-	return &PowerBar{level_snd: [...][2]int32{{-1}, {-1}, {-1}},
+	return &PowerBar{level_snd: [9][2]int32{{-1}, {-1}, {-1}},
 		front: make(map[int32]*AnimLayout)}
 }
 func readPowerBar(pre string, is IniSection,
@@ -446,7 +446,7 @@ func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 		pbr.midpower = pbr.midpowerMin
 	}
 	if level > pbr.prevLevel {
-		i := Min(2, level-1)
+		i := Min(8, level-1)
 		snd.play(pb.level_snd[i], 100)
 	}
 	pbr.prevLevel = level
@@ -844,6 +844,8 @@ type LifeBarFace struct {
 	face_spr          [2]int32
 	face              *Sprite
 	face_lay          Layout
+	palshare          bool
+	palfxshare        bool
 	teammate_pos      [2]int32
 	teammate_spacing  [2]int32
 	teammate_bg       AnimLayout
@@ -861,7 +863,7 @@ type LifeBarFace struct {
 }
 
 func newLifeBarFace() *LifeBarFace {
-	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}}
+	return &LifeBarFace{face_spr: [2]int32{-1}, teammate_face_spr: [2]int32{-1}, palshare: true}
 }
 func readLifeBarFace(pre string, is IniSection,
 	sff *Sff, at AnimationTable) *LifeBarFace {
@@ -876,6 +878,8 @@ func readLifeBarFace(pre string, is IniSection,
 	fa.ko = *ReadAnimLayout(pre+"ko.", is, sff, at, 0)
 	is.ReadI32(pre+"face.spr", &fa.face_spr[0], &fa.face_spr[1])
 	fa.face_lay = *ReadLayout(pre+"face.", is, 0)
+	is.ReadBool(pre+"face.palshare", &fa.palshare)
+	is.ReadBool(pre+"face.palfxshare", &fa.palfxshare)
 	is.ReadI32(pre+"teammate.pos", &fa.teammate_pos[0], &fa.teammate_pos[1])
 	is.ReadI32(pre+"teammate.spacing", &fa.teammate_spacing[0],
 		&fa.teammate_spacing[1])
@@ -945,11 +949,15 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
 	}
 	if far.face != nil {
-		pfx := sys.chars[ref][0].getPalfx()
-		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
 		far.face.Pal = nil
 		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
-		sys.cgi[ref].sff.palList.SwapPalMap(&pfx.remap)
+		pfx := newPalFX()
+		if far.palfxshare {
+			pfx = sys.chars[ref][0].getPalfx()
+		}
+		if far.palshare {
+			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+		}
 
 		ob := sys.brightness
 		if ref == sys.superplayer {
@@ -3078,18 +3086,14 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	//fightfx scale
-	//TODO: mugen formula is unknown, below code is not reliable on 320x180 localcoord
-	/*var localcoord43 float32
-	if sys.lifebarLocalcoord[0] >= sys.lifebarLocalcoord[1] {
-		localcoord43 = (float32(sys.lifebarLocalcoord[1]) / 3) * 4
-	} else {
-		localcoord43 = (float32(sys.lifebarLocalcoord[0]) / 4) * 3
+	//TODO: exact formula unknown, test if this code is accurate
+	sc := sys.lifebarScale * l.fx_scale
+	if sys.lifebarLocalcoord[1] < 240 {
+		sc *= float32(sys.lifebarLocalcoord[1]) / 240
 	}
-	if sc := float32(sys.lifebarLocalcoord[0]) / localcoord43 * 320 / float32(sys.lifebarLocalcoord[0]) * l.fx_scale; sc != 1 {
-		for _, a := range l.fat {
-			a.start_scale = [...]float32{sc, sc}
-		}
-	}*/
+	for _, a := range l.fat {
+		a.start_scale = [...]float32{sc, sc}
+	}
 	//Iterate over map in a stable iteration order
 	keys := make([]string, 0, len(l.missing))
 	for k := range l.missing {

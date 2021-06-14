@@ -56,6 +56,7 @@ const (
 	CSF_nopowerbardisplay
 	CSF_autoguard
 	CSF_animfreeze
+	CSF_postroundinput
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -76,7 +77,7 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze
+		CSF_animfreeze | CSF_postroundinput
 )
 
 type GlobalSpecialFlag uint32
@@ -4421,9 +4422,7 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		}
 		c.gi().sff.palList.SwapPalMap(&pfx.remap)
 	}
-	if src[0] == 1 && src[1] == c.gi().palno {
-		c.gi().remappedpal = [...]int32{dst[0], dst[1]}
-	}
+	c.gi().remappedpal = [...]int32{dst[0], dst[1]}
 }
 func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	if dst[0] < 0 || dst[1] < 0 {

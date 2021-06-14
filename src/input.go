@@ -618,14 +618,6 @@ func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
 	sys.keyString = string(char)
 }
 
-/*func joystickCallback(joy, event glfw.PeripheralEvent) {
-	if event == glfw.Connected {
-		// The joystick was connected
-	} else if event == glfw.Disconnected {
-		// The joystick was disconnected
-	}
-}*/
-
 var joystick = [...]glfw.Joystick{glfw.Joystick1, glfw.Joystick2,
 	glfw.Joystick3, glfw.Joystick4, glfw.Joystick5, glfw.Joystick6,
 	glfw.Joystick7, glfw.Joystick8, glfw.Joystick9, glfw.Joystick10,

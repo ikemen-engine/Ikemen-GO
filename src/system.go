@@ -360,44 +360,34 @@ type Window struct {
 	x, y, w, h int
 }
 
-var firstWindow = true
-
-func (s *System) newWindow(title string, fullscreen bool, w, h int, oldWindow *Window) (*Window, error) {
+func (s *System) newWindow(title string, fullscreen bool, w, h int) (*Window, error) {
 	var err error
-	var window, oldW *glfw.Window
+	var window *glfw.Window
 	var x, y int
 
-	if oldWindow != nil {
-		oldW = oldWindow.Window
-		x, y = oldW.GetPos()
-	}
-
 	if fullscreen {
-		window, err = s.fullscreenWindow(w, h, title, nil, nil, oldW)
+		window, err = s.fullscreenWindow(w, h, title, nil, nil)
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	} else {
-		window, err = glfw.CreateWindow(w, h, title, nil, oldW)
+		window, err = glfw.CreateWindow(w, h, title, nil, nil)
 		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
 	chk(err)
-	if firstWindow {
-		x, y = window.GetPos()
-		window.MakeContextCurrent()
-		window.SetKeyCallback(keyCallback)
-		window.SetCharModsCallback(charCallback)
-		// V-Sync
-		if s.vRetrace != -1 {
-			glfw.SwapInterval(s.vRetrace)
-		}
-		// Initialize OpenGL.
-		chk(gl.Init())
-		firstWindow = false
+	x, y = window.GetPos()
+	window.MakeContextCurrent()
+	window.SetKeyCallback(keyCallback)
+	window.SetCharModsCallback(charCallback)
+	// V-Sync
+	if s.vRetrace != -1 {
+		glfw.SwapInterval(s.vRetrace)
 	}
+	// Initialize OpenGL.
+	chk(gl.Init())
 	ret := &Window{window, title, fullscreen, x, y, w, h}
 	return ret, err
 }
 func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
-	mode *glfw.VidMode, oldWindow *glfw.Window) (*glfw.Window, error) {
+	mode *glfw.VidMode) (*glfw.Window, error) {
 	var err error
 	var window *glfw.Window
 
@@ -406,19 +396,13 @@ func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
 			return nil, fmt.Errorf("failed to obtain primary monitor")
 		}
 	}
-	//if mode == nil {
-	//	if mode = monitor.GetVideoMode(); mode == nil {
-	//		return nil, fmt.Errorf("failed to obtain video mode")
-	//	}
-	//}
 	if runtime.GOOS == "windows" && s.borderless {
-		window, err = glfw.CreateWindow(w, h, title, nil, oldWindow)
+		window, err = glfw.CreateWindow(w, h, title, nil, nil)
 		window.SetAttrib(glfw.Decorated, 0)
 		window.SetPos(0, 0)
 		window.SetSize(w, h)
 	} else {
-		//window, err = glfw.CreateWindow(mode.Width, mode.Height, title, monitor, oldWindow)
-		window, err = glfw.CreateWindow(w, h, title, monitor, oldWindow)
+		window, err = glfw.CreateWindow(w, h, title, monitor, nil)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create window: %w", err)
@@ -426,11 +410,6 @@ func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
 	return window, nil
 }
 
-// Unused.
-// TODO: Check on what this was used.
-//func (w *Window) destroy() {
-//	w.Window.Destroy()
-//}
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
@@ -468,7 +447,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 
-	s.window, err = sys.newWindow(s.windowTitle, s.fullscreen, int(s.scrrect[2]), int(s.scrrect[3]), nil)
+	s.window, err = sys.newWindow(s.windowTitle, s.fullscreen, int(s.scrrect[2]), int(s.scrrect[3]))
 
 	// Check if the shader selected is currently avalible.
 	if s.postProcessingShader < int32(len(s.externalShaderList))+3 {
@@ -717,9 +696,11 @@ func (s *System) soundWrite() {
 func (s *System) playSound() {
 	if s.mixer.write() {
 		s.sounds.mixSounds()
-		for _, ch := range s.chars {
-			for _, c := range ch {
-				c.sounds.mixSounds()
+		if !s.noSoundFlg {
+			for _, ch := range s.chars {
+				for _, c := range ch {
+					c.sounds.mixSounds()
+				}
 			}
 		}
 	}
@@ -1057,7 +1038,7 @@ func (s *System) commandUpdate() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			r := p[0]
-			if r.ctrlOver() || r.sf(CSF_noinput) {
+			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
 				}
@@ -1533,9 +1514,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.turbo = spd
 	}
-	if !s.noSoundFlg {
-		s.playSound()
-	}
+	s.playSound()
 	if introSkip {
 		sclMul = 1 / scl
 	}

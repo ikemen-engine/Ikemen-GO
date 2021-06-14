@@ -590,7 +590,7 @@ function main.f_createTextImg(t, prefix, mod)
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
 		height = t[prefix .. '_font_height'],
-		--window = t[prefix .. '_window'],
+		window = t[prefix .. '_window'],
 		defsc = mod.defsc or false,
 	})
 end
@@ -984,8 +984,8 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol)
 				end
 				local px = font_def[symbol] * data.scaleX
-				if pxLeft + space - px >= 0 then
-					if symbol:match('%s') then
+				if pxLeft + space - px >= -1 or text == '' then
+					if symbol:match('%s') or text == '' then
 						text = text .. tmp .. symbol
 						tmp = ''
 						tmp_px = 0
@@ -2758,9 +2758,6 @@ main.t_itemname = {
 		main.txt_mainSelect:update({text = motif.select_info.title_timechallenge_text})
 		setGameMode('timechallenge')
 		return start.f_selectMode
-	end,
-	--TOURNAMENT
-	['tournament'] = function()
 	end,
 	--TRAINING
 	['training'] = function()

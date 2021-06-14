@@ -2118,7 +2118,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
-		sys.cam.ZoomEnable = boolArg(l, 1)
+		sys.cam.ZoomActive = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setZoomMax", func(l *lua.LState) int {
@@ -3563,6 +3563,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
 		case "animfreeze":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
+		case "postroundinput":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
 		case "roundnotover":
