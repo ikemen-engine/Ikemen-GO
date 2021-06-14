@@ -346,6 +346,7 @@ var triggerMap = map[string]int{
 	"score":            1,
 	"scoretotal":       1,
 	"selfstatenoexist": 1,
+	"sprpriority":      1,
 	"stagebackedge":    1,
 	"stageconst":       1,
 	"stagefrontedge":   1,
@@ -2608,6 +2609,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
+	case "sprpriority":
+		out.append(OC_ex_, OC_ex_sprpriority)
 	case "stagebackedge":
 		out.append(OC_ex_, OC_ex_stagebackedge)
 	case "stageconst":

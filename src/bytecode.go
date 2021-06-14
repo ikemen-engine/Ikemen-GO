@@ -460,6 +460,7 @@ const (
 	OC_ex_score
 	OC_ex_scoretotal
 	OC_ex_selfstatenoexist
+	OC_ex_sprpriority
 	OC_ex_stagebackedge
 	OC_ex_stagefrontedge
 	OC_ex_stagetime
@@ -1831,6 +1832,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.scoreTotal())
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
+	case OC_ex_sprpriority:
+		sys.bcStack.PushI(c.sprPriority)
 	case OC_ex_stagebackedge:
 		sys.bcStack.PushF(c.stageBackEdge())
 	case OC_ex_stagefrontedge:
