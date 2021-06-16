@@ -2024,6 +2024,14 @@ for i = 1, #main.t_selChars do
 	end
 end
 
+--add default starting stage if no stages have been added via select.def
+if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
+	local row = main.f_addStage(config.StartStage)
+	table.insert(main.t_includeStage[1], row)
+	table.insert(main.t_includeStage[2], row)
+end
+
+--update selectableStages table
 function main.f_updateSelectableStages()
 	main.t_selectableStages = {}
 	for _, v in ipairs(main.t_includeStage[2]) do
@@ -2059,46 +2067,9 @@ if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmax
 	end
 end
 
---print warning if training character is missing
+--print error if training character is missing
 if main.t_charDef[config.TrainingChar:lower()] == nil then
-	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if no characters can be randomly chosen
-if #main.t_randomChars == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_chars_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if no stages have been added
-if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_stages_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if at least 1 match is not possible with the current maxmatches settings
-for k, v in pairs(main.t_selOptions) do
-	local mode = k:match('^(.+)maxmatches$')
-	if mode ~= nil then
-		local orderOK = false
-		for i, num in ipairs(main.t_selOptions[k]) do
-			if mode == 'bossrush' then
-				orderOK = true
-				break
-			elseif mode == 'survival' and (num > 0 or num == -1) and main.t_orderSurvival[i] ~= nil and #main.t_orderSurvival[i] > 0 then
-				orderOK = true
-				break
-			elseif num > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
-				orderOK = true
-				break
-			end
-		end
-		if not orderOK then
-			main.f_warning(main.f_extractText(motif.warning_info.text_order_text, mode .. '.maxmatches'), motif.titlebgdef)
-			os.exit()
-		end
-	end
+	panicError("\nTraining character not found: " .. config.TrainingChar)
 end
 
 --uppercase title

@@ -1243,6 +1243,9 @@ end
 
 --returns random char ref
 function start.f_randomChar(pn)
+	if #main.t_randomChars == 0 then
+		return nil
+	end
 	if config.TeamDuplicates then
 		return main.t_randomChars[math.random(1, #main.t_randomChars)]
 	end
@@ -2457,10 +2460,11 @@ function start.f_selectMenu(side, cmd, player, member)
 			start.p[side].t_selTemp[member].slide_dist = {0, 0}
 			getAnim = true
 		end
+		--randomselect cell
 		if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
 			if start.c[player].randCnt > 0 then
 				start.c[player].randCnt = start.c[player].randCnt - 1
-				start.c[player].selRef = start.c[player].randRef or start.c[player].selRef
+				start.c[player].selRef = start.c[player].randRef
 			else
 				if motif.select_info.random_move_snd_cancel == 1 then
 					sndStop(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
@@ -2474,6 +2478,7 @@ function start.f_selectMenu(side, cmd, player, member)
 				end
 			end
 		end
+		--get anim data
 		if getAnim then
 			start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
 		end
@@ -2487,7 +2492,7 @@ function start.f_selectMenu(side, cmd, player, member)
 			)
 		end
 		--cell selected or select screen timer reached 0
-		if (start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_enabled == 1 and timerSelect == -1) then
+		if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_enabled == 1 and timerSelect == -1)) then
 			if timerSelect ~= -1 then
 				sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
 			end
