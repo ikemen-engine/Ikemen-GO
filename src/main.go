@@ -572,7 +572,17 @@ func setupConfig() configSettings {
 		}
 		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
-
+	// Fix incorrect values
+	if tmp.NumSimul[1] > MaxSimul {
+		tmp.NumSimul[1] = MaxSimul
+	}
+	if tmp.NumTag[1] > MaxSimul {
+		tmp.NumTag[1] = MaxSimul
+	}
+	if tmp.Players > MaxSimul*2 {
+		tmp.Players = MaxSimul * 2
+	}
+	// Save config file
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
 

@@ -605,7 +605,7 @@ options.t_itemname = {
 	end,
 	--Max Simul Chars
 	['maxsimul'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[2] < 8 then
+		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[2] < 4 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[2] = config.NumSimul[2] + 1
 			t.items[item].vardisplay = config.NumSimul[2]
