@@ -1335,7 +1335,6 @@ function start.f_survivalOutcome()
 			end
 		end
 	end
-	main.f_printTable(t_removeMembers)
 	for i = #start.p[1].t_selected, 1, -1 do
 		if t_removeMembers[i] then
 			table.remove(start.p[1].t_selected, i)
