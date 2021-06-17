@@ -1783,6 +1783,9 @@ func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
 func (c *Char) ocd() *OverrideCharData {
+	if c.teamside == -1 {
+		return &sys.sel.ocd[2][c.memberNo]
+	}
 	return &sys.sel.ocd[c.teamside][c.memberNo]
 }
 func (c *Char) load(def string) error {

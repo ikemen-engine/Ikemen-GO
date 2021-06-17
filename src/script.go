@@ -977,7 +977,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.timerCount = []int32{}
 				sys.sel.cdefOverwrite = nil
 				sys.sel.sdefOverwrite = ""
-				sys.sel.ocd = [2][]OverrideCharData{}
+				sys.sel.ocd = [3][]OverrideCharData{}
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				sys.clearAllSound()

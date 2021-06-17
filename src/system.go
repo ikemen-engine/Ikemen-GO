@@ -2366,7 +2366,7 @@ type Select struct {
 	stageSpritePreload map[[2]int16]bool
 	cdefOverwrite      map[int]string
 	sdefOverwrite      string
-	ocd                [2][]OverrideCharData
+	ocd                [3][]OverrideCharData
 }
 
 func newSelect() *Select {
@@ -2664,7 +2664,7 @@ func (s *Select) ClearSelected() {
 	s.selected = [2][][2]int{}
 	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
-	s.ocd = [2][]OverrideCharData{}
+	s.ocd = [3][]OverrideCharData{}
 }
 
 type LoaderState int32
@@ -2801,6 +2801,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	defer func() {
 		sys.loadTime(tnow, tstr, false, true)
 	}()
+	sys.sel.ocd[2] = append(sys.sel.ocd[2], *newOverrideCharData())
 	cdef := sys.stageList[0].attachedchardef[atcpn]
 	var p *Char
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
