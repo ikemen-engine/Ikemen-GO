@@ -1816,7 +1816,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_rank:
 		sys.bcStack.PushF(c.rank())
 	case OC_ex_ratiolevel:
-		sys.bcStack.PushI(c.ratioLevel())
+		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.comboDmg)
 	case OC_ex_receivedhits:

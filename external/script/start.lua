@@ -281,7 +281,7 @@ function start.f_remapAI(ai)
 				end
 			end
 		end
-		if start.p[side].teamMode == 0 then --Single
+		if start.p[side].teamMode == 0 or start.p[side].teamMode == 2 then --Single or Turns
 			if (main.t_pIn[side] == side and not main.cpuSide[side] and not main.coop) or start.challenger > 0 then
 				setCom(side, 0)
 			else
@@ -299,17 +299,6 @@ function start.f_remapAI(ai)
 				if not t_ex[i] and (i - 1) % 2 + 1 == side then
 					remapInput(i, side) --P3/5/7 => P1 controls, P4/6/8 => P2 controls
 					setCom(i, ai or start.f_difficulty(i, offset))
-				end
-			end
-		elseif start.p[side].teamMode == 2 then --Turns
-			for i = side, #start.p[side].t_selected * 2 do
-				if not t_ex[i] and (i - 1) % 2 + 1 == side then
-					if (main.t_pIn[side] == side and not main.cpuSide[side] and not main.coop) or start.challenger > 0 then
-						remapInput(i, main.t_remaps[side]) --P1/3/5/7 => P1 controls, P2/4/6/8 => P2 controls
-						setCom(i, 0)
-					else
-						setCom(i, ai or start.f_difficulty(i, offset))
-					end
 				end
 			end
 		else --Tag
@@ -722,81 +711,6 @@ function start.f_getPlayerNo(side, num)
 		return num * 2 - 1
 	end
 	return num * 2
-end
-
---sets life recovery and ratio level
-function start.f_overrideCharData()
-	local removedNum = 0
-	--round 2+ in survival mode
-	if matchno() >= 2 and (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
-		local lastRound = #t_gameStats.match
-		local p1Count = 0
-		--Turns
-		if start.p[1].teamMode == 2 then
-			local t_p1Keys = {}
-			--for each round in the last match
-			for round = 1, #t_gameStats.match do
-				--remove defeated character from team
-				if not t_gameStats.match[round][1].win or t_gameStats.match[round][1].ko then
-					table.remove(start.p[1].t_selected, t_gameStats.match[round][1].memberNo + 1 - removedNum)
-					removedNum = removedNum + 1
-					start.p[1].numChars = start.p[1].numChars - 1
-				--otherwise override character's next match life (done after all rounds have been checked)
-				else
-					t_p1Keys[t_gameStats.match[round][1].memberNo] = t_gameStats.match[round][1].life
-				end
-			end
-			for k, v in pairs(t_p1Keys) do
-				p1Count = p1Count + 1
-				overrideCharData(p1Count, {['life'] = v})
-			end
-		--Single / Simul / Tag
-		else
-			--for each player data in the last round
-			for player, v in pairs(t_gameStats.match[lastRound]) do
-				--only check P1 side characters
-				if v.teamside == 0 and player <= (start.p[1].numChars + removedNum) * 2 then --odd value, team size check just in case
-					--in normal survival remove character from team if defeated
-					if gamemode('survival') and (not v.win or v.ko) then
-						table.remove(start.p[1].t_selected, v.memberNo + 1 - removedNum)
-						removedNum = removedNum + 1
-						start.p[1].numChars = start.p[1].numChars - 1
-					--in coop modes defeated character can still fight
-					elseif gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
-						local life = v.life
-						if life <= 0 then
-							life = math.max(1, v.lifeMax * config.TurnsRecoveryBase)
-						end
-						overrideCharData(player, {['life'] = life})
-					--otherwise override character's next match life
-					else
-						if p1Count == 0 then
-							p1Count = 1
-						else
-							p1Count = p1Count + 2
-						end
-						overrideCharData(p1Count, {['life'] = v.life})
-					end
-				end
-			end
-		end
-	end
-	--ratio level
-	if start.p[1].ratio then
-		for i = 1, #start.p[1].t_selected do
-			setRatioLevel(i * 2 - 1, start.p[1].t_selected[i].ratio)
-			overrideCharData(i * 2 - 1, {['lifeRatio'] = config.RatioLife[start.p[1].t_selected[i].ratio]})
-			overrideCharData(i * 2 - 1, {['attackRatio'] = config.RatioAttack[start.p[1].t_selected[i].ratio]})
-		end
-	end
-	if start.p[2].ratio then
-		for i = 1, #start.p[2].t_selected do
-			setRatioLevel(i * 2, start.p[2].t_selected[i].ratio)
-			overrideCharData(i * 2, {['lifeRatio'] = config.RatioLife[start.p[2].t_selected[i].ratio]})
-			overrideCharData(i * 2, {['attackRatio'] = config.RatioAttack[start.p[2].t_selected[i].ratio]})
-		end
-	end
-	return removedNum > 0
 end
 
 --Convert number to name and get rid of the ""
@@ -1360,6 +1274,96 @@ for i = 1, motif.select_info.rows * motif.select_info.columns do
 end
 if main.debugLog then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
 
+--turns mode life recovery
+function start.f_turnsRecovery()
+	if start.turnsRecoveryInit then
+		return
+	end
+	start.turnsRecoveryInit = true
+	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
+		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
+			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
+			local base = lifemax() * config.TurnsRecoveryBase / 100
+			if ratiolevel() > 0 then
+				bonus = lifemax() * config.RatioRecoveryBonus / 100
+				base = lifemax() * config.RatioRecoveryBase / 100
+			end
+			if (not matchover() and teammode() == 'turns') or (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
+				setLife(math.min(lifemax(), life() + base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)))
+			end
+		end
+	end
+end
+
+--survival mode outcome (character removal or life recovery)
+function start.f_survivalOutcome()
+	local t_removeMembers = {}
+	if matchno() >= 2 and (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
+		--Turns
+		if start.p[1].teamMode == 2 then
+			--for each round in the last match
+			for _, v in ipairs(t_gameStats.match) do
+				--remove defeated character from team
+				if not v[1].win or v[1].ko then
+					t_removeMembers[v[1].memberNo + 1] = true
+				--otherwise override character's next match life
+				else
+					start.p[1].t_selected[v[1].memberNo + 1].life = v[1].life
+				end
+			end
+		--Single / Simul / Tag
+		else
+			--for each player data in the last round
+			for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
+				--only check P1 side characters
+				if v.teamside == 0 then
+					--in normal survival remove character from team if defeated
+					if gamemode('survival') and (not v.win or v.ko) then
+						t_removeMembers[v.memberNo + 1] = true
+					--in coop modes defeated character can still fight
+					elseif gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
+						local life = v.life
+						if life <= 0 then
+							life = math.max(1, v.lifeMax * config.TurnsRecoveryBase)
+						end
+						start.p[1].t_selected[v.memberNo + 1].life = life
+					--otherwise override character's next match life
+					else
+						start.p[1].t_selected[v.memberNo + 1].life = v.life
+					end
+				end
+			end
+		end
+	end
+	main.f_printTable(t_removeMembers)
+	for i = #start.p[1].t_selected, 1, -1 do
+		if t_removeMembers[i] then
+			table.remove(start.p[1].t_selected, i)
+			table.remove(start.p[1].t_selTemp, i)
+			start.p[1].numChars = start.p[1].numChars - 1
+		end
+	end
+	return start.p[1].numChars
+end
+
+--upcoming match character data adjustment
+function start.f_overrideCharData()
+	for side = 1, 2 do
+		for member, v in ipairs(start.p[side].t_selected) do
+			overrideCharData(side, member, {
+				['life'] = v.life,
+				['lifeMax'] = v.lifeMax,
+				['power'] = v.power,
+				['dizzyPoints'] = v.dizzyPoints,
+				['guardPoints'] = v.guardPoints,
+				['ratioLevel'] = v.ratioLevel,
+				['lifeRatio'] = v.lifeRatio or config.RatioLife[v.ratioLevel],
+				['attackRatio'] = v.attackRatio or config.RatioAttack[v.ratioLevel],
+			})
+		end
+	end
+end
+
 --start game
 function start.f_game(lua)
 	clearColor(0, 0, 0)
@@ -1632,9 +1636,9 @@ function launchFight(data)
 		table.insert(start.p[1].t_selected, {
 			ref = ref,
 			pal = start.f_selectPal(ref),
-			--cursor = {},
-			ratio = start.f_getRatio(1, t.p1numratio[cnt]),
 			pn = start.f_getPlayerNo(1, #start.p[1].t_selected + 1),
+			--cursor = {},
+			ratioLevel = start.f_getRatio(1, t.p1numratio[cnt]),
 		})
 		main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 	end
@@ -1655,9 +1659,9 @@ function launchFight(data)
 			table.insert(start.p[2].t_selected, {
 				ref = ref,
 				pal = start.f_selectPal(ref),
-				--cursor = {},
-				ratio = start.f_getRatio(2, t.p2numratio[cnt]),
 				pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
+				--cursor = {},
+				ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
 			})
 			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 			if not onlyme then onlyme = start.f_getCharData(ref).single end
@@ -1704,9 +1708,9 @@ function launchFight(data)
 				table.insert(start.p[2].t_selected, {
 					ref = v,
 					pal = start.f_selectPal(v),
-					--cursor = {},
-					ratio = start.f_getRatio(2, t.p2numratio[cnt]),
 					pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
+					--cursor = {},
+					ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
 				})
 				main.t_availableChars = start.f_excludeChar(main.t_availableChars, v)
 			end
@@ -1739,9 +1743,7 @@ function launchFight(data)
 	local saveData = false
 	while true do
 		--fight initialization
-		if start.f_overrideCharData() then
-			t.p1numchars = start.p[1].numChars
-		end
+		t.p1numchars = start.f_survivalOutcome()
 		setTeamMode(1, start.p[1].teamMode, start.p[1].numChars)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)
@@ -1749,6 +1751,7 @@ function launchFight(data)
 		stageNo = start.f_setStage(stageNo, t.stage ~= '')
 		start.f_setMusic(stageNo, t.music)
 		if not start.f_selectVersus(t.vsscreen) then break end
+		start.f_overrideCharData()
 		saveData = true
 		local continueScreen = main.continueScreen
 		local victoryScreen = main.victoryScreen
@@ -2420,9 +2423,9 @@ function start.f_selectMenu(side, cmd, player, member)
 			table.insert(start.p[side].t_selected, {
 				ref = v,
 				pal = start.f_selectPal(v),
-				--cursor = = {},
-				--ratio = start.f_getRatio(side),
 				--pn = start.f_getPlayerNo(side, #start.p[side].t_selected + 1),
+				--cursor = = {},
+				--ratioLevel = start.f_getRatio(side),
 			})
 		end
 		start.p[side].selEnd = true
@@ -2502,9 +2505,9 @@ function start.f_selectMenu(side, cmd, player, member)
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
 				pal = start.f_selectPal(start.c[player].selRef, main.f_btnPalNo(main.t_cmd[cmd])),
-				cursor = {start.c[player].selX, start.c[player].selY},
-				ratio = start.f_getRatio(side),
 				pn = start.f_getPlayerNo(side, member),
+				cursor = {start.c[player].selX, start.c[player].selY},
+				ratioLevel = start.f_getRatio(side),
 			}
 			if not config.TeamDuplicates then
 				t_reservedChars[side][start.c[player].selRef] = true
@@ -3843,29 +3846,6 @@ function start.f_stageMusic()
 		elseif start.t_music.musicvictory[2] ~= nil and player(2) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 2
 			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].bgmvolume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
 			start.bgmstate = -1
-		end
-	end
-end
-
---;===========================================================
---; TURNS LIFE RECOVERY
---;===========================================================
-function start.f_turnsRecovery()
-	if start.turnsRecoveryInit then
-		return
-	end
-	start.turnsRecoveryInit = true
-	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
-		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
-			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
-			local base = lifemax() * config.TurnsRecoveryBase / 100
-			if ratiolevel() > 0 then
-				bonus = lifemax() * config.RatioRecoveryBonus / 100
-				base = lifemax() * config.RatioRecoveryBase / 100
-			end
-			if (not matchover() and teammode() == 'turns') or (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
-				setLife(math.min(lifemax(), life() + base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)))
-			end
 		end
 	end
 end

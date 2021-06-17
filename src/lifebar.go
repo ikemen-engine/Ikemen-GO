@@ -3285,7 +3285,7 @@ func (l *Lifebar) step() {
 	//LifeBarRatio
 	for ti, tm := range sys.tmode {
 		if tm == TM_Turns {
-			rl := sys.chars[ti][0].ratioLevel()
+			rl := sys.chars[ti][0].ocd().ratioLevel
 			if rl > 0 {
 				l.ra[ti].step(rl - 1)
 			}
@@ -3497,14 +3497,14 @@ func (l *Lifebar) draw(layerno int16) {
 			//LifeBarRatio
 			for ti, tm := range sys.tmode {
 				if tm == TM_Turns {
-					if rl := sys.chars[ti][0].ratioLevel(); rl > 0 {
+					if rl := sys.chars[ti][0].ocd().ratioLevel; rl > 0 {
 						l.ra[ti].bgDraw(layerno)
 					}
 				}
 			}
 			for ti, tm := range sys.tmode {
 				if tm == TM_Turns {
-					if rl := sys.chars[ti][0].ratioLevel(); rl > 0 {
+					if rl := sys.chars[ti][0].ocd().ratioLevel; rl > 0 {
 						l.ra[ti].draw(layerno, rl-1)
 					}
 				}

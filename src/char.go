@@ -1783,13 +1783,7 @@ func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
 func (c *Char) ocd() *OverrideCharData {
-	if sys.tmode[c.playerNo&1] == TM_Turns {
-		if c.playerNo&1 == 0 {
-			return &sys.ocd[c.memberNo*2]
-		}
-		return &sys.ocd[c.memberNo*2+1]
-	}
-	return &sys.ocd[c.playerNo]
+	return &sys.sel.ocd[c.teamside][c.memberNo]
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
@@ -2848,12 +2842,6 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
-}
-func (c *Char) ratioLevel() int32 {
-	if c.playerNo&1 == 0 {
-		return sys.ratioLevel[int32(c.memberNo)*2]
-	}
-	return sys.ratioLevel[int32(c.memberNo)*2+1]
 }
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
@@ -4973,7 +4961,6 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 
-
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	// Nil anim & stanby check.
 	if atk.curFrame == nil || c.curFrame == nil ||
@@ -4983,9 +4970,9 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	}
 
 	// Z axis check.
-	if c.size.z.enable && atk.size.z.enable && 
+	if c.size.z.enable && atk.size.z.enable &&
 		((c.pos[2]-c.size.z.width)*c.localscl > (atk.pos[2]+atk.size.z.width)*atk.localscl ||
-		(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
+			(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
 		return false
 	}
 

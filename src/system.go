@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	MaxSimul        = 32
-	MaxAttachedChar = 2
+	MaxSimul        = 4
+	MaxAttachedChar = 1
 )
 
 var (
@@ -316,8 +316,6 @@ type System struct {
 	motifDir        string
 	captureNum      int
 	roundType       [2]RoundType
-	ocd             [MaxSimul*2 + MaxAttachedChar]OverrideCharData
-	ratioLevel      [MaxSimul*2 + MaxAttachedChar]int32
 	timerStart      int32
 	timerRounds     []int32
 	scoreStart      [2]float32
@@ -421,23 +419,6 @@ func (w *Window) toggleFullscreen() {
 	w.fullscreen = !w.fullscreen
 }
 
-type OverrideCharData struct {
-	life        int32
-	lifeMax     int32
-	power       int32
-	dizzyPoints int32
-	guardPoints int32
-	lifeRatio   float32
-	attackRatio float32
-}
-
-func (s *System) resetOverrideCharData() {
-	for i := range s.ocd {
-		s.ocd[i] = OverrideCharData{life: 0, lifeMax: 0, power: 0,
-			dizzyPoints: 0, guardPoints: 0, lifeRatio: 1.0, attackRatio: 1.0}
-	}
-}
-
 // Initialize stuff, this is called after the config int at main.go
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
@@ -505,7 +486,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.clsnSpr = *newSprite()
 	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
 	s.clsnSpr.SetPxl([]byte{0})
-	s.resetOverrideCharData()
 	systemScriptInit(l)
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	// So now that we have a window we add a icon.
@@ -1869,7 +1849,7 @@ func (s *System) fight() (reload bool) {
 		if len(p) > 0 {
 			// Get max life, and adjust based on team mode
 			var lm float32
-			if p[0].ocd().lifeMax != 0 {
+			if p[0].ocd().lifeMax != -1 {
 				lm = float32(p[0].ocd().lifeMax) * p[0].ocd().lifeRatio * s.lifeMul
 			} else {
 				lm = float32(p[0].gi().data.life) * p[0].ocd().lifeRatio * s.lifeMul
@@ -1929,7 +1909,7 @@ func (s *System) fight() (reload bool) {
 				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
 				/* If round 1 or a new character in turns mode, initialize values */
-				if p[0].ocd().life != 0 {
+				if p[0].ocd().life != -1 {
 					p[0].life = p[0].ocd().life
 				} else {
 					p[0].life = p[0].lifeMax
@@ -1937,8 +1917,10 @@ func (s *System) fight() (reload bool) {
 				if s.round == 1 {
 					if s.maxPowerMode {
 						p[0].power = p[0].powerMax
+					} else if p[0].ocd().power != -1 {
+						p[0].power = p[0].ocd().power
 					} else {
-						p[0].power = p[0].ocd().power //p[0].power = 0
+						p[0].power = 0
 					}
 				}
 				p[0].dialogue = []string{}
@@ -1954,12 +1936,12 @@ func (s *System) fight() (reload bool) {
 				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 
-			if p[0].ocd().guardPoints != 0 {
+			if p[0].ocd().guardPoints != -1 {
 				p[0].guardPoints = p[0].ocd().guardPoints
 			} else {
 				p[0].guardPoints = p[0].guardPointsMax
 			}
-			if p[0].ocd().dizzyPoints != 0 {
+			if p[0].ocd().dizzyPoints != -1 {
 				p[0].dizzyPoints = p[0].ocd().dizzyPoints
 			} else {
 				p[0].dizzyPoints = p[0].dizzyPointsMax
@@ -2357,6 +2339,22 @@ func newSelectStage() *SelectStage {
 	return &SelectStage{portrait_scale: 1, anims: NewPreloadedAnims()}
 }
 
+type OverrideCharData struct {
+	life        int32
+	lifeMax     int32
+	power       int32
+	dizzyPoints int32
+	guardPoints int32
+	ratioLevel  int32
+	lifeRatio   float32
+	attackRatio float32
+}
+
+func newOverrideCharData() *OverrideCharData {
+	return &OverrideCharData{life: -1, lifeMax: -1, power: -1, dizzyPoints: -1,
+		guardPoints: -1, ratioLevel: 0, lifeRatio: 1, attackRatio: 1}
+}
+
 type Select struct {
 	charlist           []SelectChar
 	stagelist          []SelectStage
@@ -2366,14 +2364,16 @@ type Select struct {
 	stageAnimPreload   []int32
 	charSpritePreload  map[[2]int16]bool
 	stageSpritePreload map[[2]int16]bool
-	cdefOverwrite      [MaxSimul * 2]string
+	cdefOverwrite      map[int]string
 	sdefOverwrite      string
+	ocd                [2][]OverrideCharData
 }
 
 func newSelect() *Select {
 	return &Select{selectedStageNo: -1,
 		charSpritePreload: map[[2]int16]bool{[...]int16{9000, 0}: true,
-			[...]int16{9000, 1}: true}, stageSpritePreload: make(map[[2]int16]bool)}
+			[...]int16{9000, 1}: true}, stageSpritePreload: make(map[[2]int16]bool),
+		cdefOverwrite: make(map[int]string)}
 }
 func (s *Select) GetCharNo(i int) int {
 	n := i
@@ -2655,6 +2655,7 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 	}
 	sys.loadMutex.Lock()
 	s.selected[tn] = append(s.selected[tn], [...]int{n, pl})
+	s.ocd[tn] = append(s.ocd[tn], *newOverrideCharData())
 	sys.loadMutex.Unlock()
 	return true
 }
@@ -2663,6 +2664,7 @@ func (s *Select) ClearSelected() {
 	s.selected = [2][][2]int{}
 	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
+	s.ocd = [2][]OverrideCharData{}
 }
 
 type LoaderState int32

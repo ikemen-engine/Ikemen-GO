@@ -975,8 +975,9 @@ func systemScriptInit(l *lua.LState) {
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
-				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
+				sys.sel.cdefOverwrite = nil
 				sys.sel.sdefOverwrite = ""
+				sys.sel.ocd = [2][]OverrideCharData{}
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				sys.clearAllSound()
@@ -984,13 +985,11 @@ func systemScriptInit(l *lua.LState) {
 				sys.bgPalFX = *newPalFX()
 				sys.superpmap = *newPalFX()
 				sys.resetGblEffect()
-				sys.resetOverrideCharData()
 				sys.dialogueFlg = false
 				sys.dialogueForce = 0
 				sys.dialogueBarsFlg = false
 				sys.noSoundFlg = false
 				sys.postMatchFlg = false
-				sys.ratioLevel = [MaxSimul*2 + MaxAttachedChar]int32{}
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				return 2
@@ -1433,28 +1432,34 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
-		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+		mn := int(numArg(l, 2))
+		if len(sys.sel.ocd[tn-1]) == 0 {
+			l.RaiseError("\noverrideCharData function used before loading player %v, member %v\n", tn, mn)
+		}
+		tableArg(l, 3).ForEach(func(key, value lua.LValue) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
 				case "life":
-					sys.ocd[pn-1].life = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].life = int32(lua.LVAsNumber(value))
 				case "lifeMax":
-					sys.ocd[pn-1].lifeMax = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].lifeMax = int32(lua.LVAsNumber(value))
 				case "power":
-					sys.ocd[pn-1].power = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].power = int32(lua.LVAsNumber(value))
 				case "dizzyPoints":
-					sys.ocd[pn-1].dizzyPoints = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].dizzyPoints = int32(lua.LVAsNumber(value))
 				case "guardPoints":
-					sys.ocd[pn-1].guardPoints = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].guardPoints = int32(lua.LVAsNumber(value))
+				case "ratioLevel":
+					sys.sel.ocd[tn-1][mn-1].ratioLevel = int32(lua.LVAsNumber(value))
 				case "lifeRatio":
-					sys.ocd[pn-1].lifeRatio = float32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].lifeRatio = float32(lua.LVAsNumber(value))
 				case "attackRatio":
-					sys.ocd[pn-1].attackRatio = float32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].attackRatio = float32(lua.LVAsNumber(value))
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -2053,18 +2058,6 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setRatioLevel", func(*lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
-		}
-		rn := int32(numArg(l, 2))
-		if rn < 0 || rn > 4 {
-			l.RaiseError("\nInvalid ratio number: %v\n", rn)
-		}
-		sys.ratioLevel[pn-1] = rn
-		return 0
-	})
 	luaRegister(l, "setRedLifeBar", func(l *lua.LState) int {
 		sys.lifebar.activeRl = boolArg(l, 1)
 		return 0
@@ -2087,11 +2080,16 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nInvalid team mode: %v\n", tm)
 		}
 		nt := int32(numArg(l, 3))
-		if nt < 1 || nt > MaxSimul {
+		if nt < 1 || (tm != TM_Turns && nt > MaxSimul) {
 			l.RaiseError("\nInvalid team size: %v\n", nt)
 		}
 		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
-		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
+		if tm == TM_Turns {
+			sys.numSimul[tn-1] = 1
+		} else {
+			sys.numSimul[tn-1] = nt
+		}
+		sys.numTurns[tn-1] = nt
 		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
 		}
@@ -3652,7 +3650,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.ratioLevel()))
+		l.Push(lua.LNumber(sys.debugWC.ocd().ratioLevel))
 		return 1
 	})
 	luaRegister(l, "receivedhits", func(*lua.LState) int {
@@ -3682,6 +3680,10 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "selfstatenoexist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.selfStatenoExist(
 			BytecodeInt(int32(numArg(l, 1)))).ToB()))
+		return 1
+	})
+	luaRegister(l, "sprpriority", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.sprPriority))
 		return 1
 	})
 	luaRegister(l, "stagebackedge", func(*lua.LState) int {
