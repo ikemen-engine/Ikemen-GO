@@ -188,6 +188,8 @@ options.t_itemname = {
 			loadLifebar(motif.files.fight)
 			main.timeFramesPerCount = getTimeFramesPerCount()
 			main.f_updateRoundsNum()
+			main.f_setPlayers(config.Players, true)
+			motif.f_loadCursorData()
 			options.f_resetVardisplay(options.menu)
 			setAllowDebugKeys(config.DebugKeys)
 			setAllowDebugMode(config.DebugMode)
