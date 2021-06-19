@@ -5,11 +5,11 @@
 *.cmd text eol=crlf
 
 # Syntax
-*.def text linguist-language=ini
-*.air text linguist-language=ini
-*.st text linguist-language=ini
-*.const text linguist-language=ini
-*.zss text linguist-language=coffeescript
+*.def linguist-language=ini
+*.air linguist-language=ini
+*.st linguist-language=ini
+*.const linguist-language=ini
+*.zss linguist-language=coffeescript
 
 # Custom for Visual Studio
 *.cs     diff=csharp
