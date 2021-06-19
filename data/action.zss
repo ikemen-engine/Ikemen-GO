@@ -3,111 +3,111 @@
 #===============================================================================
 [Statedef -4]
 
-if !Const(Default.Enable.Action) || TeamSide = 0 {
-	#do nothing, global code disabled locally or executed by stage
-} else if IsHelper {
+if !const(Default.Enable.Action) || teamSide = 0 {
+	# Do nothing, global code disabled locally or executed by stage
+} else if isHelper {
 	# Parry
-	ignorehitpause if HelperName = "Parry Detection" && MoveHit = 1 {
-		LifebarAction{spr: Const(MsgParry), 0}
+	ignoreHitPause if helperName = "Parry Detection" && moveHit = 1 {
+		lifebarAction{spr: const(MsgParry), 0}
 	}
-} else if RoundState = 0 {
-	MapSet{map: "_iksys_actionFirstAttackFlag"; value: 0}
-	MapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
-	MapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
-	MapSet{map: "_iksys_actionDangerFlag"; value: 0}
-	MapSet{map: "_iksys_actionDizzyFlag"; value: 0}
-	MapSet{map: "_iksys_actionGuardBreak"; value: 0}
-	MapSet{map: "_iksys_actionDownFlag"; value: 0}
-	MapSet{map: "_iksys_actionComboCount"; value: 0}
-	MapSet{map: "_iksys_actionWinFlag"; value: 0}
-} else if RoundState >= 2 {
+} else if roundState = 0 {
+	mapSet{map: "_iksys_actionFirstAttackFlag"; value: 0}
+	mapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
+	mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
+	mapSet{map: "_iksys_actionDangerFlag"; value: 0}
+	mapSet{map: "_iksys_actionDizzyFlag"; value: 0}
+	mapSet{map: "_iksys_actionGuardBreak"; value: 0}
+	mapSet{map: "_iksys_actionDownFlag"; value: 0}
+	mapSet{map: "_iksys_actionComboCount"; value: 0}
+	mapSet{map: "_iksys_actionWinFlag"; value: 0}
+} else if roundState >= 2 {
 	# First Attack
-	if FirstAttack && Map(_iksys_actionFirstAttackFlag) = 0 {
-		LifebarAction{spr: Const(MsgFirstAttack), 0}
-		MapSet{map: "_iksys_actionFirstAttackFlag"; value: 1}
+	if FirstAttack && map(_iksys_actionFirstAttackFlag) = 0 {
+		lifebarAction{spr: const(MsgFirstAttack), 0}
+		mapSet{map: "_iksys_actionFirstAttackFlag"; value: 1}
 	}
 	# Counter Hit
-	if MoveCountered = 1 && Map(_iksys_actionMoveCounteredFlag) = 0 {
-		LifebarAction{spr: Const(MsgCounterHit), 0}
-		MapSet{map: "_iksys_actionMoveCounteredFlag"; value: 1}
-	} else if MoveCountered = 0 && Map(_iksys_actionMoveCounteredFlag) = 1 {
-		MapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
+	if moveCountered = 1 && map(_iksys_actionMoveCounteredFlag) = 0 {
+		lifebarAction{spr: const(MsgCounterHit), 0}
+		mapSet{map: "_iksys_actionMoveCounteredFlag"; value: 1}
+	} else if moveCountered = 0 && map(_iksys_actionMoveCounteredFlag) = 1 {
+		mapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
 	}
 	# Technical
-	if CanRecover && StateNo = [Const(StateAirGetHit_fallRecoveryOnGroundStillFalling), Const(StateAirGetHit_fallRecoveryInAir)] && Map(_iksys_actionCanRecoverFlag) = 0 {
-		LifebarAction{spr: Const(MsgTechnical), 0}
-		MapSet{map: "_iksys_actionCanRecoverFlag"; value: 1}
-	} else if !CanRecover && Map(_iksys_actionCanRecoverFlag) = 1 {
-		MapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
+	if CanRecover && stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] && map(_iksys_actionCanRecoverFlag) = 0 {
+		lifebarAction{spr: const(MsgTechnical), 0}
+		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 1}
+	} else if !CanRecover && map(_iksys_actionCanRecoverFlag) = 1 {
+		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
 	}
 	# Reversal
-	if MoveReversed = 1 {
-		LifebarAction{spr: Const(MsgReversal), 0; redirectid: enemy,ID}
+	if moveReversed = 1 {
+		lifebarAction{spr: const(MsgReversal), 0; redirectId: enemy,id}
 	}
 	# Hit Overridden (Parry)
-	#if HitOverridden {
-		#LifebarAction{spr: Const(MsgParry), 0}
+	#if hitOverridden {
+		#lifebarAction{spr: const(MsgParry), 0}
 	#}
 	# Danger
-	if Life > 0 && float(Life) / LifeMax <= 0.3 && Map(_iksys_actionDangerFlag) = 0 {
-		LifebarAction{spr: Const(MsgDanger), 0; timemul: 2}
-		MapSet{map: "_iksys_actionDangerFlag"; value: 1}
+	if life > 0 && float(life) / lifeMax <= 0.3 && map(_iksys_actionDangerFlag) = 0 {
+		lifebarAction{spr: const(MsgDanger), 0; timeMul: 2}
+		mapSet{map: "_iksys_actionDangerFlag"; value: 1}
 	}
 	# Dizzy
-	if Dizzy {
-		if Map(_iksys_actionDizzyFlag) = 0 {
-			LifebarAction{spr: Const(MsgDizzy), 0; timemul: 2}
-			MapSet{map: "_iksys_actionDizzyFlag"; value: 1}
+	if dizzy {
+		if map(_iksys_actionDizzyFlag) = 0 {
+			lifebarAction{spr: const(MsgDizzy), 0; timeMul: 2}
+			mapSet{map: "_iksys_actionDizzyFlag"; value: 1}
 		}
-	} else if Map(_iksys_actionDizzyFlag) = 1 {
-		MapSet{map: "_iksys_actionDizzyFlag"; value: 0}
+	} else if map(_iksys_actionDizzyFlag) = 1 {
+		mapSet{map: "_iksys_actionDizzyFlag"; value: 0}
 	}
 	# Guard Break
-	if GuardBreak {
-		if Map(_iksys_actionGuardBreak) = 0 {
-			LifebarAction{spr: Const(MsgGuardBreak), 0; timemul: 2}
-			MapSet{map: "_iksys_actionGuardBreak"; value: 1}
+	if guardBreak {
+		if map(_iksys_actionGuardBreak) = 0 {
+			lifebarAction{spr: const(MsgGuardBreak), 0; timeMul: 2}
+			mapSet{map: "_iksys_actionGuardBreak"; value: 1}
 		}
-	} else if Map(_iksys_actionGuardBreak) = 1 {
-		MapSet{map: "_iksys_actionGuardBreak"; value: 0}
+	} else if map(_iksys_actionGuardBreak) = 1 {
+		mapSet{map: "_iksys_actionGuardBreak"; value: 0}
 	}
 	# Partner Down
-	if NumPartner > 0 && !Alive && Map(_iksys_actionDownFlag) = 0 {
-		LifebarAction{spr: Const(MsgPartnerDown), 0; timemul: 2}
-		MapSet{map: "_iksys_actionDownFlag"; value: 1}
+	if numPartner > 0 && !alive && map(_iksys_actionDownFlag) = 0 {
+		lifebarAction{spr: const(MsgPartnerDown), 0; timeMul: 2}
+		mapSet{map: "_iksys_actionDownFlag"; value: 1}
 	}
 	# code executed only by P1 and P2
-	if PlayerNo = TeamSide {
+	if playerNo = teamSide {
 		# Combo
-		if ComboCount != Map(_iksys_actionComboCount) {
-			if ComboCount < Map(_iksys_actionComboCount) {
-				if Map(_iksys_actionComboCount) >= 25 {
-					LifebarAction{spr: Const(MsgCombo25), 0} #gdlk combo (mugen)
-				} else if Map(_iksys_actionComboCount) >= 20 {
-					LifebarAction{spr: Const(MsgCombo20), 0} #amazing combo (marvelous)
-				} else if Map(_iksys_actionComboCount) >= 15 {
-					LifebarAction{spr: Const(MsgCombo15), 0} #great combo (fantastic)
-				} else if Map(_iksys_actionComboCount) >= 10 {
-					LifebarAction{spr: Const(MsgCombo10), 0} #sweet combo (beautiful)
-				} else if Map(_iksys_actionComboCount) >= 5 {
-					LifebarAction{spr: Const(MsgCombo5), 0} #good combo (great)
-				} else if Map(_iksys_actionComboCount) >= 3 {
-					LifebarAction{spr: Const(MsgCombo3), 0} #nice combo (good)
+		if comboCount != map(_iksys_actionComboCount) {
+			if comboCount < map(_iksys_actionComboCount) {
+				if map(_iksys_actionComboCount) >= 25 {
+					lifebarAction{spr: const(MsgCombo25), 0} #gdlk combo (mugen)
+				} else if map(_iksys_actionComboCount) >= 20 {
+					lifebarAction{spr: const(MsgCombo20), 0} #amazing combo (marvelous)
+				} else if map(_iksys_actionComboCount) >= 15 {
+					lifebarAction{spr: const(MsgCombo15), 0} #great combo (fantastic)
+				} else if map(_iksys_actionComboCount) >= 10 {
+					lifebarAction{spr: const(MsgCombo10), 0} #sweet combo (beautiful)
+				} else if map(_iksys_actionComboCount) >= 5 {
+					lifebarAction{spr: const(MsgCombo5), 0} #good combo (great)
+				} else if map(_iksys_actionComboCount) >= 3 {
+					lifebarAction{spr: const(MsgCombo3), 0} #nice combo (good)
 				}
 			}
-			MapSet{map: "_iksys_actionComboCount"; value: ComboCount}
+			mapSet{map: "_iksys_actionComboCount"; value: comboCount}
 		}
 		# Win
-		if Win && Map(_iksys_actionWinFlag) = 0 {
-			if WinPerfect {
-				LifebarAction{spr: Const(MsgWinPerfect), 0; timemul: 3}
+		if win && map(_iksys_actionWinFlag) = 0 {
+			if winPerfect {
+				lifebarAction{spr: const(MsgWinPerfect), 0; timeMul: 3}
 			}
-			if WinHyper {
-				LifebarAction{spr: Const(MsgWinHyper), 0; timemul: 3}
+			if winHyper {
+				lifebarAction{spr: const(MsgWinHyper), 0; timeMul: 3}
 			} else if WinSpecial {
-				LifebarAction{spr: Const(MsgWinSpecial), 0; timemul: 3}
+				lifebarAction{spr: const(MsgWinSpecial), 0; timeMul: 3}
 			}
-			MapSet{map: "_iksys_actionWinFlag"; value: 1}
+			mapSet{map: "_iksys_actionWinFlag"; value: 1}
 		}
 	}
 }

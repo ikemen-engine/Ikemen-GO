@@ -1,8 +1,8 @@
 .POSIX:
 .SUFFIXES:
-.PHONY: all clean cross pkg
+.PHONY: all clean cross linux macos pkg windows
 
-CROSS=Ikemen_GO_Linux Ikemen_GO_MacOS Ikemen_GO.exe Ikemen_GO_x86.exe
+CROSS=Ikemen_GO_Linux Ikemen_GO_MacOS Ikemen_GO_x64.exe Ikemen_GO_x86.exe
 ZIP=${CROSS} data external font sound License.txt SoftOpenAL32.dll SoftOpenAL64.dll
 SCREENPACK=elecbyte/chars elecbyte/data elecbyte/font elecbyte/stages
 
@@ -25,21 +25,26 @@ GOFILES=src/anim.go\
 	src/stdout_windows.go\
 	src/system.go
 
-include Make.${CONF}
+all:
+	@echo targets: clean cross linux macos pkg windows
 
-all: ${TARG}
+Ikemen_GO: ${GOFILES}
+	go build ${TAGS} -o $@ ./src
 
-Ikemen_GO_test: ${GOFILES}
-	go build ${GOFLAGS} -o $@ ./src
+Ikemen_GO.exe: ${GOFILES}
+	go build -ldflags "-H windowsgui" -o $@ ./src
 
-Ikemen_GO_test.exe: ${GOFILES}
-	go build ${GOFLAGS} -o $@ ./src
+linux: Ikemen_GO
+
+macos: Ikemen_GO
+
+windows: Ikemen_GO.exe
 
 
 # cross-compiling from Linux
 Ikemen_GO_Linux: ${GOFILES}
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-	go build ${GOFLAGS} -o $@ ./src
+	go build ${TAGS} -o $@ ./src
 
 Ikemen_GO_MacOS: ${GOFILES}
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
@@ -47,7 +52,7 @@ Ikemen_GO_MacOS: ${GOFILES}
 	CXX=o64-clang++ \
 	go build -tags al_cmpt -o $@ ./src
 
-Ikemen_GO.exe: ${GOFILES} windres/Ikemen_Cylia_x64.syso
+Ikemen_GO_x64.exe: ${GOFILES} windres/Ikemen_Cylia_x64.syso
 	cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_Cylia_x64.syso'
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
 	CC=x86_64-w64-mingw32-gcc \
