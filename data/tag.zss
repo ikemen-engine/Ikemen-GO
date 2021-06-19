@@ -135,7 +135,7 @@ if (ctrl && time >= const(TagInTime)) || (backEdgeBodyDist >= 0 && P2BodyDist X 
 	ctrl: 0;
 ]
 
-time = 0 {
+if time = 0 {
 	turn{}
 }
 
