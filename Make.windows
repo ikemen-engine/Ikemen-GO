@@ -1,2 +1,0 @@
-TARG=Ikemen_GO_test.exe
-GOFLAGS=-ldflags "-H windowsgui"

@@ -4975,7 +4975,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 
 
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
-	// Nil anim & stanby check.
+	// Nil anim & standby check.
 	if atk.curFrame == nil || c.curFrame == nil ||
 		c.scf(SCF_standby) || atk.scf(SCF_standby) ||
 		c.scf(SCF_disabled) && atk.scf(SCF_disabled) {

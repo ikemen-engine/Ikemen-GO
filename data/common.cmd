@@ -57,3 +57,8 @@ time = 1
 name = "m"
 command = m
 time = 1
+
+[Command]
+name = "menu"
+command = m
+time = 1
