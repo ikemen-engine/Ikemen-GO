@@ -1330,22 +1330,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.roundTime))
 		return 1
 	})
-	luaRegister(l, "getSoundPlaying", func(*lua.LState) int {
-		s, ok := toUserData(l, 1).(*Snd)
-		if !ok {
-			userDataError(l, 1, s)
-		}
-		w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
-		var found bool
-		for _, v := range sys.sounds {
-			if v.sound != nil && v.sound == w {
-				found = true
-				break
-			}
-		}
-		l.Push(lua.LBool(found))
-		return 1
-	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
 		c := sys.sel.GetStage(int(numArg(l, 1)))
 		tbl := l.NewTable()
@@ -2135,6 +2119,18 @@ func systemScriptInit(l *lua.LState) {
 		time.Sleep(time.Duration((numArg(l, 1))) * time.Second)
 		return 0
 	})
+	luaRegister(l, "sndGetLength", func(*lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		var frames int32
+		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
+			frames = int32(math.Ceil(float64(w.getDuration() * 60)))
+		}
+		l.Push(lua.LNumber(frames))
+		return 1
+	})
 	luaRegister(l, "sndNew", func(l *lua.LState) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
@@ -2154,6 +2150,23 @@ func systemScriptInit(l *lua.LState) {
 		}
 		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale)
 		return 0
+	})
+	luaRegister(l, "sndPlaying", func(*lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		var f bool
+		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
+			for _, v := range sys.sounds {
+				if v.sound != nil && v.sound == w {
+					f = true
+					break
+				}
+			}
+		}
+		l.Push(lua.LBool(f))
+		return 1
 	})
 	luaRegister(l, "sndStop", func(l *lua.LState) int {
 		s, ok := toUserData(l, 1).(*Snd)
@@ -2403,6 +2416,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 		glfw.SwapInterval(sys.vRetrace)
 		return 0
+	})
+	luaRegister(l, "waveGetLength", func(*lua.LState) int {
+		w, ok := toUserData(l, 1).(*Wave)
+		if !ok {
+			userDataError(l, 1, w)
+		}
+		l.Push(lua.LNumber(int32(math.Ceil(float64(w.getDuration() * 60)))))
+		return 1
 	})
 	luaRegister(l, "wavePlay", func(l *lua.LState) int {
 		w, ok := toUserData(l, 1).(*Wave)

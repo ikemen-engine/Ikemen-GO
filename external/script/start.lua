@@ -773,7 +773,7 @@ function start.f_resetTempData(t, subname, spscale)
 			v.anim_data = start.f_animGet(v.ref, side, member, t, subname, '', true)
 			v.slide_dist = {0, 0}
 		end
-		start.p[side].animDelay = 0
+		start.p[side].screenDelay = 0
 	end
 end
 
@@ -1118,26 +1118,29 @@ end
 
 --cursor sound data, play cursor sound
 function start.f_playWave(ref, name, g, n, loops)
-	if g < 0 or n < 0 then return end
+	if g < 0 or n < 0 then return 0 end
 	if name == 'stage' then
 		local a = main.t_selStages[ref].attachedChar
 		if a == nil or a.sound == nil then
-			return
+			return 0
 		end
 		if main.t_selStages[ref][name .. '_wave_data'] == nil then
 			main.t_selStages[ref][name .. '_wave_data'] = getWaveData(a.dir .. a.sound, g, n, loops or -1)
 		end
 		wavePlay(main.t_selStages[ref][name .. '_wave_data'])
+		return waveGetLength(main.t_selStages[ref][name .. '_wave_data'])
 	else
 		local sound = start.f_getCharData(ref).sound
 		if sound == nil or sound == '' then
-			return
+			return 0
 		end
 		if start.f_getCharData(ref)[name .. '_wave_data'] == nil then
 			start.f_getCharData(ref)[name .. '_wave_data'] = getWaveData(start.f_getCharData(ref).dir .. sound, g, n, loops or -1)
 		end
 		wavePlay(start.f_getCharData(ref)[name .. '_wave_data'])
+		return waveGetLength(start.f_getCharData(ref)[name .. '_wave_data'])
 	end
+	return 0
 end
 
 --removes char with particular ref from table
@@ -1952,12 +1955,12 @@ function start.f_selectScreen()
 					end
 				end
 			end
-			--delayed screen transition for the duration of face_done_anim
-			if start.p[side].animDelay > 0 then
+			--delayed screen transition for the duration of face_done_anim or selection sound
+			if start.p[side].screenDelay > 0 then
 				if main.f_input(main.t_players, {'pal', 's'}) then
-					start.p[side].animDelay = 0
+					start.p[side].screenDelay = 0
 				else
-					start.p[side].animDelay = start.p[side].animDelay - 1
+					start.p[side].screenDelay = start.p[side].screenDelay - 1
 				end
 			end
 		end
@@ -1985,7 +1988,7 @@ function start.f_selectScreen()
 			restoreCursor = true
 			if main.stageMenu and not stageEnd then --Stage select
 				start.f_stageMenu()
-			elseif start.p[1].animDelay <= 0 and start.p[2].animDelay <= 0 and main.fadeType == 'fadein' then
+			elseif start.p[1].screenDelay <= 0 and start.p[2].screenDelay <= 0 and main.fadeType == 'fadein' then
 				main.f_fadeReset('fadeout', motif.select_info)
 			end
 			--draw stage portrait
@@ -2497,9 +2500,8 @@ function start.f_selectMenu(side, cmd, player, member)
 		if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_enabled == 1 and timerSelect == -1)) then
 			if timerSelect ~= -1 then
 				sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
-			end
-			if timerSelect ~= -1 then
-				start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
+				local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
+				start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
 			end
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
@@ -2543,10 +2545,10 @@ function start.f_selectMenu(side, cmd, player, member)
 			if done_anim ~= -1 then
 				if start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
 					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false)
-					start.p[side].animDelay = math.min(120, math.max(start.p[side].animDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
+					start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
 				elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
 					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
-					start.p[side].animDelay = 60 --1 second delay to allow displaying 'select' param character
+					start.p[side].screenDelay = 60 --1 second delay to allow displaying 'select' param character
 				end
 			end
 			start.p[side].t_selTemp[member].ref = start.c[player].selRef

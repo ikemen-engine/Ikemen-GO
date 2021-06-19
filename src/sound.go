@@ -668,6 +668,9 @@ func (w *Wave) play() bool {
 	c.sound = w
 	return c.sound != nil
 }
+func (w *Wave) getDuration() float32 {
+	return float32(len(w.Wav)) / float32((w.SamplesPerSec * uint32(w.Channels) * uint32(w.BytesPerSample)))
+}
 
 // ------------------------------------------------------------------
 // Sound
