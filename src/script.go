@@ -1876,24 +1876,28 @@ func systemScriptInit(l *lua.LState) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
-				case "timer":
-					sys.lifebar.tr.active = lua.LVAsBool(value)
-				case "p1score":
-					sys.lifebar.sc[0].active = lua.LVAsBool(value)
-				case "p2score":
-					sys.lifebar.sc[1].active = lua.LVAsBool(value)
-				case "match":
-					sys.lifebar.ma.active = lua.LVAsBool(value)
-				case "p1ai":
-					sys.lifebar.ai[0].active = lua.LVAsBool(value)
-				case "p2ai":
-					sys.lifebar.ai[1].active = lua.LVAsBool(value)
-				case "mode":
-					sys.lifebar.activeMode = lua.LVAsBool(value)
 				case "bars":
 					sys.lifebar.activeBars = lua.LVAsBool(value)
 				case "lifebar":
 					sys.lifebar.active = lua.LVAsBool(value)
+				case "match":
+					sys.lifebar.ma.active = lua.LVAsBool(value)
+				case "mode":
+					sys.lifebar.activeMode = lua.LVAsBool(value)
+				case "p1ai":
+					sys.lifebar.ai[0].active = lua.LVAsBool(value)
+				case "p1score":
+					sys.lifebar.sc[0].active = lua.LVAsBool(value)
+				case "p1wins":
+					sys.lifebar.wc[0].active = lua.LVAsBool(value)
+				case "p2ai":
+					sys.lifebar.ai[1].active = lua.LVAsBool(value)
+				case "p2score":
+					sys.lifebar.sc[1].active = lua.LVAsBool(value)
+				case "p2wins":
+					sys.lifebar.wc[1].active = lua.LVAsBool(value)
+				case "timer":
+					sys.lifebar.tr.active = lua.LVAsBool(value)
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -2097,6 +2101,14 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setVolumeSfx", func(l *lua.LState) int {
 		sys.wavVolume = int(numArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "setWinCount", func(*lua.LState) int {
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("\nInvalid team side: %v\n", tn)
+		}
+		sys.lifebar.wc[tn-1].wins = int32(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
@@ -3864,6 +3876,8 @@ func triggerFunctions(l *lua.LState) {
 			w2 := sys.wins[1] >= sys.matchWins[1]
 			if w1 != w2 {
 				winp = Btoi(w1) + Btoi(w2)*2
+			} else {
+				winp = 0
 			}
 		}
 		l.Push(lua.LNumber(winp))

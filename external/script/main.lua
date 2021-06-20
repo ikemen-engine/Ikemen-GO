@@ -2165,8 +2165,10 @@ function main.f_default()
 		mode = true,
 		p1ai = false,
 		p1score = false,
+		p1wins = false,
 		p2ai = false,
 		p2score = false,
+		p2wins = false,
 		timer = false,
 	}
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
@@ -2210,6 +2212,8 @@ function main.f_default()
 	setRoundTime(math.max(-1, main.roundTime * main.timeFramesPerCount))
 	setStunBar(config.BarStun)
 	setTimeFramesPerCount(main.timeFramesPerCount)
+	setWinCount(1, 0)
+	setWinCount(2, 0)
 	main.txt_mainSelect:update({text = ''})
 	main.f_cmdBufReset()
 	demoFrameCounter = 0
@@ -2457,8 +2461,8 @@ main.t_itemname = {
 	['netplayversus'] = function()
 		setHomeTeam(1)
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2759,8 +2763,8 @@ main.t_itemname = {
 			main.t_pIn[2] = start.challenger
 		end
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2793,8 +2797,8 @@ main.t_itemname = {
 		setHomeTeam(1)
 		main.coop = true
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.selectMenu[2] = true

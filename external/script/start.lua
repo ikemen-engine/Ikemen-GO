@@ -1366,6 +1366,17 @@ function start.f_overrideCharData()
 	end
 end
 
+--reset win counter
+function start.f_resetWinCount()
+	--skip if P2 is not CPU or both sides are controlled by CPU, but not in vs100kumite mode
+	if (not main.cpuSide[2] or main.cpuSide[1]) and not gamemode('vs100kumite') then
+		return
+	end
+	if winnerteam() == 1 then
+		setWinCount(2, 0)
+	end
+end
+
 --start game
 function start.f_game(lua)
 	clearColor(0, 0, 0)
@@ -1762,6 +1773,7 @@ function launchFight(data)
 		main.victoryScreen = t.victoryscreen
 		main.rankDisplay = t.rankdisplay
 		_, t_gameStats = start.f_game(t.lua)
+		start.f_resetWinCount()
 		main.continueScreen = continueScreen
 		main.victoryScreen = victoryScreen
 		main.rankDisplay = rankDisplay
@@ -1776,8 +1788,8 @@ function launchFight(data)
 				start.challenger = 0
 				break
 			end
-		--player exit the game via ESC
-		elseif winnerteam() == -1 then
+		--player exit the game via ESC or draw game without winner
+		elseif winnerteam() <= 0 then
 			break
 		--player lost in modes that ends after 1 lose
 		elseif winnerteam() ~= 1 and main.elimination then
