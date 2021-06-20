@@ -143,7 +143,7 @@ options.t_itemname = {
 			config.ListenPort = "7500"
 			config.LoseSimul = true
 			config.LoseTag = false
-			config.MaxDrawGames = -2
+			config.MaxDrawGames = -2 -- -2: match.maxdrawgames; -1: match.wins; >= 0: overriding fight.def parameters
 			config.MaxHelper = 56
 			config.MaxPlayerProjectile = 256
 			config.MaxExplod = 512
@@ -328,7 +328,7 @@ options.t_itemname = {
 			main.maxDrawGames = {config.MaxDrawGames, config.MaxDrawGames}
 			t.items[item].vardisplay = config.MaxDrawGames
 			modified = true
-		elseif main.f_input(main.t_players, {'$B'}) and main.maxDrawGames[1] > 1 then
+		elseif main.f_input(main.t_players, {'$B'}) and main.maxDrawGames[1] > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxDrawGames = main.maxDrawGames[1] - 1
 			main.maxDrawGames = {config.MaxDrawGames, config.MaxDrawGames}
