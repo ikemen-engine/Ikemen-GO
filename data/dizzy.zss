@@ -4,25 +4,25 @@
 #===============================================================================
 # Dizzy Bird Helper
 [Function fDizzyBirdHelper()]
-if !NumHelper(Const(StateDizzyBirdsHelper)) {
-	Explod{
-		anim: F Const(FxBackgroundColor);
-		sprpriority: -6000;
+if !numHelper(const(StateDizzyBirdsHelper)) {
+	explod{
+		anim: F const(FxBackgroundColor);
+		sprPriority: -6000;
 		space: screen;
-		postype: left;
-		pos: -3 * ScreenWidth, ScreenHeight / 2; #color 3 (red)
-		scale: ScreenWidth, 7.5 * ScreenWidth / 320.0;
-		bindtime: -1;
-		supermovetime: -1;
-		pausemovetime: -1;
-		ownpal: 1;
-		ignorehitpause: 1;
+		posType: left;
+		pos: -3 * screenWidth, screenHeight / 2; #color 3 (red)
+		scale: screenWidth, 7.5 * screenWidth / 320.0;
+		bindTime: -1;
+		superMoveTime: -1;
+		pauseMoveTime: -1;
+		ownPal: 1;
+		ignoreHitPause: 1;
 	}
-	Helper{
-		id: Const(StateDizzyBirdsHelper);
-		stateno: Const(StateDizzyBirdsHelper);
-		ownpal: 1;
-		size.height: ifelse(Life < 200, 3, rand(0, 2));
+	helper{
+		id: const(StateDizzyBirdsHelper);
+		stateNo: const(StateDizzyBirdsHelper);
+		ownPal: 1;
+		size.height: ifElse(Life < 200, 3, rand(0, 2));
 	}
 }
 
@@ -30,14 +30,14 @@ if !NumHelper(Const(StateDizzyBirdsHelper)) {
 [Function fDizzyBirdExplod(arg)]
 let fvarA = (float(var(1)) + $arg) * 0.0698;
 let fvarB = cos($fvarA) * var(2) * 0.25;
-let fvarC = Const240p((cos($fvarA) + 3) * 0.12 * ifelse(($fvarB < 0), -1, 1) * ((Time % 9) * 0.05 + 1));
-Explod{
+let fvarC = const240p((cos($fvarA) + 3) * 0.12 * ifElse(($fvarB < 0), -1, 1) * ((time % 9) * 0.05 + 1));
+explod{
 	id: 0;
-	anim: F Const(FxDizzyEffect) + var(10);
-	postype: p1;
-	pos: floor(sin($fvarA) * var(2)), floor($fvarB + fvar(11));
-	sprpriority: ifelse($fvarB > 0, 6, -6);
-	ownpal: 1;
+	anim: F const(FxDizzyEffect) + var(10);
+	posType: p1;
+	pos: floor(sin($fvarA) * var(2)), floor($fvarB + fVar(11));
+	sprPriority: ifElse($fvarB > 0, 6, -6);
+	ownPal: 1;
 	scale: $fvarC, Abs($fvarC);
 	vel: 0, -var(2) * 0.05;
 	facing: -1;
@@ -45,284 +45,284 @@ Explod{
 
 # Dizzy Hit Ground Explod (direct copy from common1)
 [Function fDizzyHitGroundExplod(vely)]
-Explod{
-	anim: F (60 + ($vely > Const240p(5)) + ($vely > Const240p(14)));
-	postype: p1;
+explod{
+	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
+	posType: p1;
 	pos: 0, 0;
 	facing: Facing;
-	sprpriority: ifelse($vely <= Const240p(14), -10, 10);
+	sprPriority: ifElse($vely <= const240p(14), -10, 10);
 }
-PlaySnd{value: F7, ($vely > Const240p(5)) + ($vely > Const240p(14))}
+playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #===============================================================================
 #StateDizzyBirdsHelper [helper]
 #===============================================================================
-[Statedef 5310; type: a; physics: n; anim: -2; velset: 0, 0; ctrl: 0;]
+[StateDef 5310; type: A; physics: N; anim: -2; velSet: 0, 0; ctrl: 0;]
 
-if Parent,StateNo = Const(StateDizzy) {
+if parent,stateNo = const(StateDizzy) {
 	var(0) := -1; #in dizzy state
 }
-if RoundState != 2 || Parent,Alive = 0 || Parent,Ctrl || Parent,MoveType = A || (var(0) = -1 && Parent,StateNo != Const(StateDizzy)) {
+if roundState != 2 || parent,alive = 0 || parent,ctrl || parent,moveType = A || (var(0) = -1 && parent,stateNo != const(StateDizzy)) {
 	var(0) := 1; #destroy helper
 }
 
 if var(0) < 1 {
-	PosSet{x: Parent,Pos X; y: Parent,Pos Y}
+	posSet{x: parent,pos x; y: parent,pos y}
 }
 
-if Time = 0 {
-	fvar(12) := Parent,Const(size.head.pos.y) - 3;
-	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
-} else if Parent,StateType != C && Parent,Anim != [Const(StateDownedGetHit_lyingDown), Const(StateDownedGetHit_lyingDown)+9] && Parent,Anim != [Const(AnimHitGroundFromBounce), Const(AnimHitGroundFromBounce)+9] {
-	fvar(12) := Parent,Const(size.head.pos.y) + 1;
-	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
-} else if Parent,StateType = C {
-	fvar(12) := Parent,Const(size.head.pos.y) * 0.5;
-	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
-} else if Parent,Anim = [Const(StateDownedGetHit_lyingDown), Const(StateDownedGetHit_lyingDown)+9] || Parent,Anim = [Const(AnimHitGroundFromBounce), Const(AnimHitGroundFromBounce)+9] {
-	fvar(12) := Parent,Const(size.head.pos.y) * 0.2;
-	fvar(11) := fvar(11) + (fvar(12) - fvar(11)) * 0.25;
+if time = 0 {
+	fVar(12) := parent,const(size.head.pos.y) - 3;
+	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.25;
+} else if parent,stateType != C && parent,anim != [const(StateDownedGetHit_lyingDown), const(StateDownedGetHit_lyingDown)+9] && parent,anim != [const(AnimHitGroundFromBounce), const(AnimHitGroundFromBounce)+9] {
+	fVar(12) := parent,const(size.head.pos.y) + 1;
+	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.25;
+} else if parent,stateType = C {
+	fVar(12) := parent,const(size.head.pos.y) * 0.5;
+	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.25;
+} else if parent,anim = [const(StateDownedGetHit_lyingDown), const(StateDownedGetHit_lyingDown)+9] || parent,anim = [const(AnimHitGroundFromBounce), const(AnimHitGroundFromBounce)+9] {
+	fVar(12) := parent,const(size.head.pos.y) * 0.2;
+	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.25;
 }
 
-persistent(0) if Time = 0 {
-	var(2) := Parent,Const(size.ground.back) + Parent,Const(size.ground.front); #bird type
+persistent(0) if time = 0 {
+	var(2) := parent,const(size.ground.back) + parent,const(size.ground.front); #bird type
 	var(10) := rand(0, 5); #width
-	fvar(11) := fvar(12); #pos y
+	fVar(11) := fVar(12); #pos y
 }
 
-RemoveExplod{id: 0}
+removeExplod{id: 0}
 
 var(1) := var(1) + 1;
 
 #StateStandGetHit + StateCrouchGetHit + StateAirGetHit + StateTrippedGetHit + StateDownedGetHit
-if Parent,StateNo = [Const(StateStandGetHit_shaking), Const(StateStandGetHit_shaking)+199] || Parent,StateNo = Const(StateDizzy) || Parent,StateNo = Const(StateDizzyFallDown_air) || Parent,StateNo = Const(StateDizzyLyingDown) {
+if parent,stateNo = [const(StateStandGetHit_shaking), const(StateStandGetHit_shaking)+199] || parent,stateNo = const(StateDizzy) || parent,stateNo = const(StateDizzyFallDown_air) || parent,stateNo = const(StateDizzyLyingDown) {
 	call fDizzyBirdExplod(0);
 	call fDizzyBirdExplod(22.5);
 	call fDizzyBirdExplod(45);
 	call fDizzyBirdExplod(67.5);
 }
 
-ignorehitpause if var(0) > 0 {
-	DestroySelf{}
+ignoreHitPause if var(0) > 0 {
+	destroySelf{}
 }
 
 #===============================================================================
 #StateDizzyFallDown_standCrouch
 #===============================================================================
-[Statedef 5301; type: u; movetype: h; physics: n; velset: 0, 0; ctrl: 0;]
+[StateDef 5301; type: U; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
-if !Dizzy {
-	DizzySet{value: 1}
+if !dizzy {
+	dizzySet{value: 1}
 }
 
-NotHitBy{value: SCA}
+notHitBy{value: SCA}
 
-if Time = 0 {
-	if StateType = S {
-		if Anim > Const(AnimStandOrAirHitLow_light) {
-			ChangeAnim{value: Const(AnimStandOrAirHitHigh_hard)}
+if time = 0 {
+	if stateType = S {
+		if anim > const(AnimStandOrAirHitLow_light) {
+			changeAnim{value: const(AnimStandOrAirHitHigh_hard)}
 		} else {
-			ChangeAnim{value: Const(AnimStandOrAirHitLow_hard)}
+			changeAnim{value: const(AnimStandOrAirHitLow_hard)}
 		}
 	} else {
-		ChangeAnim{value: Const(AnimCrouchHit_hard)}
+		changeAnim{value: const(AnimCrouchHit_hard)}
 	}
 }
 
-if Anim = [Const(AnimStandOrAirHitHigh_hard), Const(AnimStandOrAirHitLow_hard)] && (AnimTime = 0 || Time > 16) {
-	ChangeAnim{value: Const(AnimCrouchHit_hard)}
+if anim = [const(AnimStandOrAirHitHigh_hard), const(AnimStandOrAirHitLow_hard)] && (animTime = 0 || time > 16) {
+	changeAnim{value: const(AnimCrouchHit_hard)}
 }
-if Anim = Const(AnimCrouchHit_hard) && (AnimTime = 0 || Time > 26) {
-	ChangeAnim{value: Const(AnimLieDownHit_stayDown)}
+if anim = const(AnimCrouchHit_hard) && (animTime = 0 || time > 26) {
+	changeAnim{value: const(AnimLieDownHit_stayDown)}
 }
-if Anim = Const(AnimLieDownHit_stayDown) && (AnimTime = 0 || Time > 36) {
-	SelfState{value: Const(StateDizzyLyingDown)}
+if anim = const(AnimLieDownHit_stayDown) && (animTime = 0 || time > 36) {
+	selfState{value: const(StateDizzyLyingDown)}
 }
 
 #===============================================================================
 #StateDizzyFallDown_air
 #===============================================================================
-[Statedef 5302; type: a; movetype: h; physics: n; anim: Const(AnimAirFall); ctrl: 0;]
+[StateDef 5302; type: A; moveType: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
 
-if !Dizzy {
+if !dizzy {
 	call fDizzyBirdHelper();
-	DizzySet{value: 1}
+	dizzySet{value: 1}
 }
 
-if Time = 0 {
-	AfterImageTime{time: 0}
-	NotHitBy{value: SCA; time: 1}
-	if SelfAnimExist(Const(AnimAirFall_hitUpDiagonal)) {
-		ChangeAnim{value: Const(AnimAirFall_hitUpDiagonal)}
+if time = 0 {
+	afterImageTime{time: 0}
+	notHitBy{value: SCA; time: 1}
+	if selfAnimExist(const(AnimAirFall_hitUpDiagonal)) {
+		changeAnim{value: const(AnimAirFall_hitUpDiagonal)}
 	}
 }
 
-if Anim = [Const(AnimAirFall), Const(AnimAirFall_hitUpDiagonal)] {
-	VelAdd{y: GetHitVar(yaccel)}
-	if Pos Y + Vel Y >= 0 && Vel Y > 0 {
-		StateTypeSet{statetype: l}
-		ChangeAnim{value: Const(AnimHittingGroundFromFall)}
+if anim = [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
+	velAdd{y: getHitVar(yaccel)}
+	if pos y + vel y >= 0 && vel y > 0 {
+		stateTypeSet{stateType: l}
+		changeAnim{value: const(AnimHittingGroundFromFall)}
 	}
 }
 
 #AnimHitGround + AnimGetUp
-if Anim != [Const(AnimAirFall), Const(AnimAirFall_hitUpDiagonal)] {
-	NotHitBy{value: SCA}
+if anim != [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
+	notHitBy{value: SCA}
 }
 
-persistent(0) if AnimTime = 0 && Anim = Const(AnimHittingGroundFromFall) {
-	ChangeAnim{value: Const(AnimBounceIntoAir)}
+persistent(0) if animTime = 0 && anim = const(AnimHittingGroundFromFall) {
+	changeAnim{value: const(AnimBounceIntoAir)}
 }
-persistent(0) if Anim = Const(AnimBounceIntoAir) {
-	HitFallVel{}
-	PosSet{y: Const(movement.down.bounce.offset.y)}
-	PosAdd{
-		x: Const(movement.down.bounce.offset.x);
-		y: ifelse(Const(movement.down.bounce.offset.y) > -5, -5, Const(movement.down.bounce.offset.y));
+persistent(0) if anim = const(AnimBounceIntoAir) {
+	hitFallVel{}
+	posSet{y: const(movement.down.bounce.offset.y)}
+	posAdd{
+		x: const(movement.down.bounce.offset.x);
+		y: ifElse(const(movement.down.bounce.offset.y) > -5, -5, const(movement.down.bounce.offset.y));
 	}
 }
-if Anim = Const(AnimBounceIntoAir) {
-	VelAdd{y: Const240p(0.5)}
+if anim = const(AnimBounceIntoAir) {
+	velAdd{y: const240p(0.5)}
 }
 
-if Anim = Const(AnimBounceIntoAir) && Vel Y > 0 {
-	if Pos Y >= Const(movement.down.bounce.groundlevel) || (Pos y >= Const240p(10) && Const(movement.down.bounce.groundlevel) = 0) {
-		ChangeState{value: Const(StateDizzyLyingDown)}
+if anim = const(AnimBounceIntoAir) && vel y > 0 {
+	if pos y >= const(movement.down.bounce.groundlevel) || (pos y >= const240p(10) && const(movement.down.bounce.groundlevel) = 0) {
+		changeState{value: const(StateDizzyLyingDown)}
 	}
 }
 
-if Anim = [Const(AnimHittingGroundFromFall), Const(AnimHittingGroundFromFall)+9] {
-	PosSet{y: 0}
-	if GetHitVar(fall.yvel) {
-		call fDizzyHitGroundExplod(floor(Vel Y));
+if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall)+9] {
+	posSet{y: 0}
+	if getHitVar(fall.yvel) {
+		call fDizzyHitGroundExplod(floor(vel y));
 	}
-	VelSet{y: 0}
-	PosFreeze{}
+	velSet{y: 0}
+	posFreeze{}
 }
 
 #===============================================================================
 #StateDizzyLyingDown
 #===============================================================================
-[Statedef 5303; type: l; movetype: h; physics: n; velset: 0, 0; ctrl: 0;]
+[StateDef 5303; type: L; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
-if !Dizzy {
+if !dizzy {
 	call fDizzyBirdHelper();
-	DizzySet{value: 1}
+	dizzySet{value: 1}
 }
 
-if Time = 0 {
-	PosSet{y: 0}
-	if GetHitVar(fall.yvel) {
-		call fDizzyHitGroundExplod(floor(Vel Y));
+if time = 0 {
+	posSet{y: 0}
+	if getHitVar(fall.yvel) {
+		call fDizzyHitGroundExplod(floor(vel y));
 	}
-	VelSet{y: 0}
+	velSet{y: 0}
 }
 
-if Time = 0 && Anim != [Const(AnimLieDown), Const(AnimLieDown)+9] {
-	ChangeAnim{value: Const(AnimLieDown) + (Anim % 10) * SelfAnimExist(Const(AnimLieDown) + (Anim % 10))}
+if time = 0 && anim != [const(AnimLieDown), const(AnimLieDown)+9] {
+	changeAnim{value: const(AnimLieDown) + (anim % 10) * SelfAnimExist(const(AnimLieDown) + (anim % 10))}
 }
 
-if Time > 32 && Anim = [Const(AnimLieDown), Const(AnimLieDown)+9] {
-	ChangeAnim{value: Const(AnimGetUpFromLieDown) + (Anim % 10) * SelfAnimExist(Const(AnimGetUpFromLieDown) + (Anim % 10))}
+if time > 32 && anim = [const(AnimLieDown), const(AnimLieDown)+9] {
+	changeAnim{value: const(AnimGetUpFromLieDown) + (anim % 10) * SelfAnimExist(const(AnimGetUpFromLieDown) + (anim % 10))}
 }
 
-if (AnimTime = 0 && Anim = [Const(AnimGetUpFromLieDown), Const(AnimGetUpFromLieDown)+9]) || Time > 96 {
-	ChangeState{value: Const(StateDizzy)}
+if (animTime = 0 && anim = [const(AnimGetUpFromLieDown), const(AnimGetUpFromLieDown)+9]) || time > 96 {
+	changeState{value: const(StateDizzy)}
 }
 
-NotHitBy{value: SCA; time: 1}
+notHitBy{value: SCA; time: 1}
 
 #===============================================================================
 #StateDizzy
 #===============================================================================
-[Statedef 5300; type: s; movetype: i; physics: s; anim: Const(AnimDizzy); movehitpersist: 1; velset: 0, 0; ctrl: 0;]
+[StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
-if !Dizzy {
-	MapSet{map: "_iksys_DizzyState"; value: 0}
-	SelfState{value: Const(StateStand); ctrl: 1}
+if !dizzy {
+	mapSet{map: "_iksys_DizzyState"; value: 0}
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
-if Time = 0 {
-	MapSet{map: "_iksys_DizzyState"; value: 1}
-	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: 312}
-	PosSet{y: 0}
+if time = 0 {
+	mapSet{map: "_iksys_DizzyState"; value: 1}
+	mapAdd{map: "_iksys_dizzyRecoveryTime"; value: 312}
+	posSet{y: 0}
 }
 
-if (Time % 42) = 0 {
-	PlaySnd{value: F5300, 0; channel: 2}
+if (time % 42) = 0 {
+	playSnd{value: F5300, 0; channel: 2}
 }
 
-if Time > 1 {
-	MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
-	if AILevel = 0 {
-		if (Command = "x" || Command = "y" || Command = "z" || Command = "a" || Command = "b" || Command = "c") {
-			MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
+if time > 1 {
+	mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
+	if aiLevel = 0 {
+		if (command = "x" || command = "y" || command = "z" || command = "a" || command = "b" || command = "c") {
+			mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
 		}
-	} else if max(4, AILevel) >= rand(1, 12) { #33% - 66,67% chance, depending on AILevel
-		MapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
+	} else if max(4, aiLevel) >= rand(1, 12) { #33% - 66,67% chance, depending on aiLevel
+		mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
 	}
 }
 
-if Time > 8 {
-	if Map(_iksys_dizzyRecoveryTime) <= 0 || RoundState > 2 {
-		MapSet{map: "_iksys_DizzyState"; value: 0}
-		SelfState{value: Const(StateStand); ctrl: 1}
+if time > 8 {
+	if map(_iksys_dizzyRecoveryTime) <= 0 || roundState > 2 {
+		mapSet{map: "_iksys_DizzyState"; value: 0}
+		selfState{value: const(StateStand); ctrl: 1}
 	}
 }
 
 #===============================================================================
 #Global states
 #===============================================================================
-[Statedef -2]
+[StateDef -2]
 
-if !Const(Default.Enable.Dizzy) || IsHelper || TeamSide = 0 {
+if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	#do nothing, global code disabled locally or executed by helper/stage
-} else if RoundState = 0 {
-	DizzyPointsSet{value: DizzyPointsMax}
-	MapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
-	MapSet{map: "_iksys_dizzyReceivedDamage"; value: 0}
-} else if RoundState = 2 && Alive {
-	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
-		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
-	} else if Map(_iksys_dizzyPointsCounter) > 0 && MoveType != H && GetHitVar(isbound) = 0 && !Standby {
-		MapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
+} else if roundState = 0 {
+	dizzyPointsSet{value: dizzyPointsMax}
+	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
+	mapSet{map: "_iksys_dizzyReceivedDamage"; value: 0}
+} else if roundState = 2 && alive {
+	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
+		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
+	} else if map(_iksys_dizzyPointsCounter) > 0 && moveType != H && getHitVar(isbound) = 0 && !standby {
+		mapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
 	}
-	ignorehitpause if DizzyPoints = 0 {
-		if StateNo = Const(StateStandGetHit_knockedBack) || StateNo = Const(StateCrouchGetHit_knockedBack) {
-			if GetHitVar(hittime) = 0 {
+	ignoreHitPause if dizzyPoints = 0 {
+		if stateNo = const(StateStandGetHit_knockedBack) || stateNo = const(StateCrouchGetHit_knockedBack) {
+			if getHitVar(hittime) = 0 {
 				call fDizzyBirdHelper();
 			}
-			if HitOver {
-				SelfState{value: Const(StateDizzyFallDown_standCrouch)}
+			if hitOver {
+				selfState{value: const(StateDizzyFallDown_standCrouch)}
 			}
-		} else if (StateNo = Const(StateAirGetHit_knockedAway) || StateNo = Const(StateTrippedGetHit_knockedAway)) && HitShakeOver {
-			SelfState{value: Const(StateDizzyFallDown_air)}
-		} else if StateNo = Const(StateDownedGetHit_lyingDown) || StateNo = Const(StateDownedGetHit_lyingDown)+1 {
-			SelfState{value: Const(StateDizzyLyingDown)}
+		} else if (stateNo = const(StateAirGetHit_knockedAway) || stateNo = const(StateTrippedGetHit_knockedAway)) && hitShakeOver {
+			selfState{value: const(StateDizzyFallDown_air)}
+		} else if stateNo = const(StateDownedGetHit_lyingDown) || stateNo = const(StateDownedGetHit_lyingDown)+1 {
+			selfState{value: const(StateDizzyLyingDown)}
 		}
 	}
-	ignorehitpause if Dizzy && StateNo != [Const(StateDizzy), Const(StateDizzyLyingDown)] && (MoveType != H || Map(_iksys_DizzyState) > 0) {
-		DizzyPointsSet{value: DizzyPointsMax}
-		DizzySet{value: 0}
+	ignoreHitPause if dizzy && stateNo != [const(StateDizzy), const(StateDizzyLyingDown)] && (moveType != H || map(_iksys_DizzyState) > 0) {
+		dizzyPointsSet{value: dizzyPointsMax}
+		dizzySet{value: 0}
 	}
-	if Map(_iksys_DizzyState) = 2 && MoveType != H {
-		MapSet{map: "_iksys_DizzyState"; value: 0}
+	if map(_iksys_DizzyState) = 2 && moveType != H {
+		mapSet{map: "_iksys_DizzyState"; value: 0}
 	}
-	if ReceivedDamage != Map(_iksys_dizzyReceivedDamage) {
-		if ReceivedDamage > Map(_iksys_dizzyReceivedDamage) {
-			if Map(_iksys_DizzyState) < 2 && GetHitVar(attr) != [Const(AttrStandingHyperAttack), Const(AttrAerialHyperProjectile)] {
-				if Map(_iksys_DizzyState) = 1 {
-					MapSet{map: "_iksys_DizzyState"; value: 2}
-				} else if GetHitVar(dizzypoints) = 0 {
-					DizzyPointsAdd{value: (ReceivedDamage - Map(_iksys_dizzyReceivedDamage)) * -1.8} #dizzy points drain
+	if receivedDamage != map(_iksys_dizzyReceivedDamage) {
+		if receivedDamage > map(_iksys_dizzyReceivedDamage) {
+			if map(_iksys_DizzyState) < 2 && getHitVar(attr) != [const(AttrStandingHyperAttack), const(AttrAerialHyperProjectile)] {
+				if map(_iksys_DizzyState) = 1 {
+					mapSet{map: "_iksys_DizzyState"; value: 2}
+				} else if getHitVar(dizzypoints) = 0 {
+					dizzyPointsAdd{value: (receivedDamage - map(_iksys_dizzyReceivedDamage)) * -1.8} #dizzy points drain
 				}
 			}
 		}
-		MapSet{map: "_iksys_dizzyReceivedDamage"; value: ReceivedDamage}
-		MapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
+		mapSet{map: "_iksys_dizzyReceivedDamage"; value: receivedDamage}
+		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
-	if !Dizzy && DizzyPoints < DizzyPointsMax && Map(_iksys_dizzyPointsCounter) = 0 {
-		DizzyPointsAdd{value: round(float(DizzyPointsMax) / 100, 0)} #dizzy points recovery
-		MapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
+	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
+		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)} #dizzy points recovery
+		mapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
 	}
 }

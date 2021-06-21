@@ -1,7 +1,7 @@
 #===============================================================================
 #Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
-[Statedef -4]
+[StateDef -4]
 
 if !const(Default.Enable.Action) || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by stage
@@ -22,7 +22,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 	mapSet{map: "_iksys_actionWinFlag"; value: 0}
 } else if roundState >= 2 {
 	# First Attack
-	if FirstAttack && map(_iksys_actionFirstAttackFlag) = 0 {
+	if firstAttack && map(_iksys_actionFirstAttackFlag) = 0 {
 		lifebarAction{spr: const(MsgFirstAttack), 0}
 		mapSet{map: "_iksys_actionFirstAttackFlag"; value: 1}
 	}
@@ -34,10 +34,10 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 		mapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
 	}
 	# Technical
-	if CanRecover && stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] && map(_iksys_actionCanRecoverFlag) = 0 {
+	if canRecover && stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] && map(_iksys_actionCanRecoverFlag) = 0 {
 		lifebarAction{spr: const(MsgTechnical), 0}
 		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 1}
-	} else if !CanRecover && map(_iksys_actionCanRecoverFlag) = 1 {
+	} else if !canRecover && map(_iksys_actionCanRecoverFlag) = 1 {
 		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
 	}
 	# Reversal
@@ -104,7 +104,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 			}
 			if winHyper {
 				lifebarAction{spr: const(MsgWinHyper), 0; timeMul: 3}
-			} else if WinSpecial {
+			} else if winSpecial {
 				lifebarAction{spr: const(MsgWinSpecial), 0; timeMul: 3}
 			}
 			mapSet{map: "_iksys_actionWinFlag"; value: 1}

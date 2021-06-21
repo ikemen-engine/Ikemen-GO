@@ -2,151 +2,151 @@
 #===============================================================================
 #StateGuardBreakHit
 #===============================================================================
-[Statedef 5400; type: U; physics: U; velset: 0, 0; ctrl: 0;]
+[StateDef 5400; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
-if !GuardBreak {
-	GuardBreakSet{value: 1}
+if !guardBreak {
+	guardBreakSet{value: 1}
 }
 
-if Time = 0 {
-	PlaySnd{value: F5400, 0}
-	Explod{
-		anim: F Const(FxGuardBreakShockwave);
-		postype: p1;
-		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
-		sprpriority: 7;
-		ownpal: 1;
-		scale: Const240p(0.15), Const240p(4.5);
+if time = 0 {
+	playSnd{value: F5400, 0}
+	explod{
+		anim: F const(FxGuardBreakShockwave);
+		posType: p1;
+		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
+		sprPriority: 7;
+		ownPal: 1;
+		scale: const240p(0.15), const240p(4.5);
 		trans: add;
 		alpha: 256, 256;
-		pausemovetime: -1;
-		ignorehitpause: 1;
+		pauseMoveTime: -1;
+		ignoreHitPause: 1;
 	}
 }
 
-if Time < 13 {
-	Explod{
-		anim: F Const(FxGuardBreakSpark) + rand(0, 2);
-		postype: p1;
-		pos: floor((Const(size.mid.pos.x)) * Const(size.xscale)), floor(Const(size.mid.pos.y) * Const(size.yscale) * ifelse(StateType = C, 0.5, 1));
-		sprpriority: 6;
-		ownpal: 1;
-		random: floor(Const(size.height) / 8 * Const(size.xscale)), floor(Const(size.height) * Const(size.yscale));
-		scale: Const240p(rand(0, 8) * 0.03 + 0.25), Const240p(rand(0, 8) * 0.03 + 0.25);
-		vel: -Const240p((rand(0, 17) + 5) * 0.36), Const240p((rand(0, 18) - 8) * 0.36);
-		accel: Const240p(0.038), 0;
-		facing: ifelse(Random < 500, 1, -1);
-		vfacing: ifelse(Random < 500, 1, -1);
-		pausemovetime: -1;
-		ignorehitpause: 1;
+if time < 13 {
+	explod{
+		anim: F const(FxGuardBreakSpark) + rand(0, 2);
+		posType: p1;
+		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
+		sprPriority: 6;
+		ownPal: 1;
+		random: floor(const(size.height) / 8 * const(size.xscale)), floor(const(size.height) * const(size.yscale));
+		scale: const240p(rand(0, 8) * 0.03 + 0.25), const240p(rand(0, 8) * 0.03 + 0.25);
+		vel: -const240p((rand(0, 17) + 5) * 0.36), const240p((rand(0, 18) - 8) * 0.36);
+		accel: const240p(0.038), 0;
+		facing: ifElse(Random < 500, 1, -1);
+		vfacing: ifElse(Random < 500, 1, -1);
+		pauseMoveTime: -1;
+		ignoreHitPause: 1;
 	}
 }
 
-persistent(0) if Time = 0 {
-	Explod{
-		anim: F Const(FxBackgroundColor);
-		sprpriority: -6000;
+persistent(0) if time = 0 {
+	explod{
+		anim: F const(FxBackgroundColor);
+		sprPriority: -6000;
 		space: screen;
-		postype: left;
-		pos: 0, ScreenHeight / 2; #color 0 (blue)
-		scale: ScreenWidth, 7.5 * ScreenWidth / 320.0;
-		bindtime: -1;
-		supermovetime: -1;
-		pausemovetime: -1;
-		ownpal: 1;
-		ignorehitpause: 1;
+		posType: left;
+		pos: 0, screenHeight / 2; #color 0 (blue)
+		scale: screenWidth, 7.5 * screenWidth / 320.0;
+		bindTime: -1;
+		superMoveTime: -1;
+		pauseMoveTime: -1;
+		ownPal: 1;
+		ignoreHitPause: 1;
 	}
-	Pause{time: 13; movetime: 13}
-	StateTypeSet{physics: StateType}
-	if StateType = S {
-		ChangeAnim{value: Const(AnimStandOrAirHitHigh_hard)}
-	} else if StateType = C {
-		ChangeAnim{value: Const(AnimCrouchHit_hard)}
+	pause{time: 13; movetime: 13}
+	stateTypeSet{physics: stateType}
+	if stateType = S {
+		changeAnim{value: const(AnimStandOrAirHitHigh_hard)}
+	} else if stateType = C {
+		changeAnim{value: const(AnimCrouchHit_hard)}
 	} else {
-		ChangeAnim{value: Const(AnimStandOrAirHitLow_hard)}
+		changeAnim{value: const(AnimStandOrAirHitLow_hard)}
 	}
 }
 
-if (Time > 13 && AnimTime = 0) || Time > 36 {
-	SelfState{value: Const(StateGuardBreakRecover)}
+if (time > 13 && animTime = 0) || time > 36 {
+	selfState{value: const(StateGuardBreakRecover)}
 }
 
 #===============================================================================
 #StateGuardBreakRecover
 #===============================================================================
-[Statedef 5401; type: U; physics: U; velset: 0, 0; ctrl: 0;]
+[StateDef 5401; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
-if StateType = A {
-	VelAdd{y: Const(movement.yaccel)}
-	if Pos Y >= 0 && Vel Y > 0 {
-		VelSet{y: 0}
-		PosSet{y: 0}
+if stateType = A {
+	velAdd{y: const(movement.yaccel)}
+	if pos y >= 0 && vel y > 0 {
+		velSet{y: 0}
+		posSet{y: 0}
 	}
 }
 
-if Time = 0 {
-	StateTypeSet{physics: StateType}
-	if StateType = S {
-		ChangeAnim{value: Const(AnimStandRecoverHigh_hard)}
-	} else if StateType = C {
-		ChangeAnim{value: Const(AnimCrouchRecover_hard)}
+if time = 0 {
+	stateTypeSet{physics: stateType}
+	if stateType = S {
+		changeAnim{value: const(AnimStandRecoverHigh_hard)}
+	} else if stateType = C {
+		changeAnim{value: const(AnimCrouchRecover_hard)}
 	} else {
-		ChangeAnim{value: Const(AnimStandRecoverLow_hard)}
+		changeAnim{value: const(AnimStandRecoverLow_hard)}
 	}
 }
 
-if Time <= 80 {
-	ChangeAnim{value: Anim}
-	if (Time % 2) = 0 {
-		if (Time % 4) {
-			Offset{x: -Const240p(1)}
+if time <= 80 {
+	changeAnim{value: Anim}
+	if (time % 2) = 0 {
+		if (time % 4) {
+			offset{x: -const240p(1)}
 		} else {
-			Offset{x: 1}
+			offset{x: 1}
 		}
 	}
 }
 
-if AnimTime = 0 || Time > 99 {
-	if StateType = S {
-		SelfState{value: Const(StateStand); ctrl: 1}
+if animTime = 0 || time > 99 {
+	if stateType = S {
+		selfState{value: const(StateStand); ctrl: 1}
 	} else {
-		SelfState{value: Const(StateCrouching); ctrl: 1}
+		selfState{value: const(StateCrouching); ctrl: 1}
 	}
 }
 
 #===============================================================================
 #Global states
 #===============================================================================
-[Statedef -2]
+[StateDef -2]
 
-if !Const(Default.Enable.GuardBreak) || IsHelper || TeamSide = 0 {
+if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	#do nothing, global code disabled locally or executed by helper/stage
-} else if RoundState = 0 {
-	GuardPointsSet{value: GuardPointsMax}
-	MapSet{map: "_iksys_guardPointsCounter"; value: 0}
-	MapSet{map: "_iksys_guardReceivedDamage"; value: 0}
-} else if RoundState = 2 && Alive {
-	ignorehitpause if StateNo = Const(StateStandGuardHit_shaking) || StateNo = Const(StateCrouchGuardHit_shaking) || StateNo = Const(StateAirGuardHit_shaking) {
-		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
-		if (GameTime % 5) = 0 && float(GuardPoints) / GuardPointsMax <= 0.2 {
-			PalFX{time: 2; add: 200, 0, 0}
+} else if roundState = 0 {
+	guardPointsSet{value: guardPointsMax}
+	mapSet{map: "_iksys_guardPointsCounter"; value: 0}
+	mapSet{map: "_iksys_guardReceivedDamage"; value: 0}
+} else if roundState = 2 && alive {
+	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
+		mapSet{map: "_iksys_guardPointsCounter"; value: 60}
+		if (GameTime % 5) = 0 && float(guardPoints) / guardPointsMax <= 0.2 {
+			palFx{time: 2; add: 200, 0, 0}
 		}
-		ignorehitpause if GuardPoints = 0 && !GuardBreak {
-			ChangeState{value: Const(StateGuardBreakHit)}
+		ignoreHitPause if guardPoints = 0 && !guardBreak {
+			changeState{value: const(StateGuardBreakHit)}
 		}
-	} else if Map(_iksys_guardPointsCounter) > 0 && MoveType != H && GetHitVar(isbound) = 0 && !Standby {
-		MapAdd{map: "_iksys_guardPointsCounter"; value: -1}
+	} else if map(_iksys_guardPointsCounter) > 0 && moveType != H && getHitVar(isbound) = 0 && !standby {
+		mapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 	}
-	ignorehitpause if GuardBreak && StateNo != [Const(StateGuardBreakHit), Const(StateGuardBreakRecover)] {
-		GuardPointsSet{value: GuardPointsMax}
-		GuardBreakSet{value: 0}
+	ignoreHitPause if guardBreak && stateNo != [const(StateGuardBreakHit), const(StateGuardBreakRecover)] {
+		guardPointsSet{value: guardPointsMax}
+		guardBreakSet{value: 0}
 	}
-	if !GuardBreak && GuardPoints < GuardPointsMax && Map(_iksys_guardPointsCounter) = 0 {
-		GuardPointsAdd{value: round(float(GuardPointsMax) / 25, 0)} #guard points recovery
-		MapSet{map: "_iksys_guardPointsCounter"; value: 30}
+	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
+		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)} #guard points recovery
+		mapSet{map: "_iksys_guardPointsCounter"; value: 30}
 	}
-	if ReceivedDamage != Map(_iksys_guardReceivedDamage) {
-		MapSet{map: "_iksys_guardReceivedDamage"; value: ReceivedDamage}
-		MapSet{map: "_iksys_guardPointsCounter"; value: 60}
+	if receivedDamage != map(_iksys_guardReceivedDamage) {
+		mapSet{map: "_iksys_guardReceivedDamage"; value: receivedDamage}
+		mapSet{map: "_iksys_guardPointsCounter"; value: 60}
 	}
 }
