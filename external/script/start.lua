@@ -3554,7 +3554,12 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					if v[1] ~= -1 then
 						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
-							animSetScale(a, motif.hiscore_info.face_scale[1], motif.hiscore_info.face_scale[2])
+							animSetScale(
+								a,
+								motif.hiscore_info.face_scale[1] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								motif.hiscore_info.face_scale[2] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								false
+							)
 							animUpdate(a)
 							table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = a, chardata = true})
 							break

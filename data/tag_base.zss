@@ -125,7 +125,7 @@ if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist
 [StateDef 5610;
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
-	velSet: 0, 0; facep2: 1;
+	velSet: 0, 0; faceP2: 1;
 	ctrl: 0;
 ]
 

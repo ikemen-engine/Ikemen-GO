@@ -267,7 +267,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	# alive players
 	} else if alive {
 		let beingHit = 0;
-		ignoreHitPause if MoveType = H
+		ignoreHitPause if moveType = H
 			|| getHitVar(isbound) != 0
 			|| stateNo = const(StateDownedGetHit_gettingUp) ||
 			stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)]
