@@ -3871,13 +3871,17 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "winnerteam", func(*lua.LState) int {
 		var winp int32 = -1
-		if !sys.endMatch && (sys.winTeam >= 0 || sys.debugWC.roundState() >= 3) {
-			w1 := sys.wins[0] >= sys.matchWins[0]
-			w2 := sys.wins[1] >= sys.matchWins[1]
-			if w1 != w2 {
-				winp = Btoi(w1) + Btoi(w2)*2
-			} else {
-				winp = 0
+		if !sys.endMatch {
+			if sys.matchOver() && sys.roundOver() {
+				w1 := sys.wins[0] >= sys.matchWins[0]
+				w2 := sys.wins[1] >= sys.matchWins[1]
+				if w1 != w2 {
+					winp = Btoi(w1) + Btoi(w2)*2
+				} else {
+					winp = 0
+				}
+			} else if  sys.winTeam >= 0 || sys.debugWC.roundState() >= 3 {
+				winp = int32(sys.winTeam) + 1
 			}
 		}
 		l.Push(lua.LNumber(winp))
