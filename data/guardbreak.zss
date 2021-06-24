@@ -1,6 +1,6 @@
-#Guard Break code adopted from Shiyo Kakuge's add004
+# Guard Break code adopted from Shiyo Kakuge's add004
 #===============================================================================
-#StateGuardBreakHit
+# StateGuardBreakHit
 #===============================================================================
 [StateDef 5400; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
@@ -48,7 +48,7 @@ persistent(0) if time = 0 {
 		sprPriority: -6000;
 		space: screen;
 		posType: left;
-		pos: 0, screenHeight / 2; #color 0 (blue)
+		pos: 0, screenHeight / 2; # color 0 (blue)
 		scale: screenWidth, 7.5 * screenWidth / 320.0;
 		bindTime: -1;
 		superMoveTime: -1;
@@ -72,7 +72,7 @@ if (time > 13 && animTime = 0) || time > 36 {
 }
 
 #===============================================================================
-#StateGuardBreakRecover
+# StateGuardBreakRecover
 #===============================================================================
 [StateDef 5401; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
@@ -115,12 +115,12 @@ if animTime = 0 || time > 99 {
 }
 
 #===============================================================================
-#Global states
+# Global states
 #===============================================================================
 [StateDef -2]
 
 if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by helper/stage
+	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	guardPointsSet{value: guardPointsMax}
 	mapSet{map: "_iksys_guardPointsCounter"; value: 0}
@@ -142,7 +142,7 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 		guardBreakSet{value: 0}
 	}
 	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
-		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)} #guard points recovery
+		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)} # guard points recovery
 		mapSet{map: "_iksys_guardPointsCounter"; value: 30}
 	}
 	if receivedDamage != map(_iksys_guardReceivedDamage) {

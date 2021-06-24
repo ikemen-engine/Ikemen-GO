@@ -1,5 +1,5 @@
 #===============================================================================
-#Global states (not halted by Pause/SuperPause, no helper limitations)
+# Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
 [StateDef -4]
 
@@ -82,17 +82,17 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 		if comboCount != map(_iksys_actionComboCount) {
 			if comboCount < map(_iksys_actionComboCount) {
 				if map(_iksys_actionComboCount) >= 25 {
-					lifebarAction{spr: const(MsgCombo25), 0} #gdlk combo (mugen)
+					lifebarAction{spr: const(MsgCombo25), 0} # gdlk combo (mugen)
 				} else if map(_iksys_actionComboCount) >= 20 {
-					lifebarAction{spr: const(MsgCombo20), 0} #amazing combo (marvelous)
+					lifebarAction{spr: const(MsgCombo20), 0} # amazing combo (marvelous)
 				} else if map(_iksys_actionComboCount) >= 15 {
-					lifebarAction{spr: const(MsgCombo15), 0} #great combo (fantastic)
+					lifebarAction{spr: const(MsgCombo15), 0} # great combo (fantastic)
 				} else if map(_iksys_actionComboCount) >= 10 {
-					lifebarAction{spr: const(MsgCombo10), 0} #sweet combo (beautiful)
+					lifebarAction{spr: const(MsgCombo10), 0} # sweet combo (beautiful)
 				} else if map(_iksys_actionComboCount) >= 5 {
-					lifebarAction{spr: const(MsgCombo5), 0} #good combo (great)
+					lifebarAction{spr: const(MsgCombo5), 0} # good combo (great)
 				} else if map(_iksys_actionComboCount) >= 3 {
-					lifebarAction{spr: const(MsgCombo3), 0} #nice combo (good)
+					lifebarAction{spr: const(MsgCombo3), 0} # nice combo (good)
 				}
 			}
 			mapSet{map: "_iksys_actionComboCount"; value: comboCount}

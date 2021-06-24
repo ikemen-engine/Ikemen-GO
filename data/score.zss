@@ -1,10 +1,10 @@
 #===============================================================================
-#Global states (not halted by Pause/SuperPause, no helper limitations)
+# Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
 [StateDef -4]
 
 if !const(Default.Enable.Score) || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by stage
+	# do nothing, global code disabled locally or executed by stage
 } else if roundState = 0 {
 	mapSet{map: "_iksys_scoreVitalBase"; value: 0}
 	mapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 0}

@@ -1,8 +1,8 @@
 # Tag code with Active Switch and Counter Switch mechanics, inspired by MvCI
 # More info: https://github.com/K4thos/Ikemen_GO/wiki#misc_tag
-# ===============================================================================
+#===============================================================================
 # Functions
-# ===============================================================================
+#===============================================================================
 # Returns tagged in char id
 [Function fTagPartnerRange(partnerId) ret]
 if $partnerId > getPlayerId(teamSide) + numPartner {
@@ -35,16 +35,11 @@ if playerId($partnerId),alive = 0 {
 }
 let ret = $partnerId;
 
-# Decides if AI switch should happen, returns tagged in char id (the function can be overridden locally)
-#
-# ToDo:
-# Balance default AI switch scaling.
-# - Prioritize partner with more life.
-# - Increase chance at the hyper start, or as a reaction to Counter Switch, etc.
-# - Decrease chance when pressured in corner etc.
+# Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
+# TODO: Balance default AI switch scaling.
 [Function fTagAISwitch(nextPartnerId, previousPartnerId) ret]
 let ret = 0;
-if const(tagCommandAIChance) >= rand(1, 100) {
+if const(TagCommandAIChance) >= rand(1, 100) {
 	if command = "TagShiftFwd" {
 		let ret = $nextPartnerId;
 	} else if command = "TagShiftBack" {
@@ -52,7 +47,7 @@ if const(tagCommandAIChance) >= rand(1, 100) {
 	}
 }
 
-#tagIn Switch explod
+# tagIn Switch explod
 [Function fTagSwitchExplod()]
 let anim = const(FxTagSwitchAI);
 if aiLevel = 0 {
@@ -73,9 +68,9 @@ explod{
 	ignoreHitPause: 1;
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagEnteringScreen
-# ===============================================================================
+#===============================================================================
 [StateDef 5600;
 	type: S; moveType: H; physics: N;
 	anim: const(AnimTagEnteringScreen);
@@ -124,9 +119,9 @@ if (ctrl && time >= const(TagInTime)) || (backEdgeBodyDist >= 0 && p2BodyDist X 
 	changeState{value: const(StateStand); ctrl: 1}
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagLeavingScreen
-# ===============================================================================
+#===============================================================================
 [StateDef 5610;
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
@@ -151,7 +146,7 @@ if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iks
 mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
 #===============================================================================
-#StateTagWaitingOutside
+# StateTagWaitingOutside
 #===============================================================================
 [StateDef 5611;
 	type: A; moveType: I; physics: N;
@@ -171,7 +166,7 @@ posSet{
 }
 
 #===============================================================================
-#StateTagJumpingIn
+# StateTagJumpingIn
 #===============================================================================
 [StateDef 5620;
 	type: A; moveType: I; physics: N;
@@ -195,7 +190,7 @@ if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# Set starting pos..
+	# Set starting pos.
 	# (redirected to gather consistent local coordinate space values ready for const240p conversion)
 	teamMapSet{
 		map: "_iksys_tagPosX";
@@ -230,7 +225,7 @@ if animElemTime(2) = 0 && map(_iksys_tagJumpingInState) = 0 {
 }
 
 #===============================================================================
-#StateTagLanding
+# StateTagLanding
 #===============================================================================
 [StateDef 5621;
 	type: S; moveType: I; physics: N;
@@ -246,12 +241,12 @@ if animTime >= 0 {
 }
 
 #===============================================================================
-#Global states
+# Global states
 #===============================================================================
 [StateDef -2]
 
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by helper/stage
+	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 && teamMode = Tag {
 	mapSet{map: "_iksys_tagActive"; value: 1}
 	mapSet{map: "_iksys_tagJumpingInState"; value: 0}
@@ -293,9 +288,10 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 					} else if command = "TagShiftBack" {
 						let partnerId = $previousPartnerId;
 					}
+					# command buffered, partner standby
 					if $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
 						if $beingHit = 1 {
-							#Hit/Combo Counter Switch power cost (1000 by default)
+							# Hit/Combo Counter Switch power cost (1000 by default)
 							powerAdd{value: -const(TagCounterSwitchPower)}
 							lifebarAction{spr: const(MsgCounterSwitch), 0}
 							mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
@@ -336,8 +332,8 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		}
 	}
 	# Red Life regeneration
-	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { #every 30 frames (0.5s) by default
-		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); #0.5% lifeMax by default
+	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 frames (0.5s) by default
+		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); # 0.5% lifeMax by default
 		lifeAdd{value: $regenVal; absolute: 1}
 		redLifeAdd{value: -$regenVal; absolute: 1}
 	}

@@ -1,8 +1,8 @@
 # Basic tag code that can be used as base for more advanced tag implementations
 # To test it change "tag.zss" reference in config.json "CommonStates" array to this file
-# ===============================================================================
+#===============================================================================
 # Functions
-# ===============================================================================
+#===============================================================================
 # Returns tagged in char id
 [Function fTagPartnerRange(partnerId) ret]
 if $partnerId > getPlayerId(teamSide) + numPartner {
@@ -35,19 +35,16 @@ if playerId($partnerId),alive = 0 {
 }
 let ret = $partnerId;
 
-# Decides if AI switch should happen, returns tagged in char id (the function can be overridden locally)
-#
-# ToDo:
-# Balance default AI switch scaling.
-# - Prioritize partner with more life.
-# - Increase chance at the hyper start, or as a reaction to Counter Switch, etc.
-# - Decrease chance when pressured in corner etc.
+# Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
+# TODO: Balance default AI switch scaling.
 [Function fTagAISwitch(nextPartnerId, previousPartnerId) ret]
 let ret = 0;
-if command = "TagShiftFwd" {
-	let ret = $nextPartnerId;
-} else if command = "TagShiftBack" {
-	let ret = $previousPartnerId;
+if const(TagCommandAIChance) >= rand(1, 100) {
+	if command = "TagShiftFwd" {
+		let ret = $nextPartnerId;
+	} else if command = "TagShiftBack" {
+		let ret = $previousPartnerId;
+	}
 }
 
 # TagIn Switch Explod
@@ -73,7 +70,7 @@ explod{
 }
 
 #===============================================================================
-#StateTagEnteringScreen
+# StateTagEnteringScreen
 #===============================================================================
 [StateDef 5600;
 	type: S; moveType: H; physics: N;
@@ -119,9 +116,9 @@ if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist
 	changeState{value: const(StateStand); ctrl: 1}
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagLeavingScreen
-# ===============================================================================
+#===============================================================================
 [StateDef 5610;
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
@@ -141,9 +138,9 @@ if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iks
 # TODO: won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
 mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
-# ===============================================================================
+#===============================================================================
 # StateTagWaitingOutside
-# ===============================================================================
+#===============================================================================
 [StateDef 5611;
 	type: A; moveType: I; physics: N;
 	anim: const(AnimStanding);
@@ -161,9 +158,9 @@ posSet{
 		- playerId(getPlayerId(teamLeader)),screenPos y - const240p(160);
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagJumpingIn
-# ===============================================================================
+#===============================================================================
 [StateDef 5620;
 	type: A; moveType: I; physics: N;
 	anim: const(AnimTagJumpingIn);
@@ -219,9 +216,9 @@ if animElemTime(2) = 0 && map(_iksys_tagJumpingInState) = 0 {
 	}
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagLanding
-# ===============================================================================
+#===============================================================================
 [StateDef 5621;
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLanding);
@@ -236,17 +233,18 @@ if animTime >= 0 {
 	changeState{value: const(StateStand); ctrl: 1}
 }
 
-# ===============================================================================
+#===============================================================================
 # Global states (executed when in self's state)
-# ===============================================================================
+#===============================================================================
 [StateDef -3]
 
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by helper/stage
+	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 && teamMode = Tag {
 	mapSet{map: "_iksys_tagActive"; value: 1}
 	mapSet{map: "_iksys_tagJumpingInState"; value: 0}
 	mapSet{map: "_iksys_tagLastId"; value: 0}
+	mapSet{map: "_iksys_tagPartnerId"; value: 0}
 	if playerNo = teamLeader {
 		mapSet{map: "_iksys_tagIntroFlag"; value: 1}
 	} else {
@@ -267,8 +265,8 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		}
 		# active player
 		if playerNo = teamLeader {
-			# having control, on the ground, not being hit
-			if ctrl && (stateNo = const(StateStand) || (pos y >= 0 && $beingHit = 0)) {
+			# not being hit; standing idle or at least on the ground
+			ignoreHitPause if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
 				# last active player has left the screen or died
 				if map(_iksys_tagLastId) = 0
 					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
@@ -278,14 +276,23 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 					let nextPartnerId = call fTagGetPartnerId(1);
 					let previousPartnerId = call fTagGetPartnerId(-1);
 					if aiLevel > 0 {
-						let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
+						if map(_iksys_tagPartnerId) = 0 {
+							let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
+							mapSet{map: "_iksys_tagPartnerId"; value: $partnerId}
+						}
+						let partnerId = map(_iksys_tagPartnerId);
 					} else if command = "TagShiftFwd" {
 						let partnerId = $nextPartnerId;
 					} else if command = "TagShiftBack" {
 						let partnerId = $previousPartnerId;
 					}
-					if $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
+					# having control, command buffered, partner standby
+					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
+						mapSet{map: "_iksys_tagPartnerId"; value: 0}
 						lifebarAction{spr: const(MsgPartnerChange), 0}
+						tagOut{}
+						ctrlSet{value: 0}
+						assertSpecial{flag: noHardcodedKeys; flag2: noInput}
 						tagIn{stateNo: const(StateTagEnteringScreen); redirectId: $partnerId}
 					}
 				}
@@ -322,8 +329,8 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		}
 	}
 	# Red Life regeneration
-	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { #every 30 frames (0.5s) by default
-		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); #0.5% lifeMax by default
+	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 frames (0.5s) by default
+		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); # 0.5% lifeMax by default
 		lifeAdd{value: $regenVal; absolute: 1}
 		redLifeAdd{value: -$regenVal; absolute: 1}
 	}

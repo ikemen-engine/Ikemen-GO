@@ -1,6 +1,6 @@
-#Dizzy code adopted from Shiyo Kakuge's add004
+# Dizzy code adopted from Shiyo Kakuge's add004
 #===============================================================================
-#Functions
+# Functions
 #===============================================================================
 # Dizzy Bird Helper
 [Function fDizzyBirdHelper()]
@@ -10,7 +10,7 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 		sprPriority: -6000;
 		space: screen;
 		posType: left;
-		pos: -3 * screenWidth, screenHeight / 2; #color 3 (red)
+		pos: -3 * screenWidth, screenHeight / 2; # color 3 (red)
 		scale: screenWidth, 7.5 * screenWidth / 320.0;
 		bindTime: -1;
 		superMoveTime: -1;
@@ -55,15 +55,15 @@ explod{
 playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #===============================================================================
-#StateDizzyBirdsHelper [helper]
+# StateDizzyBirdsHelper [helper]
 #===============================================================================
 [StateDef 5310; type: A; physics: N; anim: -2; velSet: 0, 0; ctrl: 0;]
 
 if parent,stateNo = const(StateDizzy) {
-	var(0) := -1; #in dizzy state
+	var(0) := -1; # in dizzy state
 }
 if roundState != 2 || parent,alive = 0 || parent,ctrl || parent,moveType = A || (var(0) = -1 && parent,stateNo != const(StateDizzy)) {
-	var(0) := 1; #destroy helper
+	var(0) := 1; # destroy helper
 }
 
 if var(0) < 1 {
@@ -86,15 +86,15 @@ if time = 0 {
 
 persistent(0) if time = 0 {
 	var(2) := parent,const(size.ground.back) + parent,const(size.ground.front); #bird type
-	var(10) := rand(0, 5); #width
-	fVar(11) := fVar(12); #pos y
+	var(10) := rand(0, 5); # width
+	fVar(11) := fVar(12); # pos y
 }
 
 removeExplod{id: 0}
 
 var(1) := var(1) + 1;
 
-#StateStandGetHit + StateCrouchGetHit + StateAirGetHit + StateTrippedGetHit + StateDownedGetHit
+# StateStandGetHit + StateCrouchGetHit + StateAirGetHit + StateTrippedGetHit + StateDownedGetHit
 if parent,stateNo = [const(StateStandGetHit_shaking), const(StateStandGetHit_shaking)+199] || parent,stateNo = const(StateDizzy) || parent,stateNo = const(StateDizzyFallDown_air) || parent,stateNo = const(StateDizzyLyingDown) {
 	call fDizzyBirdExplod(0);
 	call fDizzyBirdExplod(22.5);
@@ -107,7 +107,7 @@ ignoreHitPause if var(0) > 0 {
 }
 
 #===============================================================================
-#StateDizzyFallDown_standCrouch
+# StateDizzyFallDown_standCrouch
 #===============================================================================
 [StateDef 5301; type: U; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
@@ -140,7 +140,7 @@ if anim = const(AnimLieDownHit_stayDown) && (animTime = 0 || time > 36) {
 }
 
 #===============================================================================
-#StateDizzyFallDown_air
+# StateDizzyFallDown_air
 #===============================================================================
 [StateDef 5302; type: A; moveType: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
 
@@ -165,7 +165,7 @@ if anim = [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
 	}
 }
 
-#AnimHitGround + AnimGetUp
+# AnimHitGround + AnimGetUp
 if anim != [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
 	notHitBy{value: SCA}
 }
@@ -201,7 +201,7 @@ if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall)+9]
 }
 
 #===============================================================================
-#StateDizzyLyingDown
+# StateDizzyLyingDown
 #===============================================================================
 [StateDef 5303; type: L; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
@@ -233,7 +233,7 @@ if (animTime = 0 && anim = [const(AnimGetUpFromLieDown), const(AnimGetUpFromLieD
 notHitBy{value: SCA; time: 1}
 
 #===============================================================================
-#StateDizzy
+# StateDizzy
 #===============================================================================
 [StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
@@ -258,7 +258,7 @@ if time > 1 {
 		if (command = "x" || command = "y" || command = "z" || command = "a" || command = "b" || command = "c") {
 			mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -9}
 		}
-	} else if max(4, aiLevel) >= rand(1, 12) { #33% - 66,67% chance, depending on aiLevel
+	} else if max(4, aiLevel) >= rand(1, 12) { # 33% - 66,67% chance, depending on aiLevel
 		mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
 	}
 }
@@ -271,12 +271,12 @@ if time > 8 {
 }
 
 #===============================================================================
-#Global states
+# Global states
 #===============================================================================
 [StateDef -2]
 
 if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by helper/stage
+	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
 	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
@@ -314,7 +314,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 				if map(_iksys_DizzyState) = 1 {
 					mapSet{map: "_iksys_DizzyState"; value: 2}
 				} else if getHitVar(dizzypoints) = 0 {
-					dizzyPointsAdd{value: (receivedDamage - map(_iksys_dizzyReceivedDamage)) * -1.8} #dizzy points drain
+					dizzyPointsAdd{value: (receivedDamage - map(_iksys_dizzyReceivedDamage)) * -1.8} # dizzy points drain
 				}
 			}
 		}
@@ -322,7 +322,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
-		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)} #dizzy points recovery
+		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)} # dizzy points recovery
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
 	}
 }

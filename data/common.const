@@ -21,7 +21,7 @@ Input.PauseOnHitPause = 1           ; controls if inputs should be retained duri
 ; tag.zss options
 TagInTime = 20                 ; tag-in time (MvCI: default distance = TagInTime * TagInVelX, base: total switch time)
 TagInVelX = 12.5               ; tag-in Vel X (MvCI: set to, base: max vel)
-TagCommandAIChance = 50        ; affects default AI switching probability (used in MvCI ver only)
+TagCommandAIChance = 50        ; affects default AI switching probability (range 0-100)
 TagCounterSwitchPower = 1000   ; counter switch power cost (used in MvCI ver only)
 TagRedLifeRegenFrames = 30     ; red life regeneration interval (in frames)
 TagRedLifeRegenPercent = 0.005 ; red life regenerated each interval (percentage of max life)

@@ -1,11 +1,11 @@
-#Rank code adopted from Shiyo Kakuge's add004
+# Rank code adopted from Shiyo Kakuge's add004
 #===============================================================================
-#Global states (not halted by Pause/SuperPause, no helper limitations)
+# Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
 [StateDef -4]
 
 if !const(Default.Enable.Rank) || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by stage
+	# do nothing, global code disabled locally or executed by stage
 } else if isHelper {
 	# parry detection
 	ignoreHitPause if helperName = "Parry Detection" && moveHit = 1 {
@@ -62,12 +62,12 @@ if !const(Default.Enable.Rank) || teamSide = 0 {
 		}
 		# win type (bonus_tech)
 		if win && map(_iksys_rankWinFlag) = 0 {
-			if winPerfect { #is_Perfect
+			if winPerfect { # is_Perfect
 				rankAdd{value: 15; type: "tech"; max: 38; icon: "p"}
 			}
-			if winHyper { #is_Hyper_Finish
+			if winHyper { # is_Hyper_Finish
 				rankAdd{value: 20; type: "tech"; max: 38; icon: "hf"}
-			} else if winSpecial { #is_Special_Finish
+			} else if winSpecial { # is_Special_Finish
 				rankAdd{value: 10; type: "tech"; max: 38; icon: "sf"}
 			}
 			mapSet{map: "_iksys_rankWinFlag"; value: 1}
