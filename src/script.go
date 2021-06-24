@@ -977,7 +977,6 @@ func systemScriptInit(l *lua.LState) {
 				sys.timerCount = []int32{}
 				sys.sel.cdefOverwrite = nil
 				sys.sel.sdefOverwrite = ""
-				sys.sel.ocd = [3][]OverrideCharData{}
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				sys.clearAllSound()
@@ -2071,7 +2070,8 @@ func systemScriptInit(l *lua.LState) {
 		if nt < 1 || (tm != TM_Turns && nt > MaxSimul) {
 			l.RaiseError("\nInvalid team size: %v\n", nt)
 		}
-		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
+		sys.sel.selected[tn-1], sys.sel.ocd[tn-1] = nil, nil
+		sys.tmode[tn-1] = tm
 		if tm == TM_Turns {
 			sys.numSimul[tn-1] = 1
 		} else {

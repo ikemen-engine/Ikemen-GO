@@ -246,6 +246,7 @@ function randomtest.run()
 	clearColor(0, 0, 0)
 	randomtest.init()
 	refresh()
+	selectStart()
 	while not esc() do
 		randomtest.randSel(1, winner)
 		randomtest.randSel(2, winner)

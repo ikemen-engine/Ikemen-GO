@@ -2665,9 +2665,9 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 func (s *Select) ClearSelected() {
 	sys.loadMutex.Lock()
 	s.selected = [2][][2]int{}
+	s.ocd = [3][]OverrideCharData{}
 	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
-	s.ocd = [3][]OverrideCharData{}
 }
 
 type LoaderState int32
