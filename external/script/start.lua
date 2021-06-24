@@ -532,7 +532,16 @@ end
 
 --sets stage
 function start.f_setStage(num, assigned)
-	if not assigned and not main.stageMenu and not continue() then
+	if main.stageMenu then
+		num = main.t_selectableStages[stageListNo]
+		if stageListNo == 0 then
+			num = main.t_selectableStages[math.random(1, #main.t_selectableStages)]
+		else
+			num = main.t_selectableStages[stageListNo]
+		end
+		assigned = true
+	end
+	if not assigned then
 		if main.charparam.stage and start.f_getCharData(start.p[2].t_selected[1].ref).stage ~= nil then --stage assigned as character param
 			num = math.random(1, #start.f_getCharData(start.p[2].t_selected[1].ref).stage)
 			num = start.f_getCharData(start.p[2].t_selected[1].ref).stage[num]
@@ -544,6 +553,7 @@ function start.f_setStage(num, assigned)
 		end
 	end
 	selectStage(num)
+	start.stageNoSav = num
 	return num
 end
 
@@ -1031,7 +1041,7 @@ end
 
 --returns t_selChars table out of cell number
 function start.f_selGrid(cell, slot)
-	if #main.t_selGrid[cell].chars == 0 then
+	if main.t_selGrid[cell] == nil or #main.t_selGrid[cell].chars == 0 then
 		return {}
 	end
 	return main.t_selChars[main.t_selGrid[cell].chars[(slot or main.t_selGrid[cell].slot)]]
@@ -1043,9 +1053,9 @@ function start.f_getCharData(ref)
 end
 
 --returns stage ref out of def filename
-function start.f_getStageRef(def, stageNo)
+function start.f_getStageRef(def)
 	if def == '' then
-		return stageNo or getStageNo()
+		return getStageNo()
 	end
 	if main.t_stageDef[def:lower()] == nil then
 		 main.f_addStage(def)
@@ -1566,7 +1576,6 @@ function start.f_selectChallenger()
 	local t_c_sav = main.f_tableCopy(start.c)
 	local winCnt_sav = winCnt
 	local loseCnt_sav = loseCnt
-	local stageNo_sav = getStageNo()
 	local matchNo_sav = matchno()
 	local p1cmd = main.t_remaps[1]
 	local p2cmd = main.t_remaps[start.challenger]
@@ -1596,7 +1605,6 @@ function start.f_selectChallenger()
 	start.c = t_c_sav
 	winCnt = winCnt_sav
 	loseCnt = loseCnt_sav
-	selectStage(stageNo_sav)
 	setMatchNo(matchNo_sav)
 	return true
 end
@@ -1633,7 +1641,6 @@ function launchFight(data)
 	--t.frames = data.frames or getTimeFramesPerCount()
 	t.roundtime = data.time or nil
 	t.lua = data.lua or ''
-	local stageNo = getStageNo()
 	selectStart()
 	--add P1 chars forced via function arguments (ignore char param restrictions)
 	local reset = false
@@ -1661,99 +1668,104 @@ function launchFight(data)
 		start.exit = true
 		return false --return to main menu
 	end
-	--skipped if continue
-	if not continue() then
-		--add P2 chars forced via function arguments (ignore char param restrictions)
-		local onlyme = false
-		cnt = 0
-		for _, v in main.f_sortKeys(t.p2char) do
-			cnt = cnt + 1
-			local ref = start.f_getCharRef(v)
+	--add stage if needed
+	local stageNo = start.f_getStageRef(t.stage)
+	--restore previous match data on continue
+	if continue() then
+		start.p[2].t_selected = main.f_tableCopy(start.p[2].t_selectedSav)
+		start.p[2].t_selTemp = {}
+		stageNo = start.stageNoSav
+	end
+	--add P2 chars forced via function arguments (ignore char param restrictions)
+	local onlyme = false
+	cnt = 0
+	for _, v in main.f_sortKeys(t.p2char) do
+		cnt = cnt + 1
+		local ref = start.f_getCharRef(v)
+		table.insert(start.p[2].t_selected, {
+			ref = ref,
+			pal = start.f_selectPal(ref),
+			pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
+			--cursor = {},
+			ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
+		})
+		main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
+		if not onlyme then onlyme = start.f_getCharData(ref).single end
+	end
+	--add remaining P2 chars of particular order if there are still free slots in the selected team mode
+	if main.cpuSide[2] and #start.p[2].t_selected < start.p[2].numChars and not onlyme then
+		--get list of available chars
+		local t_remaining = main.f_tableCopy(main.t_availableChars)
+		local t_chars = main.f_tableCopy(main.t_availableChars)
+		--remove chars temporary excluded from this match
+		for _, v in ipairs(t.exclude) do
+			t_chars = start.f_excludeChar(t_chars, start.f_getCharRef(v))
+		end
+		--remove chars with 'single' param if some characters are forced into team
+		if #start.p[2].t_selected > 0 then
+			for _, v in ipairs(t_chars[t.order]) do
+				if start.f_getCharData(v).single then
+					t_chars = start.f_excludeChar(t_chars, v)
+				end
+			end
+		end
+		--fill free slots
+		local t_tmp = {}
+		for i = #start.p[2].t_selected, start.p[2].numChars - 1 do
+			if t_chars[t.order] ~= nil and #t_chars[t.order] > 0 then
+				local rand = math.random(1, #t_chars[t.order])
+				local ref = t_chars[t.order][rand]
+				if not start.f_getCharData(ref).single then
+					table.remove(t_chars[t.order], rand)
+					table.insert(t_tmp, ref)
+				else --one entry if 'single' param is detected on any opponent
+					t_tmp = {ref}
+					onlyme = true
+					break
+				end
+			end
+		end
+		--not enough unique characters of particular order, take into account only if skiporder parameter = false
+		while not t.skiporder and #t_tmp + #start.p[2].t_selected < start.p[2].numChars and not onlyme and t_remaining[t.order] ~= nil and #t_remaining[t.order] > 0 do
+			table.insert(t_tmp, t_remaining[t.order][math.random(1, #t_remaining[t.order])])
+		end
+		--append remaining characters
+		for _, v in ipairs(t_tmp) do
 			table.insert(start.p[2].t_selected, {
-				ref = ref,
-				pal = start.f_selectPal(ref),
+				ref = v,
+				pal = start.f_selectPal(v),
 				pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
 				--cursor = {},
 				ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
 			})
-			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
-			if not onlyme then onlyme = start.f_getCharData(ref).single end
+			main.t_availableChars = start.f_excludeChar(main.t_availableChars, v)
 		end
-		--add remaining P2 chars of particular order if there are still free slots in the selected team mode
-		if main.cpuSide[2] and #start.p[2].t_selected < start.p[2].numChars and not onlyme then
-			--get list of available chars
-			local t_remaining = main.f_tableCopy(main.t_availableChars)
-			local t_chars = main.f_tableCopy(main.t_availableChars)
-			--remove chars temporary excluded from this match
-			for _, v in ipairs(t.exclude) do
-				t_chars = start.f_excludeChar(t_chars, start.f_getCharRef(v))
-			end
-			--remove chars with 'single' param if some characters are forced into team
-			if #start.p[2].t_selected > 0 then
-				for _, v in ipairs(t_chars[t.order]) do
-					if start.f_getCharData(v).single then
-						t_chars = start.f_excludeChar(t_chars, v)
-					end
+		--team conversion if 'single' param is set on randomly added chars
+		if onlyme and #start.p[2].t_selected > 1 then
+			panicError("Unexpected launchFight state.\nPlease write down everything that lead to this error and report it to K4thos.\n")
+			--[[for i = 1, #start.p[2].t_selected do
+				if not start.f_getCharData(start.p[2].t_selected[i].ref).single then
+					table.insert(main.t_availableChars[t.order], start.p[2].t_selected[i].ref)
+					table.remove(start.p[2].t_selected, k)
 				end
-			end
-			--fill free slots
-			local t_tmp = {}
-			for i = #start.p[2].t_selected, start.p[2].numChars - 1 do
-				if t_chars[t.order] ~= nil and #t_chars[t.order] > 0 then
-					local rand = math.random(1, #t_chars[t.order])
-					local ref = t_chars[t.order][rand]
-					if not start.f_getCharData(ref).single then
-						table.remove(t_chars[t.order], rand)
-						table.insert(t_tmp, ref)
-					else --one entry if 'single' param is detected on any opponent
-						t_tmp = {ref}
-						onlyme = true
-						break
-					end
-				end
-			end
-			--not enough unique characters of particular order, take into account only if skiporder parameter = false
-			while not t.skiporder and #t_tmp + #start.p[2].t_selected < start.p[2].numChars and not onlyme and t_remaining[t.order] ~= nil and #t_remaining[t.order] > 0 do
-				table.insert(t_tmp, t_remaining[t.order][math.random(1, #t_remaining[t.order])])
-			end
-			--append remaining characters
-			for _, v in ipairs(t_tmp) do
-				table.insert(start.p[2].t_selected, {
-					ref = v,
-					pal = start.f_selectPal(v),
-					pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
-					--cursor = {},
-					ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
-				})
-				main.t_availableChars = start.f_excludeChar(main.t_availableChars, v)
-			end
-			--team conversion if 'single' param is set on randomly added chars
-			if onlyme and #start.p[2].t_selected > 1 then
-				panicError("Unexpected launchFight state.\nPlease write down everything that lead to this error and report it to K4thos.\n")
-				--[[for i = 1, #start.p[2].t_selected do
-					if not start.f_getCharData(start.p[2].t_selected[i].ref).single then
-						table.insert(main.t_availableChars[t.order], start.p[2].t_selected[i].ref)
-						table.remove(start.p[2].t_selected, k)
-					end
-				end]]
-			end
+			end]]
 		end
-		if onlyme then
-			start.p[2].numChars = #start.p[2].t_selected
-		end
-		--select P2 chars
-		if #start.p[2].t_selected < start.p[2].numChars then
-			start.p[2].t_selected = {}
-			start.p[2].t_selTemp = {}
-			print("launchFight(): not enough P2 characters, skipping execution")
-			setMatchNo(matchno() + 1)
-			return true --continue lua code execution
-		end
-		--get stage number
-		stageNo = start.f_getStageRef(t.stage, stageNo)
 	end
+	if onlyme then
+		start.p[2].numChars = #start.p[2].t_selected
+	end
+	--skip match if needed
+	if #start.p[2].t_selected < start.p[2].numChars then
+		start.p[2].t_selected = {}
+		start.p[2].t_selTemp = {}
+		printConsole("launchFight(): not enough P2 characters, skipping execution")
+		setMatchNo(matchno() + 1)
+		return true --continue lua code execution
+	end
+	--select P2 chars
 	local ok = false
 	local saveData = false
+	local loopCount = 0
 	while true do
 		--fight initialization
 		t.p1numchars = start.f_survivalOutcome()
@@ -1761,7 +1773,7 @@ function launchFight(data)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
-		stageNo = start.f_setStage(stageNo, t.stage ~= '')
+		stageNo = start.f_setStage(stageNo, t.stage ~= '' or continue() or loopCount > 0)
 		start.f_setMusic(stageNo, t.music)
 		if not start.f_selectVersus(t.vsscreen) then break end
 		start.f_overrideCharData()
@@ -1812,12 +1824,16 @@ function launchFight(data)
 			start.p[1].t_selected = {}
 			start.p[1].t_selTemp = {}
 			start.p[1].selEnd = false
+			start.p[2].t_selectedSav = main.f_tableCopy(start.p[2].t_selected)
+			start.p[2].t_selected = {}
+			--start.p[2].t_selTemp = {} --uncomment to disable enemy team showing up in versus screen
 			selScreenEnd = false
 			break
 		else
 			start.f_saveData()
 		end
 		start.challenger = 0
+		loopCount = loopCount + 1
 	end
 	if saveData then
 		start.f_saveData()
@@ -2032,11 +2048,6 @@ function start.f_selectScreen()
 				end
 				if main.f_input(main.t_players, {'pal', 's'}) then
 					sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
-					if stageListNo == 0 then
-						selectStage(main.t_selectableStages[math.random(1, #main.t_selectableStages)])
-					else
-						selectStage(main.t_selectableStages[stageListNo])
-					end
 					stageActiveType = 'stage_done'
 					stageEnd = true
 				elseif not stageEnd then
@@ -2599,7 +2610,6 @@ end
 function start.f_stageMenu()
 	local n = stageListNo
 	if timerSelect == -1 then
-		selectStage(main.t_selectableStages[math.random(1, #main.t_selectableStages)])
 		stageEnd = true
 		return
 	elseif main.f_input(main.t_players, {'$B'}) then
