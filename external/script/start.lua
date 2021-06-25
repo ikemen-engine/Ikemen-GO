@@ -1688,7 +1688,6 @@ function launchFight(data)
 		-- add remaining P2 chars of particular order if there are still free slots in the selected team mode
 		if main.cpuSide[2] and #start.p[2].t_selected < start.p[2].numChars and not onlyme then
 			-- get list of available chars
-			local t_remaining = main.f_tableCopy(main.t_availableChars)
 			local t_chars = main.f_tableCopy(main.t_availableChars)
 			-- remove chars temporary excluded from this match
 			for _, v in ipairs(t.exclude) do
@@ -1703,6 +1702,7 @@ function launchFight(data)
 				end
 			end
 			-- fill free slots
+			local t_remaining = main.f_tableCopy(t_chars)
 			local t_tmp = {}
 			for i = #start.p[2].t_selected, start.p[2].numChars - 1 do
 				if t_chars[t.order] ~= nil and #t_chars[t.order] > 0 then
