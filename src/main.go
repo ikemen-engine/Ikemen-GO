@@ -194,6 +194,7 @@ type configSettings struct {
 	ControllerStickSensitivity float32
 	Credits                    int
 	DebugClipboardRows         int
+	DebugClsnDarken            bool
 	DebugConsoleRows           int
 	DebugFont                  string
 	DebugFontScale             float32
@@ -218,6 +219,7 @@ type configSettings struct {
 	LoseSimul                  bool
 	LoseTag                    bool
 	MaxAfterImage              int32
+	MaxBgmVolume               int
 	MaxDrawGames               int32
 	MaxExplod                  int
 	MaxHelper                  int32
@@ -254,7 +256,6 @@ type configSettings struct {
 	VolumeMaster               int
 	VolumeSfx                  int
 	VolumeWarning              bool
-	MaxBgmVolume               int
 	VRetrace                   int
 	WindowIcon                 []string
 	WindowTitle                string
@@ -304,6 +305,7 @@ func setupConfig() configSettings {
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
 	"DebugClipboardRows": 2,
+	"DebugClsnDarken": true,
 	"DebugConsoleRows": 15,
 	"DebugFont": "font/default-3x5-bold.def",
 	"DebugFontScale": 1,
@@ -328,6 +330,7 @@ func setupConfig() configSettings {
 	"LoseSimul": true,
 	"LoseTag": false,
 	"MaxAfterImage": 128,
+	"MaxBgmVolume": 0,
 	"MaxDrawGames": -2,
 	"MaxExplod": 512,
 	"MaxHelper": 56,
@@ -370,7 +373,7 @@ func setupConfig() configSettings {
 	"RoundsNumTag": 2,
 	"RoundTime": 99,
 	"ScreenshotFolder": "",
-	"StartStage" : "stages/stage0-720.def",
+	"StartStage": "stages/stage0-720.def",
 	"System": "external/script/main.lua",
 	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
@@ -383,7 +386,6 @@ func setupConfig() configSettings {
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
 	"VolumeWarning": true,
-	"MaxBgmVolume": 0,
 	"VRetrace": 1, 
 	"WindowIcon": [
 		"external/icons/IkemenCylia_256.png",
@@ -619,6 +621,7 @@ func setupConfig() configSettings {
 	sys.commonLua = tmp.CommonLua
 	sys.commonStates = tmp.CommonStates
 	sys.clipboardRows = tmp.DebugClipboardRows
+	sys.clsnDarken = tmp.DebugClsnDarken
 	sys.consoleRows = tmp.DebugConsoleRows
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod

@@ -104,8 +104,8 @@ options.t_itemname = {
 			config.BarGuard = false
 			config.BarRedLife = true
 			config.BarStun = false
-			config.Borderless = false
-			config.ComboExtraFrameWindow = 1
+			--config.Borderless = false
+			--config.ComboExtraFrameWindow = 0
 			--config.CommonAir = "data/common.air"
 			--config.CommonCmd = "data/common.cmd"
 			--config.CommonLua = {
@@ -122,27 +122,29 @@ options.t_itemname = {
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
 			--config.DebugClipboardRows = 2
+			--config.DebugClsnDarken = true
 			--config.DebugConsoleRows = 15
 			--config.DebugFont = "font/f-4x6.def"
 			--config.DebugFontScale = 1
 			config.DebugKeys = true
 			config.DebugMode = true
 			config.Difficulty = 8
-			config.EscOpensMenu = true
+			--config.EscOpensMenu = true
 			config.ExternalShaders = {}
 			--config.FontShaderVer = "150 core"
-			config.ForceStageZoomin = 0
-			config.ForceStageZoomout = 0
+			--config.ForceStageZoomin = 0
+			--config.ForceStageZoomout = 0
 			config.Fullscreen = false
 			config.GameWidth = 640
 			config.GameHeight = 480
 			config.GameSpeed = 100
 			--config.IP = {}
-			config.LifebarFontScale = 1
+			--config.LifebarFontScale = 1
 			config.LifeMul = 100
 			config.ListenPort = "7500"
 			config.LoseSimul = true
 			config.LoseTag = false
+			--config.MaxBgmVolume = 0
 			config.MaxDrawGames = -2 -- -2: match.maxdrawgames; -1: match.wins; >= 0: overriding fight.def parameters
 			config.MaxHelper = 56
 			config.MaxPlayerProjectile = 256
@@ -155,7 +157,7 @@ options.t_itemname = {
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
 			config.Players = 4
-			config.PngSpriteFilter = true
+			--config.PngSpriteFilter = true
 			config.PostProcessingShader = 0
 			config.QuickContinue = false
 			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
@@ -166,7 +168,7 @@ options.t_itemname = {
 			config.RoundsNumSimul = 2
 			config.RoundsNumTag = 2
 			config.RoundTime = 99
-			config.StartStage = "stages/stage0-720.def"
+			--config.StartStage = "stages/stage0-720.def"
 			--config.System = "external/script/main.lua"
 			config.Team1VS2Life = 100
 			config.TeamDuplicates = true
@@ -182,9 +184,9 @@ options.t_itemname = {
 			--config.WindowIcon = {"external/icons/IkemenCylia.png"}
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
-			config.ZoomActive = true
-			config.ZoomDelay = false
-			config.ZoomSpeed = 1
+			--config.ZoomActive = true
+			--config.ZoomDelay = false
+			--config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
 			main.timeFramesPerCount = getTimeFramesPerCount()
 			main.f_updateRoundsNum()
@@ -211,10 +213,10 @@ options.t_itemname = {
 			setVolumeBgm(config.VolumeBgm)
 			setVolumeMaster(config.VolumeMaster)
 			setVolumeSfx(config.VolumeSfx)
-			setZoom(config.ZoomActive)
-			setZoomMax(config.ForceStageZoomin)
-			setZoomMin(config.ForceStageZoomout)
-			setZoomSpeed(config.ZoomSpeed)
+			--setZoom(config.ZoomActive)
+			--setZoomMax(config.ForceStageZoomin)
+			--setZoomMin(config.ForceStageZoomout)
+			--setZoomSpeed(config.ZoomSpeed)
 			toggleFullscreen(config.Fullscreen)
 			toggleVsync(config.VRetrace)
 			modified = true
