@@ -2516,7 +2516,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
 					--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
 				end
-				--start.p[side].t_selTemp[member].pal = main.f_btnPalNo(main.t_cmd[cmd])
+				start.p[side].t_selTemp[member].pal = main.f_btnPalNo(main.t_cmd[cmd])
 				if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 					start.p[side].t_selTemp[member].pal = 1
 				end
@@ -2544,8 +2544,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 		elseif selectState == 3 then
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
-				--pal = start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal),
-				pal = start.f_selectPal(start.c[player].selRef, main.f_btnPalNo(main.t_cmd[cmd])),
+				pal = start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal),
 				pn = start.f_getPlayerNo(side, member),
 				cursor = {start.c[player].selX, start.c[player].selY},
 				ratioLevel = start.f_getRatio(side),
