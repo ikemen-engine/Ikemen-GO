@@ -231,7 +231,6 @@ if time = 0 {
 	ctrlSet{value: 0}
 	changeAnim{value: 110}
 	#hitBy{value: SCA, NT, ST, HT; time: 30}
-	
 	velSet{x: 0; z: -7}
 }
 velMul{z: 0.8}
@@ -662,7 +661,7 @@ let ret = cond($cond && selfAnimExist($base + anim % 10),
 [StateDef 5080; type: L; moveType: H; physics: N; velSet: 0, 0;]
 
 if time = 0 {
-	sysVar(2) := ifelse (getHitVar(yVel) = 0, 5080, 5090);
+	sysVar(2) := ifElse(getHitVar(yVel) = 0, 5080, 5090);
 	if (anim = [5081, 5089] || anim = [5111, 5119]) &&
 		selfAnimExist(sysVar(2) + anim % 10) {
 		sysVar(2) := sysVar(2) + anim % 10;
@@ -698,10 +697,10 @@ if hitOver {
 if majorVersion = 1 {
 	explod{
 		anim: F(60 + ($vely > const240p(5)) + ($vely > const240p(14)));
-		posType: p1;
-		pos: 0, 0;
+		posType: none; #p1
+		pos: pos x + cameraPos x, 0; #0, 0
 		facing: facing;
-		sprPriority: ifelse ($vely <= const240p(14), -10, 10);
+		sprPriority: ifElse($vely <= const240p(14), -10, 10);
 	}
 } else {
 	gameMakeAnim{
@@ -862,7 +861,7 @@ if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.groundlevel) {
 [StateDef 5201; type: A; moveType: H; physics: A; anim: 5200;]
 
 if time = 0 {
-	if p2dist X < const240p(-5) {
+	if p2Dist x < const240p(-5) {
 		turn{}
 	}
 	velSet{
@@ -888,7 +887,7 @@ notHitBy{value: SCA; time: 1}
 if time = 0 {
 	palFx{time: 3; add: 128, 128, 128}
 	posFreeze{}
-	if p2Dist X < const240p(-20) {
+	if p2Dist x < const240p(-20) {
 		turn{}
 	}
 	notHitBy{value: SCA; time: 15}

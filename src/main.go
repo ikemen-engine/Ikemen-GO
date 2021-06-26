@@ -207,11 +207,11 @@ type configSettings struct {
 	FontShaderVer              string
 	ForceStageZoomin           float32
 	ForceStageZoomout          float32
+	Framerate                  int32
 	Fullscreen                 bool
 	GameWidth                  int32
 	GameHeight                 int32
 	GameSpeed                  float32
-	Framerate                  int32
 	IP                         map[string]string
 	LifebarFontScale           float32
 	LifeMul                    float32
@@ -574,7 +574,18 @@ func setupConfig() configSettings {
 		}
 		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
-	// Fix incorrect values
+	// Fix incorrect settings (default values saved into config.json)
+	switch tmp.AudioSampleRate {
+	case 22050, 44100, 48000:
+	default:
+		tmp.AudioSampleRate = 44100
+	}
+	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
+		tmp.Framerate = 60
+	}
+	if tmp.MaxBgmVolume > 400 {
+		tmp.MaxBgmVolume = 0
+	}
 	if tmp.NumSimul[1] > MaxSimul {
 		tmp.NumSimul[1] = MaxSimul
 	}
@@ -593,17 +604,9 @@ func setupConfig() configSettings {
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.allowDebugMode = tmp.DebugMode
 	sys.audioDucking = tmp.AudioDucking
-	switch tmp.AudioSampleRate {
-	case 44100, 48000:
-		Mp3SampleRate = int(tmp.AudioSampleRate)
-	default:
-		Mp3SampleRate = 44100
-	}
+	Mp3SampleRate = int(tmp.AudioSampleRate)
 	sys.bgmVolume = tmp.VolumeBgm
-	//sys.volumeWarning = tmp.VolumeWarning
-	if tmp.MaxBgmVolume <= 400 {
-		sys.maxBgmVolume = tmp.MaxBgmVolume
-	}
+	sys.maxBgmVolume = tmp.MaxBgmVolume
 	sys.borderless = tmp.Borderless
 	sys.cam.ZoomDelayEnable = tmp.ZoomDelay
 	sys.cam.ZoomActive = tmp.ZoomActive
@@ -630,10 +633,7 @@ func setupConfig() configSettings {
 		sys.fontShaderVer = tmp.FontShaderVer
 	}
 	sys.fullscreen = tmp.Fullscreen
-
-	if tmp.Framerate > 0 || tmp.Framerate <= 840 {
-		FPS = int(tmp.Framerate)
-	}
+	FPS = int(tmp.Framerate)
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
 	sys.lifebarFontScale = tmp.LifebarFontScale
