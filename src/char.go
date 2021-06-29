@@ -2982,7 +2982,7 @@ func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	return nil
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	_, freqmul float32, _ *float32, log bool) {
+	p, freqmul float32, x *float32, log bool) {
 	if g < 0 {
 		return
 	}
@@ -3023,15 +3023,16 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		if f {
 			ch.SetVolume(256)
 		} else {
-			ch.SetVolume(c.gi().data.volume * vol / 100)
+			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}
 		//} else {
 		//	if f {
-		//		ch.SetVolume(vol + 256)
+		//		ch.SetVolume(float32(vol + 256))
 		//	} else {
-		//		ch.SetVolume(c.gi().data.volume + vol)
+		//		ch.SetVolume(float32(c.gi().data.volume + vol))
 		//	}
 		//}
+		ch.SetPan(p * c.facing, c.localscl, x)
 	}
 }
 
@@ -4700,7 +4701,7 @@ func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time in
 		return
 	}
 	if snd[0] != -1 {
-		sys.lifebar.snd.play(snd, 100)
+		sys.lifebar.snd.play(snd, 100, 0)
 	}
 	index := 0
 	if !top {

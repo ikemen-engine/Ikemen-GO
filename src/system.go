@@ -89,6 +89,8 @@ var sys = System{
 	pngFilter:            false,
 	clsnDarken:           true,
 	maxBgmVolume:         0,
+	stereoEffects:        true,
+	panningRange:         25,
 }
 
 type TeamMode int32
@@ -348,6 +350,8 @@ type System struct {
 	brightnessOld   int32
 	clsnDarken      bool
 	maxBgmVolume    int
+	stereoEffects   bool
+	panningRange    float32
 }
 
 type Window struct {

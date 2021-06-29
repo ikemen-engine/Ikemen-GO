@@ -1339,6 +1339,8 @@ local motif =
 		--menu_itemname_bgmvolume = 'BGM Volume', --Ikemen feature
 		--menu_itemname_sfxvolume = 'SFX Volume', --Ikemen feature
 		--menu_itemname_audioducking = 'Audio Ducking', --Ikemen feature
+		--menu_itemname_stereoeffects = "Stereo Effects", --Ikemen feature
+		--menu_itemname_panningrange = "Panning Range", --Ikemen feature
 		--menu_itemname_keyboard = 'Key Config', --Ikemen feature
 		--menu_itemname_gamepad = 'Joystick Config', --Ikemen feature
 		--menu_itemname_inputdefault = 'Default', --Ikemen feature
@@ -2119,6 +2121,8 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuaudio_bgmvolume = "BGM Volume"
 	motif.option_info.menu_itemname_menuaudio_sfxvolume = "SFX Volume"
 	motif.option_info.menu_itemname_menuaudio_audioducking = "Audio Ducking"
+	motif.option_info.menu_itemname_menuaudio_stereoeffects = "Stereo Effects"
+	motif.option_info.menu_itemname_menuaudio_panningrange = "Panning Range"
 	motif.option_info.menu_itemname_menuaudio_empty = ""
 	motif.option_info.menu_itemname_menuaudio_back = "Back"
 
@@ -2234,6 +2238,8 @@ function motif.setBaseOptionInfo()
 		"menuaudio_bgmvolume",
 		"menuaudio_sfxvolume",
 		"menuaudio_audioducking",
+		"menuaudio_stereoeffects",
+		"menuaudio_panningrange",
 		"menuaudio_empty",
 		"menuaudio_back",
 		"menuinput",

@@ -113,7 +113,7 @@ func readLbBgTextSnd(pre string, is IniSection,
 }
 func (bts *LbBgTextSnd) step(snd *Snd) {
 	if bts.cnt == bts.sndtime {
-		snd.play(bts.snd, 100)
+		snd.play(bts.snd, 100, 0)
 	}
 	if bts.cnt >= bts.time {
 		bts.bg.Action()
@@ -447,7 +447,7 @@ func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 	}
 	if level > pbr.prevLevel {
 		i := Min(8, level-1)
-		snd.play(pb.level_snd[i], 100)
+		snd.play(pb.level_snd[i], 100, 0)
 	}
 	pbr.prevLevel = level
 	pb.bg0.Action()
@@ -1823,11 +1823,11 @@ func (ro *LifeBarRound) act() bool {
 			if !ro.introState[0] {
 				if ro.swt[0] == 0 {
 					if sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
-						ro.snd.play(ro.round_final.snd, 100)
+						ro.snd.play(ro.round_final.snd, 100, 0)
 					} else if int(sys.round) <= len(ro.round) && ro.round[sys.round-1].snd[0] != -1 {
-						ro.snd.play(ro.round[sys.round-1].snd, 100)
+						ro.snd.play(ro.round[sys.round-1].snd, 100, 0)
 					} else {
-						ro.snd.play(ro.round_default.snd, 100)
+						ro.snd.play(ro.round_default.snd, 100, 0)
 					}
 				}
 				ro.swt[0]--
@@ -1880,7 +1880,7 @@ func (ro *LifeBarRound) act() bool {
 				ro.wt[1]--
 			} else if !ro.introState[1] {
 				if ro.swt[1] == 0 {
-					ro.snd.play(ro.fight.snd, 100)
+					ro.snd.play(ro.fight.snd, 100, 0)
 				}
 				ro.swt[1]--
 				if ro.wt[1] <= 0 {
@@ -1911,7 +1911,7 @@ func (ro *LifeBarRound) act() bool {
 			}
 			f := func(ats *AnimTextSnd, t int) {
 				if -ro.swt[t]-10 == 0 {
-					ro.snd.play(ats.snd, 100)
+					ro.snd.play(ats.snd, 100, 0)
 					ro.swt[t]--
 				}
 				if sys.tickNextFrame() {

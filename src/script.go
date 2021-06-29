@@ -2007,6 +2007,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.motifDir = strArg(l, 1)
 		return 0
 	})
+	luaRegister(l, "setPanningRange", func(l *lua.LState) int {
+		sys.panningRange = float32(numArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "setPlayers", func(l *lua.LState) int {
 		total := int(numArg(l, 1))
 		if len(sys.keyConfig) > total {
@@ -2047,6 +2051,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setRedLifeBar", func(l *lua.LState) int {
 		sys.lifebar.activeRl = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setStereoEffects", func(l *lua.LState) int {
+		sys.stereoEffects = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setStunBar", func(l *lua.LState) int {
@@ -2160,7 +2168,11 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 4 {
 			volumescale = int32(numArg(l, 4))
 		}
-		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale)
+		var pan float32
+		if l.GetTop() >= 5 {
+			pan = float32(numArg(l, 5))
+		}
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan)
 		return 0
 	})
 	luaRegister(l, "sndPlaying", func(*lua.LState) int {

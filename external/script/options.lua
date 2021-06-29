@@ -160,6 +160,7 @@ options.t_itemname = {
 			config.NumSimul = {2, 4}
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
+			config.PanningRange = 25
 			config.Players = 4
 			--config.PngSpriteFilter = true
 			config.PostProcessingShader = 0
@@ -174,6 +175,7 @@ options.t_itemname = {
 			config.RoundTime = 99
 			--config.ScreenshotFolder = ""
 			--config.StartStage = "stages/stage0-720.def"
+			config.StereoEffects = true
 			--config.System = "external/script/main.lua"
 			config.Team1VS2Life = 100
 			config.TeamDuplicates = true
@@ -212,8 +214,10 @@ options.t_itemname = {
 			setMaxExplod(config.MaxExplod)
 			setMaxHelper(config.MaxHelper)
 			setMaxPlayerProjectile(config.MaxPlayerProjectile)
+			setPanningRange(config.PanningRange)
 			setPowerShare(1, config.TeamPowerShare)
 			setPowerShare(2, config.TeamPowerShare)
+			setStereoEffects(config.StereoEffects)
 			setTeam1VS2Life(config.Team1VS2Life / 100)
 			setVolumeBgm(config.VolumeBgm)
 			setVolumeMaster(config.VolumeMaster)
@@ -926,6 +930,38 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	--Stereo Effects
+	['stereoeffects'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.StereoEffects then
+				config.StereoEffects = false
+			else
+				config.StereoEffects = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
+			setStereoEffects(config.StereoEffects)
+			modified = true
+		end
+		return true
+	end,
+	--Panning Width
+	['panningrange'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F'}) and config.PanningRange < 100 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			config.PanningRange = config.PanningRange + 1
+			setPanningRange(config.PanningRange)
+			t.items[item].vardisplay = config.PanningRange
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.PanningRange > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			config.PanningRange = config.PanningRange - 1
+			setPanningRange(config.PanningRange)
+			t.items[item].vardisplay = config.PanningRange
+			modified = true
+		end
+		return true
+	end,
 	--Key Config
 	['keyboard'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'pal', 's'}) --[[or getKey():match('^F[0-9]+$')]] then
@@ -1288,6 +1324,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'mintag' then return config.NumTag[1] end
 	if itemname == 'minturns' then return config.NumTurns[1] end
 	if itemname == 'msaa' then return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
+	if itemname == 'panningrange' then return config.PanningRange end
 	if itemname == 'players' then return config.Players end
 	if itemname == 'portchange' then return config.ListenPort end
 	if itemname == 'projectilemax' then return config.MaxPlayerProjectile end
@@ -1311,6 +1348,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'sfxvolume' then return config.VolumeSfx .. '%' end
 	if itemname == 'shaders' then return f_externalShaderName() end
 	if itemname == 'singlevsteamlife' then return config.Team1VS2Life .. '%' end
+	if itemname == 'stereoeffects' then return options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'stunbar' then return options.f_boolDisplay(config.BarStun) end
 	if itemname == 'teamduplicates' then return options.f_boolDisplay(config.TeamDuplicates) end
 	if itemname == 'teamlifeshare' then return options.f_boolDisplay(config.TeamLifeShare) end

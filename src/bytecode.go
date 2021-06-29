@@ -2277,6 +2277,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
+				x = &crun.pos[0]
 			} else {
 				return false
 			}
@@ -5222,7 +5223,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, &crun.pos[0], false)
+				vo, 0, 1, nil, false)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5942,8 +5943,8 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if ch <= 0 && int(ch) < len(crun.sounds) {
-		crun.sounds[ch].SetPan(pan, x)
+	if ch >= 0 && int(ch) < len(crun.sounds) {
+		crun.sounds[ch].SetPan(pan * crun.facing, crun.localscl, x)
 	}
 	return false
 }

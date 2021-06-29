@@ -230,6 +230,7 @@ type configSettings struct {
 	NumSimul                   [2]int
 	NumTag                     [2]int
 	NumTurns                   [2]int
+	PanningRange               float32
 	Players                    int
 	PngSpriteFilter            bool
 	PostProcessingShader       int32
@@ -244,6 +245,7 @@ type configSettings struct {
 	RoundTime                  int32
 	ScreenshotFolder           string
 	StartStage                 string
+	StereoEffects              bool
 	System                     string
 	Team1VS2Life               float32
 	TeamDuplicates             bool
@@ -350,6 +352,7 @@ func setupConfig() configSettings {
 		2,
 		4
 	],
+	"PanningRange": 25,
 	"Players": 4,
 	"PngSpriteFilter": true,
 	"PostProcessingShader": 0,
@@ -374,6 +377,7 @@ func setupConfig() configSettings {
 	"RoundTime": 99,
 	"ScreenshotFolder": "",
 	"StartStage": "stages/stage0-720.def",
+	"StereoEffects": true,
 	"System": "external/script/main.lua",
 	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
@@ -595,6 +599,11 @@ func setupConfig() configSettings {
 	if tmp.Players > MaxSimul*2 {
 		tmp.Players = MaxSimul * 2
 	}
+	if tmp.PanningRange > 100 {
+		tmp.PanningRange = 100
+	} else if tmp.PanningRange < 0 {
+		tmp.PanningRange = 0
+	}
 	// Save config file
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
@@ -644,6 +653,7 @@ func setupConfig() configSettings {
 	sys.loseTag = tmp.LoseTag
 	sys.masterVolume = tmp.VolumeMaster
 	sys.multisampleAntialiasing = tmp.MSAA
+	sys.panningRange = tmp.PanningRange
 	sys.playerProjectileMax = tmp.MaxPlayerProjectile
 	sys.postProcessingShader = tmp.PostProcessingShader
 	sys.pngFilter = tmp.PngSpriteFilter
@@ -656,6 +666,7 @@ func setupConfig() configSettings {
 	} else {
 		sys.screenshotFolder = tmp.ScreenshotFolder
 	}
+	sys.stereoEffects = tmp.StereoEffects
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
 	sys.wavVolume = tmp.VolumeSfx

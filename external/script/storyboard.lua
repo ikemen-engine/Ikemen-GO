@@ -249,7 +249,7 @@ local function f_parse(path)
 								value = {-1, -1},
 								starttime = 0,
 								volumescale = 100,
-								pan = 0 --TODO: not implemented yet
+								pan = 0,
 							}
 						end
 						pos_val = pos.sound[num]

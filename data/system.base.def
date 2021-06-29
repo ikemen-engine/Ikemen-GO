@@ -1511,6 +1511,8 @@
 	;menu.itemname.bgmvolume = "BGM Volume"
 	;menu.itemname.sfxvolume = "SFX Volume"
 	;menu.itemname.audioducking = "Audio Ducking"
+	;menu.itemname.stereoeffects = "Stereo Effects"
+	;menu.itemname.panningrange = "Panning Range"
 	;menu.itemname.keyboard = "Key Config"
 	;menu.itemname.gamepad = "Joystick Config"
 	;menu.itemname.inputdefault = "Default"
