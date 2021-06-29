@@ -951,13 +951,13 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.PanningRange = config.PanningRange + 1
 			setPanningRange(config.PanningRange)
-			t.items[item].vardisplay = config.PanningRange
+			t.items[item].vardisplay = config.PanningRange .. '%'
 			modified = true
 		elseif main.f_input(main.t_players, {'$B'}) and config.PanningRange > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.PanningRange = config.PanningRange - 1
 			setPanningRange(config.PanningRange)
-			t.items[item].vardisplay = config.PanningRange
+			t.items[item].vardisplay = config.PanningRange .. '%'
 			modified = true
 		end
 		return true
@@ -1324,7 +1324,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'mintag' then return config.NumTag[1] end
 	if itemname == 'minturns' then return config.NumTurns[1] end
 	if itemname == 'msaa' then return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
-	if itemname == 'panningrange' then return config.PanningRange end
+	if itemname == 'panningrange' then return config.PanningRange .. '%' end
 	if itemname == 'players' then return config.Players end
 	if itemname == 'portchange' then return config.ListenPort end
 	if itemname == 'projectilemax' then return config.MaxPlayerProjectile end

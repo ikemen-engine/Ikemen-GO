@@ -1411,7 +1411,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "numberToRune", func(l *lua.LState) int {
-		l.Push(lua.LString(string('A' - 1 + int(numArg(l, 1)))))
+		l.Push(lua.LString(fmt.Sprint('A' - 1 + int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
@@ -3892,7 +3892,7 @@ func triggerFunctions(l *lua.LState) {
 				} else {
 					winp = 0
 				}
-			} else if  sys.winTeam >= 0 || sys.debugWC.roundState() >= 3 {
+			} else if sys.winTeam >= 0 || sys.debugWC.roundState() >= 3 {
 				winp = int32(sys.winTeam) + 1
 			}
 		}

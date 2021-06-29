@@ -660,7 +660,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 						var err error
 						sys.stageList[Atoi(submatchall[0])], err = loadStage(v, false)
 						if err != nil {
-							return nil, fmt.Errorf("Failed to load %v:\n%v\n", def, err)
+							return nil, fmt.Errorf("failed to load %v:\n%v", def, err)
 						}
 					}
 				}

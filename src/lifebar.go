@@ -2780,7 +2780,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 							}
 							l.fnt[i], err = loadFnt(filename, height)
 							if err != nil {
-								err = fmt.Errorf("Failed to load %v font: %v", filename, err)
+								err = fmt.Errorf("failed to load %v font: %v", filename, err)
 							}
 							return err
 						}); err != nil {

@@ -312,7 +312,7 @@ type System struct {
 	// Rendering
 	borderless bool
 	vRetrace   int
-	pngFilter       bool // Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
+	pngFilter  bool // Controls the GL_TEXTURE_MAG_FILTER on 32bit sprites
 
 	gameMode        string
 	frameCounter    int32
@@ -2537,7 +2537,7 @@ func (s *Select) addChar(def string) {
 		var err error
 		sc.sff, selPal, err = preloadSff(file, true, listSpr)
 		if err != nil {
-			panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
+			panic(fmt.Errorf("failed to load %v: %v\nerror preloading %v", file, err, def))
 		}
 		sc.anims.updateSff(sc.sff)
 		for k := range s.charSpritePreload {
@@ -2634,7 +2634,7 @@ func (s *Select) AddStage(def string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
-				panic(fmt.Errorf("Failed to load %v: %v\nError preloading %v\n", file, err, def))
+				panic(fmt.Errorf("failed to load %v: %v\nerror preloading %v", file, err, def))
 			}
 			ss.anims.updateSff(ss.sff)
 			for k := range s.stageSpritePreload {
