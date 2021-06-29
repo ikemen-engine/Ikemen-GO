@@ -32,15 +32,6 @@ func numArg(l *lua.LState, argi int) float64 {
 	}
 	return float64(num)
 }
-
-func intArg(l *lua.LState, argi int) int32 {
-	num, ok := l.Get(argi).(lua.LNumber)
-	if !ok {
-		l.RaiseError("The %vth argument is not a number.", argi)
-	}
-	return int32(num)
-}
-
 func boolArg(l *lua.LState, argi int) bool {
 	return l.ToBool(argi)
 }
