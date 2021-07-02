@@ -29,10 +29,10 @@ all:
 	@echo targets: clean cross linux macos pkg windows
 
 Ikemen_GO: ${GOFILES}
-	go build ${TAGS} -o $@ ./src
+	go build -v ${TAGS} -o $@ ./src
 
 Ikemen_GO.exe: ${GOFILES}
-	go build -ldflags "-H windowsgui" -o $@ ./src
+	go build -v -ldflags "-H windowsgui" -o $@ ./src
 
 linux: Ikemen_GO
 
@@ -44,20 +44,20 @@ windows: Ikemen_GO.exe
 # cross-compiling from Linux
 Ikemen_GO_Linux: ${GOFILES}
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-	go build ${TAGS} -o $@ ./src
+	go build -v ${TAGS} -o $@ ./src
 
 Ikemen_GO_MacOS: ${GOFILES}
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
 	CC=o64-clang \
 	CXX=o64-clang++ \
-	go build -tags al_cmpt -o $@ ./src
+	go build -v -tags al_cmpt -o $@ ./src
 
 Ikemen_GO_x64.exe: ${GOFILES} windres/Ikemen_Cylia_x64.syso
 	cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_Cylia_x64.syso'
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
 	CC=x86_64-w64-mingw32-gcc \
 	CXX=x86_64-w64-mingw32-g++ \
-	go build -ldflags '-H windowsgui' -o $@ ./src
+	go build -v -ldflags '-H windowsgui' -o $@ ./src
 	rm 'src/Ikemen_Cylia_x64.syso'
 
 Ikemen_GO_x86.exe: ${GOFILES} windres/Ikemen_Cylia_x86.syso
@@ -65,7 +65,7 @@ Ikemen_GO_x86.exe: ${GOFILES} windres/Ikemen_Cylia_x86.syso
 	CGO_ENABLED=1 GOOS=windows GOARCH=386 \
 	CC=i686-w64-mingw32-gcc \
 	CXX=i686-w64-mingw32-g++ \
-	go build -ldflags '-H windowsgui' -o $@ ./src
+	go build -v -ldflags '-H windowsgui' -o $@ ./src
 	rm 'src/Ikemen_Cylia_x86.syso'
 
 cross: ${CROSS}
