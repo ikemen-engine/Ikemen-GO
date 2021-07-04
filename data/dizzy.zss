@@ -235,7 +235,7 @@ notHitBy{value: SCA; time: 1}
 #===============================================================================
 # StateDizzy
 #===============================================================================
-[StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
+[StateDef 5300; type: S; moveType: U; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
 	mapSet{map: "_iksys_DizzyState"; value: 0}

@@ -5404,13 +5404,11 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = -1
-				// Mugen has a combo delay in lefebar were is active for 1 frame more than it should.
+				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
 				if c.comboExtraFrameWindow <= 0 {
-					if !c.scf(SCF_dizzy) {
-						c.fakeReceivedHits = 0
-						c.fakeComboDmg = 0
-						c.fakeCombo = false
-					}
+					c.fakeReceivedHits = 0
+					c.fakeComboDmg = 0
+					c.fakeCombo = false
 				} else {
 					c.fakeCombo = true
 					c.comboExtraFrameWindow--
