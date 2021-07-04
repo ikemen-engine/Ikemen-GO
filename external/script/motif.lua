@@ -1296,7 +1296,8 @@ local motif =
 		--menu_itemname_roundsnumsingle = 'Rounds to Win (Single)', --Ikemen feature
 		--menu_itemname_maxdrawgames = 'Max Draw Games', --Ikemen feature
 		--menu_itemname_credits = 'Credits', --Ikemen feature
-		--menu_itemname_aipalette = 'AI Palette', --Ikemen feature
+		--menu_itemname_aipalette = 'Arcade Palette', --Ikemen feature
+		--menu_itemname_aisurvivalpalette = 'Survival Palette', --Ikemen feature
 		--menu_itemname_airamping = 'AI Ramping', --Ikemen feature
 		--menu_itemname_quickcontinue = 'Quick Continue', --Ikemen feature
 		--menu_itemname_autoguard = 'Auto-Guard', --Ikemen feature
@@ -2042,7 +2043,8 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame_roundsnumsingle = "Rounds to Win (Single)"
 	motif.option_info.menu_itemname_menugame_maxdrawgames = "Max Draw Games"
 	motif.option_info.menu_itemname_menugame_credits = "Credits"
-	motif.option_info.menu_itemname_menugame_aipalette = "AI Palette"
+	motif.option_info.menu_itemname_menugame_aipalette = "Arcade Palette"
+	motif.option_info.menu_itemname_menugame_aisurvivalpalette = "Survival Palette"
 	motif.option_info.menu_itemname_menugame_airamping = "AI Ramping"
 	motif.option_info.menu_itemname_menugame_quickcontinue = "Quick Continue"
 	motif.option_info.menu_itemname_menugame_autoguard = "Auto-Guard"
@@ -2164,6 +2166,7 @@ function motif.setBaseOptionInfo()
 		"menugame_maxdrawgames",
 		"menugame_credits",
 		"menugame_aipalette",
+		"menugame_aisurvivalpalette",
 		"menugame_airamping",
 		"menugame_quickcontinue",
 		"menugame_autoguard",

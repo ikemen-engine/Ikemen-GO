@@ -178,6 +178,7 @@ Debug Options:
 type configSettings struct {
 	AIRamping                  bool
 	AIRandomColor              bool
+	AISurvivalColor            bool
 	AudioDucking               bool
 	AudioSampleRate            int32
 	AutoGuard                  bool
@@ -282,6 +283,7 @@ func setupConfig() configSettings {
 		`{
 	"AIRamping": true,
 	"AIRandomColor": false,
+	"AISurvivalColor": true,
 	"AudioDucking": false,
 	"AudioSampleRate": 44100,
 	"AutoGuard": false,

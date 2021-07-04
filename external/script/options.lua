@@ -98,7 +98,8 @@ options.t_itemname = {
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			config.AIRamping = true
-			config.AIRandomColor = true
+			config.AIRandomColor = false
+			config.AISurvivalColor = true
 			config.AudioDucking = false
 			--config.AudioSampleRate = 44100
 			config.AutoGuard = false
@@ -363,7 +364,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--AI Palette
+	--Arcade Palette
 	['aipalette'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
@@ -373,6 +374,20 @@ options.t_itemname = {
 				config.AIRandomColor = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
+			modified = true
+		end
+		return true
+	end,
+	--Survival Palette
+	['aisurvivalpalette'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AISurvivalColor then
+				config.AISurvivalColor = false
+			else
+				config.AISurvivalColor = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
 			modified = true
 		end
 		return true
@@ -1299,6 +1314,7 @@ end
 function options.f_vardisplay(itemname)
 	if itemname == 'afterimagemax' then return config.MaxAfterImage end
 	if itemname == 'aipalette' then return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
+	if itemname == 'aisurvivalpalette' then return options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
 	if itemname == 'airamping' then return options.f_boolDisplay(config.AIRamping) end
 	if itemname == 'audioducking' then return options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'autoguard' then return options.f_boolDisplay(config.AutoGuard) end

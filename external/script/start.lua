@@ -641,7 +641,7 @@ function start.f_selectPal(ref, palno)
 			end
 		end
 	--default palette
-	elseif not config.AIRandomColor then
+	elseif (not main.rotationChars and not config.AIRandomColor) or (main.rotationChars and not config.AISurvivalColor) then
 		t = main.f_tableCopy(start.f_getCharData(ref).pal_defaults)
 		palno = start.f_getCharData(ref).pal_defaults[1]
 		if t_assignedKeys[palno] == nil then
@@ -665,7 +665,7 @@ function start.f_selectPal(ref, palno)
 	--random palette
 	t = main.f_tableCopy(start.f_getCharData(ref).pal)
 	if #t_assignedKeys >= #t then --not enough palettes for unique selection
-		return math.random(1, #t)
+		return t[math.random(1, #t)]
 	end
 	main.f_tableShuffle(t)
 	for k, v in ipairs(t) do
