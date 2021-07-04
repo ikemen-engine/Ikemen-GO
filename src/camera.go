@@ -35,9 +35,8 @@ func newStageCamera() *stageCamera {
 
 type Camera struct {
 	stageCamera
-	ZoomActive                  bool
+	ZoomEnable, ZoomActive      bool
 	ZoomDelayEnable             bool
-	ZoomEnable                  bool
 	ZoomMin, ZoomMax, ZoomSpeed float32
 	zoomdelay                   float32
 	Pos, ScreenPos, Offset      [2]float32

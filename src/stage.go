@@ -320,7 +320,7 @@ func (bg *backGround) reset() {
 	bg.bga.sinlooptime = bg.startsinlt
 }
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
-	stgscl [2]float32, shakeY float32) {
+	stgscl [2]float32, shakeY float32, isStage bool) {
 	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
 	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
 	sclx := MaxF(0, scl+(1-scl)*(1-dx))
@@ -358,7 +358,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
-	if !sys.cam.ZoomEnable {
+	if isStage && !sys.cam.ZoomEnable {
 		if bg.rasterx[1] == bg.rasterx[0] &&
 			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
 			x = float32(math.Floor(float64(x/bgscl))) * bgscl
@@ -1088,7 +1088,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			s.stageCamera.drawOffsetY)/480)
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs)
+			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
 		}
 	}
 }
