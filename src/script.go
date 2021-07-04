@@ -3647,7 +3647,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.mapArray[strArg(l, 1)]))
+		l.Push(lua.LNumber(sys.debugWC.mapArray[strings.ToLower(strArg(l, 1))]))
 		return 1
 	})
 	luaRegister(l, "memberno", func(*lua.LState) int {

@@ -1213,13 +1213,10 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 	pl.init()
 	spriteList := make([]*Sprite, int(h.NumberOfSprites))
 	var prev *Sprite
-	var newSubHeaderOffset []uint32
-	newSubHeaderOffset = append(newSubHeaderOffset, shofs)
 	preloadSprNum := len(preloadSpr)
 	preloadRef := make(map[int]bool)
 	for i := 0; i < len(spriteList); i++ {
 		spriteList[i] = newSprite()
-		newSubHeaderOffset = append(newSubHeaderOffset, shofs)
 		f.Seek(int64(shofs), 0)
 		switch h.Ver0 {
 		case 1:
