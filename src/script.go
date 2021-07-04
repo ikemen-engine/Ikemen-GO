@@ -3269,6 +3269,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.pos[1]))
 		return 1
 	})
+	luaRegister(l, "posZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.pos[2]))
+		return 1
+	})
 	luaRegister(l, "power", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.getPower()))
 		return 1
