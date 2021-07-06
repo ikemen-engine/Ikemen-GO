@@ -467,7 +467,7 @@ func (f *Fall) clear() {
 }
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: -4.5, recover: true, recovertime: 4, kill: true,
+		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
 		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN())}
 }
 func (f *Fall) xvel() float32 {
@@ -1679,6 +1679,7 @@ func (c *Char) clearState() {
 	c.ss.clear()
 	c.hitdef.clear()
 	c.ghv.clear()
+	c.ghv.fall.yvelocity /= c.localscl
 	c.ghv.clearOff()
 	c.hitby = [2]HitBy{}
 	for i := range c.ho {
@@ -3032,7 +3033,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		//		ch.SetVolume(float32(c.gi().data.volume + vol))
 		//	}
 		//}
-		ch.SetPan(p * c.facing, c.localscl, x)
+		ch.SetPan(p*c.facing, c.localscl, x)
 	}
 }
 
@@ -3644,6 +3645,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
+	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	if hd.fall.animtype == RA_Unknown {
 		if hd.air_animtype != RA_Unknown {
 			hd.fall.animtype = hd.air_animtype
@@ -4396,7 +4398,6 @@ func (c *Char) hitFallDamage() {
 	}
 }
 func (c *Char) hitFallVel() {
-	//TODO: localcoord problem when HitDef is not assigned (e.g. F1)
 	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
 			c.setXV(c.ghv.fall.xvelocity)
