@@ -5863,7 +5863,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		}
-		c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+		if !proj {
+			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+		}
 		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
 		if ghvset {
 			if !proj {
