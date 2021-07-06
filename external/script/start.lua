@@ -489,6 +489,15 @@ function start.f_storeStats()
 	elseif t.clear == nil then
 		t.clear = 0
 	end
+	--team leader mode cleared count
+	if t.clearcount == nil then
+		t.clearcount = {}
+	end
+	if cleared then
+		local leader = start.f_getCharData(start.p[1].t_selected[1].ref).char:lower()
+		t.clearcount[leader] = (t.clearcount[leader] or 0) + 1
+	end
+	--ranking data exceptions
 	if main.t_hiscoreData[gamemode()].data == 'score' and start.t_savedData.score.total[1] == 0 then
 		return cleared, -1
 	end

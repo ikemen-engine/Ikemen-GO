@@ -3927,6 +3927,7 @@ function main.f_fadeReset(fadeType, fadeGroup)
 end
 
 --play music
+main.lastBgm = ''
 function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
 	if main.flags['-nomusic'] ~= nil then
 		return
@@ -3936,8 +3937,9 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 	local bgmVolume = bgmVolume or 100
 	local bgmLoopstart = bgmLoopstart or 0
 	local bgmLoopend = bgmLoopend or 0
-	if interrupt or bgm ~= '' then
+	if interrupt or (bgm ~= '' --[[and bgm ~= main.lastBgm]]) then
 		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+		main.lastBgm = bgm
 	end
 end
 
