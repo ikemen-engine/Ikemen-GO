@@ -3139,14 +3139,9 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	//fightfx scale
-	//TODO: not implemented
-	/*sc := sys.lifebarScale * l.fx_scale
-	if sys.lifebarLocalcoord[1] < 240 {
-		sc *= float32(sys.lifebarLocalcoord[1]) / 240
-	}
 	for _, a := range l.fat {
-		a.start_scale = [...]float32{sc, sc}
-	}*/
+		a.start_scale = [...]float32{sys.lifebarScale * l.fx_scale, sys.lifebarScale * l.fx_scale}
+	}
 	//Iterate over map in a stable iteration order
 	keys := make([]string, 0, len(l.missing))
 	for k := range l.missing {

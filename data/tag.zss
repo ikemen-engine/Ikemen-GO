@@ -60,7 +60,7 @@ explod{
 	sprPriority: 5;
 	ownPal: 1;
 	facing: facing;
-	scale: const240p(0.5), const240p(0.5);
+	scale: 0.5, 0.5;
 	bindTime: -1;
 	superMoveTime: -1;
 	pauseMoveTime: -1;

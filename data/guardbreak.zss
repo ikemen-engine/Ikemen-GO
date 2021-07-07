@@ -16,7 +16,7 @@ if time = 0 {
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
 		sprPriority: 7;
 		ownPal: 1;
-		scale: const240p(0.15), const240p(4.5);
+		scale: 0.15, 4.5;
 		trans: add;
 		alpha: 256, 256;
 		pauseMoveTime: -1;
@@ -32,9 +32,9 @@ if time < 13 {
 		sprPriority: 6;
 		ownPal: 1;
 		random: floor(const(size.height) / 8 * const(size.xscale)), floor(const(size.height) * const(size.yscale));
-		scale: const240p(rand(0, 8) * 0.03 + 0.25), const240p(rand(0, 8) * 0.03 + 0.25);
-		vel: -const240p((rand(0, 17) + 5) * 0.36), const240p((rand(0, 18) - 8) * 0.36);
-		accel: const240p(0.038), 0;
+		scale: rand(0, 8) * 0.03 + 0.25, rand(0, 8) * 0.03 + 0.25;
+		vel: -(rand(0, 17) + 5) * 0.36, (rand(0, 18) - 8) * 0.36;
+		accel: 0.038, 0;
 		facing: ifElse(Random < 500, 1, -1);
 		vfacing: ifElse(Random < 500, 1, -1);
 		pauseMoveTime: -1;
@@ -49,7 +49,7 @@ persistent(0) if time = 0 {
 		space: screen;
 		posType: left;
 		pos: 0, screenHeight / 2; # color 0 (blue)
-		scale: screenWidth, 7.5 * screenWidth / 320.0;
+		scale: screenWidth * localScale, 7.5;
 		bindTime: -1;
 		superMoveTime: -1;
 		pauseMoveTime: -1;

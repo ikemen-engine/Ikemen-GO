@@ -11,7 +11,7 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 		space: screen;
 		posType: left;
 		pos: -3 * screenWidth, screenHeight / 2; # color 3 (red)
-		scale: screenWidth, 7.5 * screenWidth / 320.0;
+		scale: screenWidth * localScale, 7.5;
 		bindTime: -1;
 		superMoveTime: -1;
 		pauseMoveTime: -1;
@@ -30,7 +30,7 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 [Function fDizzyBirdExplod(arg)]
 let fvarA = (float(var(1)) + $arg) * 0.0698;
 let fvarB = cos($fvarA) * var(2) * 0.25;
-let fvarC = const240p((cos($fvarA) + 3) * 0.12 * ifElse(($fvarB < 0), -1, 1) * ((time % 9) * 0.05 + 1));
+let fvarC = (cos($fvarA) + 3) * 0.12 * ifElse(($fvarB < 0), -1, 1) * ((time % 9) * 0.05 + 1);
 explod{
 	id: 0;
 	anim: F const(FxDizzyEffect) + var(10);
