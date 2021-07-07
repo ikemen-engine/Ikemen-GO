@@ -1459,6 +1459,7 @@ type CharGlobalInfo struct {
 	constants        map[string]float32
 	remapPreset      map[string]RemapPreset
 	remappedpal      [2]int32
+	localcoord       [2]float32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1804,6 +1805,7 @@ func (c *Char) load(def string) error {
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
 	info, files, keymap, mapArray := true, true, true, true
+	gi.localcoord = [...]float32{320, 240}
 	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
 	c.localscl = 320 / float32(c.localcoord)
 	gi.portraitscale = 1
@@ -1824,10 +1826,9 @@ func (c *Char) load(def string) error {
 				gi.author, _, _ = is.getText("author")
 				gi.authorLow = strings.ToLower(gi.author)
 				gi.nameLow = strings.ToLower(c.name)
-				ok = is.ReadI32("localcoord", &c.localcoord)
-				if ok {
-					gi.portraitscale = 320 / float32(c.localcoord)
-					c.localcoord = int32(float32(c.localcoord) / (float32(sys.gameWidth) / 320))
+				if is.ReadF32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
+					gi.portraitscale = 320 / gi.localcoord[0]
+					c.localcoord = int32(gi.localcoord[0] / (float32(sys.gameWidth) / 320))
 					c.localscl = 320 / float32(c.localcoord)
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
@@ -2586,7 +2587,7 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) constp(coordinate, value float32) BytecodeValue {
-	return BytecodeFloat(320 / c.localscl / coordinate * value)
+	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
 }
 func (c *Char) ctrl() bool {
 	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
