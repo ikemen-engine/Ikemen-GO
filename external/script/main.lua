@@ -3301,11 +3301,19 @@ function main.f_unlockChar(num, bool, reset)
 		if main.t_selChars[num].hidden ~= 0 then
 			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
 			main.t_selChars[num].hidden = 0
-			if main.t_selChars[num].order < 0 then
+			if main.t_selChars[num].order ~= nil and main.t_selChars[num].order < 0 then
 				main.t_selChars[num].order = 0 - main.t_selChars[num].order
+				if main.t_orderChars[main.t_selChars[num].order] == nil then
+					main.t_orderChars[main.t_selChars[num].order] = {}
+				end
+				table.insert(main.t_orderChars[main.t_selChars[num].order], main.t_selChars[num].char_ref)
 			end
-			if main.t_selChars[num].ordersurvival < 0 then
+			if main.t_selChars[num].ordersurvival ~= nil and main.t_selChars[num].ordersurvival < 0 then
 				main.t_selChars[num].ordersurvival = 0 - main.t_selChars[num].ordersurvival
+				if main.t_orderSurvival[main.t_selChars[num].ordersurvival] == nil then
+					main.t_orderSurvival[main.t_selChars[num].ordersurvival] = {}
+				end
+				table.insert(main.t_orderSurvival[main.t_selChars[num].ordersurvival], main.t_selChars[num].char_ref)
 			end
 			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
 			if reset then start.f_resetGrid() end
