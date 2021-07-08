@@ -46,6 +46,11 @@ func closeLog(f *os.File) {
 	f.Close()
 }
 
+func saveConfig(data ConfigSettings, cfgPath string) {
+	cfg, _ := json.MarshalIndent(data, "", "	")
+	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
+}
+
 func main() {
 	// Make save directories, if they don't exist
 	os.Mkdir("save", os.ModeSticky|0755)
@@ -67,13 +72,13 @@ func main() {
 	}
 
 	// Setup config values, and get a reference to the config object for the main script and window size
-	tmp := setupConfig()
+	sys.configSettings = setupConfig()
 
 	//os.Mkdir("debug", os.ModeSticky|0755)
 
 	// Check if the main lua file exists.
-	if !fileExists(tmp.System) {
-		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
+	if !fileExists(sys.configSettings.System) {
+		var err = Error("Main lua file '" + sys.configSettings.System + "' can not be found.")
 		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
 		panic(err)
 	}
@@ -81,10 +86,10 @@ func main() {
 	log := createLog("Ikemen.log")
 	defer closeLog(log)
 	// Initialize game and create window
-	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
+	sys.luaLState = sys.init(sys.configSettings.GameWidth, sys.configSettings.GameHeight)
 
 	// Begin processing game using its lua scripts
-	if err := sys.luaLState.DoFile(tmp.System); err != nil {
+	if err := sys.luaLState.DoFile(sys.configSettings.System); err != nil {
 		// Display error logs.
 		fmt.Fprintln(log, err)
 		switch err.(type) {
@@ -175,7 +180,7 @@ Debug Options:
 	}
 }
 
-type configSettings struct {
+type ConfigSettings struct {
 	AIRamping                  bool
 	AIRandomColor              bool
 	AISurvivalColor            bool
@@ -261,6 +266,8 @@ type configSettings struct {
 	VolumeWarning              bool
 	VRetrace                   int
 	WindowIcon                 []string
+	WindowPosX                 int
+	WindowPosY                 int
 	WindowTitle                string
 	XinputTriggerSensitivity   float32
 	ZoomActive                 bool
@@ -277,7 +284,7 @@ type configSettings struct {
 }
 
 // Sets default config settings, then attemps to load existing config from disk
-func setupConfig() configSettings {
+func setupConfig() ConfigSettings {
 	// Default Config
 	defcfg := []byte(strings.Join(strings.Split(
 		`{
@@ -398,6 +405,8 @@ func setupConfig() configSettings {
 		"external/icons/IkemenCylia_96.png",
 		"external/icons/IkemenCylia_48.png"
 	],
+	"WindowPosX": 100,
+	"WindowPosY": 100,
 	"WindowTitle": "Ikemen GO",
 	"XinputTriggerSensitivity": 0,
 	"ZoomActive": true,
@@ -563,17 +572,17 @@ func setupConfig() configSettings {
 `, "\n"), "\r\n"))
 
 	// Unmarshal default config string into a struct
-	tmp := configSettings{}
+	tmp := ConfigSettings{}
 	chk(json.Unmarshal(defcfg, &tmp))
 
 	// Config file path
-	cfgPath := "save/config.json"
+	sys.configPath = "save/config.json"
 	// If a different config file is defined in the command line parameters, use it instead
 	if _, ok := sys.cmdFlags["-config"]; ok {
-		cfgPath = sys.cmdFlags["-config"]
+		sys.configPath = sys.cmdFlags["-config"]
 	}
 	// Load the config file, overwriting the defaults
-	if bytes, err := ioutil.ReadFile(cfgPath); err == nil {
+	if bytes, err := ioutil.ReadFile(sys.configPath); err == nil {
 		if len(bytes) >= 3 &&
 			bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf {
 			bytes = bytes[3:]
@@ -607,9 +616,7 @@ func setupConfig() configSettings {
 		tmp.PanningRange = 0
 	}
 	// Save config file
-	cfg, _ := json.MarshalIndent(tmp, "", "	")
-	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
-
+	saveConfig(tmp, sys.configPath)
 	// Set each config property to the system object
 	sys.afterImageMax = tmp.MaxAfterImage
 	sys.allowDebugKeys = tmp.DebugKeys
