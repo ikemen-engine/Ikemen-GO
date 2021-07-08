@@ -361,61 +361,45 @@ type Window struct {
 	x, y, w, h int
 }
 
-func (s *System) newWindow(title string, fullscreen bool, w, h int) (*Window, error) {
+func (s *System) newWindow(w, h int) (*Window, error) {
 	var err error
 	var window *glfw.Window
-	var x, y int
-
-	if fullscreen {
-		window, err = s.fullscreenWindow(w, h, title, nil, nil)
-		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
-	} else {
-		window, err = glfw.CreateWindow(w, h, title, nil, nil)
-		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+	var monitor *glfw.Monitor
+	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
+		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
-	chk(err)
-	x, y = window.GetPos()
+	var x, y int
+	if s.fullscreen {
+		if window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil); err != nil {
+			return nil, fmt.Errorf("failed to create window: %w", err)
+		}
+		if runtime.GOOS == "windows" && s.borderless {
+			window.SetAttrib(glfw.Decorated, 0)
+			window.SetPos(0, 0)
+			window.SetSize(w, h)
+		}
+		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+		vm := monitor.GetVideoMode()
+		x, y = (vm.Width - w) / 2, (vm.Height - h) / 2
+	} else {
+		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
+			return nil, fmt.Errorf("failed to create window: %w", err)
+		}
+		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+		x, y = window.GetPos()
+	}
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
 	window.SetCharModsCallback(charCallback)
-	// V-Sync
-	if s.vRetrace != -1 {
-		glfw.SwapInterval(s.vRetrace)
-	}
-	// Initialize OpenGL.
-	chk(gl.Init())
-	ret := &Window{window, title, fullscreen, x, y, w, h}
+	ret := &Window{window, s.windowTitle, s.fullscreen, x, y, w, h}
 	return ret, err
 }
-func (s *System) fullscreenWindow(w, h int, title string, monitor *glfw.Monitor,
-	mode *glfw.VidMode) (*glfw.Window, error) {
-	var err error
-	var window *glfw.Window
-
-	if monitor == nil {
-		if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
-			return nil, fmt.Errorf("failed to obtain primary monitor")
-		}
-	}
-	if runtime.GOOS == "windows" && s.borderless {
-		window, err = glfw.CreateWindow(w, h, title, nil, nil)
-		window.SetAttrib(glfw.Decorated, 0)
-		window.SetPos(0, 0)
-		window.SetSize(w, h)
-	} else {
-		window, err = glfw.CreateWindow(w, h, title, monitor, nil)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to create window: %w", err)
-	}
-	return window, nil
-}
-
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	} else {
+		w.x, w.y = w.GetPos()
 		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	}
@@ -430,10 +414,17 @@ func (s *System) init(w, h int32) *lua.LState {
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	s.window, err = s.newWindow(int(s.scrrect[2]), int(s.scrrect[3]))
+	chk(err)
 
-	s.window, err = sys.newWindow(s.windowTitle, s.fullscreen, int(s.scrrect[2]), int(s.scrrect[3]))
+	// V-Sync
+	if s.vRetrace != -1 {
+		glfw.SwapInterval(s.vRetrace)
+	}
+	// Initialize OpenGL.
+	chk(gl.Init())
 
-	// Check if the shader selected is currently avalible.
+	// Check if the shader selected is currently available.
 	if s.postProcessingShader < int32(len(s.externalShaderList))+3 {
 		s.postProcessingShader = 0
 	}
