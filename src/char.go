@@ -468,7 +468,7 @@ func (f *Fall) clear() {
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
 		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
-		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN())}
+		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN())}
 }
 func (f *Fall) xvel() float32 {
 	if math.IsNaN(float64(f.xvelocity)) {
@@ -3632,10 +3632,12 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			*dst = src
 		}
 	}
-	ifierrset := func(dst *int32, src int32) {
+	ifierrset := func(dst *int32, src int32) bool {
 		if *dst == IErr {
 			*dst = src
+			return true
 		}
+		return false
 	}
 	ifnanset(&hd.ground_velocity[0], 0)
 	ifnanset(&hd.ground_velocity[1], 0)
@@ -3647,6 +3649,9 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
+	if !ifierrset(&hd.fall.envshake_ampl, -4) {
+		hd.fall.envshake_ampl = int32(float32(hd.fall.envshake_ampl) * c.localscl)
+	}
 	if hd.fall.animtype == RA_Unknown {
 		if hd.air_animtype != RA_Unknown {
 			hd.fall.animtype = hd.air_animtype
