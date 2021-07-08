@@ -658,8 +658,8 @@
 	
 	p1.swap.snd = -1, 0
 	p2.swap.snd = -1, 0
-	p1.select.snd = -1, 0 ;Ikemen feature (uses character"s SND file)
-	p2.select.snd = -1, 0 ;Ikemen feature (uses character"s SND file)
+	p1.select.snd = -1, 0 ;Ikemen feature (uses character's SND file)
+	p2.select.snd = -1, 0 ;Ikemen feature (uses character's SND file)
 
 	; Ratio stuff (Ikemen feature)
 	; ------------------------------------------------------------

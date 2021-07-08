@@ -11,7 +11,7 @@ if main.flags['-config'] == nil then main.flags['-config'] = 'save/config.json' 
 if main.flags['-stats'] == nil then main.flags['-stats'] = 'save/stats.json' end
 
 --One-time load of the json routines
-json = (loadfile 'external/script/dkjson.lua')()
+json = (loadfile 'external/script/json.lua')()
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -2376,7 +2376,7 @@ main.t_itemname = {
 				sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 				config.IP[name] = address
 				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
-				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 			else
 				sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
 			end
@@ -2887,7 +2887,7 @@ function main.f_deleteIP(item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 		resetKey()
 		config.IP[t[item].itemname:gsub('^ip_', '')] = nil
-		main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+		main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 		for i = 1, #t do
 			if t[i].itemname == t[item].itemname then
 				table.remove(t, i)

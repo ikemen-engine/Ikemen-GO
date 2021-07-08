@@ -29,7 +29,7 @@ end
 --save configuration
 function options.f_saveCfg(reload)
 	--Data saving to config.json
-	main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+	main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 	--Reload game if needed
 	if reload then
 		main.f_warning(main.f_extractText(motif.warning_info.text_reload_text), motif.optionbgdef)
