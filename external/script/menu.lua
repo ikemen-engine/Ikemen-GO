@@ -385,7 +385,6 @@ for _, v in ipairs({'menu_info', 'training_info'}) do
 			motif[v].movelist_pos[1] + motif[v].movelist_text_offset[1] + motif[v].movelist_window_width,
 			motif[v].movelist_pos[2] + motif[v].movelist_text_offset[2] + (motif[v].movelist_window_visibleitems - 1) * main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY + motif[v].movelist_text_spacing[2]) + motif[v].movelist_window_margins_y[2] + math.max(0, motif[v].movelist_glyphs_offset[2])
 		}
-
 	end
 	menu[v .. '_txt_text']:update({window = menu[v .. '_t_movelistWindow']})
 end
