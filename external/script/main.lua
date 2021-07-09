@@ -1306,10 +1306,11 @@ function main.f_commandLine()
 	setRedLifeBar(config.BarRedLife)
 	local stage = config.StartStage
 	if main.flags['-s'] ~= nil then
-		if main.f_fileExists(main.flags['-s']) then
-			stage = main.flags['-s']
-		elseif main.f_fileExists('stages/' .. main.flags['-s'] .. '.def') then
-			stage = 'stages/' .. main.flags['-s'] .. '.def'
+		for _, v in ipairs({main.flags['-s'], 'stages/' .. main.flags['-s'], 'stages/' .. main.flags['-s'] .. '.def'}) do
+			if main.f_fileExists(v) then
+				stage = v
+				break
+			end
 		end
 	end
 	if main.t_stageDef[stage:lower()] == nil then
@@ -3301,13 +3302,13 @@ function main.f_unlockChar(num, bool, reset)
 		if main.t_selChars[num].hidden ~= 0 then
 			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
 			main.t_selChars[num].hidden = 0
-			for _, v in ipairs({'order', 'ordersurvival'}) do
-				if main.t_selChars[num][v] ~= nil and main.t_selChars[num][v] < 0 then
-					main.t_selChars[num][v] = 0 - main.t_selChars[num][v]
-					if main.t_orderChars[main.t_selChars[num][v]] == nil then
-						main.t_orderChars[main.t_selChars[num][v]] = {}
+			for k, t in pairs({order = main.t_orderChars, ordersurvival = main.t_orderSurvival}) do
+				if main.t_selChars[num][k] ~= nil and main.t_selChars[num][k] < 0 then
+					main.t_selChars[num][k] = 0 - main.t_selChars[num][k]
+					if t[main.t_selChars[num][k]] == nil then
+						t[main.t_selChars[num][k]] = {}
 					end
-					table.insert(main.t_orderChars[main.t_selChars[num][v]], main.t_selChars[num].char_ref)
+					table.insert(t[main.t_selChars[num][k]], main.t_selChars[num].char_ref)
 				end
 			end
 			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
