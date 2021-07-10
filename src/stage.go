@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -596,6 +597,7 @@ type Stage struct {
 	stageTime       int32
 	constants       map[string]float32
 	p1p3dist        float32
+	ver             [2]uint16
 }
 
 func newStage(def string) *Stage {
@@ -647,6 +649,19 @@ func loadStage(def string, main bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
+		s.ver = [2]uint16{}
+		if str, ok := sec[0]["mugenversion"]; ok {
+			for k, v := range SplitAndTrim(str, ".") {
+				if k >= len(s.ver) {
+					break
+				}
+				if v, err := strconv.ParseUint(v, 10, 16); err == nil {
+					s.ver[k] = uint16(v)
+				} else {
+					break
+				}
+			}
+		}
 		if tmp, ok := sec[0].getString("attachedchar"); ok {
 			s.attachedchardef = append(s.attachedchardef, tmp)
 		}
@@ -683,7 +698,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
-		sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+		if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+		}
 	}
 	if sec := defmap["bound"]; len(sec) > 0 {
 		sec[0].ReadI32("screenleft", &s.screenleft)
