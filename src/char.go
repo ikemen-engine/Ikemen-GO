@@ -467,8 +467,8 @@ func (f *Fall) clear() {
 }
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: -4.5, recover: true, recovertime: 4, kill: true,
-		envshake_freq: 60, envshake_ampl: -4, envshake_phase: float32(math.NaN())}
+		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
+		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN())}
 }
 func (f *Fall) xvel() float32 {
 	if math.IsNaN(float64(f.xvelocity)) {
@@ -1459,6 +1459,7 @@ type CharGlobalInfo struct {
 	constants        map[string]float32
 	remapPreset      map[string]RemapPreset
 	remappedpal      [2]int32
+	localcoord       [2]float32
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1679,6 +1680,7 @@ func (c *Char) clearState() {
 	c.ss.clear()
 	c.hitdef.clear()
 	c.ghv.clear()
+	c.ghv.fall.yvelocity /= c.localscl
 	c.ghv.clearOff()
 	c.hitby = [2]HitBy{}
 	for i := range c.ho {
@@ -1783,13 +1785,10 @@ func (c *Char) stCgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
 func (c *Char) ocd() *OverrideCharData {
-	if sys.tmode[c.playerNo&1] == TM_Turns {
-		if c.playerNo&1 == 0 {
-			return &sys.ocd[c.memberNo*2]
-		}
-		return &sys.ocd[c.memberNo*2+1]
+	if c.teamside == -1 {
+		return &sys.sel.ocd[2][c.memberNo]
 	}
-	return &sys.ocd[c.playerNo]
+	return &sys.sel.ocd[c.teamside][c.memberNo]
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
@@ -1806,6 +1805,7 @@ func (c *Char) load(def string) error {
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
 	info, files, keymap, mapArray := true, true, true, true
+	gi.localcoord = [...]float32{320, 240}
 	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
 	c.localscl = 320 / float32(c.localcoord)
 	gi.portraitscale = 1
@@ -1826,10 +1826,9 @@ func (c *Char) load(def string) error {
 				gi.author, _, _ = is.getText("author")
 				gi.authorLow = strings.ToLower(gi.author)
 				gi.nameLow = strings.ToLower(c.name)
-				ok = is.ReadI32("localcoord", &c.localcoord)
-				if ok {
-					gi.portraitscale = 320 / float32(c.localcoord)
-					c.localcoord = int32(float32(c.localcoord) / (float32(sys.gameWidth) / 320))
+				if is.ReadF32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
+					gi.portraitscale = 320 / gi.localcoord[0]
+					c.localcoord = int32(gi.localcoord[0] / (float32(sys.gameWidth) / 320))
 					c.localscl = 320 / float32(c.localcoord)
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
@@ -2588,7 +2587,7 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) constp(coordinate, value float32) BytecodeValue {
-	return BytecodeFloat(320 / c.localscl / coordinate * value)
+	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
 }
 func (c *Char) ctrl() bool {
 	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
@@ -2849,12 +2848,6 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(c.gi().pctime)
 }
-func (c *Char) ratioLevel() int32 {
-	if c.playerNo&1 == 0 {
-		return sys.ratioLevel[int32(c.memberNo)*2]
-	}
-	return sys.ratioLevel[int32(c.memberNo)*2+1]
-}
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()
 }
@@ -2991,7 +2984,7 @@ func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
 	return nil
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	_, freqmul float32, _ *float32, log bool) {
+	p, freqmul float32, x *float32, log bool) {
 	if g < 0 {
 		return
 	}
@@ -3032,15 +3025,16 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		if f {
 			ch.SetVolume(256)
 		} else {
-			ch.SetVolume(c.gi().data.volume * vol / 100)
+			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}
 		//} else {
 		//	if f {
-		//		ch.SetVolume(vol + 256)
+		//		ch.SetVolume(float32(vol + 256))
 		//	} else {
-		//		ch.SetVolume(c.gi().data.volume + vol)
+		//		ch.SetVolume(float32(c.gi().data.volume + vol))
 		//	}
 		//}
+		ch.SetPan(p*c.facing, c.localscl, x)
 	}
 }
 
@@ -3638,10 +3632,12 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			*dst = src
 		}
 	}
-	ifierrset := func(dst *int32, src int32) {
+	ifierrset := func(dst *int32, src int32) bool {
 		if *dst == IErr {
 			*dst = src
+			return true
 		}
+		return false
 	}
 	ifnanset(&hd.ground_velocity[0], 0)
 	ifnanset(&hd.ground_velocity[1], 0)
@@ -3652,6 +3648,10 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
+	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
+	if !ifierrset(&hd.fall.envshake_ampl, -4) {
+		hd.fall.envshake_ampl = int32(float32(hd.fall.envshake_ampl) * c.localscl)
+	}
 	if hd.fall.animtype == RA_Unknown {
 		if hd.air_animtype != RA_Unknown {
 			hd.fall.animtype = hd.air_animtype
@@ -4404,7 +4404,6 @@ func (c *Char) hitFallDamage() {
 	}
 }
 func (c *Char) hitFallVel() {
-	//TODO: localcoord problem when HitDef is not assigned (e.g. F1)
 	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
 			c.setXV(c.ghv.fall.xvelocity)
@@ -4709,7 +4708,7 @@ func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time in
 		return
 	}
 	if snd[0] != -1 {
-		sys.lifebar.snd.play(snd, 100)
+		sys.lifebar.snd.play(snd, 100, 0)
 	}
 	index := 0
 	if !top {
@@ -4973,7 +4972,6 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 
-
 func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	// Nil anim & standby check.
 	if atk.curFrame == nil || c.curFrame == nil ||
@@ -4983,9 +4981,9 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	}
 
 	// Z axis check.
-	if c.size.z.enable && atk.size.z.enable && 
+	if c.size.z.enable && atk.size.z.enable &&
 		((c.pos[2]-c.size.z.width)*c.localscl > (atk.pos[2]+atk.size.z.width)*atk.localscl ||
-		(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
+			(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
 		return false
 	}
 
@@ -5413,13 +5411,11 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = -1
-				// Mugen has a combo delay in lefebar were is active for 1 frame more than it should.
+				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
 				if c.comboExtraFrameWindow <= 0 {
-					if !c.scf(SCF_dizzy) {
-						c.fakeReceivedHits = 0
-						c.fakeComboDmg = 0
-						c.fakeCombo = false
-					}
+					c.fakeReceivedHits = 0
+					c.fakeComboDmg = 0
+					c.fakeCombo = false
 				} else {
 					c.fakeCombo = true
 					c.comboExtraFrameWindow--
@@ -5873,7 +5869,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		}
-		c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+		if !proj {
+			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+		}
 		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
 		if ghvset {
 			if !proj {

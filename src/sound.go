@@ -90,13 +90,13 @@ func (m *Mixer) write() bool {
 	return true
 }
 func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
-	sampleRate float64, loop bool, volume float32) float64 {
+	sampleRate float64, loop bool, lv, rv float32) float64 {
 	fidxadd := sampleRate / audioFrequency
 	if fidxadd > 0 {
 		switch bytesPerSample {
 		case 1:
 			switch channels {
-			case 1:
+			case 1: //mix_m8
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := int(fidx)
 					if iidx >= len(wav) {
@@ -105,13 +105,13 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					sam := volume * (float32(wav[iidx]) - 128) / 128
-					m.buf[i] += sam
-					m.buf[i+1] += sam
+					sam := (float32(wav[iidx]) - 128) / 128
+					m.buf[i] += lv * sam
+					m.buf[i+1] += rv * sam
 					fidx += fidxadd
 				}
 				return fidx
-			case 2:
+			case 2: //mix_s8
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 2 * int(fidx)
 					if iidx > len(wav)-2 {
@@ -120,15 +120,15 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					m.buf[i] += volume * (float32(wav[iidx]) - 128) / 128
-					m.buf[i+1] += volume * (float32(wav[iidx+1]) - 128) / 128
+					m.buf[i] += lv * (float32(wav[iidx]) - 128) / 128
+					m.buf[i+1] += rv * (float32(wav[iidx+1]) - 128) / 128
 					fidx += fidxadd
 				}
 				return fidx
 			}
 		case 2:
 			switch channels {
-			case 1:
+			case 1: //mix_m16
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 2 * int(fidx)
 					if iidx > len(wav)-2 {
@@ -137,14 +137,13 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					sam := volume *
-						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i] += sam
-					m.buf[i+1] += sam
+					sam := float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
+					m.buf[i] += lv * sam
+					m.buf[i+1] += rv * sam
 					fidx += fidxadd
 				}
 				return fidx
-			case 2:
+			case 2: //mix_s16
 				for i := 0; i <= len(m.buf)-2; i += 2 {
 					iidx := 4 * int(fidx)
 					if iidx > len(wav)-4 {
@@ -153,9 +152,9 @@ func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
 						}
 						iidx, fidx = 0, 0
 					}
-					m.buf[i] += volume *
+					m.buf[i] += lv *
 						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i+1] += volume *
+					m.buf[i+1] += rv *
 						float32(int(wav[iidx+2])|int(int8(wav[iidx+3]))<<8) / (1 << 15)
 					fidx += fidxadd
 				}
@@ -575,13 +574,14 @@ func LoadSnd(filename string) (*Snd, error) {
 func (s *Snd) Get(gn [2]int32) *Wave {
 	return s.table[gn]
 }
-func (s *Snd) play(gn [2]int32, volumescale int32) bool {
+func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
 	c := sys.sounds.GetChannel()
 	if c == nil {
 		return false
 	}
 	c.sound = s.Get(gn)
-	c.SetVolume(volumescale * 64 / 25)
+	c.SetVolume(float32(volumescale * 64 / 25))
+	c.SetPan(pan, 0, nil)
 	return c.sound != nil
 }
 func (s *Snd) stop(gn [2]int32) {
@@ -668,43 +668,79 @@ func (w *Wave) play() bool {
 	c.sound = w
 	return c.sound != nil
 }
+func (w *Wave) getDuration() float32 {
+	return float32(len(w.Wav)) / float32((w.SamplesPerSec * uint32(w.Channels) * uint32(w.BytesPerSample)))
+}
 
 // ------------------------------------------------------------------
 // Sound
 
 type Sound struct {
 	sound   *Wave
-	volume  int16
+	volume  float32
 	loop    bool
 	freqmul float32
 	fidx    float64
+	ls, p   float32
+	x       *float32
 }
 
 func (s *Sound) mix() {
 	if s.sound == nil {
 		return
 	}
+	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
+	lv, rv := s.volume, s.volume
+	if sys.stereoEffects && (s.x != nil || s.p != 0) {
+		var r float32
+		if s.x != nil { // pan
+			r = ((sys.xmax - s.ls**s.x) - s.p) / (sys.xmax - sys.xmin)
+		} else { // abspan
+			r = ((sys.xmax-sys.xmin)/2 - s.p) / (sys.xmax - sys.xmin)
+		}
+		sc := sys.panningRange / 100
+		of := (100 - sys.panningRange) / 200
+		lv = s.volume * 2 * (r*sc + of)
+		rv = s.volume * 2 * ((1-r)*sc + of)
+		if lv > 512 {
+			lv = 512
+		} else if lv < 0 {
+			lv = 0
+		}
+		if rv > 512 {
+			rv = 512
+		} else if rv < 0 {
+			rv = 0
+		}
+	}
 	s.fidx = sys.mixer.Mix(s.sound.Wav, s.fidx,
 		int(s.sound.BytesPerSample), int(s.sound.Channels),
 		float64(s.sound.SamplesPerSec)*float64(s.freqmul), s.loop,
-		float32(s.volume)/256)
+		lv/256, rv/256)
 	if int(s.fidx) >= len(s.sound.Wav)/
 		int(s.sound.BytesPerSample*s.sound.Channels) {
 		s.sound = nil
 		s.fidx = 0
 	}
 }
-func (s *Sound) SetVolume(vol int32) {
+
+func (s *Sound) SetVolume(vol float32) {
 	if vol < 0 {
 		s.volume = 0
 	} else if vol > 512 {
 		s.volume = 512
 	} else {
-		s.volume = int16(vol)
+		s.volume = vol
 	}
 }
-func (s *Sound) SetPan(pan float32, offset *float32) {
-	// 未実装
+func (s *Sound) SetPan(p, ls float32, x *float32) {
+	s.ls = ls
+	s.x = x
+	if p != 0 {
+		s.p = p * ls
+	} else {
+		s.p = 0
+	}
 }
 
 type Sounds []Sound

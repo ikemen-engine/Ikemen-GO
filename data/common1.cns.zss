@@ -1,5 +1,5 @@
 # Zantei State Script
-# Syntax highlighter for Notepad++: https://github.com/K4thos/npp_zss
+# Syntax highlighter for Notepad++: https://github.com/ikemen-engine/zss_npp
 #-------------------------------------------------------------------------------
 # 文字コードは utf-8
 # && と || は短絡評価
@@ -231,7 +231,6 @@ if time = 0 {
 	ctrlSet{value: 0}
 	changeAnim{value: 110}
 	#hitBy{value: SCA, NT, ST, HT; time: 30}
-	
 	velSet{x: 0; z: -7}
 }
 velMul{z: 0.8}
@@ -544,12 +543,13 @@ if hitShakeOver {
 if majorVersion = 1 && anim != [5000, 5199] && selfAnimExist(5030) {
 	changeAnim{value: 5030}
 }
-velAdd{y: getHitVar(yAccel)}
 if time = 0 {
 	hitVelSet{x: 1; y: 1}
+} else {
+	velAdd{y: getHitVar(yAccel)}
 }
 if hitOver || vel y > 0 && pos y >= const(movement.air.gethit.groundlevel) {
-	if HitFall {
+	if hitFall {
 		changeState{value: 5050}
 	} else {
 		changeState{value: 5040}
@@ -566,11 +566,13 @@ if animTime = 0 {
 if time = 0 && selfAnimExist(5035) && anim != [5051, 5059] && anim != 5090 {
 	changeAnim{value: 5035}
 }
-velAdd{y: getHitVar(yAccel)}
+if time > 0 {
+	velAdd{y: getHitVar(yAccel)}
+}
 if hitOver || animTime = 0 ||
 	vel y > 0 && pos y >= const(movement.air.gethit.groundlevel) ||
 	time = 0 && anim != 5035 {
-	if HitFall {
+	if hitFall {
 		changeState{value: 5050}
 	} else {
 		changeState{value: 5040}
@@ -591,7 +593,9 @@ if hitOver {
 	ctrlSet{value: 1}
 	stateTypeSet{moveType: I}
 }
-velAdd{y: getHitVar(yAccel)}
+if time > 0 {
+	velAdd{y: getHitVar(yAccel)}
+}
 if vel y > 0 && pos y >= 0 {
 	changeState{value: 52}
 }
@@ -608,7 +612,9 @@ persistent(0) if anim = [5050, 5059] && vel y >= ifElse(anim = 5050,
 	const240p(1), const240p(-2)) && selfAnimExist(anim + 10) {
 	changeAnim{value: anim + 10}
 }
-velAdd{y: getHitVar(yAccel)}
+if time > 0 {
+	velAdd{y: getHitVar(yAccel)}
+}
 if alive && canRecover && command = "recovery" {
 	if vel y > 0 &&
 		pos y >= const(movement.air.gethit.groundrecover.ground.threshold) {
@@ -638,8 +644,9 @@ if hitShakeOver {
 
 if time = 0 {
 	hitVelSet{x: 1; y: 1}
+} else {
+	velAdd{y: getHitVar(yAccel)}
 }
-velAdd{y: getHitVar(yAccel)}
 if vel y > 0 && pos y >= const(movement.air.gethit.trip.groundlevel) {
 	changeState{value: 5110}
 }
@@ -654,7 +661,7 @@ let ret = cond($cond && selfAnimExist($base + anim % 10),
 [StateDef 5080; type: L; moveType: H; physics: N; velSet: 0, 0;]
 
 if time = 0 {
-	sysVar(2) := ifelse (getHitVar(yVel) = 0, 5080, 5090);
+	sysVar(2) := ifElse(getHitVar(yVel) = 0, 5080, 5090);
 	if (anim = [5081, 5089] || anim = [5111, 5119]) &&
 		selfAnimExist(sysVar(2) + anim % 10) {
 		sysVar(2) := sysVar(2) + anim % 10;
@@ -690,10 +697,10 @@ if hitOver {
 if majorVersion = 1 {
 	explod{
 		anim: F(60 + ($vely > const240p(5)) + ($vely > const240p(14)));
-		posType: p1;
-		pos: 0, 0;
+		posType: none; #p1
+		pos: pos x + cameraPos x, 0; #0, 0
 		facing: facing;
-		sprPriority: ifelse ($vely <= const240p(14), -10, 10);
+		sprPriority: ifElse($vely <= const240p(14), -10, 10);
 	}
 } else {
 	gameMakeAnim{
@@ -702,7 +709,7 @@ if majorVersion = 1 {
 		under: $vely <= 14;
 	}
 }
-PlaySnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
+playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (hit ground from fall)
@@ -728,7 +735,7 @@ if time = 0 {
 } else if time = 3 {
 	hitFallDamage{}
 }
-PosFreeze{}
+posFreeze{}
 if animTime = 0 {
 	changeState{value: 5101}
 }
@@ -742,9 +749,11 @@ if time = 0 {
 	changeAnim{value: $a}
 	hitFallVel{}
 	posSet{y: const(movement.down.bounce.offset.y)}
-	PosAdd{x: const(movement.down.bounce.offset.x)}
+	posAdd{x: const(movement.down.bounce.offset.x)}
 }
-velAdd{y: const(movement.down.bounce.yAccel)}
+if time > 0 {
+	velAdd{y: const(movement.down.bounce.yAccel)}
+}
 if vel y > 0 && pos y >= const(movement.down.bounce.groundlevel) {
 	changeState{value: 5110}
 }
@@ -840,7 +849,9 @@ notHitBy{value: SCA; time: 1}
 if anim = 5035 && animTime = 0 {
 	changeAnim{value: 5050}
 }
-velAdd{y: getHitVar(yAccel)}
+if time > 0 {
+	velAdd{y: getHitVar(yAccel)}
+}
 if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.groundlevel) {
 	selfState{value: 5201}
 }
@@ -850,7 +861,7 @@ if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.groundlevel) {
 [StateDef 5201; type: A; moveType: H; physics: A; anim: 5200;]
 
 if time = 0 {
-	if p2dist X < const240p(-5) {
+	if p2Dist x < const240p(-5) {
 		turn{}
 	}
 	velSet{
@@ -858,10 +869,10 @@ if time = 0 {
 		y: const(velocity.air.gethit.groundrecover.y);
 	}
 	posSet{y: 0}
-	palFX{time: 3; add: 128, 128, 128}
+	palFx{time: 3; add: 128, 128, 128}
 	if majorVersion = 1 {
 		explod{anim: F60; posType: none;
-			pos: Pos X + camerapos X, pos y - floor(vel y);
+			pos: pos x + cameraPos x, pos y - floor(vel y);
 			facing: facing; sprPriority: -10}
 	}
 } else if time = 1 && majorVersion != 1 {
@@ -874,15 +885,15 @@ notHitBy{value: SCA; time: 1}
 [StateDef 5210; type: A; moveType: I; physics: N; anim: 5210; ctrl: 0;]
 
 if time = 0 {
-	palFX{time: 3; add: 128, 128, 128}
-	PosFreeze{}
-	if p2dist X < const240p(-20) {
+	palFx{time: 3; add: 128, 128, 128}
+	posFreeze{}
+	if p2Dist x < const240p(-20) {
 		turn{}
 	}
 	notHitBy{value: SCA; time: 15}
 } else if time < 4 {
 	if majorVersion = 1 {
-		PosFreeze{}
+		posFreeze{}
 	}
 } else {
 	if time = 4 {
@@ -942,11 +953,11 @@ if time = 0 && selfAnimExist(5500) {
 # Initialize (at the start of the round)
 [StateDef 5900; type: S;]
 
-if RoundsExisted = 0 {
+if roundsExisted = 0 {
 	varRangeSet{value: 0}
 	varRangeSet{fvalue: 0}
 }
-remapPal{source: 1, 1; dest: 1, ifElse(isHelper, palNo, drawpalNo)}
+remapPal{source: 1, 1; dest: 1, ifElse(isHelper, palNo, drawPalNo)}
 if roundNo = 1 {
 	changeState{value: 190}
 }

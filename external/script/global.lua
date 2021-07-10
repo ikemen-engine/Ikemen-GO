@@ -254,7 +254,7 @@ function loop()
 				menu.f_init()
 			end
 		--demo mode
-		elseif gamemode('demo') and ((motif.attract_mode.enabled == 1 and main.credits > 0 and not getSoundPlaying(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal'})) or gametime() >= motif.demo_mode.fight_endtime) then
+		elseif gamemode('demo') and ((motif.attract_mode.enabled == 1 and main.credits > 0 and not sndPlaying(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal'})) or gametime() >= motif.demo_mode.fight_endtime) then
 			endMatch()
 		--challenger
 		elseif gamemode('arcade') then

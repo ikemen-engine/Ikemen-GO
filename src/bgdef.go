@@ -285,7 +285,7 @@ func (s *BGDef) draw(top bool, x, y, scl float32) {
 	//x, y = x/s.localscl, y/s.localscl
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw([...]float32{x, y}, scl, s.localscl, 1, s.scale, 0)
+			b.draw([...]float32{x, y}, scl, s.localscl, 1, s.scale, 0, false)
 		}
 	}
 }

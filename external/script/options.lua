@@ -29,7 +29,7 @@ end
 --save configuration
 function options.f_saveCfg(reload)
 	--Data saving to config.json
-	main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+	main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 	--Reload game if needed
 	if reload then
 		main.f_warning(main.f_extractText(motif.warning_info.text_reload_text), motif.optionbgdef)
@@ -98,16 +98,19 @@ options.t_itemname = {
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 			config.AIRamping = true
-			config.AIRandomColor = true
+			config.AIRandomColor = false
+			config.AISurvivalColor = true
 			config.AudioDucking = false
+			--config.AudioSampleRate = 44100
 			config.AutoGuard = false
 			config.BarGuard = false
 			config.BarRedLife = true
 			config.BarStun = false
-			config.Borderless = false
-			config.ComboExtraFrameWindow = 1
+			--config.Borderless = false
+			--config.ComboExtraFrameWindow = 0
 			--config.CommonAir = "data/common.air"
 			--config.CommonCmd = "data/common.cmd"
+			--config.CommonConst = "data/common.const"
 			--config.CommonLua = {
 			--	"loop()"
 			--}
@@ -122,51 +125,58 @@ options.t_itemname = {
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
 			--config.DebugClipboardRows = 2
+			--config.DebugClsnDarken = true
 			--config.DebugConsoleRows = 15
 			--config.DebugFont = "font/f-4x6.def"
 			--config.DebugFontScale = 1
 			config.DebugKeys = true
 			config.DebugMode = true
 			config.Difficulty = 8
-			config.EscOpensMenu = true
+			--config.EscOpensMenu = true
 			config.ExternalShaders = {}
+			--config.FirstRun = false
 			--config.FontShaderVer = "150 core"
-			config.ForceStageZoomin = 0
-			config.ForceStageZoomout = 0
+			--config.ForceStageZoomin = 0
+			--config.ForceStageZoomout = 0
+			--config.Framerate = 60
 			config.Fullscreen = false
 			config.GameWidth = 640
 			config.GameHeight = 480
 			config.GameSpeed = 100
 			--config.IP = {}
-			config.LifebarFontScale = 1
+			--config.LifebarFontScale = 1
 			config.LifeMul = 100
 			config.ListenPort = "7500"
 			config.LoseSimul = true
 			config.LoseTag = false
-			config.MaxDrawGames = -2
+			config.MaxAfterImage = 128
+			--config.MaxBgmVolume = 0
+			config.MaxDrawGames = -2 -- -2: match.maxdrawgames; -1: match.wins; >= 0: overriding fight.def parameters
+			config.MaxExplod = 512
 			config.MaxHelper = 56
 			config.MaxPlayerProjectile = 256
-			config.MaxExplod = 512
-			config.MaxAfterImage = 128
 			--config.Modules = {}
 			--config.Motif = "data/system.def"			
 			config.MSAA = false
 			config.NumSimul = {2, 4}
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
+			config.PanningRange = 25
 			config.Players = 4
-			config.PngSpriteFilter = true
+			--config.PngSpriteFilter = true
 			config.PostProcessingShader = 0
 			config.QuickContinue = false
-			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
 			config.RatioAttack = {0.82, 1.0, 1.17, 1.30}
+			config.RatioLife = {0.80, 1.0, 1.17, 1.40}
 			config.RatioRecoveryBase = 0
 			config.RatioRecoveryBonus = 20
-			config.RoundsNumSingle = 2
 			config.RoundsNumSimul = 2
+			config.RoundsNumSingle = 2
 			config.RoundsNumTag = 2
 			config.RoundTime = 99
-			config.StartStage = "stages/stage0-720.def"
+			--config.ScreenshotFolder = ""
+			--config.StartStage = "stages/stage0-720.def"
+			config.StereoEffects = true
 			--config.System = "external/script/main.lua"
 			config.Team1VS2Life = 100
 			config.TeamDuplicates = true
@@ -182,12 +192,14 @@ options.t_itemname = {
 			--config.WindowIcon = {"external/icons/IkemenCylia.png"}
 			--config.WindowTitle = "Ikemen GO"
 			--config.XinputTriggerSensitivity = 0
-			config.ZoomActive = true
-			config.ZoomDelay = false
-			config.ZoomSpeed = 1
+			--config.ZoomActive = true
+			--config.ZoomDelay = false
+			--config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
 			main.timeFramesPerCount = getTimeFramesPerCount()
 			main.f_updateRoundsNum()
+			main.f_setPlayers(config.Players, true)
+			motif.f_loadCursorData()
 			options.f_resetVardisplay(options.menu)
 			setAllowDebugKeys(config.DebugKeys)
 			setAllowDebugMode(config.DebugMode)
@@ -203,16 +215,18 @@ options.t_itemname = {
 			setMaxExplod(config.MaxExplod)
 			setMaxHelper(config.MaxHelper)
 			setMaxPlayerProjectile(config.MaxPlayerProjectile)
+			setPanningRange(config.PanningRange)
 			setPowerShare(1, config.TeamPowerShare)
 			setPowerShare(2, config.TeamPowerShare)
+			setStereoEffects(config.StereoEffects)
 			setTeam1VS2Life(config.Team1VS2Life / 100)
 			setVolumeBgm(config.VolumeBgm)
 			setVolumeMaster(config.VolumeMaster)
 			setVolumeSfx(config.VolumeSfx)
-			setZoom(config.ZoomActive)
-			setZoomMax(config.ForceStageZoomin)
-			setZoomMin(config.ForceStageZoomout)
-			setZoomSpeed(config.ZoomSpeed)
+			--setZoom(config.ZoomActive)
+			--setZoomMax(config.ForceStageZoomin)
+			--setZoomMin(config.ForceStageZoomout)
+			--setZoomSpeed(config.ZoomSpeed)
 			toggleFullscreen(config.Fullscreen)
 			toggleVsync(config.VRetrace)
 			modified = true
@@ -326,7 +340,7 @@ options.t_itemname = {
 			main.maxDrawGames = {config.MaxDrawGames, config.MaxDrawGames}
 			t.items[item].vardisplay = config.MaxDrawGames
 			modified = true
-		elseif main.f_input(main.t_players, {'$B'}) and main.maxDrawGames[1] > 1 then
+		elseif main.f_input(main.t_players, {'$B'}) and main.maxDrawGames[1] > 0 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.MaxDrawGames = main.maxDrawGames[1] - 1
 			main.maxDrawGames = {config.MaxDrawGames, config.MaxDrawGames}
@@ -350,7 +364,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--AI Palette
+	--Arcade Palette
 	['aipalette'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
@@ -360,6 +374,20 @@ options.t_itemname = {
 				config.AIRandomColor = true
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
+			modified = true
+		end
+		return true
+	end,
+	--Survival Palette
+	['aisurvivalpalette'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.AISurvivalColor then
+				config.AISurvivalColor = false
+			else
+				config.AISurvivalColor = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
 			modified = true
 		end
 		return true
@@ -605,7 +633,7 @@ options.t_itemname = {
 	end,
 	--Max Simul Chars
 	['maxsimul'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[2] < 8 then
+		if main.f_input(main.t_players, {'$F'}) and config.NumSimul[2] < 4 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.NumSimul[2] = config.NumSimul[2] + 1
 			t.items[item].vardisplay = config.NumSimul[2]
@@ -913,6 +941,38 @@ options.t_itemname = {
 			end
 			t.items[item].vardisplay = options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 			setAudioDucking(config.AudioDucking)
+			modified = true
+		end
+		return true
+	end,
+	--Stereo Effects
+	['stereoeffects'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			if config.StereoEffects then
+				config.StereoEffects = false
+			else
+				config.StereoEffects = true
+			end
+			t.items[item].vardisplay = options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
+			setStereoEffects(config.StereoEffects)
+			modified = true
+		end
+		return true
+	end,
+	--Panning Width
+	['panningrange'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F'}) and config.PanningRange < 100 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			config.PanningRange = config.PanningRange + 1
+			setPanningRange(config.PanningRange)
+			t.items[item].vardisplay = config.PanningRange .. '%'
+			modified = true
+		elseif main.f_input(main.t_players, {'$B'}) and config.PanningRange > 0 then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+			config.PanningRange = config.PanningRange - 1
+			setPanningRange(config.PanningRange)
+			t.items[item].vardisplay = config.PanningRange .. '%'
 			modified = true
 		end
 		return true
@@ -1254,6 +1314,7 @@ end
 function options.f_vardisplay(itemname)
 	if itemname == 'afterimagemax' then return config.MaxAfterImage end
 	if itemname == 'aipalette' then return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
+	if itemname == 'aisurvivalpalette' then return options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
 	if itemname == 'airamping' then return options.f_boolDisplay(config.AIRamping) end
 	if itemname == 'audioducking' then return options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'autoguard' then return options.f_boolDisplay(config.AutoGuard) end
@@ -1279,6 +1340,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'mintag' then return config.NumTag[1] end
 	if itemname == 'minturns' then return config.NumTurns[1] end
 	if itemname == 'msaa' then return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
+	if itemname == 'panningrange' then return config.PanningRange .. '%' end
 	if itemname == 'players' then return config.Players end
 	if itemname == 'portchange' then return config.ListenPort end
 	if itemname == 'projectilemax' then return config.MaxPlayerProjectile end
@@ -1302,6 +1364,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'sfxvolume' then return config.VolumeSfx .. '%' end
 	if itemname == 'shaders' then return f_externalShaderName() end
 	if itemname == 'singlevsteamlife' then return config.Team1VS2Life .. '%' end
+	if itemname == 'stereoeffects' then return options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) end
 	if itemname == 'stunbar' then return options.f_boolDisplay(config.BarStun) end
 	if itemname == 'teamduplicates' then return options.f_boolDisplay(config.TeamDuplicates) end
 	if itemname == 'teamlifeshare' then return options.f_boolDisplay(config.TeamLifeShare) end

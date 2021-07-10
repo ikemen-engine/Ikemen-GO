@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -320,7 +321,7 @@ func (bg *backGround) reset() {
 	bg.bga.sinlooptime = bg.startsinlt
 }
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
-	stgscl [2]float32, shakeY float32) {
+	stgscl [2]float32, shakeY float32, isStage bool) {
 	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
 	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
 	sclx := MaxF(0, scl+(1-scl)*(1-dx))
@@ -358,7 +359,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
-	if !sys.cam.ZoomEnable {
+	if isStage && !sys.cam.ZoomEnable {
 		if bg.rasterx[1] == bg.rasterx[0] &&
 			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
 			x = float32(math.Floor(float64(x/bgscl))) * bgscl
@@ -596,6 +597,7 @@ type Stage struct {
 	stageTime       int32
 	constants       map[string]float32
 	p1p3dist        float32
+	ver             [2]uint16
 }
 
 func newStage(def string) *Stage {
@@ -647,6 +649,19 @@ func loadStage(def string, main bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
+		s.ver = [2]uint16{}
+		if str, ok := sec[0]["mugenversion"]; ok {
+			for k, v := range SplitAndTrim(str, ".") {
+				if k >= len(s.ver) {
+					break
+				}
+				if v, err := strconv.ParseUint(v, 10, 16); err == nil {
+					s.ver[k] = uint16(v)
+				} else {
+					break
+				}
+			}
+		}
 		if tmp, ok := sec[0].getString("attachedchar"); ok {
 			s.attachedchardef = append(s.attachedchardef, tmp)
 		}
@@ -660,7 +675,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 						var err error
 						sys.stageList[Atoi(submatchall[0])], err = loadStage(v, false)
 						if err != nil {
-							return nil, fmt.Errorf("Failed to load %v:\n%v\n", def, err)
+							return nil, fmt.Errorf("failed to load %v:\n%v", def, err)
 						}
 					}
 				}
@@ -683,7 +698,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
-		sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+		if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+		}
 	}
 	if sec := defmap["bound"]; len(sec) > 0 {
 		sec[0].ReadI32("screenleft", &s.screenleft)
@@ -728,9 +745,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			s.stageCamera.zoomin = sys.cam.ZoomMax
 		}
-		sec[0].ReadF32("zoomout", &s.stageCamera.mugenZoomOut)
 		if sys.cam.ZoomMin == 0 {
-			s.stageCamera.zoomout = s.stageCamera.mugenZoomOut
+			sec[0].ReadF32("zoomout", &s.stageCamera.zoomout)
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
@@ -1020,18 +1036,18 @@ func (s *Stage) action() {
 	s.bga.action()
 	link, zlink := 0, -1
 	for i, b := range s.bg {
-		s.bg[i].bga.action()
-		if i > 0 && b.positionlink {
-			s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
-			s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
-		} else {
-			link = i
-		}
-		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
-			zlink = i
-			s.bga.offset[1] += b.bga.offset[1]
-		}
 		if b.active {
+			s.bg[i].bga.action()
+			if i > 0 && b.positionlink {
+				s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
+				s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
+			} else {
+				link = i
+			}
+			if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
+				zlink = i
+				s.bga.offset[1] += b.bga.offset[1]
+			}
 			s.bg[i].anim.Action()
 		}
 	}
@@ -1088,7 +1104,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			s.stageCamera.drawOffsetY)/480)
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs)
+			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
 		}
 	}
 }

@@ -1641,7 +1641,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_const480p:
 		*sys.bcStack.Top() = c.constp(640, sys.bcStack.Top().ToF())
 	case OC_ex_const720p:
-		*sys.bcStack.Top() = c.constp(960, sys.bcStack.Top().ToF())
+		*sys.bcStack.Top() = c.constp(1280, sys.bcStack.Top().ToF())
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_airtype:
@@ -1816,7 +1816,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_rank:
 		sys.bcStack.PushF(c.rank())
 	case OC_ex_ratiolevel:
-		sys.bcStack.PushI(c.ratioLevel())
+		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.comboDmg)
 	case OC_ex_receivedhits:
@@ -2277,6 +2277,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
+				x = &crun.pos[0]
 			} else {
 				return false
 			}
@@ -2974,6 +2975,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			if e.anim != nil && exp[0].evalB(c) { // ffx
+				e.anim.start_scale[0] /= crun.localscl
+				e.anim.start_scale[1] /= crun.localscl
+			}
 		case explod_angle:
 			e.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3177,6 +3182,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
 				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+				if anim != nil && exp[0].evalB(c) { // ffx
+					anim.start_scale[0] /= crun.localscl
+					anim.start_scale[1] /= crun.localscl
+				}
 				eachExpl(func(e *Explod) { e.anim = anim })
 			case explod_angle:
 				a := exp[0].evalF(c)
@@ -3255,6 +3264,10 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			if e.anim != nil && exp[0].evalB(c) { // ffx
+				e.anim.start_scale[0] /= crun.localscl
+				e.anim.start_scale[1] /= crun.localscl
+			}
 		}
 		return true
 	})
@@ -5222,7 +5235,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, &crun.pos[0], false)
+				vo, 0, 1, nil, false)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5942,8 +5955,8 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if ch <= 0 && int(ch) < len(crun.sounds) {
-		crun.sounds[ch].SetPan(pan, x)
+	if ch >= 0 && int(ch) < len(crun.sounds) {
+		crun.sounds[ch].SetPan(pan * crun.facing, crun.localscl, x)
 	}
 	return false
 }

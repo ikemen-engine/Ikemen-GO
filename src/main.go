@@ -178,6 +178,7 @@ Debug Options:
 type configSettings struct {
 	AIRamping                  bool
 	AIRandomColor              bool
+	AISurvivalColor            bool
 	AudioDucking               bool
 	AudioSampleRate            int32
 	AutoGuard                  bool
@@ -194,6 +195,7 @@ type configSettings struct {
 	ControllerStickSensitivity float32
 	Credits                    int
 	DebugClipboardRows         int
+	DebugClsnDarken            bool
 	DebugConsoleRows           int
 	DebugFont                  string
 	DebugFontScale             float32
@@ -206,11 +208,11 @@ type configSettings struct {
 	FontShaderVer              string
 	ForceStageZoomin           float32
 	ForceStageZoomout          float32
+	Framerate                  int32
 	Fullscreen                 bool
 	GameWidth                  int32
 	GameHeight                 int32
 	GameSpeed                  float32
-	Framerate                  int32
 	IP                         map[string]string
 	LifebarFontScale           float32
 	LifeMul                    float32
@@ -218,6 +220,7 @@ type configSettings struct {
 	LoseSimul                  bool
 	LoseTag                    bool
 	MaxAfterImage              int32
+	MaxBgmVolume               int
 	MaxDrawGames               int32
 	MaxExplod                  int
 	MaxHelper                  int32
@@ -228,6 +231,7 @@ type configSettings struct {
 	NumSimul                   [2]int
 	NumTag                     [2]int
 	NumTurns                   [2]int
+	PanningRange               float32
 	Players                    int
 	PngSpriteFilter            bool
 	PostProcessingShader       int32
@@ -242,6 +246,7 @@ type configSettings struct {
 	RoundTime                  int32
 	ScreenshotFolder           string
 	StartStage                 string
+	StereoEffects              bool
 	System                     string
 	Team1VS2Life               float32
 	TeamDuplicates             bool
@@ -254,7 +259,6 @@ type configSettings struct {
 	VolumeMaster               int
 	VolumeSfx                  int
 	VolumeWarning              bool
-	MaxBgmVolume               int
 	VRetrace                   int
 	WindowIcon                 []string
 	WindowTitle                string
@@ -279,6 +283,7 @@ func setupConfig() configSettings {
 		`{
 	"AIRamping": true,
 	"AIRandomColor": false,
+	"AISurvivalColor": true,
 	"AudioDucking": false,
 	"AudioSampleRate": 44100,
 	"AutoGuard": false,
@@ -304,6 +309,7 @@ func setupConfig() configSettings {
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
 	"DebugClipboardRows": 2,
+	"DebugClsnDarken": true,
 	"DebugConsoleRows": 15,
 	"DebugFont": "font/default-3x5-bold.def",
 	"DebugFontScale": 1,
@@ -328,6 +334,7 @@ func setupConfig() configSettings {
 	"LoseSimul": true,
 	"LoseTag": false,
 	"MaxAfterImage": 128,
+	"MaxBgmVolume": 0,
 	"MaxDrawGames": -2,
 	"MaxExplod": 512,
 	"MaxHelper": 56,
@@ -347,6 +354,7 @@ func setupConfig() configSettings {
 		2,
 		4
 	],
+	"PanningRange": 25,
 	"Players": 4,
 	"PngSpriteFilter": true,
 	"PostProcessingShader": 0,
@@ -370,7 +378,8 @@ func setupConfig() configSettings {
 	"RoundsNumTag": 2,
 	"RoundTime": 99,
 	"ScreenshotFolder": "",
-	"StartStage" : "stages/stage0-720.def",
+	"StartStage": "stages/stage0-720.def",
+	"StereoEffects": true,
 	"System": "external/script/main.lua",
 	"Team1VS2Life": 100,
 	"TeamDuplicates": true,
@@ -383,7 +392,6 @@ func setupConfig() configSettings {
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
 	"VolumeWarning": true,
-	"MaxBgmVolume": 0,
 	"VRetrace": 1, 
 	"WindowIcon": [
 		"external/icons/IkemenCylia_256.png",
@@ -572,7 +580,33 @@ func setupConfig() configSettings {
 		}
 		chkEX(json.Unmarshal(bytes, &tmp), "Error while loading the config file.\n")
 	}
-
+	// Fix incorrect settings (default values saved into config.json)
+	switch tmp.AudioSampleRate {
+	case 22050, 44100, 48000:
+	default:
+		tmp.AudioSampleRate = 44100
+	}
+	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
+		tmp.Framerate = 60
+	}
+	if tmp.MaxBgmVolume > 400 {
+		tmp.MaxBgmVolume = 0
+	}
+	if tmp.NumSimul[1] > MaxSimul {
+		tmp.NumSimul[1] = MaxSimul
+	}
+	if tmp.NumTag[1] > MaxSimul {
+		tmp.NumTag[1] = MaxSimul
+	}
+	if tmp.Players > MaxSimul*2 {
+		tmp.Players = MaxSimul * 2
+	}
+	if tmp.PanningRange > 100 {
+		tmp.PanningRange = 100
+	} else if tmp.PanningRange < 0 {
+		tmp.PanningRange = 0
+	}
+	// Save config file
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
 
@@ -581,17 +615,9 @@ func setupConfig() configSettings {
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.allowDebugMode = tmp.DebugMode
 	sys.audioDucking = tmp.AudioDucking
-	switch tmp.AudioSampleRate {
-	case 44100, 48000:
-		Mp3SampleRate = int(tmp.AudioSampleRate)
-	default:
-		Mp3SampleRate = 44100
-	}
+	Mp3SampleRate = int(tmp.AudioSampleRate)
 	sys.bgmVolume = tmp.VolumeBgm
-	//sys.volumeWarning = tmp.VolumeWarning
-	if tmp.MaxBgmVolume <= 400 {
-		sys.maxBgmVolume = tmp.MaxBgmVolume
-	}
+	sys.maxBgmVolume = tmp.MaxBgmVolume
 	sys.borderless = tmp.Borderless
 	sys.cam.ZoomDelayEnable = tmp.ZoomDelay
 	sys.cam.ZoomActive = tmp.ZoomActive
@@ -609,6 +635,7 @@ func setupConfig() configSettings {
 	sys.commonLua = tmp.CommonLua
 	sys.commonStates = tmp.CommonStates
 	sys.clipboardRows = tmp.DebugClipboardRows
+	sys.clsnDarken = tmp.DebugClsnDarken
 	sys.consoleRows = tmp.DebugConsoleRows
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod
@@ -617,10 +644,7 @@ func setupConfig() configSettings {
 		sys.fontShaderVer = tmp.FontShaderVer
 	}
 	sys.fullscreen = tmp.Fullscreen
-
-	if tmp.Framerate > 0 || tmp.Framerate <= 840 {
-		FPS = int(tmp.Framerate)
-	}
+	FPS = int(tmp.Framerate)
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
 	sys.lifebarFontScale = tmp.LifebarFontScale
@@ -631,6 +655,7 @@ func setupConfig() configSettings {
 	sys.loseTag = tmp.LoseTag
 	sys.masterVolume = tmp.VolumeMaster
 	sys.multisampleAntialiasing = tmp.MSAA
+	sys.panningRange = tmp.PanningRange
 	sys.playerProjectileMax = tmp.MaxPlayerProjectile
 	sys.postProcessingShader = tmp.PostProcessingShader
 	sys.pngFilter = tmp.PngSpriteFilter
@@ -643,6 +668,7 @@ func setupConfig() configSettings {
 	} else {
 		sys.screenshotFolder = tmp.ScreenshotFolder
 	}
+	sys.stereoEffects = tmp.StereoEffects
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
 	sys.wavVolume = tmp.VolumeSfx

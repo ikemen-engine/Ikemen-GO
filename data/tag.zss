@@ -1,59 +1,53 @@
 # Tag code with Active Switch and Counter Switch mechanics, inspired by MvCI
 # More info: https://github.com/K4thos/Ikemen_GO/wiki#misc_tag
-# ===============================================================================
+#===============================================================================
 # Functions
-# ===============================================================================
+#===============================================================================
 # Returns tagged in char id
-[Function fTagPartnerRange(partnerID) ret]
-if $partnerID > getPlayerID(teamSide) + numPartner {
-	let partnerID = getPlayerID(teamSide);
-} else if $partnerID < getPlayerID(teamSide) {
-	let partnerID = getPlayerID(teamSide) + numPartner;
+[Function fTagPartnerRange(partnerId) ret]
+if $partnerId > getPlayerId(teamSide) + numPartner {
+	let partnerId = getPlayerId(teamSide);
+} else if $partnerId < getPlayerId(teamSide) {
+	let partnerId = getPlayerId(teamSide) + numPartner;
 }
-let ret = $partnerID;
+let ret = $partnerId;
 
-[Function fTagGetPartnerID(add) ret]
-let partnerID = call fTagPartnerRange(id + $add);
-if playerID($partnerID),alive = 0 {
+[Function fTagGetPartnerId(add) ret]
+let partnerId = call fTagPartnerRange(id + $add);
+if playerId($partnerId),alive = 0 {
 	let partnerCnt = 1;
 	if $partnerCnt = min(numPartner, 3) {
-		let partnerID = 0;
+		let partnerId = 0;
 	} else {
-		let partnerID = call fTagPartnerRange($partnerID + $add);
-		if playerID($partnerID),alive = 0 {
+		let partnerId = call fTagPartnerRange($partnerId + $add);
+		if playerId($partnerId),alive = 0 {
 			let partnerCnt = $partnerCnt + 1;
 			if $partnerCnt = min(numPartner, 3) {
-				let partnerID = 0;
+				let partnerId = 0;
 			} else {
-				let partnerID = call fTagPartnerRange($partnerID + $add);
-				if playerID($partnerID),alive = 0 {
-					let partnerID = 0;
+				let partnerId = call fTagPartnerRange($partnerId + $add);
+				if playerId($partnerId),alive = 0 {
+					let partnerId = 0;
 				}
 			}
 		}
 	}
 }
-let ret = $partnerID;
+let ret = $partnerId;
 
-# Decides if AI switch should happen, returns tagged in char id (the function can be overridden locally)
-#
-# ToDo:
-# Balance default AI switch scaling.
-# - Prioritize partner with more life.
-# - Less red life. (Gacel note: Wait K4thos, shoulnt the AI and the char redLife be the same?)
-# - Increase chance at the hyper start, or as a reaction to Counter Switch, etc
-# - Decrease chance when pressured in corner etc.
-[Function fTagAISwitch(nextPartnerID, previousPartnerID) ret]
+# Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
+# TODO: Balance default AI switch scaling.
+[Function fTagAISwitch(nextPartnerId, previousPartnerId) ret]
 let ret = 0;
-if const(tagCommandAIChance) >= rand(1, 100) {
+if const(TagCommandAIChance) >= rand(1, 100) {
 	if command = "TagShiftFwd" {
-		let ret = $nextPartnerID;
+		let ret = $nextPartnerId;
 	} else if command = "TagShiftBack" {
-		let ret = $previousPartnerID;
+		let ret = $previousPartnerId;
 	}
 }
 
-#tagIn Switch explod
+# tagIn Switch explod
 [Function fTagSwitchExplod()]
 let anim = const(FxTagSwitchAI);
 if aiLevel = 0 {
@@ -66,7 +60,7 @@ explod{
 	sprPriority: 5;
 	ownPal: 1;
 	facing: facing;
-	scale: const240p(0.5), const240p(0.5);
+	scale: 0.5, 0.5;
 	bindTime: -1;
 	superMoveTime: -1;
 	pauseMoveTime: -1;
@@ -74,9 +68,9 @@ explod{
 	ignoreHitPause: 1;
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagEnteringScreen
-# ===============================================================================
+#===============================================================================
 [StateDef 5600;
 	type: S; moveType: H; physics: N;
 	anim: const(AnimTagEnteringScreen);
@@ -86,26 +80,26 @@ explod{
 screenBound{value: 0; moveCamera: 1, 1}
 
 if time = 0 {
-	if facing != playerID(getPlayerID(teamLeader)),facing {
+	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
 	# set starting pos (redirected to gather consistent local coordinate space values ready for const240p conversion)
 	teamMapSet{
 		map: "_iksys_tagPosX";
-		value: pos X * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerID(getPlayerID(teamLeader)),id
+		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
+		redirectId: playerId(getPlayerId(teamLeader)),id
 	}
 	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
 	# store distance to switch initiation position
-	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos X - playerID(getPlayerID(teamLeader)),pos X)}
+	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - playerId(getPlayerId(teamLeader)),pos x)}
 	# set movement
 	velSet{x: const240p(const(TagInVelX)); y: 0}
 	# change active player assignment
-	mapSet{map: "_iksys_tagLastID"; value: playerID(getPlayerID(teamLeader)),id}
+	mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
 	tagIn{leader: playerNo}
 	call fTagSwitchExplod();
 } else {
-	mapAdd{map: "_iksys_tagSwitchDist"; value: -vel X}
+	mapAdd{map: "_iksys_tagSwitchDist"; value: -vel x}
 }
 
 # Regain control in place where the switch was initiated or right after entering screen, in case of Counter Switch
@@ -120,14 +114,14 @@ if !ctrl && backEdgeBodyDist >= 0
 
 # Continue at least until TagInTime * TagInVelX distance is reached,
 # or further if control is not regained yet, but stop in front of enemy.
-if (ctrl && time >= const(TagInTime)) || (backEdgeBodyDist >= 0 && P2BodyDist X < const240p(30)) {
+if (ctrl && time >= const(TagInTime)) || (backEdgeBodyDist >= 0 && p2BodyDist X < const240p(30)) {
 	velSet{x: 0; y: 0}
 	changeState{value: const(StateStand); ctrl: 1}
 }
 
-# ===============================================================================
+#===============================================================================
 # StateTagLeavingScreen
-# ===============================================================================
+#===============================================================================
 [StateDef 5610;
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
@@ -140,19 +134,19 @@ if time = 0 {
 }
 
 screenBound{value: 0; moveCamera: 0, 0}
-PlayerPush{value: 0}
+playerPush{value: 0}
 
 velSet{x: min(const(velocity.run.fwd.x), const240p(const(TagInVelX))); y: 0}
 
-if BackEdgeDist < -const240p(160) || FrontEdgeDist < -const240p(160) || map(_iksys_tagLeavingPosX) = pos X {
-	tagOut{stateno: const(StateTagWaitingOutside)}
+if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iksys_tagLeavingPosX) = pos x {
+	tagOut{stateNo: const(StateTagWaitingOutside)}
 }
 
 # TODO: This line won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
-mapSet{map: "_iksys_tagLeavingPosX"; value: pos X}
+mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
 #===============================================================================
-#StateTagWaitingOutside
+# StateTagWaitingOutside
 #===============================================================================
 [StateDef 5611;
 	type: A; moveType: I; physics: N;
@@ -165,14 +159,14 @@ screenBound{value: 0; moveCamera: 0, 0}
 
 # force standby character to always stay outside visible area
 posSet{
-	x: (playerID(getPlayerID(teamLeader)),pos X
-		- playerID(getPlayerID(teamLeader)),ScreenPos X - const240p(160)) * (-facing);
-	y: playerID(getPlayerID(teamLeader)),pos Y
-		- playerID(getPlayerID(teamLeader)),ScreenPos Y - const240p(160);
+	x: (playerId(getPlayerId(teamLeader)),pos x
+		- playerId(getPlayerId(teamLeader)),screenPos x - const240p(160)) * (-facing);
+	y: playerId(getPlayerId(teamLeader)),pos y
+		- playerId(getPlayerId(teamLeader)),screenPos y - const240p(160);
 }
 
 #===============================================================================
-#StateTagJumpingIn
+# StateTagJumpingIn
 #===============================================================================
 [StateDef 5620;
 	type: A; moveType: I; physics: N;
@@ -182,7 +176,7 @@ posSet{
 
 if roundState = 3 {
 	screenBound{value: 0; moveCamera: 0, 0}
-	PlayerPush{value: 0}
+	playerPush{value: 0}
 } else {
 	screenBound{value: 0; moveCamera: 1, 1}
 }
@@ -193,20 +187,20 @@ if backEdgeBodyDist <= 0 {
 }
 
 if time = 0 {
-	if facing != playerID(getPlayerID(teamLeader)),facing {
+	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# Set starting pos..
+	# Set starting pos.
 	# (redirected to gather consistent local coordinate space values ready for const240p conversion)
 	teamMapSet{
 		map: "_iksys_tagPosX";
-		value: pos X * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerID(getPlayerID(teamLeader)),id
+		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
+		redirectId: playerId(getPlayerId(teamLeader)),id
 	}
 	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
 	# Change active player assignment if the battle still goes on
 	if roundState = 2 {
-		mapSet{map: "_iksys_tagLastID"; value: playerID(getPlayerID(teamLeader)),id}
+		mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
 		tagIn{leader: playerNo}
 		call fTagSwitchExplod();
 	}
@@ -223,7 +217,7 @@ if animElemTime(2) = 0 && map(_iksys_tagJumpingInState) = 0 {
 	mapSet{map: "_iksys_tagJumpingInState"; value: 1}
 } else if animElemTime(2) > 0 {
 	gravity{}
-	if vel Y >= 0 && pos Y > 0 {
+	if vel y >= 0 && pos y > 0 {
 		velSet{x: 0; y: 0}
 		mapSet{map: "_iksys_tagJumpingInState"; value: 0}
 		changeState{value: const(StateTagLanding)}
@@ -231,7 +225,7 @@ if animElemTime(2) = 0 && map(_iksys_tagJumpingInState) = 0 {
 }
 
 #===============================================================================
-#StateTagLanding
+# StateTagLanding
 #===============================================================================
 [StateDef 5621;
 	type: S; moveType: I; physics: N;
@@ -247,16 +241,16 @@ if animTime >= 0 {
 }
 
 #===============================================================================
-#Global states
+# Global states
 #===============================================================================
 [StateDef -2]
 
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
-	#do nothing, global code disabled locally or executed by helper/stage
+	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 && teamMode = Tag {
 	mapSet{map: "_iksys_tagActive"; value: 1}
 	mapSet{map: "_iksys_tagJumpingInState"; value: 0}
-	mapSet{map: "_iksys_tagLastID"; value: 0}
+	mapSet{map: "_iksys_tagLastId"; value: 0}
 	if playerNo = teamLeader {
 		mapSet{map: "_iksys_tagIntroFlag"; value: 1}
 	} else {
@@ -268,8 +262,8 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	# alive players
 	} else if alive {
 		let beingHit = 0;
-		ignoreHitPause if MoveType = H
-			|| GetHitVar(isbound) != 0
+		ignoreHitPause if moveType = H
+			|| getHitVar(isbound) != 0
 			|| stateNo = const(StateDownedGetHit_gettingUp) ||
 			stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)]
 		{
@@ -280,30 +274,31 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 			# not being hit or having enough power for Counter Switch
 			ignoreHitPause if $beingHit = 0 || power >= const(TagCounterSwitchPower) {
 				# last active player has left the screen or died
-				if map(_iksys_tagLastID) = 0
-					|| playerID(map(_iksys_tagLastID)),stateNo = const(StateTagWaitingOutside)
-					|| playerID(map(_iksys_tagLastID)),alive = 0
+				if map(_iksys_tagLastId) = 0
+					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
+					|| playerId(map(_iksys_tagLastId)),alive = 0
 				{
-					let partnerID = 0;
-					let nextPartnerID = call fTagGetPartnerID(1);
-					let previousPartnerID = call fTagGetPartnerID(-1);
+					let partnerId = 0;
+					let nextPartnerId = call fTagGetPartnerId(1);
+					let previousPartnerId = call fTagGetPartnerId(-1);
 					if aiLevel > 0 {
-						let partnerID = call fTagAISwitch($nextPartnerID, $previousPartnerID);
+						let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
 					} else if command = "TagShiftFwd" {
-						let partnerID = $nextPartnerID;
+						let partnerId = $nextPartnerId;
 					} else if command = "TagShiftBack" {
-						let partnerID = $previousPartnerID;
+						let partnerId = $previousPartnerId;
 					}
-					if $partnerID > 0 && playerID($partnerID),stateNo = const(StateTagWaitingOutside) {
+					# command buffered, partner standby
+					if $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
 						if $beingHit = 1 {
-							#Hit/Combo Counter Switch power cost (1000 by default)
+							# Hit/Combo Counter Switch power cost (1000 by default)
 							powerAdd{value: -const(TagCounterSwitchPower)}
 							lifebarAction{spr: const(MsgCounterSwitch), 0}
-							mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerID}
+							mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
 						} else {
 							lifebarAction{spr: const(MsgActiveSwitch), 0}
 						}
-						tagIn{stateno: const(StateTagEnteringScreen); redirectId: $partnerID}
+						tagIn{stateNo: const(StateTagEnteringScreen); redirectId: $partnerId}
 					}
 				}
 			}
@@ -313,15 +308,15 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 			# on screen, at the round start / during round
 			if roundState = 2
 				&& (ctrl || standby || map(_iksys_tagIntroFlag) = 0)
-				&& (stateNo = const(StateStand) || (pos Y >= 0
+				&& (stateNo = const(StateStand) || (pos y >= 0
 				&& stateNo != [const(StateTagEnteringScreen), const(StateTagWaitingOutside)]))
 			{
 				mapSet{map: "_iksys_tagIntroFlag"; value: 1}
-				mapSet{map: "_iksys_tagLeavingPosX"; value: pos X + 0.0001}
+				mapSet{map: "_iksys_tagLeavingPosX"; value: pos x + 0.0001}
 				changeState{value: const(StateTagLeavingScreen); ctrl: 0}
 			# tagged out, at the round end
 			} else if roundState = 3 && stateNo = const(StateTagWaitingOutside) {
-				tagIn{stateno: const(StateTagJumpingIn)}
+				tagIn{stateNo: const(StateTagJumpingIn)}
 			}
 		}
 	# active player died and hit the ground
@@ -329,17 +324,17 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		&& stateNo = [const(StateDownedGetHit_hitGroundFromFall), const(StateDownedGetHit_lyingDefeated)]
 	{
 		mapSet{map: "_iksys_tagActive"; value: 0}
-		let partnerID = call fTagGetPartnerID(1);
-		if $partnerID > 0 {
+		let partnerId = call fTagGetPartnerId(1);
+		if $partnerId > 0 {
 			lifebarAction{spr: const(MsgPartnerChange), 0}
-			mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerID}
-			tagIn{stateno: const(StateTagJumpingIn); redirectId: $partnerID}
+			mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
+			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
 		}
 	}
 	# Red Life regeneration
-	if standby && RedLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { #every 30 frames (0.5s) by default
-		let regenVal = min(RedLife, ceil(LifeMax * const(TagRedLifeRegenPercent))); #0.5% LifeMax by default
-		LifeAdd{value: $regenVal; absolute: 1}
-		RedLifeAdd{value: -$regenVal; absolute: 1}
+	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 frames (0.5s) by default
+		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); # 0.5% lifeMax by default
+		lifeAdd{value: $regenVal; absolute: 1}
+		redLifeAdd{value: -$regenVal; absolute: 1}
 	}
 }

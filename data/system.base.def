@@ -658,8 +658,8 @@
 	
 	p1.swap.snd = -1, 0
 	p2.swap.snd = -1, 0
-	p1.select.snd = -1, 0 ;Ikemen feature (uses character"s SND file)
-	p2.select.snd = -1, 0 ;Ikemen feature (uses character"s SND file)
+	p1.select.snd = -1, 0 ;Ikemen feature (uses character's SND file)
+	p2.select.snd = -1, 0 ;Ikemen feature (uses character's SND file)
 
 	; Ratio stuff (Ikemen feature)
 	; ------------------------------------------------------------
@@ -923,7 +923,7 @@
 	p1.state.yes = 5510, 180
 	p1.state.no = 5520, 170
 
-	p2.state.continue = -1
+	p2.state.continue = 
 	p2.state.yes = 
 	p2.state.no = 
 	
@@ -931,7 +931,7 @@
 	p1.teammate.state.yes = 
 	p1.teammate.state.no = 
 	
-	p2.teammate.state.continue = -1
+	p2.teammate.state.continue = 
 	p2.teammate.state.yes = 
 	p2.teammate.state.no = 
 	
@@ -1468,7 +1468,8 @@
 	;menu.itemname.roundsnumsingle = "Rounds to Win (Single)"
 	;menu.itemname.maxdrawgames = "Max Draw Games"
 	;menu.itemname.credits = "Credits"
-	;menu.itemname.aipalette = "AI Palette"
+	;menu.itemname.aipalette = "Arcade Palette"
+	;menu.itemname.aisurvivalpalette = "Survival Palette"
 	;menu.itemname.airamping = "AI Ramping"
 	;menu.itemname.quickcontinue = "Quick Continue"
 	;menu.itemname.autoguard = "Auto-Guard"
@@ -1511,6 +1512,8 @@
 	;menu.itemname.bgmvolume = "BGM Volume"
 	;menu.itemname.sfxvolume = "SFX Volume"
 	;menu.itemname.audioducking = "Audio Ducking"
+	;menu.itemname.stereoeffects = "Stereo Effects"
+	;menu.itemname.panningrange = "Panning Range"
 	;menu.itemname.keyboard = "Key Config"
 	;menu.itemname.gamepad = "Joystick Config"
 	;menu.itemname.inputdefault = "Default"
@@ -2096,11 +2099,6 @@
 	text.font = "f-6x9.def", 0, 1, 255, 255, 255
 	text.font.scale = 1.0, 1.0
 	text.font.height = -1
-	text.chars.text = "No characters in select.def available for random selection.\nPress any key to exit the program."
-	text.stages.text = "No stages in select.def available for random selection.\nPress any key to exit the program."
-	text.order.text = "Incorrect "%s" settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program."
-	text.ratio.text = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def."
-	text.training.text = "Training character (' .. config.TrainingChar .. ') not found.\nPress any key to exit the program."
 	text.reload.text = "Some selected options require Ikemen to be restarted.\nPress any key to exit the program."
 	text.noreload.text = "Some selected options require Ikemen to be restarted.\nPress any key to continue."
 	text.keys.text = "Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset."

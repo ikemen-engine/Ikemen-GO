@@ -32,15 +32,6 @@ func numArg(l *lua.LState, argi int) float64 {
 	}
 	return float64(num)
 }
-
-func intArg(l *lua.LState, argi int) int32 {
-	num, ok := l.Get(argi).(lua.LNumber)
-	if !ok {
-		l.RaiseError("The %vth argument is not a number.", argi)
-	}
-	return int32(num)
-}
-
 func boolArg(l *lua.LState, argi int) bool {
 	return l.ToBool(argi)
 }
@@ -975,7 +966,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
-				sys.sel.cdefOverwrite = [len(sys.sel.cdefOverwrite)]string{}
+				sys.sel.cdefOverwrite = nil
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
@@ -984,13 +975,11 @@ func systemScriptInit(l *lua.LState) {
 				sys.bgPalFX = *newPalFX()
 				sys.superpmap = *newPalFX()
 				sys.resetGblEffect()
-				sys.resetOverrideCharData()
 				sys.dialogueFlg = false
 				sys.dialogueForce = 0
 				sys.dialogueBarsFlg = false
 				sys.noSoundFlg = false
 				sys.postMatchFlg = false
-				sys.ratioLevel = [MaxSimul*2 + MaxAttachedChar]int32{}
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				return 2
@@ -1331,22 +1320,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.roundTime))
 		return 1
 	})
-	luaRegister(l, "getSoundPlaying", func(*lua.LState) int {
-		s, ok := toUserData(l, 1).(*Snd)
-		if !ok {
-			userDataError(l, 1, s)
-		}
-		w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
-		var found bool
-		for _, v := range sys.sounds {
-			if v.sound != nil && v.sound == w {
-				found = true
-				break
-			}
-		}
-		l.Push(lua.LBool(found))
-		return 1
-	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
 		c := sys.sel.GetStage(int(numArg(l, 1)))
 		tbl := l.NewTable()
@@ -1429,32 +1402,38 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "numberToRune", func(l *lua.LState) int {
-		l.Push(lua.LString(string('A' - 1 + int(numArg(l, 1)))))
+		l.Push(lua.LString(fmt.Sprint('A' - 1 + int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "overrideCharData", func(l *lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
-		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+		mn := int(numArg(l, 2))
+		if len(sys.sel.ocd[tn-1]) == 0 {
+			l.RaiseError("\noverrideCharData function used before loading player %v, member %v\n", tn, mn)
+		}
+		tableArg(l, 3).ForEach(func(key, value lua.LValue) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
 				case "life":
-					sys.ocd[pn-1].life = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].life = int32(lua.LVAsNumber(value))
 				case "lifeMax":
-					sys.ocd[pn-1].lifeMax = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].lifeMax = int32(lua.LVAsNumber(value))
 				case "power":
-					sys.ocd[pn-1].power = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].power = int32(lua.LVAsNumber(value))
 				case "dizzyPoints":
-					sys.ocd[pn-1].dizzyPoints = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].dizzyPoints = int32(lua.LVAsNumber(value))
 				case "guardPoints":
-					sys.ocd[pn-1].guardPoints = int32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].guardPoints = int32(lua.LVAsNumber(value))
+				case "ratioLevel":
+					sys.sel.ocd[tn-1][mn-1].ratioLevel = int32(lua.LVAsNumber(value))
 				case "lifeRatio":
-					sys.ocd[pn-1].lifeRatio = float32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].lifeRatio = float32(lua.LVAsNumber(value))
 				case "attackRatio":
-					sys.ocd[pn-1].attackRatio = float32(lua.LVAsNumber(value))
+					sys.sel.ocd[tn-1][mn-1].attackRatio = float32(lua.LVAsNumber(value))
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -1887,24 +1866,28 @@ func systemScriptInit(l *lua.LState) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
-				case "timer":
-					sys.lifebar.tr.active = lua.LVAsBool(value)
-				case "p1score":
-					sys.lifebar.sc[0].active = lua.LVAsBool(value)
-				case "p2score":
-					sys.lifebar.sc[1].active = lua.LVAsBool(value)
-				case "match":
-					sys.lifebar.ma.active = lua.LVAsBool(value)
-				case "p1ai":
-					sys.lifebar.ai[0].active = lua.LVAsBool(value)
-				case "p2ai":
-					sys.lifebar.ai[1].active = lua.LVAsBool(value)
-				case "mode":
-					sys.lifebar.activeMode = lua.LVAsBool(value)
 				case "bars":
 					sys.lifebar.activeBars = lua.LVAsBool(value)
 				case "lifebar":
 					sys.lifebar.active = lua.LVAsBool(value)
+				case "match":
+					sys.lifebar.ma.active = lua.LVAsBool(value)
+				case "mode":
+					sys.lifebar.activeMode = lua.LVAsBool(value)
+				case "p1ai":
+					sys.lifebar.ai[0].active = lua.LVAsBool(value)
+				case "p1score":
+					sys.lifebar.sc[0].active = lua.LVAsBool(value)
+				case "p1wins":
+					sys.lifebar.wc[0].active = lua.LVAsBool(value)
+				case "p2ai":
+					sys.lifebar.ai[1].active = lua.LVAsBool(value)
+				case "p2score":
+					sys.lifebar.sc[1].active = lua.LVAsBool(value)
+				case "p2wins":
+					sys.lifebar.wc[1].active = lua.LVAsBool(value)
+				case "timer":
+					sys.lifebar.tr.active = lua.LVAsBool(value)
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -2015,6 +1998,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.motifDir = strArg(l, 1)
 		return 0
 	})
+	luaRegister(l, "setPanningRange", func(l *lua.LState) int {
+		sys.panningRange = float32(numArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "setPlayers", func(l *lua.LState) int {
 		total := int(numArg(l, 1))
 		if len(sys.keyConfig) > total {
@@ -2053,20 +2040,12 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setRatioLevel", func(*lua.LState) int {
-		pn := int(numArg(l, 1))
-		if pn < 1 || pn > MaxSimul*2+MaxAttachedChar {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
-		}
-		rn := int32(numArg(l, 2))
-		if rn < 0 || rn > 4 {
-			l.RaiseError("\nInvalid ratio number: %v\n", rn)
-		}
-		sys.ratioLevel[pn-1] = rn
-		return 0
-	})
 	luaRegister(l, "setRedLifeBar", func(l *lua.LState) int {
 		sys.lifebar.activeRl = boolArg(l, 1)
+		return 0
+	})
+	luaRegister(l, "setStereoEffects", func(l *lua.LState) int {
+		sys.stereoEffects = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setStunBar", func(l *lua.LState) int {
@@ -2087,11 +2066,17 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nInvalid team mode: %v\n", tm)
 		}
 		nt := int32(numArg(l, 3))
-		if nt < 1 || nt > MaxSimul {
+		if nt < 1 || (tm != TM_Turns && nt > MaxSimul) {
 			l.RaiseError("\nInvalid team size: %v\n", nt)
 		}
-		sys.sel.selected[tn-1], sys.tmode[tn-1] = nil, tm
-		sys.numTurns[tn-1], sys.numSimul[tn-1] = nt, nt
+		sys.sel.selected[tn-1], sys.sel.ocd[tn-1] = nil, nil
+		sys.tmode[tn-1] = tm
+		if tm == TM_Turns {
+			sys.numSimul[tn-1] = 1
+		} else {
+			sys.numSimul[tn-1] = nt
+		}
+		sys.numTurns[tn-1] = nt
 		if (tm == TM_Simul || tm == TM_Tag) && nt == 1 {
 			sys.tmode[tn-1] = TM_Single
 		}
@@ -2117,6 +2102,14 @@ func systemScriptInit(l *lua.LState) {
 		sys.wavVolume = int(numArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setWinCount", func(*lua.LState) int {
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("\nInvalid team side: %v\n", tn)
+		}
+		sys.lifebar.wc[tn-1].wins = int32(numArg(l, 2))
+		return 0
+	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
 		sys.cam.ZoomActive = boolArg(l, 1)
 		return 0
@@ -2137,6 +2130,18 @@ func systemScriptInit(l *lua.LState) {
 		time.Sleep(time.Duration((numArg(l, 1))) * time.Second)
 		return 0
 	})
+	luaRegister(l, "sndGetLength", func(*lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		var frames int32
+		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
+			frames = int32(math.Ceil(float64(w.getDuration() * 60)))
+		}
+		l.Push(lua.LNumber(frames))
+		return 1
+	})
 	luaRegister(l, "sndNew", func(l *lua.LState) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
@@ -2154,8 +2159,29 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 4 {
 			volumescale = int32(numArg(l, 4))
 		}
-		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale)
+		var pan float32
+		if l.GetTop() >= 5 {
+			pan = float32(numArg(l, 5))
+		}
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan)
 		return 0
+	})
+	luaRegister(l, "sndPlaying", func(*lua.LState) int {
+		s, ok := toUserData(l, 1).(*Snd)
+		if !ok {
+			userDataError(l, 1, s)
+		}
+		var f bool
+		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
+			for _, v := range sys.sounds {
+				if v.sound != nil && v.sound == w {
+					f = true
+					break
+				}
+			}
+		}
+		l.Push(lua.LBool(f))
+		return 1
 	})
 	luaRegister(l, "sndStop", func(l *lua.LState) int {
 		s, ok := toUserData(l, 1).(*Snd)
@@ -2405,6 +2431,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 		glfw.SwapInterval(sys.vRetrace)
 		return 0
+	})
+	luaRegister(l, "waveGetLength", func(*lua.LState) int {
+		w, ok := toUserData(l, 1).(*Wave)
+		if !ok {
+			userDataError(l, 1, w)
+		}
+		l.Push(lua.LNumber(int32(math.Ceil(float64(w.getDuration() * 60)))))
+		return 1
 	})
 	luaRegister(l, "wavePlay", func(l *lua.LState) int {
 		w, ok := toUserData(l, 1).(*Wave)
@@ -3235,6 +3269,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.pos[1]))
 		return 1
 	})
+	luaRegister(l, "posZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.pos[2]))
+		return 1
+	})
 	luaRegister(l, "power", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.getPower()))
 		return 1
@@ -3613,7 +3651,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.mapArray[strArg(l, 1)]))
+		l.Push(lua.LNumber(sys.debugWC.mapArray[strings.ToLower(strArg(l, 1))]))
 		return 1
 	})
 	luaRegister(l, "memberno", func(*lua.LState) int {
@@ -3652,7 +3690,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.ratioLevel()))
+		l.Push(lua.LNumber(sys.debugWC.ocd().ratioLevel))
 		return 1
 	})
 	luaRegister(l, "receivedhits", func(*lua.LState) int {
@@ -3682,6 +3720,10 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "selfstatenoexist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.selfStatenoExist(
 			BytecodeInt(int32(numArg(l, 1)))).ToB()))
+		return 1
+	})
+	luaRegister(l, "sprpriority", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.sprPriority))
 		return 1
 	})
 	luaRegister(l, "stagebackedge", func(*lua.LState) int {
@@ -3836,11 +3878,17 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "winnerteam", func(*lua.LState) int {
 		var winp int32 = -1
-		if !sys.endMatch && (sys.winTeam >= 0 || sys.debugWC.roundState() >= 3) {
-			w1 := sys.wins[0] >= sys.matchWins[0]
-			w2 := sys.wins[1] >= sys.matchWins[1]
-			if w1 != w2 {
-				winp = Btoi(w1) + Btoi(w2)*2
+		if !sys.endMatch {
+			if sys.matchOver() && sys.roundOver() {
+				w1 := sys.wins[0] >= sys.matchWins[0]
+				w2 := sys.wins[1] >= sys.matchWins[1]
+				if w1 != w2 {
+					winp = Btoi(w1) + Btoi(w2)*2
+				} else {
+					winp = 0
+				}
+			} else if sys.winTeam >= 0 || sys.debugWC.roundState() >= 3 {
+				winp = int32(sys.winTeam) + 1
 			}
 		}
 		l.Push(lua.LNumber(winp))

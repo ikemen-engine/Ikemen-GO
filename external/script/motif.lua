@@ -812,13 +812,13 @@ local motif =
 		p1_state_continue = {5500, 5300}, --Ikemen feature
 		p1_state_yes = {5510, 180}, --Ikemen feature
 		p1_state_no = {5520, 170}, --Ikemen feature
-		p2_state_continue = {-1}, --Ikemen feature
+		p2_state_continue = {}, --Ikemen feature
 		p2_state_yes = {}, --Ikemen feature
 		p2_state_no = {}, --Ikemen feature
 		p1_teammate_state_continue = {}, --Ikemen feature
 		p1_teammate_state_yes = {}, --Ikemen feature
 		p1_teammate_state_no = {}, --Ikemen feature
-		p2_teammate_state_continue = {-1}, --Ikemen feature
+		p2_teammate_state_continue = {}, --Ikemen feature
 		p2_teammate_state_yes = {}, --Ikemen feature
 		p2_teammate_state_no = {}, --Ikemen feature
 		credits_text = 'Credits: %i', --Ikemen feature
@@ -1296,7 +1296,8 @@ local motif =
 		--menu_itemname_roundsnumsingle = 'Rounds to Win (Single)', --Ikemen feature
 		--menu_itemname_maxdrawgames = 'Max Draw Games', --Ikemen feature
 		--menu_itemname_credits = 'Credits', --Ikemen feature
-		--menu_itemname_aipalette = 'AI Palette', --Ikemen feature
+		--menu_itemname_aipalette = 'Arcade Palette', --Ikemen feature
+		--menu_itemname_aisurvivalpalette = 'Survival Palette', --Ikemen feature
 		--menu_itemname_airamping = 'AI Ramping', --Ikemen feature
 		--menu_itemname_quickcontinue = 'Quick Continue', --Ikemen feature
 		--menu_itemname_autoguard = 'Auto-Guard', --Ikemen feature
@@ -1339,6 +1340,8 @@ local motif =
 		--menu_itemname_bgmvolume = 'BGM Volume', --Ikemen feature
 		--menu_itemname_sfxvolume = 'SFX Volume', --Ikemen feature
 		--menu_itemname_audioducking = 'Audio Ducking', --Ikemen feature
+		--menu_itemname_stereoeffects = "Stereo Effects", --Ikemen feature
+		--menu_itemname_panningrange = "Panning Range", --Ikemen feature
 		--menu_itemname_keyboard = 'Key Config', --Ikemen feature
 		--menu_itemname_gamepad = 'Joystick Config', --Ikemen feature
 		--menu_itemname_inputdefault = 'Default', --Ikemen feature
@@ -1940,11 +1943,6 @@ local motif =
 		text_font = {'f-6x9.def', 0, 1, 255, 255, 255}, --Ikemen feature
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_font_height = -1, --Ikemen feature
-		text_chars_text = 'No characters in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature'
-		text_stages_text = 'No stages in select.def available for random selection.\nPress any key to exit the program.', --Ikemen feature
-		text_order_text = "Incorrect '%s' settings detected.\nCheck orders in [Characters] and [Options] sections\nto ensure that at least one battle is possible.\nPress any key to exit the program.", --Ikemen feature
-		text_ratio_text = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def.", --Ikemen feature
-		text_training_text = "Training character (" .. config.TrainingChar .. ") not found.\nPress any key to exit the program.", --Ikemen feature
 		text_reload_text = 'Some selected options require Ikemen to be restarted.\nPress any key to exit the program.', --Ikemen feature
 		text_noreload_text = 'Some selected options require Ikemen to be restarted.\nPress any key to continue.', --Ikemen feature
 		text_keys_text = 'Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset.', --Ikemen feature
@@ -2045,7 +2043,8 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame_roundsnumsingle = "Rounds to Win (Single)"
 	motif.option_info.menu_itemname_menugame_maxdrawgames = "Max Draw Games"
 	motif.option_info.menu_itemname_menugame_credits = "Credits"
-	motif.option_info.menu_itemname_menugame_aipalette = "AI Palette"
+	motif.option_info.menu_itemname_menugame_aipalette = "Arcade Palette"
+	motif.option_info.menu_itemname_menugame_aisurvivalpalette = "Survival Palette"
 	motif.option_info.menu_itemname_menugame_airamping = "AI Ramping"
 	motif.option_info.menu_itemname_menugame_quickcontinue = "Quick Continue"
 	motif.option_info.menu_itemname_menugame_autoguard = "Auto-Guard"
@@ -2124,6 +2123,8 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuaudio_bgmvolume = "BGM Volume"
 	motif.option_info.menu_itemname_menuaudio_sfxvolume = "SFX Volume"
 	motif.option_info.menu_itemname_menuaudio_audioducking = "Audio Ducking"
+	motif.option_info.menu_itemname_menuaudio_stereoeffects = "Stereo Effects"
+	motif.option_info.menu_itemname_menuaudio_panningrange = "Panning Range"
 	motif.option_info.menu_itemname_menuaudio_empty = ""
 	motif.option_info.menu_itemname_menuaudio_back = "Back"
 
@@ -2165,6 +2166,7 @@ function motif.setBaseOptionInfo()
 		"menugame_maxdrawgames",
 		"menugame_credits",
 		"menugame_aipalette",
+		"menugame_aisurvivalpalette",
 		"menugame_airamping",
 		"menugame_quickcontinue",
 		"menugame_autoguard",
@@ -2239,6 +2241,8 @@ function motif.setBaseOptionInfo()
 		"menuaudio_bgmvolume",
 		"menuaudio_sfxvolume",
 		"menuaudio_audioducking",
+		"menuaudio_stereoeffects",
+		"menuaudio_panningrange",
 		"menuaudio_empty",
 		"menuaudio_back",
 		"menuinput",

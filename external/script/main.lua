@@ -11,7 +11,7 @@ if main.flags['-config'] == nil then main.flags['-config'] = 'save/config.json' 
 if main.flags['-stats'] == nil then main.flags['-stats'] = 'save/stats.json' end
 
 --One-time load of the json routines
-json = (loadfile 'external/script/dkjson.lua')()
+json = (loadfile 'external/script/json.lua')()
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -1242,20 +1242,20 @@ function main.f_commandLine()
 				remapInput(num, tonumber(main.flags['-p' .. num .. '.input']))
 			end
 			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
-			if main.flags['-p' .. num .. '.power'] ~= nil then
-				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
-			end
-			if main.flags['-p' .. num .. '.guardPoints'] ~= nil then
-				t[#t].override['guardPoints'] = tonumber(main.flags['-p' .. num .. '.guardPoints'])
-			end
-			if main.flags['-p' .. num .. '.dizzyPoints'] ~= nil then
-				t[#t].override['dizzyPoints'] = tonumber(main.flags['-p' .. num .. '.dizzyPoints'])
-			end
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
 			end
 			if main.flags['-p' .. num .. '.lifeMax'] ~= nil then
 				t[#t].override['lifeMax'] = tonumber(main.flags['-p' .. num .. '.lifeMax'])
+			end
+			if main.flags['-p' .. num .. '.power'] ~= nil then
+				t[#t].override['power'] = tonumber(main.flags['-p' .. num .. '.power'])
+			end
+			if main.flags['-p' .. num .. '.dizzyPoints'] ~= nil then
+				t[#t].override['dizzyPoints'] = tonumber(main.flags['-p' .. num .. '.dizzyPoints'])
+			end
+			if main.flags['-p' .. num .. '.guardPoints'] ~= nil then
+				t[#t].override['guardPoints'] = tonumber(main.flags['-p' .. num .. '.guardPoints'])
 			end
 			if main.flags['-p' .. num .. '.lifeRatio'] ~= nil then
 				t[#t].override['lifeRatio'] = tonumber(main.flags['-p' .. num .. '.lifeRatio'])
@@ -1306,10 +1306,11 @@ function main.f_commandLine()
 	setRedLifeBar(config.BarRedLife)
 	local stage = config.StartStage
 	if main.flags['-s'] ~= nil then
-		if main.f_fileExists(main.flags['-s']) then
-			stage = main.flags['-s']
-		elseif main.f_fileExists('stages/' .. main.flags['-s'] .. '.def') then
-			stage = 'stages/' .. main.flags['-s'] .. '.def'
+		for _, v in ipairs({main.flags['-s'], 'stages/' .. main.flags['-s'], 'stages/' .. main.flags['-s'] .. '.def'}) do
+			if main.f_fileExists(v) then
+				stage = v
+				break
+			end
 		end
 	end
 	if main.t_stageDef[stage:lower()] == nil then
@@ -1341,7 +1342,7 @@ function main.f_commandLine()
 		if v.ai == 0 and t_teamMode[v.player] == 3 then
 			remapInput(v.num, v.player)
 		end
-		overrideCharData(v.num, v.override)
+		overrideCharData(v.player, math.ceil(v.num / 2), v.override)
 		if start ~= nil then
 			table.insert(start.p[v.player].t_selected, {
 				ref = main.t_charDef[v.character:lower()],
@@ -2024,6 +2025,14 @@ for i = 1, #main.t_selChars do
 	end
 end
 
+--add default starting stage if no stages have been added via select.def
+if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
+	local row = main.f_addStage(config.StartStage)
+	table.insert(main.t_includeStage[1], row)
+	table.insert(main.t_includeStage[2], row)
+end
+
+--update selectableStages table
 function main.f_updateSelectableStages()
 	main.t_selectableStages = {}
 	for _, v in ipairs(main.t_includeStage[2]) do
@@ -2059,46 +2068,9 @@ if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmax
 	end
 end
 
---print warning if training character is missing
+--print error if training character is missing
 if main.t_charDef[config.TrainingChar:lower()] == nil then
-	main.f_warning(main.f_extractText(motif.warning_info.text_training_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if no characters can be randomly chosen
-if #main.t_randomChars == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_chars_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if no stages have been added
-if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
-	main.f_warning(main.f_extractText(motif.warning_info.text_stages_text), motif.titlebgdef)
-	os.exit()
-end
-
---print warning if at least 1 match is not possible with the current maxmatches settings
-for k, v in pairs(main.t_selOptions) do
-	local mode = k:match('^(.+)maxmatches$')
-	if mode ~= nil then
-		local orderOK = false
-		for i, num in ipairs(main.t_selOptions[k]) do
-			if mode == 'bossrush' then
-				orderOK = true
-				break
-			elseif mode == 'survival' and (num > 0 or num == -1) and main.t_orderSurvival[i] ~= nil and #main.t_orderSurvival[i] > 0 then
-				orderOK = true
-				break
-			elseif num > 0 and main.t_orderChars[i] ~= nil and #main.t_orderChars[i] > 0 then
-				orderOK = true
-				break
-			end
-		end
-		if not orderOK then
-			main.f_warning(main.f_extractText(motif.warning_info.text_order_text, mode .. '.maxmatches'), motif.titlebgdef)
-			os.exit()
-		end
-	end
+	panicError("\nTraining character not found: " .. config.TrainingChar)
 end
 
 --uppercase title
@@ -2194,8 +2166,10 @@ function main.f_default()
 		mode = true,
 		p1ai = false,
 		p1score = false,
+		p1wins = false,
 		p2ai = false,
 		p2score = false,
+		p2wins = false,
 		timer = false,
 	}
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
@@ -2213,6 +2187,7 @@ function main.f_default()
 	main.rankDisplay = true --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
+	main.rotationChars = false --flags modes where config.AISurvivalColor should be used instead of config.AIRandomColor
 	main.roundTime = config.RoundTime --sets round time
 	main.selectMenu = {true, false} --which team side should be allowed to select players
 	main.stageMenu = false --if manual stage selection is allowed
@@ -2239,6 +2214,8 @@ function main.f_default()
 	setRoundTime(math.max(-1, main.roundTime * main.timeFramesPerCount))
 	setStunBar(config.BarStun)
 	setTimeFramesPerCount(main.timeFramesPerCount)
+	setWinCount(1, 0)
+	setWinCount(2, 0)
 	main.txt_mainSelect:update({text = ''})
 	main.f_cmdBufReset()
 	demoFrameCounter = 0
@@ -2400,7 +2377,7 @@ main.t_itemname = {
 				sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 				config.IP[name] = address
 				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
-				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 			else
 				sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
 			end
@@ -2486,8 +2463,8 @@ main.t_itemname = {
 	['netplayversus'] = function()
 		setHomeTeam(1)
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2602,6 +2579,7 @@ main.t_itemname = {
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
 		main.resultsTable = motif.survival_results_screen
+		main.rotationChars = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2641,6 +2619,7 @@ main.t_itemname = {
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
 		main.resultsTable = motif.survival_results_screen
+		main.rotationChars = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
@@ -2788,8 +2767,8 @@ main.t_itemname = {
 			main.t_pIn[2] = start.challenger
 		end
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2822,8 +2801,8 @@ main.t_itemname = {
 		setHomeTeam(1)
 		main.coop = true
 		main.cpuSide[2] = false
-		main.lifebar.p1score = true
-		main.lifebar.p2score = true
+		main.lifebar.p1wins = true
+		main.lifebar.p2wins = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.selectMenu[2] = true
@@ -2857,6 +2836,7 @@ main.t_itemname = {
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
 		main.resultsTable = motif.vs100_kumite_results_screen
+		main.rotationChars = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2908,7 +2888,7 @@ function main.f_deleteIP(item, t)
 		sndPlay(motif.files.snd_data, motif.title_info.cancel_snd[1], motif.title_info.cancel_snd[2])
 		resetKey()
 		config.IP[t[item].itemname:gsub('^ip_', '')] = nil
-		main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = true}))
+		main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 		for i = 1, #t do
 			if t[i].itemname == t[item].itemname then
 				table.remove(t, i)
@@ -3322,6 +3302,15 @@ function main.f_unlockChar(num, bool, reset)
 		if main.t_selChars[num].hidden ~= 0 then
 			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
 			main.t_selChars[num].hidden = 0
+			for k, t in pairs({order = main.t_orderChars, ordersurvival = main.t_orderSurvival}) do
+				if main.t_selChars[num][k] ~= nil and main.t_selChars[num][k] < 0 then
+					main.t_selChars[num][k] = 0 - main.t_selChars[num][k]
+					if t[main.t_selChars[num][k]] == nil then
+						t[main.t_selChars[num][k]] = {}
+					end
+					table.insert(t[main.t_selChars[num][k]], main.t_selChars[num].char_ref)
+				end
+			end
 			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
 			if reset then start.f_resetGrid() end
 		end
@@ -3942,6 +3931,7 @@ function main.f_fadeReset(fadeType, fadeGroup)
 end
 
 --play music
+main.lastBgm = ''
 function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
 	if main.flags['-nomusic'] ~= nil then
 		return
@@ -3951,8 +3941,9 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 	local bgmVolume = bgmVolume or 100
 	local bgmLoopstart = bgmLoopstart or 0
 	local bgmLoopend = bgmLoopend or 0
-	if interrupt or bgm ~= '' then
+	if interrupt or (bgm ~= '' --[[and bgm ~= main.lastBgm]]) then
 		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+		main.lastBgm = bgm
 	end
 end
 

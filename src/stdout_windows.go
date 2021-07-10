@@ -5,8 +5,8 @@ import (
 	"os"
 	//"fmt"
 	"log"
-	"syscall"
 	"runtime"
+	"syscall"
 )
 
 const ATTACH_PARENT_PROCESS = ^uint32(0) // (DWORD)-1
