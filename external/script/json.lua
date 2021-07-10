@@ -61,6 +61,9 @@ local function encode_nil()
 end
 
 
+local json_object_tag = {}
+
+
 local function encode_table(val, state)
   local res = {}
   local stack = state.stack
@@ -79,7 +82,7 @@ local function encode_table(val, state)
 
   stack[val] = true
 
-  if rawget(val, 1) ~= nil or next(val) == nil then
+  if getmetatable(val) ~= json_object_tag and (rawget(val, 1) ~= nil or next(val) == nil) then
     -- Treat as array -- check keys are valid and it is not sparse
     local n = 0
     for k in pairs(val) do
@@ -367,6 +370,7 @@ local function parse_object(str, i)
     if chr == "}" then break end
     if chr ~= "," then decode_error(str, i, "expected '}' or ','") end
   end
+  setmetatable(res, json_object_tag)
   return res, i
 end
 
