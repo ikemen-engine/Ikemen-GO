@@ -728,9 +728,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			s.stageCamera.zoomin = sys.cam.ZoomMax
 		}
-		sec[0].ReadF32("zoomout", &s.stageCamera.mugenZoomOut)
 		if sys.cam.ZoomMin == 0 {
-			s.stageCamera.zoomout = s.stageCamera.mugenZoomOut
+			sec[0].ReadF32("zoomout", &s.stageCamera.zoomout)
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
