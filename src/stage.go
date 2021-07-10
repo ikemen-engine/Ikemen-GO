@@ -1019,18 +1019,18 @@ func (s *Stage) action() {
 	s.bga.action()
 	link, zlink := 0, -1
 	for i, b := range s.bg {
-		s.bg[i].bga.action()
-		if i > 0 && b.positionlink {
-			s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
-			s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
-		} else {
-			link = i
-		}
-		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
-			zlink = i
-			s.bga.offset[1] += b.bga.offset[1]
-		}
 		if b.active {
+			s.bg[i].bga.action()
+			if i > 0 && b.positionlink {
+				s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
+				s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
+			} else {
+				link = i
+			}
+			if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
+				zlink = i
+				s.bga.offset[1] += b.bga.offset[1]
+			}
 			s.bg[i].anim.Action()
 		}
 	}
