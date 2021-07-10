@@ -6390,6 +6390,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		invertXvel(byf)
 		return
 	}
+
+	// Ignore Standby and Disabled Chars.
+	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
+		return
+	}
+
 	if proj {
 		for i, pr := range sys.projs {
 			if len(sys.projs[i]) == 0 {

@@ -5514,26 +5514,26 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 		if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "platform",
-			projectile_platform, VT_Bool, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "platformwidth",
-			projectile_platformwidth, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "platformheight",
-			projectile_platformheight, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "platformangle",
-			projectile_platformangle, VT_Float, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "platformfence",
-			projectile_platformfence, VT_Bool, 1, false); err != nil {
-			return err
-		}
+		// if err := c.paramValue(is, sc, "platform",
+		// 	projectile_platform, VT_Bool, 1, false); err != nil {
+		// 	return err
+		// }
+		// if err := c.paramValue(is, sc, "platformwidth",
+		// 	projectile_platformwidth, VT_Float, 2, false); err != nil {
+		// 	return err
+		// }
+		// if err := c.paramValue(is, sc, "platformheight",
+		// 	projectile_platformheight, VT_Float, 2, false); err != nil {
+		// 	return err
+		// }
+		// if err := c.paramValue(is, sc, "platformangle",
+		// 	projectile_platformangle, VT_Float, 1, false); err != nil {
+		// 	return err
+		// }
+		// if err := c.paramValue(is, sc, "platformfence",
+		// 	projectile_platformfence, VT_Bool, 1, false); err != nil {
+		// 	return err
+		// }
 		return nil
 	})
 	return *ret, err
