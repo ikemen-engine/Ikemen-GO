@@ -101,7 +101,7 @@ local function encode_table(val, state)
       state.currentIndentLevel = state.currentIndentLevel - 1
     end
     stack[val] = nil
-        return open_bracket .. table.concat(res, comma) .. close_bracket
+    return open_bracket .. table.concat(res, comma) .. close_bracket
 
   else
     -- Treat as an object
