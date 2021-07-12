@@ -2388,10 +2388,10 @@ func readLifeBarScore(pre string, is IniSection,
 	sc.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	for k := range is {
 		sp := strings.Split(k, ".")
-		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+		if len(sp) == 3 && pre == fmt.Sprintf("%v.", sp[0]) && sp[1] == "enabled" {
 			var b bool
 			if is.ReadBool(k, &b) {
-				sc.enabled[sp[1]] = b
+				sc.enabled[sp[2]] = b
 			}
 		}
 	}
@@ -2530,10 +2530,10 @@ func readLifeBarAiLevel(pre string, is IniSection,
 	ai.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	for k := range is {
 		sp := strings.Split(k, ".")
-		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+		if len(sp) == 3 && pre == fmt.Sprintf("%v.", sp[0]) && sp[1] == "enabled" {
 			var b bool
 			if is.ReadBool(k, &b) {
-				ai.enabled[sp[1]] = b
+				ai.enabled[sp[2]] = b
 			}
 		}
 	}
@@ -2599,10 +2599,10 @@ func readLifeBarWinCount(pre string, is IniSection,
 	wc.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	for k := range is {
 		sp := strings.Split(k, ".")
-		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+		if len(sp) == 3 && pre == fmt.Sprintf("%v.", sp[0]) && sp[1] == "enabled" {
 			var b bool
 			if is.ReadBool(k, &b) {
-				wc.enabled[sp[1]] = b
+				wc.enabled[sp[2]] = b
 			}
 		}
 	}
