@@ -4155,7 +4155,7 @@ func (c *Char) dizzyPointsAdd(add int32) {
 	c.dizzyPointsSet(c.dizzyPoints + add)
 }
 func (c *Char) dizzyPointsSet(set int32) {
-	if !sys.roundEnd() && sys.lifebar.activeSb {
+	if !sys.roundEnd() && sys.lifebar.stunbar {
 		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, set))
 	}
 }
@@ -4163,7 +4163,7 @@ func (c *Char) guardPointsAdd(add int32) {
 	c.guardPointsSet(c.guardPoints + add)
 }
 func (c *Char) guardPointsSet(set int32) {
-	if !sys.roundEnd() && sys.lifebar.activeGb {
+	if !sys.roundEnd() && sys.lifebar.guardbar {
 		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
 	}
 }
@@ -4210,7 +4210,7 @@ func (c *Char) redLifeAdd(add float64, absolute bool) {
 func (c *Char) redLifeSet(set int32) {
 	if c.life == 0 {
 		c.redLife = 0
-	} else if !sys.roundEnd() && sys.lifebar.activeRl {
+	} else if !sys.roundEnd() && sys.lifebar.redlifebar {
 		c.redLife = Max(0, Min(c.lifeMax-c.life, set))
 	}
 }

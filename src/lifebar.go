@@ -330,7 +330,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	mr[2] -= Min(mr[2], lr[2])
 	//rr[2] -= Min(rr[2], lr[2])
 	var rv int32
-	if sys.lifebar.activeRl {
+	if sys.lifebar.redlifebar {
 		for k := range hb.red {
 			if k > rv && redval >= k {
 				rv = k
@@ -585,7 +585,7 @@ func readGuardBar(pre string, is IniSection,
 	return gb
 }
 func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
-	if !sys.lifebar.activeGb {
+	if !sys.lifebar.guardbar {
 		return
 	}
 	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
@@ -630,7 +630,7 @@ func (gb *GuardBar) reset() {
 	gb.warn.Reset()
 }
 func (gb *GuardBar) bgDraw(layerno int16) {
-	if !sys.lifebar.activeGb {
+	if !sys.lifebar.guardbar {
 		return
 	}
 	gb.bg0.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
@@ -638,7 +638,7 @@ func (gb *GuardBar) bgDraw(layerno int16) {
 	gb.bg2.DrawScaled(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
 }
 func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
-	if !sys.lifebar.activeGb {
+	if !sys.lifebar.guardbar {
 		return
 	}
 	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
@@ -735,7 +735,7 @@ func readStunBar(pre string, is IniSection,
 	return sb
 }
 func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
-	if !sys.lifebar.activeSb {
+	if !sys.lifebar.stunbar {
 		return
 	}
 	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
@@ -780,7 +780,7 @@ func (sb *StunBar) reset() {
 	sb.warn.Reset()
 }
 func (sb *StunBar) bgDraw(layerno int16) {
-	if !sys.lifebar.activeSb {
+	if !sys.lifebar.stunbar {
 		return
 	}
 	sb.bg0.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
@@ -788,7 +788,7 @@ func (sb *StunBar) bgDraw(layerno int16) {
 	sb.bg2.DrawScaled(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
 }
 func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
-	if !sys.lifebar.activeSb {
+	if !sys.lifebar.stunbar {
 		return
 	}
 	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
@@ -2264,15 +2264,16 @@ func (ra *LifeBarRatio) draw(layerno int16, num int32) {
 }
 
 type LifeBarTimer struct {
-	pos    [2]int32
-	text   LbText
-	bg     AnimLayout
-	top    AnimLayout
-	active bool
+	pos     [2]int32
+	text    LbText
+	bg      AnimLayout
+	top     AnimLayout
+	enabled map[string]bool
+	active  bool
 }
 
 func newLifeBarTimer() *LifeBarTimer {
-	return &LifeBarTimer{}
+	return &LifeBarTimer{enabled: make(map[string]bool)}
 }
 func readLifeBarTimer(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarTimer {
@@ -2281,6 +2282,15 @@ func readLifeBarTimer(is IniSection,
 	tr.text = *readLbText("text.", is, "", 0, f, 0)
 	tr.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	tr.top = *ReadAnimLayout("top.", is, sff, at, 0)
+	for k := range is {
+		sp := strings.Split(k, ".")
+		if len(sp) == 2 && sp[0] == "enabled" {
+			var b bool
+			if is.ReadBool(k, &b) {
+				tr.enabled[sp[1]] = b
+			}
+		}
+	}
 	return tr
 }
 func (tr *LifeBarTimer) step() {
@@ -2353,14 +2363,15 @@ type LifeBarScore struct {
 	places      int32
 	min         float32
 	max         float32
-	active      bool
 	scorePoints float32
 	rankPoints  map[string]float32
 	rankIcons   []string
+	enabled     map[string]bool
+	active      bool
 }
 
 func newLifeBarScore() *LifeBarScore {
-	return &LifeBarScore{separator: [2]string{"", "."}}
+	return &LifeBarScore{separator: [2]string{"", "."}, enabled: make(map[string]bool)}
 }
 func readLifeBarScore(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarScore {
@@ -2375,6 +2386,15 @@ func readLifeBarScore(pre string, is IniSection,
 	is.ReadF32("score.max", &sc.max)
 	sc.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	sc.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
+	for k := range is {
+		sp := strings.Split(k, ".")
+		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+			var b bool
+			if is.ReadBool(k, &b) {
+				sc.enabled[sp[1]] = b
+			}
+		}
+	}
 	return sc
 }
 func (sc *LifeBarScore) step() {
@@ -2433,15 +2453,16 @@ func (sc *LifeBarScore) draw(layerno int16, f []*Fnt, side int) {
 }
 
 type LifeBarMatch struct {
-	pos    [2]int32
-	text   LbText
-	bg     AnimLayout
-	top    AnimLayout
-	active bool
+	pos     [2]int32
+	text    LbText
+	bg      AnimLayout
+	top     AnimLayout
+	enabled map[string]bool
+	active  bool
 }
 
 func newLifeBarMatch() *LifeBarMatch {
-	return &LifeBarMatch{}
+	return &LifeBarMatch{enabled: make(map[string]bool)}
 }
 func readLifeBarMatch(is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarMatch {
@@ -2450,6 +2471,15 @@ func readLifeBarMatch(is IniSection,
 	ma.text = *readLbText("text.", is, "", 0, f, 0)
 	ma.bg = *ReadAnimLayout("bg.", is, sff, at, 0)
 	ma.top = *ReadAnimLayout("top.", is, sff, at, 0)
+	for k := range is {
+		sp := strings.Split(k, ".")
+		if len(sp) == 2 && sp[0] == "enabled" {
+			var b bool
+			if is.ReadBool(k, &b) {
+				ma.enabled[sp[1]] = b
+			}
+		}
+	}
 	return ma
 }
 func (ma *LifeBarMatch) step() {
@@ -2482,11 +2512,12 @@ type LifeBarAiLevel struct {
 	top       AnimLayout
 	separator string
 	places    int32
+	enabled   map[string]bool
 	active    bool
 }
 
 func newLifeBarAiLevel() *LifeBarAiLevel {
-	return &LifeBarAiLevel{separator: "."}
+	return &LifeBarAiLevel{separator: ".", enabled: make(map[string]bool)}
 }
 func readLifeBarAiLevel(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarAiLevel {
@@ -2497,6 +2528,15 @@ func readLifeBarAiLevel(pre string, is IniSection,
 	is.ReadI32("format.decimal.places", &ai.places)
 	ai.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	ai.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
+	for k := range is {
+		sp := strings.Split(k, ".")
+		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+			var b bool
+			if is.ReadBool(k, &b) {
+				ai.enabled[sp[1]] = b
+			}
+		}
+	}
 	return ai
 }
 func (ai *LifeBarAiLevel) step() {
@@ -2538,16 +2578,17 @@ func (ai *LifeBarAiLevel) draw(layerno int16, f []*Fnt, ailv float32) {
 }
 
 type LifeBarWinCount struct {
-	pos    [2]int32
-	text   LbText
-	bg     AnimLayout
-	top    AnimLayout
-	active bool
-	wins   int32
+	pos     [2]int32
+	text    LbText
+	bg      AnimLayout
+	top     AnimLayout
+	wins    int32
+	enabled map[string]bool
+	active  bool
 }
 
 func newLifeBarWinCount() *LifeBarWinCount {
-	return &LifeBarWinCount{}
+	return &LifeBarWinCount{enabled: make(map[string]bool)}
 }
 func readLifeBarWinCount(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *LifeBarWinCount {
@@ -2556,6 +2597,15 @@ func readLifeBarWinCount(pre string, is IniSection,
 	wc.text = *readLbText(pre+"text.", is, "", 0, f, 0)
 	wc.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	wc.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
+	for k := range is {
+		sp := strings.Split(k, ".")
+		if len(sp) == 3 && sp[0] == "enabled" && pre == fmt.Sprintf("%v.", sp[2]) {
+			var b bool
+			if is.ReadBool(k, &b) {
+				wc.enabled[sp[1]] = b
+			}
+		}
+	}
 	return wc
 }
 func (wc *LifeBarWinCount) step() {
@@ -2615,12 +2665,12 @@ func (mo *LifeBarMode) reset() {
 	mo.top.Reset()
 }
 func (mo *LifeBarMode) bgDraw(layerno int16) {
-	if sys.lifebar.activeMode {
+	if sys.lifebar.mode {
 		mo.bg.DrawScaled(float32(mo.pos[0])+sys.lifebarOffsetX, float32(mo.pos[1]), layerno, sys.lifebarScale)
 	}
 }
 func (mo *LifeBarMode) draw(layerno int16, f []*Fnt) {
-	if sys.lifebar.activeMode && mo.text.font[0] >= 0 && int(mo.text.font[0]) < len(f) && f[mo.text.font[0]] != nil {
+	if sys.lifebar.mode && mo.text.font[0] >= 0 && int(mo.text.font[0]) < len(f) && f[mo.text.font[0]] != nil {
 		mo.text.lay.DrawText(float32(mo.pos[0])+sys.lifebarOffsetX, float32(mo.pos[1]), sys.lifebarScale, layerno,
 			mo.text.text, f[mo.text.font[0]], mo.text.font[1], mo.text.font[2], mo.text.palfx, mo.text.frgba)
 		mo.top.DrawScaled(float32(mo.pos[0])+sys.lifebarOffsetX, float32(mo.pos[1]), layerno, sys.lifebarScale)
@@ -2654,11 +2704,11 @@ type Lifebar struct {
 	mo         map[string]*LifeBarMode
 	missing    map[string]int
 	active     bool
-	activeBars bool
-	activeMode bool
-	activeRl   bool
-	activeGb   bool
-	activeSb   bool
+	bars       bool
+	mode       bool
+	redlifebar bool
+	guardbar   bool
+	stunbar    bool
 	fx_scale   float32
 	deffile    string
 }
@@ -2687,7 +2737,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 8),
 			make([]*LifeBarName, 2), make([]*LifeBarName, 8), make([]*LifeBarName, 6),
 			make([]*LifeBarName, 8), make([]*LifeBarName, 6), make([]*LifeBarName, 8)},
-		active: true, activeBars: true, activeMode: true, fx_scale: 1}
+		active: true, bars: true, mode: true, fx_scale: 1}
 	l.missing = map[string]int{
 		"[tag lifebar]": 3, "[simul_3p lifebar]": 4, "[simul_4p lifebar]": 5,
 		"[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7, "[simul powerbar]": 1,
@@ -3249,11 +3299,11 @@ func (l *Lifebar) reloadLifebar() {
 	lb.wc[0].active = l.wc[0].active
 	lb.wc[1].active = l.wc[1].active
 	lb.active = l.active
-	lb.activeBars = l.activeBars
-	lb.activeMode = l.activeMode
-	lb.activeRl = l.activeRl
-	lb.activeGb = l.activeGb
-	lb.activeSb = l.activeSb
+	lb.bars = l.bars
+	lb.mode = l.mode
+	lb.redlifebar = l.redlifebar
+	lb.guardbar = l.guardbar
+	lb.stunbar = l.stunbar
 	lb.fx_scale = l.fx_scale
 	sys.lifebar = *lb
 }
@@ -3461,7 +3511,7 @@ func (l *Lifebar) draw(layerno int16) {
 		return
 	}
 	if sys.statusDraw && l.active {
-		if !sys.sf(GSF_nobardisplay) && l.activeBars {
+		if !sys.sf(GSF_nobardisplay) && l.bars {
 			//HealthBar
 			for ti := range sys.tmode {
 				for i := range l.order[ti] {

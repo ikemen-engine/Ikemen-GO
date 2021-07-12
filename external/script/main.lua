@@ -1210,6 +1210,7 @@ function main.f_commandLine()
 	if main.flags['-loadmotif'] == nil then
 		loadLifebar(main.lifebarDef)
 	end
+	setLifebarElements({guardbar = config.BarGuard, stunbar = config.BarStun, redlifebar = config.BarRedLife})
 	local frames = getTimeFramesPerCount()
 	main.f_updateRoundsNum()
 	local t = {}
@@ -1301,9 +1302,6 @@ function main.f_commandLine()
 	frames = frames * math.max(t_framesMul[1], t_framesMul[2])
 	setTimeFramesPerCount(frames)
 	setRoundTime(math.max(-1, roundTime * frames))
-	setGuardBar(config.BarGuard)
-	setStunBar(config.BarStun)
-	setRedLifeBar(config.BarRedLife)
 	local stage = config.StartStage
 	if main.flags['-s'] ~= nil then
 		for _, v in ipairs({main.flags['-s'], 'stages/' .. main.flags['-s'], 'stages/' .. main.flags['-s'] .. '.def'}) do
@@ -2160,17 +2158,20 @@ function main.f_default()
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
 	main.hiscoreScreen = false --if hiscore screen should be shown
 	main.lifebar = { --which lifebar elements should be rendered
+		active = true,
 		bars = true,
-		lifebar = true,
 		match = false,
 		mode = true,
-		p1ai = false,
+		p1aiLevel = false,
 		p1score = false,
-		p1wins = false,
-		p2ai = false,
+		p1winCount = false,
+		p2aiLevel = false,
 		p2score = false,
-		p2wins = false,
+		p2winCount = false,
 		timer = false,
+		guardbar = config.BarGuard,
+		stunbar = config.BarStun,
+		redlifebar = config.BarRedLife,
 	}
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
 	main.makeRoster = false --if default roster for each match should be generated before first match
@@ -2207,12 +2208,9 @@ function main.f_default()
 	setConsecutiveWins(2, 0)
 	setContinue(false)
 	setGameMode('')
-	setGuardBar(config.BarGuard)
 	setHomeTeam(2) --http://mugenguild.com/forum/topics/ishometeam-triggers-169132.0.html
 	setLifebarElements(main.lifebar)
-	setRedLifeBar(config.BarRedLife)
 	setRoundTime(math.max(-1, main.roundTime * main.timeFramesPerCount))
-	setStunBar(config.BarStun)
 	setTimeFramesPerCount(main.timeFramesPerCount)
 	setWinCount(1, 0)
 	setWinCount(2, 0)
@@ -2237,8 +2235,8 @@ main.t_itemname = {
 		main.continueScreen = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
@@ -2303,8 +2301,8 @@ main.t_itemname = {
 		main.elimination = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
@@ -2332,8 +2330,8 @@ main.t_itemname = {
 	['freebattle'] = function()
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2397,8 +2395,8 @@ main.t_itemname = {
 		main.coop = true
 		main.elimination = true
 		main.exitSelect = true
-		main.lifebar.match = true
-		main.lifebar.p2ai = true
+		--main.lifebar.match = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2434,8 +2432,8 @@ main.t_itemname = {
 		main.continueScreen = true
 		main.coop = true
 		main.exitSelect = true
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
@@ -2463,8 +2461,8 @@ main.t_itemname = {
 	['netplayversus'] = function()
 		setHomeTeam(1)
 		main.cpuSide[2] = false
-		main.lifebar.p1wins = true
-		main.lifebar.p2wins = true
+		--main.lifebar.p1winCount = true
+		--main.lifebar.p2winCount = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2501,8 +2499,8 @@ main.t_itemname = {
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		main.hiscoreScreen = true
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
@@ -2571,8 +2569,8 @@ main.t_itemname = {
 		main.elimination = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.match = true
-		main.lifebar.p2ai = true
+		--main.lifebar.match = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2609,8 +2607,8 @@ main.t_itemname = {
 		main.elimination = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.match = true
-		main.lifebar.p2ai = true
+		--main.lifebar.match = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2648,8 +2646,8 @@ main.t_itemname = {
 		main.coop = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.p1score = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
@@ -2687,8 +2685,8 @@ main.t_itemname = {
 		main.continueScreen = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.p2ai = true
-		main.lifebar.timer = true
+		--main.lifebar.p2aiLevel = true
+		--main.lifebar.timer = true
 		main.makeRoster = true
 		main.quickContinue = true
 		main.resetScore = true
@@ -2719,8 +2717,8 @@ main.t_itemname = {
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		main.hiscoreScreen = true
-		main.lifebar.p2ai = true
-		main.lifebar.timer = true
+		--main.lifebar.p2aiLevel = true
+		--main.lifebar.timer = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
@@ -2743,7 +2741,7 @@ main.t_itemname = {
 		main.f_playerInput(main.playerInput, 1)
 		main.cpuSide[2] = false
 		main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
-		main.lifebar.p1score = true
+		--main.lifebar.p1score = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2767,8 +2765,8 @@ main.t_itemname = {
 			main.t_pIn[2] = start.challenger
 		end
 		main.cpuSide[2] = false
-		main.lifebar.p1wins = true
-		main.lifebar.p2wins = true
+		--main.lifebar.p1winCount = true
+		--main.lifebar.p2winCount = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2801,8 +2799,8 @@ main.t_itemname = {
 		setHomeTeam(1)
 		main.coop = true
 		main.cpuSide[2] = false
-		main.lifebar.p1wins = true
-		main.lifebar.p2wins = true
+		--main.lifebar.p1winCount = true
+		--main.lifebar.p2winCount = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.selectMenu[2] = true
@@ -2828,8 +2826,8 @@ main.t_itemname = {
 		main.charparam.time = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
-		main.lifebar.match = true
-		main.lifebar.p2ai = true
+		--main.lifebar.match = true
+		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2859,8 +2857,8 @@ main.t_itemname = {
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		main.cpuSide[1] = true
-		main.lifebar.p1ai = true
-		main.lifebar.p2ai = true
+		--main.lifebar.p1aiLevel = true
+		--main.lifebar.p2aiLevel = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true

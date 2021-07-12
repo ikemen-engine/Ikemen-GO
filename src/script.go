@@ -1750,10 +1750,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "setGuardBar", func(l *lua.LState) int {
-		sys.lifebar.activeGb = boolArg(l, 1)
-		return 0
-	})
 	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
 		sys.debugWC.guardPointsSet(int32(numArg(l, 1)))
 		return 0
@@ -1862,30 +1858,59 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setLifebarElements", func(*lua.LState) int {
+		// elements enabled via fight.def, depending on game mode
+		if _, ok := sys.lifebar.ma.enabled[sys.gameMode]; ok {
+			sys.lifebar.ma.active = sys.lifebar.ma.enabled[sys.gameMode]
+		}
+		for _, v := range sys.lifebar.ai {
+			if _, ok := v.enabled[sys.gameMode]; ok {
+				v.active = v.enabled[sys.gameMode]
+			}
+		}
+		for _, v := range sys.lifebar.sc {
+			if _, ok := v.enabled[sys.gameMode]; ok {
+				v.active = v.enabled[sys.gameMode]
+			}
+		}
+		for _, v := range sys.lifebar.wc {
+			if _, ok := v.enabled[sys.gameMode]; ok {
+				v.active = v.enabled[sys.gameMode]
+			}
+		}
+		if _, ok := sys.lifebar.tr.enabled[sys.gameMode]; ok {
+			sys.lifebar.tr.active = sys.lifebar.tr.enabled[sys.gameMode]
+		}
+		// elements forced by lua scripts
 		tableArg(l, 1).ForEach(func(key, value lua.LValue) {
 			switch k := key.(type) {
 			case lua.LString:
 				switch string(k) {
-				case "bars":
-					sys.lifebar.activeBars = lua.LVAsBool(value)
-				case "lifebar":
+				case "active": //enabled by default
 					sys.lifebar.active = lua.LVAsBool(value)
+				case "bars": //enabled by default
+					sys.lifebar.bars = lua.LVAsBool(value)
+				case "guardbar": //enabled depending on config.json
+					sys.lifebar.guardbar = lua.LVAsBool(value)
 				case "match":
 					sys.lifebar.ma.active = lua.LVAsBool(value)
-				case "mode":
-					sys.lifebar.activeMode = lua.LVAsBool(value)
-				case "p1ai":
+				case "mode": //enabled by default
+					sys.lifebar.mode = lua.LVAsBool(value)
+				case "p1aiLevel":
 					sys.lifebar.ai[0].active = lua.LVAsBool(value)
 				case "p1score":
 					sys.lifebar.sc[0].active = lua.LVAsBool(value)
-				case "p1wins":
+				case "p1winCount":
 					sys.lifebar.wc[0].active = lua.LVAsBool(value)
-				case "p2ai":
+				case "p2aiLevel":
 					sys.lifebar.ai[1].active = lua.LVAsBool(value)
 				case "p2score":
 					sys.lifebar.sc[1].active = lua.LVAsBool(value)
-				case "p2wins":
+				case "p2winCount":
 					sys.lifebar.wc[1].active = lua.LVAsBool(value)
+				case "redlifebar": //enabled depending on config.json
+					sys.lifebar.redlifebar = lua.LVAsBool(value)
+				case "stunbar": //enabled depending on config.json
+					sys.lifebar.stunbar = lua.LVAsBool(value)
 				case "timer":
 					sys.lifebar.tr.active = lua.LVAsBool(value)
 				default:
@@ -2040,16 +2065,8 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setRedLifeBar", func(l *lua.LState) int {
-		sys.lifebar.activeRl = boolArg(l, 1)
-		return 0
-	})
 	luaRegister(l, "setStereoEffects", func(l *lua.LState) int {
 		sys.stereoEffects = boolArg(l, 1)
-		return 0
-	})
-	luaRegister(l, "setStunBar", func(l *lua.LState) int {
-		sys.lifebar.activeSb = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setTeam1VS2Life", func(l *lua.LState) int {
