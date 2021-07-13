@@ -2738,6 +2738,7 @@ func (l *Loader) loadChar(pn int) int {
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
+		p.clearCachedData()
 	} else {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
@@ -2803,6 +2804,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
 		p = sys.chars[pn][0]
 		//p.key = -pn
+		p.clearCachedData()
 	} else {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil

@@ -1724,7 +1724,6 @@ func (c *Char) clear1() {
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
 	c.winquote = -1
-
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
@@ -1777,6 +1776,33 @@ func (c *Char) clear2() {
 	c.enemyNearClear()
 	c.targets = c.targets[:0]
 	c.cpucmd = -1
+}
+func (c *Char) clearCachedData() {
+	c.anim = nil
+	c.curFrame = nil
+	c.hoIdx = -1
+	c.mctype, c.mctime = MC_Hit, 0
+	c.counterHit = false
+	c.fallTime = 0
+	c.varRangeSet(0, int32(NumVar)-1, 0)
+	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
+	c.superDefenseMul = 1
+	c.fallDefenseMul = 1
+	c.customDefense = 1
+	c.ownpal = true
+	c.animPN = -1
+	c.animNo = 0
+	c.stchtmp = false
+	c.inguarddist = false
+	c.p1facing = 0
+	c.pushed = false
+	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
+	c.winquote = -1
+	c.mapArray = make(map[string]float32)
+	c.remapSpr = make(RemapPreset)
+	c.defaultHitScale = newHitScaleArray()
+	c.activeHitScale = make(map[int32][3]*HitScale)
+	c.nextHitScale = make(map[int32][3]*HitScale)
 }
 func (c *Char) gi() *CharGlobalInfo {
 	return &sys.cgi[c.playerNo]
