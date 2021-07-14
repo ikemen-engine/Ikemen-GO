@@ -2726,7 +2726,7 @@ function start.f_selectVersus(enabled)
 					end
 				end
 			end
-			--counter = counter + 1
+			counter = counter + 1
 			--draw clearcolor
 			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 			--draw layerno = 0 backgrounds
