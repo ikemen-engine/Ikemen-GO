@@ -746,6 +746,11 @@ function main.f_animFromTable(t, sff, x, y, scaleX, scaleY, facing, infFrame, de
 	return data, length
 end
 
+--print array
+function main.f_arrayPrint(t)
+	print('{' .. table.concat(t, ',') .. '}')
+end
+
 --copy table content into new table
 function main.f_tableCopy(t)
 	if t == nil then
@@ -794,12 +799,15 @@ function main.f_tableReverse(t)
 	return reversedTable
 end
 
---wrap table
-function main.f_tableWrap(t, l)
-    for i = 1, l do
-        table.insert(t, 1, t[#t])
-        table.remove(t, #t)
-    end
+--rotate table elements
+function main.f_tableRotate(t, num)
+	for i = 1, math.abs(num) do
+		if num < 0 then
+			table.insert(t, 1, table.remove(t))
+		else
+			table.insert(t, table.remove(t, 1))
+		end
+	end
 end
 
 --shift table elements
