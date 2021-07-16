@@ -149,6 +149,7 @@ func newCompiler() *Compiler {
 		"teammapset":           c.teamMapSet,
 		"teammapadd":           c.teamMapAdd,
 		"matchrestart":         c.matchRestart,
+		"modifybgctrl":         c.modifyBGCtrl,
 		"printtoconsole":       c.printToConsole,
 		"rankadd":              c.rankAdd,
 		"redlifeadd":           c.redLifeAdd,
@@ -7689,6 +7690,37 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*modifyBGCtrl)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyBGCtrl_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			modifyBGCtrl_id, VT_Int, 1, true); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			modifyBGCtrl_value, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			modifyBGCtrl_value, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "x",
+			modifyBGCtrl_x, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "y",
+			modifyBGCtrl_y, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil

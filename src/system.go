@@ -380,7 +380,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 		vm := monitor.GetVideoMode()
-		x, y = (vm.Width - w) / 2, (vm.Height - h) / 2
+		x, y = (vm.Width-w)/2, (vm.Height-h)/2
 	} else {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
@@ -2854,7 +2854,7 @@ func (l *Loader) loadStage() bool {
 		if sys.sel.sdefOverwrite != "" {
 			def = sys.sel.sdefOverwrite
 		}
-		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage {
+		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
