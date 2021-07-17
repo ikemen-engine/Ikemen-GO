@@ -3683,7 +3683,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 			local font_def = main.font_def[motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font'][1] .. motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font_height']]
 			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:update({
 				text = text,
-				x = math.floor(motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1]),
+				x = motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1] + motif.hiscore_info[v .. '_text_spacing'][1] * (i - 1),
 				y = motif.hiscore_info.pos[2] + motif.hiscore_info[v .. '_text_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_' .. v .. '_text' .. dataActiveType].scaleY + motif.hiscore_info[v .. '_text_spacing'][2]) * (i - 1),
 			})
 			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:draw()
