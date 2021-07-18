@@ -4178,10 +4178,10 @@ function start.f_dialogueParse()
 							t_token.side = tonumber(t_token.side)
 						end
 						for i, str in ipairs(main.f_strsplit(',', val)) do --split using "," delimiter
-							str = str:lower()
-							if i == 1 and (str:match('^self') or str:match('^playerno') or str:match('^partner') or str:match('^enemy') or str:match('^enemyname') or str:match('^partnername')) then
-								t_token.redirection = str
-								t_token.pn = start.f_dialogueRedirection(str)
+							local strCase = str:lower()
+							if i == 1 and (strCase:match('^self') or strCase:match('^playerno') or strCase:match('^partner') or strCase:match('^enemy') or strCase:match('^enemyname') or strCase:match('^partnername')) then
+								t_token.redirection = strCase
+								t_token.pn = start.f_dialogueRedirection(strCase)
 							else
 								table.insert(t_token.value, main.f_dataType(str))
 							end
