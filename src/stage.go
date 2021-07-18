@@ -406,8 +406,8 @@ type bgCtrl struct {
 	x, y         float32
 	v            [3]int32
 	positionlink bool
-	//flag         bool
-	idx int
+	idx          int
+	sctrlid      int32
 }
 
 func newBgCtrl() *bgCtrl {
@@ -452,6 +452,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
+	is.ReadI32("sctrlid", &bgc.sctrlid)
 }
 func (bgc *bgCtrl) xEnable() bool {
 	return !math.IsNaN(float64(bgc.x))
@@ -598,6 +599,7 @@ type Stage struct {
 	constants       map[string]float32
 	p1p3dist        float32
 	ver             [2]uint16
+	reload          bool
 }
 
 func newStage(def string) *Stage {
@@ -1121,4 +1123,36 @@ func (s *Stage) reset() {
 		s.bgct.add(&s.bgc[i])
 	}
 	s.stageTime = 0
+}
+
+func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
+	for i := range s.bgc {
+		if id == s.bgc[i].sctrlid {
+			if t[0] != IErr {
+				s.bgc[i].starttime = t[0]
+			}
+			if t[1] != IErr {
+				s.bgc[i].endtime = t[1]
+			}
+			if t[2] != IErr {
+				s.bgc[i].looptime = t[2]
+			}
+			if v[0] != IErr {
+				s.bgc[i].v[0] = v[0]
+			}
+			if v[1] != IErr {
+				s.bgc[i].v[1] = v[1]
+			}
+			if v[2] != IErr {
+				s.bgc[i].v[2] = v[2]
+			}
+			if !math.IsNaN(float64(x)) {
+				s.bgc[i].x = x
+			}
+			if !math.IsNaN(float64(y)) {
+				s.bgc[i].y = y
+			}
+			s.reload = true
+		}
+	}
 }

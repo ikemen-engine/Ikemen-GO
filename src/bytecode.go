@@ -7146,6 +7146,59 @@ func (sc scoreAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type modifyBGCtrl StateControllerBase
+
+const (
+	modifyBGCtrl_id byte = iota
+	modifyBGCtrl_time
+	modifyBGCtrl_value
+	modifyBGCtrl_x
+	modifyBGCtrl_y
+	modifyBGCtrl_redirectid
+)
+
+func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
+	crun := c
+	var cid int32
+	t, v  := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
+	x, y := float32(math.NaN()), float32(math.NaN())
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyBGCtrl_id:
+			cid = exp[0].evalI(c)
+		case modifyBGCtrl_time:
+			t[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				t[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					t[2] = exp[2].evalI(c)
+				}
+			}
+		case modifyBGCtrl_value:
+			v[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				v[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					v[2] = exp[2].evalI(c)
+				}
+			}
+		case modifyBGCtrl_x:
+			x = exp[0].evalF(c)
+		case modifyBGCtrl_y:
+			y = exp[0].evalF(c)
+		case modifyBGCtrl_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.stage.modifyBGCtrl(cid, t, v, x, y)
+	return false
+}
+
 type targetDizzyPointsAdd StateControllerBase
 
 const (

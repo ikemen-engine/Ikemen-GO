@@ -642,7 +642,7 @@ function start.f_selectPal(ref, palno)
 					break
 				end
 			end
-			main.f_tableWrap(t, wrap)
+			main.f_tableRotate(t, wrap)
 			for k, v in ipairs(t) do
 				if t_assignedKeys[start.f_reampPal(ref, v)] == nil then
 					return start.f_reampPal(ref, v)
@@ -663,7 +663,7 @@ function start.f_selectPal(ref, palno)
 					break
 				end
 			end
-			main.f_tableWrap(t, wrap)
+			main.f_tableRotate(t, wrap)
 			for k, v in ipairs(t) do
 				if t_assignedKeys[v] == nil then
 					return v
@@ -848,7 +848,7 @@ local function f_slideDistCalc(slide_dist, t_dist, t_speed)
 	end
 end
 
-function start.f_drawPortraits(t_portraits, side, t, subname, last)
+function start.f_drawPortraits(t_portraits, side, t, subname, last, reversed)
 	if #t_portraits == 0 then
 		return
 	end
@@ -867,8 +867,13 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last)
 		end
 		return
 	end
-	--otherwise render portraits in order, up to the 'num' limit
-	for member = #t_portraits, 1, -1 do
+	--otherwise render portraits in order
+	loopStart, loopEnd, loopStep = #t_portraits, 1, -1
+	if reversed then
+		loopStart, loopEnd, loopStep = 1, #t_portraits, 1
+		t_portraits = main.f_tableReverse(t_portraits)
+	end
+	for member = loopStart, loopEnd, loopStep do
 		if member <= t['p' .. side .. subname .. '_num'] --[[or (last and main.coop)]] then
 			if t_portraits[member].anim_data ~= nil then
 				local v = t_portraits[member]
@@ -1897,7 +1902,7 @@ function start.f_selectScreen()
 		--draw portraits
 		for side = 1, 2 do
 			if #start.p[side].t_selTemp > 0 then
-				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.select_info, '_face', true)
+				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.select_info, '_face', true, false)
 			end
 		end
 		--draw cell art
@@ -2649,6 +2654,7 @@ function start.f_selectChar(player, t)
 end
 
 function start.f_selectVersus(enabled)
+	-- skip versus screen if any of the p2 side characters has vsscreen select.def flag set to 0
 	local ok = true
 	for _, v in ipairs(start.p[2].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
@@ -2656,10 +2662,12 @@ function start.f_selectVersus(enabled)
 			break
 		end
 	end
-	if not enabled or not ok then
+	-- or if we're here only to call f_selectChar function
+	if not ok or not enabled then
 		start.f_selectChar(1, start.p[1].t_selected)
 		start.f_selectChar(2, start.p[2].t_selected)
 		return true
+	-- otherwise display versus screen
 	else
 		local text = main.f_extractText(motif.vs_screen.match_text, matchno())
 		txt_matchNo:update({text = text[1]})
@@ -2668,98 +2676,53 @@ function start.f_selectVersus(enabled)
 		main.f_playBGM(true, motif.music.vs_bgm, motif.music.vs_bgm_loop, motif.music.vs_bgm_volume, motif.music.vs_bgm_loopstart, motif.music.vs_bgm_loopend)
 		start.f_resetTempData(motif.vs_screen, '', false)
 		start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage_snd[1], motif.vs_screen.stage_snd[2])
-		local confirmed = {false, false}
-		local row = {1, 1}
-		local orderTime = 0
-		for side = 1, 2 do
-			if main.cpuSide[side] or  #start.p[side].t_selected == 1 or (main.coop and (side == 1 or gamemode('versuscoop'))) then --auto selection in case of cpu controlled side, only 1 member or coop team
-				start.f_selectChar(side, start.p[side].t_selected)
-				confirmed[side] = true
-			else --order time multiplier depending on team size
-				orderTime = math.max(orderTime, #start.p[side].t_selected)
-			end
-		end
-		orderTime = motif.vs_screen.time_order * orderTime
 		local counter = 0 - motif.vs_screen.fadein_time
 		local escFlag = false
+		local t_active = {1, 1}
 		while true do
-			if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
-				main.f_fadeReset('fadeout', motif.vs_screen)
-				escFlag = true
-			elseif confirmed[1] and confirmed[2] then
-				if main.fadeType == 'fadein' and (counter >= motif.vs_screen.time or main.f_input(main.t_players, main.f_extractKeys(motif.vs_screen.p1_key_accept))) then
-					main.f_fadeReset('fadeout', motif.vs_screen)
-				end
-			elseif counter >= motif.vs_screen.time + orderTime then
-				for side = 1, 2 do
-					if not confirmed[side] then
-						start.f_selectChar(side, start.p[side].t_selected)
-						confirmed[side] = true
-					end
-				end
-			else
-				for side = 1, 2 do
-					if not confirmed[side] then
-						if main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_accept'])) then
-							sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
-							start.f_selectChar(side, start.p[side].t_selected)
-							confirmed[side] = true
-							if confirmed[side % 2 + 1] then
-								counter = motif.vs_screen.time
-							end
-						elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_previous'])) then
-							if row[side] - 1 > 0 then
-								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-								row[side] = row[side] - 1
-								local t_selected = {}
-								local t_selTemp = {}
-								t_selected[row[side]] = start.p[side].t_selected[row[side] + 1]
-								t_selTemp[row[side]] = start.p[side].t_selTemp[row[side] + 1]
-								for i = 1, #start.p[side].t_selected do
-									for j = 1, #start.p[side].t_selected do
-										if t_selected[j] == nil and i ~= row[side] + 1 then
-											t_selected[j] = start.p[side].t_selected[i]
-											t_selTemp[j] = start.p[side].t_selTemp[i]
-											break
-										end
-									end
-								end
-								start.p[side].t_selected = t_selected
-								start.p[side].t_selTemp = t_selTemp
-							end
-						elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_next'])) then
-							if row[side] + 1 <= #start.p[side].t_selected then
-								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-								row[side] = row[side] + 1
-								local t_selected = {}
-								local t_selTemp = {}
-								t_selected[row[side]] = start.p[side].t_selected[row[side] - 1]
-								t_selTemp[row[side]] = start.p[side].t_selTemp[row[side] - 1]
-								for i = 1, #start.p[side].t_selected do
-									for j = 1, #start.p[side].t_selected do
-										if t_selected[j] == nil and i ~= row[side] - 1 then
-											t_selected[j] = start.p[side].t_selected[i]
-											t_selTemp[j] = start.p[side].t_selTemp[i]
-											break
-										end
-									end
-								end
-								start.p[side].t_selected = t_selected
-								start.p[side].t_selTemp = t_selTemp
-							end
-						elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_orderup'])) then
-							if #start.p[side].t_selected > 1 then
-								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-								row[side] = row[side] - 1
-								if row[side] == 0 then row[side] = #start.p[side].t_selected end
-							end
-						elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_orderdown'])) then
-							if #start.p[side].t_selected > 1 then
-								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-								row[side] = row[side] + 1
-								if row[side] > #start.p[side].t_selected then row[side] = 1 end
-							end
+			for side = 1, 2 do
+				-- for each player team larger than 1
+				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
+					-- hold forward to rotate your team order by one member forwards
+					if main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_forward'])) then
+						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+						main.f_tableRotate(start.p[side].t_selected, 1)
+						main.f_tableRotate(start.p[side].t_selTemp, 1)
+						t_active[side] = 1
+						counter = 0
+					-- hold back to rotate your team order by one member backwards. Hold down to switch places with previous team member
+					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_back'])) then
+						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+						main.f_tableRotate(start.p[side].t_selected, -1)
+						main.f_tableRotate(start.p[side].t_selTemp, -1)
+						t_active[side] = 1
+						counter = 0
+					-- hold up to switch places with next team member
+					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_forward'])) then
+						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+						if t_active[side] > 1 then
+							main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] - 1)
+							main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] - 1)
+							t_active[side] = t_active[side] - 1
+						else --wrapping
+							main.f_tableRotate(start.p[side].t_selected, 1)
+							main.f_tableRotate(start.p[side].t_selTemp, 1)
+							t_active[side] = #start.p[side].t_selected
 						end
+						counter = 0
+					-- hold down to switch places with previous team member
+					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_back'])) then
+						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+						if t_active[side] < #start.p[side].t_selected then
+							main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] + 1)
+							main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] + 1)
+							t_active[side] = t_active[side] + 1
+						else --wrapping
+							main.f_tableRotate(start.p[side].t_selected, -1)
+							main.f_tableRotate(start.p[side].t_selTemp, -1)
+							t_active[side] = 1
+						end
+						counter = 0
 					end
 				end
 			end
@@ -2770,10 +2733,14 @@ function start.f_selectVersus(enabled)
 			bgDraw(motif.versusbgdef.bg, false)
 			--draw portraits
 			for side = 1, 2 do
-				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false)
+				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true)
 			end
 			--draw names
 			for side = 1, 2 do
+				local active = 1
+				if #start.p[side].t_selected > 2 then
+					active = t_active[side]
+				end
 				start.f_drawNames(
 					start.p[side].t_selTemp,
 					t_txt_nameVS[side],
@@ -2788,7 +2755,7 @@ function start.f_selectVersus(enabled)
 					motif.vs_screen['p' .. side .. '_name_spacing'][1],
 					motif.vs_screen['p' .. side .. '_name_spacing'][2],
 					motif.vs_screen['p' .. side .. '_name_active_font'],
-					row[side]
+					active
 				)
 			end
 			--draw match counter
@@ -2798,8 +2765,23 @@ function start.f_selectVersus(enabled)
 			--draw layerno = 1 backgrounds
 			bgDraw(motif.versusbgdef.bg, true)
 			--draw fadein / fadeout
+			for side = 1, 2 do
+				if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_accept'])) then
+					main.f_fadeReset('fadeout', motif.vs_screen)
+					if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
+						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
+					end
+					start.f_selectChar(1, start.p[1].t_selected)
+					start.f_selectChar(2, start.p[2].t_selected)
+				end
+			end
 			main.f_fadeAnim(motif.vs_screen)
 			--frame transition
+			if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+				esc(false)
+				main.f_fadeReset('fadeout', motif.vs_screen)
+				escFlag = true
+			end
 			if not main.f_frameChange() then
 				clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
 				break
@@ -3179,7 +3161,7 @@ function start.f_victory()
 	bgDraw(motif.victorybgdef.bg, false)
 	--draw portraits (starting from losers)
 	for side = 2, 1, -1 do
-		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false)
+		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false, false)
 	end
 	--draw winner name
 	t_txt_winquoteName[1]:draw()
@@ -3701,7 +3683,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 			local font_def = main.font_def[motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font'][1] .. motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font_height']]
 			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:update({
 				text = text,
-				x = math.floor(motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1]),
+				x = motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1] + motif.hiscore_info[v .. '_text_spacing'][1] * (i - 1),
 				y = motif.hiscore_info.pos[2] + motif.hiscore_info[v .. '_text_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_' .. v .. '_text' .. dataActiveType].scaleY + motif.hiscore_info[v .. '_text_spacing'][2]) * (i - 1),
 			})
 			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:draw()
@@ -4196,10 +4178,10 @@ function start.f_dialogueParse()
 							t_token.side = tonumber(t_token.side)
 						end
 						for i, str in ipairs(main.f_strsplit(',', val)) do --split using "," delimiter
-							str = str:lower()
-							if i == 1 and (str:match('^self') or str:match('^playerno') or str:match('^partner') or str:match('^enemy') or str:match('^enemyname') or str:match('^partnername')) then
-								t_token.redirection = str
-								t_token.pn = start.f_dialogueRedirection(str)
+							local strCase = str:lower()
+							if i == 1 and (strCase:match('^self') or strCase:match('^playerno') or strCase:match('^partner') or strCase:match('^enemy') or strCase:match('^enemyname') or strCase:match('^partnername')) then
+								t_token.redirection = strCase
+								t_token.pn = start.f_dialogueRedirection(strCase)
 							else
 								table.insert(t_token.value, main.f_dataType(str))
 							end

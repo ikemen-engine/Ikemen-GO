@@ -513,12 +513,10 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
 	if align == 0 {
-		x -= float32(f.TextWidth(txt)) * xscl * 0.5
+		x -= float32(math.Round(float64(float32(f.TextWidth(txt)) * xscl * 0.5)))
 	} else if align < 0 {
 		x -= float32(f.TextWidth(txt)) * xscl
 	}
-
-	x, y = float32(math.Round(float64(x))), float32(math.Round(float64(y)))
 
 	if bank < 0 || len(f.palettes) <= int(bank) {
 		bank = 0
