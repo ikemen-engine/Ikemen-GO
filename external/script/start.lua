@@ -4117,6 +4117,7 @@ function start.f_dialogueRedirection(str)
 	return -1
 end
 
+local t_redirections = {self = true, playerno = true, partner = true, enemy = true, enemyname = true, partnername = true}
 function start.f_dialogueParse()
 	local t_text, pn = getCharDialogue()
 	start.t_dialogue.player = pn
@@ -4178,10 +4179,9 @@ function start.f_dialogueParse()
 							t_token.side = tonumber(t_token.side)
 						end
 						for i, str in ipairs(main.f_strsplit(',', val)) do --split using "," delimiter
-							local strCase = str:lower()
-							if i == 1 and (strCase:match('^self') or strCase:match('^playerno') or strCase:match('^partner') or strCase:match('^enemy') or strCase:match('^enemyname') or strCase:match('^partnername')) then
-								t_token.redirection = strCase
-								t_token.pn = start.f_dialogueRedirection(strCase)
+							if i == 1 and t_redirections[str:lower()] then
+								t_token.redirection = str:lower()
+								t_token.pn = start.f_dialogueRedirection(str:lower())
 							else
 								table.insert(t_token.value, main.f_dataType(str))
 							end
