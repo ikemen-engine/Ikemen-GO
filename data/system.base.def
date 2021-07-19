@@ -373,8 +373,6 @@
 	p2.name.font.scale = 1.0, 1.0
 	p2.name.spacing = 0, 14
 
-	name.random.text = "Random"
-
 	stage.pos = 0, 0
 	stage.active.font = -1, 0, 0, 255, 255, 255
 	stage.active.font.scale = 1.0, 1.0
@@ -535,6 +533,8 @@
 	title.bonus.text = "Bonus"
 	title.watch.text = "Watch Mode"
 	;title.replay.text = "Replay"
+
+	name.random.text = "Random"
 
 	p1.face.num = 1
 	p1.face.anim = -1
