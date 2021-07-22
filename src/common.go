@@ -109,7 +109,7 @@ func IsFinite(f float32) bool {
 	return math.Abs(float64(f)) <= math.MaxFloat64
 }
 func Atoi(str string) int32 {
-	n := int32(0)
+	var n int64
 	str = strings.TrimSpace(str)
 	if len(str) > 0 {
 		var a string
@@ -122,13 +122,21 @@ func Atoi(str string) int32 {
 			if a[i] < '0' || '9' < a[i] {
 				break
 			}
-			n = n*10 + int32(a[i]-'0')
+			n = n*10 + int64(a[i]-'0')
+			if n > 2147483647 {
+				sys.appendToConsole(fmt.Sprintf("WARNING: Atoi conversion outside int32 range: %v", a[:i+1]))
+				sys.errLog.Printf("Atoi conversion outside int32 range: %v\n", a[:i+1])
+				if str[0] == '-' {
+					return IErr
+				}
+				return IMax
+			}
 		}
 		if str[0] == '-' {
 			n *= -1
 		}
 	}
-	return n
+	return int32(n)
 }
 func Atof(str string) float64 {
 	f := 0.0
