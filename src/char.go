@@ -4978,7 +4978,7 @@ func (c *Char) offsetY() float32 {
 	return float32(c.size.draw.offset[1]) + c.offset[1]
 }
 func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
-	if p.ani == nil || c.curFrame == nil {
+	if p.ani == nil || c.curFrame == nil || c.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return false
 	}
 	frm := p.ani.CurrentFrame()
