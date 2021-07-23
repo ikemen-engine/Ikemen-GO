@@ -1176,7 +1176,7 @@ options.t_itemname = {
 }
 --external shaders
 options.t_shaders = {}
-for k, v in ipairs(getDirectoryFiles('external/shaders')) do
+for _, v in ipairs(getDirectoryFiles('external/shaders')) do
 	v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 		path = path:gsub('\\', '/')
 		ext = ext:lower()
@@ -1196,7 +1196,7 @@ for k, v in ipairs(getDirectoryFiles('external/shaders')) do
 		end
 	end)
 end
-for k, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
+for _, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 	--resolution
 	if v:match('_[0-9]+x[0-9]+$') then
 		local width, height = v:match('_([0-9]+)x([0-9]+)$')
@@ -1234,6 +1234,7 @@ for k, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 end
 if main.debugLog then main.f_printTable(options.t_itemname, 'debug/t_optionsItemname.txt') end
 
+--create menus
 function options.f_createMenu(tbl, bool_main)
 	return function()
 		local cursorPosY = 1
@@ -1413,7 +1414,8 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 						displayname = motif.option_info['menu_itemname_' .. suffix],
 						paramname = 'menu_itemname_' .. suffix,
 						vardata = text:create({window = t_menuWindow}),
-						vardisplay = options.f_vardisplay(c), selected = false,
+						vardisplay = options.f_vardisplay(c),
+						selected = false,
 					})
 				end
 			end
@@ -1509,15 +1511,9 @@ for k, v in ipairs(t_keyCfg) do
 	end
 end
 
-function options.f_keyDefault(pn)
-	local first = 1
-	local last = #config.KeyConfig
-	if pn ~= nil then
-		first = pn
-		last = pn
-	end
+function options.f_keyDefault()
 	local btns = {}
-	for i = first, last do
+	for i = 1, #config.KeyConfig do
 		if i == 1 then
 			btns = {up = 'UP', down = 'DOWN', left = 'LEFT', right = 'RIGHT', a = 'z', b = 'x', c = 'c', x = 'a', y = 's', z = 'd', start = 'RETURN', d = 'q', w = 'w'}
 		elseif i == 2 then
@@ -1533,8 +1529,8 @@ function options.f_keyDefault(pn)
 			end
 		end
 	end
-	btns = {up = '10', down = '12', left = '13', right = '11', a = '0', b = '1', c = '4', x = '2', y = '3', z = '5', start = '7', d = '-10', w = '-12', menu = '6'}
-	for i = first, last do
+	btns = {up = '10', down = '12', left = '13', right = '11', a = '0', b = '1', c = '5', x = '2', y = '3', z = '-12', start = '7', d = '4', w = '-10', menu = '6'}
+	for i = 1, #config.JoystickConfig do
 		for j = 1, #config.JoystickConfig[i].Buttons do
 			if not t_btnEnabled[t_btnNumName[j]] or btns[t_btnNumName[j]] == nil then
 				config.JoystickConfig[i].Buttons[j] = tostring(motif.option_info.menu_valuename_nokey)

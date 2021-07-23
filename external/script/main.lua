@@ -106,7 +106,7 @@ function main.f_commandAdd(name, cmd, tim, buf)
 	end
 	main.t_commands[name] = 0
 end
-main.f_commandAdd("KonamiCode", "~U,U,D,D,B,F,B,F,b,a,s", 300, 1)
+--main.f_commandAdd("KonamiCode", "~U,U,D,D,B,F,B,F,b,a,s", 300, 1)
 
 --sends inputs to buffer
 function main.f_cmdInput()
@@ -1465,7 +1465,7 @@ function main.f_warning(t, background, info, title, txt, overlay)
 	esc(false)
 	while true do
 		main.f_cmdInput()
-		if esc() or main.f_input(main.t_players, {'m'}) then
+		if esc() or main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, cancel_snd[1], cancel_snd[2])
 			return false
 		elseif getKey() ~= '' then
@@ -2999,6 +2999,19 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				if esc() or main.f_input(main.t_players, {'m'}) then
 					if not bool_main then
 						sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
+					elseif not esc() and t[item].itemname ~= 'exit' then
+						--menu key moves cursor to exit without exiting the game
+						for i = 1, #t do
+							if t[i].itemname == 'exit' then
+								sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
+								item = i
+								cursorPosY = math.min(item, motif[main.group].menu_window_visibleitems)
+								if cursorPosY >= motif[main.group].menu_window_visibleitems then
+									moveTxt = (item - motif[main.group].menu_window_visibleitems) * motif[main.group].menu_item_spacing[2]
+								end
+								break
+							end
+						end
 					end
 					if not bool_main or esc() then
 						break

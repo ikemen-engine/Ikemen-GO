@@ -491,13 +491,13 @@ func setupConfig() configSettings {
 				"11",
 				"0",
 				"1",
-				"4",
+				"5",
 				"2",
 				"3",
-				"5",
-				"7",
-				"-10",
 				"-12",
+				"7",
+				"4",
+				"-10",
 				"6"
 			]
 		},
@@ -510,13 +510,13 @@ func setupConfig() configSettings {
 				"11",
 				"0",
 				"1",
-				"4",
+				"5",
 				"2",
 				"3",
-				"5",
-				"7",
-				"-10",
 				"-12",
+				"7",
+				"4",
+				"-10",
 				"6"
 			]
 		},
@@ -529,13 +529,13 @@ func setupConfig() configSettings {
 				"11",
 				"0",
 				"1",
-				"4",
+				"5",
 				"2",
 				"3",
-				"5",
-				"7",
-				"-10",
 				"-12",
+				"7",
+				"4",
+				"-10",
 				"6"
 			]
 		},
@@ -548,13 +548,13 @@ func setupConfig() configSettings {
 				"11",
 				"0",
 				"1",
-				"4",
+				"5",
 				"2",
 				"3",
-				"5",
-				"7",
-				"-10",
 				"-12",
+				"7",
+				"4",
+				"-10",
 				"6"
 			]
 		}
@@ -565,7 +565,6 @@ func setupConfig() configSettings {
 	// Unmarshal default config string into a struct
 	tmp := configSettings{}
 	chk(json.Unmarshal(defcfg, &tmp))
-
 	// Config file path
 	cfgPath := "save/config.json"
 	// If a different config file is defined in the command line parameters, use it instead
