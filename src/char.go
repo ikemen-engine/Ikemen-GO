@@ -5056,7 +5056,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
 		return false
 	}
-	if h.chainid < 0 {
+	//if h.chainid < 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/308
 		var styp int32
 		if st == ST_N {
 			styp = h.attr & int32(ST_MASK)
@@ -5069,7 +5069,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 				return false
 			}
 		}
-	}
+	//}
 	return true
 }
 func (c *Char) hittable(h *HitDef, e *Char, st StateType,
