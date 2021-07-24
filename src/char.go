@@ -5057,18 +5057,18 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 		return false
 	}
 	//if h.chainid < 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/308
-		var styp int32
-		if st == ST_N {
-			styp = h.attr & int32(ST_MASK)
-		} else {
-			styp = int32(st)
+	var styp int32
+	if st == ST_N {
+		styp = h.attr & int32(ST_MASK)
+	} else {
+		styp = int32(st)
+	}
+	for _, hb := range c.hitby {
+		if hb.time != 0 &&
+			(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
+			return false
 		}
-		for _, hb := range c.hitby {
-			if hb.time != 0 &&
-				(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
-				return false
-			}
-		}
+	}
 	//}
 	return true
 }
