@@ -317,6 +317,7 @@ var triggerMap = map[string]int{
 	"dizzypoints":      1,
 	"dizzypointsmax":   1,
 	"firstattack":      1,
+	"framespercount":   1,
 	"gamemode":         1,
 	"getplayerid":      1,
 	"guardbreak":       1,
@@ -2428,6 +2429,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzypointsmax)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
+	case "framespercount":
+		out.append(OC_ex_, OC_ex_framespercount)
 	case "gamemode":
 		if err := nameSubEx(OC_ex_gamemode); err != nil {
 			return bvNone(), err

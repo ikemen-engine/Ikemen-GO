@@ -1219,7 +1219,7 @@ function main.f_commandLine()
 		loadLifebar(main.lifebarDef)
 	end
 	setLifebarElements({guardbar = config.BarGuard, stunbar = config.BarStun, redlifebar = config.BarRedLife})
-	local frames = getTimeFramesPerCount()
+	local frames = framespercount()
 	main.f_updateRoundsNum()
 	local t = {}
 	local t_assignedPals = {}
@@ -1382,7 +1382,7 @@ main.txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
 main.f_loadingRefresh(main.txt_loading)
-main.timeFramesPerCount = getTimeFramesPerCount()
+main.timeFramesPerCount = framespercount()
 main.f_updateRoundsNum()
 
 --generate preload list

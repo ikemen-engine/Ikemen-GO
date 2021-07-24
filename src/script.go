@@ -1339,10 +1339,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.sel.selectedStageNo))
 		return 1
 	})
-	luaRegister(l, "getTimeFramesPerCount", func(l *lua.LState) int {
-		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
-		return 1
-	})
 	luaRegister(l, "getWaveData", func(*lua.LState) int {
 		//path, group, sound, loops before give up searching for group/sound pair (optional)
 		var max uint32
@@ -3534,6 +3530,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "firstattack", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.firstAttack))
+		return 1
+	})
+	luaRegister(l, "framespercount", func(l *lua.LState) int {
+		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
 		return 1
 	})
 	luaRegister(l, "gamemode", func(*lua.LState) int {

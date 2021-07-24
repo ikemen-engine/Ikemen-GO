@@ -196,7 +196,7 @@ options.t_itemname = {
 			--config.ZoomDelay = false
 			--config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
-			main.timeFramesPerCount = getTimeFramesPerCount()
+			main.timeFramesPerCount = framespercount()
 			main.f_updateRoundsNum()
 			main.f_setPlayers(config.Players, true)
 			motif.f_loadCursorData()

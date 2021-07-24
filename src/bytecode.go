@@ -426,6 +426,7 @@ const (
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
 	OC_ex_firstattack
+	OC_ex_framespercount
 	OC_ex_float
 	OC_ex_gamemode
 	OC_ex_getplayerid
@@ -1750,6 +1751,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().drawpalno)
 	case OC_ex_firstattack:
 		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_framespercount:
+		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
 	case OC_ex_gamemode:
