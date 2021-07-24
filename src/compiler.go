@@ -129,7 +129,7 @@ func newCompiler() *Compiler {
 		"offset":               c.offset,
 		"victoryquote":         c.victoryQuote,
 		"zoom":                 c.zoom,
-		"forcefeedback":        c.null,
+		"forcefeedback":        c.forceFeedback,
 		"null":                 c.null,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
@@ -7155,6 +7155,55 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "lag",
 			zoom_lag, VT_Float, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) forceFeedback(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*forceFeedback)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			forceFeedback_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "waveform", func(data string) error {
+			if len(data) == 0 {
+				return Error("Value not specified")
+			}
+			var wf int32
+			switch strings.ToLower(data) {
+			case "sine":
+				wf = 0
+			case "square":
+				wf = 1
+			case "sinesquare":
+				wf = 2
+			case "off":
+				wf = -1
+			default:
+				return Error("Invalid value: " + data)
+			}
+			sc.add(forceFeedback_waveform, sc.iToExp(wf))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			forceFeedback_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "freq",
+			forceFeedback_freq, VT_Float, 4, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ampl",
+			forceFeedback_ampl, VT_Float, 4, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "self",
+			forceFeedback_self, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
