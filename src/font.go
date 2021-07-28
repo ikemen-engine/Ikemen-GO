@@ -207,11 +207,11 @@ func loadFntV1(filename string) (*Fnt, error) {
 			}
 		}
 	}
-	f.palettes = make([][256]uint32, 255/f.colors)
+	c := Min(255, int32(math.Ceil(float64(f.colors) / 16)) * 16)
+	f.palettes = make([][256]uint32, 255/c)
 	for i := int32(0); int(i) < len(f.palettes); i++ {
-		copy(f.palettes[i][:256-f.colors], spr.Pal[:256-f.colors])
-		copy(f.palettes[i][256-f.colors:],
-			spr.Pal[256-f.colors*(i+1):256-f.colors*i])
+		copy(f.palettes[i][:256-c], spr.Pal[:256-c])
+		copy(f.palettes[i][256-c:], spr.Pal[256-c*(i+1):256-c*i])
 	}
 	copyCharRect := func(dst []byte, dw int, src []byte, x, w, h int) {
 		dw2 := dw
