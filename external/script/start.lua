@@ -3881,7 +3881,7 @@ end
 --; RANK
 --;===========================================================
 for i = 1, 2 do
-	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score')
+	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score', {addX = motif.rank_info['p' .. i .. '_pos'][1], addY = motif.rank_info['p' .. i .. '_pos'][2]})
 end
 
 start.rankInit = false
