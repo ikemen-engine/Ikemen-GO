@@ -117,7 +117,6 @@ type System struct {
 	lifeMul                 float32
 	team1VS2Life            float32
 	turnsRecoveryRate       float32
-	lifebarFontScale        float32
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
@@ -285,9 +284,9 @@ type System struct {
 
 	// Localcoord sceenpack
 	luaLocalcoord    [2]int32
-	luaSpriteScale   float64
+	luaSpriteScale   float32
 	luaPortraitScale float32
-	luaSpriteOffsetX float64
+	luaSpriteOffsetX float32
 
 	// Localcoord lifebar
 	lifebarScale         float32
@@ -2425,12 +2424,16 @@ func (s *Select) addChar(def string) {
 	} else {
 		def += ".def"
 	}
-	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
-		def = "chars/" + def
-	}
-	if def = FileExist(def); len(def) == 0 {
-		sc.name = "dummyslot"
-		return
+	if chk := FileExist(def); len(chk) != 0 {
+		def = chk
+	} else {
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
+			def = "chars/" + def
+		}
+		if def = FileExist(def); len(def) == 0 {
+			sc.name = "dummyslot"
+			return
+		}
 	}
 	str, err := LoadText(def)
 	if err != nil {

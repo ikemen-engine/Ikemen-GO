@@ -91,7 +91,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.AddPos(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
+		a.AddPos(float32(numArg(l, 2))/sys.luaSpriteScale, float32(numArg(l, 3))/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "animDraw", func(*lua.LState) int {
@@ -275,7 +275,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetPos(float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale))
+		a.SetPos(float32(numArg(l, 2))/sys.luaSpriteScale+sys.luaSpriteOffsetX, float32(numArg(l, 3))/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "animSetScale", func(*lua.LState) int {
@@ -284,7 +284,7 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, a)
 		}
 		if l.GetTop() < 4 || boolArg(l, 4) {
-			a.SetScale(float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale))
+			a.SetScale(float32(numArg(l, 2))/sys.luaSpriteScale, float32(numArg(l, 3))/sys.luaSpriteScale)
 		} else {
 			a.SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
 		}
@@ -312,8 +312,8 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, a)
 		}
-		a.SetWindow(float32(numArg(l, 2)/sys.luaSpriteScale+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
-			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
+		a.SetWindow(float32(numArg(l, 2))/sys.luaSpriteScale+sys.luaSpriteOffsetX, float32(numArg(l, 3))/sys.luaSpriteScale,
+			float32(numArg(l, 4))/sys.luaSpriteScale, float32(numArg(l, 5))/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "animUpdate", func(*lua.LState) int {
@@ -683,7 +683,7 @@ func systemScriptInit(l *lua.LState) {
 			return 1
 		}
 		frame := float64(sys.frameCounter - int32(numArg(l, 2)))
-		length := float64(numArg(l, 3))
+		length := numArg(l, 3)
 		if frame > length || length <= 0 {
 			l.Push(lua.LBool(false))
 			return 1
@@ -710,10 +710,10 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "fillRect", func(l *lua.LState) int {
-		rect := [4]int32{int32((numArg(l, 1)/sys.luaSpriteScale + sys.luaSpriteOffsetX + float64(sys.gameWidth-320)/2) * float64(sys.widthScale)),
-			int32((numArg(l, 2)/sys.luaSpriteScale + float64(sys.gameHeight-240)) * float64(sys.heightScale)),
-			int32((numArg(l, 3) / sys.luaSpriteScale) * float64(sys.widthScale)),
-			int32((numArg(l, 4) / sys.luaSpriteScale) * float64(sys.heightScale))}
+		rect := [4]int32{int32((float32(numArg(l, 1))/sys.luaSpriteScale + float32(sys.gameWidth-320)/2 + sys.luaSpriteOffsetX) * sys.widthScale),
+			int32((float32(numArg(l, 2))/sys.luaSpriteScale + float32(sys.gameHeight-240)) * sys.heightScale),
+			int32((float32(numArg(l, 3)) / sys.luaSpriteScale) * sys.widthScale),
+			int32((float32(numArg(l, 4)) / sys.luaSpriteScale) * sys.heightScale)}
 		col := uint32(int32(numArg(l, 7))&0xff | int32(numArg(l, 6))&0xff<<8 | int32(numArg(l, 5))&0xff<<16)
 		a := int32(int32(numArg(l, 8))&0xff | int32(numArg(l, 9))&0xff<<10)
 		FillRect(rect, col, a)
@@ -1972,11 +1972,11 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setLuaSpriteOffsetX", func(l *lua.LState) int {
-		sys.luaSpriteOffsetX = float64(numArg(l, 1))
+		sys.luaSpriteOffsetX = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setLuaSpriteScale", func(l *lua.LState) int {
-		sys.luaSpriteScale = float64(numArg(l, 1))
+		sys.luaSpriteScale = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setMatchMaxDrawGames", func(l *lua.LState) int {
@@ -2272,7 +2272,7 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		if boolArg(l, 3) {
-			ts.x, ts.y = float32((numArg(l, 2)/sys.luaSpriteScale)+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale)
+			ts.x, ts.y = float32(numArg(l, 2))/sys.luaSpriteScale+sys.luaSpriteOffsetX, float32(numArg(l, 3))/sys.luaSpriteScale
 		}
 		return 0
 	})
@@ -2281,7 +2281,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.xscl, ts.yscl = float32(numArg(l, 2)/sys.luaSpriteScale), float32(numArg(l, 3)/sys.luaSpriteScale)
+		ts.xscl, ts.yscl = float32(numArg(l, 2))/sys.luaSpriteScale, float32(numArg(l, 3))/sys.luaSpriteScale
 		return 0
 	})
 	luaRegister(l, "textImgSetText", func(*lua.LState) int {
@@ -2297,8 +2297,8 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.SetWindow(float32(numArg(l, 2)/sys.luaSpriteScale+sys.luaSpriteOffsetX), float32(numArg(l, 3)/sys.luaSpriteScale),
-			float32(numArg(l, 4)/sys.luaSpriteScale), float32(numArg(l, 5)/sys.luaSpriteScale))
+		ts.SetWindow(float32(numArg(l, 2))/sys.luaSpriteScale+sys.luaSpriteOffsetX, float32(numArg(l, 3))/sys.luaSpriteScale,
+			float32(numArg(l, 4))/sys.luaSpriteScale, float32(numArg(l, 5))/sys.luaSpriteScale)
 		return 0
 	})
 	luaRegister(l, "toggleClsnDraw", func(*lua.LState) int {

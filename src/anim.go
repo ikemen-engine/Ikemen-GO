@@ -968,7 +968,8 @@ type Anim struct {
 func NewAnim(sff *Sff, action string) *Anim {
 	lines, i := SplitAndTrim(action, "\n"), 0
 	a := &Anim{anim: ReadAnimation(sff, lines, &i),
-		window: sys.scrrect, xscl: 1, yscl: 1, palfx: newPalFX()}
+		window: sys.scrrect, x: sys.luaSpriteOffsetX,
+		xscl: 1, yscl: 1, palfx: newPalFX()}
 	a.palfx.clear()
 	a.palfx.time = -1
 	if len(a.anim.frames) == 0 {

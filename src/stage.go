@@ -386,6 +386,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		}
 	}
 	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	if !isStage && wscl[0] == 1 {
+		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
+	}
 	startrect1 := ((float32(rect[1])-pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) * sys.heightScale
 	rect[0] = int32(math.Floor(float64(startrect0)))
 	rect[1] = int32(math.Floor(float64(startrect1)))

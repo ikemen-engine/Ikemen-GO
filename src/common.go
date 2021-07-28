@@ -616,10 +616,10 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 	if l.layerno == ln && s != nil {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
-			x += sys.lifebarFontScale * sys.lifebarScale
+			x += sys.lifebar.fnt_scale * sys.lifebarScale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale * sys.lifebarScale
+			y += sys.lifebar.fnt_scale * sys.lifebarScale
 		}
 		paltex := s.PalTex
 		s.Draw(x+l.offset[0]*sys.lifebarScale, y+l.offset[1]*sys.lifebarScale,
@@ -631,10 +631,10 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	if l.layerno == ln {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
-			x += sys.lifebarFontScale
+			x += sys.lifebar.fnt_scale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale
+			y += sys.lifebar.fnt_scale
 		}
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
@@ -647,14 +647,14 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	if l.layerno == ln {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
-			x += sys.lifebarFontScale
+			x += sys.lifebar.fnt_scale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebarFontScale
+			y += sys.lifebar.fnt_scale
 		}
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
-			l.scale[0]*sys.lifebarFontScale*float32(l.facing)*scl,
-			l.scale[1]*sys.lifebarFontScale*float32(l.vfacing)*scl, b, a,
+			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
+			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, b, a,
 			&l.window, palfx, frgba)
 	}
 }
@@ -762,8 +762,8 @@ func (ats *AnimTextSnd) Action() { ats.anim.Action() }
 		len(ats.text.text) > 0 {
 		for k, v := range strings.Split(ats.text.text, "\\n") {
 			ats.text.lay.DrawText(x, y+
-				float32(k)*(float32(f[ats.text.font[0]].Size[1])*sys.lifebarFontScale+
-					float32(f[ats.text.font[0]].Spacing[1])*sys.lifebarFontScale),
+				float32(k)*(float32(f[ats.text.font[0]].Size[1])*sys.lifebar.fnt_scale+
+					float32(f[ats.text.font[0]].Spacing[1])*sys.lifebar.fnt_scale),
 				1, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2],
 				ats.text.palfx, ats.text.frgba)
 		}
@@ -778,8 +778,8 @@ func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale 
 		len(ats.text.text) > 0 {
 		for k, v := range strings.Split(ats.text.text, "\\n") {
 			ats.text.lay.DrawText(x, y+
-				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebarFontScale+
-					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebarFontScale),
+				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale+
+					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx,
 				ats.text.frgba)
 		}

@@ -144,7 +144,6 @@ options.t_itemname = {
 			config.GameHeight = 480
 			config.GameSpeed = 100
 			--config.IP = {}
-			--config.LifebarFontScale = 1
 			config.LifeMul = 100
 			config.ListenPort = "7500"
 			config.LoseSimul = true

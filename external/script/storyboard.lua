@@ -124,7 +124,7 @@ end
 local function f_parse(path)
 	local file = io.open(path, 'r')
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
-	local t = {}
+	local t = {info = {localcoord = {320, 240}}}
 	local pos = t
 	local pos_default = {}
 	local pos_val = {}
@@ -137,7 +137,6 @@ local function f_parse(path)
 	local tmp = ''
 	local t_default =
 	{
-		info = {localcoord = {320, 240}},
 		scenedef = {
 			spr = '',
 			snd = '',
@@ -155,31 +154,32 @@ local function f_parse(path)
 			line = line:gsub('[%. ]', '_') --change . and space to _
 			local row = tostring(line:lower())
 			if row:match('^scene$') or row:match('^scene_') then --matched scene
-				table.insert(t.sceneOrder, row)
-				t.scene[row] = {}
-				pos = t.scene[row]
-				pos.layer = {}
-				pos.sound = {}
-				t_default.scene[row] =
-				{
-					end_time = 0,
-					fadein_time = 0,
-					fadein_col = {0, 0, 0},
-					fadeout_time = 0,
-					fadeout_col = {0, 0, 0},
-					clearcolor = {},
-					layerall_pos = {},
-					layer = {},
-					sound = {},
-					--bgm = '',
-					bgm_loop = 0,
-					bgm_volume = 100,  --Ikemen feature
-					bgm_loopstart = 0, --Ikemen feature
-					bgm_loopend = 0, --Ikemen feature
-					--window = {0, 0, 0, 0},
-					bg_name = ''
-				}
-				pos_default = t_default.scene[row]
+				if not t.scene[row] then --mugen skips duplicated scenes
+					table.insert(t.sceneOrder, row)
+					t.scene[row] = {}
+					pos = t.scene[row]
+					pos.layer = {}
+					pos.sound = {}
+					t_default.scene[row] =
+					{
+						end_time = 0,
+						fadein_time = 0,
+						fadein_col = {0, 0, 0},
+						fadeout_time = 0,
+						fadeout_col = {0, 0, 0},
+						clearcolor = {},
+						layerall_pos = {},
+						layer = {},
+						sound = {},
+						--bgm = '',
+						bgm_loop = 0,
+						bgm_volume = 100,  --Ikemen feature
+						bgm_loopstart = 0, --Ikemen feature
+						bgm_loopend = 0, --Ikemen feature
+						bg_name = ''
+					}
+					pos_default = t_default.scene[row]
+				end
 			elseif row:match('^begin_action_[0-9]+$') then --matched anim
 				row = tonumber(row:match('^begin_action_([0-9]+)$'))
 				t.anim[row] = {}
@@ -230,7 +230,7 @@ local function f_parse(path)
 								palfx_invertall = 0, --Ikemen feature
 								palfx_color = 256, --Ikemen feature
 								textdelay = 2,
-								textwindow = nil, --Ikemen feature
+								textwindow = {0, 0, math.max(config.GameWidth, t.info.localcoord[1]), math.max(config.GameHeight, t.info.localcoord[2])}, --Ikemen feature
 								offset = {0, 0},
 								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
@@ -256,9 +256,9 @@ local function f_parse(path)
 					else
 						pos_val = pos
 					end
-					if pos_val[param] == nil or param:match('_font_height$') then --mugen takes into account only first occurrence
+					if pos_val[param] == nil or param:match('_font_height$') or param == 'localcoord' then --mugen takes into account only first occurrence
 						if param:match('^font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
-							local _, n = value:gsub(',%s*[0-9]*', '')
+							local _, n = value:gsub(',', '')
 							for i = n + 1, #main.t_fntDefault do
 								value = value:gsub(',?%s*$', ',' .. main.t_fntDefault[i])
 							end
@@ -280,6 +280,8 @@ local function f_parse(path)
 											break --use default font values
 										end
 									end
+								elseif param:match('^font$') and not tonumber(c) then
+									c = nil
 								end
 								if c == nil or c == '' then
 									table.insert(pos_val[param], 0)
@@ -312,7 +314,11 @@ local function f_parse(path)
 	--localcoord
 	main.f_setStoryboardScale(t.info.localcoord)
 	--scenedef spr
-	t.scenedef.spr = main.f_filePath(t.scenedef.spr, t.fileDir, 'data/')
+	local ok = false
+	t.scenedef.spr, ok = main.f_filePath(t.scenedef.spr, t.fileDir, 'data/')
+	if not ok then
+		panicError("\n" .. path .. " storyboard SFF file not found: " .. t.scenedef.spr .. "\n")
+	end
 	t.spr_data = {[t.scenedef.spr] = sffNew(t.scenedef.spr)}
 	--scenedef snd
 	if t.scenedef.snd ~= '' then
@@ -364,7 +370,7 @@ local function f_parse(path)
 				t.scene[k].layer[k2].anim_data = main.f_animFromTable(
 					t.anim[t_layer[k2].anim],
 					t.spr_data[t.scenedef.spr],
-					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1] + main.storyboardOffsetX,
+					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]
 				)
 				--palfx

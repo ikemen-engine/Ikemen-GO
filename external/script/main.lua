@@ -221,12 +221,12 @@ function main.f_filePath(path, dir, defaultDir)
 	path = path:gsub('\\', '/')
 	if not path:lower():match('^data/') then
 		if main.f_fileExists(dir .. path) then
-			return dir .. path
+			return dir .. path, true
 		elseif main.f_fileExists(defaultDir .. path) then
-			return defaultDir .. path
+			return defaultDir .. path, true
 		end
 	end
-	return path
+	return path, false
 end
 
 --prints "t" table content into "toFile" file
@@ -401,8 +401,8 @@ function text:create(t)
 	if t.window == nil then t.window = {} end
 	t.window[1] = t.window[1] or 0
 	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or math.max(config.GameWidth, motif.info.localcoord[1])
-	t.window[4] = t.window[4] or math.max(config.GameHeight, motif.info.localcoord[2])
+	t.window[3] = t.window[3] or motif.info.localcoord[1]
+	t.window[4] = t.window[4] or motif.info.localcoord[2]
 	t.defsc = t.defsc or false
 	t.ti = textImgNew()
 	setmetatable(t, self)
@@ -836,7 +836,7 @@ function main.f_tableMerge(t1, t2, key)
 			end
 		elseif type(t1[k] or false) == "table" then
 			t1[k][1] = v
-		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and not (key or k):match('_font$') then
+		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and (not (key or k):match('_font$') --[[or (type(k) == "number" and k > 1)]]) then
 			if type(t1[k]) == "string" then
 				t1[k] = tostring(v)
 			else
@@ -868,7 +868,7 @@ function main.f_tableClean(t, t_sort)
 	end
 	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
 	for i = 1, #t do
-		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
+		if t_sort[t[i].itemname] ~= nil and t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
 			table.insert(t_clean, t[i])
 		end
 	end
@@ -1136,6 +1136,10 @@ end
 
 --convert mugen style window coordinate system to the one used in engine
 function main.windowCoords(t, substract)
+	t[1] = tonumber(t[1]) or 0
+	t[2] = tonumber(t[2]) or 0
+	t[3] = tonumber(t[3]) or 0
+	t[4] = tonumber(t[4]) or 0
 	local window = main.f_tableCopy(t)
 	if window[3] < window[1] then
 		t[3] = window[1]
@@ -3567,6 +3571,9 @@ end
 
 --demo mode
 function main.f_demo()
+	if #main.t_randomChars == 0 then
+		return
+	end
 	if main.fadeActive or motif.demo_mode.enabled == 0 then
 		demoFrameCounter = 0
 		return

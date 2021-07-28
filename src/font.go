@@ -582,6 +582,7 @@ type TextSprite struct {
 func NewTextSprite() *TextSprite {
 	return &TextSprite{
 		align:  1,
+		x:      sys.luaSpriteOffsetX,
 		xscl:   1,
 		yscl:   1,
 		window: sys.scrrect,

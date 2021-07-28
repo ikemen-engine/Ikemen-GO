@@ -1314,7 +1314,7 @@ func (co *LifeBarCombo) step(combo, fakeCombo, damage int32, percentage float32,
 	if co.resttime > 0 {
 		co.counterX -= co.counterX / co.showspeed
 	} else if fakeCombo < 2 {
-		co.counterX -= sys.lifebarFontScale * co.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
+		co.counterX -= sys.lifebar.fnt_scale * co.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
 		if co.counterX < co.start_x*2 {
 			co.counterX = co.start_x * 2
 		}
@@ -1357,7 +1357,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 			return 0
 		}
 		return float32(f[co.counter.font[0]].TextWidth(str)) *
-			co.counter.lay.scale[0] * sys.lifebarFontScale
+			co.counter.lay.scale[0] * sys.lifebar.fnt_scale
 	}
 	if co.resttime <= 0 && co.counterX == co.start_x*2 {
 		return
@@ -1394,26 +1394,26 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		if side == 0 {
 			if co.pos[0] != 0 {
 				x += co.text.lay.offset[0] *
-					((1 - sys.lifebarFontScale) * sys.lifebarFontScale)
+					((1 - sys.lifebar.fnt_scale) * sys.lifebar.fnt_scale)
 			}
 		} else {
 			var length float32
 			for _, v := range lines {
-				if lt := float32(f[co.text.font[0]].TextWidth(v)) * co.text.lay.scale[0] * sys.lifebarFontScale; lt > length {
+				if lt := float32(f[co.text.font[0]].TextWidth(v)) * co.text.lay.scale[0] * sys.lifebar.fnt_scale; lt > length {
 					length = lt
 				}
 			}
 			x -= length
 			/*tmp := c.text_lay.offset[0]
 			if c.pos[0] == 0 {
-				tmp *= sys.lifebarFontScale
+				tmp *= sys.lifebar.fnt_scale
 			}
 			x -= tmp*/
 		}
 		for k, v := range lines {
 			co.text.lay.DrawText(x+sys.lifebarOffsetX, float32(co.pos[1])+
-				float32(k)*(float32(f[co.text.font[0]].Size[1])*co.text.lay.scale[1]*sys.lifebarFontScale+
-					float32(f[co.text.font[0]].Spacing[1])*co.text.lay.scale[1]*sys.lifebarFontScale),
+				float32(k)*(float32(f[co.text.font[0]].Size[1])*co.text.lay.scale[1]*sys.lifebar.fnt_scale+
+					float32(f[co.text.font[0]].Spacing[1])*co.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				sys.lifebarScale, layerno, v, f[co.text.font[0]], co.text.font[1], 1, co.text.palfx,
 				co.text.frgba)
 		}
@@ -1492,7 +1492,7 @@ func (ac *LifeBarAction) step(leader int) {
 		if v.resttime > 0 {
 			v.counterX -= v.counterX / ac.showspeed
 		} else {
-			v.counterX -= sys.lifebarFontScale * ac.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
+			v.counterX -= sys.lifebar.fnt_scale * ac.hidespeed * float32(sys.lifebarLocalcoord[0]) / 320
 			if v.counterX < ac.start_x*2 {
 				v.del = true
 			}
@@ -1542,21 +1542,21 @@ func (ac *LifeBarAction) draw(layerno int16, f []*Fnt, side int) {
 			if side == 0 {
 				if ac.pos[0] != 0 {
 					x += ac.text.lay.offset[0] *
-						((1 - sys.lifebarFontScale) * sys.lifebarFontScale)
+						((1 - sys.lifebar.fnt_scale) * sys.lifebar.fnt_scale)
 				}
 			} else {
 				x -= float32(f[ac.text.font[0]].TextWidth(v.text)) *
-					ac.text.lay.scale[0] * sys.lifebarFontScale
+					ac.text.lay.scale[0] * sys.lifebar.fnt_scale
 				/*tmp := ac.text.lay.offset[0]
 				if ac.pos[0] == 0 {
-					tmp *= sys.lifebarFontScale
+					tmp *= sys.lifebar.fnt_scale
 				}
 				x -= tmp*/
 			}
-			ac.text.lay.DrawText(x+sys.lifebarOffsetX+float32(k)*float32(ac.spacing[0])*sys.lifebarFontScale,
-				float32(ac.pos[1])+float32(k)*float32(ac.spacing[1])*sys.lifebarFontScale+
-					float32(k)*(float32(f[ac.text.font[0]].Size[1])*ac.text.lay.scale[1]*sys.lifebarFontScale+
-						float32(f[ac.text.font[0]].Spacing[1])*ac.text.lay.scale[1]*sys.lifebarFontScale),
+			ac.text.lay.DrawText(x+sys.lifebarOffsetX+float32(k)*float32(ac.spacing[0])*sys.lifebar.fnt_scale,
+				float32(ac.pos[1])+float32(k)*float32(ac.spacing[1])*sys.lifebar.fnt_scale+
+					float32(k)*(float32(f[ac.text.font[0]].Size[1])*ac.text.lay.scale[1]*sys.lifebar.fnt_scale+
+						float32(f[ac.text.font[0]].Spacing[1])*ac.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				sys.lifebarScale, layerno, v.text, f[ac.text.font[0]], ac.text.font[1], 1, ac.text.palfx,
 				ac.text.frgba)
 		}
@@ -2807,6 +2807,7 @@ type Lifebar struct {
 	guardbar   bool
 	stunbar    bool
 	fx_scale   float32
+	fnt_scale  float32
 	deffile    string
 }
 
@@ -2834,7 +2835,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 8),
 			make([]*LifeBarName, 2), make([]*LifeBarName, 8), make([]*LifeBarName, 6),
 			make([]*LifeBarName, 8), make([]*LifeBarName, 6), make([]*LifeBarName, 8)},
-		active: true, bars: true, mode: true, fx_scale: 1}
+		active: true, bars: true, mode: true, fx_scale: 1, fnt_scale: 1}
 	l.missing = map[string]int{
 		"[tag lifebar]": 3, "[simul_3p lifebar]": 4, "[simul_4p lifebar]": 5,
 		"[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7, "[simul powerbar]": 1,
@@ -2868,6 +2869,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
+		case "info":
+			var b bool
+			if is.ReadBool("doubleres", &b) {
+				l.fnt_scale = 0.5
+			}
 		case "files":
 			if filesflg {
 				filesflg = false
@@ -2935,8 +2941,6 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}
 				}
 			}
-		case "fonts":
-			is.ReadF32("scale", &sys.lifebarFontScale)
 		case "fightfx":
 			is.ReadF32("scale", &l.fx_scale)
 		case "lifebar":

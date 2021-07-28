@@ -214,7 +214,6 @@ type configSettings struct {
 	GameHeight                 int32
 	GameSpeed                  float32
 	IP                         map[string]string
-	LifebarFontScale           float32
 	LifeMul                    float32
 	ListenPort                 string
 	LoseSimul                  bool
@@ -328,7 +327,6 @@ func setupConfig() configSettings {
 	"GameHeight": 480,
 	"GameSpeed": 100,
 	"IP": {},
-	"LifebarFontScale": 1,
 	"LifeMul": 100,
 	"ListenPort": "7500",
 	"LoseSimul": true,
@@ -646,7 +644,6 @@ func setupConfig() configSettings {
 	FPS = int(tmp.Framerate)
 	sys.gameSpeed = tmp.GameSpeed / 100
 	sys.helperMax = tmp.MaxHelper
-	sys.lifebarFontScale = tmp.LifebarFontScale
 	sys.lifeMul = tmp.LifeMul / 100
 	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}
 	sys.listenPort = tmp.ListenPort

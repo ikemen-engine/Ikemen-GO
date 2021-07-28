@@ -2167,7 +2167,8 @@ function start.f_teamMenu(side)
 			end
 		end
 	end
-	if #t == 1 then --only 1 team mode available, skip selection
+	--skip selection if only 1 team mode is available and team size is fixed
+	if #t == 1 and (t[1].itemname == 'single' or (t[1].itemname == 'simul' and main.numSimul[1] == main.numSimul[2]) or (t[1].itemname == 'turns' and main.numTurns[1] == main.numTurns[2]) or (t[1].itemname == 'tag' and main.numTag[1] == main.numTag[2])) then
 		start.p[side].teamMode = t[1].mode
 		if t[1].itemname.ratio ~= nil then
 			start.p[side].numRatio = t[1].chars
@@ -2199,7 +2200,7 @@ function start.f_teamMenu(side)
 		if start.p[side].teamMenu > #t then
 			start.p[side].teamMenu = 1
 		end
-		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_previous'])) then
+		if #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_previous'])) then
 			if start.p[side].teamMenu > 1 then
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = start.p[side].teamMenu - 1
@@ -2207,7 +2208,7 @@ function start.f_teamMenu(side)
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = #t
 			end
-		elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_next'])) then
+		elseif #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_next'])) then
 			if start.p[side].teamMenu < #t then
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = start.p[side].teamMenu + 1
