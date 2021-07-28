@@ -2835,7 +2835,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 8),
 			make([]*LifeBarName, 2), make([]*LifeBarName, 8), make([]*LifeBarName, 6),
 			make([]*LifeBarName, 8), make([]*LifeBarName, 6), make([]*LifeBarName, 8)},
-		active: true, bars: true, mode: true, fx_scale: 1, fnt_scale: 1}
+		active: true, bars: true, mode: true, fx_scale: float32(math.NaN()), fnt_scale: 1}
 	l.missing = map[string]int{
 		"[tag lifebar]": 3, "[simul_3p lifebar]": 4, "[simul_4p lifebar]": 5,
 		"[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7, "[simul powerbar]": 1,
@@ -3290,6 +3290,9 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		}
 	}
 	//fightfx scale
+	if math.IsNaN(float64(l.fx_scale)) {
+		l.fx_scale = float32(sys.lifebarLocalcoord[0]) / 320
+	}
 	for _, a := range l.fat {
 		a.start_scale = [...]float32{sys.lifebarScale * l.fx_scale, sys.lifebarScale * l.fx_scale}
 	}
