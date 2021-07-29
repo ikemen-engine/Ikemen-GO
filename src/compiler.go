@@ -3422,14 +3422,15 @@ func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 			return Error("Value not specified")
 		}
 		var sv SaveData
-		if len(data) >= 2 {
-			if strings.ToLower(data[:2]) == "ma" {
-				sv = SaveData_map
-			} else if strings.ToLower(data[:2]) == "va" {
-				sv = SaveData_var
-			} else if strings.ToLower(data[:2]) == "fv" {
-				sv = SaveData_fvar
-			}
+		switch strings.ToLower(data) {
+		case "map":
+			sv = SaveData_map
+		case "var":
+			sv = SaveData_var
+		case "fvar":
+			sv = SaveData_fvar
+		default:
+			return Error("Invalid value: " + data)
 		}
 		sc.add(id, sc.iToExp(int32(sv)))
 		return nil
