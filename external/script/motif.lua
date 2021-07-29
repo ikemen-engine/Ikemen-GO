@@ -2907,7 +2907,7 @@ end
 --disabled scaling if element uses default values (non-existing in mugen)
 motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
 motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
-motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil or motif.defaultOptions
+motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil
 motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = t.warning_info == nil
 
