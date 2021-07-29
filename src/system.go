@@ -402,6 +402,9 @@ func (w *Window) toggleFullscreen() {
 		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	}
+	if sys.vRetrace != -1 {
+		glfw.SwapInterval(sys.vRetrace)
+	}
 	w.fullscreen = !w.fullscreen
 }
 
