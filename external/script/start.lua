@@ -848,26 +848,20 @@ local function f_slideDistCalc(slide_dist, t_dist, t_speed)
 	end
 end
 
-function start.f_drawPortraits(t_portraits, side, t, subname, last, reversed)
-	if #t_portraits == 0 then
+function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
+	if #t_sel == 0 then
 		return
 	end
-	--if next player portrait should replace previous one
-	if t['p' .. side .. subname .. '_num'] == 1 and last and not main.coop then
-		if t_portraits[#t_portraits].anim_data ~= nil then
-			local v = t_portraits[#t_portraits]
-			f_slideDistCalc(v.slide_dist, t['p' .. side .. '_member1' .. subname .. '_slide_dist'], t['p' .. side .. '_member1' .. subname .. '_slide_speed'])
-			main.f_animPosDraw(
-				v.anim_data,
-				t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member1' .. subname .. '_offset'])[1] or 0) + main.f_round(v.slide_dist[1]),
-				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member1' .. subname .. '_offset'])[2] or 0) + main.f_round(v.slide_dist[2]),
-				t['p' .. side .. subname .. '_facing'],
-				true
-			)
+	local t_portraits = {}
+	--not select screen or team side in coop mode
+	if not last or ((side == 1 and main.coop) or gamemode('versuscoop')) then
+		t_portraits = t_sel
+	--otherwise insert most recently selected chars ascending up to pX.face.num
+	else
+		for i = #t_sel - t['p' .. side .. subname .. '_num'] + 1, #t_sel do
+			table.insert(t_portraits, t_sel[i])
 		end
-		return
 	end
-	--otherwise render portraits in order
 	loopStart, loopEnd, loopStep = #t_portraits, 1, -1
 	if reversed then
 		loopStart, loopEnd, loopStep = 1, #t_portraits, 1
@@ -1774,7 +1768,11 @@ function launchFight(data)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
 		t.stageNo = start.f_setStage(t.stageNo, t.stage ~= '' or continue() or loopCount > 0)
 		start.f_setMusic(t.stageNo, t.music)
-		if not start.f_selectVersus(t.vsscreen) then break end
+		if t.vsscreen then
+			if not start.f_selectVersus() then break end
+		end
+		start.f_selectChar(1, start.p[1].t_selected)
+		start.f_selectChar(2, start.p[2].t_selected)
 		start.f_overrideCharData()
 		saveData = true
 		local continueScreen = main.continueScreen
@@ -2538,12 +2536,10 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				--anim update
 				local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
 				if done_anim ~= -1 then
-					if start.p[side].t_selTemp[member].anim ~= done_anim and (main.f_tableLength(start.p[side].t_selected) < motif.select_info['p' .. side .. '_face_num'] or start.p[side].selEnd) then
+					-- if select anim differs from done anim and coop or pX.face.num allows to display more than 1 portrait or it's the last team member
+					if start.p[side].t_selTemp[member].anim ~= done_anim and (main.coop or motif.select_info['p' .. side .. '_face_num'] > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 						start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false)
 						start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
-					elseif start.p[side].selEnd and start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then --only for last team member if 'select' param is used
-						start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
-						start.p[side].screenDelay = 60 --1 second delay to allow displaying 'select' param character
 					end
 				end
 				start.p[side].t_selTemp[member].ref = start.c[player].selRef
@@ -2654,144 +2650,132 @@ function start.f_selectChar(player, t)
 	end
 end
 
-function start.f_selectVersus(enabled)
+function start.f_selectVersus()
 	-- skip versus screen if any of the p2 side characters has vsscreen select.def flag set to 0
-	local ok = true
 	for _, v in ipairs(start.p[2].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
-			ok = false
-			break
+			return true
 		end
 	end
-	-- or if we're here only to call f_selectChar function
-	if not ok or not enabled then
-		start.f_selectChar(1, start.p[1].t_selected)
-		start.f_selectChar(2, start.p[2].t_selected)
-		return true
-	-- otherwise display versus screen
-	else
-		local text = main.f_extractText(motif.vs_screen.match_text, matchno())
-		txt_matchNo:update({text = text[1]})
-		main.f_bgReset(motif.versusbgdef.bg)
-		main.f_fadeReset('fadein', motif.vs_screen)
-		main.f_playBGM(true, motif.music.vs_bgm, motif.music.vs_bgm_loop, motif.music.vs_bgm_volume, motif.music.vs_bgm_loopstart, motif.music.vs_bgm_loopend)
-		start.f_resetTempData(motif.vs_screen, '', false)
-		start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage_snd[1], motif.vs_screen.stage_snd[2])
-		local counter = 0 - motif.vs_screen.fadein_time
-		local escFlag = false
-		local t_active = {1, 1}
-		while true do
-			for side = 1, 2 do
-				-- for each player team larger than 1
-				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
-					-- hold forward to rotate your team order by one member forwards
-					if main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_forward'])) then
-						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+	local text = main.f_extractText(motif.vs_screen.match_text, matchno())
+	txt_matchNo:update({text = text[1]})
+	main.f_bgReset(motif.versusbgdef.bg)
+	main.f_fadeReset('fadein', motif.vs_screen)
+	main.f_playBGM(true, motif.music.vs_bgm, motif.music.vs_bgm_loop, motif.music.vs_bgm_volume, motif.music.vs_bgm_loopstart, motif.music.vs_bgm_loopend)
+	start.f_resetTempData(motif.vs_screen, '', false)
+	start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage_snd[1], motif.vs_screen.stage_snd[2])
+	local counter = 0 - motif.vs_screen.fadein_time
+	local escFlag = false
+	local t_active = {1, 1}
+	while true do
+		for side = 1, 2 do
+			-- for each player team larger than 1
+			if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
+				-- hold forward to rotate your team order by one member forwards
+				if main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_forward'])) then
+					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+					main.f_tableRotate(start.p[side].t_selected, 1)
+					main.f_tableRotate(start.p[side].t_selTemp, 1)
+					t_active[side] = 1
+					counter = 0
+				-- hold back to rotate your team order by one member backwards. Hold down to switch places with previous team member
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_back'])) then
+					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+					main.f_tableRotate(start.p[side].t_selected, -1)
+					main.f_tableRotate(start.p[side].t_selTemp, -1)
+					t_active[side] = 1
+					counter = 0
+				-- hold up to switch places with next team member
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_forward'])) then
+					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+					if t_active[side] > 1 then
+						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] - 1)
+						main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] - 1)
+						t_active[side] = t_active[side] - 1
+					else --wrapping
 						main.f_tableRotate(start.p[side].t_selected, 1)
 						main.f_tableRotate(start.p[side].t_selTemp, 1)
-						t_active[side] = 1
-						counter = 0
-					-- hold back to rotate your team order by one member backwards. Hold down to switch places with previous team member
-					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_back'])) then
-						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+						t_active[side] = #start.p[side].t_selected
+					end
+					counter = 0
+				-- hold down to switch places with previous team member
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_back'])) then
+					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
+					if t_active[side] < #start.p[side].t_selected then
+						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] + 1)
+						main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] + 1)
+						t_active[side] = t_active[side] + 1
+					else --wrapping
 						main.f_tableRotate(start.p[side].t_selected, -1)
 						main.f_tableRotate(start.p[side].t_selTemp, -1)
 						t_active[side] = 1
-						counter = 0
-					-- hold up to switch places with next team member
-					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_forward'])) then
-						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-						if t_active[side] > 1 then
-							main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] - 1)
-							main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] - 1)
-							t_active[side] = t_active[side] - 1
-						else --wrapping
-							main.f_tableRotate(start.p[side].t_selected, 1)
-							main.f_tableRotate(start.p[side].t_selTemp, 1)
-							t_active[side] = #start.p[side].t_selected
-						end
-						counter = 0
-					-- hold down to switch places with previous team member
-					elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_back'])) then
-						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-						if t_active[side] < #start.p[side].t_selected then
-							main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] + 1)
-							main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] + 1)
-							t_active[side] = t_active[side] + 1
-						else --wrapping
-							main.f_tableRotate(start.p[side].t_selected, -1)
-							main.f_tableRotate(start.p[side].t_selTemp, -1)
-							t_active[side] = 1
-						end
-						counter = 0
 					end
+					counter = 0
 				end
 			end
-			counter = counter + 1
-			--draw clearcolor
-			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
-			--draw layerno = 0 backgrounds
-			bgDraw(motif.versusbgdef.bg, false)
-			--draw portraits
-			for side = 1, 2 do
-				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true)
-			end
-			--draw names
-			for side = 1, 2 do
-				local active = 1
-				if #start.p[side].t_selected > 2 then
-					active = t_active[side]
-				end
-				start.f_drawNames(
-					start.p[side].t_selTemp,
-					t_txt_nameVS[side],
-					false,
-					false,
-					motif.vs_screen['p' .. side .. '_name_font'],
-					motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1],
-					motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2],
-					motif.vs_screen['p' .. side .. '_name_font_scale'][1],
-					motif.vs_screen['p' .. side .. '_name_font_scale'][2],
-					motif.vs_screen['p' .. side .. '_name_font_height'],
-					motif.vs_screen['p' .. side .. '_name_spacing'][1],
-					motif.vs_screen['p' .. side .. '_name_spacing'][2],
-					motif.vs_screen['p' .. side .. '_name_active_font'],
-					active
-				)
-			end
-			--draw match counter
-			if matchno() > 0 then
-				txt_matchNo:draw()
-			end
-			--draw layerno = 1 backgrounds
-			bgDraw(motif.versusbgdef.bg, true)
-			--draw fadein / fadeout
-			for side = 1, 2 do
-				if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_accept'])) then
-					main.f_fadeReset('fadeout', motif.vs_screen)
-					if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
-						sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
-					end
-					start.f_selectChar(1, start.p[1].t_selected)
-					start.f_selectChar(2, start.p[2].t_selected)
-				end
-			end
-			main.f_fadeAnim(motif.vs_screen)
-			--frame transition
-			if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
-				esc(false)
-				main.f_fadeReset('fadeout', motif.vs_screen)
-				escFlag = true
-			end
-			if not main.f_frameChange() then
-				clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
-				break
-			end
-			main.f_refresh()
 		end
-		esc(escFlag) --force Esc detection
-		return not escFlag
+		counter = counter + 1
+		--draw clearcolor
+		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
+		--draw layerno = 0 backgrounds
+		bgDraw(motif.versusbgdef.bg, false)
+		--draw portraits
+		for side = 1, 2 do
+			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true)
+		end
+		--draw names
+		for side = 1, 2 do
+			local active = 1
+			if #start.p[side].t_selected > 2 then
+				active = t_active[side]
+			end
+			start.f_drawNames(
+				start.p[side].t_selTemp,
+				t_txt_nameVS[side],
+				false,
+				false,
+				motif.vs_screen['p' .. side .. '_name_font'],
+				motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1],
+				motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2],
+				motif.vs_screen['p' .. side .. '_name_font_scale'][1],
+				motif.vs_screen['p' .. side .. '_name_font_scale'][2],
+				motif.vs_screen['p' .. side .. '_name_font_height'],
+				motif.vs_screen['p' .. side .. '_name_spacing'][1],
+				motif.vs_screen['p' .. side .. '_name_spacing'][2],
+				motif.vs_screen['p' .. side .. '_name_active_font'],
+				active
+			)
+		end
+		--draw match counter
+		if matchno() > 0 then
+			txt_matchNo:draw()
+		end
+		--draw layerno = 1 backgrounds
+		bgDraw(motif.versusbgdef.bg, true)
+		--draw fadein / fadeout
+		for side = 1, 2 do
+			if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_accept'])) then
+				main.f_fadeReset('fadeout', motif.vs_screen)
+				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
+					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
+				end
+			end
+		end
+		main.f_fadeAnim(motif.vs_screen)
+		--frame transition
+		if not escFlag and (esc() or main.f_input(main.t_players, {'m'})) then
+			esc(false)
+			main.f_fadeReset('fadeout', motif.vs_screen)
+			escFlag = true
+		end
+		if not main.f_frameChange() then
+			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
+			break
+		end
+		main.f_refresh()
 	end
+	esc(escFlag) --force Esc detection
+	return not escFlag
 end
 
 --;===========================================================
