@@ -742,7 +742,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
-		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
+		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		if sys.cam.ZoomMax == 0 {
@@ -898,11 +898,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
 			s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
-			if s.stageCamera.cuthigh != math.MinInt32 {
-				//TODO: cuthigh part of the formula is likely not accurate
-				maxy := 0 - float32(s.stageCamera.localcoord[1]-240)*s.localscl
-				s.stageCamera.drawOffsetY += MinF(maxy, float32(s.stageCamera.cuthigh)*s.localscl)
-			}
 		}
 	}
 	s.mainstage = main
