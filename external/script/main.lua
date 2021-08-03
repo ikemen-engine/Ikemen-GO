@@ -421,7 +421,9 @@ function text:create(t)
 	textImgSetBank(t.ti, t.bank)
 	textImgSetAlign(t.ti, t.align)
 	textImgSetText(t.ti, t.text)
-	textImgSetColor(t.ti, t.r, t.g, t.b)
+	if t.r ~= 255 or t.g ~= 255 or t.b ~= 255 then
+		textImgSetColor(t.ti, t.r, t.g, t.b)
+	end
 	if t.defsc then main.f_disableLuaScale() end
 	textImgSetPos(t.ti, t.x + main.f_alignOffset(t.align), t.y)
 	textImgSetScale(t.ti, t.scaleX, t.scaleY)
@@ -434,10 +436,13 @@ end
 function text:update(t)
 	local ok = false
 	local fontChange = false
+	local colorChange = false
 	for k, v in pairs(t) do
 		if self[k] ~= v then
 			if k == 'font' or k == 'height' then
 				fontChange = true
+			elseif k:match('^[rgb]$') then
+				colorChange = true
 			end
 			self[k] = v
 			ok = true
@@ -456,7 +461,9 @@ function text:update(t)
 	textImgSetBank(self.ti, self.bank)
 	textImgSetAlign(self.ti, self.align)
 	textImgSetText(self.ti, self.text)
-	textImgSetColor(self.ti, self.r, self.g, self.b)
+	if colorChange then
+		textImgSetColor(self.ti, self.r, self.g, self.b)
+	end
 	if self.defsc then main.f_disableLuaScale() end
 	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
 	textImgSetScale(self.ti, self.scaleX, self.scaleY)
