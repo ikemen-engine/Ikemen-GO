@@ -79,12 +79,14 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "addStage", func(l *lua.LState) int {
+		var n int
 		for _, c := range SplitAndTrim(strings.TrimSpace(strArg(l, 1)), "\n") {
-			if err := sys.sel.AddStage(c); err != nil {
-				l.RaiseError(err.Error())
+			if err := sys.sel.AddStage(c); err == nil {
+				n++
 			}
 		}
-		return 0
+		l.Push(lua.LNumber(n))
+		return 1
 	})
 	luaRegister(l, "animAddPos", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)

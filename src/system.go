@@ -2566,6 +2566,7 @@ func (s *Select) AddStage(def string) error {
 		lines = SplitAndTrim(str, "\n")
 		return nil
 	}); err != nil {
+		sys.errLog.Printf("Failed to add stage, file not found: %v\n", def)
 		return err
 	}
 	tstr = fmt.Sprintf("Stage added: %v", def)

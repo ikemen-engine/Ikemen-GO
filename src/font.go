@@ -60,7 +60,8 @@ func loadFntV1(filename string) (*Fnt, error) {
 	f.PalName = filename
 
 	if err != nil {
-		return nil, err
+		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
+		return f, nil
 	}
 
 	defer func() { chk(fp.Close()) }()
@@ -207,7 +208,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 			}
 		}
 	}
-	c := Min(255, int32(math.Ceil(float64(f.colors) / 16)) * 16)
+	c := Min(255, int32(math.Ceil(float64(f.colors)/16))*16)
 	f.palettes = make([][256]uint32, 255/c)
 	for i := int32(0); int(i) < len(f.palettes); i++ {
 		copy(f.palettes[i][:256-c], spr.Pal[:256-c])
@@ -257,7 +258,8 @@ func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f.PalName = filename
 
 	if err != nil {
-		return nil, err
+		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
+		return f, nil
 	}
 
 	lines := SplitAndTrim(string(content), "\n")

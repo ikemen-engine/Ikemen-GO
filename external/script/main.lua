@@ -1324,7 +1324,9 @@ function main.f_commandLine()
 		end
 	end
 	if main.t_stageDef[stage:lower()] == nil then
-		addStage(stage)
+		if addStage(stage) == 0 then
+			panicError("\nUnable to add stage: " .. stage .. "\n")
+		end
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
 	selectStart()
@@ -1760,7 +1762,9 @@ function main.f_addStage(file, hidden)
 	if file:match('/$') then
 		return
 	end
-	addStage(file)
+	if addStage(file) == 0 then
+		return
+	end
 	local stageNo = #main.t_selStages + 1
 	local t_info = getStageInfo(stageNo)
 	table.insert(main.t_selStages, {
