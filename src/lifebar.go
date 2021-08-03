@@ -81,9 +81,7 @@ func readLbText(pre string, is IniSection, str string, ln int16, f []*Fnt, align
 		txt.text = str
 	}
 	txt.lay = *ReadLayout(pre, is, ln)
-	if txt.font[3] != 255 || txt.font[4] != 255 || txt.font[5] != 255 {
-		txt.palfx.setColor(txt.font[3], txt.font[4], txt.font[5])
-	}
+	txt.palfx.setColor(txt.font[3], txt.font[4], txt.font[5])
 	return txt
 }
 
