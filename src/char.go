@@ -5038,7 +5038,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
 		return false
 	}
-	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 {
+	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
 			if nci >= 0 && c.ghv.hitid == nci {
 				return false

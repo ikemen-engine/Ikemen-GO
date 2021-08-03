@@ -367,7 +367,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
-	var x, y int
+	mode := monitor.GetVideoMode()
+	x, y := (mode.Width-w)/2, (mode.Height-h)/2
 	if s.fullscreen {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
@@ -378,14 +379,12 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 			window.SetSize(w, h)
 		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
-		vm := monitor.GetVideoMode()
-		x, y = (vm.Width-w)/2, (vm.Height-h)/2
 	} else {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
+		window.SetPos(x, y)
 		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-		x, y = window.GetPos()
 	}
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
