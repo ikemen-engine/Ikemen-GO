@@ -25,33 +25,6 @@ local loseCnt = 0
 --;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
---default values hard reset
-function start.f_hardReset()
-	stageListNo = 0
-	for i = 1, 2 do
-		--default team count
-		start.p[i].numRatio = 1
-		start.p[i].numSimul = math.max(2, config.NumSimul[1])
-		start.p[i].numTag = math.max(2, config.NumTag[1])
-		start.p[i].numTurns = math.max(2, config.NumTurns[1])
-		--default team mode
-		start.p[i].teamMenu = 1
-		--cursor pos
-		start.p[i].t_cursor = {}
-		--other player data flags
-		start.p[i].ratio = false
-		start.p[i].selEnd = false
-		start.p[i].teamEnd = false
-		--selected data
-		start.p[i].t_selected = {}
-		start.p[i].t_selTemp = {}
-		start.p[i].t_selCmd = {}
-		start.p[i].teamMode = 0
-		start.p[i].numChars = 0
-	end
-end
-start.f_hardReset() --default values reset after starting the game
-
 --converts '.maxmatches' style table (key = order, value = max matches) to the same structure as '.ratiomatches' (key = match number, value = subtable with char num and order data)
 function start.f_unifySettings(t, t_chars)
 	local ret = {}
@@ -1408,12 +1381,7 @@ end
 --;===========================================================
 function start.f_selectMode()
 	start.f_startCell()
-	for i = 1, 2 do
-		start.p[i].t_cursor = {}
-		start.p[i].teamMenu = 1
-	end
-	restoreCursor = false
-	start.f_selectReset()
+	start.f_selectReset(true)
 	while true do
 		--select screen
 		if not start.f_selectScreen() then
@@ -1498,7 +1466,7 @@ function start.f_selectMode()
 				return
 			end
 			if not continue() or esc() then
-				start.f_selectReset()
+				start.f_selectReset(false)
 			else
 				t_reservedChars = {{}, {}}
 			end
@@ -1507,7 +1475,7 @@ function start.f_selectMode()
 end
 
 --resets various data
-function start.f_selectReset()
+function start.f_selectReset(hardReset)
 	esc(false)
 	if start.challenger == 0 then
 		setMatchNo(1)
@@ -1531,17 +1499,34 @@ function start.f_selectReset()
 		end
 		col = col + 1
 	end
+	if hardReset then
+		stageListNo = 0
+		restoreCursor = false
+	end
 	for side = 1, 2 do
-		start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
-		start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
-		start.p[side].numTurns = math.min(start.p[side].numTurns, main.numTurns[2])
+		if hardReset then
+			start.p[side].numSimul = math.max(2, config.NumSimul[1])
+			start.p[side].numTag = math.max(2, config.NumTag[1])
+			start.p[side].numTurns = math.max(2, config.NumTurns[1])
+			start.p[side].selEnd = false
+			start.p[side].teamEnd = false
+			start.p[side].numChars = 0
+			start.p[side].numRatio = 1
+			start.p[side].teamMenu = 1
+			start.p[side].t_cursor = {}
+			start.p[side].teamMode = 0
+		else
+			start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
+			start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
+			start.p[side].numTurns = math.min(start.p[side].numTurns, main.numTurns[2])
+			start.p[side].selEnd = not main.selectMenu[side]
+			start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
+			start.p[side].numChars = 1
+		end
 		start.p[side].ratio = false
-		start.p[side].selEnd = not main.selectMenu[side]
-		start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
 		start.p[side].t_selected = {}
 		start.p[side].t_selTemp = {}
 		start.p[side].t_selCmd = {}
-		start.p[side].numChars = 1
 	end
 	for _, v in ipairs(start.c) do
 		v.cell = -1
@@ -1582,7 +1567,7 @@ function start.f_selectChallenger()
 	main.f_playerInput(p1cmd, 1)
 	main.f_playerInput(p2cmd, 2)
 	main.t_itemname.versus()
-	start.f_selectReset()
+	start.f_selectReset(false)
 	if not start.f_selectScreen() then
 		start.exit = true
 		return false
