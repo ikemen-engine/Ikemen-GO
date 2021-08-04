@@ -1504,21 +1504,17 @@ function start.f_selectReset(hardReset)
 			start.p[side].numSimul = math.max(2, config.NumSimul[1])
 			start.p[side].numTag = math.max(2, config.NumTag[1])
 			start.p[side].numTurns = math.max(2, config.NumTurns[1])
-			start.p[side].selEnd = false
-			start.p[side].teamEnd = false
-			start.p[side].numChars = 0
 			start.p[side].numRatio = 1
 			start.p[side].teamMenu = 1
 			start.p[side].t_cursor = {}
 			start.p[side].teamMode = 0
-		else
-			start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
-			start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
-			start.p[side].numTurns = math.min(start.p[side].numTurns, main.numTurns[2])
-			start.p[side].selEnd = not main.selectMenu[side]
-			start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
-			start.p[side].numChars = 1
 		end
+		start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
+		start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
+		start.p[side].numTurns = math.min(start.p[side].numTurns, main.numTurns[2])
+		start.p[side].numChars = 1
+		start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
+		start.p[side].selEnd = not main.selectMenu[side]
 		start.p[side].ratio = false
 		start.p[side].t_selected = {}
 		start.p[side].t_selTemp = {}
