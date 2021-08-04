@@ -994,22 +994,6 @@ function start.f_getCursorData(pn, suffix)
 	return motif.select_info['p' .. (pn - 1) % 2 + 1 .. suffix]
 end
 
---sets cursor starting row and column
-function start.f_startCell()
-	for i = 1, config.Players do
-		if start.f_getCursorData(i, '_cursor_startcell')[1] < motif.select_info.rows then
-			start.c[i].selY = start.f_getCursorData(i, '_cursor_startcell')[1]
-		else
-			start.c[i].selY = 0
-		end
-		if start.f_getCursorData(i, '_cursor_startcell')[2] < motif.select_info.columns then
-			start.c[i].selX = start.f_getCursorData(i, '_cursor_startcell')[2]
-		else
-			start.c[i].selX = 0
-		end
-	end
-end
-
 --returns t_selChars table out of cell number
 function start.f_selGrid(cell, slot)
 	if main.t_selGrid[cell] == nil or #main.t_selGrid[cell].chars == 0 then
@@ -1380,7 +1364,6 @@ end
 --; MODES LOOP
 --;===========================================================
 function start.f_selectMode()
-	start.f_startCell()
 	start.f_selectReset(true)
 	while true do
 		--select screen
@@ -1502,6 +1485,19 @@ function start.f_selectReset(hardReset)
 	if hardReset then
 		stageListNo = 0
 		restoreCursor = false
+		--cursor start cell
+		for i = 1, config.Players do
+			if start.f_getCursorData(i, '_cursor_startcell')[1] < motif.select_info.rows then
+				start.c[i].selY = start.f_getCursorData(i, '_cursor_startcell')[1]
+			else
+				start.c[i].selY = 0
+			end
+			if start.f_getCursorData(i, '_cursor_startcell')[2] < motif.select_info.columns then
+				start.c[i].selX = start.f_getCursorData(i, '_cursor_startcell')[2]
+			else
+				start.c[i].selX = 0
+			end
+		end
 	end
 	for side = 1, 2 do
 		if hardReset then
