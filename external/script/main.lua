@@ -1356,6 +1356,9 @@ function main.f_commandLine()
 		end
 		overrideCharData(v.player, math.ceil(v.num / 2), v.override)
 		if start ~= nil then
+			if start.p[v.player].t_selected == nil then
+				start.p[v.player].t_selected = {}
+			end
 			table.insert(start.p[v.player].t_selected, {
 				ref = main.t_charDef[v.character:lower()],
 				pal = v.pal,
