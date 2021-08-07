@@ -264,16 +264,18 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		# active player
 		if playerNo = teamLeader {
 			# not being hit; standing idle or at least on the ground
-			ignoreHitPause if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
+			if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
 				# last active player has left the screen or died
 				if map(_iksys_tagLastId) = 0
 					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
 					|| playerId(map(_iksys_tagLastId)),alive = 0
 				{
+					# get partner id in case of tag command
 					let partnerId = 0;
 					let nextPartnerId = call fTagGetPartnerId(1);
 					let previousPartnerId = call fTagGetPartnerId(-1);
 					if aiLevel > 0 {
+						# id is remembered by AI player, switch will happen at first frame that meets switch conditions
 						if map(_iksys_tagPartnerId) = 0 {
 							let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
 							mapSet{map: "_iksys_tagPartnerId"; value: $partnerId}

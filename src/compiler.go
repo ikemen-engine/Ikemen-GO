@@ -8039,7 +8039,7 @@ func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	filename, def string) error {
 	var str string
-	zss := HasExtension(filename, "^\\.[Zz][Ss][Ss]$")
+	zss := HasExtension(filename, ".zss")
 	fnz := filename
 	// Load state file
 	if err := LoadFile(&filename, def, func(filename string) error {

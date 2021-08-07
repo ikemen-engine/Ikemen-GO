@@ -386,7 +386,7 @@ func SectionName(sec string) (string, string) {
 	return strings.ToLower(name), sec
 }
 func HasExtension(file, ext string) bool {
-	match, _ := regexp.MatchString(ext, filepath.Ext(file))
+	match, _ := regexp.MatchString(ext, filepath.Ext(strings.ToLower(file)))
 	return match
 }
 
