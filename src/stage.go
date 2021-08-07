@@ -667,8 +667,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
-		if tmp, ok := sec[0].getString("attachedchar"); ok {
-			s.attachedchardef = append(s.attachedchardef, tmp)
+		if sec[0].LoadFile("attachedchar", def, func(filename string) error {
+			s.attachedchardef = append(s.attachedchardef, filename)
+			return nil
+		}); err != nil {
+			return nil, err
 		}
 		if main {
 			r, _ := regexp.Compile("^round[0-9]+def$")
