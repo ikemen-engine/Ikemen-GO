@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -2524,7 +2525,7 @@ func (s *Select) addChar(def string) {
 		return nil
 	})
 	//preload portion of sff file
-	fp := SearchFile("preload.sff", def, false)
+	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(def, filepath.Ext(def)))
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sc.sprite
 	}
