@@ -730,8 +730,7 @@ type AnimTextSnd struct {
 	text        LbText
 	anim        AnimLayout
 	displaytime int32
-	//time        int32
-	//sndtime     int32
+	cnt         int32
 }
 
 func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
@@ -752,10 +751,19 @@ func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
 	ats.anim.Read(pre, is, at, ln)
 	is.ReadI32(pre+"displaytime", &ats.displaytime)
 }
-func (ats *AnimTextSnd) Reset()  { ats.anim.Reset() }
-func (ats *AnimTextSnd) Action() { ats.anim.Action() }
+func (ats *AnimTextSnd) Reset() {
+	ats.anim.Reset()
+	ats.cnt = 0
+}
+func (ats *AnimTextSnd) Action() {
+	ats.anim.Action()
+	ats.cnt++
+}
 
 /*func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
+	if ats.displaytime > 0 && ats.cnt > ats.displaytime {
+		return
+	}
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.Draw(x, y, layerno)
 	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
@@ -772,6 +780,9 @@ func (ats *AnimTextSnd) Action() { ats.anim.Action() }
 
 // DrawScaled it's Draw but with a scaled setting used for lifebar localcoord
 func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
+	if ats.displaytime > 0 && ats.cnt > ats.displaytime {
+		return
+	}
 	if len(ats.anim.anim.frames) > 0 {
 		ats.anim.DrawScaled(x, y, layerno, scale)
 	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
