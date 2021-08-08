@@ -43,7 +43,7 @@ func newFnt() *Fnt {
 
 func loadFnt(filename string, height int32) (*Fnt, error) {
 
-	if strings.HasSuffix(filename, ".fnt") {
+	if HasExtension(filename, ".fnt") {
 		return loadFntV1(filename)
 	}
 
