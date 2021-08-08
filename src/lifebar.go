@@ -1628,11 +1628,10 @@ type LifeBarRound struct {
 
 func newLifeBarRound(snd *Snd) *LifeBarRound {
 	return &LifeBarRound{snd: snd, match_wins: [...]int32{2, 2},
-		match_maxdrawgames: [...]int32{1, 1}, start_waittime: 30, fight_sndtime: 100,
-		ctrl_time: 30, slow_time: 60, slow_fadetime: 45, slow_speed: 0.25,
-		over_waittime: 45, over_hittime: 10, over_wintime: 45, over_time: 210,
-		win_sndtime: 60, fadein_time: 30, fadeout_time: 30, shutter_time: 15,
-		callfight_time: 60}
+		match_maxdrawgames: [...]int32{1, 1}, start_waittime: 30, ctrl_time: 30,
+		slow_time: 60, slow_fadetime: 45, slow_speed: 0.25, over_waittime: 45,
+		over_hittime: 10, over_wintime: 45, over_time: 210, win_sndtime: 60,
+		fadein_time: 30, fadeout_time: 30, shutter_time: 15, callfight_time: 60}
 }
 func readLifeBarRound(is IniSection,
 	sff *Sff, at AnimationTable, snd *Snd, f []*Fnt) *LifeBarRound {
@@ -1872,7 +1871,7 @@ func readLifeBarRound(is IniSection,
 func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
 	ro.fight_top.Reset()
-	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, ro.fight_sndtime, 0
+	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, Max(ro.fight_sndtime, ro.fight_time), 0
 	sys.timerCount = append(sys.timerCount, sys.gameTime)
 	ro.timerActive = true
 }
