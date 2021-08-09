@@ -283,13 +283,13 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		}
 	}
 
-	if HasExtension(bgm.filename, "^\\.[Oo][Gg][Gg]$") {
+	if HasExtension(bgm.filename, ".ogg") {
 		bgm.ReadVorbis(loop, bgmVolume)
-	} else if HasExtension(bgm.filename, "^\\.[Mm][Pp]3$") {
+	} else if HasExtension(bgm.filename, ".mp3") {
 		bgm.ReadMp3(loop, bgmVolume)
-		//} else if HasExtension(bgm.filename, "^\\.[Ff][Ll][Aa][Cc]$") {
+		//} else if HasExtension(bgm.filename, ".flac") {
 		//	bgm.ConvertFLAC(loop, bgmVolume)
-	} else if HasExtension(bgm.filename, "^\\.[Ww][Aa][Vv]$") {
+	} else if HasExtension(bgm.filename, ".wav") {
 		bgm.ReadWav(loop, bgmVolume)
 	}
 }

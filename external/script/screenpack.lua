@@ -37,7 +37,6 @@ end
 --assign storyboard localcoord scaling
 function main.f_setStoryboardScale(localcoord)
 	local viewport43 = main.f_getViewport(localcoord[1], localcoord[2], 4, 3)
-	main.storyboardOffsetX = (viewport43[3] - localcoord[1]) / 2
 	setLuaSpriteScale(viewport43[3] / 320)
 	setLuaSpriteOffsetX(-math.floor(((localcoord[1] / (viewport43[3] / 320)) - 320) / 2))
 	setLuaPortraitScale(viewport43[3] / localcoord[1])

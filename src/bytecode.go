@@ -427,6 +427,7 @@ const (
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
 	OC_ex_firstattack
+	OC_ex_framespercount
 	OC_ex_float
 	OC_ex_gamemode
 	OC_ex_getplayerid
@@ -1763,6 +1764,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().drawpalno)
 	case OC_ex_firstattack:
 		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_framespercount:
+		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
 	case OC_ex_gamemode:
@@ -5969,7 +5972,7 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if ch >= 0 && int(ch) < len(crun.sounds) {
-		crun.sounds[ch].SetPan(pan * crun.facing, crun.localscl, x)
+		crun.sounds[ch].SetPan(pan*crun.facing, crun.localscl, x)
 	}
 	return false
 }
@@ -6323,6 +6326,67 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	})
 	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
 	sys.zoomPos[1] = zoompos[1]
+	return false
+}
+
+type forceFeedback StateControllerBase
+
+const (
+	forceFeedback_waveform byte = iota
+	forceFeedback_time
+	forceFeedback_freq
+	forceFeedback_ampl
+	forceFeedback_self
+	forceFeedback_redirectid
+)
+
+func (sc forceFeedback) Run(c *Char, _ []int32) bool {
+	crun := c
+	waveform := int32(0)
+	time := int32(60)
+	freq := [4]float32{128, 0, 0, 0}
+	ampl := [4]float32{128, 0, 0, 0}
+	self := true
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case forceFeedback_waveform:
+			waveform = exp[0].evalI(c)
+		case forceFeedback_time:
+			time = exp[0].evalI(c)
+		case forceFeedback_freq:
+			freq[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				freq[1] = exp[1].evalF(c)
+			}
+			if len(exp) > 2 {
+				freq[2] = exp[2].evalF(c)
+			}
+			if len(exp) > 3 {
+				freq[3] = exp[3].evalF(c)
+			}
+		case forceFeedback_ampl:
+			ampl[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				ampl[1] = exp[1].evalF(c)
+			}
+			if len(exp) > 2 {
+				ampl[2] = exp[2].evalF(c)
+			}
+			if len(exp) > 3 {
+				ampl[3] = exp[3].evalF(c)
+			}
+		case forceFeedback_self:
+			self = exp[0].evalB(c)
+		case forceFeedback_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	//TODO: not implemented
 	return false
 }
 
@@ -7173,7 +7237,7 @@ const (
 func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	crun := c
 	var cid int32
-	t, v  := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
+	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {

@@ -129,7 +129,7 @@ func newCompiler() *Compiler {
 		"offset":               c.offset,
 		"victoryquote":         c.victoryQuote,
 		"zoom":                 c.zoom,
-		"forcefeedback":        c.null,
+		"forcefeedback":        c.forceFeedback,
 		"null":                 c.null,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
@@ -317,6 +317,7 @@ var triggerMap = map[string]int{
 	"dizzypoints":      1,
 	"dizzypointsmax":   1,
 	"firstattack":      1,
+	"framespercount":   1,
 	"gamemode":         1,
 	"getplayerid":      1,
 	"guardbreak":       1,
@@ -2428,6 +2429,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzypointsmax)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
+	case "framespercount":
+		out.append(OC_ex_, OC_ex_framespercount)
 	case "gamemode":
 		if err := nameSubEx(OC_ex_gamemode); err != nil {
 			return bvNone(), err
@@ -3419,14 +3422,15 @@ func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 			return Error("Value not specified")
 		}
 		var sv SaveData
-		if len(data) >= 2 {
-			if strings.ToLower(data[:2]) == "ma" {
-				sv = SaveData_map
-			} else if strings.ToLower(data[:2]) == "va" {
-				sv = SaveData_var
-			} else if strings.ToLower(data[:2]) == "fv" {
-				sv = SaveData_fvar
-			}
+		switch strings.ToLower(data) {
+		case "map":
+			sv = SaveData_map
+		case "var":
+			sv = SaveData_var
+		case "fvar":
+			sv = SaveData_fvar
+		default:
+			return Error("Invalid value: " + data)
 		}
 		sc.add(id, sc.iToExp(int32(sv)))
 		return nil
@@ -7158,6 +7162,55 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) forceFeedback(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*forceFeedback)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			forceFeedback_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "waveform", func(data string) error {
+			if len(data) == 0 {
+				return Error("Value not specified")
+			}
+			var wf int32
+			switch strings.ToLower(data) {
+			case "sine":
+				wf = 0
+			case "square":
+				wf = 1
+			case "sinesquare":
+				wf = 2
+			case "off":
+				wf = -1
+			default:
+				return Error("Invalid value: " + data)
+			}
+			sc.add(forceFeedback_waveform, sc.iToExp(wf))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			forceFeedback_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "freq",
+			forceFeedback_freq, VT_Float, 4, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ampl",
+			forceFeedback_ampl, VT_Float, 4, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "self",
+			forceFeedback_self, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) dialogue(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*dialogue)(sc), c.stateSec(is, func() error {
@@ -7986,7 +8039,7 @@ func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	filename, def string) error {
 	var str string
-	zss := HasExtension(filename, "^\\.[Zz][Ss][Ss]$")
+	zss := HasExtension(filename, ".zss")
 	fnz := filename
 	// Load state file
 	if err := LoadFile(&filename, def, func(filename string) error {

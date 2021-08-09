@@ -386,6 +386,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		}
 	}
 	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	if !isStage && wscl[0] == 1 {
+		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
+	}
 	startrect1 := ((float32(rect[1])-pos[1]*bg.windowdelta[1]+(float32(sys.gameHeight)/scly-240))*wscl[1] - shakeY) * sys.heightScale
 	rect[0] = int32(math.Floor(float64(startrect0)))
 	rect[1] = int32(math.Floor(float64(startrect1)))
@@ -664,8 +667,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
-		if tmp, ok := sec[0].getString("attachedchar"); ok {
-			s.attachedchardef = append(s.attachedchardef, tmp)
+		if sec[0].LoadFile("attachedchar", def, func(filename string) error {
+			s.attachedchardef = append(s.attachedchardef, filename)
+			return nil
+		}); err != nil {
+			return nil, err
 		}
 		if main {
 			r, _ := regexp.Compile("^round[0-9]+def$")
@@ -739,7 +745,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
-		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
+		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		if sys.cam.ZoomMax == 0 {
@@ -895,11 +901,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
 			s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
-			if s.stageCamera.cuthigh != math.MinInt32 {
-				//TODO: cuthigh part of the formula is likely not accurate
-				maxy := 0 - float32(s.stageCamera.localcoord[1]-240)*s.localscl
-				s.stageCamera.drawOffsetY += MinF(maxy, float32(s.stageCamera.cuthigh)*s.localscl)
-			}
 		}
 	}
 	s.mainstage = main

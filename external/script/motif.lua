@@ -1,9 +1,6 @@
 --;===========================================================
 --; DEFAULT VALUES
 --;===========================================================
-local width = math.max(config.GameWidth, main.SP_Localcoord[1])
-local height = math.max(config.GameHeight, main.SP_Localcoord[2])
-
 local verInfo = main.f_fileRead("external/script/version", "r")
 
 --This pre-made table (3/4 of the whole file) contains all default values used in screenpack. New table from parsed DEF file is merged on top of this one.
@@ -104,7 +101,7 @@ local motif =
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {-1, 0, 0, 255, 255, 255},
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -138,7 +135,7 @@ local motif =
 		connecting_font_height = -1, --Ikemen feature
 		connecting_host_text = 'Waiting for player 2... (%s)', --Ikemen feature
 		connecting_join_text = 'Now connecting to %s... (%s)', --Ikemen feature
-		connecting_overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		connecting_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		connecting_overlay_col = {0, 0, 0}, --Ikemen feature
 		connecting_overlay_alpha = {20, 100}, --Ikemen feature
 		textinput_offset = {25, 32}, --Ikemen feature
@@ -147,7 +144,7 @@ local motif =
 		textinput_font_height = -1, --Ikemen feature
 		textinput_name_text = 'Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.', --Ikemen feature
 		textinput_address_text = 'Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.', --Ikemen feature
-		textinput_overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		textinput_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
 		textinput_overlay_alpha = {20, 100}, --Ikemen feature
 		menu_key_next = '$D&$F', --Ikemen feature
@@ -237,7 +234,7 @@ local motif =
 	},
 	infobox =
 	{
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -246,7 +243,7 @@ local motif =
 		text_font = {'default-3x5.def', 0, 1, 191, 191, 191},
 		text_font_scale = {1.0, 1.0}, --Ikemen feature
 		text_font_height = -1, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
@@ -463,7 +460,7 @@ local motif =
 		p1_teammenu_value_snd = {100, 0},
 		p1_teammenu_done_snd = {100, 1},
 		p1_teammenu_item_offset = {0, 0},
-		p1_teammenu_item_spacing = {0, 15},
+		p1_teammenu_item_spacing = {0, 0},
 		p1_teammenu_item_font = {-1, 0, 1, 255, 255, 255},
 		p1_teammenu_item_font_scale = {1.0, 1.0},
 		p1_teammenu_item_font_height = -1, --Ikemen feature
@@ -563,7 +560,7 @@ local motif =
 		p2_teammenu_value_snd = {100, 0},
 		p2_teammenu_done_snd = {100, 1},
 		p2_teammenu_item_offset = {0, 0},
-		p2_teammenu_item_spacing = {0, 15},
+		p2_teammenu_item_spacing = {0, 0},
 		p2_teammenu_item_font = {-1, 0, -1, 255, 255, 255},
 		p2_teammenu_item_font_scale = {1.0, 1.0},
 		p2_teammenu_item_font_height = -1, --Ikemen feature
@@ -678,8 +675,6 @@ local motif =
 		p1_num = 1, --Ikemen feature
 		p1_anim = -1, --Ikemen feature
 		p1_spr = {9000, 1},
-		p1_done_anim = -1, --Ikemen feature
-		p1_done_spr = {9000, 1}, --Ikemen feature
 		p1_offset = {0, 0},
 		p1_facing = 1,
 		p1_scale = {1.0, 1.0},
@@ -690,8 +685,6 @@ local motif =
 		p2_num = 1, --Ikemen feature
 		p2_anim = -1, --Ikemen feature
 		p2_spr = {9000, 1},
-		p2_done_anim = -1, --Ikemen feature
-		p2_done_spr = {9000, 1}, --Ikemen feature
 		p2_offset = {0, 0},
 		p2_facing = -1,
 		p2_scale = {1.0, 1.0},
@@ -700,8 +693,6 @@ local motif =
 		p2_padding = 0, --Ikemen feature
 		--p<pn>_member<num>_anim = -1, --Ikemen feature
 		--p<pn>_member<num>_spr = {9000, 1}, --Ikemen feature
-		--p<pn>_member<num>_done_anim = -1, --Ikemen feature
-		--p<pn>_member<num>_done_spr = {9000, 1}, --Ikemen feature
 		--p<pn>_member<num>_offset = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_slide_speed = {0, 0}, --Ikemen feature
@@ -805,7 +796,7 @@ local motif =
 		move_snd = {100, 0}, --Ikemen feature
 		done_snd = {100, 1}, --Ikemen feature
 		cancel_snd = {100, 2}, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_continue = {5500, 5300}, --Ikemen feature
@@ -907,7 +898,7 @@ local motif =
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
@@ -934,7 +925,7 @@ local motif =
 		wintext_font_height = -1, --Ikemen feature
 		wintext_displaytime = -1,
 		wintext_layerno = 2,
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state = {180}, --Ikemen feature
@@ -971,7 +962,7 @@ local motif =
 		winstext_displaytime = -1,
 		winstext_layerno = 2,
 		roundstowin = 5,
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1002,7 +993,7 @@ local motif =
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		roundstowin = 51, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1032,7 +1023,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1062,7 +1053,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1092,7 +1083,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state_win = {180}, --Ikemen feature
@@ -1122,7 +1113,7 @@ local motif =
 		winstext_font_height = -1, --Ikemen feature
 		winstext_displaytime = -1, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		p1_state = {180}, --Ikemen feature
@@ -1143,7 +1134,7 @@ local motif =
 		fadeout_time = 10,
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
-		title_offset = {159, 19},
+		title_offset = {159, 15},
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255},
 		title_font_scale = {1.0, 1.0},
 		title_font_height = -1, --Ikemen feature
@@ -1281,7 +1272,7 @@ local motif =
 		textinput_port_text = 'Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		textinput_reswidth_text = 'Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
 		textinput_resheight_text = 'Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.', --Ikemen feature
-		textinput_overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		textinput_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
 		textinput_overlay_alpha = {20, 100}, --Ikemen feature
 		cursor_move_snd = {100, 0},
@@ -1371,7 +1362,7 @@ local motif =
 		fadeout_time = 10, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -1435,7 +1426,7 @@ local motif =
 		fadeout_time = 0, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -1497,7 +1488,7 @@ local motif =
 		menu_arrow_down_facing = 1, --Ikemen feature
 		menu_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
 		menu_title_uppercase = 1, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		cursor_move_snd = {100, 0}, --Ikemen feature
@@ -1523,7 +1514,7 @@ local motif =
 		movelist_window_width = 300, --Ikemen feature
 		movelist_window_margins_y = {20, 1}, --Ikemen feature
 		movelist_window_visibleitems = 18, --Ikemen feature
-		movelist_overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		movelist_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		movelist_overlay_col = {0, 0, 0}, --Ikemen feature
 		movelist_overlay_alpha = {20, 100}, --Ikemen feature
 		movelist_arrow_up_anim = -1, --Ikemen feature
@@ -1603,7 +1594,7 @@ local motif =
 		credits_font = {'f-4x6.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		credits_font_scale = {1.0, 1.0}, --Ikemen feature
 		credits_font_height = -1, --Ikemen feature
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -1686,7 +1677,7 @@ local motif =
 		text_font_height = -1, --Ikemen feature
 		text_displaytime = 0, --Ikemen feature
 		text_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {0, 0}, --Ikemen feature
 	},
@@ -1919,7 +1910,7 @@ local motif =
 		window_width = 300, --Ikemen feature
 		window_margins_y = {20, 1}, --Ikemen feature
 		window_visibleitems = 10, --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		move_snd = {100, 0}, --Ikemen feature
@@ -1933,7 +1924,7 @@ local motif =
 	},
 	warning_info =
 	{
-		title_offset = {159, 19}, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
 		title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
@@ -1947,7 +1938,7 @@ local motif =
 		text_keys_text = 'Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset.', --Ikemen feature
 		text_pad_text = 'Controller not detected.\nCheck if your controller is plugged in.', --Ikemen feature
 		text_shaders_text = 'No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from "./external/shaders" directory.', --Ikemen feature
-		overlay_window = {0, 0, width, height}, --Ikemen feature (0, 0, 320, 240)
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 		done_snd = {100, 0}, --Ikemen feature
@@ -2031,6 +2022,34 @@ local motif =
 	},
 	anim = {},
 }
+
+function motif.setBaseTitleInfo()
+	motif.title_info.menu_itemname_arcade = "ARCADE"
+	motif.title_info.menu_itemname_versus = "VS MODE"
+	motif.title_info.menu_itemname_teamarcade = "TEAM ARCADE"
+	motif.title_info.menu_itemname_teamversus = "TEAM VS"
+	motif.title_info.menu_itemname_teamcoop = "TEAM CO-OP"
+	motif.title_info.menu_itemname_survival = "SURVIVAL"
+	motif.title_info.menu_itemname_survivalcoop = "SURVIVAL CO-OP"
+	motif.title_info.menu_itemname_training = "TRAINING"
+	motif.title_info.menu_itemname_watch = "WATCH"
+	motif.title_info.menu_itemname_options = "OPTIONS"
+	motif.title_info.menu_itemname_exit = "EXIT"
+	main.t_sort.title_info = {}
+	main.t_sort.title_info.menu = {
+		"arcade",
+		"versus",
+		"teamarcade",
+		"teamversus",
+		"teamcoop",
+		"survival",
+		"survivalcoop",
+		"training",
+		"watch",
+		"options",
+		"exit",
+	}
+end
 
 function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame = "Game Settings"
@@ -2395,7 +2414,7 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 				end
 			elseif pos[param] == nil or param:match('_itemname_') or param:match('_font_height$') then --mugen takes into account only first occurrence
 				if param:match('_font$') then --assign default font values if needed (also ensure that there are multiple values in the first place)
-					local _, n = value:gsub(',%s*[0-9]*', '')
+					local _, n = value:gsub(',', '')
 					for i = n + 1, #main.t_fntDefault do
 						value = value:gsub(',?%s*$', ',' .. main.t_fntDefault[i])
 					end
@@ -2445,6 +2464,8 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 									break --use default font values
 								end
 							end
+						elseif param:match('_font$') and not tonumber(c) then
+							c = nil
 						end
 						if c == nil or c == '' then
 							table.insert(pos[param], 0)
@@ -2475,9 +2496,6 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 end
 --file:close()
 
-if main.t_sort.select_info.teammenu == nil then
-	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
-end
 if main.debugLog then main.f_printTable(main.t_sort, 'debug/t_sort.txt') end
 
 --;===========================================================
@@ -2809,6 +2827,9 @@ for k, v in pairs(motif.glyphs) do
 end
 
 --default menus
+if main.t_sort.title_info == nil or main.t_sort.title_info.menu == nil or #main.t_sort.title_info.menu == 0 then
+	motif.setBaseTitleInfo()
+end
 if main.t_sort.option_info == nil or main.t_sort.option_info.menu == nil or #main.t_sort.option_info.menu == 0 then
 	motif.setBaseOptionInfo()
 end
@@ -2817,6 +2838,10 @@ if main.t_sort.menu_info == nil or main.t_sort.menu_info.menu == nil or #main.t_
 end
 if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or #main.t_sort.training_info.menu == 0 then
 	motif.setBaseTrainingInfo()
+end
+
+if main.t_sort.select_info.teammenu == nil then
+	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
 end
 
 --menus spr/anim data
@@ -2829,8 +2854,8 @@ for group_k, group_t in pairs(main.t_sort) do
 					motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
 				end
 			else--if subt_k == 'menu' or subt_k == 'keymenu' then
-				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['menu_pos'][1], y = motif[group_k].menu_pos[2]})
-				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['menu_pos'][1], y = motif[group_k].menu_pos[2]})
+				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
+				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
 			end
 		end
 	end
@@ -2876,7 +2901,7 @@ end
 --disabled scaling if element uses default values (non-existing in mugen)
 motif.defaultMenu = motif.menu_info.menu_uselocalcoord == 0
 motif.defaultOptions = motif.option_info.menu_uselocalcoord == 0
-motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil or motif.defaultOptions
+motif.defaultOptionsTitle = t.option_info == nil or t.option_info.title_offset == nil
 motif.defaultReplay = motif.replay_info.menu_uselocalcoord == 0
 motif.defaultWarning = t.warning_info == nil
 

@@ -5038,7 +5038,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
 		return false
 	}
-	if len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid {
+	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
 			if nci >= 0 && c.ghv.hitid == nci {
 				return false
@@ -5056,20 +5056,20 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
 		return false
 	}
-	if h.chainid < 0 {
-		var styp int32
-		if st == ST_N {
-			styp = h.attr & int32(ST_MASK)
-		} else {
-			styp = int32(st)
-		}
-		for _, hb := range c.hitby {
-			if hb.time != 0 &&
-				(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
-				return false
-			}
+	//if h.chainid < 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/308
+	var styp int32
+	if st == ST_N {
+		styp = h.attr & int32(ST_MASK)
+	} else {
+		styp = int32(st)
+	}
+	for _, hb := range c.hitby {
+		if hb.time != 0 &&
+			(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
+			return false
 		}
 	}
+	//}
 	return true
 }
 func (c *Char) hittable(h *HitDef, e *Char, st StateType,

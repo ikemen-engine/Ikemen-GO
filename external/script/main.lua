@@ -106,7 +106,7 @@ function main.f_commandAdd(name, cmd, tim, buf)
 	end
 	main.t_commands[name] = 0
 end
-main.f_commandAdd("KonamiCode", "~U,U,D,D,B,F,B,F,b,a,s", 300, 1)
+--main.f_commandAdd("KonamiCode", "~U,U,D,D,B,F,B,F,b,a,s", 300, 1)
 
 --sends inputs to buffer
 function main.f_cmdInput()
@@ -221,12 +221,12 @@ function main.f_filePath(path, dir, defaultDir)
 	path = path:gsub('\\', '/')
 	if not path:lower():match('^data/') then
 		if main.f_fileExists(dir .. path) then
-			return dir .. path
+			return dir .. path, true
 		elseif main.f_fileExists(defaultDir .. path) then
-			return defaultDir .. path
+			return defaultDir .. path, true
 		end
 	end
-	return path
+	return path, false
 end
 
 --prints "t" table content into "toFile" file
@@ -401,8 +401,8 @@ function text:create(t)
 	if t.window == nil then t.window = {} end
 	t.window[1] = t.window[1] or 0
 	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or math.max(config.GameWidth, motif.info.localcoord[1])
-	t.window[4] = t.window[4] or math.max(config.GameHeight, motif.info.localcoord[2])
+	t.window[3] = t.window[3] or motif.info.localcoord[1]
+	t.window[4] = t.window[4] or motif.info.localcoord[2]
 	t.defsc = t.defsc or false
 	t.ti = textImgNew()
 	setmetatable(t, self)
@@ -836,7 +836,7 @@ function main.f_tableMerge(t1, t2, key)
 			end
 		elseif type(t1[k] or false) == "table" then
 			t1[k][1] = v
-		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and not (key or k):match('_font$') then
+		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and (not (key or k):match('_font$') --[[or (type(k) == "number" and k > 1)]]) then
 			if type(t1[k]) == "string" then
 				t1[k] = tostring(v)
 			else
@@ -868,7 +868,7 @@ function main.f_tableClean(t, t_sort)
 	end
 	--then we add remaining default entries if not existing yet and not disabled (by default or via screenpack)
 	for i = 1, #t do
-		if t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
+		if t_sort[t[i].itemname] ~= nil and t_added[t[i].itemname] == nil and t[i].displayname ~= '' then
 			table.insert(t_clean, t[i])
 		end
 	end
@@ -1136,6 +1136,10 @@ end
 
 --convert mugen style window coordinate system to the one used in engine
 function main.windowCoords(t, substract)
+	t[1] = tonumber(t[1]) or 0
+	t[2] = tonumber(t[2]) or 0
+	t[3] = tonumber(t[3]) or 0
+	t[4] = tonumber(t[4]) or 0
 	local window = main.f_tableCopy(t)
 	if window[3] < window[1] then
 		t[3] = window[1]
@@ -1219,7 +1223,7 @@ function main.f_commandLine()
 		loadLifebar(main.lifebarDef)
 	end
 	setLifebarElements({guardbar = config.BarGuard, stunbar = config.BarStun, redlifebar = config.BarRedLife})
-	local frames = getTimeFramesPerCount()
+	local frames = framespercount()
 	main.f_updateRoundsNum()
 	local t = {}
 	local t_assignedPals = {}
@@ -1320,7 +1324,9 @@ function main.f_commandLine()
 		end
 	end
 	if main.t_stageDef[stage:lower()] == nil then
-		addStage(stage)
+		if addStage(stage) == 0 then
+			panicError("\nUnable to add stage: " .. stage .. "\n")
+		end
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
 	selectStart()
@@ -1350,6 +1356,9 @@ function main.f_commandLine()
 		end
 		overrideCharData(v.player, math.ceil(v.num / 2), v.override)
 		if start ~= nil then
+			if start.p[v.player].t_selected == nil then
+				start.p[v.player].t_selected = {}
+			end
 			table.insert(start.p[v.player].t_selected, {
 				ref = main.t_charDef[v.character:lower()],
 				pal = v.pal,
@@ -1382,7 +1391,7 @@ main.txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
 main.f_loadingRefresh(main.txt_loading)
-main.timeFramesPerCount = getTimeFramesPerCount()
+main.timeFramesPerCount = framespercount()
 main.f_updateRoundsNum()
 
 --generate preload list
@@ -1465,7 +1474,7 @@ function main.f_warning(t, background, info, title, txt, overlay)
 	esc(false)
 	while true do
 		main.f_cmdInput()
-		if esc() or main.f_input(main.t_players, {'m'}) then
+		if esc() or main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, cancel_snd[1], cancel_snd[2])
 			return false
 		elseif getKey() ~= '' then
@@ -1756,7 +1765,9 @@ function main.f_addStage(file, hidden)
 	if file:match('/$') then
 		return
 	end
-	addStage(file)
+	if addStage(file) == 0 then
+		return
+	end
 	local stageNo = #main.t_selStages + 1
 	local t_info = getStageInfo(stageNo)
 	table.insert(main.t_selStages, {
@@ -2526,7 +2537,6 @@ main.t_itemname = {
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		if main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname])) then
-			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -2540,7 +2550,6 @@ main.t_itemname = {
 	--SERVER HOST
 	['serverhost'] = function(t, item)
 		if main.f_connect("", main.f_extractText(motif.title_info.connecting_host_text, getListenPort())) then
-			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -2999,6 +3008,19 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				if esc() or main.f_input(main.t_players, {'m'}) then
 					if not bool_main then
 						sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
+					elseif not esc() and t[item].itemname ~= 'exit' then
+						--menu key moves cursor to exit without exiting the game
+						for i = 1, #t do
+							if t[i].itemname == 'exit' then
+								sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
+								item = i
+								cursorPosY = math.min(item, motif[main.group].menu_window_visibleitems)
+								if cursorPosY >= motif[main.group].menu_window_visibleitems then
+									moveTxt = (item - motif[main.group].menu_window_visibleitems) * motif[main.group].menu_item_spacing[2]
+								end
+								break
+							end
+						end
 					end
 					if not bool_main or esc() then
 						break
@@ -3229,7 +3251,6 @@ function main.f_replay()
 		elseif main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 			enterReplay(t[item].itemname)
-			start.f_hardReset()
 			synchronize()
 			math.randomseed(sszRandom())
 			main.f_cmdBufReset()
@@ -3554,6 +3575,9 @@ end
 
 --demo mode
 function main.f_demo()
+	if #main.t_randomChars == 0 then
+		return
+	end
 	if main.fadeActive or motif.demo_mode.enabled == 0 then
 		demoFrameCounter = 0
 		return
@@ -3721,7 +3745,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	title:draw()
 	--draw menu items
 	local items_shown = item + motif[section].menu_window_visibleitems - cursorPosY
-	if items_shown > #t or (motif[section].menu_window_visibleitems > 1 and items_shown < #t and (motif[section].menu_window_margins_y[1] ~= 0 or motif[section].menu_window_margins_y[2] ~= 0)) then
+	if items_shown > #t or (motif[section].menu_window_visibleitems > 0 and items_shown < #t and (motif[section].menu_window_margins_y[1] ~= 0 or motif[section].menu_window_margins_y[2] ~= 0)) then
 		items_shown = #t
 	end
 	for i = 1, items_shown do

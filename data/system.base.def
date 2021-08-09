@@ -785,22 +785,16 @@
 
 	p1.num = 1
 	p1.anim = -1
-	p1.done.anim = -1
-	p1.done.spr = 9000, 1
 	p1.spacing = 0, 0
 	p1.padding = 0
 
 	p2.num = 1
 	p2.anim = -1
-	p2.done.anim = -1
-	p2.done.spr = 9000, 1
 	p2.spacing = 0, 0
 	p2.padding = 0
 
 	;p<pn>.member<num>.anim = -1
 	;p<pn>.member<num>.spr = 9000, 1
-	;p<pn>.member<num>.done.anim = -1
-	;p<pn>.member<num>.done.spr = 9000, 1
 	;p<pn>.member<num>.offset = 0, 0
 	;p<pn>.member<num>.scale = 1.0, 1.0
 	;p<pn>.member<num>.slide.speed = 0, 0
@@ -1529,6 +1523,129 @@
 	;menu.itemname.back = "Back"
 	;menu.itemname.savereturn = "Save and Return"
 	;menu.itemname.return = "Return Without Saving"
+
+	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; If custom menus are not declared, following option screen menus are loaded by default:
+	menu.itemname.menugame = "Game Settings"
+	menu.itemname.menugame.difficulty = "Difficulty Level"
+	menu.itemname.menugame.roundtime = "Time Limit"
+	menu.itemname.menugame.lifemul = "Life"
+	menu.itemname.menugame.singlevsteamlife = "Single VS Team Life"
+	menu.itemname.menugame.gamespeed = "Game Speed"
+	menu.itemname.menugame.roundsnumsingle = "Rounds to Win (Single)"
+	menu.itemname.menugame.maxdrawgames = "Max Draw Games"
+	menu.itemname.menugame.credits = "Credits"
+	menu.itemname.menugame.aipalette = "Arcade Palette"
+	menu.itemname.menugame.aisurvivalpalette = "Survival Palette"
+	menu.itemname.menugame.airamping = "AI Ramping"
+	menu.itemname.menugame.quickcontinue = "Quick Continue"
+	menu.itemname.menugame.autoguard = "Auto-Guard"
+	menu.itemname.menugame.stunbar = "Dizzy"
+	menu.itemname.menugame.guardbar = "Guard Break"
+	menu.itemname.menugame.redlifebar = "Red Life"
+	menu.itemname.menugame.teamduplicates = "Team Duplicates"
+	menu.itemname.menugame.teamlifeshare = "Team Life Share"
+	menu.itemname.menugame.teampowershare = "Team Power Share"
+	menu.itemname.menugame.empty = ""
+	menu.itemname.menugame.menutag = "Tag Settings"
+	menu.itemname.menugame.menutag.roundsnumtag = "Rounds to Win (Tag)"
+	menu.itemname.menugame.menutag.losekotag = "Partner KOed Lose"
+	menu.itemname.menugame.menutag.empty = ""
+	menu.itemname.menugame.menutag.mintag = "Min Tag Chars"
+	menu.itemname.menugame.menutag.maxtag = "Max Tag Chars"
+	menu.itemname.menugame.menutag.empty = ""
+	menu.itemname.menugame.menutag.back = "Back"
+	menu.itemname.menugame.menusimul = "Simul Settings"
+	menu.itemname.menugame.menusimul.roundsnumsimul = "Rounds to Win (Simul)"
+	menu.itemname.menugame.menusimul.losekosimul = "Player KOed Lose"
+	menu.itemname.menugame.menusimul.empty = ""
+	menu.itemname.menugame.menusimul.minsimul = "Min Simul Chars"
+	menu.itemname.menugame.menusimul.maxsimul = "Max Simul Chars"
+	menu.itemname.menugame.menusimul.empty = ""
+	menu.itemname.menugame.menusimul.back = "Back"
+	menu.itemname.menugame.menuturns = "Turns Settings"
+	menu.itemname.menugame.menuturns.turnsrecoverybase = "Turns Recovery Base"
+	menu.itemname.menugame.menuturns.turnsrecoverybonus = "Turns Recovery Bonus"
+	menu.itemname.menugame.menuturns.empty = ""
+	menu.itemname.menugame.menuturns.minturns = "Min Turns Chars"
+	menu.itemname.menugame.menuturns.maxturns = "Max Turns Chars"
+	menu.itemname.menugame.menuturns.empty = ""
+	menu.itemname.menugame.menuturns.back = "Back"
+	menu.itemname.menugame.menuratio = "Ratio Settings"
+	menu.itemname.menugame.menuratio.ratiorecoverybase = "Ratio Recovery Base"
+	menu.itemname.menugame.menuratio.ratiorecoverybonus = "Ratio Recovery Bonus"
+	menu.itemname.menugame.menuratio.empty = ""
+	menu.itemname.menugame.menuratio.ratio1life = "Ratio 1 Life"
+	menu.itemname.menugame.menuratio.ratio1attack = "Ratio 1 Damage"
+	menu.itemname.menugame.menuratio.ratio2life = "Ratio 2 Life"
+	menu.itemname.menugame.menuratio.ratio2attack = "Ratio 2 Damage"
+	menu.itemname.menugame.menuratio.ratio3life = "Ratio 3 Life"
+	menu.itemname.menugame.menuratio.ratio3attack = "Ratio 3 Damage"
+	menu.itemname.menugame.menuratio.ratio4life = "Ratio 4 Life"
+	menu.itemname.menugame.menuratio.ratio4attack = "Ratio 4 Damage"
+	menu.itemname.menugame.menuratio.empty = ""
+	menu.itemname.menugame.menuratio.back = "Back"
+	menu.itemname.menugame.back = "Back"
+
+	menu.itemname.menuvideo = "Video Settings"
+	menu.itemname.menuvideo.resolution = "Resolution" ;reserved submenu
+	; Resolution is assigned based on values used in itemname suffix (e.g. 320x240)
+	menu.itemname.menuvideo.resolution.320x240 = "320x240    (4:3 QVGA)"
+	menu.itemname.menuvideo.resolution.640x480 = "640x480    (4:3 VGA)"
+	menu.itemname.menuvideo.resolution.960x720 = "960x720    (4:3 HD)"
+	menu.itemname.menuvideo.resolution.1280x720 = "1280x720   (16:9 HD)"
+	menu.itemname.menuvideo.resolution.1600x900 = "1600x900   (16:9 HD+)"
+	menu.itemname.menuvideo.resolution.1920x1080 = "1920x1080  (16:9 FHD)"
+	menu.itemname.menuvideo.resolution.empty = ""
+	menu.itemname.menuvideo.resolution.customres = "Custom"
+	menu.itemname.menuvideo.resolution.back = "Back"
+	menu.itemname.menuvideo.fullscreen = "Fullscreen"
+	menu.itemname.menuvideo.vretrace = "VSync"
+	menu.itemname.menuvideo.msaa = "MSAA"
+	menu.itemname.menuvideo.shaders = "Shaders" ;reserved submenu
+	; This list is populated with shaders existing in 'external/shaders' directory
+	menu.itemname.menuvideo.shaders.empty = ""
+	menu.itemname.menuvideo.shaders.noshader = "Disable"
+	menu.itemname.menuvideo.shaders.back = "Back"
+	menu.itemname.menuvideo.empty = ""
+	menu.itemname.menuvideo.back = "Back"
+
+	menu.itemname.menuaudio = "Audio Settings"
+	menu.itemname.menuaudio.mastervolume = "Master Volume"
+	menu.itemname.menuaudio.bgmvolume = "BGM Volume"
+	menu.itemname.menuaudio.sfxvolume = "SFX Volume"
+	menu.itemname.menuaudio.audioducking = "Audio Ducking"
+	menu.itemname.menuaudio.stereoeffects = "Stereo Effects"
+	menu.itemname.menuaudio.panningrange = "Panning Range"
+	menu.itemname.menuaudio.empty = ""
+	menu.itemname.menuaudio.back = "Back"
+
+	menu.itemname.menuinput = "Input Settings"
+	menu.itemname.menuinput.keyboard = "Key Config"
+	menu.itemname.menuinput.gamepad = "Joystick Config"
+
+	menu.itemname.menuinput.empty = ""
+	menu.itemname.menuinput.inputdefault = "Default"
+	menu.itemname.menuinput.back = "Back"
+
+	menu.itemname.menuengine = "Engine Settings"
+	menu.itemname.menuengine.players = "Players"
+	menu.itemname.menuengine.debugkeys = "Debug Keys"
+	menu.itemname.menuengine.debugmode = "Debug Mode"
+	menu.itemname.menuengine.empty = ""
+	menu.itemname.menuengine.helpermax = "HelperMax"
+	menu.itemname.menuengine.projectilemax = "PlayerProjectileMax"
+	menu.itemname.menuengine.explodmax = "ExplodMax"
+	menu.itemname.menuengine.afterimagemax = "AfterImageMax"
+	menu.itemname.menuengine.empty = ""
+	menu.itemname.menuengine.back = "Back"
+
+	menu.itemname.empty = ""
+	menu.itemname.portchange = "Port Change"
+	menu.itemname.default = "Default Values"
+	menu.itemname.empty = ""
+	menu.itemname.savereturn = "Save and Return"
+	menu.itemname.return = "Return Without Saving"
 
 [OptionBgDef] ;Ikemen feature
 	spr = ""

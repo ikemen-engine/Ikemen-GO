@@ -382,6 +382,9 @@ if hitOver {
 [StateDef 150; type: S; moveType: H; physics: N; velSet: 0, 0;]
 
 call GuardShaking(150);
+if time = 0 {
+	forceFeedback{waveform: square; time: 3}
+}
 
 #-------------------------------------------------------------------------------
 # Stand guard hit (knocked back)
@@ -394,6 +397,9 @@ call GuardKnockedBack(130);
 [StateDef 152; type: C; moveType: H; physics: N; velSet: 0, 0;]
 
 call GuardShaking(151);
+if time = 0 {
+	forceFeedback{waveform: square; time: 4}
+}
 
 #-------------------------------------------------------------------------------
 # Crouch guard hit (knocked back)
@@ -408,6 +414,9 @@ call GuardKnockedBack(131);
 changeAnim{value: 152}
 if hitShakeOver {
 	changeState{value: 155}
+}
+if time = 0 {
+	forceFeedback{waveform: square; time: 4}
 }
 
 #-------------------------------------------------------------------------------
@@ -499,6 +508,13 @@ call GetHitShaking(ifElse(getHitVar(groundType) = 1, 5000, 5010));
 if (time = 0 && (getHitVar(yVel) || getHitVar(fall))) || pos y != 0 {
 	stateTypeSet{stateType: A}
 }
+if anim = 5000 || anim = 5010 {
+	forceFeedback{time: 6; waveform: square}
+} else if anim = 5001 || anim = 5011 {
+	forceFeedback{time: 8; waveform: sinesquare; ampl: 110,-1,-.3}
+} else if anim = 5012 || anim = 5002 || anim = 5030 {
+	forceFeedback{time: 15; waveform: sinesquare; ampl: 140}
+}
 if hitShakeOver {
 	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5001)}
 }
@@ -520,6 +536,13 @@ if (time = 0 && (getHitVar(yVel) || getHitVar(fall))) || pos y != 0 {
 if hitShakeOver {
 	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5011)}
 }
+if anim = 5020 {
+	forceFeedback{time: 6; waveform: square}
+} else if anim = 5021 {
+	forceFeedback{time: 8; waveform: sinesquare; ampl: 110,-1,-.3}
+} else if anim = 5022 {
+	forceFeedback{time: 15; waveform: sinesquare; ampl: 140}
+}
 
 #-------------------------------------------------------------------------------
 # Crouch get-hit (knocked back)
@@ -534,6 +557,13 @@ call GetHitKnockedBack(5025, 11);
 call GetHitShaking(ifElse(getHitVar(airType) = 1, 5000, 5010));
 if hitShakeOver {
 	changeState{value: 5030}
+}
+if anim = 5000 || anim = 5010 {
+	forceFeedback{time: 6; waveform: square}
+} else if anim = 5001 || anim = 5011 {
+	forceFeedback{time: 8; waveform: sinesquare; ampl: 110,-1,-.3}
+} else if anim = 5012 || anim = 5002 || anim = 5030 || anim = [5051,5059] {
+	forceFeedback{time: 15; waveform: sinesquare; ampl: 140}
 }
 
 #-------------------------------------------------------------------------------
@@ -637,6 +667,9 @@ changeAnim{value: 5070}
 if hitShakeOver {
 	changeState{value: 5071}
 }
+if time = 0 {
+	forceFeedback{time: 12; waveform: sinesquare; ampl: 140}
+}
 
 #-------------------------------------------------------------------------------
 # Tripped get-hit (knocked away)
@@ -739,6 +772,9 @@ posFreeze{}
 if animTime = 0 {
 	changeState{value: 5101}
 }
+if time = 0 {
+	forceFeedback{waveform: sinesquare; ampl: 128,-3,-.2,.005; time: 20}
+}
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (bounce off ground)
@@ -799,6 +835,13 @@ if time = 0 {
 velMul{x: .85}
 if majorVersion = 1 && abs(vel x) < const(movement.down.friction.threshold) {
 	velSet{x: 0}
+}
+if time = 0 {
+	if alive {
+		forceFeedback{time: 8; ampl: 240; waveform: sine}
+	} else {
+		forceFeedback{time: 30; ampl: 200, 7, -.467; waveform: sine}
+	}
 }
 
 #-------------------------------------------------------------------------------

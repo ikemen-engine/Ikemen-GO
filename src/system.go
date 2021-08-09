@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -117,7 +118,6 @@ type System struct {
 	lifeMul                 float32
 	team1VS2Life            float32
 	turnsRecoveryRate       float32
-	lifebarFontScale        float32
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
@@ -285,9 +285,9 @@ type System struct {
 
 	// Localcoord sceenpack
 	luaLocalcoord    [2]int32
-	luaSpriteScale   float64
+	luaSpriteScale   float32
 	luaPortraitScale float32
-	luaSpriteOffsetX float64
+	luaSpriteOffsetX float32
 
 	// Localcoord lifebar
 	lifebarScale         float32
@@ -368,7 +368,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
-	var x, y int
+	mode := monitor.GetVideoMode()
+	x, y := (mode.Width-w)/2, (mode.Height-h)/2
 	if s.fullscreen {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
@@ -379,14 +380,12 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 			window.SetSize(w, h)
 		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
-		vm := monitor.GetVideoMode()
-		x, y = (vm.Width-w)/2, (vm.Height-h)/2
 	} else {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
+		window.SetPos(x, y)
 		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-		x, y = window.GetPos()
 	}
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
@@ -402,6 +401,9 @@ func (w *Window) toggleFullscreen() {
 		w.x, w.y = w.GetPos()
 		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+	}
+	if sys.vRetrace != -1 {
+		glfw.SwapInterval(sys.vRetrace)
 	}
 	w.fullscreen = !w.fullscreen
 }
@@ -2425,12 +2427,16 @@ func (s *Select) addChar(def string) {
 	} else {
 		def += ".def"
 	}
-	if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
-		def = "chars/" + def
-	}
-	if def = FileExist(def); len(def) == 0 {
-		sc.name = "dummyslot"
-		return
+	if chk := FileExist(def); len(chk) != 0 {
+		def = chk
+	} else {
+		if strings.ToLower(def[0:6]) != "chars/" && strings.ToLower(def[1:3]) != ":/" && (def[0] != '/' || idx > 0 && !strings.Contains(def[:idx], ":")) {
+			def = "chars/" + def
+		}
+		if def = FileExist(def); len(def) == 0 {
+			sc.name = "dummyslot"
+			return
+		}
 	}
 	str, err := LoadText(def)
 	if err != nil {
@@ -2519,7 +2525,7 @@ func (s *Select) addChar(def string) {
 		return nil
 	})
 	//preload portion of sff file
-	fp := SearchFile("preload.sff", def, false)
+	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(def, filepath.Ext(def)))
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sc.sprite
 	}
@@ -2561,6 +2567,7 @@ func (s *Select) AddStage(def string) error {
 		lines = SplitAndTrim(str, "\n")
 		return nil
 	}); err != nil {
+		sys.errLog.Printf("Failed to add stage, file not found: %v\n", def)
 		return err
 	}
 	tstr = fmt.Sprintf("Stage added: %v", def)
