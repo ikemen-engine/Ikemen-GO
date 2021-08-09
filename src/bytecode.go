@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unsafe"
+	"encoding/binary"
 )
 
 type StateType int32
@@ -597,6 +598,12 @@ func (bs *BytecodeStack) Alloc(size int) []BytecodeValue {
 
 type BytecodeExp []OpCode
 
+func Float32frombytes(bytes []byte) float32 {
+	bits := binary.LittleEndian.Uint32(bytes)
+	float := math.Float32frombits(bits)
+	return float
+}
+
 func (be *BytecodeExp) append(op ...OpCode) {
 	*be = append(*be, op...)
 }
@@ -965,7 +972,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(*(*int32)(unsafe.Pointer(&be[i])))
 			i += 4
 		case OC_float:
-			sys.bcStack.PushF(*(*float32)(unsafe.Pointer(&be[i])))
+			arr := make([]byte, 4)
+			arr[0] = byte(be[i])
+			arr[1] = byte(be[i+1])
+			arr[2] = byte(be[i+2])
+			arr[3] = byte(be[i+3])
+			flo := Float32frombytes(arr)
+			sys.bcStack.PushF(flo)
 			i += 4
 		case OC_neg:
 			be.neg(sys.bcStack.Top())

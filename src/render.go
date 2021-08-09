@@ -67,7 +67,7 @@ func RenderInit() {
 		"if(int(255.25*r) == msk){" +
 		"	gl_FragColor = vec4(0.0);" +
 		"}else{" +
-		"	vec4 c = texture1D(pal, r*0.9961);" +
+		"	vec4 c = texture1D(pal, r*0.9966);" +
 		"	if(neg) c.rgb = vec3(1.0) - c.rgb;" +
 		"	c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
 		"	gl_FragColor = vec4(c.rgb * mul, c.a * a);" +
