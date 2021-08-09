@@ -1,4 +1,4 @@
-module github.com/Windblade-GR01/Ikemen_GO/src
+module github.com/Windblade-GR01/Ikemen_GO
 
 go 1.16
 
