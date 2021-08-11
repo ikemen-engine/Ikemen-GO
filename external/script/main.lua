@@ -1936,6 +1936,7 @@ for line in content:gmatch('[^\r\n]+') do
 						panicError("\nUnrecognized stage parameter: " .. param)
 					end
 					main.t_selStages[row][param] = tonumber(value)
+					--order (more than 1 order param can be set at the same time)
 					if param:match('order') then
 						if main.t_orderStages[main.t_selStages[row].order] == nil then
 							main.t_orderStages[main.t_selStages[row].order] = {}
@@ -1944,6 +1945,15 @@ for line in content:gmatch('[^\r\n]+') do
 					end
 				end
 			end
+			--default order
+			if main.t_selStages[row].order == nil then
+				main.t_selStages[row].order = 1
+				if main.t_orderStages[main.t_selStages[row].order] == nil then
+					main.t_orderStages[main.t_selStages[row].order] = {}
+				end
+				table.insert(main.t_orderStages[main.t_selStages[row].order], row)
+			end
+			--unlock param
 			if unlock ~= '' then
 				--main.t_selStages[row].unlock = unlock
 				main.t_unlockLua.stages[row] = unlock
@@ -2506,6 +2516,7 @@ main.t_itemname = {
 	end,
 	--RANDOMTEST
 	['randomtest'] = function()
+		main.rankDisplay = false
 		setGameMode('randomtest')
 		return randomtest.run
 	end,

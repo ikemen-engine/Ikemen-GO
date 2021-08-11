@@ -1248,7 +1248,11 @@ function start.f_turnsRecovery()
 		return
 	end
 	start.turnsRecoveryInit = true
-	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
+	player(1)
+	local players = teamsize()
+	player(2)
+	players = players + teamsize()
+	for i = 1, players do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
 			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
 			local base = lifemax() * config.TurnsRecoveryBase / 100
