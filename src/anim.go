@@ -476,8 +476,8 @@ func (a *Animation) UpdateSprite() {
 	}
 	a.newframe, a.drawidx = false, a.current
 
-	a.scale_x = a.start_scale[0]
-	a.scale_y = a.start_scale[1]
+	a.scale_x = 1
+	a.scale_y = 1
 	a.angle = 0
 	a.interpolate_offset_x = 0
 	a.interpolate_offset_y = 0
@@ -530,6 +530,8 @@ func (a *Animation) UpdateSprite() {
 			break
 		}
 	}
+	a.scale_x *= a.start_scale[0]
+	a.scale_y *= a.start_scale[1]
 	for _, i := range a.interpolate_angle {
 		if nextDrawidx == i {
 			var drawframe_angle, nextframe_angle float32 = 0, 0
