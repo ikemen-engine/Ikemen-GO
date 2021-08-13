@@ -352,7 +352,7 @@ func setupConfig() configSettings {
 		2,
 		4
 	],
-	"PanningRange": 25,
+	"PanningRange": 30,
 	"Players": 4,
 	"PngSpriteFilter": true,
 	"PostProcessingShader": 0,
