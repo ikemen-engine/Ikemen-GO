@@ -702,12 +702,7 @@ func (al *AnimLayout) Action() {
 	}
 	al.anim.Action()
 }
-func (al *AnimLayout) Draw(x, y float32, layerno int16) {
-	al.lay.DrawAnim(&al.lay.window, x, y, 1, layerno, &al.anim, al.palfx)
-}
-
-// DrawScaled allows to set a custom scale with the draw (For lifebar localcoord)
-func (al *AnimLayout) DrawScaled(x, y float32, layerno int16, scale float32) {
+func (al *AnimLayout) Draw(x, y float32, layerno int16, scale float32) {
 	al.lay.DrawAnim(&al.lay.window, x, y, scale, layerno, &al.anim, al.palfx)
 }
 
@@ -759,32 +754,12 @@ func (ats *AnimTextSnd) Action() {
 	ats.anim.Action()
 	ats.cnt++
 }
-
-/*func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt) {
+func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt, scale float32) {
 	if ats.displaytime > 0 && ats.cnt > ats.displaytime {
 		return
 	}
 	if len(ats.anim.anim.frames) > 0 {
-		ats.anim.Draw(x, y, layerno)
-	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
-		len(ats.text.text) > 0 {
-		for k, v := range strings.Split(ats.text.text, "\\n") {
-			ats.text.lay.DrawText(x, y+
-				float32(k)*(float32(f[ats.text.font[0]].Size[1])*sys.lifebar.fnt_scale+
-					float32(f[ats.text.font[0]].Spacing[1])*sys.lifebar.fnt_scale),
-				1, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2],
-				ats.text.palfx, ats.text.frgba)
-		}
-	}
-}*/
-
-// DrawScaled it's Draw but with a scaled setting used for lifebar localcoord
-func (ats *AnimTextSnd) DrawScaled(x, y float32, layerno int16, f []*Fnt, scale float32) {
-	if ats.displaytime > 0 && ats.cnt > ats.displaytime {
-		return
-	}
-	if len(ats.anim.anim.frames) > 0 {
-		ats.anim.DrawScaled(x, y, layerno, scale)
+		ats.anim.Draw(x, y, layerno, scale)
 	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
 		len(ats.text.text) > 0 {
 		for k, v := range strings.Split(ats.text.text, "\\n") {
