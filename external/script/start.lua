@@ -2812,6 +2812,7 @@ function start.f_resultInit()
 		prefix = 'winstext',
 		resultText = {},
 		txt = nil,
+		bgdef = 'winbgdef',
 		counter = 0,
 	}
 	if main.resultsTable == nil then
@@ -2837,18 +2838,21 @@ function start.f_resultInit()
 		start.t_result.prefix = 'wintext'
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_winscreen
+		start.t_result.bgdef = 'winbgdef'
 	elseif gamemode('bossrush') then
 		if winnerteam() ~= 1 or matchno() < #start.t_roster or motif.boss_rush_results_screen.enabled == 0 then
 			return false
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_resultBossRush
+		start.t_result.bgdef = 'bossrushresultsbgdef'
 	elseif gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 		if winnerteam() == 1 and (matchno() < #start.t_roster or (start.t_roster[matchno() + 1] ~= nil and start.t_roster[matchno() + 1][1] == -1)) or motif.survival_results_screen.enabled == 0 then
 			return false
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], winCnt)
 		start.t_result.txt = txt_resultSurvival
+		start.t_result.bgdef = 'survivalresultsbgdef'
 		if winCnt < t.roundstowin and matchno() < #start.t_roster then
 			stateType = '_lose'
 			winBgm = false
@@ -2861,6 +2865,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], winCnt, loseCnt)
 		start.t_result.txt = txt_resultVS100
+		start.t_result.bgdef = 'vs100kumiteresultsbgdef'
 		if winCnt < t.roundstowin then
 			stateType = '_lose'
 			winBgm = false
@@ -2873,6 +2878,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(start.f_clearTimeText(t[start.t_result.prefix .. '_text'], timetotal() / 60))
 		start.t_result.txt = txt_resultTimeAttack
+		start.t_result.bgdef = 'timeattackresultsbgdef'
 		if matchtime() / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
@@ -2885,6 +2891,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(start.f_clearTimeText(t[start.t_result.prefix .. '_text'], timetotal() / 60))
 		start.t_result.txt = txt_resultTimeChallenge
+		start.t_result.bgdef = 'timechallengeresultsbgdef'
 		if matchtime() / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
@@ -2898,6 +2905,7 @@ function start.f_resultInit()
 		player(1) --assign sys.debugWC to player 1
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], scoretotal())
 		start.t_result.txt = txt_resultScoreChallenge
+		start.t_result.bgdef = 'scorechallengeresultsbgdef'
 		if scoretotal() <= f_lowestRankingData('score') then
 			stateType = '_lose'
 			winBgm = false
@@ -2926,8 +2934,7 @@ function start.f_resultInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.resultsbgdef.bgclearcolor[1], motif.resultsbgdef.bgclearcolor[2], motif.resultsbgdef.bgclearcolor[3])
-	main.f_bgReset(motif.resultsbgdef.bg)
+	main.f_bgReset(motif[start.t_result.bgdef].bg)
 	main.f_fadeReset('fadein', t)
 	if winBgm then
 		main.f_playBGM(false, motif.music.results_bgm, motif.music.results_bgm_loop, motif.music.results_bgm_volume, motif.music.results_bgm_loopstart, motif.music.results_bgm_loopend)
@@ -2949,11 +2956,11 @@ function start.f_result()
 	--draw text at layerno = 0
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 0)
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.resultsbgdef.bg, false)
+	bgDraw(motif[start.t_result.bgdef].bg, false)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.resultsbgdef.bg, true)
+	bgDraw(motif[start.t_result.bgdef].bg, true)
 	--draw text at layerno = 2
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 2)
 	--draw fadein / fadeout
@@ -3097,7 +3104,6 @@ function start.f_victoryInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.victorybgdef.bgclearcolor[1], motif.victorybgdef.bgclearcolor[2], motif.victorybgdef.bgclearcolor[3])
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
 	if start.t_music.musicvictory[winnerteam()] == nil then
@@ -3212,7 +3218,7 @@ function start.f_continueInit()
 		continue = false,
 		flag = true,
 		selected = false,
-		counter = 0,-- - motif.victory_screen.fadein_time
+		counter = 0,-- - motif.continue_screen.fadein_time
 	}
 	if motif.continue_screen.enabled == 0 or not main.continueScreen or winnerteam() == 1 or (motif.continue_screen.legacymode_enabled == 1 and main.credits == 0) or start.challenger > 0 then
 		return false
@@ -3226,7 +3232,6 @@ function start.f_continueInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.continuebgdef.bgclearcolor[1], motif.continuebgdef.bgclearcolor[2], motif.continuebgdef.bgclearcolor[3])
 	main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
 	main.f_bgReset(motif.continuebgdef.bg)
 	main.f_fadeReset('fadein', motif.continue_screen)
@@ -3721,7 +3726,6 @@ function start.f_challengerInit()
 	if motif.attract_mode.enabled == 1 and main.credits > 0 then
 		main.credits = main.credits - 1
 	end
-	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.challengerbgdef.bg)
 	main.f_fadeReset('fadein', motif.challenger_info)
 	animReset(motif.challenger_info.bg_data)

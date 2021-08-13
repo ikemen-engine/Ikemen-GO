@@ -833,7 +833,6 @@ local motif =
 	continuebgdef =
 	{
 		spr = '', --Ikemen feature
-		bgclearcolor = {0, 0, 0}, --Ikemen feature
 	},
 	game_over_screen =
 	{
@@ -933,6 +932,10 @@ local motif =
 		p1_teammate_state = {}, --Ikemen feature
 		p2_teammate_state = {}, --Ikemen feature
 	},
+	winbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	default_ending =
 	{
 		enabled = 0,
@@ -974,6 +977,10 @@ local motif =
 		p2_teammate_state_win = {}, --Ikemen feature
 		p2_teammate_state_lose = {}, --Ikemen feature
 	},
+	survivalresultsbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	vs100_kumite_results_screen =
 	{
 		enabled = 1, --Ikemen feature
@@ -1005,6 +1012,10 @@ local motif =
 		p2_teammate_state_win = {}, --Ikemen feature
 		p2_teammate_state_lose = {}, --Ikemen feature
 	},
+	vs100kumiteresultsbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	time_attack_results_screen =
 	{
 		enabled = 1, --Ikemen feature
@@ -1034,6 +1045,10 @@ local motif =
 		p1_teammate_state_lose = {}, --Ikemen feature
 		p2_teammate_state_win = {}, --Ikemen feature
 		p2_teammate_state_lose = {}, --Ikemen feature
+	},
+	timeattackresultsbgdef =
+	{
+		spr = '', --Ikemen feature
 	},
 	time_challenge_results_screen =
 	{
@@ -1065,6 +1080,10 @@ local motif =
 		p2_teammate_state_win = {}, --Ikemen feature
 		p2_teammate_state_lose = {}, --Ikemen feature
 	},
+	timechallengeresultsbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	score_challenge_results_screen =
 	{
 		enabled = 1, --Ikemen feature
@@ -1095,6 +1114,10 @@ local motif =
 		p2_teammate_state_win = {}, --Ikemen feature
 		p2_teammate_state_lose = {}, --Ikemen feature
 	},
+	scorechallengeresultsbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	boss_rush_results_screen =
 	{
 		enabled = 1, --Ikemen feature
@@ -1121,10 +1144,13 @@ local motif =
 		p1_teammate_state = {}, --Ikemen feature
 		p2_teammate_state = {}, --Ikemen feature
 	},
+	bossrushresultsbgdef =
+	{
+		spr = '', --Ikemen feature
+	},
 	resultsbgdef =
 	{
 		spr = '', --Ikemen feature
-		bgclearcolor = {0, 0, 0}, --Ikemen feature (disabled to not cover game screen)
 	},
 	option_info =
 	{
@@ -1684,7 +1710,6 @@ local motif =
 	challengerbgdef =
 	{
 		spr = '', --Ikemen feature
-		bgclearcolor = {0, 0, 0}, --Ikemen feature
 	},
 	rank_info =
 	{
@@ -2513,6 +2538,13 @@ if t.training_info == nil then t.training_info = {} end
 for k, v in pairs(t.menu_info) do
 	if not k:match('_itemname_') then
 		t.training_info[k] = v
+	end
+end
+
+--results screens reuse winbgdef values if not defined
+for _, v in ipairs{'survivalresultsbgdef', 'vs100kumiteresultsbgdef', 'timeattackresultsbgdef', 'timechallengeresultsbgdef', 'scorechallengeresultsbgdef', 'bossrushresultsbgdef'} do
+	if t[v] == nil then
+		t[v] = t.winbgdef
 	end
 end
 

@@ -948,9 +948,8 @@
 	counter.end.skiptime = 0
 	counter.end.snd = -1, 0
 
-[ContinueBgBef] ;Ikemen feature
+[ContinueBgDef] ;Ikemen feature
 	spr = ""
-	bgclearcolor = 0, 0, 0
 
 [Game Over Screen]
 	enabled = 1
@@ -1029,7 +1028,6 @@
 
 [VictoryBgDef] ;Ikemen feature
 	spr = ""
-	bgclearcolor = 0, 0, 0
 
 [Win Screen]
 	enabled = 1
@@ -1064,6 +1062,10 @@
 	p2.teammate.state = 
 
 	wintext.font.height = -1
+
+; results screens variants reuse WinBgDef if dedicated ResultsBgDef is not set
+[WinBgDef] ;Ikemen feature
+	spr = ""
 
 [Default Ending]
 	enabled = 0
@@ -1111,6 +1113,9 @@
 	p2.teammate.state.win = 
 	p2.teammate.state.lose = 
 
+[SurvivalResultsBgDef] ;Ikemen feature
+	spr = ""
+
 [VS100 Kumite Results Screen] ;Ikemen feature
 	enabled = 1
 	sounds.enabled = 1
@@ -1145,6 +1150,9 @@
 	p2.teammate.state.win = 
 	p2.teammate.state.lose = 
 
+[VS100KumiteResultsBgDef] ;Ikemen feature
+	spr = ""
+
 [Time Attack Results Screen] ;Ikemen feature
 	enabled = 1
 	sounds.enabled = 1
@@ -1177,6 +1185,9 @@
 	p1.teammate.state.lose = 
 	p2.teammate.state.win = 
 	p2.teammate.state.lose = 
+
+[TimeAttackResultsBgDef] ;Ikemen feature
+	spr = ""
 
 [Time Challenge Results Screen] ;Ikemen feature
 	enabled = 1
@@ -1211,6 +1222,9 @@
 	p2.teammate.state.win = 
 	p2.teammate.state.lose = 
 
+[TimeChallengeResultsBgDef] ;Ikemen feature
+	spr = ""
+
 [Score Challenge Results Screen] ;Ikemen feature
 	enabled = 1
 	sounds.enabled = 1
@@ -1244,6 +1258,9 @@
 	p2.teammate.state.win = 
 	p2.teammate.state.lose = 
 
+[ScoreChallengeResultsBgDef] ;Ikemen feature
+	spr = ""
+
 [Boss Rush Results Screen] ;Ikemen feature
 	enabled = 1
 	sounds.enabled = 1
@@ -1273,9 +1290,8 @@
 	p1.teammate.state = 
 	p2.teammate.state = 
 
-[ResultsBgDef] ;Ikemen feature
+[BossRushResultsBgDef] ;Ikemen feature
 	spr = ""
-	;bgclearcolor = 0, 0, 0 ; Disabled to not cover game screen.
 
 [Option Info] ;Ikemen feature
 	fadein.time = 10
@@ -1971,7 +1987,6 @@
 
 [ChallengerBgDef] ;Ikemen feature
 	spr = ""
-	bgclearcolor = 0, 0, 0
 
 [Rank Info] ;WARNING: Will be moved to "fight.def"
 	enabled = 0
@@ -2017,6 +2032,10 @@
 	;p<pn>.gauge.<type>.offset  = 0, 0
 	;p<pn>.gauge.<type>.facing = 1
 	;p<pn>.gauge.<type>.scale = 1.0, 1.0
+; gauge window parameter (x1,y1,x2,y2) is used not only to set drawing space,
+; but also to define gauge range (how much meter should be filled based on match
+; result, cutting portion of the art between x1 and x2 values, if needed). Gauge
+; art must be perfectly surrounded by rectangular window box to work correctly.
 	;p<pn>.gauge.<type>.window = 
 	;p<pn>.gauge.<type>.ticks = 0
 	;p<pn>.gauge.<type>.max = 0
