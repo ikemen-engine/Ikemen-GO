@@ -1026,6 +1026,11 @@
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
+	p1.state = 
+	p2.state = 
+	p1.teammate.state = 
+	p2.teammate.state = 
+
 [VictoryBgDef] ;Ikemen feature
 	spr = ""
 

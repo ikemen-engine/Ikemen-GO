@@ -900,6 +900,10 @@ local motif =
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
+		p1_state = {}, --Ikemen feature
+		p2_state = {}, --Ikemen feature
+		p1_teammate_state = {}, --Ikemen feature
+		p2_teammate_state = {}, --Ikemen feature
 	},
 	victorybgdef =
 	{
