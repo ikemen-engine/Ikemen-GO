@@ -3101,14 +3101,14 @@ function start.f_victoryInit()
 		return false
 	end
 	for i = 1, 2 do
-		for k, v in ipairs(t['p' .. i .. '_state']) do
+		for k, v in ipairs(motif.victory_screen['p' .. i .. '_state']) do
 			if charChangeState(i, v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
-			for _, v in ipairs(t['p' .. i .. '_teammate_state']) do
+			for _, v in ipairs(motif.victory_screen['p' .. i .. '_teammate_state']) do
 				if charChangeState(j * 2 + i, v) then
 					break
 				end
