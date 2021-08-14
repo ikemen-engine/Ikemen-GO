@@ -1907,6 +1907,9 @@ for line in content:gmatch('[^\r\n]+') do
 			c = c:gsub('^%s*(.-)%s*$', '%1')
 			if i == 1 then
 				row = main.f_addStage(c, hidden)
+				if row == nil then
+					break
+				end
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
 			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
