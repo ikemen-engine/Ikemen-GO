@@ -128,11 +128,12 @@ if time = 0 {
 	turn{}
 }
 
-velSet{x: min(const(velocity.run.fwd.x), const240p(const(TagInVelX))); y: 0}
+velSet{x: min(ifElse(const(velocity.run.fwd.x) != 0, const(velocity.run.fwd.x), const(velocity.walk.fwd.x) * 2), const240p(const(TagInVelX))); y: 0}
 
 if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iksys_tagLeavingPosX) = pos x {
 	changeState{value: const(StateTagWaitingOutside)}
 }
+
 # TODO: won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
 mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
