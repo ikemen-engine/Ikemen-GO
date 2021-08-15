@@ -3473,7 +3473,7 @@ end
 --; HISCORE
 --;===========================================================
 local overlay_hiscore = main.f_createOverlay(motif.hiscore_info, 'overlay')
-for _, v in ipairs({'title', 'rank_title', 'rank_text', 'rank_text_active', 'rank_text_active2', 'data_title', 'data_text', 'data_text_active', 'data_text_active2', 'name_title', 'name_text', 'name_text_active', 'name_text_active2', 'face_title', 'timer'}) do
+for _, v in ipairs({'title', 'title_rank', 'title_data', 'title_name', 'title_face', 'item_rank', 'item_rank_active', 'item_rank_active2', 'item_data', 'item_data_active', 'item_data_active2', 'item_name', 'item_name_active', 'item_name_active2', 'timer'}) do
 	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {addX = motif.hiscore_info.pos[1], addY = motif.hiscore_info.pos[2]})
 end
 
@@ -3520,16 +3520,16 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 		for _, def in ipairs(t[i].chars) do
 			if main.t_charDef[def] ~= nil then
 				for _, v in pairs({
-					{motif.hiscore_info.face_anim, -1},
-					motif.hiscore_info.face_spr,
+					{motif.hiscore_info.item_face_anim, -1},
+					motif.hiscore_info.item_face_spr,
 				}) do
 					if v[1] ~= -1 then
 						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
 							animSetScale(
 								a,
-								motif.hiscore_info.face_scale[1] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
-								motif.hiscore_info.face_scale[2] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								motif.hiscore_info.item_face_scale[1] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								motif.hiscore_info.item_face_scale[2] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
 								false
 							)
 							animUpdate(a)
@@ -3539,7 +3539,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					end
 				end
 			else
-				table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = motif.hiscore_info.face_unknown_data, chardata = false})
+				table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = motif.hiscore_info.item_face_unknown_data, chardata = false})
 			end
 		end
 	end
@@ -3563,30 +3563,30 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	local dataActiveType = ''
 	local t_ranking = stats.modes[t.mode].ranking
 	--draw portraits subtitle
-	start.txt_hiscore_face_title:draw()
+	start.txt_hiscore_title_face:draw()
 	--draw portraits
-	for row, subt in ipairs(start.t_hiscore.faces) do
+	for i, subt in ipairs(start.t_hiscore.faces) do
 		for k, v in ipairs(subt) do
 			main.f_animPosDraw(
-				motif.hiscore_info.face_bg_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.face_offset[1] + (k - 1) * motif.hiscore_info.face_spacing[1],
-				motif.hiscore_info.pos[2] + motif.hiscore_info.face_offset[2] + (row - 1) * motif.hiscore_info.face_spacing[2],
-				motif.hiscore_info.face_facing,
+				motif.hiscore_info.item_face_bg_data,
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (k - 1) * motif.hiscore_info.item_face_spacing[1] + motif.hiscore_info.item_spacing[1] * (i - 1),
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]) * (i - 1),
+				motif.hiscore_info.item_face_facing,
 				false
 			)
 			main.f_animPosDraw(
 				v.anim_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.face_offset[1] + (k - 1) * motif.hiscore_info.face_spacing[1],
-				motif.hiscore_info.pos[2] + motif.hiscore_info.face_offset[2] + (row - 1) * motif.hiscore_info.face_spacing[2],
-				motif.hiscore_info.face_facing,
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (k - 1) * motif.hiscore_info.item_face_spacing[1] + motif.hiscore_info.item_spacing[1] * (i - 1),
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]) * (i - 1),
+				motif.hiscore_info.item_face_facing,
 				v.chardata
 			)
 		end
 	end
 	for _, v in ipairs({'rank', 'data', 'name'}) do
 		--draw subtitle
-		start['txt_hiscore_' .. v .. '_title']:draw()
-		if start.t_hiscore[v .. 'ActiveCount'] < motif.hiscore_info[v .. '_text_active_switchtime'] then --delay change
+		start['txt_hiscore_title_' .. v]:draw()
+		if start.t_hiscore[v .. 'ActiveCount'] < motif.hiscore_info['item_' .. v .. '_active_switchtime'] then --delay change
 			start.t_hiscore[v .. 'ActiveCount'] = start.t_hiscore[v .. 'ActiveCount'] + 1
 		else
 			if start.t_hiscore[v .. 'ActiveType'] == '_active' then
@@ -3608,23 +3608,23 @@ function start.f_hiscore(t, playMusic, place, infinite)
 						sndPlay(motif.files.snd_data, motif.hiscore_info.move_snd[1], motif.hiscore_info.move_snd[2])
 						t_letters[#t_letters] = t_letters[#t_letters] - 1
 						if t_letters[#t_letters] <= 0 then
-							t_letters[#t_letters] = #motif.hiscore_info.name_text_glyphs
+							t_letters[#t_letters] = #motif.hiscore_info.glyphs
 						end
 					elseif main.f_input(main.t_players, {'$F'}) then
 						sndPlay(motif.files.snd_data, motif.hiscore_info.move_snd[1], motif.hiscore_info.move_snd[2])
 						t_letters[#t_letters] = t_letters[#t_letters] + 1
-						if t_letters[#t_letters] > #motif.hiscore_info.name_text_glyphs then
+						if t_letters[#t_letters] > #motif.hiscore_info.glyphs then
 							t_letters[#t_letters] = 1
 						end
 					elseif main.f_input(main.t_players, {'pal'}) then
-						if motif.hiscore_info.name_text_glyphs[t_letters[#t_letters]] == '<' then
+						if motif.hiscore_info.glyphs[t_letters[#t_letters]] == '<' then
 							sndPlay(motif.files.snd_data, motif.hiscore_info.cancel_snd[1], motif.hiscore_info.cancel_snd[2])
 							if #t_letters > 1 then
 								table.remove(t_letters, #t_letters)
 							else
 								t_letters[1] = 1
 							end
-						elseif #t_letters < (tonumber(motif.hiscore_info.name_text_text:match('%%([0-9]+)s')) or 3) then
+						elseif #t_letters < (tonumber(motif.hiscore_info.item_name_text:match('%%([0-9]+)s')) or 3) then
 							sndPlay(motif.files.snd_data, motif.hiscore_info.done_snd[1], motif.hiscore_info.done_snd[2])
 							table.insert(t_letters, 1)
 						else
@@ -3636,7 +3636,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 					end
 					local name = ''
 					for _, v in ipairs(t_letters) do
-						name = name .. tostring(motif.hiscore_info.name_text_glyphs[v]):gsub('>', ' ')
+						name = name .. tostring(motif.hiscore_info.glyphs[v]):gsub('>', ' ')
 					end
 					t_ranking[i].name = name
 				end
@@ -3646,11 +3646,11 @@ function start.f_hiscore(t, playMusic, place, infinite)
 			--draw rank
 			local text = ''
 			if v == 'rank' then
-				text = (motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text']):gsub('%%s', tostring(i))
+				text = (motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text']):gsub('%%s', tostring(i))
 			--draw text
 			elseif v == 'data' then
 				local subText = t_ranking[i][t.data]
-				text = (motif.hiscore_info[v .. '_text_' .. t.data .. '_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_' .. t.data .. '_text'] or motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text'])
+				text = (motif.hiscore_info['item_' .. v .. '_' .. t.data .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_' .. t.data .. '_text'] or motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text'])
 				if t.data == 'score' then
 					local length = tonumber(text:match('%%([0-9]+)s'))
 					while string.len(tostring(subText)) < (length or 0) do
@@ -3664,15 +3664,15 @@ function start.f_hiscore(t, playMusic, place, infinite)
 				end
 			--draw name
 			elseif v == 'name' and t_ranking[i].name ~= '' then
-				text = (motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text']):gsub('%%([0-9]*)s', main.f_itemnameUpper(t_ranking[i].name, motif.hiscore_info.name_text_uppercase == 1))
+				text = (motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text']):gsub('%%([0-9]*)s', main.f_itemnameUpper(t_ranking[i].name, motif.hiscore_info.item_name_uppercase == 1))
 			end
-			local font_def = main.font_def[motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font'][1] .. motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font_height']]
-			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:update({
+			local font_def = main.font_def[motif.hiscore_info['item_' .. v .. dataActiveType .. '_font'][1] .. motif.hiscore_info['item_' .. v .. dataActiveType .. '_font_height']]
+			start['txt_hiscore_item_' .. v .. dataActiveType]:update({
 				text = text,
-				x = motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1] + motif.hiscore_info[v .. '_text_spacing'][1] * (i - 1),
-				y = motif.hiscore_info.pos[2] + motif.hiscore_info[v .. '_text_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_' .. v .. '_text' .. dataActiveType].scaleY + motif.hiscore_info[v .. '_text_spacing'][2]) * (i - 1),
+				x = motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info['item_' .. v .. '_offset'][1] + (motif.hiscore_info.item_spacing[1] + motif.hiscore_info['item_' .. v .. '_spacing'][1]) * (i - 1),
+				y = motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info['item_' .. v .. '_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_item_' .. v .. dataActiveType].scaleY + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info['item_' .. v .. '_spacing'][2])) * (i - 1),
 			})
-			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:draw()
+			start['txt_hiscore_item_' .. v .. dataActiveType]:draw()
 		end
 	end
 	--draw timer

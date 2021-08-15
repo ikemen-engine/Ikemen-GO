@@ -1857,89 +1857,90 @@ local motif =
 		title_font_height = -1, --Ikemen feature
 		title_text = 'Ranking %s', --Ikemen feature
 		title_uppercase = 0, --Ikemen feature
-		rank_title_offset = {0, 0}, --Ikemen feature
-		rank_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		rank_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		rank_title_font_height = -1, --Ikemen feature
-		rank_title_text = 'Rank', --Ikemen feature
-		rank_text_offset = {0, 0}, --Ikemen feature
-		rank_text_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		rank_text_font_scale = {1.0, 1.0}, --Ikemen feature
-		rank_text_font_height = -1, --Ikemen feature
-		rank_text_spacing = {0, 0}, --Ikemen feature
-		rank_text_text = '%s', --Ikemen feature
-		--rank_text_<num>_text = '%s', --Ikemen feature
-		rank_text_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		rank_text_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		rank_text_active_font_height = -1, --Ikemen feature
-		rank_text_active_switchtime = 3, --Ikemen feature
-		rank_text_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		rank_text_active2_font_scale = {1.0, 1.0}, --Ikemen feature
-		rank_text_active2_font_height = -1, --Ikemen feature
-		data_title_offset = {0, 0}, --Ikemen feature
-		data_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		data_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		data_title_font_height = -1, --Ikemen feature
-		data_title_text = 'Result', --Ikemen feature
-		data_text_offset = {0, 0}, --Ikemen feature
-		data_text_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		data_text_font_scale = {1.0, 1.0}, --Ikemen feature
-		data_text_font_height = -1, --Ikemen feature
-		data_text_spacing = {0, 0}, --Ikemen feature
-		data_text_text = '%s', --Ikemen feature
-		data_text_score_text = '%8s', --Ikemen feature
-		data_text_time_text = "%m'%s''%x", --Ikemen feature
-		data_text_win_text = 'Round %s', --Ikemen feature
-		data_text_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		data_text_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		data_text_active_font_height = -1, --Ikemen feature
-		data_text_active_switchtime = 3, --Ikemen feature
-		data_text_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		data_text_active2_font_scale = {1.0, 1.0}, --Ikemen feature
-		data_text_active2_font_height = -1, --Ikemen feature
-		name_title_offset = {0, 0}, --Ikemen feature
-		name_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		name_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		name_title_font_height = -1, --Ikemen feature
-		name_title_text = 'Name', --Ikemen feature
-		name_text_offset = {0, 0}, --Ikemen feature
-		name_text_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		name_text_font_scale = {1.0, 1.0}, --Ikemen feature
-		name_text_font_height = -1, --Ikemen feature
-		name_text_spacing = {0, 0}, --Ikemen feature
-		name_text_text = '%3s', --Ikemen feature
-		name_text_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		name_text_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		name_text_active_font_height = -1, --Ikemen feature
-		name_text_active_switchtime = 3, --Ikemen feature
-		name_text_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		name_text_active2_font_scale = {1.0, 1.0}, --Ikemen feature
-		name_text_active2_font_height = -1, --Ikemen feature
-		name_text_uppercase = 1, --Ikemen feature
-		name_text_glyphs = {}, --Ikemen feature
-		face_title_offset = {0, 0}, --Ikemen feature
-		face_title_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
-		face_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		face_title_font_height = -1, --Ikemen feature
-		face_title_text = 'Character', --Ikemen feature
-		face_anim = -1, --Ikemen feature
-		face_spr = {9000, 0}, --Ikemen feature
-		face_offset = {0, 0}, --Ikemen feature
-		face_facing = 1, --Ikemen feature
-		face_scale = {1.0, 1.0}, --Ikemen feature
-		face_window = {}, --Ikemen feature
-		face_num = 1, --Ikemen feature
-		face_spacing = {0, 0}, --Ikemen feature
-		face_bg_anim = -1, --Ikemen feature
-		face_bg_spr = {}, --Ikemen feature
-		face_bg_offset = {0, 0}, --Ikemen feature
-		face_bg_facing = 1, --Ikemen feature
-		face_bg_scale = {1.0, 1.0}, --Ikemen feature
-		face_unknown_anim = -1, --Ikemen feature
-		face_unknown_spr = {}, --Ikemen feature
-		face_unknown_offset = {0, 0}, --Ikemen feature
-		face_unknown_facing = 1, --Ikemen feature
-		face_unknown_scale = {1.0, 1.0}, --Ikemen feature
+		title_rank_offset = {0, 0}, --Ikemen feature
+		title_rank_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		title_rank_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_rank_font_height = -1, --Ikemen feature
+		title_rank_text = 'Rank', --Ikemen feature
+		title_data_offset = {0, 0}, --Ikemen feature
+		title_data_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		title_data_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_data_font_height = -1, --Ikemen feature
+		title_data_text = 'Result', --Ikemen feature
+		title_name_offset = {0, 0}, --Ikemen feature
+		title_name_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		title_name_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_name_font_height = -1, --Ikemen feature
+		title_name_text = 'Name', --Ikemen feature
+		title_face_offset = {0, 0}, --Ikemen feature
+		title_face_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		title_face_font_scale = {1.0, 1.0}, --Ikemen feature
+		title_face_font_height = -1, --Ikemen feature
+		title_face_text = 'Character', --Ikemen feature
+		item_offset = {0, 0}, --Ikemen feature
+		item_spacing = {0, 0}, --Ikemen feature
+		item_rank_offset = {0, 0}, --Ikemen feature
+		item_rank_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_rank_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_rank_font_height = -1, --Ikemen feature
+		item_rank_spacing = {0, 0}, --Ikemen feature
+		item_rank_text = '%s', --Ikemen feature
+		--item_rank_<num>_text = '%s', --Ikemen feature
+		item_rank_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_rank_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_rank_active_font_height = -1, --Ikemen feature
+		item_rank_active_switchtime = 3, --Ikemen feature
+		item_rank_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_rank_active2_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_rank_active2_font_height = -1, --Ikemen feature
+		item_data_offset = {0, 0}, --Ikemen feature
+		item_data_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_data_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_data_font_height = -1, --Ikemen feature
+		item_data_spacing = {0, 0}, --Ikemen feature
+		item_data_text = '%s', --Ikemen feature
+		item_data_score_text = '%8s', --Ikemen feature
+		item_data_time_text = "%m'%s''%x", --Ikemen feature
+		item_data_win_text = 'Round %s', --Ikemen feature
+		item_data_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_data_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_data_active_font_height = -1, --Ikemen feature
+		item_data_active_switchtime = 3, --Ikemen feature
+		item_data_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_data_active2_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_data_active2_font_height = -1, --Ikemen feature
+		item_name_offset = {0, 0}, --Ikemen feature
+		item_name_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_name_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_name_font_height = -1, --Ikemen feature
+		item_name_spacing = {0, 0}, --Ikemen feature
+		item_name_text = '%3s', --Ikemen feature
+		item_name_active_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_name_active_font_height = -1, --Ikemen feature
+		item_name_active_switchtime = 3, --Ikemen feature
+		item_name_active2_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
+		item_name_active2_font_scale = {1.0, 1.0}, --Ikemen feature
+		item_name_active2_font_height = -1, --Ikemen feature
+		item_name_uppercase = 1, --Ikemen feature
+		item_face_anim = -1, --Ikemen feature
+		item_face_spr = {9000, 0}, --Ikemen feature
+		item_face_offset = {0, 0}, --Ikemen feature
+		item_face_facing = 1, --Ikemen feature
+		item_face_scale = {1.0, 1.0}, --Ikemen feature
+		item_face_window = {}, --Ikemen feature
+		item_face_num = 1, --Ikemen feature
+		item_face_spacing = {0, 0}, --Ikemen feature
+		item_face_bg_anim = -1, --Ikemen feature
+		item_face_bg_spr = {}, --Ikemen feature
+		item_face_bg_offset = {0, 0}, --Ikemen feature
+		item_face_bg_facing = 1, --Ikemen feature
+		item_face_bg_scale = {1.0, 1.0}, --Ikemen feature
+		item_face_unknown_anim = -1, --Ikemen feature
+		item_face_unknown_spr = {}, --Ikemen feature
+		item_face_unknown_offset = {0, 0}, --Ikemen feature
+		item_face_unknown_facing = 1, --Ikemen feature
+		item_face_unknown_scale = {1.0, 1.0}, --Ikemen feature
 		timer_enabled = 1, --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
@@ -1958,6 +1959,7 @@ local motif =
 		move_snd = {100, 0}, --Ikemen feature
 		done_snd = {100, 1}, --Ikemen feature
 		cancel_snd = {100, 2}, --Ikemen feature
+		glyphs = {}, --Ikemen feature
 	},
 	hiscorebgdef =
 	{
@@ -2574,8 +2576,8 @@ end
 motif = main.f_tableMerge(motif, t)
 
 --default hiscore glyphs
-if #motif.hiscore_info.name_text_glyphs == 0 then
-	motif.hiscore_info.name_text_glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}
+if #motif.hiscore_info.glyphs == 0 then
+	motif.hiscore_info.glyphs = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '?', '.', '<', '>'}
 end
 
 --keymenu.item parameters use corresponding menu.item values if not assigned
@@ -2601,7 +2603,7 @@ for k, v in pairs({
 	vs_screen = {'p1_window', 'p2_window'},
 	victory_screen = {'p1_window', 'p2_window', 'winquote_window'},
 	dialogue_info = {'p1_face_window', 'p2_face_window', 'p1_text_window', 'p2_text_window'},
-	hiscore_info = {'face_window'},
+	hiscore_info = {'item_face_window'},
 }) do
 	for _, param in ipairs(v) do
 		if t[k] == nil or t[k][param] == nil then
@@ -2857,8 +2859,8 @@ for i = 1, 2 do
 end
 
 --hiscore spr/anim data
-motif.f_loadSprData(motif.hiscore_info, {s = 'face_bg_', x = 0, y = 0})
-motif.f_loadSprData(motif.hiscore_info, {s = 'face_unknown_', x = 0, y = 0})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_bg_', x = 0, y = 0})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_unknown_', x = 0, y = 0})
 
 --glyphs spr data
 motif.glyphs_data = {}
