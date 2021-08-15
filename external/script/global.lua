@@ -217,7 +217,7 @@ function loop()
 	if indialogue() then
 		start.f_dialogue()
 	--match end
-	elseif getFadeoutTime() == 0 and matchover() and roundover() then
+	elseif roundstate() == -1 then
 		if not endFlag then
 			resetMatchData(false)
 			endFlag = true

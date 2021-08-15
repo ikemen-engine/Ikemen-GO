@@ -1197,10 +1197,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(dir)
 		return 1
 	})
-	luaRegister(l, "getFadeoutTime", func(l *lua.LState) int {
-		l.Push(lua.LNumber(sys.fadeouttime))
-		return 1
-	})
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.frameCounter))
 		return 1
