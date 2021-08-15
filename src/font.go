@@ -28,17 +28,10 @@ type Fnt struct {
 	colors    int32
 	offset    [2]int32
 	ttf       *glfont.Font
-	palfx     *PalFX
-	//alphaSrc  int32
-	//alphaDst  int32
-	PalName string
 }
 
 func newFnt() *Fnt {
-	return &Fnt{
-		images: make(map[rune]*FntCharImage),
-		palfx:  newPalFX(),
-	}
+	return &Fnt{images: make(map[rune]*FntCharImage)}
 }
 
 func loadFnt(filename string, height int32) (*Fnt, error) {
@@ -56,8 +49,6 @@ func loadFntV1(filename string) (*Fnt, error) {
 	filename = SearchFile(filename, "font/", true)
 
 	fp, err := os.Open(filename)
-
-	f.PalName = filename
 
 	if err != nil {
 		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
@@ -255,8 +246,6 @@ func loadFntV2(filename string, height int32) (*Fnt, error) {
 
 	content, err := LoadText(filename)
 
-	f.PalName = filename
-
 	if err != nil {
 		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
 		return f, nil
@@ -439,14 +428,6 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	return &fci.img[0]
 }
 
-/*func (f *Fnt) calculateTrans() int32 {
-	alphaSrc := int32(sys.brightness * f.alphaSrc >> 8)
-	separator := int32(1 << 9)
-	alphaDst := int32(f.alphaDst << 10)
-
-	return alphaSrc | separator | alphaDst
-}*/
-
 func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 	pal []uint32, window *[4]int32) float32 {
 
@@ -459,28 +440,12 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
 		return 0
 	}
 
-	//trans := f.calculateTrans()
-
-	//spr.Draw(x, y, xscl, yscl, pal, nil, nil, window)
 	x -= xscl * float32(spr.Offset[0])
 	y -= yscl * float32(spr.Offset[1])
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
 		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil)
-
-	//if pal != nil {
-	//	RenderMugenPal(*spr.Tex, 0, spr.Size, -x*sys.widthScale,
-	//		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-	//		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-	//		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
-	//} else {
-	//	RenderMugenFc(*spr.Tex, spr.Size, -x*sys.widthScale,
-	//		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-	//		yscl*sys.heightScale, 1, 0, 0, 0, 0, sys.brightness*255>>8|1<<9, &sys.scrrect,
-	//		0, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
-	//}
-
 	return float32(spr.Size[0]) * xscl
 }
 
@@ -525,33 +490,13 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	}
 
 	var pal []uint32
-	//var paltex uint32
 	if len(f.palettes) != 0 {
 		pal = palfx.getFxPal(f.palettes[bank][:], false)
-		//gl.Enable(gl.TEXTURE_1D)
-		//gl.ActiveTexture(gl.TEXTURE1)
-		//gl.GenTextures(1, &paltex)
-		//gl.BindTexture(gl.TEXTURE_1D, paltex)
-		//gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		//gl.TexImage1D(
-		//	gl.TEXTURE_1D,
-		//	0,
-		//	gl.RGBA,
-		//	256,
-		//	0,
-		//	gl.RGBA,
-		//	gl.UNSIGNED_BYTE,
-		//	unsafe.Pointer(&pal[0]),
-		//)
-		//gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		//gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	}
 
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, c, pal, window) + xscl*float32(f.Spacing[0])
 	}
-	//gl.DeleteTextures(1, &paltex)
-	//gl.Disable(gl.TEXTURE_1D)
 }
 
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,

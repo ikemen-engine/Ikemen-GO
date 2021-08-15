@@ -1424,8 +1424,8 @@ local t_preload = {
 	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.face_anim, nil}},
-	{typ = 'cspr', arg = motif.hiscore_info.face_spr},
+	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim, nil}},
+	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
@@ -1907,6 +1907,9 @@ for line in content:gmatch('[^\r\n]+') do
 			c = c:gsub('^%s*(.-)%s*$', '%1')
 			if i == 1 then
 				row = main.f_addStage(c, hidden)
+				if row == nil then
+					break
+				end
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
 			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
@@ -1936,6 +1939,7 @@ for line in content:gmatch('[^\r\n]+') do
 						panicError("\nUnrecognized stage parameter: " .. param)
 					end
 					main.t_selStages[row][param] = tonumber(value)
+					--order (more than 1 order param can be set at the same time)
 					if param:match('order') then
 						if main.t_orderStages[main.t_selStages[row].order] == nil then
 							main.t_orderStages[main.t_selStages[row].order] = {}
@@ -1944,6 +1948,15 @@ for line in content:gmatch('[^\r\n]+') do
 					end
 				end
 			end
+			--default order
+			if main.t_selStages[row].order == nil then
+				main.t_selStages[row].order = 1
+				if main.t_orderStages[main.t_selStages[row].order] == nil then
+					main.t_orderStages[main.t_selStages[row].order] = {}
+				end
+				table.insert(main.t_orderStages[main.t_selStages[row].order], row)
+			end
+			--unlock param
 			if unlock ~= '' then
 				--main.t_selStages[row].unlock = unlock
 				main.t_unlockLua.stages[row] = unlock
@@ -2506,6 +2519,7 @@ main.t_itemname = {
 	end,
 	--RANDOMTEST
 	['randomtest'] = function()
+		main.rankDisplay = false
 		setGameMode('randomtest')
 		return randomtest.run
 	end,

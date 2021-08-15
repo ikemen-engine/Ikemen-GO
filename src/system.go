@@ -91,7 +91,7 @@ var sys = System{
 	clsnDarken:           true,
 	maxBgmVolume:         0,
 	stereoEffects:        true,
-	panningRange:         25,
+	panningRange:         30,
 }
 
 type TeamMode int32

@@ -1248,7 +1248,11 @@ function start.f_turnsRecovery()
 		return
 	end
 	start.turnsRecoveryInit = true
-	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
+	player(1)
+	local players = teamsize()
+	player(2)
+	players = players + teamsize()
+	for i = 1, players do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
 			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
 			local base = lifemax() * config.TurnsRecoveryBase / 100
@@ -2484,9 +2488,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.c[player].selRef = start.c[player].randRef
 				else
 					if motif.select_info.random_move_snd_cancel == 1 then
-						sndStop(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
+						sndStop(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
 					end
-					sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_random_move_snd'][1], motif.select_info['p' .. side .. '_random_move_snd'][2])
+					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
 					start.c[player].randCnt = motif.select_info.cell_random_switchtime
 					start.c[player].selRef = start.f_randomChar(side)
 					if start.c[player].randRef ~= start.c[player].selRef or start.p[side].t_selTemp[member].anim_data == nil then
@@ -2808,6 +2812,7 @@ function start.f_resultInit()
 		prefix = 'winstext',
 		resultText = {},
 		txt = nil,
+		bgdef = 'winbgdef',
 		counter = 0,
 	}
 	if main.resultsTable == nil then
@@ -2833,18 +2838,21 @@ function start.f_resultInit()
 		start.t_result.prefix = 'wintext'
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_winscreen
+		start.t_result.bgdef = 'winbgdef'
 	elseif gamemode('bossrush') then
 		if winnerteam() ~= 1 or matchno() < #start.t_roster or motif.boss_rush_results_screen.enabled == 0 then
 			return false
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'])
 		start.t_result.txt = txt_resultBossRush
+		start.t_result.bgdef = 'bossrushresultsbgdef'
 	elseif gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
 		if winnerteam() == 1 and (matchno() < #start.t_roster or (start.t_roster[matchno() + 1] ~= nil and start.t_roster[matchno() + 1][1] == -1)) or motif.survival_results_screen.enabled == 0 then
 			return false
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], winCnt)
 		start.t_result.txt = txt_resultSurvival
+		start.t_result.bgdef = 'survivalresultsbgdef'
 		if winCnt < t.roundstowin and matchno() < #start.t_roster then
 			stateType = '_lose'
 			winBgm = false
@@ -2857,6 +2865,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], winCnt, loseCnt)
 		start.t_result.txt = txt_resultVS100
+		start.t_result.bgdef = 'vs100kumiteresultsbgdef'
 		if winCnt < t.roundstowin then
 			stateType = '_lose'
 			winBgm = false
@@ -2869,6 +2878,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(start.f_clearTimeText(t[start.t_result.prefix .. '_text'], timetotal() / 60))
 		start.t_result.txt = txt_resultTimeAttack
+		start.t_result.bgdef = 'timeattackresultsbgdef'
 		if matchtime() / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
@@ -2881,6 +2891,7 @@ function start.f_resultInit()
 		end
 		start.t_result.resultText = main.f_extractText(start.f_clearTimeText(t[start.t_result.prefix .. '_text'], timetotal() / 60))
 		start.t_result.txt = txt_resultTimeChallenge
+		start.t_result.bgdef = 'timechallengeresultsbgdef'
 		if matchtime() / 60 >= f_lowestRankingData('time') then
 			stateType = '_lose'
 			winBgm = false
@@ -2894,6 +2905,7 @@ function start.f_resultInit()
 		player(1) --assign sys.debugWC to player 1
 		start.t_result.resultText = main.f_extractText(t[start.t_result.prefix .. '_text'], scoretotal())
 		start.t_result.txt = txt_resultScoreChallenge
+		start.t_result.bgdef = 'scorechallengeresultsbgdef'
 		if scoretotal() <= f_lowestRankingData('score') then
 			stateType = '_lose'
 			winBgm = false
@@ -2922,8 +2934,7 @@ function start.f_resultInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.resultsbgdef.bgclearcolor[1], motif.resultsbgdef.bgclearcolor[2], motif.resultsbgdef.bgclearcolor[3])
-	main.f_bgReset(motif.resultsbgdef.bg)
+	main.f_bgReset(motif[start.t_result.bgdef].bg)
 	main.f_fadeReset('fadein', t)
 	if winBgm then
 		main.f_playBGM(false, motif.music.results_bgm, motif.music.results_bgm_loop, motif.music.results_bgm_volume, motif.music.results_bgm_loopstart, motif.music.results_bgm_loopend)
@@ -2945,11 +2956,11 @@ function start.f_result()
 	--draw text at layerno = 0
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 0)
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.resultsbgdef.bg, false)
+	bgDraw(motif[start.t_result.bgdef].bg, false)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.resultsbgdef.bg, true)
+	bgDraw(motif[start.t_result.bgdef].bg, true)
 	--draw text at layerno = 2
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 2)
 	--draw fadein / fadeout
@@ -3089,11 +3100,25 @@ function start.f_victoryInit()
 	elseif start.f_getCharData(start.t_victory.winnerRef).victoryscreen == 0 then
 		return false
 	end
+	for i = 1, 2 do
+		for k, v in ipairs(motif.victory_screen['p' .. i .. '_state']) do
+			if charChangeState(i, v) then
+				break
+			end
+		end
+		player(i) --assign sys.debugWC to player i
+		for j = 1, numpartner() do
+			for _, v in ipairs(motif.victory_screen['p' .. i .. '_teammate_state']) do
+				if charChangeState(j * 2 + i, v) then
+					break
+				end
+			end
+		end
+	end
 	if motif.victory_screen.sounds_enabled == 0 then
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.victorybgdef.bgclearcolor[1], motif.victorybgdef.bgclearcolor[2], motif.victorybgdef.bgclearcolor[3])
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
 	if start.t_music.musicvictory[winnerteam()] == nil then
@@ -3208,7 +3233,7 @@ function start.f_continueInit()
 		continue = false,
 		flag = true,
 		selected = false,
-		counter = 0,-- - motif.victory_screen.fadein_time
+		counter = 0,-- - motif.continue_screen.fadein_time
 	}
 	if motif.continue_screen.enabled == 0 or not main.continueScreen or winnerteam() == 1 or (motif.continue_screen.legacymode_enabled == 1 and main.credits == 0) or start.challenger > 0 then
 		return false
@@ -3222,7 +3247,6 @@ function start.f_continueInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	clearColor(motif.continuebgdef.bgclearcolor[1], motif.continuebgdef.bgclearcolor[2], motif.continuebgdef.bgclearcolor[3])
 	main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
 	main.f_bgReset(motif.continuebgdef.bg)
 	main.f_fadeReset('fadein', motif.continue_screen)
@@ -3449,7 +3473,7 @@ end
 --; HISCORE
 --;===========================================================
 local overlay_hiscore = main.f_createOverlay(motif.hiscore_info, 'overlay')
-for _, v in ipairs({'title', 'rank_title', 'rank_text', 'rank_text_active', 'rank_text_active2', 'data_title', 'data_text', 'data_text_active', 'data_text_active2', 'name_title', 'name_text', 'name_text_active', 'name_text_active2', 'face_title', 'timer'}) do
+for _, v in ipairs({'title', 'title_rank', 'title_data', 'title_name', 'title_face', 'item_rank', 'item_rank_active', 'item_rank_active2', 'item_data', 'item_data_active', 'item_data_active2', 'item_name', 'item_name_active', 'item_name_active2', 'timer'}) do
 	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {addX = motif.hiscore_info.pos[1], addY = motif.hiscore_info.pos[2]})
 end
 
@@ -3489,23 +3513,23 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	main.f_fadeReset('fadein', motif.hiscore_info)
 	for i = 1, motif.hiscore_info.window_visibleitems do
 		table.insert(start.t_hiscore.faces, {})
-		local t = main.f_tableExists(main.f_tableExists(stats.modes[gameMode]).ranking)
+		local t = stats.modes[gameMode].ranking
 		if t[i] == nil then
 			break
 		end
 		for _, def in ipairs(t[i].chars) do
 			if main.t_charDef[def] ~= nil then
 				for _, v in pairs({
-					{motif.hiscore_info.face_anim, -1},
-					motif.hiscore_info.face_spr,
+					{motif.hiscore_info.item_face_anim, -1},
+					motif.hiscore_info.item_face_spr,
 				}) do
 					if v[1] ~= -1 then
 						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
 							animSetScale(
 								a,
-								motif.hiscore_info.face_scale[1] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
-								motif.hiscore_info.face_scale[2] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								motif.hiscore_info.item_face_scale[1] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+								motif.hiscore_info.item_face_scale[2] * start.f_getCharData(start.f_getCharRef(def)).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
 								false
 							)
 							animUpdate(a)
@@ -3515,7 +3539,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					end
 				end
 			else
-				table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = motif.hiscore_info.face_unknown_data, chardata = false})
+				table.insert(start.t_hiscore.faces[#start.t_hiscore.faces], {anim_data = motif.hiscore_info.item_face_unknown_data, chardata = false})
 			end
 		end
 	end
@@ -3539,30 +3563,33 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	local dataActiveType = ''
 	local t_ranking = stats.modes[t.mode].ranking
 	--draw portraits subtitle
-	start.txt_hiscore_face_title:draw()
+	start.txt_hiscore_title_face:draw()
 	--draw portraits
-	for row, subt in ipairs(start.t_hiscore.faces) do
-		for k, v in ipairs(subt) do
+	for i, subt in ipairs(start.t_hiscore.faces) do
+		for j, v in ipairs(subt) do
+			if j > motif.hiscore_info.item_face_num then
+				break
+			end
 			main.f_animPosDraw(
-				motif.hiscore_info.face_bg_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.face_offset[1] + (k - 1) * motif.hiscore_info.face_spacing[1],
-				motif.hiscore_info.pos[2] + motif.hiscore_info.face_offset[2] + (row - 1) * motif.hiscore_info.face_spacing[2],
-				motif.hiscore_info.face_facing,
+				motif.hiscore_info.item_face_bg_data,
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (i - 1) * motif.hiscore_info.item_spacing[1] + (j - 1) * motif.hiscore_info.item_face_spacing[1],
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (i - 1) * (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]),
+				motif.hiscore_info.item_face_facing,
 				false
 			)
 			main.f_animPosDraw(
 				v.anim_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.face_offset[1] + (k - 1) * motif.hiscore_info.face_spacing[1],
-				motif.hiscore_info.pos[2] + motif.hiscore_info.face_offset[2] + (row - 1) * motif.hiscore_info.face_spacing[2],
-				motif.hiscore_info.face_facing,
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (i - 1) * motif.hiscore_info.item_spacing[1] + (j - 1) * motif.hiscore_info.item_face_spacing[1],
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (i - 1) * (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]),
+				motif.hiscore_info.item_face_facing,
 				v.chardata
 			)
 		end
 	end
 	for _, v in ipairs({'rank', 'data', 'name'}) do
 		--draw subtitle
-		start['txt_hiscore_' .. v .. '_title']:draw()
-		if start.t_hiscore[v .. 'ActiveCount'] < motif.hiscore_info[v .. '_text_active_switchtime'] then --delay change
+		start['txt_hiscore_title_' .. v]:draw()
+		if start.t_hiscore[v .. 'ActiveCount'] < motif.hiscore_info['item_' .. v .. '_active_switchtime'] then --delay change
 			start.t_hiscore[v .. 'ActiveCount'] = start.t_hiscore[v .. 'ActiveCount'] + 1
 		else
 			if start.t_hiscore[v .. 'ActiveType'] == '_active' then
@@ -3584,23 +3611,23 @@ function start.f_hiscore(t, playMusic, place, infinite)
 						sndPlay(motif.files.snd_data, motif.hiscore_info.move_snd[1], motif.hiscore_info.move_snd[2])
 						t_letters[#t_letters] = t_letters[#t_letters] - 1
 						if t_letters[#t_letters] <= 0 then
-							t_letters[#t_letters] = #motif.hiscore_info.name_text_glyphs
+							t_letters[#t_letters] = #motif.hiscore_info.glyphs
 						end
 					elseif main.f_input(main.t_players, {'$F'}) then
 						sndPlay(motif.files.snd_data, motif.hiscore_info.move_snd[1], motif.hiscore_info.move_snd[2])
 						t_letters[#t_letters] = t_letters[#t_letters] + 1
-						if t_letters[#t_letters] > #motif.hiscore_info.name_text_glyphs then
+						if t_letters[#t_letters] > #motif.hiscore_info.glyphs then
 							t_letters[#t_letters] = 1
 						end
 					elseif main.f_input(main.t_players, {'pal'}) then
-						if motif.hiscore_info.name_text_glyphs[t_letters[#t_letters]] == '<' then
+						if motif.hiscore_info.glyphs[t_letters[#t_letters]] == '<' then
 							sndPlay(motif.files.snd_data, motif.hiscore_info.cancel_snd[1], motif.hiscore_info.cancel_snd[2])
 							if #t_letters > 1 then
 								table.remove(t_letters, #t_letters)
 							else
 								t_letters[1] = 1
 							end
-						elseif #t_letters < (tonumber(motif.hiscore_info.name_text_text:match('%%([0-9]+)s')) or 3) then
+						elseif #t_letters < (tonumber(motif.hiscore_info.item_name_text:match('%%([0-9]+)s')) or 3) then
 							sndPlay(motif.files.snd_data, motif.hiscore_info.done_snd[1], motif.hiscore_info.done_snd[2])
 							table.insert(t_letters, 1)
 						else
@@ -3612,7 +3639,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 					end
 					local name = ''
 					for _, v in ipairs(t_letters) do
-						name = name .. tostring(motif.hiscore_info.name_text_glyphs[v]):gsub('>', ' ')
+						name = name .. tostring(motif.hiscore_info.glyphs[v]):gsub('>', ' ')
 					end
 					t_ranking[i].name = name
 				end
@@ -3622,11 +3649,11 @@ function start.f_hiscore(t, playMusic, place, infinite)
 			--draw rank
 			local text = ''
 			if v == 'rank' then
-				text = (motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text']):gsub('%%s', tostring(i))
+				text = (motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text']):gsub('%%s', tostring(i))
 			--draw text
 			elseif v == 'data' then
 				local subText = t_ranking[i][t.data]
-				text = (motif.hiscore_info[v .. '_text_' .. t.data .. '_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_' .. t.data .. '_text'] or motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text'])
+				text = (motif.hiscore_info['item_' .. v .. '_' .. t.data .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_' .. t.data .. '_text'] or motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text'])
 				if t.data == 'score' then
 					local length = tonumber(text:match('%%([0-9]+)s'))
 					while string.len(tostring(subText)) < (length or 0) do
@@ -3640,15 +3667,15 @@ function start.f_hiscore(t, playMusic, place, infinite)
 				end
 			--draw name
 			elseif v == 'name' and t_ranking[i].name ~= '' then
-				text = (motif.hiscore_info[v .. '_text_' .. i .. '_text'] or motif.hiscore_info[v .. '_text_text']):gsub('%%([0-9]*)s', main.f_itemnameUpper(t_ranking[i].name, motif.hiscore_info.name_text_uppercase == 1))
+				text = (motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text']):gsub('%%([0-9]*)s', main.f_itemnameUpper(t_ranking[i].name, motif.hiscore_info.item_name_uppercase == 1))
 			end
-			local font_def = main.font_def[motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font'][1] .. motif.hiscore_info[v .. '_text' .. dataActiveType .. '_font_height']]
-			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:update({
+			local font_def = main.font_def[motif.hiscore_info['item_' .. v .. dataActiveType .. '_font'][1] .. motif.hiscore_info['item_' .. v .. dataActiveType .. '_font_height']]
+			start['txt_hiscore_item_' .. v .. dataActiveType]:update({
 				text = text,
-				x = motif.hiscore_info.pos[1] + motif.hiscore_info[v .. '_text_offset'][1] + motif.hiscore_info[v .. '_text_spacing'][1] * (i - 1),
-				y = motif.hiscore_info.pos[2] + motif.hiscore_info[v .. '_text_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_' .. v .. '_text' .. dataActiveType].scaleY + motif.hiscore_info[v .. '_text_spacing'][2]) * (i - 1),
+				x = motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info['item_' .. v .. '_offset'][1] + (motif.hiscore_info.item_spacing[1] + motif.hiscore_info['item_' .. v .. '_spacing'][1]) * (i - 1),
+				y = motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info['item_' .. v .. '_offset'][2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * start['txt_hiscore_item_' .. v .. dataActiveType].scaleY + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info['item_' .. v .. '_spacing'][2])) * (i - 1),
 			})
-			start['txt_hiscore_' .. v .. '_text' .. dataActiveType]:draw()
+			start['txt_hiscore_item_' .. v .. dataActiveType]:draw()
 		end
 	end
 	--draw timer
@@ -3717,7 +3744,6 @@ function start.f_challengerInit()
 	if motif.attract_mode.enabled == 1 and main.credits > 0 then
 		main.credits = main.credits - 1
 	end
-	--clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
 	main.f_bgReset(motif.challengerbgdef.bg)
 	main.f_fadeReset('fadein', motif.challenger_info)
 	animReset(motif.challenger_info.bg_data)
