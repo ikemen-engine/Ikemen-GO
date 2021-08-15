@@ -3513,7 +3513,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	main.f_fadeReset('fadein', motif.hiscore_info)
 	for i = 1, motif.hiscore_info.window_visibleitems do
 		table.insert(start.t_hiscore.faces, {})
-		local t = main.f_tableExists(main.f_tableExists(stats.modes[gameMode]).ranking)
+		local t = stats.modes[gameMode].ranking
 		if t[i] == nil then
 			break
 		end
@@ -3566,18 +3566,21 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	start.txt_hiscore_title_face:draw()
 	--draw portraits
 	for i, subt in ipairs(start.t_hiscore.faces) do
-		for k, v in ipairs(subt) do
+		for j, v in ipairs(subt) do
+			if j > motif.hiscore_info.item_face_num then
+				break
+			end
 			main.f_animPosDraw(
 				motif.hiscore_info.item_face_bg_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (k - 1) * motif.hiscore_info.item_face_spacing[1] + motif.hiscore_info.item_spacing[1] * (i - 1),
-				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]) * (i - 1),
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (i - 1) * motif.hiscore_info.item_spacing[1] + (j - 1) * motif.hiscore_info.item_face_spacing[1],
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (i - 1) * (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]),
 				motif.hiscore_info.item_face_facing,
 				false
 			)
 			main.f_animPosDraw(
 				v.anim_data,
-				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (k - 1) * motif.hiscore_info.item_face_spacing[1] + motif.hiscore_info.item_spacing[1] * (i - 1),
-				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]) * (i - 1),
+				motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info.item_face_offset[1] + (i - 1) * motif.hiscore_info.item_spacing[1] + (j - 1) * motif.hiscore_info.item_face_spacing[1],
+				motif.hiscore_info.pos[2] + motif.hiscore_info.item_offset[2] + motif.hiscore_info.item_face_offset[2] + (i - 1) * (motif.hiscore_info.item_spacing[2] + motif.hiscore_info.item_face_spacing[2]),
 				motif.hiscore_info.item_face_facing,
 				v.chardata
 			)
