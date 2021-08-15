@@ -179,6 +179,12 @@ if backEdgeBodyDist <= 0 {
 	notHitBy{value: SCA; time: 2}
 }
 
+# regain control right after entering screen, in case of active player loss
+if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
+	ctrlSet{value: 1}
+	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
+}
+
 if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
@@ -195,22 +201,11 @@ if time = 0 {
 		tagIn{leader: playerNo}
 		call fTagSwitchExplod();
 	}
-}
-
-# regain control right after entering screen, in case of active player loss
-if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
-	ctrlSet{value: 1}
-	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
-}
-
-if animElemTime(2) = 0 && map(_iksys_tagJumpingInState) = 0 {
 	velSet{x: const240p(4); y: -const240p(8.75)}
-	mapSet{map: "_iksys_tagJumpingInState"; value: 1}
-} else if animElemTime(2) > 0 {
+} else {
 	gravity{}
 	if vel y >= 0 && pos y > 0 {
 		velSet{x: 0; y: 0}
-		mapSet{map: "_iksys_tagJumpingInState"; value: 0}
 		changeState{value: const(StateTagLanding)}
 	}
 }
@@ -241,7 +236,6 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 && teamMode = Tag {
 	mapSet{map: "_iksys_tagActive"; value: 1}
-	mapSet{map: "_iksys_tagJumpingInState"; value: 0}
 	mapSet{map: "_iksys_tagLastId"; value: 0}
 	mapSet{map: "_iksys_tagPartnerId"; value: 0}
 	if playerNo = teamLeader {
