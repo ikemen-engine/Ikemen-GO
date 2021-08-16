@@ -2020,7 +2020,7 @@ function start.f_selectScreen()
 				--draw stage portrait loaded from stage SFF
 				else
 					main.f_animPosDraw(
-						main.t_selStages[stageListNo].anim_data,
+						main.t_selStages[main.t_selectableStages[stageListNo]].anim_data,
 						motif.select_info.stage_pos[1] + motif.select_info.stage_portrait_offset[1],
 						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2]
 					)
@@ -2041,6 +2041,7 @@ function start.f_selectScreen()
 						stageActiveCount = 0
 					end
 				end
+				--draw stage name
 				local t_txt = {}
 				if stageListNo == 0 then
 					t_txt[1] = motif.select_info.stage_random_text
@@ -2611,8 +2612,8 @@ function start.f_stageMenu()
 		end
 	end
 	if n ~= stageListNo and stageListNo > 0 then
-		animReset(main.t_selStages[stageListNo].anim_data)
-		animUpdate(main.t_selStages[stageListNo].anim_data)
+		animReset(main.t_selStages[main.t_selectableStages[stageListNo]].anim_data)
+		animUpdate(main.t_selStages[main.t_selectableStages[stageListNo]].anim_data)
 	end
 end
 
