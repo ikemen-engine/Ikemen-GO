@@ -2114,8 +2114,8 @@ local t_txt_teamSelfTitle = {}
 local t_txt_teamEnemyTitle = {}
 local t_teamMenu = {}
 for i = 1, 2 do
-	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
-	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {addX = motif.select_info['p' .. i .. '_teammenu_pos'][1], addY = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
+	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
+	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
 	table.insert(t_teamMenu, {
 		{data = text:create({}), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single, mode = 0, chars = 1},
 		{data = text:create({}), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul, mode = 1, chars = start.p[i].numSimul},
@@ -2985,7 +2985,7 @@ end
 --;===========================================================
 --; VICTORY SCREEN
 --;===========================================================
-local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote')
+local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote', {scaleX = motif.victory_screen.winquote_scale[1], scaleY = motif.victory_screen.winquote_scale[2]})
 local overlay_winquote = main.f_createOverlay(motif.victory_screen, 'overlay')
 local t_txt_winquoteName = {}
 for i = 1, 2 do
@@ -3201,7 +3201,7 @@ end
 --; CONTINUE SCREEN
 --;===========================================================
 local txt_credits = main.f_createTextImg(motif.continue_screen, 'credits')
-local txt_continue = main.f_createTextImg(motif.continue_screen, 'continue', {addX = motif.continue_screen.pos[1], addY = motif.continue_screen.pos[2]})
+local txt_continue = main.f_createTextImg(motif.continue_screen, 'continue', {x = motif.continue_screen.pos[1], y = motif.continue_screen.pos[2]})
 local txt_yes = text:create({})
 local txt_no = text:create({})
 local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay')
@@ -3474,7 +3474,7 @@ end
 --;===========================================================
 local overlay_hiscore = main.f_createOverlay(motif.hiscore_info, 'overlay')
 for _, v in ipairs({'title', 'title_rank', 'title_data', 'title_name', 'title_face', 'item_rank', 'item_rank_active', 'item_rank_active2', 'item_data', 'item_data_active', 'item_data_active2', 'item_name', 'item_name_active', 'item_name_active2', 'timer'}) do
-	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {addX = motif.hiscore_info.pos[1], addY = motif.hiscore_info.pos[2]})
+	start['txt_hiscore_' .. v] = main.f_createTextImg(motif.hiscore_info, v, {x = motif.hiscore_info.pos[1], y = motif.hiscore_info.pos[2]})
 end
 
 start.hiscoreInit = false
@@ -3868,7 +3868,7 @@ end
 --; RANK
 --;===========================================================
 for i = 1, 2 do
-	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score', {addX = motif.rank_info['p' .. i .. '_pos'][1], addY = motif.rank_info['p' .. i .. '_pos'][2]})
+	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score', {x = motif.rank_info['p' .. i .. '_pos'][1], y = motif.rank_info['p' .. i .. '_pos'][2]})
 end
 
 start.rankInit = false

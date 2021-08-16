@@ -989,6 +989,7 @@
 	winquote.offset = 20, 192
 	winquote.font = -1, 0, 1, 255, 255, 255
 	winquote.font.scale = 1.0, 1.0
+	winquote.scale = 1.0, 1.0
 	winquote.textwrap = "w"
 	winquote.window = 
 

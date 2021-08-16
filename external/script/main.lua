@@ -582,10 +582,10 @@ function main.f_createTextImg(t, prefix, mod)
 		bank =   t[prefix .. '_font'][2],
 		align =  t[prefix .. '_font'][3],
 		text =   t[prefix .. '_text'],
-		x =      (t[prefix .. '_offset'][1] or 0) + (mod.addX or 0),
-		y =      (t[prefix .. '_offset'][2] or 0) + (mod.addY or 0),
-		scaleX = t[prefix .. '_font_scale'][1],
-		scaleY = t[prefix .. '_font_scale'][2],
+		x =      (t[prefix .. '_offset'][1] or 0) + (mod.x or 0),
+		y =      (t[prefix .. '_offset'][2] or 0) + (mod.y or 0),
+		scaleX = t[prefix .. '_font_scale'][1] * (mod.scaleX or 1),
+		scaleY = t[prefix .. '_font_scale'][2] * (mod.scaleY or 1),
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
@@ -826,11 +826,20 @@ function main.f_tableRemove(t, value)
 end
 
 --merge 2 tables into 1 overwriting values
+local function f_printValue(arg)
+	if type(arg) == "table" then
+		return arg[1]
+	end
+	return arg
+end
 function main.f_tableMerge(t1, t2, key)
 	for k, v in pairs(t2) do
 		if type(v) == "table" then
 			if type(t1[k] or false) == "table" then
 				main.f_tableMerge(t1[k] or {}, t2[k] or {}, k)
+			elseif (t1[k] ~= nil and type(t1[k]) ~= type(v)) then
+				--panicError("\n" .. k:gsub('_', '.') .. ": Incorrect data type (" .. type(t1[k]) .. " expected, got " .. type(v) .. "): " .. f_printValue(v))
+				print(k:gsub('_', '.') .. ": Incorrect data type (" .. type(t1[k]) .. " expected, got " .. type(v) .. "): " .. f_printValue(v))
 			else
 				t1[k] = v
 			end
@@ -840,7 +849,8 @@ function main.f_tableMerge(t1, t2, key)
 			if type(t1[k]) == "string" then
 				t1[k] = tostring(v)
 			else
-				panicError("\nmain.f_tableMerge: " .. (key or k) .. " = " .. v .. " (" .. type(t1[k]) .. " expected, got " .. type(v) .. ")\n")
+				--panicError("\n" .. k:gsub('_', '.') .. ": Incorrect data type (" .. type(t1[k]) .. " expected, got " .. type(v) .. "): " .. f_printValue(v))
+				print(k:gsub('_', '.') .. ": Incorrect data type (" .. type(t1[k]) .. " expected, got " .. type(v) .. "): " .. f_printValue(v))
 			end
 		else
 			t1[k] = v

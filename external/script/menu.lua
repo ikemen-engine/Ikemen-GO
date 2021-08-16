@@ -371,8 +371,8 @@ function menu.f_commandlistParse()
 end
 
 for _, v in ipairs({'menu_info', 'training_info'}) do
-	menu[v .. '_txt_title'] = main.f_createTextImg(motif[v], 'movelist_title', {defsc = motif.defaultMenu, addX = motif[v].movelist_pos[1], addY = motif[v].movelist_pos[2]})
-	menu[v .. '_txt_text'] = main.f_createTextImg(motif[v], 'movelist_text', {defsc = motif.defaultMenu, addX = motif[v].movelist_pos[1], addY = motif[v].movelist_pos[2]})
+	menu[v .. '_txt_title'] = main.f_createTextImg(motif[v], 'movelist_title', {defsc = motif.defaultMenu, x = motif[v].movelist_pos[1], y = motif[v].movelist_pos[2]})
+	menu[v .. '_txt_text'] = main.f_createTextImg(motif[v], 'movelist_text', {defsc = motif.defaultMenu, x = motif[v].movelist_pos[1], y = motif[v].movelist_pos[2]})
 	menu[v .. '_overlay'] = main.f_createOverlay(motif[v], 'overlay')
 	menu[v .. '_movelist_overlay'] = main.f_createOverlay(motif[v], 'movelist_overlay')
 	--menu[v .. '_t_movelistWindow'] = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}

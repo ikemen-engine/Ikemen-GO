@@ -7458,7 +7458,7 @@ func cnsStringArray(arg string) ([]string, error) {
 			} else if inString > 2 { // Do we have more than 1 string without using ','?
 				return nil, Error("Lack of ',' separator.")
 			} else {
-				return nil, Error("WARNING: Unknown string array error.")
+				return nil, Error("Unknown string array error.")
 			}
 		} else if formatError {
 			return nil, Error("Wrong format on string array.")

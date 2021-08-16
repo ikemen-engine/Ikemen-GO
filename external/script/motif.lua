@@ -12,7 +12,7 @@ local motif =
 	{
 		name = 'Default',
 		author = 'Elecbyte',
-		versiondate = '09,01,2009',
+		versiondate = {09, 01, 2009},
 		mugenversion = '1.0',
 		localcoord = {320, 240},
 	},
@@ -907,6 +907,7 @@ local motif =
 		winquote_font = {-1, 0, 1, 255, 255, 255},
 		winquote_font_scale = {1.0, 1.0},
 		winquote_font_height = -1, --Ikemen feature
+		winquote_scale = {1.0, 1.0},
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},
