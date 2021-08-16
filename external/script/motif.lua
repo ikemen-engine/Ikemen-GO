@@ -12,7 +12,7 @@ local motif =
 	{
 		name = 'Default',
 		author = 'Elecbyte',
-		versiondate = '09,01,2009',
+		versiondate = {09, 01, 2009},
 		mugenversion = '1.0',
 		localcoord = {320, 240},
 	},
