@@ -907,6 +907,7 @@ local motif =
 		winquote_font = {-1, 0, 1, 255, 255, 255},
 		winquote_font_scale = {1.0, 1.0},
 		winquote_font_height = -1, --Ikemen feature
+		winquote_scale = {1.0, 1.0},
 		winquote_delay = 2, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},

@@ -2985,7 +2985,7 @@ end
 --;===========================================================
 --; VICTORY SCREEN
 --;===========================================================
-local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote')
+local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote', {mulX = motif.victory_screen.winquote_scale[1], mulY = motif.victory_screen.winquote_scale[2]})
 local overlay_winquote = main.f_createOverlay(motif.victory_screen, 'overlay')
 local t_txt_winquoteName = {}
 for i = 1, 2 do
