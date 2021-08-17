@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unsafe"
+	"encoding/binary"
 )
 
 type StateType int32
@@ -598,6 +599,12 @@ func (bs *BytecodeStack) Alloc(size int) []BytecodeValue {
 
 type BytecodeExp []OpCode
 
+func Float32frombytes(bytes []byte) float32 {
+	bits := binary.LittleEndian.Uint32(bytes)
+	float := math.Float32frombits(bits)
+	return float
+}
+
 func (be *BytecodeExp) append(op ...OpCode) {
 	*be = append(*be, op...)
 }
@@ -966,7 +973,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(*(*int32)(unsafe.Pointer(&be[i])))
 			i += 4
 		case OC_float:
-			sys.bcStack.PushF(*(*float32)(unsafe.Pointer(&be[i])))
+			arr := make([]byte, 4)
+			arr[0] = byte(be[i])
+			arr[1] = byte(be[i+1])
+			arr[2] = byte(be[i+2])
+			arr[3] = byte(be[i+3])
+			flo := Float32frombytes(arr)
+			sys.bcStack.PushF(flo)
 			i += 4
 		case OC_neg:
 			be.neg(sys.bcStack.Top())
@@ -4144,11 +4157,11 @@ const (
 	projectile_pausemovetime
 	projectile_ownpal
 	projectile_remappal
-	projectile_platform
-	projectile_platformwidth
-	projectile_platformheight
-	projectile_platformfence
-	projectile_platformangle
+	// projectile_platform
+	// projectile_platformwidth
+	// projectile_platformheight
+	// projectile_platformfence
+	// projectile_platformangle
 	projectile_redirectid
 )
 
@@ -4273,22 +4286,22 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
-		case projectile_platform:
-			p.platform = exp[0].evalB(c)
-		case projectile_platformwidth:
-			p.platformWidth[0] = exp[0].evalF(c) * lclscround
-			if len(exp) > 1 {
-				p.platformWidth[1] = exp[1].evalF(c) * lclscround
-			}
-		case projectile_platformheight:
-			p.platformHeight[0] = exp[0].evalF(c) * lclscround
-			if len(exp) > 1 {
-				p.platformHeight[1] = exp[1].evalF(c) * lclscround
-			}
-		case projectile_platformangle:
-			p.platformAngle = exp[0].evalF(c)
-		case projectile_platformfence:
-			p.platformFence = exp[0].evalB(c)
+		// case projectile_platform:
+		// 	p.platform = exp[0].evalB(c)
+		// case projectile_platformwidth:
+		// 	p.platformWidth[0] = exp[0].evalF(c) * lclscround
+		// 	if len(exp) > 1 {
+		// 		p.platformWidth[1] = exp[1].evalF(c) * lclscround
+		// 	}
+		// case projectile_platformheight:
+		// 	p.platformHeight[0] = exp[0].evalF(c) * lclscround
+		// 	if len(exp) > 1 {
+		// 		p.platformHeight[1] = exp[1].evalF(c) * lclscround
+		// 	}
+		// case projectile_platformangle:
+		// 	p.platformAngle = exp[0].evalF(c)
+		// case projectile_platformfence:
+		// 	p.platformFence = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
 				afterImage(sc).runSub(c, &p.aimg, id, exp)

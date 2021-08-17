@@ -4,6 +4,13 @@
 *.command text eol=lf
 *.cmd text eol=crlf
 
+# Syntax
+*.def linguist-language=ini
+*.air linguist-language=ini
+*.st linguist-language=ini
+*.const linguist-language=ini
+*.zss linguist-language=coffeescript
+
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union
