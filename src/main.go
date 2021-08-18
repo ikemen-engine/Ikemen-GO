@@ -205,7 +205,7 @@ type configSettings struct {
 	EscOpensMenu               bool
 	ExternalShaders            []string
 	FirstRun                   bool
-	FontShaderVer              string
+	FontShaderVer              uint
 	ForceStageZoomin           float32
 	ForceStageZoomout          float32
 	Framerate                  int32
@@ -318,7 +318,7 @@ func setupConfig() configSettings {
 	"EscOpensMenu": true,
 	"ExternalShaders": [],
 	"FirstRun": true,
-	"FontShaderVer": "150 core",
+	"FontShaderVer": 120,
 	"ForceStageZoomin": 0,
 	"ForceStageZoomout": 0,
 	"Framerate": 60,
@@ -637,9 +637,7 @@ func setupConfig() configSettings {
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
-	if len(tmp.FontShaderVer) > 1 {
-		sys.fontShaderVer = tmp.FontShaderVer
-	}
+	sys.fontShaderVer = tmp.FontShaderVer
 	sys.fullscreen = tmp.Fullscreen
 	FPS = int(tmp.Framerate)
 	sys.gameSpeed = tmp.GameSpeed / 100

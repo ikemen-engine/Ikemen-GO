@@ -78,7 +78,7 @@ var sys = System{
 	audioClose:            make(chan bool, 1),
 	keyInput:              glfw.KeyUnknown,
 	comboExtraFrameWindow: 1,
-	fontShaderVer:         "150 core",
+	fontShaderVer:         120,
 	//FLAC_FrameWait:          -1,
 	luaSpriteScale:       1,
 	luaPortraitScale:     1,
@@ -298,7 +298,7 @@ type System struct {
 	// Shader Vars
 	postProcessingShader    int32
 	multisampleAntialiasing bool
-	fontShaderVer           string
+	fontShaderVer           uint
 
 	// External Shader Vars
 	externalShaderList  []string
