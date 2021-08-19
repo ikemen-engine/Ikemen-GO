@@ -577,6 +577,7 @@ type Layout struct {
 	vfacing int8
 	layerno int16
 	scale   [2]float32
+	angle   float32
 	window  [4]int32
 }
 
@@ -608,6 +609,7 @@ func (l *Layout) Read(pre string, is IniSection) {
 	is.ReadI32(pre+"layerno", &ln)
 	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
+	is.ReadF32(pre+"angle", &l.angle)
 	if is.ReadI32(pre+"window", &l.window[0], &l.window[1], &l.window[2], &l.window[3]) {
 		l.window[0] = int32(float32(l.window[0]) * float32(sys.scrrect[2]) / float32(sys.lifebarLocalcoord[0]))
 		l.window[1] = int32(float32(l.window[1]) * float32(sys.scrrect[3]) / float32(sys.lifebarLocalcoord[1]))
@@ -639,7 +641,8 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 		}
 		paltex := s.PalTex
 		s.Draw(x+l.offset[0]*sys.lifebarScale, y+l.offset[1]*sys.lifebarScale,
-			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale, s.Pal, fx, paltex, window)
+			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale,
+			l.angle, s.Pal, fx, paltex, window)
 	}
 }
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
@@ -654,8 +657,8 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 		}
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
-			l.scale[1]*float32(l.vfacing),
-			0, 0, 0, 0, float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1)
+			l.scale[1]*float32(l.vfacing), 0, l.angle, 0, 0,
+			float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1)
 	}
 }
 func (l *Layout) DrawText(x, y, scl float32, ln int16,

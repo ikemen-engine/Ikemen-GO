@@ -502,8 +502,8 @@ func systemScriptInit(l *lua.LState) {
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
 						fscale := sys.chars[pn-1][0].localscl
-						sprite.Draw(x, y, scale[0]*float32(facing)*fscale,
-							scale[1]*fscale, sprite.Pal, pfx, sprite.PalTex, window)
+						sprite.Draw(x, y, scale[0]*float32(facing)*fscale, scale[1]*fscale,
+							0, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
 					}
 				}
