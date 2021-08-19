@@ -2587,7 +2587,12 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				ss.attachedchardef, _ = is.getString("attachedchar")
+				if err := is.LoadFile("attachedchar", def, func(filename string) error {
+					ss.attachedchardef = filename
+					return nil
+				}); err != nil {
+					return nil
+				}
 			}
 		case "music":
 			if music {

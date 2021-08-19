@@ -680,10 +680,13 @@ func loadStage(def string, main bool) (*Stage, error) {
 					re := regexp.MustCompile("[0-9]+")
 					submatchall := re.FindAllString(k, -1)
 					if len(submatchall) == 1 {
-						var err error
-						sys.stageList[Atoi(submatchall[0])], err = loadStage(v, false)
-						if err != nil {
-							return nil, fmt.Errorf("failed to load %v:\n%v", def, err)
+						if err := LoadFile(&v, def, func(filename string) error {
+							if sys.stageList[Atoi(submatchall[0])], err = loadStage(filename, false); err != nil {
+								return fmt.Errorf("failed to load %v:\n%v", filename, err)
+							}
+							return nil
+						}); err != nil {
+							return nil, err
 						}
 					}
 				}

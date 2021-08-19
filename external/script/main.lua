@@ -1796,16 +1796,16 @@ function main.f_addStage(file, hidden)
 	--music
 	for k, v in pairs(t_info.stagebgm) do
 		if k:match('^bgmusic') or k:match('^bgmvolume') or k:match('^bgmloop') then
-			local tmp1, tmp2, tmp3 = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
-			if t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= nil and t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= '' then
-				if main.t_selStages[stageNo]['music' .. tmp3] == nil then
-					main.t_selStages[stageNo]['music' .. tmp3] = {}
-					table.insert(main.t_selStages[stageNo]['music' .. tmp3], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
+			local prefix, dot, suffix = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
+			if t_info.stagebgm['bgmusic' .. dot .. suffix] ~= nil and t_info.stagebgm['bgmusic' .. dot .. suffix] ~= '' then
+				if main.t_selStages[stageNo]['music' .. suffix] == nil then
+					main.t_selStages[stageNo]['music' .. suffix] = {}
+					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. tmp3][1][tmp1] = tostring(v)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file, false)
 				elseif tonumber(v) then
-					main.t_selStages[stageNo]['music' .. tmp3][1][tmp1] = tonumber(v)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end
 			end
 		elseif v ~= '' then
