@@ -6870,69 +6870,33 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			}
 		case matchRestart_stagedef:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.sdefOverwrite = s
-			} else {
-				sys.sel.sdefOverwrite = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.sdefOverwrite = SearchFile(s, c.gi().def)
 			//sys.reloadStageFlg = true
 			reloadFlag = true
 		case matchRestart_p1def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[0] = s
-			} else {
-				sys.sel.cdefOverwrite[0] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[0] = SearchFile(s, c.gi().def)
 		case matchRestart_p2def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[1] = s
-			} else {
-				sys.sel.cdefOverwrite[1] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[1] = SearchFile(s, c.gi().def)
 		case matchRestart_p3def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[2] = s
-			} else {
-				sys.sel.cdefOverwrite[2] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[2] = SearchFile(s, c.gi().def)
 		case matchRestart_p4def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[3] = s
-			} else {
-				sys.sel.cdefOverwrite[3] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[3] = SearchFile(s, c.gi().def)
 		case matchRestart_p5def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[4] = s
-			} else {
-				sys.sel.cdefOverwrite[4] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[4] = SearchFile(s, c.gi().def)
 		case matchRestart_p6def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[5] = s
-			} else {
-				sys.sel.cdefOverwrite[5] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[5] = SearchFile(s, c.gi().def)
 		case matchRestart_p7def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[6] = s
-			} else {
-				sys.sel.cdefOverwrite[6] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[6] = SearchFile(s, c.gi().def)
 		case matchRestart_p8def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if filepath.IsAbs(s) {
-				sys.sel.cdefOverwrite[7] = s
-			} else {
-				sys.sel.cdefOverwrite[7] = filepath.Dir(c.gi().def) + "/" + s
-			}
+			sys.sel.cdefOverwrite[7] = SearchFile(s, c.gi().def)
 		}
 		return true
 	})

@@ -1803,7 +1803,7 @@ function main.f_addStage(file, hidden)
 					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file, false)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file)
 				elseif tonumber(v) then
 					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end

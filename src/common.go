@@ -258,7 +258,7 @@ func FileExist(filename string) string {
 
 //SearchFile returns the directory that file is located
 //This search on deffile directory, then it keep looking on other dirs
-func SearchFile(file string, deffile string, dirs bool) string {
+func SearchFile(file string, deffile string) string {
 	var fp string
 	file = strings.Replace(file, "\\", "/", -1)
 	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
@@ -269,7 +269,7 @@ func SearchFile(file string, deffile string, dirs bool) string {
 	} else {
 		fp = defdir + "/" + file
 	}
-	if fp = FileExist(fp); len(fp) == 0 && dirs {
+	if fp = FileExist(fp); len(fp) == 0 {
 		_else := false
 		if defdir != "data" {
 			fp = "data/" + file
@@ -294,7 +294,7 @@ func SearchFile(file string, deffile string, dirs bool) string {
 }
 
 func LoadFile(file *string, deffile string, load func(string) error) error {
-	fp := SearchFile(*file, deffile, true)
+	fp := SearchFile(*file, deffile)
 	if err := load(fp); err != nil {
 		return Error(deffile + ":\n" + fp + "\n" + err.Error())
 	}

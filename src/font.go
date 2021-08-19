@@ -46,7 +46,7 @@ func loadFnt(filename string, height int32) (*Fnt, error) {
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/", true)
+	filename = SearchFile(filename, "font/")
 
 	fp, err := os.Open(filename)
 
@@ -242,7 +242,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/", true)
+	filename = SearchFile(filename, "font/")
 
 	content, err := LoadText(filename)
 
@@ -312,7 +312,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 
 func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	//Search in local directory
-	fileDir := SearchFile(filename, fontfile, true)
+	fileDir := SearchFile(filename, fontfile)
 	//Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
@@ -342,7 +342,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 }
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, fontfile, true)
+	fileDir := SearchFile(filename, fontfile)
 	sff, err := loadSff(fileDir, false)
 
 	if err != nil {
