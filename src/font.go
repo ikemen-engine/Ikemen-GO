@@ -355,9 +355,13 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 	}
 
 	//Load sprites
+	var pal_default []uint32
 	for k, sprite := range sff.sprites {
 		s := sff.getOwnPalSprite(sprite.Group, sprite.Number)
 		if sprite.Group == 0 {
+			if pal_default == nil && sff.header.Ver0 == 1 {
+				pal_default = s.Pal
+			}
 			offsetX := uint16(s.Offset[0])
 			sizeX := uint16(s.Size[0])
 
@@ -386,6 +390,10 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 			pal = sff.palList.Get(idef)
 		}
 		copy(f.palettes[i][:], pal)
+	}
+	if len(f.palettes) == 0 && pal_default != nil {
+		f.palettes = make([][256]uint32, 1)
+		copy(f.palettes[0][:], pal_default)
 	}
 }
 
