@@ -616,11 +616,11 @@ func setupConfig() configSettings {
 	sys.bgmVolume = tmp.VolumeBgm
 	sys.maxBgmVolume = tmp.MaxBgmVolume
 	sys.borderless = tmp.Borderless
-	sys.cam.ZoomDelayEnable = tmp.ZoomDelay
-	sys.cam.ZoomActive = tmp.ZoomActive
-	sys.cam.ZoomMax = tmp.ForceStageZoomin
-	sys.cam.ZoomMin = tmp.ForceStageZoomout
-	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
+	sys.gs.cam.ZoomDelayEnable = tmp.ZoomDelay
+	sys.gs.cam.ZoomActive = tmp.ZoomActive
+	sys.gs.cam.ZoomMax = tmp.ForceStageZoomin
+	sys.gs.cam.ZoomMin = tmp.ForceStageZoomout
+	sys.gs.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	if air, err := ioutil.ReadFile(tmp.CommonAir); err == nil {
 		sys.commonAir = "\n" + string(air)

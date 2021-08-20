@@ -40,7 +40,7 @@ var (
 // The only instance of a System struct.
 // Do not create more than 1.
 var sys = System{
-	randseed:          int32(time.Now().UnixNano()),
+	gs:                GameState{randseed:int32(time.Now().UnixNano()), cam: *newCamera()},
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
@@ -70,7 +70,6 @@ var sys = System{
 	powerShare:            [...]bool{true, true},
 	oldNextAddTime:        1,
 	commandLine:           make(chan string),
-	cam:                   *newCamera(),
 	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
@@ -104,9 +103,99 @@ const (
 	TM_LAST = TM_Tag
 )
 
+type GameState struct {
+	randseed                int32
+	time                    int32
+	gameTime                int32
+	charArray               []Char
+	chars                   [MaxSimul*2 + MaxAttachedChar][]int
+	charList                CharList
+	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
+	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
+	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
+	underexplDrawlist       [MaxSimul*2 + MaxAttachedChar][]int
+	cam                     Camera
+	ac                      activeCamera
+}
+
+// Create a new Char and add it to the game state.
+// Return a pointer to the new character and its index in the chars slice
+func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
+	state.charArray = append(state.charArray, Char{aimg: *newAfterImage()})
+	index = len(state.charArray) - 1
+	state.charArray[index].init(n, idx)
+	state.charArray[index].stateIdx = index
+	return index, &state.charArray[index]
+}
+
+// Add a Char to the game state.
+// Return its index in the chars slice
+func (state *GameState) appendChar(c *Char) (index int) {
+	state.charArray = append(state.charArray, *c)
+	index = len(state.charArray) - 1
+	c.stateIdx = index
+	return index
+}
+
+// Remove Char objects from the game state.
+// Parameter is presumably a slice from state.chars
+func (state *GameState) removeCharSlice(removedChars ...int) {
+	if (removedChars == nil || state.charArray == nil) {
+		return;
+	}
+	if (len(removedChars) > 0) {
+		// Duplicate so we don't edit the original collection
+		removed := make([]int, 0)
+		removed = append (removed, removedChars...)
+		// Sort the removed chars ascending
+		sort.Slice(removed, func(p, q int) bool { 
+			return removed[p] < removed[q] })
+
+		// Loop through removed, remove each element from the game state chars
+		oi := 0
+		for _, cidx := range removed {
+			idx := cidx - oi
+			if (idx >= len(state.charArray)) {
+				panic("Tried removing a character index not in the game state")
+			}
+			
+			// Clear state index from element
+			state.charArray[idx].stateIdx = -1
+			// If element is found, remove
+			state.charArray = append(state.charArray[:idx], state.charArray[idx+1:]...)
+			oi++
+		}
+		
+		// Sort the removed chars descending
+		sort.Slice(removed, func(p, q int) bool { 
+			return removed[p] > removed[q] })
+
+		// Loop through chars by player and adjust their indices as needed
+		for i := range state.chars {
+			for j := range state.chars[i] {
+				// Loop through the indices that were removed and
+				// reduce the value to close gaps
+				for k, cidx := range removed {
+					oi := len(removed) - k
+					if (state.chars[i][j] > cidx) {
+						state.chars[i][j] -= oi
+						break
+					}
+				}
+			}
+		}
+		// Do the same with CharList
+		sys.gs.charList.removeSet(removed...)
+
+		// Loop through chars and update their indices
+		for i := range state.charArray {
+			state.charArray[i].stateIdx = i
+		}
+	}
+}
+
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
-	randseed                int32
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
 	widthScale, heightScale float32
@@ -138,13 +227,11 @@ type System struct {
 	com                     [MaxSimul*2 + MaxAttachedChar]float32
 	autolevel               bool
 	home                    int
-	gameTime                int32
 	match                   int32
 	inputRemap              [MaxSimul*2 + MaxAttachedChar]int
 	listenPort              string
 	round                   int32
 	intro                   int32
-	time                    int32
 	lastHitter              [2]int
 	winTeam                 int
 	winType                 [2]WinType
@@ -153,8 +240,9 @@ type System struct {
 	roundsExisted           [2]int32
 	draws                   int32
 	loader                  Loader
-	chars                   [MaxSimul*2 + MaxAttachedChar][]*Char
-	charList                CharList
+
+	// Game State
+	gs                      GameState
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
 	numSimul, numTurns      [2]int32
@@ -225,7 +313,6 @@ type System struct {
 	enableZoomstate         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
-	cam                     Camera
 	finish                  FinishType
 	waitdown                int32
 	slowtime                int32
@@ -233,10 +320,6 @@ type System struct {
 	fadeintime              int32
 	fadeouttime             int32
 	projs                   [MaxSimul*2 + MaxAttachedChar][]Projectile
-	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
-	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
-	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
-	underexplDrawlist       [MaxSimul*2 + MaxAttachedChar][]int
 	changeStateNest         int32
 	sprites                 DrawList
 	topSprites              DrawList
@@ -673,8 +756,8 @@ func (s *System) playSound() {
 	if s.mixer.write() {
 		s.sounds.mixSounds()
 		if !s.noSoundFlg {
-			for _, ch := range s.chars {
-				for _, c := range ch {
+			for pn := range s.gs.chars {
+				for _, c := range s.getPlayerEtAl(pn) {
 					c.sounds.mixSounds()
 				}
 			}
@@ -725,7 +808,7 @@ func (s *System) anyButton() bool {
 	return s.anyHardButton()
 }
 func (s *System) playerID(id int32) *Char {
-	return s.charList.get(id)
+	return s.gs.charList.get(id)
 }
 func (s *System) matchOver() bool {
 	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
@@ -824,10 +907,46 @@ func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 	}
 	return false
 }
+
 func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
 }
+// Get a Char from the game state using the System chars collection
+func (s *System) getChar(pn int, index int) *Char {
+	if (index >= len(s.gs.chars[pn])) {
+		return nil
+	}
+	cidx := s.gs.chars[pn][index]
+	if (cidx >= len(s.gs.charArray)) {
+		return nil
+	}
+	return &s.gs.charArray[cidx]
+}
+// Get all player Chars
+func (s *System) getPlayers() []*Char {
+	result := make([]*Char, 0)
+	for pn := range s.gs.chars {
+		result = append(result, s.getChar(pn, 0))
+	}
+	return result
+}
+// Get a player and all of its associated Char objects, presumably all helpers
+func (s *System) getPlayerEtAl(pn int) []*Char {
+	result := make([]*Char, 0)
+	if (pn >= len(s.gs.chars) || pn < 0) {
+		panic("Invalid player index")
+	}
+	for idx := range s.gs.chars[pn] {
+		result = append(result, s.getChar(pn, idx))
+	}
+	return result
+}
+// Get the associated Char objects of a player, presumably all helpers
+func (s *System) getPlayerHelpers(pn int) []*Char {
+	return s.getPlayerEtAl(pn)[1:]
+}
+
 func (s *System) resetGblEffect() {
 	s.allPalFX.clear()
 	s.bgPalFX.clear()
@@ -839,8 +958,8 @@ func (s *System) resetGblEffect() {
 	s.specialFlag = 0
 }
 func (s *System) stopAllSound() {
-	for _, p := range s.chars {
-		for _, c := range p {
+	for pn := range s.gs.chars {
+		for _, c := range s.getPlayerEtAl(pn) {
 			c.sounds = c.sounds[:0]
 		}
 	}
@@ -852,9 +971,9 @@ func (s *System) clearAllSound() {
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {
-	if len(s.chars[pn]) > 0 {
-		p := s.chars[pn][0]
-		for _, h := range s.chars[pn][1:] {
+	if len(s.gs.chars[pn]) > 0 {
+		p := s.getChar(pn, 0)
+		for _, h := range s.getPlayerHelpers(pn) {
 			if destroy || !h.preserve {
 				h.destroy()
 			}
@@ -863,9 +982,10 @@ func (s *System) playerClear(pn int, destroy bool) {
 		if destroy {
 			p.children = p.children[:0]
 		} else {
-			for i, ch := range p.children {
+			for i, cid := range p.children {
+				ch := sys.playerID(cid);
 				if ch != nil && !ch.preserve {
-					p.children[i] = nil
+					p.children[i] = -1
 				}
 			}
 		}
@@ -873,10 +993,10 @@ func (s *System) playerClear(pn int, destroy bool) {
 		p.sounds = p.sounds[:0]
 	}
 	s.projs[pn] = s.projs[pn][:0]
-	s.explods[pn] = s.explods[pn][:0]
-	s.explDrawlist[pn] = s.explDrawlist[pn][:0]
-	s.topexplDrawlist[pn] = s.topexplDrawlist[pn][:0]
-	s.underexplDrawlist[pn] = s.underexplDrawlist[pn][:0]
+	s.gs.explods[pn] = s.gs.explods[pn][:0]
+	s.gs.explDrawlist[pn] = s.gs.explDrawlist[pn][:0]
+	s.gs.topexplDrawlist[pn] = s.gs.topexplDrawlist[pn][:0]
+	s.gs.underexplDrawlist[pn] = s.gs.underexplDrawlist[pn][:0]
 }
 func (s *System) nextRound() {
 	s.resetGblEffect()
@@ -894,7 +1014,7 @@ func (s *System) nextRound() {
 	s.fadeouttime = s.lifebar.ro.fadeout_time
 	s.winskipped = false
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
-	s.time = s.roundTime
+	s.gs.time = s.roundTime
 	s.nextCharId = s.helperMax
 	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
 		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins[0]-1) {
@@ -932,32 +1052,32 @@ func (s *System) nextRound() {
 			swap = true
 		}
 	}
-	s.cam.stageCamera = s.stage.stageCamera
-	s.cam.Init()
+	s.gs.cam.stageCamera = s.stage.stageCamera
+	s.gs.cam.Init()
 	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
 	s.screenright = float32(s.stage.screenright) * s.stage.localscl
 	if s.stage.resetbg || swap {
 		s.stage.reset()
 	}
-	s.cam.ResetZoomdelay()
-	s.cam.Update(1, 0, 0)
-	for i, p := range s.chars {
-		if len(p) > 0 {
-			s.nextCharId = Max(s.nextCharId, p[0].id+1)
+	s.gs.cam.ResetZoomdelay()
+	s.gs.cam.Update(1, 0, 0)
+	for i, p := range s.getPlayers() {
+		if p != nil {
+			s.nextCharId = Max(s.nextCharId, p.id+1)
 			s.playerClear(i, false)
-			p[0].posReset()
-			p[0].setCtrl(false)
-			p[0].clearState()
-			p[0].clear2()
-			p[0].varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
-			p[0].fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
-			for j := range p[0].cmd {
-				p[0].cmd[j].BufReset()
+			p.posReset()
+			p.setCtrl(false)
+			p.clearState()
+			p.clear2()
+			p.varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
+			p.fvarRangeSet(0, s.cgi[i].data.floatpersistindex-1, 0)
+			for j := range p.cmd {
+				p.cmd[j].BufReset()
 			}
 			if s.roundsExisted[i&1] == 0 {
 				s.cgi[i].sff.palList.ResetRemap()
 				if s.cgi[i].sff.header.Ver0 == 1 {
-					p[0].remapPal(p[0].getPalfx(),
+					p.remapPal(p.getPalfx(),
 						[...]int32{1, 1}, [...]int32{1, s.cgi[i].drawpalno})
 				}
 			}
@@ -965,9 +1085,9 @@ func (s *System) nextRound() {
 			s.cgi[i].unhittable = 0
 		}
 	}
-	for _, p := range s.chars {
-		if len(p) > 0 {
-			p[0].selfState(5900, 0, -1, 0, false)
+	for _, p := range s.getPlayers() {
+		if p != nil {
+			p.selfState(5900, 0, -1, 0, false)
 		}
 	}
 }
@@ -1011,9 +1131,9 @@ func (s *System) resetFrameTime() {
 	s.nextAddTime, s.oldNextAddTime = 1, 1
 }
 func (s *System) commandUpdate() {
-	for i, p := range s.chars {
+	for i, p := range s.gs.chars {
 		if len(p) > 0 {
-			r := p[0]
+			r := s.getChar(i, 0)
 			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
@@ -1030,7 +1150,7 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
 				r.turn()
 			}
-			for _, c := range p {
+			for _, c := range s.getPlayerEtAl(i) {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
 					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
@@ -1059,9 +1179,9 @@ func (s *System) commandUpdate() {
 				} else {
 					cc = -1
 				}
-				for j := range p {
-					if p[j].helperIndex >= 0 {
-						p[j].cpucmd = cc
+				for _, c := range s.getPlayerEtAl(i) {
+					if c.helperIndex >= 0 {
+						c.cpucmd = cc
 					}
 				}
 			}
@@ -1070,7 +1190,7 @@ func (s *System) commandUpdate() {
 }
 func (s *System) charUpdate(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
-	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+	s.gs.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1086,7 +1206,7 @@ func (s *System) charUpdate(cvmin, cvmax,
 				}
 			}
 		}
-		s.charList.getHit()
+		s.gs.charList.getHit()
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id != IErr {
@@ -1094,13 +1214,13 @@ func (s *System) charUpdate(cvmin, cvmax,
 				}
 			}
 		}
-		s.charList.tick()
+		s.gs.charList.tick()
 	}
 }
 func (s *System) posReset() {
-	for _, p := range s.chars {
-		if len(p) > 0 {
-			p[0].posReset()
+	for _, p := range s.getPlayers() {
+		if p != nil {
+			p.posReset()
 		}
 	}
 }
@@ -1116,16 +1236,16 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
-	s.cam.Update(scl, *x, *y)
+	s.gs.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
 	leftest, rightest = *x, *x
-	if s.cam.verticalfollow > 0 {
-		lowest = s.cam.ScreenPos[1]
+	if s.gs.cam.verticalfollow > 0 {
+		lowest = s.gs.cam.ScreenPos[1]
 	}
 	if s.tickFrame() {
-		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
-		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
-			float32(s.gameWidth)/s.cam.Scale - s.screenright
+		s.xmin = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] + s.screenleft
+		s.xmax = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] +
+			float32(s.gameWidth)/s.gs.cam.Scale - s.screenright
 		if s.xmin > s.xmax {
 			s.xmin = (s.xmin + s.xmax) / 2
 			s.xmax = s.xmin
@@ -1160,7 +1280,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(*x, &cvmin, &cvmax,
+		s.gs.charList.action(*x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
 		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
@@ -1168,8 +1288,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	}
 	fightOver := true
 	for i := 0; i < MaxSimul*2; i += 2 {
-		if len(s.chars[i]) > 0 && !s.chars[i][0].scf(SCF_over) &&
-			!s.chars[i][0].scf(SCF_ko) {
+		if len(s.gs.chars[i]) > 0 && !s.getChar(i, 0).scf(SCF_over) &&
+			!s.getChar(i, 0).scf(SCF_ko) {
 			fightOver = false
 			break
 		}
@@ -1191,13 +1311,13 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	s.charList.cueDraw()
-	explUpdate := func(edl *[len(s.chars)][]int, drop bool) {
+	s.gs.charList.cueDraw()
+	explUpdate := func(edl *[len(s.gs.chars)][]int, drop bool) {
 		for i, el := range *edl {
 			for j := len(el) - 1; j >= 0; j-- {
 				if el[j] >= 0 {
-					s.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
-					if s.explods[i][el[j]].id == IErr {
+					s.gs.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
+					if s.gs.explods[i][el[j]].id == IErr {
 						if drop {
 							el = append(el[:j], el[j+1:]...)
 							(*edl)[i] = el
@@ -1209,12 +1329,12 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 		}
 	}
-	explUpdate(&s.explDrawlist, true)
-	explUpdate(&s.topexplDrawlist, false)
-	explUpdate(&s.underexplDrawlist, true)
+	explUpdate(&s.gs.explDrawlist, true)
+	explUpdate(&s.gs.topexplDrawlist, false)
+	explUpdate(&s.gs.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
-	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
+	sclMul = s.gs.cam.action(x, y, leftest, rightest, lowest, highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 	introSkip := false
 	if s.tickNextFrame() {
@@ -1226,20 +1346,20 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.fadeintime = 0
 					s.resetGblEffect()
 					s.intro = s.lifebar.ro.ctrl_time
-					for i, p := range s.chars {
-						if len(p) > 0 {
+					for i, p := range s.getPlayers() {
+						if p != nil {
 							s.playerClear(i, false)
-							p[0].selfState(0, -1, -1, 0, false)
+							p.selfState(0, -1, -1, 0, false)
 						}
 					}
 					ox := *x
 					*x = 0
 					leftest = MaxF(float32(Min(s.stage.p[0].startx,
 						s.stage.p[1].startx))*s.stage.localscl,
-						-(float32(s.gameWidth)/2)/s.cam.BaseScale()+s.screenleft) - ox
+						-(float32(s.gameWidth)/2)/s.gs.cam.BaseScale()+s.screenleft) - ox
 					rightest = MinF(float32(Max(s.stage.p[0].startx,
 						s.stage.p[1].startx))*s.stage.localscl,
-						(float32(s.gameWidth)/2)/s.cam.BaseScale()-s.screenright) - ox
+						(float32(s.gameWidth)/2)/s.gs.cam.BaseScale()-s.screenright) - ox
 					introSkip = true
 					s.introSkipped = true
 				}
@@ -1262,23 +1382,23 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			}
 			s.intro--
 			if s.intro == 0 {
-				for _, p := range s.chars {
-					if len(p) > 0 {
-						p[0].unsetSCF(SCF_over)
-						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
-							if p[0].ss.no == 0 {
-								p[0].setCtrl(true)
+				for _, p := range s.getPlayers() {
+					if p != nil {
+						p.unsetSCF(SCF_over)
+						if !p.scf(SCF_standby) || p.teamside == -1 {
+							if p.ss.no == 0 {
+								p.setCtrl(true)
 							} else {
-								p[0].selfState(0, -1, -1, 1, false)
+								p.selfState(0, -1, -1, 1, false)
 							}
 						}
 					}
 				}
 			}
 		}
-		if s.intro == 0 && s.time > 0 && !s.sf(GSF_timerfreeze) &&
+		if s.intro == 0 && s.gs.time > 0 && !s.sf(GSF_timerfreeze) &&
 			(s.super <= 0 || !s.superpausebg) && (s.pause <= 0 || !s.pausebg) {
-			s.time--
+			s.gs.time--
 		}
 		fin := func() bool {
 			if s.intro > 0 {
@@ -1287,8 +1407,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			ko := [...]bool{true, true}
 			for ii := range ko {
 				for i := ii; i < MaxSimul*2; i += 2 {
-					if len(s.chars[i]) > 0 && s.chars[i][0].teamside != -1 {
-						if s.chars[i][0].alive() {
+					if len(s.gs.chars[i]) > 0 && s.getChar(i, 0).teamside != -1 {
+						if s.getChar(i, 0).alive() {
 							ko[ii] = false
 						} else if (s.tmode[i&1] == TM_Simul && s.loseSimul && s.com[i] == 0) ||
 							(s.tmode[i&1] == TM_Tag && s.loseTag) {
@@ -1300,8 +1420,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				if ko[ii] {
 					i := ii ^ 1
 					for ; i < MaxSimul*2; i += 2 {
-						if len(s.chars[i]) > 0 && s.chars[i][0].life <
-							s.chars[i][0].lifeMax {
+						if len(s.gs.chars[i]) > 0 && s.getChar(i, 0).life <
+							s.getChar(i, 0).lifeMax {
 							break
 						}
 					}
@@ -1311,18 +1431,17 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 			ft := s.finish
-			if s.time == 0 {
+			if s.gs.time == 0 {
 				l := [2]float32{}
 				for i := 0; i < 2; i++ {
 					for j := i; j < MaxSimul*2; j += 2 {
-						if len(s.chars[j]) > 0 {
+						if len(s.gs.chars[j]) > 0 {
+							p := s.getChar(j, 0)
 							if s.tmode[i] == TM_Simul || s.tmode[i] == TM_Tag {
-								l[i] += (float32(s.chars[j][0].life) /
-									float32(s.numSimul[i])) /
-									float32(s.chars[j][0].lifeMax)
+								l[i] += (float32(p.life) / float32(s.numSimul[i])) /
+									float32(p.lifeMax)
 							} else {
-								l[i] += float32(s.chars[j][0].life) /
-									float32(s.chars[j][0].lifeMax)
+								l[i] += float32(p.life) / float32(p.lifeMax)
 							}
 						}
 					}
@@ -1330,8 +1449,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				if l[0] > l[1] {
 					p := true
 					for i := 0; i < MaxSimul*2; i += 2 {
-						if len(s.chars[i]) > 0 &&
-							s.chars[i][0].life < s.chars[i][0].lifeMax {
+						if len(s.gs.chars[i]) > 0 &&
+							s.getChar(i, 0).life < s.getChar(i, 0).lifeMax {
 							p = false
 							break
 						}
@@ -1344,8 +1463,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				} else if l[0] < l[1] {
 					p := true
 					for i := 1; i < MaxSimul*2; i += 2 {
-						if len(s.chars[i]) > 0 &&
-							s.chars[i][0].life < s.chars[i][0].lifeMax {
+						if len(s.gs.chars[i]) > 0 &&
+							s.getChar(i, 0).life < s.getChar(i, 0).lifeMax {
 							p = false
 							break
 						}
@@ -1376,11 +1495,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 			}
 			if ft != s.finish {
-				for i, p := range sys.chars {
+				for i, p := range s.gs.chars {
 					if len(p) > 0 && ko[^i&1] {
-						for _, h := range p {
+						for _, h := range s.getPlayerEtAl(i) {
 							for _, tid := range h.targets {
-								if t := sys.playerID(tid); t != nil {
+								if t := s.playerID(tid); t != nil {
 									if t.ghv.attr&int32(AT_AH) != 0 {
 										s.winTrigger[i&1] = WT_H
 									} else if t.ghv.attr&int32(AT_AS) != 0 &&
@@ -1393,11 +1512,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					}
 				}
 			}
-			return ko[0] || ko[1] || s.time == 0
+			return ko[0] || ko[1] || s.gs.time == 0
 		}
 		if s.roundEnd() || fin() {
 			inclWinCount := func() {
-				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+				w := [...]bool{!s.getChar(1, 0).win(), !s.getChar(0, 0).win()}
 				if !w[0] || !w[1] ||
 					s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
@@ -1422,8 +1541,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				s.intro--
 				if s.intro == rs4t-1 {
 					if s.waitdown > 0 {
-						for _, p := range s.chars {
-							if len(p) > 0 && !p[0].over() {
+						for _, p := range s.getPlayers() {
+							if p != nil && !p.over() {
 								s.intro = rs4t
 							}
 						}
@@ -1431,7 +1550,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				}
 				if s.waitdown <= 0 || s.intro < rs4t-s.lifebar.ro.over_wintime {
 					if s.waitdown >= 0 {
-						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+						w := [...]bool{!s.getChar(1, 0).win(), !s.getChar(0, 0).win()}
 						if !w[0] || !w[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
@@ -1448,26 +1567,26 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							s.draws++
 						}
 					}
-					for _, p := range s.chars {
-						if len(p) > 0 {
+					for _, p := range s.getPlayers() {
+						if p != nil {
 							//default life recovery, used only if externalized Lua implementaion is disabled
-							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
-								p[0].alive() && !s.matchOver() &&
+							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.gs.time > 0 && p.win() &&
+								p.alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
-								p[0].life += int32((float32(p[0].lifeMax) *
-									float32(s.time) / 60) * s.turnsRecoveryRate)
-								if p[0].life > p[0].lifeMax {
-									p[0].life = p[0].lifeMax
+								p.life += int32((float32(p.lifeMax) *
+									float32(s.gs.time) / 60) * s.turnsRecoveryRate)
+								if p.life > p.lifeMax {
+									p.life = p.lifeMax
 								}
 							}
-							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() {
-								p[0].setSCF(SCF_over)
-								if p[0].win() {
-									p[0].selfState(180, -1, -1, 1, false)
-								} else if p[0].lose() {
-									p[0].selfState(170, -1, -1, 1, false)
+							if !p.scf(SCF_over) && !p.hitPause() && p.alive() {
+								p.setSCF(SCF_over)
+								if p.win() {
+									p.selfState(180, -1, -1, 1, false)
+								} else if p.lose() {
+									p.selfState(170, -1, -1, 1, false)
 								} else {
-									p[0].selfState(175, -1, -1, 1, false)
+									p.selfState(175, -1, -1, 1, false)
 								}
 							}
 						}
@@ -1484,7 +1603,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
 			spd = 1
-		} else if !s.sf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
+		} else if !s.sf(GSF_nokoslow) && s.gs.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
 			if s.slowtime < s.lifebar.ro.slow_fadetime {
 				spd += (float32(1) - s.lifebar.ro.slow_speed) * float32(s.lifebar.ro.slow_fadetime-s.slowtime) / float32(s.lifebar.ro.slow_fadetime)
@@ -1497,8 +1616,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if introSkip {
 		sclMul = 1 / scl
 	}
-	leftest = (leftest - s.screenleft) * s.cam.BaseScale()
-	rightest = (rightest + s.screenright) * s.cam.BaseScale()
+	leftest = (leftest - s.screenleft) * s.gs.cam.BaseScale()
+	rightest = (rightest + s.screenright) * s.gs.cam.BaseScale()
 	return
 }
 func (s *System) draw(x, y, scl float32) {
@@ -1533,20 +1652,20 @@ func (s *System) draw(x, y, scl float32) {
 		}
 		if !s.sf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
-				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
+				s.shadows.drawReflection(x, y, scl*s.gs.cam.BaseScale())
 			}
-			s.shadows.draw(x, y, scl*s.cam.BaseScale())
+			s.shadows.draw(x, y, scl*s.gs.cam.BaseScale())
 		}
 		off := s.envShake.getOffset()
 		yofs, yofs2 := float32(s.gameHeight), float32(0)
-		if scl > 1 && s.cam.verticalfollow > 0 {
-			yofs = s.cam.screenZoff + float32(s.gameHeight-240)
-			yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
+		if scl > 1 && s.gs.cam.verticalfollow > 0 {
+			yofs = s.gs.cam.screenZoff + float32(s.gameHeight-240)
+			yofs2 = (240 - s.gs.cam.screenZoff) * (1 - 1/scl)
 		}
 		yofs *= 1/scl - 1
 		rect := s.scrrect
-		if off < (yofs-y+s.cam.boundH)*scl {
-			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
+		if off < (yofs-y+s.gs.cam.boundH)*scl {
+			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.gs.cam.boundH)*scl-off)*
 				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
 			fade(rect, 0, 255)
 		}
@@ -1556,7 +1675,7 @@ func (s *System) draw(x, y, scl float32) {
 			rect[1] = s.scrrect[3] - rect[3]
 			fade(rect, 0, 255)
 		}
-		bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
+		bl, br := MinF(x, s.gs.cam.boundL), MaxF(x, s.gs.cam.boundR)
 		xofs := float32(s.gameWidth) * (1/scl - 1) / 2
 		rect = s.scrrect
 		if x-xofs < bl {
@@ -1570,20 +1689,20 @@ func (s *System) draw(x, y, scl float32) {
 			rect[0] = s.scrrect[2] - rect[2]
 			fade(rect, 0, 255)
 		}
-		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
+		s.bottomSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
 		FillRect(s.scrrect, ecol, 255)
 	}
 	if s.envcol_time == 0 || s.envcol_under {
-		s.sprites.draw(x, y, scl*s.cam.BaseScale())
+		s.sprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		if s.envcol_time == 0 && !s.sf(GSF_nofg) {
 			s.stage.draw(true, bgx, bgy, scl)
 		}
 	}
 	s.lifebar.draw(1)
-	s.topSprites.draw(x, y, scl*s.cam.BaseScale())
+	s.topSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 	s.lifebar.draw(2)
 }
 func (s *System) drawTop() {
@@ -1592,9 +1711,9 @@ func (s *System) drawTop() {
 	}
 	fadeout := sys.intro + sys.lifebar.ro.over_hittime + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
-		for _, p := range sys.chars {
-			if len(p) > 0 {
-				if len(p[0].dialogue) > 0 {
+		for _, p := range s.getPlayers() {
+			if p != nil {
+				if len(p.dialogue) > 0 {
 					sys.lifebar.ro.cur = 3
 					sys.dialogueFlg = true
 					break
@@ -1658,7 +1777,7 @@ func (s *System) drawDebug() {
 		y := 240 - float32(s.gameHeight)
 		if s.statusLFunc != nil {
 			s.debugFont.SetColor(255, 255, 255)
-			for i, p := range s.chars {
+			for i, p := range s.gs.chars {
 				if len(p) > 0 {
 					top := s.luaLState.GetTop()
 					if s.luaLState.CallByParam(lua.P{Fn: s.statusLFunc, NRet: 1,
@@ -1681,11 +1800,11 @@ func (s *System) drawDebug() {
 		//Data
 		pn := s.debugRef[0]
 		hn := s.debugRef[1]
-		if pn >= len(s.chars) || hn >= len(s.chars[pn]) {
+		if pn >= len(s.gs.chars) || hn >= len(s.gs.chars[pn]) {
 			s.debugRef[0] = 0
 			s.debugRef[1] = 0
 		}
-		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
+		s.debugWC = s.getChar(s.debugRef[0], s.debugRef[1])
 		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
 			(float32(len(s.listLFunc))+float32(s.clipboardRows)) - 1*s.heightScale
 		for i, f := range s.listLFunc {
@@ -1735,7 +1854,7 @@ func (s *System) drawDebug() {
 // at the start of any round where a new character tags in for turns mode
 func (s *System) fight() (reload bool) {
 	// Reset variables
-	s.gameTime, s.paused, s.accel = 0, false, 1
+	s.gs.gameTime, s.paused, s.accel = 0, false, 1
 	s.aiInput = [len(s.aiInput)]AiInput{}
 	// Defer resetting variables on return
 	defer func() {
@@ -1743,51 +1862,53 @@ func (s *System) fight() (reload bool) {
 		s.nomusic = false
 		s.allPalFX.clear()
 		s.allPalFX.enable = false
-		for i, p := range s.chars {
+		for i, p := range s.gs.chars {
 			if len(p) > 0 {
 				s.playerClear(i, true)
 			}
 		}
 		s.wincnt.update()
 	}()
-	var life, pow, gpow, spow, rlife [len(s.chars)]int32
-	var ivar [len(s.chars)][]int32
-	var fvar [len(s.chars)][]float32
-	var dialogue [len(s.chars)][]string
-	var mapArray [len(s.chars)]map[string]float32
-	var remapSpr [len(s.chars)]RemapPreset
+	var life, pow, gpow, spow, rlife [len(s.gs.chars)]int32
+	var ivar [len(s.gs.chars)][]int32
+	var fvar [len(s.gs.chars)][]float32
+	var dialogue [len(s.gs.chars)][]string
+	var mapArray [len(s.gs.chars)]map[string]float32
+	var remapSpr [len(s.gs.chars)]RemapPreset
 	// Anonymous function to assign initial character values
 	copyVar := func(pn int) {
-		life[pn] = s.chars[pn][0].life
-		pow[pn] = s.chars[pn][0].power
-		gpow[pn] = s.chars[pn][0].guardPoints
-		spow[pn] = s.chars[pn][0].dizzyPoints
-		rlife[pn] = s.chars[pn][0].redLife
-		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
-			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
+		p := s.getChar(pn, 0)
+
+		life[pn] = p.life
+		pow[pn] = p.power
+		gpow[pn] = p.guardPoints
+		spow[pn] = p.dizzyPoints
+		rlife[pn] = p.redLife
+		if len(ivar[pn]) < len(p.ivar) {
+			ivar[pn] = make([]int32, len(p.ivar))
 		}
-		copy(ivar[pn], s.chars[pn][0].ivar[:])
-		if len(fvar[pn]) < len(s.chars[pn][0].fvar) {
-			fvar[pn] = make([]float32, len(s.chars[pn][0].fvar))
+		copy(ivar[pn], p.ivar[:])
+		if len(fvar[pn]) < len(p.fvar) {
+			fvar[pn] = make([]float32, len(p.fvar))
 		}
-		copy(fvar[pn], s.chars[pn][0].fvar[:])
-		copy(dialogue[pn], s.chars[pn][0].dialogue[:])
+		copy(fvar[pn], p.fvar[:])
+		copy(dialogue[pn], p.dialogue[:])
 		mapArray[pn] = make(map[string]float32)
-		for k, v := range s.chars[pn][0].mapArray {
+		for k, v := range p.mapArray {
 			mapArray[pn][k] = v
 		}
 		remapSpr[pn] = make(RemapPreset)
-		for k, v := range s.chars[pn][0].remapSpr {
+		for k, v := range p.remapSpr {
 			remapSpr[pn][k] = v
 		}
 
 		// Reset hitScale.
-		s.chars[pn][0].defaultHitScale = newHitScaleArray()
-		s.chars[pn][0].activeHitScale = make(map[int32][3]*HitScale)
-		s.chars[pn][0].nextHitScale = make(map[int32][3]*HitScale)
+		p.defaultHitScale = newHitScaleArray()
+		p.activeHitScale = make(map[int32][3]*HitScale)
+		p.nextHitScale = make(map[int32][3]*HitScale)
 	}
 
-	s.debugWC = sys.chars[0][0]
+	s.debugWC = s.getChar(0, 0)
 	debugInput := func() {
 		select {
 		case cl := <-s.commandLine:
@@ -1809,16 +1930,16 @@ func (s *System) fight() (reload bool) {
 	s.wincnt.init()
 
 	// Initialize super meter values, and max power for teams sharing meter
-	var level [len(s.chars)]int32
-	for i, p := range s.chars {
-		if len(p) > 0 {
-			p[0].clear2()
+	var level [len(s.gs.chars)]int32
+	for i, p := range s.getPlayers() {
+		if p != nil {
+			p.clear2()
 			level[i] = s.wincnt.getLevel(i)
-			if s.powerShare[i&1] && p[0].teamside != -1 {
+			if s.powerShare[i&1] && p.teamside != -1 {
 				pmax := Max(s.cgi[i&1].data.power, s.cgi[i].data.power)
 				for j := i & 1; j < MaxSimul*2; j += 2 {
-					if len(s.chars[j]) > 0 {
-						s.chars[j][0].powerMax = pmax
+					if len(s.gs.chars[j]) > 0 {
+						s.getChar(j, 0).powerMax = pmax
 					}
 				}
 			}
@@ -1826,7 +1947,7 @@ func (s *System) fight() (reload bool) {
 	}
 	minlv, maxlv := level[0], level[0]
 	for i, lv := range level[1:] {
-		if len(s.chars[i+1]) > 0 {
+		if len(s.gs.chars[i+1]) > 0 {
 			minlv = Min(minlv, lv)
 			maxlv = Max(maxlv, lv)
 		}
@@ -1843,16 +1964,16 @@ func (s *System) fight() (reload bool) {
 
 	// Initialize each character
 	lvmul := math.Pow(2, 1.0/12)
-	for i, p := range s.chars {
-		if len(p) > 0 {
+	for i, p := range s.getPlayers() {
+		if p != nil {
 			// Get max life, and adjust based on team mode
 			var lm float32
-			if p[0].ocd().lifeMax != -1 {
-				lm = float32(p[0].ocd().lifeMax) * p[0].ocd().lifeRatio * s.lifeMul
+			if p.ocd().lifeMax != -1 {
+				lm = float32(p.ocd().lifeMax) * p.ocd().lifeRatio * s.lifeMul
 			} else {
-				lm = float32(p[0].gi().data.life) * p[0].ocd().lifeRatio * s.lifeMul
+				lm = float32(p.gi().data.life) * p.ocd().lifeRatio * s.lifeMul
 			}
-			if p[0].teamside != -1 {
+			if p.teamside != -1 {
 				switch s.tmode[i&1] {
 				case TM_Single:
 					switch s.tmode[(i+1)&1] {
@@ -1900,51 +2021,51 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 			foo := math.Pow(lvmul, float64(-level[i]))
-			p[0].lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
+			p.lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
 
 			if s.roundsExisted[i&1] > 0 {
 				/* If character already existed for a round, presumably because of turns mode, just update life */
-				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
+				p.life = Min(p.lifeMax, int32(math.Ceil(foo*float64(p.life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
 				/* If round 1 or a new character in turns mode, initialize values */
-				if p[0].ocd().life != -1 {
-					p[0].life = p[0].ocd().life
+				if p.ocd().life != -1 {
+					p.life = p.ocd().life
 				} else {
-					p[0].life = p[0].lifeMax
+					p.life = p.lifeMax
 				}
 				if s.round == 1 {
 					if s.maxPowerMode {
-						p[0].power = p[0].powerMax
-					} else if p[0].ocd().power != -1 {
-						p[0].power = p[0].ocd().power
+						p.power = p.powerMax
+					} else if p.ocd().power != -1 {
+						p.power = p.ocd().power
 					} else {
-						p[0].power = 0
+						p.power = 0
 					}
 				}
-				p[0].dialogue = []string{}
-				p[0].mapArray = make(map[string]float32)
-				for k, v := range p[0].mapDefault {
-					p[0].mapArray[k] = v
+				p.dialogue = []string{}
+				p.mapArray = make(map[string]float32)
+				for k, v := range p.mapDefault {
+					p.mapArray[k] = v
 				}
-				p[0].remapSpr = make(RemapPreset)
+				p.remapSpr = make(RemapPreset)
 
 				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
+				p.defaultHitScale = newHitScaleArray()
+				p.activeHitScale = make(map[int32][3]*HitScale)
+				p.nextHitScale = make(map[int32][3]*HitScale)
 			}
 
-			if p[0].ocd().guardPoints != -1 {
-				p[0].guardPoints = p[0].ocd().guardPoints
+			if p.ocd().guardPoints != -1 {
+				p.guardPoints = p.ocd().guardPoints
 			} else {
-				p[0].guardPoints = p[0].guardPointsMax
+				p.guardPoints = p.guardPointsMax
 			}
-			if p[0].ocd().dizzyPoints != -1 {
-				p[0].dizzyPoints = p[0].ocd().dizzyPoints
+			if p.ocd().dizzyPoints != -1 {
+				p.dizzyPoints = p.ocd().dizzyPoints
 			} else {
-				p[0].dizzyPoints = p[0].dizzyPointsMax
+				p.dizzyPoints = p.dizzyPointsMax
 			}
-			p[0].redLife = 0
+			p.redLife = 0
 			copyVar(i)
 		}
 	}
@@ -1956,44 +2077,42 @@ func (s *System) fight() (reload bool) {
 
 	oldWins, oldDraws := s.wins, s.draws
 	oldTeamLeader := s.teamLeader
-	var x, y, newx, newy, l, r float32
-	var scl, sclmul float32
+	s.gs.ac = activeCamera{}
 	// Anonymous function to reset values, called at the start of each round
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
 		s.teamLeader = oldTeamLeader
-		for i, p := range s.chars {
-			if len(p) > 0 {
-				p[0].life = life[i]
-				p[0].power = pow[i]
-				p[0].guardPoints = gpow[i]
-				p[0].dizzyPoints = spow[i]
-				p[0].redLife = rlife[i]
-				copy(p[0].ivar[:], ivar[i])
-				copy(p[0].fvar[:], fvar[i])
-				copy(p[0].dialogue[:], dialogue[i])
-				p[0].mapArray = make(map[string]float32)
+		for i, p := range s.getPlayers() {
+			if p != nil {
+				p.life = life[i]
+				p.power = pow[i]
+				p.guardPoints = gpow[i]
+				p.dizzyPoints = spow[i]
+				p.redLife = rlife[i]
+				copy(p.ivar[:], ivar[i])
+				copy(p.fvar[:], fvar[i])
+				copy(p.dialogue[:], dialogue[i])
+				p.mapArray = make(map[string]float32)
 				for k, v := range mapArray[i] {
-					p[0].mapArray[k] = v
+					p.mapArray[k] = v
 				}
-				p[0].remapSpr = make(RemapPreset)
+				p.remapSpr = make(RemapPreset)
 				for k, v := range remapSpr[i] {
-					p[0].remapSpr[k] = v
+					p.remapSpr[k] = v
 				}
 
 				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
+				p.defaultHitScale = newHitScaleArray()
+				p.activeHitScale = make(map[int32][3]*HitScale)
+				p.nextHitScale = make(map[int32][3]*HitScale)
 			}
 		}
 		s.resetFrameTime()
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
-		scl = s.cam.startzoom
-		s.cam.Update(scl, x, y)
+		s.gs.ac.reset(&s.gs.cam)
+		s.gs.cam.Update(s.gs.ac.scl, s.gs.ac.x, s.gs.ac.y)
 	}
 	reset()
 
@@ -2017,48 +2136,47 @@ func (s *System) fight() (reload bool) {
 			}
 			s.clearAllSound()
 			tbl_roundNo := s.luaLState.NewTable()
-			for _, p := range s.chars {
-				if len(p) > 0 {
+			for _, p := range s.getPlayers() {
+				if p != nil {
 					tmp := s.luaLState.NewTable()
-					tmp.RawSetString("name", lua.LString(p[0].name))
-					tmp.RawSetString("id", lua.LNumber(p[0].id))
-					tmp.RawSetString("memberNo", lua.LNumber(p[0].memberNo))
-					tmp.RawSetString("selectNo", lua.LNumber(p[0].selectNo))
-					tmp.RawSetString("teamside", lua.LNumber(p[0].teamside))
-					tmp.RawSetString("life", lua.LNumber(p[0].life))
-					tmp.RawSetString("lifeMax", lua.LNumber(p[0].lifeMax))
-					tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
-					tmp.RawSetString("aiLevel", lua.LNumber(p[0].aiLevel()))
-					tmp.RawSetString("palno", lua.LNumber(p[0].palno()))
-					tmp.RawSetString("win", lua.LBool(p[0].win()))
-					tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
-					tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
-					tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
-					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_S)))
-					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_H)))
-					tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
-					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
-					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
-					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
-					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
-					p[0].firstAttack = false
+					tmp.RawSetString("name", lua.LString(p.name))
+					tmp.RawSetString("id", lua.LNumber(p.id))
+					tmp.RawSetString("memberNo", lua.LNumber(p.memberNo))
+					tmp.RawSetString("selectNo", lua.LNumber(p.selectNo))
+					tmp.RawSetString("teamside", lua.LNumber(p.teamside))
+					tmp.RawSetString("life", lua.LNumber(p.life))
+					tmp.RawSetString("lifeMax", lua.LNumber(p.lifeMax))
+					tmp.RawSetString("winquote", lua.LNumber(p.winquote))
+					tmp.RawSetString("aiLevel", lua.LNumber(p.aiLevel()))
+					tmp.RawSetString("palno", lua.LNumber(p.palno()))
+					tmp.RawSetString("win", lua.LBool(p.win()))
+					tmp.RawSetString("winKO", lua.LBool(p.winKO()))
+					tmp.RawSetString("winTime", lua.LBool(p.winTime()))
+					tmp.RawSetString("winPerfect", lua.LBool(p.winPerfect()))
+					tmp.RawSetString("winSpecial", lua.LBool(p.winType(WT_S)))
+					tmp.RawSetString("winHyper", lua.LBool(p.winType(WT_H)))
+					tmp.RawSetString("drawgame", lua.LBool(p.drawgame()))
+					tmp.RawSetString("ko", lua.LBool(p.scf(SCF_ko)))
+					tmp.RawSetString("ko_round_middle", lua.LBool(p.scf(SCF_ko_round_middle)))
+					tmp.RawSetString("firstAttack", lua.LBool(p.firstAttack))
+					tbl_roundNo.RawSetInt(p.playerNo+1, tmp)
+					p.firstAttack = false
 				}
 			}
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
 			s.scoreRounds = append(s.scoreRounds, [2]float32{s.lifebar.sc[0].scorePoints, s.lifebar.sc[1].scorePoints})
 			oldTeamLeader = s.teamLeader
-
-			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.chars[0][0].win()) &&
-				(s.tmode[1] != TM_Turns || s.chars[1][0].win()) {
+			if !s.matchOver() && (s.tmode[0] != TM_Turns || s.getChar(0, 0).win()) &&
+				(s.tmode[1] != TM_Turns || s.getChar(1, 0).win()) {
 				/* Prepare for the next round */
-				for i, p := range s.chars {
-					if len(p) > 0 {
-						if s.tmode[i&1] != TM_Turns || !p[0].win() {
-							p[0].life = p[0].lifeMax
-						} else if p[0].life <= 0 {
-							p[0].life = 1
+				for i, p := range s.getPlayers() {
+					if p != nil {
+						if s.tmode[i&1] != TM_Turns || !p.win() {
+							p.life = p.lifeMax
+						} else if p.life <= 0 {
+							p.life = 1
 						}
-						p[0].redLife = 0
+						p.redLife = 0
 						copyVar(i)
 					}
 				}
@@ -2067,19 +2185,21 @@ func (s *System) fight() (reload bool) {
 			} else {
 				/* End match, or prepare for a new character in turns mode */
 				for i, tm := range s.tmode {
-					if s.chars[i][0].win() || !s.chars[i][0].lose() && tm != TM_Turns {
-						for j := i; j < len(s.chars); j += 2 {
-							if len(s.chars[j]) > 0 {
-								if s.chars[j][0].win() {
-									s.chars[j][0].life = Max(1, int32(math.Ceil(math.Pow(lvmul,
-										float64(level[i]))*float64(s.chars[j][0].life))))
+					firstP := s.getChar(i, 0)
+					if firstP.win() || !firstP.lose() && tm != TM_Turns {
+						for j := i; j < len(s.gs.chars); j += 2 {
+							p := s.getChar(j, 0)
+							if len(s.gs.chars[j]) > 0 {
+								if p.win() {
+									p.life = Max(1, int32(math.Ceil(math.Pow(lvmul,
+										float64(level[i]))*float64(p.life))))
 								} else {
-									s.chars[j][0].life = Max(1, s.cgi[j].data.life)
+									p.life = Max(1, s.cgi[j].data.life)
 								}
 							}
 						}
 					} else {
-						s.chars[i][0].life = 0
+						firstP.life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,
@@ -2095,17 +2215,18 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Update camera
-		scl = s.cam.ScaleBound(scl, sclmul)
-		tmp := (float32(s.gameWidth) / 2) / scl
-		if AbsF((l+r)-(newx-x)*2) >= tmp/2 {
-			tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-l, r-(newx-x))))
+		ac := &s.gs.ac
+		ac.scl = s.gs.cam.ScaleBound(ac.scl, ac.sclmul)
+		tmp := (float32(s.gameWidth) / 2) / ac.scl
+		if AbsF((ac.l+ac.r)-(ac.newx-ac.x)*2) >= tmp/2 {
+			tmp = MaxF(0, MinF(tmp, MaxF((ac.newx-ac.x)-ac.l, ac.r-(ac.newx-ac.x))))
 		}
-		x = s.cam.XBound(scl, MinF(x+l+tmp, MaxF(x+r-tmp, newx)))
-		if !s.cam.ZoomEnable {
+		ac.x = s.gs.cam.XBound(ac.scl, MinF(ac.x+ac.l+tmp, MaxF(ac.x+ac.r-tmp, ac.newx)))
+		if !s.gs.cam.ZoomEnable {
 			// Pos X の誤差が出ないように精度を落とす
-			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
+			ac.x = float32(math.Ceil(float64(ac.x)*4-0.5) / 4)
 		}
-		y = s.cam.YBound(scl, newy)
+		ac.y = s.gs.cam.YBound(ac.scl, ac.newy)
 
 		// If frame is ready to tick and not paused
 		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
@@ -2115,8 +2236,8 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Update game state
-		newx, newy = x, y
-		l, r, sclmul = s.action(&newx, &newy, scl)
+		ac.newx, ac.newy = ac.x, ac.y
+		ac.l, ac.r, ac.sclmul = s.action(&ac.newx, &ac.newy, ac.scl)
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
@@ -2136,23 +2257,23 @@ func (s *System) fight() (reload bool) {
 		}
 		// Render frame
 		if !s.frameSkip {
-			dx, dy, dscl := x, y, scl
+			dx, dy, dscl := ac.x, ac.y, ac.scl
 			if s.enableZoomstate {
 				if !s.debugPaused() {
 					s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
-					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
+					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*ac.scl-s.drawScale)*s.zoomlag) * s.zoomScale * ac.scl
 				}
-				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
-				dy = y + s.zoomPosYLag
+				dscl = MaxF(s.gs.cam.MinScale, s.drawScale/s.gs.cam.BaseScale())
+				dx = s.gs.cam.XBound(dscl, ac.x+s.zoomPosXLag/ac.scl)
+				dy = ac.y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0
 				s.zoomPosXLag = 0
 				s.zoomPosYLag = 0
 				s.zoomScale = 1
 				s.zoomPos = [2]float32{0, 0}
-				s.drawScale = s.cam.Scale
+				s.drawScale = s.gs.cam.Scale
 			}
 			s.draw(dx, dy, dscl)
 		}
@@ -2245,11 +2366,11 @@ func (wm *wincntMap) update() {
 		wm.setItem(i, item)
 	}
 	if sys.autolevel && sys.matchOver() {
-		for i, p := range sys.chars {
-			if len(p) > 0 {
-				if p[0].win() {
+		for i, p := range sys.getPlayers() {
+			if p != nil {
+				if p.win() {
 					win(i)
-				} else if p[0].lose() {
+				} else if p.lose() {
 					lose(i)
 				}
 			}
@@ -2694,6 +2815,7 @@ type Loader struct {
 func newLoader() *Loader {
 	return &Loader{state: LS_NotYet, loadExit: make(chan LoaderState, 1)}
 }
+
 func (l *Loader) loadChar(pn int) int {
 	sys.loadMutex.Lock()
 	result := -1
@@ -2701,7 +2823,8 @@ func (l *Loader) loadChar(pn int) int {
 	if sys.tmode[pn&1] == TM_Simul || sys.tmode[pn&1] == TM_Tag {
 		if pn>>1 >= int(sys.numSimul[pn&1]) {
 			sys.cgi[pn].states = nil
-			sys.chars[pn] = nil
+			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+			sys.gs.chars[pn] = nil
 			result = 1
 		}
 	} else if pn >= 2 {
@@ -2743,37 +2866,47 @@ func (l *Loader) loadChar(pn int) int {
 	} else {
 		cdef = sys.sel.charlist[idx[memberNo]].def
 	}
+
 	var p *Char
-	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
-		p = sys.chars[pn][0]
+	if len(sys.gs.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
+		p = sys.getChar(pn, 0)
 		p.key = pn
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
 		p.clearCachedData()
+		sys.gs.appendChar(p)
 	} else {
-		p = newChar(pn, 0)
+		_, p = sys.gs.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
-		if len(sys.chars[pn]) > 0 {
-			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
+		if len(sys.gs.chars[pn]) > 0 {
+			existingP := sys.getChar(pn, 0)
+			p.power = existingP.power
+			p.guardPoints = existingP.guardPoints
+			p.dizzyPoints = existingP.dizzyPoints
 		}
 	}
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
-	sys.chars[pn] = make([]*Char, 1)
-	sys.chars[pn][0] = p
+
+	sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+	pidx := len(sys.gs.charArray) - 1
+	p = &sys.gs.charArray[pidx]
+
+	sys.gs.chars[pn] = make([]int, 1)
+	sys.gs.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.chars[pn] = nil
+			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.chars[pn] = nil
+			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new char: %v", cdef)
 			return -1
 		}
@@ -2813,34 +2946,43 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	sys.sel.ocd[2] = append(sys.sel.ocd[2], *newOverrideCharData())
 	cdef := sys.stageList[0].attachedchardef[atcpn]
 	var p *Char
-	if len(sys.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
-		p = sys.chars[pn][0]
+	if len(sys.gs.chars[pn]) > 0 && cdef == sys.cgi[pn].def {
+		p = sys.getChar(pn, 0)
 		//p.key = -pn
 		p.clearCachedData()
+		sys.gs.appendChar(p)
 	} else {
-		p = newChar(pn, 0)
+		_, p = sys.gs.addChar(pn, 0)
 		sys.cgi[pn].sff = nil
-		if len(sys.chars[pn]) > 0 {
-			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
+		if len(sys.gs.chars[pn]) > 0 {
+			existingP := sys.getChar(pn, 0)
+			p.power = existingP.power
+			p.guardPoints = existingP.guardPoints
+			p.dizzyPoints = existingP.dizzyPoints
 		}
 	}
 	p.memberNo = -atcpn
 	p.selectNo = -atcpn
 	p.teamside = -1
 	sys.com[pn] = 8
-	sys.chars[pn] = make([]*Char, 1)
-	sys.chars[pn][0] = p
+
+	sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+	pidx := len(sys.gs.charArray) - 1
+	p = &sys.gs.charArray[pidx]
+
+	sys.gs.chars[pn] = make([]int, 1)
+	sys.gs.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.chars[pn] = nil
+			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
 			return -1
 		}
 		if l.err = p.load(cdef); l.err != nil {
-			sys.chars[pn] = nil
+			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
+			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
 			return -1
 		}
@@ -2878,7 +3020,7 @@ func (l *Loader) loadStage() bool {
 }
 func (l *Loader) load() {
 	defer func() { l.loadExit <- l.state }()
-	charDone, stageDone := make([]bool, len(sys.chars)), false
+	charDone, stageDone := make([]bool, len(sys.gs.chars)), false
 	allCharDone := func() bool {
 		for _, b := range charDone {
 			if !b {
@@ -2898,7 +3040,7 @@ func (l *Loader) load() {
 		for i, b := range charDone {
 			if !b {
 				result := -1
-				if i < len(sys.chars)-MaxAttachedChar ||
+				if i < len(sys.gs.chars)-MaxAttachedChar ||
 					len(sys.stageList[0].attachedchardef) <= i-MaxSimul*2 {
 					result = l.loadChar(i)
 				} else {
@@ -2915,9 +3057,10 @@ func (l *Loader) load() {
 		for i := 0; i < 2; i++ {
 			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
 				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
-				for j := i + 2; j < len(sys.chars); j += 2 {
+				for j := i + 2; j < len(sys.gs.chars); j += 2 {
 					if !charDone[j] {
-						sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
+						sys.gs.removeCharSlice(sys.gs.chars[j]...)
+						sys.gs.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
 						sys.cgi[j].wakewakaLength = 0
 					}
 				}

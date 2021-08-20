@@ -372,16 +372,16 @@ func systemScriptInit(l *lua.LState) {
 		//pn, anim_no, anim_elem, ffx
 		pn := int(numArg(l, 1))
 		an := int32(numArg(l, 2))
-		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			c := sys.chars[pn-1]
-			if c[0].selfAnimExist(BytecodeInt(an)) == BytecodeBool(true) {
+		if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
+			p := sys.getChar(pn-1, 0)
+			if p.selfAnimExist(BytecodeInt(an)) == BytecodeBool(true) {
 				ffx := false
 				if l.GetTop() >= 4 {
 					ffx = boolArg(l, 4)
 				}
-				c[0].changeAnim(an, ffx)
+				p.changeAnim(an, ffx)
 				if l.GetTop() >= 3 {
-					c[0].setAnimElem(int32(numArg(l, 3)))
+					p.setAnimElem(int32(numArg(l, 3)))
 				}
 				l.Push(lua.LBool(true))
 				return 1
@@ -394,14 +394,14 @@ func systemScriptInit(l *lua.LState) {
 		//pn, state_no
 		pn := int(numArg(l, 1))
 		st := int32(numArg(l, 2))
-		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			c := sys.chars[pn-1]
+		if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
+			c := sys.getChar(pn-1, 0)
 			if st == -1 {
-				for _, ch := range c {
+				for _, ch := range sys.getPlayerEtAl(pn) {
 					ch.setSCF(SCF_disabled)
 				}
-			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
-				c[0].changeState(st, -1, -1, false)
+			} else if c.selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
+				c.changeState(st, -1, -1, false)
 				l.Push(lua.LBool(true))
 				return 1
 			}
@@ -416,21 +416,21 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 4 && strArg(l, 4) == "add" {
 			scType = 1
 		}
-		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			sys.chars[pn-1][0].mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
+		if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
+			sys.getChar(pn-1, 0).mapSet(strArg(l, 2), float32(numArg(l, 3)), scType)
 		}
 		return 0
 	})
 	luaRegister(l, "charSndPlay", func(l *lua.LState) int {
 		//pn, group_no, sound_no, volumescale, commonSnd, channel, lowpriority, freqmul, loop, pan
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		f, lw, lp := false, false, false
 		var g, n, ch, vo int32 = -1, 0, -1, 100
 		var p, fr float32 = 0, 1
-		x := &sys.chars[pn-1][0].pos[0]
+		x := &sys.getChar(pn-1, 0).pos[0]
 		if l.GetTop() >= 2 {
 			g = int32(numArg(l, 2))
 		}
@@ -458,7 +458,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 10 {
 			p = float32(numArg(l, 10))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, x, false)
+		sys.getChar(pn-1, 0).playSound(f, lw, lp, g, n, ch, vo, p, fr, x, false)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
@@ -467,16 +467,16 @@ func systemScriptInit(l *lua.LState) {
 			return 0
 		}
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
-		sys.chars[pn-1][0].sounds = sys.chars[pn-1][0].sounds[:0]
+		sys.getChar(pn-1, 0).sounds = sys.getChar(pn-1, 0).sounds[:0]
 		return 0
 	})
 	luaRegister(l, "charSpriteDraw", func(l *lua.LState) int {
 		//pn, spr_tbl (1 or more pairs), x, y, scaleX, scaleY, facing, window
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		window := &sys.scrrect
@@ -492,7 +492,7 @@ func systemScriptInit(l *lua.LState) {
 				} else {
 					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)))
 					if fspr := sprite; fspr != nil {
-						pfx := sys.chars[pn-1][0].getPalfx()
+						pfx := sys.getChar(pn-1, 0).getPalfx()
 						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
 						fspr.Pal = nil
 						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
@@ -501,7 +501,7 @@ func systemScriptInit(l *lua.LState) {
 						y := float32(numArg(l, 4)) * sys.lifebarScale
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
-						fscale := sys.chars[pn-1][0].localscl
+						fscale := sys.getChar(pn-1, 0).localscl
 						sprite.Draw(x, y, scale[0]*float32(facing)*fscale, scale[1]*fscale,
 							0, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
@@ -513,8 +513,8 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "clear", func(*lua.LState) int {
-		for _, p := range sys.chars {
-			for _, c := range p {
+		for pn := range sys.gs.chars {
+			for _, c := range sys.getPlayerEtAl(pn) {
 				//for i := range c.clipboardText {
 				//	c.clipboardText[i] = nil
 				//}
@@ -616,9 +616,9 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "dialogueReset", func(*lua.LState) int {
-		for _, p := range sys.chars {
-			if len(p) > 0 {
-				p[0].dialogue = nil
+		for _, p := range sys.getPlayers() {
+			if p != nil {
+				p.dialogue = nil
 			}
 		}
 		sys.dialogueFlg = false
@@ -634,7 +634,8 @@ func systemScriptInit(l *lua.LState) {
 		if sys.netInput != nil {
 			l.RaiseError("\nConnection already established.\n")
 		}
-		sys.chars = [len(sys.chars)][]*Char{}
+		sys.gs.charArray = nil
+		sys.gs.chars = [len(sys.gs.chars)][]int{}
 		sys.netInput = NewNetInput()
 		if host := strArg(l, 1); host != "" {
 			sys.netInput.Connect(host, sys.listenPort)
@@ -649,7 +650,8 @@ func systemScriptInit(l *lua.LState) {
 		if sys.vRetrace != -1 {
 			glfw.SwapInterval(1) //broken frame skipping when set to 0
 		}
-		sys.chars = [len(sys.chars)][]*Char{}
+		sys.gs.charArray = nil
+		sys.gs.chars = [len(sys.gs.chars)][]int{}
 		sys.fileInput = OpenFileInput(strArg(l, 1))
 		return 0
 	})
@@ -790,7 +792,7 @@ func systemScriptInit(l *lua.LState) {
 				return 1
 			}
 			winp := int32(0)
-			p := make([]*Char, len(sys.chars))
+			p := make([]*Char, len(sys.gs.chars))
 			sys.debugRef = [2]int{}
 			sys.roundsExisted = [2]int32{}
 			sys.matchWins = [2]int32{}
@@ -815,35 +817,34 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Reset and setup characters
-				sys.charList.clear()
+				sys.gs.charList.clear()
 				for i := 0; i < MaxSimul*2; i += 2 {
-					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+					if len(sys.gs.chars[i]) > 0 {
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
 				for i := 1; i < MaxSimul*2; i += 2 {
-					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+					if len(sys.gs.chars[i]) > 0 {
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
 				for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
-					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+					if len(sys.gs.chars[i]) > 0 {
+						sys.getChar(i, 0).id = sys.newCharId()
 					}
 				}
-				for i, c := range sys.chars {
-					if len(c) > 0 {
-						p[i] = c[0]
-						sys.charList.add(c[0])
+				for i, c := range sys.getPlayers() {
+					if c != nil {
+						sys.gs.charList.add(c)
 						if sys.roundsExisted[i&1] == 0 {
-							c[0].loadPallet()
+							c.loadPallet()
 						}
-						for j, cj := range sys.chars {
-							if i != j && len(cj) > 0 {
-								if len(cj[0].cmd) == 0 {
-									cj[0].cmd = make([]CommandList, len(sys.chars))
+						for j, cj := range sys.getPlayers() {
+							if i != j && cj != nil {
+								if len(cj.cmd) == 0 {
+									cj.cmd = make([]CommandList, len(sys.gs.chars))
 								}
-								cj[0].cmd[i].CopyList(c[0].cmd[i])
+								cj.cmd[i].CopyList(c.cmd[i])
 							}
 						}
 					}
@@ -876,7 +877,8 @@ func systemScriptInit(l *lua.LState) {
 					// Match is restarting
 					for i, b := range sys.reloadCharSlot {
 						if b {
-							sys.chars[i] = []*Char{}
+							sys.gs.removeCharSlice(sys.gs.chars[i]...)
+							sys.gs.chars[i] = []int{}
 							b = false
 						}
 					}
@@ -899,6 +901,14 @@ func systemScriptInit(l *lua.LState) {
 						winp = Btoi(w1) + Btoi(w2)*2
 					}
 				}
+
+				// Set players, for use outside this anonymous function
+				for i, c := range sys.getPlayers() {
+					if c != nil {
+						p[i] = c
+					}
+				}
+
 				return winp, nil
 			}
 
@@ -1103,8 +1113,8 @@ func systemScriptInit(l *lua.LState) {
 		tbl := l.NewTable()
 		if pn == 0 {
 			r := make([]int, 0)
-			for i, p := range sys.chars {
-				if len(p) > 0 && len(p[0].dialogue) > 0 {
+			for i, p := range sys.getPlayers() {
+				if p != nil && len(p.dialogue) > 0 {
 					r = append(r, i)
 				}
 			}
@@ -1112,8 +1122,8 @@ func systemScriptInit(l *lua.LState) {
 				pn = r[rand.Int()%len(r)] + 1
 			}
 		}
-		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			for k, v := range sys.chars[pn-1][0].dialogue {
+		if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
+			for k, v := range sys.getChar(pn-1, 0).dialogue {
 				tbl.RawSetInt(k+1, lua.LString(v))
 			}
 		}
@@ -1143,18 +1153,19 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getCharVictoryQuote", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		v := -1
+		p := sys.getChar(pn-1, 0)
 		if l.GetTop() >= 2 {
 			v = int(numArg(l, 2))
 		} else {
-			v = int(sys.chars[pn-1][0].winquote)
+			v = int(p.winquote)
 		}
 		if v < 0 || v >= MaxQuotes {
 			t := []int{}
-			for i, q := range sys.cgi[sys.chars[pn-1][0].playerNo].quotes {
+			for i, q := range sys.cgi[p.playerNo].quotes {
 				if q != "" {
 					t = append(t, i)
 				}
@@ -1166,8 +1177,8 @@ func systemScriptInit(l *lua.LState) {
 				v = -1
 			}
 		}
-		if len(sys.cgi[sys.chars[pn-1][0].playerNo].quotes) == MaxQuotes && v != -1 {
-			l.Push(lua.LString(sys.cgi[sys.chars[pn-1][0].playerNo].quotes[v]))
+		if len(sys.cgi[p.playerNo].quotes) == MaxQuotes && v != -1 {
+			l.Push(lua.LString(sys.cgi[p.playerNo].quotes[v]))
 		} else {
 			l.Push(lua.LString(""))
 		}
@@ -1478,19 +1489,20 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "playerBufReset", func(*lua.LState) int {
 		if l.GetTop() >= 1 {
 			pn := int(numArg(l, 1))
-			if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+			if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 				return 0
 			}
-			for j := range sys.chars[pn-1][0].cmd {
-				sys.chars[pn-1][0].cmd[j].BufReset()
-				sys.chars[pn-1][0].setSF(CSF_nohardcodedkeys)
+			p := sys.getChar(pn-1, 0)
+			for j := range p.cmd {
+				p.cmd[j].BufReset()
+				p.setSF(CSF_nohardcodedkeys)
 			}
 		} else {
-			for _, p := range sys.chars {
-				if len(p) > 0 {
-					for j := range p[0].cmd {
-						p[0].cmd[j].BufReset()
-						p[0].setSF(CSF_nohardcodedkeys)
+			for _, p := range sys.getPlayers() {
+				if p != nil {
+					for j := range p.cmd {
+						p.cmd[j].BufReset()
+						p.setSF(CSF_nohardcodedkeys)
 					}
 				}
 			}
@@ -1580,7 +1592,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.bgPalFX = *newPalFX()
 		sys.superpmap = *newPalFX()
 		sys.resetGblEffect()
-		for i, p := range sys.chars {
+		for i, p := range sys.gs.chars {
 			if len(p) > 0 {
 				sys.playerClear(i, boolArg(l, 1))
 			}
@@ -1680,7 +1692,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "setAILevel", func(*lua.LState) int {
 		level := float32(numArg(l, 1))
 		sys.com[sys.debugWC.playerNo] = level
-		for _, c := range sys.chars[sys.debugWC.playerNo] {
+		for _, c := range sys.getPlayerEtAl(sys.debugWC.playerNo) {
 			if level == 0 {
 				c.key = sys.debugWC.playerNo
 			} else {
@@ -2107,7 +2119,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setTime", func(*lua.LState) int {
-		sys.time = int32(numArg(l, 1))
+		sys.gs.time = int32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setTimeFramesPerCount", func(l *lua.LState) int {
@@ -2135,19 +2147,19 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setZoom", func(l *lua.LState) int {
-		sys.cam.ZoomActive = boolArg(l, 1)
+		sys.gs.cam.ZoomActive = boolArg(l, 1)
 		return 0
 	})
 	luaRegister(l, "setZoomMax", func(l *lua.LState) int {
-		sys.cam.ZoomMax = float32(numArg(l, 1))
+		sys.gs.cam.ZoomMax = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomMin", func(l *lua.LState) int {
-		sys.cam.ZoomMin = float32(numArg(l, 1))
+		sys.gs.cam.ZoomMin = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setZoomSpeed", func(l *lua.LState) int {
-		sys.cam.ZoomSpeed = 12 - float32(numArg(l, 1))
+		sys.gs.cam.ZoomSpeed = 12 - float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "sleep", func(l *lua.LState) int {
@@ -2336,20 +2348,20 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			pn := sys.debugRef[0]
 			hn := sys.debugRef[1]
-			for i := hn + 1; i <= len(sys.chars[pn]); i++ {
+			for i := hn + 1; i <= len(sys.gs.chars[pn]); i++ {
 				hn = i
-				if hn >= len(sys.chars[pn]) {
+				if hn >= len(sys.gs.chars[pn]) {
 					pn += 1
 					hn = 0
 					break
 				}
-				if sys.chars[pn][hn] != nil && !sys.chars[pn][hn].sf(CSF_destroy) {
+				if sys.getChar(pn, hn) != nil && !sys.getChar(pn, hn).sf(CSF_destroy) {
 					break
 				}
 			}
 			ok := false
-			for pn < len(sys.chars) {
-				if len(sys.chars[pn]) > 0 {
+			for pn < len(sys.gs.chars) {
+				if len(sys.gs.chars[pn]) > 0 {
 					ok = true
 					break
 				}
@@ -2391,9 +2403,9 @@ func systemScriptInit(l *lua.LState) {
 			sys.maxPowerMode = !sys.maxPowerMode
 		}
 		if sys.maxPowerMode {
-			for _, c := range sys.chars {
-				if len(c) > 0 {
-					c[0].power = c[0].powerMax
+			for _, c := range sys.getPlayers() {
+				if c != nil {
+					c.power = c.powerMax
 				}
 			}
 		}
@@ -2417,10 +2429,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "togglePlayer", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
-		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
+		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			return 0
 		}
-		for _, ch := range sys.chars[pn-1] {
+		for _, ch := range sys.getPlayerEtAl(pn-1) {
 			if ch.scf(SCF_disabled) {
 				ch.unsetSCF(SCF_disabled)
 			} else {
@@ -2481,8 +2493,8 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "player", func(*lua.LState) int {
 		pn := int(numArg(l, 1))
 		ret := false
-		if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
-			sys.debugWC, ret = sys.chars[pn-1][0], true
+		if pn >= 1 && pn <= len(sys.gs.chars) && len(sys.gs.chars[pn-1]) > 0 {
+			sys.debugWC, ret = sys.getChar(pn-1, 0), true
 		}
 		l.Push(lua.LBool(ret))
 		return 1
@@ -2619,15 +2631,15 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "cameraposX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Pos[0]))
+		l.Push(lua.LNumber(sys.gs.cam.Pos[0]))
 		return 1
 	})
 	luaRegister(l, "cameraposY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Pos[1]))
+		l.Push(lua.LNumber(sys.gs.cam.Pos[1]))
 		return 1
 	})
 	luaRegister(l, "camerazoom", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.cam.Scale))
+		l.Push(lua.LNumber(sys.gs.cam.Scale))
 		return 1
 	})
 	luaRegister(l, "canrecover", func(*lua.LState) int {
@@ -2878,7 +2890,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "gametime", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.gameTime))
+		l.Push(lua.LNumber(sys.gs.gameTime))
 		return 1
 	})
 	luaRegister(l, "gamewidth", func(*lua.LState) int {
@@ -3156,7 +3168,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LString(""))
 			}
 		} else {
-			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
+			if p := sys.gs.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
 				!(p.scf(SCF_ko) && p.scf(SCF_over)) {
 				l.Push(lua.LString(p.name))
 			} else {
@@ -3286,7 +3298,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "posX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.pos[0] - sys.cam.Pos[0]))
+		l.Push(lua.LNumber(sys.debugWC.pos[0] - sys.gs.cam.Pos[0]))
 		return 1
 	})
 	luaRegister(l, "posY", func(*lua.LState) int {
@@ -3889,11 +3901,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "stateownerid", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.chars[sys.debugWC.ss.sb.playerNo][0].id))
+		l.Push(lua.LNumber(sys.getChar(sys.debugWC.ss.sb.playerNo, 0).id))
 		return 1
 	})
 	luaRegister(l, "stateownername", func(*lua.LState) int {
-		l.Push(lua.LString(sys.chars[sys.debugWC.ss.sb.playerNo][0].name))
+		l.Push(lua.LString(sys.getChar(sys.debugWC.ss.sb.playerNo, 0).name))
 		return 1
 	})
 	luaRegister(l, "tickcount", func(*lua.LState) int {

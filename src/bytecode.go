@@ -1103,11 +1103,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge())
 		case OC_camerapos_x:
-			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
+			sys.bcStack.PushF(sys.gs.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
+			sys.bcStack.PushF(sys.gs.cam.Pos[1] / oc.localscl)
 		case OC_camerazoom:
-			sys.bcStack.PushF(sys.cam.Scale)
+			sys.bcStack.PushF(sys.gs.cam.Scale)
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_command:
@@ -1131,7 +1131,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushF(c.gameHeight())
 			}
 		case OC_gametime:
-			sys.bcStack.PushI(sys.gameTime)
+			sys.bcStack.PushI(sys.gs.gameTime)
 		case OC_gamewidth:
 			if c.gi().ver[0] == 1 && c.gi().ver[1] == 0 {
 				sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
@@ -1195,7 +1195,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
-			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.cam.Pos[0]/oc.localscl))
+			sys.bcStack.PushF((c.pos[0]*c.localscl/oc.localscl - sys.gs.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
 			sys.bcStack.PushF((c.pos[1] - c.platformPosY) * c.localscl / oc.localscl)
 		case OC_power:
@@ -1543,7 +1543,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p4name:
-		p4 := sys.charList.enemyNear(c, 1, true, false)
+		p4 := sys.gs.charList.enemyNear(c, 1, true, false)
 		sys.bcStack.PushB(p4 != nil && !(p4.scf(SCF_ko) && p4.scf(SCF_over)) &&
 			p4.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1556,7 +1556,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 2, true, false)
+		p6 := sys.gs.charList.enemyNear(c, 2, true, false)
 		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
 			p6.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1569,7 +1569,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 3, true, false)
+		p8 := sys.gs.charList.enemyNear(c, 3, true, false)
 		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
 			p8.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -2990,8 +2990,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case explod_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
+			e.setAnim(crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false))
+			if !e.anim.nilAnim && exp[0].evalB(c) { // ffx
 				e.anim.start_scale[0] /= crun.localscl
 				e.anim.start_scale[1] /= crun.localscl
 			}
@@ -3198,11 +3198,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
 				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-				if anim != nil && exp[0].evalB(c) { // ffx
+				if !anim.nilAnim && exp[0].evalB(c) { // ffx
 					anim.start_scale[0] /= crun.localscl
 					anim.start_scale[1] /= crun.localscl
 				}
-				eachExpl(func(e *Explod) { e.anim = anim })
+				eachExpl(func(e *Explod) { e.setAnim(anim) })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -3279,8 +3279,8 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		case gameMakeAnim_under:
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
+			e.setAnim(crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false))
+			if !e.anim.nilAnim && exp[0].evalB(c) { // ffx
 				e.anim.start_scale[0] /= crun.localscl
 				e.anim.start_scale[1] /= crun.localscl
 			}
@@ -3313,7 +3313,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case posSet_x:
-			crun.setX(sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*lclscround)
+			crun.setX(sys.gs.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*lclscround)
 		case posSet_y:
 			crun.setY(exp[0].evalF(c)*lclscround + crun.platformPosY)
 		case posSet_z:
@@ -6410,7 +6410,7 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 		case dialogue_force:
 			force = exp[0].evalB(c)
 		case dialogue_text:
-			sys.chars[crun.playerNo][0].appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
+			sys.getChar(crun.playerNo, 0).appendDialogue(string(*(*[]byte)(unsafe.Pointer(&exp[0]))), reset)
 			reset = false
 		case dialogue_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -7085,7 +7085,7 @@ func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeAdd_value:
-			sys.time = Min(sys.roundTime, sys.time+exp[0].evalI(c))
+			sys.gs.time = Min(sys.roundTime, sys.gs.time+exp[0].evalI(c))
 		}
 		return true
 	})
@@ -7103,7 +7103,7 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeSet_value:
-			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+			sys.gs.time = Min(sys.roundTime, exp[0].evalI(c))
 		}
 		return true
 	})

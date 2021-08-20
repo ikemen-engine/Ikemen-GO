@@ -219,11 +219,11 @@ func readHealthBar(pre string, is IniSection,
 	return hb
 }
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
-	var life float32 = float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
-	//redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
-	var redVal int32 = sys.chars[ref][0].redLife
-	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
-
+	p := sys.getChar(ref, 0)
+	life := float32(p.life) / float32(p.lifeMax)
+	//redlife := (float32(p.life) + float32(p.redLife)) / float32(p.lifeMax)
+	redVal := p.redLife
+	getHit := (p.fakeReceivedHits != 0 || p.ss.moveType == MT_H) && !p.scf(SCF_over)
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
 	if !hb.mid_freeze && getHit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
@@ -304,9 +304,10 @@ func (hb *HealthBar) bgDraw(layerno int16) {
 	hb.bg2.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
 }
 func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
-	life := float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
-	redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
-	redval := sys.chars[ref][0].redLife
+	p := sys.getChar(ref, 0)
+	life := float32(p.life) / float32(p.lifeMax)
+	redlife := (float32(p.life) + float32(p.redLife)) / float32(p.lifeMax)
+	redval := p.redLife
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(life float32) (r [4]int32) {
 		r = sys.scrrect
@@ -356,7 +357,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	hb.shift.lay.DrawAnim(&lr, float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), sys.lifebarScale,
 		layerno, &hb.shift.anim, hb.shift.palfx)
 	if hb.value.font[0] >= 0 && int(hb.value.font[0]) < len(f) && f[hb.value.font[0]] != nil {
-		text := strings.Replace(hb.value.text, "%d", fmt.Sprintf("%v", sys.chars[ref][0].life), 1)
+		text := strings.Replace(hb.value.text, "%d", fmt.Sprintf("%v", p.life), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(life)*100)), 1)
 		hb.value.lay.DrawText(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), sys.lifebarScale,
 			layerno, text, f[hb.value.font[0]], hb.value.font[1], hb.value.font[2], hb.value.palfx, hb.value.frgba)
@@ -428,11 +429,12 @@ func readPowerBar(pre string, is IniSection,
 	return pb
 }
 func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
-	power := float32(sys.chars[ref][0].power) / float32(sys.chars[ref][0].powerMax)
-	level := sys.chars[ref][0].power / 1000
-	pbval := sys.chars[ref][0].power
+	p := sys.getChar(ref, 0)
+	power := float32(p.power) / float32(p.powerMax)
+	level := p.power / 1000
+	pbval := p.power
 	if pb.levelbars {
-		power = float32(sys.chars[ref][0].power)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
+		power = float32(p.power)/1000 - MinF(float32(level), float32(p.powerMax)/1000-1)
 	}
 	pb.shift.anim.srcAlpha = int16(255 * (1 - power))
 	pb.shift.anim.dstAlpha = int16(255 * power)
@@ -483,11 +485,12 @@ func (pb *PowerBar) bgDraw(layerno int16) {
 	pb.bg2.Draw(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), layerno, sys.lifebarScale)
 }
 func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
-	power := float32(sys.chars[ref][0].power) / float32(sys.chars[ref][0].powerMax)
-	level := sys.chars[ref][0].power / 1000
-	pbval := sys.chars[ref][0].power
+	p := sys.getChar(ref, 0)
+	power := float32(p.power) / float32(p.powerMax)
+	level := p.power / 1000
+	pbval := p.power
 	if pb.levelbars {
-		power = float32(sys.chars[ref][0].power)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
+		power = float32(p.power)/1000 - MinF(float32(level), float32(p.powerMax)/1000-1)
 	}
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
@@ -588,7 +591,8 @@ func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
 	if !sys.lifebar.guardbar {
 		return
 	}
-	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
+	p := sys.getChar(ref, 0)
+	power := float32(p.guardPoints) / float32(p.guardPointsMax)
 	gb.shift.anim.srcAlpha = int16(255 * (1 - power))
 	gb.shift.anim.dstAlpha = int16(255 * power)
 	gbr.midpower -= 1.0 / 144
@@ -641,7 +645,8 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	if !sys.lifebar.guardbar {
 		return
 	}
-	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
+	p := sys.getChar(ref, 0)
+	power := float32(p.guardPoints) / float32(p.guardPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
 		r = sys.scrrect
@@ -672,7 +677,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	gb.shift.lay.DrawAnim(&pr, float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 		layerno, &gb.shift.anim, gb.shift.palfx)
 	if gb.value.font[0] >= 0 && int(gb.value.font[0]) < len(f) && f[gb.value.font[0]] != nil {
-		text := strings.Replace(gb.value.text, "%d", fmt.Sprintf("%v", sys.chars[ref][0].guardPoints), 1)
+		text := strings.Replace(gb.value.text, "%d", fmt.Sprintf("%v", p.guardPoints), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 		gb.value.lay.DrawText(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 			layerno, text, f[gb.value.font[0]], gb.value.font[1], gb.value.font[2], gb.value.palfx, gb.value.frgba)
@@ -738,7 +743,8 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	if !sys.lifebar.stunbar {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
+	p := sys.getChar(ref, 0)
+	power := 1 - float32(p.dizzyPoints)/float32(p.dizzyPointsMax)
 	sb.shift.anim.srcAlpha = int16(255 * power)
 	sb.shift.anim.dstAlpha = int16(255 * (1 - power))
 	sbr.midpower -= 1.0 / 144
@@ -791,7 +797,8 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	if !sys.lifebar.stunbar {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
+	p := sys.getChar(ref, 0)
+	power := 1 - float32(p.dizzyPoints)/float32(p.dizzyPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
 		r = sys.scrrect
@@ -822,7 +829,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	sb.shift.lay.DrawAnim(&pr, float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 		layerno, &sb.shift.anim, sb.shift.palfx)
 	if sb.value.font[0] >= 0 && int(sb.value.font[0]) < len(f) && f[sb.value.font[0]] != nil {
-		text := strings.Replace(sb.value.text, "%d", fmt.Sprintf("%v", sys.chars[ref][0].dizzyPoints), 1)
+		text := strings.Replace(sb.value.text, "%d", fmt.Sprintf("%v", p.dizzyPoints), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 		sb.value.lay.DrawText(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 			layerno, text, f[sb.value.font[0]], sb.value.font[1], sb.value.font[2], sb.value.palfx, sb.value.frgba)
@@ -937,7 +944,8 @@ func (fa *LifeBarFace) bgDraw(layerno int16) {
 }
 func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
-	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
+	p := sys.getChar(ref, 0)
+	if mg, ok := p.anim.remap[group]; ok {
 		if mn, ok := mg[number]; ok {
 			group, number = mn[0], mn[1]
 		}
@@ -953,10 +961,10 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
 		pfx := newPalFX()
 		if far.palfxshare {
-			pfx = sys.chars[ref][0].getPalfx()
+			pfx = p.getPalfx()
 		}
 		if far.palshare {
-			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+			sys.cgi[ref].sff.palList.SwapPalMap(&p.getPalfx().remap)
 		}
 
 		ob := sys.brightness
@@ -965,7 +973,7 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		}
 		fa.face_lay.DrawSprite((float32(fa.pos[0])+sys.lifebarOffsetX)*sys.lifebarScale, float32(fa.pos[1])*sys.lifebarScale, layerno,
 			far.face, pfx, sys.cgi[ref].portraitscale*sys.lifebarPortraitScale, &fa.face_lay.window)
-		if !sys.chars[ref][0].alive() {
+		if !p.alive() {
 			fa.ko.Draw(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
 		}
 		sys.brightness = ob
@@ -1233,8 +1241,8 @@ func (ti *LifeBarTime) draw(layerno int16, f []*Fnt) {
 		ti.counter[0].font[0] >= 0 && int(ti.counter[0].font[0]) < len(f) && f[ti.counter[0].font[0]] != nil {
 		var timeval int32 = -1
 		time := "o"
-		if sys.time >= 0 {
-			timeval = int32(math.Ceil(float64(sys.time) / float64(ti.framespercount)))
+		if sys.gs.time >= 0 {
+			timeval = int32(math.Ceil(float64(sys.gs.time) / float64(ti.framespercount)))
 			time = fmt.Sprintf("%v", timeval)
 		}
 		var tv int32
@@ -1873,7 +1881,7 @@ func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
 	ro.fight_top.Reset()
 	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, Max(ro.fight_sndtime, ro.fight_time), 0
-	sys.timerCount = append(sys.timerCount, sys.gameTime)
+	sys.timerCount = append(sys.timerCount, sys.gs.gameTime)
 	ro.timerActive = true
 }
 func (ro *LifeBarRound) act() bool {
@@ -1885,8 +1893,8 @@ func (ro *LifeBarRound) act() bool {
 	} else {
 		if !ro.introState[0] || !ro.introState[1] {
 			if sys.round == 1 && sys.intro == ro.ctrl_time && len(sys.commonLua) > 0 {
-				for _, p := range sys.chars {
-					if len(p) > 0 && len(p[0].dialogue) > 0 {
+				for _, p := range sys.getPlayers() {
+					if p != nil && len(p.dialogue) > 0 {
 						sys.posReset()
 						sys.dialogueFlg = true
 						return false
@@ -1977,11 +1985,11 @@ func (ro *LifeBarRound) act() bool {
 				ro.wt[1]--
 			}
 		}
-		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.time == 0) {
+		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.gs.time == 0) {
 			if ro.timerActive {
-				if sys.gameTime-sys.timerCount[sys.round-1] > 0 {
-					sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
-					sys.timerRounds = append(sys.timerRounds, sys.roundTime-sys.time)
+				if sys.gs.gameTime-sys.timerCount[sys.round-1] > 0 {
+					sys.timerCount[sys.round-1] = sys.gs.gameTime - sys.timerCount[sys.round-1]
+					sys.timerRounds = append(sys.timerRounds, sys.roundTime-sys.gs.time)
 				} else {
 					sys.timerCount[sys.round-1] = 0
 				}
@@ -2249,8 +2257,8 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 				ro.drawn_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 				var inter []interface{}
-				for i := sys.winTeam; i < len(sys.chars); i += 2 {
-					if len(sys.chars[i]) > 0 {
+				for i := sys.winTeam; i < len(sys.gs.chars); i += 2 {
+					if len(sys.gs.chars[i]) > 0 {
 						inter = append(inter, sys.cgi[i].displayname)
 					}
 				}
@@ -2405,7 +2413,7 @@ func (tr *LifeBarTimer) bgDraw(layerno int16) {
 }
 func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	if tr.active && sys.lifebar.ti.framespercount > 0 &&
-		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil && sys.time >= 0 {
+		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil && sys.gs.time >= 0 {
 		text := tr.text.text
 		totalSec := float64(timeTotal()) / 60
 		h := math.Floor(totalSec / 3600)
@@ -2431,11 +2439,11 @@ func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	}
 }
 func timeElapsed() int32 {
-	return sys.roundTime - sys.time
+	return sys.roundTime - sys.gs.time
 }
 func timeRemaining() int32 {
-	if sys.time >= 0 {
-		return sys.time
+	if sys.gs.time >= 0 {
+		return sys.gs.time
 	}
 	return -1
 }
@@ -2513,7 +2521,7 @@ func (sc *LifeBarScore) bgDraw(layerno int16) {
 func (sc *LifeBarScore) draw(layerno int16, f []*Fnt, side int) {
 	if sc.active && sc.text.font[0] >= 0 && int(sc.text.font[0]) < len(f) && f[sc.text.font[0]] != nil {
 		text := sc.text.text
-		total := sys.chars[side][0].scoreTotal()
+		total := sys.getChar(side, 0).scoreTotal()
 		if total == 0 && sc.pad == 0 {
 			return
 		}
@@ -3418,14 +3426,15 @@ func (l *Lifebar) step() {
 	for ti, tm := range sys.tmode {
 		if tm == TM_Tag {
 			for i, v := range l.order[ti] {
-				if sys.teamLeader[sys.chars[v][0].teamside] == sys.chars[v][0].playerNo && sys.chars[v][0].alive() {
+				p := sys.getChar(v, 0)
+				if sys.teamLeader[p.teamside] == p.playerNo && p.alive() {
 					if i != 0 {
 						if i == len(l.order[ti])-1 {
 							l.order[ti] = sliceMoveInt(l.order[ti], i, 0)
 						} else {
 							last := len(l.order[ti]) - 1
 							for n := last; n > 0; n-- {
-								if !sys.chars[l.order[ti][n]][0].alive() {
+								if !sys.getChar(l.order[ti][n], 0).alive() {
 									last -= 1
 								}
 							}
@@ -3461,8 +3470,8 @@ func (l *Lifebar) step() {
 	l.ti.step()
 	//LifeBarCombo
 	cb, fcb, cd, cp, st := [2]int32{}, [2]int32{}, [2]int32{}, [2]float32{}, [2]bool{}
-	for i, ch := range sys.chars {
-		for _, c := range ch {
+	for i := range sys.gs.chars {
+		for _, c := range sys.getPlayerEtAl(i) {
 			if c.alive() || !c.scf(SCF_over) {
 				// Fake Combo
 				if c.receivedHits > cb[^i&1] {
@@ -3489,7 +3498,7 @@ func (l *Lifebar) step() {
 	//LifeBarRatio
 	for ti, tm := range sys.tmode {
 		if tm == TM_Turns {
-			rl := sys.chars[ti][0].ocd().ratioLevel
+			rl := sys.getChar(ti, 0).ocd().ratioLevel
 			if rl > 0 {
 				l.ra[ti].step(rl - 1)
 			}
@@ -3630,7 +3639,7 @@ func (l *Lifebar) draw(layerno int16) {
 			//PowerBar
 			for ti, tm := range sys.tmode {
 				for i := range l.order[ti] {
-					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+					if !sys.getChar(i*2+ti, 0).sf(CSF_nopowerbardisplay) {
 						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
 							if i == 0 {
 								l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno)
@@ -3643,7 +3652,7 @@ func (l *Lifebar) draw(layerno int16) {
 			}
 			for ti, tm := range sys.tmode {
 				for i, v := range l.order[ti] {
-					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+					if !sys.getChar(i*2+ti, 0).sf(CSF_nopowerbardisplay) {
 						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
 							if i == 0 {
 								l.pb[l.ref[ti]][i*2+ti].draw(layerno, i*2+ti, l.pb[l.ref[ti]][i*2+ti], l.fnt[:])
@@ -3708,14 +3717,14 @@ func (l *Lifebar) draw(layerno int16) {
 			//LifeBarRatio
 			for ti, tm := range sys.tmode {
 				if tm == TM_Turns {
-					if rl := sys.chars[ti][0].ocd().ratioLevel; rl > 0 {
+					if rl := sys.getChar(ti, 0).ocd().ratioLevel; rl > 0 {
 						l.ra[ti].bgDraw(layerno)
 					}
 				}
 			}
 			for ti, tm := range sys.tmode {
 				if tm == TM_Turns {
-					if rl := sys.chars[ti][0].ocd().ratioLevel; rl > 0 {
+					if rl := sys.getChar(ti, 0).ocd().ratioLevel; rl > 0 {
 						l.ra[ti].draw(layerno, rl-1)
 					}
 				}
@@ -3738,7 +3747,7 @@ func (l *Lifebar) draw(layerno int16) {
 				l.ai[i].bgDraw(layerno)
 			}
 			for i := range l.ai {
-				l.ai[i].draw(layerno, l.fnt[:], sys.com[sys.chars[i][0].playerNo])
+				l.ai[i].draw(layerno, l.fnt[:], sys.com[sys.getChar(i, 0).playerNo])
 			}
 			//LifeBarWinCount
 			for i := range l.wc {
