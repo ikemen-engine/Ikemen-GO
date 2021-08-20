@@ -156,8 +156,11 @@ func readBackGround(is IniSection, link *backGround,
 			bg.anim.frames = []AnimFrame{*newAnimFrame()}
 			bg.anim.frames[0].Group, bg.anim.frames[0].Number =
 				I32ToI16(g), I32ToI16(n)
+		} else if is["actionno"] != "" {
+			t = 1
 		}
-	} else if t == 1 {
+	}
+	if t == 1 {
 		if is.ReadI32("actionno", &bg.actionno) {
 			if a := at.get(bg.actionno); a != nil {
 				bg.anim = *a
