@@ -3793,7 +3793,7 @@ function start.f_challenger()
 	main.f_fadeAnim(motif.challenger_info)
 	--frame transition
 	if not main.fadeActive and main.fadeType == 'fadeout' then
-		clearColor(motif.challengerbgdef.bgclearcolor[1], motif.challengerbgdef.bgclearcolor[2], motif.challengerbgdef.bgclearcolor[3])
+		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		start.challengerInit = false
 		endMatch()
 	end
