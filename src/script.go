@@ -1198,10 +1198,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(dir)
 		return 1
 	})
-	luaRegister(l, "searchFile", func(l *lua.LState) int {
-		l.Push(lua.LString(SearchFile(strArg(l, 1), strArg(l, 2))))
-		return 1
-	})
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.frameCounter))
 		return 1
@@ -1602,6 +1598,10 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "roundReset", func(*lua.LState) int {
 		sys.roundResetFlg = true
 		return 0
+	})
+	luaRegister(l, "searchFile", func(l *lua.LState) int {
+		l.Push(lua.LString(SearchFile(strArg(l, 1), strArg(l, 2))))
+		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
 		tn := int(numArg(l, 1))

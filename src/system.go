@@ -753,8 +753,8 @@ func (s *System) roundOver() bool {
 			s.lifebar.ro.start_waittime))
 		s.winskipped = true
 	}
-	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
-		s.lifebar.ro.over_time)
+	return s.fadeouttime == 0 && (s.intro < -(s.lifebar.ro.over_hittime +
+		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time))
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
