@@ -1144,27 +1144,6 @@ function main.f_countSubstring(s1, s2)
     return select(2, s1:gsub(s2, ""))
 end
 
---convert mugen style window coordinate system to the one used in engine
-function main.windowCoords(t, substract)
-	t[1] = tonumber(t[1]) or 0
-	t[2] = tonumber(t[2]) or 0
-	t[3] = tonumber(t[3]) or 0
-	t[4] = tonumber(t[4]) or 0
-	local window = main.f_tableCopy(t)
-	if window[3] < window[1] then
-		t[3] = window[1]
-		t[1] = window[3]
-	end
-	if window[4] < window[2] then
-		t[4] = window[2]
-		t[2] = window[4]
-	end
-	if substract then
-		t[3] = t[3] - t[1]
-		t[4] = t[4] - t[2]
-	end
-end
-
 --update rounds to win variables
 main.roundsNumSingle = {}
 main.roundsNumSimul = {}

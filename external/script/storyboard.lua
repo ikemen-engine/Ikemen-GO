@@ -198,6 +198,7 @@ local function f_parse(path)
 				value = value:gsub('"', '') --remove brackets from value
 				value = value:gsub('^(%.[0-9])', '0%1') --add 0 before dot if missing at the beginning of matched string
 				value = value:gsub('([^0-9])(%.[0-9])', '%10%2') --add 0 before dot if missing anywhere else
+				value = value:gsub(',%s*$', '') --remove dummy ','
 				if param:match('^font[0-9]+') then --font declaration param matched
 					if pos.font == nil then
 						pos.font = {}
