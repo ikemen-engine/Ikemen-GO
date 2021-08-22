@@ -502,8 +502,8 @@ func systemScriptInit(l *lua.LState) {
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}
 						facing := int8(numArg(l, 7))
 						fscale := sys.chars[pn-1][0].localscl
-						sprite.Draw(x, y, scale[0]*float32(facing)*fscale,
-							scale[1]*fscale, sprite.Pal, pfx, sprite.PalTex, window)
+						sprite.Draw(x, y, scale[0]*float32(facing)*fscale, scale[1]*fscale,
+							0, sprite.Pal, pfx, sprite.PalTex, window)
 						ok = true
 					}
 				}
@@ -924,6 +924,7 @@ func systemScriptInit(l *lua.LState) {
 					sys.gameEnd {
 					break
 				}
+				// Reset roundsExisted to 0 if the losing side is on turns mode
 				for i := 0; i < 2; i++ {
 					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
 						sys.lifebar.fa[TM_Turns][i].numko++
@@ -1597,6 +1598,10 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "roundReset", func(*lua.LState) int {
 		sys.roundResetFlg = true
 		return 0
+	})
+	luaRegister(l, "searchFile", func(l *lua.LState) int {
+		l.Push(lua.LString(SearchFile(strArg(l, 1), strArg(l, 2))))
+		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
 		tn := int(numArg(l, 1))

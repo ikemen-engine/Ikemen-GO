@@ -46,7 +46,7 @@ func loadFnt(filename string, height int32) (*Fnt, error) {
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/", true)
+	filename = SearchFile(filename, "font/")
 
 	fp, err := os.Open(filename)
 
@@ -242,7 +242,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/", true)
+	filename = SearchFile(filename, "font/")
 
 	content, err := LoadText(filename)
 
@@ -312,7 +312,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 
 func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	//Search in local directory
-	fileDir := SearchFile(filename, fontfile, true)
+	fileDir := SearchFile(filename, fontfile)
 	//Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
@@ -328,8 +328,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	} else {
 		f.Size[1] = uint16(height)
 	}
-	glfont.FontShaderVer = "#version " + sys.fontShaderVer
-	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight))
+	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight), sys.fontShaderVer)
 	if err != nil {
 		panic(err)
 	}
@@ -343,7 +342,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 }
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, fontfile, true)
+	fileDir := SearchFile(filename, fontfile)
 	sff, err := loadSff(fileDir, false)
 
 	if err != nil {
@@ -356,9 +355,13 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 	}
 
 	//Load sprites
+	var pal_default []uint32
 	for k, sprite := range sff.sprites {
 		s := sff.getOwnPalSprite(sprite.Group, sprite.Number)
 		if sprite.Group == 0 {
+			if pal_default == nil && sff.header.Ver0 == 1 {
+				pal_default = s.Pal
+			}
 			offsetX := uint16(s.Offset[0])
 			sizeX := uint16(s.Size[0])
 
@@ -387,6 +390,10 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 			pal = sff.palList.Get(idef)
 		}
 		copy(f.palettes[i][:], pal)
+	}
+	if len(f.palettes) == 0 && pal_default != nil {
+		f.palettes = make([][256]uint32, 1)
+		copy(f.palettes[0][:], pal_default)
 	}
 }
 

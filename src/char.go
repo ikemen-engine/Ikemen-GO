@@ -5762,7 +5762,9 @@ func (cl *CharList) clear() {
 	sys.nextCharId = sys.helperMax
 }
 func (cl *CharList) add(c *Char) {
+	// Append to run order
 	cl.runOrder = append(cl.runOrder, c)
+	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
 		if cl.drawOrder[i] == nil {
@@ -5770,6 +5772,7 @@ func (cl *CharList) add(c *Char) {
 			break
 		}
 	}
+	// Otherwise appends to the end
 	if i >= len(cl.drawOrder) {
 		cl.drawOrder = append(cl.drawOrder, c)
 	}

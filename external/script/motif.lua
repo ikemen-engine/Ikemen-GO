@@ -2445,6 +2445,7 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 			value = value:gsub('"', '') --remove brackets from value
 			value = value:gsub('^(%.[0-9])', '0%1') --add 0 before dot if missing at the beginning of matched string
 			value = value:gsub('([^0-9])(%.[0-9])', '%10%2') --add 0 before dot if missing anywhere else
+			value = value:gsub(',%s*$', '') --remove dummy ','
 			if param:match('^font[0-9]+') then --font declaration param matched
 				if pos.font == nil then
 					pos.font = {}
@@ -2607,10 +2608,28 @@ for k, v in pairs({
 	hiscore_info = {'item_face_window'},
 }) do
 	for _, param in ipairs(v) do
+		--convert mugen style window coordinate system to the one used in engine
 		if t[k] == nil or t[k][param] == nil then
 			motif[k][param] = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+		else
+			motif[k][param][1] = tonumber(motif[k][param][1]) or 0
+			motif[k][param][2] = tonumber(motif[k][param][2]) or 0
+			motif[k][param][3] = tonumber(motif[k][param][3]) or motif.info.localcoord[1]
+			motif[k][param][4] = tonumber(motif[k][param][4]) or motif.info.localcoord[2]
 		end
-		main.windowCoords(motif[k][param], param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window')
+		local window = main.f_tableCopy(motif[k][param])
+		if window[3] < window[1] then
+			motif[k][param][3] = window[1]
+			motif[k][param][1] = window[3]
+		end
+		if window[4] < window[2] then
+			motif[k][param][4] = window[2]
+			motif[k][param][2] = window[4]
+		end
+		if param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window' then
+			motif[k][param][3] = motif[k][param][3] - motif[k][param][1]
+			motif[k][param][4] = motif[k][param][4] - motif[k][param][2]
+		end
 	end
 end
 

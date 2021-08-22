@@ -1144,27 +1144,6 @@ function main.f_countSubstring(s1, s2)
     return select(2, s1:gsub(s2, ""))
 end
 
---convert mugen style window coordinate system to the one used in engine
-function main.windowCoords(t, substract)
-	t[1] = tonumber(t[1]) or 0
-	t[2] = tonumber(t[2]) or 0
-	t[3] = tonumber(t[3]) or 0
-	t[4] = tonumber(t[4]) or 0
-	local window = main.f_tableCopy(t)
-	if window[3] < window[1] then
-		t[3] = window[1]
-		t[1] = window[3]
-	end
-	if window[4] < window[2] then
-		t[4] = window[2]
-		t[2] = window[4]
-	end
-	if substract then
-		t[3] = t[3] - t[1]
-		t[4] = t[4] - t[2]
-	end
-end
-
 --update rounds to win variables
 main.roundsNumSingle = {}
 main.roundsNumSimul = {}
@@ -1796,16 +1775,16 @@ function main.f_addStage(file, hidden)
 	--music
 	for k, v in pairs(t_info.stagebgm) do
 		if k:match('^bgmusic') or k:match('^bgmvolume') or k:match('^bgmloop') then
-			local tmp1, tmp2, tmp3 = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
-			if t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= nil and t_info.stagebgm['bgmusic' .. tmp2 .. tmp3] ~= '' then
-				if main.t_selStages[stageNo]['music' .. tmp3] == nil then
-					main.t_selStages[stageNo]['music' .. tmp3] = {}
-					table.insert(main.t_selStages[stageNo]['music' .. tmp3], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
+			local prefix, dot, suffix = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
+			if t_info.stagebgm['bgmusic' .. dot .. suffix] ~= nil and t_info.stagebgm['bgmusic' .. dot .. suffix] ~= '' then
+				if main.t_selStages[stageNo]['music' .. suffix] == nil then
+					main.t_selStages[stageNo]['music' .. suffix] = {}
+					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. tmp3][1][tmp1] = tostring(v)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file)
 				elseif tonumber(v) then
-					main.t_selStages[stageNo]['music' .. tmp3][1][tmp1] = tonumber(v)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end
 			end
 		elseif v ~= '' then
@@ -2227,7 +2206,7 @@ function main.f_default()
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
 	main.quickContinue = false --if by default continuing should skip player selection
-	main.rankDisplay = true --if rank data should be displayed at the end of match
+	main.rankDisplay = false --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
 	main.rotationChars = false --flags modes where config.AISurvivalColor should be used instead of config.AIRandomColor
@@ -2280,6 +2259,7 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.storyboard.credits = true
@@ -2346,6 +2326,7 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.rankDisplay = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
@@ -2374,6 +2355,7 @@ main.t_itemname = {
 		main.t_pIn[2] = 1
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
+		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2446,6 +2428,7 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
+		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
@@ -2479,6 +2462,7 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
+		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.storyboard.credits = true
@@ -2505,6 +2489,7 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2529,7 +2514,6 @@ main.t_itemname = {
 	end,
 	--RANDOMTEST
 	['randomtest'] = function()
-		main.rankDisplay = false
 		setGameMode('randomtest')
 		return randomtest.run
 	end,
@@ -2548,6 +2532,7 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.rankDisplay = true
 		main.resultsTable = motif.score_challenge_results_screen
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2617,6 +2602,7 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.storyboard.credits = true
@@ -2657,6 +2643,7 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
+		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.storyboard.credits = true
@@ -2692,6 +2679,7 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
+		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.storyboard.credits = true
@@ -2730,6 +2718,7 @@ main.t_itemname = {
 		--main.lifebar.timer = true
 		main.makeRoster = true
 		main.quickContinue = true
+		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
 		if main.roundTime == -1 then
@@ -2764,6 +2753,7 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.rankDisplay = true
 		main.resultsTable = motif.time_challenge_results_screen
 		if main.roundTime == -1 then
 			main.roundTime = 99
@@ -2808,6 +2798,7 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2844,6 +2835,7 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
+		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
@@ -2874,6 +2866,7 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.rankDisplay = true
 		main.resultsTable = motif.vs100_kumite_results_screen
 		main.rotationChars = true
 		main.storyboard.credits = true
@@ -2900,6 +2893,7 @@ main.t_itemname = {
 		main.cpuSide[1] = true
 		--main.lifebar.p1aiLevel = true
 		--main.lifebar.p2aiLevel = true
+		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -3638,7 +3632,6 @@ function main.f_demoStart()
 	game()
 	setAllowDebugKeys(config.DebugKeys)
 	setAllowDebugMode(config.DebugMode)
-	refresh()
 	if motif.attract_mode.enabled == 0 then
 		if introWaitCycles >= motif.demo_mode.intro_waitcycles then
 			start.hiscoreInit = false

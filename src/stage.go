@@ -156,8 +156,11 @@ func readBackGround(is IniSection, link *backGround,
 			bg.anim.frames = []AnimFrame{*newAnimFrame()}
 			bg.anim.frames[0].Group, bg.anim.frames[0].Number =
 				I32ToI16(g), I32ToI16(n)
+		} else if is["actionno"] != "" {
+			t = 1
 		}
-	} else if t == 1 {
+	}
+	if t == 1 {
 		if is.ReadI32("actionno", &bg.actionno) {
 			if a := at.get(bg.actionno); a != nil {
 				bg.anim = *a
@@ -680,10 +683,13 @@ func loadStage(def string, main bool) (*Stage, error) {
 					re := regexp.MustCompile("[0-9]+")
 					submatchall := re.FindAllString(k, -1)
 					if len(submatchall) == 1 {
-						var err error
-						sys.stageList[Atoi(submatchall[0])], err = loadStage(v, false)
-						if err != nil {
-							return nil, fmt.Errorf("failed to load %v:\n%v", def, err)
+						if err := LoadFile(&v, def, func(filename string) error {
+							if sys.stageList[Atoi(submatchall[0])], err = loadStage(filename, false); err != nil {
+								return fmt.Errorf("failed to load %v:\n%v", filename, err)
+							}
+							return nil
+						}); err != nil {
+							return nil, err
 						}
 					}
 				}

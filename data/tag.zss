@@ -50,7 +50,17 @@ if const(TagCommandAIChance) >= rand(1, 100) {
 [Function fTagSwitchExplod()]
 let anim = const(FxTagSwitchAI);
 if aiLevel = 0 {
-	let anim = $anim + teamSide;
+	if gameMode = "versuscoop" {
+		let anim = $anim + playerNo;
+	} else if gameMode = "netplaysurvivalcoop" || gameMode = "netplayteamcoop" || gameMode = "survivalcoop" || gameMode = "teamcoop" {
+		if teamSide = 1 {
+			let anim = $anim + playerNo / 2 + 1;
+		} else {
+			let anim = $anim + playerNo / 2;
+		}
+	} else {
+		let anim = $anim + teamSide;
+	}
 }
 explod{
 	anim: F $anim;
