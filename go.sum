@@ -172,6 +172,8 @@ github.com/hajimehoshi/oto v0.7.1 h1:I7maFPz5MBCwiutOrz++DLdbr4rTzBsbBuV2VpgU9kk
 github.com/hajimehoshi/oto v0.7.1/go.mod h1:wovJ8WWMfFKvP587mhHgot/MBr4DnNy9m6EepeVGnos=
 github.com/hajimehoshi/oto v0.7.3 h1:Shd8YYrMP0/72ZOwfnBFTvQn6Zlwah55hPrk7SeIFLk=
 github.com/hajimehoshi/oto v0.7.3/go.mod h1:wovJ8WWMfFKvP587mhHgot/MBr4DnNy9m6EepeVGnos=
+github.com/hajimehoshi/oto v1.0.0 h1:UHMfWfmN7gKfqDIUzNyjECv40FA091CMCcYbC45CW6k=
+github.com/hajimehoshi/oto v1.0.0/go.mod h1:wovJ8WWMfFKvP587mhHgot/MBr4DnNy9m6EepeVGnos=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
@@ -201,6 +203,8 @@ github.com/ikemen-engine/glfont v0.0.0-20210605001652-702569ee65fb h1:uyW4M5C+1g
 github.com/ikemen-engine/glfont v0.0.0-20210605001652-702569ee65fb/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
 github.com/ikemen-engine/glfont v0.0.0-20210803091050-573b0788e38a h1:pSnytiV+r+KKS9/wezC3nwA3lJC/y8p8t7vRI6qANBU=
 github.com/ikemen-engine/glfont v0.0.0-20210803091050-573b0788e38a/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
+github.com/ikemen-engine/glfont v0.0.0-20210818223853-6d774f4f6d06 h1:o792+TtqYl7t0E0Vani46rEAihxMSD9Fk11YgUsjQbI=
+github.com/ikemen-engine/glfont v0.0.0-20210818223853-6d774f4f6d06/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
 github.com/ikemen-engine/go-openal v0.0.0-20210605051602-c4be60fb463a h1:BcNMTM8ZeKPf6tyjT7vxRevtqGVyhiRU3LG2jkSbOrI=
 github.com/ikemen-engine/go-openal v0.0.0-20210605051602-c4be60fb463a/go.mod h1:mApWBmJe2GdPMjz+7ThFrgKL3kGJ9s0CSnBctRPJt/A=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
@@ -417,6 +421,10 @@ golang.org/x/exp v0.0.0-20210729172720-737cce5152fc h1:PKeT2DzGeVcdpsh9a/oZ8gJUG
 golang.org/x/exp v0.0.0-20210729172720-737cce5152fc/go.mod h1:DVyR6MI7P4kEQgvZJSj1fQGrWIi2RzIrfYWycwheUAc=
 golang.org/x/exp v0.0.0-20210812203943-8c280c88aa00 h1:Fq1UUfdgjschd0OFqAtuosjzFqk+SBBs2ONcPOFiC5Y=
 golang.org/x/exp v0.0.0-20210812203943-8c280c88aa00/go.mod h1:DVyR6MI7P4kEQgvZJSj1fQGrWIi2RzIrfYWycwheUAc=
+golang.org/x/exp v0.0.0-20210817173759-0bb80722635d h1:PbvSmax+MEGsCUTece4ABJU/KPy6BDouG0oZENN51/M=
+golang.org/x/exp v0.0.0-20210817173759-0bb80722635d/go.mod h1:DVyR6MI7P4kEQgvZJSj1fQGrWIi2RzIrfYWycwheUAc=
+golang.org/x/exp v0.0.0-20210819164307-503510c5c1ec h1:UR3cnV+2YmqiP6+T/2TomR5Mt0p+VPXNMxz5k77LtJ4=
+golang.org/x/exp v0.0.0-20210819164307-503510c5c1ec/go.mod h1:DVyR6MI7P4kEQgvZJSj1fQGrWIi2RzIrfYWycwheUAc=
 golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81/go.mod h1:ux5Hcp/YLpHSI86hEcLt0YII63i6oz57MZXIpbrjZUs=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
@@ -516,6 +524,10 @@ golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069 h1:siQdpVirKtzPhKl3lZWozZraC
 golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e h1:WUoyKPm6nCo1BnNUvPGnFG3T5DUVem42yDJZZ4CNxMA=
 golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2 h1:c8PlLMqBbOHoqtjteWm5/kbe6rNY2pbRfbIMVnepueo=
+golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210820121016-41cdb8703e55 h1:rw6UNGRMfarCepjI8qOepea/SXwIBVfTKjztZ5gBbq4=
+golang.org/x/sys v0.0.0-20210820121016-41cdb8703e55/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=

@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/gob"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"unsafe"
-	"encoding/binary"
 )
 
 type StateType int32
@@ -6341,7 +6341,7 @@ const (
 )
 
 func (sc forceFeedback) Run(c *Char, _ []int32) bool {
-	crun := c
+	/*crun := c
 	waveform := int32(0)
 	time := int32(60)
 	freq := [4]float32{128, 0, 0, 0}
@@ -6385,7 +6385,7 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 			}
 		}
 		return true
-	})
+	})*/
 	//TODO: not implemented
 	return false
 }
@@ -7235,7 +7235,7 @@ const (
 )
 
 func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
-	crun := c
+	//crun := c
 	var cid int32
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
@@ -7265,7 +7265,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			y = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
+				//crun = rid
 			} else {
 				return false
 			}

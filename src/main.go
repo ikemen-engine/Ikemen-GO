@@ -210,9 +210,12 @@ type configSettings struct {
 	ForceStageZoomout          float32
 	Framerate                  int32
 	Fullscreen                 bool
+	FullscreenRefreshRate      int32
+	FullscreenWidth            int32
+	FullscreenHeight           int32
 	GameWidth                  int32
 	GameHeight                 int32
-	GameSpeed                  float32
+	GameFramerate              float32
 	IP                         map[string]string
 	LifeMul                    float32
 	ListenPort                 string
@@ -323,9 +326,12 @@ func setupConfig() configSettings {
 	"ForceStageZoomout": 0,
 	"Framerate": 60,
 	"Fullscreen": false,
+	"FullscreenRefreshRate": 60,
+	"FullscreenWidth": -1,
+	"FullscreenHeight": -1,
 	"GameWidth": 640,
 	"GameHeight": 480,
-	"GameSpeed": 100,
+	"GameFramerate": 60,
 	"IP": {},
 	"LifeMul": 100,
 	"ListenPort": "7500",
@@ -640,9 +646,16 @@ func setupConfig() configSettings {
 	if len(tmp.FontShaderVer) > 1 {
 		sys.fontShaderVer = tmp.FontShaderVer
 	}
+	// Resoluion stuff
 	sys.fullscreen = tmp.Fullscreen
+	sys.fullscreenRefreshRate = tmp.FullscreenRefreshRate
+	sys.fullscreenWidth = tmp.FullscreenWidth
+	sys.fullscreenHeight = tmp.FullscreenHeight
 	FPS = int(tmp.Framerate)
-	sys.gameSpeed = tmp.GameSpeed / 100
+	sys.gameWidth = tmp.GameWidth
+	sys.gameHeight = tmp.GameHeight
+	sys.gameSpeed = tmp.GameFramerate / float32(tmp.Framerate)
+
 	sys.helperMax = tmp.MaxHelper
 	sys.lifeMul = tmp.LifeMul / 100
 	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}

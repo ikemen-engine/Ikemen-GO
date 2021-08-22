@@ -263,7 +263,6 @@ type System struct {
 	lifeShare               [2]bool
 	loseSimul               bool
 	loseTag                 bool
-	fullscreen              bool
 	allowDebugKeys          bool
 	allowDebugMode          bool
 	commonAir               string
@@ -279,6 +278,12 @@ type System struct {
 	windowTitle             string
 	screenshotFolder        string
 	//FLAC_FrameWait          int
+
+	// Resolution variables
+	fullscreen            bool
+	fullscreenRefreshRate int32
+	fullscreenWidth       int32
+	fullscreenHeight      int32
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32
@@ -393,6 +398,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	ret := &Window{window, s.windowTitle, s.fullscreen, x, y, w, h}
 	return ret, err
 }
+
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
@@ -420,7 +426,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(err)
 
 	// V-Sync
-	if s.vRetrace != -1 {
+	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
 	// Initialize OpenGL.
@@ -1483,7 +1489,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if s.tickNextFrame() {
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
-			spd = 1
+			spd = s.gameSpeed
 		} else if !s.sf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
 			if s.slowtime < s.lifebar.ro.slow_fadetime {
