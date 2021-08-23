@@ -1637,7 +1637,7 @@ func (s *System) drawDebug() {
 		for txt != "" {
 			w, drawTxt := int32(0), ""
 			for i, r := range txt {
-				w += s.debugFont.fnt.CharWidth(r) + s.debugFont.fnt.Spacing[0]
+				w += s.debugFont.fnt.CharWidth(r, 0) + s.debugFont.fnt.Spacing[0]
 				if w > s.scrrect[2] {
 					drawTxt, txt = txt[:i], txt[i:]
 					break

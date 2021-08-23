@@ -19,10 +19,11 @@ type FntCharImage struct {
 
 // Fnt is a interface for basic font information
 type Fnt struct {
-	images    map[rune]*FntCharImage
+	images    map[int32]map[rune]*FntCharImage
 	palettes  [][256]uint32
 	ver, ver2 uint16
 	Type      string
+	BankType  string
 	Size      [2]uint16
 	Spacing   [2]int32
 	colors    int32
@@ -31,7 +32,10 @@ type Fnt struct {
 }
 
 func newFnt() *Fnt {
-	return &Fnt{images: make(map[rune]*FntCharImage)}
+	return &Fnt{
+		images: make(map[int32]map[rune]*FntCharImage),
+		BankType: "palette",
+	}
 }
 
 func loadFnt(filename string, height int32) (*Fnt, error) {
@@ -45,6 +49,7 @@ func loadFnt(filename string, height int32) (*Fnt, error) {
 
 func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
+	f.images[0] = make(map[rune]*FntCharImage)
 
 	filename = SearchFile(filename, "font/")
 
@@ -174,7 +179,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 							ofs = I32ToU16(Atoi(cap[2]))
 						}
 						fci := &FntCharImage{ofs: ofs}
-						f.images[c] = fci
+						f.images[0][c] = fci
 						if len(cap[3]) > 0 {
 							w = Atoi(cap[3])
 							if w < 0 {
@@ -216,7 +221,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 			}
 		}
 	}
-	for _, fci := range f.images {
+	for _, fci := range f.images[0] {
 		fci.img = make([]Sprite, len(f.palettes))
 		for i, p := range f.palettes {
 			if i == 0 {
@@ -273,6 +278,9 @@ func loadFntV2(filename string, height int32) (*Fnt, error) {
 
 func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 	f.Type = strings.ToLower(is["type"])
+	if _, ok := is["banktype"]; ok {
+		f.BankType = strings.ToLower(is["banktype"])
+	}
 	ary := SplitAndTrim(is["size"], ",")
 	if len(ary[0]) > 0 {
 		f.Size[0] = I32ToU16(Atoi(ary[0]))
@@ -358,7 +366,10 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 	var pal_default []uint32
 	for k, sprite := range sff.sprites {
 		s := sff.getOwnPalSprite(sprite.Group, sprite.Number)
-		if sprite.Group == 0 {
+		if sprite.Group == 0 || f.BankType == "sprite" {
+			if f.images[int32(sprite.Group)] == nil {
+				f.images[int32(sprite.Group)] = make(map[rune]*FntCharImage)
+			}
 			if pal_default == nil && sff.header.Ver0 == 1 {
 				pal_default = s.Pal
 			}
@@ -371,7 +382,7 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 			}
 			fci.img = make([]Sprite, 1)
 			fci.img[0] = *s
-			f.images[rune(k[1])] = fci
+			f.images[int32(sprite.Group)][rune(k[1])] = fci
 		}
 	}
 
@@ -398,11 +409,11 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 }
 
 //CharWidth returns the width that has a specified character
-func (f *Fnt) CharWidth(c rune) int32 {
+func (f *Fnt) CharWidth(c rune, bt int32) int32 {
 	if c == ' ' {
 		return int32(f.Size[0])
 	}
-	fci := f.images[c]
+	fci := f.images[bt][c]
 	if fci == nil {
 		return 0
 	}
@@ -411,12 +422,15 @@ func (f *Fnt) CharWidth(c rune) int32 {
 
 //TextWidth returns the width that has a specified text.
 //This depends on each char's width and font spacing
-func (f *Fnt) TextWidth(txt string) (w int32) {
+func (f *Fnt) TextWidth(txt string, bank int32) (w int32) {
+	if f.BankType != "sprite" {
+		bank = 0
+	}
 	for i, c := range txt {
 		if f.Type == "truetype" {
 			w += int32(f.ttf.Width(1, string(c)))
 		} else {
-			w += f.CharWidth(c)
+			w += f.CharWidth(c, bank)
 			if i < len(txt)-1 {
 				w += f.Spacing[0]
 			}
@@ -425,8 +439,8 @@ func (f *Fnt) TextWidth(txt string) (w int32) {
 	return
 }
 
-func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
-	fci := f.images[c]
+func (f *Fnt) getCharSpr(c rune, bank, bt int32) *Sprite {
+	fci := f.images[bt][c]
 	if fci == nil {
 		return nil
 	}
@@ -438,14 +452,14 @@ func (f *Fnt) getCharSpr(c rune, bank int32) *Sprite {
 	return &fci.img[0]
 }
 
-func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank int32, c rune,
-	pal []uint32, window *[4]int32) float32 {
+func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
+	c rune, pal []uint32, window *[4]int32) float32 {
 
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
 	}
 
-	spr := f.getCharSpr(c, bank)
+	spr := f.getCharSpr(c, bank, bt)
 	if spr == nil || spr.Tex == nil {
 		return 0
 	}
@@ -478,9 +492,17 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		return
 	}
 
+	var bt int32
+	if f.BankType == "sprite" {
+		bt = bank
+		bank = 0
+	} else if bank < 0 || len(f.palettes) <= int(bank) {
+		bank = 0
+	}
+
 	//not existing characters treated as space
 	for i, c := range txt {
-		if c != ' ' && f.images[c] == nil {
+		if c != ' ' && f.images[bt][c] == nil {
 			//txt = strings.Replace(txt, string(c), " ", -1)
 			txt = txt[:i] + string(' ') + txt[i+1:]
 		}
@@ -490,13 +512,9 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
 	if align == 0 {
-		x -= float32(math.Round(float64(float32(f.TextWidth(txt)) * xscl * 0.5)))
+		x -= float32(math.Round(float64(float32(f.TextWidth(txt, bank)) * xscl * 0.5)))
 	} else if align < 0 {
-		x -= float32(f.TextWidth(txt)) * xscl
-	}
-
-	if bank < 0 || len(f.palettes) <= int(bank) {
-		bank = 0
+		x -= float32(f.TextWidth(txt, bank)) * xscl
 	}
 
 	var pal []uint32
@@ -505,7 +523,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	}
 
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, c, pal, window) + xscl*float32(f.Spacing[0])
+		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window) + xscl*float32(f.Spacing[0])
 	}
 }
 

@@ -494,7 +494,7 @@ function menu.f_commandlistRender(section, t)
 					})
 					data:draw()
 					if k < #cmdList[n] then
-						width = fontGetTextWidth(main.font[data.font .. data.height], v.text) * motif[section].movelist_text_font_scale[1] + motif[section].movelist_text_spacing[1]
+						width = fontGetTextWidth(main.font[data.font .. data.height], v.text, data.bank) * motif[section].movelist_text_font_scale[1] + motif[section].movelist_text_spacing[1]
 					end
 				end
 				if v.align == 0 then

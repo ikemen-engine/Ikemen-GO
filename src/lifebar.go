@@ -1371,7 +1371,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 			x += co.counterX
 		}
 		if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) && f[co.counter.font[0]] != nil {
-			x += float32(f[co.counter.font[0]].TextWidth(counter)) *
+			x += float32(f[co.counter.font[0]].TextWidth(counter, co.counter.font[1])) *
 				co.counter.lay.scale[0] * sys.lifebar.fnt_scale
 		}
 	} else {
@@ -1396,7 +1396,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		//split on new line
 		for k, v := range strings.Split(text, "\\n") {
 			if side == 1 {
-				if lt := float32(f[co.text.font[0]].TextWidth(v)) * co.text.lay.scale[0] * sys.lifebar.fnt_scale; lt > length {
+				if lt := float32(f[co.text.font[0]].TextWidth(v, co.text.font[1])) * co.text.lay.scale[0] * sys.lifebar.fnt_scale; lt > length {
 					length = lt
 				}
 			}
