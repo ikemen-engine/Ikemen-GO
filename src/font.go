@@ -412,11 +412,14 @@ func (f *Fnt) CharWidth(c rune) int32 {
 //TextWidth returns the width that has a specified text.
 //This depends on each char's width and font spacing
 func (f *Fnt) TextWidth(txt string) (w int32) {
-	for _, c := range txt {
+	for i, c := range txt {
 		if f.Type == "truetype" {
 			w += int32(f.ttf.Width(1, string(c)))
 		} else {
-			w += f.CharWidth(c) + f.Spacing[0]
+			w += f.CharWidth(c)
+			if i < len(txt)-1 {
+				w += f.Spacing[0]
+			}
 		}
 	}
 	return
