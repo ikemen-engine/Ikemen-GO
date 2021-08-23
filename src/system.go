@@ -1363,7 +1363,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == -1 && (ko[0] || ko[1]) {
+			if s.intro == 0 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
