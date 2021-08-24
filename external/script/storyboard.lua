@@ -271,14 +271,12 @@ local function f_parse(path)
 								if i == 1 then
 									--t_layer[k2].font
 									pos_val[param] = {}
-									if param:match('^font$') and tonumber(c) ~= -1 then
+									if param:match('^font$') then
 										if t.scenedef ~= nil and t.scenedef.font ~= nil and t.scenedef.font[tonumber(c)] ~= nil then
 											if pos_val[param .. '_height'] == nil and t.scenedef.font_height[tonumber(c)] ~= nil then
 												pos_val[param .. '_height'] = t.scenedef.font_height[tonumber(c)]
 											end
 											c = t.scenedef.font[tonumber(c)]
-										else
-											break --use default font values
 										end
 									end
 								elseif param:match('^font$') and not tonumber(c) then

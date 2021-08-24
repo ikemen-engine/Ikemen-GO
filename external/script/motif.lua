@@ -2500,14 +2500,12 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 							break
 						elseif i == 1 then
 							pos[param] = {}
-							if param:match('_font$') and tonumber(c) ~= -1 then
+							if param:match('_font$') then
 								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then
 									if pos[param .. '_height'] == nil and t.files.font_height[tonumber(c)] ~= nil then
 										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
 									end
 									c = t.files.font[tonumber(c)]
-								else
-									break --use default font values
 								end
 							end
 						elseif param:match('_font$') and not tonumber(c) then
