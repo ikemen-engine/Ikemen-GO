@@ -1277,23 +1277,31 @@ func newLifeBarCombo() *LifeBarCombo {
 	return &LifeBarCombo{displaytime: 90, showspeed: 8, hidespeed: 4,
 		counter_time: 7, counter_mult: 1.0 / 20}
 }
-func readLifeBarCombo(pre string, is IniSection, f []*Fnt) *LifeBarCombo {
+func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCombo {
 	co := newLifeBarCombo()
 	is.ReadI32(pre+"pos", &co.pos[0], &co.pos[1])
 	is.ReadF32(pre+"start.x", &co.start_x)
-	if pre == "team2." { //mugen 1.0 implementation reuses winmugen code where both sides shared the same values
-		co.pos[0] = sys.lifebarLocalcoord[0] - co.pos[0]
-		co.start_x = float32(sys.lifebarLocalcoord[0]) - co.start_x
+	if side == 1 {
+		// mugen 1.0 implementation reuses winmugen code where both sides shared the same values
+		if pre == "team2." {
+			co.start_x = float32(sys.lifebarLocalcoord[0]) - co.start_x
+		} else {
+			co.pos[0] = sys.lifebarLocalcoord[0] - co.pos[0]
+		}
 	}
 	co.counter = *readLbText(pre+"counter.", is, "%i", 2, f, 0)
 	is.ReadBool(pre+"counter.shake", &co.counter_shake)
 	is.ReadI32(pre+"counter.time", &co.counter_time)
 	is.ReadF32(pre+"counter.mult", &co.counter_mult)
-	if pre == "team2." {
-		co.text = *readLbText(pre+"text.", is, "", 2, f, -1)
-	} else {
-		co.text = *readLbText(pre+"text.", is, "", 2, f, 1)
+	var align int32
+	if pre == "" {
+		if side == 0 {
+			align = 1
+		} else {
+			align = -1
+		}
 	}
+	co.text = *readLbText(pre+"text.", is, "", 2, f, align)
 	is.ReadI32(pre+"displaytime", &co.displaytime)
 	is.ReadF32(pre+"showspeed", &co.showspeed)
 	co.showspeed = MaxF(1, co.showspeed)
@@ -1353,29 +1361,25 @@ func (co *LifeBarCombo) reset() {
 	co.shaketime = 0
 }
 func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
-	haba := func(str string) float32 {
-		if co.counter.font[0] < 0 || int(co.counter.font[0]) >= len(f) || f[co.counter.font[0]] == nil {
-			return 0
-		}
-		return float32(f[co.counter.font[0]].TextWidth(str)) *
-			co.counter.lay.scale[0] * sys.lifebar.fnt_scale
-	}
 	if co.resttime <= 0 && co.counterX == co.start_x*2 {
 		return
 	}
 	counter := strings.Replace(co.counter.text, "%i", fmt.Sprintf("%v", co.cur), 1)
-	var x float32
+	x := float32(co.pos[0])
 	if side == 0 {
 		if co.start_x <= 0 {
-			x = co.counterX
+			x += co.counterX
 		}
-		x += float32(co.pos[0]) + haba(counter)
+		if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) && f[co.counter.font[0]] != nil {
+			x += float32(f[co.counter.font[0]].TextWidth(counter, co.counter.font[1])) *
+				co.counter.lay.scale[0] * sys.lifebar.fnt_scale
+		}
 	} else {
 		if co.start_x <= 0 {
-			x = -co.counterX
+			x -= co.counterX
 		}
-		x += 320/sys.lifebarScale - sys.lifebarOffsetX*2 - float32(co.pos[0])
 	}
+	var length float32
 	if co.text.font[0] >= 0 && int(co.text.font[0]) < len(f) && f[co.text.font[0]] != nil {
 		text := strings.Replace(co.text.text, "%i", fmt.Sprintf("%v", co.cur), 1)
 		text = strings.Replace(text, "%d", fmt.Sprintf("%v", co.curd), 1)
@@ -1390,39 +1394,23 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		//replace %p with formatted string
 		text = strings.Replace(text, "%p", s[0], 1)
 		//split on new line
-		lines := strings.Split(text, "\\n")
-
-		if side == 0 {
-			if co.pos[0] != 0 {
-				x += co.text.lay.offset[0] *
-					((1 - sys.lifebar.fnt_scale) * sys.lifebar.fnt_scale)
-			}
-		} else {
-			var length float32
-			for _, v := range lines {
-				if lt := float32(f[co.text.font[0]].TextWidth(v)) * co.text.lay.scale[0] * sys.lifebar.fnt_scale; lt > length {
+		for k, v := range strings.Split(text, "\\n") {
+			if side == 1 {
+				if lt := float32(f[co.text.font[0]].TextWidth(v, co.text.font[1])) * co.text.lay.scale[0] * sys.lifebar.fnt_scale; lt > length {
 					length = lt
 				}
 			}
-			x -= length
-			/*tmp := c.text_lay.offset[0]
-			if c.pos[0] == 0 {
-				tmp *= sys.lifebar.fnt_scale
-			}
-			x -= tmp*/
-		}
-		for k, v := range lines {
 			co.text.lay.DrawText(x+sys.lifebarOffsetX, float32(co.pos[1])+
 				float32(k)*(float32(f[co.text.font[0]].Size[1])*co.text.lay.scale[1]*sys.lifebar.fnt_scale+
 					float32(f[co.text.font[0]].Spacing[1])*co.text.lay.scale[1]*sys.lifebar.fnt_scale),
-				sys.lifebarScale, layerno, v, f[co.text.font[0]], co.text.font[1], 1, co.text.palfx,
-				co.text.frgba)
+				sys.lifebarScale, layerno, v, f[co.text.font[0]], co.text.font[1], co.text.font[2],
+				co.text.palfx, co.text.frgba)
 		}
 	}
 	if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) && f[co.counter.font[0]] != nil {
 		z := 1 + float32(co.shaketime)*co.counter_mult*
 			float32(math.Sin(float64(co.shaketime)*(math.Pi/2.5)))
-		co.counter.lay.DrawText((x+sys.lifebarOffsetX)/z, float32(co.pos[1])/z, z*sys.lifebarScale, layerno,
+		co.counter.lay.DrawText((x-length+sys.lifebarOffsetX)/z, float32(co.pos[1])/z, z*sys.lifebarScale, layerno,
 			counter, f[co.counter.font[0]], co.counter.font[1], -1, co.counter.palfx, co.counter.frgba)
 	}
 }
@@ -1469,14 +1457,9 @@ func readLifeBarAction(pre string, is IniSection, f []*Fnt) *LifeBarAction {
 	is.ReadI32(pre+"spacing", &ac.spacing[0], &ac.spacing[1])
 	is.ReadF32(pre+"start.x", &ac.start_x)
 	if pre == "team2." {
-		ac.pos[0] = sys.lifebarLocalcoord[0] - ac.pos[0]
 		ac.start_x = float32(sys.lifebarLocalcoord[0]) - ac.start_x
 	}
-	if pre == "team2." {
-		ac.text = *readLbText(pre+"text.", is, "", 2, f, -1)
-	} else {
-		ac.text = *readLbText(pre+"text.", is, "", 2, f, 1)
-	}
+	ac.text = *readLbText(pre+"text.", is, "", 2, f, 0)
 	is.ReadI32(pre+"displaytime", &ac.displaytime)
 	is.ReadF32(pre+"showspeed", &ac.showspeed)
 	ac.showspeed = MaxF(1, ac.showspeed)
@@ -1515,17 +1498,15 @@ func (ac *LifeBarAction) draw(layerno int16, f []*Fnt, side int) {
 		if v.resttime <= 0 && v.counterX == ac.start_x*2 {
 			continue
 		}
-		var x float32
+		x := float32(ac.pos[0])
 		if side == 0 {
 			if ac.start_x <= 0 {
-				x = v.counterX
+				x += v.counterX
 			}
-			x += float32(ac.pos[0])
 		} else {
 			if ac.start_x <= 0 {
-				x = -v.counterX
+				x -= v.counterX
 			}
-			x += 320/sys.lifebarScale - sys.lifebarOffsetX*2 - float32(ac.pos[0])
 		}
 		if v.bg.anim.spr != nil {
 			v.bg.Draw(x+sys.lifebarOffsetX+float32(k)*float32(ac.spacing[0]),
@@ -1540,26 +1521,12 @@ func (ac *LifeBarAction) draw(layerno int16, f []*Fnt, side int) {
 				layerno, sys.lifebarScale)
 		}
 		if ac.text.font[0] >= 0 && int(ac.text.font[0]) < len(f) && f[ac.text.font[0]] != nil {
-			if side == 0 {
-				if ac.pos[0] != 0 {
-					x += ac.text.lay.offset[0] *
-						((1 - sys.lifebar.fnt_scale) * sys.lifebar.fnt_scale)
-				}
-			} else {
-				x -= float32(f[ac.text.font[0]].TextWidth(v.text)) *
-					ac.text.lay.scale[0] * sys.lifebar.fnt_scale
-				/*tmp := ac.text.lay.offset[0]
-				if ac.pos[0] == 0 {
-					tmp *= sys.lifebar.fnt_scale
-				}
-				x -= tmp*/
-			}
 			ac.text.lay.DrawText(x+sys.lifebarOffsetX+float32(k)*float32(ac.spacing[0])*sys.lifebar.fnt_scale,
 				float32(ac.pos[1])+float32(k)*float32(ac.spacing[1])*sys.lifebar.fnt_scale+
 					float32(k)*(float32(f[ac.text.font[0]].Size[1])*ac.text.lay.scale[1]*sys.lifebar.fnt_scale+
 						float32(f[ac.text.font[0]].Spacing[1])*ac.text.lay.scale[1]*sys.lifebar.fnt_scale),
-				sys.lifebarScale, layerno, v.text, f[ac.text.font[0]], ac.text.font[1], 1, ac.text.palfx,
-				ac.text.frgba)
+				sys.lifebarScale, layerno, v.text, f[ac.text.font[0]], ac.text.font[1], ac.text.font[2],
+				ac.text.palfx, ac.text.frgba)
 		}
 	}
 }
@@ -3224,16 +3191,16 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		case "combo":
 			if l.co[0] == nil {
 				if _, ok := is["team1.pos"]; ok {
-					l.co[0] = readLifeBarCombo("team1.", is, l.fnt[:])
+					l.co[0] = readLifeBarCombo("team1.", is, l.fnt[:], 0)
 				} else {
-					l.co[0] = readLifeBarCombo("", is, l.fnt[:])
+					l.co[0] = readLifeBarCombo("", is, l.fnt[:], 0)
 				}
 			}
 			if l.co[1] == nil {
 				if _, ok := is["team2.pos"]; ok {
-					l.co[1] = readLifeBarCombo("team2.", is, l.fnt[:])
+					l.co[1] = readLifeBarCombo("team2.", is, l.fnt[:], 1)
 				} else {
-					l.co[1] = readLifeBarCombo("", is, l.fnt[:])
+					l.co[1] = readLifeBarCombo("", is, l.fnt[:], 1)
 				}
 			}
 		case "action":

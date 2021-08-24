@@ -1,10 +1,14 @@
 ; Ver 0.98+
-; This file contains all the default value for System.def
-; This file is meant to be a guide, it should not be used as-is.
+; This file contains all the default values used by screenpack definition file.
+; Some default offset and window values are recalculated internally, depending
+; on localcoord, here we're listing outcome of said calculations for 240p res.
+; This file is not loaded by engine and should not be used as-is. It's meant to
+; be a reference for adding parameters to your own screenpack system.def file.
+
 [Info]
 	name = "Default"
 	author = "Elecbyte"
-	versiondate = "09,01,2009"
+	versiondate = 09,01,2009
 	mugenversion = "1.0"
 	localcoord = 320, 240
 
@@ -120,37 +124,38 @@
 	title.font.height = -1
 	title.text = "MAIN MENU"
 
-	;loading.offset = main.SP.Localcoord[1] - main.f.round(10 * main.SP.Localcoord[1] / 320), main.SP.Localcoord[2] - 8
+	loading.offset = 310, 232
 	loading.font = "default-3x5.def", 0, -1, 191, 191, 191
 	loading.font.scale = 1.0, 1.0
 	loading.font.height = -1
 	loading.text = "LOADING..."
-	;footer1.offset = main.f.round(2 * main.SP.Localcoord[1] / 320), main.SP.Localcoord[2]
+
+	footer1.offset = 2, 240
 	footer1.font = "default-3x5.def", 0, 1, 191, 191, 191
 	footer1.font.scale = 1.0, 1.0
 	footer1.font.height = -1
 	footer1.text = "I.K.E.M.E.N. GO"
-	;footer2.offset = main.SP.Localcoord[1] / 2, main.SP.Localcoord[2]
+	footer2.offset = 160, 240
 	footer2.font = "default-3x5.def", 0, 0, 191, 191, 191
 	footer2.font.scale = 1.0, 1.0
 	footer2.font.height = -1
 	footer2.text = "Press F1 for info"
-	;footer3.offset = main.SP.Localcoord[1] - main.f.round(2 * main.SP.Localcoord[1] / 320), main.SP.Localcoord[2]
+	footer3.offset = 318, 240
 	footer3.font = "default-3x5.def", 0, -1, 191, 191, 191
 	footer3.font.scale = 1.0, 1.0
 	footer3.font.height = -1
-	footer3.text = "verBeta"
-	;footer.overlay.window = 0, main.SP.Localcoord[2] - 7, main.SP.Localcoord[1] - 1, main.SP.Localcoord[2] - 1
+	footer3.text = "git-ver"
+	footer.overlay.window = 0, 233, 319, 239
 	footer.overlay.col = 0, 0, 64
 	footer.overlay.alpha = 255, 100
 
-	;connecting.offset = main.f.round(10 * main.SP.Localcoord[1] / 320), 40
+	connecting.offset = 10, 40
 	connecting.font = "f-6x9.def", 0, 1, 255, 255, 255
 	connecting.font.scale = 1.0, 1.0
 	connecting.font.height = -1
 	connecting.host.text = "Waiting for player 2... (%s)"
 	connecting.join.text = "Now connecting to %s... (%s)"
-	;connecting.overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	connecting.overlay.window = 0, 0, 320, 240
 	connecting.overlay.col = 0, 0, 0
 	connecting.overlay.alpha = 20, 100
 	textinput.offset = 25, 32
@@ -160,7 +165,7 @@
 	textinput.name.text = "Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button."
 	textinput.address.text = "Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button."
 
-	;textinput.overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;textinput.overlay.window = 0, 0, 320, 240
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
@@ -261,7 +266,7 @@
 	text.font.scale = 1.0, 1.0
 	text.font.height = -1
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 
 
@@ -921,7 +926,7 @@
 	done.snd = 100, 1
 	cancel.snd = 100, 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1036,7 +1041,7 @@
 	winquote.font.height = -1
 	winquote.delay = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1071,7 +1076,7 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1119,7 +1124,7 @@
 
 	winstext.font.height = -1
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1156,7 +1161,7 @@
 	winstext.displaytime = -1
 	winstext.layerno = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1192,7 +1197,7 @@
 	winstext.displaytime = -1
 	winstext.layerno = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1228,7 +1233,7 @@
 	winstext.displaytime = -1
 	winstext.layerno = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1264,7 +1269,7 @@
 	winstext.displaytime = -1
 	winstext.layerno = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1300,7 +1305,7 @@
 	winstext.displaytime = -1
 	winstext.layerno = 2
 
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
@@ -1484,7 +1489,7 @@
 	textinput.port.text = "Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.reswidth.text = "Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.resheight.text = "Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel."
-	;textinput.overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;textinput.overlay.window = 0, 0, 320, 240
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
@@ -1817,7 +1822,7 @@
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
 	menu.title.uppercase = 1
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 	cursor.move.snd = 100, 0
@@ -1843,7 +1848,7 @@
 	movelist.window.width = 300
 	movelist.window.margins.y = 20, 1
 	movelist.window.visibleitems = 18
-	;movelist.overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;movelist.overlay.window = 0, 0, 320, 240
 	movelist.overlay.col = 0, 0, 0
 	movelist.overlay.alpha = 20, 100
 	movelist.arrow.up.anim = -1
@@ -2000,7 +2005,7 @@
 	text.font.height = -1
 	text.displaytime = 0
 	text.layerno = 2
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 0, 0
 
@@ -2233,7 +2238,7 @@
 	window.width = 300
 	window.margins.y = 20, 1
 	window.visibleitems = 10
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 	move.snd = 100, 0
@@ -2260,7 +2265,7 @@
 	text.keys.text = "Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset."
 	text.pad.text = "Controller not detected.\nCheck if your controller is plugged in."
 	text.shaders.text = "No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from \'./external/shaders' directory."
-	;overlay.window = 0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]
+	;overlay.window = 0, 0, 320, 240
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 	done.snd = 100, 0

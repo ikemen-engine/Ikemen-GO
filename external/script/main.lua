@@ -995,11 +995,11 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 			local tmp = ''
 			local pxLeft = length
 			local tmp_px = 0
-			local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ')) * data.scaleX
+			local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ', data.bank)) * data.scaleX
 			for i = 1, string.len(c) do
 				local symbol = string.sub(c, i, i)
 				if font_def[symbol] == nil then --store symbol length in global table for faster counting
-					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol)
+					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol, data.bank)
 				end
 				local px = font_def[symbol] * data.scaleX
 				if pxLeft + space - px >= -1 or text == '' then

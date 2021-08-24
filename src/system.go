@@ -1369,7 +1369,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == -1 && (ko[0] || ko[1]) {
+			if s.intro == 0 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
@@ -1643,7 +1643,7 @@ func (s *System) drawDebug() {
 		for txt != "" {
 			w, drawTxt := int32(0), ""
 			for i, r := range txt {
-				w += s.debugFont.fnt.CharWidth(r) + s.debugFont.fnt.Spacing[0]
+				w += s.debugFont.fnt.CharWidth(r, 0) + s.debugFont.fnt.Spacing[0]
 				if w > s.scrrect[2] {
 					drawTxt, txt = txt[:i], txt[i:]
 					break

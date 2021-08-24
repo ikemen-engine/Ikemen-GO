@@ -752,7 +752,11 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, fnt)
 		}
-		l.Push(lua.LNumber(fnt.TextWidth(strArg(l, 2))))
+		var bank int32
+		if l.GetTop() >= 3 {
+			bank = int32(numArg(l, 3))
+		}
+		l.Push(lua.LNumber(fnt.TextWidth(strArg(l, 2), bank)))
 		return 1
 	})
 	luaRegister(l, "fontNew", func(l *lua.LState) int {
