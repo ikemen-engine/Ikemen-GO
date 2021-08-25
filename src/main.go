@@ -643,9 +643,7 @@ func setupConfig() configSettings {
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
-	if len(tmp.FontShaderVer) > 1 {
-		sys.fontShaderVer = tmp.FontShaderVer
-	}
+	sys.fontShaderVer = tmp.FontShaderVer
 	// Resoluion stuff
 	sys.fullscreen = tmp.Fullscreen
 	sys.fullscreenRefreshRate = tmp.FullscreenRefreshRate
