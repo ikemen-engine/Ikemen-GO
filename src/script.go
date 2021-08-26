@@ -764,9 +764,11 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 2 {
 			height = int32(numArg(l, 2))
 		}
-		fnt, err := loadFnt(strArg(l, 1), height)
+		filename := SearchFile(strArg(l, 1), []string{sys.motifDir, "", "data/", "font/"})
+		fnt, err := loadFnt(filename, height)
 		if err != nil {
-			l.RaiseError(err.Error())
+			sys.errLog.Printf("failed to load %v (screenpack font): %v", filename, err)
+			fnt = newFnt()
 		}
 		l.Push(newUserData(l, fnt))
 		return 1
@@ -1604,7 +1606,11 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "searchFile", func(l *lua.LState) int {
-		l.Push(lua.LString(SearchFile(strArg(l, 1), strArg(l, 2))))
+		var dirs []string
+		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+			dirs = append(dirs, lua.LVAsString(value))
+		})
+		l.Push(lua.LString(SearchFile(strArg(l, 1), dirs)))
 		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {

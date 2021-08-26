@@ -2507,7 +2507,7 @@ func (s *Select) addChar(def string) {
 	}
 	sff := newSff()
 	//preload animations
-	LoadFile(&sc.anim, def, func(filename string) error {
+	LoadFile(&sc.anim, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2529,7 +2529,7 @@ func (s *Select) addChar(def string) {
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sc.sprite
 	}
-	LoadFile(&fp, def, func(file string) error {
+	LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
 		var selPal []int32
 		var err error
 		sc.sff, selPal, err = preloadSff(file, true, listSpr)
@@ -2546,7 +2546,7 @@ func (s *Select) addChar(def string) {
 		return nil
 	})
 	if len(movelist) > 0 {
-		LoadFile(&movelist, def, func(file string) error {
+		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
 			return nil
 		})
@@ -2559,7 +2559,7 @@ func (s *Select) AddStage(def string) error {
 		sys.loadTime(tnow, tstr, false, false)
 	}()
 	var lines []string
-	if err := LoadFile(&def, "stages/", func(file string) error {
+	if err := LoadFile(&def, []string{"", "data/"}, func(file string) error {
 		str, err := LoadText(file)
 		if err != nil {
 			return err
@@ -2587,7 +2587,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				if err := is.LoadFile("attachedchar", def, func(filename string) error {
+				if err := is.LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 					ss.attachedchardef = filename
 					return nil
 				}); err != nil {
@@ -2633,7 +2633,7 @@ func (s *Select) AddStage(def string) error {
 			}
 		}
 		//preload portion of sff file
-		LoadFile(&ss.spr, def, func(file string) error {
+		LoadFile(&ss.spr, []string{def, "", "data/"}, func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
@@ -2791,7 +2791,7 @@ func (l *Loader) loadChar(pn int) int {
 		sys.lifebar.nm[sys.tmode[pn&1]][pn].numko = 0
 		for i, ci := range idx {
 			sprite := sys.sel.charlist[ci].sprite
-			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
+			LoadFile(&sprite, []string{sys.sel.charlist[ci].def, "", "data/"}, func(file string) error {
 				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
 				var err error
 				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),

@@ -39,7 +39,6 @@ func newFnt() *Fnt {
 }
 
 func loadFnt(filename string, height int32) (*Fnt, error) {
-
 	if HasExtension(filename, ".fnt") {
 		return loadFntV1(filename)
 	}
@@ -51,13 +50,10 @@ func loadFntV1(filename string) (*Fnt, error) {
 	f := newFnt()
 	f.images[0] = make(map[rune]*FntCharImage)
 
-	filename = SearchFile(filename, "font/")
-
 	fp, err := os.Open(filename)
 
 	if err != nil {
-		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
-		return f, nil
+		return nil, Error("File not found")
 	}
 
 	defer func() { chk(fp.Close()) }()
@@ -73,7 +69,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 
 	//Error is not a valid fnt file
 	if string(buf[:n]) != "ElecbyteFnt\x00" {
-		return nil, Error("Unrecognized FNT file, invalid header")
+		return nil, Error("Unrecognized FNT file: " + string(buf[:n]))
 	}
 
 	read := func(x interface{}) error {
@@ -247,13 +243,10 @@ func loadFntV1(filename string) (*Fnt, error) {
 func loadFntV2(filename string, height int32) (*Fnt, error) {
 	f := newFnt()
 
-	filename = SearchFile(filename, "font/")
-
 	content, err := LoadText(filename)
 
 	if err != nil {
-		sys.errLog.Printf("Failed to load font, file not found: %v\n", filename)
-		return f, nil
+		return nil, Error("File not found")
 	}
 
 	lines := SplitAndTrim(string(content), "\n")
@@ -320,7 +313,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 
 func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	//Search in local directory
-	fileDir := SearchFile(filename, fontfile)
+	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
 	//Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
@@ -350,7 +343,7 @@ func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 }
 
 func loadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, fontfile)
+	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
 	sff, err := loadSff(fileDir, false)
 
 	if err != nil {

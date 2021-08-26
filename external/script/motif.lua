@@ -2655,46 +2655,32 @@ if motif.vs_screen.p2_name_active_font == nil then
 end
 
 --general paths
-for k, v in ipairs({
-	{t = {'files',            'spr'},              skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.spr,                   'data/' .. motif.files.spr}},
-	{t = {'files',            'snd'},              skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.snd,                   'data/' .. motif.files.snd}},
-	{t = {'files',            'logo_storyboard'},  skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.logo_storyboard,       'data/' .. motif.files.logo_storyboard}},
-	{t = {'files',            'intro_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.intro_storyboard,      'data/' .. motif.files.intro_storyboard}},
-	{t = {'files',            'select'},           skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.select,                'data/' .. motif.files.select}},
-	{t = {'files',            'fight'},            skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.fight,                 'data/' .. motif.files.fight}},
-	{t = {'files',            'glyphs'},           skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.glyphs,                'data/' .. motif.files.glyphs}},
-	{t = {'music',            'title_bgm'},        skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.title_bgm,             'music/' .. motif.music.title_bgm}},
-	{t = {'music',            'select_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.select_bgm,            'music/' .. motif.music.select_bgm}},
-	{t = {'music',            'vs_bgm'},           skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.vs_bgm,                'music/' .. motif.music.vs_bgm}},
-	{t = {'music',            'victory_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.victory_bgm,           'music/' .. motif.music.victory_bgm}},
-	{t = {'music',            'option_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.option_bgm,            'music/' .. motif.music.option_bgm}},
-	{t = {'music',            'replay_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.replay_bgm,            'music/' .. motif.music.replay_bgm}},
-	{t = {'music',            'continue_bgm'},     skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.continue_bgm,          'music/' .. motif.music.continue_bgm}},
-	{t = {'music',            'continue_end_bgm'}, skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.continue_end_bgm,      'music/' .. motif.music.continue_end_bgm}},
-	{t = {'music',            'results_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.results_bgm,           'music/' .. motif.music.results_bgm}},
-	{t = {'music',            'hiscore_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.hiscore_bgm,           'music/' .. motif.music.hiscore_bgm}},
-	{t = {'default_ending',   'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.default_ending.storyboard,   'data/' .. motif.default_ending.storyboard}},
-	{t = {'end_credits',      'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.end_credits.storyboard,      'data/' .. motif.end_credits.storyboard}},
-	{t = {'game_over_screen', 'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.game_over_screen.storyboard, 'data/' .. motif.game_over_screen.storyboard}},
-	{t = {'attract_mode',     'logo_storyboard'},  skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.logo_storyboard,       'data/' .. motif.attract_mode.logo_storyboard}},
-	{t = {'attract_mode',     'intro_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.intro_storyboard}},
-	{t = {'attract_mode',     'start_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.start_storyboard}},
+for _, v in ipairs({
+	{t = {'files', 'spr'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'snd'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'select'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'fight'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'glyphs'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'music', 'title_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'select_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'vs_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'victory_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'option_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'replay_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'continue_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'continue_end_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'results_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'hiscore_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'default_ending', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'end_credits', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'game_over_screen', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'start_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
 }) do
-	local skip = false
-	for j = 1, #v.skip do
-		if motif[v.t[1]][v.t[2]]:match(v.skip[j]) then
-			skip = true
-			break
-		end
-	end
-	if not skip then
-		for j = 1, #v.dirs do
-			if main.f_fileExists(v.dirs[j]) then
-				motif[v.t[1]][v.t[2]] = v.dirs[j]
-				break
-			end
-		end
-	end
+	motif[v.t[1]][v.t[2]] = searchFile(motif[v.t[1]][v.t[2]], v.dirs)
 end
 
 motif.files.spr_data = sffNew(motif.files.spr)
@@ -2709,7 +2695,7 @@ for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
 		if motif[k].spr ~= nil and motif[k].spr ~= '' then
-			motif[k].spr = main.f_filePath(motif[k].spr, motif.fileDir, 'data/')
+			motif[k].spr = searchFile(motif[k].spr, {motif.fileDir, '', 'data/'})
 			motif[k].spr_data = sffNew(motif[k].spr)
 			main.f_loadingRefresh()
 		else

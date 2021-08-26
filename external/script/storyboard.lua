@@ -313,15 +313,18 @@ local function f_parse(path)
 	--localcoord
 	main.f_setStoryboardScale(t.info.localcoord)
 	--scenedef spr
-	local ok = false
-	t.scenedef.spr, ok = main.f_filePath(t.scenedef.spr, t.fileDir, 'data/')
-	if not ok then
-		panicError("\n" .. path .. " storyboard SFF file not found: " .. t.scenedef.spr .. "\n")
+	t.scenedef.spr = searchFile(t.scenedef.spr, {t.fileDir})
+	if not main.f_fileExists(t.scenedef.spr) then
+		print("failed to load " .. path .. " (storyboard): SFF file not found: " .. t.scenedef.spr)
+		return nil
 	end
 	t.spr_data = {[t.scenedef.spr] = sffNew(t.scenedef.spr)}
 	--scenedef snd
 	if t.scenedef.snd ~= '' then
-		t.scenedef.snd = main.f_filePath(t.scenedef.snd, t.fileDir, 'data/')
+		t.scenedef.snd = searchFile(t.scenedef.snd, {t.fileDir})
+		if not main.f_fileExists(t.scenedef.snd) then
+			print("failed to load " .. path .. " (storyboard): SND file not found: " .. t.scenedef.snd)
+		end
 		t.scenedef.snd_data = sndNew(t.scenedef.snd)
 	end
 	--loop through scenes
@@ -329,7 +332,7 @@ local function f_parse(path)
 	for k, v in main.f_sortKeys(t.scene) do
 		--bgm
 		if t.scene[k].bgm ~= nil then
-			t.scene[k].bgm = main.f_filePath(t.scene[k].bgm, t.fileDir, 'music/')
+			t.scene[k].bgm = searchFile(t.scene[k].bgm, {t.fileDir, 'sound/'})
 		end
 		--default values
 		if #t.scene[k].clearcolor == 0 then
@@ -351,7 +354,10 @@ local function f_parse(path)
 		if t.scene[k].bg_name ~= '' then
 			local spr_def = t.scene[k].bg_name .. 'def'
 			if t[spr_def] ~= nil and t[spr_def].spr ~= nil then --custom spr associated with bg.name is declared
-				t[spr_def].spr = main.f_filePath(t[spr_def].spr, t.fileDir, 'data/')
+				t[spr_def].spr = searchFile(t[spr_def].spr, {t.fileDir})
+				if not main.f_fileExists(t[spr_def].spr) then
+					print("failed to load " .. path .. " (storyboard): SFF file not found: " .. t[spr_def].spr)
+				end
 				if t.spr_data[t[spr_def].spr] == nil then --sff data not created yet
 					t.spr_data[t[spr_def].spr] = sffNew(t[spr_def].spr)
 				end
@@ -421,7 +427,9 @@ function storyboard.f_storyboard(path, attract)
 	else
 		f_reset(storyboard.t_storyboard[path])
 	end
-	f_play(storyboard.t_storyboard[path], attract or false)
+	if storyboard.t_storyboard[path] ~= nil then
+		f_play(storyboard.t_storyboard[path], attract or false)
+	end
 	main.f_cmdBufReset()
 	main.f_setLuaScale()
 	if attract and main.credits > 0 then

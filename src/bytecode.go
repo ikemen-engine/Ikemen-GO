@@ -6870,33 +6870,33 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			}
 		case matchRestart_stagedef:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.sdefOverwrite = SearchFile(s, c.gi().def)
+			sys.sel.sdefOverwrite = SearchFile(s, []string{c.gi().def})
 			//sys.reloadStageFlg = true
 			reloadFlag = true
 		case matchRestart_p1def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[0] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[0] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p2def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[1] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[1] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p3def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[2] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[2] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p4def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[3] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[3] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p5def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[4] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[4] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p6def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[5] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[5] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p7def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[6] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[6] = SearchFile(s, []string{c.gi().def})
 		case matchRestart_p8def:
 			s = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			sys.sel.cdefOverwrite[7] = SearchFile(s, c.gi().def)
+			sys.sel.cdefOverwrite[7] = SearchFile(s, []string{c.gi().def})
 		}
 		return true
 	})

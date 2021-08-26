@@ -2844,7 +2844,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		case "files":
 			if filesflg {
 				filesflg = false
-				if is.LoadFile("sff", deffile, func(filename string) error {
+				if is.LoadFile("sff", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
 					s, err := loadSff(filename, false)
 					if err != nil {
 						return err
@@ -2854,7 +2855,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("snd", deffile, func(filename string) error {
+				if is.LoadFile("snd", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
 					s, err := LoadSnd(filename)
 					if err != nil {
 						return err
@@ -2864,7 +2866,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.sff", deffile, func(filename string) error {
+				if is.LoadFile("fightfx.sff", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
 					s, err := loadSff(filename, false)
 					if err != nil {
 						return err
@@ -2874,7 +2877,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.air", deffile, func(filename string) error {
+				if is.LoadFile("fightfx.air", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
 					str, err := LoadText(filename)
 					if err != nil {
 						return err
@@ -2885,26 +2889,27 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("common.snd", deffile, func(filename string) error {
+				if is.LoadFile("common.snd", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
 					l.fsnd, err = LoadSnd(filename)
 					return err
 				}); err != nil {
 					return nil, err
 				}
 				for i := range l.fnt {
-					if is.LoadFile(fmt.Sprintf("font%v", i), deffile,
+					if is.LoadFile(fmt.Sprintf("font%v", i), []string{deffile, sys.motifDir, "", "data/", "font/"},
 						func(filename string) error {
-							var height int32 = -1
-							if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
-								height = Atoi(is[fmt.Sprintf("font%v.height", i)])
-							}
-							l.fnt[i], err = loadFnt(filename, height)
-							if err != nil {
-								err = fmt.Errorf("failed to load %v font: %v", filename, err)
-							}
-							return err
-						}); err != nil {
-						return nil, err
+						var height int32 = -1
+						if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
+							height = Atoi(is[fmt.Sprintf("font%v.height", i)])
+						}
+						if l.fnt[i], err = loadFnt(filename, height); err != nil {
+							sys.errLog.Printf("failed to load %v (lifebar font): %v", filename, err)
+							l.fnt[i] = newFnt()
+						}
+						return err
+					}); err != nil {
+						//return nil, err
 					}
 				}
 			}

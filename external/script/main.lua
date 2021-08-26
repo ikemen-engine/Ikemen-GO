@@ -216,19 +216,6 @@ function main.f_fileExists(file)
 	return false
 end
 
---add missing relative file path
-function main.f_filePath(path, dir, defaultDir)
-	path = path:gsub('\\', '/')
-	if not path:lower():match('^data/') then
-		if main.f_fileExists(dir .. path) then
-			return dir .. path, true
-		elseif main.f_fileExists(defaultDir .. path) then
-			return defaultDir .. path, true
-		end
-	end
-	return path, false
-end
-
 --prints "t" table content into "toFile" file
 function main.f_printTable(t, toFile)
 	local txt = ''
@@ -1668,7 +1655,7 @@ function main.f_addChar(line, playable, loading, slot)
 			if playable then
 				for _, v in ipairs({'intro', 'ending', 'arcadepath', 'ratiopath'}) do
 					if main.t_selChars[row][v] ~= '' then
-						main.t_selChars[row][v] = main.f_filePath(main.t_selChars[row][v], main.t_selChars[row].dir, 'data/')
+						main.t_selChars[row][v] = searchFile(main.t_selChars[row][v], {main.t_selChars[row].dir, '', motif.fileDir, 'data/'})
 					end
 				end
 				main.t_selChars[row].order = 1
@@ -1789,7 +1776,7 @@ function main.f_addStage(file, hidden)
 					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
 				elseif tonumber(v) then
 					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end

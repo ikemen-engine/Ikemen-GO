@@ -235,8 +235,12 @@ func LoadText(filename string) (string, error) {
 	}
 	return string(bytes), nil
 }
+
 func FileExist(filename string) string {
-	if _, err := os.Stat(filename); !os.IsNotExist(err) {
+	if info, err := os.Stat(filename); !os.IsNotExist(err) {
+		if info.IsDir() {
+			return ""
+		}
 		return filename
 	}
 	var pattern string
@@ -256,47 +260,22 @@ func FileExist(filename string) string {
 	return ""
 }
 
-//SearchFile returns the directory that file is located
-//This search on deffile directory, then it keep looking on other dirs
-func SearchFile(file string, deffile string) string {
-	var fp string
+//SearchFile returns full path to specified file
+func SearchFile(file string, dirs []string) string {
 	file = strings.Replace(file, "\\", "/", -1)
-	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
-	if defdir == "." || strings.Contains(file, ":/") {
-		fp = file
-	} else if defdir == "/" {
-		fp = "/" + file
-	} else {
-		fp = defdir + "/" + file
-	}
-	if fp = FileExist(fp); len(fp) == 0 {
-		_else := false
-		if defdir != "data" {
-			fp = "data/" + file
-			if fp = FileExist(fp); len(fp) == 0 {
-				fp = sys.motifDir + file
-				if fp = FileExist(fp); len(fp) == 0 {
-					_else = true
-				}
-			}
-		} else {
-			_else = true
-		}
-		if _else {
-			fp = file
-			if fp = FileExist(fp); len(fp) == 0 {
-				fp = file
-			}
+	for _, v := range dirs {
+		defdir := filepath.Dir(strings.Replace(v, "\\", "/", -1))
+		if fp := FileExist(defdir + "/" + file); len(fp) > 0 {
+			return fp
 		}
 	}
-
-	return fp
+	return file
 }
 
-func LoadFile(file *string, deffile string, load func(string) error) error {
-	fp := SearchFile(*file, deffile)
+func LoadFile(file *string, dirs []string, load func(string) error) error {
+	fp := SearchFile(*file, dirs)
 	if err := load(fp); err != nil {
-		return Error(deffile + ":\n" + fp + "\n" + err.Error())
+		return Error(dirs[0] + ":\n" + fp + "\n" + err.Error())
 	}
 	*file = fp
 	return nil
@@ -447,13 +426,13 @@ func (is IniSection) Parse(lines []string, i *int) {
 		}
 	}
 }
-func (is IniSection) LoadFile(name, deffile string,
+func (is IniSection) LoadFile(name string, dirs []string,
 	load func(string) error) error {
 	str := is[name]
 	if len(str) == 0 {
 		return nil
 	}
-	return LoadFile(&str, deffile, load)
+	return LoadFile(&str, dirs, load)
 }
 func (is IniSection) ReadI32(name string, out ...*int32) bool {
 	str := is[name]
