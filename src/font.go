@@ -21,6 +21,7 @@ type FntCharImage struct {
 type Fnt struct {
 	images    map[int32]map[rune]*FntCharImage
 	palettes  [][256]uint32
+	coldepth  []byte
 	ver, ver2 uint16
 	Type      string
 	BankType  string
@@ -381,6 +382,7 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 
 	//Load palettes
 	f.palettes = make([][256]uint32, sff.header.NumberOfPalettes)
+	f.coldepth = make([]byte, sff.header.NumberOfPalettes)
 	var idef int
 	for i := 0; i < int(sff.header.NumberOfPalettes); i++ {
 		var pal []uint32
@@ -389,6 +391,12 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 			pal = sff.palList.Get(si)
 			if i == 0 {
 				idef = si
+			}
+			switch sff.palList.numcols[[...]int16{0, int16(i)}] {
+				case 256:
+					f.coldepth[i] = 8
+				case 32:
+					f.coldepth[i] = 5
 			}
 		} else {
 			pal = sff.palList.Get(idef)
@@ -446,7 +454,7 @@ func (f *Fnt) getCharSpr(c rune, bank, bt int32) *Sprite {
 }
 
 func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
-	c rune, pal []uint32, window *[4]int32) float32 {
+	c rune, pal []uint32, window *[4]int32, palfx *PalFX) float32 {
 
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
@@ -455,6 +463,14 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 	spr := f.getCharSpr(c, bank, bt)
 	if spr == nil || spr.Tex == nil {
 		return 0
+	}
+
+	// in case of mismatched color depth between bank palette and
+	// sprite own palette, mugen 1.1 uses the latter, ignoring bank
+	if len(f.palettes) != 0 && len(f.coldepth) > int(bank) &&
+		f.images[bt][c].img[0].coldepth != 32 &&
+		f.coldepth[bank] != f.images[bt][c].img[0].coldepth {
+		pal = palfx.getFxPal(f.images[bt][c].img[0].Pal[:], false)
 	}
 
 	x -= xscl * float32(spr.Offset[0])
@@ -516,7 +532,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	}
 
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window) + xscl*float32(f.Spacing[0])
+		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
 	}
 }
 
