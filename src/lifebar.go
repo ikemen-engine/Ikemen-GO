@@ -1289,10 +1289,6 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCom
 			co.pos[0] = sys.lifebarLocalcoord[0] - co.pos[0]
 		}
 	}
-	co.counter = *readLbText(pre+"counter.", is, "%i", 2, f, 0)
-	is.ReadBool(pre+"counter.shake", &co.counter_shake)
-	is.ReadI32(pre+"counter.time", &co.counter_time)
-	is.ReadF32(pre+"counter.mult", &co.counter_mult)
 	var align int32
 	if pre == "" {
 		if side == 0 {
@@ -1301,6 +1297,10 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCom
 			align = -1
 		}
 	}
+	co.counter = *readLbText(pre+"counter.", is, "%i", 2, f, align)
+	is.ReadBool(pre+"counter.shake", &co.counter_shake)
+	is.ReadI32(pre+"counter.time", &co.counter_time)
+	is.ReadF32(pre+"counter.mult", &co.counter_mult)
 	co.text = *readLbText(pre+"text.", is, "", 2, f, align)
 	is.ReadI32(pre+"displaytime", &co.displaytime)
 	is.ReadF32(pre+"showspeed", &co.showspeed)
@@ -1408,10 +1408,13 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		}
 	}
 	if co.counter.font[0] >= 0 && int(co.counter.font[0]) < len(f) && f[co.counter.font[0]] != nil {
+		if side == 0 {
+			length = float32(f[co.counter.font[0]].TextWidth(counter, co.counter.font[1])) * co.counter.lay.scale[0] * sys.lifebar.fnt_scale
+		}
 		z := 1 + float32(co.shaketime)*co.counter_mult*
 			float32(math.Sin(float64(co.shaketime)*(math.Pi/2.5)))
 		co.counter.lay.DrawText((x-length+sys.lifebarOffsetX)/z, float32(co.pos[1])/z, z*sys.lifebarScale, layerno,
-			counter, f[co.counter.font[0]], co.counter.font[1], -1, co.counter.palfx, co.counter.frgba)
+			counter, f[co.counter.font[0]], co.counter.font[1], co.counter.font[2], co.counter.palfx, co.counter.frgba)
 	}
 }
 
