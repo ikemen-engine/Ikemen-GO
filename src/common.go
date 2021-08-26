@@ -238,7 +238,7 @@ func LoadText(filename string) (string, error) {
 
 func FileExist(filename string) string {
 	if info, err := os.Stat(filename); !os.IsNotExist(err) {
-		if info.IsDir() {
+		if info == nil || info.IsDir() {
 			return ""
 		}
 		return filename
