@@ -431,9 +431,14 @@ func (f *Fnt) TextWidth(txt string, bank int32) (w int32) {
 		if f.Type == "truetype" {
 			w += int32(f.ttf.Width(1, string(c)))
 		} else {
-			w += f.CharWidth(c, bank)
-			if i < len(txt)-1 {
-				w += f.Spacing[0]
+			cw := f.CharWidth(c, bank)
+			// in mugen negative spacing matching char width seems to skip calc,
+			// even for 1 symbol string (which normally shouldn't use spacing)
+			if cw + f.Spacing[0] > 0 {
+				w += cw
+				if i < len(txt)-1 {
+					w += f.Spacing[0]
+				}
 			}
 		}
 	}
