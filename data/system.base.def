@@ -126,7 +126,7 @@
 	title.font.height = -1
 	title.text = "MAIN MENU"
 
-	;loading.offset = (localcoordX - (10 * localcoordX / 320)), (localcoordY - 8)
+	;loading.offset = (localcoordX - 1 - (10 * localcoordX / 320)), (localcoordY - 8)
 	loading.font = "default-3x5.def", 0, -1, 191, 191, 191
 	loading.font.scale = 1.0, 1.0
 	loading.font.height = -1
@@ -142,7 +142,7 @@
 	footer2.font.scale = 1.0, 1.0
 	footer2.font.height = -1
 	footer2.text = "Press F1 for info"
-	;footer3.offset = (localcoordX - (2 * localcoordX / 320)), localcoordY
+	;footer3.offset = (localcoordX - 1 - (2 * localcoordX / 320)), localcoordY
 	footer3.font = "default-3x5.def", 0, -1, 191, 191, 191
 	footer3.font.scale = 1.0, 1.0
 	footer3.font.height = -1
