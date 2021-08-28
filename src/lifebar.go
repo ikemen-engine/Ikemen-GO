@@ -56,11 +56,11 @@ func (wt *WinType) SetPerfect() {
 }
 
 type LbText struct {
-	font  [6]int32
-	text  string
-	lay   Layout
-	palfx *PalFX
-	frgba [4]float32 //ttf fonts
+	font     [6]int32
+	text     string
+	lay      Layout
+	palfx    *PalFX
+	frgba    [4]float32 //ttf fonts
 }
 
 func newLbText(align int32) *LbText {
@@ -518,16 +518,41 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 		layerno, &pb.front[fv].anim, pb.front[fv].palfx)
 	pb.shift.lay.DrawAnim(&pr, float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
 		layerno, &pb.shift.anim, pb.shift.palfx)
+
+	// Powerbar text.
 	if pb.counter.font[0] >= 0 && int(pb.counter.font[0]) < len(f) && f[pb.counter.font[0]] != nil {
-		pb.counter.lay.DrawText(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
-			layerno, strings.Replace(pb.counter.text, "%i", fmt.Sprintf("%v", level), 1), f[pb.counter.font[0]],
-			pb.counter.font[1], pb.counter.font[2], pb.counter.palfx, pb.counter.frgba, true)
+		pb.counter.lay.DrawText(
+			float32(pb.pos[0])+sys.lifebarOffsetX,
+			float32(pb.pos[1]),
+			sys.lifebarScale,
+			layerno,
+			strings.Replace(pb.counter.text, "%i", fmt.Sprintf("%v", level), 1),
+			f[pb.counter.font[0]],
+			pb.counter.font[1],
+			pb.counter.font[2],
+			pb.counter.palfx,
+			pb.counter.frgba,
+			true,
+		)
 	}
+
+	// Per-level powerbar text.
 	if pb.value.font[0] >= 0 && int(pb.value.font[0]) < len(f) && f[pb.value.font[0]] != nil {
 		text := strings.Replace(pb.value.text, "%d", fmt.Sprintf("%v", pbval), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
-		pb.value.lay.DrawText(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), sys.lifebarScale,
-			layerno, text, f[pb.value.font[0]], pb.value.font[1], pb.value.font[2], pb.value.palfx, pb.value.frgba, true)
+
+		pb.value.lay.DrawText(
+			float32(pb.pos[0])+sys.lifebarOffsetX,
+			float32(pb.pos[1]), sys.lifebarScale,
+			layerno,
+			text,
+			f[pb.value.font[0]],
+			pb.value.font[1],
+			pb.value.font[2],
+			pb.value.palfx,
+			pb.value.frgba,
+			true,
+		)
 	}
 	pb.top.Draw(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), layerno, sys.lifebarScale)
 }
@@ -2849,69 +2874,69 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				filesflg = false
 				if is.LoadFile("sff", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-					s, err := loadSff(filename, false)
-					if err != nil {
-						return err
-					}
-					*l.sff = *s
-					return nil
-				}); err != nil {
+						s, err := loadSff(filename, false)
+						if err != nil {
+							return err
+						}
+						*l.sff = *s
+						return nil
+					}); err != nil {
 					return nil, err
 				}
 				if is.LoadFile("snd", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-					s, err := LoadSnd(filename)
-					if err != nil {
-						return err
-					}
-					*l.snd = *s
-					return nil
-				}); err != nil {
+						s, err := LoadSnd(filename)
+						if err != nil {
+							return err
+						}
+						*l.snd = *s
+						return nil
+					}); err != nil {
 					return nil, err
 				}
 				if is.LoadFile("fightfx.sff", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-					s, err := loadSff(filename, false)
-					if err != nil {
-						return err
-					}
-					*l.fsff = *s
-					return nil
-				}); err != nil {
+						s, err := loadSff(filename, false)
+						if err != nil {
+							return err
+						}
+						*l.fsff = *s
+						return nil
+					}); err != nil {
 					return nil, err
 				}
 				if is.LoadFile("fightfx.air", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-					str, err := LoadText(filename)
-					if err != nil {
-						return err
-					}
-					lines, i := SplitAndTrim(str, "\n"), 0
-					l.fat = ReadAnimationTable(l.fsff, lines, &i)
-					return nil
-				}); err != nil {
+						str, err := LoadText(filename)
+						if err != nil {
+							return err
+						}
+						lines, i := SplitAndTrim(str, "\n"), 0
+						l.fat = ReadAnimationTable(l.fsff, lines, &i)
+						return nil
+					}); err != nil {
 					return nil, err
 				}
 				if is.LoadFile("common.snd", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-					l.fsnd, err = LoadSnd(filename)
-					return err
-				}); err != nil {
+						l.fsnd, err = LoadSnd(filename)
+						return err
+					}); err != nil {
 					return nil, err
 				}
 				for i := range l.fnt {
 					if is.LoadFile(fmt.Sprintf("font%v", i), []string{deffile, sys.motifDir, "", "data/", "font/"},
 						func(filename string) error {
-						var height int32 = -1
-						if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
-							height = Atoi(is[fmt.Sprintf("font%v.height", i)])
-						}
-						if l.fnt[i], err = loadFnt(filename, height); err != nil {
-							sys.errLog.Printf("failed to load %v (lifebar font): %v", filename, err)
-							l.fnt[i] = newFnt()
-						}
-						return err
-					}); err != nil {
+							var height int32 = -1
+							if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
+								height = Atoi(is[fmt.Sprintf("font%v.height", i)])
+							}
+							if l.fnt[i], err = loadFnt(filename, height); err != nil {
+								sys.errLog.Printf("failed to load %v (lifebar font): %v", filename, err)
+								l.fnt[i] = newFnt()
+							}
+							return err
+						}); err != nil {
 						//return nil, err
 					}
 				}
