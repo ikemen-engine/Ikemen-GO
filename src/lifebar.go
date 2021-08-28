@@ -56,11 +56,11 @@ func (wt *WinType) SetPerfect() {
 }
 
 type LbText struct {
-	font     [6]int32
-	text     string
-	lay      Layout
-	palfx    *PalFX
-	frgba    [4]float32 //ttf fonts
+	font  [6]int32
+	text  string
+	lay   Layout
+	palfx *PalFX
+	frgba [4]float32 //ttf fonts
 }
 
 func newLbText(align int32) *LbText {
@@ -368,27 +368,33 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 }
 
 type PowerBar struct {
-	pos         [2]int32
-	range_x     [2]int32
-	bg0         AnimLayout
-	bg1         AnimLayout
-	bg2         AnimLayout
-	top         AnimLayout
-	mid         AnimLayout
-	front       map[int32]*AnimLayout
-	shift       AnimLayout
-	counter     LbText
-	value       LbText
-	level_snd   [9][2]int32
-	midpower    float32
-	midpowerMin float32
-	prevLevel   int32
-	levelbars   bool
+	pos              [2]int32
+	range_x          [2]int32
+	bg0              AnimLayout
+	bg1              AnimLayout
+	bg2              AnimLayout
+	top              AnimLayout
+	mid              AnimLayout
+	front            map[int32]*AnimLayout
+	shift            AnimLayout
+	counter          LbText
+	counter_rounding int32
+	value            LbText
+	value_rounding   int32
+	level_snd        [9][2]int32
+	midpower         float32
+	midpowerMin      float32
+	prevLevel        int32
+	levelbars        bool
 }
 
 func newPowerBar() *PowerBar {
-	return &PowerBar{level_snd: [9][2]int32{{-1}, {-1}, {-1}},
-		front: make(map[int32]*AnimLayout)}
+	return &PowerBar{
+		level_snd: [9][2]int32{{-1}, {-1}, {-1}},
+		front: make(map[int32]*AnimLayout),
+		counter_rounding: 1000,
+		value_rounding: 1,
+	}
 }
 func readPowerBar(pre string, is IniSection,
 	sff *Sff, at AnimationTable, f []*Fnt) *PowerBar {
@@ -414,9 +420,21 @@ func readPowerBar(pre string, is IniSection,
 			}
 		}
 	}
+	// Lifebar power counter.
 	pb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	pb.counter = *readLbText(pre+"counter.", is, "%i", 0, f, 0)
 	pb.value = *readLbText(pre+"value.", is, "", 0, f, 0)
+	// Format options.
+	is.ReadI32(pre+"counter.format.rounding", &pb.counter_rounding)
+	is.ReadI32(pre+"value.format.power.rounding", &pb.value_rounding)
+	// Avoid division by 0.
+	if pb.counter_rounding < 1 {
+		pb.counter_rounding = 1000
+	}
+	if pb.value_rounding < 1 {
+		pb.value_rounding = 1
+	}
+	// Level sounds.
 	for i := range pb.level_snd {
 		if !is.ReadI32(fmt.Sprintf("%vlevel%v.snd", pre, i+1), &pb.level_snd[i][0],
 			&pb.level_snd[i][1]) {
@@ -526,7 +544,7 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 			float32(pb.pos[1]),
 			sys.lifebarScale,
 			layerno,
-			strings.Replace(pb.counter.text, "%i", fmt.Sprintf("%v", level), 1),
+			strings.Replace(pb.counter.text, "%i", fmt.Sprintf("%v", pbval/pb.counter_rounding), 1),
 			f[pb.counter.font[0]],
 			pb.counter.font[1],
 			pb.counter.font[2],
@@ -538,12 +556,13 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 
 	// Per-level powerbar text.
 	if pb.value.font[0] >= 0 && int(pb.value.font[0]) < len(f) && f[pb.value.font[0]] != nil {
-		text := strings.Replace(pb.value.text, "%d", fmt.Sprintf("%v", pbval), 1)
+		text := strings.Replace(pb.value.text, "%d", fmt.Sprintf("%v", pbval/pb.value_rounding), 1)
 		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
 
 		pb.value.lay.DrawText(
 			float32(pb.pos[0])+sys.lifebarOffsetX,
-			float32(pb.pos[1]), sys.lifebarScale,
+			float32(pb.pos[1]),
+			sys.lifebarScale,
 			layerno,
 			text,
 			f[pb.value.font[0]],

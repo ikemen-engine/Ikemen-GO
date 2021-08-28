@@ -317,7 +317,7 @@ func setupConfig() configSettings {
 	"DebugFontScale": 1,
 	"DebugKeys": true,
 	"DebugMode": true,
-	"Difficulty": 8,
+	"Difficulty": 5,
 	"EscOpensMenu": true,
 	"ExternalShaders": [],
 	"FirstRun": true,
