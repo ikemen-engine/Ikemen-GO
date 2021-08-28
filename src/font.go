@@ -488,19 +488,19 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 }
 
 func (f *Fnt) Print(txt string, x, y, xscl, yscl float32, bank, align int32,
-	window *[4]int32, palfx *PalFX, frgba [4]float32) {
+	window *[4]int32, palfx *PalFX, frgba [4]float32, round bool) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
 			f.DrawTtf(txt, x, y, xscl, yscl, align, true, window, frgba)
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, bank, align, window, palfx)
+			f.DrawText(txt, x, y, xscl, yscl, bank, align, window, palfx, round)
 		}
 	}
 }
 
 //DrawText prints on screen a specified text with the current font sprites
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
-	window *[4]int32, palfx *PalFX) {
+	window *[4]int32, palfx *PalFX, round bool) {
 
 	if len(txt) == 0 {
 		return
@@ -526,7 +526,13 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
 	if align == 0 {
-		x -= float32(math.Round(float64(float32(f.TextWidth(txt, bank)) * xscl * 0.5)))
+		x -= float32(f.TextWidth(txt, bank)) * xscl * 0.5
+		// Aligned strings may end up being rendered with scaling artefacts due to floating point.
+		// Rounding text images offset fixes this problem (should be used only on static text,
+		// not on moving elements like combo text, due to extra precision needed in that case)
+		if round {
+			x = float32(math.Round(float64(x)))
+		}
 	} else if align < 0 {
 		x -= float32(f.TextWidth(txt, bank)) * xscl
 	}
@@ -598,7 +604,7 @@ func (ts *TextSprite) Draw() {
 		if ts.fnt.Type == "truetype" {
 			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.frgba)
 		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx)
+			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx, true)
 		}
 	}
 }
