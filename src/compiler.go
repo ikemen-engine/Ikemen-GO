@@ -8042,7 +8042,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	zss := HasExtension(filename, ".zss")
 	fnz := filename
 	// Load state file
-	if err := LoadFile(&filename, def, func(filename string) error {
+	if err := LoadFile(&filename, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		var err error
 		// If this is a zss file
 		if zss {
@@ -8060,7 +8060,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	}); err != nil {
 		// If filename doesn't exist, see if a zss file exists
 		fnz += ".zss"
-		if err := LoadFile(&fnz, def, func(filename string) error {
+		if err := LoadFile(&fnz, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			b, err := ioutil.ReadFile(filename)
 			if err != nil {
 				return err
@@ -9114,7 +9114,7 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	}
 
 	// Load the command file
-	if err := LoadFile(&cmd, def, func(filename string) error {
+	if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err

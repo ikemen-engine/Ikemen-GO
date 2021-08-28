@@ -216,19 +216,6 @@ function main.f_fileExists(file)
 	return false
 end
 
---add missing relative file path
-function main.f_filePath(path, dir, defaultDir)
-	path = path:gsub('\\', '/')
-	if not path:lower():match('^data/') then
-		if main.f_fileExists(dir .. path) then
-			return dir .. path, true
-		elseif main.f_fileExists(defaultDir .. path) then
-			return defaultDir .. path, true
-		end
-	end
-	return path, false
-end
-
 --prints "t" table content into "toFile" file
 function main.f_printTable(t, toFile)
 	local txt = ''
@@ -991,42 +978,49 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 		end
 	else
 		str = str:gsub('\n', '\\n')
-		for _, c in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
+		-- for each new line
+		for _, line in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
 			local text = ''
-			local tmp = ''
+			local word = ''
 			local pxLeft = length
-			local tmp_px = 0
-			local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ', data.bank)) * data.scaleX
-			for i = 1, string.len(c) do
-				local symbol = string.sub(c, i, i)
-				if font_def[symbol] == nil then --store symbol length in global table for faster counting
+			local word_px = 0
+			-- for each character in current line
+			for i = 1, string.len(line) do
+				local symbol = string.sub(line, i, i)
+				-- store symbol length in global table for faster counting
+				if font_def[symbol] == nil then
 					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol, data.bank)
 				end
-				local px = font_def[symbol] * data.scaleX
-				if pxLeft + space - px >= -1 or text == '' then
+				local px = (font_def[symbol] + font_def.Spacing[1]) * data.scaleX
+				-- continue counting if character fits in the line length
+				if pxLeft - px >= 0 or symbol:match('%s') or text == '' then
+					-- word valid for line appending on whitespace character (or if it's first word in line)
 					if symbol:match('%s') or text == '' then
-						text = text .. tmp .. symbol
-						tmp = ''
-						tmp_px = 0
+						text = text .. word .. symbol
+						word = ''
+						word_px = 0
+					-- otherwise add character to the current word
 					else
-						tmp = tmp .. symbol
-						tmp_px = tmp_px + px
+						word = word .. symbol
+						word_px = word_px + px
 					end
 					pxLeft = pxLeft - px
-				else --character in this word is outside the pixel range
+				-- otherwise append current words to table and reset line counting
+				else
 					table.insert(t, text)
 					text = ''
-					tmp = tmp .. symbol
-					tmp_px = tmp_px + px
-					pxLeft = length - tmp_px
-					tmp_px = 0
+					word = word .. symbol
+					word_px = word_px + px
+					pxLeft = length - word_px
+					word_px = 0
 				end
 			end
-			text = text .. tmp
+			-- append remaining text in last line
+			text = text .. word
 			table.insert(t, text)
 		end
 	end
-	--render
+	-- render text
 	local retDone = false
 	local retLength = 0
 	local lengthCnt = 0
@@ -1662,7 +1656,7 @@ function main.f_addChar(line, playable, loading, slot)
 			if playable then
 				for _, v in ipairs({'intro', 'ending', 'arcadepath', 'ratiopath'}) do
 					if main.t_selChars[row][v] ~= '' then
-						main.t_selChars[row][v] = main.f_filePath(main.t_selChars[row][v], main.t_selChars[row].dir, 'data/')
+						main.t_selChars[row][v] = searchFile(main.t_selChars[row][v], {main.t_selChars[row].dir, '', motif.fileDir, 'data/'})
 					end
 				end
 				main.t_selChars[row].order = 1
@@ -1783,7 +1777,7 @@ function main.f_addStage(file, hidden)
 					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
 				elseif tonumber(v) then
 					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end

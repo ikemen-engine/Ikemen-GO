@@ -1913,7 +1913,7 @@ func (c *Char) load(def string) error {
 		gi.constants[key] = float32(Atof(value))
 	}
 
-	if err := LoadFile(&cns, def, func(filename string) error {
+	if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2172,14 +2172,14 @@ func (c *Char) load(def string) error {
 			}
 		}
 	}
-	if LoadFile(&sprite, def, func(filename string) error {
+	if LoadFile(&sprite, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		var err error
 		gi.sff, err = loadSff(filename, true)
 		return err
 	}); err != nil {
 		return err
 	}
-	if LoadFile(&anim, def, func(filename string) error {
+	if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2192,7 +2192,7 @@ func (c *Char) load(def string) error {
 		return err
 	}
 	if len(sound) > 0 {
-		if LoadFile(&sound, def, func(filename string) error {
+		if LoadFile(&sound, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			var err error
 			gi.snd, err = LoadSnd(filename)
 			return err
@@ -2212,7 +2212,7 @@ func (c *Char) loadPallet() {
 			pl := c.gi().sff.palList.Get(i)
 			var f *os.File
 			var err error
-			if LoadFile(&c.gi().pal[i], c.gi().def, func(file string) error {
+			if LoadFile(&c.gi().pal[i], []string{c.gi().def, "", sys.motifDir, "data/"}, func(file string) error {
 				f, err = os.Open(file)
 				return err
 			}) == nil {
