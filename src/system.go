@@ -1489,7 +1489,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	if s.tickNextFrame() {
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
-			spd = s.gameSpeed
+			spd = 1
 		} else if !s.sf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
 			if s.slowtime < s.lifebar.ro.slow_fadetime {

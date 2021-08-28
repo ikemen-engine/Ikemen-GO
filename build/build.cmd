@@ -3,11 +3,9 @@ cd ..
 set CGO_ENABLED = 1
 set GOOS = windows
 
-if "%~1" == "zig" (
-	echo Using Zig for compilation.
-	set CC = zig cc
-	set CCX = zig c++
-)
+echo Using Zig for compilation.
+set CC = zig cc
+set CCX = zig c++
 
 if not exist go.mod (
 	echo Missing dependencies, please run get.cmd

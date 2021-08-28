@@ -2102,7 +2102,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame_roundtime = "Time Limit"
 	motif.option_info.menu_itemname_menugame_lifemul = "Life"
 	motif.option_info.menu_itemname_menugame_singlevsteamlife = "Single VS Team Life"
-	motif.option_info.menu_itemname_menugame_gamespeed = "Game Speed"
+	--motif.option_info.menu_itemname_menugame_gamespeed = "Game Speed"
 	motif.option_info.menu_itemname_menugame_roundsnumsingle = "Rounds to Win (Single)"
 	motif.option_info.menu_itemname_menugame_maxdrawgames = "Max Draw Games"
 	motif.option_info.menu_itemname_menugame_credits = "Credits"
@@ -2224,7 +2224,7 @@ function motif.setBaseOptionInfo()
 		"menugame_roundtime",
 		"menugame_lifemul",
 		"menugame_singlevsteamlife",
-		"menugame_gamespeed",
+		--"menugame_gamespeed",
 		"menugame_roundsnumsingle",
 		"menugame_maxdrawgames",
 		"menugame_credits",

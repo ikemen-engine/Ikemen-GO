@@ -142,7 +142,7 @@ options.t_itemname = {
 			config.Fullscreen = false
 			config.GameWidth = 640
 			config.GameHeight = 480
-			config.GameSpeed = 100
+			--config.GameFramerate = 60
 			--config.IP = {}
 			config.LifeMul = 100
 			config.ListenPort = "7500"
@@ -203,7 +203,7 @@ options.t_itemname = {
 			setAllowDebugKeys(config.DebugKeys)
 			setAllowDebugMode(config.DebugMode)
 			setAudioDucking(config.AudioDucking)
-			setGameSpeed(config.GameSpeed / 100)
+			--setGameSpeed(config.GameSpeed / 100)
 			setLifeShare(1, config.TeamLifeShare)
 			setLifeShare(2, config.TeamLifeShare)
 			setLifeMul(config.LifeMul / 100)
@@ -297,7 +297,8 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Game Speed
+	-- Game Speed
+	--[[
 	['gamespeed'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) and config.GameSpeed < 200 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
@@ -314,6 +315,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	]]--
 	--Rounds to Win (Single)
 	['roundsnumsingle'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) and main.roundsNumSingle[1] < 10 then
@@ -1325,7 +1327,7 @@ function options.f_vardisplay(itemname)
 	if itemname == 'difficulty' then return config.Difficulty end
 	if itemname == 'explodmax' then return config.MaxExplod end
 	if itemname == 'fullscreen' then return options.f_boolDisplay(config.Fullscreen) end
-	if itemname == 'gamespeed' then return config.GameSpeed .. '%' end
+	--if itemname == 'gamespeed' then return config.GameSpeed .. '%' end
 	if itemname == 'guardbar' then return options.f_boolDisplay(config.BarGuard) end
 	if itemname == 'helpermax' then return config.MaxHelper end
 	if itemname == 'lifemul' then return config.LifeMul .. '%' end
