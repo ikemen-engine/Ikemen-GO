@@ -6552,7 +6552,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
-				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
+				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist*c.localscl/getter.localscl {
 					getter.inguarddist = true
 				}
 				if c.helperIndex != 0 {
