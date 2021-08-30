@@ -474,6 +474,7 @@ const (
 	OC_ex_timetotal
 	OC_ex_pos_z
 	OC_ex_vel_z
+	OC_ex_jugglepoints
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1874,6 +1875,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.pos[2] * c.localscl / oc.localscl)
 	case OC_ex_vel_z:
 		sys.bcStack.PushF(c.vel[2] * c.localscl / oc.localscl)
+	case OC_ex_jugglepoints:
+		sys.bcStack.PushI(c.juggle)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
