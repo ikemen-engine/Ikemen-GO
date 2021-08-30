@@ -6390,6 +6390,31 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type assertInput StateControllerBase
+
+const (
+	assertInput_flag byte = iota
+	assertInput_redirectid
+)
+
+func (sc assertInput) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case assertInput_flag:
+			crun.inputFlag |= InputBits(exp[0].evalI(c))
+		case assertInput_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type dialogue StateControllerBase
 
 const (

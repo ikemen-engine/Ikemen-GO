@@ -1636,6 +1636,7 @@ type Char struct {
 	defaultHitScale       [3]*HitScale
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
+	inputFlag             InputBits
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5213,6 +5214,7 @@ func (c *Char) action() {
 				c.setSCF(SCF_over)
 			}
 			c.specialFlag = 0
+			c.inputFlag = 0
 			if c.player {
 				if c.alive() || !c.scf(SCF_over) || !c.scf(SCF_ko_round_middle) {
 					c.setSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)

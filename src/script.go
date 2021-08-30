@@ -583,7 +583,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		if cl.Input(int(numArg(l, 2))-1, 1, 0) {
+		if cl.Input(int(numArg(l, 2))-1, 1, 0, 0) {
 			cl.Step(1, false, false, 0)
 		}
 		return 0
@@ -2651,7 +2651,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "const", func(*lua.LState) int {
 		c := sys.debugWC
 		var ln lua.LNumber
-		switch strArg(l, 1) {
+		switch strings.ToLower(strArg(l, 1)) {
 		case "data.life":
 			ln = lua.LNumber(c.gi().data.life)
 		case "data.power":
@@ -2838,7 +2838,7 @@ func triggerFunctions(l *lua.LState) {
 		case "movement.down.friction.threshold":
 			ln = lua.LNumber(c.gi().movement.down.friction_threshold)
 		default:
-			ln = lua.LNumber(c.gi().constants[strArg(l, 1)])
+			ln = lua.LNumber(c.gi().constants[strings.ToLower(strArg(l, 1))])
 		}
 		l.Push(ln)
 		return 1
