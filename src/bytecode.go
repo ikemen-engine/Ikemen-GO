@@ -7427,6 +7427,27 @@ func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+// Platform bytecode definitons
+type createPlatform StateControllerBase
+
+const (
+	createPlatform_id byte = iota
+	createPlatform_name
+	createPlatform_anim
+	createPlatform_pos
+	createPlatform_width
+	createPlatform_offset
+	createPlatform_activeTime
+)
+
+type removePlatform StateControllerBase
+
+const (
+	removePlatform_id byte = iota
+	removePlatform_name
+)
+
+// StateDef data struct
 type StateBytecode struct {
 	stateType StateType
 	moveType  MoveType
@@ -7438,9 +7459,15 @@ type StateBytecode struct {
 	numVars   int32
 }
 
+// StateDef bytecode creation function
 func newStateBytecode(pn int) *StateBytecode {
-	sb := &StateBytecode{stateType: ST_S, moveType: MT_I, physics: ST_N,
-		playerNo: pn, block: *newStateBlock()}
+	sb := &StateBytecode{
+		stateType: ST_S,
+		moveType: MT_I,
+		physics: ST_N,
+		playerNo: pn,
+		block: *newStateBlock(),
+	}
 	return sb
 }
 func (sb *StateBytecode) init(c *Char) {
