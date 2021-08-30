@@ -1588,7 +1588,45 @@ local motif =
 	},
 	training_info =
 	{
-		--same default values menu_info
+		--same default values as menu_info
+		--training specific parameters:
+		menu_valuename_dummycontrol_cooperative = "Cooperative", --Ikemen feature
+		menu_valuename_dummycontrol_ai = "AI", --Ikemen feature
+		menu_valuename_dummycontrol_manual = "Manual", --Ikemen feature
+		menu_valuename_ailevel_1 = "1", --Ikemen feature
+		menu_valuename_ailevel_2 = "2", --Ikemen feature
+		menu_valuename_ailevel_3 = "3", --Ikemen feature
+		menu_valuename_ailevel_4 = "4", --Ikemen feature
+		menu_valuename_ailevel_5 = "5", --Ikemen feature
+		menu_valuename_ailevel_6 = "6", --Ikemen feature
+		menu_valuename_ailevel_7 = "7", --Ikemen feature
+		menu_valuename_ailevel_8 = "8", --Ikemen feature
+		menu_valuename_guardmode_none = "None", --Ikemen feature
+		menu_valuename_guardmode_auto = "Auto", --Ikemen feature
+		menu_valuename_dummymode_stand = "Stand", --Ikemen feature
+		menu_valuename_dummymode_crouch = "Crouch", --Ikemen feature
+		menu_valuename_dummymode_jump = "Jump", --Ikemen feature
+		menu_valuename_dummymode_wjump = "W Jump", --Ikemen feature
+		menu_valuename_distance_any = "Any", --Ikemen feature
+		menu_valuename_distance_close = "Close", --Ikemen feature
+		menu_valuename_distance_medium = "Medium", --Ikemen feature
+		menu_valuename_distance_far = "Far", --Ikemen feature
+		menu_valuename_buttonjam_none = "None", --Ikemen feature
+		menu_valuename_buttonjam_a = "A", --Ikemen feature
+		menu_valuename_buttonjam_b = "B", --Ikemen feature
+		menu_valuename_buttonjam_c = "C", --Ikemen feature
+		menu_valuename_buttonjam_x = "X", --Ikemen feature
+		menu_valuename_buttonjam_y = "Y", --Ikemen feature
+		menu_valuename_buttonjam_z = "Z", --Ikemen feature
+		menu_valuename_buttonjam_s = "Start", --Ikemen feature
+		menu_valuename_buttonjam_d = "D", --Ikemen feature
+		menu_valuename_buttonjam_w = "W", --Ikemen feature
+		;menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
+		;menu_itemname_ailevel = "AI Level", --Ikemen feature
+		;menu_itemname_guardmode = "Guard Mode", --Ikemen feature
+		;menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
+		;menu_itemname_distance = "Distance", --Ikemen feature
+		;menu_itemname_buttonjam = "Button Jam", --Ikemen feature
 	},
 	trainingbgdef =
 	{
@@ -2342,6 +2380,8 @@ function motif.setBaseMenuInfo()
 	motif.menu_info.menu_itemname_menuinput_empty = ""
 	motif.menu_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.menu_info.menu_itemname_menuinput_back = "Back"
+	--menu_itemname_reset = "Round Reset"
+	--menu_itemname_reload = "Rematch"
 	motif.menu_info.menu_itemname_commandlist = "Command List"
 	motif.menu_info.menu_itemname_characterchange = "Character Change"
 	motif.menu_info.menu_itemname_exit = "Exit"
@@ -2354,6 +2394,8 @@ function motif.setBaseMenuInfo()
 		"menuinput_empty",
 		"menuinput_inputdefault",
 		"menuinput_back",
+		--"reset",
+		--"reload",
 		"commandlist",
 		"characterchange",
 		"exit",
@@ -2362,24 +2404,43 @@ end
 
 function motif.setBaseTrainingInfo()
 	motif.training_info.menu_itemname_back = "Continue"
+	motif.training_info.menu_itemname_menutraining = "Training Menu"
+	motif.training_info.menu_itemname_menutraining_dummycontrol = "Dummy Control"
+	motif.training_info.menu_itemname_menutraining_ailevel = "AI Level"
+	motif.training_info.menu_itemname_menutraining_guardmode = "Guard Mode"
+	motif.training_info.menu_itemname_menutraining_dummymode = "Dummy Mode"
+	motif.training_info.menu_itemname_menutraining_distance = "Distance"
+	motif.training_info.menu_itemname_menutraining_buttonjam = "Button Jam"
+	motif.training_info.menu_itemname_menutraining_back = "Back"
 	motif.training_info.menu_itemname_menuinput = "Button Config"
 	motif.training_info.menu_itemname_menuinput_keyboard = "Key Config"
 	motif.training_info.menu_itemname_menuinput_gamepad = "Joystick Config"
 	motif.training_info.menu_itemname_menuinput_empty = ""
 	motif.training_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.training_info.menu_itemname_menuinput_back = "Back"
+	--motif.training_info.menu_itemname_reset = "Round Reset"
+	--motif.training_info.menu_itemname_reload = "Rematch"
 	motif.training_info.menu_itemname_commandlist = "Command List"
 	motif.training_info.menu_itemname_characterchange = "Character Change"
 	motif.training_info.menu_itemname_exit = "Exit"
 	main.t_sort.training_info = {}
 	main.t_sort.training_info.menu = {
 		"back",
+		"menutraining",
+		"menutraining_dummycontrol",
+		"menutraining_ailevel",
+		"menutraining_guardmode",
+		"menutraining_dummymode",
+		"menutraining_distance",
+		"menutraining_buttonjam",
 		"menuinput",
 		"menuinput_keyboard",
 		"menuinput_gamepad",
 		"menuinput_empty",
 		"menuinput_inputdefault",
 		"menuinput_back",
+		--"reset",
+		--"reload",
 		"commandlist",
 		"characterchange",
 		"exit",

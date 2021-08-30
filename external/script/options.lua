@@ -120,7 +120,8 @@ options.t_itemname = {
 			--	"data/guardbreak.zss",
 			--	"data/rank.zss",
 			--	"data/score.zss",
-			--	"data/tag.zss"
+			--	"data/tag.zss",
+			--	"data/training.zss"
 			--}
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10
@@ -181,7 +182,7 @@ options.t_itemname = {
 			config.TeamDuplicates = true
 			config.TeamLifeShare = false
 			config.TeamPowerShare = true
-			--config.TrainingChar = "chars/training/training.def"
+			--config.TrainingChar = ""
 			config.TurnsRecoveryBase = 0
 			config.TurnsRecoveryBonus = 20
 			config.VolumeBgm = 80
@@ -199,7 +200,9 @@ options.t_itemname = {
 			main.f_updateRoundsNum()
 			main.f_setPlayers(config.Players, true)
 			motif.f_loadCursorData()
-			options.f_resetVardisplay(options.menu)
+			for _, v in ipairs(options.t_vardisplayPointers) do
+				v.vardisplay = options.f_vardisplay(v.itemname)
+			end
 			setAllowDebugKeys(config.DebugKeys)
 			setAllowDebugMode(config.DebugMode)
 			setAudioDucking(config.AudioDucking)
@@ -1294,23 +1297,7 @@ function options.f_createMenu(tbl, bool_main)
 	end
 end
 
---reset vardisplay in tables
-function options.f_resetVardisplay(t)
-	for k, v in pairs(t) do
-		if k == 'items' and type(v) == "table" and #v > 0 then
-			for i, v2 in ipairs(v) do
-				if v2.vardisplay ~= nil then
-					v2.vardisplay = options.f_vardisplay(v2.itemname)
-				end
-			end
-		elseif k == 'submenu' and type(v) == "table" then
-			for k2, v2 in pairs(v) do
-				options.f_resetVardisplay(v2)
-			end
-		end
-	end
-end
-
+options.t_vardisplayPointers = {}
 function options.f_vardisplay(itemname)
 	if itemname == 'afterimagemax' then return config.MaxAfterImage end
 	if itemname == 'aipalette' then return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) end
@@ -1396,6 +1383,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 					vardisplay = options.f_vardisplay(c),
 					selected = false,
 				})
+				table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
 				--creating anim data out of appended menu items
 				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
 				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
@@ -1416,6 +1404,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 						vardisplay = options.f_vardisplay(c),
 						selected = false,
 					})
+					table.insert(options.t_vardisplayPointers, options.menu.items[#options.menu.items])
 				end
 			end
 			t_pos = options.menu.submenu[c]
@@ -1433,6 +1422,7 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 					vardisplay = options.f_vardisplay(c),
 					selected = false,
 				})
+				table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
 			end
 			if j > lastNum then
 				t_pos = t_pos.submenu[c]

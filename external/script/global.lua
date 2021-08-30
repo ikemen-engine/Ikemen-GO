@@ -208,6 +208,7 @@ function loop()
 			if indialogue() then
 				dialogueReset()
 			end
+			menu.f_trainingReset()
 		end
 		start.turnsRecoveryInit = false
 		start.rankInit = false
