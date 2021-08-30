@@ -1632,6 +1632,10 @@ function main.f_addChar(line, playable, loading, slot)
 	for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 		c = c:match('^%s*(.-)%s*$')
 		if i == 1 then
+			if c == '' then
+				playable = false
+				break
+			end
 			c = c:gsub('\\', '/')
 			c = tostring(c)
 			--nClock = os.clock()
@@ -2004,9 +2008,9 @@ for i = 1, #t_addExluded do
 	main.f_addChar(t_addExluded[i], true, true)
 end
 
---add Training by stupa if not included in select.def
+--add Training char if defined and not included in select.def
 if main.t_charDef[config.TrainingChar:lower()] == nil then
-	main.f_addChar(config.TrainingChar .. ', exclude = 1', false, true)
+	main.f_addChar(config.TrainingChar .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
 --add remaining character parameters
@@ -2080,11 +2084,6 @@ if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmax
 	for k, v in pairs(main.t_bossChars) do
 		main.t_selOptions.bossrushmaxmatches[k] = #v
 	end
-end
-
---print error if training character is missing
-if main.t_charDef[config.TrainingChar:lower()] == nil then
-	panicError("\nTraining character not found: " .. config.TrainingChar)
 end
 
 --uppercase title
@@ -2765,8 +2764,10 @@ main.t_itemname = {
 	--TRAINING
 	['training'] = function()
 		main.f_playerInput(main.playerInput, 1)
-		main.cpuSide[2] = false
-		main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
+		main.t_pIn[2] = 1
+		if main.t_charDef[config.TrainingChar:lower()] ~= nil then
+			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
+		end
 		--main.lifebar.p1score = true
 		main.roundTime = -1
 		main.selectMenu[2] = true

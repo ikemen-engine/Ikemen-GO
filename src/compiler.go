@@ -131,6 +131,7 @@ func newCompiler() *Compiler {
 		"zoom":                 c.zoom,
 		"forcefeedback":        c.forceFeedback,
 		"null":                 c.null,
+		"assertinput":          c.assertInput,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
 		"dizzypointsset":       c.dizzyPointsSet,
@@ -7208,6 +7209,72 @@ func (c *Compiler) forceFeedback(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "self",
 			forceFeedback_self, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) assertInput(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*assertInput)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			assertInput_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		foo := func(data string) error {
+			switch data {
+			case "U":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_PU)))
+			case "D":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_PD)))
+			case "L":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_PL)))
+			case "R":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_PR)))
+			case "a":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_A)))
+			case "b":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_B)))
+			case "c":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_C)))
+			case "x":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_X)))
+			case "y":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_Y)))
+			case "z":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_Z)))
+			case "s":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_S)))
+			case "d":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_D)))
+			case "w":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_W)))
+			case "m":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_M)))
+			default:
+				return Error("Invalid value: " + data)
+			}
+			return nil
+		}
+		f := false
+		if err := c.stateParam(is, "flag", func(data string) error {
+			f = true
+			return foo(data)
+		}); err != nil {
+			return err
+		}
+		if !f {
+			return Error("flag parameter not specified")
+		}
+		if err := c.stateParam(is, "flag2", func(data string) error {
+			return foo(data)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "flag3", func(data string) error {
+			return foo(data)
+		}); err != nil {
 			return err
 		}
 		return nil

@@ -255,7 +255,7 @@ function start.f_remapAI(ai)
 			end
 		end
 		if start.p[side].teamMode == 0 or start.p[side].teamMode == 2 then --Single or Turns
-			if (main.t_pIn[side] == side and not main.cpuSide[side] and not main.coop) or start.challenger > 0 then
+			if (main.t_pIn[side] == side and not main.cpuSide[side] and not main.coop) or start.challenger > 0 or gamemode('training') then
 				setCom(side, 0)
 			else
 				setCom(side, ai or start.f_difficulty(side, offset))
@@ -1021,7 +1021,7 @@ end
 --returns char ref out of def filename
 function start.f_getCharRef(def)
 	if main.t_charDef[def:lower()] == nil then
-		if not main.f_addChar(def .. ', exclude = 1', true, false) then
+		if not main.f_addChar(def .. ', order = 0, ordersurvival = 0, exclude = 1', true, false) then
 			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
 		end
 	end

@@ -306,7 +306,8 @@ func setupConfig() configSettings {
 		"data/guardbreak.zss",
 		"data/rank.zss",
 		"data/score.zss",
-		"data/tag.zss"
+		"data/tag.zss",
+		"data/training.zss"
     ],
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
@@ -389,7 +390,7 @@ func setupConfig() configSettings {
 	"TeamDuplicates": true,
 	"TeamLifeShare": false,
 	"TeamPowerShare": true,
-	"TrainingChar": "chars/training/training.def",
+	"TrainingChar": "",
 	"TurnsRecoveryBase": 0,
 	"TurnsRecoveryBonus": 20,
 	"VolumeBgm": 80,

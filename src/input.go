@@ -1956,7 +1956,7 @@ func NewCommandList(cb *CommandBuffer) *CommandList {
 	return &CommandList{Buffer: cb, Names: make(map[string]int),
 		DefaultTime: 15, DefaultBufferTime: 1}
 }
-func (cl *CommandList) Input(i int, facing int32, aiLevel float32) bool {
+func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits) bool {
 	if cl.Buffer == nil {
 		return false
 	}
@@ -1978,40 +1978,40 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32) bool {
 		if i < 0 {
 			i = ^i
 			if i < len(sys.aiInput) {
-				L = sys.aiInput[i].L()
-				R = sys.aiInput[i].R()
-				U = sys.aiInput[i].U()
-				D = sys.aiInput[i].D()
-				a = sys.aiInput[i].a()
-				b = sys.aiInput[i].b()
-				c = sys.aiInput[i].c()
-				x = sys.aiInput[i].x()
-				y = sys.aiInput[i].y()
-				z = sys.aiInput[i].z()
-				s = sys.aiInput[i].s()
-				d = sys.aiInput[i].d()
-				w = sys.aiInput[i].w()
-				m = sys.aiInput[i].m()
+				L = sys.aiInput[i].L() || ib&IB_PL != 0
+				R = sys.aiInput[i].R() || ib&IB_PR != 0
+				U = sys.aiInput[i].U() || ib&IB_PU != 0
+				D = sys.aiInput[i].D() || ib&IB_PD != 0
+				a = sys.aiInput[i].a() || ib&IB_A != 0
+				b = sys.aiInput[i].b() || ib&IB_B != 0
+				c = sys.aiInput[i].c() || ib&IB_C != 0
+				x = sys.aiInput[i].x() || ib&IB_X != 0
+				y = sys.aiInput[i].y() || ib&IB_Y != 0
+				z = sys.aiInput[i].z() || ib&IB_Z != 0
+				s = sys.aiInput[i].s() || ib&IB_S != 0
+				d = sys.aiInput[i].d() || ib&IB_D != 0
+				w = sys.aiInput[i].w() || ib&IB_W != 0
+				m = sys.aiInput[i].m() || ib&IB_M != 0
 			}
 		} else if i < len(sys.inputRemap) {
 			in := sys.inputRemap[i]
 			if in < len(sys.keyConfig) {
 				joy := sys.keyConfig[in].Joy
 				if joy == -1 {
-					L = sys.keyConfig[in].L()
-					R = sys.keyConfig[in].R()
-					U = sys.keyConfig[in].U()
-					D = sys.keyConfig[in].D()
-					a = sys.keyConfig[in].a()
-					b = sys.keyConfig[in].b()
-					c = sys.keyConfig[in].c()
-					x = sys.keyConfig[in].x()
-					y = sys.keyConfig[in].y()
-					z = sys.keyConfig[in].z()
-					s = sys.keyConfig[in].s()
-					d = sys.keyConfig[in].d()
-					w = sys.keyConfig[in].w()
-					m = sys.keyConfig[in].m()
+					L = sys.keyConfig[in].L() || ib&IB_PL != 0
+					R = sys.keyConfig[in].R() || ib&IB_PR != 0
+					U = sys.keyConfig[in].U() || ib&IB_PU != 0
+					D = sys.keyConfig[in].D() || ib&IB_PD != 0
+					a = sys.keyConfig[in].a() || ib&IB_A != 0
+					b = sys.keyConfig[in].b() || ib&IB_B != 0
+					c = sys.keyConfig[in].c() || ib&IB_C != 0
+					x = sys.keyConfig[in].x() || ib&IB_X != 0
+					y = sys.keyConfig[in].y() || ib&IB_Y != 0
+					z = sys.keyConfig[in].z() || ib&IB_Z != 0
+					s = sys.keyConfig[in].s() || ib&IB_S != 0
+					d = sys.keyConfig[in].d() || ib&IB_D != 0
+					w = sys.keyConfig[in].w() || ib&IB_W != 0
+					m = sys.keyConfig[in].m() || ib&IB_M != 0
 				}
 			}
 			if in < len(sys.joystickConfig) {
