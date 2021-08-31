@@ -20,7 +20,6 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	powerSet{value: playerId(getPlayerID(1)),powerMax; redirectId: getPlayerID(1)}
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
 	mapSet{map: "_iksys_trainingDir"; value: 0}
-	mapSet{map: "_iksys_trainingP1Dist"; value: 0}
 } else if roundState = 2 {
 	assertSpecial{flag: noko}
 	# Life and Power recovery
@@ -67,23 +66,23 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 			}
 		}
 		if map(_iksys_trainingDir) != 0 {
-			# if adjusting position is no longer needed but character is moving back
-			if $dir = 0 && map(_iksys_trainingDir) = -1 {
-				# update map if P1 is holding back and he is closer to back edge than in last frame
-				if playerId(getPlayerID(1)),command = "holdback" || playerId(getPlayerID(1)),backEdgeBodyDist < map(_iksys_trainingP1Dist) {
-					mapSet{map: "_iksys_trainingP1Dist"; value: playerId(getPlayerID(1)),backEdgeBodyDist}
-				# otherwise stop further movement
+			# if adjusting position is no longer needed
+			if $dir = 0 {
+				# maintain assertion if player and dummy are moving in the same direction
+				if map(_iksys_trainingDir) = 1 && playerId(getPlayerID(1)),command = "holdback" || map(_iksys_trainingDir) = -1 && playerId(getPlayerID(1)),command = "holdfwd" {
+				# otherwise stop further assertion
 				} else {
 					mapSet{map: "_iksys_trainingDir"; value: 0}
 				}
-			# if dummy should move forward and player is not trying to move back
-			} else if map(_iksys_trainingDir) = 1 && command != "holdback" {
+			}
+			# if dummy should move forward and player is not trying to move dummy back
+			if map(_iksys_trainingDir) = 1 && command != "holdback" {
 				if facing = 1 {
 					assertInput{flag: R}
 				} else {
 					assertInput{flag: L}
 				}
-			# if dummy should move backward and player is not trying to move forward
+			# if dummy should move backward and player is not trying to move dummy forward
 			} else if map(_iksys_trainingDir) = -1 && command != "holdfwd" {
 				if facing = 1 {
 					assertInput{flag: L}
@@ -117,24 +116,35 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 			}
 			# Button jam
 			if map(_iksys_trainingButtonJam) > 0 && ctrl && command != "holdback" && command != "holdfwd" {
-				if map(_iksys_trainingButtonJam) = 1 {
+				if map(_iksys_trainingButtonJamDelay) > 0 {
+					mapAdd{map: "_iksys_trainingButtonJamDelay"; value: -1}
+				} else if map(_iksys_trainingButtonJam) = 1 {
 					assertInput{flag: a}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 2 {
 					assertInput{flag: b}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 3 {
 					assertInput{flag: c}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 4 {
 					assertInput{flag: x}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 5 {
 					assertInput{flag: y}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 6 {
 					assertInput{flag: z}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 7 {
 					assertInput{flag: s}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 8 {
 					assertInput{flag: d}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				} else if map(_iksys_trainingButtonJam) = 9 {
 					assertInput{flag: w}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
 				}
 			}
 		}
