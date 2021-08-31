@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/gob"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"unsafe"
-	"encoding/binary"
 )
 
 type StateType int32
@@ -474,6 +474,7 @@ const (
 	OC_ex_timetotal
 	OC_ex_pos_z
 	OC_ex_vel_z
+	OC_ex_jugglepoints
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1874,6 +1875,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.pos[2] * c.localscl / oc.localscl)
 	case OC_ex_vel_z:
 		sys.bcStack.PushF(c.vel[2] * c.localscl / oc.localscl)
+	case OC_ex_jugglepoints:
+		sys.bcStack.PushI(c.juggle)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -6341,7 +6344,7 @@ const (
 )
 
 func (sc forceFeedback) Run(c *Char, _ []int32) bool {
-	crun := c
+	/*crun := c
 	waveform := int32(0)
 	time := int32(60)
 	freq := [4]float32{128, 0, 0, 0}
@@ -6385,7 +6388,7 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 			}
 		}
 		return true
-	})
+	})*/
 	//TODO: not implemented
 	return false
 }
@@ -7224,7 +7227,7 @@ const (
 )
 
 func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
-	crun := c
+	//crun := c
 	var cid int32
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
@@ -7254,7 +7257,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			y = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
+				//crun = rid
 			} else {
 				return false
 			}
@@ -7424,6 +7427,27 @@ func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+// Platform bytecode definitons
+type createPlatform StateControllerBase
+
+const (
+	createPlatform_id byte = iota
+	createPlatform_name
+	createPlatform_anim
+	createPlatform_pos
+	createPlatform_width
+	createPlatform_offset
+	createPlatform_activeTime
+)
+
+type removePlatform StateControllerBase
+
+const (
+	removePlatform_id byte = iota
+	removePlatform_name
+)
+
+// StateDef data struct
 type StateBytecode struct {
 	stateType StateType
 	moveType  MoveType
@@ -7435,9 +7459,15 @@ type StateBytecode struct {
 	numVars   int32
 }
 
+// StateDef bytecode creation function
 func newStateBytecode(pn int) *StateBytecode {
-	sb := &StateBytecode{stateType: ST_S, moveType: MT_I, physics: ST_N,
-		playerNo: pn, block: *newStateBlock()}
+	sb := &StateBytecode{
+		stateType: ST_S,
+		moveType: MT_I,
+		physics: ST_N,
+		playerNo: pn,
+		block: *newStateBlock(),
+	}
 	return sb
 }
 func (sb *StateBytecode) init(c *Char) {

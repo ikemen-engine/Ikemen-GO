@@ -302,7 +302,8 @@ if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
 end
 if main.flags['-speed'] ~= nil then
-	config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+	--config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+	setGameSpeed(math.max(10, math.min(tonumber(main.flags['-speed']), 200)))
 end
 if main.flags['-speedtest'] ~= nil then
 	setGameSpeed(100)

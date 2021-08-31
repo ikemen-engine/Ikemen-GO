@@ -36,6 +36,8 @@ var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
 var postShaderSelect []uintptr //[4]uintptr
 
+// Render initialization.
+// Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
 	vertShader := "attribute vec2 position;" +
 		"attribute vec2 uv;" +
