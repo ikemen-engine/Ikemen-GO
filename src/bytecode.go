@@ -7113,7 +7113,7 @@ func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeAdd_value:
-			sys.time = Min(sys.roundTime, sys.time+exp[0].evalI(c))
+			sys.time = Max(0, Min(sys.roundTime, sys.time+exp[0].evalI(c)))
 		}
 		return true
 	})
@@ -7131,7 +7131,7 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeSet_value:
-			sys.time = Min(sys.roundTime, exp[0].evalI(c))
+			sys.time = Max(0, Min(sys.roundTime, exp[0].evalI(c)))
 		}
 		return true
 	})
