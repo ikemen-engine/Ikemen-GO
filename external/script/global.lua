@@ -208,7 +208,9 @@ function loop()
 			if indialogue() then
 				dialogueReset()
 			end
-			menu.f_trainingReset()
+			if gamemode('training') then
+				menu.f_trainingReset()
+			end
 		end
 		start.turnsRecoveryInit = false
 		start.rankInit = false
