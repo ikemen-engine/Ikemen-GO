@@ -5,7 +5,7 @@
 # _iksys_trainingGuardMode: 0 - none, 1 - auto
 # _iksys_trainingDummyMode: 0 - stand, 1 - crouch, 2 - jump, 3 - wjump
 # _iksys_trainingDistance: 0 - any, 1 - close, 2 - medium, 3 - far
-# _iksys_trainingButtonJam: 0 - none, 1-9: a, b, c, x, y, z, s, d, w
+# _iksys_trainingButtonJam: 0 - none, 1-9 - a/b/c/x/y/z/s/d/w
 
 #===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)

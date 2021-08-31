@@ -2433,6 +2433,7 @@ function motif.setBaseTrainingInfo()
 		"menutraining_dummymode",
 		"menutraining_distance",
 		"menutraining_buttonjam",
+		"menutraining_back",
 		"menuinput",
 		"menuinput_keyboard",
 		"menuinput_gamepad",
