@@ -646,7 +646,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "enterReplay", func(*lua.LState) int {
-		if sys.vRetrace != -1 {
+		if sys.vRetrace >= 0 {
 			glfw.SwapInterval(1) //broken frame skipping when set to 0
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
@@ -668,7 +668,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
-		if sys.vRetrace != -1 {
+		if sys.vRetrace >= 0 {
 			glfw.SwapInterval(sys.vRetrace)
 		}
 		if sys.fileInput != nil {

@@ -374,7 +374,6 @@ function menu.f_trainingReset()
 	charMapSet(2, '_iksys_trainingDistance', 0)
 	charMapSet(2, '_iksys_trainingButtonJam', 0)
 end
-menu.f_trainingReset()
 
 menu.movelistChar = 1
 function menu.f_init()
