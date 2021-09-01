@@ -10,8 +10,8 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 		sprPriority: -6000;
 		space: screen;
 		posType: left;
-		pos: -3 * screenWidth, screenHeight / 2; # color 3 (red)
-		scale: screenWidth * localScale, 7.5;
+		pos: floor(const240p(-3 * 320)), screenHeight / 2; # color 3 (red)
+		scale: 320, 7.5 * screenHeight / const240p(240);
 		bindTime: -1;
 		superMoveTime: -1;
 		pauseMoveTime: -1;
