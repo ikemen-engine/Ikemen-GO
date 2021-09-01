@@ -17,7 +17,7 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 } else if roundState = 0 {
 	# Round start reset
 	powerSet{value: powerMax}
-	powerSet{value: playerId(getPlayerID(1)),powerMax; redirectId: getPlayerID(1)}
+	powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
 	mapSet{map: "_iksys_trainingDir"; value: 0}
 } else if roundState = 2 {
@@ -28,8 +28,8 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	} else if map(_iksys_trainingDummyCounter) >= 60 {
 		lifeSet{value: lifeMax}
 		powerSet{value: powerMax}
-		lifeSet{value: playerId(getPlayerID(1)),lifeMax; redirectId: getPlayerID(1)}
-		powerSet{value: playerId(getPlayerID(1)),powerMax; redirectId: getPlayerID(1)}
+		lifeSet{value: enemyNear,lifeMax; redirectId: enemyNear,id}
+		powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
 		mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
 	} else {
 		mapAdd{map: "_iksys_trainingDummyCounter"; value: 1}
@@ -68,8 +68,9 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 		if map(_iksys_trainingDir) != 0 {
 			# if adjusting position is no longer needed
 			if $dir = 0 {
-				# maintain assertion if player and dummy are moving in the same direction
-				if map(_iksys_trainingDir) = 1 && playerId(getPlayerID(1)),command = "holdback" || map(_iksys_trainingDir) = -1 && playerId(getPlayerID(1)),command = "holdfwd" {
+				# maintain assertion if dummy and nearest enemy are moving in the same direction
+				if map(_iksys_trainingDir) = 1 && enemyNear,command = "holdback"
+					|| map(_iksys_trainingDir) = -1 && enemyNear,command = "holdfwd" {
 				# otherwise stop further assertion
 				} else {
 					mapSet{map: "_iksys_trainingDir"; value: 0}
