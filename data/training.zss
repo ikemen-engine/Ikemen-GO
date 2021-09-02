@@ -68,11 +68,8 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 		if map(_iksys_trainingDirection) != 0 {
 			# if adjusting position is no longer needed
 			if $dir = 0 {
-				# maintain assertion if dummy and nearest enemy are moving in the same direction
-				if ((vel x > 0 && enemyNear,vel x < 0) || (vel x < 0 && enemyNear,vel x > 0))
-					&& enemyNear,backEdgeBodyDist > 0 {
-				# otherwise stop further assertion
-				} else {
+				# maintain assertion only if dummy and nearest P1 are moving in the same direction
+				if vel x * enemyNear,vel x >= 0 || enemyNear,backEdgeBodyDist = 0 {
 					mapSet{map: "_iksys_trainingDirection"; value: 0}
 				}
 			}
