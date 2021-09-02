@@ -1421,6 +1421,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.loadStart()
 		return 0
 	})
+	luaRegister(l, "loadState", func(*lua.LState) int {
+		sys.loadStateFlag = true
+		return 0
+	})
 	luaRegister(l, "numberToRune", func(l *lua.LState) int {
 		l.Push(lua.LString(fmt.Sprint('A' - 1 + int(numArg(l, 1)))))
 		return 1
@@ -1615,6 +1619,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "roundReset", func(*lua.LState) int {
 		sys.roundResetFlg = true
+		return 0
+	})
+	luaRegister(l, "saveState", func(*lua.LState) int {
+		sys.saveStateFlag = true
 		return 0
 	})
 	luaRegister(l, "searchFile", func(l *lua.LState) int {
@@ -2442,7 +2450,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > len(sys.gs.chars) || len(sys.gs.chars[pn-1]) == 0 {
 			return 0
 		}
-		for _, ch := range sys.getPlayerEtAl(pn-1) {
+		for _, ch := range sys.getPlayerEtAl(pn - 1) {
 			if ch.scf(SCF_disabled) {
 				ch.unsetSCF(SCF_disabled)
 			} else {

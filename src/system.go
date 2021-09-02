@@ -118,6 +118,47 @@ type GameState struct {
 	ac                      activeCamera
 }
 
+func (gs *GameState) clone() (result *GameState) {
+	result = &GameState{}
+	*result = *gs
+	
+	// Manually copy references that shallow copy poorly, as needed
+	// Pointers, slices, maps, functions, channels etc
+	result.charArray = make([]Char, len(gs.charArray))
+	for i := range gs.charArray {
+		result.charArray[i] = *gs.charArray[i].clone()
+	}
+
+	for i := range gs.chars {
+		result.chars[i] = make([]int, len(gs.chars[i]))
+		copy(result.chars[i], gs.chars[i])
+	}
+
+	result.charList = *gs.charList.clone()
+
+	for i := range gs.explods {
+		result.explods[i] = make([]Explod, len(gs.explods[i]))
+		copy(result.explods[i], gs.explods[i])
+	}
+
+	for i := range gs.explDrawlist {
+		result.explDrawlist[i] = make([]int, len(gs.explDrawlist[i]))
+		copy(result.explDrawlist[i], gs.explDrawlist[i])
+	}
+
+	for i := range gs.topexplDrawlist {
+		result.topexplDrawlist[i] = make([]int, len(gs.topexplDrawlist[i]))
+		copy(result.topexplDrawlist[i], gs.topexplDrawlist[i])
+	}
+
+	for i := range gs.underexplDrawlist {
+		result.underexplDrawlist[i] = make([]int, len(gs.underexplDrawlist[i]))
+		copy(result.underexplDrawlist[i], gs.underexplDrawlist[i])
+	}
+
+	return
+}
+
 // Create a new Char and add it to the game state.
 // Return a pointer to the new character and its index in the chars slice
 func (state *GameState) addChar(n int, idx int32) (index int, newChar *Char) {
@@ -243,6 +284,9 @@ type System struct {
 
 	// Game State
 	gs                      GameState
+	savedGs                 *GameState
+	saveStateFlag           bool
+	loadStateFlag           bool
 	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
 	tmode                   [2]TeamMode
 	numSimul, numTurns      [2]int32
@@ -1007,6 +1051,9 @@ func (s *System) playerClear(pn int, destroy bool) {
 func (s *System) nextRound() {
 	s.resetGblEffect()
 	s.lifebar.reset()
+	s.savedGs = nil
+	s.saveStateFlag = false
+	s.loadStateFlag = false
 	s.finish = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_N, WT_N}
@@ -2133,6 +2180,18 @@ func (s *System) fight() (reload bool) {
 				}
 			}
 		}
+
+		// Save/load state
+		if (s.saveStateFlag) {
+			s.savedGs = s.gs.clone()
+
+		} else if s.loadStateFlag {
+			if (s.savedGs != nil) {
+				s.gs = *s.savedGs.clone()
+			}
+		}
+		s.saveStateFlag = false;
+		s.loadStateFlag = false;
 
 		// If next round
 		if s.roundOver() && !fin {

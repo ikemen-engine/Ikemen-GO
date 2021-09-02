@@ -646,6 +646,18 @@ type GetHitVar struct {
 	fatal          bool
 }
 
+func (ghv *GetHitVar) clone() (result *GetHitVar) {
+	result = &GetHitVar{}
+	*result = *ghv
+	
+	// Manually copy references that shallow copy poorly, as needed
+	// Pointers, slices, maps, functions, channels etc
+	result.hitBy = make([][2]int32, len(ghv.hitBy))
+	copy(result.hitBy, ghv.hitBy)
+
+	return
+}
+
 func (ghv *GetHitVar) clear() {
 	*ghv = GetHitVar{_type: -1, hittime: -1, yaccel: float32(math.NaN()),
 		xoff: ghv.xoff, yoff: ghv.yoff, hitid: -1, playerNo: -1}
@@ -1649,6 +1661,34 @@ type Char struct {
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
 	inputFlag             InputBits
+}
+
+func (c *Char) clone() (result *Char) {
+	result = &Char{}
+	*result = *c
+	
+	// Manually copy references that shallow copy poorly, as needed
+	// Pointers, slices, maps, functions, channels etc
+	result.ghv = *c.ghv.clone()
+
+	result.children = make([]int32, len(c.children))
+	copy(result.children, c.children)
+
+	result.targets = make([]int32, len(c.targets))
+	copy(result.targets, c.targets)
+	
+	result.targetsOfHitdef = make([]int32, len(c.targetsOfHitdef))
+	copy(result.targetsOfHitdef, c.targetsOfHitdef)
+	
+	for i := range c.enemynear {
+		result.enemynear[i] = make([]int32, len(c.enemynear[i]))
+		copy(result.enemynear[i], c.enemynear[i])
+	}
+	
+	result.clipboardText = make([]string, len(c.clipboardText))
+	copy(result.clipboardText, c.clipboardText)
+
+	return
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5784,6 +5824,26 @@ func (c *Char) cueDraw() {
 type CharList struct {
 	runOrder, drawOrder []int
 	idMap               map[int32]int
+}
+
+func (cl *CharList) clone() (result *CharList) {
+	result = &CharList{}
+	*result = *cl
+	
+	// Manually copy references that shallow copy poorly, as needed
+	// Pointers, slices, maps, functions, channels etc
+	result.runOrder = make([]int, len(result.runOrder))
+	copy(result.runOrder, cl.runOrder)
+
+	result.drawOrder = make([]int, len(result.drawOrder))
+	copy(result.drawOrder, cl.drawOrder)
+
+	result.idMap = make(map[int32]int)
+	for k,v := range cl.idMap {
+		result.idMap[k] = v
+	}
+
+	return
 }
 
 func (cl *CharList) clear() {
