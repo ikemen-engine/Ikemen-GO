@@ -69,8 +69,8 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 			# if adjusting position is no longer needed
 			if $dir = 0 {
 				# maintain assertion if dummy and nearest enemy are moving in the same direction
-				if map(_iksys_trainingDirection) = 1 && enemyNear,command = "holdback"
-					|| map(_iksys_trainingDirection) = -1 && enemyNear,command = "holdfwd" {
+				if ((vel x > 0 && enemyNear,vel x < 0) || (vel x < 0 && enemyNear,vel x > 0))
+					&& enemyNear,backEdgeBodyDist > 0 {
 				# otherwise stop further assertion
 				} else {
 					mapSet{map: "_iksys_trainingDirection"; value: 0}
@@ -116,6 +116,9 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 				}
 			}
 			# Button jam
+			if map(_iksys_trainingDummyMode) > 0 && stateNo = const(StateStand) {
+				mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+			}
 			if map(_iksys_trainingButtonJam) > 0 && ctrl && command != "holdback" && command != "holdfwd" {
 				if map(_iksys_trainingButtonJamDelay) > 0 {
 					mapAdd{map: "_iksys_trainingButtonJamDelay"; value: -1}
