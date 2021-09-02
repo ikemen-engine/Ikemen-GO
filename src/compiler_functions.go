@@ -3872,6 +3872,18 @@ func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) loadState(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*loadState)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			loadState_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		sc.add(loadState_, nil)
+		return nil
+	})
+	return *ret, err
+}
 
 // TODO: Remove boilderplate from the Map's Compiler.
 func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
@@ -4267,6 +4279,18 @@ func (c *Compiler) saveFile(is IniSection, sc *StateControllerBase,
 		if err := c.paramSaveData(is, sc, saveFile_saveData); err != nil {
 			return err
 		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) saveState(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*saveState)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			saveState_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		sc.add(saveState_, nil)
 		return nil
 	})
 	return *ret, err
