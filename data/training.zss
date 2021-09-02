@@ -1,0 +1,153 @@
+# Mugen style Training Mode global code
+# maps set via Pause Menu (menu.lua)
+# _iksys_trainingDummyControl: 0 - cooperative, 1 - ai, 2 - manual
+# _iksys_trainingGuardMode: 0 - none, 1 - auto
+# _iksys_trainingDummyMode: 0 - stand, 1 - crouch, 2 - jump, 3 - wjump
+# _iksys_trainingDistance: 0 - any, 1 - close, 2 - medium, 3 - far
+# _iksys_trainingButtonJam: 0 - none, 1-9 - a/b/c/x/y/z/s/d/w
+
+#===============================================================================
+# Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[StateDef -4]
+
+if gameMode != "training" || isHelper || teamSide != 2 {
+	# Do nothing, not training more or statedef executed by helper or not P2
+} else if roundState = 0 {
+	# Round start reset
+	powerSet{value: powerMax}
+	powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
+	mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
+	mapSet{map: "_iksys_trainingDirection"; value: 0}
+	mapSet{map: "_iksys_trainingAirJumpNum"; value: 0}
+} else if roundState = 2 {
+	assertSpecial{flag: noko}
+	# Life and Power recovery
+	if ctrl = 0 {
+		mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
+	} else if map(_iksys_trainingDummyCounter) >= 60 {
+		lifeSet{value: lifeMax}
+		powerSet{value: powerMax}
+		lifeSet{value: enemyNear,lifeMax; redirectId: enemyNear,id}
+		powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
+		mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
+	} else {
+		mapAdd{map: "_iksys_trainingDummyCounter"; value: 1}
+	}
+	# Dummy Control: Cooperative
+	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {
+		# Guard mode: None
+		if map(_iksys_trainingGuardMode) = 0 {
+			assertSpecial{flag: nostandguard; flag2: nocrouchguard; flag3: noairguard}
+		# Guard mode: Auto
+		} else {
+			assertSpecial{flag: autoguard}
+		}
+		# Distance
+		let dir = 0;
+		if map(_iksys_trainingDistance) != 0 {
+			# Close
+			if map(_iksys_trainingDistance) = 1 && p2BodyDist x > const240p(10) {
+				let dir = 1;
+				mapSet{map: "_iksys_trainingDirection"; value: 1}
+			# Medium
+			} else if map(_iksys_trainingDistance) = 2 {
+				if p2BodyDist x > const240p(130) {
+					let dir = 1;
+					mapSet{map: "_iksys_trainingDirection"; value: 1}
+				} else if p2BodyDist x < const240p(80) && backEdgeBodyDist >= const240p(10) {
+					let dir = -1;
+					mapSet{map: "_iksys_trainingDirection"; value: -1}
+				}
+			# Far
+			} else if map(_iksys_trainingDistance) = 3 && backEdgeBodyDist > const240p(10) {
+				let dir = -1;
+				mapSet{map: "_iksys_trainingDirection"; value: -1}
+			}
+		}
+		if map(_iksys_trainingDirection) != 0 {
+			# if adjusting position is no longer needed
+			if $dir = 0 {
+				# maintain assertion only if dummy and nearest P1 are moving in the same direction
+				if vel x * enemyNear,vel x >= 0 || enemyNear,backEdgeBodyDist = 0 {
+					mapSet{map: "_iksys_trainingDirection"; value: 0}
+				}
+			}
+			# if dummy should move forward and player is not trying to move dummy back
+			if map(_iksys_trainingDirection) = 1 && command != "holdback" {
+				if facing = 1 {
+					assertInput{flag: R}
+				} else {
+					assertInput{flag: L}
+				}
+			# if dummy should move backward and player is not trying to move dummy forward
+			} else if map(_iksys_trainingDirection) = -1 && command != "holdfwd" {
+				if facing = 1 {
+					assertInput{flag: L}
+				} else {
+					assertInput{flag: R}
+				}
+			}
+		} else {
+			# Dummy mode: Crouch
+			if map(_iksys_trainingDummyMode) = 1 {
+				assertInput{flag: D}
+			# Dummy mode: Jump
+			} else if map(_iksys_trainingDummyMode) = 2 {
+				if stateNo = const(StateStand) || vel y <= 0 {
+					assertInput{flag: U}
+				}
+			# Dummy mode: W Jump
+			} else if map(_iksys_trainingDummyMode) = 3 {
+				if map(_iksys_trainingAirJumpNum) = 0 {
+					if stateNo = const(StateStand) || vel y <= 0 {
+						assertInput{flag: U}
+					} else { # 1 frame delay before another assertInput is used to register double jump
+						mapSet{map: "_iksys_trainingAirJumpNum"; value: 1}
+					}
+				} else if map(_iksys_trainingAirJumpNum) >= const(movement.airjump.num) && stateNo = const(StateJumpUp) {
+					mapAdd{map: "_iksys_trainingAirJumpNum"; value: 1}
+					assertInput{flag: U}
+				} else if stateNo = const(StateStand) {
+					mapSet{map: "_iksys_trainingAirJumpNum"; value: 0}
+				}
+			}
+			# Button jam
+			if map(_iksys_trainingDummyMode) > 0 && stateNo = const(StateStand) {
+				mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+			}
+			if map(_iksys_trainingButtonJam) > 0 && ctrl && command != "holdback" && command != "holdfwd" {
+				if map(_iksys_trainingButtonJamDelay) > 0 {
+					mapAdd{map: "_iksys_trainingButtonJamDelay"; value: -1}
+				} else if map(_iksys_trainingButtonJam) = 1 {
+					assertInput{flag: a}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 2 {
+					assertInput{flag: b}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 3 {
+					assertInput{flag: c}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 4 {
+					assertInput{flag: x}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 5 {
+					assertInput{flag: y}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 6 {
+					assertInput{flag: z}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 7 {
+					assertInput{flag: s}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 8 {
+					assertInput{flag: d}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				} else if map(_iksys_trainingButtonJam) = 9 {
+					assertInput{flag: w}
+					mapSet{map: "_iksys_trainingButtonJamDelay"; value: 1}
+				}
+			}
+		}
+	}
+}

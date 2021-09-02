@@ -235,8 +235,12 @@ func LoadText(filename string) (string, error) {
 	}
 	return string(bytes), nil
 }
+
 func FileExist(filename string) string {
-	if _, err := os.Stat(filename); !os.IsNotExist(err) {
+	if info, err := os.Stat(filename); !os.IsNotExist(err) {
+		if info == nil || info.IsDir() {
+			return ""
+		}
 		return filename
 	}
 	var pattern string
@@ -256,47 +260,22 @@ func FileExist(filename string) string {
 	return ""
 }
 
-//SearchFile returns the directory that file is located
-//This search on deffile directory, then it keep looking on other dirs
-func SearchFile(file string, deffile string) string {
-	var fp string
+//SearchFile returns full path to specified file
+func SearchFile(file string, dirs []string) string {
 	file = strings.Replace(file, "\\", "/", -1)
-	defdir := filepath.Dir(strings.Replace(deffile, "\\", "/", -1))
-	if defdir == "." || strings.Contains(file, ":/") {
-		fp = file
-	} else if defdir == "/" {
-		fp = "/" + file
-	} else {
-		fp = defdir + "/" + file
-	}
-	if fp = FileExist(fp); len(fp) == 0 {
-		_else := false
-		if defdir != "data" {
-			fp = "data/" + file
-			if fp = FileExist(fp); len(fp) == 0 {
-				fp = sys.motifDir + file
-				if fp = FileExist(fp); len(fp) == 0 {
-					_else = true
-				}
-			}
-		} else {
-			_else = true
-		}
-		if _else {
-			fp = file
-			if fp = FileExist(fp); len(fp) == 0 {
-				fp = file
-			}
+	for _, v := range dirs {
+		defdir := filepath.Dir(strings.Replace(v, "\\", "/", -1))
+		if fp := FileExist(defdir + "/" + file); len(fp) > 0 {
+			return fp
 		}
 	}
-
-	return fp
+	return file
 }
 
-func LoadFile(file *string, deffile string, load func(string) error) error {
-	fp := SearchFile(*file, deffile)
+func LoadFile(file *string, dirs []string, load func(string) error) error {
+	fp := SearchFile(*file, dirs)
 	if err := load(fp); err != nil {
-		return Error(deffile + ":\n" + fp + "\n" + err.Error())
+		return Error(dirs[0] + ":\n" + fp + "\n" + err.Error())
 	}
 	*file = fp
 	return nil
@@ -447,13 +426,13 @@ func (is IniSection) Parse(lines []string, i *int) {
 		}
 	}
 }
-func (is IniSection) LoadFile(name, deffile string,
+func (is IniSection) LoadFile(name string, dirs []string,
 	load func(string) error) error {
 	str := is[name]
 	if len(str) == 0 {
 		return nil
 	}
-	return LoadFile(&str, deffile, load)
+	return LoadFile(&str, dirs, load)
 }
 func (is IniSection) ReadI32(name string, out ...*int32) bool {
 	str := is[name]
@@ -661,8 +640,8 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 			float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1)
 	}
 }
-func (l *Layout) DrawText(x, y, scl float32, ln int16,
-	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
+func (l *Layout) DrawText(x, y, scl float32, ln int16, text string,
+	f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32, round bool) {
 	if l.layerno == ln {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
@@ -674,7 +653,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, b, a,
-			&l.window, palfx, frgba)
+			&l.window, palfx, frgba, round)
 	}
 }
 
@@ -786,7 +765,7 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt, scale float3
 				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale+
 					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx,
-				ats.text.frgba)
+				ats.text.frgba, true)
 		}
 	}
 }

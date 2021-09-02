@@ -1648,6 +1648,7 @@ type Char struct {
 	defaultHitScale       [3]*HitScale
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
+	inputFlag             InputBits
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1925,7 +1926,7 @@ func (c *Char) load(def string) error {
 		gi.constants[key] = float32(Atof(value))
 	}
 
-	if err := LoadFile(&cns, def, func(filename string) error {
+	if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2184,14 +2185,14 @@ func (c *Char) load(def string) error {
 			}
 		}
 	}
-	if LoadFile(&sprite, def, func(filename string) error {
+	if LoadFile(&sprite, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		var err error
 		gi.sff, err = loadSff(filename, true)
 		return err
 	}); err != nil {
 		return err
 	}
-	if LoadFile(&anim, def, func(filename string) error {
+	if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2204,7 +2205,7 @@ func (c *Char) load(def string) error {
 		return err
 	}
 	if len(sound) > 0 {
-		if LoadFile(&sound, def, func(filename string) error {
+		if LoadFile(&sound, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			var err error
 			gi.snd, err = LoadSnd(filename)
 			return err
@@ -2224,7 +2225,7 @@ func (c *Char) loadPallet() {
 			pl := c.gi().sff.palList.Get(i)
 			var f *os.File
 			var err error
-			if LoadFile(&c.gi().pal[i], c.gi().def, func(file string) error {
+			if LoadFile(&c.gi().pal[i], []string{c.gi().def, "", sys.motifDir, "data/"}, func(file string) error {
 				f, err = os.Open(file)
 				return err
 			}) == nil {
@@ -5244,6 +5245,7 @@ func (c *Char) action() {
 				c.setSCF(SCF_over)
 			}
 			c.specialFlag = 0
+			c.inputFlag = 0
 			if c.player {
 				if c.alive() || !c.scf(SCF_over) || !c.scf(SCF_ko_round_middle) {
 					c.setSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
@@ -6650,7 +6652,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
-				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist {
+				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist*c.localscl/getter.localscl {
 					getter.inguarddist = true
 				}
 				if c.helperIndex != 0 {

@@ -670,7 +670,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
-		if sec[0].LoadFile("attachedchar", def, func(filename string) error {
+		if sec[0].LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			s.attachedchardef = append(s.attachedchardef, filename)
 			return nil
 		}); err != nil {
@@ -683,7 +683,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 					re := regexp.MustCompile("[0-9]+")
 					submatchall := re.FindAllString(k, -1)
 					if len(submatchall) == 1 {
-						if err := LoadFile(&v, def, func(filename string) error {
+						if err := LoadFile(&v, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 							if sys.stageList[Atoi(submatchall[0])], err = loadStage(filename, false); err != nil {
 								return fmt.Errorf("failed to load %v:\n%v", filename, err)
 							}
@@ -800,7 +800,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
 	}
 	if sec := defmap["bgdef"]; len(sec) > 0 {
-		if sec[0].LoadFile("spr", def, func(filename string) error {
+		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			sff, err := loadSff(filename, false)
 			if err != nil {
 				return err

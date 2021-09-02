@@ -346,7 +346,6 @@ type System struct {
 	lifeShare               [2]bool
 	loseSimul               bool
 	loseTag                 bool
-	fullscreen              bool
 	allowDebugKeys          bool
 	allowDebugMode          bool
 	commonAir               string
@@ -362,6 +361,12 @@ type System struct {
 	windowTitle             string
 	screenshotFolder        string
 	//FLAC_FrameWait          int
+
+	// Resolution variables
+	fullscreen            bool
+	fullscreenRefreshRate int32
+	fullscreenWidth       int32
+	fullscreenHeight      int32
 
 	controllerStickSensitivity float32
 	xinputTriggerSensitivity   float32
@@ -476,6 +481,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	ret := &Window{window, s.windowTitle, s.fullscreen, x, y, w, h}
 	return ret, err
 }
+
 func (w *Window) toggleFullscreen() {
 	if w.fullscreen {
 		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
@@ -503,7 +509,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(err)
 
 	// V-Sync
-	if s.vRetrace != -1 {
+	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
 	// Initialize OpenGL.
@@ -836,8 +842,8 @@ func (s *System) roundOver() bool {
 			s.lifebar.ro.start_waittime))
 		s.winskipped = true
 	}
-	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
-		s.lifebar.ro.over_time)
+	return s.fadeouttime == 0 && (s.intro < -(s.lifebar.ro.over_hittime +
+		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time))
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
@@ -1153,7 +1159,7 @@ func (s *System) commandUpdate() {
 			for _, c := range s.getPlayerEtAl(i) {
 				if (c.helperIndex == 0 ||
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
-					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i]) {
+					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i], c.inputFlag) {
 					hp := c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0
 					buftime := Btoi(hp && c.gi().ver[0] != 1)
 					if s.super > 0 {
@@ -1482,7 +1488,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == -1 && (ko[0] || ko[1]) {
+			if s.intro == 0 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
@@ -1756,7 +1762,7 @@ func (s *System) drawDebug() {
 		for txt != "" {
 			w, drawTxt := int32(0), ""
 			for i, r := range txt {
-				w += s.debugFont.fnt.CharWidth(r) + s.debugFont.fnt.Spacing[0]
+				w += s.debugFont.fnt.CharWidth(r, 0) + s.debugFont.fnt.Spacing[0]
 				if w > s.scrrect[2] {
 					drawTxt, txt = txt[:i], txt[i:]
 					break
@@ -1768,7 +1774,7 @@ func (s *System) drawDebug() {
 			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / s.heightScale
 			s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 1, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba)
+				s.debugFont.palfx, s.debugFont.frgba, true)
 		}
 	}
 	if s.debugDraw {
@@ -1844,7 +1850,7 @@ func (s *System) drawDebug() {
 			s.debugFont.SetColor(t.r, t.g, t.b)
 			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba)
+				s.debugFont.palfx, s.debugFont.frgba, true)
 		}
 	}
 }
@@ -2628,7 +2634,7 @@ func (s *Select) addChar(def string) {
 	}
 	sff := newSff()
 	//preload animations
-	LoadFile(&sc.anim, def, func(filename string) error {
+	LoadFile(&sc.anim, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2650,7 +2656,7 @@ func (s *Select) addChar(def string) {
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sc.sprite
 	}
-	LoadFile(&fp, def, func(file string) error {
+	LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
 		var selPal []int32
 		var err error
 		sc.sff, selPal, err = preloadSff(file, true, listSpr)
@@ -2667,7 +2673,7 @@ func (s *Select) addChar(def string) {
 		return nil
 	})
 	if len(movelist) > 0 {
-		LoadFile(&movelist, def, func(file string) error {
+		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
 			return nil
 		})
@@ -2680,7 +2686,7 @@ func (s *Select) AddStage(def string) error {
 		sys.loadTime(tnow, tstr, false, false)
 	}()
 	var lines []string
-	if err := LoadFile(&def, "stages/", func(file string) error {
+	if err := LoadFile(&def, []string{"", "data/"}, func(file string) error {
 		str, err := LoadText(file)
 		if err != nil {
 			return err
@@ -2708,7 +2714,7 @@ func (s *Select) AddStage(def string) error {
 						ss.name = def
 					}
 				}
-				if err := is.LoadFile("attachedchar", def, func(filename string) error {
+				if err := is.LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 					ss.attachedchardef = filename
 					return nil
 				}); err != nil {
@@ -2754,7 +2760,7 @@ func (s *Select) AddStage(def string) error {
 			}
 		}
 		//preload portion of sff file
-		LoadFile(&ss.spr, def, func(file string) error {
+		LoadFile(&ss.spr, []string{def, "", "data/"}, func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
@@ -2924,7 +2930,7 @@ func (l *Loader) loadChar(pn int) int {
 		sys.lifebar.nm[sys.tmode[pn&1]][pn].numko = 0
 		for i, ci := range idx {
 			sprite := sys.sel.charlist[ci].sprite
-			LoadFile(&sprite, sys.sel.charlist[ci].def, func(file string) error {
+			LoadFile(&sprite, []string{sys.sel.charlist[ci].def, "", "data/"}, func(file string) error {
 				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
 				var err error
 				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),

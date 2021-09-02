@@ -144,7 +144,7 @@ function boolToInt(bool)
 end
 
 function engineInfo()
-	return string.format('VSync: %d; Speed: %d%%', vsync(), gamespeed())
+	return string.format('VSync: %d; Speed: %d/%d%%', vsync(), gameLogicSpeed(), gamespeed())
 end
 
 function playerInfo()
@@ -207,6 +207,9 @@ function loop()
 			endFlag = false
 			if indialogue() then
 				dialogueReset()
+			end
+			if gamemode('training') then
+				menu.f_trainingReset()
 			end
 		end
 		start.turnsRecoveryInit = false

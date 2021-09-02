@@ -216,19 +216,6 @@ function main.f_fileExists(file)
 	return false
 end
 
---add missing relative file path
-function main.f_filePath(path, dir, defaultDir)
-	path = path:gsub('\\', '/')
-	if not path:lower():match('^data/') then
-		if main.f_fileExists(dir .. path) then
-			return dir .. path, true
-		elseif main.f_fileExists(defaultDir .. path) then
-			return defaultDir .. path, true
-		end
-	end
-	return path, false
-end
-
 --prints "t" table content into "toFile" file
 function main.f_printTable(t, toFile)
 	local txt = ''
@@ -315,7 +302,8 @@ if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
 end
 if main.flags['-speed'] ~= nil then
-	config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+	--config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
+	setGameSpeed(math.max(10, math.min(tonumber(main.flags['-speed']), 200)))
 end
 if main.flags['-speedtest'] ~= nil then
 	setGameSpeed(100)
@@ -990,42 +978,49 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 		end
 	else
 		str = str:gsub('\n', '\\n')
-		for _, c in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
+		-- for each new line
+		for _, line in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
 			local text = ''
-			local tmp = ''
+			local word = ''
 			local pxLeft = length
-			local tmp_px = 0
-			local space = (font_def[' '] or fontGetTextWidth(main.font[data.font .. data.height], ' ')) * data.scaleX
-			for i = 1, string.len(c) do
-				local symbol = string.sub(c, i, i)
-				if font_def[symbol] == nil then --store symbol length in global table for faster counting
-					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol)
+			local word_px = 0
+			-- for each character in current line
+			for i = 1, string.len(line) do
+				local symbol = string.sub(line, i, i)
+				-- store symbol length in global table for faster counting
+				if font_def[symbol] == nil then
+					font_def[symbol] = fontGetTextWidth(main.font[data.font .. data.height], symbol, data.bank)
 				end
-				local px = font_def[symbol] * data.scaleX
-				if pxLeft + space - px >= -1 or text == '' then
+				local px = (font_def[symbol] + font_def.Spacing[1]) * data.scaleX
+				-- continue counting if character fits in the line length
+				if pxLeft - px >= 0 or symbol:match('%s') or text == '' then
+					-- word valid for line appending on whitespace character (or if it's first word in line)
 					if symbol:match('%s') or text == '' then
-						text = text .. tmp .. symbol
-						tmp = ''
-						tmp_px = 0
+						text = text .. word .. symbol
+						word = ''
+						word_px = 0
+					-- otherwise add character to the current word
 					else
-						tmp = tmp .. symbol
-						tmp_px = tmp_px + px
+						word = word .. symbol
+						word_px = word_px + px
 					end
 					pxLeft = pxLeft - px
-				else --character in this word is outside the pixel range
+				-- otherwise append current words to table and reset line counting
+				else
 					table.insert(t, text)
 					text = ''
-					tmp = tmp .. symbol
-					tmp_px = tmp_px + px
-					pxLeft = length - tmp_px
-					tmp_px = 0
+					word = word .. symbol
+					word_px = word_px + px
+					pxLeft = length - word_px
+					word_px = 0
 				end
 			end
-			text = text .. tmp
+			-- append remaining text in last line
+			text = text .. word
 			table.insert(t, text)
 		end
 	end
-	--render
+	-- render text
 	local retDone = false
 	local retLength = 0
 	local lengthCnt = 0
@@ -1142,27 +1137,6 @@ end
 --count occurrences of a substring
 function main.f_countSubstring(s1, s2)
     return select(2, s1:gsub(s2, ""))
-end
-
---convert mugen style window coordinate system to the one used in engine
-function main.windowCoords(t, substract)
-	t[1] = tonumber(t[1]) or 0
-	t[2] = tonumber(t[2]) or 0
-	t[3] = tonumber(t[3]) or 0
-	t[4] = tonumber(t[4]) or 0
-	local window = main.f_tableCopy(t)
-	if window[3] < window[1] then
-		t[3] = window[1]
-		t[1] = window[3]
-	end
-	if window[4] < window[2] then
-		t[4] = window[2]
-		t[2] = window[4]
-	end
-	if substract then
-		t[3] = t[3] - t[1]
-		t[4] = t[4] - t[2]
-	end
 end
 
 --update rounds to win variables
@@ -1658,6 +1632,10 @@ function main.f_addChar(line, playable, loading, slot)
 	for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
 		c = c:match('^%s*(.-)%s*$')
 		if i == 1 then
+			if c == '' then
+				playable = false
+				break
+			end
 			c = c:gsub('\\', '/')
 			c = tostring(c)
 			--nClock = os.clock()
@@ -1682,7 +1660,7 @@ function main.f_addChar(line, playable, loading, slot)
 			if playable then
 				for _, v in ipairs({'intro', 'ending', 'arcadepath', 'ratiopath'}) do
 					if main.t_selChars[row][v] ~= '' then
-						main.t_selChars[row][v] = main.f_filePath(main.t_selChars[row][v], main.t_selChars[row].dir, 'data/')
+						main.t_selChars[row][v] = searchFile(main.t_selChars[row][v], {main.t_selChars[row].dir, '', motif.fileDir, 'data/'})
 					end
 				end
 				main.t_selChars[row].order = 1
@@ -1803,7 +1781,7 @@ function main.f_addStage(file, hidden)
 					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), file)
+					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
 				elseif tonumber(v) then
 					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
 				end
@@ -2030,9 +2008,9 @@ for i = 1, #t_addExluded do
 	main.f_addChar(t_addExluded[i], true, true)
 end
 
---add Training by stupa if not included in select.def
+--add Training char if defined and not included in select.def
 if main.t_charDef[config.TrainingChar:lower()] == nil then
-	main.f_addChar(config.TrainingChar .. ', exclude = 1', false, true)
+	main.f_addChar(config.TrainingChar .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
 --add remaining character parameters
@@ -2106,11 +2084,6 @@ if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmax
 	for k, v in pairs(main.t_bossChars) do
 		main.t_selOptions.bossrushmaxmatches[k] = #v
 	end
-end
-
---print error if training character is missing
-if main.t_charDef[config.TrainingChar:lower()] == nil then
-	panicError("\nTraining character not found: " .. config.TrainingChar)
 end
 
 --uppercase title
@@ -2791,8 +2764,10 @@ main.t_itemname = {
 	--TRAINING
 	['training'] = function()
 		main.f_playerInput(main.playerInput, 1)
-		main.cpuSide[2] = false
-		main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
+		main.t_pIn[2] = 1
+		if main.t_charDef[config.TrainingChar:lower()] ~= nil then
+			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
+		end
 		--main.lifebar.p1score = true
 		main.roundTime = -1
 		main.selectMenu[2] = true

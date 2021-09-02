@@ -210,9 +210,12 @@ type configSettings struct {
 	ForceStageZoomout          float32
 	Framerate                  int32
 	Fullscreen                 bool
+	FullscreenRefreshRate      int32
+	FullscreenWidth            int32
+	FullscreenHeight           int32
 	GameWidth                  int32
 	GameHeight                 int32
-	GameSpeed                  float32
+	GameFramerate              float32
 	IP                         map[string]string
 	LifeMul                    float32
 	ListenPort                 string
@@ -303,7 +306,8 @@ func setupConfig() configSettings {
 		"data/guardbreak.zss",
 		"data/rank.zss",
 		"data/score.zss",
-		"data/tag.zss"
+		"data/tag.zss",
+		"data/training.zss"
     ],
 	"ControllerStickSensitivity": 0.4,
 	"Credits": 10,
@@ -314,7 +318,7 @@ func setupConfig() configSettings {
 	"DebugFontScale": 1,
 	"DebugKeys": true,
 	"DebugMode": true,
-	"Difficulty": 8,
+	"Difficulty": 5,
 	"EscOpensMenu": true,
 	"ExternalShaders": [],
 	"FirstRun": true,
@@ -323,9 +327,12 @@ func setupConfig() configSettings {
 	"ForceStageZoomout": 0,
 	"Framerate": 60,
 	"Fullscreen": false,
+	"FullscreenRefreshRate": 60,
+	"FullscreenWidth": -1,
+	"FullscreenHeight": -1,
 	"GameWidth": 640,
 	"GameHeight": 480,
-	"GameSpeed": 100,
+	"GameFramerate": 60,
 	"IP": {},
 	"LifeMul": 100,
 	"ListenPort": "7500",
@@ -383,7 +390,7 @@ func setupConfig() configSettings {
 	"TeamDuplicates": true,
 	"TeamLifeShare": false,
 	"TeamPowerShare": true,
-	"TrainingChar": "chars/training/training.def",
+	"TrainingChar": "",
 	"TurnsRecoveryBase": 0,
 	"TurnsRecoveryBonus": 20,
 	"VolumeBgm": 80,
@@ -638,9 +645,16 @@ func setupConfig() configSettings {
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
 	sys.fontShaderVer = tmp.FontShaderVer
+	// Resoluion stuff
 	sys.fullscreen = tmp.Fullscreen
+	sys.fullscreenRefreshRate = tmp.FullscreenRefreshRate
+	sys.fullscreenWidth = tmp.FullscreenWidth
+	sys.fullscreenHeight = tmp.FullscreenHeight
 	FPS = int(tmp.Framerate)
-	sys.gameSpeed = tmp.GameSpeed / 100
+	sys.gameWidth = tmp.GameWidth
+	sys.gameHeight = tmp.GameHeight
+	sys.gameSpeed = tmp.GameFramerate / float32(tmp.Framerate)
+
 	sys.helperMax = tmp.MaxHelper
 	sys.lifeMul = tmp.LifeMul / 100
 	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}

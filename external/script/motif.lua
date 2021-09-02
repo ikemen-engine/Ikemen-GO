@@ -106,7 +106,7 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'MAIN MENU', --Ikemen feature
-		loading_offset = {main.SP_Localcoord[1] - main.f_round(10 * main.SP_Localcoord[1] / 320), main.SP_Localcoord[2] - 8}, --Ikemen feature
+		loading_offset = {main.SP_Localcoord[1] - 1 - main.f_round(10 * main.SP_Localcoord[1] / 320), main.SP_Localcoord[2] - 8}, --Ikemen feature
 		loading_font = {'default-3x5.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		loading_font_scale = {1.0, 1.0}, --Ikemen feature
 		loading_font_height = -1, --Ikemen feature
@@ -121,7 +121,7 @@ local motif =
 		footer2_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer2_font_height = -1, --Ikemen feature
 		footer2_text = 'Press F1 for info', --Ikemen feature
-		footer3_offset = {main.SP_Localcoord[1] - main.f_round(2 * main.SP_Localcoord[1] / 320), main.SP_Localcoord[2]}, --Ikemen feature
+		footer3_offset = {main.SP_Localcoord[1] - 1 - main.f_round(2 * main.SP_Localcoord[1] / 320), main.SP_Localcoord[2]}, --Ikemen feature
 		footer3_font = {'default-3x5.def', 0, -1, 191, 191, 191}, --Ikemen feature
 		footer3_font_scale = {1.0, 1.0}, --Ikemen feature
 		footer3_font_height = -1, --Ikemen feature
@@ -1588,7 +1588,45 @@ local motif =
 	},
 	training_info =
 	{
-		--same default values menu_info
+		--same default values as menu_info
+		--training specific parameters:
+		menu_valuename_dummycontrol_cooperative = "Cooperative", --Ikemen feature
+		menu_valuename_dummycontrol_ai = "AI", --Ikemen feature
+		menu_valuename_dummycontrol_manual = "Manual", --Ikemen feature
+		menu_valuename_ailevel_1 = "1", --Ikemen feature
+		menu_valuename_ailevel_2 = "2", --Ikemen feature
+		menu_valuename_ailevel_3 = "3", --Ikemen feature
+		menu_valuename_ailevel_4 = "4", --Ikemen feature
+		menu_valuename_ailevel_5 = "5", --Ikemen feature
+		menu_valuename_ailevel_6 = "6", --Ikemen feature
+		menu_valuename_ailevel_7 = "7", --Ikemen feature
+		menu_valuename_ailevel_8 = "8", --Ikemen feature
+		menu_valuename_guardmode_none = "None", --Ikemen feature
+		menu_valuename_guardmode_auto = "Auto", --Ikemen feature
+		menu_valuename_dummymode_stand = "Stand", --Ikemen feature
+		menu_valuename_dummymode_crouch = "Crouch", --Ikemen feature
+		menu_valuename_dummymode_jump = "Jump", --Ikemen feature
+		menu_valuename_dummymode_wjump = "W Jump", --Ikemen feature
+		menu_valuename_distance_any = "Any", --Ikemen feature
+		menu_valuename_distance_close = "Close", --Ikemen feature
+		menu_valuename_distance_medium = "Medium", --Ikemen feature
+		menu_valuename_distance_far = "Far", --Ikemen feature
+		menu_valuename_buttonjam_none = "None", --Ikemen feature
+		menu_valuename_buttonjam_a = "A", --Ikemen feature
+		menu_valuename_buttonjam_b = "B", --Ikemen feature
+		menu_valuename_buttonjam_c = "C", --Ikemen feature
+		menu_valuename_buttonjam_x = "X", --Ikemen feature
+		menu_valuename_buttonjam_y = "Y", --Ikemen feature
+		menu_valuename_buttonjam_z = "Z", --Ikemen feature
+		menu_valuename_buttonjam_s = "Start", --Ikemen feature
+		menu_valuename_buttonjam_d = "D", --Ikemen feature
+		menu_valuename_buttonjam_w = "W", --Ikemen feature
+		;menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
+		;menu_itemname_ailevel = "AI Level", --Ikemen feature
+		;menu_itemname_guardmode = "Guard Mode", --Ikemen feature
+		;menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
+		;menu_itemname_distance = "Distance", --Ikemen feature
+		;menu_itemname_buttonjam = "Button Jam", --Ikemen feature
 	},
 	trainingbgdef =
 	{
@@ -2102,7 +2140,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame_roundtime = "Time Limit"
 	motif.option_info.menu_itemname_menugame_lifemul = "Life"
 	motif.option_info.menu_itemname_menugame_singlevsteamlife = "Single VS Team Life"
-	motif.option_info.menu_itemname_menugame_gamespeed = "Game Speed"
+	--motif.option_info.menu_itemname_menugame_gamespeed = "Game Speed"
 	motif.option_info.menu_itemname_menugame_roundsnumsingle = "Rounds to Win (Single)"
 	motif.option_info.menu_itemname_menugame_maxdrawgames = "Max Draw Games"
 	motif.option_info.menu_itemname_menugame_credits = "Credits"
@@ -2224,7 +2262,7 @@ function motif.setBaseOptionInfo()
 		"menugame_roundtime",
 		"menugame_lifemul",
 		"menugame_singlevsteamlife",
-		"menugame_gamespeed",
+		--"menugame_gamespeed",
 		"menugame_roundsnumsingle",
 		"menugame_maxdrawgames",
 		"menugame_credits",
@@ -2342,6 +2380,8 @@ function motif.setBaseMenuInfo()
 	motif.menu_info.menu_itemname_menuinput_empty = ""
 	motif.menu_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.menu_info.menu_itemname_menuinput_back = "Back"
+	--menu_itemname_reset = "Round Reset"
+	--menu_itemname_reload = "Rematch"
 	motif.menu_info.menu_itemname_commandlist = "Command List"
 	motif.menu_info.menu_itemname_characterchange = "Character Change"
 	motif.menu_info.menu_itemname_exit = "Exit"
@@ -2354,6 +2394,8 @@ function motif.setBaseMenuInfo()
 		"menuinput_empty",
 		"menuinput_inputdefault",
 		"menuinput_back",
+		--"reset",
+		--"reload",
 		"commandlist",
 		"characterchange",
 		"exit",
@@ -2362,24 +2404,44 @@ end
 
 function motif.setBaseTrainingInfo()
 	motif.training_info.menu_itemname_back = "Continue"
+	motif.training_info.menu_itemname_menutraining = "Training Menu"
+	motif.training_info.menu_itemname_menutraining_dummycontrol = "Dummy Control"
+	motif.training_info.menu_itemname_menutraining_ailevel = "AI Level"
+	motif.training_info.menu_itemname_menutraining_guardmode = "Guard Mode"
+	motif.training_info.menu_itemname_menutraining_dummymode = "Dummy Mode"
+	motif.training_info.menu_itemname_menutraining_distance = "Distance"
+	motif.training_info.menu_itemname_menutraining_buttonjam = "Button Jam"
+	motif.training_info.menu_itemname_menutraining_back = "Back"
 	motif.training_info.menu_itemname_menuinput = "Button Config"
 	motif.training_info.menu_itemname_menuinput_keyboard = "Key Config"
 	motif.training_info.menu_itemname_menuinput_gamepad = "Joystick Config"
 	motif.training_info.menu_itemname_menuinput_empty = ""
 	motif.training_info.menu_itemname_menuinput_inputdefault = "Default"
 	motif.training_info.menu_itemname_menuinput_back = "Back"
+	--motif.training_info.menu_itemname_reset = "Round Reset"
+	--motif.training_info.menu_itemname_reload = "Rematch"
 	motif.training_info.menu_itemname_commandlist = "Command List"
 	motif.training_info.menu_itemname_characterchange = "Character Change"
 	motif.training_info.menu_itemname_exit = "Exit"
 	main.t_sort.training_info = {}
 	main.t_sort.training_info.menu = {
 		"back",
+		"menutraining",
+		"menutraining_dummycontrol",
+		"menutraining_ailevel",
+		"menutraining_guardmode",
+		"menutraining_dummymode",
+		"menutraining_distance",
+		"menutraining_buttonjam",
+		"menutraining_back",
 		"menuinput",
 		"menuinput_keyboard",
 		"menuinput_gamepad",
 		"menuinput_empty",
 		"menuinput_inputdefault",
 		"menuinput_back",
+		--"reset",
+		--"reload",
 		"commandlist",
 		"characterchange",
 		"exit",
@@ -2445,6 +2507,7 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 			value = value:gsub('"', '') --remove brackets from value
 			value = value:gsub('^(%.[0-9])', '0%1') --add 0 before dot if missing at the beginning of matched string
 			value = value:gsub('([^0-9])(%.[0-9])', '%10%2') --add 0 before dot if missing anywhere else
+			value = value:gsub(',%s*$', '') --remove dummy ','
 			if param:match('^font[0-9]+') then --font declaration param matched
 				if pos.font == nil then
 					pos.font = {}
@@ -2499,14 +2562,12 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 							break
 						elseif i == 1 then
 							pos[param] = {}
-							if param:match('_font$') and tonumber(c) ~= -1 then
+							if param:match('_font$') then
 								if t.files ~= nil and t.files.font ~= nil and t.files.font[tonumber(c)] ~= nil then
 									if pos[param .. '_height'] == nil and t.files.font_height[tonumber(c)] ~= nil then
 										pos[param .. '_height'] = t.files.font_height[tonumber(c)]
 									end
 									c = t.files.font[tonumber(c)]
-								else
-									break --use default font values
 								end
 							end
 						elseif param:match('_font$') and not tonumber(c) then
@@ -2607,10 +2668,28 @@ for k, v in pairs({
 	hiscore_info = {'item_face_window'},
 }) do
 	for _, param in ipairs(v) do
+		--convert mugen style window coordinate system to the one used in engine
 		if t[k] == nil or t[k][param] == nil then
 			motif[k][param] = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+		else
+			motif[k][param][1] = tonumber(motif[k][param][1]) or 0
+			motif[k][param][2] = tonumber(motif[k][param][2]) or 0
+			motif[k][param][3] = tonumber(motif[k][param][3]) or motif.info.localcoord[1]
+			motif[k][param][4] = tonumber(motif[k][param][4]) or motif.info.localcoord[2]
 		end
-		main.windowCoords(motif[k][param], param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window')
+		local window = main.f_tableCopy(motif[k][param])
+		if window[3] < window[1] then
+			motif[k][param][3] = window[1]
+			motif[k][param][1] = window[3]
+		end
+		if window[4] < window[2] then
+			motif[k][param][4] = window[2]
+			motif[k][param][2] = window[4]
+		end
+		if param ~= 'winquote_window' and param ~= 'p1_text_window' and param ~= 'p2_text_window' then
+			motif[k][param][3] = motif[k][param][3] - motif[k][param][1]
+			motif[k][param][4] = motif[k][param][4] - motif[k][param][2]
+		end
 	end
 end
 
@@ -2638,46 +2717,32 @@ if motif.vs_screen.p2_name_active_font == nil then
 end
 
 --general paths
-for k, v in ipairs({
-	{t = {'files',            'spr'},              skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.spr,                   'data/' .. motif.files.spr}},
-	{t = {'files',            'snd'},              skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.snd,                   'data/' .. motif.files.snd}},
-	{t = {'files',            'logo_storyboard'},  skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.logo_storyboard,       'data/' .. motif.files.logo_storyboard}},
-	{t = {'files',            'intro_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.files.intro_storyboard,      'data/' .. motif.files.intro_storyboard}},
-	{t = {'files',            'select'},           skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.select,                'data/' .. motif.files.select}},
-	{t = {'files',            'fight'},            skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.fight,                 'data/' .. motif.files.fight}},
-	{t = {'files',            'glyphs'},           skip = {'^data/'},        dirs = {motif.fileDir .. motif.files.glyphs,                'data/' .. motif.files.glyphs}},
-	{t = {'music',            'title_bgm'},        skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.title_bgm,             'music/' .. motif.music.title_bgm}},
-	{t = {'music',            'select_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.select_bgm,            'music/' .. motif.music.select_bgm}},
-	{t = {'music',            'vs_bgm'},           skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.vs_bgm,                'music/' .. motif.music.vs_bgm}},
-	{t = {'music',            'victory_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.victory_bgm,           'music/' .. motif.music.victory_bgm}},
-	{t = {'music',            'option_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.option_bgm,            'music/' .. motif.music.option_bgm}},
-	{t = {'music',            'replay_bgm'},       skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.replay_bgm,            'music/' .. motif.music.replay_bgm}},
-	{t = {'music',            'continue_bgm'},     skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.continue_bgm,          'music/' .. motif.music.continue_bgm}},
-	{t = {'music',            'continue_end_bgm'}, skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.continue_end_bgm,      'music/' .. motif.music.continue_end_bgm}},
-	{t = {'music',            'results_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.results_bgm,           'music/' .. motif.music.results_bgm}},
-	{t = {'music',            'hiscore_bgm'},      skip = {'^music/', '^$'}, dirs = {motif.fileDir .. motif.music.hiscore_bgm,           'music/' .. motif.music.hiscore_bgm}},
-	{t = {'default_ending',   'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.default_ending.storyboard,   'data/' .. motif.default_ending.storyboard}},
-	{t = {'end_credits',      'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.end_credits.storyboard,      'data/' .. motif.end_credits.storyboard}},
-	{t = {'game_over_screen', 'storyboard'},       skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.game_over_screen.storyboard, 'data/' .. motif.game_over_screen.storyboard}},
-	{t = {'attract_mode',     'logo_storyboard'},  skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.logo_storyboard,       'data/' .. motif.attract_mode.logo_storyboard}},
-	{t = {'attract_mode',     'intro_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.intro_storyboard}},
-	{t = {'attract_mode',     'start_storyboard'}, skip = {'^data/',  '^$'}, dirs = {motif.fileDir .. motif.attract_mode.intro_storyboard,      'data/' .. motif.attract_mode.start_storyboard}},
+for _, v in ipairs({
+	{t = {'files', 'spr'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'snd'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'select'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'fight'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'files', 'glyphs'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'music', 'title_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'select_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'vs_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'victory_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'option_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'replay_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'continue_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'continue_end_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'results_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'music', 'hiscore_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{t = {'default_ending', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'end_credits', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'game_over_screen', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{t = {'attract_mode', 'start_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
 }) do
-	local skip = false
-	for j = 1, #v.skip do
-		if motif[v.t[1]][v.t[2]]:match(v.skip[j]) then
-			skip = true
-			break
-		end
-	end
-	if not skip then
-		for j = 1, #v.dirs do
-			if main.f_fileExists(v.dirs[j]) then
-				motif[v.t[1]][v.t[2]] = v.dirs[j]
-				break
-			end
-		end
-	end
+	motif[v.t[1]][v.t[2]] = searchFile(motif[v.t[1]][v.t[2]], v.dirs)
 end
 
 motif.files.spr_data = sffNew(motif.files.spr)
@@ -2692,7 +2757,7 @@ for k, _ in pairs(motif) do
 	if k:match('bgdef$') then
 		--optional sff paths and data
 		if motif[k].spr ~= nil and motif[k].spr ~= '' then
-			motif[k].spr = main.f_filePath(motif[k].spr, motif.fileDir, 'data/')
+			motif[k].spr = searchFile(motif[k].spr, {motif.fileDir, '', 'data/'})
 			motif[k].spr_data = sffNew(motif[k].spr)
 			main.f_loadingRefresh()
 		else

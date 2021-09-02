@@ -223,6 +223,7 @@ type PaletteList struct {
 	palettes   [][]uint32
 	paletteMap []int
 	PalTable   map[[2]int16]int
+	numcols    map[[2]int16]int
 	PalTex     []*Texture
 }
 
@@ -230,6 +231,7 @@ func (pl *PaletteList) init() {
 	pl.palettes = nil
 	pl.paletteMap = nil
 	pl.PalTable = make(map[[2]int16]int)
+	pl.numcols = make(map[[2]int16]int)
 	pl.PalTex = nil
 }
 func (pl *PaletteList) SetSource(i int, p []uint32) {
@@ -369,6 +371,7 @@ type Sprite struct {
 	Offset        [2]int16
 	palidx        int
 	rle           int
+	coldepth      byte
 	paltemp       []uint32
 	PalTex        *Texture
 }
@@ -588,7 +591,7 @@ func (s *Sprite) readPcxHeader(f *os.File, offset int64) error {
 		return err
 	}
 	if bpp != 8 {
-		return Error("Not 256 colors")
+		return Error(fmt.Sprintf("Invalid PCX color depth: expected 8-bit, got %v", bpp))
 	}
 	var rect [4]uint16
 	if err := read(rect[:]); err != nil {
@@ -721,8 +724,7 @@ func (s *Sprite) readHeaderV2(r io.Reader, ofs *uint32, size *uint32,
 		return err
 	}
 	s.rle = -int(format)
-	var dummy byte
-	if err := read(&dummy); err != nil {
+	if err := read(&s.coldepth); err != nil {
 		return err
 	}
 	if err := read(ofs); err != nil {
@@ -1116,6 +1118,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			uniquePals[[...]int16{gn_[0], gn_[1]}] = idx
 			s.palList.SetSource(i, pal)
 			s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] = idx
+			s.palList.numcols[[...]int16{gn_[0], gn_[1]}] = int(gn_[2])
 			if i <= MaxPalNo &&
 				s.palList.PalTable[[...]int16{1, int16(i + 1)}] == s.palList.PalTable[[...]int16{gn_[0], gn_[1]}] &&
 				gn_[0] != 1 && gn_[1] != int16(i+1) {

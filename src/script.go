@@ -583,7 +583,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, cl)
 		}
-		if cl.Input(int(numArg(l, 2))-1, 1, 0) {
+		if cl.Input(int(numArg(l, 2))-1, 1, 0, 0) {
 			cl.Step(1, false, false, 0)
 		}
 		return 0
@@ -647,7 +647,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "enterReplay", func(*lua.LState) int {
-		if sys.vRetrace != -1 {
+		if sys.vRetrace >= 0 {
 			glfw.SwapInterval(1) //broken frame skipping when set to 0
 		}
 		sys.gs.charArray = nil
@@ -670,7 +670,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
-		if sys.vRetrace != -1 {
+		if sys.vRetrace >= 0 {
 			glfw.SwapInterval(sys.vRetrace)
 		}
 		if sys.fileInput != nil {
@@ -754,7 +754,11 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, fnt)
 		}
-		l.Push(lua.LNumber(fnt.TextWidth(strArg(l, 2))))
+		var bank int32
+		if l.GetTop() >= 3 {
+			bank = int32(numArg(l, 3))
+		}
+		l.Push(lua.LNumber(fnt.TextWidth(strArg(l, 2), bank)))
 		return 1
 	})
 	luaRegister(l, "fontNew", func(l *lua.LState) int {
@@ -762,9 +766,11 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 2 {
 			height = int32(numArg(l, 2))
 		}
-		fnt, err := loadFnt(strArg(l, 1), height)
+		filename := SearchFile(strArg(l, 1), []string{sys.motifDir, "", "data/", "font/"})
+		fnt, err := loadFnt(filename, height)
 		if err != nil {
-			l.RaiseError(err.Error())
+			sys.errLog.Printf("failed to load %v (screenpack font): %v", filename, err)
+			fnt = newFnt()
 		}
 		l.Push(newUserData(l, fnt))
 		return 1
@@ -1209,10 +1215,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(dir)
 		return 1
 	})
-	luaRegister(l, "searchFile", func(l *lua.LState) int {
-		l.Push(lua.LString(SearchFile(strArg(l, 1), strArg(l, 2))))
-		return 1
-	})
 	luaRegister(l, "getFrameCount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.frameCounter))
 		return 1
@@ -1614,6 +1616,14 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "roundReset", func(*lua.LState) int {
 		sys.roundResetFlg = true
 		return 0
+	})
+	luaRegister(l, "searchFile", func(l *lua.LState) int {
+		var dirs []string
+		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
+			dirs = append(dirs, lua.LVAsString(value))
+		})
+		l.Push(lua.LString(SearchFile(strArg(l, 1), dirs)))
+		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
 		tn := int(numArg(l, 1))
@@ -2653,7 +2663,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "const", func(*lua.LState) int {
 		c := sys.debugWC
 		var ln lua.LNumber
-		switch strArg(l, 1) {
+		switch strings.ToLower(strArg(l, 1)) {
 		case "data.life":
 			ln = lua.LNumber(c.gi().data.life)
 		case "data.power":
@@ -2840,7 +2850,7 @@ func triggerFunctions(l *lua.LState) {
 		case "movement.down.friction.threshold":
 			ln = lua.LNumber(c.gi().movement.down.friction_threshold)
 		default:
-			ln = lua.LNumber(c.gi().constants[strArg(l, 1)])
+			ln = lua.LNumber(c.gi().constants[strings.ToLower(strArg(l, 1))])
 		}
 		l.Push(ln)
 		return 1
@@ -3846,6 +3856,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gamespeed", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.gameSpeed * sys.accel * 100))
+		return 1
+	})
+	luaRegister(l, "gameLogicSpeed", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.gameSpeed * sys.accel * float32(FPS)))
 		return 1
 	})
 	luaRegister(l, "lasthitter", func(*lua.LState) int {
