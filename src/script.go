@@ -789,7 +789,7 @@ func systemScriptInit(l *lua.LState) {
 			runtime.GC()
 			return nil
 		}
-
+		sys.inMatch = true
 		for {
 			if sys.gameEnd {
 				l.Push(lua.LNumber(-1))
@@ -995,6 +995,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.postMatchFlg = false
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
+				sys.inMatch = false
 				return 2
 			}
 		}
@@ -3848,6 +3849,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gameLogicSpeed", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.gameSpeed * sys.accel * float32(FPS)))
+		return 1
+	})
+	luaRegister(l, "inmatch", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.inMatch))
 		return 1
 	})
 	luaRegister(l, "lasthitter", func(*lua.LState) int {
