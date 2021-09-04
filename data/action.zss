@@ -41,7 +41,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
 	}
 	# Reversal
-	if moveReversed = 1 {
+	if moveReversed = 1 && pauseTime = 0 {
 		lifebarAction{spr: const(MsgReversal), 0; redirectId: enemy,id}
 	}
 	# Hit Overridden (Parry)
