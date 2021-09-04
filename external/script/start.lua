@@ -1501,6 +1501,9 @@ function start.f_selectReset(hardReset)
 			else
 				start.c[i].selX = 0
 			end
+			start.c[i].cell = -1
+			start.c[i].randCnt = 0
+			start.c[i].randRef = nil
 		end
 	end
 	for side = 1, 2 do
