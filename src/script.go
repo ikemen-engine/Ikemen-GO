@@ -1605,6 +1605,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundResetFlg = true
 		return 0
 	})
+	luaRegister(l, "screenshot", func(*lua.LState) int {
+		captureScreen()
+		return 0
+	})
 	luaRegister(l, "searchFile", func(l *lua.LState) int {
 		var dirs []string
 		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
