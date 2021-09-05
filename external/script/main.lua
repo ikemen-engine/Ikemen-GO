@@ -2009,7 +2009,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training char if defined and not included in select.def
-if main.t_charDef[config.TrainingChar:lower()] == nil then
+if config.TrainingChar ~= '' and main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_addChar(config.TrainingChar .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
