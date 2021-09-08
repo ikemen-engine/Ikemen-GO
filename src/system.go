@@ -2810,8 +2810,8 @@ func (l *Loader) loadChar(pn int) int {
 	return 1
 }
 
-func (l *Loader) loadAttachedChar(pn int) int {
-	atcpn := pn - MaxSimul*2
+func (l *Loader) loadAttachedChar(atcpn int) int {
+	pn := atcpn + MaxSimul*2
 	var tstr string
 	tnow := time.Now()
 	defer func() {
@@ -2874,11 +2874,17 @@ func (l *Loader) loadStage() bool {
 			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
+			for i := range sys.stageList[0].attachedchardef {
+				l.loadAttachedChar(i)
+			}
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
+		for i := range sys.stageList[0].attachedchardef {
+			l.loadAttachedChar(i)
+		}
 		sys.stage = sys.stageList[0]
 	}
 	return l.err == nil
@@ -2895,22 +2901,10 @@ func (l *Loader) load() {
 		return true
 	}
 	for !stageDone || !allCharDone() {
-		if !stageDone && sys.sel.selectedStageNo >= 0 {
-			if !l.loadStage() {
-				l.state = LS_Error
-				return
-			}
-			stageDone = true
-		}
+		// Load chars
 		for i, b := range charDone {
 			if !b {
-				result := -1
-				if i < len(sys.chars)-MaxAttachedChar ||
-					len(sys.stageList[0].attachedchardef) <= i-MaxSimul*2 {
-					result = l.loadChar(i)
-				} else {
-					result = l.loadAttachedChar(i)
-				}
+				result := l.loadChar(i)
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -2919,13 +2913,27 @@ func (l *Loader) load() {
 				}
 			}
 		}
-		for i := 0; i < 2; i++ {
-			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
-				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
-				for j := i + 2; j < len(sys.chars); j += 2 {
-					if !charDone[j] {
-						sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
-						sys.cgi[j].wakewakaLength = 0
+		// Load stage and attached char
+		if !stageDone && sys.sel.selectedStageNo >= 0 {
+			if !l.loadStage() {
+				l.state = LS_Error
+				return
+			}
+			stageDone = true
+		}
+		// Clear unused chars data
+		if stageDone {
+			for i := 0; i < 2; i++ {
+				if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
+					sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
+					for j := i + 2; j < len(sys.chars); j += 2 {
+						if !charDone[j] {
+							if j < len(sys.chars)-len(sys.stageList[0].attachedchardef) {
+								sys.chars[j], sys.cgi[j].states = nil, nil
+								sys.cgi[j].wakewakaLength = 0
+							}
+							charDone[j] = true
+						}
 					}
 				}
 			}
