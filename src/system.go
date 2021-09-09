@@ -1538,6 +1538,7 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
+		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
 		if !s.sf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
 				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
@@ -1577,7 +1578,6 @@ func (s *System) draw(x, y, scl float32) {
 			rect[0] = s.scrrect[2] - rect[2]
 			fade(rect, 0, 255)
 		}
-		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
