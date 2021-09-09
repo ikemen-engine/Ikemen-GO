@@ -909,6 +909,7 @@ local motif =
 		winquote_font_height = -1, --Ikemen feature
 		winquote_scale = {1.0, 1.0},
 		winquote_delay = 2, --Ikemen feature
+		winquote_time = 0, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)

@@ -3161,9 +3161,7 @@ function start.f_victory()
 	if not start.f_victoryInit() then
 		return false
 	end
-	if start.t_victory.textend then
-		start.t_victory.counter = start.t_victory.counter + 1
-	end
+	start.t_victory.counter = start.t_victory.counter + 1
 	--draw overlay
 	overlay_winquote:draw()
 	--draw layerno = 0 backgrounds
@@ -3179,29 +3177,33 @@ function start.f_victory()
 		t_txt_winquoteName[2]:draw()
 	end
 	--draw winquote
-	start.t_victory.textcnt = start.t_victory.textcnt + 1
-	start.t_victory.textend = main.f_textRender(
-		txt_winquote,
-		start.t_victory.winquote,
-		start.t_victory.textcnt,
-		motif.victory_screen.winquote_offset[1],
-		motif.victory_screen.winquote_offset[2],
-		motif.victory_screen.winquote_spacing[1],
-		motif.victory_screen.winquote_spacing[2],
-		main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
-		motif.victory_screen.winquote_delay,
-		main.f_lineLength(
+	if start.t_victory.counter + motif.victory_screen.fadein_time >= motif.victory_screen.winquote_time then
+		if not start.t_victory.textend then
+			start.t_victory.textcnt = start.t_victory.textcnt + 1
+		end
+		start.t_victory.textend = main.f_textRender(
+			txt_winquote,
+			start.t_victory.winquote,
+			start.t_victory.textcnt,
 			motif.victory_screen.winquote_offset[1],
-			motif.info.localcoord[1],
-			motif.victory_screen.winquote_font[3],
-			motif.victory_screen.winquote_window,
-			motif.victory_screen.winquote_textwrap:match('[wl]')
+			motif.victory_screen.winquote_offset[2],
+			motif.victory_screen.winquote_spacing[1],
+			motif.victory_screen.winquote_spacing[2],
+			main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
+			motif.victory_screen.winquote_delay,
+			main.f_lineLength(
+				motif.victory_screen.winquote_offset[1],
+				motif.info.localcoord[1],
+				motif.victory_screen.winquote_font[3],
+				motif.victory_screen.winquote_window,
+				motif.victory_screen.winquote_textwrap:match('[wl]')
+			)
 		)
-	)
+	end
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.victorybgdef.bg, true)
 	--draw fadein / fadeout
-	if main.fadeType == 'fadein' and (start.t_victory.counter >= motif.victory_screen.time or main.f_input(main.t_players, {'pal', 's'})) then
+	if main.fadeType == 'fadein' and ((start.t_victory.textend and start.t_victory.counter - start.t_victory.textcnt >= motif.victory_screen.time) or main.f_input(main.t_players, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', motif.victory_screen)
 	end
 	main.f_fadeAnim(motif.victory_screen)

@@ -1042,6 +1042,7 @@
 	winquote.spacing = 0, 0
 	winquote.font.height = -1
 	winquote.delay = 2
+	winquote.time = 0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
