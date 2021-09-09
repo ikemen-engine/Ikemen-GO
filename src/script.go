@@ -523,10 +523,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "clearConsole", func(*lua.LState) int {
-		sys.consoleText = nil
-		return 0
-	})
 	luaRegister(l, "clearAllSound", func(l *lua.LState) int {
 		sys.clearAllSound()
 		return 0
@@ -539,6 +535,14 @@ func systemScriptInit(l *lua.LState) {
 		col := uint32(int32(numArg(l, 3))&0xff | int32(numArg(l, 2))&0xff<<8 |
 			int32(numArg(l, 1))&0xff<<16)
 		FillRect(sys.scrrect, col, a)
+		return 0
+	})
+	luaRegister(l, "clearConsole", func(*lua.LState) int {
+		sys.consoleText = nil
+		return 0
+	})
+	luaRegister(l, "clearSelected", func(l *lua.LState) int {
+		sys.sel.ClearSelected()
 		return 0
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
@@ -1665,7 +1669,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
-		//sys.loadStart()
+		sys.loadStart()
 		return 0
 	})
 	luaRegister(l, "sffNew", func(l *lua.LState) int {

@@ -1313,7 +1313,7 @@ function main.f_commandLine()
 		end
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
-	selectStart()
+	clearSelected()
 	setMatchNo(1)
 	selectStage(main.t_stageDef[stage:lower()])
 	setTeamMode(1, t_teamMode[1], t_numChars[1])
