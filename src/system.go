@@ -2308,8 +2308,6 @@ type SelectChar struct {
 	name           string
 	lifebarname    string
 	author         string
-	sprite         string
-	anim           string
 	sound          string
 	intro          string
 	ending         string
@@ -2321,12 +2319,18 @@ type SelectChar struct {
 	pal_keymap     []int32
 	localcoord     int32
 	portrait_scale float32
+	cns_scale      [2]float32
 	anims          PreloadedAnims
 	sff            *Sff
 }
 
 func newSelectChar() *SelectChar {
-	return &SelectChar{localcoord: 320, portrait_scale: 1, anims: NewPreloadedAnims()}
+	return &SelectChar{
+		localcoord: 320,
+		portrait_scale: 1,
+		cns_scale: [...]float32{1, 1},
+		anims: NewPreloadedAnims(),
+	}
 }
 
 type SelectStage struct {
@@ -2452,7 +2456,7 @@ func (s *Select) addChar(def string) {
 	}
 	sc.def = def
 	lines, i, info, files, keymap, arcade := SplitAndTrim(str, "\n"), 0, true, true, true, true
-	var movelist string
+	var cns, sprite, anim, movelist string
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -2476,8 +2480,9 @@ func (s *Select) addChar(def string) {
 		case "files":
 			if files {
 				files = false
-				sc.sprite = is["sprite"]
-				sc.anim = is["anim"]
+				cns = is["cns"]
+				sprite = is["sprite"]
+				anim = is["anim"]
 				sc.sound = is["sound"]
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
@@ -2513,8 +2518,30 @@ func (s *Select) addChar(def string) {
 		listSpr[[...]int16{k[0], k[1]}] = true
 	}
 	sff := newSff()
+	//read size values
+	LoadFile(&cns, []string{def, "", "data/"}, func(filename string) error {
+		str, err := LoadText(filename)
+		if err != nil {
+			return err
+		}
+		lines, i := SplitAndTrim(str, "\n"), 0
+		for i < len(lines) {
+			is, name, _ := ReadIniSection(lines, &i)
+			switch name {
+			case "size":
+				if ok := is.ReadF32("xscale", &sc.cns_scale[0]); !ok {
+					sc.cns_scale[0] = 320 / float32(sc.localcoord)
+				}
+				if ok := is.ReadF32("yscale", &sc.cns_scale[1]); !ok {
+					sc.cns_scale[1] = 320 / float32(sc.localcoord)
+				}
+				return nil
+			}
+		}
+		return nil
+	})
 	//preload animations
-	LoadFile(&sc.anim, []string{def, "", "data/"}, func(filename string) error {
+	LoadFile(&anim, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2534,7 +2561,7 @@ func (s *Select) addChar(def string) {
 	//preload portion of sff file
 	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(def, filepath.Ext(def)))
 	if fp = FileExist(fp); len(fp) == 0 {
-		fp = sc.sprite
+		fp = sprite
 	}
 	LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
 		var selPal []int32
@@ -2552,6 +2579,7 @@ func (s *Select) addChar(def string) {
 		}
 		return nil
 	})
+	//read movelist
 	if len(movelist) > 0 {
 		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
@@ -2797,14 +2825,9 @@ func (l *Loader) loadChar(pn int) int {
 		fa.numko, fa.teammate_face, fa.teammate_scale = 0, make([]*Sprite, nsel), make([]float32, nsel)
 		sys.lifebar.nm[sys.tmode[pn&1]][pn].numko = 0
 		for i, ci := range idx {
-			sprite := sys.sel.charlist[ci].sprite
-			LoadFile(&sprite, []string{sys.sel.charlist[ci].def, "", "data/"}, func(file string) error {
-				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
-				var err error
-				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
-					int16(fa.teammate_face_spr[1]))
-				return err
-			})
+			fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
+			fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
+				int16(fa.teammate_face_spr[1]))
 		}
 	}
 	return 1

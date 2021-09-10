@@ -1070,8 +1070,14 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("arcadepath", lua.LString(c.arcadepath))
 		tbl.RawSetString("ratiopath", lua.LString(c.ratiopath))
 		tbl.RawSetString("portrait_scale", lua.LNumber(c.portrait_scale))
-		//palettes
 		subt := l.NewTable()
+		for k, v := range c.cns_scale {
+			subt.RawSetInt(k+1, lua.LNumber(v))
+			subt.RawSetInt(k+1, lua.LNumber(v))
+		}
+		tbl.RawSetString("cns_scale", subt)
+		//palettes
+		subt = l.NewTable()
 		if len(c.pal) > 0 {
 			for k, v := range c.pal {
 				subt.RawSetInt(k+1, lua.LNumber(v))
