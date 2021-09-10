@@ -245,14 +245,14 @@ function loop()
 		--rank
 		start.f_rank()
 	end
-	hook.run("loop."..gamemode.."#always")
+	hook.run("loop."..gamemode().."#always")
 	--pause menu
 	if main.pauseMenu then
 		playerBufReset()
 		menu.f_run()
 		hook.run("loop.pause")
 	else
-		hook.run("loop."..gamemode)
+		hook.run("loop."..gamemode())
 		main.f_cmdInput()
 		--esc / m
 		if (esc() or (main.f_input(main.t_players, {'m'})) and not network()) and not start.challengerInit then
