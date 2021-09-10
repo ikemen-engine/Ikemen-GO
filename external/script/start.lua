@@ -782,18 +782,16 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop)
 		if v[1] ~= nil and v[1] ~= -1 then
 			local a = animGetPreloadedData('char', ref, v[1], v[2], loop)
 			if a ~= nil then
-				local xscale, yscale = 1, 1
+				local xscale = start.f_getCharData(ref).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1])
+				local yscale = xscale
 				if v[2] == -1 then
-					xscale = start.f_getCharData(ref).cns_scale[1] or 1
-					yscale = start.f_getCharData(ref).cns_scale[2] or 1
-				else
-					xscale = start.f_getCharData(ref).portrait_scale or 1
-					yscale = xscale
+					xscale = xscale * (start.f_getCharData(ref).cns_scale[1] or 1)
+					yscale = yscale * (start.f_getCharData(ref).cns_scale[2] or 1)
 				end
 				animSetScale(
 					a,
-					t['p' .. side .. subname .. '_scale'][1] * (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_scale'])[1] or 1) * xscale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
-					t['p' .. side .. subname .. '_scale'][2] * (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_scale'])[2] or 1) * yscale / (main.SP_Viewport43[3] / main.SP_Localcoord[1]),
+					t['p' .. side .. subname .. '_scale'][1] * (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_scale'])[1] or 1) * xscale,
+					t['p' .. side .. subname .. '_scale'][2] * (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_scale'])[2] or 1) * yscale,
 					false
 				)
 				animSetWindow(

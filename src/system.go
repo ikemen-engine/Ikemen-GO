@@ -2336,7 +2336,6 @@ func newSelectChar() *SelectChar {
 type SelectStage struct {
 	def             string
 	name            string
-	spr             string
 	attachedchardef string
 	stagebgm        IniSection
 	portrait_scale  float32
@@ -2607,6 +2606,7 @@ func (s *Select) AddStage(def string) error {
 	}
 	tstr = fmt.Sprintf("Stage added: %v", def)
 	i, info, music, bgdef, stageinfo := 0, true, true, true, true
+	var spr string
 	s.stagelist = append(s.stagelist, *newSelectStage())
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -2637,7 +2637,7 @@ func (s *Select) AddStage(def string) error {
 		case "bgdef":
 			if bgdef {
 				bgdef = false
-				ss.spr = is["spr"]
+				spr = is["spr"]
 			}
 		case "stageinfo":
 			if stageinfo {
@@ -2668,7 +2668,7 @@ func (s *Select) AddStage(def string) error {
 			}
 		}
 		//preload portion of sff file
-		LoadFile(&ss.spr, []string{def, "", "data/"}, func(file string) error {
+		LoadFile(&spr, []string{def, "", "data/"}, func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
