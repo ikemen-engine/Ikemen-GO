@@ -174,7 +174,7 @@ local endFlag = false
 
 --function called during match via config.json CommonLua
 function loop()
-	hooks.run("loop.start")
+	hook.run("loop.start")
 	if start == nil then --match started via command line without -loadmotif flag
 		if esc() then
 			endMatch()
@@ -220,7 +220,7 @@ function loop()
 	--dialogue
 	if indialogue() then
 		start.f_dialogue()
-		hooks.run("loop.dialog")
+		hook.run("loop.dialog")
 	--match end
 	elseif roundstate() == -1 then
 		if not endFlag then
@@ -245,14 +245,14 @@ function loop()
 		--rank
 		start.f_rank()
 	end
-	hooks.run("loop."..gamemode.."#always")
+	hook.run("loop."..gamemode.."#always")
 	--pause menu
 	if main.pauseMenu then
 		playerBufReset()
 		menu.f_run()
-		hooks.run("loop.pause")
+		hook.run("loop.pause")
 	else
-		hooks.run("loop."..gamemode)
+		hook.run("loop."..gamemode)
 		main.f_cmdInput()
 		--esc / m
 		if (esc() or (main.f_input(main.t_players, {'m'})) and not network()) and not start.challengerInit then
