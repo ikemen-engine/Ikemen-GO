@@ -3177,7 +3177,7 @@ function start.f_victory()
 		t_txt_winquoteName[2]:draw()
 	end
 	--draw winquote
-	if start.t_victory.counter + motif.victory_screen.fadein_time >= motif.victory_screen.winquote_time then
+	if start.t_victory.counter + motif.victory_screen.fadein_time >= motif.victory_screen.winquote_displaytime then
 		if not start.t_victory.textend then
 			start.t_victory.textcnt = start.t_victory.textcnt + 1
 		end

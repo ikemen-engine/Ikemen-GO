@@ -6,25 +6,20 @@
 if !const(Default.Enable.Score) || teamSide = 0 {
 	# do nothing, global code disabled locally or executed by stage
 } else if roundState = 0 {
-	mapSet{map: "_iksys_scoreVitalBase"; value: 0}
+	mapSet{map: "_iksys_scoreTimeVitalFlag"; value: 0}
 	mapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 0}
-	mapSet{map: "_iksys_scorereceivedDamage"; value: 0}
-	mapSet{map: "_iksys_scoreDamageBonus"; value: 0}
-	mapSet{map: "_iksys_scoreDamageFrames"; value: 0}
-	mapSet{map: "_iksys_scoreDamageId"; value: 0}
+	mapSet{map: "_iksys_scoreReceivedDamage"; value: 0}
 	mapSet{map: "_iksys_scoreComboCount"; value: 0}
 	mapSet{map: "_iksys_scoreFirstAttackFlag"; value: 0}
 	mapSet{map: "_iksys_scoreMoveCounteredFlag"; value: 0}
 	mapSet{map: "_iksys_scoreWinFlag"; value: 0}
 } else if roundState = 4 && !isHelper {
 	# score: time vital bonus
-	if win && map(_iksys_scoreVitalBase) = 0 && alive {
-		mapSet{map: "_iksys_scoreVitalBase"; value: float(life) / lifeMax / (numPartner + 1) * 10000}
+	if win && map(_iksys_scoreTimeVitalFlag) = 0 && alive {
 		if teamMode = Turns && roundsExisted = 0 && enemy,roundsExisted > 0 {
 			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
-			scoreAdd{value: round(map(_iksys_scoreVitalBase) / (enemy,roundsExisted + 1), -2)}
+			scoreAdd{value: round(float(life) / lifeMax / (numPartner + 1) * 10000 / (enemy,roundsExisted + 1), -2)}
 		} else {
-			let timeRatio = 100 * timeRemaining / (timeRemaining + timeElapsed);
 			let p1TagNum = 1;
 			let p2TagNum = 1;
 			if teamMode = Tag {
@@ -33,23 +28,25 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 			if enemy,teamMode = Tag {
 				let p2TagNum = enemy,numPartner + 1;
 			}
+			let timeRatio = 100 * timeRemaining / (timeRemaining + timeElapsed);
 			if $p1TagNum > $p2TagNum {
 				# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
 				let timeRatio = $timeRatio * $p2TagNum / $p1TagNum;
 			}
+			let timeMul = 1;
 			if $timeRatio > 90 {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 5, -2)}
+				let timeMul = 5;
 			} else if $timeRatio > 85 {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 4, -2)}
+				let timeMul = 4;
 			} else if $timeRatio > 80 {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 2.5, -2)}
+				let timeMul = 2.5;
 			} else if $timeRatio > 70 {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 2, -2)}
+				let timeMul = 2;
 			} else if $timeRatio > 60 {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 1.5, -2)}
-			} else {
-				scoreAdd{value: round(map(_iksys_scoreVitalBase) * 1, -2)}
+				let timeMul = 1.5;
 			}
+			scoreAdd{value: round(float(life) / lifeMax / (numPartner + 1) * 10000 * $timeMul, -2)}
+			mapSet{map: "_iksys_scoreTimeVitalFlag"; value: 1}
 		}
 	}
 	# score: consecutive wins bonus
@@ -61,53 +58,36 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 	}
 } else ignoreHitPause if roundState > 0 {
 	# score: damage bonus
-	if receivedDamage != map(_iksys_scorereceivedDamage) {
+	if receivedDamage != map(_iksys_scoreReceivedDamage) {
 		if receivedDamage > 0 && getHitVar(score) = 0 && getHitVar(playerno) != 0 && playerId(getHitVar(id)),teamSide != teamSide {
+			let dmgMul = 0;
 			# normal attacks
 			if getHitVar(attr) = [const(AttrStandingHyperAttack), const(AttrAerialHyperAttack)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 10}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 10;
 			} else if getHitVar(attr) = [const(AttrStandingSuperAttack), const(AttrAerialSuperAttack)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 9}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 9;
 			} else if getHitVar(attr) = [const(AttrStandingNormalAttack), const(AttrAerialNormalAttack)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 8}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 8;
 			# throws
 			} else if getHitVar(attr) = [const(AttrStandingHyperThrow), const(AttrAerialHyperThrow)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 10}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 10;
 			} else if getHitVar(attr) = [const(AttrStandingSuperThrow), const(AttrAerialSuperThrow)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 9}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 9;
 			} else if getHitVar(attr) = [const(AttrStandingNormalThrow), const(AttrAerialNormalThrow)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 8}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 8;
 			# projectiles
 			} else if getHitVar(attr) = [const(AttrStandingHyperProjectile), const(AttrAerialHyperProjectile)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 10}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 10;
 			} else if getHitVar(attr) = [const(AttrStandingSuperProjectile), const(AttrAerialSuperProjectile)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 9}
-				#mapSet{map: "_iksys_scoreDamageFrames"; value: min(20, getHitVar(hittime))}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 9;
 			} else if getHitVar(attr) = [const(AttrStandingNormalProjectile), const(AttrAerialNormalProjectile)] {
-				mapAdd{map: "_iksys_scoreDamageBonus"; value: (receivedDamage - map(_iksys_scorereceivedDamage)) * 8}
-				mapSet{map: "_iksys_scoreDamageFrames"; value: 1}
+				let dmgMul = 8;
 			}
-			mapSet{map: "_iksys_scoreDamageId"; value: getHitVar(id)}
+			if $dmgMul > 0 {
+				scoreAdd{value: round((receivedDamage - map(_iksys_scoreReceivedDamage)) * $dmgMul, -2); redirectId: getHitVar(id)}
+			}
 		}
-		mapSet{map: "_iksys_scorereceivedDamage"; value: receivedDamage}
-	}
-	if map(_iksys_scoreDamageFrames) > 0 {
-		scoreAdd{value: round(map(_iksys_scoreDamageBonus) / map(_iksys_scoreDamageFrames), -2); redirectId: map(_iksys_scoreDamageId)}
-		mapAdd{map: "_iksys_scoreDamageBonus"; value: 0 - map(_iksys_scoreDamageBonus) / map(_iksys_scoreDamageFrames)}
-		mapAdd{map: "_iksys_scoreDamageFrames"; value: -1}
+		mapSet{map: "_iksys_scoreReceivedDamage"; value: receivedDamage}
 	}
 	# score: first attack bonus
 	if firstAttack && map(_iksys_scoreFirstAttackFlag) = 0 {

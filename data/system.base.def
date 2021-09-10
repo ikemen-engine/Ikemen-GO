@@ -177,12 +177,12 @@
 	menu.key.hiscore = "s"
 
 	;menu.bg.<itemname>.anim = -1
-	;menu.bg.<itemname>.spr = -1, 0
+	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
 	;menu.bg.<itemname>.facing = 1
 	;menu.bg.<itemname>.scale = 1.0, 1.0
 	;menu.bg.active.<itemname>.anim = -1
-	;menu.bg.active.<itemname>.spr = -1
+	;menu.bg.active.<itemname>.spr = 
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
@@ -513,20 +513,20 @@
 	;cell.<col>.<row>.facing = 1
 
 	; cursor parameters defaults to p1 and p2 values, if not specified
-	p<pn>.cursor.startcell = 0, 0
-	p<pn>.cursor.active.anim = -1
-	p<pn>.cursor.active.spr = 
-	p<pn>.cursor.active.offset = 0, 0
-	p<pn>.cursor.active.facing = 1
-	p<pn>.cursor.active.scale = 1.0, 1.0
-	p<pn>.cursor.done.anim = -1
-	p<pn>.cursor.done.spr = 
-	p<pn>.cursor.done.offset = 0, 0
-	p<pn>.cursor.done.facing = 1
-	p<pn>.cursor.done.scale = 1.0, 1.0
-	p<pn>.cursor.move.snd = 100, 0
-	p<pn>.cursor.done.snd = 100, 1
-	p<pn>.random.move.snd = 100, 0
+	;p<pn>.cursor.startcell = 0, 0
+	;p<pn>.cursor.active.anim = -1
+	;p<pn>.cursor.active.spr = 
+	;p<pn>.cursor.active.offset = 0, 0
+	;p<pn>.cursor.active.facing = 1
+	;p<pn>.cursor.active.scale = 1.0, 1.0
+	;p<pn>.cursor.done.anim = -1
+	;p<pn>.cursor.done.spr = 
+	;p<pn>.cursor.done.offset = 0, 0
+	;p<pn>.cursor.done.facing = 1
+	;p<pn>.cursor.done.scale = 1.0, 1.0
+	;p<pn>.cursor.move.snd = 100, 0
+	;p<pn>.cursor.done.snd = 100, 1
+	;p<pn>.random.move.snd = 100, 0
 
 	portrait.anim = -1
 
@@ -593,7 +593,7 @@
 	stage.random.text = "Stage: Random"
 
 	stage.portrait.anim = -1
-	stage.portrait.spr = -1, 0
+	stage.portrait.spr = 
 	stage.portrait.offset = 0, 0
 	stage.portrait.scale = 1.0, 1.0
 	stage.portrait.bg.anim = -1
@@ -678,8 +678,8 @@
 
 	p1.swap.snd = -1, 0
 	p2.swap.snd = -1, 0
-	p1.select.snd = -1, 0 ; uses character's SND file
-	p2.select.snd = -1, 0 ; uses character's SND file
+	p1.select.snd = -1, 0 ; data read from character SND
+	p2.select.snd = -1, 0 ; data read from character SND
 
 	; Ratio stuff (Ikemen feature)
 	; ------------------------------------------------------------
@@ -1042,7 +1042,7 @@
 	winquote.spacing = 0, 0
 	winquote.font.height = -1
 	winquote.delay = 2
-	winquote.time = 0
+	winquote.displaytime = 0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -1067,7 +1067,7 @@
 	wintext.offset = 159, 70
 	wintext.font = "f-6x9.def", 0, 0, 255, 255, 255
 	wintext.font.scale = 1.0, 1.0
-	wintext.displaytime = -1
+	wintext.displaytime = 0
 	wintext.layerno = 2
 
 	; Ikemen features
@@ -1114,7 +1114,7 @@
 	winstext.offset = 159, 70
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	; Ikemen Features
@@ -1161,7 +1161,7 @@
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
 	winstext.font.height = -1
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1197,7 +1197,7 @@
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
 	winstext.font.height = -1
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1233,7 +1233,7 @@
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
 	winstext.font.height = -1
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1269,7 +1269,7 @@
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
 	winstext.font.height = -1
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1305,7 +1305,7 @@
 	winstext.font = "f-6x9.def", 0, 0, 255, 255, 255
 	winstext.font.scale = 1.0, 1.0
 	winstext.font.height = -1
-	winstext.displaytime = -1
+	winstext.displaytime = 0
 	winstext.layerno = 2
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1346,12 +1346,12 @@
 	menu.pos = 85, 33
 
 	;menu.bg.<itemname>.anim = -1
-	;menu.bg.<itemname>.spr = -1, 0
+	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
 	;menu.bg.<itemname>.facing = 1
 	;menu.bg.<itemname>.scale = 1.0, 1.0
 	;menu.bg.active.<itemname>.anim = -1
-	;menu.bg.active.<itemname>.spr = -1
+	;menu.bg.active.<itemname>.spr = 
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
@@ -1439,12 +1439,12 @@
 	keymenu.p2.pos = 178, 33
 
 	;keymenu.bg.<itemname>.anim = -1
-	;keymenu.bg.<itemname>.spr = -1, 0
+	;keymenu.bg.<itemname>.spr = 
 	;keymenu.bg.<itemname>.offset = 0, 0
 	;keymenu.bg.<itemname>.facing = 1
 	;keymenu.bg.<itemname>.scale = 1.0, 1.0
 	;keymenu.bg.active.<itemname>.anim = -1
-	;keymenu.bg.active.<itemname>.spr = -1
+	;keymenu.bg.active.<itemname>.spr = 
 	;keymenu.bg.active.<itemname>.offset = 0, 0
 	;keymenu.bg.active.<itemname>.facing = 1
 	;keymenu.bg.active.<itemname>.scale = 1.0, 1.0
@@ -1709,12 +1709,12 @@
 	menu.uselocalcoord = 0
 	menu.pos = 85, 33
 	;menu.bg.<itemname>.anim = -1
-	;menu.bg.<itemname>.spr = -1, 0
+	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
 	;menu.bg.<itemname>.facing = 1
 	;menu.bg.<itemname>.scale = 1.0, 1.0
 	;menu.bg.active.<itemname>.anim = -1
-	;menu.bg.active.<itemname>.spr = -1
+	;menu.bg.active.<itemname>.spr = 
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
@@ -1771,12 +1771,12 @@
 	menu.uselocalcoord = 0
 	menu.pos = 85, 33
 	;menu.bg.<itemname>.anim = -1
-	;menu.bg.<itemname>.spr = -1, 0
+	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
 	;menu.bg.<itemname>.facing = 1
 	;menu.bg.<itemname>.scale = 1.0, 1.0
 	;menu.bg.active.<itemname>.anim = -1
-	;menu.bg.active.<itemname>.spr = -1
+	;menu.bg.active.<itemname>.spr = 
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
@@ -2013,12 +2013,12 @@
 	menu.key.accept = "a&b&c&x&y&z&s"
 	menu.pos = 159, 158
 	;menu.bg.<itemname>.anim = -1
-	;menu.bg.<itemname>.spr = -1, 0
+	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
 	;menu.bg.<itemname>.facing = 1
 	;menu.bg.<itemname>.scale = 1.0, 1.0
 	;menu.bg.active.<itemname>.anim = -1
-	;menu.bg.active.<itemname>.spr = -1
+	;menu.bg.active.<itemname>.spr = 
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
