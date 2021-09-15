@@ -827,6 +827,16 @@ local function f_slideDistCalc(slide_dist, t_dist, t_speed)
 	end
 end
 
+--calculate portraits x pos
+local function f_portraitsXCalc(side, t, subname, i, member)
+	local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
+	if t['p' .. side .. subname .. '_padding'] == 1 then
+		return x + (2 * i - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * math.min(t['p' .. side .. subname .. '_num'], math.max(start.p[side].numChars, #start.p[side].t_selected)))
+	end
+	return x + (i - 1) * t['p' .. side .. subname .. '_spacing'][1]
+end
+
+--draw portraits
 function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
 	if #t_sel == 0 then
 		return
@@ -841,26 +851,24 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
 			table.insert(t_portraits, t_sel[i])
 		end
 	end
-	loopStart, loopEnd, loopStep = #t_portraits, 1, -1
+	local loopStart, loopEnd, loopStep = #t_portraits, 1, -1
 	if reversed then
 		loopStart, loopEnd, loopStep = 1, #t_portraits, 1
 		t_portraits = main.f_tableReverse(t_portraits)
 	end
-	for member = loopStart, loopEnd, loopStep do
-		if member <= t['p' .. side .. subname .. '_num'] --[[or (last and main.coop)]] then
-			if t_portraits[member].anim_data ~= nil then
-				local v = t_portraits[member]
+	for i = loopStart, loopEnd, loopStep do
+		local member = i
+		if reversed then
+			member = #t_portraits - i + 1
+		end
+		if i <= t['p' .. side .. subname .. '_num'] then
+			if t_portraits[i].anim_data ~= nil then
+				local v = t_portraits[i]
 				f_slideDistCalc(v.slide_dist, t['p' .. side .. '_member' .. member .. subname .. '_slide_dist'], t['p' .. side .. '_member' .. member .. subname .. '_slide_speed'])
-				local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
-				if t['p' .. side .. subname .. '_padding'] == 1 then
-					x = x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * math.min(t['p' .. side .. subname .. '_num'], math.max(start.p[side].numChars, #start.p[side].t_selected)))
-				else
-					x = x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
-				end
 				main.f_animPosDraw(
 					v.anim_data,
-					x + main.f_round(v.slide_dist[1]),
-					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
+					f_portraitsXCalc(side, t, subname, i, member) + main.f_round(v.slide_dist[1]),
+					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (i - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
 					t['p' .. side .. subname .. '_facing'],
 					true
 				)
