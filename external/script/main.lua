@@ -572,8 +572,8 @@ function main.f_createTextImg(t, prefix, mod)
 		text =   t[prefix .. '_text'],
 		x =      (t[prefix .. '_offset'][1] or 0) + (mod.x or 0),
 		y =      (t[prefix .. '_offset'][2] or 0) + (mod.y or 0),
-		scaleX = t[prefix .. '_font_scale'][1] * (mod.scaleX or 1),
-		scaleY = t[prefix .. '_font_scale'][2] * (mod.scaleY or 1),
+		scaleX = (t[prefix .. '_font_scale'][1] or 1) * (mod.scaleX or 1),
+		scaleY = (t[prefix .. '_font_scale'][2] or 1) * (mod.scaleY or 1),
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
@@ -3464,19 +3464,8 @@ function main.f_attractStart()
 			txt_attract_insert:draw()
 		end
 		--draw timer
-		if motif.attract_mode.start_timer_enabled == 1 and timerActive then
-			local num = main.f_round((motif.attract_mode.start_timer_count * motif.attract_mode.start_timer_framespercount - timer + motif.attract_mode.start_timer_displaytime) / motif.attract_mode.start_timer_framespercount)
-			if num <= -1 then
-				timerActive = false
-				timer = -1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(0))})
-			else
-				timer = timer + 1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
-			end
-			if timer >= motif.attract_mode.start_timer_displaytime then
-				txt_attract_timer:draw()
-			end
+		if motif.attract_mode.start_timer_count ~= -1 and timerActive then
+			timer, timerActive = main.f_drawTimer(timer, motif.attract_mode, 'start_timer_', txt_attract_timer)
 		end
 		--draw credits text
 		if main.credits ~= -1 then
@@ -3945,6 +3934,24 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	if not skipClear then
 		refresh()
 	end
+end
+
+--common timer draw code
+function main.f_drawTimer(timer, t, prefix, txt)
+	local num = main.f_round((t[prefix .. 'count'] * t[prefix .. 'framespercount'] - timer + t[prefix .. 'displaytime']) / t[prefix .. 'framespercount'])
+	local active = true
+	if num <= -1 then
+		active = false
+		timer = -1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(0))})
+	else
+		timer = timer + 1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(math.max(0, num)))})
+	end
+	if timer >= t[prefix .. 'displaytime'] then
+		txt:draw()
+	end
+	return timer, active
 end
 
 --reset background

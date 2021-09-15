@@ -645,13 +645,12 @@ local motif =
 		p2_teammenu_key_add = '$B', --Ikemen feature
 		p2_teammenu_key_subtract = '$F', --Ikemen feature
 		p2_teammenu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		timer_enabled = 0, --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
 		timer_font_height = -1, --Ikemen feature
 		timer_font_text = '%i', --Ikemen feature
-		timer_count = 99, --Ikemen feature
+		timer_count = -1, --Ikemen feature
 		timer_framespercount = 60, --Ikemen feature
 		timer_displaytime = 10, --Ikemen feature
 		record_offset = {0, 0}, --Ikemen feature
@@ -1662,7 +1661,6 @@ local motif =
 		start_press_font_scale = {1.0, 1.0}, --Ikemen feature
 		start_press_font_height = -1, --Ikemen feature
 		start_press_blinktime = 30, --Ikemen feature
-		start_timer_enabled = 1, --Ikemen feature
 		start_timer_offset = {310, 234}, --Ikemen feature
 		start_timer_font = {'f-4x6.fnt', 0, -1, 255, 255, 255}, --Ikemen feature
 		start_timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1981,7 +1979,6 @@ local motif =
 		item_face_unknown_offset = {0, 0}, --Ikemen feature
 		item_face_unknown_facing = 1, --Ikemen feature
 		item_face_unknown_scale = {1.0, 1.0}, --Ikemen feature
-		timer_enabled = 1, --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2719,31 +2716,31 @@ end
 
 --general paths
 for _, v in ipairs({
-	{t = {'files', 'spr'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'snd'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'select'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'fight'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'glyphs'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'music', 'title_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'select_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'vs_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'victory_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'option_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'replay_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'continue_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'continue_end_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'results_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'hiscore_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'default_ending', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'end_credits', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'game_over_screen', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'start_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'spr', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'snd', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'logo_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'intro_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'select', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'fight', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'glyphs', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'music', param = 'title_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'select_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'vs_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'victory_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'option_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'replay_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'continue_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'continue_end_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'results_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'hiscore_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'default_ending', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'end_credits', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'game_over_screen', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'logo_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'intro_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'start_storyboard', dirs = {motif.fileDir, '', 'data/'}},
 }) do
-	motif[v.t[1]][v.t[2]] = searchFile(motif[v.t[1]][v.t[2]], v.dirs)
+	motif[v.group][v.param] = searchFile(motif[v.group][v.param], v.dirs)
 end
 
 motif.files.spr_data = sffNew(motif.files.spr)
@@ -2784,37 +2781,45 @@ end
 local anim = ''
 local facing = ''
 function motif.f_loadSprData(t, v)
+	local animParam = v.s .. 'anim'
+	local sprParam = v.s .. 'spr'
+	local data = v.s .. 'data'
+	-- optional prefix argument only changes parameter name for anim/spr numbers assignment
+	if v.prefix ~= nil then
+		animParam = v.s .. v.prefix .. 'anim'
+		sprParam = v.s .. v.prefix .. 'spr'
+		data = v.s .. v.prefix .. 'data'
+	end
 	if t[v.s .. 'offset'] == nil then t[v.s .. 'offset'] = {0, 0} end
 	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end
-	if t[v.s .. 'anim'] ~= nil and t[v.s .. 'anim'] ~= -1 and motif.anim[t[v.s .. 'anim']] ~= nil then --create animation data
+	if t[animParam] ~= nil and t[animParam] ~= -1 and motif.anim[t[animParam]] ~= nil then --create animation data
 		if t[v.s .. 'facing'] == nil then t[v.s .. 'facing'] = 1 end
-		t[v.s .. 'data'] = main.f_animFromTable(
-			motif.anim[t[v.s .. 'anim']],
+		t[data] = main.f_animFromTable(
+			motif.anim[t[animParam]],
 			motif.files.spr_data,
-			t[v.s .. 'offset'][1] + v.x,
-			t[v.s .. 'offset'][2] + v.y,
+			t[v.s .. 'offset'][1] + (v.x or 0),
+			t[v.s .. 'offset'][2] + (v.y or 0),
 			t[v.s .. 'scale'][1],
 			t[v.s .. 'scale'][2],
 			motif.f_animFacing(t[v.s .. 'facing'])
 		)
-	elseif t[v.s .. 'spr'] ~= nil and #t[v.s .. 'spr'] > 0 then --create sprite data
-		if #t[v.s .. 'spr'] == 1 then --fix values
-			if type(t[v.s .. 'spr'][1]) == 'string' then
-				t[v.s .. 'spr'] = {tonumber(t[v.s .. 'spr'][1]:match('^([0-9]+)')), 0}
+	elseif t[sprParam] ~= nil and #t[sprParam] > 0 then --create sprite data
+		if #t[sprParam] == 1 then --fix values
+			if type(t[sprParam][1]) == 'string' then
+				t[sprParam] = {tonumber(t[sprParam][1]:match('^([0-9]+)')), 0}
 			else
-				t[v.s .. 'spr'] = {t[v.s .. 'spr'][1], 0}
+				t[sprParam] = {t[sprParam][1], 0}
 			end
 		end
 		if t[v.s .. 'facing'] == -1 then facing = ', H' else facing = '' end
-		anim = t[v.s .. 'spr'][1] .. ', ' .. t[v.s .. 'spr'][2] .. ', ' .. t[v.s .. 'offset'][1] + v.x .. ', ' .. t[v.s .. 'offset'][2] + v.y .. ', -1' .. facing
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, anim)
-		animSetScale(t[v.s .. 'data'], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
-		animUpdate(t[v.s .. 'data'])
+		t[data] = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. t[v.s .. 'offset'][1] + (v.x or 0) .. ', ' .. t[v.s .. 'offset'][2] + (v.y or 0) .. ', -1' .. facing)
+		animSetScale(t[data], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
+		animUpdate(t[data])
 	else --create dummy data
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
-		animUpdate(t[v.s .. 'data'])
+		t[data] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
+		animUpdate(t[data])
 	end
-	animSetWindow(t[v.s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t[data], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 --creates cursors data
@@ -2822,7 +2827,7 @@ function motif.f_loadCursorData()
 	for i = 1, config.Players do
 		for _, v in ipairs({'_cursor_active_', '_cursor_done_'}) do
 			if motif.select_info['p' .. i .. v .. 'data'] == nil and (motif.select_info['p' .. i .. v .. 'anim'] ~= nil or motif.select_info['p' .. i .. v .. 'spr'] ~= nil) then
-				motif.f_loadSprData(motif.select_info, {s = 'p' .. i .. v, x = 0, y = 0})
+				motif.f_loadSprData(motif.select_info, {s = 'p' .. i .. v})
 			end
 		end
 	end
@@ -2831,10 +2836,10 @@ end
 --creates fadein/fadeout anim data
 for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100_kumite_results_screen', 'time_attack_results_screen', 'time_challenge_results_screen', 'score_challenge_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadein_', x = 0, y = 0})
+		motif.f_loadSprData(motif[v], {s = 'fadein_'})
 	end
 	if motif[v].fadeout_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadeout_', x = 0, y = 0})
+		motif.f_loadSprData(motif[v], {s = 'fadeout_'})
 	end
 end
 
@@ -2877,11 +2882,12 @@ for _, v in ipairs({
 	motif.f_loadSprData(motif.select_info, v)
 end
 
+
 --continue screen spr/anim data
-motif.f_loadSprData(motif.continue_screen, {s = 'counter_', x = 0, y = 0})
+motif.f_loadSprData(motif.continue_screen, {s = 'counter_'})
 
 --challenger spr/anim data
-motif.f_loadSprData(motif.challenger_info, {s = 'bg_', x = 0, y = 0})
+motif.f_loadSprData(motif.challenger_info, {s = 'bg_'})
 
 --arrows spr/anim data
 for _, v in ipairs({motif.title_info, motif.option_info, motif.replay_info, motif.menu_info, motif.training_info, motif.attract_mode}) do
@@ -2922,12 +2928,12 @@ end
 
 --dialogue spr/anim data
 for i = 1, 2 do
-	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_bg_', x = 0, y = 0})
+	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_bg_'})
 end
 
 --hiscore spr/anim data
-motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_bg_', x = 0, y = 0})
-motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_unknown_', x = 0, y = 0})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_bg_'})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_unknown_'})
 
 --glyphs spr data
 motif.glyphs_data = {}

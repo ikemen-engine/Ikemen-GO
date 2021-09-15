@@ -1836,7 +1836,7 @@ function launchStoryboard(path)
 	return true
 end
 
-function CodeInput(name)
+function codeInput(name)
 	if main.t_commands[name] == nil then
 		return false
 	end
@@ -2077,18 +2077,8 @@ function start.f_selectScreen()
 			end
 		end
 		--draw timer
-		if motif.select_info.timer_enabled == 1 and start.p[1].teamEnd and (start.p[2].teamEnd or not main.selectMenu[2]) then
-			local num = main.f_round((motif.select_info.timer_count * motif.select_info.timer_framespercount - timerSelect + motif.select_info.timer_displaytime) / motif.select_info.timer_framespercount)
-			if num <= -1 then
-				timerSelect = -1
-				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%i', tostring(0))})
-			else
-				timerSelect = timerSelect + 1
-				txt_timerSelect:update({text = motif.select_info.timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
-			end
-			if timerSelect >= motif.select_info.timer_displaytime then
-				txt_timerSelect:draw()
-			end
+		if motif.select_info.timer_count ~= -1 and start.p[1].teamEnd and (start.p[2].teamEnd or not main.selectMenu[2]) then
+			timerSelect = main.f_drawTimer(timerSelect, motif.select_info, 'timer_', txt_timerSelect)
 		end
 		--draw record text
 		for i = 1, #t_recordText do
@@ -2515,7 +2505,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
 			end
 			--cell selected or select screen timer reached 0
-			if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_enabled == 1 and timerSelect == -1)) then
+			if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1)) then
 				if timerSelect ~= -1 then
 					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
 					local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
@@ -3715,21 +3705,10 @@ function start.f_hiscore(t, playMusic, place, infinite)
 		end
 	end
 	--draw timer
-	if motif.hiscore_info.timer_enabled == 1 and start.t_hiscore.input then
-		local num = main.f_round((motif.hiscore_info.timer_count * motif.hiscore_info.timer_framespercount - start.t_hiscore.timer + motif.hiscore_info.timer_displaytime) / motif.hiscore_info.timer_framespercount)
-		if num <= -1 then
-			if start.t_hiscore.input then
-				sndPlay(motif.files.snd_data, motif.hiscore_info.done_snd[1], motif.hiscore_info.done_snd[2])
-				start.t_hiscore.input = false
-			end
-			start.t_hiscore.timer = -1
-			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%i', tostring(0))})
-		else
-			start.t_hiscore.timer = start.t_hiscore.timer + 1
-			start.txt_hiscore_timer:update({text = motif.hiscore_info.timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
-		end
-		if start.t_hiscore.timer >= motif.hiscore_info.timer_displaytime then
-			start.txt_hiscore_timer:draw()
+	if motif.hiscore_info.timer_count ~= -1 and start.t_hiscore.input then
+		start.t_hiscore.timer, start.t_hiscore.input = main.f_drawTimer(start.t_hiscore.timer, motif.hiscore_info, 'timer_', start.txt_hiscore_timer)
+		if not start.t_hiscore.input then
+			sndPlay(motif.files.snd_data, motif.hiscore_info.done_snd[1], motif.hiscore_info.done_snd[2])
 		end
 	end
 	--credits
