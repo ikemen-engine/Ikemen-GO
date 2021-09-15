@@ -2138,14 +2138,16 @@ local t_teamActiveType = {'p1_teammenu_item_active', 'p2_teammenu_item_active'}
 
 function start.f_teamMenu(side)
 	local t = {}
+	local ok = not main.coop or main.cpuSide[side] or not main.teamMenu[side].simul
 	--append team modes allowed by game mode declaration
 	for _, v in ipairs(t_teamMenuSorted[side]) do
 		if main.teamMenu[side][v.itemname] then
 			table.insert(t, v)
+			ok = ok or v.itemname == 'simul'
 		end
 	end
-	--append simul itemname if it's co-op mode but simul itemname is diabled by screenpack
-	if main.coop and #t == 1 and main.teamMenu[side].simul and t[1].itemname ~= 'simul' then
+	--append simul itemname if it's co-op mode but simul itemname is disabled by screenpack
+	if not ok then
 		table.insert(t, 1, {data = text:create({}), itemname = 'simul', displayname = 'Simul', mode = 1})
 	end
 	--append entry if all valid team modes are disabled by screenpack
