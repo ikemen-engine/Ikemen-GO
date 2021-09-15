@@ -2122,11 +2122,11 @@ for i = 1, 2 do
 	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
 	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
 	table.insert(t_teamMenu, {
-		{data = text:create({}), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single, mode = 0, chars = 1},
-		{data = text:create({}), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul, mode = 1, chars = start.p[i].numSimul},
-		{data = text:create({}), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns, mode = 2, chars = start.p[i].numTurns},
-		{data = text:create({}), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag, mode = 3, chars = start.p[i].numTag},
-		{data = text:create({}), itemname = 'ratio', displayname = motif.select_info.teammenu_itemname_ratio, mode = 2, chars = start.p[i].numRatio},
+		{data = text:create({}), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single, mode = 0},
+		{data = text:create({}), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul, mode = 1},
+		{data = text:create({}), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns, mode = 2},
+		{data = text:create({}), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag, mode = 3},
+		{data = text:create({}), itemname = 'ratio', displayname = motif.select_info.teammenu_itemname_ratio, mode = 2},
 	})
 end
 local t_teamMenuSorted = {
@@ -2138,13 +2138,19 @@ local t_teamActiveType = {'p1_teammenu_item_active', 'p2_teammenu_item_active'}
 
 function start.f_teamMenu(side)
 	local t = {}
-	for k, v in ipairs(t_teamMenuSorted[side]) do
+	--append team modes allowed by game mode declaration
+	for _, v in ipairs(t_teamMenuSorted[side]) do
 		if main.teamMenu[side][v.itemname] then
 			table.insert(t, v)
 		end
 	end
-	if #t == 0 then --all valid team modes disabled by screenpack
-		for k, v in ipairs(t_teamMenu[side]) do
+	--append simul itemname if it's co-op mode but simul itemname is diabled by screenpack
+	if main.coop and #t == 1 and main.teamMenu[side].simul and t[1].itemname ~= 'simul' then
+		table.insert(t, 1, {data = text:create({}), itemname = 'simul', displayname = 'Simul', mode = 1})
+	end
+	--append entry if all valid team modes are disabled by screenpack
+	if #t == 0 then
+		for _, v in ipairs(t_teamMenu[side]) do
 			if main.teamMenu[side][v.itemname] then
 				table.insert(t, v)
 				break
@@ -2153,21 +2159,18 @@ function start.f_teamMenu(side)
 	end
 	--skip selection if only 1 team mode is available and team size is fixed
 	if #t == 1 and (t[1].itemname == 'single' or (t[1].itemname == 'simul' and main.numSimul[1] == main.numSimul[2]) or (t[1].itemname == 'turns' and main.numTurns[1] == main.numTurns[2]) or (t[1].itemname == 'tag' and main.numTag[1] == main.numTag[2])) then
-		start.p[side].teamMode = t[1].mode
-		if t[1].itemname.ratio ~= nil then
-			start.p[side].numRatio = t[1].chars
-			if start.p[side].numRatio <= 3 then
-				start.p[side].numChars = 3
-			elseif start.p[side].numRatio <= 6 then
-				start.p[side].numChars = 2
-			else
-				start.p[side].numChars = 1
-			end
-			start.p[side].ratio = true
-		else
-			start.p[side].numChars = t[1].chars
+		if t[1].itemname == 'single' then
+			start.p[side].numChars = 1
+		elseif t[1].itemname == 'simul' then
+			start.p[side].numChars = start.p[side].numSimul
+		elseif t[1].itemname == 'turns' then
+			start.p[side].numChars = start.p[side].numTurns
+		elseif t[1].itemname == 'tag' then
+			start.p[side].numChars = start.p[side].numTag
 		end
+		start.p[side].teamMode = t[1].mode
 		start.p[side].teamEnd = true
+	--otherwise display team mode selection
 	elseif timerSelect ~= -1 then
 		--Commands
 		local t_cmd = {}
@@ -2410,6 +2413,7 @@ function start.f_teamMenu(side)
 			start.p[side].teamEnd = true
 		end
 	end
+	--t_selCmd table appending once team mode selection is finished
 	if start.p[side].teamEnd then
 		if main.coop and (side == 1 or gamemode('versuscoop')) then
 			for i = 1, start.p[side].numChars do
