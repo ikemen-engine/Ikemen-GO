@@ -1436,7 +1436,7 @@ end
 for _, v in pairs(t_preloadSpr) do
 	preloadList('cspr', v[1], v[2])
 end
-if motif.select_info.stage_portrait_spr[1] ~= -1 then
+if #motif.select_info.stage_portrait_spr > 0 and motif.select_info.stage_portrait_spr[1] ~= -1 then
 	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
 if motif.select_info.stage_portrait_anim ~= -1 then
@@ -1793,7 +1793,7 @@ function main.f_addStage(file, hidden)
 	main.t_stageDef[file:lower()] = stageNo
 	--anim data
 	for _, v in pairs({{motif.select_info.stage_portrait_anim, -1}, motif.select_info.stage_portrait_spr}) do
-		if v[1] ~= -1 then
+		if #v > 0 and v[1] ~= -1 then
 			main.t_selStages[stageNo].anim_data = animGetPreloadedData('stage', stageNo, v[1], v[2])
 			if main.t_selStages[stageNo].anim_data ~= nil then
 				animSetScale(
