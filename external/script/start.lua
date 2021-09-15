@@ -2187,7 +2187,7 @@ function start.f_teamMenu(side)
 		if start.p[side].teamMenu > #t then
 			start.p[side].teamMenu = 1
 		end
-		if #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_previous'])) then
+		if #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_previous_key'])) then
 			if start.p[side].teamMenu > 1 then
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = start.p[side].teamMenu - 1
@@ -2195,7 +2195,7 @@ function start.f_teamMenu(side)
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = #t
 			end
-		elseif #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_next'])) then
+		elseif #t > 1 and main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_next_key'])) then
 			if start.p[side].teamMenu < #t then
 				sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_move_snd'][1], motif.select_info['p' .. side .. '_teammenu_move_snd'][2])
 				start.p[side].teamMenu = start.p[side].teamMenu + 1
@@ -2205,50 +2205,50 @@ function start.f_teamMenu(side)
 			end
 		else
 			if t[start.p[side].teamMenu].itemname == 'simul' then
-				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_subtract'])) then
+				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_subtract_key'])) then
 					if start.p[side].numSimul > main.numSimul[1] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numSimul = start.p[side].numSimul - 1
 					end
-				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_add'])) then
+				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_add_key'])) then
 					if start.p[side].numSimul < main.numSimul[2] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numSimul = start.p[side].numSimul + 1
 					end
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'turns' then
-				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_subtract'])) then
+				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_subtract_key'])) then
 					if start.p[side].numTurns > main.numTurns[1] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numTurns = start.p[side].numTurns - 1
 					end
-				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_add'])) then
+				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_add_key'])) then
 					if start.p[side].numTurns < main.numTurns[2] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numTurns = start.p[side].numTurns + 1
 					end
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'tag' then
-				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_subtract'])) then
+				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_subtract_key'])) then
 					if start.p[side].numTag > main.numTag[1] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numTag = start.p[side].numTag - 1
 					end
-				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_add'])) then
+				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_add_key'])) then
 					if start.p[side].numTag < main.numTag[2] then
 						sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 						start.p[side].numTag = start.p[side].numTag + 1
 					end
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'ratio' then
-				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_subtract'])) and main.selectMenu[side] then
+				if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_subtract_key'])) and main.selectMenu[side] then
 					sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 					if start.p[side].numRatio > 1 then
 						start.p[side].numRatio = start.p[side].numRatio - 1
 					else
 						start.p[side].numRatio = 7
 					end
-				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_add'])) and main.selectMenu[side] then
+				elseif main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_add_key'])) and main.selectMenu[side] then
 					sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_value_snd'][1], motif.select_info['p' .. side .. '_teammenu_value_snd'][2])
 					if start.p[side].numRatio < 7 then
 						start.p[side].numRatio = start.p[side].numRatio + 1
@@ -2385,7 +2385,7 @@ function start.f_teamMenu(side)
 			end
 		end
 		--Confirmed team selection
-		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_key_accept'])) then
+		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_accept_key'])) then
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
 			if t[start.p[side].teamMenu].itemname == 'single' then
 				start.p[side].teamMode = t[start.p[side].teamMenu].mode
@@ -2674,21 +2674,21 @@ function start.f_selectVersus(active)
 					start.f_selectChar(side, start.p[side].t_selected)
 					t_loaded[side] = true
 				-- hold forward to rotate your team order by one member forwards
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_forward'])) then
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_rotate_forward_key'])) then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
 					main.f_tableRotate(start.p[side].t_selected, 1)
 					main.f_tableRotate(start.p[side].t_selTemp, 1)
 					t_active[side] = 1
 					counter = 0
 				-- hold back to rotate your team order by one member backwards. Hold down to switch places with previous team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_rotate_back'])) then
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_rotate_back_key'])) then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
 					main.f_tableRotate(start.p[side].t_selected, -1)
 					main.f_tableRotate(start.p[side].t_selTemp, -1)
 					t_active[side] = 1
 					counter = 0
 				-- hold up to switch places with next team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_forward'])) then
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_switch_forward_key'])) then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
 					if t_active[side] > 1 then
 						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] - 1)
@@ -2701,7 +2701,7 @@ function start.f_selectVersus(active)
 					end
 					counter = 0
 				-- hold down to switch places with previous team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_switch_back'])) then
+				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_switch_back_key'])) then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
 					if t_active[side] < #start.p[side].t_selected then
 						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] + 1)
@@ -2757,7 +2757,7 @@ function start.f_selectVersus(active)
 		--draw fadein / fadeout
 		local done = false
 		for side = 1, 2 do
-			if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_key_accept'])) then
+			if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_accept_key'])) then
 				main.f_fadeReset('fadeout', motif.vs_screen)
 				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
@@ -4332,7 +4332,7 @@ function start.f_dialogue()
 		--draw names
 		start['txt_dialogue_p' .. side .. '_name']:draw()
 	end
-	if main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_skip)) then
+	if main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.skip_key)) then
 		charSndStop()
 		t.parsed[t.textNum].cnt = 9999
 		t.parsed[t.textNum].tokens = {}
@@ -4353,7 +4353,7 @@ function start.f_dialogue()
 			t.endtime = t.counter + motif.dialogue_info.endtime
 		end
 	end
-	local key_cancel = main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.key_cancel))
+	local key_cancel = main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.cancel_key))
 	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and key_cancel) then
 		if key_cancel then
 			charSndStop()

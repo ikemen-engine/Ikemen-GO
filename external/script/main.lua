@@ -3013,7 +3013,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_demo()
 				end
 				local item_sav = item
-				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_key_previous), main.f_extractKeys(motif[main.group].menu_key_next))
+				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_previous_key), main.f_extractKeys(motif[main.group].menu_next_key))
 				main.txt_title:update({text = tbl.title})
 				if item_sav ~= item then
 					demoFrameCounter = 0
@@ -3064,9 +3064,9 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					resetKey()
 				elseif bool_del and getKey('DELETE') then
 					tbl.items = main.f_deleteIP(item, t)
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_hiscore)) and main.f_hiscoreDisplay(t[item].itemname) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_hiscore_key)) and main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_accept)) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_accept_key)) then
 					demoFrameCounter = 0
 					local f = t[item].itemname
 					if f == 'back' then

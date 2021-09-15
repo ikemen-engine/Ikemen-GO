@@ -171,10 +171,10 @@
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
-	menu.key.next = "$D&$F"
-	menu.key.previous = "$U&$B"
-	menu.key.accept = "a&b&c&x&y&z&s"
-	menu.key.hiscore = "s"
+	menu.next.key = "$D&$F"
+	menu.previous.key = "$U&$B"
+	menu.accept.key = "a&b&c&x&y&z&s"
+	menu.hiscore.key = "s"
 
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
@@ -648,24 +648,23 @@
 	p2.teammenu.item.active.switchtime = 2
 	p2.teammenu.item.active2.font.height = -1
 
-	p1.teammenu.key.next = "$D"
-	p1.teammenu.key.previous = "$U"
-	p1.teammenu.key.add = "$F"
-	p1.teammenu.key.subtract = "$B"
-	p1.teammenu.key.accept = "a&b&c&x&y&z&s"
-	p2.teammenu.key.next = "$D"
-	p2.teammenu.key.previous = "$U"
-	p2.teammenu.key.add = "$B"
-	p2.teammenu.key.subtract = "$F"
-	p2.teammenu.key.accept = "a&b&c&x&y&z&s"
+	p1.teammenu.next.key = "$D"
+	p1.teammenu.previous.key = "$U"
+	p1.teammenu.add.key = "$F"
+	p1.teammenu.subtract.key = "$B"
+	p1.teammenu.accept.key = "a&b&c&x&y&z&s"
+	p2.teammenu.next.key = "$D"
+	p2.teammenu.previous.key = "$U"
+	p2.teammenu.add.key = "$B"
+	p2.teammenu.subtract.key = "$F"
+	p2.teammenu.accept.key = "a&b&c&x&y&z&s"
 
-	timer.enabled = 0
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255
 	timer.font.scale = 1.0, 1.0
 	timer.font.height = -1
 	timer.font.text = "%i"
-	timer.count = 99
+	timer.count = -1
 	timer.framespercount = 60
 	timer.displaytime = 10
 
@@ -835,16 +834,16 @@
 	p2.cursor.move.snd = -1, 0
 	p2.cursor.done.snd = -1, 0
 
-	p1.key.rotate.forward = "$F"
-	p1.key.rotate.back = "$B"
-	p1.key.switch.forward = "$U"
-	p1.key.switch.back = "$D"
-	p1.key.accept = "a&b&c&x&y&z&s"
-	p2.key.rotate.forward = "$B"
-	p2.key.rotate.back = "$F"
-	p2.key.switch.forward = "$U"
-	p2.key.switch.back = "$D"
-	p2.key.accept = "a&b&c&x&y&z&s"
+	p1.rotate.forward.key = "$F"
+	p1.rotate.back.key = "$B"
+	p1.switch.forward.key = "$U"
+	p1.switch.back.key = "$D"
+	p1.accept.key = "a&b&c&x&y&z&s"
+	p2.rotate.forward.key = "$B"
+	p2.rotate.back.key = "$F"
+	p2.switch.forward.key = "$U"
+	p2.switch.back.key = "$D"
+	p2.accept.key = "a&b&c&x&y&z&s"
 
 	stage.snd = -1, 0
 
@@ -1988,7 +1987,6 @@
 	start.press.font.scale = 1.0, 1.0
 	start.press.font.height = -1
 	start.press.blinktime = 30
-	start.timer.enabled = 1
 	start.timer.offset = 310, 234
 	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255
 	start.timer.font.scale = 1.0, 1.0
@@ -2008,9 +2006,9 @@
 	title.font.scale = 1.0, 1.0
 	title.font.height = -1
 	title.text = "MAIN MENU"
-	menu.key.next = "$D&$F"
-	menu.key.previous = "$U&$B"
-	menu.key.accept = "a&b&c&x&y&z&s"
+	menu.next.key = "$D&$F"
+	menu.previous.key = "$U&$B"
+	menu.accept.key = "a&b&c&x&y&z&s"
 	menu.pos = 159, 158
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
@@ -2158,8 +2156,8 @@
 	endtime = 0
 	switchtime = 0
 	skiptime = 0
-	key.skip = "a"
-	key.cancel = "b&c&x&y&z&s"
+	skip.key = "a"
+	cancel.key = "b&c&x&y&z&s"
 	p1.bg.anim = -1
 	p1.bg.spr = 
 	p1.bg.offset = 0, 0
@@ -2264,7 +2262,7 @@
 	item.data.spacing = 0, 0
 	item.data.text = "%s"
 	item.data.score.text = "%8s"
-	item.data.time.text = "%m %s %x";"%m"%s""%x"
+	item.data.time.text = "%m %s %x"
 	item.data.win.text = "Round %s"
 	item.data.active.font = "f-6x9.def", 0, 0, 255, 255, 255
 	item.data.active.font.scale = 1.0, 1.0
@@ -2305,7 +2303,6 @@
 	item.face.unknown.offset = 0, 0
 	item.face.unknown.facing = 1
 	item.face.unknown.scale = 1.0, 1.0
-	timer.enabled = 1
 	timer.offset = 0, 0
 	timer.font = "f-6x9.def", 0, 0, 255, 255, 255
 	timer.font.scale = 1.0, 1.0

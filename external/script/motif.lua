@@ -147,10 +147,10 @@ local motif =
 		textinput_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature
 		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
 		textinput_overlay_alpha = {20, 100}, --Ikemen feature
-		menu_key_next = '$D&$F', --Ikemen feature
-		menu_key_previous = '$U&$B', --Ikemen feature
-		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		menu_key_hiscore = 's', --Ikemen feature
+		menu_next_key = '$D&$F', --Ikemen feature
+		menu_previous_key = '$U&$B', --Ikemen feature
+		menu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		menu_hiscore_key = 's', --Ikemen feature
 		menu_pos = {159, 158},
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
 		--menu_bg_<itemname>_spr = {}, --Ikemen feature
@@ -635,16 +635,16 @@ local motif =
 		p2_teammenu_ratio7_icon_offset = {0, 0}, --Ikemen feature
 		p2_teammenu_ratio7_icon_facing = 1, --Ikemen feature
 		p2_teammenu_ratio7_icon_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_key_next = '$D', --Ikemen feature
-		p1_teammenu_key_previous = '$U', --Ikemen feature
-		p1_teammenu_key_add = '$F', --Ikemen feature
-		p1_teammenu_key_subtract = '$B', --Ikemen feature
-		p1_teammenu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		p2_teammenu_key_next = '$D', --Ikemen feature
-		p2_teammenu_key_previous = '$U', --Ikemen feature
-		p2_teammenu_key_add = '$B', --Ikemen feature
-		p2_teammenu_key_subtract = '$F', --Ikemen feature
-		p2_teammenu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
+		p1_teammenu_next_key = '$D', --Ikemen feature
+		p1_teammenu_previous_key = '$U', --Ikemen feature
+		p1_teammenu_add_key = '$F', --Ikemen feature
+		p1_teammenu_subtract_key = '$B', --Ikemen feature
+		p1_teammenu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		p2_teammenu_next_key = '$D', --Ikemen feature
+		p2_teammenu_previous_key = '$U', --Ikemen feature
+		p2_teammenu_add_key = '$B', --Ikemen feature
+		p2_teammenu_subtract_key = '$F', --Ikemen feature
+		p2_teammenu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -731,16 +731,16 @@ local motif =
 		p1_cursor_done_snd = {-1, 0}, --Ikemen feature
 		p2_cursor_move_snd = {-1, 0}, --Ikemen feature
 		p2_cursor_done_snd = {-1, 0}, --Ikemen feature
-		p1_key_rotate_forward = '$F', --Ikemen feature
-		p1_key_rotate_back = '$B', --Ikemen feature
-		p1_key_switch_forward = '$U', --Ikemen feature
-		p1_key_switch_back = '$D', --Ikemen feature
-		p1_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		p2_key_rotate_forward = '$B', --Ikemen feature
-		p2_key_rotate_back = '$F', --Ikemen feature
-		p2_key_switch_forward = '$U', --Ikemen feature
-		p2_key_switch_back = '$D', --Ikemen feature
-		p2_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
+		p1_rotate_forward_key = '$F', --Ikemen feature
+		p1_rotate_back_key = '$B', --Ikemen feature
+		p1_switch_forward_key = '$U', --Ikemen feature
+		p1_switch_back_key = '$D', --Ikemen feature
+		p1_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		p2_rotate_forward_key = '$B', --Ikemen feature
+		p2_rotate_back_key = '$F', --Ikemen feature
+		p2_switch_forward_key = '$U', --Ikemen feature
+		p2_switch_back_key = '$D', --Ikemen feature
+		p2_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
 		stage_snd = {-1, 0}, --Ikemen feature
 	},
 	versusbgdef =
@@ -1680,9 +1680,9 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'MAIN MENU', --Ikemen feature
-		menu_key_next = '$D&$F', --Ikemen feature
-		menu_key_previous = '$U&$B', --Ikemen feature
-		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
+		menu_next_key = '$D&$F', --Ikemen feature
+		menu_previous_key = '$U&$B', --Ikemen feature
+		menu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_pos = {159, 158}, --Ikemen feature
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
 		--menu_bg_<itemname>_spr = {}, --Ikemen feature
@@ -1831,8 +1831,8 @@ local motif =
 		endtime = 0, --Ikemen feature
 		switchtime = 0, --Ikemen feature
 		skiptime = 0, --Ikemen feature
-		key_skip = 'a', --Ikemen feature
-		key_cancel = 'b&c&x&y&z&s', --Ikemen feature
+		skip_key = 'a', --Ikemen feature
+		cancel_key = 'b&c&x&y&z&s', --Ikemen feature
 		p1_bg_anim = -1, --Ikemen feature
 		p1_bg_spr = {}, --Ikemen feature
 		p1_bg_offset = {0, 0}, --Ikemen feature
@@ -2986,38 +2986,38 @@ for group_k, group_t in pairs(main.t_sort) do
 end
 
 --commands
-for k, v in ipairs({
-	motif.title_info.menu_key_next,
-	motif.title_info.menu_key_previous,
-	motif.title_info.menu_key_accept,
-	motif.title_info.menu_key_hiscore,
-	motif.select_info.p1_teammenu_key_next,
-	motif.select_info.p1_teammenu_key_previous,
-	motif.select_info.p1_teammenu_key_add,
-	motif.select_info.p1_teammenu_key_subtract,
-	motif.select_info.p1_teammenu_key_accept,
-	motif.select_info.p2_teammenu_key_next,
-	motif.select_info.p2_teammenu_key_previous,
-	motif.select_info.p2_teammenu_key_add,
-	motif.select_info.p2_teammenu_key_subtract,
-	motif.select_info.p2_teammenu_key_accept,
-	motif.vs_screen.p1_key_next,
-	motif.vs_screen.p1_key_previous,
-	motif.vs_screen.p1_key_orderup,
-	motif.vs_screen.p1_key_orderdown,
-	motif.vs_screen.p1_key_accept,
-	motif.vs_screen.p2_key_next,
-	motif.vs_screen.p2_key_previous,
-	motif.vs_screen.p2_key_orderup,
-	motif.vs_screen.p2_key_orderdown,
-	motif.vs_screen.p2_key_accept,
-	motif.attract_mode.menu_key_next,
-	motif.attract_mode.menu_key_previous,
-	motif.attract_mode.menu_key_accept,
-	motif.dialogue_info.key_skip,
-	motif.dialogue_info.key_cancel,
+for _, v in ipairs({
+	motif.title_info.menu_next_key,
+	motif.title_info.menu_previous_key,
+	motif.title_info.menu_accept_key,
+	motif.title_info.menu_hiscore_key,
+	motif.select_info.p1_teammenu_next_key,
+	motif.select_info.p1_teammenu_previous_key,
+	motif.select_info.p1_teammenu_add_key,
+	motif.select_info.p1_teammenu_subtract_key,
+	motif.select_info.p1_teammenu_accept_key,
+	motif.select_info.p2_teammenu_next_key,
+	motif.select_info.p2_teammenu_previous_key,
+	motif.select_info.p2_teammenu_add_key,
+	motif.select_info.p2_teammenu_subtract_key,
+	motif.select_info.p2_teammenu_accept_key,
+	motif.vs_screen.p1_next_key,
+	motif.vs_screen.p1_previous_key,
+	motif.vs_screen.p1_orderup_key,
+	motif.vs_screen.p1_orderdown_key,
+	motif.vs_screen.p1_accept_key,
+	motif.vs_screen.p2_next_key,
+	motif.vs_screen.p2_previous_key,
+	motif.vs_screen.p2_orderup_key,
+	motif.vs_screen.p2_orderdown_key,
+	motif.vs_screen.p2_accept_key,
+	motif.attract_mode.menu_next_key,
+	motif.attract_mode.menu_previous_key,
+	motif.attract_mode.menu_accept_key,
+	motif.dialogue_info.skip_key,
+	motif.dialogue_info.cancel_key,
 }) do
-	for i, cmd in ipairs (main.f_extractKeys(v)) do
+	for _, cmd in ipairs (main.f_extractKeys(v)) do
 		main.f_commandAdd(cmd, cmd)
 	end
 end
