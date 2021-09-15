@@ -1021,7 +1021,8 @@ func (s *System) commandUpdate() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			r := p[0]
-			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) {
+			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) ||
+				(r.aiLevel() > 0 && !r.alive()) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
 				}
