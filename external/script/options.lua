@@ -1210,7 +1210,7 @@ for _, v in ipairs(getDirectoryFiles('external/shaders')) do
 				if main.f_input(main.t_players, {'pal', 's'}) then
 					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
 					config.ExternalShaders = {path .. filename}
-					config.PostProcessingShader = 4
+					config.PostProcessingShader = 1
 					return false
 				end
 				return true

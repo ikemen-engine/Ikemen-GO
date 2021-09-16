@@ -434,7 +434,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(gl.Init())
 
 	// Check if the shader selected is currently available.
-	if s.postProcessingShader < int32(len(s.externalShaderList))+3 {
+	if s.postProcessingShader < int32(len(s.externalShaderList)) {
 		s.postProcessingShader = 0
 	}
 
