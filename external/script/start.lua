@@ -1752,7 +1752,11 @@ function launchFight(data)
 			return true --continue lua code execution
 		end
 	end
-	selectStart()
+	if config.BackgroundLoading then
+		selectStart()
+	else
+		clearSelected()
+	end
 	local ok = false
 	local saveData = false
 	local loopCount = 0
@@ -1766,6 +1770,7 @@ function launchFight(data)
 		t.stageNo = start.f_setStage(t.stageNo, t.stage ~= '' or continue() or loopCount > 0)
 		start.f_setMusic(t.stageNo, t.music)
 		if not start.f_selectVersus(t.vsscreen) then break end
+		start.f_selectLoading()
 		start.f_overrideCharData()
 		saveData = true
 		local continueScreen = main.continueScreen
@@ -2636,13 +2641,13 @@ for i = 1, 2 do
 	table.insert(t_txt_nameVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_name'))
 end
 
-function start.f_selectChar(player, t)
-	for _, v in ipairs(t) do
-		selectChar(player, v.ref, v.pal)
-	end
-end
-
 function start.f_selectVersus(active)
+	-- reset loading flags
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			v.loading = false
+		end
+	end
 	-- skip versus screen if vs screen is disabled or p2 side char has vsscreen select.def flag set to 0
 	for _, v in ipairs(start.p[2].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
@@ -2651,8 +2656,6 @@ function start.f_selectVersus(active)
 		end
 	end
 	if not active then
-		start.f_selectChar(1, start.p[1].t_selected)
-		start.f_selectChar(2, start.p[2].t_selected)
 		return true
 	end
 	local text = main.f_extractText(motif.vs_screen.match_text, matchno())
@@ -2671,7 +2674,10 @@ function start.f_selectVersus(active)
 			if not t_loaded[side] then
 				-- confirm order for AI controlled side or single team mode
 				if main.cpuSide[side] or #start.p[side].t_selected == 1 then
-					start.f_selectChar(side, start.p[side].t_selected)
+					for _, v in ipairs(start.p[side].t_selected) do
+						selectChar(side, v.ref, v.pal)
+						v.loading = true
+					end
 					t_loaded[side] = true
 				-- hold forward to rotate your team order by one member forwards
 				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_rotate_forward_key'])) then
@@ -2755,23 +2761,13 @@ function start.f_selectVersus(active)
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.bg, true)
 		--draw fadein / fadeout
-		local done = false
 		for side = 1, 2 do
 			if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_accept_key'])) then
 				main.f_fadeReset('fadeout', motif.vs_screen)
 				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
 					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
 				end
-				done = true
 				break
-			end
-		end
-		-- confirm order for non-single teams controlled by player
-		if done then
-			for side = 1, 2 do
-				if not t_loaded[side] then
-					start.f_selectChar(side, start.p[side].t_selected)
-				end
 			end
 		end
 		main.f_fadeAnim(motif.vs_screen)
@@ -2789,6 +2785,26 @@ function start.f_selectVersus(active)
 	end
 	esc(escFlag) --force Esc detection
 	return not escFlag
+end
+
+--loading loop called after versus screen is finished
+function start.f_selectLoading()
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			if not v.loading then
+				selectChar(side, v.ref, v.pal)
+				v.loading = true
+			end
+		end
+	end
+	if not config.BackgroundLoading then
+		loadStart()
+	end
+	while loading() do
+		main.t_animUpdate[motif.vs_screen.loading_data] = 1
+		animDraw(motif.vs_screen.loading_data)
+		main.f_refresh()
+	end
 end
 
 --;===========================================================

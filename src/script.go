@@ -1399,6 +1399,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.statusLFunc, _ = sys.luaLState.GetGlobal(strArg(l, 1)).(*lua.LFunction)
 		return 0
 	})
+	luaRegister(l, "loading", func(l *lua.LState) int {
+		l.Push(lua.LBool(sys.loader.state == LS_Loading))
+		return 1
+	})
 	luaRegister(l, "loadLifebar", func(l *lua.LState) int {
 		lb, err := loadLifebar(strArg(l, 1))
 		if err != nil {

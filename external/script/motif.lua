@@ -741,6 +741,11 @@ local motif =
 		p2_switch_forward_key = '$U', --Ikemen feature
 		p2_switch_back_key = '$D', --Ikemen feature
 		p2_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		loading_anim = -1, --Ikemen feature
+		loading_spr = {}, --Ikemen feature
+		loading_offset = {0, 0}, --Ikemen feature
+		loading_facing = 1, --Ikemen feature
+		loading_scale = {1.0, 1.0}, --Ikemen feature
 		stage_snd = {-1, 0}, --Ikemen feature
 	},
 	versusbgdef =
@@ -2238,6 +2243,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuengine_players = "Players"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
 	motif.option_info.menu_itemname_menuengine_debugmode = "Debug Mode"
+	motif.option_info.menu_itemname_menuengine_backgroundloading = "Background Loading"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
 	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
@@ -2354,6 +2360,7 @@ function motif.setBaseOptionInfo()
 		"menuengine_players",
 		"menuengine_debugkeys",
 		"menuengine_debugmode",
+		"menuengine_backgroundloading",
 		"menuengine_empty",
 		"menuengine_helpermax",
 		"menuengine_projectilemax",
@@ -2882,6 +2889,8 @@ for _, v in ipairs({
 	motif.f_loadSprData(motif.select_info, v)
 end
 
+--versus screen spr/anim data
+motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
 
 --continue screen spr/anim data
 motif.f_loadSprData(motif.continue_screen, {s = 'counter_'})

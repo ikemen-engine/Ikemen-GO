@@ -845,7 +845,14 @@
 	p2.switch.back.key = "$D"
 	p2.accept.key = "a&b&c&x&y&z&s"
 
-	stage.snd = -1, 0
+	; Rendered after versus screen, if all content has not background loaded yet
+	loading.anim = -1
+	loading.spr = 
+	loading.offset = 0, 0
+	loading.facing = 1
+	loading.scale = 1.0, 1.0
+
+	stage.snd = -1, 0 ; data read from stage attachedchar SND
 
 [VersusBgDef] ;Ikemen feature
 	spr = ""
@@ -1555,6 +1562,7 @@
 	;menu.itemname.players = "Players"
 	;menu.itemname.debugkeys = "Debug Keys"
 	;menu.itemname.debugmode = "Debug Mode"
+	;menu.itemname.backgroundloading = "Background Loading"
 	;menu.itemname.helpermax = "HelperMax"
 	;menu.itemname.projectilemax = "PlayerProjectileMax"
 	;menu.itemname.explodmax = "ExplodMax"
