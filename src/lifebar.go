@@ -2038,7 +2038,8 @@ func (ro *LifeBarRound) act() bool {
 					ro.to_bg[i].Action()
 				}
 			}
-			if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
+			//if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
+			if sys.intro < -ro.over_waittime {
 				wt := sys.winTeam
 				if wt < 0 {
 					wt = 0
