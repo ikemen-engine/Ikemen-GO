@@ -715,32 +715,72 @@ local motif =
 		p1_name_font_scale = {1.0, 1.0},
 		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
-		--p1_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		--p1_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		--p1_name_active_font_height = -1, --Ikemen feature
 		p2_name_pos = {0, 0},
 		p2_name_offset = {0, 0},
 		p2_name_font = {-1, 0, 0, 255, 255, 255},
 		p2_name_font_scale = {1.0, 1.0},
 		p2_name_font_height = -1, --Ikemen feature
 		p2_name_spacing = {0, 14},
-		--p2_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		--p2_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		--p2_name_active_font_height = -1, --Ikemen feature
-		p1_cursor_move_snd = {-1, 0}, --Ikemen feature
-		p1_cursor_done_snd = {-1, 0}, --Ikemen feature
-		p2_cursor_move_snd = {-1, 0}, --Ikemen feature
-		p2_cursor_done_snd = {-1, 0}, --Ikemen feature
-		p1_rotate_forward_key = '$F', --Ikemen feature
-		p1_rotate_back_key = '$B', --Ikemen feature
-		p1_switch_forward_key = '$U', --Ikemen feature
-		p1_switch_back_key = '$D', --Ikemen feature
-		p1_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
-		p2_rotate_forward_key = '$B', --Ikemen feature
-		p2_rotate_back_key = '$F', --Ikemen feature
-		p2_switch_forward_key = '$U', --Ikemen feature
-		p2_switch_back_key = '$D', --Ikemen feature
-		p2_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		--p<pn>_member<num>_key = "", --Ikemen feature
+		p1_accept_key = "a&b&c&x&y&z&s", --Ikemen feature
+		p1_skip_key = "s", --Ikemen feature
+		p2_accept_key = "a&b&c&x&y&z&s", --Ikemen feature
+		p2_skip_key = "s", --Ikemen feature
+		--p<pn>_member<num>_icon_anim = -1, --Ikemen feature
+		--p<pn>_member<num>_icon_spr = {}, --Ikemen feature
+		--p<pn>_member<num>_icon_done_anim = -1, --Ikemen feature
+		--p<pn>_member<num>_icon_done_spr = {}, --Ikemen feature
+		--p<pn>_member<num>_icon_offset = {0, 0}, --Ikemen feature
+		--p<pn>_member<num>_icon_facing = 1, --Ikemen feature
+		--p<pn>_member<num>_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_icon_anim = -1, --Ikemen feature
+		p1_value_icon_spr = {}, --Ikemen feature
+		p1_value_icon_offset = {0, 0}, --Ikemen feature
+		p1_value_icon_facing = 1, --Ikemen feature
+		p1_value_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_empty_icon_anim = -1, --Ikemen feature
+		p1_value_empty_icon_spr = {}, --Ikemen feature
+		p1_value_empty_icon_offset = {0, 0}, --Ikemen feature
+		p1_value_empty_icon_facing = 1, --Ikemen feature
+		p1_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_icon_spacing = {0, 0}, --Ikemen feature
+		p1_value_snd = {-1, 0}, --Ikemen feature
+		p2_value_icon_anim = -1, --Ikemen feature
+		p2_value_icon_spr = {}, --Ikemen feature
+		p2_value_icon_offset = {0, 0}, --Ikemen feature
+		p2_value_icon_facing = 1, --Ikemen feature
+		p2_value_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p2_value_empty_icon_anim = -1, --Ikemen feature
+		p2_value_empty_icon_spr = {}, --Ikemen feature
+		p2_value_empty_icon_offset = {0, 0}, --Ikemen feature
+		p2_value_empty_icon_facing = 1, --Ikemen feature
+		p2_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p2_value_icon_spacing = {0, 0}, --Ikemen feature
+		p2_value_snd = {-1, 0}, --Ikemen feature
+		p1_title_offset = {0, 0}, --Ikemen feature
+		p1_title_facing = 1, --Ikemen feature
+		p1_title_scale = {1.0, 1.0}, --Ikemen feature
+		p1_title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		p1_title_font_scale = {1.0, 1.0}, --Ikemen feature
+		p1_title_text = "Member %i", --Ikemen feature
+		--p1_title_member<num>_text = "", --Ikemen feature
+		p1_title_done_text = "Complete", --Ikemen feature
+		p2_title_offset = {0, 0}, --Ikemen feature
+		p2_title_facing = 1, --Ikemen feature
+		p2_title_scale = {1.0, 1.0}, --Ikemen feature
+		p2_title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		p2_title_font_scale = {1.0, 1.0}, --Ikemen feature
+		p2_title_text = "Member %i", --Ikemen feature
+		--p2_title_member<num>_text = "", --Ikemen feature
+		p2_title_done_text = "Complete", --Ikemen feature
+		timer_offset = {0, 0}, --Ikemen feature
+		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		timer_font_height = -1, --Ikemen feature
+		timer_font_text = "%i", --Ikemen feature
+		timer_count = -1, --Ikemen feature
+		timer_framespercount = 60, --Ikemen feature
+		timer_displaytime = 10, --Ikemen feature
 		loading_anim = -1, --Ikemen feature
 		loading_spr = {}, --Ikemen feature
 		loading_offset = {0, 0}, --Ikemen feature
@@ -2891,6 +2931,14 @@ end
 
 --versus screen spr/anim data
 motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
+for i = 1, 2 do
+	for j = 1, motif.vs_screen['p' .. i .. '_num'] do
+		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_'})
+		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_', prefix = 'done_'})
+	end
+	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_icon_'})
+	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_empty_icon_'})
+end
 
 --continue screen spr/anim data
 motif.f_loadSprData(motif.continue_screen, {s = 'counter_'})
@@ -3010,16 +3058,10 @@ for _, v in ipairs({
 	motif.select_info.p2_teammenu_add_key,
 	motif.select_info.p2_teammenu_subtract_key,
 	motif.select_info.p2_teammenu_accept_key,
-	motif.vs_screen.p1_next_key,
-	motif.vs_screen.p1_previous_key,
-	motif.vs_screen.p1_orderup_key,
-	motif.vs_screen.p1_orderdown_key,
 	motif.vs_screen.p1_accept_key,
-	motif.vs_screen.p2_next_key,
-	motif.vs_screen.p2_previous_key,
-	motif.vs_screen.p2_orderup_key,
-	motif.vs_screen.p2_orderdown_key,
+	motif.vs_screen.p1_skip_key,
 	motif.vs_screen.p2_accept_key,
+	motif.vs_screen.p2_skip_key,
 	motif.attract_mode.menu_next_key,
 	motif.attract_mode.menu_previous_key,
 	motif.attract_mode.menu_accept_key,
@@ -3028,6 +3070,18 @@ for _, v in ipairs({
 }) do
 	for _, cmd in ipairs (main.f_extractKeys(v)) do
 		main.f_commandAdd(cmd, cmd)
+	end
+end
+for i = 1, 2 do
+	local j = 1
+	while true do
+		if motif.vs_screen['p' .. i .. '_member' .. j .. '_key'] == nil then
+			break
+		end
+		for _, cmd in ipairs (main.f_extractKeys(v)) do
+			main.f_commandAdd(cmd, cmd)
+		end
+		j = j + 1
 	end
 end
 

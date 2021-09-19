@@ -1383,40 +1383,44 @@ local t_preloadAnim = {}
 local t_preloadSpr = {}
 local t_preload = {
 	--select_info
-	{typ = 'canim', arg = {motif.select_info.portrait_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.portrait_anim}},
 	{typ = 'cspr', arg = motif.select_info.portrait_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
 	--vs_screen
-	{typ = 'canim', arg = {motif.vs_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p1_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p1_done_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p2_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p2_done_spr},
 	--victory_screen
-	{typ = 'canim', arg = {motif.victory_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim, nil}},
+	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
 	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
 		end
 	end
@@ -2199,6 +2203,7 @@ function main.f_default()
 	main.numSimul = {config.NumSimul[1], config.NumSimul[2]} --min/max number of simul characters
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
+	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = false --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
@@ -2253,6 +2258,8 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
@@ -2320,6 +2327,8 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
@@ -2483,6 +2492,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2596,6 +2607,8 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
@@ -2712,6 +2725,8 @@ main.t_itemname = {
 		--main.lifebar.timer = true
 		main.makeRoster = true
 		main.quickContinue = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
@@ -2794,6 +2809,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2862,6 +2879,8 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.vs100_kumite_results_screen
 		main.rotationChars = true

@@ -350,6 +350,7 @@
 	portrait.spr = 9000, 0
 	portrait.offset = 0, 0
 	portrait.scale = 1.0, 1.0
+
 	title.offset = 0, 0
 	title.font = -1, 0, 0, 255, 255, 255
 	title.font.scale = 1.0, 1.0
@@ -814,38 +815,92 @@
 
 	;p<pn>.member<num>.anim = -1
 	;p<pn>.member<num>.spr = 9000, 1
+	;p<pn>.member<num>.done.anim = -1
+	;p<pn>.member<num>.done.spr = 9000, 1
 	;p<pn>.member<num>.offset = 0, 0
 	;p<pn>.member<num>.scale = 1.0, 1.0
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
 
-	p1.name.font.height = -1
-	;p1.name.active.font = -1, 0, 0, 255, 255, 255
-	;p1.name.active.font.scale = 1.0, 1.0
-	;p1.name.active.font.height = -1
-
-	p2.name.font.height = -1
-	;p2.name.active.font = -1, 0, 0, 255, 255, 255
-	;p2.name.active.font.scale = 1.0, 1.0
-	;p2.name.active.font.height = -1
-
-	p1.cursor.move.snd = -1, 0
-	p1.cursor.done.snd = -1, 0
-	p2.cursor.move.snd = -1, 0
-	p2.cursor.done.snd = -1, 0
-
-	p1.rotate.forward.key = "$F"
-	p1.rotate.back.key = "$B"
-	p1.switch.forward.key = "$U"
-	p1.switch.back.key = "$D"
+	; By default all action buttons confirm currently selected order.
+	; Assign keys to 'p<pn>.member<num>.key' parameters to enable order
+	; selection on per team member basis.
+	;p<pn>.member<num>.key = ""
 	p1.accept.key = "a&b&c&x&y&z&s"
-	p2.rotate.forward.key = "$B"
-	p2.rotate.back.key = "$F"
-	p2.switch.forward.key = "$U"
-	p2.switch.back.key = "$D"
+	p1.skip.key = "s"
 	p2.accept.key = "a&b&c&x&y&z&s"
+	p2.skip.key = "s"
 
-	; Rendered after versus screen, if all content has not background loaded yet
+	; Icon elements are rendered on top of portraits, with positioning affected
+	; by portrait num, offset, spacing, and padding. Done variants replace
+	; spr/anim once order selection is completed.
+	;p<pn>.member<num>.icon.anim = -1
+	;p<pn>.member<num>.icon.done.anim = -1
+	;p<pn>.member<num>.icon.spr = 
+	;p<pn>.member<num>.icon.done.spr = 
+	;p<pn>.member<num>.icon.offset = 0, 0
+	;p<pn>.member<num>.icon.facing = 1
+	;p<pn>.member<num>.icon.scale = 1.0, 1.0
+
+	; Value icons are rendered on top of portraits, with positioning starting at
+	; 0, 0. empty.icon elements are replaced with icon upon order selection.
+	p1.value.icon.anim = -1
+	p1.value.icon.spr = 
+	p1.value.icon.offset = 0, 0
+	p1.value.icon.facing = 1
+	p1.value.icon.scale = 1.0, 1.0
+	p1.value.empty.icon.anim = -1
+	p1.value.empty.icon.spr = 
+	p1.value.empty.icon.offset = 0, 0
+	p1.value.empty.icon.facing = 1
+	p1.value.empty.icon.scale = 1.0, 1.0
+	p1.value.icon.spacing = 0, 0
+	p1.value.snd = -1, 0
+	p2.value.icon.anim = -1
+	p2.value.icon.spr = 
+	p2.value.icon.offset = 0, 0
+	p2.value.icon.facing = 1
+	p2.value.icon.scale = 1.0, 1.0
+	p2.value.empty.icon.anim = -1
+	p2.value.empty.icon.spr = 
+	p2.value.empty.icon.offset = 0, 0
+	p2.value.empty.icon.facing = 1
+	p2.value.empty.icon.scale = 1.0, 1.0
+	p2.value.icon.spacing = 0, 0
+	p2.value.snd = -1, 0
+
+	; member<num>.text parameters replace title.text on per team member basis
+	p1.title.offset = 0, 0
+	p1.title.facing = 1
+	p1.title.scale = 1.0, 1.0
+	p1.title.font = -1, 0, 0, 255, 255, 255
+	p1.title.font.scale = 1.0, 1.0
+	p1.title.text = "Member %i"
+	;p1.title.member<num>.text = ""
+	p1.title.done.text = "Complete"
+	p2.title.offset = 0, 0
+	p2.title.facing = 1
+	p2.title.scale = 1.0, 1.0
+	p2.title.font = -1, 0, 0, 255, 255, 255
+	p2.title.font.scale = 1.0, 1.0
+	p2.title.text = "Member %i"
+	;p2.title.member<num>.text = ""
+	p2.title.done.text = "Complete"
+
+	p1.name.font.height = -1
+	p2.name.font.height = -1
+
+	; Change timer.count to positive number to enable order selection timer
+	timer.offset = 0, 0
+	timer.font = -1, 0, 0, 255, 255, 255
+	timer.font.scale = 1.0, 1.0
+	;timer.font.height = -1
+	timer.font.text = "%i"
+	timer.count = -1
+	timer.framespercount = 6
+	timer.displaytime = 0
+
+	; Rendered after versus screen until the engine finishes background loading
 	loading.anim = -1
 	loading.spr = 
 	loading.offset = 0, 0
@@ -1034,12 +1089,14 @@
 	p2.window = 
 	p2.spacing = 0, 0
 	p2.padding = 0
+
 	;p<pn>.member<num>.anim = -1
 	;p<pn>.member<num>.spr = 9000, 2
 	;p<pn>.member<num>.offset = 0, 0
 	;p<pn>.member<num>.scale = 1.0, 1.0
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
+
 	p2.name.offset = 0, 0
 	p2.name.font = -1, 0, 1, 255, 255, 255
 	p2.name.font.scale = 1.0, 1.0

@@ -718,42 +718,14 @@ function start.f_getName(ref, hidden)
 	return tmp
 end
 
---draw character names
-function start.f_drawNames(t, data, hidden, reversed, font, offsetX, offsetY, scaleX, scaleY, height, spacingX, spacingY, active_font, active_row)
-	local first, last, add = 1, #t, 1
-	if reversed then
-		first, last, add = #t, 1, -1
-	end
-	for i = first, last, add do
-		local x = offsetX
-		local f = font
-		if active_font ~= nil and active_row ~= nil then
-			if i == active_row then
-				f = active_font
-			else
-				f = font
-			end
-		end
-		data:update({
-			font =   f[1],
-			bank =   f[2],
-			align =  f[3],
-			text =   start.f_getName(t[i].ref, hidden),
-			x =      x + (i - 1) * spacingX,
-			y =      offsetY + (i - 1) * spacingY,
-			scaleX = scaleX,
-			scaleY = scaleY,
-			r =      f[4],
-			g =      f[5],
-			b =      f[6],
-			height = height,
-		})
-		data:draw()
-	end
-end
-
 --reset temp data values
-function start.f_resetTempData(t, subname, spscale)
+function start.f_resetTempData(t, subname)
+	for k, v in pairs(t) do
+		if k:match('_data$') then
+			animReset(v)
+			animUpdate(v)
+		end
+	end
 	for side = 1, 2 do
 		if #start.p[side].t_selTemp == 0 then
 			for member, v in ipairs(start.p[side].t_selected) do
@@ -761,6 +733,7 @@ function start.f_resetTempData(t, subname, spscale)
 			end
 		end
 		for member, v in ipairs(start.p[side].t_selTemp) do
+			v.anim = t['p' .. side .. '_member' .. member .. subname .. '_anim'] or t['p' .. side .. subname .. '_anim']
 			v.anim_data = start.f_animGet(v.ref, side, member, t, subname, '', true)
 			v.slide_dist = {0, 0}
 		end
@@ -768,16 +741,16 @@ function start.f_resetTempData(t, subname, spscale)
 	end
 end
 
-function start.f_animGet(ref, side, member, t, subname, prefix, loop)
+function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 	if ref == nil then
 		return nil
 	end
-	for _, v in pairs({
+	for k, v in pairs({
 		{t['p' .. side .. '_member' .. member .. subname .. prefix .. '_anim'], -1},
 		{t['p' .. side .. subname .. prefix .. '_anim'], -1},
 		t['p' .. side .. '_member' .. member .. subname .. prefix .. '_spr'],
 		t['p' .. side .. subname .. prefix .. '_spr'],
-		{9000, 1},
+		default
 	}) do
 		if v[1] ~= nil and v[1] ~= -1 then
 			local a = animGetPreloadedData('char', ref, v[1], v[2], loop)
@@ -837,7 +810,7 @@ local function f_portraitsXCalc(side, t, subname, i, member)
 end
 
 --draw portraits
-function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
+function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
 	if #t_sel == 0 then
 		return
 	end
@@ -851,11 +824,13 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
 			table.insert(t_portraits, t_sel[i])
 		end
 	end
+	--adjust order of rendering
 	local loopStart, loopEnd, loopStep = #t_portraits, 1, -1
 	if reversed then
 		loopStart, loopEnd, loopStep = 1, #t_portraits, 1
 		t_portraits = main.f_tableReverse(t_portraits)
 	end
+	--draw portraits
 	for i = loopStart, loopEnd, loopStep do
 		local member = i
 		if reversed then
@@ -873,6 +848,23 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed)
 					true
 				)
 			end
+		end
+	end
+	--draw order icons
+	if icon == nil then
+		return
+	end
+	for i = loopStart, loopEnd, loopStep do
+		local member = i
+		if reversed then
+			member = #t_portraits - i + 1
+		end
+		if i <= t['p' .. side .. subname .. '_num'] and t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'] ~= nil then
+			main.f_animPosDraw(
+				t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'],
+				f_portraitsXCalc(side, t, subname, i, member),
+				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (i - 1) * t['p' .. side .. subname .. '_spacing'][2]
+			)
 		end
 	end
 end
@@ -1618,7 +1610,7 @@ function launchFight(data)
 		t.continue = main.f_arg(data.continue, main.continueScreen)
 		t.quickcontinue = main.f_arg(data.quickcontinue, main.quickContinue or config.QuickContinue)
 		t.order = data.order or 1
-		t.orderskip = main.f_arg(data.orderskip, true)
+		t.orderselect = {main.f_arg(data.p1orderselect, main.orderSelect[1]), main.f_arg(data.p2orderselect, main.orderSelect[2])}
 		t.p1char = data.p1char or {}
 		t.p1numratio = data.p1numratio or {}
 		t.p1rounds = data.p1rounds or nil
@@ -1769,7 +1761,7 @@ function launchFight(data)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
 		t.stageNo = start.f_setStage(t.stageNo, t.stage ~= '' or continue() or loopCount > 0)
 		start.f_setMusic(t.stageNo, t.music)
-		if not start.f_selectVersus(t.vsscreen) then break end
+		if not start.f_selectVersus(t.vsscreen, t.orderselect) then break end
 		start.f_selectLoading()
 		start.f_overrideCharData()
 		saveData = true
@@ -1877,7 +1869,7 @@ function start.f_selectScreen()
 	main.f_bgReset(motif.selectbgdef.bg)
 	main.f_fadeReset('fadein', motif.select_info)
 	main.f_playBGM(true, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
-	start.f_resetTempData(motif.select_info, '_face', false)
+	start.f_resetTempData(motif.select_info, '_face')
 	local stageActiveCount = 0
 	local stageActiveType = 'stage_active'
 	timerSelect = 0
@@ -2001,20 +1993,23 @@ function start.f_selectScreen()
 		--draw names
 		for side = 1, 2 do
 			if #start.p[side].t_selTemp > 0 then
-				start.f_drawNames(
-					start.p[side].t_selTemp,
-					t_txt_name[side],
-					not main.cpuSide[side],
-					false,
-					motif.select_info['p' .. side .. '_name_font'],
-					motif.select_info['p' .. side .. '_name_offset'][1],
-					motif.select_info['p' .. side .. '_name_offset'][2],
-					motif.select_info['p' .. side .. '_name_font_scale'][1],
-					motif.select_info['p' .. side .. '_name_font_scale'][2],
-					motif.select_info['p' .. side .. '_name_font_height'],
-					motif.select_info['p' .. side .. '_name_spacing'][1],
-					motif.select_info['p' .. side .. '_name_spacing'][2]
-				)
+				for i = 1, #start.p[side].t_selTemp do
+					t_txt_name[side]:update({
+						font =   motif.select_info['p' .. side .. '_name_font'][1],
+						bank =   motif.select_info['p' .. side .. '_name_font'][2],
+						align =  motif.select_info['p' .. side .. '_name_font'][3],
+						text =   start.f_getName(start.p[side].t_selTemp[i].ref, not main.cpuSide[side]),
+						x =      motif.select_info['p' .. side .. '_name_offset'][1] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][1],
+						y =      motif.select_info['p' .. side .. '_name_offset'][2] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][2],
+						scaleX = motif.select_info['p' .. side .. '_name_font_scale'][1],
+						scaleY = motif.select_info['p' .. side .. '_name_font_scale'][2],
+						r =      motif.select_info['p' .. side .. '_name_font'][4],
+						g =      motif.select_info['p' .. side .. '_name_font'][5],
+						b =      motif.select_info['p' .. side .. '_name_font'][6],
+						height = motif.select_info['p' .. side .. '_name_font_height'],
+					})
+					t_txt_name[side]:draw()
+				end
 			end
 		end
 		--team and character selection complete
@@ -2633,17 +2628,24 @@ function start.f_stageMenu()
 end
 
 --;===========================================================
---; VERSUS SCREEN
+--; VERSUS SCREEN / ORDER SELECTION
 --;===========================================================
 local txt_matchNo = main.f_createTextImg(motif.vs_screen, 'match')
 local t_txt_nameVS = {}
+local t_txt_titleVS = {}
 for i = 1, 2 do
 	table.insert(t_txt_nameVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_name'))
+	table.insert(t_txt_titleVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_title'))
 end
+txt_timerVS = main.f_createTextImg(motif.vs_screen, 'timer')
 
-function start.f_selectVersus(active)
-	-- reset loading flags
+function start.f_selectVersus(active, t_orderSelect)
 	for side = 1, 2 do
+		-- keep order select enabled only if team size > 1
+		if t_orderSelect[side] then
+			t_orderSelect[side] = #start.p[side].t_selected > 1
+		end
+		-- reset loading flags
 		for _, v in ipairs(start.p[side].t_selected) do
 			v.loading = false
 		end
@@ -2663,110 +2665,173 @@ function start.f_selectVersus(active)
 	main.f_bgReset(motif.versusbgdef.bg)
 	main.f_fadeReset('fadein', motif.vs_screen)
 	main.f_playBGM(true, motif.music.vs_bgm, motif.music.vs_bgm_loop, motif.music.vs_bgm_volume, motif.music.vs_bgm_loopstart, motif.music.vs_bgm_loopend)
-	start.f_resetTempData(motif.vs_screen, '', false)
+	start.f_resetTempData(motif.vs_screen, '')
 	start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage_snd[1], motif.vs_screen.stage_snd[2])
 	local counter = 0 - motif.vs_screen.fadein_time
+	local done = not t_orderSelect[1] and not t_orderSelect[2]
+	local timerActive = not done
+	local timerCount = 0
+	local screenDelay = 0
 	local escFlag = false
-	local t_active = {1, 1}
-	local t_loaded = {false, false}
+	local t_order = {{}, {}}
+	local t_icon = {'_icon', '_icon'}
+	for side = 1, 2 do
+		t_txt_titleVS[side]:update({text = (motif.vs_screen['p' .. side .. '_title_member1_text'] or motif.vs_screen['p' .. side .. '_title_text'] or ''):gsub('%%i', '1')})
+	end
 	while true do
+		local snd = false
+		-- for each team side member
 		for side = 1, 2 do
-			if not t_loaded[side] then
-				-- confirm order for AI controlled side or single team mode
-				if main.cpuSide[side] or #start.p[side].t_selected == 1 then
-					for _, v in ipairs(start.p[side].t_selected) do
-						selectChar(side, v.ref, v.pal)
+			for k, v in ipairs(start.p[side].t_selected) do
+				-- until loading flag is set
+				if not v.loading then
+					-- if not valid for order selection or CPU or doesn't have key for this member assigned, or order timer run out
+					if not t_orderSelect[side] or main.cpuSide[side] or (motif.vs_screen['p' .. side .. '_member' .. k .. '_key'] == nil and #t_order[side] == k - 1) or timerCount == -1 then
+						table.insert(t_order[side], k)
 						v.loading = true
+						-- if it's the last unordered team member
+						if #start.p[side].t_selected == #t_order[side] then
+							-- randomize CPU side team order (if valid for order selection)
+							if main.cpuSide[side] and t_orderSelect[side] then
+								main.f_tableShuffle(t_order[side])
+							end
+							-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
+							for _, member in ipairs(t_order[side]) do
+								selectChar(side, start.p[side].t_selected[member].ref, start.p[side].t_selected[member].pal)
+							end
+							t_txt_titleVS[side]:update({text = motif.vs_screen['p' .. side .. '_title_done_text']})
+							t_icon[side] = nil
+							-- play sound if timer roun out
+							if not snd and timerCount == -1 then
+								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_value_snd'][1], motif.vs_screen['p' .. side .. '_value_snd'][2])
+								snd = true
+							end
+						end
+					elseif motif.vs_screen['p' .. side .. '_member' .. k .. '_key'] ~= nil and main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_member' .. k .. '_key'])) or (#start.p[side].t_selected == #t_order[side] + 1) then
+						-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
+						selectChar(side, v.ref, v.pal)
+						table.insert(t_order[side], k)
+						v.loading = true
+						-- if there is still at least 1 character valid for order selection
+						if #start.p[side].t_selected > #t_order[side] then
+							t_txt_titleVS[side]:update({text = (motif.vs_screen['p' .. side .. '_title_member' .. tostring(#t_order[side] + 1) .. '_text'] or motif.vs_screen['p' .. side .. '_title_text'] or ''):gsub('%%i', tostring(#t_order[side] + 1))})
+						-- otherwise
+						else
+							t_txt_titleVS[side]:update({text = motif.vs_screen['p' .. side .. '_title_done_text']})
+							t_icon[side] = nil
+						end
+						-- play sound only once in particular frame
+						if not snd then
+							sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_value_snd'][1], motif.vs_screen['p' .. side .. '_value_snd'][2])
+							snd = true
+						end
+						-- reset pressed button to prevent remapped P2 from registering P1 input
+						main.f_cmdBufReset(side)
 					end
-					t_loaded[side] = true
-				-- hold forward to rotate your team order by one member forwards
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_rotate_forward_key'])) then
-					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-					main.f_tableRotate(start.p[side].t_selected, 1)
-					main.f_tableRotate(start.p[side].t_selTemp, 1)
-					t_active[side] = 1
-					counter = 0
-				-- hold back to rotate your team order by one member backwards. Hold down to switch places with previous team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_rotate_back_key'])) then
-					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-					main.f_tableRotate(start.p[side].t_selected, -1)
-					main.f_tableRotate(start.p[side].t_selTemp, -1)
-					t_active[side] = 1
-					counter = 0
-				-- hold up to switch places with next team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_switch_forward_key'])) then
-					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-					if t_active[side] > 1 then
-						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] - 1)
-						main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] - 1)
-						t_active[side] = t_active[side] - 1
-					else --wrapping
-						main.f_tableRotate(start.p[side].t_selected, 1)
-						main.f_tableRotate(start.p[side].t_selTemp, 1)
-						t_active[side] = #start.p[side].t_selected
-					end
-					counter = 0
-				-- hold down to switch places with previous team member
-				elseif main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_switch_back_key'])) then
-					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_move_snd'][1], motif.vs_screen['p' .. side .. '_cursor_move_snd'][2])
-					if t_active[side] < #start.p[side].t_selected then
-						main.f_tableShift(start.p[side].t_selected, t_active[side], t_active[side] + 1)
-						main.f_tableShift(start.p[side].t_selTemp, t_active[side], t_active[side] + 1)
-						t_active[side] = t_active[side] + 1
-					else --wrapping
-						main.f_tableRotate(start.p[side].t_selected, -1)
-						main.f_tableRotate(start.p[side].t_selTemp, -1)
-						t_active[side] = 1
-					end
-					counter = 0
 				end
 			end
+		end
+		-- do once if both sides confirmed order selection
+		if not done and #start.p[1].t_selected == #t_order[1] and #start.p[2].t_selected == #t_order[2] then
+			for side = 1, 2 do
+				-- rearrange characters in selection order
+				local t_selected = {}
+				local t_selTemp = {}
+				for _, v in ipairs(t_order[side]) do
+					table.insert(t_selected, start.p[side].t_selected[v])
+					table.insert(t_selTemp, start.p[side].t_selTemp[v])
+				end
+				start.p[side].t_selected = t_selected
+				start.p[side].t_selTemp = t_selTemp
+				-- update spr/anim data
+				for member, v in ipairs(start.p[side].t_selected) do
+					local done_anim = motif.vs_screen['p' .. side .. '_member' .. member .. '_done_anim'] or motif.vs_screen['p' .. side .. '_done_anim']
+					if done_anim ~= -1 then
+						if start.p[side].t_selTemp[member].anim ~= done_anim then
+							start.p[side].t_selTemp[member].anim_data = start.f_animGet(v.ref, side, member, motif.vs_screen, '', '_done', false) or start.p[side].t_selTemp[member].anim_data
+							if start.p[side].t_selTemp[member].anim_data ~= nil then
+								screenDelay = math.min(90, math.max(screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
+							end
+						end
+					end
+				end
+				if t_orderSelect[side] then
+					t_icon[side] = '_icon_done'
+				end
+				counter = motif.vs_screen.time - screenDelay
+			end
+			done = true
 		end
 		counter = counter + 1
 		--draw clearcolor
 		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.versusbgdef.bg, false)
-		--draw portraits
+		--draw order titles
 		for side = 1, 2 do
-			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true)
+			if t_orderSelect[side] then
+				t_txt_titleVS[side]:draw()
+			end
+		end
+		--draw order values
+		for side = 1, 2 do
+			if t_orderSelect[side] then
+				for i = 1, #start.p[side].t_selected do
+					local prefix = ''
+					if i > #t_order[side] and #start.p[side].t_selected > #t_order[side] then
+						prefix = '_empty'
+					end
+					main.f_animPosDraw(
+						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_icon_data'],
+						(i - 1) * motif.vs_screen['p' .. side .. '_value_icon_spacing'][1],
+						(i - 1) * motif.vs_screen['p' .. side .. '_value_icon_spacing'][2],
+						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_icon_facing']
+					)
+				end
+			end
+		end
+		--draw portraits and order icons
+		for side = 1, 2 do
+			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true, t_icon[side])
 		end
 		--draw names
 		for side = 1, 2 do
-			local active = 1
-			if #start.p[side].t_selected > 2 then
-				active = t_active[side]
+			for i = 1, #start.p[side].t_selTemp do
+				t_txt_nameVS[side]:update({
+					font =   motif.vs_screen['p' .. side .. '_name_font'][1],
+					bank =   motif.vs_screen['p' .. side .. '_name_font'][2],
+					align =  motif.vs_screen['p' .. side .. '_name_font'][3],
+					text =   start.f_getName(start.p[side].t_selTemp[i].ref, false),
+					x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
+					y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
+					scaleX = motif.vs_screen['p' .. side .. '_name_font_scale'][1],
+					scaleY = motif.vs_screen['p' .. side .. '_name_font_scale'][2],
+					r =      motif.vs_screen['p' .. side .. '_name_font'][4],
+					g =      motif.vs_screen['p' .. side .. '_name_font'][5],
+					b =      motif.vs_screen['p' .. side .. '_name_font'][6],
+					height = motif.vs_screen['p' .. side .. '_name_font_height'],
+				})
+				t_txt_nameVS[side]:draw()
 			end
-			start.f_drawNames(
-				start.p[side].t_selTemp,
-				t_txt_nameVS[side],
-				false,
-				false,
-				motif.vs_screen['p' .. side .. '_name_font'],
-				motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1],
-				motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2],
-				motif.vs_screen['p' .. side .. '_name_font_scale'][1],
-				motif.vs_screen['p' .. side .. '_name_font_scale'][2],
-				motif.vs_screen['p' .. side .. '_name_font_height'],
-				motif.vs_screen['p' .. side .. '_name_spacing'][1],
-				motif.vs_screen['p' .. side .. '_name_spacing'][2],
-				motif.vs_screen['p' .. side .. '_name_active_font'],
-				active
-			)
 		end
 		--draw match counter
 		if matchno() > 0 then
 			txt_matchNo:draw()
 		end
+		--draw timer
+		if not done and motif.vs_screen.timer_count ~= -1 and timerActive then
+			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
+		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.bg, true)
 		--draw fadein / fadeout
 		for side = 1, 2 do
-			if main.fadeType == 'fadein' and counter >= motif.vs_screen.time or main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_accept_key'])) then
+			if main.fadeType == 'fadein' and (
+				counter >= motif.vs_screen.time
+				or (not main.cpuSide[side] and main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_skip_key'])))
+				or (done and main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_accept_key'])))
+				) then
 				main.f_fadeReset('fadeout', motif.vs_screen)
-				if not main.cpuSide[side] and #start.p[side].t_selected > 1 then
-					sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_cursor_done_snd'][1], motif.vs_screen['p' .. side .. '_cursor_done_snd'][2])
-				end
 				break
 			end
 		end
@@ -3052,7 +3117,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 		table.insert(t, {
 			ref = ref,
 			anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
-			anim_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '', '', true),
+			anim_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '', '', true, {9000, 1}),
 			slide_dist = {0, 0},
 		})
 		t_matchList[ref] = (t_matchList[ref] or 0) + 1
@@ -3172,7 +3237,7 @@ function start.f_victoryInit()
 	if start.t_music.musicvictory[winnerteam()] == nil then
 		main.f_playBGM(false, motif.music.victory_bgm, motif.music.victory_bgm_loop, motif.music.victory_bgm_volume, motif.music.victory_bgm_loopstart, motif.music.victory_bgm_loopend)
 	end
-	start.f_resetTempData(motif.victory_screen, '', true)
+	start.f_resetTempData(motif.victory_screen, '')
 	start.t_victory.winquote = getCharVictoryQuote(start.t_victory.winnerNo)
 	if start.t_victory.winquote == '' then
 		start.t_victory.winquote = motif.victory_screen.winquote_text
@@ -4037,8 +4102,8 @@ function start.f_rank()
 					if main.f_tableHasValue(t['p' .. side .. 'rank'].icons, k) then
 						main.f_animPosDraw(
 							motif.rank_info['p' .. side .. '_icon_' .. k .. '_data'],
-							motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][1] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][1],
-							motif.rank_info['p' .. side .. '_icon_' .. k .. '_offset'][2] + (i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][2],
+							(i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][1],
+							(i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][2],
 							motif.rank_info['p' .. side .. '_icon_' .. k .. '_facing'],
 							true
 						)
