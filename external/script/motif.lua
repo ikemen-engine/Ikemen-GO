@@ -671,6 +671,8 @@ local motif =
 	},
 	vs_screen =
 	{
+		orderselect_enabled = 0, --Ikemen feature
+		done_time = 90, --Ikemen feature
 		fadein_time = 15,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = -1, --Ikemen feature
@@ -2736,29 +2738,6 @@ for k, v in pairs({
 			motif[k][param][4] = motif[k][param][4] - motif[k][param][2]
 		end
 	end
-end
-
-if motif.vs_screen.p1_name_active_font == nil then
-	motif.vs_screen.p1_name_active_font = {
-		motif.vs_screen.p1_name_font[1],
-		motif.vs_screen.p1_name_font[2],
-		motif.vs_screen.p1_name_font[3],
-		motif.vs_screen.p1_name_font[4],
-		motif.vs_screen.p1_name_font[5],
-		motif.vs_screen.p1_name_font[6],
-	}
-	motif.vs_screen.p1_name_active_font_scale = {motif.vs_screen.p1_name_font_scale[1], motif.vs_screen.p1_name_font_scale[2]}
-end
-if motif.vs_screen.p2_name_active_font == nil then
-	motif.vs_screen.p2_name_active_font = {
-		motif.vs_screen.p2_name_font[1],
-		motif.vs_screen.p2_name_font[2],
-		motif.vs_screen.p2_name_font[3],
-		motif.vs_screen.p2_name_font[4],
-		motif.vs_screen.p2_name_font[5],
-		motif.vs_screen.p2_name_font[6],
-	}
-	motif.vs_screen.p2_name_active_font_scale = {motif.vs_screen.p2_name_font_scale[1], motif.vs_screen.p2_name_font_scale[2]}
 end
 
 --general paths

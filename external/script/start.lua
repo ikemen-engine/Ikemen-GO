@@ -2641,9 +2641,9 @@ txt_timerVS = main.f_createTextImg(motif.vs_screen, 'timer')
 
 function start.f_selectVersus(active, t_orderSelect)
 	for side = 1, 2 do
-		-- keep order select enabled only if team size > 1
+		-- prevent order select if not enabled in screenpack or if team size = 1
 		if t_orderSelect[side] then
-			t_orderSelect[side] = #start.p[side].t_selected > 1
+			t_orderSelect[side] = motif.vs_screen.orderselect_enabled == 1 and #start.p[side].t_selected > 1
 		end
 		-- reset loading flags
 		for _, v in ipairs(start.p[side].t_selected) do
@@ -2671,7 +2671,6 @@ function start.f_selectVersus(active, t_orderSelect)
 	local done = not t_orderSelect[1] and not t_orderSelect[2]
 	local timerActive = not done
 	local timerCount = 0
-	local screenDelay = 0
 	local escFlag = false
 	local t_order = {{}, {}}
 	local t_icon = {'_icon', '_icon'}
@@ -2701,7 +2700,7 @@ function start.f_selectVersus(active, t_orderSelect)
 							end
 							t_txt_titleVS[side]:update({text = motif.vs_screen['p' .. side .. '_title_done_text']})
 							t_icon[side] = nil
-							-- play sound if timer roun out
+							-- play sound if timer run out
 							if not snd and timerCount == -1 then
 								sndPlay(motif.files.snd_data, motif.vs_screen['p' .. side .. '_value_snd'][1], motif.vs_screen['p' .. side .. '_value_snd'][2])
 								snd = true
@@ -2749,17 +2748,14 @@ function start.f_selectVersus(active, t_orderSelect)
 					if done_anim ~= -1 then
 						if start.p[side].t_selTemp[member].anim ~= done_anim then
 							start.p[side].t_selTemp[member].anim_data = start.f_animGet(v.ref, side, member, motif.vs_screen, '', '_done', false) or start.p[side].t_selTemp[member].anim_data
-							if start.p[side].t_selTemp[member].anim_data ~= nil then
-								screenDelay = math.min(90, math.max(screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
-							end
 						end
 					end
 				end
 				if t_orderSelect[side] then
 					t_icon[side] = '_icon_done'
 				end
-				counter = motif.vs_screen.time - screenDelay
 			end
+			counter = motif.vs_screen.time - motif.vs_screen.done_time
 			done = true
 		end
 		counter = counter + 1
