@@ -737,11 +737,15 @@ local motif =
 		--p<pn>_member<num>_icon_scale = {1.0, 1.0}, --Ikemen feature
 		p1_value_icon_anim = -1, --Ikemen feature
 		p1_value_icon_spr = {}, --Ikemen feature
+		--p1_value_icon_member<num>_anim = -1, --Ikemen feature
+		--p1_value_icon_member<num>_spr = {}, --Ikemen feature
 		p1_value_icon_offset = {0, 0}, --Ikemen feature
 		p1_value_icon_facing = 1, --Ikemen feature
 		p1_value_icon_scale = {1.0, 1.0}, --Ikemen feature
 		p1_value_empty_icon_anim = -1, --Ikemen feature
 		p1_value_empty_icon_spr = {}, --Ikemen feature
+		--p1_value_empty_icon_member<num>_anim = -1, --Ikemen feature
+		--p1_value_empty_icon_member<num>_spr = {}, --Ikemen feature
 		p1_value_empty_icon_offset = {0, 0}, --Ikemen feature
 		p1_value_empty_icon_facing = 1, --Ikemen feature
 		p1_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
@@ -749,32 +753,20 @@ local motif =
 		p1_value_snd = {-1, 0}, --Ikemen feature
 		p2_value_icon_anim = -1, --Ikemen feature
 		p2_value_icon_spr = {}, --Ikemen feature
+		--p2_value_icon_member<num>_anim = -1, --Ikemen feature
+		--p2_value_icon_member<num>_spr = {}, --Ikemen feature
 		p2_value_icon_offset = {0, 0}, --Ikemen feature
 		p2_value_icon_facing = 1, --Ikemen feature
 		p2_value_icon_scale = {1.0, 1.0}, --Ikemen feature
 		p2_value_empty_icon_anim = -1, --Ikemen feature
 		p2_value_empty_icon_spr = {}, --Ikemen feature
+		--p2_value_empty_icon_member<num>_anim = -1, --Ikemen feature
+		--p2_value_empty_icon_member<num>_spr = {}, --Ikemen feature
 		p2_value_empty_icon_offset = {0, 0}, --Ikemen feature
 		p2_value_empty_icon_facing = 1, --Ikemen feature
 		p2_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
 		p2_value_icon_spacing = {0, 0}, --Ikemen feature
 		p2_value_snd = {-1, 0}, --Ikemen feature
-		p1_title_offset = {0, 0}, --Ikemen feature
-		p1_title_facing = 1, --Ikemen feature
-		p1_title_scale = {1.0, 1.0}, --Ikemen feature
-		p1_title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		p1_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		p1_title_text = "Member %i", --Ikemen feature
-		--p1_title_member<num>_text = "", --Ikemen feature
-		p1_title_done_text = "Complete", --Ikemen feature
-		p2_title_offset = {0, 0}, --Ikemen feature
-		p2_title_facing = 1, --Ikemen feature
-		p2_title_scale = {1.0, 1.0}, --Ikemen feature
-		p2_title_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		p2_title_font_scale = {1.0, 1.0}, --Ikemen feature
-		p2_title_text = "Member %i", --Ikemen feature
-		--p2_title_member<num>_text = "", --Ikemen feature
-		p2_title_done_text = "Complete", --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2914,6 +2906,13 @@ for i = 1, 2 do
 	for j = 1, motif.vs_screen['p' .. i .. '_num'] do
 		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_'})
 		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_', prefix = 'done_'})
+	end
+	for _, v in ipairs({'_value_icon_', '_value_empty_icon_'}) do
+		for j = 1, 8 do
+			if motif.vs_screen['p' .. i .. v .. 'member' .. j .. '_spr'] ~= nil or motif.vs_screen['p' .. i .. v .. 'member' .. j .. '_anim'] ~= nil then
+				motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. v, prefix = 'member' .. j .. '_'})
+			end
+		end
 	end
 	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_icon_'})
 	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_empty_icon_'})

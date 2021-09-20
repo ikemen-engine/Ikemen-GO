@@ -2632,10 +2632,8 @@ end
 --;===========================================================
 local txt_matchNo = main.f_createTextImg(motif.vs_screen, 'match')
 local t_txt_nameVS = {}
-local t_txt_titleVS = {}
 for i = 1, 2 do
 	table.insert(t_txt_nameVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_name'))
-	table.insert(t_txt_titleVS, main.f_createTextImg(motif.vs_screen, 'p' .. i .. '_title'))
 end
 txt_timerVS = main.f_createTextImg(motif.vs_screen, 'timer')
 
@@ -2674,9 +2672,6 @@ function start.f_selectVersus(active, t_orderSelect)
 	local escFlag = false
 	local t_order = {{}, {}}
 	local t_icon = {'_icon', '_icon'}
-	for side = 1, 2 do
-		t_txt_titleVS[side]:update({text = (motif.vs_screen['p' .. side .. '_title_member1_text'] or motif.vs_screen['p' .. side .. '_title_text'] or ''):gsub('%%i', '1')})
-	end
 	while true do
 		local snd = false
 		-- for each team side member
@@ -2698,7 +2693,6 @@ function start.f_selectVersus(active, t_orderSelect)
 							for _, member in ipairs(t_order[side]) do
 								selectChar(side, start.p[side].t_selected[member].ref, start.p[side].t_selected[member].pal)
 							end
-							t_txt_titleVS[side]:update({text = motif.vs_screen['p' .. side .. '_title_done_text']})
 							t_icon[side] = nil
 							-- play sound if timer run out
 							if not snd and timerCount == -1 then
@@ -2711,12 +2705,8 @@ function start.f_selectVersus(active, t_orderSelect)
 						selectChar(side, v.ref, v.pal)
 						table.insert(t_order[side], k)
 						v.loading = true
-						-- if there is still at least 1 character valid for order selection
-						if #start.p[side].t_selected > #t_order[side] then
-							t_txt_titleVS[side]:update({text = (motif.vs_screen['p' .. side .. '_title_member' .. tostring(#t_order[side] + 1) .. '_text'] or motif.vs_screen['p' .. side .. '_title_text'] or ''):gsub('%%i', tostring(#t_order[side] + 1))})
-						-- otherwise
-						else
-							t_txt_titleVS[side]:update({text = motif.vs_screen['p' .. side .. '_title_done_text']})
+						-- if it's the last unordered team member
+						if #start.p[side].t_selected == #t_order[side] then
 							t_icon[side] = nil
 						end
 						-- play sound only once in particular frame
@@ -2763,25 +2753,22 @@ function start.f_selectVersus(active, t_orderSelect)
 		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.versusbgdef.bg, false)
-		--draw order titles
-		for side = 1, 2 do
-			if t_orderSelect[side] then
-				t_txt_titleVS[side]:draw()
-			end
-		end
 		--draw order values
 		for side = 1, 2 do
 			if t_orderSelect[side] then
 				for i = 1, #start.p[side].t_selected do
-					local prefix = ''
+					local prefix = '_icon'
 					if i > #t_order[side] and #start.p[side].t_selected > #t_order[side] then
-						prefix = '_empty'
+						prefix = '_empty_icon'
+					end
+					if motif.vs_screen['p' .. side .. '_value' .. prefix .. '_member' .. i .. '_data'] ~= nil then
+						prefix = prefix .. '_member' .. i
 					end
 					main.f_animPosDraw(
-						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_icon_data'],
+						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_data'],
 						(i - 1) * motif.vs_screen['p' .. side .. '_value_icon_spacing'][1],
 						(i - 1) * motif.vs_screen['p' .. side .. '_value_icon_spacing'][2],
-						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_icon_facing']
+						motif.vs_screen['p' .. side .. '_value' .. prefix .. '_facing']
 					)
 				end
 			end

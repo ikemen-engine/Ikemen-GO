@@ -848,13 +848,19 @@
 
 	; Value icons are rendered on top of portraits, with positioning starting at
 	; 0, 0. empty.icon elements are replaced with icon upon order selection.
+	; If present, value.icon.member<num> parameters replace default value.icon
+	; on per team member basis.
 	p1.value.icon.anim = -1
 	p1.value.icon.spr = 
+	;p1.value.icon.member<num>.anim = 
+	;p1.value.icon.member<num>.spr = 
 	p1.value.icon.offset = 0, 0
 	p1.value.icon.facing = 1
 	p1.value.icon.scale = 1.0, 1.0
 	p1.value.empty.icon.anim = -1
 	p1.value.empty.icon.spr = 
+	;p1.value.empty.icon.member<num>.anim = 
+	;p1.value.empty.icon.member<num>.spr = 
 	p1.value.empty.icon.offset = 0, 0
 	p1.value.empty.icon.facing = 1
 	p1.value.empty.icon.scale = 1.0, 1.0
@@ -862,34 +868,20 @@
 	p1.value.snd = -1, 0
 	p2.value.icon.anim = -1
 	p2.value.icon.spr = 
+	;p2.value.icon.member<num>.anim = 
+	;p2.value.icon.member<num>.spr = 
 	p2.value.icon.offset = 0, 0
 	p2.value.icon.facing = 1
 	p2.value.icon.scale = 1.0, 1.0
 	p2.value.empty.icon.anim = -1
 	p2.value.empty.icon.spr = 
+	;p2.value.empty.icon.member<num>.anim = 
+	;p2.value.empty.icon.member<num>.spr = 
 	p2.value.empty.icon.offset = 0, 0
 	p2.value.empty.icon.facing = 1
 	p2.value.empty.icon.scale = 1.0, 1.0
 	p2.value.icon.spacing = 0, 0
 	p2.value.snd = -1, 0
-
-	; member<num>.text parameters replace title.text on per team member basis
-	p1.title.offset = 0, 0
-	p1.title.facing = 1
-	p1.title.scale = 1.0, 1.0
-	p1.title.font = -1, 0, 0, 255, 255, 255
-	p1.title.font.scale = 1.0, 1.0
-	p1.title.text = "Member %i"
-	;p1.title.member<num>.text = ""
-	p1.title.done.text = "Complete"
-	p2.title.offset = 0, 0
-	p2.title.facing = 1
-	p2.title.scale = 1.0, 1.0
-	p2.title.font = -1, 0, 0, 255, 255, 255
-	p2.title.font.scale = 1.0, 1.0
-	p2.title.text = "Member %i"
-	;p2.title.member<num>.text = ""
-	p2.title.done.text = "Complete"
 
 	; Time to maintain versus screen after both sides confirm their order
 	; (in which order parameters are rendered using optional done variants)
