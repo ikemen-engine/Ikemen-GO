@@ -1994,21 +1994,29 @@ function start.f_selectScreen()
 		for side = 1, 2 do
 			if #start.p[side].t_selTemp > 0 then
 				for i = 1, #start.p[side].t_selTemp do
-					t_txt_name[side]:update({
-						font =   motif.select_info['p' .. side .. '_name_font'][1],
-						bank =   motif.select_info['p' .. side .. '_name_font'][2],
-						align =  motif.select_info['p' .. side .. '_name_font'][3],
-						text =   start.f_getName(start.p[side].t_selTemp[i].ref, not main.cpuSide[side]),
-						x =      motif.select_info['p' .. side .. '_name_offset'][1] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][1],
-						y =      motif.select_info['p' .. side .. '_name_offset'][2] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][2],
-						scaleX = motif.select_info['p' .. side .. '_name_font_scale'][1],
-						scaleY = motif.select_info['p' .. side .. '_name_font_scale'][2],
-						r =      motif.select_info['p' .. side .. '_name_font'][4],
-						g =      motif.select_info['p' .. side .. '_name_font'][5],
-						b =      motif.select_info['p' .. side .. '_name_font'][6],
-						height = motif.select_info['p' .. side .. '_name_font_height'],
-					})
-					t_txt_name[side]:draw()
+					if i <= motif.select_info['p' .. side .. '_name_num'] or main.coop then
+						local name = ''
+						if motif.select_info['p' .. side .. '_name_num'] == 1 then
+							name = start.f_getName(start.p[side].t_selTemp[#start.p[side].t_selTemp].ref, not main.cpuSide[side])
+						else
+							name = start.f_getName(start.p[side].t_selTemp[i].ref, not main.cpuSide[side])
+						end
+						t_txt_name[side]:update({
+							font =   motif.select_info['p' .. side .. '_name_font'][1],
+							bank =   motif.select_info['p' .. side .. '_name_font'][2],
+							align =  motif.select_info['p' .. side .. '_name_font'][3],
+							text =   name,
+							x =      motif.select_info['p' .. side .. '_name_offset'][1] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][1],
+							y =      motif.select_info['p' .. side .. '_name_offset'][2] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][2],
+							scaleX = motif.select_info['p' .. side .. '_name_font_scale'][1],
+							scaleY = motif.select_info['p' .. side .. '_name_font_scale'][2],
+							r =      motif.select_info['p' .. side .. '_name_font'][4],
+							g =      motif.select_info['p' .. side .. '_name_font'][5],
+							b =      motif.select_info['p' .. side .. '_name_font'][6],
+							height = motif.select_info['p' .. side .. '_name_font_height'],
+						})
+						t_txt_name[side]:draw()
+					end
 				end
 			end
 		end
@@ -2785,21 +2793,23 @@ function start.f_selectVersus(active, t_orderSelect)
 		--draw names
 		for side = 1, 2 do
 			for i = 1, #start.p[side].t_selTemp do
-				t_txt_nameVS[side]:update({
-					font =   motif.vs_screen['p' .. side .. '_name_font'][1],
-					bank =   motif.vs_screen['p' .. side .. '_name_font'][2],
-					align =  motif.vs_screen['p' .. side .. '_name_font'][3],
-					text =   start.f_getName(start.p[side].t_selTemp[i].ref, false),
-					x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
-					y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
-					scaleX = motif.vs_screen['p' .. side .. '_name_font_scale'][1],
-					scaleY = motif.vs_screen['p' .. side .. '_name_font_scale'][2],
-					r =      motif.vs_screen['p' .. side .. '_name_font'][4],
-					g =      motif.vs_screen['p' .. side .. '_name_font'][5],
-					b =      motif.vs_screen['p' .. side .. '_name_font'][6],
-					height = motif.vs_screen['p' .. side .. '_name_font_height'],
-				})
-				t_txt_nameVS[side]:draw()
+				if i <= motif.vs_screen['p' .. side .. '_name_num'] or main.coop then
+					t_txt_nameVS[side]:update({
+						font =   motif.vs_screen['p' .. side .. '_name_font'][1],
+						bank =   motif.vs_screen['p' .. side .. '_name_font'][2],
+						align =  motif.vs_screen['p' .. side .. '_name_font'][3],
+						text =   start.f_getName(start.p[side].t_selTemp[i].ref, false),
+						x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
+						y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
+						scaleX = motif.vs_screen['p' .. side .. '_name_font_scale'][1],
+						scaleY = motif.vs_screen['p' .. side .. '_name_font_scale'][2],
+						r =      motif.vs_screen['p' .. side .. '_name_font'][4],
+						g =      motif.vs_screen['p' .. side .. '_name_font'][5],
+						b =      motif.vs_screen['p' .. side .. '_name_font'][6],
+						height = motif.vs_screen['p' .. side .. '_name_font_height'],
+					})
+					t_txt_nameVS[side]:draw()
+				end
 			end
 		end
 		--draw match counter

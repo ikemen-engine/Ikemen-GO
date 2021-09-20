@@ -580,6 +580,10 @@
 	;p<pn>.member<num>.face.slide.speed = 0, 0
 	;p<pn>.member<num>.face.slide.dist = 0, 0
 
+	; num params control max number of names to render. If set to 1, last active
+	; member's name has priority. Not used in co-op.
+	p1.name.num = 4
+	p2.name.num = 4
 	p1.name.font.height = -1
 	p2.name.font.height = -1
 
@@ -897,6 +901,8 @@
 	; (in which order parameters are rendered using optional done variants)
 	done.time = 60
 
+	p1.name.num = 4 ; max number of names to render (not used in co-op)
+	p2.name.num = 4 ; max number of names to render (not used in co-op)
 	p1.name.font.height = -1
 	p2.name.font.height = -1
 
