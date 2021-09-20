@@ -2682,7 +2682,6 @@ function start.f_selectVersus(active, t_orderSelect)
 					-- if not valid for order selection or CPU or doesn't have key for this member assigned, or order timer run out
 					if not t_orderSelect[side] or main.cpuSide[side] or (motif.vs_screen['p' .. side .. '_member' .. k .. '_key'] == nil and #t_order[side] == k - 1) or timerCount == -1 then
 						table.insert(t_order[side], k)
-						v.loading = true
 						-- if it's the last unordered team member
 						if #start.p[side].t_selected == #t_order[side] then
 							-- randomize CPU side team order (if valid for order selection)
@@ -2691,7 +2690,10 @@ function start.f_selectVersus(active, t_orderSelect)
 							end
 							-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
 							for _, member in ipairs(t_order[side]) do
-								selectChar(side, start.p[side].t_selected[member].ref, start.p[side].t_selected[member].pal)
+								if not start.p[side].t_selected[member].loading then
+									selectChar(side, start.p[side].t_selected[member].ref, start.p[side].t_selected[member].pal)
+									start.p[side].t_selected[member].loading = true
+								end
 							end
 							t_icon[side] = nil
 							-- play sound if timer run out
@@ -2701,9 +2703,9 @@ function start.f_selectVersus(active, t_orderSelect)
 							end
 						end
 					elseif motif.vs_screen['p' .. side .. '_member' .. k .. '_key'] ~= nil and main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_member' .. k .. '_key'])) or (#start.p[side].t_selected == #t_order[side] + 1) then
+						table.insert(t_order[side], k)
 						-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
 						selectChar(side, v.ref, v.pal)
-						table.insert(t_order[side], k)
 						v.loading = true
 						-- if it's the last unordered team member
 						if #start.p[side].t_selected == #t_order[side] then
