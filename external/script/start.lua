@@ -2666,7 +2666,10 @@ function start.f_selectVersus(active, t_orderSelect)
 	start.f_resetTempData(motif.vs_screen, '')
 	start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage_snd[1], motif.vs_screen.stage_snd[2])
 	local counter = 0 - motif.vs_screen.fadein_time
-	local done = not t_orderSelect[1] and not t_orderSelect[2]
+	local done = (not t_orderSelect[1] and not t_orderSelect[2]) -- both sides having order disabled
+		or (not t_orderSelect[1] and main.cpuSide[2]) -- left side with disabled order, right side controlled by CPU
+		or (not t_orderSelect[2] and main.cpuSide[1]) -- right side with disabled order, left side controlled by CPU
+		or (main.cpuSide[1] and main.cpuSide[2]) -- both sides controlled by CPU
 	local timerActive = not done
 	local timerCount = 0
 	local escFlag = false

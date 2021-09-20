@@ -883,10 +883,6 @@
 	p2.value.icon.spacing = 0, 0
 	p2.value.snd = -1, 0
 
-	; Time to maintain versus screen after both sides confirm their order
-	; (in which order parameters are rendered using optional done variants)
-	done.time = 90
-
 	; Change timer.count to positive number to enable order selection timer
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255
@@ -896,6 +892,10 @@
 	timer.count = -1
 	timer.framespercount = 6
 	timer.displaytime = 0
+
+	; Time to maintain versus screen after both sides confirm their order
+	; (in which order parameters are rendered using optional done variants)
+	done.time = 60
 
 	p1.name.font.height = -1
 	p2.name.font.height = -1
