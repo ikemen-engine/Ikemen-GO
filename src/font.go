@@ -34,7 +34,7 @@ type Fnt struct {
 
 func newFnt() *Fnt {
 	return &Fnt{
-		images: make(map[int32]map[rune]*FntCharImage),
+		images:   make(map[int32]map[rune]*FntCharImage),
 		BankType: "palette",
 	}
 }
@@ -393,10 +393,10 @@ func loadFntSff(f *Fnt, fontfile string, filename string) {
 				idef = si
 			}
 			switch sff.palList.numcols[[...]int16{0, int16(i)}] {
-				case 256:
-					f.coldepth[i] = 8
-				case 32:
-					f.coldepth[i] = 5
+			case 256:
+				f.coldepth[i] = 8
+			case 32:
+				f.coldepth[i] = 5
 			}
 		} else {
 			pal = sff.palList.Get(idef)
@@ -434,7 +434,7 @@ func (f *Fnt) TextWidth(txt string, bank int32) (w int32) {
 			cw := f.CharWidth(c, bank)
 			// in mugen negative spacing matching char width seems to skip calc,
 			// even for 1 symbol string (which normally shouldn't use spacing)
-			if cw + f.Spacing[0] > 0 {
+			if cw+f.Spacing[0] > 0 {
 				w += cw
 				if i < len(txt)-1 {
 					w += f.Spacing[0]
@@ -572,17 +572,22 @@ type TextSprite struct {
 	window           [4]int32
 	palfx            *PalFX
 	frgba            [4]float32 //ttf fonts
+	// TextRender sctrl
+	removetime int32
+	layerno    int16
 }
 
 func NewTextSprite() *TextSprite {
 	return &TextSprite{
-		align:  1,
-		x:      sys.luaSpriteOffsetX,
-		xscl:   1,
-		yscl:   1,
-		window: sys.scrrect,
-		palfx:  newPalFX(),
-		frgba:  [...]float32{1.0, 1.0, 1.0, 1.0},
+		align:      1,
+		x:          sys.luaSpriteOffsetX,
+		xscl:       1,
+		yscl:       1,
+		window:     sys.scrrect,
+		palfx:      newPalFX(),
+		frgba:      [...]float32{1.0, 1.0, 1.0, 1.0},
+		removetime: 1,
+		layerno:    1,
 	}
 }
 

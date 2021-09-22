@@ -4366,6 +4366,71 @@ func (c *Compiler) targetScoreAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) textRender(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*textRender)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			textRender_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "removetime",
+			textRender_removetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "layerno",
+			textRender_layerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "font", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				if strings.ToLower(data)[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(strings.ToLower(data)[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, textRender_font, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "bank",
+			textRender_bank, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "align",
+			textRender_align, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "text", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(textRender_text, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			textRender_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scale",
+			textRender_scale, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "color",
+			textRender_color, VT_Int, 3, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) null(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	return nullStateController, nil

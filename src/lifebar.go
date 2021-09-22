@@ -390,10 +390,10 @@ type PowerBar struct {
 
 func newPowerBar() *PowerBar {
 	return &PowerBar{
-		level_snd: [9][2]int32{{-1}, {-1}, {-1}},
-		front: make(map[int32]*AnimLayout),
+		level_snd:        [9][2]int32{{-1}, {-1}, {-1}},
+		front:            make(map[int32]*AnimLayout),
 		counter_rounding: 1000,
-		value_rounding: 1,
+		value_rounding:   1,
 	}
 }
 func readPowerBar(pre string, is IniSection,
@@ -2824,6 +2824,7 @@ type Lifebar struct {
 	fx_scale   float32
 	fnt_scale  float32
 	deffile    string
+	textsprite []*TextSprite
 }
 
 func loadLifebar(deffile string) (*Lifebar, error) {
@@ -3535,6 +3536,16 @@ func (l *Lifebar) step() {
 	if _, ok := l.mo[sys.gameMode]; ok {
 		l.mo[sys.gameMode].step()
 	}
+	//TextRender sctrl
+	for i := 0; i < len(l.textsprite); i++ {
+		if l.textsprite[i].removetime == 0 {
+			l.textsprite = append(l.textsprite[:i], l.textsprite[i+1:]...)
+			i-- // -1 as the slice just got shorter
+		} else {
+			l.textsprite[i].Draw()
+			l.textsprite[i].removetime--
+		}
+	}
 }
 func (l *Lifebar) reset() {
 	var num [2]int
@@ -3629,6 +3640,7 @@ func (l *Lifebar) reset() {
 	if _, ok := l.mo[sys.gameMode]; ok {
 		l.mo[sys.gameMode].reset()
 	}
+	l.textsprite = []*TextSprite{}
 }
 func (l *Lifebar) draw(layerno int16) {
 	if sys.postMatchFlg || sys.dialogueBarsFlg {
@@ -3785,5 +3797,11 @@ func (l *Lifebar) draw(layerno int16) {
 	if l.active {
 		//LifeBarRound
 		l.ro.draw(layerno, l.fnt[:])
+	}
+	//TextRender sctrl
+	for _, v := range l.textsprite {
+		if v.layerno == layerno {
+			v.Draw()
+		}
 	}
 }

@@ -2323,14 +2323,15 @@ type SelectChar struct {
 	cns_scale      [2]float32
 	anims          PreloadedAnims
 	sff            *Sff
+	fnt            [10]*Fnt
 }
 
 func newSelectChar() *SelectChar {
 	return &SelectChar{
-		localcoord: 320,
+		localcoord:     320,
 		portrait_scale: 1,
-		cns_scale: [...]float32{1, 1},
-		anims: NewPreloadedAnims(),
+		cns_scale:      [...]float32{1, 1},
+		anims:          NewPreloadedAnims(),
 	}
 }
 
@@ -2457,6 +2458,7 @@ func (s *Select) addChar(def string) {
 	sc.def = def
 	lines, i, info, files, keymap, arcade := SplitAndTrim(str, "\n"), 0, true, true, true, true
 	var cns, sprite, anim, movelist string
+	var fnt [10][2]string
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -2490,6 +2492,10 @@ func (s *Select) addChar(def string) {
 					}
 				}
 				movelist = is["movelist"]
+				for i := range fnt {
+					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
+					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
+				}
 			}
 		case "palette ":
 			if keymap &&
@@ -2585,6 +2591,22 @@ func (s *Select) addChar(def string) {
 			sc.movelist, _ = LoadText(file)
 			return nil
 		})
+	}
+	//preload fonts
+	for i, f := range fnt {
+		if len(f[0]) > 0 {
+			LoadFile(&f[0], []string{def, sys.motifDir, "", "data/", "font/"}, func(filename string) error {
+				var err error
+				var height int32 = -1
+				if len(f[1]) > 0 {
+					height = Atoi(f[1])
+				}
+				if sc.fnt[i], err = loadFnt(filename, height); err != nil {
+					sys.errLog.Printf("failed to load %v (char font): %v", filename, err)
+				}
+				return nil
+			})
+		}
 	}
 }
 func (s *Select) AddStage(def string) error {

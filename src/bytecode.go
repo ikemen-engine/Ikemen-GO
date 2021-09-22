@@ -6757,15 +6757,15 @@ func (sc lifebarAction) Run(c *Char, _ []int32) bool {
 		case lifebarAction_top:
 			top = exp[0].evalB(c)
 		case lifebarAction_timemul:
-			timemul = float32(exp[0].evalF(c))
+			timemul = exp[0].evalF(c)
 		case lifebarAction_time:
-			time = int32(exp[0].evalI(c))
+			time = exp[0].evalI(c)
 		case lifebarAction_anim:
-			anim = int32(exp[0].evalI(c))
+			anim = exp[0].evalI(c)
 		case lifebarAction_spr:
-			spr = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+			spr = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
 		case lifebarAction_snd:
-			snd = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+			snd = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
 		case lifebarAction_text:
 			text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case lifebarAction_redirectid:
@@ -7424,6 +7424,91 @@ func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type textRender StateControllerBase
+
+const (
+	textRender_removetime byte = iota
+	textRender_layerno
+	textRender_font
+	textRender_bank
+	textRender_align
+	textRender_text
+	textRender_pos
+	textRender_scale
+	textRender_color
+	textRender_redirectid
+)
+
+func (sc textRender) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lclscround float32 = 1.0
+	ts := NewTextSprite()
+	var fflg bool
+	var fnt int = -1
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case textRender_removetime:
+			ts.removetime = exp[0].evalI(c)
+		case textRender_layerno:
+			ts.layerno = int16(exp[0].evalI(c))
+		case textRender_font:
+			fnt = int(exp[1].evalI(c))
+			fflg = exp[0].evalB(c)
+		case textRender_bank:
+			ts.bank = exp[0].evalI(c)
+		case textRender_align:
+			ts.align = exp[0].evalI(c)
+		case textRender_text:
+			ts.text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case textRender_pos:
+			ts.x = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				ts.y = exp[1].evalF(c) * lclscround
+			}
+		case textRender_scale:
+			ts.xscl = exp[0].evalF(c)
+			if len(exp) > 1 {
+				ts.yscl = exp[1].evalF(c)
+			}
+		case textRender_color:
+			var r, g, b int32 = exp[0].evalI(c), 255, 255
+			if len(exp) > 1 {
+				g = exp[1].evalI(c)
+				if len(exp) > 2 {
+					b = exp[2].evalI(c)
+				}
+			}
+			ts.SetColor(r, g, b)
+		case textRender_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				lclscround = c.localscl / crun.localscl
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	var ok bool
+	if fflg {
+		if fnt >= 0 && fnt < len(sys.lifebar.fnt) && sys.lifebar.fnt[fnt] != nil {
+			ts.fnt = sys.lifebar.fnt[fnt]
+			ok = true
+		}
+	} else if crun.selectNo >= 0 {
+		f := sys.sel.GetChar(crun.selectNo).fnt
+		if fnt >= 0 && fnt < len(f) && f[fnt] != nil {
+			ts.fnt = f[fnt]
+			ok = true
+		}
+	}
+	if !ok {
+		ts.fnt = sys.debugFont.fnt
+	}
+	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
 	return false
 }
 
