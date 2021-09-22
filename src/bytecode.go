@@ -7268,6 +7268,48 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type playBgm StateControllerBase
+
+const (
+	playBgm_bgm = iota
+	playBgm_volume
+	playBgm_loop
+	playBgm_loopstart
+	playBgm_loopend
+	playBgm_redirectid
+)
+
+func (sc playBgm) Run(c *Char, _ []int32) bool {
+	crun := c
+	var bgm string
+	var loop, volume, loopstart, loopend int = 1, 100, 0, 0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case playBgm_bgm:
+			if bgm = string(*(*[]byte)(unsafe.Pointer(&exp[0]))); bgm != "" {
+				bgm = SearchFile(bgm, []string{crun.gi().def, "", "sound/"})
+			}
+		case playBgm_volume:
+			volume = int(exp[0].evalI(c))
+		case playBgm_loop:
+			loop = int(exp[0].evalI(c))
+		case playBgm_loopstart:
+			loopstart = int(exp[0].evalI(c))
+		case playBgm_loopend:
+			loopstart = int(exp[0].evalI(c))
+		case playBgm_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.bgm.Open(bgm, true, loop, volume, loopstart, loopend)
+	return false
+}
+
 type targetDizzyPointsAdd StateControllerBase
 
 const (
