@@ -163,7 +163,7 @@ func newCompiler() *Compiler {
 		"targetguardpointsadd": c.targetGuardPointsAdd,
 		"targetredlifeadd":     c.targetRedLifeAdd,
 		"targetscoreadd":       c.targetScoreAdd,
-		"textrender":           c.textRender,
+		"text":                 c.text,
 	}
 	return c
 }

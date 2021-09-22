@@ -4366,19 +4366,48 @@ func (c *Compiler) targetScoreAdd(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
-func (c *Compiler) textRender(is IniSection, sc *StateControllerBase,
+func (c *Compiler) text(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
-	ret, err := (*textRender)(sc), c.stateSec(is, func() error {
+	ret, err := (*text)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			textRender_redirectid, VT_Int, 1, false); err != nil {
+			text_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "removetime",
-			textRender_removetime, VT_Int, 1, false); err != nil {
+			text_removetime, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "layerno",
-			textRender_layerno, VT_Int, 1, false); err != nil {
+			text_layerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "params", func(data string) error {
+			bes, err := c.exprs(data, VT_SFalse, 100000)
+			if err != nil {
+				return err
+			}
+			sc.add(text_params, bes)
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "text", func(data string) error {
+			_else := false
+			if len(data) >= 2 && data[0] == '"' {
+				if i := strings.Index(data[1:], "\""); i >= 0 {
+					data, _ = strconv.Unquote(data)
+				} else {
+					_else = true
+				}
+			} else {
+				_else = true
+			}
+			if _else {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(text_text, sc.iToExp(int32(sys.stringPool[c.playerNo].Add(data))))
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "font", func(data string) error {
@@ -4393,38 +4422,29 @@ func (c *Compiler) textRender(is IniSection, sc *StateControllerBase,
 					}
 				}
 			}
-			return c.scAdd(sc, textRender_font, data, VT_Int, 1,
+			return c.scAdd(sc, text_font, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
 		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "bank",
-			textRender_bank, VT_Int, 1, false); err != nil {
+			text_bank, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "align",
-			textRender_align, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "text", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
-			}
-			sc.add(textRender_text, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
+			text_align, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "pos",
-			textRender_pos, VT_Float, 2, false); err != nil {
+			text_pos, VT_Float, 2, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "scale",
-			textRender_scale, VT_Float, 2, false); err != nil {
+			text_scale, VT_Float, 2, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "color",
-			textRender_color, VT_Int, 3, false); err != nil {
+			text_color, VT_Int, 3, false); err != nil {
 			return err
 		}
 		return nil

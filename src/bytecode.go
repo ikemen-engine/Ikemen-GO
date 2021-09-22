@@ -7427,53 +7427,64 @@ func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type textRender StateControllerBase
+type text StateControllerBase
 
 const (
-	textRender_removetime byte = iota
-	textRender_layerno
-	textRender_font
-	textRender_bank
-	textRender_align
-	textRender_text
-	textRender_pos
-	textRender_scale
-	textRender_color
-	textRender_redirectid
+	text_removetime byte = iota
+	text_layerno
+	text_params
+	text_font
+	text_bank
+	text_align
+	text_text
+	text_pos
+	text_scale
+	text_color
+	text_redirectid
 )
 
-func (sc textRender) Run(c *Char, _ []int32) bool {
+func (sc text) Run(c *Char, _ []int32) bool {
 	crun := c
+	params := []interface{}{}
 	var lclscround float32 = 1.0
 	ts := NewTextSprite()
+	var sn int = -1
 	var fflg bool
 	var fnt int = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case textRender_removetime:
+		case text_removetime:
 			ts.removetime = exp[0].evalI(c)
-		case textRender_layerno:
+		case text_layerno:
 			ts.layerno = int16(exp[0].evalI(c))
-		case textRender_font:
+		case text_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case text_text:
+			sn = int(exp[0].evalI(c))
+		case text_font:
 			fnt = int(exp[1].evalI(c))
 			fflg = exp[0].evalB(c)
-		case textRender_bank:
+		case text_bank:
 			ts.bank = exp[0].evalI(c)
-		case textRender_align:
+		case text_align:
 			ts.align = exp[0].evalI(c)
-		case textRender_text:
-			ts.text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-		case textRender_pos:
+		case text_pos:
 			ts.x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				ts.y = exp[1].evalF(c) * lclscround
 			}
-		case textRender_scale:
+		case text_scale:
 			ts.xscl = exp[0].evalF(c)
 			if len(exp) > 1 {
 				ts.yscl = exp[1].evalF(c)
 			}
-		case textRender_color:
+		case text_color:
 			var r, g, b int32 = exp[0].evalI(c), 255, 255
 			if len(exp) > 1 {
 				g = exp[1].evalI(c)
@@ -7482,7 +7493,7 @@ func (sc textRender) Run(c *Char, _ []int32) bool {
 				}
 			}
 			ts.SetColor(r, g, b)
-		case textRender_redirectid:
+		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				lclscround = c.localscl / crun.localscl
@@ -7492,6 +7503,14 @@ func (sc textRender) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	// text assignment
+	spl := sys.stringPool[sys.workingState.playerNo].List
+	if sn >= 0 && sn < len(spl) {
+		ts.text = OldSprintf(spl[sn], params...)
+	} else {
+		ts.text = OldSprintf("%v", params...)
+	}
+	// font assignment
 	var ok bool
 	if fflg {
 		if fnt >= 0 && fnt < len(sys.lifebar.fnt) && sys.lifebar.fnt[fnt] != nil {

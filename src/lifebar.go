@@ -3536,7 +3536,7 @@ func (l *Lifebar) step() {
 	if _, ok := l.mo[sys.gameMode]; ok {
 		l.mo[sys.gameMode].step()
 	}
-	//TextRender sctrl
+	//Text sctrl
 	for i := 0; i < len(l.textsprite); i++ {
 		if l.textsprite[i].removetime == 0 {
 			l.textsprite = append(l.textsprite[:i], l.textsprite[i+1:]...)
@@ -3798,7 +3798,7 @@ func (l *Lifebar) draw(layerno int16) {
 		//LifeBarRound
 		l.ro.draw(layerno, l.fnt[:])
 	}
-	//TextRender sctrl
+	//Text sctrl
 	for _, v := range l.textsprite {
 		if v.layerno == layerno {
 			v.Draw()

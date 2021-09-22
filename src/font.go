@@ -572,9 +572,8 @@ type TextSprite struct {
 	window           [4]int32
 	palfx            *PalFX
 	frgba            [4]float32 //ttf fonts
-	// TextRender sctrl
-	removetime int32
-	layerno    int16
+	removetime       int32 //text sctrl
+	layerno          int16 //text sctrl
 }
 
 func NewTextSprite() *TextSprite {
