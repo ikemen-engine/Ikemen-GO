@@ -527,6 +527,7 @@ func (s *Sprite) GetPalTex(pl *PaletteList) *Texture {
 	}
 	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
 }
+
 func (s *Sprite) SetPxl(px []byte) {
 	if len(px) == 0 {
 		return
@@ -541,7 +542,9 @@ func (s *Sprite) SetPxl(px []byte) {
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE,
 			int32(s.Size[0]), int32(s.Size[1]),
-			0, gl.LUMINANCE, gl.UNSIGNED_BYTE, unsafe.Pointer(&px[0]))
+			0, gl.LUMINANCE, gl.UNSIGNED_BYTE,
+			unsafe.Pointer(&px[0]),
+		)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
@@ -549,6 +552,32 @@ func (s *Sprite) SetPxl(px []byte) {
 		gl.Disable(gl.TEXTURE_2D)
 	}
 }
+
+func (s *Sprite) SetPng(rgba *image.RGBA, sprWidth int32, sprHeight int32) {
+	// TODO: Check why ths channel operation uses too much memory.
+	sys.mainThreadTask <- func() {
+		gl.Enable(gl.TEXTURE_2D)
+		s.Tex = newTexture()
+		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+			sprWidth, sprHeight,
+			0, gl.RGBA, gl.UNSIGNED_BYTE,
+			unsafe.Pointer(&rgba.Pix[0]),
+		)
+		if sys.pngFilter {
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		} else {
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		}
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		gl.Disable(gl.TEXTURE_2D)
+	}
+}
+
 func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32,
 	link *uint16) error {
 	read := func(x interface{}) error {
@@ -898,7 +927,12 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	f.Seek(offset+4, 0)
 	if s.rle < 0 {
 		format := -s.rle
+		
 		var px []byte
+		var rgba *image.RGBA
+		var rect image.Rectangle
+		var isPng bool = false
+
 		if 2 <= format && format <= 4 {
 			if datasize < 4 {
 				datasize = 4
@@ -909,6 +943,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				//return err
 			}
 		}
+
 		switch format {
 		case 2:
 			px = s.Rle8Decode(px)
@@ -926,41 +961,33 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				px = pi.Pix
 			}
 		case 11, 12:
+			isPng = true
+			var ok bool = true
+
 			img, err := png.Decode(f)
+
 			if err != nil {
 				return err
 			}
+
 			rect := img.Bounds()
-			rgba, ok := img.(*image.RGBA)
+			rgba, ok = img.(*image.RGBA)
+
 			if !ok {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
-			// TODO: Check why ths channel operation uses too much memory.
-			sys.mainThreadTask <- func() {
-				gl.Enable(gl.TEXTURE_2D)
-				s.Tex = newTexture()
-				gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-				gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-				gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(rect.Max.X-rect.Min.X),
-					int32(rect.Max.Y-rect.Min.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE,
-					unsafe.Pointer(&rgba.Pix[0]))
-				if sys.pngFilter {
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-				} else {
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-				}
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-				gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-				gl.Disable(gl.TEXTURE_2D)
-			}
-			return nil
+
+			img = nil
 		default:
 			return Error("Unknown format")
 		}
-		s.SetPxl(px)
+
+		if !isPng {
+			s.SetPxl(px)
+		} else {
+			s.SetPng(rgba, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y),)
+		}
 	}
 	return nil
 }

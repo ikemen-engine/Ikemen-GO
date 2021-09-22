@@ -1,6 +1,6 @@
 module github.com/Windblade-GR01/Ikemen_GO
 
-go 1.16
+go 1.17
 
 require (
 	github.com/TheTitanrain/w32 v0.0.0-20200114052255-2654d97dbd3d // indirect
@@ -20,4 +20,6 @@ require (
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d // indirect
 	golang.org/x/mobile v0.0.0-20210716004757-34ab1303b554 // indirect
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
+	github.com/jfreymuth/vorbis v1.0.2 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 )

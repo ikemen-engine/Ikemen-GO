@@ -72,10 +72,16 @@ func main() {
 	//os.Mkdir("debug", os.ModeSticky|0755)
 
 	// Check if the main lua file exists.
-	if !fileExists(tmp.System) {
-		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
-		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
-		panic(err)
+	if ftemp, err1 := os.Open(tmp.System); err1 != nil {
+		ftemp.Close();
+		var err2 = Error(
+			"Main lua file \"" + tmp.System + "\" error." +
+			"\n" + err1.Error(),
+		)
+		dialog.Message(err2.Error()).Title("I.K.E.M.E.N Error").Error()
+		panic(err2)
+	} else {
+		ftemp.Close();
 	}
 
 	log := createLog("Ikemen.log")
@@ -714,13 +720,4 @@ func setupConfig() configSettings {
 	}
 
 	return tmp
-}
-
-// fileExists checks if a file exists and is not a directory before we use it
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
