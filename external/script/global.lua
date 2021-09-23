@@ -216,6 +216,12 @@ function loop()
 		start.rankInit = false
 		start.dialogueInit = false
 	end
+	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 then
+		--turns life recovery
+		start.f_turnsRecovery()
+		--rank
+		start.f_rank()
+	end
 	--dialogue
 	if indialogue() then
 		start.f_dialogue()
@@ -235,13 +241,8 @@ function loop()
 		elseif start.f_continue() then
 			return
 		end
+		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		togglePostMatch(false)
-	end
-	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 then
-		--turns life recovery
-		start.f_turnsRecovery()
-		--rank
-		start.f_rank()
 	end
 	--pause menu
 	if main.pauseMenu then
