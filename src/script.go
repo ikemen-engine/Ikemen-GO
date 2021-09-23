@@ -983,7 +983,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
-				sys.sel.cdefOverwrite = nil
+				sys.sel.cdefOverwrite = make(map[int]string)
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
