@@ -2419,6 +2419,7 @@ function start.f_teamMenu(side)
 				start.p[side].ratio = true
 			end
 			start.p[side].teamEnd = true
+			main.f_cmdBufReset(side)
 		end
 	end
 	--t_selCmd table appending once team mode selection is finished
