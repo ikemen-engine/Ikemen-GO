@@ -2865,10 +2865,11 @@ function start.f_selectLoading()
 	if not config.BackgroundLoading then
 		loadStart()
 	end
-	while loading() do
-		main.t_animUpdate[motif.vs_screen.loading_data] = 1
+	-- calling refresh() during netplay data loading can lead to synchronization error
+	while loading() and not network() do
 		animDraw(motif.vs_screen.loading_data)
-		main.f_refresh()
+		animUpdate(motif.vs_screen.loading_data)
+		refresh()
 	end
 end
 
