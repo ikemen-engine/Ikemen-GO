@@ -2665,6 +2665,7 @@ function start.f_selectVersus(active, t_orderSelect)
 		end
 	end
 	if not active then
+		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		return true
 	end
 	local text = main.f_extractText(motif.vs_screen.match_text, matchno())
@@ -2842,8 +2843,8 @@ function start.f_selectVersus(active, t_orderSelect)
 			escFlag = true
 		end
 		if not main.f_frameChange() then
-			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3]) --skip last frame rendering
-			break
+			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
+			break --skip last frame rendering
 		end
 		main.f_refresh()
 	end

@@ -2786,6 +2786,7 @@ main.t_itemname = {
 			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
 		end
 		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
 		main.stageMenu = true
