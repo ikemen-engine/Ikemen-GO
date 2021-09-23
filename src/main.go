@@ -599,8 +599,8 @@ func setupConfig() configSettings {
 	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
 		tmp.Framerate = 60
 	}
-	if tmp.MaxBgmVolume > 400 {
-		tmp.MaxBgmVolume = 0
+	if tmp.MaxBgmVolume <= 0 || tmp.MaxBgmVolume > 250 {
+		tmp.MaxBgmVolume = 100
 	}
 	if tmp.NumSimul[1] > MaxSimul {
 		tmp.NumSimul[1] = MaxSimul
