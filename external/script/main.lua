@@ -1874,6 +1874,8 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%s*storymode%s*%]') then
 		row = 0
 		section = 4
+	elseif lineCase:match('^%s*%[%w+%]$') then 
+		section = -1
 	elseif section == 1 then --[Characters]
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
