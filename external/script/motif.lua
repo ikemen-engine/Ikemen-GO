@@ -2905,7 +2905,9 @@ for _, v in ipairs({
 end
 
 --versus screen spr/anim data
-motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
+if motif.vs_screen.loading_anim ~= -1 or #motif.vs_screen.loading_spr > 0 then
+	motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
+end
 for i = 1, 2 do
 	for j = 1, motif.vs_screen['p' .. i .. '_num'] do
 		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_'})

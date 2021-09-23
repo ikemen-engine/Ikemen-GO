@@ -89,7 +89,7 @@ var sys = System{
 	clipboardRows:        2,
 	pngFilter:            false,
 	clsnDarken:           true,
-	maxBgmVolume:         0,
+	maxBgmVolume:         100,
 	stereoEffects:        true,
 	panningRange:         30,
 }

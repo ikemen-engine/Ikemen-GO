@@ -154,7 +154,7 @@ options.t_itemname = {
 			config.LoseSimul = true
 			config.LoseTag = false
 			config.MaxAfterImage = 128
-			--config.MaxBgmVolume = 0
+			--config.MaxBgmVolume = 100
 			config.MaxDrawGames = -2 -- -2: match.maxdrawgames; -1: match.wins; >= 0: overriding fight.def parameters
 			config.MaxExplod = 512
 			config.MaxHelper = 56
