@@ -107,8 +107,10 @@ menu.t_itemname = {
 	--AI Level
 	['ailevel'] = function(t, item, cursorPosY, moveTxt, section)
 		if f_valueChanged(t.items[item], motif[section]) then
-			player(2)
-			setAILevel(menu.ailevel)
+			if menu.t_valuename.dummycontrol[menu.dummycontrol or 1].itemname == 'ai' then
+				player(2)
+				setAILevel(menu.ailevel)
+			end
 		end
 		return true
 	end,
