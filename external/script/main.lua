@@ -2780,6 +2780,7 @@ main.t_itemname = {
 	end,
 	--TRAINING
 	['training'] = function()
+		setHomeTeam(1)
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		if main.t_charDef[config.TrainingChar:lower()] ~= nil then

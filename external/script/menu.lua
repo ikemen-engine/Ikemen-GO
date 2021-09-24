@@ -94,9 +94,11 @@ menu.t_itemname = {
 		local ok, name = f_valueChanged(t.items[item], motif[section])
 		if ok then
 			if name == 'cooperative' or name == 'manual' then
-				setCom(2, 0)
+				player(2)
+				setAILevel(0)
 			elseif name == 'ai' then
-				setCom(2, menu.ailevel)
+				player(2)
+				setAILevel(menu.ailevel)
 			end
 			charMapSet(2, '_iksys_trainingDummyControl', menu.dummycontrol - 1)
 		end
@@ -105,7 +107,8 @@ menu.t_itemname = {
 	--AI Level
 	['ailevel'] = function(t, item, cursorPosY, moveTxt, section)
 		if f_valueChanged(t.items[item], motif[section]) then
-			setCom(2, menu.ailevel)
+			player(2)
+			setAILevel(menu.ailevel)
 		end
 		return true
 	end,
@@ -367,7 +370,8 @@ function menu.f_trainingReset()
 	for _, v in ipairs(menu.t_vardisplayPointers) do
 		v.vardisplay = menu.f_vardisplay(v.itemname)
 	end
-	setCom(2, 0)
+	player(2)
+	setAILevel(0)
 	charMapSet(2, '_iksys_trainingDummyControl', 0)
 	charMapSet(2, '_iksys_trainingGuardMode', 0)
 	charMapSet(2, '_iksys_trainingDummyMode', 0)
