@@ -1819,7 +1819,8 @@ func (c *Char) ocd() *OverrideCharData {
 }
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
-	gi.def, gi.displayname, gi.lifebarname, gi.author, gi.sff, gi.snd, gi.quotes = def, "", "", "", nil, nil, [MaxQuotes]string{}
+	gi.def, gi.displayname, gi.lifebarname, gi.author = def, "", "", ""
+	gi.sff, gi.snd, gi.quotes = nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)

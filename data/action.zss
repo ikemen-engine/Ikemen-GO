@@ -14,6 +14,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 	mapSet{map: "_iksys_actionFirstAttackFlag"; value: 0}
 	mapSet{map: "_iksys_actionMoveCounteredFlag"; value: 0}
 	mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
+	mapSet{map: "_iksys_actionMoveReversedFlag"; value: 0}
 	mapSet{map: "_iksys_actionDangerFlag"; value: 0}
 	mapSet{map: "_iksys_actionDizzyFlag"; value: 0}
 	mapSet{map: "_iksys_actionGuardBreak"; value: 0}
@@ -41,8 +42,11 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 		mapSet{map: "_iksys_actionCanRecoverFlag"; value: 0}
 	}
 	# Reversal
-	if moveReversed = 1 {
+	if moveReversed = 1 && map(_iksys_actionMoveReversedFlag) = 0 {
 		lifebarAction{spr: const(MsgReversal), 0; redirectId: enemy,id}
+		mapSet{map: "_iksys_actionMoveReversedFlag"; value: 1}
+	} else if moveReversed = 0 && map(_iksys_actionMoveReversedFlag) = 1 {
+		mapSet{map: "_iksys_actionMoveReversedFlag"; value: 0}
 	}
 	# Hit Overridden (Parry)
 	#if hitOverridden {

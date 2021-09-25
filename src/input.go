@@ -601,7 +601,8 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
 		sys.esc = sys.esc ||
 			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
 		for k, v := range sys.shortcutScripts {
-			if sys.netInput == nil && (!sys.paused || sys.step || v.Pause) && (sys.allowDebugKeys || !v.DebugKey) {
+			if sys.netInput == nil && sys.fileInput == nil &&
+				(!sys.paused || sys.step || v.Pause) && (sys.allowDebugKeys || !v.DebugKey) {
 				v.Activate = v.Activate || k.Test(key, mk)
 			}
 		}

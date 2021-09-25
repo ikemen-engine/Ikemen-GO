@@ -523,10 +523,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "clearConsole", func(*lua.LState) int {
-		sys.consoleText = nil
-		return 0
-	})
 	luaRegister(l, "clearAllSound", func(l *lua.LState) int {
 		sys.clearAllSound()
 		return 0
@@ -539,6 +535,14 @@ func systemScriptInit(l *lua.LState) {
 		col := uint32(int32(numArg(l, 3))&0xff | int32(numArg(l, 2))&0xff<<8 |
 			int32(numArg(l, 1))&0xff<<16)
 		FillRect(sys.scrrect, col, a)
+		return 0
+	})
+	luaRegister(l, "clearConsole", func(*lua.LState) int {
+		sys.consoleText = nil
+		return 0
+	})
+	luaRegister(l, "clearSelected", func(l *lua.LState) int {
+		sys.sel.ClearSelected()
 		return 0
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
@@ -789,7 +793,7 @@ func systemScriptInit(l *lua.LState) {
 			runtime.GC()
 			return nil
 		}
-
+		sys.inMatch = true
 		for {
 			if sys.gameEnd {
 				l.Push(lua.LNumber(-1))
@@ -979,7 +983,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
-				sys.sel.cdefOverwrite = nil
+				sys.sel.cdefOverwrite = make(map[int]string)
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
@@ -995,6 +999,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.postMatchFlg = false
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
+				sys.inMatch = false
 				return 2
 			}
 		}
@@ -1065,8 +1070,14 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("arcadepath", lua.LString(c.arcadepath))
 		tbl.RawSetString("ratiopath", lua.LString(c.ratiopath))
 		tbl.RawSetString("portrait_scale", lua.LNumber(c.portrait_scale))
-		//palettes
 		subt := l.NewTable()
+		for k, v := range c.cns_scale {
+			subt.RawSetInt(k+1, lua.LNumber(v))
+			subt.RawSetInt(k+1, lua.LNumber(v))
+		}
+		tbl.RawSetString("cns_scale", subt)
+		//palettes
+		subt = l.NewTable()
 		if len(c.pal) > 0 {
 			for k, v := range c.pal {
 				subt.RawSetInt(k+1, lua.LNumber(v))
@@ -1388,6 +1399,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.statusLFunc, _ = sys.luaLState.GetGlobal(strArg(l, 1)).(*lua.LFunction)
 		return 0
 	})
+	luaRegister(l, "loading", func(l *lua.LState) int {
+		l.Push(lua.LBool(sys.loader.state == LS_Loading))
+		return 1
+	})
 	luaRegister(l, "loadLifebar", func(l *lua.LState) int {
 		lb, err := loadLifebar(strArg(l, 1))
 		if err != nil {
@@ -1668,7 +1683,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
-		//sys.loadStart()
+		sys.loadStart()
 		return 0
 	})
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
@@ -3852,6 +3867,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gameLogicSpeed", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.gameSpeed * sys.accel * float32(FPS)))
+		return 1
+	})
+	luaRegister(l, "inmatch", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.inMatch))
 		return 1
 	})
 	luaRegister(l, "lasthitter", func(*lua.LState) int {

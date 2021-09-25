@@ -188,6 +188,7 @@ type configSettings struct {
 	AudioDucking               bool
 	AudioSampleRate            int32
 	AutoGuard                  bool
+	BackgroundLoading          bool
 	BarGuard                   bool
 	BarRedLife                 bool
 	BarStun                    bool
@@ -266,7 +267,6 @@ type configSettings struct {
 	VolumeBgm                  int
 	VolumeMaster               int
 	VolumeSfx                  int
-	VolumeWarning              bool
 	VRetrace                   int
 	WindowIcon                 []string
 	WindowTitle                string
@@ -295,6 +295,7 @@ func setupConfig() configSettings {
 	"AudioDucking": false,
 	"AudioSampleRate": 44100,
 	"AutoGuard": false,
+	"BackgroundLoading": false,
 	"BarGuard": false,
 	"BarRedLife": true,
 	"BarStun": false,
@@ -345,7 +346,7 @@ func setupConfig() configSettings {
 	"LoseSimul": true,
 	"LoseTag": false,
 	"MaxAfterImage": 128,
-	"MaxBgmVolume": 0,
+	"MaxBgmVolume": 100,
 	"MaxDrawGames": -2,
 	"MaxExplod": 512,
 	"MaxHelper": 56,
@@ -402,7 +403,6 @@ func setupConfig() configSettings {
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VolumeWarning": true,
 	"VRetrace": 1, 
 	"WindowIcon": [
 		"external/icons/IkemenCylia_256.png",
@@ -599,7 +599,7 @@ func setupConfig() configSettings {
 	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
 		tmp.Framerate = 60
 	}
-	if tmp.MaxBgmVolume <= 0 || tmp.MaxBgmVolume > 250 {
+	if tmp.MaxBgmVolume < 100 || tmp.MaxBgmVolume > 250 {
 		tmp.MaxBgmVolume = 100
 	}
 	if tmp.NumSimul[1] > MaxSimul {

@@ -147,18 +147,18 @@ local motif =
 		textinput_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature
 		textinput_overlay_col = {0, 0, 0}, --Ikemen feature
 		textinput_overlay_alpha = {20, 100}, --Ikemen feature
-		menu_key_next = '$D&$F', --Ikemen feature
-		menu_key_previous = '$U&$B', --Ikemen feature
-		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		menu_key_hiscore = 's', --Ikemen feature
+		menu_next_key = '$D&$F', --Ikemen feature
+		menu_previous_key = '$U&$B', --Ikemen feature
+		menu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		menu_hiscore_key = 's', --Ikemen feature
 		menu_pos = {159, 158},
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -390,11 +390,13 @@ local motif =
 		--p<pn>_member<num>_face_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_face_slide_dist = {0, 0}, --Ikemen feature
 		name_random_text = 'Random', --Ikemen feature
+		p1_name_num = 4, --Ikemen feature
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 4, 1, 255, 255, 255},
 		p1_name_font_scale = {1.0, 1.0},
 		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
+		p2_name_num = 4, --Ikemen feature
 		p2_name_offset = {0, 0},
 		p2_name_font = {-1, 1, -1, 255, 255, 255},
 		p2_name_font_scale = {1.0, 1.0},
@@ -417,7 +419,7 @@ local motif =
 		stage_text = 'Stage %i: %s', --Ikemen feature
 		stage_random_text = 'Stage: Random', --Ikemen feature
 		stage_portrait_anim = -1, --Ikemen feature
-		stage_portrait_spr = {-1, 0}, --Ikemen feature
+		stage_portrait_spr = {}, --Ikemen feature
 		stage_portrait_offset = {0, 0}, --Ikemen feature
 		stage_portrait_scale = {1.0, 1.0}, --Ikemen feature
 		stage_portrait_bg_anim = -1, --Ikemen feature
@@ -635,23 +637,22 @@ local motif =
 		p2_teammenu_ratio7_icon_offset = {0, 0}, --Ikemen feature
 		p2_teammenu_ratio7_icon_facing = 1, --Ikemen feature
 		p2_teammenu_ratio7_icon_scale = {1.0, 1.0}, --Ikemen feature
-		p1_teammenu_key_next = '$D', --Ikemen feature
-		p1_teammenu_key_previous = '$U', --Ikemen feature
-		p1_teammenu_key_add = '$F', --Ikemen feature
-		p1_teammenu_key_subtract = '$B', --Ikemen feature
-		p1_teammenu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		p2_teammenu_key_next = '$D', --Ikemen feature
-		p2_teammenu_key_previous = '$U', --Ikemen feature
-		p2_teammenu_key_add = '$B', --Ikemen feature
-		p2_teammenu_key_subtract = '$F', --Ikemen feature
-		p2_teammenu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		timer_enabled = 0, --Ikemen feature
+		p1_teammenu_next_key = '$D', --Ikemen feature
+		p1_teammenu_previous_key = '$U', --Ikemen feature
+		p1_teammenu_add_key = '$F', --Ikemen feature
+		p1_teammenu_subtract_key = '$B', --Ikemen feature
+		p1_teammenu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
+		p2_teammenu_next_key = '$D', --Ikemen feature
+		p2_teammenu_previous_key = '$U', --Ikemen feature
+		p2_teammenu_add_key = '$B', --Ikemen feature
+		p2_teammenu_subtract_key = '$F', --Ikemen feature
+		p2_teammenu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
 		timer_font_height = -1, --Ikemen feature
 		timer_font_text = '%i', --Ikemen feature
-		timer_count = 99, --Ikemen feature
+		timer_count = -1, --Ikemen feature
 		timer_framespercount = 60, --Ikemen feature
 		timer_displaytime = 10, --Ikemen feature
 		record_offset = {0, 0}, --Ikemen feature
@@ -662,8 +663,8 @@ local motif =
 		record_timechallenge_text = '', --Ikemen feature
 		p1_swap_snd = {-1, 0}, --Ikemen feature
 		p2_swap_snd = {-1, 0}, --Ikemen feature
-		p1_select_snd = {-1, 0}, --Ikemen feature (uses character's SND file)
-		p2_select_snd = {-1, 0}, --Ikemen feature (uses character's SND file)
+		p1_select_snd = {-1, 0}, --Ikemen feature (data read from character SND)
+		p2_select_snd = {-1, 0}, --Ikemen feature (data read from character SND)
 	},
 	selectbgdef =
 	{
@@ -672,6 +673,8 @@ local motif =
 	},
 	vs_screen =
 	{
+		orderselect_enabled = 0, --Ikemen feature
+		done_time = 60, --Ikemen feature
 		fadein_time = 15,
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = -1, --Ikemen feature
@@ -710,38 +713,77 @@ local motif =
 		--p<pn>_member<num>_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_slide_dist = {0, 0}, --Ikemen feature
+		p1_name_num = 4, --Ikemen feature
 		p1_name_pos = {0, 0},
 		p1_name_offset = {0, 0},
 		p1_name_font = {-1, 0, 0, 255, 255, 255},
 		p1_name_font_scale = {1.0, 1.0},
 		p1_name_font_height = -1, --Ikemen feature
 		p1_name_spacing = {0, 14},
-		--p1_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		--p1_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		--p1_name_active_font_height = -1, --Ikemen feature
+		p2_name_num = 4, --Ikemen feature
 		p2_name_pos = {0, 0},
 		p2_name_offset = {0, 0},
 		p2_name_font = {-1, 0, 0, 255, 255, 255},
 		p2_name_font_scale = {1.0, 1.0},
 		p2_name_font_height = -1, --Ikemen feature
 		p2_name_spacing = {0, 14},
-		--p2_name_active_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
-		--p2_name_active_font_scale = {1.0, 1.0}, --Ikemen feature
-		--p2_name_active_font_height = -1, --Ikemen feature
-		p1_cursor_move_snd = {-1, 0}, --Ikemen feature
-		p1_cursor_done_snd = {-1, 0}, --Ikemen feature
-		p2_cursor_move_snd = {-1, 0}, --Ikemen feature
-		p2_cursor_done_snd = {-1, 0}, --Ikemen feature
-		p1_key_rotate_forward = '$F', --Ikemen feature
-		p1_key_rotate_back = '$B', --Ikemen feature
-		p1_key_switch_forward = '$U', --Ikemen feature
-		p1_key_switch_back = '$D', --Ikemen feature
-		p1_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
-		p2_key_rotate_forward = '$B', --Ikemen feature
-		p2_key_rotate_back = '$F', --Ikemen feature
-		p2_key_switch_forward = '$U', --Ikemen feature
-		p2_key_switch_back = '$D', --Ikemen feature
-		p2_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
+		--p<pn>_member<num>_key = "", --Ikemen feature
+		p1_accept_key = "a&b&c&x&y&z&s", --Ikemen feature
+		p1_skip_key = "s", --Ikemen feature
+		p2_accept_key = "a&b&c&x&y&z&s", --Ikemen feature
+		p2_skip_key = "s", --Ikemen feature
+		--p<pn>_member<num>_icon_anim = -1, --Ikemen feature
+		--p<pn>_member<num>_icon_spr = {}, --Ikemen feature
+		--p<pn>_member<num>_icon_done_anim = -1, --Ikemen feature
+		--p<pn>_member<num>_icon_done_spr = {}, --Ikemen feature
+		--p<pn>_member<num>_icon_offset = {0, 0}, --Ikemen feature
+		--p<pn>_member<num>_icon_facing = 1, --Ikemen feature
+		--p<pn>_member<num>_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_icon_anim = -1, --Ikemen feature
+		p1_value_icon_spr = {}, --Ikemen feature
+		--p1_value_icon_member<num>_anim = -1, --Ikemen feature
+		--p1_value_icon_member<num>_spr = {}, --Ikemen feature
+		p1_value_icon_offset = {0, 0}, --Ikemen feature
+		p1_value_icon_facing = 1, --Ikemen feature
+		p1_value_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_empty_icon_anim = -1, --Ikemen feature
+		p1_value_empty_icon_spr = {}, --Ikemen feature
+		--p1_value_empty_icon_member<num>_anim = -1, --Ikemen feature
+		--p1_value_empty_icon_member<num>_spr = {}, --Ikemen feature
+		p1_value_empty_icon_offset = {0, 0}, --Ikemen feature
+		p1_value_empty_icon_facing = 1, --Ikemen feature
+		p1_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p1_value_icon_spacing = {0, 0}, --Ikemen feature
+		p1_value_snd = {-1, 0}, --Ikemen feature
+		p2_value_icon_anim = -1, --Ikemen feature
+		p2_value_icon_spr = {}, --Ikemen feature
+		--p2_value_icon_member<num>_anim = -1, --Ikemen feature
+		--p2_value_icon_member<num>_spr = {}, --Ikemen feature
+		p2_value_icon_offset = {0, 0}, --Ikemen feature
+		p2_value_icon_facing = 1, --Ikemen feature
+		p2_value_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p2_value_empty_icon_anim = -1, --Ikemen feature
+		p2_value_empty_icon_spr = {}, --Ikemen feature
+		--p2_value_empty_icon_member<num>_anim = -1, --Ikemen feature
+		--p2_value_empty_icon_member<num>_spr = {}, --Ikemen feature
+		p2_value_empty_icon_offset = {0, 0}, --Ikemen feature
+		p2_value_empty_icon_facing = 1, --Ikemen feature
+		p2_value_empty_icon_scale = {1.0, 1.0}, --Ikemen feature
+		p2_value_icon_spacing = {0, 0}, --Ikemen feature
+		p2_value_snd = {-1, 0}, --Ikemen feature
+		timer_offset = {0, 0}, --Ikemen feature
+		timer_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
+		timer_font_scale = {1.0, 1.0}, --Ikemen feature
+		timer_font_height = -1, --Ikemen feature
+		timer_font_text = "%i", --Ikemen feature
+		timer_count = -1, --Ikemen feature
+		timer_framespercount = 60, --Ikemen feature
+		timer_displaytime = 10, --Ikemen feature
+		loading_anim = -1, --Ikemen feature
+		loading_spr = {}, --Ikemen feature
+		loading_offset = {0, 0}, --Ikemen feature
+		loading_facing = 1, --Ikemen feature
+		loading_scale = {1.0, 1.0}, --Ikemen feature
 		stage_snd = {-1, 0}, --Ikemen feature
 	},
 	versusbgdef =
@@ -909,6 +951,7 @@ local motif =
 		winquote_font_height = -1, --Ikemen feature
 		winquote_scale = {1.0, 1.0},
 		winquote_delay = 2, --Ikemen feature
+		winquote_displaytime = 0, --Ikemen feature
 		winquote_textwrap = 'w',
 		winquote_window = {},
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
@@ -940,7 +983,7 @@ local motif =
 		wintext_font = {'f-6x9.def', 0, 0, 255, 255, 255},
 		wintext_font_scale = {1.0, 1.0},
 		wintext_font_height = -1, --Ikemen feature
-		wintext_displaytime = -1,
+		wintext_displaytime = 0,
 		wintext_layerno = 2,
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
@@ -980,7 +1023,7 @@ local motif =
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255},
 		winstext_font_scale = {1.0, 1.0},
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1,
+		winstext_displaytime = 0,
 		winstext_layerno = 2,
 		roundstowin = 5,
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
@@ -1015,7 +1058,7 @@ local motif =
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1, --Ikemen feature
+		winstext_displaytime = 0, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		roundstowin = 51, --Ikemen feature
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
@@ -1050,7 +1093,7 @@ local motif =
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1, --Ikemen feature
+		winstext_displaytime = 0, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
@@ -1084,7 +1127,7 @@ local motif =
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1, --Ikemen feature
+		winstext_displaytime = 0, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
@@ -1118,7 +1161,7 @@ local motif =
 		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1, --Ikemen feature
+		winstext_displaytime = 0, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
@@ -1152,7 +1195,7 @@ local motif =
 		winstext_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
 		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = -1, --Ikemen feature
+		winstext_displaytime = 0, --Ikemen feature
 		winstext_layerno = 2, --Ikemen feature
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
@@ -1186,12 +1229,12 @@ local motif =
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -1266,12 +1309,12 @@ local motif =
 		keymenu_p1_pos = {39, 33}, --Ikemen feature
 		keymenu_p2_pos = {178, 33}, --Ikemen feature
 		--keymenu_bg_<itemname>_anim = -1, --Ikemen feature
-		--keymenu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--keymenu_bg_<itemname>_spr = {}, --Ikemen feature
 		--keymenu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--keymenu_bg_<itemname>_facing = 1, --Ikemen feature
 		--keymenu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--keymenu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--keymenu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--keymenu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--keymenu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--keymenu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--keymenu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -1414,12 +1457,12 @@ local motif =
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -1478,12 +1521,12 @@ local motif =
 		menu_uselocalcoord = 0, --Ikemen feature
 		menu_pos = {85, 33}, --Ikemen feature
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -1661,7 +1704,6 @@ local motif =
 		start_press_font_scale = {1.0, 1.0}, --Ikemen feature
 		start_press_font_height = -1, --Ikemen feature
 		start_press_blinktime = 30, --Ikemen feature
-		start_timer_enabled = 1, --Ikemen feature
 		start_timer_offset = {310, 234}, --Ikemen feature
 		start_timer_font = {'f-4x6.fnt', 0, -1, 255, 255, 255}, --Ikemen feature
 		start_timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -1681,17 +1723,17 @@ local motif =
 		title_font_scale = {1.0, 1.0}, --Ikemen feature
 		title_font_height = -1, --Ikemen feature
 		title_text = 'MAIN MENU', --Ikemen feature
-		menu_key_next = '$D&$F', --Ikemen feature
-		menu_key_previous = '$U&$B', --Ikemen feature
-		menu_key_accept = 'a&b&c&x&y&z&s', --Ikemen feature
+		menu_next_key = '$D&$F', --Ikemen feature
+		menu_previous_key = '$U&$B', --Ikemen feature
+		menu_accept_key = 'a&b&c&x&y&z&s', --Ikemen feature
 		menu_pos = {159, 158}, --Ikemen feature
 		--menu_bg_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_<itemname>_spr = {-1, 0}, --Ikemen feature
+		--menu_bg_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
 		--menu_bg_active_<itemname>_anim = -1, --Ikemen feature
-		--menu_bg_active_<itemname>_spr = -1, --Ikemen feature
+		--menu_bg_active_<itemname>_spr = {}, --Ikemen feature
 		--menu_bg_active_<itemname>_offset = {0, 0}, --Ikemen feature
 		--menu_bg_active_<itemname>_facing = 1, --Ikemen feature
 		--menu_bg_active_<itemname>_scale = {1.0, 1.0}, --Ikemen feature
@@ -1832,8 +1874,8 @@ local motif =
 		endtime = 0, --Ikemen feature
 		switchtime = 0, --Ikemen feature
 		skiptime = 0, --Ikemen feature
-		key_skip = 'a', --Ikemen feature
-		key_cancel = 'b&c&x&y&z&s', --Ikemen feature
+		skip_key = 'a', --Ikemen feature
+		cancel_key = 'b&c&x&y&z&s', --Ikemen feature
 		p1_bg_anim = -1, --Ikemen feature
 		p1_bg_spr = {}, --Ikemen feature
 		p1_bg_offset = {0, 0}, --Ikemen feature
@@ -1980,7 +2022,6 @@ local motif =
 		item_face_unknown_offset = {0, 0}, --Ikemen feature
 		item_face_unknown_facing = 1, --Ikemen feature
 		item_face_unknown_scale = {1.0, 1.0}, --Ikemen feature
-		timer_enabled = 1, --Ikemen feature
 		timer_offset = {0, 0}, --Ikemen feature
 		timer_font = {'f-6x9.def', 0, 0, 255, 255, 255}, --Ikemen feature
 		timer_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2240,6 +2281,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuengine_players = "Players"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
 	motif.option_info.menu_itemname_menuengine_debugmode = "Debug Mode"
+	motif.option_info.menu_itemname_menuengine_backgroundloading = "Background Loading"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
 	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
@@ -2356,6 +2398,7 @@ function motif.setBaseOptionInfo()
 		"menuengine_players",
 		"menuengine_debugkeys",
 		"menuengine_debugmode",
+		"menuengine_backgroundloading",
 		"menuengine_empty",
 		"menuengine_helpermax",
 		"menuengine_projectilemax",
@@ -2693,56 +2736,33 @@ for k, v in pairs({
 	end
 end
 
-if motif.vs_screen.p1_name_active_font == nil then
-	motif.vs_screen.p1_name_active_font = {
-		motif.vs_screen.p1_name_font[1],
-		motif.vs_screen.p1_name_font[2],
-		motif.vs_screen.p1_name_font[3],
-		motif.vs_screen.p1_name_font[4],
-		motif.vs_screen.p1_name_font[5],
-		motif.vs_screen.p1_name_font[6],
-	}
-	motif.vs_screen.p1_name_active_font_scale = {motif.vs_screen.p1_name_font_scale[1], motif.vs_screen.p1_name_font_scale[2]}
-end
-if motif.vs_screen.p2_name_active_font == nil then
-	motif.vs_screen.p2_name_active_font = {
-		motif.vs_screen.p2_name_font[1],
-		motif.vs_screen.p2_name_font[2],
-		motif.vs_screen.p2_name_font[3],
-		motif.vs_screen.p2_name_font[4],
-		motif.vs_screen.p2_name_font[5],
-		motif.vs_screen.p2_name_font[6],
-	}
-	motif.vs_screen.p2_name_active_font_scale = {motif.vs_screen.p2_name_font_scale[1], motif.vs_screen.p2_name_font_scale[2]}
-end
-
 --general paths
 for _, v in ipairs({
-	{t = {'files', 'spr'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'snd'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'select'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'fight'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'files', 'glyphs'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'music', 'title_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'select_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'vs_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'victory_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'option_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'replay_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'continue_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'continue_end_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'results_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'music', 'hiscore_bgm'}, dirs = {motif.fileDir, '', 'data/', 'sound/'}},
-	{t = {'default_ending', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'end_credits', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'game_over_screen', 'storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'logo_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'intro_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
-	{t = {'attract_mode', 'start_storyboard'}, dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'spr', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'snd', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'logo_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'intro_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'select', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'fight', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'glyphs', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'music', param = 'title_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'select_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'vs_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'victory_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'option_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'replay_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'continue_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'continue_end_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'results_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'music', param = 'hiscore_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
+	{group = 'default_ending', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'end_credits', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'game_over_screen', param = 'storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'logo_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'intro_storyboard', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'attract_mode', param = 'start_storyboard', dirs = {motif.fileDir, '', 'data/'}},
 }) do
-	motif[v.t[1]][v.t[2]] = searchFile(motif[v.t[1]][v.t[2]], v.dirs)
+	motif[v.group][v.param] = searchFile(motif[v.group][v.param], v.dirs)
 end
 
 motif.files.spr_data = sffNew(motif.files.spr)
@@ -2783,37 +2803,45 @@ end
 local anim = ''
 local facing = ''
 function motif.f_loadSprData(t, v)
+	local animParam = v.s .. 'anim'
+	local sprParam = v.s .. 'spr'
+	local data = v.s .. 'data'
+	-- optional prefix argument only changes parameter name for anim/spr numbers assignment
+	if v.prefix ~= nil then
+		animParam = v.s .. v.prefix .. 'anim'
+		sprParam = v.s .. v.prefix .. 'spr'
+		data = v.s .. v.prefix .. 'data'
+	end
 	if t[v.s .. 'offset'] == nil then t[v.s .. 'offset'] = {0, 0} end
 	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end
-	if t[v.s .. 'anim'] ~= nil and t[v.s .. 'anim'] ~= -1 and motif.anim[t[v.s .. 'anim']] ~= nil then --create animation data
+	if t[animParam] ~= nil and t[animParam] ~= -1 and motif.anim[t[animParam]] ~= nil then --create animation data
 		if t[v.s .. 'facing'] == nil then t[v.s .. 'facing'] = 1 end
-		t[v.s .. 'data'] = main.f_animFromTable(
-			motif.anim[t[v.s .. 'anim']],
+		t[data] = main.f_animFromTable(
+			motif.anim[t[animParam]],
 			motif.files.spr_data,
-			t[v.s .. 'offset'][1] + v.x,
-			t[v.s .. 'offset'][2] + v.y,
+			t[v.s .. 'offset'][1] + (v.x or 0),
+			t[v.s .. 'offset'][2] + (v.y or 0),
 			t[v.s .. 'scale'][1],
 			t[v.s .. 'scale'][2],
 			motif.f_animFacing(t[v.s .. 'facing'])
 		)
-	elseif t[v.s .. 'spr'] ~= nil and #t[v.s .. 'spr'] > 0 then --create sprite data
-		if #t[v.s .. 'spr'] == 1 then --fix values
-			if type(t[v.s .. 'spr'][1]) == 'string' then
-				t[v.s .. 'spr'] = {tonumber(t[v.s .. 'spr'][1]:match('^([0-9]+)')), 0}
+	elseif t[sprParam] ~= nil and #t[sprParam] > 0 then --create sprite data
+		if #t[sprParam] == 1 then --fix values
+			if type(t[sprParam][1]) == 'string' then
+				t[sprParam] = {tonumber(t[sprParam][1]:match('^([0-9]+)')), 0}
 			else
-				t[v.s .. 'spr'] = {t[v.s .. 'spr'][1], 0}
+				t[sprParam] = {t[sprParam][1], 0}
 			end
 		end
 		if t[v.s .. 'facing'] == -1 then facing = ', H' else facing = '' end
-		anim = t[v.s .. 'spr'][1] .. ', ' .. t[v.s .. 'spr'][2] .. ', ' .. t[v.s .. 'offset'][1] + v.x .. ', ' .. t[v.s .. 'offset'][2] + v.y .. ', -1' .. facing
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, anim)
-		animSetScale(t[v.s .. 'data'], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
-		animUpdate(t[v.s .. 'data'])
+		t[data] = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. t[v.s .. 'offset'][1] + (v.x or 0) .. ', ' .. t[v.s .. 'offset'][2] + (v.y or 0) .. ', -1' .. facing)
+		animSetScale(t[data], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
+		animUpdate(t[data])
 	else --create dummy data
-		t[v.s .. 'data'] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
-		animUpdate(t[v.s .. 'data'])
+		t[data] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
+		animUpdate(t[data])
 	end
-	animSetWindow(t[v.s .. 'data'], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	animSetWindow(t[data], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
 --creates cursors data
@@ -2821,7 +2849,7 @@ function motif.f_loadCursorData()
 	for i = 1, config.Players do
 		for _, v in ipairs({'_cursor_active_', '_cursor_done_'}) do
 			if motif.select_info['p' .. i .. v .. 'data'] == nil and (motif.select_info['p' .. i .. v .. 'anim'] ~= nil or motif.select_info['p' .. i .. v .. 'spr'] ~= nil) then
-				motif.f_loadSprData(motif.select_info, {s = 'p' .. i .. v, x = 0, y = 0})
+				motif.f_loadSprData(motif.select_info, {s = 'p' .. i .. v})
 			end
 		end
 	end
@@ -2830,10 +2858,10 @@ end
 --creates fadein/fadeout anim data
 for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100_kumite_results_screen', 'time_attack_results_screen', 'time_challenge_results_screen', 'score_challenge_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadein_', x = 0, y = 0})
+		motif.f_loadSprData(motif[v], {s = 'fadein_'})
 	end
 	if motif[v].fadeout_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadeout_', x = 0, y = 0})
+		motif.f_loadSprData(motif[v], {s = 'fadeout_'})
 	end
 end
 
@@ -2876,11 +2904,31 @@ for _, v in ipairs({
 	motif.f_loadSprData(motif.select_info, v)
 end
 
+--versus screen spr/anim data
+if motif.vs_screen.loading_anim ~= -1 or #motif.vs_screen.loading_spr > 0 then
+	motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
+end
+for i = 1, 2 do
+	for j = 1, motif.vs_screen['p' .. i .. '_num'] do
+		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_'})
+		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_', prefix = 'done_'})
+	end
+	for _, v in ipairs({'_value_icon_', '_value_empty_icon_'}) do
+		for j = 1, 8 do
+			if motif.vs_screen['p' .. i .. v .. 'member' .. j .. '_spr'] ~= nil or motif.vs_screen['p' .. i .. v .. 'member' .. j .. '_anim'] ~= nil then
+				motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. v, prefix = 'member' .. j .. '_'})
+			end
+		end
+	end
+	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_icon_'})
+	motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_value_empty_icon_'})
+end
+
 --continue screen spr/anim data
-motif.f_loadSprData(motif.continue_screen, {s = 'counter_', x = 0, y = 0})
+motif.f_loadSprData(motif.continue_screen, {s = 'counter_'})
 
 --challenger spr/anim data
-motif.f_loadSprData(motif.challenger_info, {s = 'bg_', x = 0, y = 0})
+motif.f_loadSprData(motif.challenger_info, {s = 'bg_'})
 
 --arrows spr/anim data
 for _, v in ipairs({motif.title_info, motif.option_info, motif.replay_info, motif.menu_info, motif.training_info, motif.attract_mode}) do
@@ -2921,12 +2969,12 @@ end
 
 --dialogue spr/anim data
 for i = 1, 2 do
-	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_bg_', x = 0, y = 0})
+	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_bg_'})
 end
 
 --hiscore spr/anim data
-motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_bg_', x = 0, y = 0})
-motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_unknown_', x = 0, y = 0})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_bg_'})
+motif.f_loadSprData(motif.hiscore_info, {s = 'item_face_unknown_'})
 
 --glyphs spr data
 motif.glyphs_data = {}
@@ -2979,39 +3027,45 @@ for group_k, group_t in pairs(main.t_sort) do
 end
 
 --commands
-for k, v in ipairs({
-	motif.title_info.menu_key_next,
-	motif.title_info.menu_key_previous,
-	motif.title_info.menu_key_accept,
-	motif.title_info.menu_key_hiscore,
-	motif.select_info.p1_teammenu_key_next,
-	motif.select_info.p1_teammenu_key_previous,
-	motif.select_info.p1_teammenu_key_add,
-	motif.select_info.p1_teammenu_key_subtract,
-	motif.select_info.p1_teammenu_key_accept,
-	motif.select_info.p2_teammenu_key_next,
-	motif.select_info.p2_teammenu_key_previous,
-	motif.select_info.p2_teammenu_key_add,
-	motif.select_info.p2_teammenu_key_subtract,
-	motif.select_info.p2_teammenu_key_accept,
-	motif.vs_screen.p1_key_next,
-	motif.vs_screen.p1_key_previous,
-	motif.vs_screen.p1_key_orderup,
-	motif.vs_screen.p1_key_orderdown,
-	motif.vs_screen.p1_key_accept,
-	motif.vs_screen.p2_key_next,
-	motif.vs_screen.p2_key_previous,
-	motif.vs_screen.p2_key_orderup,
-	motif.vs_screen.p2_key_orderdown,
-	motif.vs_screen.p2_key_accept,
-	motif.attract_mode.menu_key_next,
-	motif.attract_mode.menu_key_previous,
-	motif.attract_mode.menu_key_accept,
-	motif.dialogue_info.key_skip,
-	motif.dialogue_info.key_cancel,
+for _, v in ipairs({
+	motif.title_info.menu_next_key,
+	motif.title_info.menu_previous_key,
+	motif.title_info.menu_accept_key,
+	motif.title_info.menu_hiscore_key,
+	motif.select_info.p1_teammenu_next_key,
+	motif.select_info.p1_teammenu_previous_key,
+	motif.select_info.p1_teammenu_add_key,
+	motif.select_info.p1_teammenu_subtract_key,
+	motif.select_info.p1_teammenu_accept_key,
+	motif.select_info.p2_teammenu_next_key,
+	motif.select_info.p2_teammenu_previous_key,
+	motif.select_info.p2_teammenu_add_key,
+	motif.select_info.p2_teammenu_subtract_key,
+	motif.select_info.p2_teammenu_accept_key,
+	motif.vs_screen.p1_accept_key,
+	motif.vs_screen.p1_skip_key,
+	motif.vs_screen.p2_accept_key,
+	motif.vs_screen.p2_skip_key,
+	motif.attract_mode.menu_next_key,
+	motif.attract_mode.menu_previous_key,
+	motif.attract_mode.menu_accept_key,
+	motif.dialogue_info.skip_key,
+	motif.dialogue_info.cancel_key,
 }) do
-	for i, cmd in ipairs (main.f_extractKeys(v)) do
+	for _, cmd in ipairs (main.f_extractKeys(v)) do
 		main.f_commandAdd(cmd, cmd)
+	end
+end
+for i = 1, 2 do
+	local j = 1
+	while true do
+		if motif.vs_screen['p' .. i .. '_member' .. j .. '_key'] == nil then
+			break
+		end
+		for _, cmd in ipairs (main.f_extractKeys(v)) do
+			main.f_commandAdd(cmd, cmd)
+		end
+		j = j + 1
 	end
 end
 

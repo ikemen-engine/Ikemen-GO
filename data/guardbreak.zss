@@ -49,7 +49,7 @@ persistent(0) if time = 0 {
 		space: screen;
 		posType: left;
 		pos: 0, screenHeight / 2; # color 0 (blue)
-		scale: screenWidth * localScale, 7.5;
+		scale: 320, 7.5 * screenHeight / const240p(240);
 		bindTime: -1;
 		superMoveTime: -1;
 		pauseMoveTime: -1;

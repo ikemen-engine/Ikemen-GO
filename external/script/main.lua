@@ -572,8 +572,8 @@ function main.f_createTextImg(t, prefix, mod)
 		text =   t[prefix .. '_text'],
 		x =      (t[prefix .. '_offset'][1] or 0) + (mod.x or 0),
 		y =      (t[prefix .. '_offset'][2] or 0) + (mod.y or 0),
-		scaleX = t[prefix .. '_font_scale'][1] * (mod.scaleX or 1),
-		scaleY = t[prefix .. '_font_scale'][2] * (mod.scaleY or 1),
+		scaleX = (t[prefix .. '_font_scale'][1] or 1) * (mod.scaleX or 1),
+		scaleY = (t[prefix .. '_font_scale'][2] or 1) * (mod.scaleY or 1),
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
@@ -1313,7 +1313,7 @@ function main.f_commandLine()
 		end
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
-	selectStart()
+	clearSelected()
 	setMatchNo(1)
 	selectStage(main.t_stageDef[stage:lower()])
 	setTeamMode(1, t_teamMode[1], t_numChars[1])
@@ -1383,40 +1383,44 @@ local t_preloadAnim = {}
 local t_preloadSpr = {}
 local t_preload = {
 	--select_info
-	{typ = 'canim', arg = {motif.select_info.portrait_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.portrait_anim}},
 	{typ = 'cspr', arg = motif.select_info.portrait_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
 	--vs_screen
-	{typ = 'canim', arg = {motif.vs_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p1_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p1_done_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p2_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p2_done_spr},
 	--victory_screen
-	{typ = 'canim', arg = {motif.victory_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim, nil}},
+	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
 	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
 		end
 	end
@@ -1436,7 +1440,7 @@ end
 for _, v in pairs(t_preloadSpr) do
 	preloadList('cspr', v[1], v[2])
 end
-if motif.select_info.stage_portrait_spr[1] ~= -1 then
+if #motif.select_info.stage_portrait_spr > 0 and motif.select_info.stage_portrait_spr[1] ~= -1 then
 	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
 if motif.select_info.stage_portrait_anim ~= -1 then
@@ -1793,7 +1797,7 @@ function main.f_addStage(file, hidden)
 	main.t_stageDef[file:lower()] = stageNo
 	--anim data
 	for _, v in pairs({{motif.select_info.stage_portrait_anim, -1}, motif.select_info.stage_portrait_spr}) do
-		if v[1] ~= -1 then
+		if #v > 0 and v[1] ~= -1 then
 			main.t_selStages[stageNo].anim_data = animGetPreloadedData('stage', stageNo, v[1], v[2])
 			if main.t_selStages[stageNo].anim_data ~= nil then
 				animSetScale(
@@ -1870,6 +1874,8 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%s*storymode%s*%]') then
 		row = 0
 		section = 4
+	elseif lineCase:match('^%s*%[%w+%]$') then 
+		section = -1
 	elseif section == 1 then --[Characters]
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
@@ -2009,7 +2015,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training char if defined and not included in select.def
-if main.t_charDef[config.TrainingChar:lower()] == nil then
+if config.TrainingChar ~= '' and main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_addChar(config.TrainingChar .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
@@ -2199,6 +2205,7 @@ function main.f_default()
 	main.numSimul = {config.NumSimul[1], config.NumSimul[2]} --min/max number of simul characters
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
+	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = false --if rank data should be displayed at the end of match
 	main.resetScore = false --if loosing should set score for the next match to lose count
@@ -2253,6 +2260,8 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
@@ -2320,6 +2329,8 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
@@ -2483,6 +2494,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2596,6 +2609,8 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
@@ -2712,6 +2727,8 @@ main.t_itemname = {
 		--main.lifebar.timer = true
 		main.makeRoster = true
 		main.quickContinue = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
@@ -2763,12 +2780,14 @@ main.t_itemname = {
 	end,
 	--TRAINING
 	['training'] = function()
+		setHomeTeam(1)
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		if main.t_charDef[config.TrainingChar:lower()] ~= nil then
 			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
 		end
 		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2794,6 +2813,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2862,6 +2883,8 @@ main.t_itemname = {
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.vs100_kumite_results_screen
 		main.rotationChars = true
@@ -3013,7 +3036,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_demo()
 				end
 				local item_sav = item
-				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_key_previous), main.f_extractKeys(motif[main.group].menu_key_next))
+				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_previous_key), main.f_extractKeys(motif[main.group].menu_next_key))
 				main.txt_title:update({text = tbl.title})
 				if item_sav ~= item then
 					demoFrameCounter = 0
@@ -3064,9 +3087,9 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					resetKey()
 				elseif bool_del and getKey('DELETE') then
 					tbl.items = main.f_deleteIP(item, t)
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_hiscore)) and main.f_hiscoreDisplay(t[item].itemname) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_hiscore_key)) and main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_accept)) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_accept_key)) then
 					demoFrameCounter = 0
 					local f = t[item].itemname
 					if f == 'back' then
@@ -3464,19 +3487,8 @@ function main.f_attractStart()
 			txt_attract_insert:draw()
 		end
 		--draw timer
-		if motif.attract_mode.start_timer_enabled == 1 and timerActive then
-			local num = main.f_round((motif.attract_mode.start_timer_count * motif.attract_mode.start_timer_framespercount - timer + motif.attract_mode.start_timer_displaytime) / motif.attract_mode.start_timer_framespercount)
-			if num <= -1 then
-				timerActive = false
-				timer = -1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(0))})
-			else
-				timer = timer + 1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
-			end
-			if timer >= motif.attract_mode.start_timer_displaytime then
-				txt_attract_timer:draw()
-			end
+		if motif.attract_mode.start_timer_count ~= -1 and timerActive then
+			timer, timerActive = main.f_drawTimer(timer, motif.attract_mode, 'start_timer_', txt_attract_timer)
 		end
 		--draw credits text
 		if main.credits ~= -1 then
@@ -3945,6 +3957,24 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	if not skipClear then
 		refresh()
 	end
+end
+
+--common timer draw code
+function main.f_drawTimer(timer, t, prefix, txt)
+	local num = main.f_round((t[prefix .. 'count'] * t[prefix .. 'framespercount'] - timer + t[prefix .. 'displaytime']) / t[prefix .. 'framespercount'])
+	local active = true
+	if num <= -1 then
+		active = false
+		timer = -1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(0))})
+	else
+		timer = timer + 1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(math.max(0, num)))})
+	end
+	if timer >= t[prefix .. 'displaytime'] then
+		txt:draw()
+	end
+	return timer, active
 end
 
 --reset background
