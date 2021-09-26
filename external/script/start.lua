@@ -3126,6 +3126,9 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	end
 	--winner who made last hit takes priority
 	local lastHitter = lasthitter(winnerteam())
+	if lastHitter == 0 then
+		lastHitter = side
+	end
 	if player(lastHitter) and winnerteam() == side then --assign sys.debugWC
 		playerNo = lastHitter
 		selectNo = selectno()
