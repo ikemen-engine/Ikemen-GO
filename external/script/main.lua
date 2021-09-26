@@ -2174,6 +2174,7 @@ function main.f_default()
 	if motif.attract_mode.enabled == 0 and start.challenger == 0 then
 		main.credits = -1 --amount of credits from the start (-1 = disabled)
 	end
+	main.dropDefeated = false --if defeated members should be removed from team
 	main.elimination = false --if single lose should stop further lua execution
 	main.exitSelect = false --if "clearing" the mode (matchno == -1) should go back to main menu
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
@@ -2194,6 +2195,7 @@ function main.f_default()
 		stunbar = config.BarStun,
 		redlifebar = config.BarRedLife,
 	}
+	main.lifePersistence = false --if life should be maintained after match
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
 	main.makeRoster = false --if default roster for each match should be generated before first match
 	main.matchWins = { --amount of rounds to win for each team side and team mode
@@ -2426,6 +2428,7 @@ main.t_itemname = {
 		main.exitSelect = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2435,6 +2438,7 @@ main.t_itemname = {
 		main.numTag = {2, 2}
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
@@ -2444,7 +2448,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplaysurvivalcoop_text})
 		setGameMode('netplaysurvivalcoop')
 		return start.f_selectMode
@@ -2599,11 +2602,13 @@ main.t_itemname = {
 		main.charparam.single = true
 		main.charparam.stage = true
 		main.charparam.time = true
+		main.dropDefeated = true
 		main.elimination = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2614,6 +2619,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2626,7 +2632,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survival_text})
 		setGameMode('survival')
 		return start.f_selectMode
@@ -2645,6 +2650,7 @@ main.t_itemname = {
 		main.hiscoreScreen = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2655,6 +2661,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
@@ -2664,7 +2671,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survivalcoop_text})
 		setGameMode('survivalcoop')
 		return start.f_selectMode

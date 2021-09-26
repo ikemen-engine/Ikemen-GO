@@ -1248,7 +1248,18 @@ for i = 1, motif.select_info.rows * motif.select_info.columns do
 end
 if main.debugLog then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
 
---turns mode life recovery
+-- return amount of life to recover
+local function f_lifeRecovery(lifeMax, ratioLevel)
+	local bonus = lifeMax * config.TurnsRecoveryBonus / 100
+	local base = lifeMax * config.TurnsRecoveryBase / 100
+	if ratioLevel > 0 then
+		bonus = lifeMax * config.RatioRecoveryBonus / 100
+		base = lifeMax * config.RatioRecoveryBase / 100
+	end
+	return base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)
+end
+
+-- turns mode life recovery or mode with life persistence between matches
 function start.f_turnsRecovery()
 	if start.turnsRecoveryInit then
 		return
@@ -1260,59 +1271,60 @@ function start.f_turnsRecovery()
 	players = players + teamsize()
 	for i = 1, players do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
-			local bonus = lifemax() * config.TurnsRecoveryBonus / 100
-			local base = lifemax() * config.TurnsRecoveryBase / 100
-			if ratiolevel() > 0 then
-				bonus = lifemax() * config.RatioRecoveryBonus / 100
-				base = lifemax() * config.RatioRecoveryBase / 100
-			end
-			if (not matchover() and teammode() == 'turns') or (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
-				setLife(math.min(lifemax(), life() + base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)))
+			if (not matchover() and teammode() == 'turns') or main.lifePersistence then
+				setLife(math.min(lifemax(), life() + f_lifeRecovery(lifemax(), ratiolevel())))
 			end
 		end
 	end
 end
 
---survival mode outcome (character removal or life recovery)
-function start.f_survivalOutcome()
+-- match persistence (team member removal or life maintenance/recovery)
+function start.f_matchPersistence()
 	local t_removeMembers = {}
-	if matchno() >= 2 and (gamemode('survival') or gamemode('survivalcoop') or gamemode('netplaysurvivalcoop')) then
-		--Turns
+	-- at least after 1 match, if defeated members should be removed from team, or if life should be maintained
+	if matchno() >= 2 and (main.dropDefeated or main.lifePersistence) then
+		-- Turns
 		if start.p[1].teamMode == 2 then
 			--for each round in the last match
 			for _, v in ipairs(t_gameStats.match) do
-				--remove defeated character from team
-				if not v[1].win or v[1].ko then
-					t_removeMembers[v[1].memberNo + 1] = true
-				--otherwise override character's next match life
-				else
+				-- if defeated
+				if v[1].ko and v[1].life <= 0 then
+					-- remove character from team
+					if main.dropDefeated then
+						t_removeMembers[v[1].memberNo + 1] = true
+					-- or resurrect and recover character's life
+					elseif main.lifePersistence then
+						start.p[1].t_selected[v[1].memberNo + 1].life = math.max(1, f_lifeRecovery(v[1].lifeMax, v[1].ratiolevel))
+					end
+				-- otherwise maintain character's life
+				elseif main.lifePersistence then
 					start.p[1].t_selected[v[1].memberNo + 1].life = v[1].life
 				end
 			end
-		--Single / Simul / Tag
+		-- Single / Simul / Tag
 		else
-			--for each player data in the last round
+			-- for each player data in the last round
 			for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
-				--only check P1 side characters
-				if v.teamside == 0 then
-					--in normal survival remove character from team if defeated
-					if gamemode('survival') and (not v.win or v.ko) then
-						t_removeMembers[v.memberNo + 1] = true
-					--in coop modes defeated character can still fight
-					elseif gamemode('survivalcoop') or gamemode('netplaysurvivalcoop') then
-						local life = v.life
-						if life <= 0 then
-							life = math.max(1, v.lifeMax * config.TurnsRecoveryBase)
+				-- only check player controlled characters, exclude attachedchar
+				if v.teamside ~= -1 and not main.cpuSide[v.teamside + 1] then
+					-- if defeated
+					if v.ko and v.life <= 0 then
+						-- remove character from team
+						if main.dropDefeated then
+							t_removeMembers[v.memberNo + 1] = true
+						-- or resurrect and recover character's life
+						elseif main.lifePersistence then
+							start.p[1].t_selected[v.memberNo + 1].life = math.max(1, f_lifeRecovery(v.lifeMax, v.ratiolevel))
 						end
-						start.p[1].t_selected[v.memberNo + 1].life = life
-					--otherwise override character's next match life
-					else
+					-- otherwise maintain character's life
+					elseif main.lifePersistence then
 						start.p[1].t_selected[v.memberNo + 1].life = v.life
 					end
 				end
 			end
 		end
 	end
+	-- drop defeated characters
 	for i = #start.p[1].t_selected, 1, -1 do
 		if t_removeMembers[i] then
 			table.remove(start.p[1].t_selected, i)
@@ -1754,7 +1766,7 @@ function launchFight(data)
 	local loopCount = 0
 	while true do
 		-- fight initialization
-		t.p1numchars = start.f_survivalOutcome()
+		t.p1numchars = start.f_matchPersistence()
 		setTeamMode(1, start.p[1].teamMode, start.p[1].numChars)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)

@@ -2038,6 +2038,7 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("winquote", lua.LNumber(p[0].winquote))
 					tmp.RawSetString("aiLevel", lua.LNumber(p[0].aiLevel()))
 					tmp.RawSetString("palno", lua.LNumber(p[0].palno()))
+					tmp.RawSetString("ratiolevel", lua.LNumber(p[0].ocd().ratioLevel))
 					tmp.RawSetString("win", lua.LBool(p[0].win()))
 					tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
 					tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
