@@ -617,6 +617,11 @@
 	teammenu.itemname.tag = "" ; Tag
 	teammenu.itemname.ratio = "" ; Ratio
 
+	; This parameter allows renaming or disabling team mode from selection (via
+	; blank assignment) on per game mode basis. Refer to wiki for a <gamemode>
+	; list, <teammode> should be replaced with single/simul/turns/tag/ratio
+	;teammenu.itemname.<gamemode>.<teammode> = ""
+
 	;p1.teammenu.bg.<itemname>.anim = -1
 	;p1.teammenu.bg.<itemname>.spr = 
 	;p1.teammenu.bg.<itemname>.offset = 0, 0

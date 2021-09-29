@@ -437,6 +437,7 @@ local motif =
 		teammenu_itemname_turns = 'Turns', --Ikemen feature
 		teammenu_itemname_tag = '', --Ikemen feature (Tag)
 		teammenu_itemname_ratio = '', --Ikemen feature (Ratio)
+		--teammenu_itemname_<gamemode>_<teammode> = '', --Ikemen feature
 		p1_teammenu_pos = {0, 0},
 		p1_teammenu_bg_anim = -1,
 		p1_teammenu_bg_spr = {},

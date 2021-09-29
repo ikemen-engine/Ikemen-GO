@@ -1886,6 +1886,50 @@ function start.f_selectScreen()
 	local stageActiveType = 'stage_active'
 	timerSelect = 0
 	local escFlag = false
+	local t_teamMenu = {{}, {}}
+	-- generate team mode items table
+	for side = 1, 2 do
+		-- start with all default teammode entires
+		local str = 'teammenu_itemname_' .. gamemode() .. '_'
+		local t = {
+			{data = text:create({}), itemname = 'single', displayname = (motif.select_info[str .. 'single'] or motif.select_info.teammenu_itemname_single), mode = 0, insert = true},
+			{data = text:create({}), itemname = 'simul', displayname = (motif.select_info[str .. 'simul'] or motif.select_info.teammenu_itemname_simul), mode = 1, insert = true},
+			{data = text:create({}), itemname = 'turns', displayname = (motif.select_info[str .. 'turns'] or motif.select_info.teammenu_itemname_turns), mode = 2, insert = true},
+			{data = text:create({}), itemname = 'tag', displayname = (motif.select_info[str .. 'tag'] or motif.select_info.teammenu_itemname_tag), mode = 3, insert = true},
+			{data = text:create({}), itemname = 'ratio', displayname = (motif.select_info[str .. 'ratio'] or motif.select_info.teammenu_itemname_ratio), mode = 2, insert = true},
+		}
+		local activeNum = #t
+		-- keep team mode allowed by game mode declaration, but only if it hasn't been disabled by screenpack parameter
+		for i = #t, 1, -1 do
+			local itemname = t[i].itemname
+			if not main.teamMenu[side][itemname]
+				or (motif.select_info[str .. itemname] ~= nil and motif.select_info[str .. itemname] == '')
+				or (motif.select_info[str .. itemname] == nil and motif.select_info['teammenu_itemname_' .. itemname] == '') then
+				t[i].insert = false
+				activeNum = activeNum - 1 --track disabled items
+			end
+		end
+		-- first we insert all entries existing in screenpack file in correct order
+		for _, name in ipairs(main.f_tableExists(main.t_sort.select_info).teammenu) do
+			for k, v in ipairs(t) do
+				if v.insert and name == v.itemname or name == gamemode() .. '_' .. v.itemname then
+					table.insert(t_teamMenu[side], v)
+					v.insert = false
+					break
+				end
+			end
+		end
+		-- then we insert remaining default entries
+		for k, v in ipairs(t) do
+			if v.insert or (activeNum == 0 and main.teamMenu[side][v.itemname]) then
+				table.insert(t_teamMenu[side], v)
+				-- if all items are disabled by screenpack add only first default item
+				if activeNum == 0 then
+					break
+				end
+			end
+		end
+	end
 	while not selScreenEnd do
 		--credits
 		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
@@ -1967,7 +2011,7 @@ function start.f_selectScreen()
 		--team and select menu
 		for side = 1, 2 do
 			if not start.p[side].teamEnd then
-				start.f_teamMenu(side)
+				start.f_teamMenu(side, t_teamMenu[side])
 			elseif not start.p[side].selEnd then
 				--for each player with active controls
 				for k, v in ipairs(start.p[side].t_selCmd) do
@@ -2133,48 +2177,14 @@ end
 --;===========================================================
 local t_txt_teamSelfTitle = {}
 local t_txt_teamEnemyTitle = {}
-local t_teamMenu = {}
 for i = 1, 2 do
 	table.insert(t_txt_teamSelfTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_selftitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
 	table.insert(t_txt_teamEnemyTitle, main.f_createTextImg(motif.select_info, 'p' .. i .. '_teammenu_enemytitle', {x = motif.select_info['p' .. i .. '_teammenu_pos'][1], y = motif.select_info['p' .. i .. '_teammenu_pos'][2]}))
-	table.insert(t_teamMenu, {
-		{data = text:create({}), itemname = 'single', displayname = motif.select_info.teammenu_itemname_single, mode = 0},
-		{data = text:create({}), itemname = 'simul', displayname = motif.select_info.teammenu_itemname_simul, mode = 1},
-		{data = text:create({}), itemname = 'turns', displayname = motif.select_info.teammenu_itemname_turns, mode = 2},
-		{data = text:create({}), itemname = 'tag', displayname = motif.select_info.teammenu_itemname_tag, mode = 3},
-		{data = text:create({}), itemname = 'ratio', displayname = motif.select_info.teammenu_itemname_ratio, mode = 2},
-	})
 end
-local t_teamMenuSorted = {
-	main.f_tableClean(t_teamMenu[1], main.f_tableExists(main.t_sort.select_info).teammenu),
-	main.f_tableClean(t_teamMenu[2], main.f_tableExists(main.t_sort.select_info).teammenu),
-}
 local t_teamActiveCount = {0, 0}
 local t_teamActiveType = {'p1_teammenu_item_active', 'p2_teammenu_item_active'}
 
-function start.f_teamMenu(side)
-	local t = {}
-	local ok = not main.coop or main.cpuSide[side] or not main.teamMenu[side].simul
-	--append team modes allowed by game mode declaration
-	for _, v in ipairs(t_teamMenuSorted[side]) do
-		if main.teamMenu[side][v.itemname] then
-			table.insert(t, v)
-			ok = ok or v.itemname == 'simul'
-		end
-	end
-	--append simul itemname if it's co-op mode but simul itemname is disabled by screenpack
-	if not ok then
-		table.insert(t, 1, {data = text:create({}), itemname = 'simul', displayname = 'Simul', mode = 1})
-	end
-	--append entry if all valid team modes are disabled by screenpack
-	if #t == 0 then
-		for _, v in ipairs(t_teamMenu[side]) do
-			if main.teamMenu[side][v.itemname] then
-				table.insert(t, v)
-				break
-			end
-		end
-	end
+function start.f_teamMenu(side, t)
 	--skip selection if only 1 team mode is available and team size is fixed
 	if #t == 1 and (t[1].itemname == 'single' or (t[1].itemname == 'simul' and main.numSimul[1] == main.numSimul[2]) or (t[1].itemname == 'turns' and main.numTurns[1] == main.numTurns[2]) or (t[1].itemname == 'tag' and main.numTag[1] == main.numTag[2])) then
 		if t[1].itemname == 'single' then
@@ -2306,7 +2316,7 @@ function start.f_teamMenu(side)
 					t_teamActiveCount[side] = 0
 				end
 				--Draw team active item background
-				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
+				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. gamemode() .. '_' .. t[i].itemname .. '_data'] or motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
 				--Draw team active item font
 				t[i].data:update({
 					font =   motif.select_info[t_teamActiveType[side] .. '_font'][1],
@@ -2325,7 +2335,7 @@ function start.f_teamMenu(side)
 				t[i].data:draw()
 			else
 				--Draw team not active item background
-				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
+				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. gamemode() .. '_' .. t[i].itemname .. '_data'] or motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
 				--Draw team not active item font
 				t[i].data:update({
 					font =   motif.select_info['p' .. side .. '_teammenu_item_font'][1],
