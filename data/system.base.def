@@ -685,8 +685,8 @@
 	p1.select.snd = -1, 0 ; data read from character SND
 	p2.select.snd = -1, 0 ; data read from character SND
 
-	; Ratio stuff (Ikemen feature)
-	; ------------------------------------------------------------
+	; Ratio icons offset from ratio item position, which is affected by
+	; teammenu.item.spacing (same way as value.icon/value.empty.icon elements)
 	p1.teammenu.ratio1.icon.anim = -1
 	p1.teammenu.ratio1.icon.spr = 
 	p1.teammenu.ratio1.icon.offset = 0, 0

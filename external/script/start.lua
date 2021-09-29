@@ -2393,7 +2393,11 @@ function start.f_teamMenu(side)
 					end
 				end
 			elseif t[i].itemname == 'ratio' and start.p[side].teamMenu == i and main.selectMenu[side] then
-				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
+				main.f_animPosDraw(
+					motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'],
+					(i - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][1],
+					(i - 1) * motif.select_info['p' .. side .. '_teammenu_item_spacing'][2]
+				)
 			end
 		end
 		--Confirmed team selection
