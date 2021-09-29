@@ -745,7 +745,7 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 	if ref == nil then
 		return nil
 	end
-	for k, v in pairs({
+	for _, v in pairs({
 		{t['p' .. side .. '_member' .. member .. subname .. prefix .. '_anim'], -1},
 		{t['p' .. side .. subname .. prefix .. '_anim'], -1},
 		t['p' .. side .. '_member' .. member .. subname .. prefix .. '_spr'],
@@ -820,7 +820,7 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
 		t_portraits = t_sel
 	--otherwise insert most recently selected chars ascending up to pX.face.num
 	else
-		for i = #t_sel - t['p' .. side .. subname .. '_num'] + 1, #t_sel do
+		for i = #t_sel, #t_sel - t['p' .. side .. subname .. '_num'] + 1, -1 do
 			table.insert(t_portraits, t_sel[i])
 		end
 	end

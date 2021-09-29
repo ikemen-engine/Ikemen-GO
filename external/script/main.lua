@@ -1407,10 +1407,6 @@ local t_preload = {
 	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
 	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
 	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
 	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
