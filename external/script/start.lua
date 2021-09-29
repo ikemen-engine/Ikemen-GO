@@ -2043,12 +2043,10 @@ function start.f_selectScreen()
 			--draw stage portrait
 			if main.stageMenu then
 				--draw stage portrait background
-				main.t_animUpdate[motif.select_info.stage_portrait_bg_data] = 1
-				animDraw(motif.select_info.stage_portrait_bg_data)
+				main.f_animPosDraw(motif.select_info.stage_portrait_bg_data)
 				--draw stage portrait (random)
 				if stageListNo == 0 then
-					main.t_animUpdate[motif.select_info.stage_portrait_random_data] = 1
-					animDraw(motif.select_info.stage_portrait_random_data)
+					main.f_animPosDraw(motif.select_info.stage_portrait_random_data)
 				--draw stage portrait loaded from stage SFF
 				else
 					main.f_animPosDraw(
@@ -2279,16 +2277,13 @@ function start.f_teamMenu(side)
 			end
 		end
 		--Draw team background
-		main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_data']] = 1
-		animDraw(motif.select_info['p' .. side .. '_teammenu_bg_data'])
+		main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_data'])
 		--Draw team title
 		if side == 2 and main.cpuSide[2] then
-			main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_enemytitle_data']] = 1
-			animDraw(motif.select_info['p' .. side .. '_teammenu_enemytitle_data'])
+			main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_enemytitle_data'])
 			t_txt_teamEnemyTitle[side]:draw()
 		else
-			main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_selftitle_data']] = 1
-			animDraw(motif.select_info['p' .. side .. '_teammenu_selftitle_data'])
+			main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_selftitle_data'])
 			t_txt_teamSelfTitle[side]:draw()
 		end
 		--Draw team cursor
@@ -2311,8 +2306,7 @@ function start.f_teamMenu(side)
 					t_teamActiveCount[side] = 0
 				end
 				--Draw team active item background
-				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data']] = 1
-				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
+				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_active_' .. t[i].itemname .. '_data'])
 				--Draw team active item font
 				t[i].data:update({
 					font =   motif.select_info[t_teamActiveType[side] .. '_font'][1],
@@ -2331,8 +2325,7 @@ function start.f_teamMenu(side)
 				t[i].data:draw()
 			else
 				--Draw team not active item background
-				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data']] = 1
-				animDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
+				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_bg_' .. t[i].itemname .. '_data'])
 				--Draw team not active item font
 				t[i].data:update({
 					font =   motif.select_info['p' .. side .. '_teammenu_item_font'][1],
@@ -2400,8 +2393,7 @@ function start.f_teamMenu(side)
 					end
 				end
 			elseif t[i].itemname == 'ratio' and start.p[side].teamMenu == i and main.selectMenu[side] then
-				main.t_animUpdate[motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data']] = 1
-				animDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
+				main.f_animPosDraw(motif.select_info['p' .. side .. '_teammenu_ratio' .. start.p[side].numRatio .. '_icon_data'])
 			end
 		end
 		--Confirmed team selection
