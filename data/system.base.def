@@ -349,6 +349,7 @@
 
 	portrait.spr = 9000, 0
 	portrait.offset = 0, 0
+	portrait.facing = 1
 	portrait.scale = 1.0, 1.0
 
 	title.offset = 0, 0

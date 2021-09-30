@@ -1959,7 +1959,7 @@ function start.f_selectScreen()
 						motif.select_info.cell_bg_data,
 						motif.select_info.pos[1] + t.x,
 						motif.select_info.pos[2] + t.y,
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or 1)
+						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_bg_facing)
 					)
 				end
 				--draw random cell
@@ -1968,7 +1968,7 @@ function start.f_selectScreen()
 						motif.select_info.cell_random_data,
 						motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
 						motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or 1)
+						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing)
 					)
 				--draw face cell
 				elseif t.char ~= nil and t.hidden == 0 then
@@ -1976,7 +1976,7 @@ function start.f_selectScreen()
 						start.f_getCharData(t.char_ref).cell_data,
 						motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
 						motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or 1)
+						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
 					)
 				end
 			end
@@ -2002,7 +2002,7 @@ function start.f_selectScreen()
 							start.f_getCursorData(v.pn, '_cursor_done_data'),
 							motif.select_info.pos[1] + x * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(x + 1, y + 1, 1),
 							motif.select_info.pos[2] + y * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(x + 1, y + 1, 2),
-							(motif.select_info['cell_' .. x + 1 .. '_' .. y + 1 .. '_facing'] or 1)
+							(motif.select_info['cell_' .. x + 1 .. '_' .. y + 1 .. '_facing'] or motif.select_info['p' .. side .. '_cursor_done_facing'])
 						)
 					end
 				end
@@ -2027,7 +2027,7 @@ function start.f_selectScreen()
 							start.f_getCursorData(v.player, '_cursor_active_data'),
 							motif.select_info.pos[1] + start.c[v.player].selX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(start.c[v.player].selX + 1, start.c[v.player].selY + 1, 1),
 							motif.select_info.pos[2] + start.c[v.player].selY * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(start.c[v.player].selX + 1, start.c[v.player].selY + 1, 2),
-							(motif.select_info['cell_' .. start.c[v.player].selX + 1 .. '_' .. start.c[v.player].selY + 1 .. '_facing'] or 1)
+							(motif.select_info['cell_' .. start.c[v.player].selX + 1 .. '_' .. start.c[v.player].selY + 1 .. '_facing'] or motif.select_info['p' .. side .. '_cursor_active_facing'])
 						)
 					end
 				end

@@ -330,6 +330,7 @@ local motif =
 		portrait_anim = -1, --Ikemen feature
 		portrait_spr = {9000, 0},
 		portrait_offset = {0, 0},
+		portrait_facing = 1,
 		portrait_scale = {1.0, 1.0},
 		title_offset = {0, 0},
 		title_font = {-1, 0, 0, 255, 255, 255},
