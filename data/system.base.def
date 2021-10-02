@@ -349,6 +349,7 @@
 
 	portrait.spr = 9000, 0
 	portrait.offset = 0, 0
+	portrait.facing = 1
 	portrait.scale = 1.0, 1.0
 
 	title.offset = 0, 0
@@ -617,6 +618,11 @@
 	teammenu.itemname.tag = "" ; Tag
 	teammenu.itemname.ratio = "" ; Ratio
 
+	; This parameter allows renaming or disabling team mode from selection (via
+	; blank assignment) on per game mode basis. Refer to wiki for a <gamemode>
+	; list, <teammode> should be replaced with single/simul/turns/tag/ratio
+	;teammenu.itemname.<gamemode>.<teammode> = ""
+
 	;p1.teammenu.bg.<itemname>.anim = -1
 	;p1.teammenu.bg.<itemname>.spr = 
 	;p1.teammenu.bg.<itemname>.offset = 0, 0
@@ -685,8 +691,8 @@
 	p1.select.snd = -1, 0 ; data read from character SND
 	p2.select.snd = -1, 0 ; data read from character SND
 
-	; Ratio stuff (Ikemen feature)
-	; ------------------------------------------------------------
+	; Ratio icons offset from ratio item position, which is affected by
+	; teammenu.item.spacing (same way as value.icon/value.empty.icon elements)
 	p1.teammenu.ratio1.icon.anim = -1
 	p1.teammenu.ratio1.icon.spr = 
 	p1.teammenu.ratio1.icon.offset = 0, 0
@@ -1084,7 +1090,7 @@
 	p1.anim = -1
 	p1.spacing = 0, 0
 	p1.padding = 0
-	p1.name.font.height = -1
+
 	p2.pos = 0, 0
 	p2.num = 0
 	p2.anim = -1
@@ -1103,6 +1109,7 @@
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
 
+	p1.name.font.height = -1
 	p2.name.offset = 0, 0
 	p2.name.font = -1, 0, 1, 255, 255, 255
 	p2.name.font.scale = 1.0, 1.0
