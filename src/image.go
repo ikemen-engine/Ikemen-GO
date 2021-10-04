@@ -961,24 +961,22 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				px = pi.Pix
 			}
 		case 11, 12:
+			var ok bool
 			isPng = true
-			var ok bool = true
 
+			// Decode PNG image to RGBA
 			img, err := png.Decode(f)
-
 			if err != nil {
 				return err
 			}
 
-			rect := img.Bounds()
+			rect = img.Bounds()
 			rgba, ok = img.(*image.RGBA)
 
 			if !ok {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
-
-			img = nil
 		default:
 			return Error("Unknown format")
 		}
