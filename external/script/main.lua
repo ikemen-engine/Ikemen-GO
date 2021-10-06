@@ -2190,6 +2190,7 @@ function main.f_default()
 		guardbar = config.BarGuard,
 		stunbar = config.BarStun,
 		redlifebar = config.BarRedLife,
+		hidebars = motif.dialogue_info.enabled == 1,
 	}
 	main.lifePersistence = false --if life should be maintained after match
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()

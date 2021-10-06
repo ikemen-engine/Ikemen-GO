@@ -2821,6 +2821,7 @@ type Lifebar struct {
 	redlifebar bool
 	guardbar   bool
 	stunbar    bool
+	hidebars   bool
 	fx_scale   float32
 	fnt_scale  float32
 	deffile    string

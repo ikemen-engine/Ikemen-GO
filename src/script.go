@@ -1923,6 +1923,8 @@ func systemScriptInit(l *lua.LState) {
 					sys.lifebar.bars = lua.LVAsBool(value)
 				case "guardbar": //enabled depending on config.json
 					sys.lifebar.guardbar = lua.LVAsBool(value)
+				case "hidebars": //enabled depending on dialogue system.def settings
+					sys.lifebar.hidebars = lua.LVAsBool(value)
 				case "match":
 					sys.lifebar.ma.active = lua.LVAsBool(value)
 				case "mode": //enabled by default

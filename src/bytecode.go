@@ -6434,7 +6434,7 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case dialogue_hidebars:
-			sys.dialogueBarsFlg = exp[0].evalB(c)
+			sys.dialogueBarsFlg = sys.lifebar.hidebars && exp[0].evalB(c)
 		case dialogue_force:
 			force = exp[0].evalB(c)
 		case dialogue_text:
