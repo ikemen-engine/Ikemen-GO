@@ -2579,6 +2579,7 @@ main.t_itemname = {
 	--STORY MODE ARC
 	['storyarc'] = function(t, item)
 		main.f_playerInput(main.playerInput, 1)
+		main.continueScreen = true
 		main.selectMenu[1] = false
 		for _, v in ipairs(main.t_selStoryMode) do
 			if v.name == t[item].itemname then

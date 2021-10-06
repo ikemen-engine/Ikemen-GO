@@ -1799,8 +1799,11 @@ function launchFight(data)
 				start.challenger = 0
 				break
 			end
-		-- player exit the game via ESC or draw game without winner
-		elseif winnerteam() <= 0 then
+		-- player exit the game via ESC
+		elseif winnerteam() == -1 then
+			if not main.selectMenu[1] and not main.selectMenu[2] then
+				setMatchNo(-1)
+			end
 			break
 		-- player lost in modes that ends after 1 lose
 		elseif winnerteam() ~= 1 and main.elimination then
@@ -2185,6 +2188,10 @@ local t_teamActiveCount = {0, 0}
 local t_teamActiveType = {'p1_teammenu_item_active', 'p2_teammenu_item_active'}
 
 function start.f_teamMenu(side, t)
+	if #t == 0 then
+		start.p[side].teamEnd = true
+		return
+	end
 	--skip selection if only 1 team mode is available and team size is fixed
 	if #t == 1 and (t[1].itemname == 'single' or (t[1].itemname == 'simul' and main.numSimul[1] == main.numSimul[2]) or (t[1].itemname == 'turns' and main.numTurns[1] == main.numTurns[2]) or (t[1].itemname == 'tag' and main.numTag[1] == main.numTag[2])) then
 		if t[1].itemname == 'single' then
