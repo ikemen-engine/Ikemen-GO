@@ -518,6 +518,7 @@ function start.f_setStage(num, assigned)
 		num = main.t_selectableStages[stageListNo]
 		if stageListNo == 0 then
 			num = main.t_selectableStages[math.random(1, #main.t_selectableStages)]
+			stageListNo = num -- comment out to randomize stage after each fight in survival mode, when random stage is chosen
 		else
 			num = main.t_selectableStages[stageListNo]
 		end
