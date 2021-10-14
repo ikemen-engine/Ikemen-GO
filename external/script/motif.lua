@@ -215,9 +215,6 @@ local motif =
 		--menu_itemname_survival = 'SURVIVAL',
 		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
 		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
-		--menu_itemname_vs100kumite = 'VS 100 KUMITE', --Ikemen feature
-		--menu_itemname_timechallenge = 'TIME CHALLENGE', --Ikemen feature
-		--menu_itemname_scorechallenge = 'SCORE CHALLENGE', --Ikemen feature
 		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
 		--menu_itemname_watch = 'CPU MATCH',
 		--menu_itemname_randomtest = 'RANDOMTEST', --Ikemen feature
@@ -352,9 +349,6 @@ local motif =
 		title_survival_text = 'Survival', --Ikemen feature
 		title_survivalcoop_text = 'Survival Cooperative', --Ikemen feature
 		title_bossrush_text = 'Boss Rush', --Ikemen feature
-		title_vs100kumite_text = 'VS 100 Kumite', --Ikemen feature
-		title_timechallenge_text = 'Time Challenge', --Ikemen feature
-		title_scorechallenge_text = 'Score Challenge', --Ikemen feature
 		title_bonus_text = 'Bonus', --Ikemen feature
 		title_watch_text = 'Watch Mode', --Ikemen feature
 		--title_replay_text = 'Replay', --Ikemen feature
@@ -661,8 +655,7 @@ local motif =
 		record_font = {-1, 0, 0, 255, 255, 255}, --Ikemen feature
 		record_font_scale = {1.0, 1.0}, --Ikemen feature
 		record_font_height = -1, --Ikemen feature
-		record_scorechallenge_text = '', --Ikemen feature
-		record_timechallenge_text = '', --Ikemen feature
+		--record_<gamemode>_text = '', --Ikemen feature
 		p1_swap_snd = {-1, 0}, --Ikemen feature
 		p2_swap_snd = {-1, 0}, --Ikemen feature
 		p1_select_snd = {-1, 0}, --Ikemen feature (data read from character SND)
@@ -1044,41 +1037,6 @@ local motif =
 	{
 		spr = '', --Ikemen feature
 	},
-	vs100_kumite_results_screen =
-	{
-		enabled = 1, --Ikemen feature
-		sounds_enabled = 1, --Ikemen feature
-		fadein_time = 0, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 64, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		show_time = 300, --Ikemen feature
-		winstext_text = 'Wins: %i\nLoses: %i', --Ikemen feature
-		winstext_offset = {159, 70}, --Ikemen feature
-		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
-		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = 0, --Ikemen feature
-		winstext_layerno = 2, --Ikemen feature
-		roundstowin = 51, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_win = {180}, --Ikemen feature
-		p1_state_lose = {175, 170}, --Ikemen feature
-		p2_state_win = {}, --Ikemen feature
-		p2_state_lose = {}, --Ikemen feature
-		p1_teammate_state_win = {}, --Ikemen feature
-		p1_teammate_state_lose = {}, --Ikemen feature
-		p2_teammate_state_win = {}, --Ikemen feature
-		p2_teammate_state_lose = {}, --Ikemen feature
-	},
-	vs100kumiteresultsbgdef =
-	{
-		spr = '', --Ikemen feature
-	},
 	time_attack_results_screen =
 	{
 		enabled = 1, --Ikemen feature
@@ -1110,74 +1068,6 @@ local motif =
 		p2_teammate_state_lose = {}, --Ikemen feature
 	},
 	timeattackresultsbgdef =
-	{
-		spr = '', --Ikemen feature
-	},
-	time_challenge_results_screen =
-	{
-		enabled = 1, --Ikemen feature
-		sounds_enabled = 1, --Ikemen feature
-		fadein_time = 0, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 64, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		show_time = 300, --Ikemen feature
-		winstext_text = 'Clear Time: %m:%s.%x', --Ikemen feature
-		winstext_offset = {159, 70}, --Ikemen feature
-		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
-		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = 0, --Ikemen feature
-		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_win = {180}, --Ikemen feature
-		p1_state_lose = {175, 170}, --Ikemen feature
-		p2_state_win = {}, --Ikemen feature
-		p2_state_lose = {}, --Ikemen feature
-		p1_teammate_state_win = {}, --Ikemen feature
-		p1_teammate_state_lose = {}, --Ikemen feature
-		p2_teammate_state_win = {}, --Ikemen feature
-		p2_teammate_state_lose = {}, --Ikemen feature
-	},
-	timechallengeresultsbgdef =
-	{
-		spr = '', --Ikemen feature
-	},
-	score_challenge_results_screen =
-	{
-		enabled = 1, --Ikemen feature
-		sounds_enabled = 1, --Ikemen feature
-		fadein_time = 0, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 64, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		show_time = 300, --Ikemen feature
-		winstext_text = 'Score: %i', --Ikemen feature
-		winstext_offset = {159, 70}, --Ikemen feature
-		winstext_font = {'jg.fnt', 0, 0, 255, 255, 255}, --Ikemen feature
-		winstext_font_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_font_height = -1, --Ikemen feature
-		winstext_displaytime = 0, --Ikemen feature
-		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_win = {180}, --Ikemen feature
-		p1_state_lose = {175, 170}, --Ikemen feature
-		p2_state_win = {}, --Ikemen feature
-		p2_state_lose = {}, --Ikemen feature
-		p1_teammate_state_win = {}, --Ikemen feature
-		p1_teammate_state_lose = {}, --Ikemen feature
-		p2_teammate_state_win = {}, --Ikemen feature
-		p2_teammate_state_lose = {}, --Ikemen feature
-	},
-	scorechallengeresultsbgdef =
 	{
 		spr = '', --Ikemen feature
 	},
@@ -2668,7 +2558,7 @@ for k, v in pairs(t.menu_info) do
 end
 
 --results screens reuse winbgdef values if not defined
-for _, v in ipairs{'survivalresultsbgdef', 'vs100kumiteresultsbgdef', 'timeattackresultsbgdef', 'timechallengeresultsbgdef', 'scorechallengeresultsbgdef', 'bossrushresultsbgdef'} do
+for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
 	if t[v] == nil then
 		t[v] = t.winbgdef
 	end
@@ -2858,7 +2748,7 @@ function motif.f_loadCursorData()
 end
 
 --creates fadein/fadeout anim data
-for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'vs100_kumite_results_screen', 'time_attack_results_screen', 'time_challenge_results_screen', 'score_challenge_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
+for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
 		motif.f_loadSprData(motif[v], {s = 'fadein_'})
 	end

@@ -236,9 +236,6 @@
 	;menu.itemname.trials = "TRIALS" ; Not implemented yet.
 	;menu.itemname.timeattack = "TIME ATTACK"
 	;menu.itemname.bossrush = "BOSS RUSH"
-	;menu.itemname.vs100kumite = "VS 100 KUMITE"
-	;menu.itemname.timechallenge = "TIME CHALLENGE"
-	;menu.itemname.scorechallenge = "SCORE CHALLENGE"
 	;menu.itemname.bonusgames = "BONUS GAMES"
 	;menu.itemname.randomtest = "RANDOMTEST"
 	;menu.itemname.replay = "REPLAY"
@@ -549,9 +546,6 @@
 	title.survival.text = "Survival"
 	title.survivalcoop.text = "Survival Cooperative"
 	title.bossrush.text = "Boss Rush"
-	title.vs100kumite.text = "VS 100 Kumite"
-	title.timechallenge.text = "Time Challenge"
-	title.scorechallenge.text = "Score Challenge"
 	title.bonus.text = "Bonus"
 	title.watch.text = "Watch Mode"
 	;title.replay.text = "Replay"
@@ -683,8 +677,7 @@
 	record.font = -1, 0, 0, 255, 255, 255
 	record.font.scale = 1.0, 1.0
 	record.font.height = -1
-	record.scorechallenge.text = ""
-	record.timechallenge.text = ""
+	;record.<gamemode>.text = ""
 
 	p1.swap.snd = -1, 0
 	p2.swap.snd = -1, 0
@@ -1219,43 +1212,6 @@
 [SurvivalResultsBgDef] ;Ikemen feature
 	spr = ""
 
-[VS100 Kumite Results Screen] ;Ikemen feature
-	enabled = 1
-	sounds.enabled = 1
-	roundstowin = 51
-
-	fadein.time = 0
-	fadein.col = 0, 0, 0
-	fadein.anim = -1
-	fadeout.time = 64
-	fadeout.col = 0, 0, 0
-	fadeout.anim = -1
-	show.time = 300
-
-	winstext.text = "Wins: %i\nLoses: %i"
-	winstext.offset = 159, 70
-	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
-	winstext.font.height = -1
-	winstext.displaytime = 0
-	winstext.layerno = 2
-
-	;overlay.window = 0, 0, localcoordX, localcoordY
-	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
-
-	p1.state.win = 180
-	p1.state.lose = 175, 170
-	p2.state.win = 
-	p2.state.lose = 
-	p1.teammate.state.win = 
-	p1.teammate.state.lose = 
-	p2.teammate.state.win = 
-	p2.teammate.state.lose = 
-
-[VS100KumiteResultsBgDef] ;Ikemen feature
-	spr = ""
-
 [Time Attack Results Screen] ;Ikemen feature
 	enabled = 1
 	sounds.enabled = 1
@@ -1290,78 +1246,6 @@
 	p2.teammate.state.lose = 
 
 [TimeAttackResultsBgDef] ;Ikemen feature
-	spr = ""
-
-[Time Challenge Results Screen] ;Ikemen feature
-	enabled = 1
-	sounds.enabled = 1
-
-	fadein.time = 0
-	fadein.col = 0, 0, 0
-	fadein.anim = -1
-	fadeout.time = 64
-	fadeout.col = 0, 0, 0
-	fadeout.anim = -1
-	show.time = 300
-
-	winstext.text = "Clear Time: %m:%s.%x"
-	winstext.offset = 159, 70
-	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
-	winstext.font.height = -1
-	winstext.displaytime = 0
-	winstext.layerno = 2
-
-	;overlay.window = 0, 0, localcoordX, localcoordY
-	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
-
-	p1.state.win = 180
-	p1.state.lose = 175, 170
-	p2.state.win = 
-	p2.state.lose = 
-	p1.teammate.state.win = 
-	p1.teammate.state.lose = 
-	p2.teammate.state.win = 
-	p2.teammate.state.lose = 
-
-[TimeChallengeResultsBgDef] ;Ikemen feature
-	spr = ""
-
-[Score Challenge Results Screen] ;Ikemen feature
-	enabled = 1
-	sounds.enabled = 1
-
-	fadein.time = 0
-	fadein.col = 0, 0, 0
-	fadein.anim = -1
-	fadeout.time = 64
-	fadeout.col = 0, 0, 0
-	fadeout.anim = -1
-	show.time = 300
-
-	winstext.text = "Score: %i"
-	winstext.offset = 159, 70
-	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
-	winstext.font.height = -1
-	winstext.displaytime = 0
-	winstext.layerno = 2
-
-	;overlay.window = 0, 0, localcoordX, localcoordY
-	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
-
-	p1.state.win = 180
-	p1.state.lose = 175, 170
-	p2.state.win = 
-	p2.state.lose = 
-	p1.teammate.state.win = 
-	p1.teammate.state.lose = 
-	p2.teammate.state.win = 
-	p2.teammate.state.lose = 
-
-[ScoreChallengeResultsBgDef] ;Ikemen feature
 	spr = ""
 
 [Boss Rush Results Screen] ;Ikemen feature

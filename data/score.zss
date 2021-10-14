@@ -51,7 +51,7 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 	}
 	# score: consecutive wins bonus
 	if playerNo = teamSide {
-		if win && matchOver && consecutiveWins > 0 && map(_iksys_scoreConsecutiveWinsFlag) = 0 && !isHomeTeam && enemy,aiLevel > 0 && gameMode != "scorechallenge" {
+		if win && matchOver && consecutiveWins > 0 && map(_iksys_scoreConsecutiveWinsFlag) = 0 && !isHomeTeam && enemy,aiLevel > 0 {
 			scoreAdd{value: 30000 + (consecutiveWins - 1) * 10000}
 			mapSet{map: "_iksys_scoreConsecutiveWinsFlag"; value: 1}
 		}
