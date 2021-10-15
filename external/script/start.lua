@@ -999,6 +999,32 @@ function start.f_getCursorData(pn, suffix)
 	return motif.select_info['p' .. (pn - 1) % 2 + 1 .. suffix]
 end
 
+--draw cursor
+function start.f_drawCursor(pn, x, y, param)
+	-- in non-coop modes only p1 and p2 cursors are used
+	if not main.coop then
+		pn = (pn - 1) % 2 + 1
+	end
+	local prefix = 'p' .. pn .. param .. '_' .. x + 1 .. '_' .. y + 1
+	-- create spr/anim data, if not existing yet
+	if motif.select_info[prefix .. '_data'] == nil then
+		-- if cell based variants are not defined we're defaulting to standard pX parameters
+		for _, v in ipairs({'_anim', '_spr', '_offset', '_scale', '_facing'}) do
+			if motif.select_info[prefix .. v] == nil then
+				motif.select_info[prefix .. v] = start.f_getCursorData(pn, param .. v)
+			end
+		end
+		motif.f_loadSprData(motif.select_info, {s = prefix .. '_'})
+	end
+	-- draw
+	main.f_animPosDraw(
+		motif.select_info[prefix .. '_data'],
+		motif.select_info.pos[1] + x * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(x + 1, y + 1, 1),
+		motif.select_info.pos[2] + y * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(x + 1, y + 1, 2),
+		(motif.select_info['cell_' .. x + 1 .. '_' .. y + 1 .. '_facing'] or motif.select_info['p' .. pn .. param .. '_facing'])
+	)
+end
+
 --returns t_selChars table out of cell number
 function start.f_selGrid(cell, slot)
 	if main.t_selGrid[cell] == nil or #main.t_selGrid[cell].chars == 0 then
@@ -1988,12 +2014,7 @@ function start.f_selectScreen()
 					--end
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
-						main.f_animPosDraw(
-							start.f_getCursorData(v.pn, '_cursor_done_data'),
-							motif.select_info.pos[1] + x * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(x + 1, y + 1, 1),
-							motif.select_info.pos[2] + y * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(x + 1, y + 1, 2),
-							(motif.select_info['cell_' .. x + 1 .. '_' .. y + 1 .. '_facing'] or motif.select_info['p' .. side .. '_cursor_done_facing'])
-						)
+						start.f_drawCursor(v.pn, x, y, '_cursor_done')
 					end
 				end
 			end
@@ -2013,12 +2034,7 @@ function start.f_selectScreen()
 					v.selectState = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
 					--draw active cursor
 					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 then
-						main.f_animPosDraw(
-							start.f_getCursorData(v.player, '_cursor_active_data'),
-							motif.select_info.pos[1] + start.c[v.player].selX * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(start.c[v.player].selX + 1, start.c[v.player].selY + 1, 1),
-							motif.select_info.pos[2] + start.c[v.player].selY * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(start.c[v.player].selX + 1, start.c[v.player].selY + 1, 2),
-							(motif.select_info['cell_' .. start.c[v.player].selX + 1 .. '_' .. start.c[v.player].selY + 1 .. '_facing'] or motif.select_info['p' .. side .. '_cursor_active_facing'])
-						)
+						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, '_cursor_active')
 					end
 				end
 			end

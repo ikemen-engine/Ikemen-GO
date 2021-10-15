@@ -203,7 +203,6 @@ options.t_itemname = {
 			main.timeFramesPerCount = framespercount()
 			main.f_updateRoundsNum()
 			main.f_setPlayers(config.Players, true)
-			motif.f_loadCursorData()
 			for _, v in ipairs(options.t_vardisplayPointers) do
 				v.vardisplay = options.f_vardisplay(v.itemname)
 			end
@@ -1037,14 +1036,12 @@ options.t_itemname = {
 			config.Players = math.min(8, config.Players + 2)
 			t.items[item].vardisplay = config.Players
 			main.f_setPlayers(config.Players, true)
-			motif.f_loadCursorData()
 			modified = true
 		elseif main.f_input(main.t_players, {'$B'}) and config.Players > 2 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			config.Players = math.max(2, config.Players - 2)
 			t.items[item].vardisplay = config.Players
 			main.f_setPlayers(config.Players, true)
-			motif.f_loadCursorData()
 			modified = true
 		end
 		return true

@@ -317,6 +317,16 @@ local motif =
 		--p<pn>_cursor_done_offset = {0, 0}, --Ikemen feature
 		--p<pn>_cursor_done_facing = 1, --Ikemen feature
 		--p<pn>_cursor_done_scale = {1.0, 1.0}, --Ikemen feature
+		--p<pn>_cursor_active_<col>_<row>_anim = -1, --Ikemen feature
+		--p<pn>_cursor_active_<col>_<row>_spr = {}, --Ikemen feature
+		--p<pn>_cursor_active_<col>_<row>_offset = {0, 0}, --Ikemen feature
+		--p<pn>_cursor_active_<col>_<row>_facing = 1, --Ikemen feature
+		--p<pn>_cursor_active_<col>_<row>_scale = {1.0, 1.0}, --Ikemen feature
+		--p<pn>_cursor_done_<col>_<row>_anim = -1, --Ikemen feature
+		--p<pn>_cursor_done_<col>_<row>_spr = {}, --Ikemen feature
+		--p<pn>_cursor_done_<col>_<row>_offset = {0, 0}, --Ikemen feature
+		--p<pn>_cursor_done_<col>_<row>_facing = 1, --Ikemen feature
+		--p<pn>_cursor_done_<col>_<row>_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_cursor_move_snd = {100, 0}, --Ikemen feature
 		--p<pn>_cursor_done_snd = {100, 1}, --Ikemen feature
 		--p<pn>_random_move_snd = {100, 0}, --Ikemen feature
@@ -2736,17 +2746,6 @@ function motif.f_loadSprData(t, v)
 	animSetWindow(t[data], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
 end
 
---creates cursors data
-function motif.f_loadCursorData()
-	for i = 1, config.Players do
-		for _, v in ipairs({'_cursor_active_', '_cursor_done_'}) do
-			if motif.select_info['p' .. i .. v .. 'data'] == nil and (motif.select_info['p' .. i .. v .. 'anim'] ~= nil or motif.select_info['p' .. i .. v .. 'spr'] ~= nil) then
-				motif.f_loadSprData(motif.select_info, {s = 'p' .. i .. v})
-			end
-		end
-	end
-end
-
 --creates fadein/fadeout anim data
 for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
@@ -2756,9 +2755,6 @@ for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'cont
 		motif.f_loadSprData(motif[v], {s = 'fadeout_'})
 	end
 end
-
---select screen spr/anim data
-motif.f_loadCursorData()
 
 local t_pos = motif.select_info
 for _, v in ipairs({

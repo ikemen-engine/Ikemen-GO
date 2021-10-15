@@ -523,6 +523,20 @@
 	;p<pn>.cursor.done.offset = 0, 0
 	;p<pn>.cursor.done.facing = 1
 	;p<pn>.cursor.done.scale = 1.0, 1.0
+
+	; <col>.<row> cursor parameters replace standard cursor parameters on per cell basis
+	; undefined parameters defaults to p<pn>.cursor values
+	;p<pn>.cursor.active.<col>.<row>.anim = -1
+	;p<pn>.cursor.active.<col>.<row>.spr = 
+	;p<pn>.cursor.active.<col>.<row>.offset = 0, 0
+	;p<pn>.cursor.active.<col>.<row>.facing = 1
+	;p<pn>.cursor.active.<col>.<row>.scale = 1.0, 1.0
+	;p<pn>.cursor.done.<col>.<row>.anim = -1
+	;p<pn>.cursor.done.<col>.<row>.spr = 
+	;p<pn>.cursor.done.<col>.<row>.offset = 0, 0
+	;p<pn>.cursor.done.<col>.<row>.facing = 1
+	;p<pn>.cursor.done.<col>.<row>.scale = 1.0, 1.0
+
 	;p<pn>.cursor.move.snd = 100, 0
 	;p<pn>.cursor.done.snd = 100, 1
 	;p<pn>.random.move.snd = 100, 0
