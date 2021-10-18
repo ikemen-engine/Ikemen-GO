@@ -4262,7 +4262,9 @@ func (c *Char) scoreTotal() float32 {
 	for _, v := range sys.scoreRounds {
 		s += v[c.teamside]
 	}
-	s += c.score()
+	if !sys.postMatchFlg {
+		s += c.score()
+	}
 	return s
 }
 func (c *Char) consecutiveWins() int32 {

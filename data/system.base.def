@@ -524,8 +524,8 @@
 	;p<pn>.cursor.done.facing = 1
 	;p<pn>.cursor.done.scale = 1.0, 1.0
 
-	; <col>.<row> cursor parameters replace standard cursor parameters on per cell basis
-	; undefined parameters defaults to p<pn>.cursor values
+	; <col>.<row> cursor variants replace standard ones on per cell basis.
+	; Undefined params defaults to p<pn>.cursor.active/p<pn>.cursor.done values
 	;p<pn>.cursor.active.<col>.<row>.anim = -1
 	;p<pn>.cursor.active.<col>.<row>.spr = 
 	;p<pn>.cursor.active.<col>.<row>.offset = 0, 0
