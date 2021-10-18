@@ -1143,9 +1143,11 @@ end
 function start.f_excludeChar(t, ref)
 	for _, sel in ipairs(main.t_selChars) do
 		if sel.char_ref == ref then
-			for k, v in ipairs(t[sel.order]) do
-				if v == ref then
-					table.remove(t[sel.order], k)
+			if t[sel.order] ~= nil then
+				for k, v in ipairs(t[sel.order]) do
+					if v == ref then
+						table.remove(t[sel.order], k)
+					end
 				end
 			end
 			break
