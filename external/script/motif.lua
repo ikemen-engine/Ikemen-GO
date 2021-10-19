@@ -784,11 +784,6 @@ local motif =
 		timer_count = -1, --Ikemen feature
 		timer_framespercount = 60, --Ikemen feature
 		timer_displaytime = 10, --Ikemen feature
-		loading_anim = -1, --Ikemen feature
-		loading_spr = {}, --Ikemen feature
-		loading_offset = {0, 0}, --Ikemen feature
-		loading_facing = 1, --Ikemen feature
-		loading_scale = {1.0, 1.0}, --Ikemen feature
 		stage_snd = {-1, 0}, --Ikemen feature
 	},
 	versusbgdef =
@@ -2793,9 +2788,6 @@ for _, v in ipairs({
 end
 
 --versus screen spr/anim data
-if motif.vs_screen.loading_anim ~= -1 or #motif.vs_screen.loading_spr > 0 then
-	motif.f_loadSprData(motif.vs_screen, {s = 'loading_'})
-end
 for i = 1, 2 do
 	for j = 1, motif.vs_screen['p' .. i .. '_num'] do
 		motif.f_loadSprData(motif.vs_screen, {s = 'p' .. i .. '_member' .. j .. '_icon_'})

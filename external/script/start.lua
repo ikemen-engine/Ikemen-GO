@@ -2896,11 +2896,11 @@ function start.f_selectLoading()
 		loadStart()
 	end
 	-- calling refresh() during netplay data loading can lead to synchronization error
-	while motif.vs_screen.loading_data ~= nil and loading() and not network() do
-		animDraw(motif.vs_screen.loading_data)
-		animUpdate(motif.vs_screen.loading_data)
-		refresh()
-	end
+	--while motif.vs_screen.loading_data ~= nil and loading() and not network() do
+	--	animDraw(motif.vs_screen.loading_data)
+	--	animUpdate(motif.vs_screen.loading_data)
+	--	refresh()
+	--end
 end
 
 --;===========================================================
