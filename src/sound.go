@@ -274,7 +274,8 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.defaultbgmLoopEnd = bgmLoopEnd
 	}
 	speaker.Clear()
-
+	
+	// TODO: Throw a degbug warning if this triggers
 	if bgmVolume > sys.maxBgmVolume {
 		bgmVolume = sys.maxBgmVolume
 	}

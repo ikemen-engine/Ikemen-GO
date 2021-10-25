@@ -7587,7 +7587,7 @@ const (
 	createPlatform_name
 	createPlatform_anim
 	createPlatform_pos
-	createPlatform_width
+	createPlatform_size
 	createPlatform_offset
 	createPlatform_activeTime
 )
