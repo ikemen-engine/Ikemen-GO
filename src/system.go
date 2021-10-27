@@ -357,7 +357,6 @@ type System struct {
 	maxBgmVolume    int
 	stereoEffects   bool
 	panningRange    float32
-	inMatch         bool
 }
 
 type Window struct {
@@ -593,7 +592,7 @@ func (s *System) await(fps int) bool {
 func (s *System) update() bool {
 	s.frameCounter++
 	if s.fileInput != nil {
-		if s.anyHardButton() && (!s.inMatch || sys.postMatchFlg || !sys.fightOver) {
+		if s.anyHardButton() {
 			s.await(FPS * 4)
 		} else {
 			s.await(FPS)
