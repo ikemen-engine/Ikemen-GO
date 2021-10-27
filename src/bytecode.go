@@ -6434,7 +6434,7 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case dialogue_hidebars:
-			sys.dialogueBarsFlg = exp[0].evalB(c)
+			sys.dialogueBarsFlg = sys.lifebar.hidebars && exp[0].evalB(c)
 		case dialogue_force:
 			force = exp[0].evalB(c)
 		case dialogue_text:
@@ -6750,8 +6750,8 @@ func (sc lifebarAction) Run(c *Char, _ []int32) bool {
 	var text string
 	var timemul float32 = 1
 	var time, anim int32 = -1, -1
-	spr := [2]int32{-1, -1}
-	snd := [2]int32{-1, -1}
+	spr := [2]int32{-1, 0}
+	snd := [2]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case lifebarAction_top:
@@ -6763,9 +6763,15 @@ func (sc lifebarAction) Run(c *Char, _ []int32) bool {
 		case lifebarAction_anim:
 			anim = exp[0].evalI(c)
 		case lifebarAction_spr:
-			spr = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			spr[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				spr[1] = exp[1].evalI(c)
+			}
 		case lifebarAction_snd:
-			snd = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			snd[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				snd[1] = exp[1].evalI(c)
+			}
 		case lifebarAction_text:
 			text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case lifebarAction_redirectid:

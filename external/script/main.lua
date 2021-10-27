@@ -2174,6 +2174,7 @@ function main.f_default()
 	main.elimination = false --if single lose should stop further lua execution
 	main.exitSelect = false --if "clearing" the mode (matchno == -1) should go back to main menu
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
+	main.forceRosterSize = false --if roster size should be enforced even if there are not enough characters to fill it (not used but may be useful for external modules)
 	main.hiscoreScreen = false --if hiscore screen should be shown
 	main.lifebar = { --which lifebar elements should be rendered
 		active = true,
@@ -2190,6 +2191,7 @@ function main.f_default()
 		guardbar = config.BarGuard,
 		stunbar = config.BarStun,
 		redlifebar = config.BarRedLife,
+		hidebars = motif.dialogue_info.enabled == 1,
 	}
 	main.lifePersistence = false --if life should be maintained after match
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
@@ -2206,12 +2208,14 @@ function main.f_default()
 	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = false --if rank data should be displayed at the end of match
+	main.rankingCondition = false --if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
 	main.rotationChars = false --flags modes where config.AISurvivalColor should be used instead of config.AIRandomColor
 	main.roundTime = config.RoundTime --sets round time
 	main.selectMenu = {true, false} --which team side should be allowed to select players
 	main.stageMenu = false --if manual stage selection is allowed
+	main.stageOrder = false --if select.def stage order param should be used
 	main.storyboard = {intro = false, ending = false, credits = false, gameover = false} --which storyboards should be active
 	main.teamMenu = {
 		{ratio = false, simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P1 side
@@ -2239,6 +2243,9 @@ function main.f_default()
 	demoFrameCounter = 0
 end
 
+-- main.t_itemname is a table storing functions with general game mode
+-- configuration (usually ending with start.f_selectMode function call). It can
+-- be appended via external module, without conflicting with default scripts.
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(t, item)
@@ -2263,6 +2270,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2330,6 +2338,7 @@ main.t_itemname = {
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
 		main.rankDisplay = true
+		main.rankingCondition = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
@@ -2469,6 +2478,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2527,28 +2537,6 @@ main.t_itemname = {
 	['replay'] = function()
 		return main.f_replay
 	end,
-	--SCORE CHALLENGE
-	['scorechallenge'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.hiscoreScreen = true
-		--main.lifebar.p1score = true
-		--main.lifebar.p2aiLevel = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.rankDisplay = true
-		main.resultsTable = motif.score_challenge_results_screen
-		main.selectMenu[2] = true
-		main.stageMenu = true
-		main.teamMenu[1].single = true
-		main.teamMenu[2].single = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_scorechallenge_text})
-		setGameMode('scorechallenge')
-		return start.f_selectMode
-	end,
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		if main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname])) then
@@ -2578,6 +2566,7 @@ main.t_itemname = {
 	--STORY MODE ARC
 	['storyarc'] = function(t, item)
 		main.f_playerInput(main.playerInput, 1)
+		main.continueScreen = true
 		main.selectMenu[1] = false
 		for _, v in ipairs(main.t_selStoryMode) do
 			if v.name == t[item].itemname then
@@ -2693,6 +2682,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2737,6 +2727,7 @@ main.t_itemname = {
 		if main.roundTime == -1 then
 			main.roundTime = 99
 		end
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2753,31 +2744,6 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_timeattack_text})
 		setGameMode('timeattack')
-		return start.f_selectMode
-	end,
-	--TIME CHALLENGE
-	['timechallenge'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.hiscoreScreen = true
-		--main.lifebar.p2aiLevel = true
-		--main.lifebar.timer = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.rankDisplay = true
-		main.resultsTable = motif.time_challenge_results_screen
-		if main.roundTime == -1 then
-			main.roundTime = 99
-		end
-		main.selectMenu[2] = true
-		main.stageMenu = true
-		main.teamMenu[1].single = true
-		main.teamMenu[2].single = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_timechallenge_text})
-		setGameMode('timechallenge')
 		return start.f_selectMode
 	end,
 	--TRAINING
@@ -2865,46 +2831,6 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_versuscoop_text})
 		setGameMode('versuscoop')
-		return start.f_selectMode
-	end,
-	--VS 100 KUMITE
-	['vs100kumite'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.charparam.ai = true
-		main.charparam.music = true
-		main.charparam.single = true
-		main.charparam.stage = true
-		main.charparam.time = true
-		main.exitSelect = true
-		main.hiscoreScreen = true
-		--main.lifebar.match = true
-		--main.lifebar.p2aiLevel = true
-		main.makeRoster = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.orderSelect[1] = true
-		main.orderSelect[2] = true
-		main.rankDisplay = true
-		main.resultsTable = motif.vs100_kumite_results_screen
-		main.rotationChars = true
-		main.storyboard.credits = true
-		main.storyboard.gameover = true
-		main.teamMenu[1].ratio = true
-		main.teamMenu[1].simul = true
-		main.teamMenu[1].single = true
-		main.teamMenu[1].tag = true
-		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
-		main.teamMenu[2].simul = true
-		main.teamMenu[2].single = true
-		main.teamMenu[2].tag = true
-		main.teamMenu[2].turns = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_vs100kumite_text})
-		setGameMode('vs100kumite')
 		return start.f_selectMode
 	end,
 	--WATCH
@@ -3409,13 +3335,10 @@ end
 main.t_hiscoreData = {
 	arcade = {mode = 'arcade', data = 'score', title = motif.select_info.title_arcade_text},
 	bossrush = {mode = 'bossrush', data = 'score', title = motif.select_info.title_bossrush_text},
-	scorechallenge = {mode = 'scorechallenge', data = 'score', title = motif.select_info.title_scorechallenge_text},
 	survival = {mode = 'survival', data = 'win', title = motif.select_info.title_survival_text},
 	survivalcoop = {mode = 'survivalcoop', data = 'win', title = motif.select_info.title_survivalcoop_text},
 	teamcoop = {mode = 'teamcoop', data = 'score', title = motif.select_info.title_teamcoop_text},
 	timeattack = {mode = 'timeattack', data = 'time', title = motif.select_info.title_timeattack_text},
-	timechallenge = {mode = 'timechallenge', data = 'time', title = motif.select_info.title_timechallenge_text},
-	vs100kumite = {mode = 'vs100kumite', data = 'win', title = motif.select_info.title_vs100kumite_text},
 }
 main.t_hiscoreData.teamarcade = main.t_hiscoreData.arcade
 
