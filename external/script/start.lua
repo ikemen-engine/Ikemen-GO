@@ -830,8 +830,11 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
 		t_portraits = main.f_tableReverse(t_portraits)
 	end
 	--draw portraits
-	local member = 1
 	for i = loopStart, loopEnd, loopStep do
+		local member = i
+		if reversed then
+			member = #t_portraits - i + 1
+		end
 		if i <= t['p' .. side .. subname .. '_num'] then
 			if t_portraits[i].anim_data ~= nil then
 				local v = t_portraits[i]
@@ -845,14 +848,16 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
 				)
 			end
 		end
-		member = member + 1
 	end
 	--draw order icons
 	if icon == nil then
 		return
 	end
-	member = 1
 	for i = loopStart, loopEnd, loopStep do
+		local member = i
+		if reversed then
+			member = #t_portraits - i + 1
+		end
 		if i <= t['p' .. side .. subname .. '_num'] and t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'] ~= nil then
 			main.f_animPosDraw(
 				t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'],
@@ -860,7 +865,6 @@ function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
 				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (i - 1) * t['p' .. side .. subname .. '_spacing'][2]
 			)
 		end
-		member = member + 1
 	end
 end
 
