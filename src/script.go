@@ -1694,6 +1694,7 @@ func systemScriptInit(l *lua.LState) {
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
+		sys.runMainThreadTask()
 		l.Push(newUserData(l, sff))
 		return 1
 	})

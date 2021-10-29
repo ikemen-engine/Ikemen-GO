@@ -961,7 +961,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				px = pi.Pix
 			}
 		case 11, 12:
-			var ok bool
+			var ok bool = false
 			isPng = true
 
 			// Decode PNG image to RGBA
@@ -984,7 +984,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 		if !isPng {
 			s.SetPxl(px)
 		} else {
-			s.SetPng(rgba, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y),)
+			s.SetPng(rgba, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y))
 		}
 	}
 	return nil
