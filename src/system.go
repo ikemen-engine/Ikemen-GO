@@ -357,7 +357,6 @@ type System struct {
 	maxBgmVolume    int
 	stereoEffects   bool
 	panningRange    float32
-	inMatch         bool
 }
 
 type Window struct {
@@ -593,7 +592,7 @@ func (s *System) await(fps int) bool {
 func (s *System) update() bool {
 	s.frameCounter++
 	if s.fileInput != nil {
-		if s.anyHardButton() && (!s.inMatch || sys.postMatchFlg || !sys.fightOver) {
+		if s.anyHardButton() {
 			s.await(FPS * 4)
 		} else {
 			s.await(FPS)
@@ -760,8 +759,8 @@ func (s *System) roundOver() bool {
 			s.lifebar.ro.start_waittime))
 		s.winskipped = true
 	}
-	return s.fadeouttime == 0 && (s.intro < -(s.lifebar.ro.over_hittime +
-		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time))
+	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
+		s.lifebar.ro.over_time)
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
