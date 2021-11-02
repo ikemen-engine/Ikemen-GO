@@ -13,6 +13,7 @@ start.challenger = 0
 local restoreCursor = false
 local selScreenEnd = false
 local stageEnd = false
+local stageRandom = false
 local stageListNo = 0
 local t_aiRamp = {}
 local t_gameStats = {}
@@ -517,6 +518,7 @@ function start.f_setStage(num, assigned)
 		if stageListNo == 0 then
 			num = main.t_selectableStages[math.random(1, #main.t_selectableStages)]
 			stageListNo = num -- comment out to randomize stage after each fight in survival mode, when random stage is chosen
+			stageRandom = true
 		else
 			num = main.t_selectableStages[stageListNo]
 		end
@@ -1539,6 +1541,10 @@ function start.f_selectReset(hardReset)
 			start.c[i].randRef = nil
 		end
 	end
+	if stageRandom then
+		stageListNo = 0
+	end
+	stageRandom = false
 	for side = 1, 2 do
 		if hardReset then
 			start.p[side].numSimul = math.max(2, config.NumSimul[1])
