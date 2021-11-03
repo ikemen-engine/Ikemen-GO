@@ -572,8 +572,8 @@ function main.f_createTextImg(t, prefix, mod)
 		text =   t[prefix .. '_text'],
 		x =      (t[prefix .. '_offset'][1] or 0) + (mod.x or 0),
 		y =      (t[prefix .. '_offset'][2] or 0) + (mod.y or 0),
-		scaleX = t[prefix .. '_font_scale'][1] * (mod.scaleX or 1),
-		scaleY = t[prefix .. '_font_scale'][2] * (mod.scaleY or 1),
+		scaleX = (t[prefix .. '_font_scale'][1] or 1) * (mod.scaleX or 1),
+		scaleY = (t[prefix .. '_font_scale'][2] or 1) * (mod.scaleY or 1),
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
@@ -617,7 +617,7 @@ end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y, f, instant)
-	animSetPos(a, x, y)
+	if x ~= nil then animSetPos(a, x, y) end
 	if f ~= nil then animSetFacing(a, f) end
 	animDraw(a)
 	if instant then
@@ -1313,7 +1313,7 @@ function main.f_commandLine()
 		end
 		main.t_stageDef[stage:lower()] = #main.f_tableExists(main.t_selStages) + 1
 	end
-	selectStart()
+	clearSelected()
 	setMatchNo(1)
 	selectStage(main.t_stageDef[stage:lower()])
 	setTeamMode(1, t_teamMode[1], t_numChars[1])
@@ -1383,40 +1383,40 @@ local t_preloadAnim = {}
 local t_preloadSpr = {}
 local t_preload = {
 	--select_info
-	{typ = 'canim', arg = {motif.select_info.portrait_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.portrait_anim}},
 	{typ = 'cspr', arg = motif.select_info.portrait_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim, nil}},
+	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim}},
 	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
 	--vs_screen
-	{typ = 'canim', arg = {motif.vs_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.vs_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p1_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p1_done_spr},
+	{typ = 'canim', arg = {motif.vs_screen.p2_done_anim}},
+	{typ = 'cspr', arg = motif.vs_screen.p2_done_spr},
 	--victory_screen
-	{typ = 'canim', arg = {motif.victory_screen.p1_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p1_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_anim, nil}},
+	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
 	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p1_face_done_anim, nil}},
-	{typ = 'cspr', arg = motif.victory_screen.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_face_done_anim, nil}},
-	{typ = 'cspr', arg = motif.victory_screen.p2_face_done_spr},
 	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim, nil}},
+	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
 	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
 }
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'], nil}})
+			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim']}})
 			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
 		end
 	end
@@ -1436,7 +1436,7 @@ end
 for _, v in pairs(t_preloadSpr) do
 	preloadList('cspr', v[1], v[2])
 end
-if motif.select_info.stage_portrait_spr[1] ~= -1 then
+if #motif.select_info.stage_portrait_spr > 0 and motif.select_info.stage_portrait_spr[1] ~= -1 then
 	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
 if motif.select_info.stage_portrait_anim ~= -1 then
@@ -1793,7 +1793,7 @@ function main.f_addStage(file, hidden)
 	main.t_stageDef[file:lower()] = stageNo
 	--anim data
 	for _, v in pairs({{motif.select_info.stage_portrait_anim, -1}, motif.select_info.stage_portrait_spr}) do
-		if v[1] ~= -1 then
+		if #v > 0 and v[1] ~= -1 then
 			main.t_selStages[stageNo].anim_data = animGetPreloadedData('stage', stageNo, v[1], v[2])
 			if main.t_selStages[stageNo].anim_data ~= nil then
 				animSetScale(
@@ -1870,6 +1870,8 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%s*storymode%s*%]') then
 		row = 0
 		section = 4
+	elseif lineCase:match('^%s*%[%w+%]$') then 
+		section = -1
 	elseif section == 1 then --[Characters]
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
@@ -2009,7 +2011,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training char if defined and not included in select.def
-if main.t_charDef[config.TrainingChar:lower()] == nil then
+if config.TrainingChar ~= '' and main.t_charDef[config.TrainingChar:lower()] == nil then
 	main.f_addChar(config.TrainingChar .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
@@ -2168,9 +2170,11 @@ function main.f_default()
 	if motif.attract_mode.enabled == 0 and start.challenger == 0 then
 		main.credits = -1 --amount of credits from the start (-1 = disabled)
 	end
+	main.dropDefeated = false --if defeated members should be removed from team
 	main.elimination = false --if single lose should stop further lua execution
 	main.exitSelect = false --if "clearing" the mode (matchno == -1) should go back to main menu
 	main.forceChar = {nil, nil} --predefined P1/P2 characters
+	main.forceRosterSize = false --if roster size should be enforced even if there are not enough characters to fill it (not used but may be useful for external modules)
 	main.hiscoreScreen = false --if hiscore screen should be shown
 	main.lifebar = { --which lifebar elements should be rendered
 		active = true,
@@ -2187,7 +2191,9 @@ function main.f_default()
 		guardbar = config.BarGuard,
 		stunbar = config.BarStun,
 		redlifebar = config.BarRedLife,
+		hidebars = motif.dialogue_info.enabled == 1,
 	}
+	main.lifePersistence = false --if life should be maintained after match
 	main.luaPath = 'external/script/default.lua' --path to script executed by start.f_selectMode()
 	main.makeRoster = false --if default roster for each match should be generated before first match
 	main.matchWins = { --amount of rounds to win for each team side and team mode
@@ -2199,14 +2205,17 @@ function main.f_default()
 	main.numSimul = {config.NumSimul[1], config.NumSimul[2]} --min/max number of simul characters
 	main.numTag = {config.NumTag[1], config.NumTag[2]} --min/max number of tag characters
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
+	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankDisplay = false --if rank data should be displayed at the end of match
+	main.rankingCondition = false --if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
 	main.rotationChars = false --flags modes where config.AISurvivalColor should be used instead of config.AIRandomColor
 	main.roundTime = config.RoundTime --sets round time
 	main.selectMenu = {true, false} --which team side should be allowed to select players
 	main.stageMenu = false --if manual stage selection is allowed
+	main.stageOrder = false --if select.def stage order param should be used
 	main.storyboard = {intro = false, ending = false, credits = false, gameover = false} --which storyboards should be active
 	main.teamMenu = {
 		{ratio = false, simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P1 side
@@ -2234,6 +2243,9 @@ function main.f_default()
 	demoFrameCounter = 0
 end
 
+-- main.t_itemname is a table storing functions with general game mode
+-- configuration (usually ending with start.f_selectMode function call). It can
+-- be appended via external module, without conflicting with default scripts.
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(t, item)
@@ -2253,9 +2265,12 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2320,7 +2335,10 @@ main.t_itemname = {
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
 		main.makeRoster = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
+		main.rankingCondition = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
@@ -2415,6 +2433,7 @@ main.t_itemname = {
 		main.exitSelect = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2424,6 +2443,7 @@ main.t_itemname = {
 		main.numTag = {2, 2}
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
@@ -2433,7 +2453,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplaysurvivalcoop_text})
 		setGameMode('netplaysurvivalcoop')
 		return start.f_selectMode
@@ -2459,6 +2478,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2483,6 +2503,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2515,28 +2537,6 @@ main.t_itemname = {
 	['replay'] = function()
 		return main.f_replay
 	end,
-	--SCORE CHALLENGE
-	['scorechallenge'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.hiscoreScreen = true
-		--main.lifebar.p1score = true
-		--main.lifebar.p2aiLevel = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.rankDisplay = true
-		main.resultsTable = motif.score_challenge_results_screen
-		main.selectMenu[2] = true
-		main.stageMenu = true
-		main.teamMenu[1].single = true
-		main.teamMenu[2].single = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_scorechallenge_text})
-		setGameMode('scorechallenge')
-		return start.f_selectMode
-	end,
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		if main.f_connect(config.IP[t[item].displayname], main.f_extractText(motif.title_info.connecting_join_text, t[item].displayname, config.IP[t[item].displayname])) then
@@ -2566,6 +2566,7 @@ main.t_itemname = {
 	--STORY MODE ARC
 	['storyarc'] = function(t, item)
 		main.f_playerInput(main.playerInput, 1)
+		main.continueScreen = true
 		main.selectMenu[1] = false
 		for _, v in ipairs(main.t_selStoryMode) do
 			if v.name == t[item].itemname then
@@ -2586,19 +2587,24 @@ main.t_itemname = {
 		main.charparam.single = true
 		main.charparam.stage = true
 		main.charparam.time = true
+		main.dropDefeated = true
 		main.elimination = true
 		main.exitSelect = true
 		main.hiscoreScreen = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
 		main.matchWins.single = {1, 1}
 		main.matchWins.tag = {1, 1}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2611,7 +2617,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survival_text})
 		setGameMode('survival')
 		return start.f_selectMode
@@ -2630,6 +2635,7 @@ main.t_itemname = {
 		main.hiscoreScreen = true
 		--main.lifebar.match = true
 		--main.lifebar.p2aiLevel = true
+		main.lifePersistence = true
 		main.makeRoster = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
@@ -2640,6 +2646,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
+		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
@@ -2649,7 +2656,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
-		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survivalcoop_text})
 		setGameMode('survivalcoop')
 		return start.f_selectMode
@@ -2676,6 +2682,7 @@ main.t_itemname = {
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
@@ -2712,12 +2719,15 @@ main.t_itemname = {
 		--main.lifebar.timer = true
 		main.makeRoster = true
 		main.quickContinue = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
 		if main.roundTime == -1 then
 			main.roundTime = 99
 		end
+		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
 		main.teamMenu[1].ratio = true
@@ -2736,39 +2746,16 @@ main.t_itemname = {
 		setGameMode('timeattack')
 		return start.f_selectMode
 	end,
-	--TIME CHALLENGE
-	['timechallenge'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.hiscoreScreen = true
-		--main.lifebar.p2aiLevel = true
-		--main.lifebar.timer = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.rankDisplay = true
-		main.resultsTable = motif.time_challenge_results_screen
-		if main.roundTime == -1 then
-			main.roundTime = 99
-		end
-		main.selectMenu[2] = true
-		main.stageMenu = true
-		main.teamMenu[1].single = true
-		main.teamMenu[2].single = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_timechallenge_text})
-		setGameMode('timechallenge')
-		return start.f_selectMode
-	end,
 	--TRAINING
 	['training'] = function()
+		setHomeTeam(1)
 		main.f_playerInput(main.playerInput, 1)
 		main.t_pIn[2] = 1
 		if main.t_charDef[config.TrainingChar:lower()] ~= nil then
 			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
 		end
 		--main.lifebar.p1score = true
+		--main.lifebar.p2aiLevel = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2794,6 +2781,8 @@ main.t_itemname = {
 		main.cpuSide[2] = false
 		--main.lifebar.p1winCount = true
 		--main.lifebar.p2winCount = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2842,44 +2831,6 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_versuscoop_text})
 		setGameMode('versuscoop')
-		return start.f_selectMode
-	end,
-	--VS 100 KUMITE
-	['vs100kumite'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.charparam.ai = true
-		main.charparam.music = true
-		main.charparam.single = true
-		main.charparam.stage = true
-		main.charparam.time = true
-		main.exitSelect = true
-		main.hiscoreScreen = true
-		--main.lifebar.match = true
-		--main.lifebar.p2aiLevel = true
-		main.makeRoster = true
-		main.matchWins.draw = {0, 0}
-		main.matchWins.simul = {1, 1}
-		main.matchWins.single = {1, 1}
-		main.matchWins.tag = {1, 1}
-		main.rankDisplay = true
-		main.resultsTable = motif.vs100_kumite_results_screen
-		main.rotationChars = true
-		main.storyboard.credits = true
-		main.storyboard.gameover = true
-		main.teamMenu[1].ratio = true
-		main.teamMenu[1].simul = true
-		main.teamMenu[1].single = true
-		main.teamMenu[1].tag = true
-		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
-		main.teamMenu[2].simul = true
-		main.teamMenu[2].single = true
-		main.teamMenu[2].tag = true
-		main.teamMenu[2].turns = true
-		main.versusScreen = true
-		main.txt_mainSelect:update({text = motif.select_info.title_vs100kumite_text})
-		setGameMode('vs100kumite')
 		return start.f_selectMode
 	end,
 	--WATCH
@@ -3013,7 +2964,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_demo()
 				end
 				local item_sav = item
-				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_key_previous), main.f_extractKeys(motif[main.group].menu_key_next))
+				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, main.group, main.f_extractKeys(motif[main.group].menu_previous_key), main.f_extractKeys(motif[main.group].menu_next_key))
 				main.txt_title:update({text = tbl.title})
 				if item_sav ~= item then
 					demoFrameCounter = 0
@@ -3064,9 +3015,9 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					resetKey()
 				elseif bool_del and getKey('DELETE') then
 					tbl.items = main.f_deleteIP(item, t)
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_hiscore)) and main.f_hiscoreDisplay(t[item].itemname) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_hiscore_key)) and main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
-				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_key_accept)) then
+				elseif main.f_input(main.t_players, main.f_extractKeys(motif[main.group].menu_accept_key)) then
 					demoFrameCounter = 0
 					local f = t[item].itemname
 					if f == 'back' then
@@ -3384,13 +3335,10 @@ end
 main.t_hiscoreData = {
 	arcade = {mode = 'arcade', data = 'score', title = motif.select_info.title_arcade_text},
 	bossrush = {mode = 'bossrush', data = 'score', title = motif.select_info.title_bossrush_text},
-	scorechallenge = {mode = 'scorechallenge', data = 'score', title = motif.select_info.title_scorechallenge_text},
 	survival = {mode = 'survival', data = 'win', title = motif.select_info.title_survival_text},
 	survivalcoop = {mode = 'survivalcoop', data = 'win', title = motif.select_info.title_survivalcoop_text},
 	teamcoop = {mode = 'teamcoop', data = 'score', title = motif.select_info.title_teamcoop_text},
 	timeattack = {mode = 'timeattack', data = 'time', title = motif.select_info.title_timeattack_text},
-	timechallenge = {mode = 'timechallenge', data = 'time', title = motif.select_info.title_timechallenge_text},
-	vs100kumite = {mode = 'vs100kumite', data = 'win', title = motif.select_info.title_vs100kumite_text},
 }
 main.t_hiscoreData.teamarcade = main.t_hiscoreData.arcade
 
@@ -3464,19 +3412,8 @@ function main.f_attractStart()
 			txt_attract_insert:draw()
 		end
 		--draw timer
-		if motif.attract_mode.start_timer_enabled == 1 and timerActive then
-			local num = main.f_round((motif.attract_mode.start_timer_count * motif.attract_mode.start_timer_framespercount - timer + motif.attract_mode.start_timer_displaytime) / motif.attract_mode.start_timer_framespercount)
-			if num <= -1 then
-				timerActive = false
-				timer = -1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(0))})
-			else
-				timer = timer + 1
-				txt_attract_timer:update({text = motif.attract_mode.start_timer_font_text:gsub('%%i', tostring(math.max(0, num)))})
-			end
-			if timer >= motif.attract_mode.start_timer_displaytime then
-				txt_attract_timer:draw()
-			end
+		if motif.attract_mode.start_timer_count ~= -1 and timerActive then
+			timer, timerActive = main.f_drawTimer(timer, motif.attract_mode, 'start_timer_', txt_attract_timer)
 		end
 		--draw credits text
 		if main.credits ~= -1 then
@@ -3945,6 +3882,24 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 	if not skipClear then
 		refresh()
 	end
+end
+
+--common timer draw code
+function main.f_drawTimer(timer, t, prefix, txt)
+	local num = main.f_round((t[prefix .. 'count'] * t[prefix .. 'framespercount'] - timer + t[prefix .. 'displaytime']) / t[prefix .. 'framespercount'])
+	local active = true
+	if num <= -1 then
+		active = false
+		timer = -1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(0))})
+	else
+		timer = timer + 1
+		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(math.max(0, num)))})
+	end
+	if timer >= t[prefix .. 'displaytime'] then
+		txt:draw()
+	end
+	return timer, active
 end
 
 --reset background

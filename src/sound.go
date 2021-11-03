@@ -274,13 +274,10 @@ func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoo
 		bgm.defaultbgmLoopEnd = bgmLoopEnd
 	}
 	speaker.Clear()
-
-	if bgmVolume > 250 {
-		if sys.maxBgmVolume <= 0 {
-			bgmVolume = 100
-		} else {
-			bgmVolume = sys.maxBgmVolume
-		}
+	
+	// TODO: Throw a degbug warning if this triggers
+	if bgmVolume > sys.maxBgmVolume {
+		bgmVolume = sys.maxBgmVolume
 	}
 
 	if HasExtension(bgm.filename, ".ogg") {

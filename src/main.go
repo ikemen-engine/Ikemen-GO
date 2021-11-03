@@ -72,10 +72,16 @@ func main() {
 	//os.Mkdir("debug", os.ModeSticky|0755)
 
 	// Check if the main lua file exists.
-	if !fileExists(tmp.System) {
-		var err = Error("Main lua file '" + tmp.System + "' can not be found.")
-		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
-		panic(err)
+	if ftemp, err1 := os.Open(tmp.System); err1 != nil {
+		ftemp.Close();
+		var err2 = Error(
+			"Main lua file \"" + tmp.System + "\" error." +
+			"\n" + err1.Error(),
+		)
+		dialog.Message(err2.Error()).Title("I.K.E.M.E.N Error").Error()
+		panic(err2)
+	} else {
+		ftemp.Close();
 	}
 
 	log := createLog("Ikemen.log")
@@ -260,7 +266,6 @@ type configSettings struct {
 	VolumeBgm                  int
 	VolumeMaster               int
 	VolumeSfx                  int
-	VolumeWarning              bool
 	VRetrace                   int
 	WindowIcon                 []string
 	WindowTitle                string
@@ -339,7 +344,7 @@ func setupConfig() configSettings {
 	"LoseSimul": true,
 	"LoseTag": false,
 	"MaxAfterImage": 128,
-	"MaxBgmVolume": 0,
+	"MaxBgmVolume": 100,
 	"MaxDrawGames": -2,
 	"MaxExplod": 512,
 	"MaxHelper": 56,
@@ -396,7 +401,6 @@ func setupConfig() configSettings {
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VolumeWarning": true,
 	"VRetrace": 1, 
 	"WindowIcon": [
 		"external/icons/IkemenCylia_256.png",
@@ -593,8 +597,8 @@ func setupConfig() configSettings {
 	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
 		tmp.Framerate = 60
 	}
-	if tmp.MaxBgmVolume > 400 {
-		tmp.MaxBgmVolume = 0
+	if tmp.MaxBgmVolume < 100 || tmp.MaxBgmVolume > 250 {
+		tmp.MaxBgmVolume = 100
 	}
 	if tmp.NumSimul[1] > MaxSimul {
 		tmp.NumSimul[1] = MaxSimul
@@ -714,13 +718,4 @@ func setupConfig() configSettings {
 	}
 
 	return tmp
-}
-
-// fileExists checks if a file exists and is not a directory before we use it
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }

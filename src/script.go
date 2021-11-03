@@ -523,10 +523,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "clearConsole", func(*lua.LState) int {
-		sys.consoleText = nil
-		return 0
-	})
 	luaRegister(l, "clearAllSound", func(l *lua.LState) int {
 		sys.clearAllSound()
 		return 0
@@ -539,6 +535,14 @@ func systemScriptInit(l *lua.LState) {
 		col := uint32(int32(numArg(l, 3))&0xff | int32(numArg(l, 2))&0xff<<8 |
 			int32(numArg(l, 1))&0xff<<16)
 		FillRect(sys.scrrect, col, a)
+		return 0
+	})
+	luaRegister(l, "clearConsole", func(*lua.LState) int {
+		sys.consoleText = nil
+		return 0
+	})
+	luaRegister(l, "clearSelected", func(l *lua.LState) int {
+		sys.sel.ClearSelected()
 		return 0
 	})
 	luaRegister(l, "commandAdd", func(l *lua.LState) int {
@@ -989,7 +993,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}
-				sys.sel.cdefOverwrite = nil
+				sys.sel.cdefOverwrite = make(map[int]string)
 				sys.sel.sdefOverwrite = ""
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
@@ -1075,8 +1079,14 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("arcadepath", lua.LString(c.arcadepath))
 		tbl.RawSetString("ratiopath", lua.LString(c.ratiopath))
 		tbl.RawSetString("portrait_scale", lua.LNumber(c.portrait_scale))
-		//palettes
 		subt := l.NewTable()
+		for k, v := range c.cns_scale {
+			subt.RawSetInt(k+1, lua.LNumber(v))
+			subt.RawSetInt(k+1, lua.LNumber(v))
+		}
+		tbl.RawSetString("cns_scale", subt)
+		//palettes
+		subt = l.NewTable()
 		if len(c.pal) > 0 {
 			for k, v := range c.pal {
 				subt.RawSetInt(k+1, lua.LNumber(v))
@@ -1399,6 +1409,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.statusLFunc, _ = sys.luaLState.GetGlobal(strArg(l, 1)).(*lua.LFunction)
 		return 0
 	})
+	luaRegister(l, "loading", func(l *lua.LState) int {
+		l.Push(lua.LBool(sys.loader.state == LS_Loading))
+		return 1
+	})
 	luaRegister(l, "loadLifebar", func(l *lua.LState) int {
 		lb, err := loadLifebar(strArg(l, 1))
 		if err != nil {
@@ -1617,6 +1631,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundResetFlg = true
 		return 0
 	})
+	luaRegister(l, "screenshot", func(*lua.LState) int {
+		captureScreen()
+		return 0
+	})
 	luaRegister(l, "searchFile", func(l *lua.LState) int {
 		var dirs []string
 		tableArg(l, 2).ForEach(func(key, value lua.LValue) {
@@ -1676,7 +1694,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "selectStart", func(l *lua.LState) int {
 		sys.sel.ClearSelected()
-		//sys.loadStart()
+		sys.loadStart()
 		return 0
 	})
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
@@ -1688,6 +1706,7 @@ func systemScriptInit(l *lua.LState) {
 		if err != nil {
 			l.RaiseError(err.Error())
 		}
+		sys.runMainThreadTask()
 		l.Push(newUserData(l, sff))
 		return 1
 	})
@@ -1920,6 +1939,8 @@ func systemScriptInit(l *lua.LState) {
 					sys.lifebar.bars = lua.LVAsBool(value)
 				case "guardbar": //enabled depending on config.json
 					sys.lifebar.guardbar = lua.LVAsBool(value)
+				case "hidebars": //enabled depending on dialogue system.def settings
+					sys.lifebar.hidebars = lua.LVAsBool(value)
 				case "match":
 					sys.lifebar.ma.active = lua.LVAsBool(value)
 				case "mode": //enabled by default

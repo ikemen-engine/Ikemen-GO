@@ -362,7 +362,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
-	if isStage && !sys.gs.cam.ZoomEnable {
+	// x, y flooring has been commented out since it makes background velocity
+	// movement less smooth, regardless if the stage has zoom or not
+	/*if isStage && !sys.cam.ZoomEnable {
 		if bg.rasterx[1] == bg.rasterx[0] &&
 			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
 			x = float32(math.Floor(float64(x/bgscl))) * bgscl
@@ -370,7 +372,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		if bg.bga.sinlooptime[1] <= 0 && bg.bga.sinoffset[1] == 0 {
 			y = float32(math.Floor(float64(y/bgscl))) * bgscl
 		}
-	}
+	}*/
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl

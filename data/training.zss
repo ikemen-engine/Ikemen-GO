@@ -36,11 +36,8 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	}
 	# Dummy Control: Cooperative
 	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {
-		# Guard mode: None
-		if map(_iksys_trainingGuardMode) = 0 {
-			assertSpecial{flag: nostandguard; flag2: nocrouchguard; flag3: noairguard}
 		# Guard mode: Auto
-		} else {
+		if map(_iksys_trainingGuardMode) = 1 {
 			assertSpecial{flag: autoguard}
 		}
 		# Distance

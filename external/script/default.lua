@@ -1,4 +1,4 @@
-if gamemode('bonus') or gamemode('freebattle') or gamemode('netplayversus') or gamemode('scorechallenge') or gamemode('timechallenge') or gamemode('training') or gamemode('versus') or gamemode('versuscoop') or gamemode('watch') then
+if not main.makeRoster then
 	launchFight{}
 	setMatchNo(-1)
 	return

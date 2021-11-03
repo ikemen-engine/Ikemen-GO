@@ -6434,7 +6434,7 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case dialogue_hidebars:
-			sys.dialogueBarsFlg = exp[0].evalB(c)
+			sys.dialogueBarsFlg = sys.lifebar.hidebars && exp[0].evalB(c)
 		case dialogue_force:
 			force = exp[0].evalB(c)
 		case dialogue_text:
@@ -6750,22 +6750,28 @@ func (sc lifebarAction) Run(c *Char, _ []int32) bool {
 	var text string
 	var timemul float32 = 1
 	var time, anim int32 = -1, -1
-	spr := [2]int32{-1, -1}
-	snd := [2]int32{-1, -1}
+	spr := [2]int32{-1, 0}
+	snd := [2]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case lifebarAction_top:
 			top = exp[0].evalB(c)
 		case lifebarAction_timemul:
-			timemul = float32(exp[0].evalF(c))
+			timemul = exp[0].evalF(c)
 		case lifebarAction_time:
-			time = int32(exp[0].evalI(c))
+			time = exp[0].evalI(c)
 		case lifebarAction_anim:
-			anim = int32(exp[0].evalI(c))
+			anim = exp[0].evalI(c)
 		case lifebarAction_spr:
-			spr = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+			spr[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				spr[1] = exp[1].evalI(c)
+			}
 		case lifebarAction_snd:
-			snd = [2]int32{int32(exp[0].evalI(c)), int32(exp[1].evalI(c))}
+			snd[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				snd[1] = exp[1].evalI(c)
+			}
 		case lifebarAction_text:
 			text = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case lifebarAction_redirectid:
@@ -7268,6 +7274,48 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type playBgm StateControllerBase
+
+const (
+	playBgm_bgm = iota
+	playBgm_volume
+	playBgm_loop
+	playBgm_loopstart
+	playBgm_loopend
+	playBgm_redirectid
+)
+
+func (sc playBgm) Run(c *Char, _ []int32) bool {
+	crun := c
+	var bgm string
+	var loop, volume, loopstart, loopend int = 1, 100, 0, 0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case playBgm_bgm:
+			if bgm = string(*(*[]byte)(unsafe.Pointer(&exp[0]))); bgm != "" {
+				bgm = SearchFile(bgm, []string{crun.gi().def, "", "sound/"})
+			}
+		case playBgm_volume:
+			volume = int(exp[0].evalI(c))
+		case playBgm_loop:
+			loop = int(exp[0].evalI(c))
+		case playBgm_loopstart:
+			loopstart = int(exp[0].evalI(c))
+		case playBgm_loopend:
+			loopstart = int(exp[0].evalI(c))
+		case playBgm_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.bgm.Open(bgm, true, loop, volume, loopstart, loopend)
+	return false
+}
+
 type targetDizzyPointsAdd StateControllerBase
 
 const (
@@ -7427,6 +7475,110 @@ func (sc targetScoreAdd) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type text StateControllerBase
+
+const (
+	text_removetime byte = iota
+	text_layerno
+	text_params
+	text_font
+	text_bank
+	text_align
+	text_text
+	text_pos
+	text_scale
+	text_color
+	text_redirectid
+)
+
+func (sc text) Run(c *Char, _ []int32) bool {
+	crun := c
+	params := []interface{}{}
+	var lclscround float32 = 1.0
+	ts := NewTextSprite()
+	var sn int = -1
+	var fflg bool
+	var fnt int = -1
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case text_removetime:
+			ts.removetime = exp[0].evalI(c)
+		case text_layerno:
+			ts.layerno = int16(exp[0].evalI(c))
+		case text_params:
+			for _, e := range exp {
+				if bv := e.run(c); bv.t == VT_Float {
+					params = append(params, bv.ToF())
+				} else {
+					params = append(params, bv.ToI())
+				}
+			}
+		case text_text:
+			sn = int(exp[0].evalI(c))
+		case text_font:
+			fnt = int(exp[1].evalI(c))
+			fflg = exp[0].evalB(c)
+		case text_bank:
+			ts.bank = exp[0].evalI(c)
+		case text_align:
+			ts.align = exp[0].evalI(c)
+		case text_pos:
+			ts.x = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				ts.y = exp[1].evalF(c) * lclscround
+			}
+		case text_scale:
+			ts.xscl = exp[0].evalF(c)
+			if len(exp) > 1 {
+				ts.yscl = exp[1].evalF(c)
+			}
+		case text_color:
+			var r, g, b int32 = exp[0].evalI(c), 255, 255
+			if len(exp) > 1 {
+				g = exp[1].evalI(c)
+				if len(exp) > 2 {
+					b = exp[2].evalI(c)
+				}
+			}
+			ts.SetColor(r, g, b)
+		case text_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				lclscround = c.localscl / crun.localscl
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	// text assignment
+	spl := sys.stringPool[sys.workingState.playerNo].List
+	if sn >= 0 && sn < len(spl) {
+		ts.text = OldSprintf(spl[sn], params...)
+	} else {
+		ts.text = OldSprintf("%v", params...)
+	}
+	// font assignment
+	var ok bool
+	if fflg {
+		if fnt >= 0 && fnt < len(sys.lifebar.fnt) && sys.lifebar.fnt[fnt] != nil {
+			ts.fnt = sys.lifebar.fnt[fnt]
+			ok = true
+		}
+	} else if crun.selectNo >= 0 {
+		f := sys.sel.GetChar(crun.selectNo).fnt
+		if fnt >= 0 && fnt < len(f) && f[fnt] != nil {
+			ts.fnt = f[fnt]
+			ok = true
+		}
+	}
+	if !ok {
+		ts.fnt = sys.debugFont.fnt
+	}
+	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
+	return false
+}
+
 // Platform bytecode definitons
 type createPlatform StateControllerBase
 
@@ -7435,7 +7587,7 @@ const (
 	createPlatform_name
 	createPlatform_anim
 	createPlatform_pos
-	createPlatform_width
+	createPlatform_size
 	createPlatform_offset
 	createPlatform_activeTime
 )

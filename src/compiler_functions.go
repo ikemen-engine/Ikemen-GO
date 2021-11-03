@@ -4085,6 +4085,47 @@ func (c *Compiler) matchRestart(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+func (c *Compiler) playBgm(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*playBgm)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			playBgm_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		b := false
+		if err := c.stateParam(is, "bgm", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(playBgm_bgm, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			b = true
+			return nil
+		}); err != nil {
+			return err
+		}
+		if !b {
+			return Error("bgm parameter not specified")
+		}
+		if err := c.paramValue(is, sc, "volume",
+			playBgm_volume, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loop",
+			playBgm_loop, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopstart",
+			playBgm_loopstart, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopend",
+			playBgm_loopend, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase,
 	_ int8) (StateController, error) {
 	ret, err := (*modifyBGCtrl)(sc), c.stateSec(is, func() error {
@@ -4360,6 +4401,91 @@ func (c *Compiler) targetScoreAdd(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "value",
 			targetScoreAdd_value, VT_Float, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+func (c *Compiler) text(is IniSection, sc *StateControllerBase,
+	_ int8) (StateController, error) {
+	ret, err := (*text)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			text_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "removetime",
+			text_removetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "layerno",
+			text_layerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "params", func(data string) error {
+			bes, err := c.exprs(data, VT_SFalse, 100000)
+			if err != nil {
+				return err
+			}
+			sc.add(text_params, bes)
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "text", func(data string) error {
+			_else := false
+			if len(data) >= 2 && data[0] == '"' {
+				if i := strings.Index(data[1:], "\""); i >= 0 {
+					data, _ = strconv.Unquote(data)
+				} else {
+					_else = true
+				}
+			} else {
+				_else = true
+			}
+			if _else {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(text_text, sc.iToExp(int32(sys.stringPool[c.playerNo].Add(data))))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "font", func(data string) error {
+			fflg := false
+			if len(data) > 1 {
+				if strings.ToLower(data)[0] == 'f' {
+					re := regexp.MustCompile("[^a-z]")
+					m := re.Split(strings.ToLower(data)[1:], -1)
+					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+						fflg = true
+						data = data[1:]
+					}
+				}
+			}
+			return c.scAdd(sc, text_font, data, VT_Int, 1,
+				sc.iToExp(Btoi(fflg))...)
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "bank",
+			text_bank, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "align",
+			text_align, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			text_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scale",
+			text_scale, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "color",
+			text_color, VT_Int, 3, false); err != nil {
 			return err
 		}
 		return nil
