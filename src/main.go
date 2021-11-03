@@ -188,7 +188,6 @@ type configSettings struct {
 	AudioDucking               bool
 	AudioSampleRate            int32
 	AutoGuard                  bool
-	BackgroundLoading          bool
 	BarGuard                   bool
 	BarRedLife                 bool
 	BarStun                    bool
@@ -295,7 +294,6 @@ func setupConfig() configSettings {
 	"AudioDucking": false,
 	"AudioSampleRate": 44100,
 	"AutoGuard": false,
-	"BackgroundLoading": false,
 	"BarGuard": false,
 	"BarRedLife": true,
 	"BarStun": false,

@@ -2178,7 +2178,6 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuengine_players = "Players"
 	motif.option_info.menu_itemname_menuengine_debugkeys = "Debug Keys"
 	motif.option_info.menu_itemname_menuengine_debugmode = "Debug Mode"
-	motif.option_info.menu_itemname_menuengine_backgroundloading = "Background Loading"
 	motif.option_info.menu_itemname_menuengine_empty = ""
 	motif.option_info.menu_itemname_menuengine_helpermax = "HelperMax"
 	motif.option_info.menu_itemname_menuengine_projectilemax = "PlayerProjectileMax"
@@ -2295,7 +2294,6 @@ function motif.setBaseOptionInfo()
 		"menuengine_players",
 		"menuengine_debugkeys",
 		"menuengine_debugmode",
-		"menuengine_backgroundloading",
 		"menuengine_empty",
 		"menuengine_helpermax",
 		"menuengine_projectilemax",

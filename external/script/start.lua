@@ -1769,11 +1769,12 @@ function launchFight(data)
 			return true --continue lua code execution
 		end
 	end
-	if config.BackgroundLoading then
-		selectStart()
-	else
+	--TODO: fix config.BackgroundLoading setting
+	--if config.BackgroundLoading then
+	--	selectStart()
+	--else
 		clearSelected()
-	end
+	--end
 	local ok = false
 	local saveData = false
 	local loopCount = 0
@@ -2889,9 +2890,10 @@ function start.f_selectLoading()
 			end
 		end
 	end
-	if not config.BackgroundLoading then
+	--TODO: fix config.BackgroundLoading setting
+	--if not config.BackgroundLoading then
 		loadStart()
-	end
+	--end
 	-- calling refresh() during netplay data loading can lead to synchronization error
 	--while motif.vs_screen.loading_data ~= nil and loading() and not network() do
 	--	animDraw(motif.vs_screen.loading_data)
