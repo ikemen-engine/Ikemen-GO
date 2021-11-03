@@ -802,69 +802,60 @@ local function f_slideDistCalc(slide_dist, t_dist, t_speed)
 end
 
 --calculate portraits x pos
-local function f_portraitsXCalc(side, t, subname, i, member)
+local function f_portraitsXCalc(side, t, subname, member)
 	local x = t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. subname .. '_offset'][1] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[1] or 0)
 	if t['p' .. side .. subname .. '_padding'] == 1 then
-		return x + (2 * i - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * math.min(t['p' .. side .. subname .. '_num'], math.max(start.p[side].numChars, #start.p[side].t_selected)))
+		return x + (2 * member - 1) * t['p' .. side .. subname .. '_spacing'][1] * t['p' .. side .. subname .. '_num'] / (2 * math.min(t['p' .. side .. subname .. '_num'], math.max(start.p[side].numChars, #start.p[side].t_selected)))
 	end
-	return x + (i - 1) * t['p' .. side .. subname .. '_spacing'][1]
+	return x + (member - 1) * t['p' .. side .. subname .. '_spacing'][1]
 end
 
 --draw portraits
-function start.f_drawPortraits(t_sel, side, t, subname, last, reversed, icon)
-	if #t_sel == 0 then
+function start.f_drawPortraits(t_portraits, side, t, subname, last, icon)
+	if #t_portraits == 0 then
 		return
 	end
-	local t_portraits = {}
-	--not select screen or team side in coop mode
-	if not last or ((side == 1 and main.coop) or gamemode('versuscoop')) then
-		t_portraits = t_sel
-	--otherwise insert most recently selected chars ascending up to pX.face.num
-	else
-		for i = #t_sel, #t_sel - t['p' .. side .. subname .. '_num'] + 1, -1 do
-			table.insert(t_portraits, t_sel[i])
+	-- if next player portrait should replace previous one
+	if t['p' .. side .. subname .. '_num'] == 1 and last and not main.coop then
+		if t_portraits[#t_portraits].anim_data ~= nil then
+			local v = t_portraits[#t_portraits]
+			f_slideDistCalc(v.slide_dist, t['p' .. side .. '_member1' .. subname .. '_slide_dist'], t['p' .. side .. '_member1' .. subname .. '_slide_speed'])
+			main.f_animPosDraw(
+				v.anim_data,
+				f_portraitsXCalc(side, t, subname, 1) + main.f_round(v.slide_dist[1]),
+				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member1' .. subname .. '_offset'])[2] or 0) + main.f_round(v.slide_dist[2]),
+				t['p' .. side .. subname .. '_facing'],
+				true
+			)
 		end
+		return
 	end
-	--adjust order of rendering
-	local loopStart, loopEnd, loopStep = #t_portraits, 1, -1
-	if reversed then
-		loopStart, loopEnd, loopStep = 1, #t_portraits, 1
-		t_portraits = main.f_tableReverse(t_portraits)
-	end
-	--draw portraits
-	for i = loopStart, loopEnd, loopStep do
-		local member = i
-		if reversed then
-			member = #t_portraits - i + 1
-		end
-		if i <= t['p' .. side .. subname .. '_num'] then
-			if t_portraits[i].anim_data ~= nil then
-				local v = t_portraits[i]
+	-- otherwise render portraits in order, up to the 'num' limit
+	for member = #t_portraits, 1, -1 do
+		if member <= t['p' .. side .. subname .. '_num'] --[[or (last and main.coop)]] then
+			if t_portraits[member].anim_data ~= nil then
+				local v = t_portraits[member]
 				f_slideDistCalc(v.slide_dist, t['p' .. side .. '_member' .. member .. subname .. '_slide_dist'], t['p' .. side .. '_member' .. member .. subname .. '_slide_speed'])
-				main.f_animPosDraw(
+					main.f_animPosDraw(
 					v.anim_data,
-					f_portraitsXCalc(side, t, subname, i, member) + main.f_round(v.slide_dist[1]),
-					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (i - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
+					f_portraitsXCalc(side, t, subname, member) + main.f_round(v.slide_dist[1]),
+					t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][2] + main.f_round(v.slide_dist[2]),
 					t['p' .. side .. subname .. '_facing'],
 					true
 				)
 			end
 		end
 	end
-	--draw order icons
+	-- draw order icons
 	if icon == nil then
 		return
 	end
-	for i = loopStart, loopEnd, loopStep do
-		local member = i
-		if reversed then
-			member = #t_portraits - i + 1
-		end
-		if i <= t['p' .. side .. subname .. '_num'] and t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'] ~= nil then
+	for member = 1, #t_portraits do
+		if t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'] ~= nil then
 			main.f_animPosDraw(
 				t['p' .. side .. '_member' .. member .. subname .. icon .. '_data'],
-				f_portraitsXCalc(side, t, subname, i, member),
-				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (i - 1) * t['p' .. side .. subname .. '_spacing'][2]
+				f_portraitsXCalc(side, t, subname, member),
+				t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. subname .. '_offset'][2] + (main.f_tableExists(t['p' .. side .. '_member' .. member .. subname .. '_offset'])[2] or 0) + (member - 1) * t['p' .. side .. subname .. '_spacing'][2]
 			)
 		end
 	end
@@ -1543,8 +1534,8 @@ function start.f_selectReset(hardReset)
 	end
 	if stageRandom then
 		stageListNo = 0
+		stageRandom = false
 	end
-	stageRandom = false
 	for side = 1, 2 do
 		if hardReset then
 			start.p[side].numSimul = math.max(2, config.NumSimul[1])
@@ -1970,7 +1961,7 @@ function start.f_selectScreen()
 		--draw portraits
 		for side = 1, 2 do
 			if #start.p[side].t_selTemp > 0 then
-				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.select_info, '_face', true, false)
+				start.f_drawPortraits(start.p[side].t_selTemp, side, motif.select_info, '_face', true)
 			end
 		end
 		--draw cell art
@@ -2826,7 +2817,7 @@ function start.f_selectVersus(active, t_orderSelect)
 		end
 		--draw portraits and order icons
 		for side = 1, 2 do
-			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, true, t_icon[side])
+			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, t_icon[side])
 		end
 		--draw names
 		for side = 1, 2 do
@@ -3274,7 +3265,7 @@ function start.f_victory()
 	bgDraw(motif.victorybgdef.bg, false)
 	--draw portraits (starting from losers)
 	for side = 2, 1, -1 do
-		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false, false)
+		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false)
 	end
 	--draw winner name
 	t_txt_winquoteName[1]:draw()
