@@ -151,6 +151,7 @@ func newCompiler() *Compiler {
 		"teammapadd":           c.teamMapAdd,
 		"matchrestart":         c.matchRestart,
 		"modifybgctrl":         c.modifyBGCtrl,
+		"playbgm":              c.playBgm,
 		"printtoconsole":       c.printToConsole,
 		"rankadd":              c.rankAdd,
 		"redlifeadd":           c.redLifeAdd,
@@ -165,6 +166,7 @@ func newCompiler() *Compiler {
 		"targetguardpointsadd": c.targetGuardPointsAdd,
 		"targetredlifeadd":     c.targetRedLifeAdd,
 		"targetscoreadd":       c.targetScoreAdd,
+		"text":                 c.text,
 	}
 	return c
 }

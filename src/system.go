@@ -88,7 +88,7 @@ var sys = System{
 	clipboardRows:        2,
 	pngFilter:            false,
 	clsnDarken:           true,
-	maxBgmVolume:         0,
+	maxBgmVolume:         100,
 	stereoEffects:        true,
 	panningRange:         30,
 }
@@ -560,7 +560,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	chk(gl.Init())
 
 	// Check if the shader selected is currently available.
-	if s.postProcessingShader < int32(len(s.externalShaderList))+3 {
+	if s.postProcessingShader < int32(len(s.externalShaderList)) {
 		s.postProcessingShader = 0
 	}
 
@@ -886,8 +886,8 @@ func (s *System) roundOver() bool {
 			s.lifebar.ro.start_waittime))
 		s.winskipped = true
 	}
-	return s.fadeouttime == 0 && (s.intro < -(s.lifebar.ro.over_hittime +
-		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time))
+	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
+		s.lifebar.ro.over_time)
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
@@ -1187,7 +1187,8 @@ func (s *System) commandUpdate() {
 	for i, p := range s.gs.chars {
 		if len(p) > 0 {
 			r := s.getChar(i, 0)
-			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) {
+			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) ||
+				(r.aiLevel() > 0 && !r.alive()) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
 				}
@@ -1703,6 +1704,7 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
+		s.bottomSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		if !s.sf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
 				s.shadows.drawReflection(x, y, scl*s.gs.cam.BaseScale())
@@ -1742,7 +1744,6 @@ func (s *System) draw(x, y, scl float32) {
 			rect[0] = s.scrrect[2] - rect[2]
 			fade(rect, 0, 255)
 		}
-		s.bottomSprites.draw(x, y, scl*s.gs.cam.BaseScale())
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
@@ -2214,6 +2215,7 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("winquote", lua.LNumber(p.winquote))
 					tmp.RawSetString("aiLevel", lua.LNumber(p.aiLevel()))
 					tmp.RawSetString("palno", lua.LNumber(p.palno()))
+					tmp.RawSetString("ratiolevel", lua.LNumber(p.ocd().ratioLevel))
 					tmp.RawSetString("win", lua.LBool(p.win()))
 					tmp.RawSetString("winKO", lua.LBool(p.winKO()))
 					tmp.RawSetString("winTime", lua.LBool(p.winTime()))
@@ -2487,8 +2489,6 @@ type SelectChar struct {
 	name           string
 	lifebarname    string
 	author         string
-	sprite         string
-	anim           string
 	sound          string
 	intro          string
 	ending         string
@@ -2500,18 +2500,24 @@ type SelectChar struct {
 	pal_keymap     []int32
 	localcoord     int32
 	portrait_scale float32
+	cns_scale      [2]float32
 	anims          PreloadedAnims
 	sff            *Sff
+	fnt            [10]*Fnt
 }
 
 func newSelectChar() *SelectChar {
-	return &SelectChar{localcoord: 320, portrait_scale: 1, anims: NewPreloadedAnims()}
+	return &SelectChar{
+		localcoord:     320,
+		portrait_scale: 1,
+		cns_scale:      [...]float32{1, 1},
+		anims:          NewPreloadedAnims(),
+	}
 }
 
 type SelectStage struct {
 	def             string
 	name            string
-	spr             string
 	attachedchardef string
 	stagebgm        IniSection
 	portrait_scale  float32
@@ -2631,7 +2637,8 @@ func (s *Select) addChar(def string) {
 	}
 	sc.def = def
 	lines, i, info, files, keymap, arcade := SplitAndTrim(str, "\n"), 0, true, true, true, true
-	var movelist string
+	var cns, sprite, anim, movelist string
+	var fnt [10][2]string
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -2655,8 +2662,9 @@ func (s *Select) addChar(def string) {
 		case "files":
 			if files {
 				files = false
-				sc.sprite = is["sprite"]
-				sc.anim = is["anim"]
+				cns = is["cns"]
+				sprite = is["sprite"]
+				anim = is["anim"]
 				sc.sound = is["sound"]
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
@@ -2664,6 +2672,10 @@ func (s *Select) addChar(def string) {
 					}
 				}
 				movelist = is["movelist"]
+				for i := range fnt {
+					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
+					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
+				}
 			}
 		case "palette ":
 			if keymap &&
@@ -2692,8 +2704,30 @@ func (s *Select) addChar(def string) {
 		listSpr[[...]int16{k[0], k[1]}] = true
 	}
 	sff := newSff()
+	//read size values
+	LoadFile(&cns, []string{def, "", "data/"}, func(filename string) error {
+		str, err := LoadText(filename)
+		if err != nil {
+			return err
+		}
+		lines, i := SplitAndTrim(str, "\n"), 0
+		for i < len(lines) {
+			is, name, _ := ReadIniSection(lines, &i)
+			switch name {
+			case "size":
+				if ok := is.ReadF32("xscale", &sc.cns_scale[0]); !ok {
+					sc.cns_scale[0] = 320 / float32(sc.localcoord)
+				}
+				if ok := is.ReadF32("yscale", &sc.cns_scale[1]); !ok {
+					sc.cns_scale[1] = 320 / float32(sc.localcoord)
+				}
+				return nil
+			}
+		}
+		return nil
+	})
 	//preload animations
-	LoadFile(&sc.anim, []string{def, "", "data/"}, func(filename string) error {
+	LoadFile(&anim, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -2713,7 +2747,7 @@ func (s *Select) addChar(def string) {
 	//preload portion of sff file
 	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(def, filepath.Ext(def)))
 	if fp = FileExist(fp); len(fp) == 0 {
-		fp = sc.sprite
+		fp = sprite
 	}
 	LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
 		var selPal []int32
@@ -2731,11 +2765,28 @@ func (s *Select) addChar(def string) {
 		}
 		return nil
 	})
+	//read movelist
 	if len(movelist) > 0 {
 		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
 			return nil
 		})
+	}
+	//preload fonts
+	for i, f := range fnt {
+		if len(f[0]) > 0 {
+			LoadFile(&f[0], []string{def, sys.motifDir, "", "data/", "font/"}, func(filename string) error {
+				var err error
+				var height int32 = -1
+				if len(f[1]) > 0 {
+					height = Atoi(f[1])
+				}
+				if sc.fnt[i], err = loadFnt(filename, height); err != nil {
+					sys.errLog.Printf("failed to load %v (char font): %v", filename, err)
+				}
+				return nil
+			})
+		}
 	}
 }
 func (s *Select) AddStage(def string) error {
@@ -2758,6 +2809,7 @@ func (s *Select) AddStage(def string) error {
 	}
 	tstr = fmt.Sprintf("Stage added: %v", def)
 	i, info, music, bgdef, stageinfo := 0, true, true, true, true
+	var spr string
 	s.stagelist = append(s.stagelist, *newSelectStage())
 	ss := &s.stagelist[len(s.stagelist)-1]
 	ss.def = def
@@ -2788,7 +2840,7 @@ func (s *Select) AddStage(def string) error {
 		case "bgdef":
 			if bgdef {
 				bgdef = false
-				ss.spr = is["spr"]
+				spr = is["spr"]
 			}
 		case "stageinfo":
 			if stageinfo {
@@ -2819,7 +2871,7 @@ func (s *Select) AddStage(def string) error {
 			}
 		}
 		//preload portion of sff file
-		LoadFile(&ss.spr, []string{def, "", "data/"}, func(file string) error {
+		LoadFile(&spr, []string{def, "", "data/"}, func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
@@ -2939,7 +2991,9 @@ func (l *Loader) loadChar(pn int) int {
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
-		p.clearCachedData()
+		if sys.roundsExisted[pn&1] == 0 {
+			p.clearCachedData()
+		}
 		sys.gs.appendChar(p)
 	} else {
 		_, p = sys.gs.addChar(pn, 0)
@@ -2988,21 +3042,16 @@ func (l *Loader) loadChar(pn int) int {
 		fa.numko, fa.teammate_face, fa.teammate_scale = 0, make([]*Sprite, nsel), make([]float32, nsel)
 		sys.lifebar.nm[sys.tmode[pn&1]][pn].numko = 0
 		for i, ci := range idx {
-			sprite := sys.sel.charlist[ci].sprite
-			LoadFile(&sprite, []string{sys.sel.charlist[ci].def, "", "data/"}, func(file string) error {
-				fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
-				var err error
-				fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
-					int16(fa.teammate_face_spr[1]))
-				return err
-			})
+			fa.teammate_scale[i] = sys.sel.charlist[ci].portrait_scale
+			fa.teammate_face[i] = sys.sel.charlist[ci].sff.GetSprite(int16(fa.teammate_face_spr[0]),
+				int16(fa.teammate_face_spr[1]))
 		}
 	}
 	return 1
 }
 
-func (l *Loader) loadAttachedChar(pn int) int {
-	atcpn := pn - MaxSimul*2
+func (l *Loader) loadAttachedChar(atcpn int) int {
+	pn := atcpn + MaxSimul*2
 	var tstr string
 	tnow := time.Now()
 	defer func() {
@@ -3074,11 +3123,17 @@ func (l *Loader) loadStage() bool {
 			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
+			for i := range sys.stageList[0].attachedchardef {
+				l.loadAttachedChar(i)
+			}
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
+		for i := range sys.stageList[0].attachedchardef {
+			l.loadAttachedChar(i)
+		}
 		sys.stage = sys.stageList[0]
 	}
 	return l.err == nil
@@ -3095,22 +3150,10 @@ func (l *Loader) load() {
 		return true
 	}
 	for !stageDone || !allCharDone() {
-		if !stageDone && sys.sel.selectedStageNo >= 0 {
-			if !l.loadStage() {
-				l.state = LS_Error
-				return
-			}
-			stageDone = true
-		}
+		// Load chars
 		for i, b := range charDone {
 			if !b {
-				result := -1
-				if i < len(sys.gs.chars)-MaxAttachedChar ||
-					len(sys.stageList[0].attachedchardef) <= i-MaxSimul*2 {
-					result = l.loadChar(i)
-				} else {
-					result = l.loadAttachedChar(i)
-				}
+				result := l.loadChar(i)
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -3119,14 +3162,28 @@ func (l *Loader) load() {
 				}
 			}
 		}
-		for i := 0; i < 2; i++ {
-			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
-				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
-				for j := i + 2; j < len(sys.gs.chars); j += 2 {
-					if !charDone[j] {
-						sys.gs.removeCharSlice(sys.gs.chars[j]...)
-						sys.gs.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
-						sys.cgi[j].wakewakaLength = 0
+		// Load stage and attached char
+		if !stageDone && sys.sel.selectedStageNo >= 0 {
+			if !l.loadStage() {
+				l.state = LS_Error
+				return
+			}
+			stageDone = true
+		}
+		// Clear unused chars data
+		if stageDone {
+			for i := 0; i < 2; i++ {
+				if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
+					sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
+					for j := i + 2; j < len(sys.gs.chars); j += 2 {
+						if !charDone[j] {
+							if j < len(sys.gs.chars)-len(sys.stageList[0].attachedchardef) {
+								sys.gs.removeCharSlice(sys.gs.chars[j]...)
+								sys.gs.chars[j], sys.cgi[j].states = nil, nil
+								sys.cgi[j].wakewakaLength = 0
+							}
+							charDone[j] = true
+						}
 					}
 				}
 			}
