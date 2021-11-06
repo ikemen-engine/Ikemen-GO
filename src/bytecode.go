@@ -3070,9 +3070,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			}
 			switch id {
-			case explod_ownpal:
-				op := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.ownpal = op })
 			case explod_facing:
 				if exp[0].evalI(c) < 0 {
 					eachExpl(func(e *Explod) { e.relativef = -1 })

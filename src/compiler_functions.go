@@ -749,10 +749,6 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			explod_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "ownpal",
-			explod_ownpal, VT_Bool, 1, false); err != nil {
-			return err
-		}
 		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
