@@ -6768,3 +6768,21 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	return (*cache)[n]
 }
+
+type Platform struct {
+	name       string
+	id         int32
+	
+	pos        [2]float32
+	size       [2]int32
+	offset     [2]int32
+	
+	anim       int32
+	activeTime int32
+	isSolid    bool
+	borderFall bool
+	destroySelf bool
+
+	localScale   float32
+	ownerID int32
+}
