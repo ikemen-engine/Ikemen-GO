@@ -736,6 +736,7 @@ function start.f_resetTempData(t, subname)
 		for member, v in ipairs(start.p[side].t_selTemp) do
 			v.anim = t['p' .. side .. '_member' .. member .. subname .. '_anim'] or t['p' .. side .. subname .. '_anim']
 			v.anim_data = start.f_animGet(v.ref, side, member, t, subname, '', true)
+			v.face2_data = start.f_animGet(v.ref, side, member, t, '_face2', '', true)
 			v.slide_dist = {0, 0}
 		end
 		start.p[side].screenDelay = 0
@@ -814,6 +815,20 @@ end
 function start.f_drawPortraits(t_portraits, side, t, subname, last, icon)
 	if #t_portraits == 0 then
 		return
+	end
+	-- draw background portrait
+	local member = 1
+	if last then
+		member = #t_portraits
+	end
+	if t_portraits[member].face2_data ~= nil then
+		main.f_animPosDraw(
+			t_portraits[member].face2_data,
+			t['p' .. side .. subname .. '_pos'][1] + t['p' .. side .. '_face2_offset'][1],
+			t['p' .. side .. subname .. '_pos'][2] + t['p' .. side .. '_face2_offset'][2],
+			t['p' .. side .. '_face2_facing'],
+			true
+		)
 	end
 	-- if next player portrait should replace previous one
 	if t['p' .. side .. subname .. '_num'] == 1 and last and not main.coop then
@@ -2517,6 +2532,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					cell = start.c[player].cell,
 					anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim'],
 					anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true),
+					face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face2', '', true),
 					slide_dist = {0, 0},
 				})
 			elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then
@@ -2548,6 +2564,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			--get anim data
 			if getAnim then
 				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
+				start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face2', '', true)
 			end
 			--cell selected or select screen timer reached 0
 			if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1)) then
@@ -3123,6 +3140,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 			ref = ref,
 			anim = motif.victory_screen['p' .. paramSide .. '_member' .. #t + 1 .. '_anim'] or motif.victory_screen['p' .. paramSide .. '_anim'],
 			anim_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '', '', true, {9000, 1}),
+			face2_data = start.f_animGet(ref, paramSide, #t + 1, motif.victory_screen, '_face2', '', true),
 			slide_dist = {0, 0},
 		})
 		t_matchList[ref] = (t_matchList[ref] or 0) + 1

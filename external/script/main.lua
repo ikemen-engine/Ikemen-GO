@@ -1378,69 +1378,77 @@ main.f_loadingRefresh(main.txt_loading)
 main.timeFramesPerCount = framespercount()
 main.f_updateRoundsNum()
 
---generate preload list
-local t_preloadAnim = {}
-local t_preloadSpr = {}
-local t_preload = {
-	--select_info
-	{typ = 'canim', arg = {motif.select_info.portrait_anim}},
-	{typ = 'cspr', arg = motif.select_info.portrait_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_anim}},
-	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_anim}},
-	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim}},
-	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim}},
-	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
-	--vs_screen
-	{typ = 'canim', arg = {motif.vs_screen.p1_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p1_done_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p1_done_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_done_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p2_done_spr},
-	--victory_screen
-	{typ = 'canim', arg = {motif.victory_screen.p1_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
-	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
-}
+-- generate preload character spr/anim list
+local t_preloadList = {}
+local function f_preloadList(v)
+	if v == nil then
+		return
+	end
+	-- sprite
+	if type(v) == 'table' then
+		if #v >= 2 and v[1] >= 0 and not t_preloadList[tostring(v[1]) .. ',' .. tostring(v[2])] then
+			preloadListChar(v[1], v[2])
+			t_preloadList[tostring(v[1]) .. ',' .. tostring(v[2])] = true
+		end
+	-- anim
+	elseif v >= 0 and not t_preloadList[v] then
+		preloadListChar(v)
+		t_preloadList[v] = true
+	end
+end
+f_preloadList(motif.select_info.portrait_anim)
+f_preloadList(motif.select_info.portrait_spr)
+f_preloadList(motif.select_info.p1_face_anim)
+f_preloadList(motif.select_info.p1_face_spr)
+f_preloadList(motif.select_info.p2_face_anim)
+f_preloadList(motif.select_info.p2_face_spr)
+f_preloadList(motif.select_info.p1_face_done_anim)
+f_preloadList(motif.select_info.p1_face_done_spr)
+f_preloadList(motif.select_info.p2_face_done_anim)
+f_preloadList(motif.select_info.p2_face_done_spr)
+f_preloadList(motif.select_info.p1_face2_anim)
+f_preloadList(motif.select_info.p1_face2_spr)
+f_preloadList(motif.select_info.p2_face2_anim)
+f_preloadList(motif.select_info.p2_face2_spr)
+f_preloadList(motif.vs_screen.p1_anim)
+f_preloadList(motif.vs_screen.p1_spr)
+f_preloadList(motif.vs_screen.p2_anim)
+f_preloadList(motif.vs_screen.p2_spr)
+f_preloadList(motif.vs_screen.p1_done_anim)
+f_preloadList(motif.vs_screen.p1_done_spr)
+f_preloadList(motif.vs_screen.p2_done_anim)
+f_preloadList(motif.vs_screen.p2_done_spr)
+f_preloadList(motif.vs_screen.p1_face2_anim)
+f_preloadList(motif.vs_screen.p1_face2_spr)
+f_preloadList(motif.vs_screen.p2_face2_anim)
+f_preloadList(motif.vs_screen.p2_face2_spr)
+f_preloadList(motif.victory_screen.p1_anim)
+f_preloadList(motif.victory_screen.p1_spr)
+f_preloadList(motif.victory_screen.p2_anim)
+f_preloadList(motif.victory_screen.p2_spr)
+f_preloadList(motif.victory_screen.p1_face2_anim)
+f_preloadList(motif.victory_screen.p1_face2_spr)
+f_preloadList(motif.victory_screen.p2_face2_anim)
+f_preloadList(motif.victory_screen.p2_face2_spr)
+f_preloadList(motif.hiscore_info.item_face_anim)
+f_preloadList(motif.hiscore_info.item_face_spr)
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim']}})
-			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim']}})
-			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr'])
 		end
 	end
 end
-for _, t in ipairs(t_preload) do
-	if t.arg ~= nil and t.arg[1] ~= nil and t.arg[1] >= 0 then
-		if t.typ == 'canim' then
-			t_preloadAnim[t.arg[1]] = t.arg[1]
-		else
-			t_preloadSpr[t.arg[1] .. ',' .. t.arg[2]] = {t.arg[1], t.arg[2]}
-		end
-	end
+
+-- generate preload stage spr/anim list
+if #motif.select_info.stage_portrait_spr >= 2 and motif.select_info.stage_portrait_spr[1] >= 0 then
+	preloadListStage(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
-for _, v in pairs(t_preloadAnim) do
-	preloadList('canim', v)
-end
-for _, v in pairs(t_preloadSpr) do
-	preloadList('cspr', v[1], v[2])
-end
-if #motif.select_info.stage_portrait_spr > 0 and motif.select_info.stage_portrait_spr[1] ~= -1 then
-	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
-end
-if motif.select_info.stage_portrait_anim ~= -1 then
-	preloadList('sanim', motif.select_info.stage_portrait_anim)
+if motif.select_info.stage_portrait_anim >= 0 then
+	preloadListStage(motif.select_info.stage_portrait_anim)
 end
 
 --warning display
