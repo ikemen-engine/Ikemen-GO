@@ -1727,7 +1727,12 @@ func readLifeBarRound(is IniSection,
 	for i := 0; i < 2; i++ {
 		var ok bool
 		//win
-		if _, ok = is[fmt.Sprintf("p%v.win.text", i+1)]; ok {
+		if _, ok = is[fmt.Sprintf("p%v.win.text", i+1)]; !ok {
+			if _, ok = is[fmt.Sprintf("p%v.win.spr", i+1)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win.anim", i+1)]
+			}
+		}
+		if ok {
 			ro.win[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win.", i+1), is, sff, at, 1, f)
 		} else {
 			ro.win[i] = *ReadAnimTextSnd("win.", is, sff, at, 1, f)
