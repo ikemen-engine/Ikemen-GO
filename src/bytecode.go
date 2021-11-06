@@ -5702,7 +5702,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.customDefense = exp[0].evalF(c)
+			crun.customDefense = 1 / exp[0].evalF(c)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7590,7 +7590,61 @@ const (
 	createPlatform_size
 	createPlatform_offset
 	createPlatform_activeTime
+	createPlatform_redirectid
 )
+
+// The createPlatform bytecode function.
+func (sc createPlatform) Run(schara *Char, _ []int32) bool {
+	var chara = schara
+	var customOffset = false
+	var plat = Platform{
+		anim:       -1,
+		pos:        [2]float32{0, 0},
+		size:       [2]int32{0, 0},
+		offset:     [2]int32{0, 0},
+		activeTime: -1,
+	}
+
+	StateControllerBase(sc).run(schara, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+			case createPlatform_id:
+				plat.id = exp[0].evalI(schara)
+			case createPlatform_name:
+				plat.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			case createPlatform_pos:
+				plat.pos[0] = exp[0].evalF(schara)
+				plat.pos[1] = exp[1].evalF(schara)
+			case createPlatform_size:
+				plat.size[0] = exp[0].evalI(schara)
+				plat.size[1] = exp[1].evalI(schara)
+			case createPlatform_offset:
+				customOffset = true
+				plat.offset[0] = exp[0].evalI(schara)
+				plat.offset[1] = exp[1].evalI(schara)
+			case createPlatform_activeTime:
+				plat.activeTime = exp[0].evalI(schara)
+			case createPlatform_redirectid:
+				if rid := sys.playerID(exp[0].evalI(schara)); rid != nil {
+					chara = rid
+				} else {
+					return false
+				}
+		}
+		return true
+	})
+	
+	if customOffset == false {
+		if plat.size[0] != 0 {
+			plat.offset[0] = plat.size[0] / 2
+		}
+		if plat.size[1] != 0 {
+			plat.offset[1] = plat.size[1] / 2
+		}
+	}
+	plat.ownerID = chara.id
+
+	return false
+}
 
 type removePlatform StateControllerBase
 
