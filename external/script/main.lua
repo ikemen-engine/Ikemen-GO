@@ -369,11 +369,37 @@ end
 
 main.font = {}
 main.font_def = {}
+
+--hooks for existing lua functions, to make it easier to insert things into other functions.
+hook = {
+	lists = {}
+}
+
+function hook.add(list,name,func)
+	if hook.lists[list] == nil then
+		hook.lists[list] = {}
+	end
+	hook.lists[list][name] = func
+end
+
+function hook.run(list,...)
+	if hook.lists[list] then
+		for i,k in pairs(hook.lists[list]) do
+			k(...)
+		end
+	end
+end
+
+function hook.stop(list,name)
+	hook.lists[list][name] = nil
+end
+
 text = {}
 color = {}
 rect = {}
 --create text
 function text:create(t)
+	local t = t or {}
 	t.font = t.font or -1
 	t.bank = t.bank or 0
 	t.align = t.align or 0
@@ -418,44 +444,69 @@ function text:create(t)
 	return t
 end
 
+text.new = text.create
+
+function text:setAlign(align)
+
+	if align:lower() == "left" then
+		self.align = -1
+	elseif align:lower() == "center" or align:lower() == "middle" then
+		self.align = 0
+	elseif align:lower() == "right" then
+		self.align = 1
+	end
+	textImgSetAlign(self.ti,self.align)
+	return self
+
+end
+
 --update text
 function text:update(t)
-	local ok = false
-	local fontChange = false
-	for k, v in pairs(t) do
-		if self[k] ~= v then
-			if k == 'font' or k == 'height' then
-				fontChange = true
+	if type(t) == "table" then
+		local ok = false
+		local fontChange = false
+		for k, v in pairs(t) do
+			if self[k] ~= v then
+				if k == 'font' or k == 'height' then
+					fontChange = true
+				end
+				self[k] = v
+				ok = true
 			end
-			self[k] = v
-			ok = true
 		end
+		if not ok then return end
+		if fontChange and self.font ~= -1 then
+			if main.font[self.font .. self.height] == nil then
+				main.font[self.font .. self.height] = fontNew(self.font, self.height)
+			end
+			if main.font_def[self.font .. self.height] == nil then
+				main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
+			end
+			textImgSetFont(self.ti, main.font[self.font .. self.height])
+		end
+		textImgSetBank(self.ti, self.bank)
+		textImgSetAlign(self.ti, self.align)
+		textImgSetText(self.ti, self.text)
+		textImgSetColor(self.ti, self.r, self.g, self.b)
+		if self.defsc then main.f_disableLuaScale() end
+		textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
+		textImgSetScale(self.ti, self.scaleX, self.scaleY)
+		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
+		if self.defsc then main.f_setLuaScale() end
+	else
+		self.text = t
+		textImgSetText(self.ti, self.text)
 	end
-	if not ok then return end
-	if fontChange and self.font ~= -1 then
-		if main.font[self.font .. self.height] == nil then
-			main.font[self.font .. self.height] = fontNew(self.font, self.height)
-		end
-		if main.font_def[self.font .. self.height] == nil then
-			main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
-		end
-		textImgSetFont(self.ti, main.font[self.font .. self.height])
-	end
-	textImgSetBank(self.ti, self.bank)
-	textImgSetAlign(self.ti, self.align)
-	textImgSetText(self.ti, self.text)
-	textImgSetColor(self.ti, self.r, self.g, self.b)
-	if self.defsc then main.f_disableLuaScale() end
-	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
-	textImgSetScale(self.ti, self.scaleX, self.scaleY)
-	textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
-	if self.defsc then main.f_setLuaScale() end
+
+	return self
 end
 
 --draw text
 function text:draw()
 	if self.font == -1 then return end
 	textImgDraw(self.ti)
+
+	return self
 end
 
 --create color
@@ -530,6 +581,7 @@ end
 
 --create rect
 function rect:create(t)
+	local t = t or {}
 	t.x1 = t.x1 or 0
 	t.y1 = t.y1 or 0
 	t.x2 = t.x2 or 0
@@ -542,6 +594,8 @@ function rect:create(t)
 	return t
 end
 
+rect.new = rect.create
+
 --modify rect
 function rect:update(t)
 	for i, k in pairs(t) do
@@ -550,6 +604,8 @@ function rect:update(t)
 	if t.r or t.g or t.b or t.src or t.dst then
 		self.color = color:new(t.r or self.r, t.g or self.g, t.b or self.b, t.src or self.src, t.dst or self.dst)
 	end
+
+	return self
 end
 
 --draw rect
@@ -557,6 +613,8 @@ function rect:draw()
 	if self.defsc then main.f_disableLuaScale() end
 	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst)
 	if self.defsc then main.f_setLuaScale() end
+
+	return self
 end
 
 --create textImg based on usual motif parameters
@@ -3965,7 +4023,7 @@ end
 for _, v in ipairs(config.Modules) do
 	table.insert(t_modules, v)
 end
-if motif.module ~= '' then table.insert(t_modules, motif.module) end
+if motif.files.module ~= '' then table.insert(t_modules, motif.files.module) end
 for _, v in ipairs(t_modules) do
 	print('Loading module: ' .. v)
 	v = v:gsub('^%s*[%./\\]*', '')
