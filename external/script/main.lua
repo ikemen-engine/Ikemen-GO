@@ -382,9 +382,9 @@ function hook.add(list,name,func)
 	hook.lists[list][name] = func
 end
 
-function hook.run(list,...)
+function hook.run(list, ...)
 	if hook.lists[list] then
-		for i,k in pairs(hook.lists[list]) do
+		for i, k in pairs(hook.lists[list]) do
 			k(...)
 		end
 	end
@@ -446,8 +446,8 @@ end
 
 text.new = text.create
 
+--align text
 function text:setAlign(align)
-
 	if align:lower() == "left" then
 		self.align = -1
 	elseif align:lower() == "center" or align:lower() == "middle" then
@@ -457,7 +457,6 @@ function text:setAlign(align)
 	end
 	textImgSetAlign(self.ti,self.align)
 	return self
-
 end
 
 --update text
@@ -505,7 +504,6 @@ end
 function text:draw()
 	if self.font == -1 then return end
 	textImgDraw(self.ti)
-
 	return self
 end
 
@@ -604,7 +602,6 @@ function rect:update(t)
 	if t.r or t.g or t.b or t.src or t.dst then
 		self.color = color:new(t.r or self.r, t.g or self.g, t.b or self.b, t.src or self.src, t.dst or self.dst)
 	end
-
 	return self
 end
 
@@ -613,7 +610,6 @@ function rect:draw()
 	if self.defsc then main.f_disableLuaScale() end
 	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst)
 	if self.defsc then main.f_setLuaScale() end
-
 	return self
 end
 
