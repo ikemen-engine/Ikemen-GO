@@ -1523,7 +1523,6 @@
 	;menu.itemname.players = "Players"
 	;menu.itemname.debugkeys = "Debug Keys"
 	;menu.itemname.debugmode = "Debug Mode"
-	;menu.itemname.backgroundloading = "Background Loading"
 	;menu.itemname.helpermax = "HelperMax"
 	;menu.itemname.projectilemax = "PlayerProjectileMax"
 	;menu.itemname.explodmax = "ExplodMax"
