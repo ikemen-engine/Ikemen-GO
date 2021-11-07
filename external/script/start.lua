@@ -1943,7 +1943,7 @@ function start.f_selectScreen()
 		-- first we insert all entries existing in screenpack file in correct order
 		for _, name in ipairs(main.f_tableExists(main.t_sort.select_info).teammenu) do
 			for k, v in ipairs(t) do
-				if v.insert and name == v.itemname or name == gamemode() .. '_' .. v.itemname then
+				if v.insert and (name == v.itemname or name == gamemode() .. '_' .. v.itemname) then
 					table.insert(t_teamMenu[side], v)
 					v.insert = false
 					break
