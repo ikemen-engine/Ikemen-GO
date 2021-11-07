@@ -3105,8 +3105,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.setPos(c)
 				})
 			case explod_space:
-				sp := Space(exp[0].evalI(c))
-				eachExpl(func(e *Explod) { e.space = sp })
+				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+					sp := Space(exp[0].evalI(c))
+					eachExpl(func(e *Explod) { e.space = sp })
+				}
 			case explod_velocity:
 				x := exp[0].evalF(c) * lclscround
 				eachExpl(func(e *Explod) { e.velocity[0] = x })
@@ -3197,12 +3199,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
-				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-				if anim != nil && exp[0].evalB(c) { // ffx
-					anim.start_scale[0] /= crun.localscl
-					anim.start_scale[1] /= crun.localscl
+				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+					if anim != nil && exp[0].evalB(c) { // ffx
+						anim.start_scale[0] /= crun.localscl
+						anim.start_scale[1] /= crun.localscl
+					}
+					eachExpl(func(e *Explod) { e.anim = anim })
 				}
-				eachExpl(func(e *Explod) { e.anim = anim })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -3213,8 +3217,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
 			case explod_ignorehitpause:
-				ihp := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+					ihp := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+				}
 			case explod_bindid:
 				bId := exp[0].evalI(c)
 				if bId == -1 {
@@ -5699,7 +5705,11 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.customDefense = 1 / exp[0].evalF(c)
+			if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+				crun.customDefense = exp[0].evalF(c)
+			} else {
+				crun.customDefense = 1 / exp[0].evalF(c)
+			}
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

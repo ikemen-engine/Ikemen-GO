@@ -1460,6 +1460,7 @@ type CharGlobalInfo struct {
 	remapPreset      map[string]RemapPreset
 	remappedpal      [2]int32
 	localcoord       [2]float32
+	ikemenver        [3]uint16
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
