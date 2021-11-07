@@ -4616,13 +4616,13 @@ func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
 	var hs *HitScale
 	var ahs *HitScale
 	var heal = false
-	var retDamage = baseDamage
 
 	// Check if we are healing.
 	if baseDamage < 0 {
 		baseDamage *= -1
 		heal = true
 	}
+	var retDamage = baseDamage
 
 	// Get the values we want to scale.
 	if t, ok := c.nextHitScale[id]; ok && t[index].active {
