@@ -1446,9 +1446,6 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 							for i, win := range w {
 								if win {
 									s.lifebar.wi[i].add(s.winType[i])
-									if s.matchOver() && s.wins[i] > s.wins[^i&1] {
-										s.lifebar.wc[i].wins += 1
-									}
 								}
 							}
 						} else {
