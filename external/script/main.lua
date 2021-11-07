@@ -671,6 +671,9 @@ end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y, f, instant)
+	if a == nil then
+		return
+	end
 	if x ~= nil then animSetPos(a, x, y) end
 	if f ~= nil then animSetFacing(a, f) end
 	animDraw(a)
