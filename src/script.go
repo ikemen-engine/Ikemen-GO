@@ -947,10 +947,6 @@ func systemScriptInit(l *lua.LState) {
 
 			// If not restarting match
 			if winp != -2 {
-				// Update lifebar win count
-				if winp > 0 {
-					sys.lifebar.wc[winp - 1].wins += 1
-				}
 				// Cleanup
 				var ti int32
 				tbl_time := l.NewTable()
