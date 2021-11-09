@@ -2629,9 +2629,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					t_dirs = {'F', 'B', 'U', 'D'}
 				end
 				for _, v in ipairs(t_dirs) do
-					local selXOld, selYOld = start.c[player].selX, start.c[player].selY
-					start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player, '_cursor_move_snd'), v)
-					if start.c[player].selX ~= selXOld or start.c[player].selY ~= selYOld then
+					local selX, selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player, '_cursor_move_snd'), v)
+					if start.t_grid[selY + 1][selX + 1].char ~= nil and (selX ~= start.c[player].selX or selY ~= start.c[player].selY) then
+						start.c[player].selX, start.c[player].selY = selX, selY
 						break
 					end
 				end
