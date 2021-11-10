@@ -5709,8 +5709,10 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 		case defenceMulSet_value:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				crun.customDefense = exp[0].evalF(c)
+				crun.defenseMulDelay = false
 			} else {
 				crun.customDefense = 1 / exp[0].evalF(c)
+				crun.defenseMulDelay = true
 			}
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

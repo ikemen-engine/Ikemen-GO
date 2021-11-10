@@ -151,6 +151,7 @@ type HealthBar struct {
 	warn       AnimLayout
 	warn_range [2]int32
 	value      LbText
+	toplife    float32
 	oldlife    float32
 	midlife    float32
 	midlifeMin float32
@@ -224,6 +225,11 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	var redVal int32 = sys.chars[ref][0].redLife
 	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
 
+	if hb.toplife > life {
+		hb.toplife += (life - hb.toplife) / 2
+	} else {
+		hb.toplife = life
+	}
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
 	if !hb.mid_freeze && getHit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
@@ -322,7 +328,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	if len(hb.mid.anim.frames) == 0 || life > hbr.midlife {
 		life = hbr.midlife
 	}
-	lr, mr, rr := width(life), width(hbr.midlife), width(redlife)
+	lr, mr, rr := width(hbr.toplife), width(hbr.midlife), width(redlife)
 	if hb.range_x[0] < hb.range_x[1] {
 		mr[0] += lr[2]
 		//rr[0] += lr[2]

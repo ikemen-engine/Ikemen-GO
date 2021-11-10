@@ -1542,6 +1542,7 @@ type CharSystemVar struct {
 	fallDefenseMul  float32
 	customDefense   float32
 	finalDefense    float64
+	defenseMulDelay bool
 
 	counterHit   bool
 	firstAttack  bool
@@ -1708,6 +1709,7 @@ func (c *Char) clear1() {
 	c.superDefenseMul = 1
 	c.fallDefenseMul = 1
 	c.customDefense = 1
+	c.defenseMulDelay = false
 	c.key = -1
 	c.id = -1
 	c.helperId = 0
@@ -1791,6 +1793,7 @@ func (c *Char) clearCachedData() {
 	c.superDefenseMul = 1
 	c.fallDefenseMul = 1
 	c.customDefense = 1
+	c.defenseMulDelay = false
 	c.ownpal = true
 	c.animPN = -1
 	c.animNo = 0
@@ -5481,7 +5484,11 @@ func (c *Char) update(cvmin, cvmax,
 		}
 		hitScaletimeAdvance(c.defaultHitScale)
 	}
-	c.finalDefense = float64(((float32(c.gi().data.defence) * c.customDefense * c.superDefenseMul * c.fallDefenseMul) / 100))
+	var customDefense float32 = 1
+	if !c.defenseMulDelay || c.ss.moveType == MT_H {
+		customDefense = c.customDefense
+	}
+	c.finalDefense = float64(((float32(c.gi().data.defence) * customDefense * c.superDefenseMul * c.fallDefenseMul) / 100))
 	if sys.tickNextFrame() {
 		c.pushed = false
 	}
