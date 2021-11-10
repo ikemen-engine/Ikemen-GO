@@ -2967,7 +2967,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.sprpriority = 0
 			}
 		case explod_under:
-			if !e.ontop && (c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0) {
+			if !e.ontop && (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) {
 				e.under = exp[0].evalB(c)
 			}
 		case explod_shadow:
@@ -3105,7 +3105,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.setPos(c)
 				})
 			case explod_space:
-				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					sp := Space(exp[0].evalI(c))
 					eachExpl(func(e *Explod) { e.space = sp })
 				}
@@ -3166,7 +3166,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				})
 			case explod_under:
-				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					t := exp[0].evalB(c)
 					eachExpl(func(e *Explod) {
 						e.under = t
@@ -3201,7 +3201,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
-				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
 					if anim != nil && exp[0].evalB(c) { // ffx
 						anim.start_scale[0] /= crun.localscl
@@ -3219,7 +3219,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
 			case explod_ignorehitpause:
-				if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					ihp := exp[0].evalB(c)
 					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
 				}
@@ -5707,7 +5707,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			if c.gi().ikemenver[0] > 0 || c.gi().ikemenver[1] > 0 {
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				crun.customDefense = exp[0].evalF(c)
 			} else {
 				crun.customDefense = 1 / exp[0].evalF(c)
