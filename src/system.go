@@ -92,6 +92,7 @@ var sys = System{
 	maxBgmVolume:         100,
 	stereoEffects:        true,
 	panningRange:         30,
+	windowCentered:       true,
 }
 
 type TeamMode int32
@@ -357,6 +358,7 @@ type System struct {
 	maxBgmVolume    int
 	stereoEffects   bool
 	panningRange    float32
+	windowCentered  bool
 }
 
 type Window struct {
@@ -389,7 +391,9 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
-		window.SetPos(x, y)
+		if s.windowCentered {
+			window.SetPos(x, y)
+		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
 	window.MakeContextCurrent()

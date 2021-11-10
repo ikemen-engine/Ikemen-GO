@@ -267,6 +267,7 @@ type configSettings struct {
 	VolumeMaster               int
 	VolumeSfx                  int
 	VRetrace                   int
+	WindowCentered             bool
 	WindowIcon                 []string
 	WindowTitle                string
 	XinputTriggerSensitivity   float32
@@ -401,7 +402,8 @@ func setupConfig() configSettings {
 	"VolumeBgm": 80,
 	"VolumeMaster": 80,
 	"VolumeSfx": 80,
-	"VRetrace": 1, 
+	"VRetrace": 1,
+	"WindowCentered": true,
 	"WindowIcon": [
 		"external/icons/IkemenCylia_256.png",
 		"external/icons/IkemenCylia_96.png",
@@ -684,6 +686,7 @@ func setupConfig() configSettings {
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
 	sys.wavVolume = tmp.VolumeSfx
+	sys.windowCentered = tmp.WindowCentered
 	sys.windowMainIconLocation = tmp.WindowIcon
 	sys.windowTitle = tmp.WindowTitle
 	sys.xinputTriggerSensitivity = tmp.XinputTriggerSensitivity
