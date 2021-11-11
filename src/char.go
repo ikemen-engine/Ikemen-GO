@@ -5324,7 +5324,7 @@ func (c *Char) action() {
 		c.ghv.hitpower = 0
 		c.ghv.guardpower = 0
 		if c.ghv.redlife != 0 {
-			if c.ss.moveType == MT_H && !c.scf(SCF_guard) {
+			if c.ss.moveType == MT_H && !c.inGuardState() {
 				c.redLifeAdd(float64(c.ghv.redlife), true)
 			}
 			c.ghv.redlife = 0
