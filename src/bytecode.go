@@ -2967,7 +2967,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.sprpriority = 0
 			}
 		case explod_under:
-			if !e.ontop && (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) {
+			if !e.ontop {
 				e.under = exp[0].evalB(c)
 			}
 		case explod_shadow:
@@ -3166,15 +3166,13 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				})
 			case explod_under:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					t := exp[0].evalB(c)
-					eachExpl(func(e *Explod) {
-						e.under = t
-						if e.under && e.ontop {
-							e.ontop = false
-						}
-					})
-				}
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					e.under = t
+					if e.under && e.ontop {
+						e.ontop = false
+					}
+				})
 			case explod_shadow:
 				r := exp[0].evalI(c)
 				eachExpl(func(e *Explod) { e.shadow[0] = r })
