@@ -1525,7 +1525,7 @@ function options.f_keyDefault()
 		if i == 1 then
 			btns = {up = 'UP', down = 'DOWN', left = 'LEFT', right = 'RIGHT', a = 'z', b = 'x', c = 'c', x = 'a', y = 's', z = 'd', start = 'RETURN', d = 'q', w = 'w'}
 		elseif i == 2 then
-			btns = {up = 'i', down = 'k', left = 'j', right = 'l', a = 'f', b = 'g', c = 'h', x = 'r', y = 't', z = 'y', start = 'RSHIFT', d = 'LEFTBRACKET', w = 'RIGHTBRACKET'}
+			btns = {up = 'i', down = 'k', left = 'j', right = 'l', a = 'f', b = 'g', c = 'h', x = 'r', y = 't', z = 'y', start = 'RSHIFT', d = 'LBRACKET', w = 'RBRACKET'}
 		else
 			btns = {}
 		end

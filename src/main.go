@@ -448,8 +448,8 @@ func setupConfig() configSettings {
 				"t",
 				"y",
 				"RSHIFT",
-				"LEFTBRACKET",
-				"RIGHTBRACKET",
+				"LBRACKET",
+				"RBRACKET",
 				"Not used"
 			]
 		},

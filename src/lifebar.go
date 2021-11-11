@@ -225,10 +225,10 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	var redVal int32 = sys.chars[ref][0].redLife
 	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
 
-	if hb.toplife > life {
-		hb.toplife += (life - hb.toplife) / 2
+	if hbr.toplife > life {
+		hbr.toplife += (life - hbr.toplife) / 2
 	} else {
-		hb.toplife = life
+		hbr.toplife = life
 	}
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
