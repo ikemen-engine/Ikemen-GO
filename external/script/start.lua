@@ -540,7 +540,7 @@ function start.f_setStage(num, assigned)
 end
 
 --sets music
-function start.f_setMusic(num, path)
+function start.f_setMusic(num, data)
 	start.t_music = {music = {}, musicalt = {}, musiclife = {}, musicvictory = {}}
 	local side = 2
 	for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
@@ -549,23 +549,29 @@ function start.f_setMusic(num, path)
 		local volume = 100
 		local loopstart = 0
 		local loopend = 0
-		if not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then --game modes other than demo (or demo with stage BGM param enabled)
-			if (main.charparam.music or (v == 'musicvictory' and main.victoryScreen)) and start.f_getCharData(start.p[side].t_selected[1].ref)[v] ~= nil then --music assigned as character param
+		-- music assigned by launchFight
+		if data[v] ~= nil then
+			music = data[v][1] or music
+			volume = data[v][2] or volume
+			loopstart = data[v][3] or loopstart
+			loopend = data[v][4] or loopend
+		-- game modes other than demo (or demo with stage BGM param enabled)
+		elseif not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then
+			-- music assigned as character param
+			if (main.charparam.music or (v == 'musicvictory' and main.victoryScreen)) and start.f_getCharData(start.p[side].t_selected[1].ref)[v] ~= nil then
 				track = math.random(1, #start.f_getCharData(start.p[side].t_selected[1].ref)[v])
 				music = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmusic
 				volume = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmvolume
 				loopstart = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopstart
 				loopend = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopend
-			elseif main.t_selStages[num] ~= nil and main.t_selStages[num][v] ~= nil then --music assigned as stage param
+			-- music assigned as stage param
+			elseif main.t_selStages[num] ~= nil and main.t_selStages[num][v] ~= nil then
 				track = math.random(1, #main.t_selStages[num][v])
 				music = main.t_selStages[num][v][track].bgmusic
 				volume = main.t_selStages[num][v][track].bgmvolume
 				loopstart = main.t_selStages[num][v][track].bgmloopstart
 				loopend = main.t_selStages[num][v][track].bgmloopend
 			end
-		end
-		if (v == 'music' or v == 'musicalt') and path ~= nil then
-			music = path
 		end
 		if music ~= '' or v == 'music' then
 			if v == 'musicvictory' then
@@ -1658,7 +1664,18 @@ function launchFight(data)
 		t.p2numratio = data.p2numratio or {}
 		t.p2rounds = data.p2rounds or nil
 		t.exclude = data.exclude or {}
-		t.music = data.music or nil
+		t.musicData = {}
+		for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
+			if data[v] ~= nil then
+				t.musicData[v] = {}
+				-- old syntax with only string argument maintained for backward compatibility with previous builds
+				if type(data[v]) == "string" then
+					table.insert(t.musicData[v], data[v])
+				elseif type(data[v]) == "table" then
+					t.musicData[v] = data[v]
+				end
+			end
+		end
 		t.stage = data.stage or ''
 		t.ai = data.ai or nil
 		t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
@@ -1801,7 +1818,7 @@ function launchFight(data)
 		start.f_remapAI(t.ai)
 		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
 		t.stageNo = start.f_setStage(t.stageNo, t.stage ~= '' or continue() or loopCount > 0)
-		start.f_setMusic(t.stageNo, t.music)
+		start.f_setMusic(t.stageNo, t.musicData)
 		if not start.f_selectVersus(t.vsscreen, t.orderselect) then break end
 		start.f_selectLoading()
 		start.f_overrideCharData()
