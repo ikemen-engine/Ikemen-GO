@@ -541,6 +541,7 @@ end
 
 --sets music
 function start.f_setMusic(num, data)
+	local data = data or {}
 	start.t_music = {music = {}, musicalt = {}, musiclife = {}, musicvictory = {}}
 	local side = 2
 	for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
