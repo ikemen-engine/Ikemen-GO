@@ -270,13 +270,37 @@ function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 end
 
 menu.t_vardisplayPointers = {}
+-- menu.t_vardisplay is a table storing functions returning setting values rendered alongside option name.
+-- It can be appended via external module, without conflicting with default scripts.
+menu.t_vardisplay = {
+	['dummycontrol'] = function()
+		return menu.t_valuename.dummycontrol[menu.dummycontrol or 1].displayname 
+	end,
+	['ailevel'] = function()
+		return menu.t_valuename.ailevel[menu.ailevel or config.Difficulty].displayname 
+	end,
+	['guardmode'] = function()
+		return menu.t_valuename.guardmode[menu.guardmode or 1].displayname 
+	end,
+	['dummymode'] = function()
+		return menu.t_valuename.dummymode[menu.dummymode or 1].displayname 
+	end,
+	['distance'] = function()
+		return menu.t_valuename.distance[menu.distance or 1].displayname 
+	end,
+	['buttonjam'] = function()
+		return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname 
+	end,
+}
+
+-- setting value string rendered alongside option name
 function menu.f_vardisplay(itemname)
-	if itemname == 'dummycontrol' then return menu.t_valuename.dummycontrol[menu.dummycontrol or 1].displayname end
-	if itemname == 'ailevel' then return menu.t_valuename.ailevel[menu.ailevel or config.Difficulty].displayname end
-	if itemname == 'guardmode' then return menu.t_valuename.guardmode[menu.guardmode or 1].displayname end
-	if itemname == 'dummymode' then return menu.t_valuename.dummymode[menu.dummymode or 1].displayname end
-	if itemname == 'distance' then return menu.t_valuename.distance[menu.distance or 1].displayname end
-	if itemname == 'buttonjam' then return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname end
+	if menu.t_vardisplay[itemname] ~= nil then
+		return menu.t_vardisplay[itemname]()
+	end
+	if options.t_vardisplay[itemname] ~= nil then
+		return options.t_vardisplay[itemname]()
+	end
 	return ''
 end
 
