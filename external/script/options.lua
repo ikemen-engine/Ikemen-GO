@@ -1193,6 +1193,16 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	--Save Settings
+	['savesettings'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+			if modified then
+				options.f_saveCfg(needReload)
+			end
+		end
+		return true
+	end,
 }
 --external shaders
 options.t_shaders = {}

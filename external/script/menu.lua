@@ -232,6 +232,12 @@ menu.t_itemname = {
 		return true
 	end,
 }
+-- append option screen settings
+for k, v in pairs(options.t_itemname) do
+	if menu.t_itemname[k] == nil then
+		menu.t_itemname[k] = v
+	end
+end
 
 function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 	return function()

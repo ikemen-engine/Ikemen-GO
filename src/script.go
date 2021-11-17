@@ -2151,10 +2151,12 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setVolumeMaster", func(l *lua.LState) int {
 		sys.masterVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeBgm", func(l *lua.LState) int {
 		sys.bgmVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeSfx", func(l *lua.LState) int {
