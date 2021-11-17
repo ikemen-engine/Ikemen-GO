@@ -1631,11 +1631,6 @@ function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, catego
 	return input
 end
 
-main.t_validParams = {
-	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, victoryscreen = true, rankdisplay = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
-	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
-}
-
 --add characters and stages using select.def
 function main.f_charParam(t, c)
 	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
@@ -1670,9 +1665,6 @@ function main.f_charParam(t, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-			if main.t_validParams.char[param] == nil and not param:match('maxmatches$') and not param:match('ratiomatches$') then
-				panicError("\nUnrecognized character parameter: " .. param)
-			end
 			t[param] = tonumber(value)
 			if t[param] == nil then
 				t[param] = value
@@ -1990,9 +1982,6 @@ for line in content:gmatch('[^\r\n]+') do
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-					if main.t_validParams.stage[param] == nil then
-						panicError("\nUnrecognized stage parameter: " .. param)
-					end
 					main.t_selStages[row][param] = tonumber(value)
 					--order (more than 1 order param can be set at the same time)
 					if param:match('order') then
