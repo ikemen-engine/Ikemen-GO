@@ -3,6 +3,9 @@ local menu = {}
 --;===========================================================
 --; PAUSE MENU
 --;===========================================================
+
+-- Associative elements table storing arrays with training menu option names.
+-- Can be appended via external module.
 menu.t_valuename = {
 	dummycontrol = {
 		{itemname = 'cooperative', displayname = motif.training_info.menu_valuename_dummycontrol_cooperative},
@@ -49,7 +52,11 @@ menu.t_valuename = {
 	},
 }
 
-local function f_valueChanged(t, m)
+-- Shared logic for training menu option change, returns 2 values:
+-- * boolean depending if option has changed (via right/left button press)
+-- * itemname read from t_valuename table based on currently active option
+--   (or nil, if there was no option change in this frame)
+function menu.f_valueChanged(t, m)
 	local valueitem = menu[t.itemname] or 1
 	local chk = valueitem
 	if main.f_input(main.t_players, {'$F'}) then
@@ -62,6 +69,7 @@ local function f_valueChanged(t, m)
 	elseif valueitem < 1 then
 		valueitem = #menu.t_valuename[t.itemname]
 	end
+	-- true upon option change
 	if chk ~= valueitem then
 		sndPlay(motif.files.snd_data, m.cursor_move_snd[1], m.cursor_move_snd[2])
 		t.vardisplay = menu.t_valuename[t.itemname][valueitem].displayname
@@ -72,7 +80,11 @@ local function f_valueChanged(t, m)
 	return false, nil
 end
 
+-- Current pause menu itemname for internal use (key from menu.t_itemname table)
 menu.itemname = ''
+
+-- Associative elements table storing functions controlling behaviour of each
+-- pause menu item. Can be appended via external module.
 menu.t_itemname = {
 	--Back
 	['back'] = function(t, item, cursorPosY, moveTxt, section)
@@ -91,7 +103,7 @@ menu.t_itemname = {
 	end,
 	--Dummy Control
 	['dummycontrol'] = function(t, item, cursorPosY, moveTxt, section)
-		local ok, name = f_valueChanged(t.items[item], motif[section])
+		local ok, name = menu.f_valueChanged(t.items[item], motif[section])
 		if ok then
 			if name == 'cooperative' or name == 'manual' then
 				player(2)
@@ -106,7 +118,7 @@ menu.t_itemname = {
 	end,
 	--AI Level
 	['ailevel'] = function(t, item, cursorPosY, moveTxt, section)
-		if f_valueChanged(t.items[item], motif[section]) then
+		if menu.f_valueChanged(t.items[item], motif[section]) then
 			if menu.t_valuename.dummycontrol[menu.dummycontrol or 1].itemname == 'ai' then
 				player(2)
 				setAILevel(menu.ailevel)
@@ -116,28 +128,28 @@ menu.t_itemname = {
 	end,
 	--Guard Mode
 	['guardmode'] = function(t, item, cursorPosY, moveTxt, section)
-		if f_valueChanged(t.items[item], motif[section]) then
+		if menu.f_valueChanged(t.items[item], motif[section]) then
 			charMapSet(2, '_iksys_trainingGuardMode', menu.guardmode - 1)
 		end
 		return true
 	end,
 	--Dummy Mode
 	['dummymode'] = function(t, item, cursorPosY, moveTxt, section)
-		if f_valueChanged(t.items[item], motif[section]) then
+		if menu.f_valueChanged(t.items[item], motif[section]) then
 			charMapSet(2, '_iksys_trainingDummyMode', menu.dummymode - 1)
 		end
 		return true
 	end,
 	--Distance
 	['distance'] = function(t, item, cursorPosY, moveTxt, section)
-		if f_valueChanged(t.items[item], motif[section]) then
+		if menu.f_valueChanged(t.items[item], motif[section]) then
 			charMapSet(2, '_iksys_trainingDistance', menu.distance - 1)
 		end
 		return true
 	end,
 	--Button Jam
 	['buttonjam'] = function(t, item, cursorPosY, moveTxt, section)
-		if f_valueChanged(t.items[item], motif[section]) then
+		if menu.f_valueChanged(t.items[item], motif[section]) then
 			charMapSet(2, '_iksys_trainingButtonJam', menu.buttonjam - 1)
 		end
 		return true
@@ -232,13 +244,15 @@ menu.t_itemname = {
 		return true
 	end,
 }
--- append option screen settings
+-- options.t_itemname table functions are also appended to this table, to make
+-- option screen settings logic accessible from within pause menu.
 for k, v in pairs(options.t_itemname) do
 	if menu.t_itemname[k] == nil then
 		menu.t_itemname[k] = v
 	end
 end
 
+-- Shared menu loop logic
 function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 	return function()
 		local t = tbl.items
@@ -276,8 +290,9 @@ function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 end
 
 menu.t_vardisplayPointers = {}
--- menu.t_vardisplay is a table storing functions returning setting values rendered alongside option name.
--- It can be appended via external module, without conflicting with default scripts.
+
+-- Associative elements table storing functions returning current setting values
+-- rendered alongside menu item name. Can be appended via external module.
 menu.t_vardisplay = {
 	['dummycontrol'] = function()
 		return menu.t_valuename.dummycontrol[menu.dummycontrol or 1].displayname 
@@ -299,7 +314,8 @@ menu.t_vardisplay = {
 	end,
 }
 
--- setting value string rendered alongside option name
+-- Returns setting value rendered alongside menu item name (calls appropriate
+-- function from menu or options t_vardisplay table)
 function menu.f_vardisplay(itemname)
 	if menu.t_vardisplay[itemname] ~= nil then
 		return menu.t_vardisplay[itemname]()
@@ -310,7 +326,8 @@ function menu.f_vardisplay(itemname)
 	return ''
 end
 
---dynamically generates all menus and submenus using itemname data stored in main.t_sort table
+-- Dynamically generates all menus and submenus, iterating over values stored in
+-- main.t_sort table (in order that they're present in system.def).
 for k, v in pairs(
 	{
 		{id = 'menu', section = 'menu_info', bgdef = 'menubgdef', txt_title = 'txt_title_menu'},
@@ -394,6 +411,8 @@ for k, v in pairs(
 	if main.debugLog then main.f_printTable(menu[v.id], 'debug/t_' .. v.id .. 'Menu.txt') end
 end
 
+-- Called from global.lua loop() function, at the start of first round, to reset
+-- training menu values and p2 settings for a new match
 function menu.f_trainingReset()
 	for k, _ in pairs(menu.t_valuename) do
 		menu[k] = 1

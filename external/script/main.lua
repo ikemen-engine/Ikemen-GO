@@ -370,18 +370,32 @@ end
 main.font = {}
 main.font_def = {}
 
---hooks for existing lua functions, to make it easier to insert things into other functions.
+-- Lua Hook System
+-- Allows hooking additional code into existing functions, from within external
+-- modules, without having to worry as much about your code being removed by
+-- engine update.
+-- * hook.run(list, ...): Runs all the functions within a certain list.
+--   It won't do anything if the list doesn't exist or is empty. ... is any
+--   number of arguments, which will be passed to every function in the list.
+-- * hook.add(list, name, function): Adds a function to a hook list with a name.
+--   It will replace anything in the list with the same name.
+-- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
+-- Currently there are only few hooks available by default, which are in the
+-- commonlua loop() function. These are:
+-- * loop.start: runs at the very beginning of the function
+-- * loop.dialog: runs when dialogue state controller is active
+-- * loop.[gamemode]#always: limited to specified gamemode (regardless of pause)
+-- * loop.pause: only runs when paused
+-- * loop.[gamemode]: limited to the specified gamemode when not paused
 hook = {
 	lists = {}
 }
-
-function hook.add(list,name,func)
+function hook.add(list, name, func)
 	if hook.lists[list] == nil then
 		hook.lists[list] = {}
 	end
 	hook.lists[list][name] = func
 end
-
 function hook.run(list, ...)
 	if hook.lists[list] then
 		for i, k in pairs(hook.lists[list]) do
@@ -389,8 +403,7 @@ function hook.run(list, ...)
 		end
 	end
 end
-
-function hook.stop(list,name)
+function hook.stop(list, name)
 	hook.lists[list][name] = nil
 end
 
