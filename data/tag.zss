@@ -326,11 +326,13 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		&& stateNo = [const(StateDownedGetHit_hitGroundFromFall), const(StateDownedGetHit_lyingDefeated)]
 	{
 		mapSet{map: "_iksys_tagActive"; value: 0}
+		# bring next team member
 		let partnerId = call fTagGetPartnerId(1);
 		if $partnerId > 0 {
 			lifebarAction{spr: const(MsgPartnerChange), 0}
 			mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
 			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
+			tagOut{}
 		}
 	}
 	# Red Life regeneration

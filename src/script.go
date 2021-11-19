@@ -1525,15 +1525,19 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
-	luaRegister(l, "preloadList", func(*lua.LState) int {
-		if strArg(l, 1) == "canim" {
-			sys.sel.charAnimPreload = append(sys.sel.charAnimPreload, int32(numArg(l, 2)))
-		} else if strArg(l, 1) == "cspr" {
-			sys.sel.charSpritePreload[[...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))}] = true
-		} else if strArg(l, 1) == "sanim" {
-			sys.sel.stageAnimPreload = append(sys.sel.stageAnimPreload, int32(numArg(l, 2)))
-		} else if strArg(l, 1) == "sspr" {
-			sys.sel.stageSpritePreload[[...]int16{int16(numArg(l, 2)), int16(numArg(l, 3))}] = true
+	luaRegister(l, "preloadListChar", func(*lua.LState) int {
+		if l.GetTop() >= 2 {
+			sys.sel.charSpritePreload[[...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}] = true
+		} else {
+			sys.sel.charAnimPreload = append(sys.sel.charAnimPreload, int32(numArg(l, 1)))
+		}
+		return 0
+	})
+	luaRegister(l, "preloadListStage", func(*lua.LState) int {
+		if l.GetTop() >= 2 {
+			sys.sel.stageSpritePreload[[...]int16{int16(numArg(l, 1)), int16(numArg(l, 2))}] = true
+		} else {
+			sys.sel.stageAnimPreload = append(sys.sel.stageAnimPreload, int32(numArg(l, 1)))
 		}
 		return 0
 	})
@@ -2159,10 +2163,12 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setVolumeMaster", func(l *lua.LState) int {
 		sys.masterVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeBgm", func(l *lua.LState) int {
 		sys.bgmVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeSfx", func(l *lua.LState) int {

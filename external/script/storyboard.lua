@@ -415,6 +415,16 @@ local function f_parse(path)
 	return t
 end
 
+function storyboard.f_preload(path)
+    path = path:gsub('\\', '/')
+    if storyboard.t_storyboard[path] ~= nil or not main.f_fileExists(path) then
+        return
+    end
+    main.f_disableLuaScale()
+    storyboard.t_storyboard[path] = f_parse(path)
+    main.f_setLuaScale()
+end
+
 function storyboard.f_storyboard(path, attract)
 	path = path:gsub('\\', '/')
 	if not main.f_fileExists(path) then

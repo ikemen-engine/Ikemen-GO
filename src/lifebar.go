@@ -151,6 +151,7 @@ type HealthBar struct {
 	warn       AnimLayout
 	warn_range [2]int32
 	value      LbText
+	toplife    float32
 	oldlife    float32
 	midlife    float32
 	midlifeMin float32
@@ -224,6 +225,12 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	//redlife := (float32(p.life) + float32(p.redLife)) / float32(p.lifeMax)
 	redVal := p.redLife
 	getHit := (p.fakeReceivedHits != 0 || p.ss.moveType == MT_H) && !p.scf(SCF_over)
+
+	if hbr.toplife > life {
+		hbr.toplife += (life - hbr.toplife) / 2
+	} else {
+		hbr.toplife = life
+	}
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
 	if !hb.mid_freeze && getHit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
@@ -323,7 +330,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	if len(hb.mid.anim.frames) == 0 || life > hbr.midlife {
 		life = hbr.midlife
 	}
-	lr, mr, rr := width(life), width(hbr.midlife), width(redlife)
+	lr, mr, rr := width(hbr.toplife), width(hbr.midlife), width(redlife)
 	if hb.range_x[0] < hb.range_x[1] {
 		mr[0] += lr[2]
 		//rr[0] += lr[2]
@@ -1735,7 +1742,12 @@ func readLifeBarRound(is IniSection,
 	for i := 0; i < 2; i++ {
 		var ok bool
 		//win
-		if _, ok = is[fmt.Sprintf("p%v.win.text", i+1)]; ok {
+		if _, ok = is[fmt.Sprintf("p%v.win.text", i+1)]; !ok {
+			if _, ok = is[fmt.Sprintf("p%v.win.spr", i+1)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win.anim", i+1)]
+			}
+		}
+		if ok {
 			ro.win[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win.", i+1), is, sff, at, 1, f)
 		} else {
 			ro.win[i] = *ReadAnimTextSnd("win.", is, sff, at, 1, f)

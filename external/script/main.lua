@@ -369,11 +369,50 @@ end
 
 main.font = {}
 main.font_def = {}
+
+-- Lua Hook System
+-- Allows hooking additional code into existing functions, from within external
+-- modules, without having to worry as much about your code being removed by
+-- engine update.
+-- * hook.run(list, ...): Runs all the functions within a certain list.
+--   It won't do anything if the list doesn't exist or is empty. ... is any
+--   number of arguments, which will be passed to every function in the list.
+-- * hook.add(list, name, function): Adds a function to a hook list with a name.
+--   It will replace anything in the list with the same name.
+-- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
+-- Currently there are only few hooks available by default, which are in the
+-- commonlua loop() function. These are:
+-- * loop.start: runs at the very beginning of the function
+-- * loop.dialog: runs when dialogue state controller is active
+-- * loop.[gamemode]#always: limited to specified gamemode (regardless of pause)
+-- * loop.pause: only runs when paused
+-- * loop.[gamemode]: limited to the specified gamemode when not paused
+hook = {
+	lists = {}
+}
+function hook.add(list, name, func)
+	if hook.lists[list] == nil then
+		hook.lists[list] = {}
+	end
+	hook.lists[list][name] = func
+end
+function hook.run(list, ...)
+	if hook.lists[list] then
+		for i, k in pairs(hook.lists[list]) do
+			k(...)
+		end
+	end
+end
+function hook.stop(list, name)
+	hook.lists[list][name] = nil
+end
+
 text = {}
 color = {}
 rect = {}
 --create text
 function text:create(t)
+	local t = t or {}
 	t.font = t.font or -1
 	t.bank = t.bank or 0
 	t.align = t.align or 0
@@ -418,44 +457,67 @@ function text:create(t)
 	return t
 end
 
+text.new = text.create
+
+--align text
+function text:setAlign(align)
+	if align:lower() == "left" then
+		self.align = -1
+	elseif align:lower() == "center" or align:lower() == "middle" then
+		self.align = 0
+	elseif align:lower() == "right" then
+		self.align = 1
+	end
+	textImgSetAlign(self.ti,self.align)
+	return self
+end
+
 --update text
 function text:update(t)
-	local ok = false
-	local fontChange = false
-	for k, v in pairs(t) do
-		if self[k] ~= v then
-			if k == 'font' or k == 'height' then
-				fontChange = true
+	if type(t) == "table" then
+		local ok = false
+		local fontChange = false
+		for k, v in pairs(t) do
+			if self[k] ~= v then
+				if k == 'font' or k == 'height' then
+					fontChange = true
+				end
+				self[k] = v
+				ok = true
 			end
-			self[k] = v
-			ok = true
 		end
+		if not ok then return end
+		if fontChange and self.font ~= -1 then
+			if main.font[self.font .. self.height] == nil then
+				main.font[self.font .. self.height] = fontNew(self.font, self.height)
+			end
+			if main.font_def[self.font .. self.height] == nil then
+				main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
+			end
+			textImgSetFont(self.ti, main.font[self.font .. self.height])
+		end
+		textImgSetBank(self.ti, self.bank)
+		textImgSetAlign(self.ti, self.align)
+		textImgSetText(self.ti, self.text)
+		textImgSetColor(self.ti, self.r, self.g, self.b)
+		if self.defsc then main.f_disableLuaScale() end
+		textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
+		textImgSetScale(self.ti, self.scaleX, self.scaleY)
+		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
+		if self.defsc then main.f_setLuaScale() end
+	else
+		self.text = t
+		textImgSetText(self.ti, self.text)
 	end
-	if not ok then return end
-	if fontChange and self.font ~= -1 then
-		if main.font[self.font .. self.height] == nil then
-			main.font[self.font .. self.height] = fontNew(self.font, self.height)
-		end
-		if main.font_def[self.font .. self.height] == nil then
-			main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
-		end
-		textImgSetFont(self.ti, main.font[self.font .. self.height])
-	end
-	textImgSetBank(self.ti, self.bank)
-	textImgSetAlign(self.ti, self.align)
-	textImgSetText(self.ti, self.text)
-	textImgSetColor(self.ti, self.r, self.g, self.b)
-	if self.defsc then main.f_disableLuaScale() end
-	textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
-	textImgSetScale(self.ti, self.scaleX, self.scaleY)
-	textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
-	if self.defsc then main.f_setLuaScale() end
+
+	return self
 end
 
 --draw text
 function text:draw()
 	if self.font == -1 then return end
 	textImgDraw(self.ti)
+	return self
 end
 
 --create color
@@ -530,6 +592,7 @@ end
 
 --create rect
 function rect:create(t)
+	local t = t or {}
 	t.x1 = t.x1 or 0
 	t.y1 = t.y1 or 0
 	t.x2 = t.x2 or 0
@@ -542,6 +605,8 @@ function rect:create(t)
 	return t
 end
 
+rect.new = rect.create
+
 --modify rect
 function rect:update(t)
 	for i, k in pairs(t) do
@@ -550,6 +615,7 @@ function rect:update(t)
 	if t.r or t.g or t.b or t.src or t.dst then
 		self.color = color:new(t.r or self.r, t.g or self.g, t.b or self.b, t.src or self.src, t.dst or self.dst)
 	end
+	return self
 end
 
 --draw rect
@@ -557,6 +623,7 @@ function rect:draw()
 	if self.defsc then main.f_disableLuaScale() end
 	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst)
 	if self.defsc then main.f_setLuaScale() end
+	return self
 end
 
 --create textImg based on usual motif parameters
@@ -617,6 +684,9 @@ end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y, f, instant)
+	if a == nil then
+		return
+	end
 	if x ~= nil then animSetPos(a, x, y) end
 	if f ~= nil then animSetFacing(a, f) end
 	animDraw(a)
@@ -1378,69 +1448,77 @@ main.f_loadingRefresh(main.txt_loading)
 main.timeFramesPerCount = framespercount()
 main.f_updateRoundsNum()
 
---generate preload list
-local t_preloadAnim = {}
-local t_preloadSpr = {}
-local t_preload = {
-	--select_info
-	{typ = 'canim', arg = {motif.select_info.portrait_anim}},
-	{typ = 'cspr', arg = motif.select_info.portrait_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_anim}},
-	{typ = 'cspr', arg = motif.select_info.p1_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_anim}},
-	{typ = 'cspr', arg = motif.select_info.p2_face_spr},
-	{typ = 'canim', arg = {motif.select_info.p1_face_done_anim}},
-	{typ = 'cspr', arg = motif.select_info.p1_face_done_spr},
-	{typ = 'canim', arg = {motif.select_info.p2_face_done_anim}},
-	{typ = 'cspr', arg = motif.select_info.p2_face_done_spr},
-	--vs_screen
-	{typ = 'canim', arg = {motif.vs_screen.p1_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p1_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p2_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p1_done_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p1_done_spr},
-	{typ = 'canim', arg = {motif.vs_screen.p2_done_anim}},
-	{typ = 'cspr', arg = motif.vs_screen.p2_done_spr},
-	--victory_screen
-	{typ = 'canim', arg = {motif.victory_screen.p1_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p1_spr},
-	{typ = 'canim', arg = {motif.victory_screen.p2_anim}},
-	{typ = 'cspr', arg = motif.victory_screen.p2_spr},
-	--hiscore_info
-	{typ = 'canim', arg = {motif.hiscore_info.item_face_anim}},
-	{typ = 'cspr', arg = motif.hiscore_info.item_face_spr},
-}
+-- generate preload character spr/anim list
+local t_preloadList = {}
+local function f_preloadList(v)
+	if v == nil then
+		return
+	end
+	-- sprite
+	if type(v) == 'table' then
+		if #v >= 2 and v[1] >= 0 and not t_preloadList[tostring(v[1]) .. ',' .. tostring(v[2])] then
+			preloadListChar(v[1], v[2])
+			t_preloadList[tostring(v[1]) .. ',' .. tostring(v[2])] = true
+		end
+	-- anim
+	elseif v >= 0 and not t_preloadList[v] then
+		preloadListChar(v)
+		t_preloadList[v] = true
+	end
+end
+f_preloadList(motif.select_info.portrait_anim)
+f_preloadList(motif.select_info.portrait_spr)
+f_preloadList(motif.select_info.p1_face_anim)
+f_preloadList(motif.select_info.p1_face_spr)
+f_preloadList(motif.select_info.p2_face_anim)
+f_preloadList(motif.select_info.p2_face_spr)
+f_preloadList(motif.select_info.p1_face_done_anim)
+f_preloadList(motif.select_info.p1_face_done_spr)
+f_preloadList(motif.select_info.p2_face_done_anim)
+f_preloadList(motif.select_info.p2_face_done_spr)
+f_preloadList(motif.select_info.p1_face2_anim)
+f_preloadList(motif.select_info.p1_face2_spr)
+f_preloadList(motif.select_info.p2_face2_anim)
+f_preloadList(motif.select_info.p2_face2_spr)
+f_preloadList(motif.vs_screen.p1_anim)
+f_preloadList(motif.vs_screen.p1_spr)
+f_preloadList(motif.vs_screen.p2_anim)
+f_preloadList(motif.vs_screen.p2_spr)
+f_preloadList(motif.vs_screen.p1_done_anim)
+f_preloadList(motif.vs_screen.p1_done_spr)
+f_preloadList(motif.vs_screen.p2_done_anim)
+f_preloadList(motif.vs_screen.p2_done_spr)
+f_preloadList(motif.vs_screen.p1_face2_anim)
+f_preloadList(motif.vs_screen.p1_face2_spr)
+f_preloadList(motif.vs_screen.p2_face2_anim)
+f_preloadList(motif.vs_screen.p2_face2_spr)
+f_preloadList(motif.victory_screen.p1_anim)
+f_preloadList(motif.victory_screen.p1_spr)
+f_preloadList(motif.victory_screen.p2_anim)
+f_preloadList(motif.victory_screen.p2_spr)
+f_preloadList(motif.victory_screen.p1_face2_anim)
+f_preloadList(motif.victory_screen.p1_face2_spr)
+f_preloadList(motif.victory_screen.p2_face2_anim)
+f_preloadList(motif.victory_screen.p2_face2_spr)
+f_preloadList(motif.hiscore_info.item_face_anim)
+f_preloadList(motif.hiscore_info.item_face_spr)
 for i = 1, 2 do
 	for _, v in ipairs({{sec = 'select_info', sn = '_face'}, {sec = 'vs_screen', sn = ''}, {sec = 'victory_screen', sn = ''}}) do
 		for j = 1, motif[v.sec]['p' .. i .. v.sn .. '_num'] do
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim']}})
-			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr']})
-			table.insert(t_preload, {typ = 'canim', arg = {motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim']}})
-			table.insert(t_preload, {typ = 'cspr', arg = motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr']})
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_anim'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_spr'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_anim'])
+			f_preloadList(motif[v.sec]['p' .. i .. '_member' .. j .. v.sn .. '_done_spr'])
 		end
 	end
 end
-for _, t in ipairs(t_preload) do
-	if t.arg ~= nil and t.arg[1] ~= nil and t.arg[1] >= 0 then
-		if t.typ == 'canim' then
-			t_preloadAnim[t.arg[1]] = t.arg[1]
-		else
-			t_preloadSpr[t.arg[1] .. ',' .. t.arg[2]] = {t.arg[1], t.arg[2]}
-		end
-	end
+
+-- generate preload stage spr/anim list
+if #motif.select_info.stage_portrait_spr >= 2 and motif.select_info.stage_portrait_spr[1] >= 0 then
+	preloadListStage(motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
 end
-for _, v in pairs(t_preloadAnim) do
-	preloadList('canim', v)
-end
-for _, v in pairs(t_preloadSpr) do
-	preloadList('cspr', v[1], v[2])
-end
-if #motif.select_info.stage_portrait_spr > 0 and motif.select_info.stage_portrait_spr[1] ~= -1 then
-	preloadList('sspr', motif.select_info.stage_portrait_spr[1], motif.select_info.stage_portrait_spr[2])
-end
-if motif.select_info.stage_portrait_anim ~= -1 then
-	preloadList('sanim', motif.select_info.stage_portrait_anim)
+if motif.select_info.stage_portrait_anim >= 0 then
+	preloadListStage(motif.select_info.stage_portrait_anim)
 end
 
 --warning display
@@ -1566,11 +1644,6 @@ function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, catego
 	return input
 end
 
-main.t_validParams = {
-	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, victoryscreen = true, rankdisplay = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
-	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
-}
-
 --add characters and stages using select.def
 function main.f_charParam(t, c)
 	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
@@ -1605,9 +1678,6 @@ function main.f_charParam(t, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-			if main.t_validParams.char[param] == nil and not param:match('maxmatches$') and not param:match('ratiomatches$') then
-				panicError("\nUnrecognized character parameter: " .. param)
-			end
 			t[param] = tonumber(value)
 			if t[param] == nil then
 				t[param] = value
@@ -1925,9 +1995,6 @@ for line in content:gmatch('[^\r\n]+') do
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-					if main.t_validParams.stage[param] == nil then
-						panicError("\nUnrecognized stage parameter: " .. param)
-					end
 					main.t_selStages[row][param] = tonumber(value)
 					--order (more than 1 order param can be set at the same time)
 					if param:match('order') then
@@ -2367,6 +2434,8 @@ main.t_itemname = {
 		main.t_pIn[2] = 1
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -3957,7 +4026,7 @@ end
 for _, v in ipairs(config.Modules) do
 	table.insert(t_modules, v)
 end
-if motif.module ~= '' then table.insert(t_modules, motif.module) end
+if motif.files.module ~= '' then table.insert(t_modules, motif.files.module) end
 for _, v in ipairs(t_modules) do
 	print('Loading module: ' .. v)
 	v = v:gsub('^%s*[%./\\]*', '')
