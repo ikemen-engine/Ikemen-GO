@@ -3070,9 +3070,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			}
 			switch id {
-			case explod_ownpal:
-				op := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.ownpal = op })
 			case explod_facing:
 				if exp[0].evalI(c) < 0 {
 					eachExpl(func(e *Explod) { e.relativef = -1 })
@@ -3108,8 +3105,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.setPos(c)
 				})
 			case explod_space:
-				sp := Space(exp[0].evalI(c))
-				eachExpl(func(e *Explod) { e.space = sp })
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					sp := Space(exp[0].evalI(c))
+					eachExpl(func(e *Explod) { e.space = sp })
+				}
 			case explod_velocity:
 				x := exp[0].evalF(c) * lclscround
 				eachExpl(func(e *Explod) { e.velocity[0] = x })
@@ -3200,12 +3199,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
 			case explod_anim:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-				if !anim.nilAnim && exp[0].evalB(c) { // ffx
-					anim.start_scale[0] /= crun.localscl
-					anim.start_scale[1] /= crun.localscl
+					if !anim.nilAnim && exp[0].evalB(c) { // ffx
+						anim.start_scale[0] /= crun.localscl
+						anim.start_scale[1] /= crun.localscl
+					}
+					eachExpl(func(e *Explod) { e.setAnim(anim) })
 				}
-				eachExpl(func(e *Explod) { e.setAnim(anim) })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.angle = a })
@@ -3216,8 +3217,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
 			case explod_ignorehitpause:
-				ihp := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					ihp := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+				}
 			case explod_bindid:
 				bId := exp[0].evalI(c)
 				if bId == -1 {
@@ -5702,7 +5705,13 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			crun.customDefense = exp[0].evalF(c)
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				crun.customDefense = exp[0].evalF(c)
+				crun.defenseMulDelay = false
+			} else {
+				crun.customDefense = 1 / exp[0].evalF(c)
+				crun.defenseMulDelay = true
+			}
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7640,7 +7649,61 @@ const (
 	createPlatform_size
 	createPlatform_offset
 	createPlatform_activeTime
+	createPlatform_redirectid
 )
+
+// The createPlatform bytecode function.
+func (sc createPlatform) Run(schara *Char, _ []int32) bool {
+	var chara = schara
+	var customOffset = false
+	var plat = Platform{
+		anim:       -1,
+		pos:        [2]float32{0, 0},
+		size:       [2]int32{0, 0},
+		offset:     [2]int32{0, 0},
+		activeTime: -1,
+	}
+
+	StateControllerBase(sc).run(schara, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+			case createPlatform_id:
+				plat.id = exp[0].evalI(schara)
+			case createPlatform_name:
+				plat.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			case createPlatform_pos:
+				plat.pos[0] = exp[0].evalF(schara)
+				plat.pos[1] = exp[1].evalF(schara)
+			case createPlatform_size:
+				plat.size[0] = exp[0].evalI(schara)
+				plat.size[1] = exp[1].evalI(schara)
+			case createPlatform_offset:
+				customOffset = true
+				plat.offset[0] = exp[0].evalI(schara)
+				plat.offset[1] = exp[1].evalI(schara)
+			case createPlatform_activeTime:
+				plat.activeTime = exp[0].evalI(schara)
+			case createPlatform_redirectid:
+				if rid := sys.playerID(exp[0].evalI(schara)); rid != nil {
+					chara = rid
+				} else {
+					return false
+				}
+		}
+		return true
+	})
+	
+	if customOffset == false {
+		if plat.size[0] != 0 {
+			plat.offset[0] = plat.size[0] / 2
+		}
+		if plat.size[1] != 0 {
+			plat.offset[1] = plat.size[1] / 2
+		}
+	}
+	plat.ownerID = chara.id
+
+	return false
+}
 
 type removePlatform StateControllerBase
 

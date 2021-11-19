@@ -394,6 +394,18 @@ local motif =
 		--p<pn>_member<num>_face_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_face_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_face_slide_dist = {0, 0}, --Ikemen feature
+		p1_face2_anim = -1, --Ikemen feature
+		p1_face2_spr = {}, --Ikemen feature
+		p1_face2_offset = {0, 0}, --Ikemen feature
+		p1_face2_facing = 1, --Ikemen feature
+		p1_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p1_face2_window = {}, --Ikemen feature
+		p2_face2_anim = -1, --Ikemen feature
+		p2_face2_spr = {}, --Ikemen feature
+		p2_face2_offset = {0, 0}, --Ikemen feature
+		p2_face2_facing = -1, --Ikemen feature
+		p2_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p2_face2_window = {}, --Ikemen feature
 		name_random_text = 'Random', --Ikemen feature
 		p1_name_num = 4, --Ikemen feature
 		p1_name_offset = {0, 0},
@@ -718,6 +730,18 @@ local motif =
 		--p<pn>_member<num>_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_slide_dist = {0, 0}, --Ikemen feature
+		p1_face2_anim = -1, --Ikemen feature
+		p1_face2_spr = {}, --Ikemen feature
+		p1_face2_offset = {0, 0}, --Ikemen feature
+		p1_face2_facing = 1, --Ikemen feature
+		p1_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p1_face2_window = {}, --Ikemen feature
+		p2_face2_anim = -1, --Ikemen feature
+		p2_face2_spr = {}, --Ikemen feature
+		p2_face2_offset = {0, 0}, --Ikemen feature
+		p2_face2_facing = -1, --Ikemen feature
+		p2_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p2_face2_window = {}, --Ikemen feature
 		p1_name_num = 4, --Ikemen feature
 		p1_name_pos = {0, 0},
 		p1_name_offset = {0, 0},
@@ -939,6 +963,18 @@ local motif =
 		--p<pn>_member<num>_scale = {1.0, 1.0}, --Ikemen feature
 		--p<pn>_member<num>_slide_speed = {0, 0}, --Ikemen feature
 		--p<pn>_member<num>_slide_dist = {0, 0}, --Ikemen feature
+		p1_face2_anim = -1, --Ikemen feature
+		p1_face2_spr = {}, --Ikemen feature
+		p1_face2_offset = {0, 0}, --Ikemen feature
+		p1_face2_facing = 1, --Ikemen feature
+		p1_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p1_face2_window = {}, --Ikemen feature
+		p2_face2_anim = -1, --Ikemen feature
+		p2_face2_spr = {}, --Ikemen feature
+		p2_face2_offset = {0, 0}, --Ikemen feature
+		p2_face2_facing = -1, --Ikemen feature
+		p2_face2_scale = {1.0, 1.0}, --Ikemen feature
+		p2_face2_window = {}, --Ikemen feature
 		p2_name_offset = {0, 0}, --Ikemen feature
 		p2_name_font = {-1, 0, 1, 255, 255, 255}, --Ikemen feature
 		p2_name_font_scale = {1.0, 1.0}, --Ikemen feature
@@ -2560,18 +2596,6 @@ for k, v in pairs(t.menu_info) do
 	end
 end
 
---results screens reuse winbgdef values if not defined
-for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
-	if t[v] == nil then
-		t[v] = t.winbgdef
-	end
-end
-
---trainingbgdef section reuses menubgdef values if not defined
-if t.trainingbgdef == nil then
-	t.trainingbgdef = t.menubgdef
-end
-
 --merge tables
 motif = main.f_tableMerge(motif, t)
 
@@ -2599,9 +2623,9 @@ end
 
 --adjust window parameters
 for k, v in pairs({
-	select_info = {'p1_face_window', 'p2_face_window', 'stage_portrait_window'},
-	vs_screen = {'p1_window', 'p2_window'},
-	victory_screen = {'p1_window', 'p2_window', 'winquote_window'},
+	select_info = {'p1_face_window', 'p2_face_window', 'p1_face2_window', 'p2_face2_window', 'stage_portrait_window'},
+	vs_screen = {'p1_window', 'p2_window', 'p1_face2_window', 'p2_face2_window'},
+	victory_screen = {'p1_window', 'p2_window', 'p1_face2_window', 'p2_face2_window', 'winquote_window'},
 	dialogue_info = {'p1_face_window', 'p2_face_window', 'p1_text_window', 'p2_text_window'},
 	hiscore_info = {'item_face_window'},
 }) do
@@ -2683,6 +2707,18 @@ for k, _ in pairs(motif) do
 		motif[k].bg = bgNew(motif[k].spr_data, motif.def, k:match('^(.+)def$'))
 		main.f_loadingRefresh()
 	end
+end
+
+--results screens reuse winbgdef values if not defined
+for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
+	if t[v] == nil then
+		motif[v] = motif.winbgdef
+	end
+end
+
+--trainingbgdef section reuses menubgdef values if not defined
+if t.trainingbgdef == nil then
+	motif.trainingbgdef = motif.menubgdef
 end
 
 --converts facing value to letter used in anim declaration

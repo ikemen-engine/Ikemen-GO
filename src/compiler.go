@@ -3752,7 +3752,7 @@ func cnsStringArray(arg string) ([]string, error) {
 
 // Compile a state file
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
-	filename, def string) error {
+	filename, def string, negoverride bool) error {
 	var str string
 	zss := HasExtension(filename, ".zss")
 	fnz := filename
@@ -4060,7 +4060,8 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			}
 		}
 
-		if _, ok := states[c.stateNo]; !ok || c.stateNo < 0 {
+		// Skip appending if already declared. Exception for negative states present in CommonStates and files belonging to char flagged with ikemenversion
+		if _, ok := states[c.stateNo]; !ok || (!negoverride && c.stateNo < 0) {
 			states[c.stateNo] = *sbc
 		}
 	}
@@ -4797,18 +4798,32 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "info":
-			// Read info section for the mugen version of the character
+			// Read info section for the mugen/ikemen version of the character
 			if info {
 				info = false
+				var ok bool
+				var str string
 				sys.cgi[pn].ver = [2]uint16{}
-				str, ok := is["mugenversion"]
-				if ok {
+				if str, ok = is["mugenversion"]; ok {
 					for i, s := range SplitAndTrim(str, ".") {
 						if i >= len(sys.cgi[pn].ver) {
 							break
 						}
 						if v, err := strconv.ParseUint(s, 10, 16); err == nil {
 							sys.cgi[pn].ver[i] = uint16(v)
+						} else {
+							break
+						}
+					}
+				}
+				sys.cgi[pn].ikemenver = [3]uint16{}
+				if str, ok = is["ikemenversion"]; ok {
+					for i, s := range SplitAndTrim(str, ".") {
+						if i >= len(sys.cgi[pn].ikemenver) {
+							break
+						}
+						if v, err := strconv.ParseUint(s, 10, 16); err == nil {
+							sys.cgi[pn].ikemenver[i] = uint16(v)
 						} else {
 							break
 						}
@@ -4942,24 +4957,27 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
-			if err := c.stateCompile(states, s, def); err != nil {
+			if err := c.stateCompile(states, s, def, sys.cgi[pn].ikemenver[0] == 0 &&
+				sys.cgi[pn].ikemenver[1] == 0); err != nil {
 				return nil, err
 			}
 		}
 	}
 	// Compile states in command file
-	if err := c.stateCompile(states, cmd, def); err != nil {
+	if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
+		sys.cgi[pn].ikemenver[1] == 0); err != nil {
 		return nil, err
 	}
 	// Compile states in common state file
 	if len(stcommon) > 0 {
-		if err := c.stateCompile(states, stcommon, def); err != nil {
+		if err := c.stateCompile(states, stcommon, def, sys.cgi[pn].ikemenver[0] == 0 &&
+			sys.cgi[pn].ikemenver[1] == 0); err != nil {
 			return nil, err
 		}
 	}
 	// Compile common states from config
 	for _, s := range sys.commonStates {
-		if err := c.stateCompile(states, s, def); err != nil {
+		if err := c.stateCompile(states, s, def, false); err != nil {
 			return nil, err
 		}
 	}

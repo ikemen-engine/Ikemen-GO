@@ -40,9 +40,9 @@ addHotkey('F9', false, false, false, true, false, 'loadState()')
 addHotkey('F10', false, false, false, true, false, 'saveState()')
 addHotkey('SPACE', false, false, false, false, true, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());debugFlag(1);debugFlag(2);clearConsole()')
 addHotkey('i', true, false, false, true, true, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
-addHotkey('PAUSE', false, false, false, true, true, 'togglePause()')
-addHotkey('PAUSE', true, false, false, true, true, 'step()')
-addHotkey('SCROLLLOCK', false, false, false, true, true, 'step()')
+addHotkey('PAUSE', false, false, false, true, false, 'togglePause()')
+addHotkey('PAUSE', true, false, false, true, false, 'step()')
+addHotkey('SCROLLLOCK', false, false, false, true, false, 'step()')
 
 local speedMul = 1
 local speedAdd = 0
@@ -176,6 +176,7 @@ local endFlag = false
 
 --function called during match via config.json CommonLua
 function loop()
+	hook.run("loop.start")
 	if start == nil then --match started via command line without -loadmotif flag
 		if esc() then
 			endMatch()
@@ -227,6 +228,7 @@ function loop()
 	--dialogue
 	if indialogue() then
 		start.f_dialogue()
+		hook.run("loop.dialog")
 	--match end
 	elseif roundstate() == -1 then
 		if not endFlag then
@@ -246,11 +248,14 @@ function loop()
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		togglePostMatch(false)
 	end
+	hook.run("loop." .. gamemode() .. "#always")
 	--pause menu
 	if main.pauseMenu then
 		playerBufReset()
 		menu.f_run()
+		hook.run("loop.pause")
 	else
+		hook.run("loop." .. gamemode())
 		main.f_cmdInput()
 		--esc / m
 		if (esc() or (main.f_input(main.t_players, {'m'})) and not network()) and not start.challengerInit then
