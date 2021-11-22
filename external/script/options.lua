@@ -60,6 +60,8 @@ local function f_externalShaderName()
 	return motif.option_info.menu_valuename_disabled
 end
 
+-- Associative elements table storing functions controlling behaviour of each
+-- option screen item. Can be appended via external module.
 options.t_itemname = {
 	--Back
 	['back'] = function(t, item, cursorPosY, moveTxt)
@@ -1264,7 +1266,7 @@ for _, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 end
 if main.debugLog then main.f_printTable(options.t_itemname, 'debug/t_optionsItemname.txt') end
 
---create menus
+-- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	return function()
 		local cursorPosY = 1
@@ -1326,8 +1328,9 @@ function options.f_createMenu(tbl, bool_main)
 end
 
 options.t_vardisplayPointers = {}
--- options.t_vardisplay is a table storing functions returning setting values rendered alongside option name.
--- It can be appended via external module, without conflicting with default scripts.
+
+-- Associative elements table storing functions returning current setting values
+-- rendered alongside menu item name. Can be appended via external module.
 options.t_vardisplay = {
 	['afterimagemax'] = function()
 		return config.MaxAfterImage 
@@ -1514,7 +1517,8 @@ options.t_vardisplay = {
 	end,
 }
 
--- setting value string rendered alongside option name
+-- Returns setting value rendered alongside menu item name (calls appropriate
+-- function from t_vardisplay table)
 function options.f_vardisplay(itemname)
 	if options.t_vardisplay[itemname] ~= nil then
 		return options.t_vardisplay[itemname]()
@@ -1522,7 +1526,8 @@ function options.f_vardisplay(itemname)
 	return ''
 end
 
---dynamically generates all option screen menus and submenus using itemname data stored in main.t_sort table
+-- Dynamically generates all menus and submenus, iterating over values stored in
+-- main.t_sort table (in order that they're present in system.def).
 options.menu = {title = main.f_itemnameUpper(motif.option_info.title_text, motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 options.menu.loop = options.f_createMenu(options.menu, true)
 local t_menuWindow = main.f_menuWindow(motif.option_info)

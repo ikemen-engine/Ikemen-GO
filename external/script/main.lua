@@ -2310,9 +2310,8 @@ function main.f_default()
 	demoFrameCounter = 0
 end
 
--- main.t_itemname is a table storing functions with general game mode
--- configuration (usually ending with start.f_selectMode function call). It can
--- be appended via external module, without conflicting with default scripts.
+-- Associative elements table storing functions controlling behaviour of each
+-- menu item (modes configuration). Can be appended via external module.
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(t, item)
@@ -2962,6 +2961,7 @@ end
 main.fadeActive = false
 local demoFrameCounter = 0
 local introWaitCycles = 0
+-- Shared menu loop logic
 function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 	return function()
 		local cursorPosY = 1
@@ -3135,7 +3135,8 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 	end
 end
 
---dynamically generates all main screen menus and submenus using itemname data stored in main.t_sort table
+-- Dynamically generates all menus and submenus, iterating over values stored in
+-- main.t_sort table (in order that they're present in system.def).
 main.menu = {title = main.f_itemnameUpper(motif[main.group].title_text, motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
 main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
 local t_menuWindow = main.f_menuWindow(motif[main.group])
