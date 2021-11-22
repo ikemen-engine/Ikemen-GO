@@ -947,7 +947,19 @@ func readLifeBarFace(pre string, is IniSection,
 	fa.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is, 0)
 	return fa
 }
-func (fa *LifeBarFace) step() {
+func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
+	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
+	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
+		if mn, ok := mg[number]; ok {
+			group, number = mn[0], mn[1]
+		}
+	}
+	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
+		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
+		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
+		far.old_spr = [...]int32{int32(group), int32(number)}
+		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
+	}
 	fa.bg.Action()
 	fa.bg0.Action()
 	fa.bg1.Action()
@@ -986,21 +998,7 @@ func (fa *LifeBarFace) bgDraw(layerno int16) {
 	fa.bg2.Draw(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
 }
 func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
-	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
-	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
-		if mn, ok := mg[number]; ok {
-			group, number = mn[0], mn[1]
-		}
-	}
-	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
-		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
-		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
-		far.old_spr = [...]int32{int32(group), int32(number)}
-		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
-	}
 	if far.face != nil {
-		far.face.Pal = nil
-		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
 		pfx := newPalFX()
 		if far.palfxshare {
 			pfx = sys.chars[ref][0].getPalfx()
@@ -1008,7 +1006,11 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		if far.palshare {
 			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
-
+		far.face.Pal = nil
+		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
+		if far.palshare {
+			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+		}
 		ob := sys.brightness
 		if ref == sys.superplayer {
 			sys.brightness = 256
@@ -3480,7 +3482,7 @@ func (l *Lifebar) step() {
 			//StunBar
 			l.sb[l.ref[ti]][i*2+ti].step(v, l.sb[l.ref[ti]][v], l.snd)
 			//LifeBarFace
-			l.fa[l.ref[ti]][i*2+ti].step()
+			l.fa[l.ref[ti]][i*2+ti].step(v, l.fa[l.ref[ti]][v])
 			//LifeBarName
 			l.nm[l.ref[ti]][i*2+ti].step()
 		}
