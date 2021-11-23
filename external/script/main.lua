@@ -370,18 +370,32 @@ end
 main.font = {}
 main.font_def = {}
 
---hooks for existing lua functions, to make it easier to insert things into other functions.
+-- Lua Hook System
+-- Allows hooking additional code into existing functions, from within external
+-- modules, without having to worry as much about your code being removed by
+-- engine update.
+-- * hook.run(list, ...): Runs all the functions within a certain list.
+--   It won't do anything if the list doesn't exist or is empty. ... is any
+--   number of arguments, which will be passed to every function in the list.
+-- * hook.add(list, name, function): Adds a function to a hook list with a name.
+--   It will replace anything in the list with the same name.
+-- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
+-- Currently there are only few hooks available by default, which are in the
+-- commonlua loop() function. These are:
+-- * loop.start: runs at the very beginning of the function
+-- * loop.dialog: runs when dialogue state controller is active
+-- * loop.[gamemode]#always: limited to specified gamemode (regardless of pause)
+-- * loop.pause: only runs when paused
+-- * loop.[gamemode]: limited to the specified gamemode when not paused
 hook = {
 	lists = {}
 }
-
-function hook.add(list,name,func)
+function hook.add(list, name, func)
 	if hook.lists[list] == nil then
 		hook.lists[list] = {}
 	end
 	hook.lists[list][name] = func
 end
-
 function hook.run(list, ...)
 	if hook.lists[list] then
 		for i, k in pairs(hook.lists[list]) do
@@ -389,8 +403,7 @@ function hook.run(list, ...)
 		end
 	end
 end
-
-function hook.stop(list,name)
+function hook.stop(list, name)
 	hook.lists[list][name] = nil
 end
 
@@ -671,6 +684,9 @@ end
 
 --animDraw at specified coordinates
 function main.f_animPosDraw(a, x, y, f, instant)
+	if a == nil then
+		return
+	end
 	if x ~= nil then animSetPos(a, x, y) end
 	if f ~= nil then animSetFacing(a, f) end
 	animDraw(a)
@@ -1628,11 +1644,6 @@ function main.f_drawInput(t, txt, overlay, offsetY, spacingY, background, catego
 	return input
 end
 
-main.t_validParams = {
-	char = {music = true, musicalt = true, musiclife = true, musicvictory = true, ai = true, vsscreen = true, victoryscreen = true, rankdisplay = true, rounds = true, time = true, single = true, includestage = true, boss = true, bonus = true, exclude = true, hidden = true, order = true, ordersurvival = true, arcadepath = true, ratiopath = true, slot = true, unlock = true, select = true, next = true, previous = true},
-	stage = {music = true, musicalt = true, musiclife = true, musicvictory = true, order = true, unlock = true}
-}
-
 --add characters and stages using select.def
 function main.f_charParam(t, c)
 	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
@@ -1667,9 +1678,6 @@ function main.f_charParam(t, c)
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-			if main.t_validParams.char[param] == nil and not param:match('maxmatches$') and not param:match('ratiomatches$') then
-				panicError("\nUnrecognized character parameter: " .. param)
-			end
 			t[param] = tonumber(value)
 			if t[param] == nil then
 				t[param] = value
@@ -1987,9 +1995,6 @@ for line in content:gmatch('[^\r\n]+') do
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-					if main.t_validParams.stage[param] == nil then
-						panicError("\nUnrecognized stage parameter: " .. param)
-					end
 					main.t_selStages[row][param] = tonumber(value)
 					--order (more than 1 order param can be set at the same time)
 					if param:match('order') then
@@ -2305,9 +2310,8 @@ function main.f_default()
 	demoFrameCounter = 0
 end
 
--- main.t_itemname is a table storing functions with general game mode
--- configuration (usually ending with start.f_selectMode function call). It can
--- be appended via external module, without conflicting with default scripts.
+-- Associative elements table storing functions controlling behaviour of each
+-- menu item (modes configuration). Can be appended via external module.
 main.t_itemname = {
 	--ARCADE / TEAM ARCADE
 	['arcade'] = function(t, item)
@@ -2429,6 +2433,8 @@ main.t_itemname = {
 		main.t_pIn[2] = 1
 		--main.lifebar.p1score = true
 		--main.lifebar.p2aiLevel = true
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
@@ -2955,6 +2961,7 @@ end
 main.fadeActive = false
 local demoFrameCounter = 0
 local introWaitCycles = 0
+-- Shared menu loop logic
 function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 	return function()
 		local cursorPosY = 1
@@ -3128,7 +3135,8 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 	end
 end
 
---dynamically generates all main screen menus and submenus using itemname data stored in main.t_sort table
+-- Dynamically generates all menus and submenus, iterating over values stored in
+-- main.t_sort table (in order that they're present in system.def).
 main.menu = {title = main.f_itemnameUpper(motif[main.group].title_text, motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
 main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
 local t_menuWindow = main.f_menuWindow(motif[main.group])

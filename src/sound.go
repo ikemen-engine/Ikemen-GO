@@ -393,6 +393,15 @@ func (bgm *Bgm) Pause() {
 	speaker.Unlock()
 }
 
+func (bgm *Bgm) UpdateVolume() {
+	if bgm.volume == nil {
+		return
+	}
+	speaker.Lock()
+	bgm.volume.Volume = -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	speaker.Unlock()
+}
+
 // ------------------------------------------------------------------
 // Wave
 

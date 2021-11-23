@@ -151,6 +151,7 @@ type HealthBar struct {
 	warn       AnimLayout
 	warn_range [2]int32
 	value      LbText
+	toplife    float32
 	oldlife    float32
 	midlife    float32
 	midlifeMin float32
@@ -224,6 +225,11 @@ func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	var redVal int32 = sys.chars[ref][0].redLife
 	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
 
+	if hbr.toplife > life {
+		hbr.toplife += (life - hbr.toplife) / 2
+	} else {
+		hbr.toplife = life
+	}
 	hb.shift.anim.srcAlpha = int16(255 * (1 - life))
 	hb.shift.anim.dstAlpha = int16(255 * life)
 	if !hb.mid_freeze && getHit && !hb.gethit && len(hb.mid.anim.frames) > 0 {
@@ -322,7 +328,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	if len(hb.mid.anim.frames) == 0 || life > hbr.midlife {
 		life = hbr.midlife
 	}
-	lr, mr, rr := width(life), width(hbr.midlife), width(redlife)
+	lr, mr, rr := width(hbr.toplife), width(hbr.midlife), width(redlife)
 	if hb.range_x[0] < hb.range_x[1] {
 		mr[0] += lr[2]
 		//rr[0] += lr[2]
@@ -941,7 +947,19 @@ func readLifeBarFace(pre string, is IniSection,
 	fa.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is, 0)
 	return fa
 }
-func (fa *LifeBarFace) step() {
+func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
+	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
+	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
+		if mn, ok := mg[number]; ok {
+			group, number = mn[0], mn[1]
+		}
+	}
+	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
+		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
+		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
+		far.old_spr = [...]int32{int32(group), int32(number)}
+		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
+	}
 	fa.bg.Action()
 	fa.bg0.Action()
 	fa.bg1.Action()
@@ -980,21 +998,7 @@ func (fa *LifeBarFace) bgDraw(layerno int16) {
 	fa.bg2.Draw(float32(fa.pos[0])+sys.lifebarOffsetX, float32(fa.pos[1]), layerno, sys.lifebarScale)
 }
 func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
-	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
-	if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
-		if mn, ok := mg[number]; ok {
-			group, number = mn[0], mn[1]
-		}
-	}
-	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
-		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
-		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
-		far.old_spr = [...]int32{int32(group), int32(number)}
-		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
-	}
 	if far.face != nil {
-		far.face.Pal = nil
-		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
 		pfx := newPalFX()
 		if far.palfxshare {
 			pfx = sys.chars[ref][0].getPalfx()
@@ -1002,7 +1006,11 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		if far.palshare {
 			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
-
+		far.face.Pal = nil
+		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
+		if far.palshare {
+			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+		}
 		ob := sys.brightness
 		if ref == sys.superplayer {
 			sys.brightness = 256
@@ -2043,8 +2051,7 @@ func (ro *LifeBarRound) act() bool {
 					ro.to_bg[i].Action()
 				}
 			}
-			//if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
-			if sys.intro < -ro.over_waittime {
+			if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
 				wt := sys.winTeam
 				if wt < 0 {
 					wt = 0
@@ -3475,7 +3482,7 @@ func (l *Lifebar) step() {
 			//StunBar
 			l.sb[l.ref[ti]][i*2+ti].step(v, l.sb[l.ref[ti]][v], l.snd)
 			//LifeBarFace
-			l.fa[l.ref[ti]][i*2+ti].step()
+			l.fa[l.ref[ti]][i*2+ti].step(v, l.fa[l.ref[ti]][v])
 			//LifeBarName
 			l.nm[l.ref[ti]][i*2+ti].step()
 		}

@@ -2596,18 +2596,6 @@ for k, v in pairs(t.menu_info) do
 	end
 end
 
---results screens reuse winbgdef values if not defined
-for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
-	if t[v] == nil then
-		t[v] = t.winbgdef
-	end
-end
-
---trainingbgdef section reuses menubgdef values if not defined
-if t.trainingbgdef == nil then
-	t.trainingbgdef = t.menubgdef
-end
-
 --merge tables
 motif = main.f_tableMerge(motif, t)
 
@@ -2719,6 +2707,18 @@ for k, _ in pairs(motif) do
 		motif[k].bg = bgNew(motif[k].spr_data, motif.def, k:match('^(.+)def$'))
 		main.f_loadingRefresh()
 	end
+end
+
+--results screens reuse winbgdef values if not defined
+for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
+	if t[v] == nil then
+		motif[v] = motif.winbgdef
+	end
+end
+
+--trainingbgdef section reuses menubgdef values if not defined
+if t.trainingbgdef == nil then
+	motif.trainingbgdef = motif.menubgdef
 end
 
 --converts facing value to letter used in anim declaration

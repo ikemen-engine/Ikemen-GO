@@ -355,7 +355,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		bg, err := loadBGDef(s, strArg(l, 2), strArg(l, 3))
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("\nCan't load %v (%v): %v\n", strArg(l, 3), strArg(l, 2), err.Error())
 		}
 		l.Push(newUserData(l, bg))
 		return 1
@@ -1379,7 +1379,7 @@ func systemScriptInit(l *lua.LState) {
 		ts := NewTextSprite()
 		f, err := loadFnt(strArg(l, 1), -1)
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
 		}
 		ts.fnt = f
 		if l.GetTop() >= 2 {
@@ -1405,7 +1405,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "loadLifebar", func(l *lua.LState) int {
 		lb, err := loadLifebar(strArg(l, 1))
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
 		}
 		sys.lifebar = *lb
 		return 0
@@ -1696,7 +1696,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		sff, err := loadSff(strArg(l, 1), false)
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
 		}
 		sys.runMainThreadTask()
 		l.Push(newUserData(l, sff))
@@ -2151,10 +2151,12 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setVolumeMaster", func(l *lua.LState) int {
 		sys.masterVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeBgm", func(l *lua.LState) int {
 		sys.bgmVolume = int(numArg(l, 1))
+		sys.bgm.UpdateVolume()
 		return 0
 	})
 	luaRegister(l, "setVolumeSfx", func(l *lua.LState) int {
@@ -2204,7 +2206,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "sndNew", func(l *lua.LState) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
 		}
 		l.Push(newUserData(l, snd))
 		return 1

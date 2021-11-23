@@ -1055,6 +1055,21 @@
 	credits.font.scale = 1.0, 1.0
 	credits.font.height = -1
 
+	; Extended continue screen (legacymode.enabled = 0) renders interactive
+	; counter animation, defined as a single 'counter' element. This animation
+	; is running between starttime tick up to the endtime tick. skipstart is a
+	; delay from starttime before player's button presses are detected.
+	; counter.<num>.skiptime points to animation tick that the engine should
+	; skip into when action button is pressed (skipping counter numbers).
+	; counter.<num>.snd points to animation tick at which corresponding sound
+	; should trigger. <num> portion of these parameter names should be replaced
+	; with corresponding counter number (there is no limit for amount of these
+	; parameters, assigned values are checked in <num> descending order).
+	; Optional 'end' variant of these 2 parameters refers to final portion of
+	; animation, when it's no longer possible to confirm continue (can be used
+	; for example to display game over screen integrated with the same anim).
+	; Refer to default screenpack for a working example how to use this feature.
+
 	counter.endtime = 0
 	counter.starttime = 0
 	counter.anim = -1
