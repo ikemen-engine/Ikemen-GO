@@ -644,7 +644,7 @@ function main.f_createTextImg(t, prefix, mod)
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
-		height = t[prefix .. '_font_height'],
+		height = t[prefix .. '_font'][7],
 		window = t[prefix .. '_window'],
 		defsc = mod.defsc or false,
 	})
@@ -1199,7 +1199,7 @@ end
 
 --y spacing calculation
 function main.f_ySpacing(t, key)
-	local font_def = main.font_def[t[key][1] .. t[key .. '_height']]
+	local font_def = main.font_def[t[key][1] .. t[key][7]]
 	if font_def == nil then return 0 end
 	return main.f_round(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2])
 end
@@ -3790,7 +3790,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_selected_active_font[4],
 						g =      motif[section].menu_item_selected_active_font[5],
 						b =      motif[section].menu_item_selected_active_font[6],
-						height = motif[section].menu_item_selected_active_font_height,
+						height = motif[section].menu_item_selected_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3807,7 +3807,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_active_font[4],
 						g =      motif[section].menu_item_active_font[5],
 						b =      motif[section].menu_item_active_font[6],
-						height = motif[section].menu_item_active_font_height,
+						height = motif[section].menu_item_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3825,7 +3825,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_value_active_font[4],
 						g =      motif[section].menu_item_value_active_font[5],
 						b =      motif[section].menu_item_value_active_font[6],
-						height = motif[section].menu_item_value_active_font_height,
+						height = motif[section].menu_item_value_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].vardata:draw()
@@ -3850,7 +3850,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_selected_font[4],
 						g =      motif[section].menu_item_selected_font[5],
 						b =      motif[section].menu_item_selected_font[6],
-						height = motif[section].menu_item_selected_font_height,
+						height = motif[section].menu_item_selected_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3867,7 +3867,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_font[4],
 						g =      motif[section].menu_item_font[5],
 						b =      motif[section].menu_item_font[6],
-						height = motif[section].menu_item_font_height,
+						height = motif[section].menu_item_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3885,7 +3885,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						r =      motif[section].menu_item_value_font[4],
 						g =      motif[section].menu_item_value_font[5],
 						b =      motif[section].menu_item_value_font[6],
-						height = motif[section].menu_item_value_font_height,
+						height = motif[section].menu_item_value_font[7],
 						defsc =  defsc,
 					})
 					t[i].vardata:draw()

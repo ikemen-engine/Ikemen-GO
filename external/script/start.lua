@@ -2107,7 +2107,7 @@ function start.f_selectScreen()
 							r =      motif.select_info['p' .. side .. '_name_font'][4],
 							g =      motif.select_info['p' .. side .. '_name_font'][5],
 							b =      motif.select_info['p' .. side .. '_name_font'][6],
-							height = motif.select_info['p' .. side .. '_name_font_height'],
+							height = motif.select_info['p' .. side .. '_name_font'][7],
 						})
 						t_txt_name[side]:draw()
 					end
@@ -2178,7 +2178,7 @@ function start.f_selectScreen()
 						r =      motif.select_info[stageActiveType .. '_font'][4],
 						g =      motif.select_info[stageActiveType .. '_font'][5],
 						b =      motif.select_info[stageActiveType .. '_font'][6],
-						height = motif.select_info[stageActiveType .. '_font_height'],
+						height = motif.select_info[stageActiveType .. '_font'][7],
 					})
 					txt_selStage:draw()
 				end
@@ -2372,7 +2372,7 @@ function start.f_teamMenu(side, t)
 					r =      motif.select_info[t_teamActiveType[side] .. '_font'][4],
 					g =      motif.select_info[t_teamActiveType[side] .. '_font'][5],
 					b =      motif.select_info[t_teamActiveType[side] .. '_font'][6],
-					height = motif.select_info[t_teamActiveType[side] .. '_font_height'],
+					height = motif.select_info[t_teamActiveType[side] .. '_font'][7],
 				})
 				t[i].data:draw()
 			else
@@ -2391,7 +2391,7 @@ function start.f_teamMenu(side, t)
 					r =      motif.select_info['p' .. side .. '_teammenu_item_font'][4],
 					g =      motif.select_info['p' .. side .. '_teammenu_item_font'][5],
 					b =      motif.select_info['p' .. side .. '_teammenu_item_font'][6],
-					height = motif.select_info['p' .. side .. '_teammenu_item_font_height'],
+					height = motif.select_info['p' .. side .. '_teammenu_item_font'][7],
 				})
 				t[i].data:draw()
 			end
@@ -2870,7 +2870,7 @@ function start.f_selectVersus(active, t_orderSelect)
 						r =      motif.vs_screen['p' .. side .. '_name_font'][4],
 						g =      motif.vs_screen['p' .. side .. '_name_font'][5],
 						b =      motif.vs_screen['p' .. side .. '_name_font'][6],
-						height = motif.vs_screen['p' .. side .. '_name_font_height'],
+						height = motif.vs_screen['p' .. side .. '_name_font'][7],
 					})
 					t_txt_nameVS[side]:draw()
 				end
@@ -3323,7 +3323,7 @@ function start.f_victory()
 			motif.victory_screen.winquote_offset[2],
 			motif.victory_screen.winquote_spacing[1],
 			motif.victory_screen.winquote_spacing[2],
-			main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font_height],
+			main.font_def[motif.victory_screen.winquote_font[1] .. motif.victory_screen.winquote_font[7]],
 			motif.victory_screen.winquote_delay,
 			main.f_lineLength(
 				motif.victory_screen.winquote_offset[1],
@@ -3595,7 +3595,7 @@ function start.f_continue()
 				r =      motif.continue_screen[var .. '_font'][4],
 				g =      motif.continue_screen[var .. '_font'][5],
 				b =      motif.continue_screen[var .. '_font'][6],
-				height = motif.continue_screen[var .. '_font_height'],
+				height = motif.continue_screen[var .. '_font'][7],
 			})
 			txt:draw()
 		end
@@ -3827,7 +3827,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 			elseif v == 'name' and t_ranking[i].name ~= '' then
 				text = (motif.hiscore_info['item_' .. v .. '_' .. i .. '_text'] or motif.hiscore_info['item_' .. v .. '_text']):gsub('%%([0-9]*)s', main.f_itemnameUpper(t_ranking[i].name, motif.hiscore_info.item_name_uppercase == 1))
 			end
-			local font_def = main.font_def[motif.hiscore_info['item_' .. v .. dataActiveType .. '_font'][1] .. motif.hiscore_info['item_' .. v .. dataActiveType .. '_font_height']]
+			local font_def = main.font_def[motif.hiscore_info['item_' .. v .. dataActiveType .. '_font'][1] .. motif.hiscore_info['item_' .. v .. dataActiveType .. '_font'][7]]
 			start['txt_hiscore_item_' .. v .. dataActiveType]:update({
 				text = text,
 				x = motif.hiscore_info.pos[1] + motif.hiscore_info.item_offset[1] + motif.hiscore_info['item_' .. v .. '_offset'][1] + (motif.hiscore_info.item_spacing[1] + motif.hiscore_info['item_' .. v .. '_spacing'][1]) * (i - 1),
@@ -4414,7 +4414,7 @@ function start.f_dialogue()
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][2],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][1],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_spacing'][2],
-				main.font_def[motif.dialogue_info['p' .. t_parsed.side .. '_text_font'][1] .. motif.dialogue_info['p' .. t_parsed.side .. '_text_font_height']],
+				main.font_def[motif.dialogue_info['p' .. t_parsed.side .. '_text_font'][1] .. motif.dialogue_info['p' .. t_parsed.side .. '_text_font'][7]],
 				motif.dialogue_info['p' .. t_parsed.side .. '_text_delay'],
 				main.f_lineLength(
 					motif.dialogue_info['p' .. t_parsed.side .. '_text_offset'][1],

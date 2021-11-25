@@ -1938,7 +1938,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 			r =      motif.option_info['keymenu_item_p' .. i .. '_font'][4],
 			g =      motif.option_info['keymenu_item_p' .. i .. '_font'][5],
 			b =      motif.option_info['keymenu_item_p' .. i .. '_font'][6],
-			height = motif.option_info['keymenu_item_p' .. i .. '_font_height'],
+			height = motif.option_info['keymenu_item_p' .. i .. '_font'][7],
 			defsc =  motif.defaultOptions,
 		})
 		txt_keyController[i]:draw()
@@ -2000,7 +2000,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						r =      motif.option_info.keymenu_item_active_font[4],
 						g =      motif.option_info.keymenu_item_active_font[5],
 						b =      motif.option_info.keymenu_item_active_font[6],
-						height = motif.option_info.keymenu_item_active_font_height,
+						height = motif.option_info.keymenu_item_active_font[7],
 						defsc =  motif.defaultOptions,
 					})
 					t[i].data[j]:draw()
@@ -2019,7 +2019,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								r =      motif.option_info.keymenu_item_value_conflict_font[4],
 								g =      motif.option_info.keymenu_item_value_conflict_font[5],
 								b =      motif.option_info.keymenu_item_value_conflict_font[6],
-								height = motif.option_info.keymenu_item_value_conflict_font_height,
+								height = motif.option_info.keymenu_item_value_conflict_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2037,7 +2037,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								r =      motif.option_info.keymenu_item_value_active_font[4],
 								g =      motif.option_info.keymenu_item_value_active_font[5],
 								b =      motif.option_info.keymenu_item_value_active_font[6],
-								height = motif.option_info.keymenu_item_value_active_font_height,
+								height = motif.option_info.keymenu_item_value_active_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2056,7 +2056,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							r =      motif.option_info.keymenu_item_info_active_font[4],
 							g =      motif.option_info.keymenu_item_info_active_font[5],
 							b =      motif.option_info.keymenu_item_info_active_font[6],
-							height = motif.option_info.keymenu_item_info_active_font_height,
+							height = motif.option_info.keymenu_item_info_active_font[7],
 							defsc =  motif.defaultOptions,
 						})
 						t[i].infodata[j]:draw()
@@ -2080,7 +2080,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						r =      motif.option_info.keymenu_item_font[4],
 						g =      motif.option_info.keymenu_item_font[5],
 						b =      motif.option_info.keymenu_item_font[6],
-						height = motif.option_info.keymenu_item_font_height,
+						height = motif.option_info.keymenu_item_font[7],
 						defsc =  motif.defaultOptions,
 					})
 					t[i].data[j]:draw()
@@ -2099,7 +2099,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								r =      motif.option_info.keymenu_item_value_conflict_font[4],
 								g =      motif.option_info.keymenu_item_value_conflict_font[5],
 								b =      motif.option_info.keymenu_item_value_conflict_font[6],
-								height = motif.option_info.keymenu_item_value_conflict_font_height,
+								height = motif.option_info.keymenu_item_value_conflict_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2117,7 +2117,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								r =      motif.option_info.keymenu_item_value_font[4],
 								g =      motif.option_info.keymenu_item_value_font[5],
 								b =      motif.option_info.keymenu_item_value_font[6],
-								height = motif.option_info.keymenu_item_value_font_height,
+								height = motif.option_info.keymenu_item_value_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2136,7 +2136,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							r =      motif.option_info.keymenu_item_info_font[4],
 							g =      motif.option_info.keymenu_item_info_font[5],
 							b =      motif.option_info.keymenu_item_info_font[6],
-							height = motif.option_info.keymenu_item_info_font_height,
+							height = motif.option_info.keymenu_item_info_font[7],
 							defsc =  motif.defaultOptions,
 						})
 						t[i].infodata[j]:draw()
