@@ -22,8 +22,8 @@
 ;       fnt, bank, align, r, g, b, height
 ;     where fnt can be either index matching font number declared under [Files]
 ;     or font filename (path to file). height argument is used only by Truetype
-;     fonts (if not equal -1 it overrides both fontX.height parameter and size
-;     of the ttf font declared in its DEF file)
+;     fonts (if not equal -1 it overrides both font<num>.height parameter and
+;     size of the ttf font declared in its DEF file)
 
 ;-----------------------------------------------------------
 
@@ -44,7 +44,7 @@
 	font1 = "f-4x6.fnt"
 	font2 = "f-6x9.def"
 	font3 = "jg.fnt"
-	;fontX.height = 
+	;font<num>.height = 
 
 	; Ikemen features
 	; ------------------------------------------------------------
@@ -572,8 +572,6 @@
 	title.watch.text = "Watch Mode"
 	;title.replay.text = "Replay"
 
-	name.random.text = "Random"
-
 	p1.face.num = 1
 	p1.face.anim = -1
 	p1.face.done.anim = -1
@@ -614,7 +612,9 @@
 	; num params control max number of names to render. If set to 1, last active
 	; member's name has priority. Not used in co-op.
 	p1.name.num = 4
+	p1.name.random.text = "Random"
 	p2.name.num = 4
+	p2.name.random.text = "Random"
 
 	stage.active.offset = 0, 0
 	stage.active.switchtime = 2
@@ -648,30 +648,18 @@
 	; list, <teammode> should be replaced with single/simul/turns/tag/ratio
 	;teammenu.itemname.<gamemode>.<teammode> = ""
 
-	;p1.teammenu.bg.<itemname>.anim = -1
-	;p1.teammenu.bg.<itemname>.spr = 
-	;p1.teammenu.bg.<itemname>.offset = 0, 0
-	;p1.teammenu.bg.<itemname>.facing = 1
-	;p1.teammenu.bg.<itemname>.scale = 1.0, 1.0
-	;p1.teammenu.bg.active.<itemname>.anim = -1
-	;p1.teammenu.bg.active.<itemname>.spr = 
-	;p1.teammenu.bg.active.<itemname>.offset = 0, 0
-	;p1.teammenu.bg.active.<itemname>.facing = 1
-	;p1.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
+	;p<pn>.teammenu.bg.<itemname>.anim = -1
+	;p<pn>.teammenu.bg.<itemname>.spr = 
+	;p<pn>.teammenu.bg.<itemname>.offset = 0, 0
+	;p<pn>.teammenu.bg.<itemname>.facing = 1
+	;p<pn>.teammenu.bg.<itemname>.scale = 1.0, 1.0
+	;p<pn>.teammenu.bg.active.<itemname>.anim = -1
+	;p<pn>.teammenu.bg.active.<itemname>.spr = 
+	;p<pn>.teammenu.bg.active.<itemname>.offset = 0, 0
+	;p<pn>.teammenu.bg.active.<itemname>.facing = 1
+	;p<pn>.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
 
 	p1.teammenu.item.active.switchtime = 2
-
-	;p2.teammenu.bg.<itemname>.anim = -1
-	;p2.teammenu.bg.<itemname>.spr = 
-	;p2.teammenu.bg.<itemname>.offset = 0, 0
-	;p2.teammenu.bg.<itemname>.facing = 1
-	;p2.teammenu.bg.<itemname>.scale = 1.0, 1.0
-	;p2.teammenu.bg.active.<itemname>.anim = -1
-	;p2.teammenu.bg.active.<itemname>.spr = 
-	;p2.teammenu.bg.active.<itemname>.offset = 0, 0
-	;p2.teammenu.bg.active.<itemname>.facing = 1
-	;p2.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
-
 	p2.teammenu.item.active.switchtime = 2
 
 	p1.teammenu.next.key = "$D"
@@ -688,7 +676,7 @@
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.font.scale = 1.0, 1.0
-	timer.font.text = "%i"
+	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 60
 	timer.displaytime = 10
@@ -922,7 +910,7 @@
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.font.scale = 1.0, 1.0
-	timer.font.text = "%i"
+	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 6
 	timer.displaytime = 0
@@ -1957,7 +1945,7 @@
 	start.timer.offset = 310, 234
 	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255, -1
 	start.timer.font.scale = 1.0, 1.0
-	start.timer.font.text = "%i"
+	start.timer.text = "%i"
 	start.timer.count = 60
 	start.timer.framespercount = 60
 	start.timer.displaytime = 10
@@ -2247,7 +2235,7 @@
 	timer.offset = 0, 0
 	timer.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	timer.font.scale = 1.0, 1.0
-	timer.font.text = "%s"
+	timer.text = "%s"
 	timer.count = 99
 	timer.framespercount = 60
 	timer.displaytime = 10

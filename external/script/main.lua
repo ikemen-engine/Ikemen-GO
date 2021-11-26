@@ -3961,10 +3961,10 @@ function main.f_drawTimer(timer, t, prefix, txt)
 	if num <= -1 then
 		active = false
 		timer = -1
-		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(0))})
+		txt:update({text = t[prefix .. 'text']:gsub('%%i', tostring(0))})
 	else
 		timer = timer + 1
-		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(math.max(0, num)))})
+		txt:update({text = t[prefix .. 'text']:gsub('%%i', tostring(math.max(0, num)))})
 	end
 	if timer >= t[prefix .. 'displaytime'] then
 		txt:draw()
