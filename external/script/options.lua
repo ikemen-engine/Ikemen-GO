@@ -80,7 +80,7 @@ options.t_itemname = {
 				txt_textinput,
 				overlay_textinput,
 				motif.option_info.textinput_offset[2],
-				main.f_ySpacing(motif.option_info, 'textinput_font'),
+				main.f_ySpacing(motif.option_info, 'textinput'),
 				motif.optionbgdef
 			)
 			if tonumber(port) ~= nil then
@@ -781,7 +781,7 @@ options.t_itemname = {
 					txt_textinput,
 					overlay_textinput,
 					motif.option_info.textinput_offset[2],
-					main.f_ySpacing(motif.option_info, 'textinput_font'),
+					main.f_ySpacing(motif.option_info, 'textinput'),
 					motif.optionbgdef
 				))
 			if width ~= nil then
@@ -791,7 +791,7 @@ options.t_itemname = {
 					txt_textinput,
 					overlay_textinput,
 					motif.option_info.textinput_offset[2],
-					main.f_ySpacing(motif.option_info, 'textinput_font'),
+					main.f_ySpacing(motif.option_info, 'textinput'),
 					motif.optionbgdef
 				))
 				if height ~= nil then

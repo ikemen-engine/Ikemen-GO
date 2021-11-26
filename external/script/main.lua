@@ -1199,7 +1199,7 @@ end
 
 --y spacing calculation
 function main.f_ySpacing(t, key)
-	local font_def = main.font_def[t[key][1] .. t[key][7]]
+	local font_def = main.font_def[t[key .. '_font'][1] .. t[key .. '_font'][7]]
 	if font_def == nil then return 0 end
 	return main.f_round(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2])
 end
@@ -1556,7 +1556,7 @@ function main.f_warning(t, background, info, title, txt, overlay)
 		for i = 1, #t do
 			txt:update({
 				text = t[i],
-				y = info.text_offset[2] + main.f_ySpacing(info, 'text_font') * (i - 1),
+				y = info.text_offset[2] + main.f_ySpacing(info, 'text') * (i - 1),
 			})
 			txt:draw()
 		end
@@ -2462,7 +2462,7 @@ main.t_itemname = {
 			txt_textinput,
 			overlay_textinput,
 			motif[main.group].textinput_offset[2],
-			main.f_ySpacing(motif.title_info, 'textinput_font'),
+			main.f_ySpacing(motif.title_info, 'textinput'),
 			motif[main.background]
 		)
 		if name ~= '' then
@@ -2472,7 +2472,7 @@ main.t_itemname = {
 				txt_textinput,
 				overlay_textinput,
 				motif[main.group].textinput_offset[2],
-				main.f_ySpacing(motif.title_info, 'textinput_font'),
+				main.f_ySpacing(motif.title_info, 'textinput'),
 				motif[main.background]
 			)
 			if address:match('^[0-9%.]+$') then
@@ -3317,7 +3317,7 @@ function main.f_connect(server, t)
 		for i = 1, #t do
 			txt_connecting:update({
 				text = t[i],
-				y = motif[main.group].connecting_offset[2] + main.f_ySpacing(motif.title_info, 'connecting_font') * (i - 1),
+				y = motif[main.group].connecting_offset[2] + main.f_ySpacing(motif.title_info, 'connecting') * (i - 1),
 			})
 			txt_connecting:draw()
 		end

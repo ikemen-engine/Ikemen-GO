@@ -2172,7 +2172,7 @@ function start.f_selectScreen()
 						align =  motif.select_info[stageActiveType .. '_font'][3],
 						text =   t_txt[i],
 						x =      motif.select_info.stage_pos[1] + motif.select_info[stageActiveType .. '_offset'][1],
-						y =      motif.select_info.stage_pos[2] + motif.select_info[stageActiveType .. '_offset'][2] + main.f_ySpacing(motif.select_info, stageActiveType .. '_font') * (i - 1),
+						y =      motif.select_info.stage_pos[2] + motif.select_info[stageActiveType .. '_offset'][2] + main.f_ySpacing(motif.select_info, stageActiveType) * (i - 1),
 						scaleX = motif.select_info[stageActiveType .. '_scale'][1],
 						scaleY = motif.select_info[stageActiveType .. '_scale'][2],
 						r =      motif.select_info[stageActiveType .. '_font'][4],
@@ -2192,7 +2192,7 @@ function start.f_selectScreen()
 		for i = 1, #t_recordText do
 			txt_recordSelect:update({
 				text = t_recordText[i],
-				y = motif.select_info.record_offset[2] + main.f_ySpacing(motif.select_info, 'record_font') * (i - 1),
+				y = motif.select_info.record_offset[2] + main.f_ySpacing(motif.select_info, 'record') * (i - 1),
 			})
 			txt_recordSelect:draw()
 		end
@@ -2951,7 +2951,7 @@ local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
 	for i = 1, #t_text do
 		txt:update({
 			text = t_text[i],
-			y =    t[prefix .. '_offset'][2] + main.f_ySpacing(t, prefix .. '_font') * (i - 1),
+			y =    t[prefix .. '_offset'][2] + main.f_ySpacing(t, prefix) * (i - 1),
 		})
 		txt:draw()
 	end
