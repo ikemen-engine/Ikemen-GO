@@ -144,7 +144,7 @@ function boolToInt(bool)
 end
 
 function engineInfo()
-	return string.format('VSync: %d; Speed: %d/%d%%', vsync(), gameLogicSpeed(), gamespeed())
+	return string.format('Frames: %d, VSync: %d; Speed: %d/%d%%', tickcount(), vsync(), gameLogicSpeed(), gamespeed())
 end
 
 function playerInfo()
