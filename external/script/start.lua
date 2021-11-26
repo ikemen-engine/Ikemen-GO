@@ -2102,8 +2102,8 @@ function start.f_selectScreen()
 							text =   name,
 							x =      motif.select_info['p' .. side .. '_name_offset'][1] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][1],
 							y =      motif.select_info['p' .. side .. '_name_offset'][2] + (i - 1) * motif.select_info['p' .. side .. '_name_spacing'][2],
-							scaleX = motif.select_info['p' .. side .. '_name_font_scale'][1],
-							scaleY = motif.select_info['p' .. side .. '_name_font_scale'][2],
+							scaleX = motif.select_info['p' .. side .. '_name_scale'][1],
+							scaleY = motif.select_info['p' .. side .. '_name_scale'][2],
 							r =      motif.select_info['p' .. side .. '_name_font'][4],
 							g =      motif.select_info['p' .. side .. '_name_font'][5],
 							b =      motif.select_info['p' .. side .. '_name_font'][6],
@@ -2173,8 +2173,8 @@ function start.f_selectScreen()
 						text =   t_txt[i],
 						x =      motif.select_info.stage_pos[1] + motif.select_info[stageActiveType .. '_offset'][1],
 						y =      motif.select_info.stage_pos[2] + motif.select_info[stageActiveType .. '_offset'][2] + main.f_ySpacing(motif.select_info, stageActiveType .. '_font') * (i - 1),
-						scaleX = motif.select_info[stageActiveType .. '_font_scale'][1],
-						scaleY = motif.select_info[stageActiveType .. '_font_scale'][2],
+						scaleX = motif.select_info[stageActiveType .. '_scale'][1],
+						scaleY = motif.select_info[stageActiveType .. '_scale'][2],
 						r =      motif.select_info[stageActiveType .. '_font'][4],
 						g =      motif.select_info[stageActiveType .. '_font'][5],
 						b =      motif.select_info[stageActiveType .. '_font'][6],
@@ -2367,8 +2367,8 @@ function start.f_teamMenu(side, t)
 					text =   t[i].displayname,
 					x =      motif.select_info['p' .. side .. '_teammenu_pos'][1] + motif.select_info['p' .. side .. '_teammenu_item_offset'][1] + motif.select_info['p' .. side .. '_teammenu_item_spacing'][1] * (i - 1),
 					y =      motif.select_info['p' .. side .. '_teammenu_pos'][2] + motif.select_info['p' .. side .. '_teammenu_item_offset'][2] + motif.select_info['p' .. side .. '_teammenu_item_spacing'][2] * (i - 1),
-					scaleX = motif.select_info[t_teamActiveType[side] .. '_font_scale'][1],
-					scaleY = motif.select_info[t_teamActiveType[side] .. '_font_scale'][2],
+					scaleX = motif.select_info[t_teamActiveType[side] .. '_scale'][1],
+					scaleY = motif.select_info[t_teamActiveType[side] .. '_scale'][2],
 					r =      motif.select_info[t_teamActiveType[side] .. '_font'][4],
 					g =      motif.select_info[t_teamActiveType[side] .. '_font'][5],
 					b =      motif.select_info[t_teamActiveType[side] .. '_font'][6],
@@ -2386,8 +2386,8 @@ function start.f_teamMenu(side, t)
 					text =   t[i].displayname,
 					x =      motif.select_info['p' .. side .. '_teammenu_pos'][1] + motif.select_info['p' .. side .. '_teammenu_item_offset'][1] + motif.select_info['p' .. side .. '_teammenu_item_spacing'][1] * (i - 1),
 					y =      motif.select_info['p' .. side .. '_teammenu_pos'][2] + motif.select_info['p' .. side .. '_teammenu_item_offset'][2] + motif.select_info['p' .. side .. '_teammenu_item_spacing'][2] * (i - 1),
-					scaleX = motif.select_info['p' .. side .. '_teammenu_item_font_scale'][1],
-					scaleY = motif.select_info['p' .. side .. '_teammenu_item_font_scale'][2],
+					scaleX = motif.select_info['p' .. side .. '_teammenu_item_scale'][1],
+					scaleY = motif.select_info['p' .. side .. '_teammenu_item_scale'][2],
 					r =      motif.select_info['p' .. side .. '_teammenu_item_font'][4],
 					g =      motif.select_info['p' .. side .. '_teammenu_item_font'][5],
 					b =      motif.select_info['p' .. side .. '_teammenu_item_font'][6],
@@ -2865,8 +2865,8 @@ function start.f_selectVersus(active, t_orderSelect)
 						text =   start.f_getName(start.p[side].t_selTemp[i].ref, false, side),
 						x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
 						y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
-						scaleX = motif.vs_screen['p' .. side .. '_name_font_scale'][1],
-						scaleY = motif.vs_screen['p' .. side .. '_name_font_scale'][2],
+						scaleX = motif.vs_screen['p' .. side .. '_name_scale'][1],
+						scaleY = motif.vs_screen['p' .. side .. '_name_scale'][2],
 						r =      motif.vs_screen['p' .. side .. '_name_font'][4],
 						g =      motif.vs_screen['p' .. side .. '_name_font'][5],
 						b =      motif.vs_screen['p' .. side .. '_name_font'][6],
@@ -3137,7 +3137,7 @@ end
 --;===========================================================
 --; VICTORY SCREEN
 --;===========================================================
-local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote', {scaleX = motif.victory_screen.winquote_scale[1], scaleY = motif.victory_screen.winquote_scale[2]})
+local txt_winquote = main.f_createTextImg(motif.victory_screen, 'winquote')
 local overlay_winquote = main.f_createOverlay(motif.victory_screen, 'overlay')
 local t_txt_winquoteName = {}
 for i = 1, 2 do
@@ -3590,8 +3590,8 @@ function start.f_continue()
 				text =   motif.continue_screen[var .. '_text'],
 				x =      motif.continue_screen.pos[1] + motif.continue_screen[var .. '_offset'][1],
 				y =      motif.continue_screen.pos[2] + motif.continue_screen[var .. '_offset'][2],
-				scaleX = motif.continue_screen[var .. '_font_scale'][1],
-				scaleY = motif.continue_screen[var .. '_font_scale'][2],
+				scaleX = motif.continue_screen[var .. '_scale'][1],
+				scaleY = motif.continue_screen[var .. '_scale'][2],
 				r =      motif.continue_screen[var .. '_font'][4],
 				g =      motif.continue_screen[var .. '_font'][5],
 				b =      motif.continue_screen[var .. '_font'][6],

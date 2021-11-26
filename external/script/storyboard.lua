@@ -222,7 +222,7 @@ local function f_parse(path)
 								anim = -1,
 								text = '',
 								font = {'f-6x9.def', 0, 0, 255, 255, 255, -1},
-								font_scale = {1.0, 1.0}, --Ikemen feature
+								scale = {1.0, 1.0}, --Ikemen feature
 								palfx_time = -1, --Ikemen feature
 								palfx_add = {0, 0, 0}, --Ikemen feature
 								palfx_mul = {256, 256, 256}, --Ikemen feature
@@ -407,8 +407,8 @@ local function f_parse(path)
 					text =   t_layer[k2].text,
 					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
 					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-					scaleX = t_layer[k2].font_scale[1],
-					scaleY = t_layer[k2].font_scale[2],
+					scaleX = t_layer[k2].scale[1],
+					scaleY = t_layer[k2].scale[2],
 					r =      t_layer[k2].font[4],
 					g =      t_layer[k2].font[5],
 					b =      t_layer[k2].font[6],

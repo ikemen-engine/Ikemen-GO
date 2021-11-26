@@ -653,8 +653,8 @@ function menu.f_commandlistRender(section, t)
 				local font_def = main.font_def[motif[section].movelist_text_font[1] .. motif[section].movelist_text_font[7]]
 				--render glyph
 				if v.glyph and motif.glyphs_data[v.text] ~= nil then
-					local scaleX = font_def.Size[2] * motif[section].movelist_text_font_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[1]
-					local scaleY = font_def.Size[2] * motif[section].movelist_text_font_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[2]
+					local scaleX = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[1]
+					local scaleY = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[2]
 					if v.align == -1 then
 						alignOffset = alignOffset - motif.glyphs_data[v.text].info.Size[1] * scaleX
 					end
@@ -691,7 +691,7 @@ function menu.f_commandlistRender(section, t)
 					})
 					data:draw()
 					if k < #cmdList[n] then
-						width = fontGetTextWidth(main.font[data.font .. data.height], v.text, data.bank) * motif[section].movelist_text_font_scale[1] + motif[section].movelist_text_spacing[1]
+						width = fontGetTextWidth(main.font[data.font .. data.height], v.text, data.bank) * motif[section].movelist_text_scale[1] + motif[section].movelist_text_spacing[1]
 					end
 				end
 				if v.align == 0 then
