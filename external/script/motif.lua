@@ -1990,7 +1990,9 @@ function motif.setBaseTitleInfo()
 	motif.title_info.menu_itemname_watch = "WATCH"
 	motif.title_info.menu_itemname_options = "OPTIONS"
 	motif.title_info.menu_itemname_exit = "EXIT"
-	main.t_sort.title_info = {}
+	if main.t_sort.title_info == nil then
+		main.t_sort.title_info = {}
+	end
 	main.t_sort.title_info.menu = {
 		"arcade",
 		"versus",
@@ -2127,7 +2129,9 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_savereturn = "Save and Return"
 	motif.option_info.menu_itemname_return = "Return Without Saving"
 	-- Default options screen order.
-	main.t_sort.option_info = {}
+	if main.t_sort.option_info == nil then
+		main.t_sort.option_info = {}
+	end
 	main.t_sort.option_info.menu = {
 		"menugame",
 		"menugame_difficulty",
@@ -2257,7 +2261,9 @@ function motif.setBaseMenuInfo()
 	motif.menu_info.menu_itemname_commandlist = "Command List"
 	motif.menu_info.menu_itemname_characterchange = "Character Change"
 	motif.menu_info.menu_itemname_exit = "Exit"
-	main.t_sort.menu_info = {}
+	if main.t_sort.menu_info == nil then
+		main.t_sort.menu_info = {}
+	end
 	main.t_sort.menu_info.menu = {
 		"back",
 		"menuinput",
@@ -2295,7 +2301,9 @@ function motif.setBaseTrainingInfo()
 	motif.training_info.menu_itemname_commandlist = "Command List"
 	motif.training_info.menu_itemname_characterchange = "Character Change"
 	motif.training_info.menu_itemname_exit = "Exit"
-	main.t_sort.training_info = {}
+	if main.t_sort.training_info == nil then
+		main.t_sort.training_info = {}
+	end
 	main.t_sort.training_info.menu = {
 		"back",
 		"menutraining",
