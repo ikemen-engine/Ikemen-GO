@@ -174,7 +174,9 @@ func readBackGround(is IniSection, link *backGround,
 	}
 	is.ReadBool("autoresizeparallax", &bg.autoresizeparallax)
 	is.readF32ForStage("start", &bg.start[0], &bg.start[1])
-	is.readF32ForStage("delta", &bg.delta[0], &bg.delta[1])
+	if !bg.positionlink {
+		is.readF32ForStage("delta", &bg.delta[0], &bg.delta[1])
+	}
 	is.readF32ForStage("scalestart", &bg.scalestart[0], &bg.scalestart[1])
 	is.readF32ForStage("scaledelta", &bg.scaledelta[0], &bg.scaledelta[1])
 	is.readF32ForStage("xbottomzoomdelta", &bg.xbottomzoomdelta)
