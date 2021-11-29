@@ -2137,7 +2137,7 @@ function start.f_selectScreen()
 						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2]
 					)
 				end
-				if main.f_input(main.t_players, {'pal', 's'}) then
+				if main.f_input(main.t_players, {'pal', 's'}) or timerSelect == -1 then
 					sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
 					stageActiveType = 'stage_done'
 					stageEnd = true
@@ -2185,7 +2185,7 @@ function start.f_selectScreen()
 			end
 		end
 		--draw timer
-		if motif.select_info.timer_count ~= -1 and start.p[1].teamEnd and (start.p[2].teamEnd or not main.selectMenu[2]) then
+		if motif.select_info.timer_count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) then
 			timerSelect = main.f_drawTimer(timerSelect, motif.select_info, 'timer_', txt_timerSelect)
 		end
 		--draw record text
@@ -2241,7 +2241,7 @@ function start.f_teamMenu(side, t)
 		start.p[side].teamMode = t[1].mode
 		start.p[side].teamEnd = true
 	--otherwise display team mode selection
-	elseif timerSelect ~= -1 then
+	else
 		--Commands
 		local t_cmd = {}
 		if main.coop then
@@ -2453,7 +2453,8 @@ function start.f_teamMenu(side, t)
 			end
 		end
 		--Confirmed team selection
-		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_accept_key'])) then
+		if main.f_input(t_cmd, main.f_extractKeys(motif.select_info['p' .. side .. '_teammenu_accept_key'])) or timerSelect == -1 then
+			timerSelect = motif.select_info.timer_displaytime
 			sndPlay(motif.files.snd_data, motif.select_info['p' .. side .. '_teammenu_done_snd'][1], motif.select_info['p' .. side .. '_teammenu_done_snd'][2])
 			if t[start.p[side].teamMenu].itemname == 'single' then
 				start.p[side].teamMode = t[start.p[side].teamMenu].mode
@@ -2585,11 +2586,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 			--cell selected or select screen timer reached 0
 			if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1)) then
-				if timerSelect ~= -1 then
-					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
-					local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
-					--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
-				end
+				sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
+				local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
+				--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
 				start.p[side].t_selTemp[member].pal = main.f_btnPalNo(main.t_cmd[cmd])
 				if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 					start.p[side].t_selTemp[member].pal = 1
@@ -2652,6 +2651,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 						break
 					end
 				end
+			end
+			if not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd then
+				timerSelect = motif.select_info.timer_displaytime
 			end
 			if main.coop and (side == 1 or gamemode('versuscoop')) then --remaining members are controlled by different players
 				selectState = 4
