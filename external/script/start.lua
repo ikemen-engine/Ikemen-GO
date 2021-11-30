@@ -718,7 +718,7 @@ function start.f_getName(ref, hidden, side)
 	end
 	local tmp = start.f_getCharData(ref).name
 	if start.f_getCharData(ref).char == 'randomselect' or (hidden and start.f_getCharData(ref).hidden == 3) then
-		tmp = motif.select_info['p' .. (side or 1) .. 'name_random_text']
+		tmp = motif.select_info['p' .. (side or 1) .. '_name_random_text']
 	elseif hidden and start.f_getCharData(ref).hidden == 2 then
 		tmp = ''
 	end
@@ -2529,14 +2529,23 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 		--cell not selected yet
 		if selectState == 0 then
 			--restore cursor coordinates
-			if restoreCursor and start.p[side].t_cursor[start.p[side].numChars - main.f_tableLength(start.p[side].t_selected)] ~= nil then --restore saved position
-				local selX = start.p[side].t_cursor[start.p[side].numChars - main.f_tableLength(start.p[side].t_selected)].x
-				local selY = start.p[side].t_cursor[start.p[side].numChars - main.f_tableLength(start.p[side].t_selected)].y
-				if config.TeamDuplicates or t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref] == nil then
-					start.c[player].selX = selX
-					start.c[player].selY = selY
+			if restoreCursor then
+				-- remove entries if stored cursors exceeds team size
+				if #start.p[side].t_cursor > start.p[side].numChars then
+					for i = #start.p[side].t_cursor, start.p[side].numChars + 1, -1 do
+						start.p[side].t_cursor[i] = nil
+					end
 				end
-				start.p[side].t_cursor[start.p[side].numChars - main.f_tableLength(start.p[side].t_selected)] = nil
+				-- restore saved position
+				if start.p[side].t_cursor[member] ~= nil then
+					local selX = start.p[side].t_cursor[member].x
+					local selY = start.p[side].t_cursor[member].y
+					if config.TeamDuplicates or t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref] == nil then
+						start.c[player].selX = selX
+						start.c[player].selY = selY
+					end
+					start.p[side].t_cursor[member] = nil
+				end
 			end
 			--calculate current position
 			start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player, '_cursor_move_snd'))
@@ -2625,7 +2634,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			if not config.TeamDuplicates then
 				t_reservedChars[side][start.c[player].selRef] = true
 			end
-			start.p[side].t_cursor[start.p[side].numChars - member + 1] = {x = start.c[player].selX, y = start.c[player].selY}
+			start.p[side].t_cursor[member] = {x = start.c[player].selX, y = start.c[player].selY}
 			if main.f_tableLength(start.p[side].t_selected) == start.p[side].numChars then --if all characters have been chosen
 				if side == 1 and main.cpuSide[2] and start.reset then --if player1 is allowed to select p2 characters
 					if timerSelect == -1 then
