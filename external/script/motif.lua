@@ -1243,7 +1243,7 @@ local motif =
 		--menu_itemname_roundtime = 'Time Limit', --Ikemen feature
 		--menu_itemname_lifemul = 'Life', --Ikemen feature
 		--menu_itemname_singlevsteamlife = 'Single VS Team Life', --Ikemen feature
-		--menu_itemname_gamespeed = 'Game Speed', --Ikemen feature
+		--menu_itemname_gamespeed = 'Game FPS', --Ikemen feature
 		--menu_itemname_roundsnumsingle = 'Rounds to Win (Single)', --Ikemen feature
 		--menu_itemname_maxdrawgames = 'Max Draw Games', --Ikemen feature
 		--menu_itemname_credits = 'Credits', --Ikemen feature
@@ -2014,7 +2014,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame_roundtime = "Time Limit"
 	motif.option_info.menu_itemname_menugame_lifemul = "Life"
 	motif.option_info.menu_itemname_menugame_singlevsteamlife = "Single VS Team Life"
-	--motif.option_info.menu_itemname_menugame_gamespeed = "Game Speed"
+	motif.option_info.menu_itemname_menugame_gamespeed = "Game FPS"
 	motif.option_info.menu_itemname_menugame_roundsnumsingle = "Rounds to Win (Single)"
 	motif.option_info.menu_itemname_menugame_maxdrawgames = "Max Draw Games"
 	motif.option_info.menu_itemname_menugame_credits = "Credits"
@@ -2138,7 +2138,7 @@ function motif.setBaseOptionInfo()
 		"menugame_roundtime",
 		"menugame_lifemul",
 		"menugame_singlevsteamlife",
-		--"menugame_gamespeed",
+		"menugame_gamespeed",
 		"menugame_roundsnumsingle",
 		"menugame_maxdrawgames",
 		"menugame_credits",

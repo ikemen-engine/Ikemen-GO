@@ -660,7 +660,6 @@ func setupConfig() configSettings {
 	sys.gameWidth = tmp.GameWidth
 	sys.gameHeight = tmp.GameHeight
 	sys.gameSpeed = tmp.GameFramerate / float32(tmp.Framerate)
-
 	sys.helperMax = tmp.MaxHelper
 	sys.lifeMul = tmp.LifeMul / 100
 	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}

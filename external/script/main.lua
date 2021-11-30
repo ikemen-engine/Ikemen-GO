@@ -301,12 +301,11 @@ end
 if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
 end
-if main.flags['-speed'] ~= nil then
-	--config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
-	setGameSpeed(math.max(10, math.min(tonumber(main.flags['-speed']), 200)))
+if main.flags['-speed'] ~= nil and tonumber(main.flags['-speed']) > 0 then
+	setGameSpeed(tonumber(main.flags['-speed']) * config.Framerate / 100)
 end
 if main.flags['-speedtest'] ~= nil then
-	setGameSpeed(100)
+	setGameSpeed(100 * config.Framerate)
 end
 if main.flags['-nosound'] ~= nil then
 	setVolumeMaster(0)
@@ -4072,7 +4071,7 @@ if main.flags['-stresstest'] ~= nil then
 	main.f_default()
 	local frameskip = tonumber(main.flags['-stresstest'])
 	if frameskip >= 1 then
-		setGameSpeed(frameskip + 1)
+		setGameSpeed((frameskip + 1) * config.Framerate)
 	end
 	setGameMode('randomtest')
 	randomtest.run()

@@ -1785,9 +1785,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
-		if sys.gameSpeed != 100 { //not speedtest
-			sys.gameSpeed = float32(numArg(l, 1))
-		}
+		sys.gameSpeed = float32(numArg(l, 1)) / float32(FPS)
 		return 0
 	})
 	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
