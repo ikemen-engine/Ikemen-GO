@@ -1645,7 +1645,16 @@ end
 
 --add characters and stages using select.def
 function main.f_charParam(t, c)
-	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+	if c:match('%.[Dd][Ee][Ff]$') then --stage
+		c = c:gsub('\\', '/')
+		if t.stage == nil then
+			t.stage = {}
+		end
+		if not main.f_fileExists(c) then
+			panicError("\nStage doesn't exist: " .. c)
+		end
+		table.insert(t.stage, c)
+	elseif c:match('^music') then --musicX / musiclife / musicvictory
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 		c = c:gsub('%s+([0-9%s]+)$', function(m1)
 			for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1662,18 +1671,15 @@ function main.f_charParam(t, c)
 			return ''
 		end)
 		c = c:gsub('\\', '/')
-		local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
+		local bgtype, round, bgmusic = c:match('^(music[a-z]*)([0-9]*)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
-		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
-	elseif c:match('%.[Dd][Ee][Ff]$') then --stage
-		c = c:gsub('\\', '/')
-		if t.stage == nil then
-			t.stage = {}
+		local t_ref = t[bgtype]
+		if bgtype == 'music' or round ~= '' then
+			round = tonumber(round) or 1
+			if t[bgtype][round] == nil then t[bgtype][round] = {} end
+			t_ref = t[bgtype][round]
 		end
-		if not main.f_fileExists(c) then
-			panicError("\nStage doesn't exist: " .. c)
-		end
-		table.insert(t.stage, c)
+		table.insert(t_ref, {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
@@ -1843,16 +1849,26 @@ function main.f_addStage(file, hidden)
 	--music
 	for k, v in pairs(t_info.stagebgm) do
 		if k:match('^bgmusic') or k:match('^bgmvolume') or k:match('^bgmloop') then
-			local prefix, dot, suffix = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
-			if t_info.stagebgm['bgmusic' .. dot .. suffix] ~= nil and t_info.stagebgm['bgmusic' .. dot .. suffix] ~= '' then
-				if main.t_selStages[stageNo]['music' .. suffix] == nil then
-					main.t_selStages[stageNo]['music' .. suffix] = {}
-					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
+			if t_info.stagebgm[k] ~= '' then
+				local prefix, dot, suffix, round = k:match('^([^%.]+)(%.?)([A-Za-z]*)([0-9]*)$')
+				local bgtype = 'music' .. suffix
+				if suffix == '' or suffix == 'round' then
+					bgtype = 'music'
+					round = tonumber(round) or 1
+				end
+				if main.t_selStages[stageNo][bgtype] == nil then main.t_selStages[stageNo][bgtype] = {} end
+				local t_ref = main.t_selStages[stageNo][bgtype]
+				if bgtype == 'music' then
+					if main.t_selStages[stageNo][bgtype][round] == nil then main.t_selStages[stageNo][bgtype][round] = {} end
+					t_ref = main.t_selStages[stageNo][bgtype][round]
+				end
+				if #t_ref == 0 then
+					table.insert(t_ref, {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
+					t_ref[1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
 				elseif tonumber(v) then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
+					t_ref[1][prefix] = tonumber(v)
 				end
 			end
 		elseif v ~= '' then
@@ -1971,7 +1987,7 @@ for line in content:gmatch('[^\r\n]+') do
 				end
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
-			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+			elseif c:match('^music') then --musicX / musiclife / musicvictory
 				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 				c = c:gsub('%s+([0-9%s]+)$', function(m1)
 					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1988,9 +2004,15 @@ for line in content:gmatch('[^\r\n]+') do
 					return ''
 				end)
 				c = c:gsub('\\', '/')
-				local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
+				local bgtype, round, bgmusic = c:match('^(music[a-z]*)([0-9]*)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
-				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
+				local t_ref = main.t_selStages[row][bgtype]
+				if bgtype == 'music' or round ~= '' then
+					round = tonumber(round) or 1
+					if main.t_selStages[row][bgtype][round] == nil then main.t_selStages[row][bgtype][round] = {} end
+					t_ref = main.t_selStages[row][bgtype][round]
+				end
+				table.insert(t_ref, {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then

@@ -541,50 +541,67 @@ end
 
 --sets music
 function start.f_setMusic(num, data)
-	start.t_music = {music = {}, musicalt = {}, musiclife = {}, musicvictory = {}}
+	start.bgmround = 0
+	start.t_music = {}
 	local side = 2
-	for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
-		local track = 0
-		local music = ''
-		local volume = 100
-		local loopstart = 0
-		local loopend = 0
+	for _, v in ipairs({'music', 'musiclife', 'musicvictory', 'musicvictory'}) do
+		if start.t_music[v] == nil then
+			start.t_music[v] = {}
+		end
+		local t_ref = nil
 		-- music assigned by launchFight
 		if data ~= nil and data[v] ~= nil then
-			music = data[v][1] or music
-			volume = data[v][2] or volume
-			loopstart = data[v][3] or loopstart
-			loopend = data[v][4] or loopend
+			t_ref = data[v]
 		-- game modes other than demo (or demo with stage BGM param enabled)
 		elseif not gamemode('demo') or motif.demo_mode.fight_playbgm == 1 then
 			-- music assigned as character param
 			if (main.charparam.music or (v == 'musicvictory' and main.victoryScreen)) and start.f_getCharData(start.p[side].t_selected[1].ref)[v] ~= nil then
-				track = math.random(1, #start.f_getCharData(start.p[side].t_selected[1].ref)[v])
-				music = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmusic
-				volume = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmvolume
-				loopstart = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopstart
-				loopend = start.f_getCharData(start.p[side].t_selected[1].ref)[v][track].bgmloopend
+				t_ref = start.f_getCharData(start.p[side].t_selected[1].ref)[v]
 			-- music assigned as stage param
 			elseif main.t_selStages[num] ~= nil and main.t_selStages[num][v] ~= nil then
-				track = math.random(1, #main.t_selStages[num][v])
-				music = main.t_selStages[num][v][track].bgmusic
-				volume = main.t_selStages[num][v][track].bgmvolume
-				loopstart = main.t_selStages[num][v][track].bgmloopstart
-				loopend = main.t_selStages[num][v][track].bgmloopend
+				t_ref = main.t_selStages[num][v]
 			end
 		end
-		if music ~= '' or v == 'music' then
-			if v == 'musicvictory' then
-				start.t_music[v][side] = {bgmusic = music, bgmvolume = volume, bgmloopstart = loopstart, bgmloopend = loopend}
+		-- append t_music table
+		if t_ref ~= nil then
+			-- musicX tracks are nested using round numbers as table keys
+			if v == 'music' then
+				for k2, v2 in pairs(t_ref) do
+					local track = math.random(1, #v2)
+					start.t_music[v][k2] = {
+						bgmusic = v2[track].bgmusic,
+						bgmvolume = v2[track].bgmvolume,
+						bgmloopstart = v2[track].bgmloopstart,
+						bgmloopend = v2[track].bgmloopend
+					}
+				end
 			else
-				start.t_music[v] = {bgmusic = music, bgmvolume = volume, bgmloopstart = loopstart, bgmloopend = loopend}
+				local track = math.random(1, #t_ref)
+				-- musicvictory tracks are nested using team side as table keys
+				if v == 'musicvictory' then
+					start.t_music[v][side] = {
+						bgmusic = t_ref[track].bgmusic,
+						bgmvolume = t_ref[track].bgmvolume,
+						bgmloopstart = t_ref[track].bgmloopstart,
+						bgmloopend = t_ref[track].bgmloopend
+					}
+				-- musiclife track is stored without additional nesting
+				else
+					start.t_music[v] = {
+						bgmusic = t_ref[track].bgmusic,
+						bgmvolume = t_ref[track].bgmvolume,
+						bgmloopstart = t_ref[track].bgmloopstart,
+						bgmloopend = t_ref[track].bgmloopend
+					}
+				end
 			end
 		end
 		if v == 'musicvictory' then
 			side = 1
 		end
 	end
-	for k, v in pairs({bgmtrigger_alt = 0, bgmratio_life = 30, bgmtrigger_life = 0}) do
+	-- bgmratio.life, bgmtrigger.life
+	for k, v in pairs({bgmratio_life = 30, bgmtrigger_life = 1}) do
 		if main.t_selStages[num] ~= nil and main.t_selStages[num][k] ~= nil then
 			start.t_music[k] = main.t_selStages[num][k]
 		else
@@ -1665,15 +1682,25 @@ function launchFight(data)
 		t.p2rounds = data.p2rounds or nil
 		t.exclude = data.exclude or {}
 		t.musicData = {}
-		for _, v in ipairs({'music', 'musicalt', 'musiclife', 'musicvictory', 'musicvictory'}) do
-			if data[v] ~= nil then
-				t.musicData[v] = {}
+		-- Parse musicX / musiclife / musicvictory arguments
+		for k, v in pairs(data) do
+			if k:match('^music') then
 				-- old syntax with only string argument maintained for backward compatibility with previous builds
-				if type(data[v]) == "string" then
-					table.insert(t.musicData[v], data[v])
-				elseif type(data[v]) == "table" then
-					t.musicData[v] = data[v]
+				if type(v) == "string" then
+					v = {v}
 				end
+				local bgtype, round = k:match('^(music[a-z]*)([0-9]*)$')
+				if t.musicData[bgtype] == nil then
+					t.musicData[bgtype] = {}
+				end
+				local t_ref = t.musicData[bgtype]
+				-- musicX parameters are nested using round numbers as table keys
+				if bgtype == 'music' or round ~= '' then
+					round = tonumber(round) or 1
+					if t.musicData[bgtype][round] == nil then t.musicData[bgtype][round] = {} end
+					t_ref = t.musicData[bgtype][round]
+				end
+				table.insert(t_ref, {bgmusic = (v[1] or ''), bgmvolume = (v[2] or 100), bgmloopstart = (v[3] or 0), bgmloopend = (v[4] or 0)})
 			end
 		end
 		t.stage = data.stage or ''
@@ -3960,6 +3987,8 @@ end
 --;===========================================================
 --; STAGE MUSIC
 --;===========================================================
+
+-- Function checking conditions for music triggering, called each frame during match by loop() function in global.lua
 function start.f_stageMusic()
 	if main.flags['-nomusic'] ~= nil or gamemode('') then
 		return
@@ -3967,57 +3996,46 @@ function start.f_stageMusic()
 	if gamemode('demo') and motif.demo_mode.fight_playbgm == 0 then
 		return
 	end
+	-- bgmusic / bgmusic.roundX
 	if roundstart() then
-		if roundno() == 1 then
-			main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
-			start.bgmstate = 0
-		elseif start.bgmstate ~= 1 then
-			if start.t_music.musicalt.bgmusic ~= nil and (start.t_music.bgmtrigger_alt == 0 or roundtype() == 3) then
-				main.f_playBGM(true, start.t_music.musicalt.bgmusic, 1, start.t_music.musicalt.bgmvolume, start.t_music.musicalt.bgmloopstart, start.t_music.musicalt.bgmloopend)
-				start.bgmstate = 1
-			elseif start.bgmstate == 2 then
-				main.f_playBGM(true, start.t_music.music.bgmusic, 1, start.t_music.music.bgmvolume, start.t_music.music.bgmloopstart, start.t_music.music.bgmloopend)
-				start.bgmstate = 0
-			end
+		-- only if the round is not restarted
+		if start.t_music.music[roundno()] ~= nil and start.bgmround ~= roundno() then
+			start.bgmround = roundno()
+			main.f_playBGM(true, start.t_music.music[start.bgmround].bgmusic, 1, start.t_music.music[start.bgmround].bgmvolume, start.t_music.music[start.bgmround].bgmloopstart, start.t_music.music[start.bgmround].bgmloopend)
 		end
-	elseif start.t_music.musiclife.bgmusic ~= nil and start.bgmstate ~= 2 and roundstate() == 2 then
-		local p1cnt, p2cnt = 1, 1
-		if start.p[1].teamMode == 1 or start.p[1].teamMode == 3 then --p1 simul or tag
-			p1cnt = #start.p[1].t_selected
-		end
-		if start.p[2].teamMode == 1 or start.p[2].teamMode == 3 then --p2 simul or tag
-			p2cnt = #start.p[2].t_selected
-		end
-		for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
+		start.bgmstate = 0
+	-- bgmusic.life
+	elseif start.t_music.musiclife.bgmusic ~= nil and start.bgmstate == 0 and roundstate() == 2 then
+		for i = 1, 2 do
 			player(i) --assign sys.debugWC to player i
+			-- continue only if p1/p2 life meets life ratio criteria
 			if life() / lifemax() * 100 <= start.t_music.bgmratio_life then
-				if teamside() == 1 then
-					if p1cnt > 1 or alive() then
-						p1cnt = p1cnt - 1
+				local ok = true
+				for j = 1, numpartner() do
+					player(j * 2 + i) --assign sys.debugWC to member j
+					-- skip music playback if any of the team members doesn't meet life ratio criteria
+					if life() / lifemax() * 100 > start.t_music.bgmratio_life then
+						ok = false
+						break
 					end
-				elseif p2cnt > 1 or alive() then
-					p2cnt = p2cnt - 1
+				end
+				if ok then
+					if start.t_music.bgmtrigger_life == 1 or roundtype() >= 2 then
+						main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.bgmvolume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
+						start.bgmstate = 1
+						break
+					end
 				end
 			end
 		end
-		local bglife = false
-		if start.t_music.bgmtrigger_life == 1 then
-			bglife = p1cnt <= 0 or p2cnt <= 0
-		else
-			bglife = (p1cnt <= 0 and player(1) and roundtype() >= 2) or (p2cnt <= 0 and player(2) and roundtype() >= 2)
-		end
-		if bglife then
-			main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.bgmvolume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
-			start.bgmstate = 2
-		end
-	--elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and matchover() then
+	-- bgmusic.victory
 	elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and roundstate() == 3 then
-		if start.t_music.musicvictory[1] ~= nil and player(1) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 1
-			main.f_playBGM(true, start.t_music.musicvictory[1].bgmusic, 1, start.t_music.musicvictory[1].bgmvolume, start.t_music.musicvictory[1].bgmloopstart, start.t_music.musicvictory[1].bgmloopend)
-			start.bgmstate = -1
-		elseif start.t_music.musicvictory[2] ~= nil and player(2) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player 2
-			main.f_playBGM(true, start.t_music.musicvictory[2].bgmusic, 1, start.t_music.musicvictory[2].bgmvolume, start.t_music.musicvictory[2].bgmloopstart, start.t_music.musicvictory[2].bgmloopend)
-			start.bgmstate = -1
+		for i = 1, 2 do
+			if start.t_music.musicvictory[i] ~= nil and player(i) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player i
+				main.f_playBGM(true, start.t_music.musicvictory[i].bgmusic, 1, start.t_music.musicvictory[i].bgmvolume, start.t_music.musicvictory[i].bgmloopstart, start.t_music.musicvictory[i].bgmloopend)
+				start.bgmstate = -1
+				break
+			end
 		end
 	end
 end
