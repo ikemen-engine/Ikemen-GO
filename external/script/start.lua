@@ -4219,6 +4219,7 @@ function start.f_dialogueInit()
 			{spr = motif.dialogue_info.p2_face_spr, pn = -1},
 		},
 		textNum = 1,
+		activeSide = -1,
 		endtime = -1,
 		wait = 0,
 		checktoken = 0,
@@ -4234,6 +4235,8 @@ function start.f_dialogueInit()
 	for side = 1, 2 do
 		animReset(motif.dialogue_info['p' .. side .. '_bg_data'])
 		animUpdate(motif.dialogue_info['p' .. side .. '_bg_data'])
+		animReset(motif.dialogue_info['p' .. side .. '_active_data'])
+		animUpdate(motif.dialogue_info['p' .. side .. '_active_data'])
 	end
 	player(start.t_dialogue.player)
 	start.txt_dialogue_p1_name:update({text = name()})
@@ -4484,6 +4487,17 @@ function start.f_dialogue()
 		)
 		--draw names
 		start['txt_dialogue_p' .. side .. '_name']:draw()
+	end
+	--draw active element
+	for side = 1, 2 do
+		if t.parsed[t.textNum].side == side then
+			if t.activeSide ~= side then
+				t.activeSide = side
+				animReset(motif.dialogue_info['p' .. side .. '_active_data'])
+			end
+			animUpdate(motif.dialogue_info['p' .. side .. '_active_data'])
+			animDraw(motif.dialogue_info['p' .. side .. '_active_data'])
+		end
 	end
 	if main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.skip_key)) then
 		charSndStop()

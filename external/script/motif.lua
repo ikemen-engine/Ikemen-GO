@@ -1768,6 +1768,16 @@ local motif =
 		p2_text_delay = 2, --Ikemen feature
 		p2_text_textwrap = 'w', --Ikemen feature
 		p2_text_window = {}, --Ikemen feature
+		p1_active_anim = -1, --Ikemen feature
+		p1_active_spr = {}, --Ikemen feature
+		p1_active_offset = {0, 0}, --Ikemen feature
+		p1_active_facing = 1, --Ikemen feature
+		p1_active_scale = {1.0, 1.0}, --Ikemen feature
+		p2_active_anim = -1, --Ikemen feature
+		p2_active_spr = {}, --Ikemen feature
+		p2_active_offset = {0, 0}, --Ikemen feature
+		p2_active_facing = 1, --Ikemen feature
+		p2_active_scale = {1.0, 1.0}, --Ikemen feature
 	},
 	hiscore_info =
 	{
@@ -2799,6 +2809,7 @@ end
 --dialogue spr/anim data
 for i = 1, 2 do
 	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_bg_'})
+	motif.f_loadSprData(motif.dialogue_info, {s = 'p' .. i .. '_active_'})
 end
 
 --hiscore spr/anim data

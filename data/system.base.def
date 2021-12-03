@@ -2144,6 +2144,20 @@
 	p2.text.textwrap = "w"
 	p2.text.window = 
 
+	; active element is rendered on top, only when pX side is executing text.
+	; Can be used e.g. to display arrow animation on active side and/or dim
+	; opposite player text box. Animation is reset whenever active side changes.
+	p1.active.anim = -1
+	p1.active.spr = 
+	p1.active.offset = 0, 0
+	p1.active.facing = 1
+	p1.active.scale = 1.0, 1.0
+	p2.active.anim = -1
+	p2.active.spr = 
+	p2.active.offset = 0, 0
+	p2.active.facing = 1
+	p2.active.scale = 1.0, 1.0
+
 [Hiscore Info] ;Ikemen feature
 	enabled = 0
 	fadein.time = 50
