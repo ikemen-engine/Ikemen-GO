@@ -2145,7 +2145,7 @@
 	p2.text.window = 
 
 	; active element is rendered on top, only when pX side is executing text.
-	; Can be used e.g. to display arrow animation on active side and/or dim
+	; Can be used e.g. to display button press prompt on active side and/or dim
 	; opposite player text box. Animation is reset whenever active side changes.
 	p1.active.anim = -1
 	p1.active.spr = 
