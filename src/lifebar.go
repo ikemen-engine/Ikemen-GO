@@ -1904,6 +1904,9 @@ func (ro *LifeBarRound) callFight() {
 	ro.timerActive = true
 }
 func (ro *LifeBarRound) act() bool {
+	if sys.paused && !sys.step {
+		return false
+	}
 	if sys.intro > ro.ctrl_time {
 		ro.cur, ro.wt[0], ro.swt[0], ro.dt[0] = 0, ro.round_time, ro.round_sndtime, 0
 		ro.wt[1] = ro.callfight_time
