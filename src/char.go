@@ -4199,38 +4199,6 @@ func (c *Char) guardPointsSet(set int32) {
 		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
 	}
 }
-func (c *Char) rank() float32 {
-	if c.teamside == -1 {
-		return 0
-	}
-	var r float32
-	for _, v := range sys.lifebar.sc[c.teamside].rankPoints {
-		r += v
-	}
-	return r
-}
-func (c *Char) rankAdd(val, max float32, typ, ico string) {
-	if c.teamside == -1 {
-		return
-	}
-	if _, ok := sys.lifebar.sc[c.teamside].rankPoints[typ]; !ok {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] = 0
-	}
-	if max == 0 {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] += val
-	} else {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] = MinF(sys.lifebar.sc[c.teamside].rankPoints[typ]+val, max)
-	}
-	if ico != "" {
-		var unique map[string]bool = make(map[string]bool)
-		for _, v := range sys.lifebar.sc[c.teamside].rankIcons {
-			unique[v] = true
-		}
-		if _, ok := unique[ico]; !ok {
-			sys.lifebar.sc[c.teamside].rankIcons = append(sys.lifebar.sc[c.teamside].rankIcons, ico)
-		}
-	}
-}
 func (c *Char) redLifeAdd(add float64, absolute bool) {
 	if add != 0 && c.roundState() != 3 {
 		if !absolute {

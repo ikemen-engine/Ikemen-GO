@@ -4,7 +4,6 @@
 Default.Enable.Action = 1
 Default.Enable.Dizzy = 1
 Default.Enable.GuardBreak = 1
-Default.Enable.Rank = 1
 Default.Enable.Score = 1
 Default.Enable.Tag = 1
 

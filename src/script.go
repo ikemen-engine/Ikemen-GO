@@ -1320,25 +1320,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.lifebar.ro.match_wins[tn-1]))
 		return 1
 	})
-	luaRegister(l, "getRank", func(*lua.LState) int {
-		tn := int(numArg(l, 1))
-		if tn < 1 || tn > 2 {
-			l.RaiseError("\nInvalid team side: %v\n", tn)
-		}
-		tbl := l.NewTable()
-		tbl_values := l.NewTable()
-		for k, v := range sys.lifebar.sc[tn-1].rankPoints {
-			tbl_values.RawSetString(k, lua.LNumber(v))
-		}
-		tbl_icons := l.NewTable()
-		for k, v := range sys.lifebar.sc[tn-1].rankIcons {
-			tbl_icons.RawSetInt(k+1, lua.LString(v))
-		}
-		tbl.RawSetString("values", tbl_values)
-		tbl.RawSetString("icons", tbl_icons)
-		l.Push(tbl)
-		return 1
-	})
 	luaRegister(l, "getRoundTime", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.roundTime))
 		return 1
@@ -3746,10 +3727,6 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "playerno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.playerNo + 1))
-		return 1
-	})
-	luaRegister(l, "rank", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.rank()))
 		return 1
 	})
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {

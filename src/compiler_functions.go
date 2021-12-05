@@ -4052,42 +4052,6 @@ func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
-func (c *Compiler) rankAdd(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
-	ret, err := (*rankAdd)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			rankAdd_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "icon", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
-			}
-			sc.add(rankAdd_icon, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "type", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
-			}
-			sc.add(rankAdd_type, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			return nil
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "max",
-			rankAdd_max, VT_Float, 1, true); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "value",
-			rankAdd_value, VT_Float, 1, true); err != nil {
-			return err
-		}
-		return nil
-	})
-	return *ret, err
-}
 func (c *Compiler) redLifeAdd(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*redLifeAdd)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",

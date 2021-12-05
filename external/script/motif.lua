@@ -1663,63 +1663,6 @@ local motif =
 	{
 		spr = '', --Ikemen feature
 	},
-	rank_info =
-	{
-		enabled = 0, --Ikemen feature
-		bars_display = 0, --Ikemen feature
-		snd_time = 0, --Ikemen feature
-		snd = {-1, 0}, --Ikemen feature
-		p1_pos = {0, 0}, --Ikemen feature
-		p2_pos = {0, 0}, --Ikemen feature
-		p1_score_offset = {0, 0}, --Ikemen feature
-		p1_score_font = {'f-4x6.fnt', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		p1_score_scale = {1.0, 1.0}, --Ikemen feature
-		p1_score_text = '%s', --Ikemen feature
-		p1_score_displaytime = 0, --Ikemen feature
-		p2_score_offset = {0, 0}, --Ikemen feature
-		p2_score_font = {'f-4x6.fnt', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		p2_score_scale = {1.0, 1.0}, --Ikemen feature
-		p2_score_text = '%s', --Ikemen feature
-		p2_score_displaytime = 0, --Ikemen feature
-		p1_bg_anim = -1, --Ikemen feature
-		p1_bg_spr = {}, --Ikemen feature
-		p1_bg_offset = {0, 0}, --Ikemen feature
-		p1_bg_facing = 1, --Ikemen feature
-		p1_bg_scale = {1.0, 1.0}, --Ikemen feature
-		p1_bg_displaytime = 0, --Ikemen feature
-		p2_bg_anim = -1, --Ikemen feature
-		p2_bg_spr = {}, --Ikemen feature
-		p2_bg_offset = {0, 0}, --Ikemen feature
-		p2_bg_facing = 1, --Ikemen feature
-		p2_bg_scale = {1.0, 1.0}, --Ikemen feature
-		p2_bg_displaytime = 0, --Ikemen feature
-		p1_gauge_displaytime = 0, --Ikemen feature
-		p2_gauge_displaytime = 0, --Ikemen feature
-		p1_rank_displaytime = 0, --Ikemen feature
-		p2_rank_displaytime = 0, --Ikemen feature
-		p1_icon_displaytime = 0, --Ikemen feature
-		p2_icon_displaytime = 0, --Ikemen feature
-		p1_icon_spacing = {0, 0}, --Ikemen feature
-		p2_icon_spacing = {0, 0}, --Ikemen feature
-		--p<pn>_gauge_<type>_anim = -1, --Ikemen feature
-		--p<pn>_gauge_<type>_spr = {}, --Ikemen feature
-		--p<pn>_gauge_<type>_offset  = {0, 0}, --Ikemen feature
-		--p<pn>_gauge_<type>_facing = 1, --Ikemen feature
-		--p<pn>_gauge_<type>_scale = {1.0, 1.0}, --Ikemen feature
-		--p<pn>_gauge_<type>_window = {}, --Ikemen feature
-		--p<pn>_gauge_<type>_ticks = 0, --Ikemen feature
-		--p<pn>_gauge_<type>_max = 0, --Ikemen feature
-		--p<pn>_icon_<icon>_anim = -1, --Ikemen feature
-		--p<pn>_icon_<icon>_spr = {}, --Ikemen feature
-		--p<pn>_icon_<icon>_offset  = {0, 0}, --Ikemen feature
-		--p<pn>_icon_<icon>_facing = 1, --Ikemen feature
-		--p<pn>_icon_<icon>_scale = {1.0, 1.0}, --Ikemen feature
-		--p<pn>_rank_<num>_anim = -1, --Ikemen feature
-		--p<pn>_rank_<num>_spr = {}, --Ikemen feature
-		--p<pn>_rank_<num>_offset  = {0, 0}, --Ikemen feature
-		--p<pn>_rank_<num>_facing = 1, --Ikemen feature
-		--p<pn>_rank_<num>_scale = {1.0, 1.0}, --Ikemen feature
-	},
 	dialogue_info =
 	{
 		enabled = 0, --Ikemen feature
@@ -2777,33 +2720,6 @@ end
 for _, v in ipairs({motif.menu_info, motif.training_info}) do
 	motif.f_loadSprData(v, {s = 'movelist_arrow_up_',   x = v.movelist_pos[1], y = v.movelist_pos[2]})
 	motif.f_loadSprData(v, {s = 'movelist_arrow_down_', x = v.movelist_pos[1], y = v.movelist_pos[2]})
-end
-
---rank spr/anim data
-local t_rankParams = {}
-motif.rank_info.gauge = {}
-motif.rank_info.icon = {}
-motif.rank_info.rank = {}
-for k, _ in pairs(motif.rank_info) do
-	local ok = false
-	if k:match('^p[1-2].+_anim$') then
-		t_rankParams[k:gsub('anim$', '')] = k:match('^p([1-2])')
-		ok = true
-	elseif k:match('^p[1-2].+_spr$') then
-		t_rankParams[k:gsub('spr$', '')] = k:match('^p([1-2])')
-		ok = true
-	end
-	if ok then
-		for _, v in ipairs({'gauge', 'icon', 'rank'}) do
-			if k:match('^p[1-2]_' .. v .. '_.+_[^_]+$') then
-				motif.rank_info[v][k:match('^p[1-2]_' .. v .. '_(.+)_[^_]+$')] = true
-				break
-			end
-		end
-	end
-end
-for k, v in pairs(t_rankParams) do
-	motif.f_loadSprData(motif.rank_info, {s = k, x = motif.rank_info['p' .. v .. '_pos'][1], y = motif.rank_info['p' .. v .. '_pos'][2]})
 end
 
 --dialogue spr/anim data

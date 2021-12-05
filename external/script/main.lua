@@ -381,11 +381,10 @@ main.font_def = {}
 -- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
 -- Currently there are only few hooks available by default, which are in the
 -- commonlua loop() function. These are:
--- * loop.start: runs at the very beginning of the function
--- * loop.dialog: runs when dialogue state controller is active
--- * loop.[gamemode]#always: limited to specified gamemode (regardless of pause)
--- * loop.pause: only runs when paused
--- * loop.[gamemode]: limited to the specified gamemode when not paused
+-- * loop: global.lua 'loop' function start
+-- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
+-- * main.t_itemname: main.lua table entries (modes configuration)
+-- * launchFight: start.lua 'launchFight' function (right before match starts)
 hook = {
 	lists = {}
 }
@@ -2295,7 +2294,6 @@ function main.f_default()
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
 	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
-	main.rankDisplay = false --if rank data should be displayed at the end of match
 	main.rankingCondition = false --if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
@@ -2354,7 +2352,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2383,6 +2380,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.f_setCredits()
 		setGameMode('arcade')
+		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
@@ -2398,12 +2396,12 @@ main.t_itemname = {
 		main.charparam.stage = true
 		main.charparam.time = true
 		main.forceChar[2] = {main.t_bonusChars[item]}
-		main.rankDisplay = false
 		main.selectMenu[2] = true
 		main.teamMenu[1].single = true
 		main.teamMenu[2].single = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bonus_text})
 		setGameMode('bonus')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--BOSS RUSH
@@ -2424,7 +2422,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.rankingCondition = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
@@ -2442,6 +2439,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bossrush_text})
 		setGameMode('bossrush')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--DEMO
@@ -2456,7 +2454,6 @@ main.t_itemname = {
 		--main.lifebar.p2aiLevel = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2473,6 +2470,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_freebattle_text})
 		setGameMode('freebattle')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--JOIN (NEW ADDRESS)
@@ -2530,7 +2528,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.stageMenu = true
 		main.storyboard.credits = true
@@ -2544,6 +2541,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplaysurvivalcoop_text})
 		setGameMode('netplaysurvivalcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--NETPLAY CO-OP
@@ -2564,7 +2562,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2584,6 +2581,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_netplayteamcoop_text})
 		setGameMode('netplayteamcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--NETPLAY VERSUS
@@ -2594,7 +2592,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2611,15 +2608,18 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplayversus_text})
 		setGameMode('netplayversus')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--OPTIONS
 	['options'] = function()
+		hook.run("main.t_itemname")
 		return options.menu.loop
 	end,
 	--RANDOMTEST
 	['randomtest'] = function()
 		setGameMode('randomtest')
+		hook.run("main.t_itemname")
 		return randomtest.run
 	end,
 	--REPLAY
@@ -2664,6 +2664,7 @@ main.t_itemname = {
 			end
 		end
 		setGameMode(t[item].itemname)
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--SURVIVAL
@@ -2690,7 +2691,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.stageMenu = true
@@ -2708,6 +2708,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survival_text})
 		setGameMode('survival')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--SURVIVAL CO-OP
@@ -2732,7 +2733,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.stageMenu = true
@@ -2747,6 +2747,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survivalcoop_text})
 		setGameMode('survivalcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TEAM CO-OP
@@ -2768,7 +2769,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2788,6 +2788,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_teamcoop_text})
 		setGameMode('teamcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TIME ATTACK
@@ -2810,7 +2811,6 @@ main.t_itemname = {
 		main.quickContinue = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
 		if main.roundTime == -1 then
@@ -2833,6 +2833,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_timeattack_text})
 		setGameMode('timeattack')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TRAINING
@@ -2856,6 +2857,7 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.txt_mainSelect:update({text = motif.select_info.title_training_text})
 		setGameMode('training')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TRIALS
@@ -2872,7 +2874,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2895,6 +2896,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.victoryScreen = true
 		setGameMode('versus')
+		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
@@ -2909,7 +2911,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
@@ -2920,6 +2921,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_versuscoop_text})
 		setGameMode('versuscoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--WATCH
@@ -2929,7 +2931,6 @@ main.t_itemname = {
 		main.cpuSide[1] = true
 		--main.lifebar.p1aiLevel = true
 		--main.lifebar.p2aiLevel = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2945,6 +2946,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_watch_text})
 		setGameMode('watch')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 }
@@ -3651,6 +3653,7 @@ function main.f_demoStart()
 	if motif.demo_mode.fight_stopbgm == 1 then
 		main.f_playBGM(true) --stop music
 	end
+	hook.run("main.t_itemname")
 	clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
 	loadStart()
 	game()

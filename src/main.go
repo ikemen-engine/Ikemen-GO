@@ -310,7 +310,6 @@ func setupConfig() configSettings {
 		"data/action.zss",
 		"data/dizzy.zss",
 		"data/guardbreak.zss",
-		"data/rank.zss",
 		"data/score.zss",
 		"data/tag.zss",
 		"data/training.zss"

@@ -1707,7 +1707,6 @@ function launchFight(data)
 		t.ai = data.ai or nil
 		t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
 		t.victoryscreen = main.f_arg(data.victoryscreen, main.victoryScreen)
-		t.rankdisplay = main.f_arg(data.rankdisplay, main.rankDisplay)
 		--t.frames = data.frames or framespercount()
 		t.roundtime = data.time or nil
 		t.lua = data.lua or ''
@@ -1852,14 +1851,12 @@ function launchFight(data)
 		saveData = true
 		local continueScreen = main.continueScreen
 		local victoryScreen = main.victoryScreen
-		local rankDisplay = main.rankDisplay
 		main.continueScreen = t.continue
 		main.victoryScreen = t.victoryscreen
-		main.rankDisplay = t.rankdisplay
+		hook.run("launchFight")
 		_, t_gameStats = start.f_game(t.lua)
 		main.continueScreen = continueScreen
 		main.victoryScreen = victoryScreen
-		main.rankDisplay = rankDisplay
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		-- here comes a new challenger
 		if start.challenger > 0 then
@@ -4038,161 +4035,6 @@ function start.f_stageMusic()
 			end
 		end
 	end
-end
-
---;===========================================================
---; RANK
---;===========================================================
-for i = 1, 2 do
-	start['txt_rank_p' .. i .. '_score'] = main.f_createTextImg(motif.rank_info, 'p' .. i .. '_score', {x = motif.rank_info['p' .. i .. '_pos'][1], y = motif.rank_info['p' .. i .. '_pos'][2]})
-end
-
-start.rankInit = false
-function start.f_rankInit()
-	if start.rankInit then
-		return start.t_rank.active
-	end
-	start.rankInit = true
-	start.t_rank = {
-		active = false,
-		p1rank = getRank(1),
-		p2rank = getRank(2),
-		p1score = 0,
-		p2score = 0,
-		counter = 0,
-	}
-	if motif.rank_info.enabled == 0 or not main.rankDisplay then
-		return false
-	end
-	for side = 1, 2 do
-		for _, v in ipairs(start.p[side].t_selected) do
-			if start.f_getCharData(v.ref).rankdisplay == 0 then
-				return false
-			end
-		end
-	end
-	for side = 1, 2 do
-		animReset(motif.rank_info['p' .. side .. '_bg_data'])
-		animUpdate(motif.rank_info['p' .. side .. '_bg_data'])
-		for _, v in ipairs({'gauge', 'icon', 'rank'}) do
-			for k, _ in pairs(motif.rank_info[v]) do
-				if motif.rank_info['p' .. side .. '_' .. v .. '_' .. k .. '_data'] ~= nil then
-					animReset(motif.rank_info['p' .. side .. '_' .. v .. '_' .. k .. '_data'])
-					animUpdate(motif.rank_info['p' .. side .. '_' .. v .. '_' .. k .. '_data'])
-				end
-			end
-		end
-		for k, _ in pairs(motif.rank_info.gauge) do
-			start.t_rank['p' .. side .. 'gauge_' .. k] = {
-				ratio = (start.t_rank['p' .. side .. 'rank'].values[k] or 0) / motif.rank_info['p' .. side .. '_gauge_' .. k .. '_max'],
-				temp = 0,
-			}
-		end
-		local total = 0
-		for _, v in pairs(start.t_rank['p' .. side .. 'rank'].values) do
-			total = total + v
-		end
-		start.t_rank['p' .. side .. 'rank'].total = total
-		player(side)
-		if ailevel() == 0 and start.t_savedData.debugflag ~= nil and start.t_savedData.debugflag[side] then
-			start.t_rank['p' .. side .. 'rank'].rank = 1 --using debug keys disables rank grading
-		else
-			start.t_rank['p' .. side .. 'rank'].rank = math.max(1, math.min(main.f_tableLength(motif.rank_info.rank), math.floor(total / 8)))
-		end
-		start.t_rank['p' .. side .. 'score'] = scoretotal() - score()
-	end
-	if motif.rank_info.bars_display == 0 then
-		setLifebarElements({bars = false})
-	end
-	start.t_rank.active = true
-	return true
-end
-
-function start.f_rank()
-	if not start.f_rankInit() then
-		return false
-	end
-	if indialogue() then
-		start.t_rank.active = false
-		return false
-	end
-	local t = start.t_rank
-	for side = 1, 2 do
-		player(side) --assign sys.debugWC to player 1 or 2
-		if win() or drawgame() then
-			--draw bg
-			if t.counter >= motif.rank_info['p' .. side .. '_bg_displaytime'] then
-				animUpdate(motif.rank_info['p' .. side .. '_bg_data'])
-				animDraw(motif.rank_info['p' .. side .. '_bg_data'])
-			end
-			--draw score
-			if t.counter >= motif.rank_info['p' .. side .. '_score_displaytime'] then
-				local score = math.min(scoretotal(), t['p' .. side .. 'score'] + math.ceil(score() / math.max(1, 90 - t.counter - motif.rank_info['p' .. side .. '_score_displaytime'])))
-				start['txt_rank_p' .. side .. '_score']:update({text = motif.rank_info['p' .. side .. '_score_text']:gsub('%%s', tostring(score))})
-				start['txt_rank_p' .. side .. '_score']:draw()
-			end
-			--draw rank
-			if t.counter >= motif.rank_info['p' .. side .. '_rank_displaytime'] and motif.rank_info['p' .. side .. '_rank_' .. t['p' .. side .. 'rank'].rank .. '_data'] ~= nil then
-				animUpdate(motif.rank_info['p' .. side .. '_rank_' .. t['p' .. side .. 'rank'].rank .. '_data'])
-				animDraw(motif.rank_info['p' .. side .. '_rank_' .. t['p' .. side .. 'rank'].rank .. '_data'])
-			end
-			--draw gauges
-			if t.counter >= motif.rank_info['p' .. side .. '_gauge_displaytime'] then
-				for k, _ in pairs(motif.rank_info.gauge) do
-					local v = 'p' .. side .. '_gauge_' .. k
-					local t_gauge = t['p' .. side .. 'gauge_' .. k]
-					if not paused() then
-						t_gauge.temp = math.min(t_gauge.ratio, t_gauge.temp + t_gauge.ratio / (motif.rank_info[v .. '_ticks'] or 30))
-					end
-					local window = motif.rank_info[v .. '_window'] or {0, 0, 0, 0}
-					local length = window[3] - window[1]
-					if motif.rank_info[v .. '_facing'] == -1 then
-						animSetWindow(
-							motif.rank_info[v .. '_data'],
-							window[1] + (1 - t_gauge.temp) * length + (t_gauge.ratio - t_gauge.temp) * length - 1,
-							window[2],
-							t_gauge.temp * length,
-							window[4] - window[2]
-						)
-					else
-						animSetWindow(
-							motif.rank_info[v .. '_data'],
-							window[1],
-							window[2],
-							t_gauge.temp * length,
-							window[4] - window[2]
-						)
-					end
-					animUpdate(motif.rank_info[v .. '_data'])
-					animDraw(motif.rank_info[v .. '_data'])
-				end
-			end
-			--draw icons
-			if t.counter >= motif.rank_info['p' .. side .. '_icon_displaytime'] then
-				local i = 1
-				for k, _ in pairs(motif.rank_info.icon) do
-					if main.f_tableHasValue(t['p' .. side .. 'rank'].icons, k) then
-						main.f_animPosDraw(
-							motif.rank_info['p' .. side .. '_icon_' .. k .. '_data'],
-							(i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][1],
-							(i - 1) * motif.rank_info['p' .. side .. '_icon_spacing'][2],
-							motif.rank_info['p' .. side .. '_icon_' .. k .. '_facing'],
-							true
-						)
-						i = i + 1
-					end
-				end
-			end
-			break
-		end
-	end
-	if t.counter == motif.rank_info.snd_time then
-		sndPlay(motif.files.snd_data, motif.rank_info.snd[1], motif.rank_info.snd[2])
-	end
-	if not paused() then
-		t.counter = t.counter + 1
-	end
-	return true
 end
 
 --;===========================================================

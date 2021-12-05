@@ -452,7 +452,6 @@ const (
 	OC_ex_physics
 	OC_ex_playerno
 	OC_ex_rand
-	OC_ex_rank
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
@@ -1830,8 +1829,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_rand:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
-	case OC_ex_rank:
-		sys.bcStack.PushF(c.rank())
 	case OC_ex_ratiolevel:
 		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
@@ -6978,43 +6975,6 @@ func (sc printToConsole) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return false
-}
-
-type rankAdd StateControllerBase
-
-const (
-	rankAdd_value byte = iota
-	rankAdd_max
-	rankAdd_type
-	rankAdd_icon
-	rankAdd_redirectid
-)
-
-func (sc rankAdd) Run(c *Char, _ []int32) bool {
-	crun := c
-	var val, max float32
-	var typ, ico string
-	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		switch id {
-		case rankAdd_icon:
-			ico = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-		case rankAdd_type:
-			typ = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-		case rankAdd_max:
-			max = exp[0].evalF(c)
-		case rankAdd_value:
-			val = exp[0].evalF(c)
-		case rankAdd_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
-			}
-		}
-		return true
-	})
-	crun.rankAdd(val, max, typ, ico)
 	return false
 }
 
