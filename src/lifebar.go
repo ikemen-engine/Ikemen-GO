@@ -108,6 +108,7 @@ func readLbBgTextSnd(pre string, is IniSection,
 	is.ReadI32(pre+"time", &bts.time)
 	is.ReadI32(pre+"displaytime", &bts.displaytime)
 	is.ReadI32(pre+"snd", &bts.snd[0], &bts.snd[1])
+	bts.sndtime = bts.time
 	is.ReadI32(pre+"sndtime", &bts.sndtime)
 	return bts
 }
@@ -1653,8 +1654,8 @@ func newLifeBarRound(snd *Snd) *LifeBarRound {
 	return &LifeBarRound{snd: snd, match_wins: [...]int32{2, 2},
 		match_maxdrawgames: [...]int32{1, 1}, start_waittime: 30, ctrl_time: 30,
 		slow_time: 60, slow_fadetime: 45, slow_speed: 0.25, over_waittime: 45,
-		over_hittime: 10, over_wintime: 45, over_time: 210, win_sndtime: 60,
-		fadein_time: 30, fadeout_time: 30, shutter_time: 15, callfight_time: 60}
+		over_hittime: 10, over_wintime: 45, over_time: 210, fadein_time: 30,
+		fadeout_time: 30, shutter_time: 15, callfight_time: 60}
 }
 func readLifeBarRound(is IniSection,
 	sff *Sff, at AnimationTable, snd *Snd, f []*Fnt) *LifeBarRound {
@@ -1668,6 +1669,7 @@ func readLifeBarRound(is IniSection,
 		ro.start_waittime = Max(1, tmp)
 	}
 	is.ReadI32("round.time", &ro.round_time)
+	ro.round_sndtime = ro.round_time
 	is.ReadI32("round.sndtime", &ro.round_sndtime)
 	ro.round_default_top = *ReadAnimLayout("round.default.top.", is, sff, at, 2)
 	for i := range ro.round_default_bg {
@@ -1683,6 +1685,7 @@ func readLifeBarRound(is IniSection,
 	ro.round_final_top = *ReadAnimLayout("round.final.top.", is, sff, at, 2)
 	ro.round_final = *ReadAnimTextSnd("round.final.", is, sff, at, 2, f)
 	is.ReadI32("fight.time", &ro.fight_time)
+	ro.fight_sndtime = ro.fight_time
 	is.ReadI32("fight.sndtime", &ro.fight_sndtime)
 	ro.fight = *ReadAnimTextSnd("fight.", is, sff, at, 2, f)
 	ro.fight_top = *ReadAnimLayout("fight.top.", is, sff, at, 2)
@@ -1693,6 +1696,7 @@ func readLifeBarRound(is IniSection,
 		ro.ctrl_time = Max(1, tmp)
 	}
 	is.ReadI32("ko.time", &ro.ko_time)
+	ro.ko_sndtime = ro.ko_time
 	is.ReadI32("ko.sndtime", &ro.ko_sndtime)
 	ro.ko = *ReadAnimTextSnd("ko.", is, sff, at, 1, f)
 	ro.ko_top = *ReadAnimLayout("ko.top.", is, sff, at, 1)
@@ -1731,6 +1735,7 @@ func readLifeBarRound(is IniSection,
 		ro.over_time = Max(ro.over_wintime+1, tmp)
 	}
 	is.ReadI32("win.time", &ro.win_time)
+	ro.win_sndtime = ro.win_time
 	is.ReadI32("win.sndtime", &ro.win_sndtime)
 	for i := 0; i < 2; i++ {
 		var ok bool
@@ -1899,7 +1904,7 @@ func readLifeBarRound(is IniSection,
 func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
 	ro.fight_top.Reset()
-	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, Max(ro.fight_sndtime, ro.fight_time), 0
+	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, ro.fight_sndtime, 0
 	sys.timerCount = append(sys.timerCount, sys.gameTime)
 	ro.timerActive = true
 }
@@ -2017,18 +2022,16 @@ func (ro *LifeBarRound) act() bool {
 				}
 				ro.timerActive = false
 			}
-			f := func(ats *AnimTextSnd, t int) {
-				if -ro.swt[t]-10 == 0 {
+			f := func(ats *AnimTextSnd, t int, delay int32) {
+				if ro.swt[t]+delay == 0 {
 					ro.snd.play(ats.snd, 100, 0)
 					ro.swt[t]--
 				}
-				if sys.tickNextFrame() {
-					ro.swt[t]--
-				}
+				ro.swt[t]--
 				if ats.End(ro.dt[t], false) {
 					ro.wt[t] = 2
 				}
-				if /*sys.intro < -ro.ko_time-10*/ ro.wt[t] < -ro.ko_time-10 {
+				if ro.wt[t]+delay <= 0 {
 					ro.dt[t]++
 					ats.Action()
 				}
@@ -2037,57 +2040,57 @@ func (ro *LifeBarRound) act() bool {
 			switch sys.finish {
 			case FT_KO:
 				ro.ko_top.Action()
-				f(&ro.ko, 2)
+				f(&ro.ko, 2, 75)
 				for i := len(ro.ko_bg) - 1; i >= 0; i-- {
 					ro.ko_bg[i].Action()
 				}
 			case FT_DKO:
 				ro.dko_top.Action()
-				f(&ro.dko, 2)
+				f(&ro.dko, 2, 75)
 				for i := len(ro.dko_bg) - 1; i >= 0; i-- {
 					ro.dko_bg[i].Action()
 				}
 			default:
 				ro.to_top.Action()
-				f(&ro.to, 2)
+				f(&ro.to, 2, 15)
 				for i := len(ro.to_bg) - 1; i >= 0; i-- {
 					ro.to_bg[i].Action()
 				}
 			}
-			if sys.intro < -(ro.over_hittime + ro.over_waittime + ro.over_wintime) {
+			if sys.intro < -(ro.over_hittime + ro.over_waittime /*+ ro.over_wintime*/) {
 				wt := sys.winTeam
 				if wt < 0 {
 					wt = 0
 				}
 				if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
 					ro.drawn_top.Action()
-					f(&ro.drawn, 3)
+					f(&ro.drawn, 3, 0)
 					for i := len(ro.drawn_bg) - 1; i >= 0; i-- {
 						ro.drawn_bg[i].Action()
 					}
 				} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
 					if sys.numSimul[sys.winTeam] == 2 {
 						ro.win2_top[wt].Action()
-						f(&ro.win2[wt], 3)
+						f(&ro.win2[wt], 3, 0)
 						for i := len(ro.win2_bg[wt]) - 1; i >= 0; i-- {
 							ro.win2_bg[wt][i].Action()
 						}
 					} else if sys.numSimul[sys.winTeam] == 3 {
 						ro.win3_top[wt].Action()
-						f(&ro.win3[wt], 3)
+						f(&ro.win3[wt], 3, 0)
 						for i := len(ro.win3_bg[wt]) - 1; i >= 0; i-- {
 							ro.win3_bg[wt][i].Action()
 						}
 					} else {
 						ro.win4_top[wt].Action()
-						f(&ro.win4[wt], 3)
+						f(&ro.win4[wt], 3, 0)
 						for i := len(ro.win4_bg[wt]) - 1; i >= 0; i-- {
 							ro.win4_bg[wt][i].Action()
 						}
 					}
 				} else {
 					ro.win_top[wt].Action()
-					f(&ro.win[wt], 3)
+					f(&ro.win[wt], 3, 0)
 					for i := len(ro.win_bg[wt]) - 1; i >= 0; i-- {
 						ro.win_bg[wt][i].Action()
 					}
@@ -2237,14 +2240,14 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 		}
 	}
 	if !ro.introState[1] && ro.wt[1] < 0 {
-		for i := range ro.fight_bg { //240z
-			ro.fight_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale) //240z
+		for i := range ro.fight_bg {
+			ro.fight_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 		}
 		ro.fight.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 		ro.fight_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 	}
 	if ro.cur == 2 {
-		if /*ro.wt[2] < 0 && sys.intro < -ro.ko_time-10*/ ro.wt[2] < -ro.ko_time-10 {
+		if ro.wt[2] < 0 {
 			switch sys.finish {
 			case FT_KO:
 				for i := range ro.ko_bg {
