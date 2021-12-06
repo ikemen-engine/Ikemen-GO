@@ -345,7 +345,6 @@ type System struct {
 	statusLFunc     *lua.LFunction
 	listLFunc       []*lua.LFunction
 	introSkipped    bool
-	fightOver       bool
 	endMatch        bool
 	continueFlg     bool
 	dialogueFlg     bool
@@ -896,7 +895,6 @@ func (s *System) nextRound() {
 	s.winType = [...]WinType{WT_N, WT_N}
 	s.winTrigger = [...]WinType{WT_N, WT_N}
 	s.lastHitter = [2]int{-1, -1}
-	s.fightOver = false
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time
 	s.shuttertime = 0
@@ -1177,15 +1175,6 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
-	fightOver := true
-	for i := 0; i < MaxSimul*2; i += 2 {
-		if len(s.chars[i]) > 0 && !s.chars[i][0].scf(SCF_over) &&
-			!s.chars[i][0].scf(SCF_ko) {
-			fightOver = false
-			break
-		}
-	}
-	s.fightOver = fightOver
 	s.lifebar.step()
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,

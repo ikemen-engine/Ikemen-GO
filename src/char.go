@@ -2900,7 +2900,7 @@ func (c *Char) roundState() int32 {
 	case sys.intro >= 0 || sys.finish == FT_NotYet:
 		return 2
 	case sys.intro < -(sys.lifebar.ro.over_hittime+
-		sys.lifebar.ro.over_waittime) && sys.fightOver:
+		sys.lifebar.ro.over_waittime):
 		return 4
 	default:
 		return 3
