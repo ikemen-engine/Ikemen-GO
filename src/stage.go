@@ -86,6 +86,7 @@ func (bga *bgAction) action() {
 }
 
 type backGround struct {
+	typ                int
 	anim               Animation
 	bga                bgAction
 	id                 int32
@@ -93,6 +94,7 @@ type backGround struct {
 	xofs               float32
 	camstartx          float32
 	delta              [2]float32
+	width              [2]int32
 	xscale             [2]float32
 	rasterx            [2]float32
 	yscalestart        float32
@@ -127,19 +129,19 @@ func readBackGround(is IniSection, link *backGround,
 	sff *Sff, at AnimationTable, camstartx float32) *backGround {
 	bg := newBackGround(sff)
 	bg.camstartx = camstartx
-	typ, t := is["type"], 0
+	typ := is["type"]
 	if len(typ) == 0 {
 		return bg
 	}
 	switch typ[0] {
 	case 'N', 'n':
-		t = 0
+		bg.typ = 0 // normal
 	case 'A', 'a':
-		t = 1
+		bg.typ = 1 // anim
 	case 'P', 'p':
-		t = 2
+		bg.typ = 2 // parallax
 	case 'D', 'd':
-		t = 3
+		bg.typ = 3 // dummy
 	default:
 		return bg
 	}
@@ -147,23 +149,32 @@ func readBackGround(is IniSection, link *backGround,
 	if is.ReadI32("layerno", &tmp) {
 		bg.toplayer = tmp == 1
 		if tmp < 0 || tmp > 1 {
-			t = 3
+			bg.typ = 3
 		}
 	}
-	if t == 0 || t == 2 {
-		var g, n int32
-		if is.readI32ForStage("spriteno", &g, &n) {
-			bg.anim.frames = []AnimFrame{*newAnimFrame()}
-			bg.anim.frames[0].Group, bg.anim.frames[0].Number =
-				I32ToI16(g), I32ToI16(n)
-		} else if is["actionno"] != "" {
-			t = 1
-		}
-	}
-	if t == 1 {
-		if is.ReadI32("actionno", &bg.actionno) {
-			if a := at.get(bg.actionno); a != nil {
-				bg.anim = *a
+	if bg.typ != 3 {
+		if is["actionno"] != "" && (bg.typ != 0 || is["spriteno"] == "") {
+			if is.ReadI32("actionno", &bg.actionno) {
+				if a := at.get(bg.actionno); a != nil {
+					bg.anim = *a
+				}
+			}
+			if bg.typ == 0 {
+				bg.typ = 1
+			}
+		} else {
+			var g, n int32
+			if is.readI32ForStage("spriteno", &g, &n) {
+				bg.anim.frames = []AnimFrame{*newAnimFrame()}
+				bg.anim.frames[0].Group, bg.anim.frames[0].Number =
+					I32ToI16(g), I32ToI16(n)
+			}
+			if is.ReadI32("mask", &tmp) {
+				if tmp != 0 {
+					bg.anim.mask = 0
+				} else {
+					bg.anim.mask = -1
+				}
 			}
 		}
 	}
@@ -184,15 +195,6 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("zoomdelta", &bg.zoomdelta[0], &bg.zoomdelta[1])
 	if bg.zoomdelta[0] != math.MaxFloat32 && bg.zoomdelta[1] == math.MaxFloat32 {
 		bg.zoomdelta[1] = bg.zoomdelta[0]
-	}
-	if t != 1 {
-		if is.ReadI32("mask", &tmp) {
-			if tmp != 0 {
-				bg.anim.mask = 0
-			} else {
-				bg.anim.mask = -1
-			}
-		}
 	}
 	switch strings.ToLower(is["trans"]) {
 	case "add":
@@ -235,22 +237,12 @@ func readBackGround(is IniSection, link *backGround,
 		bg.anim.dstAlpha = 0
 	}
 	if is.readI32ForStage("tile", &bg.anim.tile[2], &bg.anim.tile[3]) {
-		if t == 2 {
+		if bg.typ == 2 {
 			bg.anim.tile[3] = 0
 		}
 	}
-	if t == 2 {
-		var tw, bw int32
-		if is.readI32ForStage("width", &tw, &bw) {
-			if (tw != 0 || bw != 0) && len(bg.anim.frames) > 0 {
-				if spr := sff.GetSprite(
-					bg.anim.frames[0].Group, bg.anim.frames[0].Number); spr != nil {
-					bg.xscale[0] = float32(tw) / float32(spr.Size[0])
-					bg.xscale[1] = float32(bw) / float32(spr.Size[0])
-					bg.xofs = -float32(tw)/2 + float32(spr.Offset[0])*bg.xscale[0]
-				}
-			}
-		} else {
+	if bg.typ == 2 {
+		if !is.readI32ForStage("width", &bg.width[0], &bg.width[1]) {
 			is.readF32ForStage("xscale", &bg.rasterx[0], &bg.rasterx[1])
 		}
 		is.ReadF32("yscalestart", &bg.yscalestart)
@@ -327,6 +319,11 @@ func (bg *backGround) reset() {
 }
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool) {
+	if bg.typ == 2 && (bg.width[0] != 0 || bg.width[1] != 0) && bg.anim.spr != nil {
+		bg.xscale[0] = float32(bg.width[0]) / float32(bg.anim.spr.Size[0])
+		bg.xscale[1] = float32(bg.width[1]) / float32(bg.anim.spr.Size[0])
+		bg.xofs = -float32(bg.width[0])/2 + float32(bg.anim.spr.Offset[0])*bg.xscale[0]
+	}
 	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
 	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
 	sclx := MaxF(0, scl+(1-scl)*(1-dx))
