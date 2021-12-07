@@ -3996,9 +3996,15 @@ function start.f_stageMusic()
 	-- bgmusic / bgmusic.roundX
 	if roundstart() then
 		-- only if the round is not restarted
-		if start.t_music.music[roundno()] ~= nil and start.bgmround ~= roundno() then
+		if start.bgmround ~= roundno() then
 			start.bgmround = roundno()
-			main.f_playBGM(true, start.t_music.music[start.bgmround].bgmusic, 1, start.t_music.music[start.bgmround].bgmvolume, start.t_music.music[start.bgmround].bgmloopstart, start.t_music.music[start.bgmround].bgmloopend)
+			-- music exists for this round
+			if start.t_music.music[start.bgmround] ~= nil then
+				main.f_playBGM(true, start.t_music.music[start.bgmround].bgmusic, 1, start.t_music.music[start.bgmround].bgmvolume, start.t_music.music[start.bgmround].bgmloopstart, start.t_music.music[start.bgmround].bgmloopend)
+			-- stop versus screen track even if stage music is not assigned
+			elseif start.bgmround == 1 then
+				main.f_playBGM(true)
+			end
 		end
 		start.bgmstate = 0
 	-- bgmusic.life
