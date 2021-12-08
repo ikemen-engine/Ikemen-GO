@@ -453,11 +453,11 @@ func readPowerBar(pre string, is IniSection,
 	return pb
 }
 func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
-	power := float32(sys.chars[ref][0].power) / float32(sys.chars[ref][0].powerMax)
-	level := sys.chars[ref][0].power / 1000
-	pbval := sys.chars[ref][0].power
+	pbval := sys.chars[ref][0].getPower()
+	power := float32(pbval) / float32(sys.chars[ref][0].powerMax)
+	level := pbval / 1000
 	if pb.levelbars {
-		power = float32(sys.chars[ref][0].power)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
+		power = float32(pbval)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
 	}
 	pb.shift.anim.srcAlpha = int16(255 * (1 - power))
 	pb.shift.anim.dstAlpha = int16(255 * power)
@@ -508,11 +508,11 @@ func (pb *PowerBar) bgDraw(layerno int16) {
 	pb.bg2.Draw(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1]), layerno, sys.lifebarScale)
 }
 func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
-	power := float32(sys.chars[ref][0].power) / float32(sys.chars[ref][0].powerMax)
-	level := sys.chars[ref][0].power / 1000
-	pbval := sys.chars[ref][0].power
+	pbval := sys.chars[ref][0].getPower()
+	power := float32(pbval) / float32(sys.chars[ref][0].powerMax)
+	level := pbval / 1000
 	if pb.levelbars {
-		power = float32(sys.chars[ref][0].power)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
+		power = float32(pbval)/1000 - MinF(float32(level), float32(sys.chars[ref][0].powerMax)/1000-1)
 	}
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(power float32) (r [4]int32) {
@@ -864,7 +864,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 		layerno, &sb.mid.anim, sb.mid.palfx)
 	var mv float32
 	for k := range sb.front {
-		if k > mv && power >= k/100 {
+		if k > mv && (1-power) >= k/100 {
 			mv = k
 		}
 	}
