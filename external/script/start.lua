@@ -729,17 +729,14 @@ function start.f_getPlayerNo(side, num)
 end
 
 --Convert number to name and get rid of the ""
-function start.f_getName(ref, hidden, side)
-	if ref == nil then
+function start.f_getName(ref, side)
+	if ref == nil or start.f_getCharData(ref).hidden == 2 then
 		return ''
 	end
-	local tmp = start.f_getCharData(ref).name
-	if start.f_getCharData(ref).char == 'randomselect' or (hidden and start.f_getCharData(ref).hidden == 3) then
-		tmp = motif.select_info['p' .. (side or 1) .. '_name_random_text']
-	elseif hidden and start.f_getCharData(ref).hidden == 2 then
-		tmp = ''
+	if start.f_getCharData(ref).char == 'randomselect' or start.f_getCharData(ref).hidden == 3 then
+		return motif.select_info['p' .. (side or 1) .. '_name_random_text']
 	end
-	return tmp
+	return start.f_getCharData(ref).name
 end
 
 --reset temp data values
@@ -2115,9 +2112,9 @@ function start.f_selectScreen()
 					if i <= motif.select_info['p' .. side .. '_name_num'] or main.coop then
 						local name = ''
 						if motif.select_info['p' .. side .. '_name_num'] == 1 then
-							name = start.f_getName(start.p[side].t_selTemp[#start.p[side].t_selTemp].ref, not main.cpuSide[side], side)
+							name = start.f_getName(start.p[side].t_selTemp[#start.p[side].t_selTemp].ref, side)
 						else
-							name = start.f_getName(start.p[side].t_selTemp[i].ref, not main.cpuSide[side], side)
+							name = start.f_getName(start.p[side].t_selTemp[i].ref, side)
 						end
 						t_txt_name[side]:update({
 							font =   motif.select_info['p' .. side .. '_name_font'][1],
@@ -2897,7 +2894,7 @@ function start.f_selectVersus(active, t_orderSelect)
 						font =   motif.vs_screen['p' .. side .. '_name_font'][1],
 						bank =   motif.vs_screen['p' .. side .. '_name_font'][2],
 						align =  motif.vs_screen['p' .. side .. '_name_font'][3],
-						text =   start.f_getName(start.p[side].t_selTemp[i].ref, false, side),
+						text =   start.f_getName(start.p[side].t_selTemp[i].ref, side),
 						x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
 						y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
 						scaleX = motif.vs_screen['p' .. side .. '_name_scale'][1],
@@ -3320,8 +3317,8 @@ function start.f_victoryInit()
 	if start.t_victory.winquote == '' then
 		start.t_victory.winquote = motif.victory_screen.winquote_text
 	end
-	t_txt_winquoteName[1]:update({text = start.f_getName(start.t_victory.winnerRef, false)})
-	t_txt_winquoteName[2]:update({text = start.f_getName(start.t_victory.loserRef, false)})
+	t_txt_winquoteName[1]:update({text = start.f_getName(start.t_victory.winnerRef)})
+	t_txt_winquoteName[2]:update({text = start.f_getName(start.t_victory.loserRef)})
 	start.t_victory.active = true
 	return true
 end
