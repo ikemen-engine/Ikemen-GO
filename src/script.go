@@ -1452,24 +1452,20 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		isdefault := true
 		var loop, volume, loopstart, loopend int = 1, 100, 0, 0
 		if l.GetTop() >= 2 {
-			isdefault = boolArg(l, 2)
+			loop = int(numArg(l, 2))
 		}
 		if l.GetTop() >= 3 {
-			loop = int(numArg(l, 3))
+			volume = int(numArg(l, 3))
 		}
 		if l.GetTop() >= 4 {
-			volume = int(numArg(l, 4))
+			loopstart = int(numArg(l, 4))
 		}
-		if l.GetTop() >= 5 {
-			loopstart = int(numArg(l, 5))
+		if l.GetTop() >= 5 && numArg(l, 5) > 1 {
+			loopend = int(numArg(l, 5))
 		}
-		if l.GetTop() >= 6 && numArg(l, 6) > 1 {
-			loopend = int(numArg(l, 6))
-		}
-		sys.bgm.Open(strArg(l, 1), isdefault, loop, volume, loopstart, loopend)
+		sys.bgm.Open(strArg(l, 1), loop, volume, loopstart, loopend)
 		return 0
 	})
 	luaRegister(l, "playerBufReset", func(*lua.LState) int {

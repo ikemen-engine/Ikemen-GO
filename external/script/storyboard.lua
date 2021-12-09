@@ -29,7 +29,6 @@ local function f_reset(t)
 end
 
 local function f_play(t, attract)
-	playBGM('')
 	if main.debugLog then main.f_printTable(t, 'debug/t_storyboard.txt') end
 	--loop through scenes in order
 	for k, v in ipairs(t.sceneOrder) do
@@ -48,8 +47,8 @@ local function f_play(t, attract)
 					resetKey()
 				end
 				--play bgm
-				if i == 0 and t.scene[v].bgm ~= nil then
-					playBGM(t.scene[v].bgm, true, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
+				if i == 0 then
+					main.f_playBGM(k == t.scenedef.startscene, t.scene[v].bgm, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
@@ -142,7 +141,7 @@ local function f_parse(path)
 			snd = '',
 			font = {},
 			font_height = {},
-			startscene = 0,
+			startscene = 1,
 			skipbutton = 1, --Ikemen feature
 		},
 		scene = {},
@@ -171,7 +170,7 @@ local function f_parse(path)
 						layerall_pos = {},
 						layer = {},
 						sound = {},
-						--bgm = '',
+						bgm = '',
 						bgm_loop = 0,
 						bgm_volume = 100,  --Ikemen feature
 						bgm_loopstart = 0, --Ikemen feature

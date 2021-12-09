@@ -1951,7 +1951,7 @@ func (s *System) fight() (reload bool) {
 
 	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
-		s.bgm.Open(s.stage.bgmusic, true, 1, 100, 0, 0)
+		s.bgm.Open(s.stage.bgmusic, 1, 100, 0, 0)
 	}
 
 	oldWins, oldDraws := s.wins, s.draws

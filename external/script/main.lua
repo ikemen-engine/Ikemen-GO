@@ -4029,12 +4029,8 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 		return
 	end
 	local bgm = bgm or ''
-	local bgmLoop = bgmLoop or 1
-	local bgmVolume = bgmVolume or 100
-	local bgmLoopstart = bgmLoopstart or 0
-	local bgmLoopend = bgmLoopend or 0
-	if interrupt or (bgm ~= '' --[[and bgm ~= main.lastBgm]]) then
-		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+	if interrupt or (bgm ~= '' and bgm ~= main.lastBgm) then
+		playBGM(bgm, bgmLoop or 1, bgmVolume or 100, bgmLoopstart or 0, bgmLoopend or 0)
 		main.lastBgm = bgm
 	end
 end

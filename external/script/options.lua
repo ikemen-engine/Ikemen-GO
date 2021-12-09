@@ -1165,11 +1165,6 @@ options.t_itemname = {
 			if modified then
 				options.f_saveCfg(needReload)
 			end
-			main.f_bgReset(motif[main.background].bg)
-			main.f_fadeReset('fadeout', motif.option_info)
-			if motif.music.option_bgm ~= '' then
-				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-			end
 			main.close = true
 			--return false
 		end
@@ -1181,11 +1176,6 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			if needReload then
 				main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.optionbgdef)
-			end
-			main.f_bgReset(motif[main.background].bg)
-			main.f_fadeReset('fadeout', motif.option_info)
-			if motif.music.option_bgm ~= '' then
-				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			end
 			main.close = true
 			--return false
@@ -1288,9 +1278,7 @@ function options.f_createMenu(tbl, bool_main)
 			if main.close and not main.fadeActive then
 				main.f_bgReset(motif[main.background].bg)
 				main.f_fadeReset('fadein', motif[main.group])
-				if motif.music.option_bgm ~= '' then
-					main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-				end
+				main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				main.close = false
 				break
 			elseif esc() or main.f_input(main.t_players, {'m'}) then

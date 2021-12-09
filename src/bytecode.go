@@ -7271,7 +7271,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		case playBgm_loopstart:
 			loopstart = int(exp[0].evalI(c))
 		case playBgm_loopend:
-			loopstart = int(exp[0].evalI(c))
+			loopend = int(exp[0].evalI(c))
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7281,7 +7281,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.bgm.Open(bgm, true, loop, volume, loopstart, loopend)
+	sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
 	return false
 }
 

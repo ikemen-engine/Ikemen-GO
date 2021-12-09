@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 
 	"github.com/ikemen-engine/go-openal/openal"
 
@@ -240,10 +239,6 @@ type Bgm struct {
 	bgmVolume           int
 	bgmLoopStart        int
 	bgmLoopEnd          int
-	defaultFilename     string
-	defaultBgmVolume    int
-	defaultbgmLoopStart int
-	defaultbgmLoopEnd   int
 	loop                int
 	// TODO: Use this.
 	//sampleRate          beep.SampleRate
@@ -258,21 +253,12 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
-	if filepath.Base(bgm.filename) == filepath.Base(filename) {
-		return
-	}
+func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
-	if isDefaultBGM {
-		bgm.defaultFilename = filename
-		bgm.defaultBgmVolume = bgmVolume
-		bgm.defaultbgmLoopStart = bgmLoopStart
-		bgm.defaultbgmLoopEnd = bgmLoopEnd
-	}
 	speaker.Clear()
 	
 	// TODO: Throw a degbug warning if this triggers
