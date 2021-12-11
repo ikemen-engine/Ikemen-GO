@@ -152,7 +152,7 @@ mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 #===============================================================================
 [StateDef 5611;
 	type: A; moveType: I; physics: N;
-	anim: -1;
+	anim: const(AnimStanding);
 	velSet: 0, 0; ctrl: 0;
 ]
 
