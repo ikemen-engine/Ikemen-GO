@@ -2351,6 +2351,7 @@ type OverrideCharData struct {
 	ratioLevel  int32
 	lifeRatio   float32
 	attackRatio float32
+	existed     bool
 }
 
 func newOverrideCharData() *OverrideCharData {
@@ -2816,6 +2817,11 @@ func (l *Loader) loadChar(pn int) int {
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {
@@ -2877,6 +2883,11 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	p.memberNo = -atcpn
 	p.selectNo = -atcpn
 	p.teamside = -1
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.com[pn] = 8
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p

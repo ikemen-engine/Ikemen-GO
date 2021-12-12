@@ -1333,58 +1333,69 @@ function start.f_turnsRecovery()
 	end
 end
 
--- match persistence (team member removal or life maintenance/recovery)
+-- match persistence
 function start.f_matchPersistence()
-	local t_removeMembers = {}
-	-- at least after 1 match, if defeated members should be removed from team, or if life should be maintained
-	if matchno() >= 2 and (main.dropDefeated or main.lifePersistence) then
-		-- Turns
-		if start.p[1].teamMode == 2 then
-			--for each round in the last match
-			for _, v in ipairs(t_gameStats.match) do
-				-- if defeated
-				if v[1].ko and v[1].life <= 0 then
-					-- remove character from team
-					if main.dropDefeated then
-						t_removeMembers[v[1].memberNo + 1] = true
-					-- or resurrect and recover character's life
-					elseif main.lifePersistence then
-						start.p[1].t_selected[v[1].memberNo + 1].life = math.max(1, f_lifeRecovery(v[1].lifeMax, v[1].ratiolevel))
-					end
-				-- otherwise maintain character's life
-				elseif main.lifePersistence then
-					start.p[1].t_selected[v[1].memberNo + 1].life = v[1].life
-				end
-			end
-		-- Single / Simul / Tag
-		else
-			-- for each player data in the last round
-			for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
-				-- only check player controlled characters, exclude attachedchar
-				if v.teamside ~= -1 and not main.cpuSide[v.teamside + 1] then
-					-- if defeated
-					if v.ko and v.life <= 0 then
-						-- remove character from team
-						if main.dropDefeated then
-							t_removeMembers[v.memberNo + 1] = true
-						-- or resurrect and recover character's life
-						elseif main.lifePersistence then
-							start.p[1].t_selected[v.memberNo + 1].life = math.max(1, f_lifeRecovery(v.lifeMax, v.ratiolevel))
-						end
-					-- otherwise maintain character's life
-					elseif main.lifePersistence then
-						start.p[1].t_selected[v.memberNo + 1].life = v.life
-					end
+	-- checked only after at least 1 match
+	if matchno() >= 2 then
+		-- set 'existed' flag (decides if var/fvar should be persistent between matches)
+		for _, v in ipairs(t_gameStats.match) do
+			for i, t in ipairs(v) do
+				if start.p[t.teamside + 1].t_selected[t.memberNo + 1] ~= nil then
+					start.p[t.teamside + 1].t_selected[t.memberNo + 1].existed = true
 				end
 			end
 		end
-	end
-	-- drop defeated characters
-	for i = #start.p[1].t_selected, 1, -1 do
-		if t_removeMembers[i] then
-			table.remove(start.p[1].t_selected, i)
-			table.remove(start.p[1].t_selTemp, i)
-			start.p[1].numChars = start.p[1].numChars - 1
+		-- if defeated members should be removed from team, or if life should be maintained
+		if main.dropDefeated or main.lifePersistence then
+			local t_removeMembers = {}
+			-- Turns
+			if start.p[1].teamMode == 2 then
+				--for each round in the last match
+				for _, v in ipairs(t_gameStats.match) do
+					-- if defeated
+					if v[1].ko and v[1].life <= 0 then
+						-- remove character from team
+						if main.dropDefeated then
+							t_removeMembers[v[1].memberNo + 1] = true
+						-- or resurrect and recover character's life
+						elseif main.lifePersistence then
+							start.p[1].t_selected[v[1].memberNo + 1].life = math.max(1, f_lifeRecovery(v[1].lifeMax, v[1].ratiolevel))
+						end
+					-- otherwise maintain character's life
+					elseif main.lifePersistence then
+						start.p[1].t_selected[v[1].memberNo + 1].life = v[1].life
+					end
+				end
+			-- Single / Simul / Tag
+			else
+				-- for each player data in the last round
+				for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
+					-- only check player controlled characters, exclude attachedchar
+					if v.teamside ~= -1 and not main.cpuSide[v.teamside + 1] then
+						-- if defeated
+						if v.ko and v.life <= 0 then
+							-- remove character from team
+							if main.dropDefeated then
+								t_removeMembers[v.memberNo + 1] = true
+							-- or resurrect and recover character's life
+							elseif main.lifePersistence then
+								start.p[1].t_selected[v.memberNo + 1].life = math.max(1, f_lifeRecovery(v.lifeMax, v.ratiolevel))
+							end
+						-- otherwise maintain character's life
+						elseif main.lifePersistence then
+							start.p[1].t_selected[v.memberNo + 1].life = v.life
+						end
+					end
+				end
+			end
+			-- drop defeated characters
+			for i = #start.p[1].t_selected, 1, -1 do
+				if t_removeMembers[i] then
+					table.remove(start.p[1].t_selected, i)
+					table.remove(start.p[1].t_selTemp, i)
+					start.p[1].numChars = start.p[1].numChars - 1
+				end
+			end
 		end
 	end
 	return start.p[1].numChars
@@ -1403,6 +1414,7 @@ function start.f_overrideCharData()
 				['ratioLevel'] = v.ratioLevel,
 				['lifeRatio'] = v.lifeRatio or config.RatioLife[v.ratioLevel],
 				['attackRatio'] = v.attackRatio or config.RatioAttack[v.ratioLevel],
+				['existed'] = v.existed,
 			})
 		end
 	end
@@ -1712,6 +1724,7 @@ function launchFight(data)
 		start.p[1].teamMode = start.f_stringToTeamMode(data.p1teammode) or start.p[1].teamMode
 		start.p[2].numChars = data.p2numchars or math.max(start.p[2].numChars, #t.p2char)
 		start.p[2].teamMode = start.f_stringToTeamMode(data.p2teammode) or start.p[2].teamMode
+		t.p1numchars = start.f_matchPersistence()
 		-- add P1 chars forced via function arguments (ignore char param restrictions)
 		local reset = false
 		local cnt = 0
@@ -1835,7 +1848,6 @@ function launchFight(data)
 	local loopCount = 0
 	while true do
 		-- fight initialization
-		t.p1numchars = start.f_matchPersistence()
 		setTeamMode(1, start.p[1].teamMode, start.p[1].numChars)
 		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
 		start.f_remapAI(t.ai)

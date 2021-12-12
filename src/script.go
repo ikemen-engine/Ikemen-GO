@@ -1438,6 +1438,8 @@ func systemScriptInit(l *lua.LState) {
 					sys.sel.ocd[tn-1][mn-1].lifeRatio = float32(lua.LVAsNumber(value))
 				case "attackRatio":
 					sys.sel.ocd[tn-1][mn-1].attackRatio = float32(lua.LVAsNumber(value))
+				case "existed":
+					sys.sel.ocd[tn-1][mn-1].existed = lua.LVAsBool(value)
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}

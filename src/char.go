@@ -1788,8 +1788,6 @@ func (c *Char) clearCachedData() {
 	c.mctype, c.mctime = MC_Hit, 0
 	c.counterHit = false
 	c.fallTime = 0
-	c.varRangeSet(0, int32(NumVar)-1, 0)
-	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
 	c.superDefenseMul = 1
 	c.fallDefenseMul = 1
 	c.customDefense = 1
