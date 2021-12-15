@@ -566,34 +566,63 @@ type HitDef struct {
 }
 
 func (hd *HitDef) clear() {
-	*hd = HitDef{hitflag: int32(ST_S | ST_C | ST_A | ST_F), affectteam: 1,
-		teamside: -1, animtype: RA_Light, air_animtype: RA_Unknown, priority: 4,
-		bothhittype: AT_Hit, sparkno: IErr, guard_sparkno: IErr,
-		hitsound: [...]int32{IErr, 0}, guardsound: [...]int32{IErr, 0},
-		ground_type: HT_High, air_type: HT_Unknown, air_hittime: 20,
-		yaccel: float32(math.NaN()), guard_velocity: float32(math.NaN()),
-		airguard_velocity: [...]float32{float32(math.NaN()),
-			float32(math.NaN())},
+	*hd = HitDef{
+		hitflag:       int32(ST_S | ST_C | ST_A | ST_F),
+		affectteam:    1,
+		teamside:      -1,
+		animtype:      RA_Light,
+		air_animtype:  RA_Unknown,
+		priority:      4,
+		bothhittype:   AT_Hit,
+		sparkno:       IErr,
+		guard_sparkno: IErr,
+		hitsound:      [...]int32{IErr, 0},
+		guardsound:    [...]int32{IErr, 0},
+		ground_type:   HT_High,
+		air_type:      HT_Unknown,
+		// Both default to 20, not documented in Mugen docs.
+		air_hittime:  20,
+		down_hittime: 20,
+
+		yaccel:                     float32(math.NaN()),
+		guard_velocity:             float32(math.NaN()),
+		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN())},
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
 		down_cornerpush_veloff:     float32(math.NaN()),
 		guard_cornerpush_veloff:    float32(math.NaN()),
-		airguard_cornerpush_veloff: float32(math.NaN()), p1sprpriority: 1,
-		p1stateno: -1, p2stateno: -1, forcestand: IErr,
-		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
-		chainid:       -1, nochainid: [...]int32{-1, -1}, numhits: 1,
-		hitgetpower: IErr, guardgetpower: IErr, hitgivepower: IErr,
-		guardgivepower: IErr, envshake_freq: 60, envshake_ampl: -4,
+		airguard_cornerpush_veloff: float32(math.NaN()),
+
+		p1sprpriority:  1,
+		p1stateno:      -1,
+		p2stateno:      -1,
+		forcestand:     IErr,
+		down_velocity:  [...]float32{float32(math.NaN()), float32(math.NaN())},
+		chainid:        -1,
+		nochainid:      [...]int32{-1, -1},
+		numhits:        1,
+		hitgetpower:    IErr,
+		guardgetpower:  IErr,
+		hitgivepower:   IErr,
+		guardgivepower: IErr,
+		envshake_freq:  60,
+		envshake_ampl:  -4,
 		envshake_phase: float32(math.NaN()),
 		mindist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
-		kill:           true, guard_kill: true, playerNo: -1,
-		dizzypoints: IErr, guardpoints: IErr, redlife: IErr,
-		score: [...]float32{float32(math.NaN()), float32(math.NaN())}}
+		kill:           true,
+		guard_kill:     true,
+		playerNo:       -1,
+		dizzypoints:    IErr,
+		guardpoints:    IErr,
+		redlife:        IErr,
+		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
+	}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
 	hd.fall.setDefault()
 }
+
 func (hd *HitDef) invalidate(stateType StateType) {
 	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
 	hd.reversal_attr |= -1 << 31
@@ -6778,19 +6807,19 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 }
 
 type Platform struct {
-	name       string
-	id         int32
-	
-	pos        [2]float32
-	size       [2]int32
-	offset     [2]int32
-	
-	anim       int32
-	activeTime int32
-	isSolid    bool
-	borderFall bool
+	name string
+	id   int32
+
+	pos    [2]float32
+	size   [2]int32
+	offset [2]int32
+
+	anim        int32
+	activeTime  int32
+	isSolid     bool
+	borderFall  bool
 	destroySelf bool
 
-	localScale   float32
-	ownerID int32
+	localScale float32
+	ownerID    int32
 }
