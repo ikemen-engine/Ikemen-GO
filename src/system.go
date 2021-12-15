@@ -345,7 +345,6 @@ type System struct {
 	statusLFunc     *lua.LFunction
 	listLFunc       []*lua.LFunction
 	introSkipped    bool
-	fightOver       bool
 	endMatch        bool
 	continueFlg     bool
 	dialogueFlg     bool
@@ -896,7 +895,6 @@ func (s *System) nextRound() {
 	s.winType = [...]WinType{WT_N, WT_N}
 	s.winTrigger = [...]WinType{WT_N, WT_N}
 	s.lastHitter = [2]int{-1, -1}
-	s.fightOver = false
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time
 	s.shuttertime = 0
@@ -1177,15 +1175,6 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
-	fightOver := true
-	for i := 0; i < MaxSimul*2; i += 2 {
-		if len(s.chars[i]) > 0 && !s.chars[i][0].scf(SCF_over) &&
-			!s.chars[i][0].scf(SCF_ko) {
-			fightOver = false
-			break
-		}
-	}
-	s.fightOver = fightOver
 	s.lifebar.step()
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
@@ -1374,7 +1363,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == 0 && (ko[0] || ko[1]) {
+			if s.intro == -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
@@ -1962,7 +1951,7 @@ func (s *System) fight() (reload bool) {
 
 	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
-		s.bgm.Open(s.stage.bgmusic, true, 1, 100, 0, 0)
+		s.bgm.Open(s.stage.bgmusic, 1, 100, 0, 0)
 	}
 
 	oldWins, oldDraws := s.wins, s.draws
@@ -2362,6 +2351,7 @@ type OverrideCharData struct {
 	ratioLevel  int32
 	lifeRatio   float32
 	attackRatio float32
+	existed     bool
 }
 
 func newOverrideCharData() *OverrideCharData {
@@ -2827,6 +2817,11 @@ func (l *Loader) loadChar(pn int) int {
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {
@@ -2862,8 +2857,8 @@ func (l *Loader) loadChar(pn int) int {
 	return 1
 }
 
-func (l *Loader) loadAttachedChar(atcpn int) int {
-	pn := atcpn + MaxSimul*2
+func (l *Loader) loadAttachedChar(pn int) int {
+	atcpn := pn - MaxSimul*2
 	var tstr string
 	tnow := time.Now()
 	defer func() {
@@ -2888,6 +2883,11 @@ func (l *Loader) loadAttachedChar(atcpn int) int {
 	p.memberNo = -atcpn
 	p.selectNo = -atcpn
 	p.teamside = -1
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.com[pn] = 8
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
@@ -2926,17 +2926,11 @@ func (l *Loader) loadStage() bool {
 			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
-			for i := range sys.stageList[0].attachedchardef {
-				l.loadAttachedChar(i)
-			}
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
-		for i := range sys.stageList[0].attachedchardef {
-			l.loadAttachedChar(i)
-		}
 		sys.stage = sys.stageList[0]
 	}
 	return l.err == nil
@@ -2953,10 +2947,22 @@ func (l *Loader) load() {
 		return true
 	}
 	for !stageDone || !allCharDone() {
-		// Load chars
+		if !stageDone && sys.sel.selectedStageNo >= 0 {
+			if !l.loadStage() {
+				l.state = LS_Error
+				return
+			}
+			stageDone = true
+		}
 		for i, b := range charDone {
 			if !b {
-				result := l.loadChar(i)
+				result := -1
+				if i < len(sys.chars)-MaxAttachedChar ||
+					len(sys.stageList[0].attachedchardef) <= i-MaxSimul*2 {
+					result = l.loadChar(i)
+				} else {
+					result = l.loadAttachedChar(i)
+				}
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -2965,27 +2971,13 @@ func (l *Loader) load() {
 				}
 			}
 		}
-		// Load stage and attached char
-		if !stageDone && sys.sel.selectedStageNo >= 0 {
-			if !l.loadStage() {
-				l.state = LS_Error
-				return
-			}
-			stageDone = true
-		}
-		// Clear unused chars data
-		if stageDone {
-			for i := 0; i < 2; i++ {
-				if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
-					sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
-					for j := i + 2; j < len(sys.chars); j += 2 {
-						if !charDone[j] {
-							if j < len(sys.chars)-len(sys.stageList[0].attachedchardef) {
-								sys.chars[j], sys.cgi[j].states = nil, nil
-								sys.cgi[j].wakewakaLength = 0
-							}
-							charDone[j] = true
-						}
+		for i := 0; i < 2; i++ {
+			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
+				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
+				for j := i + 2; j < len(sys.chars); j += 2 {
+					if !charDone[j] {
+						sys.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
+						sys.cgi[j].wakewakaLength = 0
 					}
 				}
 			}

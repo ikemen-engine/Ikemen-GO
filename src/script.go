@@ -1320,25 +1320,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.lifebar.ro.match_wins[tn-1]))
 		return 1
 	})
-	luaRegister(l, "getRank", func(*lua.LState) int {
-		tn := int(numArg(l, 1))
-		if tn < 1 || tn > 2 {
-			l.RaiseError("\nInvalid team side: %v\n", tn)
-		}
-		tbl := l.NewTable()
-		tbl_values := l.NewTable()
-		for k, v := range sys.lifebar.sc[tn-1].rankPoints {
-			tbl_values.RawSetString(k, lua.LNumber(v))
-		}
-		tbl_icons := l.NewTable()
-		for k, v := range sys.lifebar.sc[tn-1].rankIcons {
-			tbl_icons.RawSetInt(k+1, lua.LString(v))
-		}
-		tbl.RawSetString("values", tbl_values)
-		tbl.RawSetString("icons", tbl_icons)
-		l.Push(tbl)
-		return 1
-	})
 	luaRegister(l, "getRoundTime", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.roundTime))
 		return 1
@@ -1457,6 +1438,8 @@ func systemScriptInit(l *lua.LState) {
 					sys.sel.ocd[tn-1][mn-1].lifeRatio = float32(lua.LVAsNumber(value))
 				case "attackRatio":
 					sys.sel.ocd[tn-1][mn-1].attackRatio = float32(lua.LVAsNumber(value))
+				case "existed":
+					sys.sel.ocd[tn-1][mn-1].existed = lua.LVAsBool(value)
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -1471,24 +1454,20 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		isdefault := true
 		var loop, volume, loopstart, loopend int = 1, 100, 0, 0
 		if l.GetTop() >= 2 {
-			isdefault = boolArg(l, 2)
+			loop = int(numArg(l, 2))
 		}
 		if l.GetTop() >= 3 {
-			loop = int(numArg(l, 3))
+			volume = int(numArg(l, 3))
 		}
 		if l.GetTop() >= 4 {
-			volume = int(numArg(l, 4))
+			loopstart = int(numArg(l, 4))
 		}
-		if l.GetTop() >= 5 {
-			loopstart = int(numArg(l, 5))
+		if l.GetTop() >= 5 && numArg(l, 5) > 1 {
+			loopend = int(numArg(l, 5))
 		}
-		if l.GetTop() >= 6 && numArg(l, 6) > 1 {
-			loopend = int(numArg(l, 6))
-		}
-		sys.bgm.Open(strArg(l, 1), isdefault, loop, volume, loopstart, loopend)
+		sys.bgm.Open(strArg(l, 1), loop, volume, loopstart, loopend)
 		return 0
 	})
 	luaRegister(l, "playerBufReset", func(*lua.LState) int {
@@ -1785,9 +1764,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
-		if sys.gameSpeed != 100 { //not speedtest
-			sys.gameSpeed = float32(numArg(l, 1))
-		}
+		sys.gameSpeed = float32(numArg(l, 1)) / float32(FPS)
 		return 0
 	})
 	luaRegister(l, "setGuardPoints", func(*lua.LState) int {
@@ -3748,10 +3725,6 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "playerno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.playerNo + 1))
-		return 1
-	})
-	luaRegister(l, "rank", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.rank()))
 		return 1
 	})
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {

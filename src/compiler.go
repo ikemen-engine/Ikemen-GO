@@ -152,7 +152,6 @@ func newCompiler() *Compiler {
 		"modifybgctrl":         c.modifyBGCtrl,
 		"playbgm":              c.playBgm,
 		"printtoconsole":       c.printToConsole,
-		"rankadd":              c.rankAdd,
 		"redlifeadd":           c.redLifeAdd,
 		"redlifeset":           c.redLifeSet,
 		"remapsprite":          c.remapSprite,
@@ -342,7 +341,6 @@ var triggerMap = map[string]int{
 	"pausetime":        1,
 	"physics":          1,
 	"playerno":         1,
-	"rank":             1,
 	"ratiolevel":       1,
 	"receivedhits":     1,
 	"receiveddamage":   1,
@@ -2599,8 +2597,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "playerno":
 		out.append(OC_ex_, OC_ex_playerno)
-	case "rank":
-		out.append(OC_ex_, OC_ex_rank)
 	case "ratiolevel":
 		out.append(OC_ex_, OC_ex_ratiolevel)
 	case "receiveddamage":

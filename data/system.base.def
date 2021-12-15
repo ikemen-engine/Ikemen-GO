@@ -1,11 +1,31 @@
+;-----------------------------------------------------------
 ; Ver 0.98+
-; This file contains all the default values used by screenpack definition file.
-;
-; Some default offset and window values are recalculated internally.
-; These are are commented out in the file.
+; This file contains list of all available screenpack parameters and the default
+; values used by screenpack definition file.
 ;
 ; This file is not loaded by engine and should not be used as-is. It's meant to
 ; be a reference for adding parameters to your own screenpack system.def file.
+;
+; Some default offset and window values are recalculated internally.
+; These are commented out in the file.
+
+;-----------------------------------------------------------
+; Notes about fonts:
+;   - fonts can be specified in the [Files] section (no limit to how many)
+;   - fonts indexed for system.def do not refer to the ones in fight.def
+;   - fonts are search in directories in the following order:
+;     1. system directory (where system.def is located)
+;     2. top ikemen directory (not recommended to keep custom fonts here)
+;     3. data/ (not recommended to keep custom fonts here)
+;     4. font/
+;   - font parameters consists of following arguments:
+;       fnt, bank, align, r, g, b, height
+;     where fnt can be either index matching font number declared under [Files]
+;     or font filename (path to file). height argument is used only by Truetype
+;     fonts (if not equal -1 it overrides both font<num>.height parameter and
+;     size of the ttf font declared in its DEF file)
+
+;-----------------------------------------------------------
 
 [Info]
 	name = "Default"
@@ -24,7 +44,7 @@
 	font1 = "f-4x6.fnt"
 	font2 = "f-6x9.def"
 	font3 = "jg.fnt"
-	font.height = 
+	;font<num>.height = 
 
 	; Ikemen features
 	; ------------------------------------------------------------
@@ -97,13 +117,11 @@
 [Title Info]
 	fadein.time = 10
 	fadeout.time = 10
-	title.font = -1, 0, 0, 255, 255, 255
+	title.font = -1, 0, 0, 255, 255, 255, -1
 
 	menu.pos = 159, 158
-	menu.item.font = -1, 0, 0, 191, 191, 191
-	menu.item.font.scale = 1.0, 1.0 ;broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
-	menu.item.active.font = -1, 0, 0, 255, 255, 255
-	menu.item.active.font.scale = 1.0, 1.0 ;broken parameter in mugen 1.1: http://mugenguild.com/forum/msg.1905756
+	menu.item.font = -1, 0, 0, 191, 191, 191, -1
+	menu.item.active.font = -1, 0, 0, 255, 255, 255, -1
 	menu.item.spacing = 0, 13
 	menu.window.margins.y = 12, 8
 	menu.window.visibleitems = 5
@@ -121,49 +139,45 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 
+	menu.item.scale = 1.0, 1.0
+	menu.item.active.scale = 1.0, 1.0
+
 	title.offset = 159, 19
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.scale = 1.0, 1.0
 	title.text = "MAIN MENU"
 
 	;loading.offset = (localcoordX - 1 - (10 * localcoordX / 320)), (localcoordY - 8)
-	loading.font = "default-3x5.def", 0, -1, 191, 191, 191
-	loading.font.scale = 1.0, 1.0
-	loading.font.height = -1
+	loading.font = "default-3x5.def", 0, -1, 191, 191, 191, -1
+	loading.scale = 1.0, 1.0
 	loading.text = "LOADING..."
 	
 	;footer1.offset = (2 * localcoordX / 320), localcoordY
-	footer1.font = "default-3x5.def", 0, 1, 191, 191, 191
-	footer1.font.scale = 1.0, 1.0
-	footer1.font.height = -1
+	footer1.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
+	footer1.scale = 1.0, 1.0
 	footer1.text = "I.K.E.M.E.N. GO"
 	;footer2.offset = (localcoordX / 2), localcoordY
-	footer2.font = "default-3x5.def", 0, 0, 191, 191, 191
-	footer2.font.scale = 1.0, 1.0
-	footer2.font.height = -1
+	footer2.font = "default-3x5.def", 0, 0, 191, 191, 191, -1
+	footer2.scale = 1.0, 1.0
 	footer2.text = "Press F1 for info"
 	;footer3.offset = (localcoordX - 1 - (2 * localcoordX / 320)), localcoordY
-	footer3.font = "default-3x5.def", 0, -1, 191, 191, 191
-	footer3.font.scale = 1.0, 1.0
-	footer3.font.height = -1
+	footer3.font = "default-3x5.def", 0, -1, 191, 191, 191, -1
+	footer3.scale = 1.0, 1.0
 	footer3.text = "verBeta"
 	;footer.overlay.window = 0, (localcoordY - 7), (localcoordX - 1), (localcoordY - 1)
 	footer.overlay.col = 0, 0, 64
 	footer.overlay.alpha = 255, 100
 
 	;connecting.offset = (10 * localcoordX / 320), 40
-	connecting.font = "f-6x9.def", 0, 1, 255, 255, 255
-	connecting.font.scale = 1.0, 1.0
-	connecting.font.height = -1
+	connecting.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	connecting.scale = 1.0, 1.0
 	connecting.host.text = "Waiting for player 2... (%s)"
 	connecting.join.text = "Now connecting to %s... (%s)"
 	;connecting.overlay.window = 0, 0, localcoordX, localcoordY
 	connecting.overlay.col = 0, 0, 0
 	connecting.overlay.alpha = 20, 100
 	textinput.offset = 25, 32
-	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191
-	textinput.font.scale = 1.0, 1.0
-	textinput.font.height = -1
+	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
+	textinput.scale = 1.0, 1.0
 	textinput.name.text = "Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button."
 	textinput.address.text = "Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button."
 
@@ -188,9 +202,7 @@
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 
 	menu.item.offset = 0, 0
-	menu.item.font.height = -1
 	menu.item.active.offset = 0, 0
-	menu.item.active.font.height = -1
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
 	menu.boxbg.visible = 0
@@ -249,21 +261,19 @@
 	bgclearcolor = 0, 0, 0
 
 [InfoBox]
-	text.font = "default-3x5.def", 0, 1, 191, 191, 191
+	text.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	overlay.alpha = 20, 100
 
 	; Ikemen features
 	; ------------------------------------------------------------
 	title.offset = 159, 19
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = ""
 
 	text.offset = 25, 32
-	text.font = "default-3x5.def", 0, 1, 191, 191, 191
-	text.font.scale = 1.0, 1.0
-	text.font.height = -1
+	text.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
+	text.scale = 1.0, 1.0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -350,8 +360,7 @@
 	portrait.scale = 1.0, 1.0
 
 	title.offset = 0, 0
-	title.font = -1, 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
+	title.font = -1, 0, 0, 255, 255, 255, -1
 
 	p1.face.pos = 0, 0
 	p1.face.spr = 9000, 1
@@ -368,22 +377,17 @@
 	p2.face.window = 
 
 	p1.name.offset = 0, 0
-	p1.name.font = -1, 4, 1, 255, 255, 255
-	p1.name.font.scale = 1.0, 1.0
+	p1.name.font = -1, 4, 1, 255, 255, 255, -1
 	p1.name.spacing = 0, 14
 
 	p2.name.offset = 0, 0
-	p2.name.font = -1, 1, -1, 255, 255, 255
-	p2.name.font.scale = 1.0, 1.0
+	p2.name.font = -1, 1, -1, 255, 255, 255, -1
 	p2.name.spacing = 0, 14
 
 	stage.pos = 0, 0
-	stage.active.font = -1, 0, 0, 255, 255, 255
-	stage.active.font.scale = 1.0, 1.0
-	stage.active2.font = -1, 0, 0, 255, 255, 255
-	stage.active2.font.scale = 1.0, 1.0
-	stage.done.font = -1, 0, 0, 255, 255, 255
-	stage.done.font.scale = 1.0, 1.0
+	stage.active.font = -1, 0, 0, 255, 255, 255, -1
+	stage.active2.font = -1, 0, 0, 255, 255, 255, -1
+	stage.done.font = -1, 0, 0, 255, 255, 255, -1
 
 	teammenu.move.wrapping = 1
 
@@ -398,18 +402,16 @@
 	p1.teammenu.selftitle.spr = 
 	p1.teammenu.selftitle.offset = 0, 0
 	p1.teammenu.selftitle.facing = 1
+	p1.teammenu.selftitle.font = -1, 0, 1, 255, 255, 255, -1
 	p1.teammenu.selftitle.scale = 1.0, 1.0
-	p1.teammenu.selftitle.font = -1, 0, 1, 255, 255, 255
-	p1.teammenu.selftitle.font.scale = 1.0, 1.0
 	p1.teammenu.selftitle.text = ""
 
 	p1.teammenu.enemytitle.anim = -1
 	p1.teammenu.enemytitle.spr = 
 	p1.teammenu.enemytitle.offset = 0, 0
 	p1.teammenu.enemytitle.facing = 1
+	p1.teammenu.enemytitle.font = -1, 0, 1, 255, 255, 255, -1
 	p1.teammenu.enemytitle.scale = 1.0, 1.0
-	p1.teammenu.enemytitle.font = -1, 0, 1, 255, 255, 255
-	p1.teammenu.enemytitle.font.scale = 1.0, 1.0
 	p1.teammenu.enemytitle.text = ""
 
 	p1.teammenu.move.snd = 100, 0
@@ -418,12 +420,9 @@
 
 	p1.teammenu.item.offset = 0, 0
 	p1.teammenu.item.spacing = 0, 15
-	p1.teammenu.item.font = -1, 0, 1, 255, 255, 255
-	p1.teammenu.item.font.scale = 1.0, 1.0
-	p1.teammenu.item.active.font = -1, 3, 1, 255, 255, 255
-	p1.teammenu.item.active.font.scale = 1.0, 1.0
-	p1.teammenu.item.active2.font = -1, 0, 1, 255, 255, 255
-	p1.teammenu.item.active2.font.scale = 1.0, 1.0
+	p1.teammenu.item.font = -1, 0, 1, 255, 255, 255, -1
+	p1.teammenu.item.active.font = -1, 3, 1, 255, 255, 255, -1
+	p1.teammenu.item.active2.font = -1, 0, 1, 255, 255, 255, -1
 	p1.teammenu.item.cursor.anim = -1
 	p1.teammenu.item.cursor.spr = 
 	p1.teammenu.item.cursor.offset = 0, 0
@@ -453,18 +452,16 @@
 	p2.teammenu.selftitle.spr = 
 	p2.teammenu.selftitle.offset = 0, 0
 	p2.teammenu.selftitle.facing = 1
+	p2.teammenu.selftitle.font = -1, 0, -1, 255, 255, 255, -1
 	p2.teammenu.selftitle.scale = 1.0, 1.0
-	p2.teammenu.selftitle.font = -1, 0, -1, 255, 255, 255
-	p2.teammenu.selftitle.font.scale = 1.0, 1.0
 	p2.teammenu.selftitle.text = ""
 
 	p2.teammenu.enemytitle.anim = -1
 	p2.teammenu.enemytitle.spr = 
 	p2.teammenu.enemytitle.offset = 0, 0
 	p2.teammenu.enemytitle.facing = 1
+	p2.teammenu.enemytitle.font = -1, 0, -1, 255, 255, 255, -1
 	p2.teammenu.enemytitle.scale = 1.0, 1.0
-	p2.teammenu.enemytitle.font = -1, 0, -1, 255, 255, 255
-	p2.teammenu.enemytitle.font.scale = 1.0, 1.0
 	p2.teammenu.enemytitle.text = ""
 
 	p2.teammenu.move.snd = 100, 0
@@ -473,12 +470,9 @@
 
 	p2.teammenu.item.offset = 0, 0
 	p2.teammenu.item.spacing = 0, 15
-	p2.teammenu.item.font = -1, 0, -1, 255, 255, 255
-	p2.teammenu.item.font.scale = 1.0, 1.0
-	p2.teammenu.item.active.font = -1, 1, -1, 255, 255, 255
-	p2.teammenu.item.active.font.scale = 1.0, 1.0
-	p2.teammenu.item.active2.font = -1, 0, -1, 255, 255, 255
-	p2.teammenu.item.active2.font.scale = 1.0, 1.0
+	p2.teammenu.item.font = -1, 0, -1, 255, 255, 255, -1
+	p2.teammenu.item.active.font = -1, 1, -1, 255, 255, 255, -1
+	p2.teammenu.item.active2.font = -1, 0, -1, 255, 255, 255, -1
 	p2.teammenu.item.cursor.anim = -1
 	p2.teammenu.item.cursor.spr = 
 	p2.teammenu.item.cursor.offset = 0, 0
@@ -543,7 +537,7 @@
 
 	portrait.anim = -1
 
-	title.font.height = -1
+	title.scale = 1.0, 1.0
 	title.arcade.text = "Arcade"
 	title.teamarcade.text = "Team Arcade"
 	title.teamcoop.text = "Team Cooperative"
@@ -563,8 +557,6 @@
 	title.bonus.text = "Bonus"
 	title.watch.text = "Watch Mode"
 	;title.replay.text = "Replay"
-
-	name.random.text = "Random"
 
 	p1.face.num = 1
 	p1.face.anim = -1
@@ -606,17 +598,20 @@
 	; num params control max number of names to render. If set to 1, last active
 	; member's name has priority. Not used in co-op.
 	p1.name.num = 4
+	p1.name.scale = 1.0, 1.0
+	p1.name.random.text = "Random"
+
 	p2.name.num = 4
-	p1.name.font.height = -1
-	p2.name.font.height = -1
+	p2.name.scale = 1.0, 1.0
+	p2.name.random.text = "Random"
 
 	stage.active.offset = 0, 0
-	stage.active.font.height = -1
+	stage.active.scale = 1.0, 1.0
 	stage.active.switchtime = 2
 	stage.active2.offset = 0, 0
-	stage.active2.font.height = -1
+	stage.active2.scale = 1.0, 1.0
 	stage.done.offset = 0, 0
-	stage.done.font.height = -1
+	stage.done.scale = 1.0, 1.0
 	stage.text = "Stage %i: %s"
 	stage.random.text = "Stage: Random"
 
@@ -645,41 +640,25 @@
 	; list, <teammode> should be replaced with single/simul/turns/tag/ratio
 	;teammenu.itemname.<gamemode>.<teammode> = ""
 
-	;p1.teammenu.bg.<itemname>.anim = -1
-	;p1.teammenu.bg.<itemname>.spr = 
-	;p1.teammenu.bg.<itemname>.offset = 0, 0
-	;p1.teammenu.bg.<itemname>.facing = 1
-	;p1.teammenu.bg.<itemname>.scale = 1.0, 1.0
-	;p1.teammenu.bg.active.<itemname>.anim = -1
-	;p1.teammenu.bg.active.<itemname>.spr = 
-	;p1.teammenu.bg.active.<itemname>.offset = 0, 0
-	;p1.teammenu.bg.active.<itemname>.facing = 1
-	;p1.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
+	;p<pn>.teammenu.bg.<itemname>.anim = -1
+	;p<pn>.teammenu.bg.<itemname>.spr = 
+	;p<pn>.teammenu.bg.<itemname>.offset = 0, 0
+	;p<pn>.teammenu.bg.<itemname>.facing = 1
+	;p<pn>.teammenu.bg.<itemname>.scale = 1.0, 1.0
+	;p<pn>.teammenu.bg.active.<itemname>.anim = -1
+	;p<pn>.teammenu.bg.active.<itemname>.spr = 
+	;p<pn>.teammenu.bg.active.<itemname>.offset = 0, 0
+	;p<pn>.teammenu.bg.active.<itemname>.facing = 1
+	;p<pn>.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
 
-	p1.teammenu.selftitle.font.height = -1
-	p1.teammenu.enemytitle.font.height = -1
-	p1.teammenu.item.font.height = -1
-	p1.teammenu.item.active.font.height = -1
+	p1.teammenu.item.scale = 1.0, 1.0
+	p1.teammenu.item.active.scale = 1.0, 1.0
+	p1.teammenu.item.active2.scale = 1.0, 1.0
 	p1.teammenu.item.active.switchtime = 2
-	p1.teammenu.item.active2.font.height = -1
-
-	;p2.teammenu.bg.<itemname>.anim = -1
-	;p2.teammenu.bg.<itemname>.spr = 
-	;p2.teammenu.bg.<itemname>.offset = 0, 0
-	;p2.teammenu.bg.<itemname>.facing = 1
-	;p2.teammenu.bg.<itemname>.scale = 1.0, 1.0
-	;p2.teammenu.bg.active.<itemname>.anim = -1
-	;p2.teammenu.bg.active.<itemname>.spr = 
-	;p2.teammenu.bg.active.<itemname>.offset = 0, 0
-	;p2.teammenu.bg.active.<itemname>.facing = 1
-	;p2.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
-
-	p2.teammenu.selftitle.font.height = -1
-	p2.teammenu.enemytitle.font.height = -1
-	p2.teammenu.item.font.height = -1
-	p2.teammenu.item.active.font.height = -1
+	p2.teammenu.item.scale = 1.0, 1.0
+	p2.teammenu.item.active.scale = 1.0, 1.0
+	p2.teammenu.item.active2.scale = 1.0, 1.0
 	p2.teammenu.item.active.switchtime = 2
-	p2.teammenu.item.active2.font.height = -1
 
 	p1.teammenu.next.key = "$D"
 	p1.teammenu.previous.key = "$U"
@@ -693,18 +672,16 @@
 	p2.teammenu.accept.key = "a&b&c&x&y&z&s"
 
 	timer.offset = 0, 0
-	timer.font = -1, 0, 0, 255, 255, 255
-	timer.font.scale = 1.0, 1.0
-	timer.font.height = -1
-	timer.font.text = "%i"
+	timer.font = -1, 0, 0, 255, 255, 255, -1
+	timer.scale = 1.0, 1.0
+	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 60
 	timer.displaytime = 10
 
 	record.offset = 0, 0
-	record.font = -1, 0, 0, 255, 255, 255
-	record.font.scale = 1.0, 1.0
-	record.font.height = -1
+	record.font = -1, 0, 0, 255, 255, 255, -1
+	record.scale = 1.0, 1.0
 	;record.<gamemode>.text = ""
 
 	p1.swap.snd = -1, 0
@@ -797,8 +774,8 @@
 
 	match.text = "Match %i"
 	match.offset = 159, 12
-	match.font = -1, 0, 0, 255, 255, 255
-	match.font.scale = 1.0, 1.0
+	match.font = -1, 0, 0, 255, 255, 255, -1
+	match.scale = 1.0, 1.0
 
 	p1.pos = 0, 0
 	p1.spr = 9000, 1
@@ -816,14 +793,12 @@
 
 	p1.name.pos = 0, 0
 	p1.name.offset = 0, 0
-	p1.name.font = -1, 0, 0, 255, 255, 255
-	p1.name.font.scale = 1.0, 1.0
+	p1.name.font = -1, 0, 0, 255, 255, 255, -1
 	p1.name.spacing = 0, 14
 
 	p2.name.pos = 0, 0
 	p2.name.offset = 0, 0
-	p2.name.font = -1, 0, 0, 255, 255, 255
-	p2.name.font.scale = 1.0, 1.0
+	p2.name.font = -1, 0, 0, 255, 255, 255, -1
 	p2.name.spacing = 0, 14
 
 	; Ikemen features
@@ -832,7 +807,6 @@
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
-	match.font.height = -1
 
 	p1.num = 1
 	p1.anim = -1
@@ -930,10 +904,9 @@
 
 	; Change timer.count to positive number to enable order selection timer
 	timer.offset = 0, 0
-	timer.font = -1, 0, 0, 255, 255, 255
-	timer.font.scale = 1.0, 1.0
-	;timer.font.height = -1
-	timer.font.text = "%i"
+	timer.font = -1, 0, 0, 255, 255, 255, -1
+	timer.scale = 1.0, 1.0
+	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 6
 	timer.displaytime = 0
@@ -943,9 +916,9 @@
 	done.time = 60
 
 	p1.name.num = 4 ; max number of names to render (not used in co-op)
+	p1.name.scale = 1.0, 1.0
 	p2.name.num = 4 ; max number of names to render (not used in co-op)
-	p1.name.font.height = -1
-	p2.name.font.height = -1
+	p2.name.scale = 1.0, 1.0
 
 	stage.snd = -1, 0 ; data read from stage attachedchar SND
 
@@ -983,26 +956,26 @@
 	pos = 160, 40
 
 	continue.text = "Continue?"
-	continue.font = "f-6x9.def", 0, 0, 255, 255, 255
-	continue.font.scale = 1.0, 1.0
+	continue.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	continue.scale = 1.0, 1.0
 	continue.offset = 0, 0
 
 	yes.text = "Yes"
-	yes.font = "f-6x9.def", 0, 0, 191, 191, 191
-	yes.font.scale = 1.0, 1.0
+	yes.font = "f-6x9.def", 0, 0, 191, 191, 191, -1
+	yes.scale = 1.0, 1.0
 	yes.offset = -17, 20
 	yes.active.text = "Yes"
-	yes.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	yes.active.font.scale = 1.0, 1.0
+	yes.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	yes.active.scale = 1.0, 1.0
 	yes.active.offset = -17, 20
 
 	no.text = "No"
-	no.font = "f-6x9.def", 0, 0, 191, 191, 191
-	no.font.scale = 1.0, 1.0
+	no.font = "f-6x9.def", 0, 0, 191, 191, 191, -1
+	no.scale = 1.0, 1.0
 	no.offset = 15, 20
 	no.active.text = "No"
-	no.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	no.active.font.scale = 1.0, 1.0
+	no.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	no.active.scale = 1.0, 1.0
 	no.active.offset = 15, 20
 
 	; Ikemen features
@@ -1016,14 +989,6 @@
 	fadeout.time = 120
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
-
-	continue.font.height = -1
-
-	yes.font.height = -1
-	yes.active.font.height = -1
-
-	no.font.height = -1
-	no.active.font.height = -1
 
 	move.snd = 100, 0
 	done.snd = 100, 1
@@ -1051,9 +1016,8 @@
 
 	credits.text = "Credits: %i"
 	credits.offset = 0, 0
-	credits.font = "jg.fnt", 0, 1, 255, 255, 255
-	credits.font.scale = 1.0, 1.0
-	credits.font.height = -1
+	credits.font = "jg.fnt", 0, 1, 255, 255, 255, -1
+	credits.scale = 1.0, 1.0
 
 	; Extended continue screen (legacymode.enabled = 0) renders interactive
 	; counter animation, defined as a single 'counter' element. This animation
@@ -1105,13 +1069,11 @@
 	p1.scale = 1.0, 1.0
 	p1.window = 
 	p1.name.offset = 0, 0
-	p1.name.font = -1, 0, 1, 255, 255, 255
-	p1.name.font.scale = 1.0, 1.0
+	p1.name.font = -1, 0, 1, 255, 255, 255, -1
 
 	winquote.text = "Winner!"
 	winquote.offset = 20, 192
-	winquote.font = -1, 0, 1, 255, 255, 255
-	winquote.font.scale = 1.0, 1.0
+	winquote.font = -1, 0, 1, 255, 255, 255, -1
 	winquote.scale = 1.0, 1.0
 	winquote.textwrap = "w"
 	winquote.window = 
@@ -1166,14 +1128,13 @@
 	p2.face2.scale = 1.0, 1.0
 	p2.face2.window = 
 
-	p1.name.font.height = -1
+	p1.name.scale = 1.0, 1.0
+
 	p2.name.offset = 0, 0
-	p2.name.font = -1, 0, 1, 255, 255, 255
-	p2.name.font.scale = 1.0, 1.0
-	p2.name.font.height = -1
+	p2.name.font = -1, 0, 1, 255, 255, 255, -1
+	p2.name.scale = 1.0, 1.0
 
 	winquote.spacing = 0, 0
-	winquote.font.height = -1
 	winquote.delay = 2
 	winquote.displaytime = 0
 
@@ -1198,8 +1159,8 @@
 
 	wintext.text = "Congratulations!"
 	wintext.offset = 159, 70
-	wintext.font = "f-6x9.def", 0, 0, 255, 255, 255
-	wintext.font.scale = 1.0, 1.0
+	wintext.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	wintext.scale = 1.0, 1.0
 	wintext.displaytime = 0
 	wintext.layerno = 2
 
@@ -1220,8 +1181,6 @@
 	p2.state = 
 	p1.teammate.state = 
 	p2.teammate.state = 
-
-	wintext.font.height = -1
 
 ; results screens variants defaults to WinBgDef, if dedicated BgDef section is missing
 [WinBgDef] ;Ikemen feature
@@ -1245,8 +1204,8 @@
 
 	winstext.text = "Rounds survived: %i"
 	winstext.offset = 159, 70
-	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
+	winstext.font = "jg.fnt", 0, 0, 255, 255, 255, -1
+	winstext.scale = 1.0, 1.0
 	winstext.displaytime = 0
 	winstext.layerno = 2
 
@@ -1257,8 +1216,6 @@
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
-
-	winstext.font.height = -1
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -1290,9 +1247,8 @@
 
 	winstext.text = "Clear Time: %m:%s.%x"
 	winstext.offset = 159, 70
-	winstext.font = "jg.fnt", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
-	winstext.font.height = -1
+	winstext.font = "jg.fnt", 0, 0, 255, 255, 255, -1
+	winstext.scale = 1.0, 1.0
 	winstext.displaytime = 0
 	winstext.layerno = 2
 
@@ -1326,9 +1282,8 @@
 
 	winstext.text = "Congratulations!"
 	winstext.offset = 159, 70
-	winstext.font = "f-6x9.def", 0, 0, 255, 255, 255
-	winstext.font.scale = 1.0, 1.0
-	winstext.font.height = -1
+	winstext.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	winstext.scale = 1.0, 1.0
 	winstext.displaytime = 0
 	winstext.layerno = 2
 
@@ -1349,8 +1304,8 @@
 	fadeout.time = 10
 
 	title.offset = 159, 19
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
@@ -1363,7 +1318,6 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 
-	title.font.height = -1
 	title.text = "OPTIONS"
 
 	menu.uselocalcoord = 0
@@ -1381,47 +1335,38 @@
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 
 	menu.item.offset = 0, 0
-	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191
-	menu.item.font.scale = 1.0, 1.0
-	menu.item.font.height = -1
+	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
+	menu.item.scale = 1.0, 1.0
 
 	menu.item.active.offset = 0, 0
-	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255
-	menu.item.active.font.scale = 1.0, 1.0
-	menu.item.active.font.height = -1
+	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	menu.item.active.scale = 1.0, 1.0
 
 	menu.item.selected.offset = 0, 0
-	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247
-	menu.item.selected.font.scale = 1.0, 1.0
-	menu.item.selected.font.height = -1
+	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
+	menu.item.selected.scale = 1.0, 1.0
 	menu.item.selected.active.offset = 0, 0
-	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247
-	menu.item.selected.active.font.scale = 1.0, 1.0
-	menu.item.selected.active.font.height = -1
+	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
+	menu.item.selected.active.scale = 1.0, 1.0
 
 	menu.item.value.offset = 150, 0
-	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191
-	menu.item.value.font.scale = 1.0, 1.0
-	menu.item.value.font.height = -1
+	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191, -1
+	menu.item.value.scale = 1.0, 1.0
 
 	menu.item.value.active.offset = 150, 0
-	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255
-	menu.item.value.active.font.scale = 1.0, 1.0
-	menu.item.value.active.font.height = -1
+	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255, -1
+	menu.item.value.active.scale = 1.0, 1.0
 
 	menu.item.value.conflict.offset = 150, 0
-	menu.item.value.conflict.font = "f-6x9.def", 0, -1, 247, 0, 0
-	menu.item.value.conflict.font.scale = 1.0, 1.0
-	menu.item.value.conflict.font.height = -1
+	menu.item.value.conflict.font = "f-6x9.def", 0, -1, 247, 0, 0, -1
+	menu.item.value.conflict.scale = 1.0, 1.0
 
 	menu.item.info.offset = 150, 0
-	menu.item.info.font = "f-6x9.def", 0, -1, 247, 247, 0
-	menu.item.info.font.scale = 1.0, 1.0
-	menu.item.info.font.height = -1
+	menu.item.info.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
+	menu.item.info.scale = 1.0, 1.0
 	menu.item.info.active.offset = 150, 0
-	menu.item.info.active.font = "f-6x9.def", 0, -1, 247, 247, 0
-	menu.item.info.active.font.scale = 1.0, 1.0
-	menu.item.info.active.font.height = -1
+	menu.item.info.active.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
+	menu.item.info.active.scale = 1.0, 1.0
 
 	menu.item.spacing = 0, 14
 	menu.window.margins.y = 0, 0
@@ -1474,13 +1419,11 @@
 	;keymenu.bg.active.<itemname>.scale = 1.0, 1.0
 
 	keymenu.item.p1.offset = 52, 0
-	keymenu.item.p1.font = "f-6x9.def", 0, 0, 0, 247, 247
-	keymenu.item.p1.font.scale = 1.0, 1.0
-	keymenu.item.p1.font.height = -1
+	keymenu.item.p1.font = "f-6x9.def", 0, 0, 0, 247, 247, -1
+	keymenu.item.p1.scale = 1.0, 1.0
 	keymenu.item.p2.offset = 52, 0
-	keymenu.item.p2.font = "f-6x9.def", 0, 0, 247, 0, 0
-	keymenu.item.p2.font.scale = 1.0, 1.0
-	keymenu.item.p2.font.height = -1
+	keymenu.item.p2.font = "f-6x9.def", 0, 0, 247, 0, 0, -1
+	keymenu.item.p2.scale = 1.0, 1.0
 
 	; Unassigned "keymenu.item" parameters use corresponding "[Menu Item]" values.
 	keymenu.item.spacing = 0, 12
@@ -1510,9 +1453,8 @@
 	keymenu.itemname.page = "Page"
 
 	textinput.offset = 25, 32
-	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191
-	textinput.font.scale = 1.0, 1.0
-	textinput.font.height = -1
+	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
+	textinput.scale = 1.0, 1.0
 	textinput.port.text = "Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.reswidth.text = "Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.resheight.text = "Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel."
@@ -1726,9 +1668,8 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 	title.offset = 159, 19
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = "REPLAY SELECT"
 	menu.uselocalcoord = 0
 	menu.pos = 85, 33
@@ -1743,13 +1684,11 @@
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 	menu.item.offset = 0, 0
-	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191
-	menu.item.font.scale = 1.0, 1.0
-	menu.item.font.height = -1
+	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
+	menu.item.scale = 1.0, 1.0
 	menu.item.active.offset = 0, 0
-	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255
-	menu.item.active.font.scale = 1.0, 1.0
-	menu.item.active.font.height = -1
+	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	menu.item.active.scale = 1.0, 1.0
 	menu.item.spacing = 0, 14
 	menu.window.margins.y = 0, 0
 	menu.window.visibleitems = 13
@@ -1788,9 +1727,8 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 	title.offset = 159, 19
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = "PAUSE"
 	menu.uselocalcoord = 0
 	menu.pos = 85, 33
@@ -1805,29 +1743,23 @@
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 	menu.item.offset = 0, 0
-	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191
-	menu.item.font.scale = 1.0, 1.0
-	menu.item.font.height = -1
+	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
+	menu.item.scale = 1.0, 1.0
 	menu.item.active.offset = 0, 0
-	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255
-	menu.item.active.font.scale = 1.0, 1.0
-	menu.item.active.font.height = -1
+	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	menu.item.active.scale = 1.0, 1.0
 	menu.item.selected.offset = 0, 0
-	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247
-	menu.item.selected.font.scale = 1.0, 1.0
-	menu.item.selected.font.height = -1
+	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
+	menu.item.selected.scale = 1.0, 1.0
 	menu.item.selected.active.offset = 0, 0
-	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247
-	menu.item.selected.active.font.scale = 1.0, 1.0
-	menu.item.selected.active.font.height = -1
+	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
+	menu.item.selected.active.scale = 1.0, 1.0
 	menu.item.value.offset = 150, 0
-	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191
-	menu.item.value.font.scale = 1.0, 1.0
-	menu.item.value.font.height = -1
+	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191, -1
+	menu.item.value.scale = 1.0, 1.0
 	menu.item.value.active.offset = 150, 0
-	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255
-	menu.item.value.active.font.scale = 1.0, 1.0
-	menu.item.value.active.font.height = -1
+	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255, -1
+	menu.item.value.active.scale = 1.0, 1.0
 	menu.item.spacing = 0, 14
 	menu.window.margins.y = 0, 0
 	menu.window.visibleitems = 13
@@ -1858,15 +1790,13 @@
 	enter.snd = -1, 0
 	movelist.pos = 10, 20
 	movelist.title.offset = 150, 0
-	movelist.title.font = "Open.Sans.def", 0, 0, 255, 255, 255
-	movelist.title.font.scale = 0.4, 0.4
-	movelist.title.font.height = -1
+	movelist.title.font = "Open.Sans.def", 0, 0, 255, 255, 255, -1
+	movelist.title.scale = 0.4, 0.4
 	movelist.title.text = "%s"
 	movelist.title.uppercase = 0
 	movelist.text.offset = 0, 12
-	movelist.text.font = "Open.Sans.def", 0, 1, 255, 255, 255
-	movelist.text.font.scale = 0.4, 0.4
-	movelist.text.font.height = -1
+	movelist.text.font = "Open.Sans.def", 0, 1, 255, 255, 255, -1
+	movelist.text.scale = 0.4, 0.4
 	movelist.text.spacing = 1, 1
 	movelist.text.text = "Command List not found."
 	movelist.glyphs.offset = 0, 2
@@ -2002,34 +1932,29 @@
 	start.time = 600
 	start.insert.text = "Insert coin"
 	start.insert.offset = 159, 185
-	start.insert.font = "jg.fnt", 0, 0, 255, 255, 255
-	start.insert.font.scale = 1.0, 1.0
-	start.insert.font.height = -1
+	start.insert.font = "jg.fnt", 0, 0, 255, 255, 255, -1
+	start.insert.scale = 1.0, 1.0
 	start.insert.blinktime = 30
 	start.press.text = "Press Start"
 	start.press.offset = 159, 185
-	start.press.font = "jg.fnt", 0, 0, 255, 255, 255
-	start.press.font.scale = 1.0, 1.0
-	start.press.font.height = -1
+	start.press.font = "jg.fnt", 0, 0, 255, 255, 255, -1
+	start.press.scale = 1.0, 1.0
 	start.press.blinktime = 30
 	start.timer.offset = 310, 234
-	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255
-	start.timer.font.scale = 1.0, 1.0
-	start.timer.font.height = -1
-	start.timer.font.text = "%i"
+	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255, -1
+	start.timer.scale = 1.0, 1.0
+	start.timer.text = "%i"
 	start.timer.count = 60
 	start.timer.framespercount = 60
 	start.timer.displaytime = 10
 	start.done.snd = 100, 1
 	credits.text = "CREDITS: %2i"
 	credits.offset = 159, 234
-	credits.font = "f-4x6.fnt", 0, 0, 255, 255, 255
-	credits.font.scale = 1.0, 1.0
-	credits.font.height = -1
+	credits.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
+	credits.scale = 1.0, 1.0
 	title.offset = 159, 19
-	title.font = -1, 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = -1, 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = "MAIN MENU"
 	menu.next.key = "$D&$F"
 	menu.previous.key = "$U&$B"
@@ -2046,13 +1971,11 @@
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 	menu.item.offset = 0, 0
-	menu.item.font = "f-6x9.def", 0, 0, 191, 191, 191
-	menu.item.font.scale = 1.0, 1.0
-	menu.item.font.height = -1
+	menu.item.font = "f-6x9.def", 0, 0, 191, 191, 191, -1
+	menu.item.scale = 1.0, 1.0
 	menu.item.active.offset = 0, 0
-	menu.item.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	menu.item.active.font.scale = 1.0, 1.0
-	menu.item.active.font.height = -1
+	menu.item.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	menu.item.active.scale = 1.0, 1.0
 	menu.item.spacing = 0, 13
 	menu.window.margins.y = 12, 8
 	menu.window.visibleitems = 5
@@ -2102,9 +2025,8 @@
 	bg.displaytime = 0
 	text = ""
 	text.offset = 0, 0
-	text.font = -1, 0, 1, 255, 255, 255
-	text.font.scale = 1.0, 1.0
-	text.font.height = -1
+	text.font = -1, 0, 1, 255, 255, 255, -1
+	text.scale = 1.0, 1.0
 	text.displaytime = 0
 	text.layerno = 2
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -2122,15 +2044,13 @@
 	p1.pos = 0, 0
 	p2.pos = 0, 0
 	p1.score.offset = 0, 0
-	p1.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255
-	p1.score.font.scale = 1.0, 1.0
-	p1.score.font.height = -1
+	p1.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
+	p1.score.scale = 1.0, 1.0
 	p1.score.text = "%s"
 	p1.score.displaytime = 0
 	p2.score.offset = 0, 0
-	p2.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255
-	p2.score.font.scale = 1.0, 1.0
-	p2.score.font.height = -1
+	p2.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
+	p2.score.scale = 1.0, 1.0
 	p2.score.text = "%s"
 	p2.score.displaytime = 0
 	p1.bg.anim = -1
@@ -2204,29 +2124,39 @@
 	p2.face.scale = 1.0, 1.0
 	p2.face.window = 
 	p1.name.offset = 0, 0
-	p1.name.font = -1, 0, 1, 255, 255, 255
-	p1.name.font.scale = 1.0, 1.0
-	p1.name.font.height = -1
+	p1.name.font = -1, 0, 1, 255, 255, 255, -1
+	p1.name.scale = 1.0, 1.0
 	p2.name.offset = 0, 0
-	p2.name.font = -1, 0, 1, 255, 255, 255
-	p2.name.font.scale = 1.0, 1.0
-	p2.name.font.height = -1
+	p2.name.font = -1, 0, 1, 255, 255, 255, -1
+	p2.name.scale = 1.0, 1.0
 	p1.text.offset = 20, 192
 	p1.text.spacing = 0, 0
-	p1.text.font = "f-6x9.def", 0, 1, 255, 255, 255
-	p1.text.font.scale = 1.0, 1.0
-	p1.text.font.height = -1
+	p1.text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	p1.text.scale = 1.0, 1.0
 	p1.text.delay = 2
 	p1.text.textwrap = "w"
 	p1.text.window = 
 	p2.text.offset = 20, 192
 	p2.text.spacing = 0, 0
-	p2.text.font = "f-6x9.def", 0, 1, 255, 255, 255
-	p2.text.font.scale = 1.0, 1.0
-	p2.text.font.height = -1
+	p2.text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	p2.text.scale = 1.0, 1.0
 	p2.text.delay = 2
 	p2.text.textwrap = "w"
 	p2.text.window = 
+
+	; active element is rendered on top, only when pX side is executing text.
+	; Can be used e.g. to display button press prompt on active side and/or dim
+	; opposite player text box. Animation is reset whenever active side changes.
+	p1.active.anim = -1
+	p1.active.spr = 
+	p1.active.offset = 0, 0
+	p1.active.facing = 1
+	p1.active.scale = 1.0, 1.0
+	p2.active.anim = -1
+	p2.active.spr = 
+	p2.active.offset = 0, 0
+	p2.active.facing = 1
+	p2.active.scale = 1.0, 1.0
 
 [Hiscore Info] ;Ikemen feature
 	enabled = 0
@@ -2239,76 +2169,62 @@
 	time = 360
 	pos = 0, 0
 	title.offset = 0, 0
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = "Ranking %s"
 	title.uppercase = 0
 	title.rank.offset = 0, 0
-	title.rank.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.rank.font.scale = 1.0, 1.0
-	title.rank.font.height = -1
+	title.rank.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.rank.scale = 1.0, 1.0
 	title.rank.text = "Rank"
 	title.data.offset = 0, 0
-	title.data.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.data.font.scale = 1.0, 1.0
-	title.data.font.height = -1
+	title.data.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.data.scale = 1.0, 1.0
 	title.data.text = "Result"
 	title.name.offset = 0, 0
-	title.name.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.name.font.scale = 1.0, 1.0
-	title.name.font.height = -1
+	title.name.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.name.scale = 1.0, 1.0
 	title.name.text = "Name"
 	title.face.offset = 0, 0
-	title.face.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.face.font.scale = 1.0, 1.0
-	title.face.font.height = -1
+	title.face.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.face.scale = 1.0, 1.0
 	title.face.text = "Character"
 	item.offset = 0, 0
 	item.spacing = 0, 0
 	item.rank.offset = 0, 0
-	item.rank.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.rank.font.scale = 1.0, 1.0
-	item.rank.font.height = -1
+	item.rank.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.rank.scale = 1.0, 1.0
 	item.rank.spacing = 0, 0
 	item.rank.text = "%s"
 	;item.rank.<num>.text = "%s"
-	item.rank.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.rank.active.font.scale = 1.0, 1.0
-	item.rank.active.font.height = -1
+	item.rank.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.rank.active.scale = 1.0, 1.0
 	item.rank.active.switchtime = 3
-	item.rank.active2.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.rank.active2.font.scale = 1.0, 1.0
-	item.rank.active2.font.height = -1
+	item.rank.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.rank.active2.scale = 1.0, 1.0
 	item.data.offset = 0, 0
-	item.data.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.data.font.scale = 1.0, 1.0
-	item.data.font.height = -1
+	item.data.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.data.scale = 1.0, 1.0
 	item.data.spacing = 0, 0
 	item.data.text = "%s"
 	item.data.score.text = "%8s"
 	item.data.time.text = "%m %s %x"
 	item.data.win.text = "Round %s"
-	item.data.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.data.active.font.scale = 1.0, 1.0
-	item.data.active.font.height = -1
+	item.data.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.data.active.scale = 1.0, 1.0
 	item.data.active.switchtime = 3
-	item.data.active2.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.data.active2.font.scale = 1.0, 1.0
-	item.data.active2.font.height = -1
+	item.data.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.data.active2.scale = 1.0, 1.0
 	item.name.offset = 0, 0
-	item.name.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.name.font.scale = 1.0, 1.0
-	item.name.font.height = -1
+	item.name.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.name.scale = 1.0, 1.0
 	item.name.spacing = 0, 0
 	item.name.text = "%3s"
-	item.name.active.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.name.active.font.scale = 1.0, 1.0
-	item.name.active.font.height = -1
+	item.name.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.name.active.scale = 1.0, 1.0
 	item.name.active.switchtime = 3
-	item.name.active2.font = "f-6x9.def", 0, 0, 255, 255, 255
-	item.name.active2.font.scale = 1.0, 1.0
-	item.name.active2.font.height = -1
+	item.name.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	item.name.active2.scale = 1.0, 1.0
 	item.name.uppercase = 1
 	item.face.anim = -1
 	item.face.spr = 9000, 0
@@ -2329,10 +2245,9 @@
 	item.face.unknown.facing = 1
 	item.face.unknown.scale = 1.0, 1.0
 	timer.offset = 0, 0
-	timer.font = "f-6x9.def", 0, 0, 255, 255, 255
-	timer.font.scale = 1.0, 1.0
-	timer.font.height = -1
-	timer.font.text = "%s"
+	timer.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	timer.scale = 1.0, 1.0
+	timer.text = "%s"
 	timer.count = 99
 	timer.framespercount = 60
 	timer.displaytime = 10
@@ -2353,14 +2268,12 @@
 
 [Warning Info] ;Ikemen feature
 	title.offset = 159, 19
-	title.font = "f-6x9.def", 0, 0, 255, 255, 255
-	title.font.scale = 1.0, 1.0
-	title.font.height = -1
+	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
+	title.scale = 1.0, 1.0
 	title.text = "WARNING"
 	text.offset = 25, 33
-	text.font = "f-6x9.def", 0, 1, 255, 255, 255
-	text.font.scale = 1.0, 1.0
-	text.font.height = -1
+	text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
+	text.scale = 1.0, 1.0
 	text.reload.text = "Some selected options require Ikemen to be restarted.\nPress any key to exit the program."
 	text.noreload.text = "Some selected options require Ikemen to be restarted.\nPress any key to continue."
 	text.keys.text = "Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset."

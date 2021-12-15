@@ -80,7 +80,7 @@ options.t_itemname = {
 				txt_textinput,
 				overlay_textinput,
 				motif.option_info.textinput_offset[2],
-				main.f_ySpacing(motif.option_info, 'textinput_font'),
+				main.f_ySpacing(motif.option_info, 'textinput'),
 				motif.optionbgdef
 			)
 			if tonumber(port) ~= nil then
@@ -121,7 +121,6 @@ options.t_itemname = {
 			--	"data/action.zss",
 			--	"data/dizzy.zss",
 			--	"data/guardbreak.zss",
-			--	"data/rank.zss",
 			--	"data/score.zss",
 			--	"data/tag.zss",
 			--	"data/training.zss"
@@ -149,7 +148,7 @@ options.t_itemname = {
 			--config.FullscreenHeight = -1
 			config.GameWidth = 640
 			config.GameHeight = 480
-			--config.GameFramerate = 60
+			config.GameFramerate = 60
 			--config.IP = {}
 			config.LifeMul = 100
 			config.ListenPort = "7500"
@@ -212,7 +211,7 @@ options.t_itemname = {
 			setAllowDebugKeys(config.DebugKeys)
 			setAllowDebugMode(config.DebugMode)
 			setAudioDucking(config.AudioDucking)
-			--setGameSpeed(config.GameSpeed / 100)
+			setGameSpeed(config.GameFramerate)
 			setLifeShare(1, config.TeamLifeShare)
 			setLifeShare(2, config.TeamLifeShare)
 			setLifeMul(config.LifeMul / 100)
@@ -306,25 +305,23 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	-- Game Speed
-	--[[
+	-- Game FPS (Game Speed)
 	['gamespeed'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'$F'}) and config.GameSpeed < 200 then
+		if main.f_input(main.t_players, {'$F'}) and config.GameFramerate < 600 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.GameSpeed = config.GameSpeed + 1
-			setGameSpeed(config.GameSpeed / 100)
-			t.items[item].vardisplay = config.GameSpeed .. '%'
+			config.GameFramerate = config.GameFramerate + 1
+			setGameSpeed(config.GameFramerate)
+			t.items[item].vardisplay = config.GameFramerate
 			modified = true
-		elseif main.f_input(main.t_players, {'$B'}) and config.GameSpeed > 10 then
+		elseif main.f_input(main.t_players, {'$B'}) and config.GameFramerate > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.GameSpeed = config.GameSpeed - 1
-			setGameSpeed(config.GameSpeed / 100)
-			t.items[item].vardisplay = config.GameSpeed .. '%'
+			config.GameFramerate = config.GameFramerate - 1
+			setGameSpeed(config.GameFramerate)
+			t.items[item].vardisplay = config.GameFramerate
 			modified = true
 		end
 		return true
 	end,
-	]]--
 	--Rounds to Win (Single)
 	['roundsnumsingle'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) and main.roundsNumSingle[1] < 10 then
@@ -781,7 +778,7 @@ options.t_itemname = {
 					txt_textinput,
 					overlay_textinput,
 					motif.option_info.textinput_offset[2],
-					main.f_ySpacing(motif.option_info, 'textinput_font'),
+					main.f_ySpacing(motif.option_info, 'textinput'),
 					motif.optionbgdef
 				))
 			if width ~= nil then
@@ -791,7 +788,7 @@ options.t_itemname = {
 					txt_textinput,
 					overlay_textinput,
 					motif.option_info.textinput_offset[2],
-					main.f_ySpacing(motif.option_info, 'textinput_font'),
+					main.f_ySpacing(motif.option_info, 'textinput'),
 					motif.optionbgdef
 				))
 				if height ~= nil then
@@ -1168,11 +1165,6 @@ options.t_itemname = {
 			if modified then
 				options.f_saveCfg(needReload)
 			end
-			main.f_bgReset(motif[main.background].bg)
-			main.f_fadeReset('fadeout', motif.option_info)
-			if motif.music.option_bgm ~= '' then
-				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-			end
 			main.close = true
 			--return false
 		end
@@ -1184,11 +1176,6 @@ options.t_itemname = {
 			sndPlay(motif.files.snd_data, motif.option_info.cancel_snd[1], motif.option_info.cancel_snd[2])
 			if needReload then
 				main.f_warning(main.f_extractText(motif.warning_info.text_noreload_text), motif.optionbgdef)
-			end
-			main.f_bgReset(motif[main.background].bg)
-			main.f_fadeReset('fadeout', motif.option_info)
-			if motif.music.option_bgm ~= '' then
-				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			end
 			main.close = true
 			--return false
@@ -1291,9 +1278,7 @@ function options.f_createMenu(tbl, bool_main)
 			if main.close and not main.fadeActive then
 				main.f_bgReset(motif[main.background].bg)
 				main.f_fadeReset('fadein', motif[main.group])
-				if motif.music.option_bgm ~= '' then
-					main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
-				end
+				main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 				main.close = false
 				break
 			elseif esc() or main.f_input(main.t_players, {'m'}) then
@@ -1374,9 +1359,9 @@ options.t_vardisplay = {
 	['fullscreen'] = function()
 		return options.f_boolDisplay(config.Fullscreen) 
 	end,
-	--['gamespeed'] = function()
-	--	return config.GameSpeed .. '%' 
-	--end,
+	['gamespeed'] = function()
+		return config.GameFramerate 
+	end,
 	['guardbar'] = function()
 		return options.f_boolDisplay(config.BarGuard) 
 	end,
@@ -1933,12 +1918,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 			text =   motif.option_info.keymenu_itemname_playerno:gsub('%%i', tostring(i + player - side)),
 			x =      motif.option_info['keymenu_p' .. i .. '_pos'][1] + motif.option_info['keymenu_item_p' .. i .. '_offset'][1],
 			y =      motif.option_info['keymenu_p' .. i .. '_pos'][2] + motif.option_info['keymenu_item_p' .. i .. '_offset'][2],
-			scaleX = motif.option_info['keymenu_item_p' .. i .. '_font_scale'][1],
-			scaleY = motif.option_info['keymenu_item_p' .. i .. '_font_scale'][2],
+			scaleX = motif.option_info['keymenu_item_p' .. i .. '_scale'][1],
+			scaleY = motif.option_info['keymenu_item_p' .. i .. '_scale'][2],
 			r =      motif.option_info['keymenu_item_p' .. i .. '_font'][4],
 			g =      motif.option_info['keymenu_item_p' .. i .. '_font'][5],
 			b =      motif.option_info['keymenu_item_p' .. i .. '_font'][6],
-			height = motif.option_info['keymenu_item_p' .. i .. '_font_height'],
+			height = motif.option_info['keymenu_item_p' .. i .. '_font'][7],
 			defsc =  motif.defaultOptions,
 		})
 		txt_keyController[i]:draw()
@@ -1995,12 +1980,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						text =   t[i].displayname,
 						x =      t_pos[j][1] + motif.option_info.keymenu_item_active_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 						y =      t_pos[j][2] + motif.option_info.keymenu_item_active_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-						scaleX = motif.option_info.keymenu_item_active_font_scale[1],
-						scaleY = motif.option_info.keymenu_item_active_font_scale[2],
+						scaleX = motif.option_info.keymenu_item_active_scale[1],
+						scaleY = motif.option_info.keymenu_item_active_scale[2],
 						r =      motif.option_info.keymenu_item_active_font[4],
 						g =      motif.option_info.keymenu_item_active_font[5],
 						b =      motif.option_info.keymenu_item_active_font[6],
-						height = motif.option_info.keymenu_item_active_font_height,
+						height = motif.option_info.keymenu_item_active_font[7],
 						defsc =  motif.defaultOptions,
 					})
 					t[i].data[j]:draw()
@@ -2014,12 +1999,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								text =   t[i]['vardisplay' .. j + player - side],
 								x =      t_pos[j][1] + motif.option_info.keymenu_item_value_conflict_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 								y =      t_pos[j][2] + motif.option_info.keymenu_item_value_conflict_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-								scaleX = motif.option_info.keymenu_item_value_conflict_font_scale[1],
-								scaleY = motif.option_info.keymenu_item_value_conflict_font_scale[2],
+								scaleX = motif.option_info.keymenu_item_value_conflict_scale[1],
+								scaleY = motif.option_info.keymenu_item_value_conflict_scale[2],
 								r =      motif.option_info.keymenu_item_value_conflict_font[4],
 								g =      motif.option_info.keymenu_item_value_conflict_font[5],
 								b =      motif.option_info.keymenu_item_value_conflict_font[6],
-								height = motif.option_info.keymenu_item_value_conflict_font_height,
+								height = motif.option_info.keymenu_item_value_conflict_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2032,12 +2017,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								text =   t[i]['vardisplay' .. j + player - side],
 								x =      t_pos[j][1] + motif.option_info.keymenu_item_value_active_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 								y =      t_pos[j][2] + motif.option_info.keymenu_item_value_active_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-								scaleX = motif.option_info.keymenu_item_value_active_font_scale[1],
-								scaleY = motif.option_info.keymenu_item_value_active_font_scale[2],
+								scaleX = motif.option_info.keymenu_item_value_active_scale[1],
+								scaleY = motif.option_info.keymenu_item_value_active_scale[2],
 								r =      motif.option_info.keymenu_item_value_active_font[4],
 								g =      motif.option_info.keymenu_item_value_active_font[5],
 								b =      motif.option_info.keymenu_item_value_active_font[6],
-								height = motif.option_info.keymenu_item_value_active_font_height,
+								height = motif.option_info.keymenu_item_value_active_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2051,12 +2036,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							text =   t[i].infodisplay,
 							x =      t_pos[j][1] + motif.option_info.keymenu_item_info_active_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 							y =      t_pos[j][2] + motif.option_info.keymenu_item_info_active_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-							scaleX = motif.option_info.keymenu_item_value_active_font_scale[1],
-							scaleY = motif.option_info.keymenu_item_value_active_font_scale[2],
+							scaleX = motif.option_info.keymenu_item_value_active_scale[1],
+							scaleY = motif.option_info.keymenu_item_value_active_scale[2],
 							r =      motif.option_info.keymenu_item_info_active_font[4],
 							g =      motif.option_info.keymenu_item_info_active_font[5],
 							b =      motif.option_info.keymenu_item_info_active_font[6],
-							height = motif.option_info.keymenu_item_info_active_font_height,
+							height = motif.option_info.keymenu_item_info_active_font[7],
 							defsc =  motif.defaultOptions,
 						})
 						t[i].infodata[j]:draw()
@@ -2075,12 +2060,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 						text =   t[i].displayname,
 						x =      t_pos[j][1] + motif.option_info.keymenu_item_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 						y =      t_pos[j][2] + motif.option_info.keymenu_item_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-						scaleX = motif.option_info.keymenu_item_font_scale[1],
-						scaleY = motif.option_info.keymenu_item_font_scale[2],
+						scaleX = motif.option_info.keymenu_item_scale[1],
+						scaleY = motif.option_info.keymenu_item_scale[2],
 						r =      motif.option_info.keymenu_item_font[4],
 						g =      motif.option_info.keymenu_item_font[5],
 						b =      motif.option_info.keymenu_item_font[6],
-						height = motif.option_info.keymenu_item_font_height,
+						height = motif.option_info.keymenu_item_font[7],
 						defsc =  motif.defaultOptions,
 					})
 					t[i].data[j]:draw()
@@ -2094,12 +2079,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								text =   t[i]['vardisplay' .. j + player - side],
 								x =      t_pos[j][1] + motif.option_info.keymenu_item_value_conflict_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 								y =      t_pos[j][2] + motif.option_info.keymenu_item_value_conflict_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-								scaleX = motif.option_info.keymenu_item_value_conflict_font_scale[1],
-								scaleY = motif.option_info.keymenu_item_value_conflict_font_scale[2],
+								scaleX = motif.option_info.keymenu_item_value_conflict_scale[1],
+								scaleY = motif.option_info.keymenu_item_value_conflict_scale[2],
 								r =      motif.option_info.keymenu_item_value_conflict_font[4],
 								g =      motif.option_info.keymenu_item_value_conflict_font[5],
 								b =      motif.option_info.keymenu_item_value_conflict_font[6],
-								height = motif.option_info.keymenu_item_value_conflict_font_height,
+								height = motif.option_info.keymenu_item_value_conflict_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2112,12 +2097,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 								text =   t[i]['vardisplay' .. j + player - side],
 								x =      t_pos[j][1] + motif.option_info.keymenu_item_value_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 								y =      t_pos[j][2] + motif.option_info.keymenu_item_value_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-								scaleX = motif.option_info.keymenu_item_value_font_scale[1],
-								scaleY = motif.option_info.keymenu_item_value_font_scale[2],
+								scaleX = motif.option_info.keymenu_item_value_scale[1],
+								scaleY = motif.option_info.keymenu_item_value_scale[2],
 								r =      motif.option_info.keymenu_item_value_font[4],
 								g =      motif.option_info.keymenu_item_value_font[5],
 								b =      motif.option_info.keymenu_item_value_font[6],
-								height = motif.option_info.keymenu_item_value_font_height,
+								height = motif.option_info.keymenu_item_value_font[7],
 								defsc =  motif.defaultOptions,
 							})
 							t[i].vardata[j]:draw()
@@ -2131,12 +2116,12 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 							text =   t[i].infodisplay,
 							x =      t_pos[j][1] + motif.option_info.keymenu_item_info_offset[1] + (i - 1) * motif.option_info.keymenu_item_spacing[1],
 							y =      t_pos[j][2] + motif.option_info.keymenu_item_info_offset[2] + (i - 1) * motif.option_info.keymenu_item_spacing[2],
-							scaleX = motif.option_info.keymenu_item_value_active_font_scale[1],
-							scaleY = motif.option_info.keymenu_item_value_active_font_scale[2],
+							scaleX = motif.option_info.keymenu_item_value_active_scale[1],
+							scaleY = motif.option_info.keymenu_item_value_active_scale[2],
 							r =      motif.option_info.keymenu_item_info_font[4],
 							g =      motif.option_info.keymenu_item_info_font[5],
 							b =      motif.option_info.keymenu_item_info_font[6],
-							height = motif.option_info.keymenu_item_info_font_height,
+							height = motif.option_info.keymenu_item_info_font[7],
 							defsc =  motif.defaultOptions,
 						})
 						t[i].infodata[j]:draw()

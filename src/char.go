@@ -1817,8 +1817,6 @@ func (c *Char) clearCachedData() {
 	c.mctype, c.mctime = MC_Hit, 0
 	c.counterHit = false
 	c.fallTime = 0
-	c.varRangeSet(0, int32(NumVar)-1, 0)
-	c.fvarRangeSet(0, int32(NumFvar)-1, 0)
 	c.superDefenseMul = 1
 	c.fallDefenseMul = 1
 	c.customDefense = 1
@@ -2929,7 +2927,7 @@ func (c *Char) roundState() int32 {
 	case sys.intro >= 0 || sys.finish == FT_NotYet:
 		return 2
 	case sys.intro < -(sys.lifebar.ro.over_hittime+
-		sys.lifebar.ro.over_waittime) && sys.fightOver:
+		sys.lifebar.ro.over_waittime):
 		return 4
 	default:
 		return 3
@@ -4226,38 +4224,6 @@ func (c *Char) guardPointsAdd(add int32) {
 func (c *Char) guardPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.guardbar {
 		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
-	}
-}
-func (c *Char) rank() float32 {
-	if c.teamside == -1 {
-		return 0
-	}
-	var r float32
-	for _, v := range sys.lifebar.sc[c.teamside].rankPoints {
-		r += v
-	}
-	return r
-}
-func (c *Char) rankAdd(val, max float32, typ, ico string) {
-	if c.teamside == -1 {
-		return
-	}
-	if _, ok := sys.lifebar.sc[c.teamside].rankPoints[typ]; !ok {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] = 0
-	}
-	if max == 0 {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] += val
-	} else {
-		sys.lifebar.sc[c.teamside].rankPoints[typ] = MinF(sys.lifebar.sc[c.teamside].rankPoints[typ]+val, max)
-	}
-	if ico != "" {
-		var unique map[string]bool = make(map[string]bool)
-		for _, v := range sys.lifebar.sc[c.teamside].rankIcons {
-			unique[v] = true
-		}
-		if _, ok := unique[ico]; !ok {
-			sys.lifebar.sc[c.teamside].rankIcons = append(sys.lifebar.sc[c.teamside].rankIcons, ico)
-		}
 	}
 }
 func (c *Char) redLifeAdd(add float64, absolute bool) {

@@ -301,12 +301,11 @@ end
 if main.flags['-ailevel'] ~= nil then
 	config.Difficulty = math.max(1, math.min(tonumber(main.flags['-ailevel']), 8))
 end
-if main.flags['-speed'] ~= nil then
-	--config.GameSpeed = math.max(10, math.min(tonumber(main.flags['-speed']), 200))
-	setGameSpeed(math.max(10, math.min(tonumber(main.flags['-speed']), 200)))
+if main.flags['-speed'] ~= nil and tonumber(main.flags['-speed']) > 0 then
+	setGameSpeed(tonumber(main.flags['-speed']) * config.Framerate / 100)
 end
 if main.flags['-speedtest'] ~= nil then
-	setGameSpeed(100)
+	setGameSpeed(100 * config.Framerate)
 end
 if main.flags['-nosound'] ~= nil then
 	setVolumeMaster(0)
@@ -382,11 +381,10 @@ main.font_def = {}
 -- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
 -- Currently there are only few hooks available by default, which are in the
 -- commonlua loop() function. These are:
--- * loop.start: runs at the very beginning of the function
--- * loop.dialog: runs when dialogue state controller is active
--- * loop.[gamemode]#always: limited to specified gamemode (regardless of pause)
--- * loop.pause: only runs when paused
--- * loop.[gamemode]: limited to the specified gamemode when not paused
+-- * loop: global.lua 'loop' function start
+-- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
+-- * main.t_itemname: main.lua table entries (modes configuration)
+-- * launchFight: start.lua 'launchFight' function (right before match starts)
 hook = {
 	lists = {}
 }
@@ -631,7 +629,7 @@ function main.f_createTextImg(t, prefix, mod)
 	local mod = mod or {}
 	if t[prefix .. '_font'] == nil then t[prefix .. '_font'] = {} end
 	if t[prefix .. '_offset'] == nil then t[prefix .. '_offset'] = {} end
-	if t[prefix .. '_font_scale'] == nil then t[prefix .. '_font_scale'] = {} end
+	if t[prefix .. '_scale'] == nil then t[prefix .. '_scale'] = {} end
 	return text:create({
 		font =   t[prefix .. '_font'][1],
 		bank =   t[prefix .. '_font'][2],
@@ -639,12 +637,12 @@ function main.f_createTextImg(t, prefix, mod)
 		text =   t[prefix .. '_text'],
 		x =      (t[prefix .. '_offset'][1] or 0) + (mod.x or 0),
 		y =      (t[prefix .. '_offset'][2] or 0) + (mod.y or 0),
-		scaleX = (t[prefix .. '_font_scale'][1] or 1) * (mod.scaleX or 1),
-		scaleY = (t[prefix .. '_font_scale'][2] or 1) * (mod.scaleY or 1),
+		scaleX = (t[prefix .. '_scale'][1] or 1) * (mod.scaleX or 1),
+		scaleY = (t[prefix .. '_scale'][2] or 1) * (mod.scaleY or 1),
 		r =      t[prefix .. '_font'][4],
 		g =      t[prefix .. '_font'][5],
 		b =      t[prefix .. '_font'][6],
-		height = t[prefix .. '_font_height'],
+		height = t[prefix .. '_font'][7],
 		window = t[prefix .. '_window'],
 		defsc = mod.defsc or false,
 	})
@@ -1199,7 +1197,7 @@ end
 
 --y spacing calculation
 function main.f_ySpacing(t, key)
-	local font_def = main.font_def[t[key][1] .. t[key .. '_height']]
+	local font_def = main.font_def[t[key .. '_font'][1] .. t[key .. '_font'][7]]
 	if font_def == nil then return 0 end
 	return main.f_round(font_def.Size[2] * t[key .. '_scale'][2] + font_def.Spacing[2] * t[key .. '_scale'][2])
 end
@@ -1556,7 +1554,7 @@ function main.f_warning(t, background, info, title, txt, overlay)
 		for i = 1, #t do
 			txt:update({
 				text = t[i],
-				y = info.text_offset[2] + main.f_ySpacing(info, 'text_font') * (i - 1),
+				y = info.text_offset[2] + main.f_ySpacing(info, 'text') * (i - 1),
 			})
 			txt:draw()
 		end
@@ -1646,7 +1644,16 @@ end
 
 --add characters and stages using select.def
 function main.f_charParam(t, c)
-	if c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+	if c:match('%.[Dd][Ee][Ff]$') then --stage
+		c = c:gsub('\\', '/')
+		if t.stage == nil then
+			t.stage = {}
+		end
+		if not main.f_fileExists(c) then
+			panicError("\nStage doesn't exist: " .. c)
+		end
+		table.insert(t.stage, c)
+	elseif c:match('^music') then --musicX / musiclife / musicvictory
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 		c = c:gsub('%s+([0-9%s]+)$', function(m1)
 			for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1663,18 +1670,15 @@ function main.f_charParam(t, c)
 			return ''
 		end)
 		c = c:gsub('\\', '/')
-		local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
+		local bgtype, round, bgmusic = c:match('^(music[a-z]*)([0-9]*)%s*=%s*(.-)%s*$')
 		if t[bgtype] == nil then t[bgtype] = {} end
-		table.insert(t[bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
-	elseif c:match('%.[Dd][Ee][Ff]$') then --stage
-		c = c:gsub('\\', '/')
-		if t.stage == nil then
-			t.stage = {}
+		local t_ref = t[bgtype]
+		if bgtype == 'music' or round ~= '' then
+			round = tonumber(round) or 1
+			if t[bgtype][round] == nil then t[bgtype][round] = {} end
+			t_ref = t[bgtype][round]
 		end
-		if not main.f_fileExists(c) then
-			panicError("\nStage doesn't exist: " .. c)
-		end
-		table.insert(t.stage, c)
+		table.insert(t_ref, {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 	else --param = value
 		local param, value = c:match('^(.-)%s*=%s*(.-)$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
@@ -1844,16 +1848,26 @@ function main.f_addStage(file, hidden)
 	--music
 	for k, v in pairs(t_info.stagebgm) do
 		if k:match('^bgmusic') or k:match('^bgmvolume') or k:match('^bgmloop') then
-			local prefix, dot, suffix = k:match('^([^%.]+)(%.?)([A-Za-z]*)$')
-			if t_info.stagebgm['bgmusic' .. dot .. suffix] ~= nil and t_info.stagebgm['bgmusic' .. dot .. suffix] ~= '' then
-				if main.t_selStages[stageNo]['music' .. suffix] == nil then
-					main.t_selStages[stageNo]['music' .. suffix] = {}
-					table.insert(main.t_selStages[stageNo]['music' .. suffix], {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
+			if t_info.stagebgm[k] ~= '' then
+				local prefix, dot, suffix, round = k:match('^([^%.]+)(%.?)([A-Za-z]*)([0-9]*)$')
+				local bgtype = 'music' .. suffix
+				if suffix == '' or suffix == 'round' then
+					bgtype = 'music'
+					round = tonumber(round) or 1
+				end
+				if main.t_selStages[stageNo][bgtype] == nil then main.t_selStages[stageNo][bgtype] = {} end
+				local t_ref = main.t_selStages[stageNo][bgtype]
+				if bgtype == 'music' then
+					if main.t_selStages[stageNo][bgtype][round] == nil then main.t_selStages[stageNo][bgtype][round] = {} end
+					t_ref = main.t_selStages[stageNo][bgtype][round]
+				end
+				if #t_ref == 0 then
+					table.insert(t_ref, {bgmusic = '', bgmvolume = 100, bgmloopstart = 0, bgmloopend = 0})
 				end
 				if k:match('^bgmusic') then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
+					t_ref[1][prefix] = searchFile(tostring(v), {file, "", "data/", "sound/"})
 				elseif tonumber(v) then
-					main.t_selStages[stageNo]['music' .. suffix][1][prefix] = tonumber(v)
+					t_ref[1][prefix] = tonumber(v)
 				end
 			end
 		elseif v ~= '' then
@@ -1972,7 +1986,7 @@ for line in content:gmatch('[^\r\n]+') do
 				end
 				table.insert(main.t_includeStage[1], row)
 				table.insert(main.t_includeStage[2], row)
-			elseif c:match('^music[alv]?[li]?[tfc]?[et]?o?r?y?%s*=') then --music / musicalt / musiclife / musicvictory
+			elseif c:match('^music') then --musicX / musiclife / musicvictory
 				local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 				c = c:gsub('%s+([0-9%s]+)$', function(m1)
 					for i, c in ipairs(main.f_strsplit('%s+', m1)) do --split using whitespace delimiter
@@ -1989,9 +2003,15 @@ for line in content:gmatch('[^\r\n]+') do
 					return ''
 				end)
 				c = c:gsub('\\', '/')
-				local bgtype, bgmusic = c:match('^(music[a-z]*)%s*=%s*(.-)%s*$')
+				local bgtype, round, bgmusic = c:match('^(music[a-z]*)([0-9]*)%s*=%s*(.-)%s*$')
 				if main.t_selStages[row][bgtype] == nil then main.t_selStages[row][bgtype] = {} end
-				table.insert(main.t_selStages[row][bgtype], {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
+				local t_ref = main.t_selStages[row][bgtype]
+				if bgtype == 'music' or round ~= '' then
+					round = tonumber(round) or 1
+					if main.t_selStages[row][bgtype][round] == nil then main.t_selStages[row][bgtype][round] = {} end
+					t_ref = main.t_selStages[row][bgtype][round]
+				end
+				table.insert(t_ref, {bgmusic = bgmusic, bgmvolume = bgmvolume, bgmloopstart = bgmloopstart, bgmloopend = bgmloopend})
 			else
 				local param, value = c:match('^(.-)%s*=%s*(.-)$')
 				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
@@ -2274,7 +2294,6 @@ function main.f_default()
 	main.numTurns = {config.NumTurns[1], config.NumTurns[2]} --min/max number of turn characters
 	main.orderSelect = {false, false} --if versus screen order selection should be active
 	main.quickContinue = false --if by default continuing should skip player selection
-	main.rankDisplay = false --if rank data should be displayed at the end of match
 	main.rankingCondition = false --if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false --if loosing should set score for the next match to lose count
 	main.resultsTable = nil --which motif section should be used for result screen rendering
@@ -2333,7 +2352,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2362,6 +2380,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.f_setCredits()
 		setGameMode('arcade')
+		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
@@ -2377,12 +2396,12 @@ main.t_itemname = {
 		main.charparam.stage = true
 		main.charparam.time = true
 		main.forceChar[2] = {main.t_bonusChars[item]}
-		main.rankDisplay = false
 		main.selectMenu[2] = true
 		main.teamMenu[1].single = true
 		main.teamMenu[2].single = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bonus_text})
 		setGameMode('bonus')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--BOSS RUSH
@@ -2403,7 +2422,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.rankingCondition = true
 		main.resultsTable = motif.boss_rush_results_screen
 		main.storyboard.credits = true
@@ -2421,6 +2439,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bossrush_text})
 		setGameMode('bossrush')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--DEMO
@@ -2435,7 +2454,6 @@ main.t_itemname = {
 		--main.lifebar.p2aiLevel = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2452,6 +2470,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_freebattle_text})
 		setGameMode('freebattle')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--JOIN (NEW ADDRESS)
@@ -2462,7 +2481,7 @@ main.t_itemname = {
 			txt_textinput,
 			overlay_textinput,
 			motif[main.group].textinput_offset[2],
-			main.f_ySpacing(motif.title_info, 'textinput_font'),
+			main.f_ySpacing(motif.title_info, 'textinput'),
 			motif[main.background]
 		)
 		if name ~= '' then
@@ -2472,7 +2491,7 @@ main.t_itemname = {
 				txt_textinput,
 				overlay_textinput,
 				motif[main.group].textinput_offset[2],
-				main.f_ySpacing(motif.title_info, 'textinput_font'),
+				main.f_ySpacing(motif.title_info, 'textinput'),
 				motif[main.background]
 			)
 			if address:match('^[0-9%.]+$') then
@@ -2509,7 +2528,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.stageMenu = true
 		main.storyboard.credits = true
@@ -2523,6 +2541,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplaysurvivalcoop_text})
 		setGameMode('netplaysurvivalcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--NETPLAY CO-OP
@@ -2543,7 +2562,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2563,6 +2581,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_netplayteamcoop_text})
 		setGameMode('netplayteamcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--NETPLAY VERSUS
@@ -2573,7 +2592,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2590,15 +2608,18 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplayversus_text})
 		setGameMode('netplayversus')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--OPTIONS
 	['options'] = function()
+		hook.run("main.t_itemname")
 		return options.menu.loop
 	end,
 	--RANDOMTEST
 	['randomtest'] = function()
 		setGameMode('randomtest')
+		hook.run("main.t_itemname")
 		return randomtest.run
 	end,
 	--REPLAY
@@ -2643,6 +2664,7 @@ main.t_itemname = {
 			end
 		end
 		setGameMode(t[item].itemname)
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--SURVIVAL
@@ -2669,7 +2691,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.stageMenu = true
@@ -2687,6 +2708,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survival_text})
 		setGameMode('survival')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--SURVIVAL CO-OP
@@ -2711,7 +2733,6 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
-		main.rankDisplay = true
 		main.resultsTable = motif.survival_results_screen
 		main.rotationChars = true
 		main.stageMenu = true
@@ -2726,6 +2747,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survivalcoop_text})
 		setGameMode('survivalcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TEAM CO-OP
@@ -2747,7 +2769,6 @@ main.t_itemname = {
 		main.makeRoster = true
 		main.numSimul = {2, math.min(4, config.Players)}
 		main.numTag = {2, math.min(4, config.Players)}
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.win_screen
 		main.stageOrder = true
@@ -2767,6 +2788,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_teamcoop_text})
 		setGameMode('teamcoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TIME ATTACK
@@ -2789,7 +2811,6 @@ main.t_itemname = {
 		main.quickContinue = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.resetScore = true
 		main.resultsTable = motif.time_attack_results_screen
 		if main.roundTime == -1 then
@@ -2812,6 +2833,7 @@ main.t_itemname = {
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_timeattack_text})
 		setGameMode('timeattack')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TRAINING
@@ -2835,6 +2857,7 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.txt_mainSelect:update({text = motif.select_info.title_training_text})
 		setGameMode('training')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--TRIALS
@@ -2851,7 +2874,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		if start.challenger == 0 and t[item].itemname == 'versus' then
@@ -2874,6 +2896,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.victoryScreen = true
 		setGameMode('versus')
+		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
@@ -2888,7 +2911,6 @@ main.t_itemname = {
 		--main.lifebar.p2winCount = true
 		main.numSimul = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
 		main.numTag = {2, math.min(4, math.max(2, math.ceil(config.Players / 2)))}
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
@@ -2899,6 +2921,7 @@ main.t_itemname = {
 		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_versuscoop_text})
 		setGameMode('versuscoop')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--WATCH
@@ -2908,7 +2931,6 @@ main.t_itemname = {
 		main.cpuSide[1] = true
 		--main.lifebar.p1aiLevel = true
 		--main.lifebar.p2aiLevel = true
-		main.rankDisplay = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].ratio = true
@@ -2924,6 +2946,7 @@ main.t_itemname = {
 		main.versusScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_watch_text})
 		setGameMode('watch')
+		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 }
@@ -3317,7 +3340,7 @@ function main.f_connect(server, t)
 		for i = 1, #t do
 			txt_connecting:update({
 				text = t[i],
-				y = motif[main.group].connecting_offset[2] + main.f_ySpacing(motif.title_info, 'connecting_font') * (i - 1),
+				y = motif[main.group].connecting_offset[2] + main.f_ySpacing(motif.title_info, 'connecting') * (i - 1),
 			})
 			txt_connecting:draw()
 		end
@@ -3630,6 +3653,7 @@ function main.f_demoStart()
 	if motif.demo_mode.fight_stopbgm == 1 then
 		main.f_playBGM(true) --stop music
 	end
+	hook.run("main.t_itemname")
 	clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
 	loadStart()
 	game()
@@ -3785,12 +3809,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].displayname,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_selected_active_font_scale[1],
-						scaleY = motif[section].menu_item_selected_active_font_scale[2],
+						scaleX = motif[section].menu_item_selected_active_scale[1],
+						scaleY = motif[section].menu_item_selected_active_scale[2],
 						r =      motif[section].menu_item_selected_active_font[4],
 						g =      motif[section].menu_item_selected_active_font[5],
 						b =      motif[section].menu_item_selected_active_font[6],
-						height = motif[section].menu_item_selected_active_font_height,
+						height = motif[section].menu_item_selected_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3802,12 +3826,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].displayname,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_active_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_active_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_active_font_scale[1],
-						scaleY = motif[section].menu_item_active_font_scale[2],
+						scaleX = motif[section].menu_item_active_scale[1],
+						scaleY = motif[section].menu_item_active_scale[2],
 						r =      motif[section].menu_item_active_font[4],
 						g =      motif[section].menu_item_active_font[5],
 						b =      motif[section].menu_item_active_font[6],
-						height = motif[section].menu_item_active_font_height,
+						height = motif[section].menu_item_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3820,12 +3844,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].vardisplay,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_value_active_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_value_active_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_value_active_font_scale[1],
-						scaleY = motif[section].menu_item_value_active_font_scale[2],
+						scaleX = motif[section].menu_item_value_active_scale[1],
+						scaleY = motif[section].menu_item_value_active_scale[2],
 						r =      motif[section].menu_item_value_active_font[4],
 						g =      motif[section].menu_item_value_active_font[5],
 						b =      motif[section].menu_item_value_active_font[6],
-						height = motif[section].menu_item_value_active_font_height,
+						height = motif[section].menu_item_value_active_font[7],
 						defsc =  defsc,
 					})
 					t[i].vardata:draw()
@@ -3845,12 +3869,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].displayname,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_selected_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_selected_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_selected_font_scale[1],
-						scaleY = motif[section].menu_item_selected_font_scale[2],
+						scaleX = motif[section].menu_item_selected_scale[1],
+						scaleY = motif[section].menu_item_selected_scale[2],
 						r =      motif[section].menu_item_selected_font[4],
 						g =      motif[section].menu_item_selected_font[5],
 						b =      motif[section].menu_item_selected_font[6],
-						height = motif[section].menu_item_selected_font_height,
+						height = motif[section].menu_item_selected_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3862,12 +3886,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].displayname,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_font_scale[1],
-						scaleY = motif[section].menu_item_font_scale[2],
+						scaleX = motif[section].menu_item_scale[1],
+						scaleY = motif[section].menu_item_scale[2],
 						r =      motif[section].menu_item_font[4],
 						g =      motif[section].menu_item_font[5],
 						b =      motif[section].menu_item_font[6],
-						height = motif[section].menu_item_font_height,
+						height = motif[section].menu_item_font[7],
 						defsc =  defsc,
 					})
 					t[i].data:draw()
@@ -3880,12 +3904,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 						text =   t[i].vardisplay,
 						x =      motif[section].menu_pos[1] + motif[section].menu_item_value_offset[1] + (i - 1) * motif[section].menu_item_spacing[1],
 						y =      motif[section].menu_pos[2] + motif[section].menu_item_value_offset[2] + (i - 1) * motif[section].menu_item_spacing[2] - moveTxt,
-						scaleX = motif[section].menu_item_value_font_scale[1],
-						scaleY = motif[section].menu_item_value_font_scale[2],
+						scaleX = motif[section].menu_item_value_scale[1],
+						scaleY = motif[section].menu_item_value_scale[2],
 						r =      motif[section].menu_item_value_font[4],
 						g =      motif[section].menu_item_value_font[5],
 						b =      motif[section].menu_item_value_font[6],
-						height = motif[section].menu_item_value_font_height,
+						height = motif[section].menu_item_value_font[7],
 						defsc =  defsc,
 					})
 					t[i].vardata:draw()
@@ -3961,12 +3985,12 @@ function main.f_drawTimer(timer, t, prefix, txt)
 	if num <= -1 then
 		active = false
 		timer = -1
-		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(0))})
-	else
+		txt:update({text = t[prefix .. 'text']:gsub('%%i', tostring(0))})
+	elseif timer ~= -1 then
 		timer = timer + 1
-		txt:update({text = t[prefix .. 'font_text']:gsub('%%i', tostring(math.max(0, num)))})
+		txt:update({text = t[prefix .. 'text']:gsub('%%i', tostring(math.max(0, num)))})
 	end
-	if timer >= t[prefix .. 'displaytime'] then
+	if timer == -1 or timer >= t[prefix .. 'displaytime'] then
 		txt:draw()
 	end
 	return timer, active
@@ -4005,12 +4029,8 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 		return
 	end
 	local bgm = bgm or ''
-	local bgmLoop = bgmLoop or 1
-	local bgmVolume = bgmVolume or 100
-	local bgmLoopstart = bgmLoopstart or 0
-	local bgmLoopend = bgmLoopend or 0
-	if interrupt or (bgm ~= '' --[[and bgm ~= main.lastBgm]]) then
-		playBGM(bgm, true, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+	if interrupt or (bgm ~= '' and bgm ~= main.lastBgm) then
+		playBGM(bgm, bgmLoop or 1, bgmVolume or 100, bgmLoopstart or 0, bgmLoopend or 0)
 		main.lastBgm = bgm
 	end
 end
@@ -4072,7 +4092,7 @@ if main.flags['-stresstest'] ~= nil then
 	main.f_default()
 	local frameskip = tonumber(main.flags['-stresstest'])
 	if frameskip >= 1 then
-		setGameSpeed(frameskip + 1)
+		setGameSpeed((frameskip + 1) * config.Framerate)
 	end
 	setGameMode('randomtest')
 	randomtest.run()
