@@ -677,6 +677,9 @@ func (c *Compiler) explodSub(is IniSection,
 	if err := c.paramTrans(is, sc, "", explod_trans, false); err != nil {
 		return err
 	}
+	if err := c.palFXSub(is, sc, "palfx."); err != nil {
+		return err
+	}
 	return nil
 }
 func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
