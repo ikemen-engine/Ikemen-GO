@@ -5139,9 +5139,6 @@ func (c *Char) action() {
 		c.setSCF(SCF_guard)
 	}
 	if !p {
-		if c.palfx != nil {
-			c.palfx.step()
-		}
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ss.stateType == ST_A {
 				if c.cmd[0].Buffer.U < 0 {
@@ -5307,6 +5304,9 @@ func (c *Char) action() {
 			} else {
 				c.curFrame = nil
 			}
+		}
+		if c.palfx != nil {
+			c.palfx.step()
 		}
 		if c.ghv.damage != 0 {
 			if c.ss.moveType == MT_H {

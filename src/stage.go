@@ -152,13 +152,17 @@ func readBackGround(is IniSection, link *backGround,
 			bg.typ = 3
 		}
 	}
-	if bg.typ == 0 && is["actionno"] != "" && is["spriteno"] == "" {
-		bg.typ = 1
-	}
 	if bg.typ != 3 {
+		var hasAnim bool
 		if is.ReadI32("actionno", &bg.actionno) {
 			if a := at.get(bg.actionno); a != nil {
 				bg.anim = *a
+				hasAnim = true
+			}
+		}
+		if hasAnim {
+			if bg.typ == 0 {
+				bg.typ = 1
 			}
 		} else {
 			var g, n int32
