@@ -921,7 +921,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_partner:
-			if c = c.partner(sys.bcStack.Pop().ToI()); c != nil {
+			if c = c.partner(sys.bcStack.Pop().ToI(), true); c != nil {
 				i += 4
 				continue
 			}
@@ -1537,7 +1537,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p3name:
-		p3 := c.partner(0)
+		p3 := c.partner(0, false)
 		sys.bcStack.PushB(p3 != nil && p3.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
@@ -1550,7 +1550,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p5name:
-		p5 := c.partner(1)
+		p5 := c.partner(1, false)
 		sys.bcStack.PushB(p5 != nil && p5.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
@@ -1563,7 +1563,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p7name:
-		p7 := c.partner(2)
+		p7 := c.partner(2, false)
 		sys.bcStack.PushB(p7 != nil && p7.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])

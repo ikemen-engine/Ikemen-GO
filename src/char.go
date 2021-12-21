@@ -2461,10 +2461,12 @@ func (c *Char) target(id int32) *Char {
 	}
 	return nil
 }
-func (c *Char) partner(n int32) *Char {
+func (c *Char) partner(n int32, log bool) *Char {
 	n = Max(0, n)
 	if int(n) > len(sys.chars)/2-2 {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+		if log {
+			sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+		}
 		return nil
 	}
 	// X>>1 = X/2
@@ -2482,7 +2484,9 @@ func (c *Char) partner(n int32) *Char {
 	if len(sys.chars[p]) > 0 && sys.chars[p][0].teamside != -1 {
 		return sys.chars[p][0]
 	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+	if log {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no partner: %v", n))
+	}
 	return nil
 }
 func (c *Char) partnerV2(n int32) *Char {
