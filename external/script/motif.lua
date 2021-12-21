@@ -2818,7 +2818,7 @@ for i = 1, 2 do
 		if motif.vs_screen['p' .. i .. '_member' .. j .. '_key'] == nil then
 			break
 		end
-		for _, cmd in ipairs (main.f_extractKeys(v)) do
+		for _, cmd in ipairs (main.f_extractKeys(motif.vs_screen['p' .. i .. '_member' .. j .. '_key'])) do
 			main.f_commandAdd(cmd, cmd)
 		end
 		j = j + 1
