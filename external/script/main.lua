@@ -2363,6 +2363,7 @@ main.t_itemname = {
 			main.teamMenu[1].single = true
 			main.teamMenu[2].single = true
 			main.txt_mainSelect:update({text = motif.select_info.title_arcade_text})
+			main.teamarcade = false
 		else --teamarcade
 			main.teamMenu[1].ratio = true
 			main.teamMenu[1].simul = true
@@ -2375,6 +2376,7 @@ main.t_itemname = {
 			main.teamMenu[2].tag = true
 			main.teamMenu[2].turns = true
 			main.txt_mainSelect:update({text = motif.select_info.title_teamarcade_text})
+			main.teamarcade = true
 		end
 		main.versusScreen = true
 		main.victoryScreen = true
@@ -2876,7 +2878,7 @@ main.t_itemname = {
 		main.orderSelect[2] = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		if start.challenger == 0 and t[item].itemname == 'versus' then
+		if (start.challenger == 0 and t[item].itemname == 'versus') or (start.challenger ~= 0 and not main.teamarcade) then
 			main.teamMenu[1].single = true
 			main.teamMenu[2].single = true
 			main.txt_mainSelect:update({text = motif.select_info.title_versus_text})
