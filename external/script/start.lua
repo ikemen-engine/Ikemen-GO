@@ -1538,11 +1538,7 @@ end
 --resets various data
 function start.f_selectReset(hardReset)
 	esc(false)
-	if start.challenger == 0 then
-		setMatchNo(1)
-	else
-		setMatchNo(0)
-	end
+	setMatchNo(1)
 	setContinue(false)
 	main.f_cmdInput()
 	local col = 1
@@ -2922,7 +2918,7 @@ function start.f_selectVersus(active, t_orderSelect)
 			end
 		end
 		--draw match counter
-		if matchno() > 0 then
+		if main.versusMatchNo then
 			txt_matchNo:draw()
 		end
 		--draw timer

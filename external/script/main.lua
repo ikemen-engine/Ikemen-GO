@@ -2308,6 +2308,7 @@ function main.f_default()
 		{ratio = false, simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P2 side
 	}
 	main.versusScreen = false --if versus screen should be shown
+	main.versusMatchNo = false --if versus screen should render screenpack match element
 	main.victoryScreen = false --if victory screen should be shown
 	resetAILevel()
 	resetRemapInput()
@@ -2379,6 +2380,7 @@ main.t_itemname = {
 			main.teamarcade = true
 		end
 		main.versusScreen = true
+		main.versusMatchNo = true
 		main.victoryScreen = true
 		main.f_setCredits()
 		setGameMode('arcade')
@@ -2439,6 +2441,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.versusScreen = true
+		main.versusMatchNo = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bossrush_text})
 		setGameMode('bossrush')
 		hook.run("main.t_itemname")
@@ -2579,6 +2582,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.versusScreen = true
+		main.versusMatchNo = true
 		main.victoryScreen = true
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_netplayteamcoop_text})
@@ -2786,6 +2790,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.versusScreen = true
+		main.versusMatchNo = true
 		main.victoryScreen = true
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_teamcoop_text})
@@ -2832,6 +2837,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.versusScreen = true
+		main.versusMatchNo = true
 		main.f_setCredits()
 		main.txt_mainSelect:update({text = motif.select_info.title_timeattack_text})
 		setGameMode('timeattack')
