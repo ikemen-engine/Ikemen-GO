@@ -998,21 +998,21 @@
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
-	p1.state.continue = 5500, 5300
-	p1.state.yes = 5510, 180
-	p1.state.no = 5520, 170
+	p1.state = 5500, 5300
+	p1.yes.state = 5510, 180
+	p1.no.state = 5520, 170
 
-	p2.state.continue = 
-	p2.state.yes = 
-	p2.state.no = 
+	p2.state = 
+	p2.yes.state = 
+	p2.no.state = 
 
-	p1.teammate.state.continue = 
-	p1.teammate.state.yes = 
-	p1.teammate.state.no = 
+	p1.teammate.state = 
+	p1.teammate.yes.state = 
+	p1.teammate.no.state = 
 
-	p2.teammate.state.continue = 
-	p2.teammate.state.yes = 
-	p2.teammate.state.no = 
+	p2.teammate.state = 
+	p2.teammate.yes.state = 
+	p2.teammate.no.state = 
 
 	credits.text = "Credits: %i"
 	credits.offset = 0, 0
@@ -1221,14 +1221,14 @@
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
-	p1.state.win = 180
-	p1.state.lose = 175, 170
-	p2.state.win = 
-	p2.state.lose = 
-	p1.teammate.state.win = 
-	p1.teammate.state.lose = 
-	p2.teammate.state.win = 
-	p2.teammate.state.lose = 
+	p1.state = 175, 170
+	p1.win.state = 180
+	p2.state = 
+	p2.win.state = 
+	p1.teammate.state = 
+	p1.teammate.win.state = 
+	p2.teammate.state = 
+	p2.teammate.win.state = 
 
 [SurvivalResultsBgDef] ;Ikemen feature
 	spr = ""
@@ -1256,14 +1256,14 @@
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
 
-	p1.state.win = 180
-	p1.state.lose = 175, 170
-	p2.state.win = 
-	p2.state.lose = 
-	p1.teammate.state.win = 
-	p1.teammate.state.lose = 
-	p2.teammate.state.win = 
-	p2.teammate.state.lose = 
+	p1.state = 175, 170
+	p1.win.state = 180
+	p2.state = 
+	p2.win.state = 
+	p1.teammate.state = 
+	p1.teammate.win.state = 
+	p2.teammate.state = 
+	p2.teammate.win.state = 
 
 [TimeAttackResultsBgDef] ;Ikemen feature
 	spr = ""

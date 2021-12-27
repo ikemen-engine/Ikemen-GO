@@ -3052,7 +3052,7 @@ start.t_resultData.survival = function()
 	start.t_result.txt = txt_resultSurvival
 	start.t_result.bgdef = 'survivalresultsbgdef'
 	if start.winCnt < main.resultsTable.roundstowin and matchno() < #start.t_roster then
-		start.t_result.stateType = '_lose'
+		start.t_result.stateType = ''
 		start.t_result.winBgm = false
 	else
 		start.t_result.stateType = '_win'
@@ -3069,7 +3069,7 @@ start.t_resultData.timeattack = function()
 	start.t_result.txt = txt_resultTimeAttack
 	start.t_result.bgdef = 'timeattackresultsbgdef'
 	if matchtime() / 60 >= start.f_lowestRankingData('time') then
-		start.t_result.stateType = '_lose'
+		start.t_result.stateType = ''
 		start.t_result.winBgm = false
 	else
 		start.t_result.stateType = '_win'
@@ -3109,14 +3109,14 @@ function start.f_resultInit()
 		return false
 	end
 	for i = 1, 2 do
-		for k, v in ipairs(t['p' .. i .. '_state' .. start.t_result.stateType]) do
+		for k, v in ipairs(t['p' .. i .. start.t_result.stateType .. '_state']) do
 			if charChangeState(i, v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
-			for _, v in ipairs(t['p' .. i .. '_teammate_state' .. start.t_result.stateType]) do
+			for _, v in ipairs(t['p' .. i .. '_teammate' .. start.t_result.stateType .. '_state']) do
 				if charChangeState(j * 2 + i, v) then
 					break
 				end
@@ -3348,9 +3348,7 @@ function start.f_victory()
 	--draw winner name
 	t_txt_winquoteName[1]:draw()
 	--draw loser name
-	if motif.victory_screen.loser_name_enabled == 1 then
-		t_txt_winquoteName[2]:draw()
-	end
+	t_txt_winquoteName[2]:draw()
 	--draw winquote
 	if start.t_victory.counter + motif.victory_screen.fadein_time >= motif.victory_screen.winquote_displaytime then
 		if not start.t_victory.textend then
@@ -3455,14 +3453,14 @@ function start.f_continueInit()
 		for _, v in ipairs(start.p[i].t_selCmd) do
 			v.selectState = 0
 		end
-		for _, v in ipairs(motif.continue_screen['p' .. i .. '_state_continue']) do
+		for _, v in ipairs(motif.continue_screen['p' .. i .. '_state']) do
 			if charChangeState(i, v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
-			for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_continue']) do
+			for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state']) do
 				if charChangeState(j * 2 + i, v) then
 					break
 				end
@@ -3489,14 +3487,14 @@ function start.f_continue()
 					start.t_continue.continue = true
 					sndPlay(motif.files.snd_data, motif.continue_screen.done_snd[1], motif.continue_screen.done_snd[2])
 					for i = 1, 2 do
-						for _, v in ipairs(motif.continue_screen['p' .. i .. '_state_yes']) do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_yes_state']) do
 							if charChangeState(i, v) then
 								break
 							end
 						end
 						player(i) --assign sys.debugWC to player i
 						for j = 1, numpartner() do
-							for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
+							for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_yes_state']) do
 								if charChangeState(j * 2 + i, v) then
 									break
 								end
@@ -3530,14 +3528,14 @@ function start.f_continue()
 				main.f_playBGM(false, motif.music.continue_end_bgm, motif.music.continue_end_bgm_loop, motif.music.continue_end_bgm_volume, motif.music.continue_end_bgm_loopstart, motif.music.continue_end_bgm_loopend)
 				sndPlay(motif.files.snd_data, motif.continue_screen.counter_end_snd[1], motif.continue_screen.counter_end_snd[2])
 				for i = 1, 2 do
-					for _, v in ipairs(motif.continue_screen['p' .. i .. '_state_no']) do
+					for _, v in ipairs(motif.continue_screen['p' .. i .. '_no_state']) do
 						if charChangeState(i, v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
-						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_no']) do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_no_state']) do
 							if charChangeState(j * 2 + i, v) then
 								break
 							end
@@ -3568,14 +3566,14 @@ function start.f_continue()
 			if start.t_continue.continue then
 				sndPlay(motif.files.snd_data, motif.continue_screen.done_snd[1], motif.continue_screen.done_snd[2])
 				for i = 1, 2 do
-					for _, v in ipairs(motif.continue_screen['p' .. i .. '_state_yes']) do
+					for _, v in ipairs(motif.continue_screen['p' .. i .. '_yes_state']) do
 						if charChangeState(i, v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
-						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_yes']) do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_yes_state']) do
 							if charChangeState(j * 2 + i, v) then
 								break
 							end
@@ -3587,14 +3585,14 @@ function start.f_continue()
 			else
 				sndPlay(motif.files.snd_data, motif.continue_screen.cancel_snd[1], motif.continue_screen.cancel_snd[2])
 				for i = 1, 2 do
-					for _, v in ipairs(motif.continue_screen['p' .. i .. '_state_no']) do
+					for _, v in ipairs(motif.continue_screen['p' .. i .. '_no_state']) do
 						if charChangeState(i, v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
-						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state_no']) do
+						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_no_state']) do
 							if charChangeState(j * 2 + i, v) then
 								break
 							end
