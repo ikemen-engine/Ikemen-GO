@@ -186,6 +186,7 @@ local motif =
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
 		--cursor_<itemname>_snd = {-1, 0}, --Ikemen feature
+		--menu_unlock_<itemname> = 'true', --Ikemen feature
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_teamarcade = 'TEAM ARCADE',
 		--menu_itemname_teamcoop = 'TEAM CO-OP',
@@ -213,7 +214,6 @@ local motif =
 		--menu_itemname_options = 'OPTIONS',
 		--menu_itemname_back = 'BACK', --Ikemen feature
 		--menu_itemname_exit = 'EXIT',
-		--menu_unlock_<itemname> = 'true', --Ikemen feature
 	},
 	titlebgdef =
 	{
@@ -1525,12 +1525,12 @@ local motif =
 		menu_valuename_buttonjam_s = "Start", --Ikemen feature
 		menu_valuename_buttonjam_d = "D", --Ikemen feature
 		menu_valuename_buttonjam_w = "W", --Ikemen feature
-		;menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
-		;menu_itemname_ailevel = "AI Level", --Ikemen feature
-		;menu_itemname_guardmode = "Guard Mode", --Ikemen feature
-		;menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
-		;menu_itemname_distance = "Distance", --Ikemen feature
-		;menu_itemname_buttonjam = "Button Jam", --Ikemen feature
+		--menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
+		--menu_itemname_ailevel = "AI Level", --Ikemen feature
+		--menu_itemname_guardmode = "Guard Mode", --Ikemen feature
+		--menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
+		--menu_itemname_distance = "Distance", --Ikemen feature
+		--menu_itemname_buttonjam = "Button Jam", --Ikemen feature
 	},
 	trainingbgdef =
 	{

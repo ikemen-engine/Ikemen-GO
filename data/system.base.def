@@ -6,11 +6,15 @@
 ; This file is not loaded by engine and should not be used as-is. It's meant to
 ; be a reference for adding parameters to your own screenpack system.def file.
 ;
+; Features that didn't exist in Mugen are labelled accordingly. Non
+; self-explanatory new parameters have additional comments (often only first
+; occurrence of new parameter in this file is commented)
+;
 ; Some default offset and window values are recalculated internally.
 ; These are commented out in the file.
 
 ;-----------------------------------------------------------
-; Notes about fonts:
+; Notes:
 ;   - fonts can be specified in the [Files] section (no limit to how many)
 ;   - fonts indexed for system.def do not refer to the ones in fight.def
 ;   - fonts are search in directories in the following order:
@@ -24,7 +28,23 @@
 ;     or font filename (path to file). height argument is used only by Truetype
 ;     fonts (if not equal -1 it overrides both font<num>.height parameter and
 ;     size of the ttf font declared in its DEF file)
-
+;   - -1 value used as fnt index, anim, spr/snd group, disables them
+;   - text enclosed in angle brackets in parameter names should be replaced
+;     (including bracket) with appropriate data, e.g. <pn> can be either 1 or 2.
+;   - .col suffixed params takes r, g, b values (default: 255,255,255)
+;   - .alpha suffixed params set source and destination alpha (default: 255,255)
+;   - .key suffixed params use the same syntax as character CMD files. & symbol
+;     can be used to assign more than 1 button for associated action.
+;   - .state suffixed params controls StateNo that particular player is forced
+;     into during post-match screen. First existing state will be chosen, if
+;     more than 1 state number is specified (separated by commas), empty value
+;     means no state change, -1 disables player from screen.
+;   - animated portraits replace sprite portraits, if specified. Value refers
+;     to actionno in character's AIR file. Animation respects constant [Size]
+;     xscale, yscale values (horizontal/vertical scaling factor)
+;   - default menus that weren't customizable or present in mugen (option
+;     screen, pause/training, replay menus) are rendered using 240p localcoord
+;     by default. Set menu.uselocalcoord to 1 to enable screenpack localcoord.
 ;-----------------------------------------------------------
 
 [Info]
@@ -47,8 +67,13 @@
 	;font<num>.height = 
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
+	; Glyph art used by Movelists feature
+	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-info
 	glyphs = "data/glyphs.sff"
+
+	; Path to external module associated with this screenpack
+	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-info#external-modules
 	module = ""
 
 ;[ja.Files]
@@ -77,7 +102,7 @@
 	victory.bgm.loopend = 0
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	option.bgm = ""
 	option.bgm.volume = 100
 	option.bgm.loop = 1
@@ -117,7 +142,6 @@
 [Title Info]
 	fadein.time = 10
 	fadeout.time = 10
-	title.font = -1, 0, 0, 255, 255, 255, -1
 
 	menu.pos = 159, 158
 	menu.item.font = -1, 0, 0, 191, 191, 191, -1
@@ -132,8 +156,25 @@
 	cursor.done.snd = 100, 1
 	cancel.snd = 100, 2
 
+	; If custom menu is not declared, following menu is loaded by default:
+	menu.itemname.arcade = "ARCADE"
+	menu.itemname.versus = "VS MODE"
+	menu.itemname.teamarcade = "TEAM ARCADE"
+	menu.itemname.teamversus = "TEAM VS"
+	menu.itemname.teamcoop = "TEAM CO-OP"
+	menu.itemname.survival = "SURVIVAL"
+	menu.itemname.survivalcoop = "SURVIVAL CO-OP"
+	menu.itemname.training = "TRAINING"
+	menu.itemname.watch = "WATCH"
+	menu.itemname.options = "OPTIONS"
+	menu.itemname.exit = "EXIT"
+
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
+
+	; .col param change colour that the screen will fade into or fade out from
+	; .anim param sets fading animation that should play instead of standard
+	; fading (ignoring fadein.time and/or fadeout.time)
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
@@ -142,15 +183,20 @@
 	menu.item.scale = 1.0, 1.0
 	menu.item.active.scale = 1.0, 1.0
 
+	; Title text rendered in main menu
 	title.offset = 159, 19
+	title.font = -1, 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
 	title.text = "MAIN MENU"
 
+	; Loading text rendered during initial loading (black screen)
 	;loading.offset = (localcoordX - 1 - (10 * localcoordX / 320)), (localcoordY - 8)
 	loading.font = "default-3x5.def", 0, -1, 191, 191, 191, -1
 	loading.scale = 1.0, 1.0
 	loading.text = "LOADING..."
-	
+
+	; Footer parameters control rendering of engine version info. Separated into
+	; 3 elements to allow left/centre/right text align at the same time.
 	;footer1.offset = (2 * localcoordX / 320), localcoordY
 	footer1.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	footer1.scale = 1.0, 1.0
@@ -167,6 +213,7 @@
 	footer.overlay.col = 0, 0, 64
 	footer.overlay.alpha = 255, 100
 
+	; Controls screen rendered during establishing connection with other player
 	;connecting.offset = (10 * localcoordX / 320), 40
 	connecting.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	connecting.scale = 1.0, 1.0
@@ -175,21 +222,30 @@
 	;connecting.overlay.window = 0, 0, localcoordX, localcoordY
 	connecting.overlay.col = 0, 0, 0
 	connecting.overlay.alpha = 20, 100
+
+	; Controls screen rendered during adding new serverjoin IP address
 	textinput.offset = 25, 32
 	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	textinput.scale = 1.0, 1.0
 	textinput.name.text = "Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button."
 	textinput.address.text = "Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button."
-
 	;textinput.overlay.window = 0, 0, localcoordX, localcoordY
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
+	; Keys responsible for menu movement
 	menu.next.key = "$D&$F"
 	menu.previous.key = "$U&$B"
+	; Key for selecting menu item
 	menu.accept.key = "a&b&c&x&y&z&s"
+	; Key for displaying highlighted mode hiscore data (if available)
 	menu.hiscore.key = "s"
 
+	; menu.bg elements are layered below text rendered with menu.itemname params
+	; and are affected by menu.window.visibleitems. Standard element is replaced
+	; with active variant when itemname is highlighted. These parameters can be
+	; also used as an alternative for a mugen font trick for displaying image
+	; instead of text based menus (also supporting animations)
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
@@ -203,11 +259,21 @@
 
 	menu.item.offset = 0, 0
 	menu.item.active.offset = 0, 0
+
+	; Additional adjustments for boxcursor colour and source/destination alpha
+	; changes (srcMin, srcMax, srcStep, dstMin, dstMax, dstStep)
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+
+	; boxbg is an automatically generated overlay around itemnames, based on
+	; values assigned to menu.pos and menu.boxcursor.coords parameters.
 	menu.boxbg.visible = 0
 	menu.boxbg.col = 0, 0, 0
 	menu.boxbg.alpha = 20, 100
+
+	; This art is rendered only if there are more menu itemanames to display
+	; than allowed by menu.window.visibleitems. Meant to be used as a visual
+	; feedback that moving cursor up or down can reveal more items.
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
@@ -218,24 +284,23 @@
 	menu.arrow.down.offset = 0, 0
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
+
+	; Uppercases all menu itemnames (including those read from bonus games DEF
+	; files and serverjoin menu names associated with IP addresses)
 	menu.title.uppercase = 1
 
-	; Menu items.
-	; ------------------------------------------------------------
-	;menu.itemname.arcade = "ARCADE"
-	;menu.itemname.teamarcade = "TEAM ARCADE"
-	;menu.itemname.teamcoop = "TEAM CO-OP"
-	;menu.itemname.versus = "VS MODE"
-	;menu.itemname.teamversus = "TEAM VERSUS"
-	;menu.itemname.training = "TRAINING"
-	;menu.itemname.survival = "SURVIVAL"
-	;menu.itemname.survivalcoop = "SURVIVAL CO-OP"
-	;menu.itemname.watch = "CPU MATCH"
-	;menu.itemname.options = "OPTIONS"
-	;menu.itemname.exit = "EXIT"
+	; Sound played upon itemname selection
+	;cursor.<itemname>.snd = -1, 0
 
-	; Ikemen Go new menu items.
-	; ------------------------------------------------------------
+	; Menu item unlocking. Text assigned to this parameter is read as a pure Lua
+	; code and works in similar fashion to character and stages unlocking (item
+	; will be visible only if the parameter is missing or if it returns true).
+	; Menu items unlocking is runtime permanent (once unlocked, the condition
+	; won't be checked again, until the game is restarted).
+	;menu.unlock.<itemname> = "true"
+
+	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; Unassigned menu items:
 	;menu.itemname.versuscoop = "VERSUS CO-OP"
 	;menu.itemname.freebattle = "QUICK MATCH"
 	;menu.itemname.storymode = "STORY MODE"
@@ -252,20 +317,16 @@
 	;menu.itemname.randomtest = "RANDOMTEST"
 	;menu.itemname.replay = "REPLAY"
 	;menu.itemname.back = "BACK"
-	;menu.unlock.<itemname> = "true"
 
-	;cursor.<itemname>.snd = -1, 0 ; mode selection sound
-
-[TitleBgDef] ;Ikemen feature
+[TitleBgDef]
 	spr = ""
 	bgclearcolor = 0, 0, 0
 
 [InfoBox]
 	text.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
-	overlay.alpha = 20, 100
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
@@ -277,7 +338,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-
+	overlay.alpha = 20, 100
 
 [Infobox Text]
 "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!
@@ -304,6 +365,8 @@
 	moveoveremptyboxes = 0
 
 	cell.size = 27, 27
+	; In Mugen spacing accepts only x value which is used for both coordinates
+	cell.spacing = 2, 2
 
 	cell.bg.anim = -1
 	cell.bg.spr = 
@@ -492,16 +555,18 @@
 	p2.teammenu.value.spacing = -6, 0
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 
+	; 1 to allow cursor to skip over empty boxes (lookup for first valid slot)
 	searchemptyboxesup = 0
 	searchemptyboxesdown = 0
 
-	cell.spacing = 2, 2 ; optionally accepts x, y values instead of a single one for both coordinates
+	; Offset and facing adjustment on per cell basis, <col> and <row> should be
+	; replaced with cell x, y coordinates, starting from index 0.
 	;cell.<col>.<row>.offset = 0, 0
 	;cell.<col>.<row>.facing = 1
 
@@ -538,6 +603,8 @@
 	portrait.anim = -1
 
 	title.scale = 1.0, 1.0
+
+	; Text rendered using title element (hardcoded in Mugen)
 	title.arcade.text = "Arcade"
 	title.teamarcade.text = "Team Arcade"
 	title.teamcoop.text = "Team Cooperative"
@@ -558,11 +625,18 @@
 	title.watch.text = "Watch Mode"
 	;title.replay.text = "Replay"
 
+	; num param controls max number of portraits to render. If set to 1, last
+	; active member's portrait has priority
 	p1.face.num = 1
 	p1.face.anim = -1
+	; Done variants replace spr/anim once character is selected
 	p1.face.done.anim = -1
 	p1.face.done.spr = 9000, 1
+	; Spacing between portraits.
 	p1.face.spacing = 0, 0
+	; Set to 1 to enable automatic spacing adjustment based on team size
+	; (starting position adjusted by values assigned to face.num, face.spacing,
+	; and actual team count in a given match)
 	p1.face.padding = 0
 
 	p2.face.num = 1
@@ -572,15 +646,23 @@
 	p2.face.spacing = 0, 0
 	p2.face.padding = 0
 
+	; Parameters for customizing portraits on per team member basis (values take
+	; priority over standard ones, if defined)
 	;p<pn>.member<num>.face.anim = -1
 	;p<pn>.member<num>.face.spr = 9000, 1
 	;p<pn>.member<num>.face.done.anim = -1
 	;p<pn>.member<num>.face.done.spr = 9000, 1
 	;p<pn>.member<num>.face.offset = 0, 0
 	;p<pn>.member<num>.face.scale = 1.0, 1.0
+
+	; Optional portrait sliding is handled by 2 parameters:
+	; speed decides how many pixels the portrait movement covers on each frame
 	;p<pn>.member<num>.face.slide.speed = 0, 0
+	; dist is a total amount of pixels from offset that portrait should move
 	;p<pn>.member<num>.face.slide.dist = 0, 0
 
+	; Additional portrait layered under standard ones. Limited to 1 portrait per
+	; team side. Last selected character takes priority.
 	p1.face2.anim = -1
 	p1.face2.spr = 
 	p1.face2.offset = 0, 0
@@ -595,7 +677,7 @@
 	p2.face2.scale = 1.0, 1.0
 	p2.face2.window = 
 
-	; num params control max number of names to render. If set to 1, last active
+	; num param controls max number of names to render. If set to 1, last active
 	; member's name has priority. Not used in co-op.
 	p1.name.num = 4
 	p1.name.scale = 1.0, 1.0
@@ -615,6 +697,9 @@
 	stage.text = "Stage %i: %s"
 	stage.random.text = "Stage: Random"
 
+	; Stage portrait use sprites and anim data from stage's SFF and DEF files.
+	; portrait.bg and portrait.random use screenpack data. portrait element is
+	; layered below stage.active / stage.active2 elements but above portrait.bg.
 	stage.portrait.anim = -1
 	stage.portrait.spr = 
 	stage.portrait.offset = 0, 0
@@ -629,6 +714,8 @@
 	stage.portrait.random.scale = 1.0, 1.0
 	stage.portrait.window = 
 
+	; These parameters allows renaming or disabling team modes from selection
+	; (via blank assignment) in all modes that supports them.
 	teammenu.itemname.single = "Single"
 	teammenu.itemname.simul = "Simul"
 	teammenu.itemname.turns = "Turns"
@@ -640,6 +727,8 @@
 	; list, <teammode> should be replaced with single/simul/turns/tag/ratio
 	;teammenu.itemname.<gamemode>.<teammode> = ""
 
+	; teammenu.bg elements are layered below teammenu.itemname text. Standard
+	; element is replaced with active variant when itemname is highlighted.
 	;p<pn>.teammenu.bg.<itemname>.anim = -1
 	;p<pn>.teammenu.bg.<itemname>.spr = 
 	;p<pn>.teammenu.bg.<itemname>.offset = 0, 0
@@ -671,6 +760,8 @@
 	p2.teammenu.subtract.key = "$F"
 	p2.teammenu.accept.key = "a&b&c&x&y&z&s"
 
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting team modes and characters. Each selection resets timer.
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
@@ -679,18 +770,25 @@
 	timer.framespercount = 60
 	timer.displaytime = 10
 
+	; Displaying game mode record directly in select screen (currently unused by
+	; default but some external modules relies on this element)
 	record.offset = 0, 0
 	record.font = -1, 0, 0, 255, 255, 255, -1
 	record.scale = 1.0, 1.0
 	;record.<gamemode>.text = ""
 
+	; Sound triggered when swapping slots (see slot feature in select.def)
 	p1.swap.snd = -1, 0
 	p2.swap.snd = -1, 0
-	p1.select.snd = -1, 0 ; data read from character SND
-	p2.select.snd = -1, 0 ; data read from character SND
+
+	; Sound triggered when particular character is selected (data read from
+	; character's SND file)
+	p1.select.snd = -1, 0
+	p2.select.snd = -1, 0
 
 	; Ratio icons offset from ratio item position, which is affected by
 	; teammenu.item.spacing (same way as value.icon/value.empty.icon elements)
+	; Ratio variants: 1: 2-1-1, 2: 1-2-1, 3: 1-1-2, 4: 2-2, 5: 3-1, 6: 1-3, 7: 4
 	p1.teammenu.ratio1.icon.anim = -1
 	p1.teammenu.ratio1.icon.spr = 
 	p1.teammenu.ratio1.icon.offset = 0, 0
@@ -802,11 +900,13 @@
 	p2.name.spacing = 0, 14
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+
+	; Refer to [Select Info] face parameters for extra comments about portraits.
 
 	p1.num = 1
 	p1.anim = -1
@@ -827,6 +927,9 @@
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
 
+	; Additional portrait layered under standard ones. Limited to 1 portrait per
+	; team side. Character that will fight first takes priority (portrait may
+	; change depending on order selection)
 	p1.face2.anim = -1
 	p1.face2.spr = 
 	p1.face2.offset = 0, 0
@@ -841,7 +944,7 @@
 	p2.face2.scale = 1.0, 1.0
 	p2.face2.window = 
 
-	; Change to 1 to enable order selection
+	; Set to 1 to enable order selection
 	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-Info#orderselect
 	orderselect.enabled = 0
 
@@ -902,7 +1005,8 @@
 	p2.value.icon.spacing = 0, 0
 	p2.value.snd = -1, 0
 
-	; Change timer.count to positive number to enable order selection timer
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting orders.
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
@@ -915,12 +1019,16 @@
 	; (in which order parameters are rendered using optional done variants)
 	done.time = 60
 
-	p1.name.num = 4 ; max number of names to render (not used in co-op)
+	; num param controls max number of names to render. If set to 1, team's
+	; leader name has priority. Not used in co-op.
+	p1.name.num = 4
 	p1.name.scale = 1.0, 1.0
-	p2.name.num = 4 ; max number of names to render (not used in co-op)
+	p2.name.num = 4
 	p2.name.scale = 1.0, 1.0
 
-	stage.snd = -1, 0 ; data read from stage attachedchar SND
+	; Sound triggered when particular stage is selected (data read from
+	; attachedchar SND file associated with stage)
+	stage.snd = -1, 0
 
 [VersusBgDef] ;Ikemen feature
 	spr = ""
@@ -938,7 +1046,7 @@
 	debuginfo = 0
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	fadein.time = 50
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
@@ -947,7 +1055,7 @@
 	fadeout.anim = -1
 
 	; Not used in Ikemen
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	;select.enabled = 0
 	;vsscreen.enabled = 0
 
@@ -979,8 +1087,12 @@
 	no.active.offset = 15, 20
 
 	; Ikemen features
+	; --------------------------------------------------------------------------
+	; Enables character sounds during continue screen.
 	sounds.enabled = 1
+	; Enables legacy (Mugen) bare bones continue screen functionality.
 	legacymode.enabled = 1
+	; Enables [Game Over Screen] storyboard after not continuing.
 	gameover.enabled = 1
 
 	fadein.time = 8
@@ -1014,6 +1126,8 @@
 	p2.teammate.yes.state = 
 	p2.teammate.no.state = 
 
+	; This element refers to credits set in options screen and won't be rendered
+	; if limited continuing is disabled.
 	credits.text = "Credits: %i"
 	credits.offset = 0, 0
 	credits.font = "jg.fnt", 0, 1, 255, 255, 255, -1
@@ -1033,7 +1147,6 @@
 	; animation, when it's no longer possible to confirm continue (can be used
 	; for example to display game over screen integrated with the same anim).
 	; Refer to default screenpack for a working example how to use this feature.
-
 	counter.endtime = 0
 	counter.starttime = 0
 	counter.anim = -1
@@ -1079,17 +1192,22 @@
 	winquote.window = 
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
+	; Enables character sounds during victory screen.
 	sounds.enabled = 0
+	; Enables victory screen for CPU-controlled team side.
 	cpu.enabled = 1
+	; Enables victory screen in versus mode.
 	vs.enabled = 1
-	loser.name.enabled = 0
+	; Enables including defeated team members portraits of the winner team.
 	winner.teamko.enabled = 0
 
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+
+	; Refer to [Select Info] face parameters for extra comments about portraits.
 
 	p1.num = 1
 	p1.anim = -1
@@ -1114,6 +1232,9 @@
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
 
+	; Additional portrait layered under standard ones. Limited to 1 portrait per
+	; team side. On p1 side winner team last hitter takes priority. On p2 side
+	; first team member from the loser team.
 	p1.face2.anim = -1
 	p1.face2.spr = 
 	p1.face2.offset = 0, 0
@@ -1165,7 +1286,7 @@
 	wintext.layerno = 2
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	sounds.enabled = 1
 
 	fadein.col = 0, 0, 0
@@ -1209,7 +1330,8 @@
 	winstext.displaytime = 0
 	winstext.layerno = 2
 
-	; Ikemen Features
+	; Ikemen features
+	; --------------------------------------------------------------------------
 	sounds.enabled = 1
 
 	fadein.col = 0, 0, 0
@@ -1312,7 +1434,7 @@
 	cancel.snd = 100, 2
 
 	; Ikemen features
-	; ------------------------------------------------------------
+	; --------------------------------------------------------------------------
 	fadein.col = 0, 0, 0
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
@@ -1320,7 +1442,13 @@
 
 	title.text = "OPTIONS"
 
+	; Refer to Notes at the beginning of this file.
 	menu.uselocalcoord = 0
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus (unlike Mugen, where option screen look is hardcoded, Ikemen
+	; follows vanilla Mugen convention from Title Screen for building menus)
+
 	menu.pos = 85, 33
 
 	;menu.bg.<itemname>.anim = -1
@@ -1425,7 +1553,7 @@
 	keymenu.item.p2.font = "f-6x9.def", 0, 0, 247, 0, 0, -1
 	keymenu.item.p2.scale = 1.0, 1.0
 
-	; Unassigned "keymenu.item" parameters use corresponding "[Menu Item]" values.
+	; Unassigned keymenu.item parameters use corresponding menu.item values.
 	keymenu.item.spacing = 0, 12
 	keymenu.item.value.offset = 101, 0
 	keymenu.item.value.active.offset = 101, 0
@@ -1462,79 +1590,8 @@
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
-	;menu.itemname.difficulty = "Difficulty Level"
-	;menu.itemname.roundtime = "Time Limit"
-	;menu.itemname.lifemul = "Life"
-	;menu.itemname.singlevsteamlife = "Single VS Team Life"
-	;menu.itemname.gamespeed = "Game Speed"
-	;menu.itemname.roundsnumsingle = "Rounds to Win (Single)"
-	;menu.itemname.maxdrawgames = "Max Draw Games"
-	;menu.itemname.credits = "Credits"
-	;menu.itemname.aipalette = "Arcade Palette"
-	;menu.itemname.aisurvivalpalette = "Survival Palette"
-	;menu.itemname.airamping = "AI Ramping"
-	;menu.itemname.quickcontinue = "Quick Continue"
-	;menu.itemname.autoguard = "Auto-Guard"
-	;menu.itemname.stunbar = "Dizzy"
-	;menu.itemname.guardbar = "Guard Break"
-	;menu.itemname.redlifebar = "Red Life"
-	;menu.itemname.teamduplicates = "Team Duplicates"
-	;menu.itemname.teamlifeshare = "Team Life Share"
-	;menu.itemname.teampowershare = "Team Power Share"
-	;menu.itemname.roundsnumtag = "Rounds to Win (Tag)"
-	;menu.itemname.losekotag = "Partner KOed Lose"
-	;menu.itemname.mintag = "Min Tag Chars"
-	;menu.itemname.maxtag = "Max Tag Chars"
-	;menu.itemname.roundsnumsimul = "Rounds to Win (Simul)"
-	;menu.itemname.losekosimul = "Player KOed Lose"
-	;menu.itemname.minsimul = "Min Simul Chars"
-	;menu.itemname.maxsimul = "Max Simul Chars"
-	;menu.itemname.turnsrecoverybase = "Turns Recovery Base"
-	;menu.itemname.turnsrecoverybonus = "Turns Recovery Bonus"
-	;menu.itemname.minturns = "Min Turns Chars"
-	;menu.itemname.maxturns = "Max Turns Chars"
-	;menu.itemname.ratiorecoverybase = "Ratio Recovery Base"
-	;menu.itemname.ratiorecoverybonus = "Ratio Recovery Bonus"
-	;menu.itemname.ratio1life = "Ratio 1 Life"
-	;menu.itemname.ratio1attack = "Ratio 1 Damage"
-	;menu.itemname.ratio2life = "Ratio 2 Life"
-	;menu.itemname.ratio2attack = "Ratio 2 Damage"
-	;menu.itemname.ratio3life = "Ratio 3 Life"
-	;menu.itemname.ratio3attack = "Ratio 3 Damage"
-	;menu.itemname.ratio4life = "Ratio 4 Life"
-	;menu.itemname.ratio4attack = "Ratio 4 Damage"
-	;menu.itemname.resolution = "Resolution"
-	;menu.itemname.customres = "Custom"
-	;menu.itemname.fullscreen = "Fullscreen"
-	;menu.itemname.vretrace = "VSync"
-	;menu.itemname.msaa = "MSAA"
-	;menu.itemname.shaders = "Shaders"
-	;menu.itemname.noshader = "Disable"
-	;menu.itemname.mastervolume = "Master Volume"
-	;menu.itemname.bgmvolume = "BGM Volume"
-	;menu.itemname.sfxvolume = "SFX Volume"
-	;menu.itemname.audioducking = "Audio Ducking"
-	;menu.itemname.stereoeffects = "Stereo Effects"
-	;menu.itemname.panningrange = "Panning Range"
-	;menu.itemname.keyboard = "Key Config"
-	;menu.itemname.gamepad = "Joystick Config"
-	;menu.itemname.inputdefault = "Default"
-	;menu.itemname.players = "Players"
-	;menu.itemname.debugkeys = "Debug Keys"
-	;menu.itemname.debugmode = "Debug Mode"
-	;menu.itemname.helpermax = "HelperMax"
-	;menu.itemname.projectilemax = "PlayerProjectileMax"
-	;menu.itemname.explodmax = "ExplodMax"
-	;menu.itemname.afterimagemax = "AfterImageMax"
-	;menu.itemname.portchange = "Port Change"
-	;menu.itemname.default = "Default Values"
-	;menu.itemname.empty = ""
-	;menu.itemname.back = "Back"
-	;menu.itemname.savereturn = "Save and Return"
-	;menu.itemname.return = "Return Without Saving"
-
 	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
-	; If custom menus are not declared, following option screen menus are loaded by default:
+	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.menugame = "Game Settings"
 	menu.itemname.menugame.difficulty = "Difficulty Level"
 	menu.itemname.menugame.roundtime = "Time Limit"
@@ -1667,11 +1724,18 @@
 	fadeout.time = 10
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
 	title.text = "REPLAY SELECT"
+
+	; Refer to Notes at the beginning of this file.
 	menu.uselocalcoord = 0
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+
 	menu.pos = 85, 33
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
@@ -1710,10 +1774,11 @@
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
 	menu.title.uppercase = 1
+	menu.itemname.back = "Back"
+
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
 	cancel.snd = 100, 2
-	menu.itemname.back = "Back"
 
 [ReplayBgDef] ;Ikemen feature
 	spr = ""
@@ -1726,11 +1791,18 @@
 	fadeout.time = 0
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
 	title.text = "PAUSE"
+
+	; Refer to Notes at the beginning of this file.
 	menu.uselocalcoord = 0
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+
 	menu.pos = 85, 33
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
@@ -1781,13 +1853,16 @@
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
 	menu.title.uppercase = 1
+
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
 	overlay.alpha = 20, 100
+
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
 	cancel.snd = 100, 2
 	enter.snd = -1, 0
+
 	movelist.pos = 10, 20
 	movelist.title.offset = 150, 0
 	movelist.title.font = "Open.Sans.def", 0, 0, 255, 255, 255, -1
@@ -1818,18 +1893,9 @@
 	movelist.arrow.down.offset = 0, 0
 	movelist.arrow.down.facing = 1
 	movelist.arrow.down.scale = 1.0, 1.0
-	;menu.itemname.back = "Continue"
-	;menu.itemname.keyboard = "Key Config"
-	;menu.itemname.gamepad = "Joystick Config"
-	;menu.itemname.inputdefault = "Default"
-	;menu.itemname.reset = "Round Reset"
-	;menu.itemname.reload = "Rematch"
-	;menu.itemname.commandlist = "Command List"
-	;menu.itemname.characterchange = "Character Change"
-	;menu.itemname.exit = "Exit"
 
 	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
-	; If custom menus are not declared, following pause screen menus are loaded by default:
+	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.back = "Continue"
 	menu.itemname.menuinput = "Button Config"
 	menu.itemname.menuinput.keyboard = "Key Config"
@@ -1837,11 +1903,13 @@
 	menu.itemname.menuinput.empty = ""
 	menu.itemname.menuinput.inputdefault = "Default"
 	menu.itemname.menuinput.back = "Back"
-	;menu.itemname.reset = "Round Reset"
-	;menu.itemname.reload = "Rematch"
 	menu.itemname.commandlist = "Command List"
 	menu.itemname.characterchange = "Character Change"
 	menu.itemname.exit = "Exit"
+
+	; Unassigned menu items:
+	;menu.itemname.reset = "Round Reset"
+	;menu.itemname.reload = "Rematch"	
 
 [MenuBgDef] ;Ikemen feature
 	spr = ""
@@ -1881,15 +1949,9 @@
 	menu.valuename.buttonjam.s = "Start"
 	menu.valuename.buttonjam.d = "D"
 	menu.valuename.buttonjam.w = "W"
-	;menu.itemname.dummycontrol = "Dummy Control"
-	;menu.itemname.ailevel = "AI Level"
-	;menu.itemname.guardmode = "Guard Mode"
-	;menu.itemname.dummymode = "Dummy Mode"
-	;menu.itemname.distance = "Distance"
-	;menu.itemname.buttonjam = "Button Jam"
 
 	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
-	; If custom menus are not declared, following pause screen menus are loaded by default:
+	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.back = "Continue"
 	menu.itemname.menutraining = "Training Menu"
 	menu.itemname.menutraining.dummycontrol = "Dummy Control"
@@ -1905,17 +1967,20 @@
 	menu.itemname.menuinput.empty = ""
 	menu.itemname.menuinput.inputdefault = "Default"
 	menu.itemname.menuinput.back = "Back"
-	;menu.itemname.reset = "Round Reset"
-	;menu.itemname.reload = "Rematch"
 	menu.itemname.commandlist = "Command List"
 	menu.itemname.characterchange = "Character Change"
 	menu.itemname.exit = "Exit"
+
+	; Unassigned menu items:
+	;menu.itemname.reset = "Round Reset"
+	;menu.itemname.reload = "Rematch"	
 
 [TrainingBgDef] ;Ikemen feature
 	spr = ""
 	bgclearcolor = 0, 0, 0
 
 [Attract Mode] ;Ikemen feature
+	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-Info/#attract
 	enabled = 0
 	fadein.time = 10
 	fadein.col = 0, 0, 0
@@ -1923,12 +1988,13 @@
 	fadeout.time = 10
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
-	credits.key = ""
-	options.key = "F11"
-	credits.snd = -1, 0
+
+	; Defaults to storyboards declared under [Files], if not defined 
 	logo.storyboard = ""
 	intro.storyboard = ""
 	start.storyboard = ""
+
+	; Attract Mode start screen
 	start.time = 600
 	start.insert.text = "Insert coin"
 	start.insert.offset = 159, 185
@@ -1940,6 +2006,9 @@
 	start.press.font = "jg.fnt", 0, 0, 255, 255, 255, -1
 	start.press.scale = 1.0, 1.0
 	start.press.blinktime = 30
+
+	; Positive count enables timer, limiting time (count * framespercount) that
+	; start screen remains on screen if not skipped with button.
 	start.timer.offset = 310, 234
 	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255, -1
 	start.timer.scale = 1.0, 1.0
@@ -1947,18 +2016,26 @@
 	start.timer.count = 60
 	start.timer.framespercount = 60
 	start.timer.displaytime = 10
-	start.done.snd = 100, 1
+
 	credits.text = "CREDITS: %2i"
 	credits.offset = 159, 234
 	credits.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
 	credits.scale = 1.0, 1.0
+
 	title.offset = 159, 19
 	title.font = -1, 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
 	title.text = "MAIN MENU"
+
+	credits.key = ""
+	options.key = "F11"
 	menu.next.key = "$D&$F"
 	menu.previous.key = "$U&$B"
 	menu.accept.key = "a&b&c&x&y&z&s"
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+
 	menu.pos = 159, 158
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
@@ -1997,6 +2074,9 @@
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
 	menu.title.uppercase = 1
+
+	credits.snd = -1, 0
+	start.done.snd = 100, 1
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
 	cancel.snd = 100, 2
@@ -2036,67 +2116,8 @@
 [ChallengerBgDef] ;Ikemen feature
 	spr = ""
 
-[Rank Info] ;WARNING: Will be moved to "fight.def"
-	enabled = 0
-	bars.display = 0
-	snd.time = 0
-	snd = -1, 0
-	p1.pos = 0, 0
-	p2.pos = 0, 0
-	p1.score.offset = 0, 0
-	p1.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
-	p1.score.scale = 1.0, 1.0
-	p1.score.text = "%s"
-	p1.score.displaytime = 0
-	p2.score.offset = 0, 0
-	p2.score.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
-	p2.score.scale = 1.0, 1.0
-	p2.score.text = "%s"
-	p2.score.displaytime = 0
-	p1.bg.anim = -1
-	p1.bg.spr = 
-	p1.bg.offset = 0, 0
-	p1.bg.facing = 1
-	p1.bg.scale = 1.0, 1.0
-	p1.bg.displaytime = 0
-	p2.bg.anim = -1
-	p2.bg.spr = 
-	p2.bg.offset = 0, 0
-	p2.bg.facing = 1
-	p2.bg.scale = 1.0, 1.0
-	p2.bg.displaytime = 0
-	p1.gauge.displaytime = 0
-	p2.gauge.displaytime = 0
-	p1.rank.displaytime = 0
-	p2.rank.displaytime = 0
-	p1.icon.displaytime = 0
-	p2.icon.displaytime = 0
-	p1.icon.spacing = 0, 0
-	p2.icon.spacing = 0, 0
-	;p<pn>.gauge.<type>.anim = -1
-	;p<pn>.gauge.<type>.spr = 
-	;p<pn>.gauge.<type>.offset  = 0, 0
-	;p<pn>.gauge.<type>.facing = 1
-	;p<pn>.gauge.<type>.scale = 1.0, 1.0
-; gauge window parameter (x1,y1,x2,y2) is used not only to set drawing space,
-; but also to define gauge range (how much meter should be filled based on match
-; result, cutting portion of the art between x1 and x2 values, if needed). Gauge
-; art must be perfectly surrounded by rectangular window box to work correctly.
-	;p<pn>.gauge.<type>.window = 
-	;p<pn>.gauge.<type>.ticks = 0
-	;p<pn>.gauge.<type>.max = 0
-	;p<pn>.icon.<icon>.anim = -1
-	;p<pn>.icon.<icon>.spr = 
-	;p<pn>.icon.<icon>.offset  = 0, 0
-	;p<pn>.icon.<icon>.facing = 1
-	;p<pn>.icon.<icon>.scale = 1.0, 1.0
-	;p<pn>.rank.<num>.anim = -1
-	;p<pn>.rank.<num>.spr = 
-	;p<pn>.rank.<num>.offset  = 0, 0
-	;p<pn>.rank.<num>.facing = 1
-	;p<pn>.rank.<num>.scale = 1.0, 1.0
-
 [Dialogue Info] ;WARNING: Will be moved to "fight.def"
+	; https://github.com/K4thos/Ikemen_GO/wiki/State-controllers/#new_dialogue
 	enabled = 0
 	endtime = 0
 	switchtime = 0
@@ -2244,6 +2265,9 @@
 	item.face.unknown.offset = 0, 0
 	item.face.unknown.facing = 1
 	item.face.unknown.scale = 1.0, 1.0
+
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting hiscore name.
 	timer.offset = 0, 0
 	timer.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
@@ -2251,6 +2275,7 @@
 	timer.count = 99
 	timer.framespercount = 60
 	timer.displaytime = 10
+
 	window.width = 300
 	window.margins.y = 20, 1
 	window.visibleitems = 10

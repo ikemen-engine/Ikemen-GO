@@ -111,13 +111,6 @@ if time = 0 {
 	mapAdd{map: "_iksys_tagSwitchDist"; value: -vel x}
 }
 
-# regain control right after entering screen (unused in this state by default)
-if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
-	stateTypeSet{moveType: I} # disables countermeasure against global states triggering when character is off-screen
-	ctrlSet{value: 1}
-	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
-}
-
 # continue until reaching place where the switch was initiated, but stop in front of enemy
 if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X < const240p(30)) {
 	velSet{x: 0; y: 0}
@@ -190,9 +183,8 @@ if backEdgeBodyDist <= 0 {
 }
 
 # regain control right after entering screen, in case of active player loss
-if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
+if !ctrl && backEdgeBodyDist >= 0 {
 	ctrlSet{value: 1}
-	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
 }
 
 if time = 0 {
@@ -330,7 +322,6 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		let partnerId = call fTagGetPartnerId(1);
 		if $partnerId > 0 {
 			lifebarAction{spr: const(MsgPartnerChange), 0}
-			mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
 			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
 			tagOut{}
 		}
