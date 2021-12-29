@@ -3001,12 +3001,18 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.mul[1] = exp[1].evalI(c)
 		pfd.mul[2] = exp[2].evalI(c)
 	case palFX_sinadd:
-		pfd.sinadd[0] = exp[0].evalI(c)
-		pfd.sinadd[1] = exp[1].evalI(c)
-		pfd.sinadd[2] = exp[2].evalI(c)
+		var side int32 = 1
 		if len(exp) > 3 {
-			pfd.cycletime = exp[3].evalI(c)
+			if exp[3].evalI(c) < 0 {
+				pfd.cycletime = -exp[3].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletime = exp[3].evalI(c)
+			}
 		}
+		pfd.sinadd[0] = exp[0].evalI(c) * side
+		pfd.sinadd[1] = exp[1].evalI(c) * side
+		pfd.sinadd[2] = exp[2].evalI(c) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	default:

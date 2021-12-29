@@ -248,16 +248,23 @@ func systemScriptInit(l *lua.LState) {
 						})
 					}
 				case "sinadd":
+					var s [4]int32
 					switch v := value.(type) {
 					case *lua.LTable:
 						v.ForEach(func(key2, value2 lua.LValue) {
-							num := int(lua.LVAsNumber(key2))
-							if num <= 3 {
-								a.palfx.sinadd[num-1] = int32(lua.LVAsNumber(value2))
-							} else if num == 4 {
-								a.palfx.cycletime = int32(lua.LVAsNumber(value2))
-							}
+							s[int(lua.LVAsNumber(key2))-1] = int32(lua.LVAsNumber(value2))
 						})
+					}
+					if s[3] < 0 {
+						a.palfx.sinadd[0] = -s[0]
+						a.palfx.sinadd[1] = -s[1]
+						a.palfx.sinadd[2] = -s[2]
+						a.palfx.cycletime = -s[3]
+					} else {
+						a.palfx.sinadd[0] = s[0]
+						a.palfx.sinadd[1] = s[1]
+						a.palfx.sinadd[2] = s[2]
+						a.palfx.cycletime = s[3]
 					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1

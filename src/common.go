@@ -710,7 +710,20 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 	is.ReadI32(pre+"time", &al.palfx.time)
 	is.ReadI32(pre+"add", &al.palfx.add[0], &al.palfx.add[1], &al.palfx.add[2])
 	is.ReadI32(pre+"mul", &al.palfx.mul[0], &al.palfx.mul[1], &al.palfx.mul[2])
-	is.ReadI32(pre+"sinadd", &al.palfx.sinadd[0], &al.palfx.sinadd[1], &al.palfx.sinadd[2], &al.palfx.cycletime)
+	var s [4]int32
+	if is.ReadI32(pre+"sinadd", &s[0], &s[1], &s[2], &s[3]) {
+		if s[3] < 0 {
+			al.palfx.sinadd[0] = -s[0]
+			al.palfx.sinadd[1] = -s[1]
+			al.palfx.sinadd[2] = -s[2]
+			al.palfx.cycletime = -s[3]
+		} else {
+			al.palfx.sinadd[0] = s[0]
+			al.palfx.sinadd[1] = s[1]
+			al.palfx.sinadd[2] = s[2]
+			al.palfx.cycletime = s[3]
+		}
+	}
 	is.ReadBool(pre+"invertall", &al.palfx.invertall)
 	var n float32
 	if is.ReadF32(pre+"color", &n) {
