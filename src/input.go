@@ -1781,8 +1781,7 @@ func (c *Command) Clear() {
 		c.held[i] = false
 	}
 }
-func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
-	holdTemp *[CK_Last + 1]bool) bool {
+func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,holdTemp *[CK_Last + 1]bool) bool {
 	anyHeld, notHeld := false, 0
 	if len(c.hold) > 0 && !ai {
 		if holdTemp == nil {
@@ -1855,8 +1854,8 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
 					return true
 				}
 			}
-			c.Clear()
-			return c.bufTest(cbuf, ai, holdTemp)
+			//c.Clear()
+			return false//c.bufTest(cbuf, ai, holdTemp)
 		}
 		return true
 	}
@@ -1924,9 +1923,9 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	var holdTemp *[CK_Last + 1]bool
 	if cbuf == nil || !c.bufTest(cbuf, ai, holdTemp) {
 		foo := c.tamei == 0 && c.cmdi == 0
-		c.Clear()
 		if foo {
 			c.tamei = 0
+			c.Clear()
 		}
 		return
 	}
