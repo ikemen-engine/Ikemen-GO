@@ -1263,7 +1263,9 @@ function options.f_createMenu(tbl, bool_main)
 		if bool_main then
 			main.f_bgReset(motif.optionbgdef.bg)
 			main.f_fadeReset('fadein', motif.option_info)
-			main.f_playBGM(false, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
+			if motif.music.option_bgm ~= '' then
+				main.f_playBGM(false, motif.music.option_bgm, motif.music.option_bgm_loop, motif.music.option_bgm_volume, motif.music.option_bgm_loopstart, motif.music.option_bgm_loopend)
+			end
 			main.close = false
 		end
 		while true do

@@ -3040,7 +3040,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 		if bool_bgreset then
 			if motif.attract_mode.enabled == 0 then
 				main.f_bgReset(motif[main.background].bg)
-				main.f_playBGM(true, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+				main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
 			end
 			main.f_fadeReset('fadein', motif[main.group])
 		end
@@ -3297,7 +3297,9 @@ function main.f_replay()
 	table.insert(t, {data = text:create({window = t_menuWindowReplay}), itemname = 'back', displayname = motif.replay_info.menu_itemname_back})
 	main.f_bgReset(motif.replaybgdef.bg)
 	main.f_fadeReset('fadein', motif.replay_info)
-	main.f_playBGM(false, motif.music.replay_bgm, motif.music.replay_bgm_loop, motif.music.replay_bgm_volume, motif.music.replay_bgm_loopstart, motif.music.replay_bgm_loopend)
+	if motif.music.replay_bgm ~= '' then
+		main.f_playBGM(false, motif.music.replay_bgm, motif.music.replay_bgm_loop, motif.music.replay_bgm_volume, motif.music.replay_bgm_loopstart, motif.music.replay_bgm_loopend)
+	end
 	main.close = false
 	while true do
 		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, 'replay_info', 'replaybgdef', txt_titleReplay, motif.defaultReplay, {})
@@ -4035,9 +4037,9 @@ function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoo
 		return
 	end
 	local bgm = bgm or ''
-	if interrupt or (bgm ~= '' and bgm ~= main.lastBgm) then
+	if interrupt or bgm:gsub('^%./', '') ~= main.lastBgm then
 		playBGM(bgm, bgmLoop or 1, bgmVolume or 100, bgmLoopstart or 0, bgmLoopend or 0)
-		main.lastBgm = bgm
+		main.lastBgm = bgm:gsub('^%./', '')
 	end
 end
 

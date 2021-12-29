@@ -1428,7 +1428,6 @@ function start.f_game(lua)
 	main.t_pIn[2] = 2
 	if lua ~= '' then commonLuaInsert(lua) end
 	local winner, tbl = game()
-	main.f_playBGM(true)
 	if lua ~= '' then commonLuaDelete(lua) end
 	if gameend() then
 		clearColor(0, 0, 0)
@@ -3129,9 +3128,9 @@ function start.f_resultInit()
 	end
 	main.f_bgReset(motif[start.t_result.bgdef].bg)
 	main.f_fadeReset('fadein', t)
-	if start.t_result.winBgm then
+	if start.t_result.winBgm and motif.music.results_bgm ~= '' then
 		main.f_playBGM(false, motif.music.results_bgm, motif.music.results_bgm_loop, motif.music.results_bgm_volume, motif.music.results_bgm_loopstart, motif.music.results_bgm_loopend)
-	else
+	elseif motif.music.results_lose_bgm ~= '' then
 		main.f_playBGM(false, motif.music.results_lose_bgm, motif.music.results_lose_bgm_loop, motif.music.results_lose_bgm_volume, motif.music.results_lose_bgm_loopstart, motif.music.results_lose_bgm_loopend)
 	end
 	start.t_result.active = true
@@ -3318,7 +3317,7 @@ function start.f_victoryInit()
 	end
 	main.f_bgReset(motif.victorybgdef.bg)
 	main.f_fadeReset('fadein', motif.victory_screen)
-	if start.t_music.musicvictory[winnerteam()] == nil then
+	if start.t_music.musicvictory[winnerteam()] == nil and motif.music.victory_bgm ~= '' then
 		main.f_playBGM(false, motif.music.victory_bgm, motif.music.victory_bgm_loop, motif.music.victory_bgm_volume, motif.music.victory_bgm_loopstart, motif.music.victory_bgm_loopend)
 	end
 	start.f_resetTempData(motif.victory_screen, '')
@@ -3444,7 +3443,9 @@ function start.f_continueInit()
 		clearAllSound()
 		toggleNoSound(true)
 	end
-	main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
+	if motif.music.continue_bgm ~= '' then
+		main.f_playBGM(false, motif.music.continue_bgm, motif.music.continue_bgm_loop, motif.music.continue_bgm_volume, motif.music.continue_bgm_loopstart, motif.music.continue_bgm_loopend)
+	end
 	main.f_bgReset(motif.continuebgdef.bg)
 	main.f_fadeReset('fadein', motif.continue_screen)
 	animReset(motif.continue_screen.counter_data)
@@ -3525,7 +3526,9 @@ function start.f_continue()
 					end
 				end
 			elseif start.t_continue.counter == motif.continue_screen.counter_end_skiptime then
-				main.f_playBGM(false, motif.music.continue_end_bgm, motif.music.continue_end_bgm_loop, motif.music.continue_end_bgm_volume, motif.music.continue_end_bgm_loopstart, motif.music.continue_end_bgm_loopend)
+				if motif.music.continue_end_bgm ~= '' then
+					main.f_playBGM(false, motif.music.continue_end_bgm, motif.music.continue_end_bgm_loop, motif.music.continue_end_bgm_volume, motif.music.continue_end_bgm_loopstart, motif.music.continue_end_bgm_loopend)
+				end
 				sndPlay(motif.files.snd_data, motif.continue_screen.counter_end_snd[1], motif.continue_screen.counter_end_snd[2])
 				for i = 1, 2 do
 					for _, v in ipairs(motif.continue_screen['p' .. i .. '_no_state']) do
@@ -3703,7 +3706,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 	end
 	main.f_cmdBufReset()
 	clearColor(motif.hiscorebgdef.bgclearcolor[1], motif.hiscorebgdef.bgclearcolor[2], motif.hiscorebgdef.bgclearcolor[3])
-	if playMusic then
+	if playMusic and motif.music.hiscore_bgm ~= '' then
 		main.f_playBGM(false, motif.music.hiscore_bgm, motif.music.hiscore_bgm_loop, motif.music.hiscore_bgm_volume, motif.music.hiscore_bgm_loopstart, motif.music.hiscore_bgm_loopend)
 	end
 	main.f_bgReset(motif.hiscorebgdef.bg)
