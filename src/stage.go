@@ -568,7 +568,7 @@ type stageShadow struct {
 	fadebgn   int32
 }
 type stagePlayer struct {
-	startx, starty int32
+	startx, starty, startz int32
 }
 type Stage struct {
 	def             string
@@ -708,8 +708,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
 		sec[0].ReadI32("p1starty", &s.p[0].starty)
+		sec[0].ReadI32("p1startz", &s.p[0].startz)
 		sec[0].ReadI32("p2startx", &s.p[1].startx)
 		sec[0].ReadI32("p2starty", &s.p[1].starty)
+		sec[0].ReadI32("p2startz", &s.p[1].startz)
 		sec[0].ReadF32("leftbound", &s.leftbound)
 		sec[0].ReadF32("rightbound", &s.rightbound)
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
