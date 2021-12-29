@@ -1738,7 +1738,7 @@ func readLifeBarRound(is IniSection,
 	ro.win_sndtime = ro.win_time
 	is.ReadI32("win.sndtime", &ro.win_sndtime)
 	for i := 0; i < 2; i++ {
-		var ok bool
+		var ok, bg bool
 		//win
 		if _, ok = is[fmt.Sprintf("p%v.win.text", i+1)]; !ok {
 			if _, ok = is[fmt.Sprintf("p%v.win.spr", i+1)]; !ok {
@@ -1769,7 +1769,12 @@ func readLifeBarRound(is IniSection,
 			}
 		}
 		//win2
-		if _, ok = is[fmt.Sprintf("p%v.win2.text", i+1)]; ok {
+		if _, ok = is[fmt.Sprintf("p%v.win2.text", i+1)]; !ok {
+			if _, ok = is[fmt.Sprintf("p%v.win2.spr", i+1)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win2.anim", i+1)]
+			}
+		}
+		if ok {
 			ro.win2[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win2.", i+1), is, sff, at, 1, f)
 		} else {
 			ro.win2[i] = *ReadAnimTextSnd("win2.", is, sff, at, 1, f)
@@ -1793,69 +1798,114 @@ func readLifeBarRound(is IniSection,
 			}
 		}
 		//win3
-		if _, ok = is["win3.text"]; !ok {
-			_, ok = is[fmt.Sprintf("p%v.win3.text", i+1)]
+		if _, ok = is[fmt.Sprintf("p%v.win3.text", i+1)]; !ok {
+			if _, ok = is[fmt.Sprintf("p%v.win3.spr", i+1)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win3.anim", i+1)]
+			}
 		}
 		if ok {
-			if _, ok = is[fmt.Sprintf("p%v.win3.text", i+1)]; ok {
-				ro.win3[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win3.", i+1), is, sff, at, 1, f)
-			} else {
-				ro.win3[i] = *ReadAnimTextSnd("win3.", is, sff, at, 1, f)
-			}
-			if _, ok = is[fmt.Sprintf("p%v.win3.top.anim", i+1)]; !ok {
-				_, ok = is[fmt.Sprintf("p%v.win3.top.spr", i+1)]
+			ro.win3[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win3.", i+1), is, sff, at, 1, f)
+		} else {
+			if _, ok = is["win3.text"]; !ok {
+				if _, ok = is["win3.spr"]; !ok {
+					_, ok = is["win3.anim"]
+				}
 			}
 			if ok {
-				ro.win3_top[i] = *ReadAnimLayout(fmt.Sprintf("p%v.win3.top.", i+1), is, sff, at, 1)
+				ro.win3[i] = *ReadAnimTextSnd("win3.", is, sff, at, 1, f)
 			} else {
-				ro.win3_top[i] = *ReadAnimLayout("win3.top.", is, sff, at, 1)
+				ro.win3[i] = ro.win2[i]
 			}
-			for j := range ro.win3_bg[i] {
-				if _, ok = is[fmt.Sprintf("p%v.win3.bg%v.anim", i+1, j)]; !ok {
-					_, ok = is[fmt.Sprintf("p%v.win3.bg%v.spr", i+1, j)]
+		}
+		if _, ok = is[fmt.Sprintf("p%v.win3.top.anim", i+1)]; !ok {
+			_, ok = is[fmt.Sprintf("p%v.win3.top.spr", i+1)]
+		}
+		if ok {
+			ro.win3_top[i] = *ReadAnimLayout(fmt.Sprintf("p%v.win3.top.", i+1), is, sff, at, 1)
+		} else {
+			if _, ok = is["win3.top.anim"]; !ok {
+				_, ok = is["win3.top.spr"]
+			}
+			if ok {
+				ro.win3_top[i] = *ReadAnimLayout("win3.top.", is, sff, at, 1)
+			} else {
+				ro.win3_top[i] = ro.win2_top[i]
+			}
+		}
+		for j := range ro.win3_bg[i] {
+			if _, ok = is[fmt.Sprintf("p%v.win3.bg%v.anim", i+1, j)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win3.bg%v.spr", i+1, j)]
+			}
+			if ok {
+				ro.win3_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("p%v.win3.bg%v.", i+1, j), is, sff, at, 1)
+				bg = true
+			} else {
+				if _, ok = is[fmt.Sprintf("win3.bg%v.anim", j)]; !ok {
+					_, ok = is[fmt.Sprintf("win3.bg%v.spr", j)]
 				}
 				if ok {
-					ro.win3_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("p%v.win3.bg%v.", i+1, j), is, sff, at, 1)
-				} else {
 					ro.win3_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("win3.bg%v.", j), is, sff, at, 1)
+					bg = true
 				}
 			}
-		} else {
-			ro.win3[i] = ro.win2[i]
-			ro.win3_top[i] = ro.win2_top[i]
+		}
+		if !bg {
 			ro.win3_bg[i] = ro.win2_bg[i]
 		}
+		bg = false
 		//win4
-		if _, ok = is["win4.text"]; !ok {
-			_, ok = is[fmt.Sprintf("p%v.win4.text", i+1)]
+		if _, ok = is[fmt.Sprintf("p%v.win4.text", i+1)]; !ok {
+			if _, ok = is[fmt.Sprintf("p%v.win4.spr", i+1)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win4.anim", i+1)]
+			}
 		}
 		if ok {
-			if _, ok = is[fmt.Sprintf("p%v.win4.text", i+1)]; ok {
-				ro.win4[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win4.", i+1), is, sff, at, 1, f)
-			} else {
-				ro.win4[i] = *ReadAnimTextSnd("win4.", is, sff, at, 1, f)
-			}
-			if _, ok = is[fmt.Sprintf("p%v.win4.top.anim", i+1)]; !ok {
-				_, ok = is[fmt.Sprintf("p%v.win4.top.spr", i+1)]
+			ro.win4[i] = *ReadAnimTextSnd(fmt.Sprintf("p%v.win4.", i+1), is, sff, at, 1, f)
+		} else {
+			if _, ok = is["win4.text"]; !ok {
+				if _, ok = is["win4.spr"]; !ok {
+					_, ok = is["win4.anim"]
+				}
 			}
 			if ok {
-				ro.win4_top[i] = *ReadAnimLayout(fmt.Sprintf("p%v.win4.top.", i+1), is, sff, at, 1)
+				ro.win4[i] = *ReadAnimTextSnd("win4.", is, sff, at, 1, f)
 			} else {
-				ro.win4_top[i] = *ReadAnimLayout("win4.top.", is, sff, at, 1)
+				ro.win4[i] = ro.win2[i]
 			}
-			for j := range ro.win4_bg[i] {
-				if _, ok = is[fmt.Sprintf("p%v.win4.bg%v.anim", i+1, j)]; !ok {
-					_, ok = is[fmt.Sprintf("p%v.win4.bg%v.spr", i+1, j)]
+		}
+		if _, ok = is[fmt.Sprintf("p%v.win4.top.anim", i+1)]; !ok {
+			_, ok = is[fmt.Sprintf("p%v.win4.top.spr", i+1)]
+		}
+		if ok {
+			ro.win4_top[i] = *ReadAnimLayout(fmt.Sprintf("p%v.win4.top.", i+1), is, sff, at, 1)
+		} else {
+			if _, ok = is["win4.top.anim"]; !ok {
+				_, ok = is["win4.top.spr"]
+			}
+			if ok {
+				ro.win4_top[i] = *ReadAnimLayout("win4.top.", is, sff, at, 1)
+			} else {
+				ro.win4_top[i] = ro.win2_top[i]
+			}
+		}
+		for j := range ro.win4_bg[i] {
+			if _, ok = is[fmt.Sprintf("p%v.win4.bg%v.anim", i+1, j)]; !ok {
+				_, ok = is[fmt.Sprintf("p%v.win4.bg%v.spr", i+1, j)]
+			}
+			if ok {
+				ro.win4_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("p%v.win4.bg%v.", i+1, j), is, sff, at, 1)
+				bg = true
+			} else {
+				if _, ok = is[fmt.Sprintf("win4.bg%v.anim", j)]; !ok {
+					_, ok = is[fmt.Sprintf("win4.bg%v.spr", j)]
 				}
 				if ok {
-					ro.win4_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("p%v.win4.bg%v.", i+1, j), is, sff, at, 1)
-				} else {
 					ro.win4_bg[i][j] = *ReadAnimLayout(fmt.Sprintf("win4.bg%v.", j), is, sff, at, 1)
+					bg = true
 				}
 			}
-		} else {
-			ro.win4[i] = ro.win2[i]
-			ro.win4_top[i] = ro.win2_top[i]
+		}
+		if !bg {
 			ro.win4_bg[i] = ro.win2_bg[i]
 		}
 	}
