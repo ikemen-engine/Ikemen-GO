@@ -934,6 +934,7 @@ type Explod struct {
 	oldPos         [2]float32
 	newPos         [2]float32
 	palfx          *PalFX
+	palfxdef       PalFXDef
 	localscl       float32
 }
 
@@ -1111,9 +1112,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		sprs = &sys.bottomSprites
 	}
 	var pfx *PalFX
-	if e.anim.sff != sys.lifebar.fsff {
+	if e.palfx != nil && (e.anim.sff != sys.lifebar.fsff || e.ownpal) {
 		pfx = e.palfx
-	} else if !e.ownpal {
+	} else {
 		pfx = &PalFX{}
 		*pfx = *e.palfx
 		pfx.remap = nil
@@ -1161,7 +1162,10 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		//		}
 		//	}
 		//}
-		if act {
+		if act {		
+			if e.palfx != nil && e.ownpal {
+				e.palfx.step()
+			}
 			if e.bindtime == 0 {
 				e.oldPos = e.pos
 				e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
@@ -3345,7 +3349,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
-		expl.id, expl.playerId, expl.palfx = -1, c.id, c.getPalfx()
+		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
 		return expl
 	}
 	for i := range sys.explods[c.playerNo] {
@@ -3375,12 +3379,19 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		return
 	}
 	e.anim.UpdateSprite()
-	if e.ownpal && e.anim.sff != sys.lifebar.fsff {
-		remap := make([]int, len(e.palfx.remap))
-		copy(remap, e.palfx.remap)
-		e.palfx = newPalFX()
-		e.palfx.remap = remap
-		c.forceRemapPal(e.palfx, rp)
+	if e.ownpal {
+		if e.anim.sff != sys.lifebar.fsff {
+			remap := make([]int, len(e.palfx.remap))
+			copy(remap, e.palfx.remap)
+			e.palfx = newPalFX()
+			e.palfx.remap = remap
+			e.palfx.PalFXDef = e.palfxdef
+			c.forceRemapPal(e.palfx, rp)
+		} else {
+			e.palfx = newPalFX()
+			e.palfx.PalFXDef = e.palfxdef
+			e.palfx.remap = nil
+		}
 	}
 	if e.ontop {
 		td := &sys.topexplDrawlist[c.playerNo]

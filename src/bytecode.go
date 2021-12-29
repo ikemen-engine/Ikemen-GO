@@ -2817,490 +2817,6 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type explod StateControllerBase
-
-const (
-	explod_ownpal byte = iota
-	explod_remappal
-	explod_id
-	explod_facing
-	explod_vfacing
-	explod_pos
-	explod_random
-	explod_postype
-	explod_velocity
-	explod_accel
-	explod_scale
-	explod_bindtime
-	explod_removetime
-	explod_supermove
-	explod_supermovetime
-	explod_pausemovetime
-	explod_sprpriority
-	explod_ontop
-	explod_strictontop
-	explod_under
-	explod_shadow
-	explod_removeongethit
-	explod_trans
-	explod_anim
-	explod_angle
-	explod_yangle
-	explod_xangle
-	explod_ignorehitpause
-	explod_bindid
-	explod_space
-	explod_redirectid
-)
-
-func (sc explod) Run(c *Char, _ []int32) bool {
-	crun := c
-	var lclscround float32 = 1.0
-	var e *Explod
-	var i int
-	//e, i := crun.newExplod()
-	rp := [...]int32{-1, 0}
-	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if e == nil {
-			if id == explod_redirectid {
-				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-					crun = rid
-					lclscround = c.localscl / crun.localscl
-					e, i = crun.newExplod()
-					if e == nil {
-						return false
-					}
-					e.id = 0
-					if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-						e.postype = PT_N
-					}
-				} else {
-					return false
-				}
-			} else {
-				e, i = crun.newExplod()
-				if e == nil {
-					return false
-				}
-				e.id = 0
-				if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-					e.postype = PT_N
-				}
-			}
-		}
-		switch id {
-		case explod_ownpal:
-			e.ownpal = exp[0].evalB(c)
-		case explod_remappal:
-			rp[0] = exp[0].evalI(c)
-			if len(exp) > 1 {
-				rp[1] = exp[1].evalI(c)
-			}
-		case explod_id:
-			e.id = Max(0, exp[0].evalI(c))
-		case explod_facing:
-			if exp[0].evalI(c) < 0 {
-				e.relativef = -1
-			} else {
-				e.relativef = 1
-			}
-		case explod_vfacing:
-			if exp[0].evalI(c) < 0 {
-				e.vfacing = -1
-			} else {
-				e.vfacing = 1
-			}
-		case explod_pos:
-			e.offset[0] = exp[0].evalF(c) * lclscround
-			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * lclscround
-			}
-		case explod_random:
-			rndx := exp[0].evalF(c) * lclscround
-			e.offset[0] += RandF(-rndx, rndx)
-			if len(exp) > 1 {
-				rndy := exp[1].evalF(c) * lclscround
-				e.offset[1] += RandF(-rndy, rndy)
-			}
-		case explod_postype:
-			e.postype = PosType(exp[0].evalI(c))
-		case explod_space:
-			e.space = Space(exp[0].evalI(c))
-		case explod_velocity:
-			e.velocity[0] = exp[0].evalF(c) * lclscround
-			if len(exp) > 1 {
-				e.velocity[1] = exp[1].evalF(c) * lclscround
-			}
-		case explod_accel:
-			e.accel[0] = exp[0].evalF(c) * lclscround
-			if len(exp) > 1 {
-				e.accel[1] = exp[1].evalF(c) * lclscround
-			}
-		case explod_scale:
-			e.scale[0] = exp[0].evalF(c)
-			if len(exp) > 1 {
-				e.scale[1] = exp[1].evalF(c)
-			}
-		case explod_bindtime:
-			e.bindtime = exp[0].evalI(c)
-		case explod_removetime:
-			e.removetime = exp[0].evalI(c)
-		case explod_supermove:
-			if exp[0].evalB(c) {
-				e.supermovetime = -1
-			} else {
-				e.supermovetime = 0
-			}
-		case explod_supermovetime:
-			e.supermovetime = exp[0].evalI(c)
-		case explod_pausemovetime:
-			e.pausemovetime = exp[0].evalI(c)
-		case explod_sprpriority:
-			e.sprpriority = exp[0].evalI(c)
-		case explod_ontop:
-			e.ontop = exp[0].evalB(c)
-		case explod_strictontop:
-			if e.ontop {
-				e.sprpriority = 0
-			}
-		case explod_under:
-			if !e.ontop {
-				e.under = exp[0].evalB(c)
-			}
-		case explod_shadow:
-			e.shadow[0] = exp[0].evalI(c)
-			if len(exp) > 1 {
-				e.shadow[1] = exp[1].evalI(c)
-				if len(exp) > 2 {
-					e.shadow[2] = exp[2].evalI(c)
-				}
-			}
-		case explod_removeongethit:
-			e.removeongethit = exp[0].evalB(c)
-		case explod_trans:
-			e.alpha[0] = exp[0].evalI(c)
-			e.alpha[1] = exp[1].evalI(c)
-			if len(exp) >= 3 {
-				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
-				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
-				if len(exp) >= 4 {
-					e.alpha[1] = ^e.alpha[1]
-				} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
-					e.alpha[0] = 0
-				}
-			}
-		case explod_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
-		case explod_angle:
-			e.angle = exp[0].evalF(c)
-		case explod_yangle:
-			e.yangle = exp[0].evalF(c)
-		case explod_xangle:
-			e.xangle = exp[0].evalF(c)
-		case explod_ignorehitpause:
-			e.ignorehitpause = exp[0].evalB(c)
-		case explod_bindid:
-			bId := exp[0].evalI(c)
-			if bId == -1 {
-				bId = crun.id
-			}
-			e.bindId = bId
-		}
-		return true
-	})
-	if e == nil {
-		return false
-	}
-	if c.minus == -2 || c.minus == -4 { //TODO: isn't this supposed to check crun instead of c?
-		e.localscl = (320 / float32(crun.localcoord))
-	} else {
-		e.localscl = crun.localscl
-	}
-	e.setPos(crun)
-	crun.insertExplodEx(i, rp)
-	return false
-}
-
-type modifyExplod explod
-
-func (sc modifyExplod) Run(c *Char, _ []int32) bool {
-	crun := c
-	var lclscround float32 = 1.0
-	eid := int32(-1)
-	var expls []*Explod
-	rp := [...]int32{-1, 0}
-	eachExpl := func(f func(e *Explod)) {
-		for _, e := range expls {
-			f(e)
-		}
-	}
-	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		switch id {
-		case explod_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-				lclscround = c.localscl / crun.localscl
-			} else {
-				return false
-			}
-		case explod_remappal:
-			rp[0] = exp[0].evalI(c)
-			if len(exp) > 1 {
-				rp[1] = exp[1].evalI(c)
-			}
-		case explod_id:
-			eid = exp[0].evalI(c)
-		default:
-			if len(expls) == 0 {
-				expls = crun.getExplods(eid)
-				if len(expls) == 0 {
-					return false
-				}
-				eachExpl(func(e *Explod) {
-					if e.ownpal {
-						crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
-					}
-				})
-			}
-			switch id {
-			case explod_facing:
-				if exp[0].evalI(c) < 0 {
-					eachExpl(func(e *Explod) { e.relativef = -1 })
-				} else {
-					eachExpl(func(e *Explod) { e.relativef = 1 })
-				}
-			case explod_vfacing:
-				if exp[0].evalI(c) < 0 {
-					eachExpl(func(e *Explod) { e.vfacing = -1 })
-				} else {
-					eachExpl(func(e *Explod) { e.vfacing = 1 })
-				}
-			case explod_pos:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.offset[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.offset[1] = y })
-				}
-			case explod_random:
-				rndx := exp[0].evalF(c) * lclscround
-				rndx = RandF(-rndx, rndx)
-				eachExpl(func(e *Explod) { e.offset[0] += rndx })
-				if len(exp) > 1 {
-					rndy := exp[1].evalF(c) * lclscround
-					rndy = RandF(-rndy, rndy)
-					eachExpl(func(e *Explod) { e.offset[1] += rndy })
-				}
-			case explod_postype:
-				pt := PosType(exp[0].evalI(c))
-				eachExpl(func(e *Explod) {
-					e.postype = pt
-					e.setPos(c)
-				})
-			case explod_space:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					sp := Space(exp[0].evalI(c))
-					eachExpl(func(e *Explod) { e.space = sp })
-				}
-			case explod_velocity:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.velocity[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.velocity[1] = y })
-				}
-			case explod_accel:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.accel[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.accel[1] = y })
-				}
-			case explod_scale:
-				x := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.scale[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c)
-					eachExpl(func(e *Explod) { e.scale[1] = y })
-				}
-			case explod_bindtime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.bindtime = t })
-			case explod_removetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.removetime = t })
-			case explod_supermove:
-				if exp[0].evalB(c) {
-					eachExpl(func(e *Explod) { e.supermovetime = -1 })
-				} else {
-					eachExpl(func(e *Explod) { e.supermovetime = 0 })
-				}
-			case explod_supermovetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.supermovetime = t })
-			case explod_pausemovetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.pausemovetime = t })
-			case explod_sprpriority:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.sprpriority = t })
-			case explod_ontop:
-				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.ontop = t
-					if e.ontop && e.under {
-						e.under = false
-					}
-				})
-			case explod_strictontop:
-				eachExpl(func(e *Explod) {
-					if e.ontop {
-						e.sprpriority = 0
-					}
-				})
-			case explod_under:
-				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.under = t
-					if e.under && e.ontop {
-						e.ontop = false
-					}
-				})
-			case explod_shadow:
-				r := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.shadow[0] = r })
-				if len(exp) > 1 {
-					g := exp[1].evalI(c)
-					eachExpl(func(e *Explod) { e.shadow[1] = g })
-					if len(exp) > 2 {
-						b := exp[2].evalI(c)
-						eachExpl(func(e *Explod) { e.shadow[2] = b })
-					}
-				}
-			case explod_removeongethit:
-				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.removeongethit = t })
-			case explod_trans:
-				s, d := exp[0].evalI(c), exp[1].evalI(c)
-				if len(exp) >= 3 {
-					s, d = Max(0, Min(255, s)), Max(0, Min(255, d))
-					if len(exp) >= 4 {
-						d = ^d
-					} else if s == 1 && d == 255 {
-						s = 0
-					}
-				}
-				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
-			case explod_anim:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-					if anim != nil && exp[0].evalB(c) { // ffx
-						anim.start_scale[0] /= crun.localscl
-						anim.start_scale[1] /= crun.localscl
-					}
-					eachExpl(func(e *Explod) { e.anim = anim })
-				}
-			case explod_angle:
-				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.angle = a })
-			case explod_yangle:
-				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.yangle = ya })
-			case explod_xangle:
-				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.xangle = xa })
-			case explod_ignorehitpause:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					ihp := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
-				}
-			case explod_bindid:
-				bId := exp[0].evalI(c)
-				if bId == -1 {
-					bId = crun.id
-				}
-				eachExpl(func(e *Explod) { e.bindId = bId })
-			}
-		}
-		return true
-	})
-	return false
-}
-
-type gameMakeAnim StateControllerBase
-
-const (
-	gameMakeAnim_pos byte = iota
-	gameMakeAnim_random
-	gameMakeAnim_under
-	gameMakeAnim_anim
-	gameMakeAnim_redirectid
-)
-
-func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
-	crun := c
-	var e *Explod
-	var i int
-	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		if e == nil {
-			if id == gameMakeAnim_redirectid {
-				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-					crun = rid
-					e, i = crun.newExplod()
-					if e == nil {
-						return false
-					}
-					e.id = 0
-				} else {
-					return false
-				}
-			} else {
-				e, i = crun.newExplod()
-				if e == nil {
-					return false
-				}
-				e.id = 0
-			}
-		}
-		switch id {
-		case gameMakeAnim_pos:
-			e.offset[0] = exp[0].evalF(c) * c.localscl / crun.localscl
-			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * c.localscl / crun.localscl
-			}
-		case gameMakeAnim_random:
-			rndx := exp[0].evalF(c)
-			e.offset[0] += RandF(-rndx, rndx) * c.localscl / crun.localscl
-			if len(exp) > 1 {
-				rndy := exp[1].evalF(c)
-				e.offset[1] += RandF(-rndy, rndy) * c.localscl / crun.localscl
-			}
-		case gameMakeAnim_under:
-			e.ontop = !exp[0].evalB(c)
-		case gameMakeAnim_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
-		}
-		return true
-	})
-	if e == nil {
-		return false
-	}
-	e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
-	e.offset[0] -= float32(crun.size.draw.offset[0])
-	e.offset[1] -= float32(crun.size.draw.offset[1])
-	e.setPos(crun)
-	crun.insertExplod(i)
-	return false
-}
-
 type posSet StateControllerBase
 
 const (
@@ -3546,6 +3062,500 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
 		return true
 	})
+	return false
+}
+
+type explod StateControllerBase
+
+const (
+	explod_ownpal byte = iota + palFX_last + 1
+	explod_remappal
+	explod_id
+	explod_facing
+	explod_vfacing
+	explod_pos
+	explod_random
+	explod_postype
+	explod_velocity
+	explod_accel
+	explod_scale
+	explod_bindtime
+	explod_removetime
+	explod_supermove
+	explod_supermovetime
+	explod_pausemovetime
+	explod_sprpriority
+	explod_ontop
+	explod_strictontop
+	explod_under
+	explod_shadow
+	explod_removeongethit
+	explod_trans
+	explod_anim
+	explod_angle
+	explod_yangle
+	explod_xangle
+	explod_ignorehitpause
+	explod_bindid
+	explod_space
+	explod_redirectid
+)
+
+func (sc explod) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lclscround float32 = 1.0
+	var e *Explod
+	var i int
+	//e, i := crun.newExplod()
+	rp := [...]int32{-1, 0}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if e == nil {
+			if id == explod_redirectid {
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+					lclscround = c.localscl / crun.localscl
+					e, i = crun.newExplod()
+					if e == nil {
+						return false
+					}
+					e.id = 0
+					if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+						e.postype = PT_N
+					}
+				} else {
+					return false
+				}
+			} else {
+				e, i = crun.newExplod()
+				if e == nil {
+					return false
+				}
+				e.id = 0
+				if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+					e.postype = PT_N
+				}
+			}
+		}
+		switch id {
+		case explod_ownpal:
+			e.ownpal = exp[0].evalB(c)
+		case explod_remappal:
+			rp[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c)
+			}
+		case explod_id:
+			e.id = Max(0, exp[0].evalI(c))
+		case explod_facing:
+			if exp[0].evalI(c) < 0 {
+				e.relativef = -1
+			} else {
+				e.relativef = 1
+			}
+		case explod_vfacing:
+			if exp[0].evalI(c) < 0 {
+				e.vfacing = -1
+			} else {
+				e.vfacing = 1
+			}
+		case explod_pos:
+			e.offset[0] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				e.offset[1] = exp[1].evalF(c) * lclscround
+			}
+		case explod_random:
+			rndx := exp[0].evalF(c) * lclscround
+			e.offset[0] += RandF(-rndx, rndx)
+			if len(exp) > 1 {
+				rndy := exp[1].evalF(c) * lclscround
+				e.offset[1] += RandF(-rndy, rndy)
+			}
+		case explod_postype:
+			e.postype = PosType(exp[0].evalI(c))
+		case explod_space:
+			e.space = Space(exp[0].evalI(c))
+		case explod_velocity:
+			e.velocity[0] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				e.velocity[1] = exp[1].evalF(c) * lclscround
+			}
+		case explod_accel:
+			e.accel[0] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				e.accel[1] = exp[1].evalF(c) * lclscround
+			}
+		case explod_scale:
+			e.scale[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				e.scale[1] = exp[1].evalF(c)
+			}
+		case explod_bindtime:
+			e.bindtime = exp[0].evalI(c)
+		case explod_removetime:
+			e.removetime = exp[0].evalI(c)
+		case explod_supermove:
+			if exp[0].evalB(c) {
+				e.supermovetime = -1
+			} else {
+				e.supermovetime = 0
+			}
+		case explod_supermovetime:
+			e.supermovetime = exp[0].evalI(c)
+		case explod_pausemovetime:
+			e.pausemovetime = exp[0].evalI(c)
+		case explod_sprpriority:
+			e.sprpriority = exp[0].evalI(c)
+		case explod_ontop:
+			e.ontop = exp[0].evalB(c)
+		case explod_strictontop:
+			if e.ontop {
+				e.sprpriority = 0
+			}
+		case explod_under:
+			if !e.ontop {
+				e.under = exp[0].evalB(c)
+			}
+		case explod_shadow:
+			e.shadow[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				e.shadow[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					e.shadow[2] = exp[2].evalI(c)
+				}
+			}
+		case explod_removeongethit:
+			e.removeongethit = exp[0].evalB(c)
+		case explod_trans:
+			e.alpha[0] = exp[0].evalI(c)
+			e.alpha[1] = exp[1].evalI(c)
+			if len(exp) >= 3 {
+				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
+				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
+				if len(exp) >= 4 {
+					e.alpha[1] = ^e.alpha[1]
+				} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
+					e.alpha[0] = 0
+				}
+			}
+		case explod_anim:
+			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			if e.anim != nil && exp[0].evalB(c) { // ffx
+				e.anim.start_scale[0] /= crun.localscl
+				e.anim.start_scale[1] /= crun.localscl
+			}
+		case explod_angle:
+			e.angle = exp[0].evalF(c)
+		case explod_yangle:
+			e.yangle = exp[0].evalF(c)
+		case explod_xangle:
+			e.xangle = exp[0].evalF(c)
+		case explod_ignorehitpause:
+			e.ignorehitpause = exp[0].evalB(c)
+		case explod_bindid:
+			bId := exp[0].evalI(c)
+			if bId == -1 {
+				bId = crun.id
+			}
+			e.bindId = bId
+		default:
+			if !palFX(sc).runSub(c, &e.palfxdef, id, exp) {
+				return false
+			}
+		}
+		return true
+	})
+	if e == nil {
+		return false
+	}
+	if c.minus == -2 || c.minus == -4 { //TODO: isn't this supposed to check crun instead of c?
+		e.localscl = (320 / float32(crun.localcoord))
+	} else {
+		e.localscl = crun.localscl
+	}
+	e.setPos(crun)
+	crun.insertExplodEx(i, rp)
+	return false
+}
+
+type modifyExplod explod
+
+func (sc modifyExplod) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lclscround float32 = 1.0
+	eid := int32(-1)
+	var expls []*Explod
+	rp := [...]int32{-1, 0}
+	eachExpl := func(f func(e *Explod)) {
+		for _, e := range expls {
+			f(e)
+		}
+	}
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case explod_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				lclscround = c.localscl / crun.localscl
+			} else {
+				return false
+			}
+		case explod_remappal:
+			rp[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				rp[1] = exp[1].evalI(c)
+			}
+		case explod_id:
+			eid = exp[0].evalI(c)
+		default:
+			if len(expls) == 0 {
+				expls = crun.getExplods(eid)
+				if len(expls) == 0 {
+					return false
+				}
+				eachExpl(func(e *Explod) {
+					if e.ownpal {
+						crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
+					}
+				})
+			}
+			switch id {
+			case explod_facing:
+				if exp[0].evalI(c) < 0 {
+					eachExpl(func(e *Explod) { e.relativef = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.relativef = 1 })
+				}
+			case explod_vfacing:
+				if exp[0].evalI(c) < 0 {
+					eachExpl(func(e *Explod) { e.vfacing = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.vfacing = 1 })
+				}
+			case explod_pos:
+				x := exp[0].evalF(c) * lclscround
+				eachExpl(func(e *Explod) { e.offset[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c) * lclscround
+					eachExpl(func(e *Explod) { e.offset[1] = y })
+				}
+			case explod_random:
+				rndx := exp[0].evalF(c) * lclscround
+				rndx = RandF(-rndx, rndx)
+				eachExpl(func(e *Explod) { e.offset[0] += rndx })
+				if len(exp) > 1 {
+					rndy := exp[1].evalF(c) * lclscround
+					rndy = RandF(-rndy, rndy)
+					eachExpl(func(e *Explod) { e.offset[1] += rndy })
+				}
+			case explod_postype:
+				pt := PosType(exp[0].evalI(c))
+				eachExpl(func(e *Explod) {
+					e.postype = pt
+					e.setPos(c)
+				})
+			case explod_space:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					sp := Space(exp[0].evalI(c))
+					eachExpl(func(e *Explod) { e.space = sp })
+				}
+			case explod_velocity:
+				x := exp[0].evalF(c) * lclscround
+				eachExpl(func(e *Explod) { e.velocity[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c) * lclscround
+					eachExpl(func(e *Explod) { e.velocity[1] = y })
+				}
+			case explod_accel:
+				x := exp[0].evalF(c) * lclscround
+				eachExpl(func(e *Explod) { e.accel[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c) * lclscround
+					eachExpl(func(e *Explod) { e.accel[1] = y })
+				}
+			case explod_scale:
+				x := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.scale[0] = x })
+				if len(exp) > 1 {
+					y := exp[1].evalF(c)
+					eachExpl(func(e *Explod) { e.scale[1] = y })
+				}
+			case explod_bindtime:
+				t := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.bindtime = t })
+			case explod_removetime:
+				t := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.removetime = t })
+			case explod_supermove:
+				if exp[0].evalB(c) {
+					eachExpl(func(e *Explod) { e.supermovetime = -1 })
+				} else {
+					eachExpl(func(e *Explod) { e.supermovetime = 0 })
+				}
+			case explod_supermovetime:
+				t := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.supermovetime = t })
+			case explod_pausemovetime:
+				t := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.pausemovetime = t })
+			case explod_sprpriority:
+				t := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.sprpriority = t })
+			case explod_ontop:
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					e.ontop = t
+					if e.ontop && e.under {
+						e.under = false
+					}
+				})
+			case explod_strictontop:
+				eachExpl(func(e *Explod) {
+					if e.ontop {
+						e.sprpriority = 0
+					}
+				})
+			case explod_under:
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					e.under = t
+					if e.under && e.ontop {
+						e.ontop = false
+					}
+				})
+			case explod_shadow:
+				r := exp[0].evalI(c)
+				eachExpl(func(e *Explod) { e.shadow[0] = r })
+				if len(exp) > 1 {
+					g := exp[1].evalI(c)
+					eachExpl(func(e *Explod) { e.shadow[1] = g })
+					if len(exp) > 2 {
+						b := exp[2].evalI(c)
+						eachExpl(func(e *Explod) { e.shadow[2] = b })
+					}
+				}
+			case explod_removeongethit:
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.removeongethit = t })
+			case explod_trans:
+				s, d := exp[0].evalI(c), exp[1].evalI(c)
+				if len(exp) >= 3 {
+					s, d = Max(0, Min(255, s)), Max(0, Min(255, d))
+					if len(exp) >= 4 {
+						d = ^d
+					} else if s == 1 && d == 255 {
+						s = 0
+					}
+				}
+				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
+			case explod_anim:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+					if anim != nil && exp[0].evalB(c) { // ffx
+						anim.start_scale[0] /= crun.localscl
+						anim.start_scale[1] /= crun.localscl
+					}
+					eachExpl(func(e *Explod) { e.anim = anim })
+				}
+			case explod_angle:
+				a := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.angle = a })
+			case explod_yangle:
+				ya := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.yangle = ya })
+			case explod_xangle:
+				xa := exp[0].evalF(c)
+				eachExpl(func(e *Explod) { e.xangle = xa })
+			case explod_ignorehitpause:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					ihp := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+				}
+			case explod_bindid:
+				bId := exp[0].evalI(c)
+				if bId == -1 {
+					bId = crun.id
+				}
+				eachExpl(func(e *Explod) { e.bindId = bId })
+			default:
+				eachExpl(func(e *Explod) {
+					if e.ownpal {
+						palFX(sc).runSub(c, &e.palfx.PalFXDef, id, exp)
+					}
+				})
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type gameMakeAnim StateControllerBase
+
+const (
+	gameMakeAnim_pos byte = iota
+	gameMakeAnim_random
+	gameMakeAnim_under
+	gameMakeAnim_anim
+	gameMakeAnim_redirectid
+)
+
+func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
+	crun := c
+	var e *Explod
+	var i int
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if e == nil {
+			if id == gameMakeAnim_redirectid {
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+					e, i = crun.newExplod()
+					if e == nil {
+						return false
+					}
+					e.id = 0
+				} else {
+					return false
+				}
+			} else {
+				e, i = crun.newExplod()
+				if e == nil {
+					return false
+				}
+				e.id = 0
+			}
+		}
+		switch id {
+		case gameMakeAnim_pos:
+			e.offset[0] = exp[0].evalF(c) * c.localscl / crun.localscl
+			if len(exp) > 1 {
+				e.offset[1] = exp[1].evalF(c) * c.localscl / crun.localscl
+			}
+		case gameMakeAnim_random:
+			rndx := exp[0].evalF(c)
+			e.offset[0] += RandF(-rndx, rndx) * c.localscl / crun.localscl
+			if len(exp) > 1 {
+				rndy := exp[1].evalF(c)
+				e.offset[1] += RandF(-rndy, rndy) * c.localscl / crun.localscl
+			}
+		case gameMakeAnim_under:
+			e.ontop = !exp[0].evalB(c)
+		case gameMakeAnim_anim:
+			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
+			if e.anim != nil && exp[0].evalB(c) { // ffx
+				e.anim.start_scale[0] /= crun.localscl
+				e.anim.start_scale[1] /= crun.localscl
+			}
+		}
+		return true
+	})
+	if e == nil {
+		return false
+	}
+	e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
+	e.offset[0] -= float32(crun.size.draw.offset[0])
+	e.offset[1] -= float32(crun.size.draw.offset[1])
+	e.setPos(crun)
+	crun.insertExplod(i)
 	return false
 }
 
