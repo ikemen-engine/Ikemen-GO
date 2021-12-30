@@ -2555,7 +2555,12 @@ motif.files.spr_data = sffNew(motif.files.spr)
 main.f_loadingRefresh()
 motif.files.snd_data = sndNew(motif.files.snd)
 main.f_loadingRefresh()
-motif.files.glyphs_data = sffNew(motif.files.glyphs)
+
+if main.f_fileExists(motif.files.glyphs) then
+	motif.files.glyphs_data = sffNew(motif.files.glyphs)
+else
+	motif.files.glyphs_data = sffNew()
+end
 main.f_loadingRefresh()
 
 --motif background data
