@@ -7,6 +7,20 @@
 # _iksys_trainingButtonJam: 0 - none, 1-9 - a/b/c/x/y/z/s/d/w
 
 #===============================================================================
+# Functions
+#===============================================================================
+[Function fTrainingRecovery(pid)]
+if playerId($pid),ctrl = 0 {
+	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectId: playerId($pid),id}
+} else if playerId($pid),map(_iksys_trainingDummyCounter) >= 60 {
+	lifeSet{value: playerId($pid),lifeMax; redirectId: playerId($pid),id}
+	powerSet{value: playerId($pid),powerMax; redirectId: playerId($pid),id}
+	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectId: playerId($pid),id}
+} else {
+	mapAdd{map: "_iksys_trainingDummyCounter"; value: 1; redirectId: playerId($pid),id}
+}
+
+#===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
 [StateDef -4]
@@ -16,23 +30,26 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 } else if roundState = 0 {
 	# Round start reset
 	powerSet{value: powerMax}
-	powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
+	powerSet{value: playerId(getPlayerId(1)),powerMax; redirectId: playerId(getPlayerId(1)),id}
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
 	mapSet{map: "_iksys_trainingDirection"; value: 0}
 	mapSet{map: "_iksys_trainingAirJumpNum"; value: 0}
 } else if roundState = 2 {
-	assertSpecial{flag: noko}
+	ignoreHitPause{
+		assertSpecial{flag: noko}
+	}
 	# Life and Power recovery
-	if ctrl = 0 {
-		mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
-	} else if map(_iksys_trainingDummyCounter) >= 60 {
-		lifeSet{value: lifeMax}
-		powerSet{value: powerMax}
-		lifeSet{value: enemyNear,lifeMax; redirectId: enemyNear,id}
-		powerSet{value: enemyNear,powerMax; redirectId: enemyNear,id}
-		mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
-	} else {
-		mapAdd{map: "_iksys_trainingDummyCounter"; value: 1}
+	call fTrainingRecovery(getPlayerId(1));
+	call fTrainingRecovery(getPlayerId(2));
+	let n = playerId(getPlayerId(1)),numPartner;
+	if $n >= 1 {
+		call fTrainingRecovery(getPlayerId(3));
+		if $n >= 2 {
+			call fTrainingRecovery(getPlayerId(5));
+			if $n >= 3 {
+				call fTrainingRecovery(getPlayerId(7));
+			}
+		}
 	}
 	# Dummy Control: Cooperative
 	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {
