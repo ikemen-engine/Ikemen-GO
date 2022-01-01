@@ -96,9 +96,6 @@ start.t_makeRoster.survival = function()
 end
 start.t_makeRoster.survivalcoop = start.t_makeRoster.survival
 start.t_makeRoster.netplaysurvivalcoop = start.t_makeRoster.survival
-start.t_makeRoster.bossrush = function()
-	return start.f_unifySettings(main.t_selOptions.bossrushmaxmatches, main.t_bossChars), main.t_bossChars
-end
 
 -- generates roster table
 function start.f_makeRoster(t_ret)
@@ -414,12 +411,10 @@ start.t_sortRanking.timeattack = function(t, a, b) return t[b].time > t[a].time 
 start.t_sortRanking.survival = function(t, a, b) return t[b].win < t[a].win or (t[b].win == t[a].win and t[b].score < t[a].score) end
 start.t_sortRanking.survivalcoop = start.t_sortRanking.survival
 start.t_sortRanking.netplaysurvivalcoop = start.t_sortRanking.survival
-start.t_sortRanking.bossrush = start.t_sortRanking.survival
 
 -- as above but the functions return if game mode should be considered "cleared"
 start.t_clearCondition = {
 	arcade = function() return winnerteam() == 1 end,
-	bossrush = function() return winnerteam() == 1 end,
 	netplaysurvivalcoop = function() return winnerteam() == 1 or start.winCnt >= main.resultsTable.roundstowin end,
 	netplayteamcoop = function() return winnerteam() == 1 end,
 	survival = function() return winnerteam() == 1 or start.winCnt >= main.resultsTable.roundstowin end,
@@ -2982,7 +2977,6 @@ end
 local txt_winscreen = main.f_createTextImg(motif.win_screen, 'wintext')
 local txt_resultSurvival = main.f_createTextImg(motif.survival_results_screen, 'winstext')
 local txt_resultTimeAttack = main.f_createTextImg(motif.time_attack_results_screen, 'winstext')
-local txt_resultBossRush = main.f_createTextImg(motif.boss_rush_results_screen, 'winstext')
 
 local function f_drawTextAtLayerNo(t, prefix, t_text, txt, layerNo)
 	if t[prefix .. '_layerno'] ~= layerNo then
@@ -3034,15 +3028,6 @@ start.t_resultData.arcade = function()
 end
 start.t_resultData.teamcoop = start.t_resultData.arcade
 start.t_resultData.netplayteamcoop = start.t_resultData.arcade
-start.t_resultData.bossrush = function()
-	if winnerteam() ~= 1 or matchno() < #start.t_roster or motif.boss_rush_results_screen.enabled == 0 then
-		return false
-	end
-	start.t_result.resultText = main.f_extractText(main.resultsTable[start.t_result.prefix .. '_text'])
-	start.t_result.txt = txt_resultBossRush
-	start.t_result.bgdef = 'bossrushresultsbgdef'
-	return true
-end
 start.t_resultData.survival = function()
 	if winnerteam() == 1 and (matchno() < #start.t_roster or (start.t_roster[matchno() + 1] ~= nil and start.t_roster[matchno() + 1][1] == -1)) or motif.survival_results_screen.enabled == 0 then
 		return false

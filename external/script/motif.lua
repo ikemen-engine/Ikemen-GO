@@ -206,7 +206,6 @@ local motif =
 		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
 		--menu_itemname_survival = 'SURVIVAL',
 		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
-		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
 		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
 		--menu_itemname_watch = 'CPU MATCH',
 		--menu_itemname_randomtest = 'RANDOMTEST', --Ikemen feature
@@ -346,7 +345,6 @@ local motif =
 		title_timeattack_text = 'Time Attack', --Ikemen feature
 		title_survival_text = 'Survival', --Ikemen feature
 		title_survivalcoop_text = 'Survival Cooperative', --Ikemen feature
-		title_bossrush_text = 'Boss Rush', --Ikemen feature
 		title_bonus_text = 'Bonus', --Ikemen feature
 		title_watch_text = 'Watch Mode', --Ikemen feature
 		--title_replay_text = 'Replay', --Ikemen feature
@@ -1063,35 +1061,6 @@ local motif =
 		p2_teammate_win_state = {}, --Ikemen feature
 	},
 	timeattackresultsbgdef =
-	{
-		spr = '', --Ikemen feature
-	},
-	boss_rush_results_screen =
-	{
-		enabled = 1, --Ikemen feature
-		sounds_enabled = 1, --Ikemen feature
-		fadein_time = 0, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 64, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		show_time = 300, --Ikemen feature
-		winstext_text = 'Congratulations!', --Ikemen feature
-		winstext_offset = {159, 70}, --Ikemen feature
-		winstext_font = {'f-6x9.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		winstext_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_displaytime = 0, --Ikemen feature
-		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state = {180}, --Ikemen feature
-		p2_state = {}, --Ikemen feature
-		p1_teammate_state = {}, --Ikemen feature
-		p2_teammate_state = {}, --Ikemen feature
-	},
-	bossrushresultsbgdef =
 	{
 		spr = '', --Ikemen feature
 	},
@@ -2582,7 +2551,7 @@ for k, _ in pairs(motif) do
 end
 
 --results screens reuse winbgdef values if not defined
-for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
+for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef'} do
 	if t[v] == nil then
 		motif[v] = motif.winbgdef
 	end
@@ -2648,7 +2617,7 @@ function motif.f_loadSprData(t, v)
 end
 
 --creates fadein/fadeout anim data
-for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
+for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
 		motif.f_loadSprData(motif[v], {s = 'fadein_'})
 	end

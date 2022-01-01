@@ -379,12 +379,15 @@ main.font_def = {}
 -- * hook.add(list, name, function): Adds a function to a hook list with a name.
 --   It will replace anything in the list with the same name.
 -- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
--- Currently there are only few hooks available by default, which are in the
--- commonlua loop() function. These are:
--- * loop: global.lua 'loop' function start
+-- Currently there are only few hooks available by default:
+-- * loop: global.lua 'loop' function start (called by CommonLua)
 -- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
+-- * main.f_default: main.lua 'f_default' function
 -- * main.t_itemname: main.lua table entries (modes configuration)
 -- * launchFight: start.lua 'launchFight' function (right before match starts)
+-- More entry points may be added in future - let us know if your external
+-- module needs to hook code in place where it's not allowed yet.
+
 hook = {
 	lists = {}
 }
@@ -1761,13 +1764,6 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_orderSurvival[num] = {}
 		end
 		table.insert(main.t_orderSurvival[num], row - 1)
-		--boss rush mode
-		if main.t_selChars[row].boss ~= nil and main.t_selChars[row].boss == 1 then
-			if main.t_bossChars[main.t_selChars[row].order] == nil then
-				main.t_bossChars[main.t_selChars[row].order] = {}
-			end
-			table.insert(main.t_bossChars[main.t_selChars[row].order], row - 1)
-		end
 		--bonus games mode
 		if main.t_selChars[row].bonus ~= nil and main.t_selChars[row].bonus == 1 then
 			table.insert(main.t_bonusChars, row - 1)
@@ -1911,7 +1907,6 @@ main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
 main.t_orderChars = {}
 main.t_orderStages = {}
 main.t_orderSurvival = {}
-main.t_bossChars = {}
 main.t_bonusChars = {}
 main.t_stageDef = {['random'] = 0}
 main.t_charDef = {}
@@ -2166,14 +2161,6 @@ if main.t_selOptions.arcaderatiomatches == nil then
 		{rmin = 1, rmax = 2, order = 3},
 	}
 end
-if main.t_selOptions.bossrushmaxmatches == nil or #main.t_selOptions.bossrushmaxmatches == 0 then
-	local size = 1
-	for k, _ in pairs(main.t_bossChars) do if k > size then size = k end end
-	main.t_selOptions.bossrushmaxmatches = main.f_tableArray(size, 0)
-	for k, v in pairs(main.t_bossChars) do
-		main.t_selOptions.bossrushmaxmatches[k] = #v
-	end
-end
 
 --uppercase title
 function main.f_itemnameUpper(title, uppercase)
@@ -2328,6 +2315,7 @@ function main.f_default()
 	main.txt_mainSelect:update({text = ''})
 	main.f_cmdBufReset()
 	demoFrameCounter = 0
+	hook.run("main.f_default")
 end
 
 -- Associative elements table storing functions controlling behaviour of each
@@ -2405,45 +2393,6 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.txt_mainSelect:update({text = motif.select_info.title_bonus_text})
 		setGameMode('bonus')
-		hook.run("main.t_itemname")
-		return start.f_selectMode
-	end,
-	--BOSS RUSH
-	['bossrush'] = function()
-		main.f_playerInput(main.playerInput, 1)
-		main.t_pIn[2] = 1
-		main.charparam.ai = true
-		main.charparam.music = true
-		main.charparam.rounds = true
-		main.charparam.single = true
-		main.charparam.stage = true
-		main.charparam.time = true
-		main.elimination = true
-		main.exitSelect = true
-		main.hiscoreScreen = true
-		--main.lifebar.p1score = true
-		--main.lifebar.p2aiLevel = true
-		main.makeRoster = true
-		main.orderSelect[1] = true
-		main.orderSelect[2] = true
-		main.rankingCondition = true
-		main.resultsTable = motif.boss_rush_results_screen
-		main.storyboard.credits = true
-		main.storyboard.gameover = true
-		main.teamMenu[1].ratio = true
-		main.teamMenu[1].simul = true
-		main.teamMenu[1].single = true
-		main.teamMenu[1].tag = true
-		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
-		main.teamMenu[2].simul = true
-		main.teamMenu[2].single = true
-		main.teamMenu[2].tag = true
-		main.teamMenu[2].turns = true
-		main.versusScreen = true
-		main.versusMatchNo = true
-		main.txt_mainSelect:update({text = motif.select_info.title_bossrush_text})
-		setGameMode('bossrush')
 		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
@@ -3183,8 +3132,6 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
 			break
 		elseif t_skipGroup[c] then --named item but inside a group without displayname
 			break
-		elseif c == 'bossrush' and main.f_tableLength(main.t_bossChars) == 0 then --skip boss rush mode if there are no characters with boss param set to 1
-			break
 		elseif c == 'bonusgames' and #main.t_bonusChars == 0 then --skip bonus mode if there are no characters with bonus param set to 1
 			t_skipGroup[c] = true
 			break
@@ -3435,7 +3382,6 @@ end
 --hiscore rendering
 main.t_hiscoreData = {
 	arcade = {mode = 'arcade', data = 'score', title = motif.select_info.title_arcade_text},
-	bossrush = {mode = 'bossrush', data = 'score', title = motif.select_info.title_bossrush_text},
 	survival = {mode = 'survival', data = 'win', title = motif.select_info.title_survival_text},
 	survivalcoop = {mode = 'survivalcoop', data = 'win', title = motif.select_info.title_survivalcoop_text},
 	teamcoop = {mode = 'teamcoop', data = 'score', title = motif.select_info.title_teamcoop_text},
@@ -4080,7 +4026,6 @@ if main.debugLog then
 	main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
 	main.f_printTable(main.t_orderSurvival, "debug/t_orderSurvival.txt")
 	main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt")
-	main.f_printTable(main.t_bossChars, "debug/t_bossChars.txt")
 	main.f_printTable(main.t_bonusChars, "debug/t_bonusChars.txt")
 	main.f_printTable(main.t_stageDef, "debug/t_stageDef.txt")
 	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
