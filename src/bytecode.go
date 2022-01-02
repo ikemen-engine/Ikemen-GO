@@ -3264,9 +3264,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 			e.bindId = bId
 		default:
-			if !palFX(sc).runSub(c, &e.palfxdef, id, exp) {
-				return false
-			}
+			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 		}
 		return true
 	})
