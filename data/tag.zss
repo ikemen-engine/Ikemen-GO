@@ -245,6 +245,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	} else {
 		mapSet{map: "_iksys_tagIntroFlag"; value: 0}
 	}
+	mapSet{map: "_iksys_tagSwitchCooldown"; value: 0}
 } else if map(_iksys_tagActive) = 1 {
 	if roundState = 4 {
 		mapSet{map: "_iksys_tagActive"; value: 0}
@@ -260,8 +261,11 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		}
 		# active player
 		if playerNo = teamLeader {
+			# delay next check if cooldown is active
+			if map(_iksys_tagSwitchCooldown) > 0 {
+				mapAdd{map: "_iksys_tagSwitchCooldown"; value: -1}
 			# not being hit; standing idle or at least on the ground
-			if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
+			} else if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
 				# last active player has left the screen or died
 				if map(_iksys_tagLastId) = 0
 					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
@@ -285,6 +289,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 					}
 					# having control, command buffered, partner standby
 					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
+						mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 						mapSet{map: "_iksys_tagPartnerId"; value: 0}
 						lifebarAction{spr: const(MsgPartnerChange), 0}
 						tagOut{}
@@ -321,9 +326,10 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		# bring next team member
 		let partnerId = call fTagGetPartnerId(1);
 		if $partnerId > 0 {
+			mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 			lifebarAction{spr: const(MsgPartnerChange), 0}
-			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
 			tagOut{}
+			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
 		}
 	}
 	# Red Life regeneration
