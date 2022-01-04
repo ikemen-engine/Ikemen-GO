@@ -1511,8 +1511,8 @@ func (s *System) draw(x, y, scl float32) {
 		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
 	if s.envcol_time == 0 {
+		c := uint32(0)
 		if s.sf(GSF_nobg) {
-			c := uint32(0)
 			if s.allPalFX.enable {
 				var rgb [3]int32
 				if s.allPalFX.eInvertall {
@@ -1528,6 +1528,9 @@ func (s *System) draw(x, y, scl float32) {
 		} else {
 			if s.stage.debugbg {
 				FillRect(s.scrrect, 0xff00ff, 0xff)
+			} else {
+				c = uint32(s.stage.bgclearcolor[2]&0xff | s.stage.bgclearcolor[1]&0xff<<8 | s.stage.bgclearcolor[0]&0xff<<16)
+				FillRect(s.scrrect, c, 0xff)
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}

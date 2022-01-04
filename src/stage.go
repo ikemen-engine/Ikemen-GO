@@ -597,6 +597,7 @@ type Stage struct {
 	hires           bool
 	resetbg         bool
 	debugbg         bool
+	bgclearcolor    [3]int32
 	localscl        float32
 	scale           [2]float32
 	bgmratiolife    int32
@@ -816,6 +817,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			return nil, err
 		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
+		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
