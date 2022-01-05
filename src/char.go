@@ -1660,7 +1660,7 @@ type Char struct {
 	dialogue              []string
 	immortal              bool
 	kovelocity            bool
-	preserve              bool
+	preserve              int32
 	defaultHitScale       [3]*HitScale
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
@@ -1754,6 +1754,10 @@ func (c *Char) clear1() {
 	c.pushed = false
 	c.atktmp, c.hittmp, c.acttmp, c.minus = 0, 0, 0, 2
 	c.winquote = -1
+	c.inheritJuggle = 0
+	c.immortal = false
+	c.kovelocity = false
+	c.preserve = 0
 }
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
@@ -3247,6 +3251,7 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	return true
 }
 func (c *Char) newHelper() (h *Char) {
+	// If any existing helper entries are valid for overwriting, use that one
 	i := int32(0)
 	for ; int(i) < len(sys.chars[c.playerNo]); i++ {
 		if sys.chars[c.playerNo][i].helperIndex < 0 {
@@ -3255,6 +3260,7 @@ func (c *Char) newHelper() (h *Char) {
 			break
 		}
 	}
+	// Otherwise appends to the end
 	if int(i) >= len(sys.chars[c.playerNo]) {
 		if i >= sys.helperMax {
 			return
@@ -5795,6 +5801,28 @@ func (cl *CharList) add(c *Char) {
 		cl.drawOrder = append(cl.drawOrder, c)
 	}
 	cl.idMap[c.id] = c
+}
+func (cl *CharList) replace(dc *Char, pn int, idx int32) bool {
+	var ok bool
+	// Replace run order
+	for i, c := range cl.runOrder {
+		if c.playerNo == pn && c.helperIndex == idx {
+			cl.runOrder[i] = dc
+			ok = true
+			break
+		}
+	}
+	if ok {
+		// Replace draw order
+		for i, c := range cl.drawOrder {
+			if c.playerNo == pn && c.helperIndex == idx {
+				cl.drawOrder[i] = dc
+				break
+			}
+		}
+		cl.idMap[dc.id] = dc
+	}
+	return ok
 }
 func (cl *CharList) delete(dc *Char) {
 	for i, c := range cl.runOrder {

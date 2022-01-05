@@ -832,27 +832,51 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Reset and setup characters
-				sys.charList.clear()
+				if sys.round == 1 {
+					sys.charList.clear()
+				}
+				nextId := sys.helperMax
 				for i := 0; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := 1; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i, c := range sys.chars {
 					if len(c) > 0 {
 						p[i] = c[0]
-						sys.charList.add(c[0])
-						if sys.roundsExisted[i&1] == 0 {
+						if sys.round == 1 {
+							sys.charList.add(c[0])
+						} else if c[0].roundsExisted() == 0 {
+							if !sys.charList.replace(c[0], i, 0) {
+								panic(fmt.Errorf("failed to replace player: %v", i))
+							}
+						}
+						if c[0].roundsExisted() == 0 {
 							c[0].loadPallet()
 						}
 						for j, cj := range sys.chars {
