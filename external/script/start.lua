@@ -1264,7 +1264,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			end
 		end
 	end
-	if main.f_btnPalNo(main.t_cmd[cmd]) == 0 or (t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect') then
+	if main.f_btnPalNo(cmd) == 0 or (t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect') then
 		return false
 	end
 	return true
@@ -1423,6 +1423,8 @@ function start.f_game(lua)
 	main.t_pIn[2] = 2
 	if lua ~= '' then commonLuaInsert(lua) end
 	local winner, tbl = game()
+	main.f_restoreInput()
+	main.f_playBGM(true)
 	if lua ~= '' then commonLuaDelete(lua) end
 	if gameend() then
 		clearColor(0, 0, 0)
@@ -1613,10 +1615,10 @@ function start.f_selectReset(hardReset)
 			debugflag = {false, false},
 		}
 		start.t_roster = {}
+		start.reset = true
 	end
 	t_recordText = start.f_getRecordText()
 	menu.movelistChar = 1
-	start.reset = true
 end
 
 function start.f_selectChallenger()
@@ -1632,7 +1634,7 @@ function start.f_selectChallenger()
 	--start challenger match
 	main.f_default()
 	main.f_playerInput(p1cmd, 1)
-	main.f_playerInput(p2cmd, 2)
+	remapInput(2, p2cmd)
 	main.t_itemname.versus()
 	start.f_selectReset(false)
 	if not start.f_selectScreen() then
@@ -1642,8 +1644,7 @@ function start.f_selectChallenger()
 	local ok = launchFight{challenger = true}
 	--restore values
 	main.f_default()
-	main.f_playerInput(1, p1cmd) --one sided remap
-	main.playerInput = p1cmd --main.f_playerInput called via main.t_itemname.arcade()
+	main.playerInput = p1cmd -- main.f_playerInput called via main.t_itemname.arcade()
 	main.t_itemname.arcade()
 	if not ok then
 		return false
@@ -2622,7 +2623,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
 				local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
 				--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
-				start.p[side].t_selTemp[member].pal = main.f_btnPalNo(main.t_cmd[cmd])
+				start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 				if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 					start.p[side].t_selTemp[member].pal = 1
 				end
@@ -2951,6 +2952,7 @@ end
 
 --loading loop called after versus screen is finished
 function start.f_selectLoading()
+	clearAllSound()
 	for side = 1, 2 do
 		for _, v in ipairs(start.p[side].t_selected) do
 			if not v.loading then

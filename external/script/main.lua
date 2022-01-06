@@ -132,11 +132,11 @@ function main.f_cmdBufReset(pn)
 end
 
 --returns value depending on button pressed (a = 1; a + start = 7 etc.)
-function main.f_btnPalNo(cmd)
+function main.f_btnPalNo(p)
 	local s = 0
-	if commandGetState(cmd, '/s') then s = 6 end
+	if commandGetState(main.t_cmd[p], '/s') then s = 6 end
 	for i, k in pairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
-		if commandGetState(cmd, k) then return i + s end
+		if commandGetState(main.t_cmd[p], k) then return i + s end
 	end
 	return 0
 end
@@ -144,15 +144,15 @@ end
 --return bool based on command input
 main.playerInput = 1
 function main.f_input(p, b)
-	for i = 1, #p do
-		for j = 1, #b do
-			if b[j] == 'pal' then
-				if main.f_btnPalNo(main.t_cmd[p[i]]) > 0 then
-					main.playerInput = i
+	for _, pn in ipairs(p) do
+		for _, btn in ipairs(b) do
+			if btn == 'pal' then
+				if main.f_btnPalNo(pn) > 0 then
+					main.playerInput = pn
 					return true
 				end
-			elseif commandGetState(main.t_cmd[p[i]], b[j]) then
-				main.playerInput = i
+			elseif commandGetState(main.t_cmd[pn], btn) then
+				main.playerInput = pn
 				return true
 			end
 		end
@@ -162,12 +162,24 @@ end
 
 --remap active players input
 function main.f_playerInput(src, dst)
-	if start.challenger == 0 then
-		main.t_remaps[src] = dst
-		remapInput(src, dst)
-	end
+	main.t_remaps[src] = dst
 	main.t_remaps[dst] = src
+	remapInput(src, dst)
 	remapInput(dst, src)
+end
+
+--restore screenpack remapped inputs
+function main.f_restoreInput()
+	if start.challenger > 0 then
+		return
+	end
+	resetRemapInput()
+	for k, v in ipairs(main.t_remaps) do
+		if k ~= v then
+			remapInput(k, v)
+			remapInput(v, k)
+		end
+	end
 end
 
 --return table with key names
@@ -1649,13 +1661,14 @@ end
 function main.f_charParam(t, c)
 	if c:match('%.[Dd][Ee][Ff]$') then --stage
 		c = c:gsub('\\', '/')
-		if t.stage == nil then
-			t.stage = {}
+		if main.f_fileExists(c) then
+			if t.stage == nil then
+				t.stage = {}
+			end
+			table.insert(t.stage, c)
+		else
+			print("Stage doesn't exist: " .. c)
 		end
-		if not main.f_fileExists(c) then
-			panicError("\nStage doesn't exist: " .. c)
-		end
-		table.insert(t.stage, c)
 	elseif c:match('^music') then --musicX / musiclife / musicvictory
 		local bgmvolume, bgmloopstart, bgmloopend = 100, 0, 0
 		c = c:gsub('%s+([0-9%s]+)$', function(m1)
@@ -2348,7 +2361,7 @@ main.t_itemname = {
 		main.storyboard.ending = true
 		main.storyboard.gameover = true
 		main.storyboard.intro = true
-		if t ~= nil and t[item].itemname == 'arcade' then
+		if (t ~= nil and t[item].itemname == 'arcade') or (t == nil and not main.teamarcade) then
 			main.teamMenu[1].single = true
 			main.teamMenu[2].single = true
 			main.txt_mainSelect:update({text = motif.select_info.title_arcade_text})
