@@ -4816,6 +4816,10 @@ func (c *Char) gravity() {
 
 // Updates pos based on multiple factors
 func (c *Char) posUpdate() {
+	var velOff float32
+	if sys.super == 0 {
+		velOff = c.velOff
+	}
 	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
 		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1]))}
 	for i := range nobind {
@@ -4825,12 +4829,12 @@ func (c *Char) posUpdate() {
 	}
 	if c.sf(CSF_posfreeze) {
 		if nobind[0] {
-			c.setPosX(c.oldPos[0] + c.velOff)
+			c.setPosX(c.oldPos[0] + velOff)
 		}
 	} else {
 		// Controls speed
 		if nobind[0] {
-			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + c.velOff)
+			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + velOff)
 		}
 		if nobind[1] {
 			c.setPosY(c.oldPos[1] + c.vel[1])
@@ -4849,9 +4853,11 @@ func (c *Char) posUpdate() {
 			c.gravity()
 		}
 	}
-	c.velOff *= 0.7
-	if AbsF(c.velOff) < 1 {
-		c.velOff = 0
+	if sys.super == 0 {
+		c.velOff *= 0.7
+		if AbsF(c.velOff) < 1 {
+			c.velOff = 0
+		}
 	}
 }
 func (c *Char) addTarget(id int32) {
