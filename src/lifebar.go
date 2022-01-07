@@ -1311,6 +1311,8 @@ type LifeBarCombo struct {
 	counter_time  int32
 	counter_mult  float32
 	text          LbText
+	bg            AnimLayout
+	top           AnimLayout
 	displaytime   int32
 	showspeed     float32
 	hidespeed     float32
@@ -1330,7 +1332,8 @@ func newLifeBarCombo() *LifeBarCombo {
 	return &LifeBarCombo{displaytime: 90, showspeed: 8, hidespeed: 4,
 		counter_time: 7, counter_mult: 1.0 / 20}
 }
-func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCombo {
+func readLifeBarCombo(pre string, is IniSection,
+	sff *Sff, at AnimationTable, f []*Fnt, side int) *LifeBarCombo {
 	co := newLifeBarCombo()
 	is.ReadI32(pre+"pos", &co.pos[0], &co.pos[1])
 	is.ReadF32(pre+"start.x", &co.start_x)
@@ -1355,6 +1358,8 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCom
 	is.ReadI32(pre+"counter.time", &co.counter_time)
 	is.ReadF32(pre+"counter.mult", &co.counter_mult)
 	co.text = *readLbText(pre+"text.", is, "", 2, f, align)
+	co.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
+	co.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	is.ReadI32(pre+"displaytime", &co.displaytime)
 	is.ReadF32(pre+"showspeed", &co.showspeed)
 	co.showspeed = MaxF(1, co.showspeed)
@@ -1364,6 +1369,8 @@ func readLifeBarCombo(pre string, is IniSection, f []*Fnt, side int) *LifeBarCom
 	return co
 }
 func (co *LifeBarCombo) step(combo, fakeCombo, damage int32, percentage float32, dizzy bool) {
+	co.bg.Action()
+	co.top.Action()
 	if fakeCombo > 0 {
 		fakeCombo = co.fakeCombo
 	} else {
@@ -1407,6 +1414,8 @@ func (co *LifeBarCombo) step(combo, fakeCombo, damage int32, percentage float32,
 	co.oldp = percentage
 }
 func (co *LifeBarCombo) reset() {
+	co.bg.Reset()
+	co.top.Reset()
 	co.cur, co.old, co.curd, co.oldd, co.curp, co.oldp, co.resttime = 0, 0, 0, 0, 0, 0, 0
 	co.combo = 0
 	co.fakeCombo = 0
@@ -1432,6 +1441,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 			x -= co.counterX
 		}
 	}
+	co.bg.Draw(x+sys.lifebarOffsetX, float32(co.pos[1]), layerno, sys.lifebarScale)
 	var length float32
 	if co.text.font[0] >= 0 && int(co.text.font[0]) < len(f) && f[co.text.font[0]] != nil {
 		text := strings.Replace(co.text.text, "%i", fmt.Sprintf("%v", co.cur), 1)
@@ -1469,6 +1479,7 @@ func (co *LifeBarCombo) draw(layerno int16, f []*Fnt, side int) {
 		co.counter.lay.DrawText((x-length+sys.lifebarOffsetX)/z, float32(co.pos[1])/z, z*sys.lifebarScale, layerno,
 			counter, f[co.counter.font[0]], co.counter.font[1], co.counter.font[2], co.counter.palfx, co.counter.frgba, false)
 	}
+	co.top.Draw(x+sys.lifebarOffsetX, float32(co.pos[1]), layerno, sys.lifebarScale)
 }
 
 type LbMsg struct {
@@ -3310,16 +3321,16 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		case "combo":
 			if l.co[0] == nil {
 				if _, ok := is["team1.pos"]; ok {
-					l.co[0] = readLifeBarCombo("team1.", is, l.fnt[:], 0)
+					l.co[0] = readLifeBarCombo("team1.", is, l.sff, l.at, l.fnt[:], 0)
 				} else {
-					l.co[0] = readLifeBarCombo("", is, l.fnt[:], 0)
+					l.co[0] = readLifeBarCombo("", is, l.sff, l.at, l.fnt[:], 0)
 				}
 			}
 			if l.co[1] == nil {
 				if _, ok := is["team2.pos"]; ok {
-					l.co[1] = readLifeBarCombo("team2.", is, l.fnt[:], 1)
+					l.co[1] = readLifeBarCombo("team2.", is, l.sff, l.at, l.fnt[:], 1)
 				} else {
-					l.co[1] = readLifeBarCombo("", is, l.fnt[:], 1)
+					l.co[1] = readLifeBarCombo("", is, l.sff, l.at, l.fnt[:], 1)
 				}
 			}
 		case "action":
