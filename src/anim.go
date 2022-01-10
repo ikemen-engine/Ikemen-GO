@@ -736,8 +736,15 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 	} else {
 		var pal [256]uint32
 		if color != 0 || alpha > 0 {
+			paltemp := a.spr.paltemp
+			if len(paltemp) == 0 {
+				paltemp = a.spr.GetPal(&a.sff.palList)
+			}
 			for i := range pal {
-				pal[i] = color | 0xff000000
+				// Skip transparent colors
+				if len(paltemp) > i && paltemp[i] != 0 {
+					pal[i] = color | 0xff000000
+				}
 			}
 		}
 		draw = func(trans int32) {
