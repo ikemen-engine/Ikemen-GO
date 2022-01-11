@@ -610,67 +610,44 @@ function start.f_reampPal(ref, num)
 	return start.f_getCharData(ref).pal_keymap[num] or num
 end
 
---returns palette number
+-- returns palette number
 function start.f_selectPal(ref, palno)
-	local t_assignedKeys = {}
+	-- generate table with palette entries already used by this char ref
+	local t_assignedPals = {}
 	for side = 1, 2 do
 		for k, v in pairs(start.p[side].t_selected) do
 			if v.ref == ref then
-				t_assignedKeys[start.p[side].t_selected[k].pal] = ''
+				t_assignedPals[start.p[side].t_selected[k].pal] = true
 			end
 		end
 	end
-	local t = {}
-	--selected palette
+	-- selected palette
 	if palno ~= nil and palno > 0 then
-		t = main.f_tableCopy(start.f_getCharData(ref).pal)
-		if t_assignedKeys[start.f_reampPal(ref, palno)] == nil then
+		if not t_assignedPals[start.f_reampPal(ref, palno)] then
 			return start.f_reampPal(ref, palno)
 		else
-			local wrap = 0
-			for k, v in ipairs(t) do
-				if start.f_reampPal(ref, v) == start.f_reampPal(ref, palno) then
-					wrap = #t - k
-					break
-				end
-			end
-			main.f_tableRotate(t, wrap)
-			for k, v in ipairs(t) do
-				if t_assignedKeys[start.f_reampPal(ref, v)] == nil then
+			for _, v in ipairs(start.f_getCharData(ref).pal) do
+				if not t_assignedPals[start.f_reampPal(ref, v)] then
 					return start.f_reampPal(ref, v)
 				end
 			end
 		end
-	--default palette
+	-- default palette
 	elseif (not main.rotationChars and not config.AIRandomColor) or (main.rotationChars and not config.AISurvivalColor) then
-		t = main.f_tableCopy(start.f_getCharData(ref).pal_defaults)
-		palno = start.f_getCharData(ref).pal_defaults[1]
-		if t_assignedKeys[palno] == nil then
-			return palno
-		else
-			local wrap = 0
-			for k, v in ipairs(t) do
-				if v == palno then
-					wrap = #t - k
-					break
-				end
-			end
-			main.f_tableRotate(t, wrap)
-			for k, v in ipairs(t) do
-				if t_assignedKeys[v] == nil then
-					return v
-				end
+		for _, v in ipairs(start.f_getCharData(ref).pal_defaults) do
+			if not t_assignedPals[start.f_reampPal(ref, v)] then
+				return start.f_reampPal(ref, v)
 			end
 		end
 	end
-	--random palette
+	-- random palette
 	t = main.f_tableCopy(start.f_getCharData(ref).pal)
-	if #t_assignedKeys >= #t then --not enough palettes for unique selection
+	if #t_assignedPals >= #t then -- not enough palettes for unique selection
 		return t[math.random(1, #t)]
 	end
 	main.f_tableShuffle(t)
 	for k, v in ipairs(t) do
-		if t_assignedKeys[v] == nil then
+		if not t_assignedPals[v] then
 			return v
 		end
 	end

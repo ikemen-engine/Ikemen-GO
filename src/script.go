@@ -1118,11 +1118,26 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("pal", subt)
 		//default palettes
 		subt = l.NewTable()
+		pals := make(map[int32]bool)
+		var n int
 		if len(c.pal_defaults) > 0 {
-			for k, v := range c.pal_defaults {
-				subt.RawSetInt(k+1, lua.LNumber(v))
+			for _, v := range c.pal_defaults {
+				if v > 0 && int(v) <= len(c.pal) {
+					n++
+					subt.RawSetInt(n, lua.LNumber(v))
+					pals[v] = true
+				}
 			}
-		} else {
+		}
+		if len(c.pal) > 0 {
+			for _, v := range c.pal {
+				if !pals[v] {
+					n++
+					subt.RawSetInt(n, lua.LNumber(v))
+				}
+			}
+		}
+		if n == 0 {
 			subt.RawSetInt(1, lua.LNumber(1))
 		}
 		tbl.RawSetString("pal_defaults", subt)
@@ -1646,17 +1661,17 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
-		tn := int(numArg(l, 1))
-		if tn < 1 || tn > 2 {
-			l.RaiseError("\nInvalid team side: %v\n", tn)
-		}
 		cn := int(numArg(l, 2))
 		if cn < 0 || cn >= len(sys.sel.charlist) {
 			l.RaiseError("\nInvalid char ref: %v\n", cn)
 		}
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("%v\nInvalid team side: %v\n", sys.sel.GetChar(cn).def, tn)
+		}
 		pl := int(numArg(l, 3))
 		if pl < 1 || pl > 12 {
-			l.RaiseError("\nInvalid palette: %v\n", pl)
+			l.RaiseError("%v\nInvalid palette: %v\n", sys.sel.GetChar(cn).def, pl)
 		}
 		var ret int
 		if sys.sel.AddSelectedChar(tn-1, cn, pl) {
