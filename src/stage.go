@@ -783,7 +783,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.sdw.intensity = Max(0, Min(255, tmp))
 		}
 		var r, g, b int32
-		if sec[0].readI32ForStage("color", &r, &g, &b) {
+		// mugen 1.1 removed support for color
+		if (s.ver[0] != 1 || s.ver[1] != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
 			r, g, b = Max(0, Min(255, r)), Max(0, Min(255, g)), Max(0, Min(255, b))
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
