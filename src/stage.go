@@ -218,7 +218,8 @@ func readBackGround(is IniSection, link *backGround,
 		var s, d int32 = 255, 255
 		if is.readI32ForStage("alpha", &s, &d) {
 			bg.anim.srcAlpha = int16(Min(255, s))
-			bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+			//bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
 		}
 	case "addalpha":
 		bg.anim.mask = 0
