@@ -915,7 +915,9 @@ function main.f_tableMerge(t1, t2, key)
 				t1[k] = v
 			end
 		elseif type(t1[k] or false) == "table" then
-			t1[k][1] = v
+			if v ~= '' then
+				t1[k][1] = v
+			end
 		elseif t1[k] ~= nil and type(t1[k]) ~= type(v) and (not (key or k):match('_font$') --[[or (type(k) == "number" and k > 1)]]) then
 			if type(t1[k]) == "string" then
 				t1[k] = tostring(v)
