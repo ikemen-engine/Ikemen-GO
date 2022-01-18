@@ -640,8 +640,8 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 			float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1)
 	}
 }
-func (l *Layout) DrawText(x, y, scl float32, ln int16, text string,
-	f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32, round bool) {
+func (l *Layout) DrawText(x, y, scl float32, ln int16,
+	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
 	if l.layerno == ln {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
@@ -653,7 +653,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16, text string,
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, b, a,
-			&l.window, palfx, frgba, round)
+			&l.window, palfx, frgba)
 	}
 }
 
@@ -778,7 +778,7 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt, scale float3
 				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale+
 					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx,
-				ats.text.frgba, true)
+				ats.text.frgba)
 		}
 	}
 }
