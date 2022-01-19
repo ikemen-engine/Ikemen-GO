@@ -3645,6 +3645,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "isasserted", func(*lua.LState) int {
 		switch strArg(l, 1) {
+		// CharSpecialFlag
 		case "nostandguard":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostandguard)))
 		case "nocrouchguard":
@@ -3695,6 +3696,7 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "postroundinput":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
+		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
 		case "roundnotover":
@@ -3721,6 +3723,13 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		// SystemCharFlag
+		case "over":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))
+		case "koroundmiddle":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_ko_round_middle)))
+		case "disabled":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_disabled)))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

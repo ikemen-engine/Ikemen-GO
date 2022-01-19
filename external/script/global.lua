@@ -216,7 +216,7 @@ function loop()
 		start.turnsRecoveryInit = false
 		start.dialogueInit = false
 	end
-	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 then
+	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 and isasserted("over") then
 		--turns life recovery
 		start.f_turnsRecovery()
 	end
