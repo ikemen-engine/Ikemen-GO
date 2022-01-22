@@ -371,7 +371,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	}
 }
 func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
-	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32) {
+	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
 	x3, y3 := x+xts*float32(w), rcy+(y-rcy)*vs
@@ -393,12 +393,44 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
 			y3 = rcy + (y - rcy)
 			y4 = y3
 		}
-		gl.Translated(float64(rcx), float64(rcy), 0)
-		gl.Scaled(1, float64(vs), 1)
-		gl.Rotated(float64(xagl), 1.0, 0.0, 0.0)
-		gl.Rotated(float64(-yagl), 0.0, 1.0, 0.0)
-		gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
-		gl.Translated(float64(-rcx), float64(-rcy), 0)
+		if projectionMode == 0 {
+			gl.Translated(float64(rcx), float64(rcy), 0)
+			gl.Scaled(1, float64(vs), 1)
+			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
+			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
+			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
+			gl.Translated(float64(-rcx), float64(-rcy), 0)
+		} else if projectionMode == 1 {
+			//This is the inverse of the orthographic projection matrix
+			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
+
+			gl.Translated(0, -float64(sys.scrrect[3]), float64(fLength))
+			gl.MultMatrixf(&matrix[0])
+			gl.Frustum(-float64(sys.scrrect[2])/2/float64(fLength), float64(sys.scrrect[2])/2/float64(fLength), -float64(sys.scrrect[3])/2/float64(fLength), float64(sys.scrrect[3])/2/float64(fLength), 1.0, 65535)
+			gl.Translated(-float64(sys.scrrect[2])/2.0, float64(sys.scrrect[3])/2.0, -float64(fLength))
+
+			gl.Translated(float64(rcx), float64(rcy), 0)
+			gl.Scaled(1, float64(vs), 1)
+			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
+			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
+			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
+			gl.Translated(float64(-rcx), float64(-rcy), 0)
+		} else if projectionMode == 2 {
+			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
+
+			//gl.Translated(0, -float64(sys.scrrect[3]), 2048)
+			gl.Translated(float64(rcx)-float64(sys.scrrect[2]/2.0)-float64(xOffset), float64(rcy)-float64(sys.scrrect[3]/2.0)+float64(yOffset), float64(fLength))
+			gl.MultMatrixf(&matrix[0])
+
+			gl.Frustum(-float64(sys.scrrect[2])/2/float64(fLength), float64(sys.scrrect[2])/2/float64(fLength), -float64(sys.scrrect[3])/2/float64(fLength), float64(sys.scrrect[3])/2/float64(fLength), 1.0, 65535)
+
+			gl.Translated(float64(xOffset), -float64(yOffset), -float64(fLength))
+			gl.Scaled(1, float64(vs), 1)
+			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
+			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
+			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
+			gl.Translated(float64(-rcx), float64(-rcy), 0)
+		}
 		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, renderMode)
 		return
 	}
@@ -464,7 +496,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
 }
 func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, renderMode, trans int32, rcx, rcy float32, neg bool, color float32,
-	padd, pmul *[3]float32) {
+	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -478,13 +510,13 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy)
+			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans == -2:
 		gl.Uniform1fARB(a, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy)
+			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans <= 0:
 	case trans < 255:
 		gl.Uniform1fARB(a, float32(trans)/255)
@@ -495,7 +527,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy)
+			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans < 512:
 		gl.Uniform1fARB(a, 1)
 		if renderMode == 1 {
@@ -505,7 +537,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy)
+			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		aglOver := 0
@@ -514,7 +546,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy)
+				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 			aglOver++
 		}
 		if src > 0 {
@@ -532,7 +564,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			}
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy)
+				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 		}
 	}
 	gl.PopMatrix()
@@ -579,7 +611,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
-	padd, pmul *[3]float32) {
+	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
@@ -603,7 +635,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		1, trans, rcx, rcy, neg, color, padd, pmul)
+		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
@@ -612,7 +644,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 
 func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
-	trans int32, window *[4]int32, rcx, rcy float32) {
+	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
@@ -624,7 +656,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
-		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.DeleteTextures(1, &paltex)
 	gl.Disable(gl.TEXTURE_1D)
 }
@@ -632,7 +664,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
-	padd, pmul *[3]float32) {
+	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
@@ -653,7 +685,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.Uniform1iARB(uniformIsTrapez, isTrapez)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		2, trans, rcx, rcy, neg, color, padd, pmul)
+		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
@@ -661,7 +693,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 }
 func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
-	window *[4]int32, rcx, rcy float32, color uint32) {
+	window *[4]int32, rcx, rcy float32, color uint32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
@@ -672,7 +704,7 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		float32(color&0xff)/255)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcSA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
-		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgramObjectARB(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)

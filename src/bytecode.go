@@ -3095,6 +3095,8 @@ const (
 	explod_angle
 	explod_yangle
 	explod_xangle
+	explod_projection
+	explod_focallength
 	explod_ignorehitpause
 	explod_bindid
 	explod_space
@@ -3249,6 +3251,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.yangle = exp[0].evalF(c)
 		case explod_xangle:
 			e.xangle = exp[0].evalF(c)
+		case explod_focallength:
+			e.fLength = exp[0].evalF(c)
 		case explod_ignorehitpause:
 			e.ignorehitpause = exp[0].evalB(c)
 		case explod_bindid:
@@ -3257,10 +3261,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				bId = crun.id
 			}
 			e.bindId = bId
+		case explod_projection:
+			e.projection = Projection(exp[0].evalI(c))
 		default:
-			if !palFX(sc).runSub(c, &e.palfxdef, id, exp) {
-				return false
-			}
+			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 		}
 		return true
 	})
@@ -3465,6 +3469,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_xangle:
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.xangle = xa })
+			case explod_projection:
+				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
+			case explod_focallength:
+				eachExpl(func(e *Explod) { e.fLength = exp[0].evalF(c) })
 			case explod_ignorehitpause:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					ihp := exp[0].evalB(c)
@@ -7586,32 +7594,32 @@ func (sc createPlatform) Run(schara *Char, _ []int32) bool {
 
 	StateControllerBase(sc).run(schara, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-			case createPlatform_id:
-				plat.id = exp[0].evalI(schara)
-			case createPlatform_name:
-				plat.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			case createPlatform_pos:
-				plat.pos[0] = exp[0].evalF(schara)
-				plat.pos[1] = exp[1].evalF(schara)
-			case createPlatform_size:
-				plat.size[0] = exp[0].evalI(schara)
-				plat.size[1] = exp[1].evalI(schara)
-			case createPlatform_offset:
-				customOffset = true
-				plat.offset[0] = exp[0].evalI(schara)
-				plat.offset[1] = exp[1].evalI(schara)
-			case createPlatform_activeTime:
-				plat.activeTime = exp[0].evalI(schara)
-			case createPlatform_redirectid:
-				if rid := sys.playerID(exp[0].evalI(schara)); rid != nil {
-					chara = rid
-				} else {
-					return false
-				}
+		case createPlatform_id:
+			plat.id = exp[0].evalI(schara)
+		case createPlatform_name:
+			plat.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case createPlatform_pos:
+			plat.pos[0] = exp[0].evalF(schara)
+			plat.pos[1] = exp[1].evalF(schara)
+		case createPlatform_size:
+			plat.size[0] = exp[0].evalI(schara)
+			plat.size[1] = exp[1].evalI(schara)
+		case createPlatform_offset:
+			customOffset = true
+			plat.offset[0] = exp[0].evalI(schara)
+			plat.offset[1] = exp[1].evalI(schara)
+		case createPlatform_activeTime:
+			plat.activeTime = exp[0].evalI(schara)
+		case createPlatform_redirectid:
+			if rid := sys.playerID(exp[0].evalI(schara)); rid != nil {
+				chara = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
-	
+
 	if customOffset == false {
 		if plat.size[0] != 0 {
 			plat.offset[0] = plat.size[0] / 2
@@ -7648,10 +7656,10 @@ type StateBytecode struct {
 func newStateBytecode(pn int) *StateBytecode {
 	sb := &StateBytecode{
 		stateType: ST_S,
-		moveType: MT_I,
-		physics: ST_N,
-		playerNo: pn,
-		block: *newStateBlock(),
+		moveType:  MT_I,
+		physics:   ST_N,
+		playerNo:  pn,
+		block:     *newStateBlock(),
 	}
 	return sb
 }
