@@ -102,7 +102,7 @@ local motif =
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
 		title_offset = {159, 15}, --Ikemen feature
-		title_font = {-1, 0, 0, 255, 255, 255, -1},
+		title_font = {-1, 0, 0, 255, 255, 255, -1}, --Ikemen feature
 		title_scale = {1.0, 1.0}, --Ikemen feature
 		title_text = 'MAIN MENU', --Ikemen feature
 		loading_offset = {main.SP_Localcoord[1] - 1 - main.f_round(10 * main.SP_Localcoord[1] / 320), main.SP_Localcoord[2] - 8}, --Ikemen feature
@@ -186,6 +186,7 @@ local motif =
 		cursor_done_snd = {100, 1},
 		cancel_snd = {100, 2},
 		--cursor_<itemname>_snd = {-1, 0}, --Ikemen feature
+		--menu_unlock_<itemname> = 'true', --Ikemen feature
 		--menu_itemname_arcade = 'ARCADE',
 		--menu_itemname_teamarcade = 'TEAM ARCADE',
 		--menu_itemname_teamcoop = 'TEAM CO-OP',
@@ -205,7 +206,6 @@ local motif =
 		--menu_itemname_timeattack = 'TIME ATTACK', --Ikemen feature
 		--menu_itemname_survival = 'SURVIVAL',
 		--menu_itemname_survivalcoop = 'SURVIVAL CO-OP',
-		--menu_itemname_bossrush = 'BOSS RUSH', --Ikemen feature
 		--menu_itemname_bonusgames = 'BONUS GAMES', --Ikemen feature
 		--menu_itemname_watch = 'CPU MATCH',
 		--menu_itemname_randomtest = 'RANDOMTEST', --Ikemen feature
@@ -213,7 +213,6 @@ local motif =
 		--menu_itemname_options = 'OPTIONS',
 		--menu_itemname_back = 'BACK', --Ikemen feature
 		--menu_itemname_exit = 'EXIT',
-		--menu_unlock_<itemname> = 'true', --Ikemen feature
 	},
 	titlebgdef =
 	{
@@ -252,7 +251,7 @@ local motif =
 		searchemptyboxesup = 0, --Ikemen feature
 		searchemptyboxesdown = 0, --Ikemen feature
 		cell_size = {27, 27},
-		cell_spacing = {2, 2}, --Ikemen feature (optionally accepts x, y values instead of a single one for both coordinates)
+		cell_spacing = {2, 2}, --Mugen/Ikemen feature (in Mugen spacing x value is used for both coordinates)
 		cell_bg_anim = -1,
 		cell_bg_spr = {},
 		cell_bg_offset = {0, 0},
@@ -346,7 +345,6 @@ local motif =
 		title_timeattack_text = 'Time Attack', --Ikemen feature
 		title_survival_text = 'Survival', --Ikemen feature
 		title_survivalcoop_text = 'Survival Cooperative', --Ikemen feature
-		title_bossrush_text = 'Boss Rush', --Ikemen feature
 		title_bonus_text = 'Bonus', --Ikemen feature
 		title_watch_text = 'Watch Mode', --Ikemen feature
 		--title_replay_text = 'Replay', --Ikemen feature
@@ -841,18 +839,18 @@ local motif =
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_continue = {5500, 5300}, --Ikemen feature
-		p1_state_yes = {5510, 180}, --Ikemen feature
-		p1_state_no = {5520, 170}, --Ikemen feature
-		p2_state_continue = {}, --Ikemen feature
-		p2_state_yes = {}, --Ikemen feature
-		p2_state_no = {}, --Ikemen feature
-		p1_teammate_state_continue = {}, --Ikemen feature
-		p1_teammate_state_yes = {}, --Ikemen feature
-		p1_teammate_state_no = {}, --Ikemen feature
-		p2_teammate_state_continue = {}, --Ikemen feature
-		p2_teammate_state_yes = {}, --Ikemen feature
-		p2_teammate_state_no = {}, --Ikemen feature
+		p1_state = {5500, 5300}, --Ikemen feature
+		p1_yes_state = {5510, 180}, --Ikemen feature
+		p1_no_state = {5520, 170}, --Ikemen feature
+		p2_state = {}, --Ikemen feature
+		p2_yes_state = {}, --Ikemen feature
+		p2_no_state = {}, --Ikemen feature
+		p1_teammate_state = {}, --Ikemen feature
+		p1_teammate_yes_state = {}, --Ikemen feature
+		p1_teammate_no_state = {}, --Ikemen feature
+		p2_teammate_state = {}, --Ikemen feature
+		p2_teammate_yes_state = {}, --Ikemen feature
+		p2_teammate_no_state = {}, --Ikemen feature
 		credits_text = 'Credits: %i', --Ikemen feature
 		credits_offset = {0, 0}, --Ikemen feature
 		credits_font = {'jg.fnt', 0, 1, 255, 255, 255, -1}, --Ikemen feature
@@ -886,7 +884,6 @@ local motif =
 		sounds_enabled = 0, --Ikemen feature
 		cpu_enabled = 1, --Ikemen feature
 		vs_enabled = 1, --Ikemen feature
-		loser_name_enabled = 0, --Ikemen feature
 		winner_teamko_enabled = 0, --Ikemen feature
 		fadein_time = 0,
 		fadein_col = {0, 0, 0}, --Ikemen feature
@@ -1021,14 +1018,14 @@ local motif =
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_win = {180}, --Ikemen feature
-		p1_state_lose = {175, 170}, --Ikemen feature
-		p2_state_win = {}, --Ikemen feature
-		p2_state_lose = {}, --Ikemen feature
-		p1_teammate_state_win = {}, --Ikemen feature
-		p1_teammate_state_lose = {}, --Ikemen feature
-		p2_teammate_state_win = {}, --Ikemen feature
-		p2_teammate_state_lose = {}, --Ikemen feature
+		p1_state = {175, 170}, --Ikemen feature
+		p1_win_state = {180}, --Ikemen feature
+		p2_state = {}, --Ikemen feature
+		p2_win_state = {}, --Ikemen feature
+		p1_teammate_state = {}, --Ikemen feature
+		p1_teammate_win_state = {}, --Ikemen feature
+		p2_teammate_state = {}, --Ikemen feature
+		p2_teammate_win_state = {}, --Ikemen feature
 	},
 	survivalresultsbgdef =
 	{
@@ -1054,45 +1051,16 @@ local motif =
 		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state_win = {180}, --Ikemen feature
-		p1_state_lose = {175, 170}, --Ikemen feature
-		p2_state_win = {}, --Ikemen feature
-		p2_state_lose = {}, --Ikemen feature
-		p1_teammate_state_win = {}, --Ikemen feature
-		p1_teammate_state_lose = {}, --Ikemen feature
-		p2_teammate_state_win = {}, --Ikemen feature
-		p2_teammate_state_lose = {}, --Ikemen feature
+		p1_state = {175, 170}, --Ikemen feature
+		p1_win_state = {180}, --Ikemen feature
+		p2_state = {}, --Ikemen feature
+		p2_win_state = {}, --Ikemen feature
+		p1_teammate_state = {}, --Ikemen feature
+		p1_teammate_win_state = {}, --Ikemen feature
+		p2_teammate_state = {}, --Ikemen feature
+		p2_teammate_win_state = {}, --Ikemen feature
 	},
 	timeattackresultsbgdef =
-	{
-		spr = '', --Ikemen feature
-	},
-	boss_rush_results_screen =
-	{
-		enabled = 1, --Ikemen feature
-		sounds_enabled = 1, --Ikemen feature
-		fadein_time = 0, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 64, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		show_time = 300, --Ikemen feature
-		winstext_text = 'Congratulations!', --Ikemen feature
-		winstext_offset = {159, 70}, --Ikemen feature
-		winstext_font = {'f-6x9.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		winstext_scale = {1.0, 1.0}, --Ikemen feature
-		winstext_displaytime = 0, --Ikemen feature
-		winstext_layerno = 2, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {20, 100}, --Ikemen feature
-		p1_state = {180}, --Ikemen feature
-		p2_state = {}, --Ikemen feature
-		p1_teammate_state = {}, --Ikemen feature
-		p2_teammate_state = {}, --Ikemen feature
-	},
-	bossrushresultsbgdef =
 	{
 		spr = '', --Ikemen feature
 	},
@@ -1526,12 +1494,12 @@ local motif =
 		menu_valuename_buttonjam_s = "Start", --Ikemen feature
 		menu_valuename_buttonjam_d = "D", --Ikemen feature
 		menu_valuename_buttonjam_w = "W", --Ikemen feature
-		;menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
-		;menu_itemname_ailevel = "AI Level", --Ikemen feature
-		;menu_itemname_guardmode = "Guard Mode", --Ikemen feature
-		;menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
-		;menu_itemname_distance = "Distance", --Ikemen feature
-		;menu_itemname_buttonjam = "Button Jam", --Ikemen feature
+		--menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
+		--menu_itemname_ailevel = "AI Level", --Ikemen feature
+		--menu_itemname_guardmode = "Guard Mode", --Ikemen feature
+		--menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
+		--menu_itemname_distance = "Distance", --Ikemen feature
+		--menu_itemname_buttonjam = "Button Jam", --Ikemen feature
 	},
 	trainingbgdef =
 	{
@@ -2556,7 +2524,12 @@ motif.files.spr_data = sffNew(motif.files.spr)
 main.f_loadingRefresh()
 motif.files.snd_data = sndNew(motif.files.snd)
 main.f_loadingRefresh()
-motif.files.glyphs_data = sffNew(motif.files.glyphs)
+
+if main.f_fileExists(motif.files.glyphs) then
+	motif.files.glyphs_data = sffNew(motif.files.glyphs)
+else
+	motif.files.glyphs_data = sffNew()
+end
 main.f_loadingRefresh()
 
 --motif background data
@@ -2578,7 +2551,7 @@ for k, _ in pairs(motif) do
 end
 
 --results screens reuse winbgdef values if not defined
-for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef', 'bossrushresultsbgdef'} do
+for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef'} do
 	if t[v] == nil then
 		motif[v] = motif.winbgdef
 	end
@@ -2644,7 +2617,7 @@ function motif.f_loadSprData(t, v)
 end
 
 --creates fadein/fadeout anim data
-for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'boss_rush_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
+for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
 	if motif[v].fadein_anim ~= -1 then
 		motif.f_loadSprData(motif[v], {s = 'fadein_'})
 	end
@@ -2818,7 +2791,7 @@ for i = 1, 2 do
 		if motif.vs_screen['p' .. i .. '_member' .. j .. '_key'] == nil then
 			break
 		end
-		for _, cmd in ipairs (main.f_extractKeys(v)) do
+		for _, cmd in ipairs (main.f_extractKeys(motif.vs_screen['p' .. i .. '_member' .. j .. '_key'])) do
 			main.f_commandAdd(cmd, cmd)
 		end
 		j = j + 1

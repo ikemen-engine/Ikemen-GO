@@ -653,30 +653,32 @@ function menu.f_commandlistRender(section, t)
 				local font_def = main.font_def[motif[section].movelist_text_font[1] .. motif[section].movelist_text_font[7]]
 				--render glyph
 				if v.glyph and motif.glyphs_data[v.text] ~= nil then
-					local scaleX = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[1]
-					local scaleY = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[2]
-					if v.align == -1 then
-						alignOffset = alignOffset - motif.glyphs_data[v.text].info.Size[1] * scaleX
-					end
-					if motif.defaultMenu then main.f_disableLuaScale() end
-					animSetScale(motif.glyphs_data[v.text].anim, scaleX, scaleY)
-					animSetPos(
-						motif.glyphs_data[v.text].anim,
-						math.floor(motif[section].movelist_pos[1] + motif[section].movelist_text_offset[1] + motif[section].movelist_glyphs_offset[1] + alignOffset + lengthOffset),
-						motif[section].movelist_pos[2] + motif[section].movelist_text_offset[2] + motif[section].movelist_glyphs_offset[2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY + motif[section].movelist_text_spacing[2]) * (i - 1)
-					)
-					animSetWindow(
-						motif.glyphs_data[v.text].anim,
-						menu[section .. '_t_movelistWindow'][1],
-						menu[section .. '_t_movelistWindow'][2],
-						menu[section .. '_t_movelistWindow'][3] - menu[section .. '_t_movelistWindow'][1],
-						menu[section .. '_t_movelistWindow'][4] - menu[section .. '_t_movelistWindow'][2]
-					)
-					--animUpdate(motif.glyphs_data[v.text].anim)
-					animDraw(motif.glyphs_data[v.text].anim)
-					if motif.defaultMenu then main.f_setLuaScale() end
-					if k < #cmdList[n] then
-						width = motif.glyphs_data[v.text].info.Size[1] * scaleX + motif[section].movelist_glyphs_spacing[1]
+					if motif.glyphs_data[v.text].info ~= nil then
+						local scaleX = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[1]
+						local scaleY = font_def.Size[2] * motif[section].movelist_text_scale[2] / motif.glyphs_data[v.text].info.Size[2] * motif[section].movelist_glyphs_scale[2]
+						if v.align == -1 then
+							alignOffset = alignOffset - motif.glyphs_data[v.text].info.Size[1] * scaleX
+						end
+						if motif.defaultMenu then main.f_disableLuaScale() end
+						animSetScale(motif.glyphs_data[v.text].anim, scaleX, scaleY)
+						animSetPos(
+							motif.glyphs_data[v.text].anim,
+							math.floor(motif[section].movelist_pos[1] + motif[section].movelist_text_offset[1] + motif[section].movelist_glyphs_offset[1] + alignOffset + lengthOffset),
+							motif[section].movelist_pos[2] + motif[section].movelist_text_offset[2] + motif[section].movelist_glyphs_offset[2] + main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY + motif[section].movelist_text_spacing[2]) * (i - 1)
+						)
+						animSetWindow(
+							motif.glyphs_data[v.text].anim,
+							menu[section .. '_t_movelistWindow'][1],
+							menu[section .. '_t_movelistWindow'][2],
+							menu[section .. '_t_movelistWindow'][3] - menu[section .. '_t_movelistWindow'][1],
+							menu[section .. '_t_movelistWindow'][4] - menu[section .. '_t_movelistWindow'][2]
+						)
+						--animUpdate(motif.glyphs_data[v.text].anim)
+						animDraw(motif.glyphs_data[v.text].anim)
+						if motif.defaultMenu then main.f_setLuaScale() end
+						if k < #cmdList[n] then
+							width = motif.glyphs_data[v.text].info.Size[1] * scaleX + motif[section].movelist_glyphs_spacing[1]
+						end
 					end
 				--render text
 				else

@@ -921,7 +921,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_partner:
-			if c = c.partner(sys.bcStack.Pop().ToI()); c != nil {
+			if c = c.partner(sys.bcStack.Pop().ToI(), true); c != nil {
 				i += 4
 				continue
 			}
@@ -1537,7 +1537,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p3name:
-		p3 := c.partner(0)
+		p3 := c.partner(0, false)
 		sys.bcStack.PushB(p3 != nil && p3.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
@@ -1550,7 +1550,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p5name:
-		p5 := c.partner(1)
+		p5 := c.partner(1, false)
 		sys.bcStack.PushB(p5 != nil && p5.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
@@ -1563,7 +1563,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 					unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p7name:
-		p7 := c.partner(2)
+		p7 := c.partner(2, false)
 		sys.bcStack.PushB(p7 != nil && p7.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
@@ -2774,7 +2774,9 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_kovelocity:
 			h.kovelocity = exp[0].evalB(c)
 		case helper_preserve:
-			h.preserve = exp[0].evalB(c)
+			if exp[0].evalB(c) {
+				h.preserve = sys.round
+			}
 		}
 		return true
 	})
@@ -3001,12 +3003,18 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.mul[1] = exp[1].evalI(c)
 		pfd.mul[2] = exp[2].evalI(c)
 	case palFX_sinadd:
-		pfd.sinadd[0] = exp[0].evalI(c)
-		pfd.sinadd[1] = exp[1].evalI(c)
-		pfd.sinadd[2] = exp[2].evalI(c)
+		var side int32 = 1
 		if len(exp) > 3 {
-			pfd.cycletime = exp[3].evalI(c)
+			if exp[3].evalI(c) < 0 {
+				pfd.cycletime = -exp[3].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletime = exp[3].evalI(c)
+			}
 		}
+		pfd.sinadd[0] = exp[0].evalI(c) * side
+		pfd.sinadd[1] = exp[1].evalI(c) * side
+		pfd.sinadd[2] = exp[2].evalI(c) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	default:
@@ -3231,9 +3239,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if len(exp) >= 3 {
 				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
 				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
-				if len(exp) >= 4 {
-					e.alpha[1] = ^e.alpha[1]
-				} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
+				//if len(exp) >= 4 {
+				//	e.alpha[1] = ^e.alpha[1]
+				//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
+				if e.alpha[0] == 1 && e.alpha[1] == 255 {
 					e.alpha[0] = 0
 				}
 			}
@@ -3258,9 +3267,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 			e.bindId = bId
 		default:
-			if !palFX(sc).runSub(c, &e.palfxdef, id, exp) {
-				return false
-			}
+			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 		}
 		return true
 	})
@@ -3440,9 +3447,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
 				if len(exp) >= 3 {
 					s, d = Max(0, Min(255, s)), Max(0, Min(255, d))
-					if len(exp) >= 4 {
-						d = ^d
-					} else if s == 1 && d == 255 {
+					//if len(exp) >= 4 {
+					//	d = ^d
+					//} else if s == 1 && d == 255 {
+					if s == 1 && d == 255 {
 						s = 0
 					}
 				}
@@ -3588,9 +3596,10 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		if len(exp) >= 3 {
 			ai.alpha[0] = Max(0, Min(255, ai.alpha[0]))
 			ai.alpha[1] = Max(0, Min(255, ai.alpha[1]))
-			if len(exp) >= 4 {
-				ai.alpha[1] = ^ai.alpha[1]
-			} else if ai.alpha[0] == 1 && ai.alpha[1] == 255 {
+			//if len(exp) >= 4 {
+			//	ai.alpha[1] = ^ai.alpha[1]
+			//} else if ai.alpha[0] == 1 && ai.alpha[1] == 255 {
+			if ai.alpha[0] == 1 && ai.alpha[1] == 255 {
 				ai.alpha[0] = 0
 			}
 		}
@@ -5298,9 +5307,10 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 			if len(exp) >= 3 {
 				crun.alpha[0] = Max(0, Min(255, crun.alpha[0]))
 				crun.alpha[1] = Max(0, Min(255, crun.alpha[1]))
-				if len(exp) >= 4 {
-					crun.alpha[1] = ^crun.alpha[1]
-				} else if crun.alpha[0] == 1 && crun.alpha[1] == 255 {
+				//if len(exp) >= 4 {
+				//	crun.alpha[1] = ^crun.alpha[1]
+				//} else if crun.alpha[0] == 1 && crun.alpha[1] == 255 {
+				if crun.alpha[0] == 1 && crun.alpha[1] == 255 {
 					crun.alpha[0] = 0
 				}
 			}
@@ -7098,7 +7108,9 @@ func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeAdd_value:
-			sys.time = Max(0, Min(sys.roundTime, sys.time+exp[0].evalI(c)))
+			if sys.roundTime != -1 {
+				sys.time = Max(0, Min(sys.roundTime, sys.time+exp[0].evalI(c)))
+			}
 		}
 		return true
 	})
@@ -7116,7 +7128,9 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case roundTimeSet_value:
-			sys.time = Max(0, Min(sys.roundTime, exp[0].evalI(c)))
+			if sys.roundTime != -1 {
+				sys.time = Max(0, Min(sys.roundTime, exp[0].evalI(c)))
+			}
 		}
 		return true
 	})

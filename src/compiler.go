@@ -3486,9 +3486,12 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				if err != nil {
 					return err
 				}
-				if tt == TT_add1 {
-					exp = make([]BytecodeExp, 4) // 長さ4にする
-				} else if tt == TT_add || tt == TT_alpha {
+				// TODO: Based on my tests add1 doesn't need special alpha[1] handling
+				// Remove unused code if there won't be regression.
+				//if tt == TT_add1 {
+				//	exp = make([]BytecodeExp, 4) // 長さ4にする
+				//} else if tt == TT_add || tt == TT_alpha {
+				if tt == TT_add || tt == TT_alpha || tt == TT_add1 {
 					exp = make([]BytecodeExp, 3) // 長さ3にする
 				} else {
 					exp = make([]BytecodeExp, 2)
