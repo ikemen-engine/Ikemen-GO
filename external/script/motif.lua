@@ -1600,7 +1600,7 @@ local motif =
 	},
 	challenger_info =
 	{
-		enabled = 1, --Ikemen feature
+		enabled = 0, --Ikemen feature
 		fadein_time = 0, --Ikemen feature
 		fadein_col = {0, 0, 0}, --Ikemen feature
 		fadein_anim = -1, --Ikemen feature
