@@ -3752,7 +3752,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "memberno", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.memberNo))
+		l.Push(lua.LNumber(sys.debugWC.memberNo + 1))
 		return 1
 	})
 	luaRegister(l, "movecountered", func(*lua.LState) int {

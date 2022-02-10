@@ -2053,7 +2053,7 @@
 	bgclearcolor = 0, 0, 0
 
 [Challenger Info] ;Ikemen Feature
-	enabled = 1
+	enabled = 0
 	fadein.time = 0
 	fadein.col = 0, 0, 0
 	fadein.anim = -1

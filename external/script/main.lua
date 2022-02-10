@@ -991,6 +991,15 @@ function main.f_tableArray(size, val)
 	return t
 end
 
+-- rearrange array table indexes based on index numbers stored in a second array table
+function main.f_remapTable(src, remap)
+	local t = {}
+	for i = 1, #remap do
+		table.insert(t, src[remap[i]])
+	end
+	return t
+end
+
 --iterate over the table in order
 -- basic usage, just sort by the keys:
 --for k, v in main.f_sortKeys(t) do
