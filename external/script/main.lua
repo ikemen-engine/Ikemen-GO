@@ -397,6 +397,13 @@ main.font_def = {}
 -- * main.f_default: main.lua 'f_default' function
 -- * main.t_itemname: main.lua table entries (modes configuration)
 -- * launchFight: start.lua 'launchFight' function (right before match starts)
+-- * start.f_selectScreen: start.lua 'f_selectScreen' function (pre layerno=1)
+-- * start.f_selectVersus: start.lua 'f_selectVersus' function (pre layerno=1)
+-- * start.f_result: start.lua 'f_result' function (pre layerno=1)
+-- * start.f_victory: start.lua 'f_victory' function (pre layerno=1)
+-- * start.f_continue: start.lua 'f_continue' function (pre layerno=1)
+-- * start.f_hiscore: start.lua 'f_hiscore' function (pre layerno=1)
+-- * start.f_challenger: start.lua 'f_challenger' function (pre layerno=1)
 -- More entry points may be added in future - let us know if your external
 -- module needs to hook code in place where it's not allowed yet.
 

@@ -1182,6 +1182,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 		return false
 	end
 	if #main.t_selGrid[cell].chars > 0 then
+		-- select.def 'slot' parameter special keys detection
 		for _, cmdType in ipairs({'select', 'next', 'previous'}) do
 			if main.t_selGrid[cell][cmdType] ~= nil then
 				for k, v in pairs(main.t_selGrid[cell][cmdType]) do
@@ -1241,10 +1242,8 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			end
 		end
 	end
-	if main.f_btnPalNo(cmd) == 0 or (t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect') then
-		return false
-	end
-	return true
+	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
+	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect')
 end
 
 --generate start.t_grid table, assign row and cell to main.t_selChars
@@ -2198,6 +2197,8 @@ function start.f_selectScreen()
 			})
 			txt_recordSelect:draw()
 		end
+		-- hook
+		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.bg, true)
 		--draw fadein / fadeout
@@ -2897,6 +2898,8 @@ function start.f_selectVersus(active, t_orderSelect)
 		if not done and motif.vs_screen.timer_count ~= -1 and timerActive then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
 		end
+		-- hook
+		hook.run("start.f_selectVersus")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.bg, true)
 		--draw fadein / fadeout
@@ -3115,6 +3118,8 @@ function start.f_result()
 	bgDraw(motif[start.t_result.bgdef].bg, false)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
+	-- hook
+	hook.run("start.f_result")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif[start.t_result.bgdef].bg, true)
 	--draw text at layerno = 2
@@ -3334,6 +3339,8 @@ function start.f_victory()
 			)
 		)
 	end
+	-- hook
+	hook.run("start.f_victory")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.victorybgdef.bg, true)
 	--draw fadein / fadeout
@@ -3609,6 +3616,8 @@ function start.f_continue()
 			txt_credits:draw()
 		end
 	end
+	-- hook
+	hook.run("start.f_continue")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.continuebgdef.bg, true)
 	--draw fadein / fadeout
@@ -3853,6 +3862,8 @@ function start.f_hiscore(t, playMusic, place, infinite)
 		main.credits = main.credits + 1
 		resetKey()
 	end
+	-- hook
+	hook.run("start.f_hiscore")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.hiscorebgdef.bg, true)
 	--draw fadein / fadeout
@@ -3931,6 +3942,8 @@ function start.f_challenger()
 	if start.t_challenger.counter >= motif.challenger_info.text_displaytime then
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 1)
 	end
+	-- hook
+	hook.run("start.f_challenger")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.challengerbgdef.bg, true)
 	--draw text at layerno = 2
