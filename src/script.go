@@ -2516,6 +2516,13 @@ func systemScriptInit(l *lua.LState) {
 		glfw.SwapInterval(sys.vRetrace)
 		return 0
 	})
+	luaRegister(l, "updateVolume", func(l *lua.LState) int {
+		if l.GetTop() >= 1 {
+			sys.bgm.bgmVolume = int(Min(int32(numArg(l, 1)), int32(sys.maxBgmVolume)))
+		}
+		sys.bgm.UpdateVolume()
+		return 0
+	})
 	luaRegister(l, "waveGetLength", func(*lua.LState) int {
 		w, ok := toUserData(l, 1).(*Wave)
 		if !ok {

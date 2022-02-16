@@ -7280,6 +7280,7 @@ const (
 
 func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
+	var b bool
 	var bgm string
 	var loop, volume, loopstart, loopend int = 1, 100, 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -7288,8 +7289,13 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			if bgm = string(*(*[]byte)(unsafe.Pointer(&exp[0]))); bgm != "" {
 				bgm = SearchFile(bgm, []string{crun.gi().def, "", "sound/"})
 			}
+			b = true
 		case playBgm_volume:
 			volume = int(exp[0].evalI(c))
+			if !b {
+				sys.bgm.bgmVolume = int(Min(int32(volume), int32(sys.maxBgmVolume)))
+				sys.bgm.UpdateVolume()
+			}
 		case playBgm_loop:
 			loop = int(exp[0].evalI(c))
 		case playBgm_loopstart:
@@ -7305,7 +7311,9 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
+	if b {
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
+	}
 	return false
 }
 
