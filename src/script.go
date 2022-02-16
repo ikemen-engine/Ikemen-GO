@@ -608,17 +608,31 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "commonLuaDelete", func(l *lua.LState) int {
-		i := -1
 		for k, v := range sys.commonLua {
 			if v == strArg(l, 1) {
-				i = k
+				// shift left one index
+				copy(sys.commonLua[k:], sys.commonLua[k+1:])
+				// erase last element (write zero value)
+				sys.commonLua[len(sys.commonLua)-1] = ""
+				// truncate slice
+				sys.commonLua = sys.commonLua[:len(sys.commonLua)-1]
 				break
 			}
 		}
-		if i >= 0 {
-			copy(sys.commonLua[i:], sys.commonLua[i+1:])         // shift left one index
-			sys.commonLua[len(sys.commonLua)-1] = ""             // erase last element (write zero value)
-			sys.commonLua = sys.commonLua[:len(sys.commonLua)-1] // truncate slice
+		return 0
+	})
+	luaRegister(l, "commonStatesInsert", func(l *lua.LState) int {
+		sys.commonStates = append(sys.commonStates, strArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "commonStatesDelete", func(l *lua.LState) int {
+		for k, v := range sys.commonStates {
+			if v == strArg(l, 1) {
+				copy(sys.commonStates[k:], sys.commonStates[k+1:])
+				sys.commonStates[len(sys.commonStates)-1] = ""
+				sys.commonStates = sys.commonStates[:len(sys.commonStates)-1]
+				break
+			}
 		}
 		return 0
 	})
