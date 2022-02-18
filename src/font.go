@@ -30,6 +30,7 @@ type Fnt struct {
 	colors    int32
 	offset    [2]int32
 	ttf       *glfont.Font
+	paltex    *Texture
 }
 
 func newFnt() *Fnt {
@@ -483,7 +484,10 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil)
+		sys.brightness*255>>8|1<<9, window, 0, 0, nil, f.paltex)
+	if f.paltex == nil {
+		f.paltex = spr.PalTex
+	}
 	return float32(spr.Size[0]) * xscl
 }
 
@@ -536,6 +540,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		pal = palfx.getFxPal(f.palettes[bank][:], false)
 	}
 
+	f.paltex = nil
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
 	}
