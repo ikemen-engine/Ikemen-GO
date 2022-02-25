@@ -3416,6 +3416,30 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 	})
 }
 
+func (c *Compiler) paramProjection(is IniSection, sc *StateControllerBase,
+	id byte) error {
+	return c.stateParam(is, "projection", func(data string) error {
+		if len(data) <= 1 {
+			return Error("Value not specified")
+		}
+		var proj Projection
+		if len(data) >= 2 {
+			if strings.ToLower(data[:2]) == "or" {
+				proj = Projection_Orthographic
+			} else if strings.ToLower(data[:2]) == "pe" {
+				if data[len(data)-1] != '2' {
+					proj = Projection_Perspective
+				} else {
+					proj = Projection_Perspective2
+				}
+
+			}
+		}
+		sc.add(id, sc.iToExp(int32(proj)))
+		return nil
+	})
+}
+
 func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "savedata", func(data string) error {

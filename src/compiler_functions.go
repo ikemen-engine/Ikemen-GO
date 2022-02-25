@@ -598,6 +598,9 @@ func (c *Compiler) explodSub(is IniSection,
 	if err := c.paramSpace(is, sc, explod_space); err != nil {
 		return err
 	}
+	if err := c.paramProjection(is, sc, explod_projection); err != nil {
+		return err
+	}
 	f := false
 	if err := c.stateParam(is, "vel", func(data string) error {
 		f = true
@@ -725,6 +728,10 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 			explod_xangle, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "focallength",
+			explod_focallength, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
@@ -769,6 +776,10 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.paramValue(is, sc, "xangle",
 			explod_xangle, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "focallength",
+			explod_focallength, VT_Float, 1, false); err != nil {
 			return err
 		}
 		if ihp == 0 {

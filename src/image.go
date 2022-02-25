@@ -930,7 +930,7 @@ func (s *Sprite) Lz5Decode(rle []byte) (p []byte) {
 func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	if s.rle <= 0 {
 		format := -s.rle
-		
+
 		if format == 0 {
 			f.Seek(offset, 0)
 		} else {
@@ -1009,7 +1009,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
-	rcx, rcy float32, pfx *PalFX, paltex *Texture) {
+	rcx, rcy float32, pfx *PalFX, paltex *Texture, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if s.Tex == nil {
 		return
 	}
@@ -1022,14 +1022,14 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 
 	if s.coldepth > 8 {
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
-			trans, window, rcx, rcy, neg, color, &padd, &pmul)
+			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
 		//読み込み済みパレットの情報が渡されてるか //Is the loaded palette information passed?
 		if paltex != nil {
 			gl.ActiveTexture(gl.TEXTURE1)
 			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
 			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 			gl.Disable(gl.TEXTURE_1D)
 			return
 		}
@@ -1052,7 +1052,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			gl.ActiveTexture(gl.TEXTURE1)
 			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
 			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 			gl.Disable(gl.TEXTURE_1D)
 		} else {
 			gl.Enable(gl.TEXTURE_1D)
@@ -1067,7 +1067,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul)
+				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 			gl.Disable(gl.TEXTURE_1D)
 		}
 	}
@@ -1084,7 +1084,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 	}
 	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, angle, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex)
+		sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex, 0, 0, -xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]))
 }
 
 type Sff struct {
