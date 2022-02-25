@@ -864,7 +864,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.chars[pn]) > 0 {
 		p := s.chars[pn][0]
 		for _, h := range s.chars[pn][1:] {
-			if destroy || !h.preserve {
+			if destroy || h.preserve == 0 || (s.roundResetFlg && h.preserve == s.round) {
 				h.destroy()
 			}
 			h.sounds = h.sounds[:0]
@@ -873,8 +873,10 @@ func (s *System) playerClear(pn int, destroy bool) {
 			p.children = p.children[:0]
 		} else {
 			for i, ch := range p.children {
-				if ch != nil && !ch.preserve {
-					p.children[i] = nil
+				if ch != nil {
+					if (ch.preserve == 0 || (s.roundResetFlg && ch.preserve == s.round)) {
+						p.children[i] = nil
+					}
 				}
 			}
 		}
@@ -1511,8 +1513,8 @@ func (s *System) draw(x, y, scl float32) {
 		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
 	if s.envcol_time == 0 {
+		c := uint32(0)
 		if s.sf(GSF_nobg) {
-			c := uint32(0)
 			if s.allPalFX.enable {
 				var rgb [3]int32
 				if s.allPalFX.eInvertall {
@@ -1528,6 +1530,9 @@ func (s *System) draw(x, y, scl float32) {
 		} else {
 			if s.stage.debugbg {
 				FillRect(s.scrrect, 0xff00ff, 0xff)
+			} else {
+				c = uint32(s.stage.bgclearcolor[2]&0xff | s.stage.bgclearcolor[1]&0xff<<8 | s.stage.bgclearcolor[0]&0xff<<16)
+				FillRect(s.scrrect, c, 0xff)
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
@@ -1649,7 +1654,7 @@ func (s *System) drawDebug() {
 			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / s.heightScale
 			s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 1, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba, true)
+				s.debugFont.palfx, s.debugFont.frgba)
 		}
 	}
 	if s.debugDraw {
@@ -1725,7 +1730,7 @@ func (s *System) drawDebug() {
 			s.debugFont.SetColor(t.r, t.g, t.b)
 			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba, true)
+				s.debugFont.palfx, s.debugFont.frgba)
 		}
 	}
 }
@@ -1745,7 +1750,7 @@ func (s *System) fight() (reload bool) {
 		s.allPalFX.enable = false
 		for i, p := range s.chars {
 			if len(p) > 0 {
-				s.playerClear(i, true)
+				s.playerClear(i, s.matchOver() || (s.tmode[i&1] == TM_Turns && p[0].life <= 0))
 			}
 		}
 		s.wincnt.update()
@@ -1902,7 +1907,7 @@ func (s *System) fight() (reload bool) {
 			foo := math.Pow(lvmul, float64(-level[i]))
 			p[0].lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
 
-			if s.roundsExisted[i&1] > 0 {
+			if p[0].roundsExisted() > 0 {
 				/* If character already existed for a round, presumably because of turns mode, just update life */
 				p[0].life = Min(p[0].lifeMax, int32(math.Ceil(foo*float64(p[0].life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
@@ -2747,6 +2752,9 @@ func newLoader() *Loader {
 	return &Loader{state: LS_NotYet, loadExit: make(chan LoaderState, 1)}
 }
 func (l *Loader) loadChar(pn int) int {
+	if sys.roundsExisted[pn&1] > 0 {
+		return 1
+	}
 	sys.loadMutex.Lock()
 	result := -1
 	nsel := len(sys.sel.selected[pn&1])
@@ -2802,9 +2810,7 @@ func (l *Loader) loadChar(pn int) int {
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
-		if sys.roundsExisted[pn&1] == 0 {
-			p.clearCachedData()
-		}
+		p.clearCachedData()
 	} else {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
@@ -2840,9 +2846,7 @@ func (l *Loader) loadChar(pn int) int {
 	} else {
 		tstr = fmt.Sprintf("Cached char loaded: %v", cdef)
 	}
-	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = pal //sys.cgi[pn].palkeymap[pal-1] + 1
-	}
+	sys.cgi[pn].palno = pal //sys.cgi[pn].palkeymap[pal-1] + 1
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) &&
 		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
@@ -2858,6 +2862,9 @@ func (l *Loader) loadChar(pn int) int {
 }
 
 func (l *Loader) loadAttachedChar(pn int) int {
+	if sys.round != 1 {
+		return 1
+	}
 	atcpn := pn - MaxSimul*2
 	var tstr string
 	tnow := time.Now()
@@ -2907,9 +2914,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	} else {
 		tstr = fmt.Sprintf("Cached attachedchar loaded: %v", cdef)
 	}
-	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = 1
-	}
+	sys.cgi[pn].palno = 1
 	return 1
 }
 

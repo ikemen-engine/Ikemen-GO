@@ -248,16 +248,23 @@ func systemScriptInit(l *lua.LState) {
 						})
 					}
 				case "sinadd":
+					var s [4]int32
 					switch v := value.(type) {
 					case *lua.LTable:
 						v.ForEach(func(key2, value2 lua.LValue) {
-							num := int(lua.LVAsNumber(key2))
-							if num <= 3 {
-								a.palfx.sinadd[num-1] = int32(lua.LVAsNumber(value2))
-							} else if num == 4 {
-								a.palfx.cycletime = int32(lua.LVAsNumber(value2))
-							}
+							s[int(lua.LVAsNumber(key2))-1] = int32(lua.LVAsNumber(value2))
 						})
+					}
+					if s[3] < 0 {
+						a.palfx.sinadd[0] = -s[0]
+						a.palfx.sinadd[1] = -s[1]
+						a.palfx.sinadd[2] = -s[2]
+						a.palfx.cycletime = -s[3]
+					} else {
+						a.palfx.sinadd[0] = s[0]
+						a.palfx.sinadd[1] = s[1]
+						a.palfx.sinadd[2] = s[2]
+						a.palfx.cycletime = s[3]
 					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
@@ -825,27 +832,51 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Reset and setup characters
-				sys.charList.clear()
+				if sys.round == 1 {
+					sys.charList.clear()
+				}
+				nextId := sys.helperMax
 				for i := 0; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := 1; i < MaxSimul*2; i += 2 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 					if len(sys.chars[i]) > 0 {
-						sys.chars[i][0].id = sys.newCharId()
+						if sys.round == 1 {
+							sys.chars[i][0].id = sys.newCharId()
+						} else if sys.chars[i][0].roundsExisted() == 0 {
+							sys.chars[i][0].id = nextId
+						}
+						nextId++
 					}
 				}
 				for i, c := range sys.chars {
 					if len(c) > 0 {
 						p[i] = c[0]
-						sys.charList.add(c[0])
-						if sys.roundsExisted[i&1] == 0 {
+						if sys.round == 1 {
+							sys.charList.add(c[0])
+						} else if c[0].roundsExisted() == 0 {
+							if !sys.charList.replace(c[0], i, 0) {
+								panic(fmt.Errorf("failed to replace player: %v", i))
+							}
+						}
+						if c[0].roundsExisted() == 0 {
 							c[0].loadPallet()
 						}
 						for j, cj := range sys.chars {
@@ -1087,11 +1118,26 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("pal", subt)
 		//default palettes
 		subt = l.NewTable()
+		pals := make(map[int32]bool)
+		var n int
 		if len(c.pal_defaults) > 0 {
-			for k, v := range c.pal_defaults {
-				subt.RawSetInt(k+1, lua.LNumber(v))
+			for _, v := range c.pal_defaults {
+				if v > 0 && int(v) <= len(c.pal) {
+					n++
+					subt.RawSetInt(n, lua.LNumber(v))
+					pals[v] = true
+				}
 			}
-		} else {
+		}
+		if len(c.pal) > 0 {
+			for _, v := range c.pal {
+				if !pals[v] {
+					n++
+					subt.RawSetInt(n, lua.LNumber(v))
+				}
+			}
+		}
+		if n == 0 {
 			subt.RawSetInt(1, lua.LNumber(1))
 		}
 		tbl.RawSetString("pal_defaults", subt)
@@ -1615,17 +1661,17 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "selectChar", func(*lua.LState) int {
-		tn := int(numArg(l, 1))
-		if tn < 1 || tn > 2 {
-			l.RaiseError("\nInvalid team side: %v\n", tn)
-		}
 		cn := int(numArg(l, 2))
 		if cn < 0 || cn >= len(sys.sel.charlist) {
 			l.RaiseError("\nInvalid char ref: %v\n", cn)
 		}
+		tn := int(numArg(l, 1))
+		if tn < 1 || tn > 2 {
+			l.RaiseError("%v\nInvalid team side: %v\n", sys.sel.GetChar(cn).def, tn)
+		}
 		pl := int(numArg(l, 3))
 		if pl < 1 || pl > 12 {
-			l.RaiseError("\nInvalid palette: %v\n", pl)
+			l.RaiseError("%v\nInvalid palette: %v\n", sys.sel.GetChar(cn).def, pl)
 		}
 		var ret int
 		if sys.sel.AddSelectedChar(tn-1, cn, pl) {
@@ -2544,7 +2590,7 @@ func triggerFunctions(l *lua.LState) {
 		if l.GetTop() >= 1 {
 			n = int32(numArg(l, 1))
 		}
-		if c := sys.debugWC.partner(n); c != nil {
+		if c := sys.debugWC.partner(n, true); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))
@@ -3164,7 +3210,7 @@ func triggerFunctions(l *lua.LState) {
 		if n <= 2 {
 			l.Push(lua.LString(sys.debugWC.name))
 		} else if ^n&1+1 == 1 {
-			if p := sys.debugWC.partner(n/2 - 1); p != nil {
+			if p := sys.debugWC.partner(n/2 - 1, false); p != nil {
 				l.Push(lua.LString(p.name))
 			} else {
 				l.Push(lua.LString(""))
@@ -3599,6 +3645,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "isasserted", func(*lua.LState) int {
 		switch strArg(l, 1) {
+		// CharSpecialFlag
 		case "nostandguard":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostandguard)))
 		case "nocrouchguard":
@@ -3649,6 +3696,7 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "postroundinput":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
+		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
 		case "roundnotover":
@@ -3675,6 +3723,13 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		// SystemCharFlag
+		case "over":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))
+		case "koroundmiddle":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_ko_round_middle)))
+		case "disabled":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_disabled)))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

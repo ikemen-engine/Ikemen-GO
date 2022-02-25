@@ -218,7 +218,8 @@ func readBackGround(is IniSection, link *backGround,
 		var s, d int32 = 255, 255
 		if is.readI32ForStage("alpha", &s, &d) {
 			bg.anim.srcAlpha = int16(Min(255, s))
-			bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+			//bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
+			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
 		}
 	case "addalpha":
 		bg.anim.mask = 0
@@ -568,7 +569,7 @@ type stageShadow struct {
 	fadebgn   int32
 }
 type stagePlayer struct {
-	startx, starty int32
+	startx, starty, startz int32
 }
 type Stage struct {
 	def             string
@@ -597,6 +598,7 @@ type Stage struct {
 	hires           bool
 	resetbg         bool
 	debugbg         bool
+	bgclearcolor    [3]int32
 	localscl        float32
 	scale           [2]float32
 	bgmratiolife    int32
@@ -708,8 +710,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sec := defmap["playerinfo"]; len(sec) > 0 {
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
 		sec[0].ReadI32("p1starty", &s.p[0].starty)
+		sec[0].ReadI32("p1startz", &s.p[0].startz)
 		sec[0].ReadI32("p2startx", &s.p[1].startx)
 		sec[0].ReadI32("p2starty", &s.p[1].starty)
+		sec[0].ReadI32("p2startz", &s.p[1].startz)
 		sec[0].ReadF32("leftbound", &s.leftbound)
 		sec[0].ReadF32("rightbound", &s.rightbound)
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
@@ -780,7 +784,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.sdw.intensity = Max(0, Min(255, tmp))
 		}
 		var r, g, b int32
-		if sec[0].readI32ForStage("color", &r, &g, &b) {
+		// mugen 1.1 removed support for color
+		if (s.ver[0] != 1 || s.ver[1] != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
 			r, g, b = Max(0, Min(255, r)), Max(0, Min(255, g)), Max(0, Min(255, b))
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
@@ -814,6 +819,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			return nil, err
 		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
+		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {

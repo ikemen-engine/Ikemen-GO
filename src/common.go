@@ -640,8 +640,8 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 			float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1, 0, 0)
 	}
 }
-func (l *Layout) DrawText(x, y, scl float32, ln int16, text string,
-	f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32, round bool) {
+func (l *Layout) DrawText(x, y, scl float32, ln int16,
+	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
 	if l.layerno == ln {
 		//TODO: test "phantom pixel"
 		if l.facing < 0 {
@@ -653,7 +653,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16, text string,
 		f.Print(text, (x+l.offset[0])*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, b, a,
-			&l.window, palfx, frgba, round)
+			&l.window, palfx, frgba)
 	}
 }
 
@@ -710,7 +710,20 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 	is.ReadI32(pre+"time", &al.palfx.time)
 	is.ReadI32(pre+"add", &al.palfx.add[0], &al.palfx.add[1], &al.palfx.add[2])
 	is.ReadI32(pre+"mul", &al.palfx.mul[0], &al.palfx.mul[1], &al.palfx.mul[2])
-	is.ReadI32(pre+"sinadd", &al.palfx.sinadd[0], &al.palfx.sinadd[1], &al.palfx.sinadd[2], &al.palfx.cycletime)
+	var s [4]int32
+	if is.ReadI32(pre+"sinadd", &s[0], &s[1], &s[2], &s[3]) {
+		if s[3] < 0 {
+			al.palfx.sinadd[0] = -s[0]
+			al.palfx.sinadd[1] = -s[1]
+			al.palfx.sinadd[2] = -s[2]
+			al.palfx.cycletime = -s[3]
+		} else {
+			al.palfx.sinadd[0] = s[0]
+			al.palfx.sinadd[1] = s[1]
+			al.palfx.sinadd[2] = s[2]
+			al.palfx.cycletime = s[3]
+		}
+	}
 	is.ReadBool(pre+"invertall", &al.palfx.invertall)
 	var n float32
 	if is.ReadF32(pre+"color", &n) {
@@ -765,7 +778,7 @@ func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt, scale float3
 				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale+
 					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale),
 				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx,
-				ats.text.frgba, true)
+				ats.text.frgba)
 		}
 	}
 }

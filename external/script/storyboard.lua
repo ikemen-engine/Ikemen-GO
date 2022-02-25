@@ -47,7 +47,7 @@ local function f_play(t, attract)
 					resetKey()
 				end
 				--play bgm
-				if i == 0 then
+				if i == 0 and (k == t.scenedef.startscene or t.scene[v].bgm ~= '') then
 					main.f_playBGM(k == t.scenedef.startscene, t.scene[v].bgm, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
 				end
 				--play snd

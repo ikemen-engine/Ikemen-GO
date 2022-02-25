@@ -319,7 +319,7 @@ func setupConfig() configSettings {
 	"DebugClipboardRows": 2,
 	"DebugClsnDarken": true,
 	"DebugConsoleRows": 15,
-	"DebugFont": "font/default-3x5-bold.def",
+	"DebugFont": "font/debug.def",
 	"DebugFontScale": 1,
 	"DebugKeys": true,
 	"DebugMode": true,
