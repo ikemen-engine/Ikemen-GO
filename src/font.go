@@ -483,7 +483,7 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil)
+		sys.brightness*255>>8|1<<9, window, 0, 0, nil, nil, 0, 0, -xscl*float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]))
 	return float32(spr.Size[0]) * xscl
 }
 
@@ -566,8 +566,8 @@ type TextSprite struct {
 	window           [4]int32
 	palfx            *PalFX
 	frgba            [4]float32 //ttf fonts
-	removetime       int32 //text sctrl
-	layerno          int16 //text sctrl
+	removetime       int32      //text sctrl
+	layerno          int16      //text sctrl
 }
 
 func NewTextSprite() *TextSprite {

@@ -121,6 +121,14 @@ const (
 	Space_screen
 )
 
+type Projection int32
+
+const (
+	Projection_Orthographic Projection = iota
+	Projection_Perspective
+	Projection_Perspective2
+)
+
 type SaveData int32
 
 const (
@@ -160,7 +168,7 @@ func (cr ClsnRect) draw(trans int32) {
 		RenderMugen(*sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
 			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
 			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0, 0, 0,
-			trans, &sys.scrrect, 0, 0)
+			trans, &sys.scrrect, 0, 0, 0, 0, 0, 0)
 	}
 }
 
@@ -745,6 +753,8 @@ type aimgImage struct {
 	angle          float32
 	yangle         float32
 	xangle         float32
+	projection     int32
+	fLength        float32
 	oldVer         bool
 }
 
@@ -867,6 +877,8 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		img.angle = sd.angle
 		img.yangle = sd.yangle
 		img.xangle = sd.xangle
+		img.projection = sd.projection
+		img.fLength = sd.fLength
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
 		ai.imgidx = (ai.imgidx + 1) & 63
@@ -892,7 +904,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
 			sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 				img.scl, ai.alpha, sd.priority - 2, img.angle, img.yangle, img.xangle, img.ascl,
-				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl}, 0, 0, 0, 0)
+				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength}, 0, 0, 0, 0)
 		}
 	}
 	if rec || hitpause && ai.ignorehitpause {
@@ -931,6 +943,8 @@ type Explod struct {
 	angle          float32
 	yangle         float32
 	xangle         float32
+	projection     Projection
+	fLength        float32
 	oldPos         [2]float32
 	newPos         [2]float32
 	palfx          *PalFX
@@ -941,7 +955,8 @@ type Explod struct {
 func (e *Explod) clear() {
 	*e = Explod{id: IErr, bindtime: 1, scale: [...]float32{1, 1}, removetime: -2,
 		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1, space: Space_none,
-		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
+		projection: Projection_Orthographic,
+		alpha:      [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
 }
 func (e *Explod) setX(x float32) {
 	e.pos[0], e.oldPos[0], e.newPos[0] = x, x, x
@@ -1128,13 +1143,19 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if sdwalp < 0 {
 		sdwalp = 256
 	}
+
+	fLength := e.fLength
+	if fLength <= 0 {
+		fLength = 2048
+	}
+	fLength = fLength * e.localscl
 	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, agl, yagl, xagl, [...]float32{1, 1},
-		screen, playerNo == sys.superplayer, oldVer, e.facing, 1},
+		screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
-		if e.bindtime > 0 {
+    if e.bindtime > 0 {
 			e.bindtime--
 			if screen && e.bindtime == 0 {
 				if e.space <= Space_none {
@@ -1433,7 +1454,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, p.facing * p.angle, 0, 0, [...]float32{1, 1}, false, playerNo == sys.superplayer,
-			sys.cgi[playerNo].ver[0] != 1, p.facing, 1}
+			sys.cgi[playerNo].ver[0] != 1, p.facing, 1, 0, 0}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false)
 		sys.sprites.add(sd,
 			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
@@ -3353,6 +3374,11 @@ func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
 		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
+		if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			expl.projection = Projection_Perspective
+		} else {
+			expl.projection = Projection_Orthographic
+		}
 		return expl
 	}
 	for i := range sys.explods[c.playerNo] {
@@ -5740,7 +5766,7 @@ func (c *Char) cueDraw() {
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, agl, 0, 0, c.angleScalse, false,
-				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / float32(c.localcoord))}
+				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / float32(c.localcoord)), 0, 0}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
 			}
