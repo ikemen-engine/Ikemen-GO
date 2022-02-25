@@ -3985,19 +3985,14 @@ func (c *Compiler) playBgm(is IniSection, sc *StateControllerBase, _ int8) (Stat
 			playBgm_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		b := false
 		if err := c.stateParam(is, "bgm", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
 			sc.add(playBgm_bgm, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
-			b = true
 			return nil
 		}); err != nil {
 			return err
-		}
-		if !b {
-			return Error("bgm parameter not specified")
 		}
 		if err := c.paramValue(is, sc, "volume",
 			playBgm_volume, VT_Int, 1, false); err != nil {

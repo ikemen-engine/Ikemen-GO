@@ -939,7 +939,7 @@ type Explod struct {
 }
 
 func (e *Explod) clear() {
-	*e = Explod{id: IErr, bindtime: 1, scale: [...]float32{1, 1}, removetime: -2,
+	*e = Explod{id: IErr, scale: [...]float32{1, 1}, removetime: -2,
 		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1, space: Space_none,
 		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
 }
@@ -959,14 +959,20 @@ func (e *Explod) setPos(c *Char) {
 			e.bindtime = 1
 		}
 	}
-	lPos := func(off [2]float32) {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale - off[0])
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale - off[1])
+	lPos := func() {
+		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
+		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
-	rPos := func(off [2]float32) {
+	rPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl +
-			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale - off[0]))
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale - off[1])
+			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
+		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
 	if e.space >= Space_stage {
 		e.postype = PT_N
@@ -987,7 +993,7 @@ func (e *Explod) setPos(c *Char) {
 					e.offset[0] *= -1
 				}
 				e.postype = PT_R
-				rPos([...]float32{0, 0})
+				rPos()
 			} else {
 				// explod の postype = front はキャラの向きで pos が反転しない
 				//if e.postype == PT_F && c.gi().ver[0] != 1 {
@@ -996,14 +1002,14 @@ func (e *Explod) setPos(c *Char) {
 				e.facing = float32(e.relativef)
 				//}
 				e.postype = PT_L
-				lPos([...]float32{0, 0})
+				lPos()
 			}
 		case PT_L:
 			e.facing = float32(e.relativef)
-			lPos(sys.cam.Pos)
+			lPos()
 		case PT_R:
 			e.facing = float32(e.relativef)
-			rPos(sys.cam.Pos)
+			rPos()
 		case PT_N:
 			e.facing = float32(e.relativef)
 			e.setX(e.offset[0])
@@ -1013,7 +1019,7 @@ func (e *Explod) setPos(c *Char) {
 		switch e.space {
 		case Space_screen:
 			e.facing = float32(e.relativef)
-			lPos([...]float32{0, 0})
+			lPos()
 		case Space_stage:
 			e.facing = float32(e.relativef)
 			e.setX(e.offset[0])
@@ -1062,12 +1068,14 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		}
 	}
 	screen := false
+	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
+		screen = true
+	}
 	if e.bindtime != 0 {
 		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
 			e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
-			screen = true
 		} else if e.postype == PT_N && e.bindId < -1 {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
@@ -1080,7 +1088,6 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			} else {
 				e.pos[0] += float32(sys.gameWidth) / e.localscl / 2
 			}
-			screen = true
 		} else {
 			if c := sys.playerID(e.bindId); c != nil {
 				e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0]
@@ -1136,26 +1143,26 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if sys.tickNextFrame() {
 		if e.bindtime > 0 {
 			e.bindtime--
-			if screen && e.bindtime == 0 {
-				if e.space <= Space_none {
-					switch e.postype {
-					case PT_L:
-						for i := range e.pos {
-							e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
-						}
-					case PT_R:
-						e.pos[0] = sys.cam.ScreenPos[0] +
-							(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
-						e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
-					}
-				} else if e.space == Space_screen {
-					for i := range e.pos {
-						e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
-					}
-				}
-			}
 		}
-		if act {
+		//if screen && e.bindtime == 0 {
+		//	if e.space <= Space_none {
+		//		switch e.postype {
+		//		case PT_L:
+		//			for i := range e.pos {
+		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//			}
+		//		case PT_R:
+		//			e.pos[0] = sys.cam.ScreenPos[0] +
+		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
+		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
+		//		}
+		//	} else if e.space == Space_screen {
+		//		for i := range e.pos {
+		//			e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+		//		}
+		//	}
+		//}
+		if act {		
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
@@ -2931,7 +2938,7 @@ func (c *Char) roundState() int32 {
 		return 1
 	case sys.intro >= 0 || sys.finish == FT_NotYet:
 		return 2
-	case sys.intro < -(sys.lifebar.ro.over_hittime +
+	case sys.intro < -(sys.lifebar.ro.over_hittime+
 		sys.lifebar.ro.over_waittime):
 		return 4
 	default:

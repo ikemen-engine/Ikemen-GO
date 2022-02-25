@@ -608,17 +608,31 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "commonLuaDelete", func(l *lua.LState) int {
-		i := -1
 		for k, v := range sys.commonLua {
 			if v == strArg(l, 1) {
-				i = k
+				// shift left one index
+				copy(sys.commonLua[k:], sys.commonLua[k+1:])
+				// erase last element (write zero value)
+				sys.commonLua[len(sys.commonLua)-1] = ""
+				// truncate slice
+				sys.commonLua = sys.commonLua[:len(sys.commonLua)-1]
 				break
 			}
 		}
-		if i >= 0 {
-			copy(sys.commonLua[i:], sys.commonLua[i+1:])         // shift left one index
-			sys.commonLua[len(sys.commonLua)-1] = ""             // erase last element (write zero value)
-			sys.commonLua = sys.commonLua[:len(sys.commonLua)-1] // truncate slice
+		return 0
+	})
+	luaRegister(l, "commonStatesInsert", func(l *lua.LState) int {
+		sys.commonStates = append(sys.commonStates, strArg(l, 1))
+		return 0
+	})
+	luaRegister(l, "commonStatesDelete", func(l *lua.LState) int {
+		for k, v := range sys.commonStates {
+			if v == strArg(l, 1) {
+				copy(sys.commonStates[k:], sys.commonStates[k+1:])
+				sys.commonStates[len(sys.commonStates)-1] = ""
+				sys.commonStates = sys.commonStates[:len(sys.commonStates)-1]
+				break
+			}
 		}
 		return 0
 	})
@@ -2516,6 +2530,13 @@ func systemScriptInit(l *lua.LState) {
 		glfw.SwapInterval(sys.vRetrace)
 		return 0
 	})
+	luaRegister(l, "updateVolume", func(l *lua.LState) int {
+		if l.GetTop() >= 1 {
+			sys.bgm.bgmVolume = int(Min(int32(numArg(l, 1)), int32(sys.maxBgmVolume)))
+		}
+		sys.bgm.UpdateVolume()
+		return 0
+	})
 	luaRegister(l, "waveGetLength", func(*lua.LState) int {
 		w, ok := toUserData(l, 1).(*Wave)
 		if !ok {
@@ -3752,7 +3773,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "memberno", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.memberNo))
+		l.Push(lua.LNumber(sys.debugWC.memberNo + 1))
 		return 1
 	})
 	luaRegister(l, "movecountered", func(*lua.LState) int {

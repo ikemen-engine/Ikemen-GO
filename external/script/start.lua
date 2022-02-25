@@ -1182,6 +1182,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 		return false
 	end
 	if #main.t_selGrid[cell].chars > 0 then
+		-- select.def 'slot' parameter special keys detection
 		for _, cmdType in ipairs({'select', 'next', 'previous'}) do
 			if main.t_selGrid[cell][cmdType] ~= nil then
 				for k, v in pairs(main.t_selGrid[cell][cmdType]) do
@@ -1241,10 +1242,8 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			end
 		end
 	end
-	if main.f_btnPalNo(cmd) == 0 or (t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect') then
-		return false
-	end
-	return true
+	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
+	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect')
 end
 
 --generate start.t_grid table, assign row and cell to main.t_selChars
@@ -2198,6 +2197,8 @@ function start.f_selectScreen()
 			})
 			txt_recordSelect:draw()
 		end
+		-- hook
+		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.bg, true)
 		--draw fadein / fadeout
@@ -2722,7 +2723,12 @@ end
 txt_timerVS = main.f_createTextImg(motif.vs_screen, 'timer')
 
 function start.f_selectVersus(active, t_orderSelect)
+	start.t_orderRemap = {{}, {}}
 	for side = 1, 2 do
+		-- populate order remap table with default values
+		for i = 1, #start.p[side].t_selected do
+			table.insert(start.t_orderRemap[side], i)
+		end
 		-- prevent order select if not enabled in screenpack or if team size = 1
 		if t_orderSelect[side] then
 			t_orderSelect[side] = motif.vs_screen.orderselect_enabled == 1 and #start.p[side].t_selected > 1
@@ -2814,14 +2820,9 @@ function start.f_selectVersus(active, t_orderSelect)
 		if not done and #start.p[1].t_selected == #t_order[1] and #start.p[2].t_selected == #t_order[2] then
 			for side = 1, 2 do
 				-- rearrange characters in selection order
-				local t_selected = {}
-				local t_selTemp = {}
-				for _, v in ipairs(t_order[side]) do
-					table.insert(t_selected, start.p[side].t_selected[v])
-					table.insert(t_selTemp, start.p[side].t_selTemp[v])
+				for k, v in ipairs(t_order[side]) do
+					start.t_orderRemap[side][k] = v
 				end
-				start.p[side].t_selected = t_selected
-				start.p[side].t_selTemp = t_selTemp
 				-- update spr/anim data
 				for member, v in ipairs(start.p[side].t_selected) do
 					local done_anim = motif.vs_screen['p' .. side .. '_member' .. member .. '_done_anim'] or motif.vs_screen['p' .. side .. '_done_anim']
@@ -2865,19 +2866,19 @@ function start.f_selectVersus(active, t_orderSelect)
 		end
 		--draw portraits and order icons
 		for side = 1, 2 do
-			start.f_drawPortraits(start.p[side].t_selTemp, side, motif.vs_screen, '', false, t_icon[side])
+			start.f_drawPortraits(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side]), side, motif.vs_screen, '', false, t_icon[side])
 		end
 		--draw names
 		for side = 1, 2 do
-			for i = 1, #start.p[side].t_selTemp do
-				if i <= motif.vs_screen['p' .. side .. '_name_num'] or main.coop then
+			for k, v in ipairs(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side])) do
+				if k <= motif.vs_screen['p' .. side .. '_name_num'] or main.coop then
 					t_txt_nameVS[side]:update({
 						font =   motif.vs_screen['p' .. side .. '_name_font'][1],
 						bank =   motif.vs_screen['p' .. side .. '_name_font'][2],
 						align =  motif.vs_screen['p' .. side .. '_name_font'][3],
-						text =   start.f_getName(start.p[side].t_selTemp[i].ref, side),
-						x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
-						y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (i - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
+						text =   start.f_getName(v.ref, side),
+						x =      motif.vs_screen['p' .. side .. '_name_pos'][1] + motif.vs_screen['p' .. side .. '_name_offset'][1] + (k - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][1],
+						y =      motif.vs_screen['p' .. side .. '_name_pos'][2] + motif.vs_screen['p' .. side .. '_name_offset'][2] + (k - 1) * motif.vs_screen['p' .. side .. '_name_spacing'][2],
 						scaleX = motif.vs_screen['p' .. side .. '_name_scale'][1],
 						scaleY = motif.vs_screen['p' .. side .. '_name_scale'][2],
 						r =      motif.vs_screen['p' .. side .. '_name_font'][4],
@@ -2897,6 +2898,8 @@ function start.f_selectVersus(active, t_orderSelect)
 		if not done and motif.vs_screen.timer_count ~= -1 and timerActive then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
 		end
+		-- hook
+		hook.run("start.f_selectVersus")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.bg, true)
 		--draw fadein / fadeout
@@ -3115,6 +3118,8 @@ function start.f_result()
 	bgDraw(motif[start.t_result.bgdef].bg, false)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
+	-- hook
+	hook.run("start.f_result")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif[start.t_result.bgdef].bg, true)
 	--draw text at layerno = 2
@@ -3152,10 +3157,12 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	local allow_ko = allow_ko or 0
 	local t = {}
 	local t_matchList = {}
+	local t_teamList = {}
 	local playerNo = -1
 	local selectNo = -1
+	local memberNo = -1
 	local foundLeader = false
-	local f_appendTable = function(ref)
+	local f_appendTable = function(ref, memberNo)
 		if #t >= num then return false end
 		table.insert(t, {
 			ref = ref,
@@ -3165,6 +3172,7 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 			slide_dist = {0, 0},
 		})
 		t_matchList[ref] = (t_matchList[ref] or 0) + 1
+		t_teamList[memberNo] = true
 		return true
 	end
 	--winner who made last hit takes priority
@@ -3175,8 +3183,9 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 	if player(lastHitter) and winnerteam() == side then --assign sys.debugWC
 		playerNo = lastHitter
 		selectNo = selectno()
+		memberNo = memberno()
 		foundLeader = true
-		f_appendTable(selectNo)
+		f_appendTable(selectNo, memberNo)
 	end
 	--generate table out of remaining characters present in the last match
 	for i = 1, math.max(#start.p[1].t_selected, #start.p[2].t_selected) * 2 do
@@ -3185,34 +3194,28 @@ function start.f_victoryOrder(side, paramSide, allow_ko, num)
 				if not foundLeader then
 					playerNo = i
 					selectNo = selectno()
+					memberNo = memberno()
 					foundLeader = true
 				end
-				if not f_appendTable(selectno()) then break end
+				if not f_appendTable(selectno(), memberNo) then break end
 			elseif i ~= lastHitter then --member of win team (but skip winner who made last hit)
 				if alive() and not foundLeader then --first not KOed member
 					playerNo = i
 					selectNo = selectno()
+					memberNo = memberno()
 					foundLeader = true
-					if not f_appendTable(selectNo) then break end
+					if not f_appendTable(selectNo, memberNo) then break end
 				elseif alive() or allow_ko == 1 then --other team members
-					if not f_appendTable(selectno()) then break end
+					if not f_appendTable(selectno(), memberno()) then break end
 				end
 			end
 		end
 	end
 	--append turns team mode characters not loaded during last match
 	if #t < num and #t < #start.p[side].t_selected then
-		--list all team members
-		local t_teamList = {}
-		for _, v in ipairs(start.p[side].t_selected) do
-			t_teamList[v.ref] = (t_teamList[v.ref] or 0) + 1
-		end
-		--add remaining members
-		for k, v in pairs(t_teamList) do
-			if t_matchList[k] == nil or t_matchList[k] < v then
-				for i = 1, v - (t_matchList[k] or 0) do
-					f_appendTable(k)
-				end
+		for k, v in ipairs(main.f_remapTable(start.p[side].t_selected, start.t_orderRemap[side])) do
+			if not t_teamList[k] and (allow_ko == 1 or k > memberNo) then
+				f_appendTable(v.ref, k)
 			end
 		end
 	end
@@ -3336,6 +3339,8 @@ function start.f_victory()
 			)
 		)
 	end
+	-- hook
+	hook.run("start.f_victory")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.victorybgdef.bg, true)
 	--draw fadein / fadeout
@@ -3611,6 +3616,8 @@ function start.f_continue()
 			txt_credits:draw()
 		end
 	end
+	-- hook
+	hook.run("start.f_continue")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.continuebgdef.bg, true)
 	--draw fadein / fadeout
@@ -3855,6 +3862,8 @@ function start.f_hiscore(t, playMusic, place, infinite)
 		main.credits = main.credits + 1
 		resetKey()
 	end
+	-- hook
+	hook.run("start.f_hiscore")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.hiscorebgdef.bg, true)
 	--draw fadein / fadeout
@@ -3933,6 +3942,8 @@ function start.f_challenger()
 	if start.t_challenger.counter >= motif.challenger_info.text_displaytime then
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 1)
 	end
+	-- hook
+	hook.run("start.f_challenger")
 	--draw layerno = 1 backgrounds
 	bgDraw(motif.challengerbgdef.bg, true)
 	--draw text at layerno = 2
