@@ -102,19 +102,19 @@ function varLinux() {
 function build() {
 	#echo "buildNormal"
 	#echo "$binName"
-	go build -v -trimpath -o ./bin/$binName ./src
+	go build -trimpath -v -trimpath -o ./bin/$binName ./src
 }
 
 function buildAlt() {
-	#echo "buildAlt"
-	#echo "$binName"
-	go build -v -trimpath -tags al_cmpt -o ./bin/$binName ./src
+	echo "buildAlt"
+	echo "$binName"
+	#go build -trimpath -v -trimpath -tags al_cmpt -o ./bin/$binName ./src
 }
 
 function buildWin() {
 	#echo "buildWin"
 	#echo "$binName"
-	go build -v -trimpath -ldflags "-H windowsgui" -o ./bin/$binName ./src
+	go build -trimpath -v -trimpath -ldflags "-H windowsgui" -o ./bin/$binName ./src
 }
 
 # Determine the target OS.
