@@ -459,9 +459,14 @@ func (f *Fnt) getCharSpr(c rune, bank, bt int32) *Sprite {
 	return &fci.img[0]
 }
 
-func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
-	c rune, pal []uint32, window *[4]int32, palfx *PalFX) float32 {
-
+func (f *Fnt) drawChar(
+	x, y,
+	xscl, yscl float32,
+	bank, bt int32,
+	c rune, pal []uint32, 
+	window *[4]int32,
+	palfx *PalFX,
+) float32 {
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
 	}
@@ -481,10 +486,16 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 
 	x -= xscl * float32(spr.Offset[0])
 	y -= yscl * float32(spr.Offset[1])
-	spr.glDraw(pal, 0, -x*sys.widthScale,
-		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
-		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, nil, f.paltex
+
+	spr.glDraw(pal, 0,
+		-x*sys.widthScale, -y*sys.heightScale, &notiling,
+		xscl*sys.widthScale, xscl*sys.widthScale,
+		yscl*sys.heightScale, 0,
+		0, 0, 0,
+		sys.brightness*255>>8|1<<9,
+		window, 0, 0,
+		nil, f.paltex,
+		0, 0, -xscl * float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
 	)
 	if f.paltex == nil {
 		f.paltex = spr.PalTex
