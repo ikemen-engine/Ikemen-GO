@@ -10,7 +10,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -371,30 +370,41 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var err error
 	var window *glfw.Window
 	var monitor *glfw.Monitor
+	
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
-	mode := monitor.GetVideoMode()
-	x, y := (mode.Width-w)/2, (mode.Height-h)/2
+
+	var mode = monitor.GetVideoMode()
+	var x, y = (mode.Width-w)/2, (mode.Height-h)/2
+
+	// Create main window.
+	// NOTE: Borderless fullscreen is in reality just a window without borders.
+	if s.fullscreen && !s.borderless  {
+		window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil)
+	} else {
+		window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil);
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create window: %w", err)
+	}
+	
+	// Set windows atributes
 	if s.fullscreen {
-		if window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil); err != nil {
-			return nil, fmt.Errorf("failed to create window: %w", err)
-		}
-		if runtime.GOOS == "windows" && s.borderless {
+		window.SetPos(0, 0)
+		if s.borderless {
 			window.SetAttrib(glfw.Decorated, 0)
-			window.SetPos(0, 0)
-			window.SetSize(w, h)
+			window.SetSize(mode.Width, mode.Height)
 		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	} else {
-		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
-			return nil, fmt.Errorf("failed to create window: %w", err)
-		}
+		window.SetSize(w, h)
+		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 		if s.windowCentered {
 			window.SetPos(x, y)
 		}
-		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
+
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
 	window.SetCharModsCallback(charCallback)
@@ -403,12 +413,21 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 }
 
 func (w *Window) toggleFullscreen() {
+	var mode = glfw.GetPrimaryMonitor().GetVideoMode()
+
 	if w.fullscreen {
-		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
+		w.SetAttrib(glfw.Decorated, 1)
+		w.SetMonitor(nil, w.x, w.y, w.w, w.h, mode.RefreshRate)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	} else {
-		w.x, w.y = w.GetPos()
-		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
+		w.SetAttrib(glfw.Decorated, 0)
+		if sys.borderless {
+			w.SetSize(mode.Width, mode.Height)
+			w.SetMonitor(nil, 0, 0, mode.Width, mode.Height, mode.RefreshRate)
+		} else {
+			w.x, w.y = w.GetPos()
+			w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, mode.RefreshRate)
+		}
 		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	}
 	if sys.vRetrace != -1 {
@@ -585,6 +604,8 @@ func (s *System) await(fps int) bool {
 	}
 	s.eventUpdate()
 	if !s.frameSkip {
+		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
+		//gl.Viewport(0, 0, int32(width), int32(height))
 		gl.Viewport(0, 0, s.scrrect[2], s.scrrect[3])
 		if s.netInput == nil {
 			gl.Clear(gl.COLOR_BUFFER_BIT)

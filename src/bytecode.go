@@ -7644,7 +7644,7 @@ func (sc createPlatform) Run(schara *Char, _ []int32) bool {
 		return true
 	})
 
-	if customOffset == false {
+	if !customOffset {
 		if plat.size[0] != 0 {
 			plat.offset[0] = plat.size[0] / 2
 		}
