@@ -507,7 +507,11 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	switch {
 	case trans == -1:
 		gl.Uniform1fARB(a, 1)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		if renderMode == 1 {
+			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
+		} else {
+			gl.BlendFunc(gl.ONE, gl.ONE)
+		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
