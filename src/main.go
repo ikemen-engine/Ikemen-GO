@@ -388,7 +388,7 @@ func setupConfig() configSettings {
 	"RoundsNumTag": 2,
 	"RoundTime": 99,
 	"ScreenshotFolder": "",
-	"StartStage": "stages/stage0-720.def",
+	"StartStage": "stages/stage1.def",
 	"StereoEffects": true,
 	"System": "external/script/main.lua",
 	"Team1VS2Life": 100,
