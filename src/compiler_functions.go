@@ -3040,17 +3040,18 @@ func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase, _ int8)
 		); err != nil {
 			return err
 		}
+		
 		if err := c.paramValue(
 			is, sc, "value",
 			defenceMulSet_value, VT_Float, 1, true,
 		); err != nil {
 			return err
 		}
-
+		
 		if err := c.stateParam(is, "multype", func(data string) error {
 			var mulType = Atoi(strings.TrimSpace(data))
 
-			if mulType < 0 && mulType > 1 {
+			if mulType >= 0 && mulType <= 1 {
 				sc.add(defenceMulSet_mulType, sc.iToExp(mulType))
 				return nil
 			} else {
@@ -3059,13 +3060,14 @@ func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase, _ int8)
 		}); err != nil {
 			return err
 		}
-
+		
 		if err := c.paramValue(
-			is, sc, "onhit ",
+			is, sc, "onhit",
 			defenceMulSet_onHit, VT_Bool, 1, false,
 		); err != nil {
 			return err
 		}
+		
 		return nil
 	})
 	return *ret, err
