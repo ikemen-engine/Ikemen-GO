@@ -1356,7 +1356,7 @@ func readLifeBarCombo(pre string, is IniSection,
 	is.ReadI32(pre+"counter.time", &co.counter_time)
 	is.ReadF32(pre+"counter.mult", &co.counter_mult)
 	co.text = *readLbText(pre+"text.", is, "", 2, f, align)
-	co.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
+	co.bg = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
 	co.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	is.ReadI32(pre+"displaytime", &co.displaytime)
 	is.ReadF32(pre+"showspeed", &co.showspeed)
