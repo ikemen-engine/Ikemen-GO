@@ -5724,21 +5724,30 @@ type defenceMulSet StateControllerBase
 
 const (
 	defenceMulSet_value byte = iota
+	defenceMulSet_onHit
+	defenceMulSet_mulType
 	defenceMulSet_redirectid
 )
 
 func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
+	// For redirectID.
 	crun := c
+	// Default values.
+	var val float32 = 1
+	var onHit bool = true
+	// 0 mimics Mugen behaviour (Default)
+	// 1 is the new Ikemen behaviour.
+	var mulType int32 = 0
+
+	// Parse values
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case defenceMulSet_value:
-			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-				crun.customDefense = exp[0].evalF(c)
-				crun.defenseMulDelay = false
-			} else {
-				crun.customDefense = 1 / exp[0].evalF(c)
-				crun.defenseMulDelay = true
-			}
+			val = exp[0].evalF(c)
+		case defenceMulSet_onHit:
+			onHit = exp[0].evalB(c)
+		case defenceMulSet_mulType:
+			mulType = exp[0].evalI(c)
 		case defenceMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5748,6 +5757,16 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	
+	// Apply "value".
+	if mulType == 0 {
+		crun.customDefense = 1.0 / val
+	} else {
+		crun.customDefense = val
+	}
+	// Apply "onHit"
+	c.defenseMulDelay = onHit
+
 	return false
 }
 

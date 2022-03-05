@@ -3034,12 +3034,36 @@ func (c *Compiler) attackMulSet(is IniSection, sc *StateControllerBase, _ int8) 
 }
 func (c *Compiler) defenceMulSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*defenceMulSet)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			defenceMulSet_redirectid, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(
+			is, sc, "redirectid",
+			defenceMulSet_redirectid, VT_Int, 1, false,
+		); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "value",
-			defenceMulSet_value, VT_Float, 1, true); err != nil {
+		if err := c.paramValue(
+			is, sc, "value",
+			defenceMulSet_value, VT_Float, 1, true,
+		); err != nil {
+			return err
+		}
+
+		if err := c.stateParam(is, "multype", func(data string) error {
+			var mulType = Atoi(strings.TrimSpace(data))
+
+			if mulType < 0 && mulType > 1 {
+				sc.add(defenceMulSet_mulType, sc.iToExp(mulType))
+				return nil
+			} else {
+				return Error(`Invalid "mulType" value.`)
+			}
+		}); err != nil {
+			return err
+		}
+
+		if err := c.paramValue(
+			is, sc, "onhit ",
+			defenceMulSet_onHit, VT_Bool, 1, false,
+		); err != nil {
 			return err
 		}
 		return nil
