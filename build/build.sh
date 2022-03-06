@@ -106,9 +106,9 @@ function build() {
 }
 
 function buildAlt() {
-	echo "buildAlt"
-	echo "$binName"
-	#go build -trimpath -v -trimpath -tags al_cmpt -o ./bin/$binName ./src
+	#echo "buildAlt"
+	#echo "$binName"
+	go build -trimpath -v -trimpath -tags al_cmpt -o ./bin/$binName ./src
 }
 
 function buildWin() {
