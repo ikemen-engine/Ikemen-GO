@@ -467,7 +467,7 @@ func newSprite() *Sprite {
 		s.palidx = -1
 		return s, nil
 	}
-	if s.rle > -11 {
+	if s.coldepth <= 8 {
 		read := func(x interface{}) error {
 			return binary.Read(f, binary.LittleEndian, x)
 		}
@@ -511,18 +511,18 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	if s.palidx < 0 {
 		s.palidx = src.palidx
 	}
-	s.rle = src.rle
+	s.coldepth = src.coldepth
 	//s.paltemp = src.paltemp
 	//s.PalTex = src.PalTex
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
-	if s.Pal != nil || s.rle <= -11 {
+	if s.Pal != nil || s.coldepth > 8 {
 		return s.Pal
 	}
 	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
 }
 func (s *Sprite) GetPalTex(pl *PaletteList) *Texture {
-	if s.rle <= -11 {
+	if s.coldepth > 8 {
 		return nil
 	}
 	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
@@ -1002,7 +1002,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		padd[2] *= -1
 	}
 
-	if s.rle <= -11 {
+	if s.coldepth > 8 {
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
@@ -1295,7 +1295,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 						if spriteList[i].palidx >= MaxPalNo { //just in case
 							spriteList[i].palidx = 0
 						}
-					} else if spriteList[i].rle > -11 {
+					} else if spriteList[i].coldepth <= 8 {
 						plSize = 0
 						plIndexOfPrevious = uint16(spriteList[i].palidx)
 						ip := plIndexOfPrevious + 1
