@@ -553,18 +553,22 @@ func (s *Sprite) SetPxl(px []byte) {
 	}
 }
 
-func (s *Sprite) SetPng(rgba *image.RGBA, sprWidth int32, sprHeight int32) {
+func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sprDepth int32) {
 	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
 		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
-			sprWidth, sprHeight,
-			0, gl.RGBA, gl.UNSIGNED_BYTE,
-			unsafe.Pointer(&rgba.Pix[0]),
-		)
+		if sprDepth == 32 {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+				sprWidth, sprHeight,
+				0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+		} else {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+				sprWidth, sprHeight,
+				0, gl.RGB, gl.UNSIGNED_BYTE, data)
+		}
 		if sys.pngFilter {
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -984,7 +988,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 		if !isPng {
 			s.SetPxl(px)
 		} else {
-			s.SetPng(rgba, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y))
+			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		}
 	}
 	return nil
