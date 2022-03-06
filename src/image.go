@@ -928,14 +928,33 @@ func (s *Sprite) Lz5Decode(rle []byte) (p []byte) {
 	return
 }
 func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
-	f.Seek(offset+4, 0)
-	if s.rle < 0 {
+	var px []byte
+	var isRaw bool = false
+
+	if s.rle > 0 {
+		return nil
+
+	} else if s.rle == 0 {
+		f.Seek(offset, 0)
+		px = make([]uint8, datasize)
+		binary.Read(f, binary.LittleEndian, px)
+
+		switch s.coldepth {
+		case 8:
+			// Do nothing, px is already in the expected format
+		case 24, 32:
+			isRaw = true
+			s.SetRaw(unsafe.Pointer(&px[0]), int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
+		default:
+			return Error("Unknown color depth")
+		}
+
+	} else {
+		f.Seek(offset+4, 0)
 		format := -s.rle
 
-		var px []byte
 		var rgba *image.RGBA
 		var rect image.Rectangle
-		var isPng bool = false
 
 		if 2 <= format && format <= 4 {
 			if datasize < 4 {
@@ -966,7 +985,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			}
 		case 11, 12:
 			var ok bool = false
-			isPng = true
+			isRaw = true
 
 			// Decode PNG image to RGBA
 			img, err := png.Decode(f)
@@ -981,15 +1000,14 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
+			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		default:
 			return Error("Unknown format")
 		}
+	}
 
-		if !isPng {
-			s.SetPxl(px)
-		} else {
-			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
-		}
+	if !isRaw {
+		s.SetPxl(px)
 	}
 	return nil
 }
