@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit in case of failure
+set -e
+
 # Int vars
 binName="Default"
 cmpt=0
@@ -7,7 +10,7 @@ targetOS=$1
 currentOS="Unknown"
 
 # Go to the main folder.
-cd ..
+cd "$(dirname "$0")/.."
 
 # Main function.
 function main() {
@@ -15,10 +18,8 @@ function main() {
 	export CGO_ENABLED=1
 
 	# Create "bin" folder.
-	if [ ! -d ./bin ]; then
-		mkdir bin
-	fi
-	
+	mkdir -p bin
+
 	# CMPT flag.
 	if [[ "${1,,}" == "cmpt"  ]] || [[ "${2,,}" == "cmpt"  ]]; then
 		cmpt=1
