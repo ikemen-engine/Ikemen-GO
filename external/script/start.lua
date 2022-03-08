@@ -3981,12 +3981,22 @@ function start.f_stageMusic()
 		-- only if the round is not restarted
 		if start.bgmround ~= roundno() then
 			start.bgmround = roundno()
+			local roundNo = start.bgmround
+			-- lookup first valid track if life bgm was triggered in the previous round
+			if start.bgmstate == 1 then
+				for i = roundNo, 1, -1 do
+					if start.t_music.music[i] ~= nil then
+						roundNo = i
+						break
+					end
+				end
+			end
 			-- music exists for this round
-			if start.t_music.music[start.bgmround] ~= nil then
-				-- interrupt same track playing only on round 1 of first match (skips continuos survival etc.)
-				main.f_playBGM(matchno() == 1 and start.bgmround == 1, start.t_music.music[start.bgmround].bgmusic, 1, start.t_music.music[start.bgmround].bgmvolume, start.t_music.music[start.bgmround].bgmloopstart, start.t_music.music[start.bgmround].bgmloopend)
-			-- stop versus screen track even if stage music is not assigned
-			elseif start.bgmround == 1 then
+			if start.t_music.music[roundNo] ~= nil then
+				-- interrupt same track playing only on round 1 of first match (skips continuous survival etc.)
+				main.f_playBGM(matchno() == 1 and roundNo == 1, start.t_music.music[roundNo].bgmusic, 1, start.t_music.music[roundNo].bgmvolume, start.t_music.music[roundNo].bgmloopstart, start.t_music.music[roundNo].bgmloopend)
+			-- stop versus screen track or life bgm even if stage music is not assigned
+			elseif start.bgmround == 1 or start.bgmstate == 1 then
 				main.f_playBGM(true)
 			end
 		end
