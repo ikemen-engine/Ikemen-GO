@@ -1310,7 +1310,7 @@ function start.f_matchPersistence()
 	if matchno() >= 2 then
 		-- set 'existed' flag (decides if var/fvar should be persistent between matches)
 		for _, v in ipairs(t_gameStats.match) do
-			for i, t in ipairs(v) do
+			for _, t in pairs(v) do
 				if start.p[t.teamside + 1].t_selected[t.memberNo + 1] ~= nil then
 					start.p[t.teamside + 1].t_selected[t.memberNo + 1].existed = true
 				end
@@ -1340,9 +1340,9 @@ function start.f_matchPersistence()
 			-- Single / Simul / Tag
 			else
 				-- for each player data in the last round
-				for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
-					-- only check player controlled characters, exclude attachedchar
-					if v.teamside ~= -1 and not main.cpuSide[v.teamside + 1] then
+				for _, v in pairs(t_gameStats.match[#t_gameStats.match]) do
+					-- only check player controlled characters
+					if not main.cpuSide[v.teamside + 1] then
 						-- if defeated
 						if v.ko and v.life <= 0 then
 							-- remove character from team
