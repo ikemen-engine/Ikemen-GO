@@ -5732,13 +5732,21 @@ const (
 func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 	// For redirectID.
 	crun := c
+	
 	// Default values.
 	var val float32 = 1
 	var onHit bool = true
-	// 0 mimics Mugen behaviour (Default)
+	
+	// 0 mimics Mugen behaviour (Default for not Ikemen chars)
 	// 1 is the new Ikemen behaviour.
 	var mulType int32 = 0
-
+	
+	// Ikemen chars default behaviour.
+	if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+		onHit = false
+		mulType = 1
+	}
+	
 	// Parse values
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -5765,7 +5773,7 @@ func (sc defenceMulSet) Run(c *Char, _ []int32) bool {
 		crun.customDefense = val
 	}
 	// Apply "onHit"
-	c.defenseMulDelay = onHit
+	crun.defenseMulDelay = onHit
 
 	return false
 }
