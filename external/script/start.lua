@@ -4130,7 +4130,11 @@ function start.f_dialogueParse()
 	local t_text, pn = getCharDialogue()
 	start.t_dialogue.player = pn
 	start.t_dialogue.face[1].pn = start.t_dialogue.player
-	start.t_dialogue.face[2].pn = start.f_dialogueRedirection('enemy(0)')
+	if main.f_playerSide(start.t_dialogue.player) == 1 then
+		start.t_dialogue.face[2].pn = 2
+	else
+		start.t_dialogue.face[2].pn = 1
+	end
 	for _, v in ipairs(t_text) do
 		--TODO: split string using "<p[1-2]>" delimiter
 		local t = {side = 1, text = '', colors = {{}, {}}, tokens = {}, cnt = 0}
