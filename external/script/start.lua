@@ -1310,7 +1310,7 @@ function start.f_matchPersistence()
 	if matchno() >= 2 then
 		-- set 'existed' flag (decides if var/fvar should be persistent between matches)
 		for _, v in ipairs(t_gameStats.match) do
-			for i, t in ipairs(v) do
+			for _, t in pairs(v) do
 				if start.p[t.teamside + 1].t_selected[t.memberNo + 1] ~= nil then
 					start.p[t.teamside + 1].t_selected[t.memberNo + 1].existed = true
 				end
@@ -1340,9 +1340,9 @@ function start.f_matchPersistence()
 			-- Single / Simul / Tag
 			else
 				-- for each player data in the last round
-				for player, v in pairs(t_gameStats.match[#t_gameStats.match]) do
-					-- only check player controlled characters, exclude attachedchar
-					if v.teamside ~= -1 and not main.cpuSide[v.teamside + 1] then
+				for _, v in pairs(t_gameStats.match[#t_gameStats.match]) do
+					-- only check player controlled characters
+					if not main.cpuSide[v.teamside + 1] then
 						-- if defeated
 						if v.ko and v.life <= 0 then
 							-- remove character from team
@@ -3981,12 +3981,22 @@ function start.f_stageMusic()
 		-- only if the round is not restarted
 		if start.bgmround ~= roundno() then
 			start.bgmround = roundno()
+			local roundNo = start.bgmround
+			-- lookup first valid track if life bgm was triggered in the previous round
+			if start.bgmstate == 1 then
+				for i = roundNo, 1, -1 do
+					if start.t_music.music[i] ~= nil then
+						roundNo = i
+						break
+					end
+				end
+			end
 			-- music exists for this round
-			if start.t_music.music[start.bgmround] ~= nil then
-				-- interrupt same track playing only on round 1 of first match (skips continuos survival etc.)
-				main.f_playBGM(matchno() == 1 and start.bgmround == 1, start.t_music.music[start.bgmround].bgmusic, 1, start.t_music.music[start.bgmround].bgmvolume, start.t_music.music[start.bgmround].bgmloopstart, start.t_music.music[start.bgmround].bgmloopend)
-			-- stop versus screen track even if stage music is not assigned
-			elseif start.bgmround == 1 then
+			if start.t_music.music[roundNo] ~= nil then
+				-- interrupt same track playing only on round 1 of first match (skips continuous survival etc.)
+				main.f_playBGM(matchno() == 1 and roundNo == 1, start.t_music.music[roundNo].bgmusic, 1, start.t_music.music[roundNo].bgmvolume, start.t_music.music[roundNo].bgmloopstart, start.t_music.music[roundNo].bgmloopend)
+			-- stop versus screen track or life bgm even if stage music is not assigned
+			elseif start.bgmround == 1 or start.bgmstate == 1 then
 				main.f_playBGM(true)
 			end
 		end
@@ -4120,7 +4130,11 @@ function start.f_dialogueParse()
 	local t_text, pn = getCharDialogue()
 	start.t_dialogue.player = pn
 	start.t_dialogue.face[1].pn = start.t_dialogue.player
-	start.t_dialogue.face[2].pn = start.f_dialogueRedirection('enemy(0)')
+	if main.f_playerSide(start.t_dialogue.player) == 1 then
+		start.t_dialogue.face[2].pn = 2
+	else
+		start.t_dialogue.face[2].pn = 1
+	end
 	for _, v in ipairs(t_text) do
 		--TODO: split string using "<p[1-2]>" delimiter
 		local t = {side = 1, text = '', colors = {{}, {}}, tokens = {}, cnt = 0}

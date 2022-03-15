@@ -2044,7 +2044,7 @@ func (s *System) fight() (reload bool) {
 			s.clearAllSound()
 			tbl_roundNo := s.luaLState.NewTable()
 			for _, p := range s.chars {
-				if len(p) > 0 {
+				if len(p) > 0 && p[0].teamside != -1 {
 					tmp := s.luaLState.NewTable()
 					tmp.RawSetString("name", lua.LString(p[0].name))
 					tmp.RawSetString("id", lua.LNumber(p[0].id))
