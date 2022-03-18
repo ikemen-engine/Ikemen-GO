@@ -30,13 +30,14 @@ type Fnt struct {
 	colors    int32
 	offset    [2]int32
 	ttf       *glfont.Font
-	paltex    *Texture
+	paltexs   map[[4]int32]*Texture
 }
 
 func newFnt() *Fnt {
 	return &Fnt{
 		images:   make(map[int32]map[rune]*FntCharImage),
 		BankType: "palette",
+		paltexs:  make(map[[4]int32]*Texture),
 	}
 }
 
@@ -481,12 +482,13 @@ func (f *Fnt) drawChar(x, y, xscl, yscl float32, bank, bt int32,
 
 	x -= xscl * float32(spr.Offset[0])
 	y -= yscl * float32(spr.Offset[1])
+	paltex := f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}]
 	spr.glDraw(pal, 0, -x*sys.widthScale,
 		-y*sys.heightScale, &notiling, xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0, 0, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, nil, f.paltex)
-	if f.paltex == nil {
-		f.paltex = spr.PalTex
+		sys.brightness*255>>8|1<<9, window, 0, 0, nil, paltex)
+	if paltex == nil {
+		f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = spr.PalTex
 	}
 	return float32(spr.Size[0]) * xscl
 }
@@ -540,7 +542,6 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		pal = palfx.getFxPal(f.palettes[bank][:], false)
 	}
 
-	f.paltex = nil
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
 	}
