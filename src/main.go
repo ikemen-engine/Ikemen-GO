@@ -84,15 +84,15 @@ func main() {
 		ftemp.Close();
 	}
 
-	log := createLog("Ikemen.log")
-	defer closeLog(log)
 	// Initialize game and create window
 	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
 
 	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(tmp.System); err != nil {
 		// Display error logs.
-		fmt.Fprintln(log, err)
+		errorLog := createLog("Ikemen.log")
+		defer closeLog(errorLog)
+		fmt.Fprintln(errorLog, err)
 		switch err.(type) {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
