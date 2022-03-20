@@ -467,7 +467,7 @@ func newSprite() *Sprite {
 		s.palidx = -1
 		return s, nil
 	}
-	if s.rle > -11 {
+	if s.coldepth <= 8 {
 		read := func(x interface{}) error {
 			return binary.Read(f, binary.LittleEndian, x)
 		}
@@ -511,18 +511,18 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	if s.palidx < 0 {
 		s.palidx = src.palidx
 	}
-	s.rle = src.rle
+	s.coldepth = src.coldepth
 	//s.paltemp = src.paltemp
 	//s.PalTex = src.PalTex
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
-	if s.Pal != nil || s.rle <= -11 {
+	if s.Pal != nil || s.coldepth > 8 {
 		return s.Pal
 	}
 	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
 }
 func (s *Sprite) GetPalTex(pl *PaletteList) *Texture {
-	if s.rle <= -11 {
+	if s.coldepth > 8 {
 		return nil
 	}
 	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
@@ -553,18 +553,22 @@ func (s *Sprite) SetPxl(px []byte) {
 	}
 }
 
-func (s *Sprite) SetPng(rgba *image.RGBA, sprWidth int32, sprHeight int32) {
+func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sprDepth int32) {
 	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
 		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
-			sprWidth, sprHeight,
-			0, gl.RGBA, gl.UNSIGNED_BYTE,
-			unsafe.Pointer(&rgba.Pix[0]),
-		)
+		if sprDepth == 32 {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+				sprWidth, sprHeight,
+				0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+		} else {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+				sprWidth, sprHeight,
+				0, gl.RGB, gl.UNSIGNED_BYTE, data)
+		}
 		if sys.pngFilter {
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -924,14 +928,33 @@ func (s *Sprite) Lz5Decode(rle []byte) (p []byte) {
 	return
 }
 func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
-	f.Seek(offset+4, 0)
-	if s.rle < 0 {
+	var px []byte
+	var isRaw bool = false
+
+	if s.rle > 0 {
+		return nil
+
+	} else if s.rle == 0 {
+		f.Seek(offset, 0)
+		px = make([]uint8, datasize)
+		binary.Read(f, binary.LittleEndian, px)
+
+		switch s.coldepth {
+		case 8:
+			// Do nothing, px is already in the expected format
+		case 24, 32:
+			isRaw = true
+			s.SetRaw(unsafe.Pointer(&px[0]), int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
+		default:
+			return Error("Unknown color depth")
+		}
+
+	} else {
+		f.Seek(offset+4, 0)
 		format := -s.rle
 
-		var px []byte
 		var rgba *image.RGBA
 		var rect image.Rectangle
-		var isPng bool = false
 
 		if 2 <= format && format <= 4 {
 			if datasize < 4 {
@@ -962,7 +985,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			}
 		case 11, 12:
 			var ok bool = false
-			isPng = true
+			isRaw = true
 
 			// Decode PNG image to RGBA
 			img, err := png.Decode(f)
@@ -977,15 +1000,14 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
+			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		default:
 			return Error("Unknown format")
 		}
+	}
 
-		if !isPng {
-			s.SetPxl(px)
-		} else {
-			s.SetPng(rgba, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y))
-		}
+	if !isRaw {
+		s.SetPxl(px)
 	}
 	return nil
 }
@@ -1002,7 +1024,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		padd[2] *= -1
 	}
 
-	if s.rle <= -11 {
+	if s.coldepth > 8 {
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
@@ -1295,7 +1317,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 						if spriteList[i].palidx >= MaxPalNo { //just in case
 							spriteList[i].palidx = 0
 						}
-					} else if spriteList[i].rle > -11 {
+					} else if spriteList[i].coldepth <= 8 {
 						plSize = 0
 						plIndexOfPrevious = uint16(spriteList[i].palidx)
 						ip := plIndexOfPrevious + 1

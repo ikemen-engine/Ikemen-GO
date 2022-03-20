@@ -726,7 +726,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 	var draw func(int32)
-	if a.spr.rle <= -11 {
+	if a.spr.coldepth > 8 {
 		draw = func(trans int32) {
 			RenderMugenFcS(*a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
