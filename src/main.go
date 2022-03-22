@@ -149,6 +149,7 @@ Debug Options:
 -nojoy                  Disables joysticks
 -nomusic                Disables music
 -nosound                Disables all sound effects and music
+-windowed               Windowed mode (disables fullscreen)
 -togglelifebars         Disables display of the Life and Power bars
 -maxpowermode           Enables auto-refill of Power bars
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
