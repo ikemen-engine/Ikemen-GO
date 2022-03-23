@@ -378,9 +378,13 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var mode = monitor.GetVideoMode()
 	var x, y = (mode.Width-w)/2, (mode.Height-h)/2
 
+	// "-windowed" overrides the configuration setting but does not change it
+	_, forceWindowed := sys.cmdFlags["-windowed"]
+	fullscreen := s.fullscreen && !forceWindowed
+
 	// Create main window.
 	// NOTE: Borderless fullscreen is in reality just a window without borders.
-	if s.fullscreen && !s.borderless  {
+	if fullscreen && !s.borderless  {
 		window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil)
 	} else {
 		window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil);
@@ -390,7 +394,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	}
 	
 	// Set windows atributes
-	if s.fullscreen {
+	if fullscreen {
 		window.SetPos(0, 0)
 		if s.borderless {
 			window.SetAttrib(glfw.Decorated, 0)
@@ -408,7 +412,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
 	window.SetCharModsCallback(charCallback)
-	ret := &Window{window, s.windowTitle, s.fullscreen, x, y, w, h}
+	ret := &Window{window, s.windowTitle, fullscreen, x, y, w, h}
 	return ret, err
 }
 
