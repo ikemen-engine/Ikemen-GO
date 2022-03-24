@@ -584,8 +584,8 @@ end
 --create color from hex value
 function color:fromHex(h)
 	h = tostring(h)
-	if h:sub(0, 1) =="#" then h = h:sub(2, -1) end 
-	if h:sub(0, 2) =="0x" then h = h:sub(3, -1) end 
+	if h:sub(0, 1) =="#" then h = h:sub(2, -1) end
+	if h:sub(0, 2) =="0x" then h = h:sub(3, -1) end
 	local r = tonumber(h:sub(1, 2), 16)
 	local g = tonumber(h:sub(3, 4), 16)
 	local b = tonumber(h:sub(5, 6), 16)
@@ -1021,7 +1021,7 @@ function main.f_sortKeys(t, order)
 	local keys = {}
 	for k in pairs(t) do table.insert(keys, k) end
 	-- if order function given, sort it by passing the table and keys a, b,
-	-- otherwise just sort the keys 
+	-- otherwise just sort the keys
 	if order then
 		table.sort(keys, function(a, b) return order(t, a, b) end)
 	else
@@ -1980,7 +1980,7 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%s*storymode%s*%]') then
 		row = 0
 		section = 4
-	elseif lineCase:match('^%s*%[%w+%]$') then 
+	elseif lineCase:match('^%s*%[%w+%]$') then
 		section = -1
 	elseif section == 1 then --[Characters]
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
@@ -3048,7 +3048,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				main.txt_title:update({text = tbl.title})
 				if item_sav ~= item then
 					demoFrameCounter = 0
-					introWaitCycles = 0			
+					introWaitCycles = 0
 				end
 				if esc() or main.f_input(main.t_players, {'m'}) then
 					if not bool_main then
@@ -3184,7 +3184,6 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
 					})
 					if c == 'bonusgames' then bonusUpper = main.menu.items[#main.menu.items].displayname == main.menu.items[#main.menu.items].displayname:upper() end
 				end
-				
 			end
 			t_pos = main.menu.submenu[c]
 			t_pos.name = c

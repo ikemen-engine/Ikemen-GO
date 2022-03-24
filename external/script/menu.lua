@@ -295,22 +295,22 @@ menu.t_vardisplayPointers = {}
 -- rendered alongside menu item name. Can be appended via external module.
 menu.t_vardisplay = {
 	['dummycontrol'] = function()
-		return menu.t_valuename.dummycontrol[menu.dummycontrol or 1].displayname 
+		return menu.t_valuename.dummycontrol[menu.dummycontrol or 1].displayname
 	end,
 	['ailevel'] = function()
-		return menu.t_valuename.ailevel[menu.ailevel or config.Difficulty].displayname 
+		return menu.t_valuename.ailevel[menu.ailevel or config.Difficulty].displayname
 	end,
 	['guardmode'] = function()
-		return menu.t_valuename.guardmode[menu.guardmode or 1].displayname 
+		return menu.t_valuename.guardmode[menu.guardmode or 1].displayname
 	end,
 	['dummymode'] = function()
-		return menu.t_valuename.dummymode[menu.dummymode or 1].displayname 
+		return menu.t_valuename.dummymode[menu.dummymode or 1].displayname
 	end,
 	['distance'] = function()
-		return menu.t_valuename.distance[menu.distance or 1].displayname 
+		return menu.t_valuename.distance[menu.distance or 1].displayname
 	end,
 	['buttonjam'] = function()
-		return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname 
+		return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname
 	end,
 }
 

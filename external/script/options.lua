@@ -161,7 +161,7 @@ options.t_itemname = {
 			config.MaxHelper = 56
 			config.MaxPlayerProjectile = 256
 			--config.Modules = {}
-			--config.Motif = "data/system.def"			
+			--config.Motif = "data/system.def"
 			config.MSAA = false
 			config.NumSimul = {2, 4}
 			config.NumTag = {2, 4}
@@ -1320,187 +1320,187 @@ options.t_vardisplayPointers = {}
 -- rendered alongside menu item name. Can be appended via external module.
 options.t_vardisplay = {
 	['afterimagemax'] = function()
-		return config.MaxAfterImage 
+		return config.MaxAfterImage
 	end,
 	['aipalette'] = function()
-		return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) 
+		return options.f_boolDisplay(config.AIRandomColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
 	end,
 	['aisurvivalpalette'] = function()
-		return options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default) 
+		return options.f_boolDisplay(config.AISurvivalColor, motif.option_info.menu_valuename_random, motif.option_info.menu_valuename_default)
 	end,
 	['airamping'] = function()
-		return options.f_boolDisplay(config.AIRamping) 
+		return options.f_boolDisplay(config.AIRamping)
 	end,
 	['audioducking'] = function()
-		return options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+		return options.f_boolDisplay(config.AudioDucking, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['autoguard'] = function()
-		return options.f_boolDisplay(config.AutoGuard) 
+		return options.f_boolDisplay(config.AutoGuard)
 	end,
 	--['backgroundloading'] = function()
-	--	return options.f_boolDisplay(config.BackgroundLoading, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+	--	return options.f_boolDisplay(config.BackgroundLoading, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	--end,
 	['bgmvolume'] = function()
-		return config.VolumeBgm .. '%' 
+		return config.VolumeBgm .. '%'
 	end,
 	['credits'] = function()
-		return options.f_definedDisplay(config.Credits, {[0] = motif.option_info.menu_valuename_disabled}, config.Credits) 
+		return options.f_definedDisplay(config.Credits, {[0] = motif.option_info.menu_valuename_disabled}, config.Credits)
 	end,
 	['debugkeys'] = function()
-		return options.f_boolDisplay(config.DebugKeys, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+		return options.f_boolDisplay(config.DebugKeys, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['debugmode'] = function()
-		return options.f_boolDisplay(config.DebugMode, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+		return options.f_boolDisplay(config.DebugMode, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['difficulty'] = function()
-		return config.Difficulty 
+		return config.Difficulty
 	end,
 	['explodmax'] = function()
-		return config.MaxExplod 
+		return config.MaxExplod
 	end,
 	['fullscreen'] = function()
-		return options.f_boolDisplay(config.Fullscreen) 
+		return options.f_boolDisplay(config.Fullscreen)
 	end,
 	['gamespeed'] = function()
-		return config.GameFramerate 
+		return config.GameFramerate
 	end,
 	['guardbar'] = function()
-		return options.f_boolDisplay(config.BarGuard) 
+		return options.f_boolDisplay(config.BarGuard)
 	end,
 	['helpermax'] = function()
-		return config.MaxHelper 
+		return config.MaxHelper
 	end,
 	['lifemul'] = function()
-		return config.LifeMul .. '%' 
+		return config.LifeMul .. '%'
 	end,
 	['losekosimul'] = function()
-		return options.f_boolDisplay(config.LoseSimul) 
+		return options.f_boolDisplay(config.LoseSimul)
 	end,
 	['losekotag'] = function()
-		return options.f_boolDisplay(config.LoseTag) 
+		return options.f_boolDisplay(config.LoseTag)
 	end,
 	['mastervolume'] = function()
-		return config.VolumeMaster .. '%' 
+		return config.VolumeMaster .. '%'
 	end,
 	['maxdrawgames'] = function()
-		return main.maxDrawGames[1] 
+		return main.maxDrawGames[1]
 	end,
 	['maxsimul'] = function()
-		return config.NumSimul[2] 
+		return config.NumSimul[2]
 	end,
 	['maxtag'] = function()
-		return config.NumTag[2] 
+		return config.NumTag[2]
 	end,
 	['maxturns'] = function()
-		return config.NumTurns[2] 
+		return config.NumTurns[2]
 	end,
 	['minsimul'] = function()
-		return config.NumSimul[1] 
+		return config.NumSimul[1]
 	end,
 	['mintag'] = function()
-		return config.NumTag[1] 
+		return config.NumTag[1]
 	end,
 	['minturns'] = function()
-		return config.NumTurns[1] 
+		return config.NumTurns[1]
 	end,
 	['msaa'] = function()
-		return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+		return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['panningrange'] = function()
-		return config.PanningRange .. '%' 
+		return config.PanningRange .. '%'
 	end,
 	['players'] = function()
-		return config.Players 
+		return config.Players
 	end,
 	['portchange'] = function()
-		return config.ListenPort 
+		return config.ListenPort
 	end,
 	['projectilemax'] = function()
-		return config.MaxPlayerProjectile 
+		return config.MaxPlayerProjectile
 	end,
 	['quickcontinue'] = function()
-		return options.f_boolDisplay(config.QuickContinue) 
+		return options.f_boolDisplay(config.QuickContinue)
 	end,
 	['ratio1attack'] = function()
-		return options.f_displayRatio(config.RatioAttack[1]) 
+		return options.f_displayRatio(config.RatioAttack[1])
 	end,
 	['ratio1life'] = function()
-		return options.f_displayRatio(config.RatioLife[1]) 
+		return options.f_displayRatio(config.RatioLife[1])
 	end,
 	['ratio2attack'] = function()
-		return options.f_displayRatio(config.RatioAttack[2]) 
+		return options.f_displayRatio(config.RatioAttack[2])
 	end,
 	['ratio2life'] = function()
-		return options.f_displayRatio(config.RatioLife[2]) 
+		return options.f_displayRatio(config.RatioLife[2])
 	end,
 	['ratio3attack'] = function()
-		return options.f_displayRatio(config.RatioAttack[3]) 
+		return options.f_displayRatio(config.RatioAttack[3])
 	end,
 	['ratio3life'] = function()
-		return options.f_displayRatio(config.RatioLife[3]) 
+		return options.f_displayRatio(config.RatioLife[3])
 	end,
 	['ratio4attack'] = function()
-		return options.f_displayRatio(config.RatioAttack[4]) 
+		return options.f_displayRatio(config.RatioAttack[4])
 	end,
 	['ratio4life'] = function()
-		return options.f_displayRatio(config.RatioLife[4]) 
+		return options.f_displayRatio(config.RatioLife[4])
 	end,
 	['ratiorecoverybase'] = function()
-		return config.RatioRecoveryBase .. '%' 
+		return config.RatioRecoveryBase .. '%'
 	end,
 	['ratiorecoverybonus'] = function()
-		return config.RatioRecoveryBonus .. '%' 
+		return config.RatioRecoveryBonus .. '%'
 	end,
 	['redlifebar'] = function()
-		return options.f_boolDisplay(config.BarRedLife) 
+		return options.f_boolDisplay(config.BarRedLife)
 	end,
 	['resolution'] = function()
-		return config.GameWidth .. 'x' .. config.GameHeight 
+		return config.GameWidth .. 'x' .. config.GameHeight
 	end,
 	['roundsnumsimul'] = function()
-		return main.roundsNumSimul[1] 
+		return main.roundsNumSimul[1]
 	end,
 	['roundsnumsingle'] = function()
-		return main.roundsNumSingle[1] 
+		return main.roundsNumSingle[1]
 	end,
 	['roundsnumtag'] = function()
-		return main.roundsNumTag[1] 
+		return main.roundsNumTag[1]
 	end,
 	['roundtime'] = function()
-		return options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_valuename_none}, config.RoundTime) 
+		return options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_valuename_none}, config.RoundTime)
 	end,
 	['sfxvolume'] = function()
-		return config.VolumeSfx .. '%' 
+		return config.VolumeSfx .. '%'
 	end,
 	['shaders'] = function()
-		return f_externalShaderName() 
+		return f_externalShaderName()
 	end,
 	['singlevsteamlife'] = function()
-		return config.Team1VS2Life .. '%' 
+		return config.Team1VS2Life .. '%'
 	end,
 	['stereoeffects'] = function()
-		return options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled) 
+		return options.f_boolDisplay(config.StereoEffects, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['stunbar'] = function()
-		return options.f_boolDisplay(config.BarStun) 
+		return options.f_boolDisplay(config.BarStun)
 	end,
 	['teamduplicates'] = function()
-		return options.f_boolDisplay(config.TeamDuplicates) 
+		return options.f_boolDisplay(config.TeamDuplicates)
 	end,
 	['teamlifeshare'] = function()
-		return options.f_boolDisplay(config.TeamLifeShare) 
+		return options.f_boolDisplay(config.TeamLifeShare)
 	end,
 	['teampowershare'] = function()
-		return options.f_boolDisplay(config.TeamPowerShare) 
+		return options.f_boolDisplay(config.TeamPowerShare)
 	end,
 	['turnsrecoverybase'] = function()
-		return config.TurnsRecoveryBase .. '%' 
+		return config.TurnsRecoveryBase .. '%'
 	end,
 	['turnsrecoverybonus'] = function()
-		return config.TurnsRecoveryBonus .. '%' 
+		return config.TurnsRecoveryBonus .. '%'
 	end,
 	['vretrace'] = function()
-		return options.f_definedDisplay(config.VRetrace, {[1] = motif.option_info.menu_valuename_enabled}, motif.option_info.menu_valuename_disabled) 
+		return options.f_definedDisplay(config.VRetrace, {[1] = motif.option_info.menu_valuename_enabled}, motif.option_info.menu_valuename_disabled)
 	end,
 }
 
