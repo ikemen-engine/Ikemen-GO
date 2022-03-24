@@ -370,13 +370,13 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var err error
 	var window *glfw.Window
 	var monitor *glfw.Monitor
-	
+
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
 
 	var mode = monitor.GetVideoMode()
-	var x, y = (mode.Width-w)/2, (mode.Height-h)/2
+	var x, y = (mode.Width - w) / 2, (mode.Height - h) / 2
 
 	// "-windowed" overrides the configuration setting but does not change it
 	_, forceWindowed := sys.cmdFlags["-windowed"]
@@ -384,15 +384,15 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 
 	// Create main window.
 	// NOTE: Borderless fullscreen is in reality just a window without borders.
-	if fullscreen && !s.borderless  {
+	if fullscreen && !s.borderless {
 		window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil)
 	} else {
-		window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil);
+		window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create window: %w", err)
 	}
-	
+
 	// Set windows atributes
 	if fullscreen {
 		window.SetPos(0, 0)
@@ -899,7 +899,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 		} else {
 			for i, ch := range p.children {
 				if ch != nil {
-					if (ch.preserve == 0 || (s.roundResetFlg && ch.preserve == s.round)) {
+					if ch.preserve == 0 || (s.roundResetFlg && ch.preserve == s.round) {
 						p.children[i] = nil
 					}
 				}

@@ -464,7 +464,7 @@ func (f *Fnt) drawChar(
 	x, y,
 	xscl, yscl float32,
 	bank, bt int32,
-	c rune, pal []uint32, 
+	c rune, pal []uint32,
 	window *[4]int32,
 	palfx *PalFX,
 ) float32 {
@@ -496,7 +496,7 @@ func (f *Fnt) drawChar(
 		sys.brightness*255>>8|1<<9,
 		window, 0, 0,
 		nil, paltex,
-		0, 0, -xscl * float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
+		0, 0, -xscl*float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
 	)
 	if paltex == nil {
 		f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = spr.PalTex

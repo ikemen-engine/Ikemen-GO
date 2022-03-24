@@ -235,11 +235,11 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 // Bgm
 
 type Bgm struct {
-	filename            string
-	bgmVolume           int
-	bgmLoopStart        int
-	bgmLoopEnd          int
-	loop                int
+	filename     string
+	bgmVolume    int
+	bgmLoopStart int
+	bgmLoopEnd   int
+	loop         int
 	// TODO: Use this.
 	//sampleRate          beep.SampleRate
 	streamer  beep.StreamSeekCloser
@@ -260,7 +260,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
 	speaker.Clear()
-	
+
 	// TODO: Throw a degbug warning if this triggers
 	if bgmVolume > sys.maxBgmVolume {
 		bgmVolume = sys.maxBgmVolume

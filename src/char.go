@@ -1162,7 +1162,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
-    if e.bindtime > 0 {
+		if e.bindtime > 0 {
 			e.bindtime--
 		}
 		//if screen && e.bindtime == 0 {
@@ -1183,7 +1183,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		//		}
 		//	}
 		//}
-		if act {		
+		if act {
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
@@ -2959,7 +2959,7 @@ func (c *Char) roundState() int32 {
 		return 1
 	case sys.intro >= 0 || sys.finish == FT_NotYet:
 		return 2
-	case sys.intro < -(sys.lifebar.ro.over_hittime+
+	case sys.intro < -(sys.lifebar.ro.over_hittime +
 		sys.lifebar.ro.over_waittime):
 		return 4
 	default:

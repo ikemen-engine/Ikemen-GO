@@ -73,15 +73,15 @@ func main() {
 
 	// Check if the main lua file exists.
 	if ftemp, err1 := os.Open(tmp.System); err1 != nil {
-		ftemp.Close();
+		ftemp.Close()
 		var err2 = Error(
 			"Main lua file \"" + tmp.System + "\" error." +
-			"\n" + err1.Error(),
+				"\n" + err1.Error(),
 		)
 		dialog.Message(err2.Error()).Title("I.K.E.M.E.N Error").Error()
 		panic(err2)
 	} else {
-		ftemp.Close();
+		ftemp.Close()
 	}
 
 	// Initialize game and create window
