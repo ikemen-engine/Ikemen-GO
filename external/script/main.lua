@@ -331,6 +331,9 @@ end
 if main.flags['-debug'] ~= nil then
 	toggleDebugDraw()
 end
+if main.flags['-setport'] ~= nil then
+	setListenPort(main.flags['-setport'])
+end
 
 --motif
 main.motifDef = config.Motif
@@ -1451,7 +1454,25 @@ function main.f_commandLine()
 			})
 		end
 	end
+	if main.flags['-ip'] ~= nil then
+		enterNetPlay(main.flags['-ip'])
+		while not connected() do
+			if esc() then
+				exitNetPlay()
+				os.exit()
+			end
+			refresh()
+		end
+		refresh()
+		synchronize()
+		math.randomseed(sszRandom())
+		main.f_cmdBufReset()
+		refresh()
+	end
 	loadStart()
+	while loading() do
+		--do nothing
+	end
 	local winner, t_gameStats = game()
 	if main.flags['-log'] ~= nil then
 		main.f_printTable(t_gameStats, main.flags['-log'])
