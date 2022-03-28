@@ -1400,7 +1400,6 @@ function start.f_game(lua)
 	if lua ~= '' then commonLuaInsert(lua) end
 	local winner, tbl = game()
 	main.f_restoreInput()
-	main.f_playBGM(true)
 	if lua ~= '' then commonLuaDelete(lua) end
 	if gameend() then
 		clearColor(0, 0, 0)
@@ -3992,7 +3991,7 @@ function start.f_stageMusic()
 				end
 			end
 			-- final round music assigned
-			if roundtype() == 3 and start.t_music.musicfinal.bgmusic ~= nil then
+			if roundNo > 1 and roundtype() == 3 and start.t_music.musicfinal.bgmusic ~= nil then
 				main.f_playBGM(false, start.t_music.musicfinal.bgmusic, 1, start.t_music.musicfinal.bgmvolume, start.t_music.musicfinal.bgmloopstart, start.t_music.musicfinal.bgmloopend)
 			-- music exists for this round
 			elseif start.t_music.music[roundNo] ~= nil then
