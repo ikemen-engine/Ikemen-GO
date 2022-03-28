@@ -7350,6 +7350,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	})
 	if b {
 		sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
+		sys.playBgmFlg = true
 	}
 	return false
 }

@@ -351,6 +351,7 @@ type System struct {
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
+	playBgmFlg      bool
 	brightnessOld   int32
 	clsnDarken      bool
 	maxBgmVolume    int
