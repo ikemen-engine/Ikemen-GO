@@ -21,32 +21,31 @@ function main() {
 	mkdir -p bin
 
 	# CMPT flag.
-	if [[ "${1,,}" == "cmpt"  ]] || [[ "${2,,}" == "cmpt"  ]]; then
-		cmpt=1
-	fi
+	case "$1" in [cC][mM][pP][tT]) cmpt=1 ;; esac
+	case "$2" in [cC][mM][pP][tT]) cmpt=1 ;; esac
 
 	# Check OS
 	checkOS
 	# If a build target has not been specified use the current OS.
-	if [[ "$1" == "" ]] || [[ "${1,,}" == "cmpt" ]]; then
+	if [[ "$1" == "" ]] || [[ cmpt -eq 1 ]]; then
 		targetOS=$currentOS
 	fi
 	
 	# Build
-	case "${targetOS,,}" in
-		"win64")
+	case "${targetOS}" in
+		[wW][iI][nN]64)
 			varWin64
 			buildWin
 		;;
-		"win32")
+		[wW][iI][nN]32)
 			varWin32
 			buildWin
 		;;
-		"macos")
+		[mM][aA][cC][oO][sS])
 			varMacOS
 			buildAlt
 		;;
-		"linux")
+		[lL][iI][nN][uU][xX])
 			varLinux
 			if [[ cmpt -eq 1 ]]; then
 				buildAlt
@@ -88,8 +87,16 @@ function varWin64() {
 
 function varMacOS() {
 	export GOOS=darwin
-	export CC=o64-clang 
-	export CXX=o64-clang++
+	case "${currentOS}" in
+		[mM][aA][cC][oO][sS])
+			export CC=clang
+			export CXX=clang++
+		;;
+		*)
+			export CC=o64-clang
+			export CXX=o64-clang++
+		;;
+	esac
 	binName="Ikemen_GO_MacOS"
 }
 function varLinux() {
@@ -125,7 +132,7 @@ function checkOS() {
 		darwin*)
 			currentOS="MacOS"
 		;;
-		linux*) 
+		linux*)
 			currentOS="Linux"
 		;;
 		msys)
@@ -136,7 +143,7 @@ function checkOS() {
 			fi
 		;;
 		*)
-			if [[ "$1" == "" ]] || [[ "${1,,}" == "cmpt" ]]; then
+			if [[ "$1" == "" ]] || [[ cmpt -eq 1 ]]; then
 				echo "Unknow system \"${OSTYPE}\".";
 				exit 1
 			fi
