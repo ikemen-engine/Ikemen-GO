@@ -2138,12 +2138,12 @@ function start.f_selectScreen()
 						motif.select_info.stage_pos[2] + motif.select_info.stage_portrait_offset[2]
 					)
 				end
-				if main.f_input(main.t_players, {'pal', 's'}) or timerSelect == -1 then
-					sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
-					stageActiveType = 'stage_done'
-					stageEnd = true
-				elseif not stageEnd then
-					if stageActiveCount < motif.select_info.stage_active_switchtime then --delay change
+				if not stageEnd then
+					if main.f_input(main.t_players, {'pal', 's'}) or timerSelect == -1 then
+						sndPlay(motif.files.snd_data, motif.select_info.stage_done_snd[1], motif.select_info.stage_done_snd[2])
+						stageActiveType = 'stage_done'
+						stageEnd = true
+					elseif stageActiveCount < motif.select_info.stage_active_switchtime then --delay change
 						stageActiveCount = stageActiveCount + 1
 					else
 						if stageActiveType == 'stage_active' then
