@@ -1,15 +1,15 @@
 module github.com/Windblade-GR01/Ikemen_GO
 
-go 1.17
+go 1.18
 
 require (
 	github.com/faiface/beep v1.1.0
-	github.com/flopp/go-findfont v0.0.0-20210823125129-5637e70e133f
-	github.com/go-gl/gl v0.0.0-20210905235341-f7a045908259
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20210727001814-0db043d8d5be
-	github.com/ikemen-engine/glfont v0.0.0-20210818223853-6d774f4f6d06
-	github.com/ikemen-engine/go-openal v0.0.0-20210605051602-c4be60fb463a
-	github.com/sqweek/dialog v0.0.0-20211002065838-9a201b55ab91
+	github.com/flopp/go-findfont v0.1.0
+	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220320163800-277f93cfa958
+	github.com/ikemen-engine/glfont v0.0.0-20220323132206-8bdc165eee08
+	github.com/ikemen-engine/go-openal v0.0.0-20220328184227-7103367748a5
+	github.com/sqweek/dialog v0.0.0-20220227145630-7a1c9e333fcf
 	github.com/yuin/gopher-lua v0.0.0-20210529063254-f4c35e4016d9
 )
 

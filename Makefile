@@ -1,4 +1,4 @@
-# Set Bash as the shell to get $OSTYPE
+# Set Bash as the shell.
 SHELL=/bin/bash
 
 # /src files
@@ -22,17 +22,20 @@ srcFiles=src/anim.go \
 	src/stdout_windows.go \
 	src/system.go
 
-# Windows x64 target
+# Windows 64-bit target
 Ikemen_GO.exe: ${srcFiles}
 	cd ./build && bash ./build.sh Win64
-	cd ./build && curl -sSLfO https://github.com/ikemen-engine/go-openal/raw/master/openal/lib/SoftOpenAL64.dll
+	cd ./bin && curl -sSLfO https://github.com/ikemen-engine/go-openal/raw/master/openal/lib/SoftOpenAL64.dll
 
+# Windows 32-bit target
 Ikemen_GO_86.exe: ${srcFiles}
 	cd ./build && bash ./build.sh Win32
-	cd ./build && curl -sSLfO https://github.com/ikemen-engine/go-openal/raw/master/openal/lib/SoftOpenAL32.dll
-	
+	cd ./bin && curl -sSLfO https://github.com/ikemen-engine/go-openal/raw/master/openal/lib/SoftOpenAL32.dll
+
+# Linux target
 Ikemen_GO_Linux: ${srcFiles}
-	cd ./build && /build.sh Linux ${tags}
-	
+	cd ./build && /build.sh Linux
+
+# MacOS x64 target
 Ikemen_GO_MacOS: ${srcFiles}
 	cd ./build && bash ./build.sh MacOS

@@ -5,7 +5,6 @@ set -e
 
 # Int vars
 binName="Default"
-cmpt=0
 targetOS=$1
 currentOS="Unknown"
 
@@ -20,14 +19,10 @@ function main() {
 	# Create "bin" folder.
 	mkdir -p bin
 
-	# CMPT flag.
-	case "$1" in [cC][mM][pP][tT]) cmpt=1 ;; esac
-	case "$2" in [cC][mM][pP][tT]) cmpt=1 ;; esac
-
 	# Check OS
 	checkOS
 	# If a build target has not been specified use the current OS.
-	if [[ "$1" == "" ]] || [[ cmpt -eq 1 ]]; then
+	if [[ "$1" == "" ]]; then
 		targetOS=$currentOS
 	fi
 	
@@ -43,15 +38,11 @@ function main() {
 		;;
 		[mM][aA][cC][oO][sS])
 			varMacOS
-			buildAlt
+			build
 		;;
 		[lL][iI][nN][uU][xX])
 			varLinux
-			if [[ cmpt -eq 1 ]]; then
-				buildAlt
-			else
-				build
-			fi
+			build
 		;;
 	esac
 
@@ -113,12 +104,6 @@ function build() {
 	go build -trimpath -v -trimpath -o ./bin/$binName ./src
 }
 
-function buildAlt() {
-	#echo "buildAlt"
-	#echo "$binName"
-	go build -trimpath -v -trimpath -tags al_cmpt -o ./bin/$binName ./src
-}
-
 function buildWin() {
 	#echo "buildWin"
 	#echo "$binName"
@@ -136,14 +121,14 @@ function checkOS() {
 			currentOS="Linux"
 		;;
 		msys)
-			if [[ "$osArch" == "x86_64" ]];then
+			if [[ "$osArch" == "x86_64" ]]; then
 				currentOS="Win64"
 			else
 				currentOS="Win32"
 			fi
 		;;
 		*)
-			if [[ "$1" == "" ]] || [[ cmpt -eq 1 ]]; then
+			if [[ "$1" == "" ]]; then
 				echo "Unknow system \"${OSTYPE}\".";
 				exit 1
 			fi

@@ -3020,7 +3020,8 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					return nil, err
 				}
 				for i := range l.fnt {
-					if is.LoadFile(fmt.Sprintf("font%v", i), []string{deffile, sys.motifDir, "", "data/", "font/"},
+					/*if*/
+					is.LoadFile(fmt.Sprintf("font%v", i), []string{deffile, sys.motifDir, "", "data/", "font/"},
 						func(filename string) error {
 							var height int32 = -1
 							if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
@@ -3031,9 +3032,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 								l.fnt[i] = newFnt()
 							}
 							return err
-						}); err != nil {
+						},
+					)
+					/*err != nil {
 						//return nil, err
-					}
+					}*/
 				}
 			}
 		case "fightfx":
