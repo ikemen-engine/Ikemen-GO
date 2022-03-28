@@ -539,7 +539,7 @@ function start.f_setMusic(num, data)
 	start.bgmround = 0
 	start.t_music = {}
 	local side = 2
-	for _, v in ipairs({'music', 'musiclife', 'musicvictory', 'musicvictory'}) do
+	for _, v in ipairs({'music', 'musicfinal', 'musiclife', 'musicvictory', 'musicvictory'}) do
 		if start.t_music[v] == nil then
 			start.t_music[v] = {}
 		end
@@ -580,7 +580,7 @@ function start.f_setMusic(num, data)
 						bgmloopstart = t_ref[track].bgmloopstart,
 						bgmloopend = t_ref[track].bgmloopend
 					}
-				-- musiclife track is stored without additional nesting
+				-- musicfinal and musiclife tracks are stored without additional nesting
 				else
 					start.t_music[v] = {
 						bgmusic = t_ref[track].bgmusic,
@@ -1659,7 +1659,7 @@ function launchFight(data)
 		t.p2rounds = data.p2rounds or nil
 		t.exclude = data.exclude or {}
 		t.musicData = {}
-		-- Parse musicX / musiclife / musicvictory arguments
+		-- Parse musicX / musicfinal / musiclife / musicvictory arguments
 		for k, v in pairs(data) do
 			if k:match('^music') then
 				-- old syntax with only string argument maintained for backward compatibility with previous builds
@@ -3976,7 +3976,7 @@ function start.f_stageMusic()
 	if gamemode('demo') and motif.demo_mode.fight_playbgm == 0 then
 		return
 	end
-	-- bgmusic / bgmusic.roundX
+	-- bgmusic / bgmusic.roundX / bgmusic.final
 	if roundstart() then
 		-- only if the round is not restarted
 		if start.bgmround ~= roundno() then
@@ -3991,8 +3991,11 @@ function start.f_stageMusic()
 					end
 				end
 			end
+			-- final round music assigned
+			if roundtype() == 3 and start.t_music.musicfinal.bgmusic ~= nil then
+				main.f_playBGM(false, start.t_music.musicfinal.bgmusic, 1, start.t_music.musicfinal.bgmvolume, start.t_music.musicfinal.bgmloopstart, start.t_music.musicfinal.bgmloopend)
 			-- music exists for this round
-			if start.t_music.music[roundNo] ~= nil then
+			elseif start.t_music.music[roundNo] ~= nil then
 				-- interrupt same track playing only on round 1 of first match (skips continuous survival etc.)
 				main.f_playBGM(matchno() == 1 and roundNo == 1, start.t_music.music[roundNo].bgmusic, 1, start.t_music.music[roundNo].bgmvolume, start.t_music.music[roundNo].bgmloopstart, start.t_music.music[roundNo].bgmloopend)
 			-- stop versus screen track or life bgm even if stage music is not assigned
