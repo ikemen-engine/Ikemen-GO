@@ -635,8 +635,8 @@ function start.f_selectPal(ref, palno)
 	-- default palette
 	elseif (not main.rotationChars and not config.AIRandomColor) or (main.rotationChars and not config.AISurvivalColor) then
 		for _, v in ipairs(start.f_getCharData(ref).pal_defaults) do
-			if not t_assignedPals[start.f_reampPal(ref, v)] then
-				return start.f_reampPal(ref, v)
+			if not t_assignedPals[v] then
+				return v
 			end
 		end
 	end
