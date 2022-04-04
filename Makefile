@@ -34,7 +34,7 @@ Ikemen_GO_86.exe: ${srcFiles}
 
 # Linux target
 Ikemen_GO_Linux: ${srcFiles}
-	cd ./build && /build.sh Linux
+	cd ./build && ./build.sh Linux
 
 # MacOS x64 target
 Ikemen_GO_MacOS: ${srcFiles}
