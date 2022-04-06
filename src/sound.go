@@ -375,7 +375,9 @@ func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
 
 func (bgm *Bgm) Pause() {
 	speaker.Lock()
-	bgm.ctrl.Paused = true
+	if bgm.ctrl != nil {
+		bgm.ctrl.Paused = true
+	}
 	speaker.Unlock()
 }
 

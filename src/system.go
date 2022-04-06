@@ -676,18 +676,16 @@ func (s *System) soundWrite() {
 			processed = true
 		}
 		if !s.nomusic {
+			speaker.Lock()
 			if s.bgm.ctrl != nil && s.bgm.streamer != nil {
 				s.bgm.ctrl.Paused = false
 				if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-					speaker.Lock()
 					s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
-					speaker.Unlock()
 				}
 			}
+			speaker.Unlock()
 		} else {
-			if s.bgm.ctrl != nil {
-				s.bgm.Pause()
-			}
+			s.bgm.Pause()
 		}
 
 		//if s.FLAC_FrameWait >= 0 {
