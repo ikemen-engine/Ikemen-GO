@@ -20,7 +20,6 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/ikemen-engine/go-openal/openal"
 	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -50,6 +49,7 @@ var sys = System{
 	lifeMul:           1,
 	team1VS2Life:      1,
 	turnsRecoveryRate: 1.0 / 300,
+	globalMixer:       &beep.Mixer{},
 	mixer:             *newMixer(),
 	bgm:               *newBgm(),
 	sounds:            newSounds(16),
@@ -121,9 +121,10 @@ type System struct {
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
+	globalMixer             *beep.Mixer
 	mixer                   Mixer
 	bgm                     Bgm
-	audioContext            *openal.Context
+	curSndBuf               []int16
 	nullSndBuf              [audioOutLen * 2]int16
 	sounds                  Sounds
 	allPalFX, bgPalFX       PalFX
@@ -500,9 +501,11 @@ func (s *System) init(w, h int32) *lua.LState {
 	// Now we proceed to int the render.
 	RenderInit()
 	// And the audio.
-	s.audioOpen()
 	sr := beep.SampleRate(Mp3SampleRate)
 	speaker.Init(sr, sr.N(time.Second/10))
+	speaker.Play(s.globalMixer)
+	s.globalMixer.Add(s.soundStream())
+	go s.soundWrite()
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -634,47 +637,36 @@ func (s *System) update() bool {
 	}
 	return s.await(FPS)
 }
-func (s *System) audioOpen() {
-	if s.audioContext == nil {
-		device := openal.OpenDevice("")
-		if device == nil {
-			chk(openal.Err())
+func (s *System) soundStream() beep.Streamer {
+	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
+		done := 0
+		for i := range samples {
+			// Ensure there is enough data to stream
+			if done == len(s.curSndBuf) {
+				if done > 0 {
+					break
+				}
+				select {
+				case s.curSndBuf = <-s.mixer.out:
+				default:
+					s.curSndBuf = s.nullSndBuf[:]
+				}
+				done = 0
+			}
+			// Convert samples
+			samples[i][0] = float64(s.curSndBuf[done]) * 1.0 / 32767.0;
+			samples[i][1] = float64(s.curSndBuf[done+1]) * 1.0 / 32767.0;
+			done += 2
 		}
-		s.audioContext = device.CreateContext()
-		if err := device.Err(); err != nil {
-			s.errLog.Println(err.Error())
-		}
-		s.audioContext.Activate()
-		go s.soundWrite()
-	}
+		s.curSndBuf = s.curSndBuf[done:]
+		return len(samples), true
+	})
 }
 func (s *System) soundWrite() {
 	defer func() { s.audioClose <- true }()
-	src := NewAudioSource()
-	processed := false
 	for !s.gameEnd {
-		if src.Src.State() != openal.Playing {
-			src.Src.Play()
-		}
-		if !processed {
-			time.Sleep(10 * time.Millisecond)
-		}
-		processed = false
-		if src.Src.BuffersProcessed() > 0 {
-			var out []int16
-			select {
-			case out = <-s.mixer.out:
-			default:
-				out = s.nullSndBuf[:]
-			}
-			buf := src.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			src.Src.QueueBuffer(buf)
-			if err := openal.Err(); err != nil {
-				s.errLog.Println(err.Error())
-			}
-			processed = true
-		}
+		time.Sleep(10 * time.Millisecond)
+
 		if !s.nomusic {
 			speaker.Lock()
 			if s.bgm.ctrl != nil && s.bgm.streamer != nil {
@@ -695,12 +687,7 @@ func (s *System) soundWrite() {
 		//	s.FLAC_FrameWait--
 		//}
 	}
-	src.Delete()
-	openal.NullContext.Activate()
-	device := s.audioContext.GetDevice()
-	s.audioContext.Destroy()
-	s.audioContext = nil
-	device.CloseDevice()
+	speaker.Close()
 }
 func (s *System) playSound() {
 	if s.mixer.write() {

@@ -6,8 +6,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/ikemen-engine/go-openal/openal"
-
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 
@@ -19,38 +17,8 @@ import (
 
 const (
 	audioOutLen    = 2048
-	audioFrequency = 48000
+	audioFrequency = 44100
 )
-
-// ------------------------------------------------------------------
-// Audio Source
-
-// AudioSource structure.
-// It contains OpenAl's sound destination and buffer
-type AudioSource struct {
-	Src  openal.Source
-	bufs openal.Buffers
-}
-
-func NewAudioSource() (s *AudioSource) {
-	s = &AudioSource{Src: openal.NewSource(), bufs: openal.NewBuffers(2)}
-	for i := range s.bufs {
-		s.bufs[i].SetDataInt16(openal.FormatStereo16, sys.nullSndBuf[:],
-			audioFrequency)
-	}
-	s.Src.QueueBuffers(s.bufs)
-	if err := openal.Err(); err != nil {
-		println(err.Error())
-	}
-	return
-}
-func (s *AudioSource) Delete() {
-	for s.Src.BuffersQueued() > 0 {
-		s.Src.UnqueueBuffer()
-	}
-	s.bufs.Delete()
-	s.Src.Delete()
-}
 
 // ------------------------------------------------------------------
 // Mixer
@@ -63,7 +31,7 @@ type Mixer struct {
 }
 
 func newMixer() *Mixer {
-	return &Mixer{out: make(chan []int16, 1), normalizer: NewNormalizer()}
+	return &Mixer{out: make(chan []int16, 2), normalizer: NewNormalizer()}
 }
 func (m *Mixer) bufClear() {
 	for i := range m.buf {
@@ -245,7 +213,12 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	bgm.bgmVolume = bgmVolume
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
-	speaker.Clear()
+	// Starve the current music streamer
+	speaker.Lock()
+	if bgm.ctrl != nil {
+		bgm.ctrl.Streamer = nil
+	}
+	speaker.Unlock()
 
 	// TODO: Throw a degbug warning if this triggers
 	if bgmVolume > sys.maxBgmVolume {
@@ -261,6 +234,11 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	} else if HasExtension(bgm.filename, ".wav") {
 		bgm.ReadWav(loop, bgmVolume)
 	}
+
+	speaker.Lock()
+	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
+	sys.globalMixer.Add(bgm.ctrl)
+	speaker.Unlock()
 }
 
 func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
@@ -355,8 +333,6 @@ func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
 	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
 	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
 	bgm.resampler = beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), bgm.volume)
-	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
-	speaker.Play(bgm.ctrl)
 }
 
 func (bgm *Bgm) Pause() {
