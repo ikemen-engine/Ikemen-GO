@@ -837,17 +837,14 @@ func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 		scl2[0] *= -1
 	}
 	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
+		l1, r1 := clsn1[i1], clsn1[i1+2]+1
+		if facing1 < 0 {
+			l1, r1 = -r1, -l1
+		}
 		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
-			var l1, r1, l2, r2 float32
-			if facing1 > 0 {
-				l1, r1 = clsn1[i1], clsn1[i1+2]+1
-			} else {
-				l1, r1 = -clsn1[i1+2], -clsn1[i1]+1
-			}
-			if facing2 > 0 {
-				l2, r2 = clsn2[i2], clsn2[i2+2]+1
-			} else {
-				l2, r2 = -clsn2[i2+2], -clsn2[i2]+1
+			l2, r2 := clsn2[i2], clsn2[i2+2]+1
+			if facing2 < 0 {
+				l2, r2 = -r2, -l2
 			}
 			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
 				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
