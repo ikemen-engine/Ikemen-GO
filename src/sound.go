@@ -180,14 +180,7 @@ func (n *Normalizer) Process(l, r float32) (float32, float32) {
 	lmul := n.l.process(n.mul, &l)
 	rmul := n.r.process(n.mul, &r)
 	if sys.audioDucking {
-		if lmul < rmul {
-			n.mul = lmul
-		} else {
-			n.mul = rmul
-		}
-		if n.mul > 16 {
-			n.mul = 16
-		}
+		n.mul = math.Min(16.0, math.Min(lmul, rmul))
 	} else {
 		n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
 	}
@@ -199,27 +192,20 @@ type NormalizerLR struct {
 }
 
 func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
-	n.katayori = (n.katayori*audioFrequency/110 + float64(*sam)) /
-		(audioFrequency/110.0 + 1)
-	n.katayori2 = (n.katayori2*audioFrequency/112640 + float64(*sam)) /
-		(audioFrequency/112640.0 + 1)
+	n.katayori += (float64(*sam) - n.katayori) / (audioFrequency/110.0 + 1)
+	n.katayori2 += (float64(*sam) - n.katayori2) / (audioFrequency/112640.0 + 1)
 	s := (n.katayori2 - n.katayori) * bai
 	if math.Abs(s) > 1 {
-		bai *= math.Pow(1/math.Abs(s), n.heri)
+		bai *= math.Pow(math.Abs(s), -n.heri)
 		n.herihenka += 32 * (1 - n.heri) / float64(audioFrequency+32)
-		if s < 0 {
-			s = -1
-		} else {
-			s = 1
-		}
+		s = math.Copysign(1.0, s)
 	} else {
 		tmp := (1 - math.Pow(1-math.Abs(s), 64)) * math.Pow(0.5-math.Abs(s), 3)
 		bai += bai * (n.heri*(1/32.0-n.heikin)/n.fue + tmp*n.fue*(1-n.heri)/32) /
 			(audioFrequency*2/8.0 + 1)
 		n.herihenka -= (0.5 - n.heikin) * n.heri / (audioFrequency * 2)
 	}
-	n.fue += (32*n.fue*(1/n.fue-math.Abs(s)) - n.fue) /
-		(32 * audioFrequency * 2)
+	n.fue += (1.0 - n.fue*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
 	n.heikin += (math.Abs(s) - n.heikin) / (audioFrequency * 2)
 	n.heri += n.herihenka
 	if n.heri < 0 {
