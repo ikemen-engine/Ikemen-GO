@@ -2500,6 +2500,7 @@ for _, v in ipairs({
 	{group = 'files', param = 'select', dirs = {motif.fileDir, '', 'data/'}},
 	{group = 'files', param = 'fight', dirs = {motif.fileDir, '', 'data/'}},
 	{group = 'files', param = 'glyphs', dirs = {motif.fileDir, '', 'data/'}},
+	{group = 'files', param = 'module', dirs = {motif.fileDir, '', 'data/'}},	
 	{group = 'music', param = 'title_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
 	{group = 'music', param = 'select_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
 	{group = 'music', param = 'vs_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
