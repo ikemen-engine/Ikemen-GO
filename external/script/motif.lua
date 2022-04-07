@@ -2591,8 +2591,8 @@ function motif.f_loadSprData(t, v)
 		t[data] = main.f_animFromTable(
 			motif.anim[t[animParam]],
 			motif.files.spr_data,
-			t[v.s .. 'offset'][1] + (v.x or 0),
-			t[v.s .. 'offset'][2] + (v.y or 0),
+			(t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1],
+			(t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2],
 			t[v.s .. 'scale'][1],
 			t[v.s .. 'scale'][2],
 			motif.f_animFacing(t[v.s .. 'facing'])
@@ -2606,7 +2606,7 @@ function motif.f_loadSprData(t, v)
 			end
 		end
 		if t[v.s .. 'facing'] == -1 then facing = ', H' else facing = '' end
-		t[data] = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. t[v.s .. 'offset'][1] + (v.x or 0) .. ', ' .. t[v.s .. 'offset'][2] + (v.y or 0) .. ', -1' .. facing)
+		t[data] = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. (t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1] .. ', ' .. (t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2] .. ', -1' .. facing)
 		animSetScale(t[data], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
 		animUpdate(t[data])
 	else --create dummy data
