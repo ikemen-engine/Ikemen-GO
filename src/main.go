@@ -107,10 +107,7 @@ func main() {
 	}
 
 	// Shutdown
-	if !sys.gameEnd {
-		sys.gameEnd = true
-	}
-	<-sys.audioClose
+	sys.shutdown()
 }
 
 // Loops through given comand line arguments and processes them for later use by the game
