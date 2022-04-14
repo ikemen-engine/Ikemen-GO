@@ -1935,6 +1935,7 @@ function start.f_selectScreen()
 	timerSelect = 0
 	local escFlag = false
 	local t_teamMenu = {{}, {}}
+	local counter = 0 - motif.select_info.fadein_time
 	-- generate team mode items table
 	for side = 1, 2 do
 		-- start with all default teammode entires
@@ -1979,6 +1980,7 @@ function start.f_selectScreen()
 		end
 	end
 	while not selScreenEnd do
+		counter = counter + 1
 		--credits
 		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
 			sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
@@ -2185,7 +2187,7 @@ function start.f_selectScreen()
 			end
 		end
 		--draw timer
-		if motif.select_info.timer_count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) then
+		if motif.select_info.timer_count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) and counter >= 0 then
 			timerSelect = main.f_drawTimer(timerSelect, motif.select_info, 'timer_', txt_timerSelect)
 		end
 		--draw record text
@@ -2894,7 +2896,7 @@ function start.f_selectVersus(active, t_orderSelect)
 			txt_matchNo:draw()
 		end
 		--draw timer
-		if not done and motif.vs_screen.timer_count ~= -1 and timerActive then
+		if not done and motif.vs_screen.timer_count ~= -1 and timerActive and counter >= 0 then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
 		end
 		-- hook
@@ -3849,7 +3851,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 		end
 	end
 	--draw timer
-	if motif.hiscore_info.timer_count ~= -1 and start.t_hiscore.input then
+	if motif.hiscore_info.timer_count ~= -1 and start.t_hiscore.input and start.t_hiscore.counter >= 0 then
 		start.t_hiscore.timer, start.t_hiscore.input = main.f_drawTimer(start.t_hiscore.timer, motif.hiscore_info, 'timer_', start.txt_hiscore_timer)
 		if not start.t_hiscore.input then
 			sndPlay(motif.files.snd_data, motif.hiscore_info.done_snd[1], motif.hiscore_info.done_snd[2])

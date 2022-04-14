@@ -553,6 +553,12 @@ func (s *System) init(w, h int32) *lua.LState {
 	}()
 	return l
 }
+func (s *System) shutdown() {
+	if !sys.gameEnd {
+		sys.gameEnd = true
+	}
+	<-sys.audioClose
+}
 func (s *System) setWindowSize(w, h int32) {
 	s.scrrect[2], s.scrrect[3] = w, h
 	if s.scrrect[2]*3 > s.scrrect[3]*4 {
