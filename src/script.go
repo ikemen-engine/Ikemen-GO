@@ -1586,7 +1586,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
-		sys.playSound()
+		sys.tickSound()
 		if !sys.update() {
 			l.RaiseError("<game end>")
 		}
