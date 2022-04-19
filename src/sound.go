@@ -372,6 +372,13 @@ func newSnd() *Snd {
 }
 
 func LoadSnd(filename string) (*Snd, error) {
+	return LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] >= 0 && gn[1] >= 0 }, 0)
+}
+
+// Parse a .snd file and return an Snd structure with its contents
+// The "keepItem" function allows to filter out unwanted waves.
+// If max > 0, the function returns immediately when a matching entry is found. It also gives up after "max" non-matching entries.
+func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) (*Snd, error) {
 	s := newSnd()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -403,7 +410,11 @@ func LoadSnd(filename string) (*Snd, error) {
 	if err := read(&subHeaderOffset); err != nil {
 		return nil, err
 	}
-	for i := uint32(0); i < numberOfSounds; i++ {
+	loops := numberOfSounds
+	if max > 0 && max < numberOfSounds {
+		loops = max
+	}
+	for i := uint32(0); i < loops; i++ {
 		f.Seek(int64(subHeaderOffset), 0)
 		var nextSubHeaderOffset uint32
 		if err := read(&nextSubHeaderOffset); err != nil {
@@ -417,14 +428,20 @@ func LoadSnd(filename string) (*Snd, error) {
 		if err := read(&num); err != nil {
 			return nil, err
 		}
-		if num[0] >= 0 && num[1] >= 0 {
+		if keepItem(num) {
 			_, ok := s.table[num]
 			if !ok {
 				tmp, err := ReadWave(f, int64(subHeaderOffset))
 				if err != nil {
 					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
+					if max > 0 {
+						return nil, err
+					}
 				} else {
 					s.table[num] = tmp
+					if max > 0 {
+						break
+					}
 				}
 			}
 		}
@@ -454,66 +471,16 @@ func newWave(sampleRate beep.SampleRate) *Wave {
 	return &Wave{beep.NewBuffer(beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: audioPrecision})}
 }
 func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
-	f, err := os.Open(filename)
+	// Load the snd file
+	snd, err := LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] == g && gn[1] == s }, max)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { chk(f.Close()) }()
-	buf := make([]byte, 12)
-	var n int
-	if n, err = f.Read(buf); err != nil {
-		return nil, err
+	tmp, ok := snd.table[[2]int32{g, s}]
+	if !ok {
+		return newWave(11025), nil
 	}
-	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("Unrecognized SND file, invalid header")
-	}
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-	var ver uint16
-	if err := read(&ver); err != nil {
-		return nil, err
-	}
-	var ver2 uint16
-	if err := read(&ver2); err != nil {
-		return nil, err
-	}
-	var numberOfSounds uint32
-	if err := read(&numberOfSounds); err != nil {
-		return nil, err
-	}
-	var subHeaderOffset uint32
-	if err := read(&subHeaderOffset); err != nil {
-		return nil, err
-	}
-	loops := numberOfSounds
-	if max > 0 && max < numberOfSounds {
-		loops = max
-	}
-	for i := uint32(0); i < loops; i++ {
-		f.Seek(int64(subHeaderOffset), 0)
-		var nextSubHeaderOffset uint32
-		if err := read(&nextSubHeaderOffset); err != nil {
-			return nil, err
-		}
-		var subFileLenght uint32
-		if err := read(&subFileLenght); err != nil {
-			return nil, err
-		}
-		var num [2]int32
-		if err := read(&num); err != nil {
-			return nil, err
-		}
-		if num[0] == g && num[1] == s {
-			tmp, err := ReadWave(f, int64(subHeaderOffset))
-			if err != nil {
-				return nil, err
-			}
-			return tmp, nil
-		}
-		subHeaderOffset = nextSubHeaderOffset
-	}
-	return newWave(11025), nil
+	return tmp, nil
 }
 func (w *Wave) play() bool {
 	c := sys.sounds.reserveChannel()
