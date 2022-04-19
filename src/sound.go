@@ -436,23 +436,18 @@ func (s *Snd) Get(gn [2]int32) *Wave {
 	return s.table[gn]
 }
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
-	c := sys.sounds.GetChannel()
+	c := sys.sounds.reserveChannel()
 	if c == nil {
 		return false
 	}
-	c.sound = s.Get(gn)
+	w := s.Get(gn)
+	c.Play(w, false, 1.0)
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 0, nil)
-	return c.sound != nil
+	return w != nil
 }
 func (s *Snd) stop(gn [2]int32) {
-	w := s.Get(gn)
-	for k, v := range sys.sounds {
-		if v.sound != nil && v.sound == w {
-			sys.sounds[k] = Sound{volume: 256, freqmul: 1}
-			//break
-		}
-	}
+	sys.sounds.stop(s.Get(gn))
 }
 
 func newWave(sampleRate beep.SampleRate) *Wave {
@@ -521,19 +516,19 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 	return newWave(11025), nil
 }
 func (w *Wave) play() bool {
-	c := sys.sounds.GetChannel()
+	c := sys.sounds.reserveChannel()
 	if c == nil {
 		return false
 	}
-	c.sound = w
-	return c.sound != nil
+	c.Play(w, false, 1.0)
+	return w != nil
 }
 func (w *Wave) getDuration() float32 {
 	return float32(w.Buffer.Format().SampleRate.D(w.Buffer.Len()))
 }
 
 // ------------------------------------------------------------------
-// Sound
+// Sound (sound channel)
 
 type Sound struct {
 	sound   *Wave
@@ -546,9 +541,6 @@ type Sound struct {
 }
 
 func (s *Sound) mix() {
-	if s.sound == nil {
-		return
-	}
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
 	lv, rv := s.volume, s.volume
 	if sys.stereoEffects && (s.x != nil || s.p != 0) {
@@ -575,11 +567,19 @@ func (s *Sound) mix() {
 	}
 	s.fidx = sys.mixer.Mix(s.sound.Buffer, s.fidx, float64(s.freqmul), s.loop, lv/256, rv/256)
 	if int(s.fidx) >= s.sound.Buffer.Len() {
-		s.sound = nil
-		s.fidx = 0
+		s.Stop()
 	}
 }
-
+func (s *Sound) Play(w *Wave, loop bool, freqmul float32) {
+	s.sound = w
+	s.loop, s.volume, s.freqmul, s.fidx = loop, 256, freqmul, 0
+}
+func (s *Sound) IsPlaying() bool {
+	return s.sound != nil
+}
+func (s *Sound) Stop() {
+	s.sound = nil
+}
 func (s *Sound) SetVolume(vol float32) {
 	if vol < 0 {
 		s.volume = 0
@@ -599,25 +599,86 @@ func (s *Sound) SetPan(p, ls float32, x *float32) {
 	}
 }
 
-type Sounds []Sound
+// ------------------------------------------------------------------
+// Sounds (collection of prioritised sound channels)
 
-func newSounds(size int) (s Sounds) {
-	s = make(Sounds, size)
-	for i := range s {
-		s[i] = Sound{volume: 256, freqmul: 1}
-	}
-	return
+type Sounds struct {
+	channels []Sound
 }
-func (s Sounds) GetChannel() *Sound {
-	for i := range s {
-		if s[i].sound == nil {
-			return &s[i]
+
+func newSounds(size int32) *Sounds {
+	s := &Sounds{}
+	s.setSize(size)
+	return s
+}
+func (s *Sounds) setSize(size int32)  {
+	if size > s.numChannels() {
+		c := make([]Sound, size - s.numChannels())
+		s.channels = append(s.channels, c...)
+	} else if size < s.numChannels() {
+		s.channels = s.channels[:size]
+	}
+}
+func (s *Sounds) newChannel(ch int32, lowpriority bool) *Sound {
+        ch = Min(255, ch)
+        if ch >= 0 {
+                if lowpriority {
+                        if s.numChannels() > ch && s.channels[ch].IsPlaying() {
+                                return nil
+                        }
+                }
+                if s.numChannels() < ch+1 {
+			s.setSize(ch+1)
+                }
+		s.channels[ch].Stop()
+                return &s.channels[ch]
+        }
+        if s.numChannels() < 256 {
+		s.setSize(256)
+        }
+        for i := 255; i >= 0; i-- {
+                if !s.channels[i].IsPlaying() {
+                        return &s.channels[i]
+                }
+        }
+        return nil
+}
+func (s *Sounds) numChannels() int32 {
+	return int32(len(s.channels))
+}
+func (s *Sounds) reserveChannel() *Sound {
+	for i := range s.channels {
+		if !s.channels[i].IsPlaying() {
+			return &s.channels[i]
 		}
 	}
 	return nil
 }
-func (s Sounds) mixSounds() {
-	for i := range s {
-		s[i].mix()
+func (s *Sounds) getChannel(ch int32) *Sound {
+	if ch >= 0 && ch < s.numChannels() {
+		return &s.channels[ch]
+	}
+	return nil
+}
+func (s *Sounds) IsPlaying(w *Wave) bool {
+	for _, v := range s.channels {
+		if v.sound != nil && v.sound == w {
+			return true
+		}
+	}
+	return false
+}
+func (s *Sounds) stop(w *Wave) {
+	for k, v := range s.channels {
+		if v.sound != nil && v.sound == w {
+			s.channels[k].Stop()
+		}
+	}
+}
+func (s *Sounds) mixSounds() {
+	for i := range s.channels {
+		if s.channels[i].IsPlaying() {
+			s.channels[i].mix()
+		}
 	}
 }
