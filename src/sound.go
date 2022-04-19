@@ -27,11 +27,10 @@ type Mixer struct {
 	buf        [audioOutLen * 2]float32
 	sendBuf    []int16
 	out        chan []int16
-	normalizer *Normalizer
 }
 
 func newMixer() *Mixer {
-	return &Mixer{out: make(chan []int16, 2), normalizer: NewNormalizer()}
+	return &Mixer{out: make(chan []int16, 2)}
 }
 func (m *Mixer) bufClear() {
 	for i := range m.buf {
@@ -42,9 +41,8 @@ func (m *Mixer) write() bool {
 	if m.sendBuf == nil {
 		m.sendBuf = make([]int16, len(m.buf))
 		for i := 0; i <= len(m.sendBuf)-2; i += 2 {
-			l, r := m.normalizer.Process(m.buf[i], m.buf[i+1])
-			m.sendBuf[i] = int16(32767 * l)
-			m.sendBuf[i+1] = int16(32767 * r)
+			m.sendBuf[i] = int16(32767 * m.buf[i])
+			m.sendBuf[i+1] = int16(32767 * m.buf[i+1])
 		}
 	}
 	select {
@@ -90,32 +88,42 @@ func (m *Mixer) Mix(buffer *beep.Buffer, fidx, freqmul float64,
 // Normalizer
 
 type Normalizer struct {
+	streamer beep.Streamer
 	mul  float64
 	l, r *NormalizerLR
 }
 
-func NewNormalizer() *Normalizer {
-	return &Normalizer{mul: 4, l: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0},
+func NewNormalizer(st beep.Streamer) *Normalizer {
+	return &Normalizer{streamer: st, mul: 4,
+		l: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0},
 		r: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0}}
 }
-func (n *Normalizer) Process(l, r float32) (float32, float32) {
-	lmul := n.l.process(n.mul, &l)
-	rmul := n.r.process(n.mul, &r)
-	if sys.audioDucking {
-		n.mul = math.Min(16.0, math.Min(lmul, rmul))
-	} else {
-		n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
+
+func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
+	s, ok = n.streamer.Stream(samples)
+	for i:= range samples[:s] {
+		lmul := n.l.process(n.mul, &samples[i][0])
+		rmul := n.r.process(n.mul, &samples[i][1])
+		if sys.audioDucking {
+			n.mul = math.Min(16.0, math.Min(lmul, rmul))
+		} else {
+			n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
+		}
 	}
-	return l, r
+	return s, ok
+}
+
+func (n *Normalizer) Err() error {
+        return n.streamer.Err()
 }
 
 type NormalizerLR struct {
 	heri, herihenka, fue, heikin, katayori, katayori2 float64
 }
 
-func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
-	n.katayori += (float64(*sam) - n.katayori) / (audioFrequency/110.0 + 1)
-	n.katayori2 += (float64(*sam) - n.katayori2) / (audioFrequency/112640.0 + 1)
+func (n *NormalizerLR) process(bai float64, sam *float64) float64 {
+	n.katayori += (*sam - n.katayori) / (audioFrequency/110.0 + 1)
+	n.katayori2 += (*sam - n.katayori2) / (audioFrequency/112640.0 + 1)
 	s := (n.katayori2 - n.katayori) * bai
 	if math.Abs(s) > 1 {
 		bai *= math.Pow(math.Abs(s), -n.heri)
@@ -135,7 +143,7 @@ func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
 	} else if n.heri > 0 {
 		n.heri = 1
 	}
-	*sam = float32(s)
+	*sam = s
 	return bai
 }
 

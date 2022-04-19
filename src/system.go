@@ -502,7 +502,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	sr := beep.SampleRate(Mp3SampleRate)
 	speaker.Init(sr, sr.N(time.Second/10))
 	speaker.Play(s.globalMixer)
-	s.globalMixer.Add(s.soundStream())
+	no := NewNormalizer(s.soundStream())
+	s.globalMixer.Add(no)
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
