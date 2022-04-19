@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"math"
 	"os"
 
@@ -20,6 +19,7 @@ import (
 const (
 	audioOutLen    = 2048
 	audioFrequency = 48000
+	audioPrecision = 4
 )
 
 // ------------------------------------------------------------------
@@ -88,80 +88,34 @@ func (m *Mixer) write() bool {
 	m.bufClear()
 	return true
 }
-func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
-	sampleRate float64, loop bool, lv, rv float32) float64 {
+func (m *Mixer) Mix(buffer *beep.Buffer, fidx, freqmul float64,
+	loop bool, lv, rv float32) float64 {
+	sampleRate := float64(buffer.Format().SampleRate) * freqmul
 	fidxadd := sampleRate / audioFrequency
+
 	if fidxadd > 0 {
-		switch bytesPerSample {
-		case 1:
-			switch channels {
-			case 1: //mix_m8
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := int(fidx)
-					if iidx >= len(wav) {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					sam := (float32(wav[iidx]) - 128) / 128
-					m.buf[i] += lv * sam
-					m.buf[i+1] += rv * sam
-					fidx += fidxadd
+		seeker := buffer.Streamer(0, buffer.Len())
+		samples := make([][2]float64, 1)
+		for i := 0; i <= len(m.buf)-2; i += 2 {
+			iidx := int(fidx)
+			if iidx >= seeker.Len() {
+				if !loop {
+					break
 				}
-				return fidx
-			case 2: //mix_s8
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 2 * int(fidx)
-					if iidx > len(wav)-2 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					m.buf[i] += lv * (float32(wav[iidx]) - 128) / 128
-					m.buf[i+1] += rv * (float32(wav[iidx+1]) - 128) / 128
-					fidx += fidxadd
-				}
-				return fidx
+				iidx, fidx = 0, 0
 			}
-		case 2:
-			switch channels {
-			case 1: //mix_m16
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 2 * int(fidx)
-					if iidx > len(wav)-2 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					sam := float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i] += lv * sam
-					m.buf[i+1] += rv * sam
-					fidx += fidxadd
-				}
-				return fidx
-			case 2: //mix_s16
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 4 * int(fidx)
-					if iidx > len(wav)-4 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					m.buf[i] += lv *
-						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i+1] += rv *
-						float32(int(wav[iidx+2])|int(int8(wav[iidx+3]))<<8) / (1 << 15)
-					fidx += fidxadd
-				}
-				return fidx
+			seeker.Seek(iidx)
+			_, ok := seeker.Stream(samples)
+			if !ok {
+				break
 			}
+			m.buf[i] += lv * float32(samples[0][0])
+			m.buf[i+1] += rv * float32(samples[0][1])
+			fidx += fidxadd
 		}
+		return fidx
 	}
-	return float64(len(wav))
+	return float64(buffer.Len())
 }
 
 // ------------------------------------------------------------------
@@ -392,101 +346,17 @@ func (bgm *Bgm) UpdateVolume() {
 // Wave
 
 type Wave struct {
-	SamplesPerSec  uint32
-	Channels       uint16
-	BytesPerSample uint16
-	Wav            []byte
+	Buffer *beep.Buffer
 }
 
 func ReadWave(f *os.File, ofs int64) (*Wave, error) {
-	buf := make([]byte, 4)
-	n, err := f.Read(buf)
+	s, fmt, err := wav.Decode(f)
 	if err != nil {
 		return nil, err
 	}
-	if string(buf[:n]) != "RIFF" {
-		return nil, Error("Not RIFF")
-	}
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-	var riffSize uint32
-	if err := read(&riffSize); err != nil {
-		return nil, err
-	}
-	riffSize += 8
-	if n, err = f.Read(buf); err != nil {
-		return nil, err
-	}
-	if string(buf[:n]) != "WAVE" {
-		return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}, nil
-	}
-	fmtSize, dataSize := uint32(0), uint32(0)
-	w := Wave{}
-	riffend := ofs + 16 + int64(riffSize)
-	ofs += 28
-	for (fmtSize == 0 || dataSize == 0) && ofs < riffend {
-		if n, err = f.Read(buf); err != nil {
-			return nil, err
-		}
-		var size uint32
-		if err := read(&size); err != nil {
-			return nil, err
-		}
-		switch string(buf[:n]) {
-		case "fmt ":
-			fmtSize = size
-			var fmtID uint16
-			if err := read(&fmtID); err != nil {
-				return nil, err
-			}
-			if fmtID != 1 {
-				return nil, Error("Not a linear PCM")
-			}
-			if err := read(&w.Channels); err != nil {
-				return nil, err
-			}
-			if w.Channels < 1 || w.Channels > 2 {
-				return nil, Error(fmt.Sprintf("Invalid number of channels: %d", w.Channels))
-			}
-			if err := read(&w.SamplesPerSec); err != nil {
-				return nil, err
-			}
-			if w.SamplesPerSec < 1 || w.SamplesPerSec >= 0xfffff {
-				return nil, Error(fmt.Sprintf("Invalid frequency: %d", w.SamplesPerSec))
-			}
-			var musi uint32
-			if err := read(&musi); err != nil {
-				return nil, err
-			}
-			var mushi uint16
-			if err := read(&mushi); err != nil {
-				return nil, err
-			}
-			if err := read(&w.BytesPerSample); err != nil {
-				return nil, err
-			}
-			if w.BytesPerSample != 8 && w.BytesPerSample != 16 {
-				return nil, Error(fmt.Sprintf("Invalid bit number: %d", w.BytesPerSample))
-			}
-			w.BytesPerSample >>= 3
-		case "data":
-			dataSize = size
-			w.Wav = make([]byte, dataSize)
-			if err := binary.Read(f, binary.LittleEndian, w.Wav); err != nil {
-				return nil, err
-			}
-		}
-		ofs += int64(size) + 8
-		f.Seek(ofs, 0)
-	}
-	if fmtSize == 0 {
-		if dataSize > 0 {
-			return nil, Error("fmt is missing")
-		}
-		return nil, nil
-	}
-	return &w, nil
+	w := newWave(fmt.SampleRate)
+	w.Buffer.Append(s)
+	return w, nil
 }
 
 // ------------------------------------------------------------------
@@ -585,11 +455,10 @@ func (s *Snd) stop(gn [2]int32) {
 	}
 }
 
-func newWave() *Wave {
-	return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}
+func newWave(sampleRate beep.SampleRate) *Wave {
+	return &Wave{beep.NewBuffer(beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: audioPrecision})}
 }
 func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
-	w := newWave()
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -649,7 +518,7 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 		}
 		subHeaderOffset = nextSubHeaderOffset
 	}
-	return w, nil
+	return newWave(11025), nil
 }
 func (w *Wave) play() bool {
 	c := sys.sounds.GetChannel()
@@ -660,7 +529,7 @@ func (w *Wave) play() bool {
 	return c.sound != nil
 }
 func (w *Wave) getDuration() float32 {
-	return float32(len(w.Wav)) / float32((w.SamplesPerSec * uint32(w.Channels) * uint32(w.BytesPerSample)))
+	return float32(w.Buffer.Format().SampleRate.D(w.Buffer.Len()))
 }
 
 // ------------------------------------------------------------------
@@ -704,12 +573,8 @@ func (s *Sound) mix() {
 			rv = 0
 		}
 	}
-	s.fidx = sys.mixer.Mix(s.sound.Wav, s.fidx,
-		int(s.sound.BytesPerSample), int(s.sound.Channels),
-		float64(s.sound.SamplesPerSec)*float64(s.freqmul), s.loop,
-		lv/256, rv/256)
-	if int(s.fidx) >= len(s.sound.Wav)/
-		int(s.sound.BytesPerSample*s.sound.Channels) {
+	s.fidx = sys.mixer.Mix(s.sound.Buffer, s.fidx, float64(s.freqmul), s.loop, lv/256, rv/256)
+	if int(s.fidx) >= s.sound.Buffer.Len() {
 		s.sound = nil
 		s.fidx = 0
 	}
