@@ -408,6 +408,11 @@ func systemScriptInit(l *lua.LState) {
 					ch.setSCF(SCF_disabled)
 				}
 			} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
+				for _, ch := range c {
+					if ch.scf(SCF_disabled) {
+						ch.unsetSCF(SCF_disabled)
+					}
+				}
 				c[0].changeState(st, -1, -1, false)
 				l.Push(lua.LBool(true))
 				return 1
