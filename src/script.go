@@ -482,7 +482,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
-		sys.chars[pn-1][0].sounds = sys.chars[pn-1][0].sounds[:0]
+		sys.chars[pn-1][0].sounds.setSize(0)
 		return 0
 	})
 	luaRegister(l, "charSpriteDraw", func(l *lua.LState) int {
@@ -1591,7 +1591,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "refresh", func(*lua.LState) int {
-		sys.playSound()
+		sys.tickSound()
 		if !sys.update() {
 			l.RaiseError("<game end>")
 		}
@@ -2280,12 +2280,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		var f bool
 		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
-			for _, v := range sys.sounds {
-				if v.sound != nil && v.sound == w {
-					f = true
-					break
-				}
-			}
+			f = sys.sounds.IsPlaying(w)
 		}
 		l.Push(lua.LBool(f))
 		return 1

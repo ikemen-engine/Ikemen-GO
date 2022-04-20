@@ -29,8 +29,6 @@ github.com/icza/bitio v1.0.0/go.mod h1:0jGnlLAx8MKMr9VGnn/4YrvZiprkvBelsVIbA9Jjr
 github.com/icza/mighty v0.0.0-20180919140131-cfd07d671de6/go.mod h1:xQig96I1VNBDIWGCdTt54nHt6EeI639SmHycLYL7FkA=
 github.com/ikemen-engine/glfont v0.0.0-20220323132206-8bdc165eee08 h1:gX+QTweSXy3oDJib6cviuMjinYqlonOub2pmBYii0tI=
 github.com/ikemen-engine/glfont v0.0.0-20220323132206-8bdc165eee08/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
-github.com/ikemen-engine/go-openal v0.0.0-20220328184227-7103367748a5 h1:zon7vKMQ9vYTbNtLRmXWbL37XahYa/6tnmus7XnP+Xs=
-github.com/ikemen-engine/go-openal v0.0.0-20220328184227-7103367748a5/go.mod h1:mApWBmJe2GdPMjz+7ThFrgKL3kGJ9s0CSnBctRPJt/A=
 github.com/jfreymuth/oggvorbis v1.0.1 h1:NT0eXBgE2WHzu6RT/6zcb2H10Kxj6Fm3PccT0LE6bqw=
 github.com/jfreymuth/oggvorbis v1.0.1/go.mod h1:NqS+K+UXKje0FUYUPosyQ+XTVvjmVjps1aEZH1sumIk=
 github.com/jfreymuth/vorbis v1.0.0 h1:SmDf783s82lIjGZi8EGUUaS7YxPHgRj4ZXW/h7rUi7U=

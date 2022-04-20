@@ -20,7 +20,6 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/ikemen-engine/go-openal/openal"
 	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -50,7 +49,7 @@ var sys = System{
 	lifeMul:           1,
 	team1VS2Life:      1,
 	turnsRecoveryRate: 1.0 / 300,
-	mixer:             *newMixer(),
+	soundMixer:        &beep.Mixer{},
 	bgm:               *newBgm(),
 	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
@@ -74,7 +73,6 @@ var sys = System{
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
 	errLog:                log.New(os.Stderr, "", 0),
-	audioClose:            make(chan bool, 1),
 	keyInput:              glfw.KeyUnknown,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
@@ -121,11 +119,9 @@ type System struct {
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
-	mixer                   Mixer
+	soundMixer              *beep.Mixer
 	bgm                     Bgm
-	audioContext            *openal.Context
-	nullSndBuf              [audioOutLen * 2]int16
-	sounds                  Sounds
+	sounds                  *Sounds
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	sel                     Select
@@ -257,7 +253,6 @@ type System struct {
 	workpal                 []uint32
 	playerProjectileMax     int
 	errLog                  *log.Logger
-	audioClose              chan bool
 	nomusic                 bool
 	workBe                  []BytecodeExp
 	lifeShare               [2]bool
@@ -500,9 +495,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	// Now we proceed to int the render.
 	RenderInit()
 	// And the audio.
-	s.audioOpen()
-	sr := beep.SampleRate(Mp3SampleRate)
-	speaker.Init(sr, sr.N(time.Second/10))
+	speaker.Init(audioFrequency, audioOutLen)
+	speaker.Play(NewNormalizer(s.soundMixer))
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -554,7 +548,7 @@ func (s *System) shutdown() {
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
-	<-sys.audioClose
+	speaker.Close()
 }
 func (s *System) setWindowSize(w, h int32) {
 	s.scrrect[2], s.scrrect[3] = w, h
@@ -640,87 +634,35 @@ func (s *System) update() bool {
 	}
 	return s.await(FPS)
 }
-func (s *System) audioOpen() {
-	if s.audioContext == nil {
-		device := openal.OpenDevice("")
-		if device == nil {
-			chk(openal.Err())
+func (s *System) tickSound() {
+	s.sounds.tickSounds()
+	if !s.noSoundFlg {
+		for _, ch := range s.chars {
+			for _, c := range ch {
+				c.sounds.tickSounds()
+			}
 		}
-		s.audioContext = device.CreateContext()
-		if err := device.Err(); err != nil {
-			s.errLog.Println(err.Error())
-		}
-		s.audioContext.Activate()
-		go s.soundWrite()
 	}
-}
-func (s *System) soundWrite() {
-	defer func() { s.audioClose <- true }()
-	src := NewAudioSource()
-	processed := false
-	for !s.gameEnd {
-		if src.Src.State() != openal.Playing {
-			src.Src.Play()
-		}
-		if !processed {
-			time.Sleep(10 * time.Millisecond)
-		}
-		processed = false
-		if src.Src.BuffersProcessed() > 0 {
-			var out []int16
-			select {
-			case out = <-s.mixer.out:
-			default:
-				out = s.nullSndBuf[:]
-			}
-			buf := src.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			src.Src.QueueBuffer(buf)
-			if err := openal.Err(); err != nil {
-				s.errLog.Println(err.Error())
-			}
-			processed = true
-		}
-		if !s.nomusic {
-			if s.bgm.ctrl != nil && s.bgm.streamer != nil {
-				s.bgm.ctrl.Paused = false
-				if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-					speaker.Lock()
-					s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
-					speaker.Unlock()
-				}
-			}
-		} else {
-			if s.bgm.ctrl != nil {
-				s.bgm.Pause()
-			}
-		}
 
-		//if s.FLAC_FrameWait >= 0 {
-		//	if s.FLAC_FrameWait == 0 {
-		//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
-		//	}
-		//	s.FLAC_FrameWait--
-		//}
-	}
-	src.Delete()
-	openal.NullContext.Activate()
-	device := s.audioContext.GetDevice()
-	s.audioContext.Destroy()
-	s.audioContext = nil
-	device.CloseDevice()
-}
-func (s *System) playSound() {
-	if s.mixer.write() {
-		s.sounds.mixSounds()
-		if !s.noSoundFlg {
-			for _, ch := range s.chars {
-				for _, c := range ch {
-					c.sounds.mixSounds()
-				}
+	if !s.nomusic {
+		speaker.Lock()
+		if s.bgm.ctrl != nil && s.bgm.streamer != nil {
+			s.bgm.ctrl.Paused = false
+			if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
+				s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
 			}
 		}
+		speaker.Unlock()
+	} else {
+		s.bgm.Pause()
 	}
+
+	//if s.FLAC_FrameWait >= 0 {
+	//	if s.FLAC_FrameWait == 0 {
+	//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
+	//	}
+	//	s.FLAC_FrameWait--
+	//}
 }
 func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
@@ -879,14 +821,12 @@ func (s *System) resetGblEffect() {
 func (s *System) stopAllSound() {
 	for _, p := range s.chars {
 		for _, c := range p {
-			c.sounds = c.sounds[:0]
+			c.sounds.setSize(0)
 		}
 	}
 }
 func (s *System) clearAllSound() {
-	s.sounds = newSounds(len(s.sounds))
-	s.mixer.sendBuf = nil
-	s.mixer.bufClear()
+	s.sounds = newSounds(s.sounds.numChannels())
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {
@@ -896,7 +836,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			if destroy || h.preserve == 0 || (s.roundResetFlg && h.preserve == s.round) {
 				h.destroy()
 			}
-			h.sounds = h.sounds[:0]
+			h.sounds.setSize(0)
 		}
 		if destroy {
 			p.children = p.children[:0]
@@ -910,7 +850,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			}
 		}
 		p.targets = p.targets[:0]
-		p.sounds = p.sounds[:0]
+		p.sounds.setSize(0)
 	}
 	s.projs[pn] = s.projs[pn][:0]
 	s.explods[pn] = s.explods[pn][:0]
@@ -1524,7 +1464,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.turbo = spd
 	}
-	s.playSound()
+	s.tickSound()
 	if introSkip {
 		sclMul = 1 / scl
 	}

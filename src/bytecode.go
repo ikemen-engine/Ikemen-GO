@@ -5991,8 +5991,8 @@ func (sc stopSnd) Run(c *Char, _ []int32) bool {
 		case stopSnd_channel:
 			if ch := Min(255, exp[0].evalI(c)); ch < 0 {
 				sys.stopAllSound()
-			} else if int(ch) < len(crun.sounds) {
-				crun.sounds[ch].sound = nil
+			} else if c := crun.sounds.getChannel(ch); c != nil {
+				c.Stop()
 			}
 		case stopSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -6037,8 +6037,8 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if ch >= 0 && int(ch) < len(crun.sounds) {
-		crun.sounds[ch].SetPan(pan*crun.facing, crun.localscl, x)
+	if c := crun.sounds.getChannel(ch); c != nil {
+		c.SetPan(pan*crun.facing, crun.localscl, x)
 	}
 	return false
 }

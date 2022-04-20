@@ -3052,29 +3052,6 @@ func (c *Char) winPerfect() bool {
 func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
-func (c *Char) newChannel(ch int32, lowpriority bool) *Sound {
-	ch = Min(255, ch)
-	if ch >= 0 {
-		if lowpriority {
-			if len(c.sounds) > int(ch) && c.sounds[ch].sound != nil {
-				return nil
-			}
-		}
-		if len(c.sounds) < int(ch+1) {
-			c.sounds = append(c.sounds, newSounds(int(ch+1)-len(c.sounds))...)
-		}
-		return &c.sounds[ch]
-	}
-	if len(c.sounds) < 256 {
-		c.sounds = append(c.sounds, newSounds(256-len(c.sounds))...)
-	}
-	for i := 255; i >= 0; i-- {
-		if c.sounds[i].sound == nil {
-			return &c.sounds[i]
-		}
-	}
-	return nil
-}
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	p, freqmul float32, x *float32, log bool) {
 	if g < 0 {
@@ -3109,9 +3086,8 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			return
 		}
 	}
-	if ch := c.newChannel(chNo, lowpriority); ch != nil {
-		ch.sound, ch.loop, ch.freqmul = w, loop, freqmul
-		ch.fidx = 0
+	if ch := c.sounds.newChannel(chNo, lowpriority); ch != nil {
+		ch.Play(w, loop, freqmul)
 		vol = Max(-25600, Min(25600, vol))
 		//if c.gi().ver[0] == 1 {
 		if f {
@@ -6018,8 +5994,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		if hitType > 0 {
-			if hitType == 1 && len(getter.sounds) > 0 {
-				getter.sounds[0].sound = nil
+			if hitType == 1 && getter.sounds.numChannels() > 0 {
+				if ch := getter.sounds.getChannel(0); ch != nil {
+					ch.Stop()
+				}
 			}
 			if getter.bindToId == c.id {
 				getter.setBindTime(0)
