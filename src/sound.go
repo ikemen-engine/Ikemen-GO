@@ -16,73 +16,10 @@ import (
 
 const (
 	audioOutLen    = 2048
-	audioFrequency = 44100
+	audioFrequency = 48000
 	audioPrecision = 4
+	audioResampleQuality = 3
 )
-
-// ------------------------------------------------------------------
-// Mixer
-
-type Mixer struct {
-	buf        [audioOutLen * 2]float32
-	sendBuf    []int16
-	out        chan []int16
-}
-
-func newMixer() *Mixer {
-	return &Mixer{out: make(chan []int16, 2)}
-}
-func (m *Mixer) bufClear() {
-	for i := range m.buf {
-		m.buf[i] = 0
-	}
-}
-func (m *Mixer) write() bool {
-	if m.sendBuf == nil {
-		m.sendBuf = make([]int16, len(m.buf))
-		for i := 0; i <= len(m.sendBuf)-2; i += 2 {
-			m.sendBuf[i] = int16(32767 * m.buf[i])
-			m.sendBuf[i+1] = int16(32767 * m.buf[i+1])
-		}
-	}
-	select {
-	case m.out <- m.sendBuf:
-	default:
-		return false
-	}
-	m.sendBuf = nil
-	m.bufClear()
-	return true
-}
-func (m *Mixer) Mix(buffer *beep.Buffer, fidx, freqmul float64,
-	loop bool, lv, rv float32) float64 {
-	sampleRate := float64(buffer.Format().SampleRate) * freqmul
-	fidxadd := sampleRate / audioFrequency
-
-	if fidxadd > 0 {
-		seeker := buffer.Streamer(0, buffer.Len())
-		samples := make([][2]float64, 1)
-		for i := 0; i <= len(m.buf)-2; i += 2 {
-			iidx := int(fidx)
-			if iidx >= seeker.Len() {
-				if !loop {
-					break
-				}
-				iidx, fidx = 0, 0
-			}
-			seeker.Seek(iidx)
-			_, ok := seeker.Stream(samples)
-			if !ok {
-				break
-			}
-			m.buf[i] += lv * float32(samples[0][0])
-			m.buf[i+1] += rv * float32(samples[0][1])
-			fidx += fidxadd
-		}
-		return fidx
-	}
-	return float64(buffer.Len())
-}
 
 // ------------------------------------------------------------------
 // Normalizer
@@ -176,11 +113,11 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
 	// Starve the current music streamer
-	speaker.Lock()
 	if bgm.ctrl != nil {
+		speaker.Lock()
 		bgm.ctrl.Streamer = nil
+		speaker.Unlock()
 	}
-	speaker.Unlock()
 
 	// TODO: Throw a degbug warning if this triggers
 	if bgmVolume > sys.maxBgmVolume {
@@ -197,10 +134,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 		bgm.ReadWav(loop, bgmVolume)
 	}
 
-	speaker.Lock()
-	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
-	sys.globalMixer.Add(bgm.ctrl)
-	speaker.Unlock()
+	speaker.Play(bgm.ctrl)
 }
 
 func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
@@ -294,15 +228,16 @@ func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
 	streamer := beep.Loop(loopCount, bgm.streamer)
 	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
 	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
-	bgm.resampler = beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), bgm.volume)
+	bgm.resampler = beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volume)
+	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
 }
 
 func (bgm *Bgm) Pause() {
-	speaker.Lock()
 	if bgm.ctrl != nil {
+		speaker.Lock()
 		bgm.ctrl.Paused = true
+		speaker.Unlock()
 	}
-	speaker.Unlock()
 }
 
 func (bgm *Bgm) UpdateVolume() {
@@ -467,19 +402,16 @@ func (w *Wave) getDuration() float32 {
 }
 
 // ------------------------------------------------------------------
-// Sound (sound channel)
+// SoundEffect (handles volume and panning)
 
-type Sound struct {
-	sound   *Wave
-	volume  float32
-	loop    bool
-	freqmul float32
-	fidx    float64
-	ls, p   float32
-	x       *float32
+type SoundEffect struct {
+	streamer beep.Streamer
+	volume float32
+	ls, p float32
+	x *float32
 }
 
-func (s *Sound) mix() {
+func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
 	lv, rv := s.volume, s.volume
 	if sys.stereoEffects && (s.x != nil || s.p != 0) {
@@ -504,37 +436,70 @@ func (s *Sound) mix() {
 			rv = 0
 		}
 	}
-	s.fidx = sys.mixer.Mix(s.sound.Buffer, s.fidx, float64(s.freqmul), s.loop, lv/256, rv/256)
-	if int(s.fidx) >= s.sound.Buffer.Len() {
-		s.Stop()
+
+	n, ok = s.streamer.Stream(samples)
+	for i:= range samples[:n] {
+		samples[i][0] *= float64(lv / 256)
+		samples[i][1] *= float64(rv / 256)
 	}
+	return n, ok
+}
+
+func (s *SoundEffect) Err() error {
+	return s.streamer.Err()
+}
+
+// ------------------------------------------------------------------
+// Sound (sound channel)
+
+type Sound struct {
+	streamer  beep.StreamSeeker
+	sfx     *SoundEffect
+	ctrl    *beep.Ctrl
+	sound   *Wave
+}
+
+func (s *Sound) mix() {
 }
 func (s *Sound) Play(w *Wave, loop bool, freqmul float32) {
+	if w == nil {
+		return
+	}
 	s.sound = w
-	s.loop, s.volume, s.freqmul, s.fidx = loop, 256, freqmul, 0
+	s.streamer = s.sound.Buffer.Streamer(0, s.sound.Buffer.Len())
+	loopCount := int(1)
+	if loop {
+		loopCount = -1
+	}
+	looper := beep.Loop(loopCount, s.streamer)
+	s.sfx = &SoundEffect{streamer: looper, volume: 256}
+	srcRate := s.sound.Buffer.Format().SampleRate
+	dstRate := beep.SampleRate(audioFrequency / freqmul)
+	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
+	s.ctrl = &beep.Ctrl{Streamer: resampler}
+	speaker.Play(s.ctrl)
 }
 func (s *Sound) IsPlaying() bool {
 	return s.sound != nil
 }
 func (s *Sound) Stop() {
+	if s.ctrl != nil {
+		speaker.Lock()
+		s.ctrl.Streamer = nil
+		speaker.Unlock()
+	}
 	s.sound = nil
 }
 func (s *Sound) SetVolume(vol float32) {
-	if vol < 0 {
-		s.volume = 0
-	} else if vol > 512 {
-		s.volume = 512
-	} else {
-		s.volume = vol
+	if s.ctrl != nil {
+		s.sfx.volume = float32(math.Max(0, math.Min(float64(vol), 512)))
 	}
 }
 func (s *Sound) SetPan(p, ls float32, x *float32) {
-	s.ls = ls
-	s.x = x
-	if p != 0 {
-		s.p = p * ls
-	} else {
-		s.p = 0
+	if s.ctrl != nil {
+		s.sfx.ls = ls
+		s.sfx.x = x
+		s.sfx.p = p * ls
 	}
 }
 
@@ -614,10 +579,12 @@ func (s *Sounds) stop(w *Wave) {
 		}
 	}
 }
-func (s *Sounds) mixSounds() {
+func (s *Sounds) tickSounds() {
 	for i := range s.channels {
 		if s.channels[i].IsPlaying() {
-			s.channels[i].mix()
+			if s.channels[i].streamer.Position() >= s.channels[i].sound.Buffer.Len() {
+				s.channels[i].sound = nil
+			}
 		}
 	}
 }

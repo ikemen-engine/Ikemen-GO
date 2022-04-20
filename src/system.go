@@ -49,8 +49,7 @@ var sys = System{
 	lifeMul:           1,
 	team1VS2Life:      1,
 	turnsRecoveryRate: 1.0 / 300,
-	globalMixer:       &beep.Mixer{},
-	mixer:             *newMixer(),
+	soundMixer:        &beep.Mixer{},
 	bgm:               *newBgm(),
 	sounds:            newSounds(16),
 	allPalFX:          *newPalFX(),
@@ -120,11 +119,8 @@ type System struct {
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
-	globalMixer             *beep.Mixer
-	mixer                   Mixer
+	soundMixer              *beep.Mixer
 	bgm                     Bgm
-	curSndBuf               []int16
-	nullSndBuf              [audioOutLen * 2]int16
 	sounds                  *Sounds
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
@@ -499,11 +495,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	// Now we proceed to int the render.
 	RenderInit()
 	// And the audio.
-	sr := beep.SampleRate(Mp3SampleRate)
-	speaker.Init(sr, sr.N(time.Second/10))
-	speaker.Play(s.globalMixer)
-	no := NewNormalizer(s.soundStream())
-	s.globalMixer.Add(no)
+	speaker.Init(audioFrequency, audioOutLen)
+	speaker.Play(NewNormalizer(s.soundMixer))
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -641,39 +634,12 @@ func (s *System) update() bool {
 	}
 	return s.await(FPS)
 }
-func (s *System) soundStream() beep.Streamer {
-	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
-		done := 0
-		for i := range samples {
-			// Ensure there is enough data to stream
-			if done == len(s.curSndBuf) {
-				if done > 0 {
-					break
-				}
-				select {
-				case s.curSndBuf = <-s.mixer.out:
-				default:
-					s.curSndBuf = s.nullSndBuf[:]
-				}
-				done = 0
-			}
-			// Convert samples
-			samples[i][0] = float64(s.curSndBuf[done]) * 1.0 / 32767.0;
-			samples[i][1] = float64(s.curSndBuf[done+1]) * 1.0 / 32767.0;
-			done += 2
-		}
-		s.curSndBuf = s.curSndBuf[done:]
-		return len(samples), true
-	})
-}
 func (s *System) tickSound() {
-	if s.mixer.write() {
-		s.sounds.mixSounds()
-		if !s.noSoundFlg {
-			for _, ch := range s.chars {
-				for _, c := range ch {
-					c.sounds.mixSounds()
-				}
+	s.sounds.tickSounds()
+	if !s.noSoundFlg {
+		for _, ch := range s.chars {
+			for _, c := range ch {
+				c.sounds.tickSounds()
 			}
 		}
 	}
@@ -861,8 +827,6 @@ func (s *System) stopAllSound() {
 }
 func (s *System) clearAllSound() {
 	s.sounds = newSounds(s.sounds.numChannels())
-	s.mixer.sendBuf = nil
-	s.mixer.bufClear()
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {
