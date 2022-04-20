@@ -125,7 +125,7 @@ type System struct {
 	bgm                     Bgm
 	curSndBuf               []int16
 	nullSndBuf              [audioOutLen * 2]int16
-	sounds                  Sounds
+	sounds                  *Sounds
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	sel                     Select
@@ -854,12 +854,12 @@ func (s *System) resetGblEffect() {
 func (s *System) stopAllSound() {
 	for _, p := range s.chars {
 		for _, c := range p {
-			c.sounds = c.sounds[:0]
+			c.sounds.setSize(0)
 		}
 	}
 }
 func (s *System) clearAllSound() {
-	s.sounds = newSounds(len(s.sounds))
+	s.sounds = newSounds(s.sounds.numChannels())
 	s.mixer.sendBuf = nil
 	s.mixer.bufClear()
 	s.stopAllSound()
@@ -871,7 +871,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			if destroy || h.preserve == 0 || (s.roundResetFlg && h.preserve == s.round) {
 				h.destroy()
 			}
-			h.sounds = h.sounds[:0]
+			h.sounds.setSize(0)
 		}
 		if destroy {
 			p.children = p.children[:0]
@@ -885,7 +885,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			}
 		}
 		p.targets = p.targets[:0]
-		p.sounds = p.sounds[:0]
+		p.sounds.setSize(0)
 	}
 	s.projs[pn] = s.projs[pn][:0]
 	s.explods[pn] = s.explods[pn][:0]
