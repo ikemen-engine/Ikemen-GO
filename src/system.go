@@ -826,7 +826,7 @@ func (s *System) stopAllSound() {
 	}
 }
 func (s *System) clearAllSound() {
-	s.sounds = newSounds(s.sounds.numChannels())
+	s.sounds.stopAll()
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {

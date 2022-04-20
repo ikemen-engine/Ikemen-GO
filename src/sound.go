@@ -520,6 +520,9 @@ func (s *Sounds) setSize(size int32)  {
 		c := make([]Sound, size - s.numChannels())
 		s.channels = append(s.channels, c...)
 	} else if size < s.numChannels() {
+		for i := s.numChannels()-1; i >= size; i-- {
+			s.channels[i].Stop()
+		}
 		s.channels = s.channels[:size]
 	}
 }
@@ -575,6 +578,13 @@ func (s *Sounds) IsPlaying(w *Wave) bool {
 func (s *Sounds) stop(w *Wave) {
 	for k, v := range s.channels {
 		if v.sound != nil && v.sound == w {
+			s.channels[k].Stop()
+		}
+	}
+}
+func (s *Sounds) stopAll() {
+	for k, v := range s.channels {
+		if v.sound != nil {
 			s.channels[k].Stop()
 		}
 	}
