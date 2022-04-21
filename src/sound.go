@@ -188,32 +188,50 @@ func (bgm *Bgm) UpdateVolume() {
 }
 
 // ------------------------------------------------------------------
-// Wave
+// Sound
 
-type Wave struct {
+type Sound struct {
 	Buffer *beep.Buffer
 }
 
-func ReadWave(f *os.File, ofs int64) (*Wave, error) {
+func newSound(sampleRate beep.SampleRate) *Sound {
+	fmt := beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: audioPrecision}
+	return &Sound{beep.NewBuffer(fmt)}
+}
+
+func readSound(f *os.File, ofs int64) (*Sound, error) {
 	s, fmt, err := wav.Decode(f)
 	if err != nil {
 		return nil, err
 	}
-	w := newWave(fmt.SampleRate)
-	w.Buffer.Append(s)
-	return w, nil
+	sound := newSound(fmt.SampleRate)
+	sound.Buffer.Append(s)
+	return sound, nil
+}
+
+func (s *Sound) Play() bool {
+	c := sys.soundChannels.reserveChannel()
+	if c == nil {
+		return false
+	}
+	c.Play(s, false, 1.0)
+	return s != nil
+}
+
+func (s *Sound) GetDuration() float32 {
+	return float32(s.Buffer.Format().SampleRate.D(s.Buffer.Len()))
 }
 
 // ------------------------------------------------------------------
 // Snd
 
 type Snd struct {
-	table     map[[2]int32]*Wave
+	table     map[[2]int32]*Sound
 	ver, ver2 uint16
 }
 
 func newSnd() *Snd {
-	return &Snd{table: make(map[[2]int32]*Wave)}
+	return &Snd{table: make(map[[2]int32]*Sound)}
 }
 
 func LoadSnd(filename string) (*Snd, error) {
@@ -276,7 +294,7 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 		if keepItem(num) {
 			_, ok := s.table[num]
 			if !ok {
-				tmp, err := ReadWave(f, int64(subHeaderOffset))
+				tmp, err := readSound(f, int64(subHeaderOffset))
 				if err != nil {
 					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
 					if max > 0 {
@@ -294,28 +312,25 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 	}
 	return s, nil
 }
-func (s *Snd) Get(gn [2]int32) *Wave {
+func (s *Snd) Get(gn [2]int32) *Sound {
 	return s.table[gn]
 }
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
-	c := sys.sounds.reserveChannel()
+	c := sys.soundChannels.reserveChannel()
 	if c == nil {
 		return false
 	}
-	w := s.Get(gn)
-	c.Play(w, false, 1.0)
+	sound := s.Get(gn)
+	c.Play(sound, false, 1.0)
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 0, nil)
-	return w != nil
+	return sound != nil
 }
 func (s *Snd) stop(gn [2]int32) {
-	sys.sounds.stop(s.Get(gn))
+	sys.soundChannels.stop(s.Get(gn))
 }
 
-func newWave(sampleRate beep.SampleRate) *Wave {
-	return &Wave{beep.NewBuffer(beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: audioPrecision})}
-}
-func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
+func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 	// Load the snd file
 	snd, err := LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] == g && gn[1] == s }, max)
 	if err != nil {
@@ -323,20 +338,9 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 	}
 	tmp, ok := snd.table[[2]int32{g, s}]
 	if !ok {
-		return newWave(11025), nil
+		return newSound(11025), nil
 	}
 	return tmp, nil
-}
-func (w *Wave) play() bool {
-	c := sys.sounds.reserveChannel()
-	if c == nil {
-		return false
-	}
-	c.Play(w, false, 1.0)
-	return w != nil
-}
-func (w *Wave) getDuration() float32 {
-	return float32(w.Buffer.Format().SampleRate.D(w.Buffer.Len()))
 }
 
 // ------------------------------------------------------------------
@@ -388,22 +392,20 @@ func (s *SoundEffect) Err() error {
 }
 
 // ------------------------------------------------------------------
-// Sound (sound channel)
+// SoundChannel
 
-type Sound struct {
+type SoundChannel struct {
 	streamer  beep.StreamSeeker
 	sfx     *SoundEffect
 	ctrl    *beep.Ctrl
-	sound   *Wave
+	sound   *Sound
 }
 
-func (s *Sound) mix() {
-}
-func (s *Sound) Play(w *Wave, loop bool, freqmul float32) {
-	if w == nil {
+func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
+	if sound == nil {
 		return
 	}
-	s.sound = w
+	s.sound = sound
 	s.streamer = s.sound.Buffer.Streamer(0, s.sound.Buffer.Len())
 	loopCount := int(1)
 	if loop {
@@ -417,10 +419,10 @@ func (s *Sound) Play(w *Wave, loop bool, freqmul float32) {
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
 	speaker.Play(s.ctrl)
 }
-func (s *Sound) IsPlaying() bool {
+func (s *SoundChannel) IsPlaying() bool {
 	return s.sound != nil
 }
-func (s *Sound) Stop() {
+func (s *SoundChannel) Stop() {
 	if s.ctrl != nil {
 		speaker.Lock()
 		s.ctrl.Streamer = nil
@@ -428,12 +430,12 @@ func (s *Sound) Stop() {
 	}
 	s.sound = nil
 }
-func (s *Sound) SetVolume(vol float32) {
+func (s *SoundChannel) SetVolume(vol float32) {
 	if s.ctrl != nil {
 		s.sfx.volume = float32(math.Max(0, math.Min(float64(vol), 512)))
 	}
 }
-func (s *Sound) SetPan(p, ls float32, x *float32) {
+func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 	if s.ctrl != nil {
 		s.sfx.ls = ls
 		s.sfx.x = x
@@ -442,44 +444,47 @@ func (s *Sound) SetPan(p, ls float32, x *float32) {
 }
 
 // ------------------------------------------------------------------
-// Sounds (collection of prioritised sound channels)
+// SoundChannels (collection of prioritised sound channels)
 
-type Sounds struct {
-	channels []Sound
+type SoundChannels struct {
+	channels []SoundChannel
 }
 
-func newSounds(size int32) *Sounds {
-	s := &Sounds{}
-	s.setSize(size)
+func newSoundChannels(size int32) *SoundChannels {
+	s := &SoundChannels{}
+	s.SetSize(size)
 	return s
 }
-func (s *Sounds) setSize(size int32)  {
-	if size > s.numChannels() {
-		c := make([]Sound, size - s.numChannels())
+func (s *SoundChannels) SetSize(size int32)  {
+	if size > s.count() {
+		c := make([]SoundChannel, size - s.count())
 		s.channels = append(s.channels, c...)
-	} else if size < s.numChannels() {
-		for i := s.numChannels()-1; i >= size; i-- {
+	} else if size < s.count() {
+		for i := s.count()-1; i >= size; i-- {
 			s.channels[i].Stop()
 		}
 		s.channels = s.channels[:size]
 	}
 }
-func (s *Sounds) newChannel(ch int32, lowpriority bool) *Sound {
+func (s *SoundChannels) count() int32 {
+	return int32(len(s.channels))
+}
+func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
         ch = Min(255, ch)
         if ch >= 0 {
                 if lowpriority {
-                        if s.numChannels() > ch && s.channels[ch].IsPlaying() {
+                        if s.count() > ch && s.channels[ch].IsPlaying() {
                                 return nil
                         }
                 }
-                if s.numChannels() < ch+1 {
-			s.setSize(ch+1)
+                if s.count() < ch+1 {
+			s.SetSize(ch+1)
                 }
 		s.channels[ch].Stop()
                 return &s.channels[ch]
         }
-        if s.numChannels() < 256 {
-		s.setSize(256)
+        if s.count() < 256 {
+		s.SetSize(256)
         }
         for i := 255; i >= 0; i-- {
                 if !s.channels[i].IsPlaying() {
@@ -488,10 +493,7 @@ func (s *Sounds) newChannel(ch int32, lowpriority bool) *Sound {
         }
         return nil
 }
-func (s *Sounds) numChannels() int32 {
-	return int32(len(s.channels))
-}
-func (s *Sounds) reserveChannel() *Sound {
+func (s *SoundChannels) reserveChannel() *SoundChannel {
 	for i := range s.channels {
 		if !s.channels[i].IsPlaying() {
 			return &s.channels[i]
@@ -499,35 +501,35 @@ func (s *Sounds) reserveChannel() *Sound {
 	}
 	return nil
 }
-func (s *Sounds) getChannel(ch int32) *Sound {
-	if ch >= 0 && ch < s.numChannels() {
+func (s *SoundChannels) Get(ch int32) *SoundChannel {
+	if ch >= 0 && ch < s.count() {
 		return &s.channels[ch]
 	}
 	return nil
 }
-func (s *Sounds) IsPlaying(w *Wave) bool {
+func (s *SoundChannels) IsPlaying(sound *Sound) bool {
 	for _, v := range s.channels {
-		if v.sound != nil && v.sound == w {
+		if v.sound != nil && v.sound == sound {
 			return true
 		}
 	}
 	return false
 }
-func (s *Sounds) stop(w *Wave) {
+func (s *SoundChannels) stop(sound *Sound) {
 	for k, v := range s.channels {
-		if v.sound != nil && v.sound == w {
+		if v.sound != nil && v.sound == sound {
 			s.channels[k].Stop()
 		}
 	}
 }
-func (s *Sounds) stopAll() {
+func (s *SoundChannels) StopAll() {
 	for k, v := range s.channels {
 		if v.sound != nil {
 			s.channels[k].Stop()
 		}
 	}
 }
-func (s *Sounds) tickSounds() {
+func (s *SoundChannels) Tick() {
 	for i := range s.channels {
 		if s.channels[i].IsPlaying() {
 			if s.channels[i].streamer.Position() >= s.channels[i].sound.Buffer.Len() {

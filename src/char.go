@@ -1659,7 +1659,7 @@ type Char struct {
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
 	aimg                  AfterImage
-	sounds                Sounds
+	soundChannels         SoundChannels
 	p1facing              float32
 	cpucmd                int32
 	attackDist            float32
@@ -3057,17 +3057,17 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	if g < 0 {
 		return
 	}
-	var w *Wave
+	var s *Sound
 	if f {
 		if sys.lifebar.fsnd != nil {
-			w = sys.lifebar.fsnd.Get([...]int32{g, n})
+			s = sys.lifebar.fsnd.Get([...]int32{g, n})
 		}
 	} else {
 		if c.gi().snd != nil {
-			w = c.gi().snd.Get([...]int32{g, n})
+			s = c.gi().snd.Get([...]int32{g, n})
 		}
 	}
-	if w == nil {
+	if s == nil {
 		if log {
 			if f {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
@@ -3086,8 +3086,8 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			return
 		}
 	}
-	if ch := c.sounds.newChannel(chNo, lowpriority); ch != nil {
-		ch.Play(w, loop, freqmul)
+	if ch := c.soundChannels.New(chNo, lowpriority); ch != nil {
+		ch.Play(s, loop, freqmul)
 		vol = Max(-25600, Min(25600, vol))
 		//if c.gi().ver[0] == 1 {
 		if f {
@@ -5994,8 +5994,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		if hitType > 0 {
-			if hitType == 1 && getter.sounds.numChannels() > 0 {
-				if ch := getter.sounds.getChannel(0); ch != nil {
+			if hitType == 1 {
+				if ch := getter.soundChannels.Get(0); ch != nil {
 					ch.Stop()
 				}
 			}
