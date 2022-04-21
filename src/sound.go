@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"os"
 
@@ -93,12 +94,9 @@ type Bgm struct {
 	bgmLoopStart int
 	bgmLoopEnd   int
 	loop         int
-	// TODO: Use this.
-	//sampleRate          beep.SampleRate
 	streamer  beep.StreamSeekCloser
 	ctrl      *beep.Ctrl
-	resampler *beep.Resampler
-	volume    *effects.Volume
+	volctrl   *effects.Volume
 	format    string
 }
 
@@ -118,134 +116,74 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 		bgm.ctrl.Streamer = nil
 		speaker.Unlock()
 	}
-
-	// TODO: Throw a degbug warning if this triggers
-	if bgmVolume > sys.maxBgmVolume {
-		bgmVolume = sys.maxBgmVolume
+	// Special value "" is used to stop music
+	if filename == "" {
+		return
 	}
 
+	f, err := os.Open(bgm.filename)
+	if err != nil {
+		sys.errLog.Printf("Failed to open bgm: %v", err)
+		return
+	}
+	var format beep.Format
 	if HasExtension(bgm.filename, ".ogg") {
-		bgm.ReadVorbis(loop, bgmVolume)
+		bgm.streamer, format, err = vorbis.Decode(f)
+		bgm.format = "ogg"
 	} else if HasExtension(bgm.filename, ".mp3") {
-		bgm.ReadMp3(loop, bgmVolume)
-		//} else if HasExtension(bgm.filename, ".flac") {
-		//	bgm.ConvertFLAC(loop, bgmVolume)
+		bgm.streamer, format, err = mp3.Decode(f)
+		bgm.format = "mp3"
 	} else if HasExtension(bgm.filename, ".wav") {
-		bgm.ReadWav(loop, bgmVolume)
+		bgm.streamer, format, err = wav.Decode(f)
+		bgm.format = "wav"
+	// TODO: Reactivate FLAC support. Check that seeking/looping works correctly.
+	//} else if HasExtension(bgm.filename, ".flac") {
+	//	bgm.streamer, format, err = flac.Decode(f)
+	//	bgm.format = "flac"
+	} else {
+		err = Error(fmt.Sprintf("unsupported file extension: %v", bgm.filename))
 	}
-
-	speaker.Play(bgm.ctrl)
-}
-
-func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := mp3.Decode(f)
-	bgm.streamer = s
-	bgm.format = "mp3"
 	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-/*
-// TODO: Now that we are using modules this should work again if we configure it correctly.
-func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := flac.Decode(f)
-	bgm.streamer = s
-	bgm.format = "flac"
-
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-// SCREW THE FLAC.SEEK FUNCTION, IT DOES NOT WORK SO WE ARE GOING TO CONVERT THIS TO WAV
-// Update: Now the flac dependecy broke. (-_-)
-func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
-	// We open the flac
-	f1, _ := os.Open(bgm.filename)
-	// And create a temp one
-	f2, _ := os.Create("save/tempaudio.wav")
-
-	// Open decode and convert
-	s, format, err := flac.Decode(f1)
-	wav.Encode(f2, s, format)
-
-	bgm.filename = "save/tempaudio.wav"
-	//bgm.tempfile = f2
-	bgm.format = "flac"
-
-	s.Close()
-
-	if err != nil {
+		f.Close()
+		sys.errLog.Printf("Failed to load bgm: %v", err)
 		return
 	}
 
-	sys.FLAC_FrameWait = 120
-}
-*/
-
-func (bgm *Bgm) PlayMemAudio(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := wav.Decode(f)
-	bgm.streamer = s
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := vorbis.Decode(f)
-	bgm.streamer = s
-	bgm.format = "ogg"
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadWav(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := wav.Decode(f)
-	bgm.streamer = s
-	bgm.format = "wav"
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
 	loopCount := int(1)
 	if loop > 0 {
 		loopCount = -1
 	}
 	streamer := beep.Loop(loopCount, bgm.streamer)
-	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
-	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
-	bgm.resampler = beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volume)
-	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
+	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
+	resampler := beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volctrl)
+	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
+	bgm.UpdateVolume()
+	speaker.Play(bgm.ctrl)
 }
 
 func (bgm *Bgm) Pause() {
-	if bgm.ctrl != nil {
-		speaker.Lock()
-		bgm.ctrl.Paused = true
-		speaker.Unlock()
-	}
-}
-
-func (bgm *Bgm) UpdateVolume() {
-	if bgm.volume == nil {
+	// FIXME: there is no method to unpause!
+	if bgm.ctrl == nil {
 		return
 	}
 	speaker.Lock()
-	bgm.volume.Volume = -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	bgm.ctrl.Paused = true
+	speaker.Unlock()
+}
+
+func (bgm *Bgm) UpdateVolume() {
+	if bgm.volctrl == nil {
+		return
+	}
+	// TODO: Throw a debug warning if this triggers
+	if bgm.bgmVolume > sys.maxBgmVolume {
+		bgm.bgmVolume = sys.maxBgmVolume
+	}
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	silent := volume <= -5
+	speaker.Lock()
+	bgm.volctrl.Volume = volume
+	bgm.volctrl.Silent = silent
 	speaker.Unlock()
 }
 
