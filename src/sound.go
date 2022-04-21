@@ -209,15 +209,6 @@ func readSound(f *os.File, ofs int64) (*Sound, error) {
 	return sound, nil
 }
 
-func (s *Sound) Play() bool {
-	c := sys.soundChannels.reserveChannel()
-	if c == nil {
-		return false
-	}
-	c.Play(s, false, 1.0)
-	return s != nil
-}
-
 func (s *Sound) GetDuration() float32 {
 	return float32(s.Buffer.Format().SampleRate.D(s.Buffer.Len()))
 }
@@ -316,18 +307,12 @@ func (s *Snd) Get(gn [2]int32) *Sound {
 	return s.table[gn]
 }
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
-	c := sys.soundChannels.reserveChannel()
-	if c == nil {
-		return false
-	}
 	sound := s.Get(gn)
-	c.Play(sound, false, 1.0)
-	c.SetVolume(float32(volumescale * 64 / 25))
-	c.SetPan(pan, 0, nil)
-	return sound != nil
+	return sys.soundChannels.Play(sound, volumescale, pan)
 }
 func (s *Snd) stop(gn [2]int32) {
-	sys.soundChannels.stop(s.Get(gn))
+	sound := s.Get(gn)
+	sys.soundChannels.Stop(sound)
 }
 
 func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
@@ -507,6 +492,19 @@ func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	}
 	return nil
 }
+func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32) bool {
+	if sound == nil {
+		return false
+	}
+	c := s.reserveChannel()
+	if c == nil {
+		return false
+	}
+	c.Play(sound, false, 1.0)
+	c.SetVolume(float32(volumescale * 64 / 25))
+	c.SetPan(pan, 0, nil)
+	return true
+}
 func (s *SoundChannels) IsPlaying(sound *Sound) bool {
 	for _, v := range s.channels {
 		if v.sound != nil && v.sound == sound {
@@ -515,7 +513,7 @@ func (s *SoundChannels) IsPlaying(sound *Sound) bool {
 	}
 	return false
 }
-func (s *SoundChannels) stop(sound *Sound) {
+func (s *SoundChannels) Stop(sound *Sound) {
 	for k, v := range s.channels {
 		if v.sound != nil && v.sound == sound {
 			s.channels[k].Stop()

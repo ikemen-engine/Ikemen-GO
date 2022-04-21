@@ -2554,7 +2554,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, s)
 		}
-		s.Play()
+		sys.soundChannels.Play(s, 100, 0.0)
 		return 0
 	})
 }
