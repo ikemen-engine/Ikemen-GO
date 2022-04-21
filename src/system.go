@@ -51,7 +51,7 @@ var sys = System{
 	turnsRecoveryRate: 1.0 / 300,
 	soundMixer:        &beep.Mixer{},
 	bgm:               *newBgm(),
-	sounds:            newSounds(16),
+	soundChannels:     newSoundChannels(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	sel:               *newSelect(),
@@ -121,7 +121,7 @@ type System struct {
 	debugRef                [2]int
 	soundMixer              *beep.Mixer
 	bgm                     Bgm
-	sounds                  *Sounds
+	soundChannels           *SoundChannels
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	sel                     Select
@@ -635,11 +635,11 @@ func (s *System) update() bool {
 	return s.await(FPS)
 }
 func (s *System) tickSound() {
-	s.sounds.tickSounds()
+	s.soundChannels.Tick()
 	if !s.noSoundFlg {
 		for _, ch := range s.chars {
 			for _, c := range ch {
-				c.sounds.tickSounds()
+				c.soundChannels.Tick()
 			}
 		}
 	}
@@ -821,12 +821,12 @@ func (s *System) resetGblEffect() {
 func (s *System) stopAllSound() {
 	for _, p := range s.chars {
 		for _, c := range p {
-			c.sounds.setSize(0)
+			c.soundChannels.SetSize(0)
 		}
 	}
 }
 func (s *System) clearAllSound() {
-	s.sounds.stopAll()
+	s.soundChannels.StopAll()
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {
@@ -836,7 +836,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			if destroy || h.preserve == 0 || (s.roundResetFlg && h.preserve == s.round) {
 				h.destroy()
 			}
-			h.sounds.setSize(0)
+			h.soundChannels.SetSize(0)
 		}
 		if destroy {
 			p.children = p.children[:0]
@@ -850,7 +850,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 			}
 		}
 		p.targets = p.targets[:0]
-		p.sounds.setSize(0)
+		p.soundChannels.SetSize(0)
 	}
 	s.projs[pn] = s.projs[pn][:0]
 	s.explods[pn] = s.explods[pn][:0]

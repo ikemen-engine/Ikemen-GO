@@ -482,7 +482,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
-		sys.chars[pn-1][0].sounds.setSize(0)
+		sys.chars[pn-1][0].soundChannels.SetSize(0)
 		return 0
 	})
 	luaRegister(l, "charSpriteDraw", func(l *lua.LState) int {
@@ -2243,8 +2243,8 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, s)
 		}
 		var frames int32
-		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
-			frames = int32(math.Ceil(float64(w.getDuration() * 60)))
+		if sound := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); sound != nil {
+			frames = int32(math.Ceil(float64(sound.GetDuration() * 60)))
 		}
 		l.Push(lua.LNumber(frames))
 		return 1
@@ -2280,7 +2280,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		var f bool
 		if w := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); w != nil {
-			f = sys.sounds.IsPlaying(w)
+			f = sys.soundChannels.IsPlaying(w)
 		}
 		l.Push(lua.LBool(f))
 		return 1
@@ -2542,19 +2542,19 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "waveGetLength", func(*lua.LState) int {
-		w, ok := toUserData(l, 1).(*Wave)
+		s, ok := toUserData(l, 1).(*Sound)
 		if !ok {
-			userDataError(l, 1, w)
+			userDataError(l, 1, s)
 		}
-		l.Push(lua.LNumber(int32(math.Ceil(float64(w.getDuration() * 60)))))
+		l.Push(lua.LNumber(int32(math.Ceil(float64(s.GetDuration() * 60)))))
 		return 1
 	})
 	luaRegister(l, "wavePlay", func(l *lua.LState) int {
-		w, ok := toUserData(l, 1).(*Wave)
+		s, ok := toUserData(l, 1).(*Sound)
 		if !ok {
-			userDataError(l, 1, w)
+			userDataError(l, 1, s)
 		}
-		w.play()
+		sys.soundChannels.Play(s, 100, 0.0)
 		return 0
 	})
 }
