@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 	"os"
 
@@ -199,13 +200,24 @@ func newSound(sampleRate beep.SampleRate) *Sound {
 	return &Sound{beep.NewBuffer(fmt)}
 }
 
+type PureReader struct {
+	r io.Reader
+}
+
+func (r *PureReader) Read(buf []byte) (int, error) {
+	return r.r.Read(buf)
+}
+
 func readSound(f *os.File, ofs int64) (*Sound, error) {
-	s, fmt, err := wav.Decode(f)
+	// We cannot use the existing file descriptor because the Beep library will
+	// close it when an error happens, or when the returned Streamer is closed.
+	s, fmt, err := wav.Decode(&PureReader{r: f})
 	if err != nil {
 		return nil, err
 	}
 	sound := newSound(fmt.SampleRate)
 	sound.Buffer.Append(s)
+	s.Close()
 	return sound, nil
 }
 
@@ -287,7 +299,7 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 			if !ok {
 				tmp, err := readSound(f, int64(subHeaderOffset))
 				if err != nil {
-					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
+					sys.errLog.Printf("%v sound %v,%v can't be read: %v\n", filename, num[0], num[1], err)
 					if max > 0 {
 						return nil, err
 					}
