@@ -5072,7 +5072,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
 		return false
 	}
-	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/320
+	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
 			if nci >= 0 && c.ghv.hitid == nci {
 				return false
@@ -5090,7 +5090,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
 		return false
 	}
-	//if h.chainid < 0 { // https://github.com/Windblade-GR01/Ikemen-GO/issues/308
+	//if h.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
 	var styp int32
 	if st == ST_N {
 		styp = h.attr & int32(ST_MASK)
@@ -5610,7 +5610,7 @@ func (c *Char) tick() {
 		if c.stchtmp {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
-			// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/Windblade-GR01/Ikemen-GO/issues/272
+			// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/ikemen-engine/Ikemen-GO/issues/272
 			//if c.movedY {
 			//	c.changeStateEx(5020, pn, -1, 0, false)
 			//} else {
@@ -6072,7 +6072,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/Windblade-GR01/Ikemen-GO/issues/272
+						// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/ikemen-engine/Ikemen-GO/issues/272
 						//if getter.movedY {
 						//	ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
 						//} else {

@@ -1,4 +1,4 @@
-module github.com/Windblade-GR01/Ikemen_GO
+module github.com/ikemen-engine/Ikemen-GO
 
 go 1.18
 
