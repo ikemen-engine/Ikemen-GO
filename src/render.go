@@ -7,13 +7,13 @@ import (
 )
 
 var notiling = [4]int32{0, 0, 0, 0}
-var mugenShader uintptr
+var mugenShader uint32
 var uniformA, uniformPal, uniformMsk, uniformPalNeg, uniformPalGray, uniformPalAdd, uniformPalMul int32
 var uniformPalX1x2x4x3, uniformPalIsTrapez int32
-var mugenShaderFc uintptr
+var mugenShaderFc uint32
 var uniformFcA, uniformNeg, uniformGray, uniformAdd, uniformMul int32
 var uniformX1x2x4x3, uniformIsTrapez int32
-var mugenShaderFcS uintptr
+var mugenShaderFcS uint32
 var uniformFcSA, uniformColor int32
 var posattLocation, uvattLocation int32
 var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
@@ -28,13 +28,13 @@ var rbo_depth uint32
 // MSAA
 var fbo_f, fbo_f_texture uint32
 
-var postShader uintptr
+var postShader uint32
 var postVertAttrib int32
 var postTexUniform int32
 var postTexSizeUniform int32
 var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
 
-var postShaderSelect []uintptr
+var postShaderSelect []uint32
 
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
@@ -109,40 +109,50 @@ func RenderInit() {
 		"c.a *= a;" +
 		"gl_FragColor = c;" +
 		"}\x00"
-	errLog := func(obl uintptr) error {
-		var size int32
-		gl.GetObjectParameterivARB(obl, gl.INFO_LOG_LENGTH, &size)
-		if size <= 0 {
-			return nil
-		}
-		var l int32
-		str := make([]byte, size+1)
-		gl.GetInfoLogARB(obl, size, &l, &str[0])
-		return Error(str[:l])
-	}
-	compile := func(shaderType uint32, src string) (shader uintptr) {
-		shader = gl.CreateShaderObjectARB(shaderType)
+	compile := func(shaderType uint32, src string) (shader uint32) {
+		shader = gl.CreateShader(shaderType)
 		s, _ := gl.Strs(src)
 		var l int32 = int32(len(src) - 1)
-		gl.ShaderSourceARB(shader, 1, s, &l)
-		gl.CompileShaderARB(shader)
+		gl.ShaderSource(shader, 1, s, &l)
+		gl.CompileShader(shader)
 		var ok int32
-		gl.GetObjectParameterivARB(shader, gl.OBJECT_COMPILE_STATUS_ARB, &ok)
+		gl.GetShaderiv(shader, gl.COMPILE_STATUS, &ok)
 		if ok == 0 {
-			chk(errLog(shader))
+			var err error
+			var size, l int32
+			gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &size)
+			if size > 0 {
+				str := make([]byte, size+1)
+				gl.GetShaderInfoLog(shader, size, &l, &str[0])
+				err = Error(str[:l])
+			}
+			chk(err)
+			gl.DeleteShader(shader)
 			panic(Error("Shader compile error"))
 		}
 		return
 	}
-	link := func(v, f uintptr) (program uintptr) {
-		program = gl.CreateProgramObjectARB()
-		gl.AttachObjectARB(program, v)
-		gl.AttachObjectARB(program, f)
-		gl.LinkProgramARB(program)
+	link := func(v, f uint32) (program uint32) {
+		program = gl.CreateProgram()
+		gl.AttachShader(program, v)
+		gl.AttachShader(program, f)
+		gl.LinkProgram(program)
+		// Mark shaders for deletion when the program is deleted
+		gl.DeleteShader(v)
+		gl.DeleteShader(f)
 		var ok int32
-		gl.GetObjectParameterivARB(program, gl.OBJECT_LINK_STATUS_ARB, &ok)
+		gl.GetProgramiv(program, gl.LINK_STATUS, &ok)
 		if ok == 0 {
-			chk(errLog(program))
+			var err error
+			var size, l int32
+			gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &size)
+			if size > 0 {
+				str := make([]byte, size+1)
+				gl.GetProgramInfoLog(program, size, &l, &str[0])
+				err = Error(str[:l])
+			}
+			chk(err)
+			gl.DeleteProgram(program)
 			panic(Error("Link error"))
 		}
 		return
@@ -150,54 +160,46 @@ func RenderInit() {
 	vertObj := compile(gl.VERTEX_SHADER, vertShader)
 	fragObj := compile(gl.FRAGMENT_SHADER, fragShader)
 	mugenShader = link(vertObj, fragObj)
-	posattLocation = gl.GetAttribLocationARB(mugenShader, gl.Str("position\x00"))
-	uvattLocation = gl.GetAttribLocationARB(mugenShader, gl.Str("uv\x00"))
-	uniformA = gl.GetUniformLocationARB(mugenShader, gl.Str("a\x00"))
-	uniformPal = gl.GetUniformLocationARB(mugenShader, gl.Str("pal\x00"))
-	uniformMsk = gl.GetUniformLocationARB(mugenShader, gl.Str("msk\x00"))
-	uniformPalNeg = gl.GetUniformLocationARB(mugenShader, gl.Str("neg\x00"))
-	uniformPalGray = gl.GetUniformLocationARB(mugenShader, gl.Str("gray\x00"))
-	uniformPalAdd = gl.GetUniformLocationARB(mugenShader, gl.Str("add\x00"))
-	uniformPalMul = gl.GetUniformLocationARB(mugenShader, gl.Str("mul\x00"))
-	uniformPalX1x2x4x3 = gl.GetUniformLocationARB(mugenShader, gl.Str("x1x2x4x3\x00"))
-	uniformPalIsTrapez = gl.GetUniformLocationARB(mugenShader, gl.Str("isTrapez\x00"))
-	gl.DeleteObjectARB(fragObj)
+	posattLocation = gl.GetAttribLocation(mugenShader, gl.Str("position\x00"))
+	uvattLocation = gl.GetAttribLocation(mugenShader, gl.Str("uv\x00"))
+	uniformA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
+	uniformPal = gl.GetUniformLocation(mugenShader, gl.Str("pal\x00"))
+	uniformMsk = gl.GetUniformLocation(mugenShader, gl.Str("msk\x00"))
+	uniformPalNeg = gl.GetUniformLocation(mugenShader, gl.Str("neg\x00"))
+	uniformPalGray = gl.GetUniformLocation(mugenShader, gl.Str("gray\x00"))
+	uniformPalAdd = gl.GetUniformLocation(mugenShader, gl.Str("add\x00"))
+	uniformPalMul = gl.GetUniformLocation(mugenShader, gl.Str("mul\x00"))
+	uniformPalX1x2x4x3 = gl.GetUniformLocation(mugenShader, gl.Str("x1x2x4x3\x00"))
+	uniformPalIsTrapez = gl.GetUniformLocation(mugenShader, gl.Str("isTrapez\x00"))
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFc)
 	mugenShaderFc = link(vertObj, fragObj)
-	uniformFcA = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("a\x00"))
-	uniformNeg = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("neg\x00"))
-	uniformGray = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("gray\x00"))
-	uniformAdd = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("add\x00"))
-	uniformMul = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("mul\x00"))
-	uniformX1x2x4x3 = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("x1x2x4x3\x00"))
-	uniformIsTrapez = gl.GetUniformLocationARB(mugenShaderFc, gl.Str("isTrapez\x00"))
-	gl.DeleteObjectARB(fragObj)
+	uniformFcA = gl.GetUniformLocation(mugenShaderFc, gl.Str("a\x00"))
+	uniformNeg = gl.GetUniformLocation(mugenShaderFc, gl.Str("neg\x00"))
+	uniformGray = gl.GetUniformLocation(mugenShaderFc, gl.Str("gray\x00"))
+	uniformAdd = gl.GetUniformLocation(mugenShaderFc, gl.Str("add\x00"))
+	uniformMul = gl.GetUniformLocation(mugenShaderFc, gl.Str("mul\x00"))
+	uniformX1x2x4x3 = gl.GetUniformLocation(mugenShaderFc, gl.Str("x1x2x4x3\x00"))
+	uniformIsTrapez = gl.GetUniformLocation(mugenShaderFc, gl.Str("isTrapez\x00"))
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFcS)
 	mugenShaderFcS = link(vertObj, fragObj)
-	uniformFcSA = gl.GetUniformLocationARB(mugenShader, gl.Str("a\x00"))
-	uniformColor = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("color\x00"))
-	gl.DeleteObjectARB(fragObj)
-	gl.DeleteObjectARB(vertObj)
+	uniformFcSA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
+	uniformColor = gl.GetUniformLocation(mugenShaderFcS, gl.Str("color\x00"))
 
 	// Compile postprocessing shaders
 
 	// Calculate total ammount of shaders loaded.
-	postShaderSelect = make([]uintptr, 1+len(sys.externalShaderList))
+	postShaderSelect = make([]uint32, 1+len(sys.externalShaderList))
 
 	// Ident shader (no postprocessing)
 	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
 	postShaderSelect[0] = link(vertObj, fragObj)
-	gl.DeleteObjectARB(vertObj)
-	gl.DeleteObjectARB(fragObj)
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
 		vertObj = compile(gl.VERTEX_SHADER, sys.externalShaders[0][i])
 		fragObj = compile(gl.FRAGMENT_SHADER, sys.externalShaders[1][i])
 		postShaderSelect[1+i] = link(vertObj, fragObj)
-		gl.DeleteObjectARB(vertObj)
-		gl.DeleteObjectARB(fragObj)
 	}
 
 	if sys.multisampleAntialiasing {
@@ -273,12 +275,12 @@ func unbindFB() {
 
 	postShader = postShaderSelect[sys.postProcessingShader]
 
-	postVertAttrib = gl.GetAttribLocationARB(postShader, gl.Str("VertCoord\x00"))
-	postTexUniform = gl.GetUniformLocationARB(postShader, gl.Str("Texture\x00"))
-	postTexSizeUniform = gl.GetUniformLocationARB(postShader, gl.Str("TextureSize\x00"))
+	postVertAttrib = gl.GetAttribLocation(postShader, gl.Str("VertCoord\x00"))
+	postTexUniform = gl.GetUniformLocation(postShader, gl.Str("Texture\x00"))
+	postTexSizeUniform = gl.GetUniformLocation(postShader, gl.Str("TextureSize\x00"))
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.UseProgramObjectARB(postShader)
+	gl.UseProgram(postShader)
 
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
@@ -291,7 +293,7 @@ func unbindFB() {
 	gl.EnableVertexAttribArray(uint32(postVertAttrib))
 	gl.VertexAttribPointer(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	gl.UseProgramObjectARB(0)
+	gl.UseProgram(0)
 }
 
 func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
@@ -628,7 +630,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
 		isTrapez = 1
 	}
-	gl.UseProgramObjectARB(mugenShader)
+	gl.UseProgram(mugenShader)
 	gl.Uniform1i(uniformPal, 1)
 	gl.Uniform1i(uniformMsk, mask)
 	gl.Uniform1i(uniformPalNeg, ineg)
@@ -640,7 +642,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgramObjectARB(0)
+	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
@@ -673,7 +675,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
-	gl.UseProgramObjectARB(mugenShaderFc)
+	gl.UseProgram(mugenShaderFc)
 	ineg := int32(0)
 	if neg {
 		ineg = 1
@@ -690,7 +692,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgramObjectARB(0)
+	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
@@ -702,14 +704,14 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
-	gl.UseProgramObjectARB(mugenShaderFcS)
+	gl.UseProgram(mugenShaderFcS)
 	gl.Uniform3f(
 		uniformColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcSA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgramObjectARB(0)
+	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
