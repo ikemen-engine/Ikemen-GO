@@ -553,7 +553,7 @@ func (s *Sprite) SetPxl(px []byte) {
 	}
 }
 
-func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sprDepth int32) {
+func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
 		gl.Enable(gl.TEXTURE_2D)
@@ -563,11 +563,11 @@ func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sp
 		if sprDepth == 32 {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
 				sprWidth, sprHeight,
-				0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+				0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 		} else {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
 				sprWidth, sprHeight,
-				0, gl.RGB, gl.UNSIGNED_BYTE, data)
+				0, gl.RGB, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 		}
 		if sys.pngFilter {
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -944,7 +944,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			// Do nothing, px is already in the expected format
 		case 24, 32:
 			isRaw = true
-			s.SetRaw(unsafe.Pointer(&px[0]), int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
+			s.SetRaw(px, int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
 		default:
 			return Error("Unknown color depth")
 		}
@@ -1000,7 +1000,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
-			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
+			s.SetRaw(rgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		default:
 			return Error("Unknown format")
 		}
