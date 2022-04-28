@@ -286,10 +286,10 @@ func unbindFB() {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
 	}
 
-	gl.Uniform1iARB(postTexUniform, 0)
-	gl.Uniform2fARB(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-	gl.EnableVertexAttribArrayARB(uint32(postVertAttrib))
-	gl.VertexAttribPointerARB(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
+	gl.Uniform1i(postTexUniform, 0)
+	gl.Uniform2f(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	gl.EnableVertexAttribArray(uint32(postVertAttrib))
+	gl.VertexAttribPointer(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	gl.UseProgramObjectARB(0)
 }
@@ -298,14 +298,14 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
 	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
 	switch renderMode {
 	case 1:
-		gl.Uniform4fARB(uniformPalX1x2x4x3, x1, x2, x4, x3)
+		gl.Uniform4f(uniformPalX1x2x4x3, x1, x2, x4, x3)
 	case 2:
-		gl.Uniform4fARB(uniformX1x2x4x3, x1, x2, x4, x3)
+		gl.Uniform4f(uniformX1x2x4x3, x1, x2, x4, x3)
 	}
-	gl.EnableVertexAttribArrayARB(uint32(posattLocation))
-	gl.EnableVertexAttribArrayARB(uint32(uvattLocation))
-	gl.VertexAttribPointerARB(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
-	gl.VertexAttribPointerARB(uint32(uvattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexUv[0]))
+	gl.EnableVertexAttribArray(uint32(posattLocation))
+	gl.EnableVertexAttribArray(uint32(uvattLocation))
+	gl.VertexAttribPointer(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
+	gl.VertexAttribPointer(uint32(uvattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexUv[0]))
 
 	gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 }
@@ -506,7 +506,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 	gl.Translated(0, float64(sys.scrrect[3]), 0)
 	switch {
 	case trans == -1:
-		gl.Uniform1fARB(a, 1)
+		gl.Uniform1f(a, 1)
 		if renderMode == 1 {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 		} else {
@@ -516,14 +516,14 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans == -2:
-		gl.Uniform1fARB(a, 1)
+		gl.Uniform1f(a, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans <= 0:
 	case trans < 255:
-		gl.Uniform1fARB(a, float32(trans)/255)
+		gl.Uniform1f(a, float32(trans)/255)
 		if renderMode == 1 {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		} else {
@@ -533,7 +533,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans < 512:
-		gl.Uniform1fARB(a, 1)
+		gl.Uniform1f(a, 1)
 		if renderMode == 1 {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		} else {
@@ -546,7 +546,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 		src, dst := trans&0xff, trans>>10&0xff
 		aglOver := 0
 		if dst < 255 {
-			gl.Uniform1fARB(a, 1-float32(dst)/255)
+			gl.Uniform1f(a, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
@@ -559,7 +559,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 				yagl = 0
 				xagl = 0
 			}
-			gl.Uniform1fARB(a, float32(src)/255)
+			gl.Uniform1f(a, float32(src)/255)
 
 			if renderMode == 1 {
 				gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
@@ -629,13 +629,13 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 		isTrapez = 1
 	}
 	gl.UseProgramObjectARB(mugenShader)
-	gl.Uniform1iARB(uniformPal, 1)
-	gl.Uniform1iARB(uniformMsk, mask)
-	gl.Uniform1iARB(uniformPalNeg, ineg)
-	gl.Uniform1fARB(uniformPalGray, 1-color)
-	gl.Uniform3fARB(uniformPalAdd, (*padd)[0], (*padd)[1], (*padd)[2])
-	gl.Uniform3fARB(uniformPalMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.Uniform1iARB(uniformPalIsTrapez, isTrapez)
+	gl.Uniform1i(uniformPal, 1)
+	gl.Uniform1i(uniformMsk, mask)
+	gl.Uniform1i(uniformPalNeg, ineg)
+	gl.Uniform1f(uniformPalGray, 1-color)
+	gl.Uniform3f(uniformPalAdd, (*padd)[0], (*padd)[1], (*padd)[2])
+	gl.Uniform3f(uniformPalMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
+	gl.Uniform1i(uniformPalIsTrapez, isTrapez)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
@@ -682,11 +682,11 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
 		isTrapez = 1
 	}
-	gl.Uniform1iARB(uniformNeg, ineg)
-	gl.Uniform1fARB(uniformGray, 1-color)
-	gl.Uniform3fARB(uniformAdd, (*padd)[0], (*padd)[1], (*padd)[2])
-	gl.Uniform3fARB(uniformMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.Uniform1iARB(uniformIsTrapez, isTrapez)
+	gl.Uniform1i(uniformNeg, ineg)
+	gl.Uniform1f(uniformGray, 1-color)
+	gl.Uniform3f(uniformAdd, (*padd)[0], (*padd)[1], (*padd)[2])
+	gl.Uniform3f(uniformMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
+	gl.Uniform1i(uniformIsTrapez, isTrapez)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(uniformFcA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
@@ -703,7 +703,7 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
 	gl.UseProgramObjectARB(mugenShaderFcS)
-	gl.Uniform3fARB(
+	gl.Uniform3f(
 		uniformColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
