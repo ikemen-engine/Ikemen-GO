@@ -6,7 +6,7 @@ echo "Downloading dependencies..."
 echo ""
 
 if [ ! -f ./go.mod ]; then
-	go mod init github.com/Windblade-GR01/Ikemen_GO/src
+	go mod init github.com/ikemen-engine/Ikemen-GO/src
 	echo ""
 fi
 

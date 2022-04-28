@@ -69,11 +69,11 @@
 	; Ikemen features
 	; --------------------------------------------------------------------------
 	; Glyph art used by Movelists feature
-	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-info
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info
 	glyphs = "data/glyphs.sff"
 
 	; Path to external module associated with this screenpack
-	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-info#external-modules
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info#external-modules
 	module = ""
 
 ;[ja.Files]
@@ -299,7 +299,7 @@
 	; won't be checked again, until the game is restarted).
 	;menu.unlock.<itemname> = "true"
 
-	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; Unassigned menu items:
 	;menu.itemname.versuscoop = "VERSUS CO-OP"
 	;menu.itemname.freebattle = "QUICK MATCH"
@@ -346,8 +346,8 @@
 * This build may contain bugs and incomplete features.
 * Your help and cooperation are appreciated!
 * Original repo source code: https://osdn.net/users/supersuehiro/
-* Bug reports: https://github.com/Windblade-GR01/Ikemen-GO/issues
-* Features wiki: https://github.com/K4thos/Ikemen.GO/wiki"
+* Bug reports: https://github.com/ikemen-engine/Ikemen-GO/issues
+* Features wiki: https://github.com/ikemen-engine/Ikemen-GO/wiki"
 
 ;[ja.Infobox Text]
 	; Not used in Ikemen
@@ -943,7 +943,7 @@
 	p2.face2.window = 
 
 	; Set to 1 to enable order selection
-	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-Info#orderselect
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-Info#orderselect
 	orderselect.enabled = 0
 
 	; By default all action buttons confirm currently selected order.
@@ -1557,7 +1557,7 @@
 	textinput.overlay.col = 0, 0, 0
 	textinput.overlay.alpha = 20, 100
 
-	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.menugame = "Game Settings"
 	menu.itemname.menugame.difficulty = "Difficulty Level"
@@ -1861,7 +1861,7 @@
 	movelist.arrow.down.facing = 1
 	movelist.arrow.down.scale = 1.0, 1.0
 
-	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.back = "Continue"
 	menu.itemname.menuinput = "Button Config"
@@ -1917,7 +1917,7 @@
 	menu.valuename.buttonjam.d = "D"
 	menu.valuename.buttonjam.w = "W"
 
-	; https://github.com/K4thos/Ikemen_GO/wiki/Screenpack-features#submenus
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.back = "Continue"
 	menu.itemname.menutraining = "Training Menu"
@@ -1947,7 +1947,7 @@
 	bgclearcolor = 0, 0, 0
 
 [Attract Mode] ;Ikemen feature
-	; https://github.com/K4thos/Ikemen_GO/wiki/Miscellaneous-Info/#attract
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-Info/#attract
 	enabled = 0
 	fadein.time = 10
 	fadein.col = 0, 0, 0
@@ -2084,7 +2084,7 @@
 	spr = ""
 
 [Dialogue Info] ;WARNING: Will be moved to "fight.def"
-	; https://github.com/K4thos/Ikemen_GO/wiki/State-controllers/#new_dialogue
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/State-controllers/#new_dialogue
 	enabled = 0
 	endtime = 0
 	switchtime = 0

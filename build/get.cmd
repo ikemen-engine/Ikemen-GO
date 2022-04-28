@@ -7,7 +7,7 @@ set GOOS=windows
 echo Downloading dependencies...
 
 if not exist go.mod (
-	go mod init github.com/Windblade-GR01/Ikemen_GO/src
+	go mod init github.com/ikemen-engine/Ikemen-GO/src
 )
 
 go get -v -u github.com/faiface/beep

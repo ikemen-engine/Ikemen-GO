@@ -232,7 +232,7 @@ local motif =
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
-	infobox_text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* Original repo source code: https://osdn.net/users/supersuehiro/\n* Bug reports: https://github.com/Windblade-GR01/Ikemen-GO/issues\n* Features wiki: https://github.com/K4thos/Ikemen_GO/wiki",
+	infobox_text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* Original repo source code: https://osdn.net/users/supersuehiro/\n* Bug reports: https://github.com/ikemen-engine/Ikemen-GO/issues\n* Features wiki: https://github.com/ikemen-engine/Ikemen-GO/wiki",
 	ja_infobox_text = "", --not used in Ikemen
 	select_info =
 	{

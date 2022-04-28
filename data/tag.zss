@@ -137,7 +137,7 @@ if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iks
 	changeState{value: const(StateTagWaitingOutside)}
 }
 
-# TODO: won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
+# TODO: won't be needed once this bug is fixed: https://github.com/ikemen-engine/Ikemen-GO/issues/171
 mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
 #===============================================================================
