@@ -20,7 +20,9 @@ srcFiles=src/anim.go \
 	src/sound.go \
 	src/stage.go \
 	src/stdout_windows.go \
-	src/system.go
+	src/system.go \
+	src/util_desktop.go \
+	src/util_js.go
 
 # Windows 64-bit target
 Ikemen_GO.exe: ${srcFiles}

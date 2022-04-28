@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -22,7 +21,7 @@ func init() {
 // Checks if error is not null, if there is an error it displays a error dialogue box and crashes the program.
 func chk(err error) {
 	if err != nil {
-		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(err.Error())
 		panic(err)
 	}
 }
@@ -30,7 +29,7 @@ func chk(err error) {
 // Extended version of 'chk()'
 func chkEX(err error, txt string) {
 	if err != nil {
-		dialog.Message(txt + err.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(txt + err.Error())
 		panic(Error(txt + err.Error()))
 	}
 }
@@ -78,7 +77,7 @@ func main() {
 			"Main lua file \"" + tmp.System + "\" error." +
 				"\n" + err1.Error(),
 		)
-		dialog.Message(err2.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(err2.Error())
 		panic(err2)
 	} else {
 		ftemp.Close()
@@ -97,11 +96,11 @@ func main() {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
 			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+				ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
 				panic(err)
 			}
 		default:
-			dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+			ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
 			panic(err)
 		}
 	}
@@ -153,7 +152,7 @@ Debug Options:
 -speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
-				//dialog.Message(text).Title("I.K.E.M.E.N Command line options").Info()
+				//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
 				fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 				var s string
 				fmt.Scanln(&s)

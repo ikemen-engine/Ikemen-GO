@@ -20,7 +20,6 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/sqweek/dialog"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -521,7 +520,7 @@ func (s *System) init(w, h int32) *lua.LState {
 			f[i], err = os.Open(iconLocation)
 			if err != nil {
 				var dErr = "Icon file can not be found.\nPanic: " + err.Error()
-				dialog.Message(dErr).Title("I.K.E.M.E.N Error").Error()
+				ShowErrorDialog(dErr)
 				panic(Error(dErr))
 			}
 			s.windowMainIcon[i], _, err = image.Decode(f[i])
