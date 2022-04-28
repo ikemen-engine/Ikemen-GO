@@ -2266,15 +2266,16 @@ func (c *Char) load(def string) error {
 	}
 	return nil
 }
-func (c *Char) loadPallet() {
-	if c.gi().sff.header.Ver0 == 1 {
-		c.gi().sff.palList.ResetRemap()
+func (c *Char) loadPalette() {
+	gi := c.gi()
+	if gi.sff.header.Ver0 == 1 {
+		gi.sff.palList.ResetRemap()
 		tmp := 0
 		for i := 0; i < MaxPalNo; i++ {
-			pl := c.gi().sff.palList.Get(i)
+			pl := gi.sff.palList.Get(i)
 			var f *os.File
 			var err error
-			if LoadFile(&c.gi().pal[i], []string{c.gi().def, "", sys.motifDir, "data/"}, func(file string) error {
+			if LoadFile(&gi.pal[i], []string{gi.def, "", sys.motifDir, "data/"}, func(file string) error {
 				f, err = os.Open(file)
 				return err
 			}) == nil {
@@ -2288,14 +2289,14 @@ func (c *Char) loadPallet() {
 				chk(f.Close())
 				if err == nil {
 					if tmp == 0 && i > 0 {
-						copy(c.gi().sff.palList.Get(0), pl)
+						copy(gi.sff.palList.Get(0), pl)
 					}
-					c.gi().palExist[i] = true
+					gi.palExist[i] = true
 
 					//パレットテクスチャ生成
 					gl.Enable(gl.TEXTURE_1D)
-					c.gi().sff.palList.PalTex[i] = newTexture()
-					gl.BindTexture(gl.TEXTURE_1D, uint32(*c.gi().sff.palList.PalTex[i]))
+					gi.sff.palList.PalTex[i] = newTexture()
+					gl.BindTexture(gl.TEXTURE_1D, uint32(*gi.sff.palList.PalTex[i]))
 					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 					gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
 						unsafe.Pointer(&pl[0]))
@@ -2307,33 +2308,33 @@ func (c *Char) loadPallet() {
 				}
 			}
 			if err != nil {
-				c.gi().palExist[i] = false
+				gi.palExist[i] = false
 				if i > 0 {
-					delete(c.gi().sff.palList.PalTable, [...]int16{1, int16(i + 1)})
+					delete(gi.sff.palList.PalTable, [...]int16{1, int16(i + 1)})
 				}
 			}
 		}
 		if tmp == 0 {
-			delete(c.gi().sff.palList.PalTable, [...]int16{1, 1})
+			delete(gi.sff.palList.PalTable, [...]int16{1, 1})
 		}
 	} else {
 		for i := 0; i < MaxPalNo; i++ {
-			_, c.gi().palExist[i] =
-				c.gi().sff.palList.PalTable[[...]int16{1, int16(i + 1)}]
+			_, gi.palExist[i] =
+				gi.sff.palList.PalTable[[...]int16{1, int16(i + 1)}]
 		}
 	}
-	for i := range c.gi().palSelectable {
-		c.gi().palSelectable[i] = false
+	for i := range gi.palSelectable {
+		gi.palSelectable[i] = false
 	}
 	for i := 0; i < MaxPalNo; i++ {
-		startj := c.gi().palkeymap[i]
-		if !c.gi().palExist[startj] {
+		startj := gi.palkeymap[i]
+		if !gi.palExist[startj] {
 			startj %= 6
 		}
 		j := startj
 		for {
-			if c.gi().palExist[j] {
-				c.gi().palSelectable[j] = true
+			if gi.palExist[j] {
+				gi.palSelectable[j] = true
 				break
 			}
 			j++
@@ -2345,25 +2346,25 @@ func (c *Char) loadPallet() {
 			}
 		}
 	}
-	c.gi().drawpalno = c.gi().palno
-	starti := c.gi().palno - 1
-	if !c.gi().palExist[starti] {
+	gi.drawpalno = gi.palno
+	starti := gi.palno - 1
+	if !gi.palExist[starti] {
 		starti %= 6
 	}
 	i := starti
 	for {
-		if c.gi().palExist[i] {
+		if gi.palExist[i] {
 			j := 0
 			for ; j < len(sys.chars); j++ {
 				if j != c.playerNo && len(sys.chars[j]) > 0 &&
-					sys.cgi[j].def == c.gi().def && sys.cgi[j].drawpalno == i+1 {
+					sys.cgi[j].def == gi.def && sys.cgi[j].drawpalno == i+1 {
 					break
 				}
 			}
 			if j >= len(sys.chars) {
-				c.gi().drawpalno = i + 1
-				if !c.gi().palExist[c.gi().palno-1] {
-					c.gi().palno = c.gi().drawpalno
+				gi.drawpalno = i + 1
+				if !gi.palExist[gi.palno-1] {
+					gi.palno = gi.drawpalno
 				}
 				break
 			}
@@ -2373,23 +2374,23 @@ func (c *Char) loadPallet() {
 			i = 0
 		}
 		if i == starti {
-			if !c.gi().palExist[c.gi().palno-1] {
+			if !gi.palExist[gi.palno-1] {
 				i := 0
-				for ; i < len(c.gi().palExist); i++ {
-					if c.gi().palExist[i] {
-						c.gi().palno, c.gi().drawpalno = int32(i+1), int32(i+1)
+				for ; i < len(gi.palExist); i++ {
+					if gi.palExist[i] {
+						gi.palno, gi.drawpalno = int32(i+1), int32(i+1)
 						break
 					}
 				}
-				if i >= len(c.gi().palExist) {
-					c.gi().palno, c.gi().palExist[0] = 1, true
-					c.gi().palSelectable[0] = true
+				if i >= len(gi.palExist) {
+					gi.palno, gi.palExist[0] = 1, true
+					gi.palSelectable[0] = true
 				}
 			}
 			break
 		}
 	}
-	c.gi().remappedpal = [...]int32{1, c.gi().palno}
+	gi.remappedpal = [...]int32{1, gi.palno}
 }
 func (c *Char) clearHitCount() {
 	c.hitCount, c.uniqHitCount = 0, 0

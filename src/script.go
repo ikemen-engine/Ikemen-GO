@@ -896,7 +896,7 @@ func systemScriptInit(l *lua.LState) {
 							}
 						}
 						if c[0].roundsExisted() == 0 {
-							c[0].loadPallet()
+							c[0].loadPalette()
 						}
 						for j, cj := range sys.chars {
 							if i != j && len(cj) > 0 {
