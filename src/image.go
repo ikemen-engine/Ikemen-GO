@@ -1028,39 +1028,31 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
-		//読み込み済みパレットの情報が渡されてるか //Is the loaded palette information passed?
-		if paltex != nil {
-			gl.ActiveTexture(gl.TEXTURE1)
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
-			return
-		}
-		//無い場合暫定の方法でパレットテクスチャ生成 / If not, generate palette texture by provisional method
-		PalEqual := true
-		if len(pal) != len(s.paltemp) {
-			PalEqual = false
-		} else {
-			for i := range pal {
-				if pal[i] != s.paltemp[i] {
-					PalEqual = false
-					break
+		// If no loaded palette information is passed, check whether the cached one is still valid
+		hasPalette := true
+		if paltex == nil {
+			if s.PalTex == nil || len(pal) != len(s.paltemp) {
+				hasPalette = false
+			} else {
+				for i := range pal {
+					if pal[i] != s.paltemp[i] {
+						hasPalette = false
+						break
+					}
 				}
 			}
-		}
-		if PalEqual {
-			if s.PalTex == nil {
-				return
+			// If cached texture is valid, use it
+			if hasPalette {
+				paltex = s.PalTex
 			}
-			gl.ActiveTexture(gl.TEXTURE1)
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
+		}
+
+		gl.Enable(gl.TEXTURE_1D)
+		gl.ActiveTexture(gl.TEXTURE1)
+		if hasPalette {
+			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
 		} else {
-			gl.Enable(gl.TEXTURE_1D)
-			gl.ActiveTexture(gl.TEXTURE1)
+			// Generate and cache palette texture
 			s.PalTex = newTexture()
 			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
 			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -1070,10 +1062,10 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
 		}
+		RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
+		gl.Disable(gl.TEXTURE_1D)
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
