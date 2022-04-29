@@ -63,12 +63,10 @@ uniform bool isTrapez;
 void main(void) {
 	vec2 texcoord = gl_TexCoord[0].st;
 	if (isTrapez) {
-		float y = 1.0 - gl_TexCoord[0].t; // ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];
-		float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];
-		left = (gl_FragCoord.x - left);
-		right = (right - gl_FragCoord.x);
-		texcoord[0] = left / (left + right); // ここまで / To this point
+		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
+		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], texcoord[1]);
+		float right = mix(x1x2x4x3[3], x1x2x4x3[1], texcoord[1]);
+		texcoord[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
 	}
 	float r = texture2D(tex, texcoord).r;
 	if (int(255.25*r) == msk) {
@@ -76,7 +74,7 @@ void main(void) {
 	} else {
 		vec4 c = texture1D(pal, r*0.9966);
 		if (neg) c.rgb = vec3(1.0) - c.rgb;
-		c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;
+		c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + add;
 		gl_FragColor = vec4(c.rgb * mul, c.a * a);
 	}
 }` + "\x00"
@@ -94,19 +92,15 @@ uniform bool isTrapez;
 void main(void) {
 	vec2 texcoord = gl_TexCoord[0].st;
 	if (isTrapez) {
-		float y = 1.0 - gl_TexCoord[0].t; // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
-		float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];
-		float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];
-		left = (gl_FragCoord.x - left);
-		right = (right - gl_FragCoord.x);
-		texcoord[0] = left / (left + right); // ここまで / To this point
+		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
+		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], texcoord[1]);
+		float right = mix(x1x2x4x3[3], x1x2x4x3[1], texcoord[1]);
+		texcoord[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
 	}
 	vec4 c = texture2D(tex, texcoord);
 	if (neg) c.rgb = vec3(1.0 * c.a) - c.rgb;
-	c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add * c.a;
-	c.rgb *= mul;
-	c *= vec4(a);
-	gl_FragColor = c;
+	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + add * c.a;
+	gl_FragColor = vec4(c.rgb * mul, c.a) * a;
 }` + "\x00"
 
 	fragShaderFcS := `
@@ -116,9 +110,7 @@ uniform vec3 color;
 
 void main(void) {
 	vec4 c = texture2D(tex, gl_TexCoord[0].st);
-	c.rgb = color * c.a;
-	c.a *= a;
-	gl_FragColor = c;
+	gl_FragColor = vec4(color, a) * c.a;
 }` + "\x00"
 
 	compile := func(shaderType uint32, src string) (shader uint32) {
