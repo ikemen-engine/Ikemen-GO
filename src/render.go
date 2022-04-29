@@ -39,76 +39,88 @@ var postShaderSelect []uint32
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
-	vertShader := "attribute vec2 position;" +
-		"attribute vec2 uv;" +
-		"void main(void){" +
-		"gl_TexCoord[0] = gl_TextureMatrix[0] * vec4(uv, 0.0, 1.0);" +
-		"gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 0.0, 1.0);" +
-		"}\x00"
-	fragShader := "uniform float a;" +
-		"uniform sampler2D tex;" +
-		"uniform sampler1D pal;" +
-		"uniform int msk;" +
-		"uniform bool neg;" +
-		"uniform float gray;" +
-		"uniform vec3 add;" +
-		"uniform vec3 mul;" +
-		"uniform vec4 x1x2x4x3;" +
-		"uniform bool isTrapez;" +
-		"void main(void){" +
-		"vec2 texcoord = gl_TexCoord[0].st;" +
-		"if(isTrapez){" +
-		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
-		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
-		"left = (gl_FragCoord.x - left);" +
-		"right = (right - gl_FragCoord.x);" +
-		"texcoord[0] = left / (left + right);" + // ここまで / To this point
-		"}" +
-		"float r = texture2D(tex, texcoord).r;" +
-		"if(int(255.25*r) == msk){" +
-		"	gl_FragColor = vec4(0.0);" +
-		"}else{" +
-		"	vec4 c = texture1D(pal, r*0.9966);" +
-		"	if(neg) c.rgb = vec3(1.0) - c.rgb;" +
-		"	c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;" +
-		"	gl_FragColor = vec4(c.rgb * mul, c.a * a);" +
-		"}" +
-		"}\x00"
-	fragShaderFc := "uniform float a;" +
-		"uniform sampler2D tex;" +
-		"uniform bool neg;" +
-		"uniform float gray;" +
-		"uniform vec3 add;" +
-		"uniform vec3 mul;" +
-		"uniform vec4 x1x2x4x3;" +
-		"uniform bool isTrapez;" +
-		"void main(void){" +
-		"vec2 texcoord = gl_TexCoord[0].st;" +
-		"if(isTrapez){" +
-		"float y = 1.0 - gl_TexCoord[0].t;" + // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
-		"float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];" +
-		"float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];" +
-		"left = (gl_FragCoord.x - left);" +
-		"right = (right - gl_FragCoord.x);" +
-		"texcoord[0] = left / (left + right);" + // ここまで / To this point
-		"}" +
-		"vec4 c = texture2D(tex, texcoord);" +
-		"if(neg) c.rgb = vec3(1.0 * c.a) - c.rgb;" +
-		"c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add * c.a;" +
-		"c.rgb *= mul;" +
-		"c *= vec4(a);" +
-		"gl_FragColor = c;" +
-		"}\x00"
-	fragShaderFcS := "uniform float a;" +
-		"uniform sampler2D tex;" +
-		"uniform vec3 color;" +
-		"void main(void){" +
-		"vec4 c = texture2D(tex, gl_TexCoord[0].st);" +
-		"c.rgb = color * c.a;" +
-		"c.a *= a;" +
-		"gl_FragColor = c;" +
-		"}\x00"
+	vertShader := `
+attribute vec2 position;
+attribute vec2 uv;
+
+void main(void) {
+	gl_TexCoord[0] = gl_TextureMatrix[0] * vec4(uv, 0.0, 1.0);
+	gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 0.0, 1.0);
+}` + "\x00"
+
+	fragShader := `
+uniform float a;
+uniform sampler2D tex;
+uniform sampler1D pal;
+uniform int msk;
+uniform bool neg;
+uniform float gray;
+uniform vec3 add;
+uniform vec3 mul;
+uniform vec4 x1x2x4x3;
+uniform bool isTrapez;
+
+void main(void) {
+	vec2 texcoord = gl_TexCoord[0].st;
+	if (isTrapez) {
+		float y = 1.0 - gl_TexCoord[0].t; // ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
+		float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];
+		float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];
+		left = (gl_FragCoord.x - left);
+		right = (right - gl_FragCoord.x);
+		texcoord[0] = left / (left + right); // ここまで / To this point
+	}
+	float r = texture2D(tex, texcoord).r;
+	if (int(255.25*r) == msk) {
+		gl_FragColor = vec4(0.0);
+	} else {
+		vec4 c = texture1D(pal, r*0.9966);
+		if (neg) c.rgb = vec3(1.0) - c.rgb;
+		c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add;
+		gl_FragColor = vec4(c.rgb * mul, c.a * a);
+	}
+}` + "\x00"
+
+	fragShaderFc := `
+uniform float a;
+uniform sampler2D tex;
+uniform bool neg;
+uniform float gray;
+uniform vec3 add;
+uniform vec3 mul;
+uniform vec4 x1x2x4x3;
+uniform bool isTrapez;
+
+void main(void) {
+	vec2 texcoord = gl_TexCoord[0].st;
+	if (isTrapez) {
+		float y = 1.0 - gl_TexCoord[0].t; // ここから台形用のテクスチャ座標計算 / Compute texture coordinates for trapezoid from here
+		float left = (x1x2x4x3[2] - x1x2x4x3[0]) * y + x1x2x4x3[0];
+		float right = (x1x2x4x3[3] - x1x2x4x3[1]) * y + x1x2x4x3[1];
+		left = (gl_FragCoord.x - left);
+		right = (right - gl_FragCoord.x);
+		texcoord[0] = left / (left + right); // ここまで / To this point
+	}
+	vec4 c = texture2D(tex, texcoord);
+	if (neg) c.rgb = vec3(1.0 * c.a) - c.rgb;
+	c.rgb += (vec3((c.r + c.g + c.b) / 3.0) - c.rgb) * gray + add * c.a;
+	c.rgb *= mul;
+	c *= vec4(a);
+	gl_FragColor = c;
+}` + "\x00"
+
+	fragShaderFcS := `
+uniform float a;
+uniform sampler2D tex;
+uniform vec3 color;
+
+void main(void) {
+	vec4 c = texture2D(tex, gl_TexCoord[0].st);
+	c.rgb = color * c.a;
+	c.a *= a;
+	gl_FragColor = c;
+}` + "\x00"
+
 	compile := func(shaderType uint32, src string) (shader uint32) {
 		shader = gl.CreateShader(shaderType)
 		s, _ := gl.Strs(src)
@@ -157,6 +169,7 @@ func RenderInit() {
 		}
 		return
 	}
+
 	vertObj := compile(gl.VERTEX_SHADER, vertShader)
 	fragObj := compile(gl.FRAGMENT_SHADER, fragShader)
 	mugenShader = link(vertObj, fragObj)
@@ -171,6 +184,7 @@ func RenderInit() {
 	uniformPalMul = gl.GetUniformLocation(mugenShader, gl.Str("mul\x00"))
 	uniformPalX1x2x4x3 = gl.GetUniformLocation(mugenShader, gl.Str("x1x2x4x3\x00"))
 	uniformPalIsTrapez = gl.GetUniformLocation(mugenShader, gl.Str("isTrapez\x00"))
+
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFc)
 	mugenShaderFc = link(vertObj, fragObj)
 	uniformFcA = gl.GetUniformLocation(mugenShaderFc, gl.Str("a\x00"))
@@ -180,6 +194,7 @@ func RenderInit() {
 	uniformMul = gl.GetUniformLocation(mugenShaderFc, gl.Str("mul\x00"))
 	uniformX1x2x4x3 = gl.GetUniformLocation(mugenShaderFc, gl.Str("x1x2x4x3\x00"))
 	uniformIsTrapez = gl.GetUniformLocation(mugenShaderFc, gl.Str("isTrapez\x00"))
+
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFcS)
 	mugenShaderFcS = link(vertObj, fragObj)
 	uniformFcSA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
