@@ -609,21 +609,13 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
-	ineg := int32(0)
-	if neg {
-		ineg = 1
-	}
-	isTrapez := int32(0)
-	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
-		isTrapez = 1
-	}
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.uTexture, 0)
 	gl.Uniform1i(mainShader.u["pal"], 1)
 	gl.Uniform1i(mainShader.u["isRgba"], 0)
-	gl.Uniform1i(mainShader.u["isTrapez"], isTrapez)
+	gl.Uniform1i(mainShader.u["isTrapez"], Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001))
 	gl.Uniform1i(mainShader.u["mask"], mask)
-	gl.Uniform1i(mainShader.u["neg"], ineg)
+	gl.Uniform1i(mainShader.u["neg"], Btoi(neg))
 	gl.Uniform1f(mainShader.u["gray"], 1-color)
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
@@ -661,17 +653,9 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
 	gl.UseProgram(mainShader.program)
-	ineg := int32(0)
-	if neg {
-		ineg = 1
-	}
-	isTrapez := int32(0)
-	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
-		isTrapez = 1
-	}
 	gl.Uniform1i(mainShader.u["isRgba"], 1)
-	gl.Uniform1i(mainShader.u["isTrapez"], isTrapez)
-	gl.Uniform1i(mainShader.u["neg"], ineg)
+	gl.Uniform1i(mainShader.u["isTrapez"], Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001))
+	gl.Uniform1i(mainShader.u["neg"], Btoi(neg))
 	gl.Uniform1f(mainShader.u["gray"], 1-color)
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
