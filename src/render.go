@@ -43,8 +43,10 @@ func RenderInit() {
 attribute vec2 position;
 attribute vec2 uv;
 
+varying vec2 texcoord;
+
 void main(void) {
-	gl_TexCoord[0] = gl_TextureMatrix[0] * vec4(uv, 0.0, 1.0);
+	texcoord = uv;
 	gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 0.0, 1.0);
 }` + "\x00"
 
@@ -58,15 +60,17 @@ uniform float alpha, gray;
 uniform int mask;
 uniform bool isRgba, isTrapez, neg;
 
+varying vec2 texcoord;
+
 void main(void) {
-	vec2 texcoord = gl_TexCoord[0].st;
+	vec2 uv = texcoord;
 	if (isTrapez) {
 		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], texcoord[1]);
-		float right = mix(x1x2x4x3[3], x1x2x4x3[1], texcoord[1]);
-		texcoord[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
+		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], uv[1]);
+		float right = mix(x1x2x4x3[3], x1x2x4x3[1], uv[1]);
+		uv[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
 	}
-	vec4 c = texture2D(tex, texcoord);
+	vec4 c = texture2D(tex, uv);
 	vec3 neg_base = vec3(1.0);
 	vec3 final_add = add;
 	vec4 final_mul = vec4(mul, alpha);
@@ -91,8 +95,10 @@ uniform float alpha;
 uniform sampler2D tex;
 uniform vec3 color;
 
+varying vec2 texcoord;
+
 void main(void) {
-	vec4 c = texture2D(tex, gl_TexCoord[0].st);
+	vec4 c = texture2D(tex, texcoord);
 	gl_FragColor = vec4(color, alpha) * c.a;
 }` + "\x00"
 
@@ -763,15 +769,19 @@ var identVertShader string = `
 attribute vec2 VertCoord;
 uniform vec2 TextureSize;
 
+varying vec2 texcoord;
+
 void main()
 {
 	gl_Position = vec4(VertCoord, 0.0, 1.0);
-	gl_TexCoord[0].xy = (VertCoord + 1.0) / 2.0;
+	texcoord = (VertCoord + 1.0) / 2.0;
 }` + "\x00"
 
 var identFragShader string = `
 uniform sampler2D Texture;
 
+varying vec2 texcoord;
+
 void main(void) {
-	gl_FragColor = texture2D(Texture, gl_TexCoord[0].xy);
+	gl_FragColor = texture2D(Texture, texcoord);
 }` + "\x00"
