@@ -206,8 +206,8 @@ func readBackGround(is IniSection, link *backGround,
 		bg.anim.dstAlpha = 255
 		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
 		if is.readI32ForStage("alpha", &s, &d) {
-			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			bg.anim.srcAlpha = int16(Clamp(s, 0, 255))
+			bg.anim.dstAlpha = int16(Clamp(d, 0, 255))
 			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
 				bg.anim.srcAlpha = 0
 			}
@@ -219,15 +219,15 @@ func readBackGround(is IniSection, link *backGround,
 		var s, d int32 = 255, 255
 		if is.readI32ForStage("alpha", &s, &d) {
 			bg.anim.srcAlpha = int16(Min(255, s))
-			//bg.anim.dstAlpha = ^int16(Max(0, Min(255, d)))
-			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			//bg.anim.dstAlpha = ^int16(Clamp(d, 0, 255))
+			bg.anim.dstAlpha = int16(Clamp(d, 0, 255))
 		}
 	case "addalpha":
 		bg.anim.mask = 0
 		s, d := int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)
 		if is.readI32ForStage("alpha", &s, &d) {
-			bg.anim.srcAlpha = int16(Max(0, Min(255, s)))
-			bg.anim.dstAlpha = int16(Max(0, Min(255, d)))
+			bg.anim.srcAlpha = int16(Clamp(s, 0, 255))
+			bg.anim.dstAlpha = int16(Clamp(d, 0, 255))
 			if bg.anim.srcAlpha == 1 && bg.anim.dstAlpha == 255 {
 				bg.anim.srcAlpha = 0
 			}
@@ -782,12 +782,12 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sec := defmap["shadow"]; len(sec) > 0 {
 		var tmp int32
 		if sec[0].ReadI32("intensity", &tmp) {
-			s.sdw.intensity = Max(0, Min(255, tmp))
+			s.sdw.intensity = Clamp(tmp, 0, 255)
 		}
 		var r, g, b int32
 		// mugen 1.1 removed support for color
 		if (s.ver[0] != 1 || s.ver[1] != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
-			r, g, b = Max(0, Min(255, r)), Max(0, Min(255, g)), Max(0, Min(255, b))
+			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
@@ -798,7 +798,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		if sec := defmap["reflection"]; len(sec) > 0 {
 			var tmp int32
 			if sec[0].ReadI32("intensity", &tmp) {
-				s.reflection = Max(0, Min(255, tmp))
+				s.reflection = Clamp(tmp, 0, 255)
 			}
 		}
 	}

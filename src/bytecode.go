@@ -3239,8 +3239,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.alpha[0] = exp[0].evalI(c)
 			e.alpha[1] = exp[1].evalI(c)
 			if len(exp) >= 3 {
-				e.alpha[0] = Max(0, Min(255, e.alpha[0]))
-				e.alpha[1] = Max(0, Min(255, e.alpha[1]))
+				e.alpha[0] = Clamp(e.alpha[0], 0, 255)
+				e.alpha[1] = Clamp(e.alpha[1], 0, 255)
 				//if len(exp) >= 4 {
 				//	e.alpha[1] = ^e.alpha[1]
 				//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
@@ -3452,7 +3452,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
 				if len(exp) >= 3 {
-					s, d = Max(0, Min(255, s)), Max(0, Min(255, d))
+					s, d = Clamp(s, 0, 255), Clamp(d, 0, 255)
 					//if len(exp) >= 4 {
 					//	d = ^d
 					//} else if s == 1 && d == 255 {
@@ -3604,8 +3604,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		ai.alpha[0] = exp[0].evalI(c)
 		ai.alpha[1] = exp[1].evalI(c)
 		if len(exp) >= 3 {
-			ai.alpha[0] = Max(0, Min(255, ai.alpha[0]))
-			ai.alpha[1] = Max(0, Min(255, ai.alpha[1]))
+			ai.alpha[0] = Clamp(ai.alpha[0], 0, 255)
+			ai.alpha[1] = Clamp(ai.alpha[1], 0, 255)
 			//if len(exp) >= 4 {
 			//	ai.alpha[1] = ^ai.alpha[1]
 			//} else if ai.alpha[0] == 1 && ai.alpha[1] == 255 {
@@ -5315,8 +5315,8 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 			crun.alpha[0] = exp[0].evalI(c)
 			crun.alpha[1] = exp[1].evalI(c)
 			if len(exp) >= 3 {
-				crun.alpha[0] = Max(0, Min(255, crun.alpha[0]))
-				crun.alpha[1] = Max(0, Min(255, crun.alpha[1]))
+				crun.alpha[0] = Clamp(crun.alpha[0], 0, 255)
+				crun.alpha[1] = Clamp(crun.alpha[1], 0, 255)
 				//if len(exp) >= 4 {
 				//	crun.alpha[1] = ^crun.alpha[1]
 				//} else if crun.alpha[0] == 1 && crun.alpha[1] == 255 {
@@ -7146,7 +7146,7 @@ func (sc roundTimeAdd) Run(c *Char, _ []int32) bool {
 		switch id {
 		case roundTimeAdd_value:
 			if sys.roundTime != -1 {
-				sys.time = Max(0, Min(sys.roundTime, sys.time+exp[0].evalI(c)))
+				sys.time = Clamp(sys.time+exp[0].evalI(c), 0, sys.roundTime)
 			}
 		}
 		return true
@@ -7166,7 +7166,7 @@ func (sc roundTimeSet) Run(c *Char, _ []int32) bool {
 		switch id {
 		case roundTimeSet_value:
 			if sys.roundTime != -1 {
-				sys.time = Max(0, Min(sys.roundTime, exp[0].evalI(c)))
+				sys.time = Clamp(exp[0].evalI(c), 0, sys.roundTime)
 			}
 		}
 		return true

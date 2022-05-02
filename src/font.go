@@ -291,12 +291,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 	if len(ary) > 1 && len(ary[1]) > 0 {
 		f.Spacing[1] = Atoi(ary[1])
 	}
-	f.colors = Atoi(is["colors"])
-	if f.colors > 255 {
-		f.colors = 255
-	} else if f.colors < 1 {
-		f.colors = 1
-	}
+	f.colors = Clamp(Atoi(is["colors"]), 1, 255)
 	ary = SplitAndTrim(is["offset"], ",")
 	if len(ary[0]) > 0 {
 		f.offset[0] = Atoi(ary[0])
