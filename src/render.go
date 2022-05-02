@@ -8,13 +8,10 @@ import (
 
 var notiling = [4]int32{0, 0, 0, 0}
 var mugenShader uint32
-var uniformA, uniformPal, uniformMsk, uniformPalNeg, uniformPalGray, uniformPalAdd, uniformPalMul int32
-var uniformPalX1x2x4x3, uniformPalIsTrapez int32
-var mugenShaderFc uint32
-var uniformFcA, uniformNeg, uniformGray, uniformAdd, uniformMul int32
-var uniformX1x2x4x3, uniformIsTrapez int32
+var uniformTex, uniformPal, uniformAlpha, uniformMask, uniformNeg, uniformGray, uniformAdd, uniformMul int32
+var uniformX1x2x4x3, uniformIsTrapez, uniformIsRgba int32
 var mugenShaderFcS uint32
-var uniformFcSA, uniformColor int32
+var uniformFcSAlpha, uniformColor int32
 var posattLocation, uvattLocation int32
 var mugenShaderSolid uint32
 var uniformColorSolid int32
@@ -52,45 +49,14 @@ void main(void) {
 }` + "\x00"
 
 	fragShader := `
-uniform float a;
 uniform sampler2D tex;
 uniform sampler2D pal;
-uniform int msk;
-uniform bool neg;
-uniform float gray;
-uniform vec3 add;
-uniform vec3 mul;
-uniform vec4 x1x2x4x3;
-uniform bool isTrapez;
 
-void main(void) {
-	vec2 texcoord = gl_TexCoord[0].st;
-	if (isTrapez) {
-		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], texcoord[1]);
-		float right = mix(x1x2x4x3[3], x1x2x4x3[1], texcoord[1]);
-		texcoord[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
-	}
-	float r = texture2D(tex, texcoord).r;
-	if (int(255.25*r) == msk) {
-		gl_FragColor = vec4(0.0);
-	} else {
-		vec4 c = texture2D(pal, vec2(r*0.9966, 0.5));
-		if (neg) c.rgb = vec3(1.0) - c.rgb;
-		c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + add;
-		gl_FragColor = vec4(c.rgb * mul, c.a * a);
-	}
-}` + "\x00"
-
-	fragShaderFc := `
-uniform float a;
-uniform sampler2D tex;
-uniform bool neg;
-uniform float gray;
-uniform vec3 add;
-uniform vec3 mul;
 uniform vec4 x1x2x4x3;
-uniform bool isTrapez;
+uniform vec3 add, mul;
+uniform float alpha, gray;
+uniform int mask;
+uniform bool isRgba, isTrapez, neg;
 
 void main(void) {
 	vec2 texcoord = gl_TexCoord[0].st;
@@ -101,19 +67,33 @@ void main(void) {
 		texcoord[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
 	}
 	vec4 c = texture2D(tex, texcoord);
-	if (neg) c.rgb = vec3(1.0 * c.a) - c.rgb;
-	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + add * c.a;
-	gl_FragColor = vec4(c.rgb * mul, c.a) * a;
+	vec3 neg_base = vec3(1.0);
+	vec3 final_add = add;
+	vec4 final_mul = vec4(mul, alpha);
+	if (isRgba) {
+		neg_base *= alpha;
+		final_add *= c.a;
+		final_mul.rgb *= alpha;
+	} else {
+		if (int(255.25*c.r) == mask) {
+			c.a = 0.0;
+		} else {
+			c = texture2D(pal, vec2(c.r*0.9966, 0.5));
+		}
+	}
+	if (neg) c.rgb = neg_base - c.rgb;
+	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
+	gl_FragColor = c * final_mul;
 }` + "\x00"
 
 	fragShaderFcS := `
-uniform float a;
+uniform float alpha;
 uniform sampler2D tex;
 uniform vec3 color;
 
 void main(void) {
 	vec4 c = texture2D(tex, gl_TexCoord[0].st);
-	gl_FragColor = vec4(color, a) * c.a;
+	gl_FragColor = vec4(color, alpha) * c.a;
 }` + "\x00"
 
 	fragShaderSolid := `
@@ -177,29 +157,21 @@ void main(void) {
 	mugenShader = link(vertObj, fragObj)
 	posattLocation = gl.GetAttribLocation(mugenShader, gl.Str("position\x00"))
 	uvattLocation = gl.GetAttribLocation(mugenShader, gl.Str("uv\x00"))
-	uniformA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
+	uniformTex = gl.GetUniformLocation(mugenShader, gl.Str("tex\x00"))
 	uniformPal = gl.GetUniformLocation(mugenShader, gl.Str("pal\x00"))
-	uniformMsk = gl.GetUniformLocation(mugenShader, gl.Str("msk\x00"))
-	uniformPalNeg = gl.GetUniformLocation(mugenShader, gl.Str("neg\x00"))
-	uniformPalGray = gl.GetUniformLocation(mugenShader, gl.Str("gray\x00"))
-	uniformPalAdd = gl.GetUniformLocation(mugenShader, gl.Str("add\x00"))
-	uniformPalMul = gl.GetUniformLocation(mugenShader, gl.Str("mul\x00"))
-	uniformPalX1x2x4x3 = gl.GetUniformLocation(mugenShader, gl.Str("x1x2x4x3\x00"))
-	uniformPalIsTrapez = gl.GetUniformLocation(mugenShader, gl.Str("isTrapez\x00"))
-
-	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFc)
-	mugenShaderFc = link(vertObj, fragObj)
-	uniformFcA = gl.GetUniformLocation(mugenShaderFc, gl.Str("a\x00"))
-	uniformNeg = gl.GetUniformLocation(mugenShaderFc, gl.Str("neg\x00"))
-	uniformGray = gl.GetUniformLocation(mugenShaderFc, gl.Str("gray\x00"))
-	uniformAdd = gl.GetUniformLocation(mugenShaderFc, gl.Str("add\x00"))
-	uniformMul = gl.GetUniformLocation(mugenShaderFc, gl.Str("mul\x00"))
-	uniformX1x2x4x3 = gl.GetUniformLocation(mugenShaderFc, gl.Str("x1x2x4x3\x00"))
-	uniformIsTrapez = gl.GetUniformLocation(mugenShaderFc, gl.Str("isTrapez\x00"))
+	uniformAlpha = gl.GetUniformLocation(mugenShader, gl.Str("alpha\x00"))
+	uniformMask = gl.GetUniformLocation(mugenShader, gl.Str("mask\x00"))
+	uniformNeg = gl.GetUniformLocation(mugenShader, gl.Str("neg\x00"))
+	uniformGray = gl.GetUniformLocation(mugenShader, gl.Str("gray\x00"))
+	uniformAdd = gl.GetUniformLocation(mugenShader, gl.Str("add\x00"))
+	uniformMul = gl.GetUniformLocation(mugenShader, gl.Str("mul\x00"))
+	uniformX1x2x4x3 = gl.GetUniformLocation(mugenShader, gl.Str("x1x2x4x3\x00"))
+	uniformIsRgba = gl.GetUniformLocation(mugenShader, gl.Str("isRgba\x00"))
+	uniformIsTrapez = gl.GetUniformLocation(mugenShader, gl.Str("isTrapez\x00"))
 
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFcS)
 	mugenShaderFcS = link(vertObj, fragObj)
-	uniformFcSA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
+	uniformFcSAlpha = gl.GetUniformLocation(mugenShader, gl.Str("alpha\x00"))
 	uniformColor = gl.GetUniformLocation(mugenShaderFcS, gl.Str("color\x00"))
 
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderSolid)
@@ -317,14 +289,9 @@ func unbindFB() {
 	gl.UseProgram(0)
 }
 
-func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
+func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
-	switch renderMode {
-	case 1:
-		gl.Uniform4f(uniformPalX1x2x4x3, x1, x2, x4, x3)
-	case 2:
-		gl.Uniform4f(uniformX1x2x4x3, x1, x2, x4, x3)
-	}
+	gl.Uniform4f(uniformX1x2x4x3, x1, x2, x4, x3)
 	gl.EnableVertexAttribArray(uint32(posattLocation))
 	gl.EnableVertexAttribArray(uint32(uvattLocation))
 	gl.VertexAttribPointer(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
@@ -333,7 +300,7 @@ func drawQuads(x1, y1, x2, y2, x3, y3, x4, y4 float32, renderMode int32) {
 	gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 }
 func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
-	tl *[4]int32, rcx float32, renderMode int32) {
+	tl *[4]int32, rcx float32) {
 	topdist := xtw + xts*float32((*tl)[0])
 	if AbsF(topdist) >= 0.01 {
 		botdist := xbw + xbs*float32((*tl)[0])
@@ -360,7 +327,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 					(x1d < float32(sys.scrrect[2]) || x2d < float32(sys.scrrect[2])) ||
 					(0 < x3d || 0 < x4d) &&
 						(x3d < float32(sys.scrrect[2]) || x4d < float32(sys.scrrect[2])) {
-					drawQuads(x1d, y1, x2d, y2, x3d, y3, x4d, y4, renderMode)
+					drawQuads(x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 				}
 			}
 		}
@@ -379,7 +346,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 			(x1 < float32(sys.scrrect[2]) || x2 < float32(sys.scrrect[2])) ||
 			(0 < x3 || 0 < x4) &&
 				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
-			drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, renderMode)
+			drawQuads(x1, y1, x2, y2, x3, y3, x4, y4)
 		}
 		if (*tl)[2] != 1 && n != 0 {
 			n--
@@ -393,7 +360,7 @@ func rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 		x3 = x4 + xtw
 	}
 }
-func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
+func rmTileSub(w, h uint16, x, y float32, tl *[4]int32,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
@@ -454,7 +421,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
 			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
 			gl.Translated(float64(-rcx), float64(-rcy), 0)
 		}
-		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4, renderMode)
+		drawQuads(x1, y1, x2, y2, x3, y3, x4, y4)
 		return
 	}
 	if (*tl)[3] == 1 && xbs != 0 {
@@ -479,8 +446,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
 				rmTileHSub(x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
-					(x3d-x4d)/float32(w), (x2d-x1d)/float32(w), tl,
-					rcx, renderMode)
+					(x3d-x4d)/float32(w), (x2d-x1d)/float32(w), tl, rcx)
 			}
 		}
 	}
@@ -497,7 +463,7 @@ func rmTileSub(w, h uint16, x, y float32, tl *[4]int32, renderMode int32,
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
 				rmTileHSub(x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
-					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx, renderMode)
+					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx)
 			}
 			if (*tl)[3] != 1 && n != 0 {
 				n--
@@ -536,13 +502,13 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans == -2:
 		gl.Uniform1f(a, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans <= 0:
 	case trans < 255:
@@ -553,7 +519,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans < 512:
 		gl.Uniform1f(a, 1)
@@ -563,7 +529,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+		rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
@@ -572,7 +538,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.Uniform1f(a, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 			aglOver++
 		}
@@ -590,7 +556,7 @@ func rmMainSub(a int32, size [2]uint16, x, y float32, tl *[4]int32,
 				gl.BlendFunc(gl.ONE, gl.ONE)
 			}
 			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(size[0], size[1], x, y, tl, renderMode, xts, xbs, ys, vs, rxadd,
+			rmTileSub(size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 		}
 	}
@@ -651,16 +617,18 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 		isTrapez = 1
 	}
 	gl.UseProgram(mugenShader)
+	gl.Uniform1i(uniformTex, 0)
 	gl.Uniform1i(uniformPal, 1)
-	gl.Uniform1i(uniformMsk, mask)
-	gl.Uniform1i(uniformPalNeg, ineg)
-	gl.Uniform1f(uniformPalGray, 1-color)
-	gl.Uniform3f(uniformPalAdd, (*padd)[0], (*padd)[1], (*padd)[2])
-	gl.Uniform3f(uniformPalMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.Uniform1i(uniformPalIsTrapez, isTrapez)
+	gl.Uniform1i(uniformIsRgba, 0)
+	gl.Uniform1i(uniformIsTrapez, isTrapez)
+	gl.Uniform1i(uniformMask, mask)
+	gl.Uniform1i(uniformNeg, ineg)
+	gl.Uniform1f(uniformGray, 1-color)
+	gl.Uniform3f(uniformAdd, (*padd)[0], (*padd)[1], (*padd)[2])
+	gl.Uniform3f(uniformMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
-	rmMainSub(uniformA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(uniformAlpha, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -692,7 +660,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
-	gl.UseProgram(mugenShaderFc)
+	gl.UseProgram(mugenShader)
 	ineg := int32(0)
 	if neg {
 		ineg = 1
@@ -701,13 +669,14 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	if AbsF(AbsF(xts)-AbsF(xbs)) > 0.001 {
 		isTrapez = 1
 	}
+	gl.Uniform1i(uniformIsRgba, 1)
+	gl.Uniform1i(uniformIsTrapez, isTrapez)
 	gl.Uniform1i(uniformNeg, ineg)
 	gl.Uniform1f(uniformGray, 1-color)
 	gl.Uniform3f(uniformAdd, (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(uniformMul, (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.Uniform1i(uniformIsTrapez, isTrapez)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
-	rmMainSub(uniformFcA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(uniformAlpha, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -725,7 +694,7 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		uniformColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
-	rmMainSub(uniformFcSA, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(uniformFcSAlpha, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
