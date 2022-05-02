@@ -10,12 +10,9 @@ var notiling = [4]int32{0, 0, 0, 0}
 var mugenShader uint32
 var uniformTex, uniformPal, uniformAlpha, uniformMask, uniformNeg, uniformGray, uniformAdd, uniformMul int32
 var uniformX1x2x4x3, uniformIsTrapez, uniformIsRgba int32
-var mugenShaderFcS uint32
-var uniformFcSAlpha, uniformColor int32
+var mugenShaderFlat uint32
+var uniformFlatTex, uniformFlatAlpha, uniformFlatColor, uniformFlatIsShadow int32
 var posattLocation, uvattLocation int32
-var mugenShaderSolid uint32
-var uniformColorSolid int32
-var posattLocationSolid int32
 var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
 var indices = [4]int32{1, 2, 0, 3}
 
@@ -50,6 +47,7 @@ void main(void) {
 	gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 0.0, 1.0);
 }` + "\x00"
 
+	// Main fragment shader, for RGBA and indexed sprites
 	fragShader := `
 uniform sampler2D tex;
 uniform sampler2D pal;
@@ -90,23 +88,20 @@ void main(void) {
 	gl_FragColor = c * final_mul;
 }` + "\x00"
 
-	fragShaderFcS := `
-uniform float alpha;
+	// “Flat” fragment shader, for shadows and plain, untextured quads
+	fragShaderFlat := `
 uniform sampler2D tex;
 uniform vec3 color;
+uniform float alpha;
+uniform bool isShadow;
 
 varying vec2 texcoord;
 
 void main(void) {
-	vec4 c = texture2D(tex, texcoord);
-	gl_FragColor = vec4(color, alpha) * c.a;
-}` + "\x00"
-
-	fragShaderSolid := `
-uniform vec4 color;
-
-void main(void) {
-	gl_FragColor = color;
+	vec4 p = vec4(color, alpha);
+	if (isShadow)
+		p *= texture2D(tex, texcoord).a;
+	gl_FragColor = p;
 }` + "\x00"
 
 	compile := func(shaderType uint32, src string) (shader uint32) {
@@ -175,14 +170,12 @@ void main(void) {
 	uniformIsRgba = gl.GetUniformLocation(mugenShader, gl.Str("isRgba\x00"))
 	uniformIsTrapez = gl.GetUniformLocation(mugenShader, gl.Str("isTrapez\x00"))
 
-	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFcS)
-	mugenShaderFcS = link(vertObj, fragObj)
-	uniformFcSAlpha = gl.GetUniformLocation(mugenShader, gl.Str("alpha\x00"))
-	uniformColor = gl.GetUniformLocation(mugenShaderFcS, gl.Str("color\x00"))
-
-	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderSolid)
-	mugenShaderSolid = link(vertObj, fragObj)
-	uniformColorSolid = gl.GetUniformLocation(mugenShaderSolid, gl.Str("color\x00"))
+	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFlat)
+	mugenShaderFlat = link(vertObj, fragObj)
+	uniformFlatTex = gl.GetUniformLocation(mugenShaderFlat, gl.Str("tex\x00"))
+	uniformFlatAlpha = gl.GetUniformLocation(mugenShaderFlat, gl.Str("alpha\x00"))
+	uniformFlatColor = gl.GetUniformLocation(mugenShaderFlat, gl.Str("color\x00"))
+	uniformFlatIsShadow = gl.GetUniformLocation(mugenShaderFlat, gl.Str("isShadow\x00"))
 
 	// Compile postprocessing shaders
 
@@ -695,12 +688,14 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
-	gl.UseProgram(mugenShaderFcS)
+	gl.UseProgram(mugenShaderFlat)
+	gl.Uniform1i(uniformFlatTex, 0)
 	gl.Uniform3f(
-		uniformColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
+		uniformFlatColor, float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
+	gl.Uniform1i(uniformFlatIsShadow, 1)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
-	rmMainSub(uniformFcSAlpha, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(uniformFlatAlpha, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -715,10 +710,13 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
 		vertexPosition := [8]float32{x1, y2, x2, y2, x2, y1, x1, y1}
 
-		gl.UseProgram(mugenShaderSolid)
+		gl.UseProgram(mugenShaderFlat)
 		gl.EnableVertexAttribArray(uint32(posattLocation))
 		gl.VertexAttribPointer(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
-		gl.Uniform4f(uniformColorSolid, r, g, b, a)
+		gl.Uniform1i(uniformFlatTex, 0)
+		gl.Uniform3f(uniformFlatColor, r, g, b)
+		gl.Uniform1f(uniformFlatAlpha, a)
+		gl.Uniform1i(uniformFlatIsShadow, 0)
 		gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 	}
 	gl.Enable(gl.BLEND)
