@@ -16,6 +16,9 @@ var uniformX1x2x4x3, uniformIsTrapez int32
 var mugenShaderFcS uint32
 var uniformFcSA, uniformColor int32
 var posattLocation, uvattLocation int32
+var mugenShaderSolid uint32
+var uniformColorSolid int32
+var posattLocationSolid int32
 var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
 var indices = [4]int32{1, 2, 0, 3}
 
@@ -113,6 +116,13 @@ void main(void) {
 	gl_FragColor = vec4(color, a) * c.a;
 }` + "\x00"
 
+	fragShaderSolid := `
+uniform vec4 color;
+
+void main(void) {
+	gl_FragColor = color;
+}` + "\x00"
+
 	compile := func(shaderType uint32, src string) (shader uint32) {
 		shader = gl.CreateShader(shaderType)
 		s, _ := gl.Strs(src)
@@ -191,6 +201,10 @@ void main(void) {
 	mugenShaderFcS = link(vertObj, fragObj)
 	uniformFcSA = gl.GetUniformLocation(mugenShader, gl.Str("a\x00"))
 	uniformColor = gl.GetUniformLocation(mugenShaderFcS, gl.Str("color\x00"))
+
+	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderSolid)
+	mugenShaderSolid = link(vertObj, fragObj)
+	uniformColorSolid = gl.GetUniformLocation(mugenShaderSolid, gl.Str("color\x00"))
 
 	// Compile postprocessing shaders
 
@@ -728,13 +742,15 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	g := float32(color>>8&0xff) / 255
 	b := float32(color&0xff) / 255
 	fill := func(a float32) {
-		gl.Begin(gl.QUADS)
-		gl.Color4f(r, g, b, a)
-		gl.Vertex2f(float32(rect[0]), -float32(rect[1]+rect[3]))
-		gl.Vertex2f(float32(rect[0]+rect[2]), -float32(rect[1]+rect[3]))
-		gl.Vertex2f(float32(rect[0]+rect[2]), -float32(rect[1]))
-		gl.Vertex2f(float32(rect[0]), -float32(rect[1]))
-		gl.End()
+		x1, y1 := float32(rect[0]), -float32(rect[1])
+		x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
+		vertexPosition := [8]float32{x1, y2, x2, y2, x2, y1, x1, y1}
+
+		gl.UseProgram(mugenShaderSolid)
+		gl.EnableVertexAttribArray(uint32(posattLocation))
+		gl.VertexAttribPointer(uint32(posattLocation), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
+		gl.Uniform4f(uniformColorSolid, r, g, b, a)
+		gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 	}
 	gl.Enable(gl.BLEND)
 	gl.MatrixMode(gl.PROJECTION)
