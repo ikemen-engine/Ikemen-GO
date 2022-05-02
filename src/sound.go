@@ -414,7 +414,7 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 	dstRate := beep.SampleRate(audioFrequency / freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
-	speaker.Play(s.ctrl)
+	sys.soundMixer.Add(s.ctrl)
 }
 func (s *SoundChannel) IsPlaying() bool {
 	return s.sound != nil
