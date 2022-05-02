@@ -174,7 +174,7 @@ func RenderInit() {
 	gl.DeleteObjectARB(fragObj)
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFcS)
 	mugenShaderFcS = link(vertObj, fragObj)
-	uniformFcSA = gl.GetUniformLocationARB(mugenShader, gl.Str("a\x00"))
+	uniformFcSA = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("a\x00"))
 	uniformColor = gl.GetUniformLocationARB(mugenShaderFcS, gl.Str("color\x00"))
 	gl.DeleteObjectARB(fragObj)
 	gl.DeleteObjectARB(vertObj)
