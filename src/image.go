@@ -536,7 +536,6 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -549,14 +548,12 @@ func (s *Sprite) SetPxl(px []byte) {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.Disable(gl.TEXTURE_2D)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
-		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -578,7 +575,6 @@ func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth i
 		}
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.Disable(gl.TEXTURE_2D)
 	}
 }
 
@@ -1047,7 +1043,6 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			}
 		}
 
-		gl.Enable(gl.TEXTURE_1D)
 		gl.ActiveTexture(gl.TEXTURE1)
 		if hasPalette {
 			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
@@ -1065,7 +1060,6 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		}
 		RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-		gl.Disable(gl.TEXTURE_1D)
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,

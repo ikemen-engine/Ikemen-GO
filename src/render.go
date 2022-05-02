@@ -628,7 +628,6 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 	}
 	*y += *rcy
 	gl.Enable(gl.BLEND)
-	gl.Enable(gl.TEXTURE_2D)
 	gl.Enable(gl.SCISSOR_TEST)
 	gl.Scissor((*window)[0], sys.scrrect[3]-((*window)[1]+(*window)[3]),
 		(*window)[2], (*window)[3])
@@ -665,14 +664,12 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
 
 func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	gl.Enable(gl.TEXTURE_1D)
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)
@@ -685,7 +682,6 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.DeleteTextures(1, &paltex)
-	gl.Disable(gl.TEXTURE_1D)
 }
 
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
@@ -715,7 +711,6 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
 func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
@@ -734,7 +729,6 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
 }
 func FillRect(rect [4]int32, color uint32, trans int32) {

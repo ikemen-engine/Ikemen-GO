@@ -2294,7 +2294,6 @@ func (c *Char) loadPalette() {
 					gi.palExist[i] = true
 
 					//パレットテクスチャ生成
-					gl.Enable(gl.TEXTURE_1D)
 					gi.sff.palList.PalTex[i] = newTexture()
 					gl.BindTexture(gl.TEXTURE_1D, uint32(*gi.sff.palList.PalTex[i]))
 					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -2302,7 +2301,6 @@ func (c *Char) loadPalette() {
 						unsafe.Pointer(&pl[0]))
 					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-					gl.Disable(gl.TEXTURE_1D)
 
 					tmp = i + 1
 				}
