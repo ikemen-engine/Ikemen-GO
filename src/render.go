@@ -54,7 +54,7 @@ void main(void) {
 	fragShader := `
 uniform float a;
 uniform sampler2D tex;
-uniform sampler1D pal;
+uniform sampler2D pal;
 uniform int msk;
 uniform bool neg;
 uniform float gray;
@@ -75,7 +75,7 @@ void main(void) {
 	if (int(255.25*r) == msk) {
 		gl_FragColor = vec4(0.0);
 	} else {
-		vec4 c = texture1D(pal, r*0.9966);
+		vec4 c = texture2D(pal, vec2(r*0.9966, 0.5));
 		if (neg) c.rgb = vec3(1.0) - c.rgb;
 		c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + add;
 		gl_FragColor = vec4(c.rgb * mul, c.a * a);
@@ -673,12 +673,12 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	gl.ActiveTexture(gl.TEXTURE1)
 	var paltex uint32
 	gl.GenTextures(1, &paltex)
-	gl.BindTexture(gl.TEXTURE_1D, paltex)
+	gl.BindTexture(gl.TEXTURE_2D, paltex)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
 		unsafe.Pointer(&pal[0]))
-	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.DeleteTextures(1, &paltex)

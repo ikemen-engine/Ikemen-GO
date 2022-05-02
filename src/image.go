@@ -1045,16 +1045,16 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 
 		gl.ActiveTexture(gl.TEXTURE1)
 		if hasPalette {
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
+			gl.BindTexture(gl.TEXTURE_2D, uint32(*paltex))
 		} else {
 			// Generate and cache palette texture
 			s.PalTex = newTexture()
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			gl.BindTexture(gl.TEXTURE_2D, uint32(*s.PalTex))
 			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
 				unsafe.Pointer(&pal[0]))
-			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
