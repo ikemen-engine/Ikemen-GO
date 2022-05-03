@@ -298,7 +298,6 @@ func unbindFB() {
 	gl.EnableVertexAttribArray(uint32(postVertAttrib))
 	gl.VertexAttribPointer(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	gl.UseProgram(0)
 }
 
 func drawQuads(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
@@ -644,7 +643,6 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
@@ -692,7 +690,6 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
@@ -712,7 +709,6 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
 	rmMainSub(flatShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
-	gl.UseProgram(0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
