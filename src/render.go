@@ -42,12 +42,10 @@ func (s *Shader) RegisterUniforms(names ...string) {
 	}
 }
 
+var vertexUv = [8]float32{1, 1, 1, 0, 0, 1, 0, 0}
 var notiling = [4]int32{0, 0, 0, 0}
 
 var mainShader, flatShader *Shader
-
-var vertexUv = [8]float32{0, 1, 1, 1, 1, 0, 0, 0}
-var indices = [4]int32{1, 2, 0, 3}
 
 // Post-processing
 var fbo, fbo_texture uint32
@@ -308,7 +306,7 @@ func unbindFB() {
 }
 
 func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
-	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
+	vertexPosition := [8]float32{x2, y2, x3, y3, x1, y1, x4, y4}
 	gl.UniformMatrix4fv(s.uModelView, 1, false, &modelview[0])
 	if u, ok := s.u["x1x2x4x3"]; ok {
 		gl.Uniform4f(u, x1, x2, x4, x3)
@@ -317,8 +315,7 @@ func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 flo
 	gl.EnableVertexAttribArray(uint32(s.aUv))
 	gl.VertexAttribPointer(uint32(s.aPos), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
 	gl.VertexAttribPointer(uint32(s.aUv), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexUv[0]))
-
-	gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl *[4]int32, rcx float32) {
@@ -709,7 +706,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	b := float32(color&0xff) / 255
 	fill := func(a float32) {
 		gl.Uniform1f(flatShader.uAlpha, a)
-		gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
+		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
@@ -726,7 +723,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	vertexPosition := [8]float32{x1, y2, x2, y2, x2, y1, x1, y1}
+	vertexPosition := [8]float32{x2, y2, x2, y1, x1, y2, x1, y1}
 	gl.EnableVertexAttribArray(uint32(flatShader.aPos))
 	gl.VertexAttribPointer(uint32(flatShader.aPos), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
 
