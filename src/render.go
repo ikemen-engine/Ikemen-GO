@@ -398,11 +398,6 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 		}
 		if projectionMode == 0 {
 			gl.Translated(float64(rcx), float64(rcy), 0)
-			gl.Scaled(1, float64(vs), 1)
-			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
-			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
-			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
-			gl.Translated(float64(-rcx), float64(-rcy), 0)
 		} else if projectionMode == 1 {
 			//This is the inverse of the orthographic projection matrix
 			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
@@ -413,11 +408,6 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 			gl.Translated(-float64(sys.scrrect[2])/2.0, float64(sys.scrrect[3])/2.0, -float64(fLength))
 
 			gl.Translated(float64(rcx), float64(rcy), 0)
-			gl.Scaled(1, float64(vs), 1)
-			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
-			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
-			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
-			gl.Translated(float64(-rcx), float64(-rcy), 0)
 		} else if projectionMode == 2 {
 			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
 
@@ -428,12 +418,12 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 			gl.Frustum(-float64(sys.scrrect[2])/2/float64(fLength), float64(sys.scrrect[2])/2/float64(fLength), -float64(sys.scrrect[3])/2/float64(fLength), float64(sys.scrrect[3])/2/float64(fLength), 1.0, 65535)
 
 			gl.Translated(float64(xOffset), -float64(yOffset), -float64(fLength))
-			gl.Scaled(1, float64(vs), 1)
-			gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
-			gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
-			gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
-			gl.Translated(float64(-rcx), float64(-rcy), 0)
 		}
+		gl.Scaled(1, float64(vs), 1)
+		gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
+		gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
+		gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
+		gl.Translated(float64(-rcx), float64(-rcy), 0)
 		drawQuads(s, x1, y1, x2, y2, x3, y3, x4, y4)
 		return
 	}
