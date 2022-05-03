@@ -1,8 +1,10 @@
 package main
 
 import (
+	"math"
 	"unsafe"
 
+	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/gl/v2.1/gl"
 )
 
@@ -12,6 +14,7 @@ type Shader struct {
 	// Attribute locations
 	aPos, aUv int32
 	// Common uniforms
+	uModelView, uProjection int32
 	uTexture int32
 	uAlpha int32
 	// Additional uniforms
@@ -24,6 +27,8 @@ func newShader(program uint32) (s *Shader) {
 	s.aPos = gl.GetAttribLocation(s.program, gl.Str("position\x00"))
 	s.aUv = gl.GetAttribLocation(s.program, gl.Str("uv\x00"))
 
+	s.uModelView = gl.GetUniformLocation(s.program, gl.Str("modelview\x00"))
+	s.uProjection = gl.GetUniformLocation(s.program, gl.Str("projection\x00"))
 	s.uTexture = gl.GetUniformLocation(s.program, gl.Str("tex\x00"))
 	s.uAlpha = gl.GetUniformLocation(s.program, gl.Str("alpha\x00"))
 	s.u = make(map[string]int32)
@@ -65,6 +70,8 @@ var postShaderSelect []uint32
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
 	vertShader := `
+uniform mat4 modelview, projection;
+
 attribute vec2 position;
 attribute vec2 uv;
 
@@ -72,7 +79,7 @@ varying vec2 texcoord;
 
 void main(void) {
 	texcoord = uv;
-	gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 0.0, 1.0);
+	gl_Position = projection * (modelview * vec4(position, 0.0, 1.0));
 }` + "\x00"
 
 	// Main fragment shader, for RGBA and indexed sprites
@@ -300,8 +307,9 @@ func unbindFB() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
-func drawQuads(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
+func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	vertexPosition := [8]float32{x1, y1, x2, y2, x3, y3, x4, y4}
+	gl.UniformMatrix4fv(s.uModelView, 1, false, &modelview[0])
 	if u, ok := s.u["x1x2x4x3"]; ok {
 		gl.Uniform4f(u, x1, x2, x4, x3)
 	}
@@ -312,7 +320,7 @@ func drawQuads(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 
 	gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 }
-func rmTileHSub(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
+func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl *[4]int32, rcx float32) {
 	topdist := xtw + xts*float32((*tl)[0])
 	if AbsF(topdist) >= 0.01 {
@@ -340,7 +348,7 @@ func rmTileHSub(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs fl
 					(x1d < float32(sys.scrrect[2]) || x2d < float32(sys.scrrect[2])) ||
 					(0 < x3d || 0 < x4d) &&
 						(x3d < float32(sys.scrrect[2]) || x4d < float32(sys.scrrect[2])) {
-					drawQuads(s, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+					drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 				}
 			}
 		}
@@ -359,7 +367,7 @@ func rmTileHSub(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs fl
 			(x1 < float32(sys.scrrect[2]) || x2 < float32(sys.scrrect[2])) ||
 			(0 < x3 || 0 < x4) &&
 				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
-			drawQuads(s, x1, y1, x2, y2, x3, y3, x4, y4)
+			drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		}
 		if (*tl)[2] != 1 && n != 0 {
 			n--
@@ -373,7 +381,7 @@ func rmTileHSub(s *Shader, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs fl
 		x3 = x4 + xtw
 	}
 }
-func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
+func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]int32,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
@@ -397,34 +405,32 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 			y4 = y3
 		}
 		if projectionMode == 0 {
-			gl.Translated(float64(rcx), float64(rcy), 0)
+			modelview = modelview.Mul4(mgl.Translate3D(rcx, rcy, 0))
 		} else if projectionMode == 1 {
 			//This is the inverse of the orthographic projection matrix
-			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
-
-			gl.Translated(0, -float64(sys.scrrect[3]), float64(fLength))
-			gl.MultMatrixf(&matrix[0])
-			gl.Frustum(-float64(sys.scrrect[2])/2/float64(fLength), float64(sys.scrrect[2])/2/float64(fLength), -float64(sys.scrrect[3])/2/float64(fLength), float64(sys.scrrect[3])/2/float64(fLength), 1.0, 65535)
-			gl.Translated(-float64(sys.scrrect[2])/2.0, float64(sys.scrrect[3])/2.0, -float64(fLength))
-
-			gl.Translated(float64(rcx), float64(rcy), 0)
+			matrix := mgl.Mat4{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
+			modelview = modelview.Mul4(mgl.Translate3D(0, -float32(sys.scrrect[3]), fLength))
+			modelview = modelview.Mul4(matrix)
+			modelview = modelview.Mul4(mgl.Frustum(-float32(sys.scrrect[2])/2/fLength, float32(sys.scrrect[2])/2/fLength, -float32(sys.scrrect[3])/2/fLength, float32(sys.scrrect[3])/2/fLength, 1.0, 65535))
+			modelview = modelview.Mul4(mgl.Translate3D(-float32(sys.scrrect[2])/2.0, float32(sys.scrrect[3])/2.0, -fLength))
+			modelview = modelview.Mul4(mgl.Translate3D(rcx, rcy, 0))
 		} else if projectionMode == 2 {
-			matrix := [16]float32{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
-
-			//gl.Translated(0, -float64(sys.scrrect[3]), 2048)
-			gl.Translated(float64(rcx)-float64(sys.scrrect[2]/2.0)-float64(xOffset), float64(rcy)-float64(sys.scrrect[3]/2.0)+float64(yOffset), float64(fLength))
-			gl.MultMatrixf(&matrix[0])
-
-			gl.Frustum(-float64(sys.scrrect[2])/2/float64(fLength), float64(sys.scrrect[2])/2/float64(fLength), -float64(sys.scrrect[3])/2/float64(fLength), float64(sys.scrrect[3])/2/float64(fLength), 1.0, 65535)
-
-			gl.Translated(float64(xOffset), -float64(yOffset), -float64(fLength))
+			matrix := mgl.Mat4{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
+			//modelview = modelview.Mul4(mgl.Translate3D(0, -float32(sys.scrrect[3]), 2048))
+			modelview = modelview.Mul4(mgl.Translate3D(rcx-float32(sys.scrrect[2])/2.0-xOffset, rcy-float32(sys.scrrect[3])/2.0+yOffset, fLength))
+			modelview = modelview.Mul4(matrix)
+			modelview = modelview.Mul4(mgl.Frustum(-float32(sys.scrrect[2])/2/fLength, float32(sys.scrrect[2])/2/fLength, -float32(sys.scrrect[3])/2/fLength, float32(sys.scrrect[3])/2/fLength, 1.0, 65535))
+			modelview = modelview.Mul4(mgl.Translate3D(xOffset, -yOffset, -fLength))
 		}
-		gl.Scaled(1, float64(vs), 1)
-		gl.Rotated(float64(-xagl), 1.0, 0.0, 0.0)
-		gl.Rotated(float64(yagl), 0.0, 1.0, 0.0)
-		gl.Rotated(float64(agl), 0.0, 0.0, 1.0)
-		gl.Translated(float64(-rcx), float64(-rcy), 0)
-		drawQuads(s, x1, y1, x2, y2, x3, y3, x4, y4)
+
+		modelview = modelview.Mul4(mgl.Scale3D(1, vs, 1))
+		modelview = modelview.Mul4(
+			mgl.Rotate3DX(-xagl * math.Pi / 180.0).Mul3(
+			mgl.Rotate3DY(yagl * math.Pi / 180.0)).Mul3(
+			mgl.Rotate3DZ(agl * math.Pi / 180.0)).Mat4())
+		modelview = modelview.Mul4(mgl.Translate3D(-rcx, -rcy, 0))
+
+		drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		return
 	}
 	if (*tl)[3] == 1 && xbs != 0 {
@@ -448,7 +454,7 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 			}
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
+				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
 					(x3d-x4d)/float32(w), (x2d-x1d)/float32(w), tl, rcx)
 			}
 		}
@@ -465,7 +471,7 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
+				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
 					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx)
 			}
 			if (*tl)[3] != 1 && n != 0 {
@@ -489,13 +495,11 @@ func rmTileSub(s *Shader, w, h uint16, x, y float32, tl *[4]int32,
 func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, renderMode, trans int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PushMatrix()
-	gl.LoadIdentity()
-	gl.Ortho(0, float64(sys.scrrect[2]), 0, float64(sys.scrrect[3]), -65535, 65535)
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.PushMatrix()
-	gl.Translated(0, float64(sys.scrrect[3]), 0)
+
+	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
+	gl.UniformMatrix4fv(s.uProjection, 1, false, &proj[0])
+
+	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	switch {
 	case trans == -1:
 		gl.Uniform1f(s.uAlpha, 1)
@@ -505,13 +509,13 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans == -2:
 		gl.Uniform1f(s.uAlpha, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans <= 0:
 	case trans < 255:
@@ -522,7 +526,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans < 512:
 		gl.Uniform1f(s.uAlpha, 1)
@@ -532,7 +536,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
@@ -541,7 +545,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 			gl.Uniform1f(s.uAlpha, 1-float32(dst)/255)
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+			rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 			aglOver++
 		}
@@ -559,13 +563,10 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 				gl.BlendFunc(gl.ONE, gl.ONE)
 			}
 			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(s, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
+			rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
 				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 		}
 	}
-	gl.PopMatrix()
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PopMatrix()
 }
 func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 	ys, vs, agl, yagl, xagl *float32, window *[4]int32, rcx float32, rcy *float32) (
@@ -711,16 +712,14 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gl.DrawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_INT, unsafe.Pointer(&indices))
 	}
 
+	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
+	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
+
 	gl.Enable(gl.BLEND)
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PushMatrix()
-	gl.LoadIdentity()
-	gl.Ortho(0, float64(sys.scrrect[2]), 0, float64(sys.scrrect[3]), -65535, 65535)
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.PushMatrix()
-	gl.Translated(0, float64(sys.scrrect[3]), 0)
 
 	gl.UseProgram(flatShader.program)
+	gl.UniformMatrix4fv(flatShader.uModelView, 1, false, &modelview[0])
+	gl.UniformMatrix4fv(flatShader.uProjection, 1, false, &proj[0])
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(flatShader.u["color"], r, g, b)
 	gl.Uniform1i(flatShader.u["isShadow"], 0)
@@ -761,9 +760,6 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 			fill(float32(src) / 255)
 		}
 	}
-	gl.PopMatrix()
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PopMatrix()
 	gl.Disable(gl.BLEND)
 }
 
