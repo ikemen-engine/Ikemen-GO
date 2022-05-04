@@ -79,7 +79,7 @@ func (n *NormalizerLR) process(bai float64, sam *float64) float64 {
 	n.heri += n.herihenka
 	if n.heri < 0 {
 		n.heri = 0
-	} else if n.heri > 0 {
+	} else if n.heri > 1 {
 		n.heri = 1
 	}
 	*sam = s
