@@ -730,11 +730,7 @@ func systemScriptInit(l *lua.LState) {
 		} else if strArg(l, 1) == "fadein" {
 			a = math.Floor(255 - 255*(frame-1)/length)
 		}
-		if a < 0 {
-			a = 0
-		} else if a > 255 {
-			a = 255
-		}
+		a = float64(ClampF(float32(a), 0, 255))
 		if l.GetTop() >= 6 {
 			r = int32(numArg(l, 4))
 			g = int32(numArg(l, 5))

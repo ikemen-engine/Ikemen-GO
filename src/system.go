@@ -1484,8 +1484,7 @@ func (s *System) draw(x, y, scl float32) {
 					rgb = [...]int32{0xff, 0xff, 0xff}
 				}
 				for i, v := range rgb {
-					rgb[i] = Max(0, Min(0xff,
-						(v+s.allPalFX.eAdd[i])*s.allPalFX.eMul[i]>>8))
+					rgb[i] = Clamp((v+s.allPalFX.eAdd[i])*s.allPalFX.eMul[i]>>8, 0, 0xff)
 				}
 				c = uint32(rgb[2] | rgb[1]<<8 | rgb[0]<<16)
 			}

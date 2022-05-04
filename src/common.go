@@ -46,50 +46,51 @@ func RandI(x, y int32) int32 {
 func RandF(x, y float32) float32 {
 	return x + float32(Random())*(y-x)/float32(IMax)
 }
+
 func Min(arg ...int32) (min int32) {
-	if len(arg) > 0 {
-		min = arg[0]
-		for i := 1; i < len(arg); i++ {
-			if arg[i] < min {
-				min = arg[i]
-			}
+	for i, x := range arg {
+		if i == 0 || x < min {
+			min = x
 		}
 	}
 	return
 }
+
 func Max(arg ...int32) (max int32) {
-	if len(arg) > 0 {
-		max = arg[0]
-		for i := 1; i < len(arg); i++ {
-			if arg[i] > max {
-				max = arg[i]
-			}
+	for i, x := range arg {
+		if i == 0 || x > max {
+			max = x
 		}
 	}
 	return
 }
+
 func MinF(arg ...float32) (min float32) {
-	if len(arg) > 0 {
-		min = arg[0]
-		for i := 1; i < len(arg); i++ {
-			if arg[i] < min {
-				min = arg[i]
-			}
+	for i, x := range arg {
+		if i == 0 || x < min {
+			min = x
 		}
 	}
 	return
 }
+
 func MaxF(arg ...float32) (max float32) {
-	if len(arg) > 0 {
-		max = arg[0]
-		for i := 1; i < len(arg); i++ {
-			if arg[i] > max {
-				max = arg[i]
-			}
+	for i, x := range arg {
+		if i == 0 || x > max {
+			max = x
 		}
 	}
 	return
 }
+
+func Clamp(x, a, b int32) int32 {
+	return Max(a, Min(x, b))
+}
+
+func ClampF(x, a, b float32) float32 {
+	return MaxF(a, MinF(x, b))
+}
+
 func Abs(i int32) int32 {
 	if i < 0 {
 		return -i

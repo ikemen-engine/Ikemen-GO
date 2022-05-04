@@ -111,7 +111,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 			su = uint32(-Max(-255, a[i]))
 			a[i] = 0
 		}
-		m[i] = Max(0, Min(255*256, m[i]))
+		m[i] = Clamp(m[i], 0, 255*256)
 		a[i] = Min(255*256*256/Max(1, m[i]), a[i])
 		sub |= su << uint(i*8)
 	}
@@ -206,9 +206,9 @@ func (pf *PalFX) synthesize(pfx PalFX) {
 }
 
 func (pf *PalFX) setColor(r, g, b int32) {
-	rNormalized := Max(0, Min(255, r))
-	gNormalized := Max(0, Min(255, g))
-	bNormalized := Max(0, Min(255, b))
+	rNormalized := Clamp(r, 0, 255)
+	gNormalized := Clamp(g, 0, 255)
+	bNormalized := Clamp(b, 0, 255)
 
 	pf.enable = true
 	pf.eColor = 1

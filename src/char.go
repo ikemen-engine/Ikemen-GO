@@ -807,7 +807,7 @@ func (ai *AfterImage) clear() {
 }
 func (ai *AfterImage) setPalColor(color int32) {
 	if len(ai.palfx) > 0 {
-		ai.palfx[0].eColor = float32(Max(0, Min(256, color))) / 256
+		ai.palfx[0].eColor = float32(Clamp(color, 0, 256)) / 256
 	}
 }
 func (ai *AfterImage) setPalInvertall(invertall bool) {
@@ -3087,7 +3087,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	}
 	if ch := c.soundChannels.New(chNo, lowpriority); ch != nil {
 		ch.Play(s, loop, freqmul)
-		vol = Max(-25600, Min(25600, vol))
+		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
 		if f {
 			ch.SetVolume(256)
@@ -4177,7 +4177,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	}
 }
 func (c *Char) lifeSet(life int32) {
-	if c.life = Max(0, Min(c.lifeMax, life)); c.life == 0 {
+	if c.life = Clamp(life, 0, c.lifeMax); c.life == 0 {
 		if c.player && c.teamside != -1 {
 			if c.alive() && c.helperIndex == 0 {
 				if c.ss.moveType != MT_H {
@@ -4216,7 +4216,7 @@ func (c *Char) setPower(pow int32) {
 		if sys.maxPowerMode {
 			c.power = c.powerMax
 		} else {
-			c.power = Max(0, Min(c.powerMax, pow))
+			c.power = Clamp(pow, 0, c.powerMax)
 		}
 	}
 }
@@ -4239,7 +4239,7 @@ func (c *Char) dizzyPointsAdd(add int32) {
 }
 func (c *Char) dizzyPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.stunbar {
-		c.dizzyPoints = Max(0, Min(c.dizzyPointsMax, set))
+		c.dizzyPoints = Clamp(set, 0, c.dizzyPointsMax)
 	}
 }
 func (c *Char) guardPointsAdd(add int32) {
@@ -4247,7 +4247,7 @@ func (c *Char) guardPointsAdd(add int32) {
 }
 func (c *Char) guardPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.guardbar {
-		c.guardPoints = Max(0, Min(c.guardPointsMax, set))
+		c.guardPoints = Clamp(set, 0, c.guardPointsMax)
 	}
 }
 func (c *Char) redLifeAdd(add float64, absolute bool) {
@@ -4262,7 +4262,7 @@ func (c *Char) redLifeSet(set int32) {
 	if c.life == 0 {
 		c.redLife = 0
 	} else if !sys.roundEnd() && sys.lifebar.redlifebar {
-		c.redLife = Max(0, Min(c.lifeMax-c.life, set))
+		c.redLife = Clamp(set, 0, c.lifeMax-c.life)
 	}
 }
 func (c *Char) score() float32 {

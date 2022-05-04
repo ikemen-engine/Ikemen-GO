@@ -3564,10 +3564,10 @@ func (l *Lifebar) step() {
 			if c.alive() || !c.scf(SCF_over) {
 				// Fake Combo
 				if c.receivedHits > cb[^i&1] {
-					cb[^i&1] = Min(999, Max(c.fakeReceivedHits, cb[^i&1]))
+					cb[^i&1] = Clamp(cb[^i&1], c.fakeReceivedHits, 999)
 				}
 				if c.fakeReceivedHits > fcb[^i&1] {
-					fcb[^i&1] = Min(999, Max(c.fakeReceivedHits, fcb[^i&1]))
+					fcb[^i&1] = Clamp(fcb[^i&1], c.fakeReceivedHits, 999)
 					cd[^i&1] = Max(c.fakeComboDmg, cd[^i&1])
 					cp[^i&1] = float32(cd[^i&1]) / float32(c.lifeMax) * 100
 				}

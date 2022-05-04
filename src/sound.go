@@ -76,12 +76,7 @@ func (n *NormalizerLR) process(bai float64, sam *float64) float64 {
 	}
 	n.fue += (1.0 - n.fue*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
 	n.heikin += (math.Abs(s) - n.heikin) / (audioFrequency * 2)
-	n.heri += n.herihenka
-	if n.heri < 0 {
-		n.heri = 0
-	} else if n.heri > 1 {
-		n.heri = 1
-	}
+	n.heri = float64(ClampF(float32(n.heri + n.herihenka), 0, 1))
 	*sam = s
 	return bai
 }
@@ -429,7 +424,7 @@ func (s *SoundChannel) Stop() {
 }
 func (s *SoundChannel) SetVolume(vol float32) {
 	if s.ctrl != nil {
-		s.sfx.volume = float32(math.Max(0, math.Min(float64(vol), 512)))
+		s.sfx.volume = ClampF(vol, 0, 512)
 	}
 }
 func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
