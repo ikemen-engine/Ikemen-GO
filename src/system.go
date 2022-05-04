@@ -1337,12 +1337,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
-					s.finish = FT_KO
-					if ko[0] {
-						s.winTeam = 1
-					} else {
-						s.winTeam = 0
-					}
+					s.finish, s.winTeam = FT_KO, Btoi(ko[0])
 				}
 			}
 			if ft != s.finish {

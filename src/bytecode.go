@@ -540,11 +540,7 @@ func (bv *BytecodeValue) SetI(i int32) {
 }
 func (bv *BytecodeValue) SetB(b bool) {
 	bv.t = VT_Bool
-	if b {
-		bv.v = 1
-	} else {
-		bv.v = 0
-	}
+	bv.v = Btoi(b)
 }
 
 func bvNone() BytecodeValue {
@@ -2412,12 +2408,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		case tagIn_self:
-			sti := exp[0].evalB(c)
-			if sti {
-				tagSCF = 1
-			} else {
-				tagSCF = 0
-			}
+			tagSCF = Btoi(exp[0].evalB(c))
 		case tagIn_partner:
 			pti := exp[0].evalI(c)
 			if pti >= 0 {
@@ -2432,12 +2423,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 				tagSCF = 1
 			}
 		case tagIn_partnerctrl:
-			pctrls := exp[0].evalB(c)
-			if pctrls {
-				partnerCtrlSetting = 1
-			} else {
-				partnerCtrlSetting = 0
-			}
+			partnerCtrlSetting = Btoi(exp[0].evalB(c))
 		case tagIn_leader:
 			if crun.teamside != -1 {
 				ld := int(exp[0].evalI(c)) - 1
@@ -2497,11 +2483,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagOut_self:
-			if exp[0].evalB(c) {
-				tagSCF = 1
-			} else {
-				tagSCF = 0
-			}
+			tagSCF = Btoi(exp[0].evalB(c))
 		case tagOut_stateno:
 			sn := exp[0].evalI(c)
 			if sn >= 0 {
