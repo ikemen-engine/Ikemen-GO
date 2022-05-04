@@ -536,7 +536,6 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -547,27 +546,25 @@ func (s *Sprite) SetPxl(px []byte) {
 		)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP)
-		gl.Disable(gl.TEXTURE_2D)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	}
 }
 
-func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sprDepth int32) {
+func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
-		gl.Enable(gl.TEXTURE_2D)
 		s.Tex = newTexture()
 		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 		if sprDepth == 32 {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
 				sprWidth, sprHeight,
-				0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+				0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 		} else {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
 				sprWidth, sprHeight,
-				0, gl.RGB, gl.UNSIGNED_BYTE, data)
+				0, gl.RGB, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 		}
 		if sys.pngFilter {
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -578,7 +575,6 @@ func (s *Sprite) SetRaw(data unsafe.Pointer, sprWidth int32, sprHeight int32, sp
 		}
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.Disable(gl.TEXTURE_2D)
 	}
 }
 
@@ -944,7 +940,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 			// Do nothing, px is already in the expected format
 		case 24, 32:
 			isRaw = true
-			s.SetRaw(unsafe.Pointer(&px[0]), int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
+			s.SetRaw(px, int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
 		default:
 			return Error("Unknown color depth")
 		}
@@ -1000,7 +996,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 				rgba = image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
-			s.SetRaw(unsafe.Pointer(&rgba.Pix[0]), int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
+			s.SetRaw(rgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		default:
 			return Error("Unknown format")
 		}
@@ -1028,52 +1024,42 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
-		//読み込み済みパレットの情報が渡されてるか //Is the loaded palette information passed?
-		if paltex != nil {
-			gl.ActiveTexture(gl.TEXTURE1)
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*paltex))
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
-			return
-		}
-		//無い場合暫定の方法でパレットテクスチャ生成 / If not, generate palette texture by provisional method
-		PalEqual := true
-		if len(pal) != len(s.paltemp) {
-			PalEqual = false
-		} else {
-			for i := range pal {
-				if pal[i] != s.paltemp[i] {
-					PalEqual = false
-					break
+		// If no loaded palette information is passed, check whether the cached one is still valid
+		hasPalette := true
+		if paltex == nil {
+			if s.PalTex == nil || len(pal) != len(s.paltemp) {
+				hasPalette = false
+			} else {
+				for i := range pal {
+					if pal[i] != s.paltemp[i] {
+						hasPalette = false
+						break
+					}
 				}
 			}
-		}
-		if PalEqual {
-			if s.PalTex == nil {
-				return
+			// If cached texture is valid, use it
+			if hasPalette {
+				paltex = s.PalTex
 			}
-			gl.ActiveTexture(gl.TEXTURE1)
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
+		}
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		if hasPalette {
+			gl.BindTexture(gl.TEXTURE_2D, uint32(*paltex))
 		} else {
-			gl.Enable(gl.TEXTURE_1D)
-			gl.ActiveTexture(gl.TEXTURE1)
+			// Generate and cache palette texture
 			s.PalTex = newTexture()
-			gl.BindTexture(gl.TEXTURE_1D, uint32(*s.PalTex))
+			gl.BindTexture(gl.TEXTURE_2D, uint32(*s.PalTex))
 			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-			gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
 				unsafe.Pointer(&pal[0]))
-			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-			gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
-			RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1,
-				rxadd, agl, yagl, xagl, trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
-			gl.Disable(gl.TEXTURE_1D)
 		}
+		RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	}
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,

@@ -2294,15 +2294,13 @@ func (c *Char) loadPalette() {
 					gi.palExist[i] = true
 
 					//パレットテクスチャ生成
-					gl.Enable(gl.TEXTURE_1D)
 					gi.sff.palList.PalTex[i] = newTexture()
-					gl.BindTexture(gl.TEXTURE_1D, uint32(*gi.sff.palList.PalTex[i]))
+					gl.BindTexture(gl.TEXTURE_2D, uint32(*gi.sff.palList.PalTex[i]))
 					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-					gl.TexImage1D(gl.TEXTURE_1D, 0, gl.RGBA, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+					gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
 						unsafe.Pointer(&pl[0]))
-					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-					gl.TexParameteri(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-					gl.Disable(gl.TEXTURE_1D)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 					tmp = i + 1
 				}
