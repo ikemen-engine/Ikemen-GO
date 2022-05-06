@@ -4,8 +4,8 @@ import (
 	"math"
 	"unsafe"
 
-	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/gl/v2.1/gl"
+	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
 type Shader struct {

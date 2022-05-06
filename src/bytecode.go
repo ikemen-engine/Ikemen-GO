@@ -540,7 +540,7 @@ func (bv *BytecodeValue) SetI(i int32) {
 }
 func (bv *BytecodeValue) SetB(b bool) {
 	bv.t = VT_Bool
-	bv.v = Btoi(b)
+	bv.v = float64(Btoi(b))
 }
 
 func bvNone() BytecodeValue {
@@ -2385,10 +2385,10 @@ const (
 
 func (sc tagIn) Run(c *Char, _ []int32) bool {
 	crun := c
-	var tagSCF int = -1
+	var tagSCF int32 = -1
 	var partnerNo int32 = -1
 	var partnerStateNo int32 = -1
-	var partnerCtrlSetting int = -1
+	var partnerCtrlSetting int32 = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case tagIn_stateno:
@@ -2477,7 +2477,7 @@ const (
 
 func (sc tagOut) Run(c *Char, _ []int32) bool {
 	crun := c
-	var tagSCF int = -1
+	var tagSCF int32 = -1
 	var partnerNo int32 = -1
 	var partnerStateNo int32 = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
