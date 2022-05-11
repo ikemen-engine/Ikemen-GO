@@ -2555,8 +2555,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player, '_cursor_move_snd'))
 			start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
 			start.c[player].selRef = start.f_selGrid(start.c[player].cell + 1).char_ref
-			--update temp data
-			local getAnim = false
+			-- temp data not existing yet
 			if start.p[side].t_selTemp[member] == nil then
 				table.insert(start.p[side].t_selTemp, {
 					ref = start.c[player].selRef,
@@ -2566,60 +2565,62 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face2', '', true),
 					slide_dist = {0, 0},
 				})
-			elseif start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then
-				--start.p[side].t_selTemp[member].pal = 1
-				start.p[side].t_selTemp[member].ref = start.c[player].selRef
-				start.p[side].t_selTemp[member].cell = start.c[player].cell
-				start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
-				start.p[side].t_selTemp[member].slide_dist = {0, 0}
-				getAnim = true
-			end
-			--randomselect cell
-			if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
-				if start.c[player].randCnt > 0 then
-					start.c[player].randCnt = start.c[player].randCnt - 1
-					start.c[player].selRef = start.c[player].randRef
-				else
-					if motif.select_info.random_move_snd_cancel == 1 then
-						sndStop(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
-					end
-					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
-					start.c[player].randCnt = motif.select_info.cell_random_switchtime
-					start.c[player].selRef = start.f_randomChar(side)
-					if start.c[player].randRef ~= start.c[player].selRef or start.p[side].t_selTemp[member].anim_data == nil then
-						getAnim = true
-						start.c[player].randRef = start.c[player].selRef
+			else
+				local updateAnim = false
+				local slotSelected = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				-- cursor changed position or character change within current slot
+				if start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then
+					--start.p[side].t_selTemp[member].pal = 1
+					start.p[side].t_selTemp[member].ref = start.c[player].selRef
+					start.p[side].t_selTemp[member].cell = start.c[player].cell
+					start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
+					start.p[side].t_selTemp[member].slide_dist = {0, 0}
+					updateAnim = true
+				end
+				-- cursor at randomselect cell
+				if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
+					if start.c[player].randCnt > 0 then
+						start.c[player].randCnt = start.c[player].randCnt - 1
+						start.c[player].selRef = start.c[player].randRef
+					else
+						if motif.select_info.random_move_snd_cancel == 1 then
+							sndStop(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
+						end
+						sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_random_move_snd')[1], start.f_getCursorData(player, '_random_move_snd')[2])
+						start.c[player].randCnt = motif.select_info.cell_random_switchtime
+						start.c[player].selRef = start.f_randomChar(side)
+						if start.c[player].randRef ~= start.c[player].selRef or start.p[side].t_selTemp[member].anim_data == nil then
+							updateAnim = true
+							start.c[player].randRef = start.c[player].selRef
+						end
 					end
 				end
-			end
-			--get anim data
-			if getAnim then
-				start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
-				start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face2', '', true)
-			end
-			--cell selected or select screen timer reached 0
-			if start.c[player].selRef ~= nil and ((start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY) and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1)) then
-				sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
-				local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
-				--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
-				start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
-				if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
-					start.p[side].t_selTemp[member].pal = 1
+				-- update anim data
+				if updateAnim then
+					start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '', true)
+					start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face2', '', true)
 				end
-				--anim update
-				local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
-				if done_anim ~= -1 then
+				-- cell selected or select screen timer reached 0
+				if (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1) then
+					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
+					local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
+					--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
+					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
+					if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
+						start.p[side].t_selTemp[member].pal = 1
+					end
 					-- if select anim differs from done anim and coop or pX.face.num allows to display more than 1 portrait or it's the last team member
-					if start.p[side].t_selTemp[member].anim ~= done_anim and (main.coop or motif.select_info['p' .. side .. '_face_num'] > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
+					local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
+					if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.coop or motif.select_info['p' .. side .. '_face_num'] > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 						start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false) or start.p[side].t_selTemp[member].anim_data
 						if start.p[side].t_selTemp[member].anim_data ~= nil then
 							start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
 						end
 					end
+					start.p[side].t_selTemp[member].ref = start.c[player].selRef
+					main.f_cmdBufReset(cmd)
+					selectState = 1
 				end
-				start.p[side].t_selTemp[member].ref = start.c[player].selRef
-				main.f_cmdBufReset(cmd)
-				selectState = 1
 			end
 		--selection menu
 		elseif selectState == 1 then
