@@ -6,15 +6,19 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
-	findfont "github.com/flopp/go-findfont"
-	"github.com/ikemen-engine/glfont"
 )
 
 // FntCharImage stores sprite and position
 type FntCharImage struct {
 	ofs, w uint16
 	img    []Sprite
+}
+
+// TtfFont implements TTF font rendering on supported platforms
+type TtfFont interface {
+	SetColor(red float32, green float32, blue float32, alpha float32)
+	Width(scale float32, fs string, argv ...interface{}) float32
+	Printf(x, y float32, scale float32, align int32, blend bool, window [4]int32, fs string, argv ...interface{}) error
 }
 
 // Fnt is a interface for basic font information
@@ -29,7 +33,7 @@ type Fnt struct {
 	Spacing   [2]int32
 	colors    int32
 	offset    [2]int32
-	ttf       *glfont.Font
+	ttf       TtfFont
 	paltexs   map[[4]int32]*Texture
 }
 
@@ -302,45 +306,14 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 
 	if len(is["file"]) > 0 {
 		if f.Type == "truetype" {
-			loadFntTtf(f, filename, is["file"], height)
+			LoadFntTtf(f, filename, is["file"], height)
 		} else {
-			loadFntSff(f, filename, is["file"])
+			LoadFntSff(f, filename, is["file"])
 		}
 	}
 }
 
-func loadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
-	//Search in local directory
-	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
-	//Search in system directory
-	fp := fileDir
-	if fp = FileExist(fp); len(fp) == 0 {
-		var err error
-		fileDir, err = findfont.Find(fileDir)
-		if err != nil {
-			panic(err)
-		}
-	}
-	//Load ttf
-	if height == -1 {
-		height = int32(f.Size[1])
-	} else {
-		f.Size[1] = uint16(height)
-	}
-	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight), sys.fontShaderVer)
-	if err != nil {
-		panic(err)
-	}
-	f.ttf = ttf
-
-	//Create Ttf dummy palettes
-	f.palettes = make([][256]uint32, 1)
-	for i := 0; i < 256; i++ {
-		f.palettes[0][i] = 0
-	}
-}
-
-func loadFntSff(f *Fnt, fontfile string, filename string) {
+func LoadFntSff(f *Fnt, fontfile string, filename string) {
 	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
 	sff, err := loadSff(fileDir, false)
 
