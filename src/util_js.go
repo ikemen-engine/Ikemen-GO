@@ -3,8 +3,23 @@
 package main
 
 import (
+	"io"
 	"syscall/js"
 )
+
+// Log writer implementation
+type JsLogWriter struct {
+	console_log js.Value
+}
+
+func (l JsLogWriter) Write(p []byte) (n int, err error) {
+	l.console_log.Invoke(string(p))
+	return len(p), nil
+}
+
+func NewLogWriter() io.Writer {
+	return JsLogWriter{js.Global().Get("console").Get("log")}
+}
 
 // Message box implementation using basic JavaScript alert()
 var alert = js.Global().Get("alert")

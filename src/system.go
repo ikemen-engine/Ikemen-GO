@@ -71,7 +71,7 @@ var sys = System{
 	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
-	errLog:                log.New(os.Stderr, "", 0),
+	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
 	keyInput:              glfw.KeyUnknown,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
