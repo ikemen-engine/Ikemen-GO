@@ -648,16 +648,11 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
-	paltex := gl.CreateTexture()
-	gl.BindTexture(gl.TEXTURE_2D, paltex)
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE,
+	paltex := newTexture()
+	paltex.SetData(256, 1, 32, false,
 		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
-	gl.DeleteTexture(paltex)
 }
 
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,

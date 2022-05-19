@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 	"unsafe"
-
-	gl "github.com/fyne-io/gl-js"
 )
 
 const MaxPalNo = 12
@@ -2294,12 +2292,8 @@ func (c *Char) loadPalette() {
 
 					//パレットテクスチャ生成
 					gi.sff.palList.PalTex[i] = newTexture()
-					gl.BindTexture(gl.TEXTURE_2D, gi.sff.palList.PalTex[i].handle)
-					gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-					gl.TexImage2D(gl.TEXTURE_2D, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE,
+					gi.sff.palList.PalTex[i].SetData(256, 1, 32, false,
 						unsafe.Slice((*byte)(unsafe.Pointer(&pl[0])), len(pl) * 4))
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-					gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 					tmp = i + 1
 				}
