@@ -3,10 +3,18 @@
 package main
 
 import (
+	"io"
+	"os"
+
 	findfont "github.com/flopp/go-findfont"
 	"github.com/ikemen-engine/glfont"
 	"github.com/sqweek/dialog"
 )
+
+// Log writer implementation
+func NewLogWriter() io.Writer {
+	return os.Stderr
+}
 
 // Message box implementation
 func ShowInfoDialog(message, title string) {
