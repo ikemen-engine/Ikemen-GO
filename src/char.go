@@ -1674,7 +1674,6 @@ type Char struct {
 	minus                 int8
 	platformPosY          float32
 	groundAngle           float32
-	movedY                bool
 	ownpal                bool
 	winquote              int32
 	memberNo              int
@@ -3178,7 +3177,6 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
 	}
-	c.movedY = false
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
 			c.stateChange2()
@@ -3560,9 +3558,6 @@ func (c *Char) setX(x float32) {
 func (c *Char) setY(y float32) {
 	c.oldPos[1], c.drawPos[1] = y, y
 	c.setPosY(y)
-	if y != 0 {
-		c.movedY = true
-	}
 }
 func (c *Char) setZ(z float32) {
 	c.oldPos[2], c.drawPos[1] = z, z
@@ -3573,9 +3568,6 @@ func (c *Char) addX(x float32) {
 }
 func (c *Char) addY(y float32) {
 	c.setY(c.pos[1] + y)
-	if y != 0 {
-		c.movedY = true
-	}
 }
 func (c *Char) addZ(z float32) {
 	c.setZ(c.pos[2] + z)
@@ -3587,18 +3579,12 @@ func (c *Char) addXV(xv float32) {
 }
 func (c *Char) addYV(yv float32) {
 	c.vel[1] += yv
-	if yv != 0 {
-		c.movedY = true
-	}
 }
 func (c *Char) setXV(xv float32) {
 	c.vel[0] = xv
 }
 func (c *Char) setYV(yv float32) {
 	c.vel[1] = yv
-	if yv != 0 {
-		c.movedY = true
-	}
 }
 func (c *Char) setZV(zv float32) {
 	c.vel[2] = zv
@@ -5424,6 +5410,15 @@ func (c *Char) update(cvmin, cvmax,
 				if !c.sf(CSF_nofallcount) {
 					c.ghv.fallcount++
 				}
+				if c.ghv.fallcount > 1 && c.ss.no == 5100 {
+					if c.recoverTime > 0 {
+						c.recoverTime = int32(math.Floor(float64(c.recoverTime) / 2))
+					}
+					if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
+						c.hitby[0].flag = ^int32(ST_SCA)
+						c.hitby[0].time = 360
+					}
+				}
 			}
 		}
 		if c.acttmp > 0 && c.ss.moveType != MT_H || c.roundState() == 2 &&
@@ -5609,12 +5604,17 @@ func (c *Char) tick() {
 		if c.stchtmp {
 			c.ss.prevno = 0
 		} else if c.ss.stateType == ST_L {
-			// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/ikemen-engine/Ikemen-GO/issues/272
-			//if c.movedY {
-			//	c.changeStateEx(5020, pn, -1, 0, false)
-			//} else {
-			c.changeStateEx(5080, pn, -1, 0, false)
-			//}
+			if c.pos[1] == 0 {
+				c.changeStateEx(5080, pn, -1, 0, false)
+				if c.recoverTime > 0 {
+					c.recoverTime--
+				}
+				if c.ghv.yvel != 0 {
+					c.pos[1] += 15 / c.localscl
+				}
+			} else {
+				c.changeStateEx(5020, pn, -1, 0, false)
+			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -5650,7 +5650,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
-		if c.hitPauseTime <= 0 && c.ss.stateType == ST_L && c.recoverTime > 0 &&
+		if c.recoverTime > 0 && c.ghv.fallcount > 0 &&
 			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
 				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
@@ -6071,14 +6071,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
 						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						// TODO: ask NeatUnsou for reasoning behind movedY flag: https://github.com/ikemen-engine/Ikemen-GO/issues/272
-						//if getter.movedY {
-						//	ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
-						//} else {
 						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
-						//}
 						ghv.fallf = hd.ground_fall
-						if !hd.down_bounce {
+						if !hd.down_bounce && getter.pos[1] == 0 && ghv.yvel != 0 {
 							ghv.fall.xvelocity = float32(math.NaN())
 							ghv.fall.yvelocity = 0
 						}
