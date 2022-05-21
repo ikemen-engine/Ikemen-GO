@@ -53,7 +53,7 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 }
 
 func (n *Normalizer) Err() error {
-        return n.streamer.Err()
+	return n.streamer.Err()
 }
 
 type NormalizerLR struct {
@@ -281,8 +281,8 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 		if err := read(&nextSubHeaderOffset); err != nil {
 			return nil, err
 		}
-		var subFileLenght uint32
-		if err := read(&subFileLenght); err != nil {
+		var subFileLength uint32
+		if err := read(&subFileLength); err != nil {
 			return nil, err
 		}
 		var num [2]int32
@@ -462,28 +462,28 @@ func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
 func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
-        ch = Min(255, ch)
-        if ch >= 0 {
-                if lowpriority {
-                        if s.count() > ch && s.channels[ch].IsPlaying() {
-                                return nil
-                        }
-                }
-                if s.count() < ch+1 {
+	ch = Min(255, ch)
+	if ch >= 0 {
+		if lowpriority {
+			if s.count() > ch && s.channels[ch].IsPlaying() {
+				return nil
+			}
+		}
+		if s.count() < ch+1 {
 			s.SetSize(ch+1)
-                }
+		}
 		s.channels[ch].Stop()
-                return &s.channels[ch]
-        }
-        if s.count() < 256 {
+		return &s.channels[ch]
+	}
+	if s.count() < 256 {
 		s.SetSize(256)
-        }
-        for i := 255; i >= 0; i-- {
-                if !s.channels[i].IsPlaying() {
-                        return &s.channels[i]
-                }
-        }
-        return nil
+	}
+	for i := 255; i >= 0; i-- {
+		if !s.channels[i].IsPlaying() {
+			return &s.channels[i]
+		}
+	}
+	return nil
 }
 func (s *SoundChannels) reserveChannel() *SoundChannel {
 	for i := range s.channels {
