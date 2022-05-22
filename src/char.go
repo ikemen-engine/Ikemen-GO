@@ -989,10 +989,11 @@ func (e *Explod) setPos(c *Char) {
 			e.bindtime = 1
 		}
 	}
-	if e.space >= Space_stage {
+	if e.space == Space_stage && e.bindId >= -1 {
 		e.postype = PT_N
 	}
-	if e.space <= Space_none {
+	if e.space <= Space_none || (e.space == Space_stage && e.bindId < -1) ||
+		(e.space == Space_screen && e.postype <= PT_R) {
 		switch e.postype {
 		case PT_P1:
 			pPos(c)
@@ -5650,7 +5651,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
-		if c.recoverTime > 0 && c.ghv.fallcount > 0 &&
+		if c.recoverTime > 0 && (c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
 			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
 				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
