@@ -521,6 +521,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		pal = palfx.getFxPal(f.palettes[bank][:], false)
 	}
 
+	f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = nil
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
 	}
