@@ -48,7 +48,7 @@ NOTE: InstallBuilder is free for opensource projects. But you need to [get a lic
 Do not include copyrighted dependencies in the bundle.
 
 ## Features added since Mugen
-Refer to the wiki article [Details of new features](https://github.com/ikemen-engine/Ikemen-GO/wiki/Details-of-new-features) to see new features added that are not available in Mugen 1.1 and bellow.
+Refer to the wiki article [Details of new features](https://github.com/ikemen-engine/Ikemen-GO/wiki) to see new features added that are not available in Mugen 1.1 and bellow.
 
 ## References
 Suehiro repo (Original creator of the engine)  

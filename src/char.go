@@ -6071,12 +6071,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else if getter.ss.stateType == ST_L {
 						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
-						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
 						ghv.fallf = hd.ground_fall
-						if !hd.down_bounce && getter.pos[1] == 0 && ghv.yvel != 0 {
-							ghv.fall.xvelocity = float32(math.NaN())
-							ghv.fall.yvelocity = 0
+						if getter.pos[1] == 0 {
+							ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
+							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+							if !hd.down_bounce && ghv.yvel != 0 {
+								ghv.fall.xvelocity = float32(math.NaN())
+								ghv.fall.yvelocity = 0
+							}
+						} else {
+							ghv.xvel = hd.air_velocity[0] * c.localscl / getter.localscl
+							ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
 						}
 					} else {
 						ghv.ctrltime = hd.ground_hittime
