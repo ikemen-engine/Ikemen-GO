@@ -1,68 +1,73 @@
 package main
 
 import (
+	"encoding/binary"
+	"fmt"
 	"math"
 	"unsafe"
 
-	"github.com/go-gl/gl/v2.1/gl"
 	mgl "github.com/go-gl/mathgl/mgl32"
+	gl "github.com/fyne-io/gl-js"
+	"golang.org/x/mobile/exp/f32"
 )
 
 type Shader struct {
 	// Program
-	program uint32
+	program gl.Program
 	// Attribute locations
-	aPos, aUv int32
+	aPos, aUv gl.Attrib
 	// Common uniforms
-	uModelView, uProjection int32
-	uTexture int32
-	uAlpha int32
+	uModelView, uProjection gl.Uniform
+	uTexture gl.Uniform
+	uAlpha gl.Uniform
 	// Additional uniforms
-	u map[string]int32
+	u map[string]gl.Uniform
 }
 
-func newShader(program uint32) (s *Shader) {
+func newShader(program gl.Program) (s *Shader) {
 	s = &Shader{program: program}
 
-	s.aPos = gl.GetAttribLocation(s.program, gl.Str("position\x00"))
-	s.aUv = gl.GetAttribLocation(s.program, gl.Str("uv\x00"))
+	s.aPos = gl.GetAttribLocation(s.program, "position")
+	s.aUv = gl.GetAttribLocation(s.program, "uv")
 
-	s.uModelView = gl.GetUniformLocation(s.program, gl.Str("modelview\x00"))
-	s.uProjection = gl.GetUniformLocation(s.program, gl.Str("projection\x00"))
-	s.uTexture = gl.GetUniformLocation(s.program, gl.Str("tex\x00"))
-	s.uAlpha = gl.GetUniformLocation(s.program, gl.Str("alpha\x00"))
-	s.u = make(map[string]int32)
+	s.uModelView = gl.GetUniformLocation(s.program, "modelview")
+	s.uProjection = gl.GetUniformLocation(s.program, "projection")
+	s.uTexture = gl.GetUniformLocation(s.program, "tex")
+	s.uAlpha = gl.GetUniformLocation(s.program, "alpha")
+	s.u = make(map[string]gl.Uniform)
 
 	return
 }
 
 func (s *Shader) RegisterUniforms(names ...string) {
 	for _, name := range names {
-		s.u[name] = gl.GetUniformLocation(s.program, gl.Str(name + "\x00"))
+		s.u[name] = gl.GetUniformLocation(s.program, name)
 	}
 }
 
-var vertexUv = [8]float32{1, 1, 1, 0, 0, 1, 0, 0}
+var vertexUv = f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
 var notiling = [4]int32{0, 0, 0, 0}
 
 var mainShader, flatShader *Shader
 
 // Post-processing
-var fbo, fbo_texture uint32
+var fbo gl.Framebuffer
+var fbo_texture gl.Texture
 
 // Clasic AA
-var rbo_depth uint32
+var rbo_depth gl.Renderbuffer
 
 // MSAA
-var fbo_f, fbo_f_texture uint32
+var fbo_f gl.Framebuffer
+var fbo_f_texture gl.Texture
 
-var postShader uint32
-var postVertAttrib int32
-var postTexUniform int32
-var postTexSizeUniform int32
-var postVertices = [8]float32{-1, -1, 1, -1, -1, 1, 1, 1}
+var postShader gl.Program
+var postVertAttrib gl.Attrib
+var postTexUniform gl.Uniform
+var postTexSizeUniform gl.Uniform
+var postVertices = f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
 
-var postShaderSelect []uint32
+var postShaderSelect []gl.Program
 
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
@@ -78,7 +83,7 @@ varying vec2 texcoord;
 void main(void) {
 	texcoord = uv;
 	gl_Position = projection * (modelview * vec4(position, 0.0, 1.0));
-}` + "\x00"
+}`
 
 	// Main fragment shader, for RGBA and indexed sprites
 	fragShader := `
@@ -119,7 +124,7 @@ void main(void) {
 	if (neg) c.rgb = neg_base - c.rgb;
 	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
 	gl_FragColor = c * final_mul;
-}` + "\x00"
+}`
 
 	// “Flat” fragment shader, for shadows and plain, untextured quads
 	fragShaderFlat := `
@@ -135,32 +140,21 @@ void main(void) {
 	if (isShadow)
 		p *= texture2D(tex, texcoord).a;
 	gl_FragColor = p;
-}` + "\x00"
+}`
 
-	compile := func(shaderType uint32, src string) (shader uint32) {
+	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
 		shader = gl.CreateShader(shaderType)
-		s, _ := gl.Strs(src)
-		var l int32 = int32(len(src) - 1)
-		gl.ShaderSource(shader, 1, s, &l)
+		gl.ShaderSource(shader, "#version 100\nprecision mediump float;\n" + src)
 		gl.CompileShader(shader)
-		var ok int32
-		gl.GetShaderiv(shader, gl.COMPILE_STATUS, &ok)
+		ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)
 		if ok == 0 {
-			var err error
-			var size, l int32
-			gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &size)
-			if size > 0 {
-				str := make([]byte, size+1)
-				gl.GetShaderInfoLog(shader, size, &l, &str[0])
-				err = Error(str[:l])
-			}
-			chk(err)
+			log := gl.GetShaderInfoLog(shader)
 			gl.DeleteShader(shader)
-			panic(Error("Shader compile error"))
+			panic(Error("Shader compile error: " + log))
 		}
 		return
 	}
-	link := func(v, f uint32) (program uint32) {
+	link := func(v, f gl.Shader) (program gl.Program) {
 		program = gl.CreateProgram()
 		gl.AttachShader(program, v)
 		gl.AttachShader(program, f)
@@ -168,48 +162,45 @@ void main(void) {
 		// Mark shaders for deletion when the program is deleted
 		gl.DeleteShader(v)
 		gl.DeleteShader(f)
-		var ok int32
-		gl.GetProgramiv(program, gl.LINK_STATUS, &ok)
+		ok := gl.GetProgrami(program, gl.LINK_STATUS)
 		if ok == 0 {
-			var err error
-			var size, l int32
-			gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &size)
-			if size > 0 {
-				str := make([]byte, size+1)
-				gl.GetProgramInfoLog(program, size, &l, &str[0])
-				err = Error(str[:l])
-			}
-			chk(err)
+			log := gl.GetProgramInfoLog(program)
 			gl.DeleteProgram(program)
-			panic(Error("Link error"))
+			panic(Error("Link error: " + log))
 		}
 		return
 	}
 
 	vertObj := compile(gl.VERTEX_SHADER, vertShader)
 	fragObj := compile(gl.FRAGMENT_SHADER, fragShader)
-	mainShader = newShader(link(vertObj, fragObj))
+	prog := link(vertObj, fragObj)
+	gl.ObjectLabel(prog, "Main Shader")
+	mainShader = newShader(prog)
 	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mul", "x1x2x4x3", "isRgba", "isTrapez")
 
 	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFlat)
-	flatShader = newShader(link(vertObj, fragObj))
+	prog = link(vertObj, fragObj)
+	gl.ObjectLabel(prog, "Flat Shader")
+	flatShader = newShader(prog)
 	flatShader.RegisterUniforms("color", "isShadow")
 
 	// Compile postprocessing shaders
 
 	// Calculate total ammount of shaders loaded.
-	postShaderSelect = make([]uint32, 1+len(sys.externalShaderList))
+	postShaderSelect = make([]gl.Program, 1+len(sys.externalShaderList))
 
 	// Ident shader (no postprocessing)
 	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
 	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
 	postShaderSelect[0] = link(vertObj, fragObj)
+	gl.ObjectLabel(postShaderSelect[0], "Identity Shader")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
 		vertObj = compile(gl.VERTEX_SHADER, sys.externalShaders[0][i])
 		fragObj = compile(gl.FRAGMENT_SHADER, sys.externalShaders[1][i])
 		postShaderSelect[1+i] = link(vertObj, fragObj)
+		gl.ObjectLabel(postShaderSelect[1+i], fmt.Sprintf("Postprocess Shader #%v", i+1))
 	}
 
 	if sys.multisampleAntialiasing {
@@ -217,7 +208,8 @@ void main(void) {
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.GenTextures(1, &fbo_texture)
+	fbo_texture = gl.CreateTexture()
+	gl.ObjectLabel(fbo_texture, "Main Framebuffer Texture")
 
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, fbo_texture)
@@ -231,35 +223,37 @@ void main(void) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	if sys.multisampleAntialiasing {
-		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], false)
+		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, int(sys.scrrect[2]), int(sys.scrrect[3]), false)
 	} else {
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
 	}
 
-	gl.BindTexture(gl.TEXTURE_2D, 0)
+	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
 
 	if sys.multisampleAntialiasing {
-		gl.GenTextures(1, &fbo_f_texture)
+		fbo_f_texture = gl.CreateTexture()
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
 	} else {
-		gl.GenRenderbuffers(1, &rbo_depth)
+		rbo_depth = gl.CreateRenderbuffer()
+		gl.ObjectLabel(rbo_depth, "Depth Renderbuffer")
 		gl.BindRenderbuffer(gl.RENDERBUFFER, rbo_depth)
-		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
-		gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
+		gl.BindRenderbuffer(gl.RENDERBUFFER, gl.NoRenderbuffer)
 	}
 
-	gl.GenFramebuffers(1, &fbo)
+	fbo = gl.CreateFramebuffer()
+	gl.ObjectLabel(fbo, "Main Framebuffer")
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
 
 	if sys.multisampleAntialiasing {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, fbo_texture, 0)
 
-		gl.GenFramebuffers(1, &fbo_f)
+		fbo_f = gl.CreateFramebuffer()
 		gl.BindFramebuffer(gl.FRAMEBUFFER, fbo_f)
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture, 0)
 	} else {
@@ -267,7 +261,11 @@ void main(void) {
 		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
 	}
 
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
+		sys.errLog.Printf("framebuffer create failed: 0x%x", status)
+	}
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
 }
 
 func bindFB() {
@@ -278,16 +276,16 @@ func unbindFB() {
 	if sys.multisampleAntialiasing {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo_f)
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fbo)
-		gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.LINEAR)
+		gl.BlitFramebuffer(0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), 0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.COLOR_BUFFER_BIT, gl.LINEAR)
 	}
 
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
 
 	postShader = postShaderSelect[sys.postProcessingShader]
 
-	postVertAttrib = gl.GetAttribLocation(postShader, gl.Str("VertCoord\x00"))
-	postTexUniform = gl.GetUniformLocation(postShader, gl.Str("Texture\x00"))
-	postTexSizeUniform = gl.GetUniformLocation(postShader, gl.Str("TextureSize\x00"))
+	postVertAttrib = gl.GetAttribLocation(postShader, "VertCoord")
+	postTexUniform = gl.GetUniformLocation(postShader, "Texture")
+	postTexSizeUniform = gl.GetUniformLocation(postShader, "TextureSize")
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(postShader)
@@ -300,22 +298,41 @@ func unbindFB() {
 
 	gl.Uniform1i(postTexUniform, 0)
 	gl.Uniform2f(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-	gl.EnableVertexAttribArray(uint32(postVertAttrib))
-	gl.VertexAttribPointer(uint32(postVertAttrib), 2, gl.FLOAT, false, 0, unsafe.Pointer(&postVertices[0]))
+	vertexBuffer := gl.CreateBuffer()
+	gl.ObjectLabel(vertexBuffer, "Postprocess Vertex Buffer")
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, postVertices, gl.STATIC_DRAW)
+	gl.EnableVertexAttribArray(postVertAttrib)
+	gl.VertexAttribPointer(postVertAttrib, 2, gl.FLOAT, false, 0, 0)
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	gl.DeleteBuffer(vertexBuffer)
+	gl.DisableVertexAttribArray(postVertAttrib)
 }
 
 func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
-	vertexPosition := [8]float32{x2, y2, x3, y3, x1, y1, x4, y4}
-	gl.UniformMatrix4fv(s.uModelView, 1, false, &modelview[0])
+	gl.UniformMatrix4fv(s.uModelView, modelview[:])
 	if u, ok := s.u["x1x2x4x3"]; ok {
 		gl.Uniform4f(u, x1, x2, x4, x3)
 	}
-	gl.EnableVertexAttribArray(uint32(s.aPos))
-	gl.EnableVertexAttribArray(uint32(s.aUv))
-	gl.VertexAttribPointer(uint32(s.aPos), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
-	gl.VertexAttribPointer(uint32(s.aUv), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexUv[0]))
+	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
+	vertexBuffer := gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
+	gl.EnableVertexAttribArray(s.aPos)
+	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
+
+	uvBuffer := gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, vertexUv, gl.STATIC_DRAW)
+	gl.EnableVertexAttribArray(s.aUv)
+	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
+
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
+	gl.DeleteBuffer(vertexBuffer)
+	gl.DeleteBuffer(uvBuffer)
+	gl.DisableVertexAttribArray(s.aPos)
+	gl.DisableVertexAttribArray(s.aUv)
 }
 func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl *[4]int32, rcx float32) {
@@ -494,7 +511,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-	gl.UniformMatrix4fv(s.uProjection, 1, false, &proj[0])
+	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	switch {
@@ -605,7 +622,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
@@ -613,14 +630,14 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.Uniform1i(mainShader.uTexture, 0)
 	gl.Uniform1i(mainShader.u["pal"], 1)
 	gl.Uniform1i(mainShader.u["isRgba"], 0)
-	gl.Uniform1i(mainShader.u["isTrapez"], Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001))
-	gl.Uniform1i(mainShader.u["mask"], mask)
-	gl.Uniform1i(mainShader.u["neg"], Btoi(neg))
+	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001)))
+	gl.Uniform1i(mainShader.u["mask"], int(mask))
+	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
 	gl.Uniform1f(mainShader.u["gray"], 1-color)
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
+	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
 	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -631,35 +648,34 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
-	var paltex uint32
-	gl.GenTextures(1, &paltex)
+	paltex := gl.CreateTexture()
 	gl.BindTexture(gl.TEXTURE_2D, paltex)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-		unsafe.Pointer(&pal[0]))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE,
+		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
-	gl.DeleteTextures(1, &paltex)
+	gl.DeleteTexture(paltex)
 }
 
 func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.u["isRgba"], 1)
-	gl.Uniform1i(mainShader.u["isTrapez"], Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001))
-	gl.Uniform1i(mainShader.u["neg"], Btoi(neg))
+	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001)))
+	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
 	gl.Uniform1f(mainShader.u["gray"], 1-color)
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
+	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
 	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -668,7 +684,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, color uint32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if tex == 0 || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
 	}
 	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
@@ -678,7 +694,7 @@ func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
 		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(tex))
+	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
 	rmMainSub(flatShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
@@ -699,17 +715,20 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.Enable(gl.BLEND)
 
 	gl.UseProgram(flatShader.program)
-	gl.UniformMatrix4fv(flatShader.uModelView, 1, false, &modelview[0])
-	gl.UniformMatrix4fv(flatShader.uProjection, 1, false, &proj[0])
+	gl.UniformMatrix4fv(flatShader.uModelView, modelview[:])
+	gl.UniformMatrix4fv(flatShader.uProjection, proj[:])
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(flatShader.u["color"], r, g, b)
 	gl.Uniform1i(flatShader.u["isShadow"], 0)
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	vertexPosition := [8]float32{x2, y2, x2, y1, x1, y2, x1, y1}
-	gl.EnableVertexAttribArray(uint32(flatShader.aPos))
-	gl.VertexAttribPointer(uint32(flatShader.aPos), 2, gl.FLOAT, false, 0, unsafe.Pointer(&vertexPosition[0]))
+	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x2, y1, x1, y2, x1, y1)
+	vertexBuffer := gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
+	gl.EnableVertexAttribArray(flatShader.aPos)
+	gl.VertexAttribPointer(flatShader.aPos, 2, gl.FLOAT, false, 0, 0)
 
 	if trans == -1 {
 		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
@@ -741,6 +760,8 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 			fill(float32(src) / 255)
 		}
 	}
+	gl.DeleteBuffer(vertexBuffer)
+	gl.DisableVertexAttribArray(flatShader.aPos)
 	gl.Disable(gl.BLEND)
 }
 
@@ -754,7 +775,7 @@ void main()
 {
 	gl_Position = vec4(VertCoord, 0.0, 1.0);
 	texcoord = (VertCoord + 1.0) / 2.0;
-}` + "\x00"
+}`
 
 var identFragShader string = `
 uniform sampler2D Texture;
@@ -763,4 +784,4 @@ varying vec2 texcoord;
 
 void main(void) {
 	gl_FragColor = texture2D(Texture, texcoord);
-}` + "\x00"
+}`

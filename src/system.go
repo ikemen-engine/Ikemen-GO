@@ -18,8 +18,8 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
+	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -439,7 +439,7 @@ func (w *Window) toggleFullscreen() {
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
 	var err error
-	// Create a GLWF window.
+	// Create a GLFW window.
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -450,8 +450,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
-	// Initialize OpenGL.
-	chk(gl.Init())
 
 	// Check if the shader selected is currently available.
 	if s.postProcessingShader < int32(len(s.externalShaderList)) {
@@ -610,7 +608,7 @@ func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
 		//gl.Viewport(0, 0, int32(width), int32(height))
-		gl.Viewport(0, 0, s.scrrect[2], s.scrrect[3])
+		gl.Viewport(0, 0, int(s.scrrect[2]), int(s.scrrect[3]))
 		if s.netInput == nil {
 			gl.Clear(gl.COLOR_BUFFER_BIT)
 		}

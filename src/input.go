@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
+	glfw "github.com/fyne-io/glfw-js"
 )
 
 type CommandKey byte
