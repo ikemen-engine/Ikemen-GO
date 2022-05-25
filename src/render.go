@@ -716,7 +716,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gl.BlendEquation(gl.FUNC_ADD)
 		fill(1)
 	} else if trans == -2 {
-		gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR)
+		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		fill(1)
 	} else if trans <= 0 {
