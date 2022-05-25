@@ -3237,7 +3237,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LString(""))
 			}
 		} else {
-			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
+			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, true, false); p != nil &&
 				!(p.scf(SCF_ko) && p.scf(SCF_over)) {
 				l.Push(lua.LString(p.name))
 			} else {
