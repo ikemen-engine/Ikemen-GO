@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
+	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -53,7 +54,7 @@ func main() {
 	processCommandLine()
 
 	// Initialize OpenGL
-	chk(glfw.Init())
+	chk(glfw.Init(gl.ContextWatcher))
 	defer glfw.Terminate()
 
 	// Try reading stats

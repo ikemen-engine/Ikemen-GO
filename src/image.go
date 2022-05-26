@@ -9,10 +9,9 @@ import (
 	"io"
 	"math"
 	"os"
-	"runtime"
 	"unsafe"
 
-	"github.com/go-gl/gl/v2.1/gl"
+	gl "github.com/fyne-io/gl-js"
 )
 
 type TransType int32
@@ -25,23 +24,6 @@ const (
 	TT_add1
 	TT_sub
 )
-
-type Texture uint32
-
-func newTexture() (t *Texture) {
-	t = new(Texture)
-	gl.GenTextures(1, (*uint32)(t))
-	runtime.SetFinalizer(t, (*Texture).finalizer)
-	return
-}
-func (t *Texture) finalizer() {
-	if *t != 0 {
-		tex := *t
-		sys.mainThreadTask <- func() {
-			gl.DeleteTextures(1, (*uint32)(&tex))
-		}
-	}
-}
 
 type PalFXDef struct {
 	time      int32
@@ -537,44 +519,14 @@ func (s *Sprite) SetPxl(px []byte) {
 	}
 	sys.mainThreadTask <- func() {
 		s.Tex = newTexture()
-		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE,
-			int32(s.Size[0]), int32(s.Size[1]),
-			0, gl.LUMINANCE, gl.UNSIGNED_BYTE,
-			unsafe.Pointer(&px[0]),
-		)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		s.Tex.SetData(int32(s.Size[0]), int32(s.Size[1]), 8, false, px)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
-	// TODO: Check why ths channel operation uses too much memory.
 	sys.mainThreadTask <- func() {
 		s.Tex = newTexture()
-		gl.BindTexture(gl.TEXTURE_2D, uint32(*s.Tex))
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		if sprDepth == 32 {
-			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
-				sprWidth, sprHeight,
-				0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
-		} else {
-			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
-				sprWidth, sprHeight,
-				0, gl.RGB, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
-		}
-		if sys.pngFilter {
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		} else {
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		}
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		s.Tex.SetData(sprWidth, sprHeight, sprDepth, sys.pngFilter, data)
 	}
 }
 
@@ -1045,16 +997,12 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 
 		gl.ActiveTexture(gl.TEXTURE1)
 		if hasPalette {
-			gl.BindTexture(gl.TEXTURE_2D, uint32(*paltex))
+			gl.BindTexture(gl.TEXTURE_2D, paltex.handle)
 		} else {
-			// Generate and cache palette texture
+			// Generate, bind and cache palette texture
 			s.PalTex = newTexture()
-			gl.BindTexture(gl.TEXTURE_2D, uint32(*s.PalTex))
-			gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-				unsafe.Pointer(&pal[0]))
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			s.PalTex.SetData(256, 1, 32, false,
+				unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
@@ -1397,7 +1345,7 @@ func captureScreen() {
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	unbindFB()
-	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixdata))
+	gl.ReadPixels(pixdata, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
 	for i := 0; i < 4*width*height; i++ {
 		var x, y, j int
 		x = i % (width * 4)
