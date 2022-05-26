@@ -57,28 +57,28 @@ func (n *Normalizer) Err() error {
 }
 
 type NormalizerLR struct {
-	heri, herihenka, fue, heikin, katayori, katayori2 float64
+	edge, edgeDelta, gain, average, bias, bias2 float64
 }
 
-func (n *NormalizerLR) process(bai float64, sam *float64) float64 {
-	n.katayori += (*sam - n.katayori) / (audioFrequency/110.0 + 1)
-	n.katayori2 += (*sam - n.katayori2) / (audioFrequency/112640.0 + 1)
-	s := (n.katayori2 - n.katayori) * bai
+func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
+	n.bias += (*sam - n.bias) / (audioFrequency/110.0 + 1)
+	n.bias2 += (*sam - n.bias2) / (audioFrequency/112640.0 + 1)
+	s := (n.bias2 - n.bias) * mul
 	if math.Abs(s) > 1 {
-		bai *= math.Pow(math.Abs(s), -n.heri)
-		n.herihenka += 32 * (1 - n.heri) / float64(audioFrequency+32)
+		mul *= math.Pow(math.Abs(s), -n.edge)
+		n.edgeDelta += 32 * (1 - n.edge) / float64(audioFrequency+32)
 		s = math.Copysign(1.0, s)
 	} else {
 		tmp := (1 - math.Pow(1-math.Abs(s), 64)) * math.Pow(0.5-math.Abs(s), 3)
-		bai += bai * (n.heri*(1/32.0-n.heikin)/n.fue + tmp*n.fue*(1-n.heri)/32) /
+		mul += mul * (n.edge*(1/32.0-n.average)/n.gain + tmp*n.gain*(1-n.edge)/32) /
 			(audioFrequency*2/8.0 + 1)
-		n.herihenka -= (0.5 - n.heikin) * n.heri / (audioFrequency * 2)
+		n.edgeDelta -= (0.5 - n.average) * n.edge / (audioFrequency * 2)
 	}
-	n.fue += (1.0 - n.fue*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
-	n.heikin += (math.Abs(s) - n.heikin) / (audioFrequency * 2)
-	n.heri = float64(ClampF(float32(n.heri + n.herihenka), 0, 1))
+	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
+	n.average += (math.Abs(s) - n.average) / (audioFrequency * 2)
+	n.edge = float64(ClampF(float32(n.edge + n.edgeDelta), 0, 1))
 	*sam = s
-	return bai
+	return mul
 }
 
 // ------------------------------------------------------------------
