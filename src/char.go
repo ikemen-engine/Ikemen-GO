@@ -989,15 +989,16 @@ func (e *Explod) setPos(c *Char) {
 			e.bindtime = 1
 		}
 	}
-	if e.space >= Space_stage {
+	if e.space == Space_stage && e.bindId >= -1 {
 		e.postype = PT_N
 	}
-	if e.space <= Space_none {
+	if e.space <= Space_none || (e.space == Space_stage && e.bindId < -1) ||
+		(e.space == Space_screen && e.postype <= PT_R) {
 		switch e.postype {
 		case PT_P1:
 			pPos(c)
 		case PT_P2:
-			if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
+			if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
 				pPos(p2)
 			}
 		case PT_F, PT_B:
@@ -2576,10 +2577,10 @@ func (c *Char) enemy(n int32) *Char {
 	return nil
 }
 func (c *Char) enemyNear(n int32) *Char {
-	return sys.charList.enemyNear(c, n, c.gi().constants["default.ignoredefeatedenemies"] != 0, false)
+	return sys.charList.enemyNear(c, n, false, c.gi().constants["default.ignoredefeatedenemies"] > 0, false)
 }
 func (c *Char) p2() *Char {
-	p2 := sys.charList.enemyNear(c, 0, true, false)
+	p2 := sys.charList.enemyNear(c, 0, true, true, false)
 	if p2 != nil && p2.scf(SCF_ko) && p2.scf(SCF_over) {
 		return nil
 	}
@@ -2729,16 +2730,10 @@ func (c *Char) hitShakeOver() bool {
 	return c.ghv.hitshaketime <= 0
 }
 func (c *Char) hitVelX() float32 {
-	if c.ss.moveType != MT_H {
-		return 0
-	}
-	return -c.ghv.xvel
+	return c.ghv.xvel
 }
 func (c *Char) hitVelY() float32 {
-	if c.ss.moveType != MT_H {
-		return 0
-	}
-	return -c.ghv.yvel
+	return c.ghv.yvel
 }
 func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {
@@ -3107,7 +3102,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 // Furimuki = Turn around
 func (c *Char) turn() {
 	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
-		if e := sys.charList.enemyNear(c, 0, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
+		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
 				c.changeAnim(5, false)
@@ -3286,7 +3281,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		p[1] = c.pos[1]*c.localscl/localscl + pos[1]
 		*dstFacing *= c.facing
 	case PT_P2:
-		if p2 := sys.charList.enemyNear(c, 0, true, false); p2 != nil {
+		if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
 			p[0] = p2.pos[0]*p2.localscl/localscl + pos[0]*p2.facing
 			p[1] = p2.pos[1]*p2.localscl/localscl + pos[1]
 			if isProj {
@@ -5650,7 +5645,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
-		if c.recoverTime > 0 && c.ghv.fallcount > 0 &&
+		if c.recoverTime > 0 && (c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
 			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
 				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
@@ -6070,12 +6065,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else if getter.ss.stateType == ST_L {
 						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
 						ghv.ctrltime = hd.down_hittime
-						ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
-						ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
 						ghv.fallf = hd.ground_fall
-						if !hd.down_bounce && getter.pos[1] == 0 && ghv.yvel != 0 {
-							ghv.fall.xvelocity = float32(math.NaN())
-							ghv.fall.yvelocity = 0
+						if getter.pos[1] == 0 {
+							ghv.xvel = hd.down_velocity[0] * c.localscl / getter.localscl
+							ghv.yvel = hd.down_velocity[1] * c.localscl / getter.localscl
+							if !hd.down_bounce && ghv.yvel != 0 {
+								ghv.fall.xvelocity = float32(math.NaN())
+								ghv.fall.yvelocity = 0
+							}
+						} else {
+							ghv.xvel = hd.air_velocity[0] * c.localscl / getter.localscl
+							ghv.yvel = hd.air_velocity[1] * c.localscl / getter.localscl
 						}
 					} else {
 						ghv.ctrltime = hd.ground_hittime
@@ -6780,7 +6780,7 @@ func (cl *CharList) get(id int32) *Char {
 	}
 	return cl.idMap[id]
 }
-func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
+func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log bool) *Char {
 	if n < 0 {
 		if log {
 			sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
@@ -6808,7 +6808,8 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, log bool) *Char {
 	}
 	for _, e := range cl.runOrder {
 		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
-			(p2 && !e.scf(SCF_ko_round_middle) || (!p2 && e.helperIndex == 0 && e.teamside < 2)) {
+			(p2 && !e.scf(SCF_ko_round_middle) ||
+				(!p2 && e.helperIndex == 0 && (!ignoreDefeatedEnemy || ignoreDefeatedEnemy && (!e.scf(SCF_ko_round_middle) || sys.roundEnd())))) {
 			add(e, 0)
 		}
 	}
