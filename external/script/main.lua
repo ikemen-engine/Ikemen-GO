@@ -1285,6 +1285,19 @@ function main.f_loadingRefresh(txt)
 	end
 end
 
+--play music
+main.lastBgm = ''
+function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
+	if main.flags['-nomusic'] ~= nil then
+		return
+	end
+	local bgm = bgm or ''
+	if interrupt or bgm:gsub('^%./', '') ~= main.lastBgm then
+		playBGM(bgm, bgmLoop or 1, bgmVolume or 100, bgmLoopstart or 0, bgmLoopend or 0)
+		main.lastBgm = bgm:gsub('^%./', '')
+	end
+end
+
 main.pauseMenu = false
 require('external.script.global')
 
@@ -4024,19 +4037,6 @@ function main.f_fadeReset(fadeType, fadeGroup)
 		if fadeType == 'fadeout' and main.fadeCnt > fadeGroup[fadeType .. '_time'] then
 			main.fadeStart = main.fadeStart + main.fadeCnt - fadeGroup[fadeType .. '_time']
 		end
-	end
-end
-
---play music
-main.lastBgm = ''
-function main.f_playBGM(interrupt, bgm, bgmLoop, bgmVolume, bgmLoopstart, bgmLoopend)
-	if main.flags['-nomusic'] ~= nil then
-		return
-	end
-	local bgm = bgm or ''
-	if interrupt or bgm:gsub('^%./', '') ~= main.lastBgm then
-		playBGM(bgm, bgmLoop or 1, bgmVolume or 100, bgmLoopstart or 0, bgmLoopend or 0)
-		main.lastBgm = bgm:gsub('^%./', '')
 	end
 end
 
