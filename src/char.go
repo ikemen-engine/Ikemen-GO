@@ -94,6 +94,7 @@ const (
 	GSF_noko
 	GSF_nokovelocity
 	GSF_roundnotskip
+	GSF_roundfreeze
 	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
 		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
 		GSF_roundnotskip

@@ -3744,6 +3744,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		case "roundfreeze":
+			l.Push(lua.LBool(sys.sf(GSF_roundfreeze)))
 		// SystemCharFlag
 		case "over":
 			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))

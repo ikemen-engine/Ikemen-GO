@@ -1970,7 +1970,7 @@ func (ro *LifeBarRound) callFight() {
 	ro.timerActive = true
 }
 func (ro *LifeBarRound) act() bool {
-	if sys.paused && !sys.step {
+	if (sys.paused && !sys.step) || sys.sf(GSF_roundfreeze) {
 		return false
 	}
 	if sys.intro > ro.ctrl_time {
@@ -2177,6 +2177,7 @@ func (ro *LifeBarRound) act() bool {
 	return sys.tickNextFrame()
 }
 func (ro *LifeBarRound) reset() {
+	ro.cur = 0
 	ro.round_default.Reset()
 	ro.round_default_top.Reset()
 	for i := range ro.round_default_bg {
