@@ -1197,6 +1197,7 @@ options.t_itemname = {
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	return function()
+		hook.run("options.menu.loop")
 		local cursorPosY = 1
 		local moveTxt = 0
 		local item = 1

@@ -255,6 +255,7 @@ end
 -- Shared menu loop logic
 function menu.f_createMenu(tbl, section, bgdef, txt_title, bool_main)
 	return function()
+		hook.run("menu.menu.loop")
 		local t = tbl.items
 		if tbl.reset then
 			tbl.reset = false

@@ -400,6 +400,9 @@ main.font_def = {}
 -- * main.f_commandLine: main.lua 'f_commandLine' function (before loading)
 -- * main.f_default: main.lua 'f_default' function
 -- * main.t_itemname: main.lua table entries (modes configuration)
+-- * main.menu.loop: main.lua menu loop function (each submenu loop start)
+-- * menu.menu.loop: menu.lua menu loop function (each submenu loop start)
+-- * options.menu.loop: options.lua menu loop function (each submenu loop start)
 -- * motif.setBaseTitleInfo: motif.lua default game mode items assignment
 -- * motif.setBaseOptionInfo: motif.lua default option items assignment
 -- * motif.setBaseMenuInfo: motif.lua default pause menu items assignment
@@ -3026,6 +3029,7 @@ local introWaitCycles = 0
 -- Shared menu loop logic
 function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 	return function()
+		hook.run("main.menu.loop")
 		local cursorPosY = 1
 		local moveTxt = 0
 		local item = 1
