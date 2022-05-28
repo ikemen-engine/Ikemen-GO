@@ -1922,6 +1922,10 @@ for i = 1, 2 do
 	table.insert(t_txt_name, main.f_createTextImg(motif.select_info, 'p' .. i .. '_name'))
 end
 
+if main.t_sort.select_info.teammenu == nil then
+	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
+end
+
 function start.f_selectScreen()
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true

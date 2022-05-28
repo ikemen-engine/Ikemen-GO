@@ -397,8 +397,13 @@ main.font_def = {}
 -- Currently there are only few hooks available by default:
 -- * loop: global.lua 'loop' function start (called by CommonLua)
 -- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
+-- * main.f_commandLine: main.lua 'f_commandLine' function (before loading)
 -- * main.f_default: main.lua 'f_default' function
 -- * main.t_itemname: main.lua table entries (modes configuration)
+-- * motif.setBaseTitleInfo: motif.lua default game mode items assignment
+-- * motif.setBaseOptionInfo: motif.lua default option items assignment
+-- * motif.setBaseMenuInfo: motif.lua default pause menu items assignment
+-- * motif.setBaseTrainingInfo: motif.lua default training menu items assignment
 -- * launchFight: start.lua 'launchFight' function (right before match starts)
 -- * start.f_selectScreen: start.lua 'f_selectScreen' function (pre layerno=1)
 -- * start.f_selectVersus: start.lua 'f_selectVersus' function (pre layerno=1)
@@ -1001,6 +1006,17 @@ function main.f_tableArray(size, val)
 	return t
 end
 
+-- append table array right after index having matching key value
+function main.f_tableAppendAtKey(t, mKey, nValue)
+	for k, v in ipairs(t) do
+		if v == mKey then
+			table.insert(t, k + 1, nValue)
+			return true
+		end
+	end
+	return false
+end
+
 -- rearrange array table indexes based on index numbers stored in a second array table
 function main.f_remapTable(src, remap)
 	local t = {}
@@ -1467,6 +1483,7 @@ function main.f_commandLine()
 			})
 		end
 	end
+	hook.run("main.f_commandLine")
 	if main.flags['-ip'] ~= nil then
 		enterNetPlay(main.flags['-ip'])
 		while not connected() do
@@ -3182,111 +3199,116 @@ end
 
 -- Dynamically generates all menus and submenus, iterating over values stored in
 -- main.t_sort table (in order that they're present in system.def).
-main.menu = {title = main.f_itemnameUpper(motif[main.group].title_text, motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
-main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
-local t_menuWindow = main.f_menuWindow(motif[main.group])
-local t_pos = {} --for storing current main.menu table position
-local t_skipGroup = {}
-local lastNum = 0
-local bonusUpper = true
-for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
-	for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
-		--exceptions for expanding the menu table
-		if motif[main.group]['menu_itemname_' .. suffix] == '' and c ~= 'server' then --items and groups without displayname are skipped
-			t_skipGroup[c] = true
-			break
-		elseif t_skipGroup[c] then --named item but inside a group without displayname
-			break
-		elseif c == 'bonusgames' and #main.t_bonusChars == 0 then --skip bonus mode if there are no characters with bonus param set to 1
-			t_skipGroup[c] = true
-			break
-		elseif c == 'storymode' and #main.t_selStoryMode == 0 then --skip story mode if there are no story arc declared
-			t_skipGroup[c] = true
-			break
-		end
-		--appending the menu table
-		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
-			if main.menu.submenu[c] == nil then
-				main.menu.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
-				main.menu.submenu[c].loop = main.f_createMenu(main.menu.submenu[c], false, false, true, c == 'serverjoin')
-				if not suffix:match(c .. '_') then
-					table.insert(main.menu.items, {
+function main.f_start()
+	if main.t_sort.title_info == nil or main.t_sort.title_info.menu == nil or #main.t_sort.title_info.menu == 0 then
+		motif.setBaseTitleInfo()
+	end
+	main.menu = {title = main.f_itemnameUpper(motif[main.group].title_text, motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
+	main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
+	local t_menuWindow = main.f_menuWindow(motif[main.group])
+	local t_pos = {} --for storing current main.menu table position
+	local t_skipGroup = {}
+	local lastNum = 0
+	local bonusUpper = true
+	for i, suffix in ipairs(main.f_tableExists(main.t_sort[main.group]).menu) do
+		for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
+			--exceptions for expanding the menu table
+			if motif[main.group]['menu_itemname_' .. suffix] == '' and c ~= 'server' then --items and groups without displayname are skipped
+				t_skipGroup[c] = true
+				break
+			elseif t_skipGroup[c] then --named item but inside a group without displayname
+				break
+			elseif c == 'bonusgames' and #main.t_bonusChars == 0 then --skip bonus mode if there are no characters with bonus param set to 1
+				t_skipGroup[c] = true
+				break
+			elseif c == 'storymode' and #main.t_selStoryMode == 0 then --skip story mode if there are no story arc declared
+				t_skipGroup[c] = true
+				break
+			end
+			--appending the menu table
+			if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
+				if main.menu.submenu[c] == nil then
+					main.menu.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
+					main.menu.submenu[c].loop = main.f_createMenu(main.menu.submenu[c], false, false, true, c == 'serverjoin')
+					if not suffix:match(c .. '_') then
+						table.insert(main.menu.items, {
+							data = text:create({window = t_menuWindow}),
+							itemname = c,
+							displayname = motif[main.group]['menu_itemname_' .. suffix],
+							paramname = 'menu_itemname_' .. suffix,
+						})
+						if c == 'bonusgames' then bonusUpper = main.menu.items[#main.menu.items].displayname == main.menu.items[#main.menu.items].displayname:upper() end
+					end
+				end
+				t_pos = main.menu.submenu[c]
+				t_pos.name = c
+			else --following strings
+				if t_pos.submenu[c] == nil then
+					t_pos.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
+					t_pos.submenu[c].loop = main.f_createMenu(t_pos.submenu[c], false, false, true, c == 'serverjoin')
+					table.insert(t_pos.items, {
 						data = text:create({window = t_menuWindow}),
 						itemname = c,
 						displayname = motif[main.group]['menu_itemname_' .. suffix],
 						paramname = 'menu_itemname_' .. suffix,
 					})
-					if c == 'bonusgames' then bonusUpper = main.menu.items[#main.menu.items].displayname == main.menu.items[#main.menu.items].displayname:upper() end
+					if c == 'bonusgames' then bonusUpper = t_pos.items[#t_pos.items].displayname == t_pos.items[#t_pos.items].displayname:upper() end
+				end
+				if j > lastNum then
+					t_pos = t_pos.submenu[c]
+					t_pos.name = c
 				end
 			end
-			t_pos = main.menu.submenu[c]
-			t_pos.name = c
-		else --following strings
-			if t_pos.submenu[c] == nil then
-				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
-				t_pos.submenu[c].loop = main.f_createMenu(t_pos.submenu[c], false, false, true, c == 'serverjoin')
-				table.insert(t_pos.items, {
-					data = text:create({window = t_menuWindow}),
-					itemname = c,
-					displayname = motif[main.group]['menu_itemname_' .. suffix],
-					paramname = 'menu_itemname_' .. suffix,
-				})
-				if c == 'bonusgames' then bonusUpper = t_pos.items[#t_pos.items].displayname == t_pos.items[#t_pos.items].displayname:upper() end
+			lastNum = j
+			--add bonus character names to bonusgames submenu
+			if suffix:match('bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(suffix, '_') then
+				for k = 1, #main.t_bonusChars do
+					local name = start.f_getCharData(main.t_bonusChars[k]).name
+					local itemname = 'bonus_' .. name:gsub('%s+', '_')
+					table.insert(t_pos.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = itemname,
+						displayname = main.f_itemnameUpper(name, bonusUpper),
+						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+					})
+					--creating anim data out of appended menu items
+					motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+					motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				end
 			end
-			if j > lastNum then
-				t_pos = t_pos.submenu[c]
-				t_pos.name = c
+			--add story arcs to storymode submenu
+			if suffix:match('storymode_back$') and c == 'storymode' then --j == main.f_countSubstring(suffix, '_') then
+				for k, v in ipairs(main.t_selStoryMode) do
+					local itemname = v.name:gsub('%s+', '_')
+					table.insert(t_pos.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = itemname,
+						displayname = v.displayname,
+						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+					})
+					--creating anim data out of appended menu items
+					motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+					motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				end
 			end
-		end
-		lastNum = j
-		--add bonus character names to bonusgames submenu
-		if suffix:match('bonusgames_back$') and c == 'bonusgames' then --j == main.f_countSubstring(suffix, '_') then
-			for k = 1, #main.t_bonusChars do
-				local name = start.f_getCharData(main.t_bonusChars[k]).name
-				local itemname = 'bonus_' .. name:gsub('%s+', '_')
-				table.insert(t_pos.items, {
-					data = text:create({window = t_menuWindow}),
-					itemname = itemname,
-					displayname = main.f_itemnameUpper(name, bonusUpper),
-					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
-				})
-				--creating anim data out of appended menu items
-				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
-				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
-			end
-		end
-		--add story arcs to storymode submenu
-		if suffix:match('storymode_back$') and c == 'storymode' then --j == main.f_countSubstring(suffix, '_') then
-			for k, v in ipairs(main.t_selStoryMode) do
-				local itemname = v.name:gsub('%s+', '_')
-				table.insert(t_pos.items, {
-					data = text:create({window = t_menuWindow}),
-					itemname = itemname,
-					displayname = v.displayname,
-					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
-				})
-				--creating anim data out of appended menu items
-				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
-				motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
-			end
-		end
-		--add IP addresses for serverjoin submenu
-		if suffix:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(suffix, '_') then
-			for k, v in pairs(config.IP) do
-				local itemname = 'ip_' .. k
-				table.insert(t_pos.items, {
-					data = text:create({window = t_menuWindow}),
-					itemname = itemname,
-					displayname = k,
-					--paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
-				})
-				--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
-				--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+			--add IP addresses for serverjoin submenu
+			if suffix:match('_serverjoin_back$') and c == 'serverjoin' then --j == main.f_countSubstring(suffix, '_') then
+				for k, v in pairs(config.IP) do
+					local itemname = 'ip_' .. k
+					table.insert(t_pos.items, {
+						data = text:create({window = t_menuWindow}),
+						itemname = itemname,
+						displayname = k,
+						--paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+					})
+					--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+					--motif.f_loadSprData(motif[main.group], {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif[main.group].menu_pos[1], y = motif[main.group].menu_pos[2]})
+				end
 			end
 		end
 	end
+	if main.debugLog then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 end
-if main.debugLog then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 
 --replay menu
 local txt_titleReplay = main.f_createTextImg(motif.replay_info, 'title', {defsc = motif.defaultReplay})
@@ -4071,7 +4093,6 @@ if main.debugLog then
 	main.f_printTable(main.t_selChars, "debug/t_selChars.txt")
 	main.f_printTable(main.t_selStages, "debug/t_selStages.txt")
 	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
-	main.f_printTable(main.t_selOptions, "debug/t_selOptions.txt")
 	main.f_printTable(main.t_selStoryMode, "debug/t_selStoryMode.txt")
 	main.f_printTable(main.t_orderChars, "debug/t_orderChars.txt")
 	main.f_printTable(main.t_orderStages, "debug/t_orderStages.txt")
@@ -4086,6 +4107,11 @@ if main.debugLog then
 	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
 	main.f_printTable(config, "debug/config.txt")
 end
+
+main.f_start()
+menu.f_start()
+options.f_start()
+motif.f_start()
 
 if main.flags['-p1'] ~= nil and main.flags['-p2'] ~= nil then
 	main.f_default()
