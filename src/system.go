@@ -218,6 +218,7 @@ type System struct {
 	zoomPosXLag             float32
 	zoomPosYLag             float32
 	enableZoomstate         bool
+	zoomCameraBound         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
 	cam                     Camera
@@ -1114,6 +1115,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.envcol_time--
 		}
 		s.enableZoomstate = false
+		s.zoomCameraBound = true
 		if s.super > 0 {
 			s.super--
 		} else if s.pause > 0 {
@@ -2109,8 +2111,13 @@ func (s *System) fight() (reload bool) {
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
 					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
 				}
-				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				if s.zoomCameraBound {
+					dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
+					dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				} else {
+					dscl = s.drawScale / s.cam.BaseScale()
+					dx = x + s.zoomPosXLag/scl
+				}
 				dy = y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0
