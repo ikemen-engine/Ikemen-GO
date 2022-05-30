@@ -23,7 +23,6 @@ local function f_reset(t)
 					color =     layer.palfx_color
 				})
 			end
-			layer.counter = 0
 		end
 	end
 end
@@ -75,11 +74,11 @@ local function f_play(t, attract)
 						end
 						--layer text
 						if layer.text_data ~= nil then
-							layer.counter = layer.counter + 1
+							local counter = i - layer.starttime
 							main.f_textRender(
 								layer.text_data,
 								layer.text,
-								layer.counter,
+								counter + 1,
 								scene.layerall_pos[1] + layer.offset[1],
 								scene.layerall_pos[2] + layer.offset[2],
 								layer.spacing[1],
@@ -235,7 +234,6 @@ local function f_parse(path)
 								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
 								--endtime = 0,
-								counter = 0, --used internally by main.f_textRender
 							}
 						end
 						pos_val = pos.layer[num]
