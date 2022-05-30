@@ -79,14 +79,14 @@ local function f_play(t, attract)
 								layer.text_data,
 								layer.text,
 								counter + 1,
-								scene.layerall_pos[1] + layer.offset[1],
-								scene.layerall_pos[2] + layer.offset[2],
+								scene.layerall_pos[1] + layer.offset[1] + layer.vel[1] * counter,
+								scene.layerall_pos[2] + layer.offset[2] + layer.vel[2] * counter,
 								layer.spacing[1],
 								layer.spacing[2],
 								main.font_def[layer.font[1] .. layer.font[7]],
 								layer.textdelay,
 								main.f_lineLength(
-									scene.layerall_pos[1] + layer.offset[1],
+									scene.layerall_pos[1] + layer.offset[1] + layer.vel[1] * counter,
 									t.info.localcoord[1],
 									layer.font[3],
 									layer.textwindow,
@@ -231,6 +231,7 @@ local function f_parse(path)
 								textdelay = 2,
 								textwindow = {0, 0, math.max(config.GameWidth, t.info.localcoord[1]), math.max(config.GameHeight, t.info.localcoord[2])}, --Ikemen feature
 								offset = {0, 0},
+								vel = {0, 0}, --Ikemen feature
 								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
 								--endtime = 0,
