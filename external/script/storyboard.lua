@@ -6,24 +6,24 @@ storyboard.t_storyboard = {} --stores all parsed storyboards (we parse each of t
 
 local function f_reset(t)
 	main.f_setStoryboardScale(t.info.localcoord)
-	for k, v in pairs(t.scene) do
-		if t.scene[k].bg_name ~= '' then
-			bgReset(t.scene[k].bg)
+	for _, scene in pairs(t.scene) do
+		if scene.bg_name ~= '' then
+			bgReset(scene.bg)
 		end
-		for k2, v2 in pairs(t.scene[k].layer) do
-			if t.scene[k].layer[k2].anim_data ~= nil then
-				animReset(t.scene[k].layer[k2].anim_data)
-				animUpdate(t.scene[k].layer[k2].anim_data)
-				animSetPalFX(t.scene[k].layer[k2].anim_data, {
-					time = t.scene[k].layer[k2].palfx_time,
-					add = t.scene[k].layer[k2].palfx_add,
-					mul = t.scene[k].layer[k2].palfx_mul,
-					sinadd = t.scene[k].layer[k2].palfx_sinadd,
-					invertall = t.scene[k].layer[k2].palfx_invertall,
-					color = t.scene[k].layer[k2].palfx_color
+		for _, layer in pairs(scene.layer) do
+			if layer.anim_data ~= nil then
+				animReset(layer.anim_data)
+				animUpdate(layer.anim_data)
+				animSetPalFX(layer.anim_data, {
+					time =      layer.palfx_time,
+					add =       layer.palfx_add,
+					mul =       layer.palfx_mul,
+					sinadd =    layer.palfx_sinadd,
+					invertall = layer.palfx_invertall,
+					color =     layer.palfx_color
 				})
 			end
-			t.scene[k].layer[k2].counter = 0
+			layer.counter = 0
 		end
 	end
 end
@@ -33,9 +33,10 @@ local function f_play(t, attract)
 	--loop through scenes in order
 	for k, v in ipairs(t.sceneOrder) do
 		if k >= t.scenedef.startscene then
+			local scene = t.scene[v]
 			local fadeType = 'fadein'
 			local fadeStart = getFrameCount()
-			for i = 0, t.scene[v].end_time do
+			for i = 0, scene.end_time do
 				--end storyboard
 				if esc() or (attract and main.credits > 0) or (not attract and main.f_input(main.t_players, {'pal', 's', 'm'})) and t.scenedef.skipbutton > 0 then
 					return
@@ -47,49 +48,49 @@ local function f_play(t, attract)
 					resetKey()
 				end
 				--play bgm
-				if i == 0 and (k - 1 == t.scenedef.startscene or t.scene[v].bgm ~= '') then
-					main.f_playBGM(k - 1 == t.scenedef.startscene, t.scene[v].bgm, t.scene[v].bgm_loop, t.scene[v].bgm_volume, t.scene[v].bgm_loopstart, t.scene[v].bgm_loopend)
+				if i == 0 and (k - 1 == t.scenedef.startscene or scene.bgm ~= '') then
+					main.f_playBGM(k - 1 == t.scenedef.startscene, scene.bgm, scene.bgm_loop, scene.bgm_volume, scene.bgm_loopstart, scene.bgm_loopend)
 				end
 				--play snd
 				if t.scenedef.snd_data ~= nil then
-					for k2, v2 in main.f_sortKeys(t.scene[v].sound) do
-						if i == v2.starttime then
-							sndPlay(t.scenedef.snd_data, v2.value[1], v2.value[2], v2.volumescale, v2.pan)
+					for _, sound in main.f_sortKeys(scene.sound) do
+						if i == sound.starttime then
+							sndPlay(t.scenedef.snd_data, sound.value[1], sound.value[2], sound.volumescale, sound.pan)
 						end
 					end
 				end
 				--draw clearcolor
-				clearColor(t.scene[v].clearcolor[1], t.scene[v].clearcolor[2], t.scene[v].clearcolor[3])
+				clearColor(scene.clearcolor[1], scene.clearcolor[2], scene.clearcolor[3])
 				--draw layerno = 0 backgrounds
-				if t.scene[v].bg_name ~= '' then
-					bgDraw(t.scene[v].bg, false)
+				if scene.bg_name ~= '' then
+					bgDraw(scene.bg, false)
 				end
 				--loop through layers in order
-				for k2, v2 in main.f_sortKeys(t.scene[v].layer) do
-					if i >= t.scene[v].layer[k2].starttime and i <= t.scene[v].layer[k2].endtime then
+				for _, layer in main.f_sortKeys(scene.layer) do
+					if i >= layer.starttime and i <= layer.endtime then
 						--layer anim
-						if t.scene[v].layer[k2].anim_data ~= nil then
-							animDraw(t.scene[v].layer[k2].anim_data)
-							animUpdate(t.scene[v].layer[k2].anim_data)
+						if layer.anim_data ~= nil then
+							animDraw(layer.anim_data)
+							animUpdate(layer.anim_data)
 						end
 						--layer text
-						if t.scene[v].layer[k2].text_data ~= nil then
-							t.scene[v].layer[k2].counter = t.scene[v].layer[k2].counter + 1
+						if layer.text_data ~= nil then
+							layer.counter = layer.counter + 1
 							main.f_textRender(
-								t.scene[v].layer[k2].text_data,
-								t.scene[v].layer[k2].text,
-								t.scene[v].layer[k2].counter,
-								t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1],
-								t.scene[v].layerall_pos[2] + t.scene[v].layer[k2].offset[2],
-								t.scene[v].layer[k2].spacing[1],
-								t.scene[v].layer[k2].spacing[2],
-								main.font_def[t.scene[v].layer[k2].font[1] .. t.scene[v].layer[k2].font[7]],
-								t.scene[v].layer[k2].textdelay,
+								layer.text_data,
+								layer.text,
+								layer.counter,
+								scene.layerall_pos[1] + layer.offset[1],
+								scene.layerall_pos[2] + layer.offset[2],
+								layer.spacing[1],
+								layer.spacing[2],
+								main.font_def[layer.font[1] .. layer.font[7]],
+								layer.textdelay,
 								main.f_lineLength(
-									t.scene[v].layerall_pos[1] + t.scene[v].layer[k2].offset[1],
+									scene.layerall_pos[1] + layer.offset[1],
 									t.info.localcoord[1],
-									t.scene[v].layer[k2].font[3],
-									t.scene[v].layer[k2].textwindow,
+									layer.font[3],
+									layer.textwindow,
 									true
 								)
 							)
@@ -97,21 +98,21 @@ local function f_play(t, attract)
 					end
 				end
 				--draw layerno = 1 backgrounds
-				if t.scene[v].bg_name ~= '' then
-					bgDraw(t.scene[v].bg, true)
+				if scene.bg_name ~= '' then
+					bgDraw(scene.bg, true)
 				end
 				--draw fadein / fadeout
-				if i == t.scene[v].end_time - t.scene[v].fadeout_time then
+				if i == scene.end_time - scene.fadeout_time then
 					fadeType = 'fadeout'
 					fadeStart = getFrameCount()
 				end
 				main.fadeActive = fadeColor(
 					fadeType,
 					fadeStart,
-					t.scene[v][fadeType .. '_time'],
-					t.scene[v][fadeType .. '_col'][1],
-					t.scene[v][fadeType .. '_col'][2],
-					t.scene[v][fadeType .. '_col'][3]
+					scene[fadeType .. '_time'],
+					scene[fadeType .. '_col'][1],
+					scene[fadeType .. '_col'][2],
+					scene[fadeType .. '_col'][3]
 				)
 				main.f_cmdInput()
 				refresh()
@@ -337,31 +338,31 @@ local function f_parse(path)
 		t.scenedef.snd_data = sndNew(t.scenedef.snd)
 	end
 	--loop through scenes
-	local prev_k = ''
-	for k, v in main.f_sortKeys(t.scene) do
+	local prev_s = nil
+	for _, scene in main.f_sortKeys(t.scene) do
 		--bgm
-		if t.scene[k].bgm ~= nil then
-			t.scene[k].bgm = searchFile(t.scene[k].bgm, {t.fileDir, 'sound/'})
+		if scene.bgm ~= nil then
+			scene.bgm = searchFile(scene.bgm, {t.fileDir, 'sound/'})
 		end
 		--default values
-		if #t.scene[k].clearcolor == 0 then
-			if prev_k ~= '' and #t.scene[prev_k].clearcolor > 0 then
-				t.scene[k].clearcolor[1], t.scene[k].clearcolor[2], t.scene[k].clearcolor[3] = t.scene[prev_k].clearcolor[1], t.scene[prev_k].clearcolor[2], t.scene[prev_k].clearcolor[3]
-			else
-				t.scene[k].clearcolor[1], t.scene[k].clearcolor[2], t.scene[k].clearcolor[3] = 0, 0, 0
+		if #scene.clearcolor == 0 then
+			local r, g, b = 0, 0, 0
+			if prev_s ~= nil and #prev_s.clearcolor > 0 then
+				r, g, b = prev_s.clearcolor[1], prev_s.clearcolor[2], prev_s.clearcolor[3]
 			end
+			scene.clearcolor[1], scene.clearcolor[2], scene.clearcolor[3] = r, g, b
 		end
-		if #t.scene[k].layerall_pos == 0 then
-			if prev_k ~= '' and #t.scene[prev_k].layerall_pos > 0 then
-				t.scene[k].layerall_pos[1], t.scene[k].layerall_pos[2] = t.scene[prev_k].layerall_pos[1], t.scene[prev_k].layerall_pos[2]
-			else
-				t.scene[k].layerall_pos[1], t.scene[k].layerall_pos[2] = 0, 0
+		if #scene.layerall_pos == 0 then
+			local x, y = 0, 0
+			if prev_s ~= nil and #prev_s.layerall_pos > 0 then
+				x, y = prev_s.layerall_pos[1], prev_s.layerall_pos[2]
 			end
+			scene.layerall_pos[1], scene.layerall_pos[2] = x, y
 		end
-		prev_k = k
+		prev_s = scene
 		--backgrounds
-		if t.scene[k].bg_name ~= '' then
-			local spr_def = t.scene[k].bg_name .. 'def'
+		if scene.bg_name ~= '' then
+			local spr_def = scene.bg_name .. 'def'
 			if t[spr_def] ~= nil and t[spr_def].spr ~= nil then --custom spr associated with bg.name is declared
 				t[spr_def].spr = searchFile(t[spr_def].spr, {t.fileDir})
 				if not main.f_fileExists(t[spr_def].spr) then
@@ -370,54 +371,53 @@ local function f_parse(path)
 				if t.spr_data[t[spr_def].spr] == nil then --sff data not created yet
 					t.spr_data[t[spr_def].spr] = sffNew(t[spr_def].spr)
 				end
-				t.scene[k].bg = bgNew(t.spr_data[t[spr_def].spr], t.def, t.scene[k].bg_name:lower())
+				scene.bg = bgNew(t.spr_data[t[spr_def].spr], t.def, scene.bg_name:lower())
 			else
-				t.scene[k].bg = bgNew(t.spr_data[t.scenedef.spr], t.def, t.scene[k].bg_name:lower())
+				scene.bg = bgNew(t.spr_data[t.scenedef.spr], t.def, scene.bg_name:lower())
 			end
-			bgReset(t.scene[k].bg)
+			bgReset(scene.bg)
 		end
 		--loop through scene layers
-		local t_layer = t.scene[k].layer
-		for k2, v2 in pairs(t_layer) do
+		for _, layer in pairs(scene.layer) do
 			--anim
-			if t_layer[k2].anim ~= -1 and t.anim[t_layer[k2].anim] ~= nil then
-				t.scene[k].layer[k2].anim_data = main.f_animFromTable(
-					t.anim[t_layer[k2].anim],
+			if layer.anim ~= -1 and t.anim[layer.anim] ~= nil then
+				layer.anim_data = main.f_animFromTable(
+					t.anim[layer.anim],
 					t.spr_data[t.scenedef.spr],
-					t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-					t.scene[k].layerall_pos[2] + t_layer[k2].offset[2]
+					scene.layerall_pos[1] + layer.offset[1],
+					scene.layerall_pos[2] + layer.offset[2]
 				)
 				--palfx
-				animSetPalFX(t.scene[k].layer[k2].anim_data, {
-					time = t.scene[k].layer[k2].palfx_time,
-					add = t.scene[k].layer[k2].palfx_add,
-					mul = t.scene[k].layer[k2].palfx_mul,
-					sinadd = t.scene[k].layer[k2].palfx_sinadd,
-					invertall = t.scene[k].layer[k2].palfx_invertall,
-					color = t.scene[k].layer[k2].palfx_color
+				animSetPalFX(layer.anim_data, {
+					time =      layer.palfx_time,
+					add =       layer.palfx_add,
+					mul =       layer.palfx_mul,
+					sinadd =    layer.palfx_sinadd,
+					invertall = layer.palfx_invertall,
+					color =     layer.palfx_color
 				})
 			end
 			--text
-			if t_layer[k2].text ~= '' then
-				t.scene[k].layer[k2].text_data = text:create({
-					font =   t_layer[k2].font[1],
-					bank =   t_layer[k2].font[2],
-					align =  t_layer[k2].font[3],
-					text =   t_layer[k2].text,
-					x =      t.scene[k].layerall_pos[1] + t_layer[k2].offset[1],
-					y =      t.scene[k].layerall_pos[2] + t_layer[k2].offset[2],
-					scaleX = t_layer[k2].scale[1],
-					scaleY = t_layer[k2].scale[2],
-					r =      t_layer[k2].font[4],
-					g =      t_layer[k2].font[5],
-					b =      t_layer[k2].font[6],
-					height = t_layer[k2].font[7],
-					window = t_layer[k2].textwindow,
+			if layer.text ~= '' then
+				layer.text_data = text:create({
+					font =   layer.font[1],
+					bank =   layer.font[2],
+					align =  layer.font[3],
+					text =   layer.text,
+					x =      scene.layerall_pos[1] + layer.offset[1],
+					y =      scene.layerall_pos[2] + layer.offset[2],
+					scaleX = layer.scale[1],
+					scaleY = layer.scale[2],
+					r =      layer.font[4],
+					g =      layer.font[5],
+					b =      layer.font[6],
+					height = layer.font[7],
+					window = layer.textwindow,
 				})
 			end
 			--endtime
-			if t_layer[k2].endtime == nil then
-				t_layer[k2].endtime = t.scene[k].end_time
+			if layer.endtime == nil then
+				layer.endtime = scene.end_time
 			end
 		end
 	end
