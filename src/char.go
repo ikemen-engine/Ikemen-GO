@@ -2295,7 +2295,7 @@ func (c *Char) loadPalette() {
 					//パレットテクスチャ生成
 					gi.sff.palList.PalTex[i] = newTexture()
 					gi.sff.palList.PalTex[i].SetData(256, 1, 32, false,
-						unsafe.Slice((*byte)(unsafe.Pointer(&pl[0])), len(pl) * 4))
+						unsafe.Slice((*byte)(unsafe.Pointer(&pl[0])), len(pl)*4))
 
 					tmp = i + 1
 				}
@@ -3146,6 +3146,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
+	c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 	c.stchtmp = true
 	return true
 }
@@ -3259,7 +3260,7 @@ func (c *Char) newHelper() (h *Char) {
 		h = newChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
-	h.id, h.helperId = sys.newCharId(), 0
+	h.id, h.helperId, h.ownpal = sys.newCharId(), 0, false
 	h.copyParent(c)
 	c.addChild(h)
 	sys.charList.add(h)

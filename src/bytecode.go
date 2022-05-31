@@ -7707,7 +7707,6 @@ func (sb *StateBytecode) init(c *Char) {
 	if sb.physics != ST_U {
 		c.ss.physics = sb.physics
 	}
-	sb.ctrlsps = make([]int32, len(sb.ctrlsps))
 	sys.workingState = sb
 	sb.stateDef.Run(c)
 }
