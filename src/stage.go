@@ -617,7 +617,7 @@ type Stage struct {
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: float32(math.NaN()),
 		rightbound: float32(math.NaN()), screenleft: 15, screenright: 15,
-		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{1, 1},
+		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
 		constants: make(map[string]float32), p1p3dist: 25}
 	s.sdw.intensity = 128
@@ -738,13 +738,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("xscale", &s.scale[0])
 		sec[0].ReadF32("yscale", &s.scale[1])
 	}
-	if s.hires {
-		if s.scale[0] != 1 {
-			s.scale[0] *= 2
-		}
-		if s.scale[1] != 1 {
-			s.scale[1] *= 2
-		}
+	if math.IsNaN(float64(s.scale[0])) {
+		s.scale[0] = 1
+	} else if s.hires {
+		s.scale[0] *= 2
+	}
+	if math.IsNaN(float64(s.scale[1])) {
+		s.scale[1] = 1
+	} else if s.hires {
+		s.scale[1] *= 2
 	}
 	var boundlow int32
 	if sec := defmap["camera"]; len(sec) > 0 {
