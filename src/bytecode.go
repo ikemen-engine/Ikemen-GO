@@ -6346,6 +6346,7 @@ const (
 	zoom_scale
 	zoom_lag
 	zoom_redirectid
+	zoom_camerabound
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
@@ -6361,6 +6362,8 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
 			sys.enableZoomstate = true
+		case zoom_camerabound:
+			sys.zoomCameraBound = exp[0].evalB(c)
 		case zoom_lag:
 			sys.zoomlag = exp[0].evalF(c)
 		case zoom_redirectid:

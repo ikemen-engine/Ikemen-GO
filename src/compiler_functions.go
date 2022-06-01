@@ -3417,6 +3417,10 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 			zoom_lag, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "camerabound",
+			zoom_camerabound, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
