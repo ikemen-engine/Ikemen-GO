@@ -1193,69 +1193,11 @@ options.t_itemname = {
 		return true
 	end,
 }
---external shaders
-options.t_shaders = {}
-for _, v in ipairs(getDirectoryFiles('external/shaders')) do
-	v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
-		path = path:gsub('\\', '/')
-		ext = ext:lower()
-		if ext == 'frag' then
-			table.insert(options.t_shaders, {path = path, filename = filename})
-		end
-		if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
-			options.t_itemname[path .. filename] = function(t, item, cursorPosY, moveTxt)
-				if main.f_input(main.t_players, {'pal', 's'}) then
-					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-					config.ExternalShaders = {path .. filename}
-					config.PostProcessingShader = 1
-					return false
-				end
-				return true
-			end
-		end
-	end)
-end
-for _, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
-	--resolution
-	if v:match('_[0-9]+x[0-9]+$') then
-		local width, height = v:match('_([0-9]+)x([0-9]+)$')
-		options.t_itemname[width .. 'x' .. height] = function(t, item, cursorPosY, moveTxt)
-			if main.f_input(main.t_players, {'pal', 's'}) then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
-				config.GameWidth = tonumber(width)
-				config.GameHeight = tonumber(height)
-				options.modified = true
-				options.needReload = true
-				return false
-			end
-			return true
-		end
-	--ratio
-	elseif v:match('_ratio[1-4]+[al].-$') then
-		local ratioLevel, tmp1, tmp2 = v:match('_ratio([1-4])([al])(.-)$')
-		options.t_itemname['ratio' .. ratioLevel .. tmp1 .. tmp2] = function(t, item, cursorPosY, moveTxt)
-			local ratioType = tmp1:upper() .. tmp2
-			ratioLevel = tonumber(ratioLevel)
-			if main.f_input(main.t_players, {'$F'}) then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] + 0.01, '%.02f')
-				t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
-				options.modified = true
-			elseif main.f_input(main.t_players, {'$B'}) and config['Ratio' .. ratioType][ratioLevel] > 0.01 then
-				sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-				config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] - 0.01, '%.02f')
-				t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
-				options.modified = true
-			end
-			return true
-		end
-	end
-end
-if main.debugLog then main.f_printTable(options.t_itemname, 'debug/t_optionsItemname.txt') end
 
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	return function()
+		hook.run("options.menu.loop")
 		local cursorPosY = 1
 		local moveTxt = 0
 		local item = 1
@@ -1515,39 +1457,122 @@ end
 
 -- Dynamically generates all menus and submenus, iterating over values stored in
 -- main.t_sort table (in order that they're present in system.def).
-options.menu = {title = main.f_itemnameUpper(motif.option_info.title_text, motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
-options.menu.loop = options.f_createMenu(options.menu, true)
-local t_menuWindow = main.f_menuWindow(motif.option_info)
-local t_pos = {} --for storing current options.menu table position
-local lastNum = 0
-for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
-	for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
-		--populate shaders submenu
-		if suffix:match('_shaders_back$') and c == 'back' then
-			for k = #options.t_shaders, 1, -1 do
-				local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
-				table.insert(t_pos.items, 1, {
-					data = text:create({window = t_menuWindow}),
-					itemname = itemname,
-					displayname = options.t_shaders[k].filename,
-					paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
-					vardata = text:create({window = t_menuWindow}),
-					vardisplay = options.f_vardisplay(c),
-					selected = false,
-				})
-				table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
-				--creating anim data out of appended menu items
-				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
-				motif.f_loadSprData(motif.option_info, {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
+function options.f_start()
+	-- default menus
+	if main.t_sort.option_info == nil or main.t_sort.option_info.menu == nil or #main.t_sort.option_info.menu == 0 then
+		motif.setBaseOptionInfo()
+	end
+	-- external shaders
+	options.t_shaders = {}
+	for _, v in ipairs(getDirectoryFiles('external/shaders')) do
+		v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
+			path = path:gsub('\\', '/')
+			ext = ext:lower()
+			if ext == 'frag' then
+				table.insert(options.t_shaders, {path = path, filename = filename})
+			end
+			if ext:match('vert') or ext:match('frag') --[[or ext:match('shader')]] then
+				options.t_itemname[path .. filename] = function(t, item, cursorPosY, moveTxt)
+					if main.f_input(main.t_players, {'pal', 's'}) then
+						sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+						config.ExternalShaders = {path .. filename}
+						config.PostProcessingShader = 1
+						return false
+					end
+					return true
+				end
+			end
+		end)
+	end
+	for _, v in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
+		-- resolution
+		if v:match('_[0-9]+x[0-9]+$') then
+			local width, height = v:match('_([0-9]+)x([0-9]+)$')
+			options.t_itemname[width .. 'x' .. height] = function(t, item, cursorPosY, moveTxt)
+				if main.f_input(main.t_players, {'pal', 's'}) then
+					sndPlay(motif.files.snd_data, motif.option_info.cursor_done_snd[1], motif.option_info.cursor_done_snd[2])
+					config.GameWidth = tonumber(width)
+					config.GameHeight = tonumber(height)
+					options.modified = true
+					options.needReload = true
+					return false
+				end
+				return true
+			end
+		-- ratio
+		elseif v:match('_ratio[1-4]+[al].-$') then
+			local ratioLevel, tmp1, tmp2 = v:match('_ratio([1-4])([al])(.-)$')
+			options.t_itemname['ratio' .. ratioLevel .. tmp1 .. tmp2] = function(t, item, cursorPosY, moveTxt)
+				local ratioType = tmp1:upper() .. tmp2
+				ratioLevel = tonumber(ratioLevel)
+				if main.f_input(main.t_players, {'$F'}) then
+					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+					config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] + 0.01, '%.02f')
+					t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
+					options.modified = true
+				elseif main.f_input(main.t_players, {'$B'}) and config['Ratio' .. ratioType][ratioLevel] > 0.01 then
+					sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+					config['Ratio' .. ratioType][ratioLevel] = options.f_precision(config['Ratio' .. ratioType][ratioLevel] - 0.01, '%.02f')
+					t.items[item].vardisplay = options.f_displayRatio(config['Ratio' .. ratioType][ratioLevel])
+					options.modified = true
+				end
+				return true
 			end
 		end
-		--appending the menu table
-		if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
-			if options.menu.submenu[c] == nil or c == 'empty' then
-				options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
-				options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
-				if not suffix:match(c .. '_') then
-					table.insert(options.menu.items, {
+	end
+	if main.debugLog then main.f_printTable(options.t_itemname, 'debug/t_optionsItemname.txt') end
+	-- create menu
+	options.menu = {title = main.f_itemnameUpper(motif.option_info.title_text, motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+	options.menu.loop = options.f_createMenu(options.menu, true)
+	local t_menuWindow = main.f_menuWindow(motif.option_info)
+	local t_pos = {} --for storing current options.menu table position
+	local lastNum = 0
+	for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
+		for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
+			--populate shaders submenu
+			if suffix:match('_shaders_back$') and c == 'back' then
+				for k = #options.t_shaders, 1, -1 do
+					local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
+					table.insert(t_pos.items, 1, {
+						data = text:create({window = t_menuWindow}),
+						itemname = itemname,
+						displayname = options.t_shaders[k].filename,
+						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
+						vardata = text:create({window = t_menuWindow}),
+						vardisplay = options.f_vardisplay(c),
+						selected = false,
+					})
+					table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
+					--creating anim data out of appended menu items
+					motif.f_loadSprData(motif.option_info, {s = 'menu_bg_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
+					motif.f_loadSprData(motif.option_info, {s = 'menu_bg_active_' .. suffix:gsub('back$', itemname) .. '_', x = motif.option_info.menu_pos[1], y = motif.option_info.menu_pos[2]})
+				end
+			end
+			--appending the menu table
+			if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
+				if options.menu.submenu[c] == nil or c == 'empty' then
+					options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+					options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
+					if not suffix:match(c .. '_') then
+						table.insert(options.menu.items, {
+							data = text:create({window = t_menuWindow}),
+							itemname = c,
+							displayname = motif.option_info['menu_itemname_' .. suffix],
+							paramname = 'menu_itemname_' .. suffix,
+							vardata = text:create({window = t_menuWindow}),
+							vardisplay = options.f_vardisplay(c),
+							selected = false,
+						})
+						table.insert(options.t_vardisplayPointers, options.menu.items[#options.menu.items])
+					end
+				end
+				t_pos = options.menu.submenu[c]
+				t_pos.name = c
+			else --following strings
+				if t_pos.submenu[c] == nil or c == 'empty' then
+					t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
+					t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
+					table.insert(t_pos.items, {
 						data = text:create({window = t_menuWindow}),
 						itemname = c,
 						displayname = motif.option_info['menu_itemname_' .. suffix],
@@ -1556,35 +1581,19 @@ for i, suffix in ipairs(main.f_tableExists(main.t_sort.option_info).menu) do
 						vardisplay = options.f_vardisplay(c),
 						selected = false,
 					})
-					table.insert(options.t_vardisplayPointers, options.menu.items[#options.menu.items])
+					table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
+				end
+				if j > lastNum then
+					t_pos = t_pos.submenu[c]
+					t_pos.name = c
 				end
 			end
-			t_pos = options.menu.submenu[c]
-			t_pos.name = c
-		else --following strings
-			if t_pos.submenu[c] == nil or c == 'empty' then
-				t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
-				t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
-				table.insert(t_pos.items, {
-					data = text:create({window = t_menuWindow}),
-					itemname = c,
-					displayname = motif.option_info['menu_itemname_' .. suffix],
-					paramname = 'menu_itemname_' .. suffix,
-					vardata = text:create({window = t_menuWindow}),
-					vardisplay = options.f_vardisplay(c),
-					selected = false,
-				})
-				table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
-			end
-			if j > lastNum then
-				t_pos = t_pos.submenu[c]
-				t_pos.name = c
-			end
+			lastNum = j
 		end
-		lastNum = j
 	end
+	-- log
+	if main.debugLog then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt') end
 end
-if main.debugLog then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt') end
 
 --;===========================================================
 --; KEY SETTINGS

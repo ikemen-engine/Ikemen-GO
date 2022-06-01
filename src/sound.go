@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 	"os"
 
@@ -53,32 +53,32 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 }
 
 func (n *Normalizer) Err() error {
-        return n.streamer.Err()
+	return n.streamer.Err()
 }
 
 type NormalizerLR struct {
-	heri, herihenka, fue, heikin, katayori, katayori2 float64
+	edge, edgeDelta, gain, average, bias, bias2 float64
 }
 
-func (n *NormalizerLR) process(bai float64, sam *float64) float64 {
-	n.katayori += (*sam - n.katayori) / (audioFrequency/110.0 + 1)
-	n.katayori2 += (*sam - n.katayori2) / (audioFrequency/112640.0 + 1)
-	s := (n.katayori2 - n.katayori) * bai
+func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
+	n.bias += (*sam - n.bias) / (audioFrequency/110.0 + 1)
+	n.bias2 += (*sam - n.bias2) / (audioFrequency/112640.0 + 1)
+	s := (n.bias2 - n.bias) * mul
 	if math.Abs(s) > 1 {
-		bai *= math.Pow(math.Abs(s), -n.heri)
-		n.herihenka += 32 * (1 - n.heri) / float64(audioFrequency+32)
+		mul *= math.Pow(math.Abs(s), -n.edge)
+		n.edgeDelta += 32 * (1 - n.edge) / float64(audioFrequency+32)
 		s = math.Copysign(1.0, s)
 	} else {
 		tmp := (1 - math.Pow(1-math.Abs(s), 64)) * math.Pow(0.5-math.Abs(s), 3)
-		bai += bai * (n.heri*(1/32.0-n.heikin)/n.fue + tmp*n.fue*(1-n.heri)/32) /
+		mul += mul * (n.edge*(1/32.0-n.average)/n.gain + tmp*n.gain*(1-n.edge)/32) /
 			(audioFrequency*2/8.0 + 1)
-		n.herihenka -= (0.5 - n.heikin) * n.heri / (audioFrequency * 2)
+		n.edgeDelta -= (0.5 - n.average) * n.edge / (audioFrequency * 2)
 	}
-	n.fue += (1.0 - n.fue*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
-	n.heikin += (math.Abs(s) - n.heikin) / (audioFrequency * 2)
-	n.heri = float64(ClampF(float32(n.heri + n.herihenka), 0, 1))
+	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
+	n.average += (math.Abs(s) - n.average) / (audioFrequency * 2)
+	n.edge = float64(ClampF(float32(n.edge + n.edgeDelta), 0, 1))
 	*sam = s
-	return bai
+	return mul
 }
 
 // ------------------------------------------------------------------
@@ -187,37 +187,31 @@ func (bgm *Bgm) UpdateVolume() {
 // Sound
 
 type Sound struct {
-	Buffer *beep.Buffer
+	wavData []byte
+	format beep.Format
+	length int
 }
 
-func newSound(sampleRate beep.SampleRate) *Sound {
-	fmt := beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: audioPrecision}
-	return &Sound{beep.NewBuffer(fmt)}
-}
-
-type PureReader struct {
-	r io.Reader
-}
-
-func (r *PureReader) Read(buf []byte) (int, error) {
-	return r.r.Read(buf)
-}
-
-func readSound(f *os.File, ofs int64) (*Sound, error) {
-	// We cannot use the existing file descriptor because the Beep library will
-	// close it when an error happens, or when the returned Streamer is closed.
-	s, fmt, err := wav.Decode(&PureReader{r: f})
+func readSound(f *os.File, size uint32) (*Sound, error) {
+	wavData := make([]byte, size)
+	if _, err := f.Read(wavData); err != nil {
+		return nil, err
+	}
+	// Decode the sound at least once, so that we know the format is OK
+	s, fmt, err := wav.Decode(bytes.NewReader(wavData))
 	if err != nil {
 		return nil, err
 	}
-	sound := newSound(fmt.SampleRate)
-	sound.Buffer.Append(s)
-	s.Close()
-	return sound, nil
+	return &Sound{wavData, fmt, s.Len()}, nil
+}
+
+func (s *Sound) GetStreamer() beep.StreamSeeker {
+	streamer, _, _ := wav.Decode(bytes.NewReader(s.wavData))
+	return streamer
 }
 
 func (s *Sound) GetDuration() float32 {
-	return float32(s.Buffer.Format().SampleRate.D(s.Buffer.Len()))
+	return float32(s.format.SampleRate.D(s.length))
 }
 
 // ------------------------------------------------------------------
@@ -281,8 +275,8 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 		if err := read(&nextSubHeaderOffset); err != nil {
 			return nil, err
 		}
-		var subFileLenght uint32
-		if err := read(&subFileLenght); err != nil {
+		var subFileLength uint32
+		if err := read(&subFileLength); err != nil {
 			return nil, err
 		}
 		var num [2]int32
@@ -292,7 +286,7 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 		if keepItem(num) {
 			_, ok := s.table[num]
 			if !ok {
-				tmp, err := readSound(f, int64(subHeaderOffset))
+				tmp, err := readSound(f, subFileLength)
 				if err != nil {
 					sys.errLog.Printf("%v sound %v,%v can't be read: %v\n", filename, num[0], num[1], err)
 					if max > 0 {
@@ -330,7 +324,7 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 	}
 	tmp, ok := snd.table[[2]int32{g, s}]
 	if !ok {
-		return newSound(11025), nil
+		return nil, nil
 	}
 	return tmp, nil
 }
@@ -398,14 +392,14 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 		return
 	}
 	s.sound = sound
-	s.streamer = s.sound.Buffer.Streamer(0, s.sound.Buffer.Len())
+	s.streamer = s.sound.GetStreamer()
 	loopCount := int(1)
 	if loop {
 		loopCount = -1
 	}
 	looper := beep.Loop(loopCount, s.streamer)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256}
-	srcRate := s.sound.Buffer.Format().SampleRate
+	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(audioFrequency / freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
@@ -462,28 +456,28 @@ func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
 func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
-        ch = Min(255, ch)
-        if ch >= 0 {
-                if lowpriority {
-                        if s.count() > ch && s.channels[ch].IsPlaying() {
-                                return nil
-                        }
-                }
-                if s.count() < ch+1 {
+	ch = Min(255, ch)
+	if ch >= 0 {
+		if lowpriority {
+			if s.count() > ch && s.channels[ch].IsPlaying() {
+				return nil
+			}
+		}
+		if s.count() < ch+1 {
 			s.SetSize(ch+1)
-                }
+		}
 		s.channels[ch].Stop()
-                return &s.channels[ch]
-        }
-        if s.count() < 256 {
+		return &s.channels[ch]
+	}
+	if s.count() < 256 {
 		s.SetSize(256)
-        }
-        for i := 255; i >= 0; i-- {
-                if !s.channels[i].IsPlaying() {
-                        return &s.channels[i]
-                }
-        }
-        return nil
+	}
+	for i := 255; i >= 0; i-- {
+		if !s.channels[i].IsPlaying() {
+			return &s.channels[i]
+		}
+	}
+	return nil
 }
 func (s *SoundChannels) reserveChannel() *SoundChannel {
 	for i := range s.channels {
@@ -537,7 +531,7 @@ func (s *SoundChannels) StopAll() {
 func (s *SoundChannels) Tick() {
 	for i := range s.channels {
 		if s.channels[i].IsPlaying() {
-			if s.channels[i].streamer.Position() >= s.channels[i].sound.Buffer.Len() {
+			if s.channels[i].streamer.Position() >= s.channels[i].sound.length {
 				s.channels[i].sound = nil
 			}
 		}

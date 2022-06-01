@@ -2543,6 +2543,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokovelocity))
 		case "roundnotskip":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
+		case "roundfreeze":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundfreeze))
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

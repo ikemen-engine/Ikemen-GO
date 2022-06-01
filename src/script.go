@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -1289,7 +1289,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getJoystickPresent", func(*lua.LState) int {
 		joy := int(numArg(l, 1))
-		present := joystick[joy].Present()
+		present := joystick[joy].IsPresent()
 		l.Push(lua.LBool(present))
 		return 1
 	})
@@ -1301,7 +1301,7 @@ func systemScriptInit(l *lua.LState) {
 			max = min + 1
 		}
 		for joy = min; joy < max; joy++ {
-			if joystick[joy].Present() {
+			if joystick[joy].IsPresent() {
 				axes := joystick[joy].GetAxes()
 				btns := joystick[joy].GetButtons()
 				for i := range axes {
@@ -1357,7 +1357,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != glfw.KeyUnknown {
 			if sys.keyInput == glfw.KeyInsert {
-				s = sys.window.Window.GetClipboardString()
+				s, _ = sys.window.Window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}
@@ -3237,7 +3237,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LString(""))
 			}
 		} else {
-			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil &&
+			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, true, false); p != nil &&
 				!(p.scf(SCF_ko) && p.scf(SCF_over)) {
 				l.Push(lua.LString(p.name))
 			} else {
@@ -3744,6 +3744,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+		case "roundfreeze":
+			l.Push(lua.LBool(sys.sf(GSF_roundfreeze)))
 		// SystemCharFlag
 		case "over":
 			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))

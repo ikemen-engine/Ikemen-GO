@@ -232,7 +232,7 @@ local motif =
 		overlay_col = {0, 0, 0}, --Ikemen feature
 		overlay_alpha = {20, 100}, --Ikemen feature
 	},
-	infobox_text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* Original repo source code: https://osdn.net/users/supersuehiro/\n* Bug reports: https://github.com/ikemen-engine/Ikemen-GO/issues\n* Features wiki: https://github.com/ikemen-engine/Ikemen-GO/wiki",
+	infobox_text = "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!\n\n* This is a public development release, for testing purposes.\n* This build may contain bugs and incomplete features.\n* Your help and cooperation are appreciated!\n* Ikemen GO engine repositories: https://github.com/ikemen-engine\n* Original repo source code: https://osdn.net/users/supersuehiro/",
 	ja_infobox_text = "", --not used in Ikemen
 	select_info =
 	{
@@ -1927,6 +1927,7 @@ function motif.setBaseTitleInfo()
 		"options",
 		"exit",
 	}
+	hook.run("motif.setBaseTitleInfo")
 end
 
 function motif.setBaseOptionInfo()
@@ -2167,6 +2168,7 @@ function motif.setBaseOptionInfo()
 		"savereturn",
 		"return",
 	}
+	hook.run("motif.setBaseOptionInfo")
 end
 
 function motif.setBaseMenuInfo()
@@ -2199,6 +2201,7 @@ function motif.setBaseMenuInfo()
 		"characterchange",
 		"exit",
 	}
+	hook.run("motif.setBaseMenuInfo")
 end
 
 function motif.setBaseTrainingInfo()
@@ -2247,6 +2250,7 @@ function motif.setBaseTrainingInfo()
 		"characterchange",
 		"exit",
 	}
+	hook.run("motif.setBaseTrainingInfo")
 end
 
 --;===========================================================
@@ -2500,7 +2504,7 @@ for _, v in ipairs({
 	{group = 'files', param = 'select', dirs = {motif.fileDir, '', 'data/'}},
 	{group = 'files', param = 'fight', dirs = {motif.fileDir, '', 'data/'}},
 	{group = 'files', param = 'glyphs', dirs = {motif.fileDir, '', 'data/'}},
-	{group = 'files', param = 'module', dirs = {motif.fileDir, '', 'data/'}},	
+	{group = 'files', param = 'module', dirs = {motif.fileDir, '', 'data/'}},
 	{group = 'music', param = 'title_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
 	{group = 'music', param = 'select_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
 	{group = 'music', param = 'vs_bgm', dirs = {motif.fileDir, '', 'data/', 'sound/'}},
@@ -2618,12 +2622,14 @@ function motif.f_loadSprData(t, v)
 end
 
 --creates fadein/fadeout anim data
-for _, v in ipairs({'title_info', 'select_info', 'vs_screen', 'demo_mode', 'continue_screen', 'victory_screen', 'win_screen', 'survival_results_screen', 'time_attack_results_screen', 'option_info', 'replay_info', 'menu_info', 'training_info', 'attract_mode', 'challenger_info', 'hiscore_info'}) do
-	if motif[v].fadein_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadein_'})
-	end
-	if motif[v].fadeout_anim ~= -1 then
-		motif.f_loadSprData(motif[v], {s = 'fadeout_'})
+for k, v in pairs(motif) do
+	if type(v) == "table" then
+		if motif[k].fadein_anim ~= nil and motif[k].fadein_anim > -1 then
+			motif.f_loadSprData(motif[v], {s = 'fadein_'})
+		end
+		if motif[k].fadeout_anim ~= nil and motif[k].fadeout_anim > -1 then
+			motif.f_loadSprData(motif[v], {s = 'fadeout_'})
+		end
 	end
 end
 
@@ -2721,36 +2727,21 @@ for k, v in pairs(motif.glyphs) do
 	}
 end
 
---default menus
-if main.t_sort.title_info == nil or main.t_sort.title_info.menu == nil or #main.t_sort.title_info.menu == 0 then
-	motif.setBaseTitleInfo()
-end
-if main.t_sort.option_info == nil or main.t_sort.option_info.menu == nil or #main.t_sort.option_info.menu == 0 then
-	motif.setBaseOptionInfo()
-end
-if main.t_sort.menu_info == nil or main.t_sort.menu_info.menu == nil or #main.t_sort.menu_info.menu == 0 then
-	motif.setBaseMenuInfo()
-end
-if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or #main.t_sort.training_info.menu == 0 then
-	motif.setBaseTrainingInfo()
-end
-
-if main.t_sort.select_info.teammenu == nil then
-	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
-end
-
---menus spr/anim data
-for group_k, group_t in pairs(main.t_sort) do
-	for subt_k, subt_t in pairs(group_t) do
-		for _, v in ipairs(subt_t) do
-			if subt_k == 'teammenu' then
-				for i = 1, 2 do
-					motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
-					motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+-- initialize at the end of main.lua
+function motif.f_start()
+	-- menus spr/anim data
+	for group_k, group_t in pairs(main.t_sort) do
+		for subt_k, subt_t in pairs(group_t) do
+			for _, v in ipairs(subt_t) do
+				if subt_k == 'teammenu' then
+					for i = 1, 2 do
+						motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+						motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+					end
+				else--if subt_k == 'menu' or subt_k == 'keymenu' then
+					motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
+					motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
 				end
-			else--if subt_k == 'menu' or subt_k == 'keymenu' then
-				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
-				motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
 			end
 		end
 	end

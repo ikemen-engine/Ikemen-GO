@@ -1539,7 +1539,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p4name:
-		p4 := sys.charList.enemyNear(c, 1, true, false)
+		p4 := sys.charList.enemyNear(c, 1, true, true, false)
 		sys.bcStack.PushB(p4 != nil && !(p4.scf(SCF_ko) && p4.scf(SCF_over)) &&
 			p4.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1552,7 +1552,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 2, true, false)
+		p6 := sys.charList.enemyNear(c, 2, true, true, false)
 		sys.bcStack.PushB(p6 != nil && !(p6.scf(SCF_ko) && p6.scf(SCF_over)) &&
 			p6.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1565,7 +1565,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 3, true, false)
+		p8 := sys.charList.enemyNear(c, 3, true, true, false)
 		sys.bcStack.PushB(p8 != nil && !(p8.scf(SCF_ko) && p8.scf(SCF_over)) &&
 			p8.gi().nameLow ==
 				sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -6346,6 +6346,7 @@ const (
 	zoom_scale
 	zoom_lag
 	zoom_redirectid
+	zoom_camerabound
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
@@ -6361,6 +6362,8 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
 			sys.enableZoomstate = true
+		case zoom_camerabound:
+			sys.zoomCameraBound = exp[0].evalB(c)
 		case zoom_lag:
 			sys.zoomlag = exp[0].evalF(c)
 		case zoom_redirectid:
@@ -7707,7 +7710,6 @@ func (sb *StateBytecode) init(c *Char) {
 	if sb.physics != ST_U {
 		c.ss.physics = sb.physics
 	}
-	sb.ctrlsps = make([]int32, len(sb.ctrlsps))
 	sys.workingState = sb
 	sb.stateDef.Run(c)
 }

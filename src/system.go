@@ -18,8 +18,8 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
+	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -71,7 +71,7 @@ var sys = System{
 	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
-	errLog:                log.New(os.Stderr, "", 0),
+	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
 	keyInput:              glfw.KeyUnknown,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
@@ -218,6 +218,7 @@ type System struct {
 	zoomPosXLag             float32
 	zoomPosYLag             float32
 	enableZoomstate         bool
+	zoomCameraBound         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
 	cam                     Camera
@@ -439,7 +440,7 @@ func (w *Window) toggleFullscreen() {
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
 	var err error
-	// Create a GLWF window.
+	// Create a GLFW window.
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -450,8 +451,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
-	// Initialize OpenGL.
-	chk(gl.Init())
 
 	// Check if the shader selected is currently available.
 	if s.postProcessingShader < int32(len(s.externalShaderList)) {
@@ -610,7 +609,7 @@ func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
 		//gl.Viewport(0, 0, int32(width), int32(height))
-		gl.Viewport(0, 0, s.scrrect[2], s.scrrect[3])
+		gl.Viewport(0, 0, int(s.scrrect[2]), int(s.scrrect[3]))
 		if s.netInput == nil {
 			gl.Clear(gl.COLOR_BUFFER_BIT)
 		}
@@ -1116,6 +1115,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.envcol_time--
 		}
 		s.enableZoomstate = false
+		s.zoomCameraBound = true
 		if s.super > 0 {
 			s.super--
 		} else if s.pause > 0 {
@@ -2111,8 +2111,13 @@ func (s *System) fight() (reload bool) {
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
 					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
 				}
-				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				if s.zoomCameraBound {
+					dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
+					dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+				} else {
+					dscl = s.drawScale / s.cam.BaseScale()
+					dx = x + s.zoomPosXLag/scl
+				}
 				dy = y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0

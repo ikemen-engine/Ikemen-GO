@@ -91,12 +91,12 @@ func loadFntV1(filename string) (*Fnt, error) {
 		return nil, err
 	}
 
-	var pcxDataOffset, pcxDataLenght, txtDataOffset, txtDataLenght uint32
+	var pcxDataOffset, pcxDataLength, txtDataOffset, txtDataLength uint32
 	if err := read(&pcxDataOffset); err != nil {
 		return nil, err
 	}
 
-	if err := read(&pcxDataLenght); err != nil {
+	if err := read(&pcxDataLength); err != nil {
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 		return nil, err
 	}
 
-	if err := read(&txtDataLenght); err != nil {
+	if err := read(&txtDataLength); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 	}
 
 	fp.Seek(int64(pcxDataOffset)+128, 0)
-	px := make([]byte, pcxDataLenght-128-768)
+	px := make([]byte, pcxDataLength-128-768)
 	if err := read(px); err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func loadFntV1(filename string) (*Fnt, error) {
 
 	px = spr.RlePcxDecode(px)
 	fp.Seek(int64(txtDataOffset), 0)
-	buf = make([]byte, txtDataLenght)
+	buf = make([]byte, txtDataLength)
 	if err := read(buf); err != nil {
 		return nil, err
 	}

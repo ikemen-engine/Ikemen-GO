@@ -147,6 +147,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokovelocity)))
 			case "roundnotskip":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
+			case "roundfreeze":
+				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundfreeze)))
 			default:
 				return Error("Invalid value: " + data)
 			}
@@ -3413,6 +3415,10 @@ func (c *Compiler) zoom(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 		}
 		if err := c.paramValue(is, sc, "lag",
 			zoom_lag, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camerabound",
+			zoom_camerabound, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
