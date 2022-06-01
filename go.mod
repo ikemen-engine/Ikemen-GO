@@ -6,7 +6,7 @@ require (
 	github.com/faiface/beep v1.1.0
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220320163800-277f93cfa958
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220516021902-eb3e265c7661
 	github.com/go-gl/mathgl v1.0.0
 	github.com/ikemen-engine/glfont v0.0.0-20220323132206-8bdc165eee08
 	github.com/sqweek/dialog v0.0.0-20220504154117-be45b268883a
