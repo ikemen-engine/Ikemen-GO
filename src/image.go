@@ -959,7 +959,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	}
 	return nil
 }
-func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
+func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
 	rcx, rcy float32, pfx *PalFX, paltex *Texture, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if s.Tex == nil {

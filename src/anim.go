@@ -137,7 +137,7 @@ type Animation struct {
 	sff                *Sff
 	spr                *Sprite
 	frames             []AnimFrame
-	tile               [4]int32
+	tile               Tiling
 	loopstart          int32
 	interpolate_offset []int32
 	interpolate_scale  []int32
@@ -682,18 +682,18 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 				y += ys
 			}
 		}
-		if a.tile[2] == 1 {
-			tmp := xs * float32(a.tile[0])
-			if a.tile[0] <= 0 {
+		if a.tile.x == 1 {
+			tmp := xs * float32(a.tile.sx)
+			if a.tile.sx <= 0 {
 				tmp += xs * float32(a.spr.Size[0])
 			}
 			if tmp != 0 {
 				x -= float32(int(x/tmp)) * tmp
 			}
 		}
-		if a.tile[3] == 1 {
-			tmp := ys * float32(a.tile[1])
-			if a.tile[1] <= 0 {
+		if a.tile.y == 1 {
+			tmp := ys * float32(a.tile.sy)
+			if a.tile.sy <= 0 {
 				tmp += ys * float32(a.spr.Size[1])
 			}
 			if tmp != 0 {
@@ -1003,7 +1003,7 @@ func (a *Anim) AddPos(x, y float32) {
 	a.y += y
 }
 func (a *Anim) SetTile(x, y, sx, sy int32) {
-	a.anim.tile[2], a.anim.tile[3], a.anim.tile[0], a.anim.tile[1] = x, y, sx, sy
+	a.anim.tile.x, a.anim.tile.y, a.anim.tile.sx, a.anim.tile.sy = x, y, sx, sy
 }
 func (a *Anim) SetColorKey(mask int16) {
 	a.anim.mask = mask

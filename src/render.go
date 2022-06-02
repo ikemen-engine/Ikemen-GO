@@ -45,8 +45,14 @@ func (s *Shader) RegisterUniforms(names ...string) {
 	}
 }
 
+// Tiling holds tiling parameters
+type Tiling struct {
+	x, y, sx, sy int32
+}
+
+var notiling = Tiling{}
+
 var vertexUv = f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
-var notiling = [4]int32{0, 0, 0, 0}
 
 var mainShader, flatShader *Shader
 
@@ -335,18 +341,18 @@ func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 flo
 	gl.DisableVertexAttribArray(s.aUv)
 }
 func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
-	tl *[4]int32, rcx float32) {
-	topdist := xtw + xts*float32((*tl)[0])
+	tl *Tiling, rcx float32) {
+	topdist := xtw + xts*float32(tl.sx)
 	if AbsF(topdist) >= 0.01 {
-		botdist := xbw + xbs*float32((*tl)[0])
+		botdist := xbw + xbs*float32(tl.sx)
 		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
-		if (*tl)[2] == 1 {
+		if tl.x == 1 {
 			x1d, x2d, x3d, x4d := x1, x2, x3, x4
 			for {
-				x2d = x1d - xbs*float32((*tl)[0])
-				x3d = x4d - xts*float32((*tl)[0])
+				x2d = x1d - xbs*float32(tl.sx)
+				x3d = x4d - xts*float32(tl.sx)
 				x4d = x3d - xtw
 				x1d = x2d - xbw
 				if topdist < 0 {
@@ -367,7 +373,7 @@ func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, x
 			}
 		}
 	}
-	n := (*tl)[2]
+	n := tl.x
 	for {
 		if topdist > 0 {
 			if x1 >= float32(sys.scrrect[2]) && x2 >= float32(sys.scrrect[2]) &&
@@ -383,19 +389,19 @@ func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, x
 				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
 			drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		}
-		if (*tl)[2] != 1 && n != 0 {
+		if tl.x != 1 && n != 0 {
 			n--
 		}
 		if n == 0 || AbsF(topdist) < 0.01 {
 			break
 		}
-		x4 = x3 + xts*float32((*tl)[0])
-		x1 = x2 + xbs*float32((*tl)[0])
+		x4 = x3 + xts*float32(tl.sx)
+		x1 = x2 + xbs*float32(tl.sx)
 		x2 = x1 + xbw
 		x3 = x4 + xtw
 	}
 }
-func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]int32,
+func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *Tiling,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
@@ -447,10 +453,10 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]
 		drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		return
 	}
-	if (*tl)[3] == 1 && xbs != 0 {
+	if tl.y == 1 && xbs != 0 {
 		x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d := x1, y1, x2, y2, x3, y3, x4, y4
 		for {
-			x1d, y1d = x4d, y4d+ys*vs*float32((*tl)[1])
+			x1d, y1d = x4d, y4d+ys*vs*float32(tl.sy)
 			x2d, y2d = x3d, y1d
 			x3d = x4d - rxadd*ys*float32(h) + (xts/xbs)*(x3d-x4d)
 			y3d = y2d + ys*vs*float32(h)
@@ -459,7 +465,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]
 				break
 			}
 			y4d = y3d
-			if ys*(float32(h)+float32((*tl)[1])) < 0 {
+			if ys*(float32(h)+float32(tl.sy)) < 0 {
 				if y1d <= float32(-sys.scrrect[3]) && y4d <= float32(-sys.scrrect[3]) {
 					break
 				}
@@ -473,10 +479,10 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]
 			}
 		}
 	}
-	if (*tl)[3] == 0 || xts != 0 {
-		n := (*tl)[3]
+	if tl.y == 0 || xts != 0 {
+		n := tl.y
 		for {
-			if ys*(float32(h)+float32((*tl)[1])) > 0 {
+			if ys*(float32(h)+float32(tl.sy)) > 0 {
 				if y1 <= float32(-sys.scrrect[3]) && y4 <= float32(-sys.scrrect[3]) {
 					break
 				}
@@ -488,13 +494,13 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]
 				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
 					(x3-x4)/float32(w), (x2-x1)/float32(w), tl, rcx)
 			}
-			if (*tl)[3] != 1 && n != 0 {
+			if tl.y != 1 && n != 0 {
 				n--
 			}
 			if n == 0 {
 				break
 			}
-			x4, y4 = x1, y1-ys*vs*float32((*tl)[1])
+			x4, y4 = x1, y1-ys*vs*float32(tl.sy)
 			x3, y3 = x2, y4
 			x2 = x1 + rxadd*ys*float32(h) + (xbs/xts)*(x2-x1)
 			y2 = y3 - ys*vs*float32(h)
@@ -506,7 +512,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *[4]
 		}
 	}
 }
-func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
+func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, renderMode, trans int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 
@@ -582,9 +588,9 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *[4]int32,
 		}
 	}
 }
-func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
+func rmInitSub(size [2]uint16, x, y *float32, tile *Tiling, xts float32,
 	ys, vs, agl, yagl, xagl *float32, window *[4]int32, rcx float32, rcy *float32) (
-	tl [4]int32) {
+	tl Tiling) {
 	if *vs < 0 {
 		*vs *= -1
 		*ys *= -1
@@ -592,15 +598,15 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 		*xagl *= -1
 	}
 	tl = *tile
-	if tl[2] == 0 {
-		tl[0] = 0
-	} else if tl[0] > 0 {
-		tl[0] -= int32(size[0])
+	if tl.x == 0 {
+		tl.sx = 0
+	} else if tl.sx > 0 {
+		tl.sx -= int32(size[0])
 	}
-	if tl[3] == 0 {
-		tl[1] = 0
-	} else if tl[1] > 0 {
-		tl[1] -= int32(size[1])
+	if tl.y == 0 {
+		tl.sy = 0
+	} else if tl.sy > 0 {
+		tl.sy -= int32(size[1])
 	}
 	if xts >= 0 {
 		*x *= -1
@@ -619,7 +625,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 }
 
 func RenderMugenPal(tex *Texture, mask int32, size [2]uint16,
-	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
+	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
@@ -645,7 +651,7 @@ func RenderMugenPal(tex *Texture, mask int32, size [2]uint16,
 }
 
 func RenderMugen(tex *Texture, pal []uint32, mask int32, size [2]uint16,
-	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
+	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
 	paltex := newTexture()
@@ -656,7 +662,7 @@ func RenderMugen(tex *Texture, pal []uint32, mask int32, size [2]uint16,
 }
 
 func RenderMugenFc(tex *Texture, size [2]uint16, x, y float32,
-	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
+	tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
@@ -677,7 +683,7 @@ func RenderMugenFc(tex *Texture, size [2]uint16, x, y float32,
 	gl.Disable(gl.BLEND)
 }
 func RenderMugenFcS(tex *Texture, size [2]uint16, x, y float32,
-	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
+	tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, color uint32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
 		return
