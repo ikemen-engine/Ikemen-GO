@@ -460,7 +460,7 @@ func (f *Fnt) drawChar(
 		-x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 0,
-		0, 0, 0,
+		Rotation{},
 		sys.brightness*255>>8|1<<9,
 		window, 0, 0,
 		nil, paltex,

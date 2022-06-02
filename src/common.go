@@ -637,7 +637,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 		}
 		a.Draw(r, x+l.offset[0], y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, l.scale[0]*float32(l.facing), l.scale[0]*float32(l.facing),
-			l.scale[1]*float32(l.vfacing), 0, l.angle, 0, 0,
+			l.scale[1]*float32(l.vfacing), 0, Rotation{l.angle, 0, 0},
 			float32(sys.gameWidth-320)/2, palfx, false, 1, false, 1, 0, 0)
 	}
 }

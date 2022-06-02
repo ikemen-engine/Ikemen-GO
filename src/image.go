@@ -960,7 +960,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	return nil
 }
 func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
-	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
+	xts, xbs, ys, rxadd float32, rot Rotation, trans int32, window *[4]int32,
 	rcx, rcy float32, pfx *PalFX, paltex *Texture, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if s.Tex == nil {
 		return
@@ -973,7 +973,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 	}
 
 	if s.coldepth > 8 {
-		RenderMugenFc(s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+		RenderMugenFc(s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
 		// If no loaded palette information is passed, check whether the cached one is still valid
@@ -1006,7 +1006,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
-		RenderMugenPal(s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+		RenderMugenPal(s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	}
 }
@@ -1021,7 +1021,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 		y *= -1
 	}
 	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, angle, 0, 0,
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, Rotation{angle, 0, 0},
 		sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex, 0, 0, -xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]))
 }
 

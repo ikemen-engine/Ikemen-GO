@@ -656,20 +656,21 @@ func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd, angle, yangle, xangle, rcx float32, pfx *PalFX, old bool, facing float32, isReflection bool, posLocalscl float32, projectionMode int32, fLength float32) {
+	rxadd float32, rot Rotation, rcx float32, pfx *PalFX, old bool, facing float32, isReflection bool, posLocalscl float32, projectionMode int32, fLength float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
-	h, v, angle := a.drawSub1(angle, facing)
+	h, v, angle := a.drawSub1(rot.angle, facing)
 	if isReflection {
 		angle = -angle
 	}
+	rot.angle = angle
 	xs *= xcs * h
 	ys *= ycs * v
 	x = xcs*x + xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)
 	y = ycs*y + ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)
 	var rcy float32
-	if angle == 0 && yangle == 0 && xangle == 0 {
+	if rot.IsZero() {
 		if xs < 0 {
 			x *= -1
 			if old {
@@ -712,18 +713,18 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	pal, paltex := a.pal(pfx, trans == -2)
 	a.spr.glDraw(pal, int32(a.mask), x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
-		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle, yangle, xangle,
+		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, rot,
 		trans, window, rcx, rcy, pfx, paltex, projectionMode, fLength*sys.heightScale,
 		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
 		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale)
 }
-func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle float32,
+func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
-	h, v, angle := a.drawSub1(angle, facing)
-	angle = -angle
+	h, v, angle := a.drawSub1(rot.angle, facing)
+	rot.angle = -angle
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_y)
 	var draw func(int32)
@@ -733,7 +734,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, rot, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color, projectionMode, fLength,
 				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
 				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
@@ -757,7 +758,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
+				yscl*v*sys.heightScale, vscl, 0, rot, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, projectionMode, fLength,
 				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
 				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
@@ -822,9 +823,7 @@ type SprData struct {
 	scl         [2]float32
 	alpha       [2]int32
 	priority    int32
-	angle       float32
-	yangle      float32
-	xangle      float32
+	rot         Rotation
 	ascl        [2]float32
 	screen      bool
 	bright      bool
@@ -840,7 +839,7 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, fo float32) {
 	if sys.frameSkip || sd.anim == nil || sd.anim.spr == nil {
 		return
 	}
-	if sd.angle != 0 {
+	if sd.rot.angle != 0 {
 		for i, as := range sd.ascl {
 			sd.scl[i] *= as
 		}
@@ -887,7 +886,7 @@ func (dl DrawList) draw(x, y, scl float32) {
 					(y - s.pos[1])}
 		}
 		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], 0, s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+			s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
 		sys.brightness = ob
 	}
 }
@@ -948,7 +947,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
 			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
 				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.angle, s.yangle, s.xangle,
+			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.rot,
 			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
 	}
 }
@@ -972,7 +971,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
 				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			s.angle, s.yangle, s.xangle, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+			s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
 	}
 }
 
@@ -1033,7 +1032,7 @@ func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, 0, 0, 0, 0, a.palfx, false, 1, false, 1, 0, 0)
+			0, Rotation{}, 0, a.palfx, false, 1, false, 1, 0, 0)
 	}
 }
 func (a *Anim) ResetFrames() {

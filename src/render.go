@@ -45,6 +45,15 @@ func (s *Shader) RegisterUniforms(names ...string) {
 	}
 }
 
+// Rotation holds rotation parameters
+type Rotation struct {
+	angle, xangle, yangle float32
+}
+
+func (r *Rotation) IsZero() bool {
+	return r.angle == 0 && r.xangle == 0 && r.yangle == 0
+}
+
 // Tiling holds tiling parameters
 type Tiling struct {
 	x, y, sx, sy int32
@@ -402,7 +411,7 @@ func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, x
 	}
 }
 func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *Tiling,
-	xts, xbs, ys, vs, rxadd, agl, yagl, xagl, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
+	xts, xbs, ys, vs, rxadd float32, rot Rotation, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	x1, y1 := x+rxadd*ys*float32(h), rcy+((y-ys*float32(h))-rcy)*vs
 	x2, y2 := x1+xbs*float32(w), y1
 	x3, y3 := x+xts*float32(w), rcy+(y-rcy)*vs
@@ -413,7 +422,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *Til
 	//} else {
 	//	pers = AbsF(xbs) / AbsF(xts)
 	//}
-	if agl != 0 || yagl != 0 || xagl != 0 {
+	if !rot.IsZero() {
 		//	kaiten(&x1, &y1, float64(agl), rcx, rcy, vs)
 		//	kaiten(&x2, &y2, float64(agl), rcx, rcy, vs)
 		//	kaiten(&x3, &y3, float64(agl), rcx, rcy, vs)
@@ -445,9 +454,9 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *Til
 
 		modelview = modelview.Mul4(mgl.Scale3D(1, vs, 1))
 		modelview = modelview.Mul4(
-			mgl.Rotate3DX(-xagl * math.Pi / 180.0).Mul3(
-			mgl.Rotate3DY(yagl * math.Pi / 180.0)).Mul3(
-			mgl.Rotate3DZ(agl * math.Pi / 180.0)).Mat4())
+			mgl.Rotate3DX(-rot.xangle * math.Pi / 180.0).Mul3(
+			mgl.Rotate3DY(rot.yangle * math.Pi / 180.0)).Mul3(
+			mgl.Rotate3DZ(rot.angle * math.Pi / 180.0)).Mat4())
 		modelview = modelview.Mul4(mgl.Translate3D(-rcx, -rcy, 0))
 
 		drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
@@ -513,7 +522,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, w, h uint16, x, y float32, tl *Til
 	}
 }
 func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
-	xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, renderMode, trans int32, rcx, rcy float32, neg bool, color float32,
+	xts, xbs, ys, vs, rxadd float32, rot Rotation, renderMode, trans int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
@@ -530,13 +539,13 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+			rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans == -2:
 		gl.Uniform1f(s.uAlpha, 1)
 		gl.BlendFunc(gl.ONE, gl.ONE)
 		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
 		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+			rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans <= 0:
 	case trans < 255:
 		gl.Uniform1f(s.uAlpha, float32(trans)/255)
@@ -547,7 +556,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+			rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	case trans < 512:
 		gl.Uniform1f(s.uAlpha, 1)
 		if renderMode == 1 {
@@ -557,7 +566,7 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 		}
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-			agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+			rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		aglOver := 0
@@ -566,14 +575,12 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+				rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 			aglOver++
 		}
 		if src > 0 {
 			if aglOver != 0 {
-				agl = 0
-				yagl = 0
-				xagl = 0
+				rot = Rotation{}
 			}
 			gl.Uniform1f(s.uAlpha, float32(src)/255)
 
@@ -584,18 +591,18 @@ func rmMainSub(s *Shader, size [2]uint16, x, y float32, tl *Tiling,
 			}
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(s, modelview, size[0], size[1], x, y, tl, xts, xbs, ys, vs, rxadd,
-				agl, yagl, xagl, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
+				rot, rcx, rcy, projectionMode, fLength, xOffset, yOffset)
 		}
 	}
 }
 func rmInitSub(size [2]uint16, x, y *float32, tile *Tiling, xts float32,
-	ys, vs, agl, yagl, xagl *float32, window *[4]int32, rcx float32, rcy *float32) (
+	ys, vs *float32, rot *Rotation, window *[4]int32, rcx float32, rcy *float32) (
 	tl Tiling) {
 	if *vs < 0 {
 		*vs *= -1
 		*ys *= -1
-		*agl *= -1
-		*xagl *= -1
+		rot.angle *= -1
+		rot.xangle *= -1
 	}
 	tl = *tile
 	if tl.x == 0 {
@@ -625,13 +632,13 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *Tiling, xts float32,
 }
 
 func RenderMugenPal(tex *Texture, mask int32, size [2]uint16,
-	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
+	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd float32, rot Rotation,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+rot.angle+rcx+rcy) {
 		return
 	}
-	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
+	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &rot, window, rcx, &rcy)
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.uTexture, 0)
 	gl.Uniform1i(mainShader.u["pal"], 1)
@@ -644,31 +651,31 @@ func RenderMugenPal(tex *Texture, mask int32, size [2]uint16,
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
-	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, rot,
 		1, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
 
 func RenderMugen(tex *Texture, pal []uint32, mask int32, size [2]uint16,
-	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
+	x, y float32, tile *Tiling, xts, xbs, ys, vs, rxadd float32, rot Rotation,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
 	paltex := newTexture()
 	paltex.SetData(256, 1, 32, false,
 		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
 	RenderMugenPal(tex, mask, size, x, y, tile, xts, xbs, ys, vs, rxadd,
-		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
+		rot, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 }
 
 func RenderMugenFc(tex *Texture, size [2]uint16, x, y float32,
-	tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
+	tile *Tiling, xts, xbs, ys, vs, rxadd float32, rot Rotation, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+rot.angle+rcx+rcy) {
 		return
 	}
-	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
+	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &rot, window, rcx, &rcy)
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.u["isRgba"], 1)
 	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(xts)-AbsF(xbs)) > 0.001)))
@@ -677,18 +684,18 @@ func RenderMugenFc(tex *Texture, size [2]uint16, x, y float32,
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
-	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(mainShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, rot,
 		2, trans, rcx, rcy, neg, color, padd, pmul, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
 func RenderMugenFcS(tex *Texture, size [2]uint16, x, y float32,
-	tile *Tiling, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
+	tile *Tiling, xts, xbs, ys, vs, rxadd float32, rot Rotation, trans int32,
 	window *[4]int32, rcx, rcy float32, color uint32, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
+	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+rot.angle+rcx+rcy) {
 		return
 	}
-	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &agl, &yagl, &xagl, window, rcx, &rcy)
+	tl := rmInitSub(size, &x, &y, tile, xts, &ys, &vs, &rot, window, rcx, &rcy)
 	gl.UseProgram(flatShader.program)
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(
@@ -696,7 +703,7 @@ func RenderMugenFcS(tex *Texture, size [2]uint16, x, y float32,
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
 	gl.BindTexture(gl.TEXTURE_2D, tex.handle)
-	rmMainSub(flatShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, agl, yagl, xagl,
+	rmMainSub(flatShader, size, x, y, &tl, xts, xbs, ys, vs, rxadd, rot,
 		0, trans, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
