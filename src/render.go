@@ -559,14 +559,14 @@ func rmMainSub(s *Shader, rp RenderParams) {
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
+	blendSourceFactor := gl.Enum(gl.SRC_ALPHA)
+	if rp.paltex == nil {
+		blendSourceFactor = gl.ONE
+	}
 	switch {
 	case rp.trans == -1:
 		gl.Uniform1f(s.uAlpha, 1)
-		if rp.paltex != nil {
-			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
-		} else {
-			gl.BlendFunc(gl.ONE, gl.ONE)
-		}
+		gl.BlendFunc(blendSourceFactor, gl.ONE)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, rp)
 	case rp.trans == -2:
@@ -577,20 +577,12 @@ func rmMainSub(s *Shader, rp RenderParams) {
 	case rp.trans <= 0:
 	case rp.trans < 255:
 		gl.Uniform1f(s.uAlpha, float32(rp.trans)/255)
-		if rp.paltex != nil {
-			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		} else {
-			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-		}
+		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, rp)
 	case rp.trans < 512:
 		gl.Uniform1f(s.uAlpha, 1)
-		if rp.paltex != nil {
-			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		} else {
-			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-		}
+		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
 		rmTileSub(s, modelview, rp)
 	default:
@@ -608,17 +600,15 @@ func rmMainSub(s *Shader, rp RenderParams) {
 				rp.rot = Rotation{}
 			}
 			gl.Uniform1f(s.uAlpha, float32(src)/255)
-
-			if rp.paltex != nil {
-				gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
-			} else {
-				gl.BlendFunc(gl.ONE, gl.ONE)
-			}
+			gl.BlendFunc(blendSourceFactor, gl.ONE)
 			gl.BlendEquation(gl.FUNC_ADD)
 			rmTileSub(s, modelview, rp)
 		}
 	}
+	gl.Disable(gl.SCISSOR_TEST)
+	gl.Disable(gl.BLEND)
 }
+
 func rmInitSub(rp *RenderParams) {
 	if rp.vs < 0 {
 		rp.vs *= -1
@@ -686,8 +676,6 @@ func RenderSprite(rp RenderParams, mask int32) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
 	rmMainSub(mainShader, rp)
-	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.BLEND)
 }
 
 func RenderFlatSprite(rp RenderParams, color uint32) {
@@ -703,8 +691,6 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
 	rmMainSub(flatShader, rp)
-	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.BLEND)
 }
 
 func FillRect(rect [4]int32, color uint32, trans int32) {
