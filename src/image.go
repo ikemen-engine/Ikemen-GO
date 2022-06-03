@@ -117,12 +117,12 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	}
 	return sys.workpal
 }
-func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
+func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, grayscale float32,
 	add, mul [3]float32) {
 	p := pf.getSynFx()
 	if !p.enable {
 		neg = false
-		color = 1
+		grayscale = 0
 		for i := range add {
 			add[i] = 0
 		}
@@ -132,7 +132,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
 		return
 	}
 	neg = p.eInvertall
-	color = p.eColor
+	grayscale = 1 - p.eColor
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -965,16 +965,10 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 	if s.Tex == nil {
 		return
 	}
-	neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
-	if trans == -2 {
-		padd[0] *= -1
-		padd[1] *= -1
-		padd[2] *= -1
-	}
 
 	params := RenderParams{
 		s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
-		trans, window, rcx, rcy, projectionMode, fLength, xOffset, yOffset,
+		trans, pfx, window, rcx, rcy, projectionMode, fLength, xOffset, yOffset,
 	}
 
 	if s.coldepth <= 8 {
@@ -1010,7 +1004,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 		}
 	}
 
-	RenderSprite(params, s.coldepth > 8, mask, neg, color, &padd, &pmul)
+	RenderSprite(params, s.coldepth > 8, mask)
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
 	paltex *Texture, window *[4]int32) {

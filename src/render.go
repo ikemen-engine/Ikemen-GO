@@ -70,6 +70,7 @@ type RenderParams struct {
 	xts, xbs, ys, vs, rxadd float32
 	rot Rotation
 	trans int32
+	pfx *PalFX
 	window *[4]int32
 	rcx, rcy float32
 	projectionMode int32
@@ -640,8 +641,7 @@ func rmInitSub(rp *RenderParams) {
 		rp.window[2], rp.window[3])
 }
 
-func RenderSprite(rp RenderParams, isRgba bool, mask int32, neg bool,
-	color float32, padd, pmul *[3]float32) {
+func RenderSprite(rp RenderParams, isRgba bool, mask int32) {
 	if !rp.IsValid() {
 		return
 	}
@@ -656,10 +656,19 @@ func RenderSprite(rp RenderParams, isRgba bool, mask int32, neg bool,
 		gl.Uniform1i(mainShader.u["mask"], int(mask))
 	}
 	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
+
+	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
+	if rp.pfx != nil {
+		neg, grayscale, padd, pmul = rp.pfx.getFcPalFx(rp.trans == -2)
+		if rp.trans == -2 {
+			padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
+		}
+	}
 	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
-	gl.Uniform1f(mainShader.u["gray"], 1-color)
-	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
-	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
+	gl.Uniform1f(mainShader.u["gray"], grayscale)
+	gl.Uniform3fv(mainShader.u["add"], padd[:])
+	gl.Uniform3fv(mainShader.u["mul"], pmul[:])
+
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
 	rmMainSub(mainShader, rp, 1 + Btoi(isRgba))
@@ -672,7 +681,7 @@ func RenderMugen(rp RenderParams, pal []uint32, mask int32) {
 	paltex := newTexture()
 	paltex.SetData(256, 1, 32, false,
 		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-	RenderSprite(rp, false, mask, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	RenderSprite(rp, false, mask)
 }
 
 func RenderMugenFcS(rp RenderParams, color uint32) {

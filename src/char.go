@@ -168,7 +168,7 @@ func (cr ClsnRect) draw(trans int32) {
 			sys.clsnSpr.Tex, sys.clsnSpr.Size,
 			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
 			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale,
-			1, 0, Rotation{}, trans, &sys.scrrect, 0, 0, 0, 0, 0, 0,
+			1, 0, Rotation{}, trans, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
 		RenderMugen(params, sys.clsnSpr.Pal, -1)
 	}
