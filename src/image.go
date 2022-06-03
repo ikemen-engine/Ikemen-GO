@@ -977,9 +977,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 		trans, window, rcx, rcy, projectionMode, fLength, xOffset, yOffset,
 	}
 
-	if s.coldepth > 8 {
-		RenderMugenFc(params, neg, color, &padd, &pmul)
-	} else {
+	if s.coldepth <= 8 {
 		// If no loaded palette information is passed, check whether the cached one is still valid
 		hasPalette := true
 		if paltex == nil {
@@ -1010,8 +1008,9 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
-		RenderMugenPal(params, mask, neg, color, &padd, &pmul)
 	}
+
+	RenderSprite(params, s.coldepth > 8, mask, neg, color, &padd, &pmul)
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
 	paltex *Texture, window *[4]int32) {

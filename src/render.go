@@ -640,24 +640,29 @@ func rmInitSub(rp *RenderParams) {
 		rp.window[2], rp.window[3])
 }
 
-func RenderMugenPal(rp RenderParams, mask int32, neg bool, color float32, padd, pmul *[3]float32) {
+func RenderSprite(rp RenderParams, isRgba bool, mask int32, neg bool,
+	color float32, padd, pmul *[3]float32) {
 	if !rp.IsValid() {
 		return
 	}
 	rmInitSub(&rp)
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.uTexture, 0)
-	gl.Uniform1i(mainShader.u["pal"], 1)
-	gl.Uniform1i(mainShader.u["isRgba"], 0)
+	if isRgba {
+		gl.Uniform1i(mainShader.u["isRgba"], 1)
+	} else {
+		gl.Uniform1i(mainShader.u["pal"], 1)
+		gl.Uniform1i(mainShader.u["isRgba"], 0)
+		gl.Uniform1i(mainShader.u["mask"], int(mask))
+	}
 	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
-	gl.Uniform1i(mainShader.u["mask"], int(mask))
 	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
 	gl.Uniform1f(mainShader.u["gray"], 1-color)
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(mainShader, rp, 1)
+	rmMainSub(mainShader, rp, 1 + Btoi(isRgba))
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
@@ -667,25 +672,7 @@ func RenderMugen(rp RenderParams, pal []uint32, mask int32) {
 	paltex := newTexture()
 	paltex.SetData(256, 1, 32, false,
 		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-	RenderMugenPal(rp, mask, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
-}
-
-func RenderMugenFc(rp RenderParams, neg bool, color float32, padd, pmul *[3]float32) {
-	if !rp.IsValid() {
-		return
-	}
-	rmInitSub(&rp)
-	gl.UseProgram(mainShader.program)
-	gl.Uniform1i(mainShader.u["isRgba"], 1)
-	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
-	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
-	gl.Uniform1f(mainShader.u["gray"], 1-color)
-	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
-	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
-	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(mainShader, rp, 2)
-	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.BLEND)
+	RenderSprite(rp, false, mask, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
 }
 
 func RenderMugenFcS(rp RenderParams, color uint32) {
