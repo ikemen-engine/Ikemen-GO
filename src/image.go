@@ -966,8 +966,8 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 		return
 	}
 
-	params := RenderParams{
-		s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
+	rp := RenderParams{
+		s.Tex, nil, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
 		trans, pfx, window, rcx, rcy, projectionMode, fLength, xOffset, yOffset,
 	}
 
@@ -991,20 +991,20 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 			}
 		}
 
-		gl.ActiveTexture(gl.TEXTURE1)
 		if hasPalette {
-			gl.BindTexture(gl.TEXTURE_2D, paltex.handle)
+			rp.paltex = paltex
 		} else {
 			// Generate, bind and cache palette texture
 			s.PalTex = newTexture()
 			s.PalTex.SetData(256, 1, 32, false,
 				unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+			rp.paltex = s.PalTex
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
 	}
 
-	RenderSprite(params, s.coldepth > 8, mask)
+	RenderSprite(rp, mask)
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
 	paltex *Texture, window *[4]int32) {

@@ -729,7 +729,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 
 	rp := RenderParams{
-		a.spr.Tex, a.spr.Size,
+		a.spr.Tex, nil, a.spr.Size,
 		AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 		AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 		xscl*h*sys.widthScale, xscl*h*sys.widthScale,

@@ -63,7 +63,7 @@ var notiling = Tiling{}
 
 // RenderParams holds the common data for all sprite rendering functions
 type RenderParams struct {
-	tex *Texture
+	tex, paltex *Texture
 	size [2]uint16
 	x, y float32
 	tile *Tiling
@@ -542,7 +542,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 }
-func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
+func rmMainSub(s *Shader, rp RenderParams) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
@@ -550,7 +550,7 @@ func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
 	switch {
 	case rp.trans == -1:
 		gl.Uniform1f(s.uAlpha, 1)
-		if renderMode == 1 {
+		if rp.paltex != nil {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 		} else {
 			gl.BlendFunc(gl.ONE, gl.ONE)
@@ -565,7 +565,7 @@ func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
 	case rp.trans <= 0:
 	case rp.trans < 255:
 		gl.Uniform1f(s.uAlpha, float32(rp.trans)/255)
-		if renderMode == 1 {
+		if rp.paltex != nil {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		} else {
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -574,7 +574,7 @@ func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
 		rmTileSub(s, modelview, rp)
 	case rp.trans < 512:
 		gl.Uniform1f(s.uAlpha, 1)
-		if renderMode == 1 {
+		if rp.paltex != nil {
 			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		} else {
 			gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -597,7 +597,7 @@ func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
 			}
 			gl.Uniform1f(s.uAlpha, float32(src)/255)
 
-			if renderMode == 1 {
+			if rp.paltex != nil {
 				gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
 			} else {
 				gl.BlendFunc(gl.ONE, gl.ONE)
@@ -641,16 +641,18 @@ func rmInitSub(rp *RenderParams) {
 		rp.window[2], rp.window[3])
 }
 
-func RenderSprite(rp RenderParams, isRgba bool, mask int32) {
+func RenderSprite(rp RenderParams, mask int32) {
 	if !rp.IsValid() {
 		return
 	}
 	rmInitSub(&rp)
 	gl.UseProgram(mainShader.program)
 	gl.Uniform1i(mainShader.uTexture, 0)
-	if isRgba {
+	if rp.paltex == nil {
 		gl.Uniform1i(mainShader.u["isRgba"], 1)
 	} else {
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, rp.paltex.handle)
 		gl.Uniform1i(mainShader.u["pal"], 1)
 		gl.Uniform1i(mainShader.u["isRgba"], 0)
 		gl.Uniform1i(mainShader.u["mask"], int(mask))
@@ -671,17 +673,16 @@ func RenderSprite(rp RenderParams, isRgba bool, mask int32) {
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(mainShader, rp, 1 + Btoi(isRgba))
+	rmMainSub(mainShader, rp)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
 
 func RenderMugen(rp RenderParams, pal []uint32, mask int32) {
-	gl.ActiveTexture(gl.TEXTURE1)
-	paltex := newTexture()
-	paltex.SetData(256, 1, 32, false,
+	rp.paltex = newTexture()
+	rp.paltex.SetData(256, 1, 32, false,
 		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-	RenderSprite(rp, false, mask)
+	RenderSprite(rp, mask)
 }
 
 func RenderMugenFcS(rp RenderParams, color uint32) {
@@ -696,7 +697,7 @@ func RenderMugenFcS(rp RenderParams, color uint32) {
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(flatShader, rp, 0)
+	rmMainSub(flatShader, rp)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
