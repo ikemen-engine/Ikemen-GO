@@ -730,14 +730,18 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	var draw func(int32)
 	if a.spr.coldepth > 8 {
 		draw = func(trans int32) {
-			RenderMugenFcS(a.spr.Tex, a.spr.Size,
+			params := RenderParams{
+				a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
 				yscl*v*sys.heightScale, vscl, 0, rot, trans, &sys.scrrect,
-				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color, projectionMode, fLength,
+				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
+				projectionMode, fLength,
 				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
-				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
+				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
+			}
+			RenderMugenFcS(params, color)
 		}
 	} else {
 		var pal [256]uint32
@@ -754,14 +758,18 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 			}
 		}
 		draw = func(trans int32) {
-			RenderMugen(a.spr.Tex, pal[:], int32(a.mask), a.spr.Size,
+			params := RenderParams{
+				a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
 				yscl*v*sys.heightScale, vscl, 0, rot, trans, &sys.scrrect,
-				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, projectionMode, fLength,
+				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
+				projectionMode, fLength,
 				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
-				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
+				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
+			}
+			RenderMugen(params, pal[:], int32(a.mask))
 		}
 	}
 	if color != 0 {
