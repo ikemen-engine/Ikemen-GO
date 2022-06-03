@@ -726,22 +726,24 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	h, v, angle := a.drawSub1(rot.angle, facing)
 	rot.angle = -angle
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
-	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_y)
-	var draw func(int32)
+	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
+
+	rp := RenderParams{
+		a.spr.Tex, a.spr.Size,
+		AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
+		AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
+		xscl*h*sys.widthScale, xscl*h*sys.widthScale,
+		yscl*v*sys.heightScale, vscl, 0, rot, 0, nil, &sys.scrrect,
+		(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
+		projectionMode, fLength,
+		xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
+		yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
+	}
+
+	var draw func()
 	if a.spr.coldepth > 8 {
-		draw = func(trans int32) {
-			params := RenderParams{
-				a.spr.Tex, a.spr.Size,
-				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
-				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
-				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, rot, trans, nil, &sys.scrrect,
-				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
-				projectionMode, fLength,
-				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
-				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
-			}
-			RenderMugenFcS(params, color)
+		draw = func() {
+			RenderMugenFcS(rp, color)
 		}
 	} else {
 		var pal [256]uint32
@@ -757,26 +759,17 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 				}
 			}
 		}
-		draw = func(trans int32) {
-			params := RenderParams{
-				a.spr.Tex, a.spr.Size,
-				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
-				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
-				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-				yscl*v*sys.heightScale, vscl, 0, rot, trans, nil, &sys.scrrect,
-				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
-				projectionMode, fLength,
-				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
-				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
-			}
-			RenderMugen(params, pal[:], int32(a.mask))
+		draw = func() {
+			RenderMugen(rp, pal[:], int32(a.mask))
 		}
 	}
 	if color != 0 {
-		draw(-2)
+		rp.trans = -2
+		draw()
 	}
 	if alpha > 0 {
-		draw((256-alpha)<<10 | 1<<9)
+		rp.trans = (256-alpha)<<10 | 1<<9
+		draw()
 	}
 }
 
