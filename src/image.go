@@ -264,6 +264,13 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	return true
 }
 
+func PaletteToTexture(pal []uint32) *Texture {
+	tx := newTexture()
+	tx.SetData(256, 1, 32, false,
+		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+	return tx
+}
+
 type SffHeader struct {
 	Ver0, Ver1, Ver2, Ver3   byte
 	FirstSpriteHeaderOffset  uint32
@@ -995,9 +1002,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
 			rp.paltex = paltex
 		} else {
 			// Generate, bind and cache palette texture
-			s.PalTex = newTexture()
-			s.PalTex.SetData(256, 1, 32, false,
-				unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+			s.PalTex = PaletteToTexture(pal)
 			rp.paltex = s.PalTex
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp

@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"strings"
-	"unsafe"
 )
 
 const MaxPalNo = 12
@@ -163,14 +162,15 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 	}
 }
 func (cr ClsnRect) draw(trans int32) {
+	paltex := PaletteToTexture(sys.clsnSpr.Pal)
 	for _, c := range cr {
 		params := RenderParams{
-			sys.clsnSpr.Tex, nil, sys.clsnSpr.Size,
+			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
 			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
 			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale,
 			1, 0, Rotation{}, trans, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
-		RenderMugen(params, sys.clsnSpr.Pal, -1)
+		RenderSprite(params, -1)
 	}
 }
 
@@ -2288,10 +2288,7 @@ func (c *Char) loadPalette() {
 					gi.palExist[i] = true
 
 					//パレットテクスチャ生成
-					gi.sff.palList.PalTex[i] = newTexture()
-					gi.sff.palList.PalTex[i].SetData(256, 1, 32, false,
-						unsafe.Slice((*byte)(unsafe.Pointer(&pl[0])), len(pl)*4))
-
+					gi.sff.palList.PalTex[i] = PaletteToTexture(pl)
 					tmp = i + 1
 				}
 			}

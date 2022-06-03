@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"unsafe"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
 	gl "github.com/fyne-io/gl-js"
@@ -678,14 +677,7 @@ func RenderSprite(rp RenderParams, mask int32) {
 	gl.Disable(gl.BLEND)
 }
 
-func RenderMugen(rp RenderParams, pal []uint32, mask int32) {
-	rp.paltex = newTexture()
-	rp.paltex.SetData(256, 1, 32, false,
-		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-	RenderSprite(rp, mask)
-}
-
-func RenderMugenFcS(rp RenderParams, color uint32) {
+func RenderFlatSprite(rp RenderParams, color uint32) {
 	if !rp.IsValid() {
 		return
 	}

@@ -743,7 +743,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	var draw func()
 	if a.spr.coldepth > 8 {
 		draw = func() {
-			RenderMugenFcS(rp, color)
+			RenderFlatSprite(rp, color)
 		}
 	} else {
 		var pal [256]uint32
@@ -759,8 +759,9 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 				}
 			}
 		}
+		rp.paltex = PaletteToTexture(pal[:])
 		draw = func() {
-			RenderMugen(rp, pal[:], int32(a.mask))
+			RenderSprite(rp, int32(a.mask))
 		}
 	}
 	if color != 0 {
