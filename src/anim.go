@@ -714,7 +714,8 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
 		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, angle, yangle, xangle,
 		trans, window, rcx, rcy, pfx, paltex, projectionMode, fLength*sys.heightScale,
-		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale, ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale)
+		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
+		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle float32,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
@@ -724,7 +725,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 	h, v, angle := a.drawSub1(angle, facing)
 	angle = -angle
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
-	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
+	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_y)
 	var draw func(int32)
 	if a.spr.coldepth > 8 {
 		draw = func(trans int32) {
@@ -734,7 +735,8 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
 				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, color, projectionMode, fLength,
-				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x), yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_x))
+				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
+				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
 		}
 	} else {
 		var pal [256]uint32
@@ -757,7 +759,8 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
 				yscl*v*sys.heightScale, vscl, 0, angle, yangle, xangle, trans, &sys.scrrect,
 				(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale, projectionMode, fLength,
-				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x), yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_x))
+				xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
+				yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y))
 		}
 	}
 	if color != 0 {
