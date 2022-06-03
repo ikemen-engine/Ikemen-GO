@@ -973,7 +973,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 	}
 
 	if s.coldepth > 8 {
-		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+		RenderMugenFc(s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	} else {
 		// If no loaded palette information is passed, check whether the cached one is still valid
@@ -1006,7 +1006,7 @@ func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
 			tmp := append([]uint32{}, pal...)
 			s.paltemp = tmp
 		}
-		RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
+		RenderMugenPal(s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
 			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	}
 }

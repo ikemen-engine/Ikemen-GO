@@ -164,7 +164,7 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 }
 func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
-		RenderMugen(*sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
+		RenderMugen(sys.clsnSpr.Tex, sys.clsnSpr.Pal, -1, sys.clsnSpr.Size,
 			-c[0]*sys.widthScale, -c[1]*sys.heightScale, &notiling,
 			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale, 1, 0, 0, 0, 0,
 			trans, &sys.scrrect, 0, 0, 0, 0, 0, 0)

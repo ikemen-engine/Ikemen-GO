@@ -729,7 +729,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 	var draw func(int32)
 	if a.spr.coldepth > 8 {
 		draw = func(trans int32) {
-			RenderMugenFcS(*a.spr.Tex, a.spr.Size,
+			RenderMugenFcS(a.spr.Tex, a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,
@@ -753,7 +753,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl, angle, yangle, xangle flo
 			}
 		}
 		draw = func(trans int32) {
-			RenderMugen(*a.spr.Tex, pal[:], int32(a.mask), a.spr.Size,
+			RenderMugen(a.spr.Tex, pal[:], int32(a.mask), a.spr.Size,
 				AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 				AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 				xscl*h*sys.widthScale, xscl*h*sys.widthScale,

@@ -618,7 +618,7 @@ func rmInitSub(size [2]uint16, x, y *float32, tile *[4]int32, xts float32,
 	return
 }
 
-func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
+func RenderMugenPal(tex *Texture, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
@@ -644,7 +644,7 @@ func RenderMugenPal(tex Texture, mask int32, size [2]uint16,
 	gl.Disable(gl.BLEND)
 }
 
-func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
+func RenderMugen(tex *Texture, pal []uint32, mask int32, size [2]uint16,
 	x, y float32, tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32,
 	trans int32, window *[4]int32, rcx, rcy float32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	gl.ActiveTexture(gl.TEXTURE1)
@@ -655,7 +655,7 @@ func RenderMugen(tex Texture, pal []uint32, mask int32, size [2]uint16,
 		agl, yagl, xagl, trans, window, rcx, rcy, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1}, projectionMode, fLength, xOffset, yOffset)
 }
 
-func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
+func RenderMugenFc(tex *Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, neg bool, color float32,
 	padd, pmul *[3]float32, projectionMode int32, fLength, xOffset, yOffset float32) {
@@ -676,7 +676,7 @@ func RenderMugenFc(tex Texture, size [2]uint16, x, y float32,
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
-func RenderMugenFcS(tex Texture, size [2]uint16, x, y float32,
+func RenderMugenFcS(tex *Texture, size [2]uint16, x, y float32,
 	tile *[4]int32, xts, xbs, ys, vs, rxadd, agl, yagl, xagl float32, trans int32,
 	window *[4]int32, rcx, rcy float32, color uint32, projectionMode int32, fLength, xOffset, yOffset float32) {
 	if !tex.handle.IsValid() || !IsFinite(x+y+xts+xbs+ys+vs+rxadd+agl+rcx+rcy) {
