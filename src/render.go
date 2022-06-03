@@ -541,8 +541,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 }
-func rmMainSub(s *Shader, rp RenderParams, renderMode int32,
-		neg bool, color float32, padd, pmul *[3]float32) {
+func rmMainSub(s *Shader, rp RenderParams, renderMode int32) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
@@ -658,7 +657,7 @@ func RenderMugenPal(rp RenderParams, mask int32, neg bool, color float32, padd, 
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(mainShader, rp, 1, neg, color, padd, pmul)
+	rmMainSub(mainShader, rp, 1)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
@@ -684,7 +683,7 @@ func RenderMugenFc(rp RenderParams, neg bool, color float32, padd, pmul *[3]floa
 	gl.Uniform3f(mainShader.u["add"], (*padd)[0], (*padd)[1], (*padd)[2])
 	gl.Uniform3f(mainShader.u["mul"], (*pmul)[0], (*pmul)[1], (*pmul)[2])
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(mainShader, rp, 2, neg, color, padd, pmul)
+	rmMainSub(mainShader, rp, 2)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
@@ -701,7 +700,7 @@ func RenderMugenFcS(rp RenderParams, color uint32) {
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
-	rmMainSub(flatShader, rp, 0, false, 1, &[3]float32{0, 0, 0}, &[3]float32{1, 1, 1})
+	rmMainSub(flatShader, rp, 0)
 	gl.Disable(gl.SCISSOR_TEST)
 	gl.Disable(gl.BLEND)
 }
