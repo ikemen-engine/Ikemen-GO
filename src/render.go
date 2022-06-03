@@ -12,13 +12,15 @@ import (
 
 type Shader struct {
 	// Program
-	program gl.Program
+	program     gl.Program
 	// Attribute locations
-	aPos, aUv gl.Attrib
+	aPos        gl.Attrib
+	aUv         gl.Attrib
 	// Common uniforms
-	uModelView, uProjection gl.Uniform
-	uTexture gl.Uniform
-	uAlpha gl.Uniform
+	uModelView  gl.Uniform
+	uProjection gl.Uniform
+	uTexture    gl.Uniform
+	uAlpha      gl.Uniform
 	// Additional uniforms
 	u map[string]gl.Uniform
 }
@@ -62,18 +64,29 @@ var notiling = Tiling{}
 
 // RenderParams holds the common data for all sprite rendering functions
 type RenderParams struct {
-	tex, paltex *Texture
-	size [2]uint16
-	x, y float32
-	tile *Tiling
-	xts, xbs, ys, vs, rxadd float32
-	rot Rotation
-	trans int32
-	pfx *PalFX
-	window *[4]int32
+	// Sprite texture and palette texture
+	tex      *Texture
+	paltex   *Texture
+	// Size, position, tiling, scaling and rotation
+	size     [2]uint16
+	x, y     float32
+	tile     *Tiling
+	xts, xbs float32
+	ys, vs   float32
+	rxadd    float32
+	rot      Rotation
+	// Transparency and palette effects
+	trans    int32
+	pfx      *PalFX
+	// Clipping
+	window   *[4]int32
+	// Rotation center
 	rcx, rcy float32
+	// Perspective projection
 	projectionMode int32
-	fLength, xOffset, yOffset float32
+	fLength  float32
+	xOffset  float32
+	yOffset  float32
 }
 
 func (rp *RenderParams) IsValid() bool {
