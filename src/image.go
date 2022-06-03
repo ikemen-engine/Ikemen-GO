@@ -966,49 +966,31 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	}
 	return nil
 }
-func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *Tiling,
-	xts, xbs, ys, rxadd float32, rot Rotation, trans int32, window *[4]int32,
-	rcx, rcy float32, pfx *PalFX, paltex *Texture, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if s.Tex == nil {
+func (s *Sprite) glDraw(rp RenderParams, pal []uint32, mask int32) {
+	if rp.tex == nil {
 		return
 	}
-
-	rp := RenderParams{
-		s.Tex, nil, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, rot,
-		trans, pfx, window, rcx, rcy, projectionMode, fLength, xOffset, yOffset,
-	}
-
-	if s.coldepth <= 8 {
-		// If no loaded palette information is passed, check whether the cached one is still valid
+	// If no palette texture is provided, generate one. But first we check if the one
+	// cached in s.PalTex is still valid.
+	if s.coldepth <= 8 && rp.paltex == nil {
 		hasPalette := true
-		if paltex == nil {
-			if s.PalTex == nil || len(pal) != len(s.paltemp) {
-				hasPalette = false
-			} else {
-				for i := range pal {
-					if pal[i] != s.paltemp[i] {
-						hasPalette = false
-						break
-					}
+		if s.PalTex == nil || len(pal) != len(s.paltemp) {
+			hasPalette = false
+		} else {
+			for i := range pal {
+				if pal[i] != s.paltemp[i] {
+					hasPalette = false
+					break
 				}
 			}
-			// If cached texture is valid, use it
-			if hasPalette {
-				paltex = s.PalTex
-			}
 		}
-
-		if hasPalette {
-			rp.paltex = paltex
-		} else {
-			// Generate, bind and cache palette texture
+		// If cached texture is invalid, generate a new one
+		if !hasPalette {
 			s.PalTex = PaletteToTexture(pal)
-			rp.paltex = s.PalTex
-			tmp := append([]uint32{}, pal...)
-			s.paltemp = tmp
+			s.paltemp = append([]uint32{}, pal...)
 		}
+		rp.paltex = s.PalTex
 	}
-
 	RenderSprite(rp, mask)
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
@@ -1021,9 +1003,14 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 	if yscale < 0 {
 		y *= -1
 	}
-	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, Rotation{angle, 0, 0},
-		sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex, 0, 0, -xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]))
+	rp := RenderParams{
+		s.Tex, paltex, s.Size,
+		-x*sys.widthScale, -y*sys.heightScale, &notiling,
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
+		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, fx, window, 0, 0, 0, 0,
+		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
+	}
+	s.glDraw(rp, pal, 0)
 }
 
 type Sff struct {

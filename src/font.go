@@ -456,16 +456,17 @@ func (f *Fnt) drawChar(
 	x -= xscl * float32(spr.Offset[0])
 	y -= yscl * float32(spr.Offset[1])
 	paltex := f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}]
-	spr.glDraw(pal, 0,
+	rp := RenderParams{
+		spr.Tex, paltex, spr.Size,
 		-x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscl*sys.widthScale, xscl*sys.widthScale,
-		yscl*sys.heightScale, 0,
+		yscl*sys.heightScale, 1, 0,
 		Rotation{},
 		sys.brightness*255>>8|1<<9,
-		window, 0, 0,
-		nil, paltex,
+		nil, window, 0, 0,
 		0, 0, -xscl*float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
-	)
+	}
+	spr.glDraw(rp, pal, 0)
 	if paltex == nil {
 		f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = spr.PalTex
 	}

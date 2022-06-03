@@ -711,12 +711,16 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	}
 	trans := a.alpha()
 	pal, paltex := a.pal(pfx, trans == -2)
-	a.spr.glDraw(pal, int32(a.mask), x*sys.widthScale,
+	rp := RenderParams{
+		a.spr.Tex, paltex, a.spr.Size,
+		x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
-		ys*sys.heightScale, xcs*rxadd*sys.widthScale/sys.heightScale, rot,
-		trans, window, rcx, rcy, pfx, paltex, projectionMode, fLength*sys.heightScale,
+		ys*sys.heightScale, 1, xcs*rxadd*sys.widthScale/sys.heightScale, rot,
+		trans, pfx, window, rcx, rcy, projectionMode, fLength*sys.heightScale,
 		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
-		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale)
+		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale,
+	}
+	a.spr.glDraw(rp, pal, int32(a.mask))
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
