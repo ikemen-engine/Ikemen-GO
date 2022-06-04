@@ -966,35 +966,30 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	}
 	return nil
 }
-func (s *Sprite) glDraw(rp RenderParams, pal []uint32) {
-	if rp.tex == nil {
-		return
-	}
-	// If no palette texture is provided, generate one. But first we check if the one
-	// cached in s.PalTex is still valid.
-	if s.coldepth <= 8 && rp.paltex == nil {
-		hasPalette := true
-		if s.PalTex == nil || len(pal) != len(s.paltemp) {
-			hasPalette = false
-		} else {
-			for i := range pal {
-				if pal[i] != s.paltemp[i] {
-					hasPalette = false
-					break
-				}
+
+// Cache the provided palette data in a sprite. But first check if the
+// previously stored one is still valid.
+func (s *Sprite) CachePalette(pal []uint32) *Texture {
+	hasPalette := true
+	if s.PalTex == nil || len(pal) != len(s.paltemp) {
+		hasPalette = false
+	} else {
+		for i := range pal {
+			if pal[i] != s.paltemp[i] {
+				hasPalette = false
+				break
 			}
 		}
-		// If cached texture is invalid, generate a new one
-		if !hasPalette {
-			s.PalTex = PaletteToTexture(pal)
-			s.paltemp = append([]uint32{}, pal...)
-		}
-		rp.paltex = s.PalTex
 	}
-	RenderSprite(rp)
+	// If cached texture is invalid, generate a new one
+	if !hasPalette {
+		s.PalTex = PaletteToTexture(pal)
+		s.paltemp = append([]uint32{}, pal...)
+	}
+	return s.PalTex
 }
-func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
-	paltex *Texture, window *[4]int32) {
+
+func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, fx *PalFX, window *[4]int32) {
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	if xscale < 0 {
@@ -1004,13 +999,13 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 		y *= -1
 	}
 	rp := RenderParams{
-		s.Tex, paltex, s.Size,
+		s.Tex, s.PalTex, s.Size,
 		-x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
 		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
 		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
 	}
-	s.glDraw(rp, pal)
+	RenderSprite(rp)
 }
 
 type Sff struct {

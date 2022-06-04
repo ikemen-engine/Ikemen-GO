@@ -711,6 +711,9 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	}
 	trans := a.alpha()
 	pal, paltex := a.pal(pfx, trans == -2)
+	if a.spr.coldepth <= 8 && paltex == nil {
+		paltex = a.spr.CachePalette(pal)
+	}
 	rp := RenderParams{
 		a.spr.Tex, paltex, a.spr.Size,
 		x*sys.widthScale,
@@ -720,7 +723,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
 		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale,
 	}
-	a.spr.glDraw(rp, pal)
+	RenderSprite(rp)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
