@@ -560,54 +560,18 @@ func rmMainSub(s *Shader, rp RenderParams) {
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
-	blendSourceFactor := gl.Enum(gl.SRC_ALPHA)
-	if rp.paltex == nil {
-		blendSourceFactor = gl.ONE
-	}
-	switch {
-	case rp.trans == -1:
-		gl.Uniform1f(s.uAlpha, 1)
-		gl.BlendFunc(blendSourceFactor, gl.ONE)
-		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, modelview, rp)
-	case rp.trans == -2:
-		gl.Uniform1f(s.uAlpha, 1)
-		gl.BlendFunc(gl.ONE, gl.ONE)
-		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		rmTileSub(s, modelview, rp)
-	case rp.trans <= 0:
-	case rp.trans < 255:
-		gl.Uniform1f(s.uAlpha, float32(rp.trans)/255)
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, modelview, rp)
-	case rp.trans < 512:
-		gl.Uniform1f(s.uAlpha, 1)
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		rmTileSub(s, modelview, rp)
-	default:
-		src, dst := rp.trans&0xff, rp.trans>>10&0xff
-		aglOver := 0
-		if dst < 255 {
-			gl.Uniform1f(s.uAlpha, 1-float32(dst)/255)
-			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
-			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(s, modelview, rp)
-			aglOver++
+
+	aglOver := false
+	renderWithBlending(func(a float32) {
+		if aglOver {
+			rp.rot = Rotation{}
 		}
-		if src > 0 {
-			if aglOver != 0 {
-				rp.rot = Rotation{}
-			}
-			gl.Uniform1f(s.uAlpha, float32(src)/255)
-			gl.BlendFunc(blendSourceFactor, gl.ONE)
-			gl.BlendEquation(gl.FUNC_ADD)
-			rmTileSub(s, modelview, rp)
-		}
-	}
+		gl.Uniform1f(s.uAlpha, a)
+		rmTileSub(s, modelview, rp)
+		aglOver = true
+	}, rp.trans, rp.paltex != nil)
+
 	gl.Disable(gl.SCISSOR_TEST)
-	gl.Disable(gl.BLEND)
 }
 
 func rmInitSub(rp *RenderParams) {
@@ -638,7 +602,6 @@ func rmInitSub(rp *RenderParams) {
 		rp.y *= -1
 	}
 	rp.y += rp.rcy
-	gl.Enable(gl.BLEND)
 	gl.Enable(gl.SCISSOR_TEST)
 	gl.Scissor(rp.window[0], sys.scrrect[3]-(rp.window[1]+rp.window[3]),
 		rp.window[2], rp.window[3])
@@ -694,19 +657,53 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	rmMainSub(flatShader, rp)
 }
 
+func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) {
+	var blendSourceFactor gl.Enum = gl.SRC_ALPHA
+	if !correctAlpha {
+		blendSourceFactor = gl.ONE
+	}
+	gl.Enable(gl.BLEND)
+	switch {
+	case trans == -1:
+		gl.BlendFunc(blendSourceFactor, gl.ONE)
+		gl.BlendEquation(gl.FUNC_ADD)
+		render(1)
+	case trans == -2:
+		gl.BlendFunc(gl.ONE, gl.ONE)
+		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
+		render(1)
+	case trans <= 0:
+	case trans < 255:
+		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
+		render(float32(trans)/255)
+	case trans < 512:
+		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
+		gl.BlendEquation(gl.FUNC_ADD)
+		render(1)
+	default:
+		src, dst := trans&0xff, trans>>10&0xff
+		if dst < 255 {
+			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+			gl.BlendEquation(gl.FUNC_ADD)
+			render(1-float32(dst)/255)
+		}
+		if src > 0 {
+			gl.BlendFunc(blendSourceFactor, gl.ONE)
+			gl.BlendEquation(gl.FUNC_ADD)
+			render(float32(src)/255)
+		}
+	}
+	gl.Disable(gl.BLEND)
+}
+
 func FillRect(rect [4]int32, color uint32, trans int32) {
 	r := float32(color>>16&0xff) / 255
 	g := float32(color>>8&0xff) / 255
 	b := float32(color&0xff) / 255
-	fill := func(a float32) {
-		gl.Uniform1f(flatShader.uAlpha, a)
-		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	}
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-
-	gl.Enable(gl.BLEND)
 
 	gl.UseProgram(flatShader.program)
 	gl.UniformMatrix4fv(flatShader.uModelView, modelview[:])
@@ -724,39 +721,13 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.EnableVertexAttribArray(flatShader.aPos)
 	gl.VertexAttribPointer(flatShader.aPos, 2, gl.FLOAT, false, 0, 0)
 
-	if trans == -1 {
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
-		gl.BlendEquation(gl.FUNC_ADD)
-		fill(1)
-	} else if trans == -2 {
-		gl.BlendFunc(gl.ONE, gl.ONE)
-		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		fill(1)
-	} else if trans <= 0 {
-	} else if trans < 255 {
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		fill(float32(trans) / 256)
-	} else if trans < 512 {
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		fill(1)
-	} else {
-		src, dst := trans&0xff, trans>>10&0xff
-		if dst < 255 {
-			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
-			gl.BlendEquation(gl.FUNC_ADD)
-			fill(float32(dst) / 255)
-		}
-		if src > 0 {
-			gl.BlendFunc(gl.SRC_ALPHA, gl.ONE)
-			gl.BlendEquation(gl.FUNC_ADD)
-			fill(float32(src) / 255)
-		}
-	}
+	renderWithBlending(func(a float32) {
+		gl.Uniform1f(flatShader.uAlpha, a)
+		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	}, trans, true)
+
 	gl.DeleteBuffer(vertexBuffer)
 	gl.DisableVertexAttribArray(flatShader.aPos)
-	gl.Disable(gl.BLEND)
 }
 
 var identVertShader string = `
