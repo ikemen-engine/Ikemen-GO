@@ -462,11 +462,11 @@ func (f *Fnt) drawChar(
 		xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0,
 		Rotation{},
-		sys.brightness*255>>8|1<<9,
+		sys.brightness*255>>8|1<<9, 0,
 		nil, window, 0, 0,
 		0, 0, -xscl*float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
 	}
-	spr.glDraw(rp, pal, 0)
+	spr.glDraw(rp, pal)
 	if paltex == nil {
 		f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = spr.PalTex
 	}

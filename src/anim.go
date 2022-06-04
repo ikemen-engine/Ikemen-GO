@@ -716,11 +716,11 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x*sys.widthScale,
 		y*sys.heightScale, &a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
 		ys*sys.heightScale, 1, xcs*rxadd*sys.widthScale/sys.heightScale, rot,
-		trans, pfx, window, rcx, rcy, projectionMode, fLength*sys.heightScale,
+		trans, int32(a.mask), pfx, window, rcx, rcy, projectionMode, fLength*sys.heightScale,
 		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
 		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale,
 	}
-	a.spr.glDraw(rp, pal, int32(a.mask))
+	a.spr.glDraw(rp, pal)
 }
 func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
@@ -737,7 +737,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 		AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
 		AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, &a.tile,
 		xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-		yscl*v*sys.heightScale, vscl, 0, rot, 0, nil, &sys.scrrect,
+		yscl*v*sys.heightScale, vscl, 0, rot, 0, int32(a.mask), nil, &sys.scrrect,
 		(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
 		projectionMode, fLength,
 		xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
@@ -765,7 +765,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 		}
 		rp.paltex = PaletteToTexture(pal[:])
 		draw = func() {
-			RenderSprite(rp, int32(a.mask))
+			RenderSprite(rp)
 		}
 	}
 	if color != 0 {

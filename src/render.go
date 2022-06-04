@@ -75,8 +75,9 @@ type RenderParams struct {
 	ys, vs   float32
 	rxadd    float32
 	rot      Rotation
-	// Transparency and palette effects
+	// Transparency, masking and palette effects
 	trans    int32
+	mask     int32
 	pfx      *PalFX
 	// Clipping
 	window   *[4]int32
@@ -643,7 +644,7 @@ func rmInitSub(rp *RenderParams) {
 		rp.window[2], rp.window[3])
 }
 
-func RenderSprite(rp RenderParams, mask int32) {
+func RenderSprite(rp RenderParams) {
 	if !rp.IsValid() {
 		return
 	}
@@ -657,7 +658,7 @@ func RenderSprite(rp RenderParams, mask int32) {
 		gl.BindTexture(gl.TEXTURE_2D, rp.paltex.handle)
 		gl.Uniform1i(mainShader.u["pal"], 1)
 		gl.Uniform1i(mainShader.u["isRgba"], 0)
-		gl.Uniform1i(mainShader.u["mask"], int(mask))
+		gl.Uniform1i(mainShader.u["mask"], int(rp.mask))
 	}
 	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 

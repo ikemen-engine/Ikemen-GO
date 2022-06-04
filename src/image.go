@@ -966,7 +966,7 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	}
 	return nil
 }
-func (s *Sprite) glDraw(rp RenderParams, pal []uint32, mask int32) {
+func (s *Sprite) glDraw(rp RenderParams, pal []uint32) {
 	if rp.tex == nil {
 		return
 	}
@@ -991,7 +991,7 @@ func (s *Sprite) glDraw(rp RenderParams, pal []uint32, mask int32) {
 		}
 		rp.paltex = s.PalTex
 	}
-	RenderSprite(rp, mask)
+	RenderSprite(rp)
 }
 func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
 	paltex *Texture, window *[4]int32) {
@@ -1007,10 +1007,10 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 		s.Tex, paltex, s.Size,
 		-x*sys.widthScale, -y*sys.heightScale, &notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
-		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, fx, window, 0, 0, 0, 0,
+		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
 		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
 	}
-	s.glDraw(rp, pal, 0)
+	s.glDraw(rp, pal)
 }
 
 type Sff struct {
