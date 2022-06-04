@@ -70,7 +70,7 @@ type RenderParams struct {
 	// Size, position, tiling, scaling and rotation
 	size     [2]uint16
 	x, y     float32
-	tile     *Tiling
+	tile     Tiling
 	xts, xbs float32
 	ys, vs   float32
 	rxadd    float32
@@ -384,7 +384,7 @@ func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 flo
 	gl.DisableVertexAttribArray(s.aUv)
 }
 func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
-	tl *Tiling, rcx float32) {
+	tl Tiling, rcx float32) {
 	topdist := xtw + xts*float32(tl.sx)
 	if AbsF(topdist) >= 0.01 {
 		botdist := xbw + xbs*float32(tl.sx)
@@ -581,18 +581,16 @@ func rmInitSub(rp *RenderParams) {
 		rp.rot.angle *= -1
 		rp.rot.xangle *= -1
 	}
-	tl := *rp.tile
-	if tl.x == 0 {
-		tl.sx = 0
-	} else if tl.sx > 0 {
-		tl.sx -= int32(rp.size[0])
+	if rp.tile.x == 0 {
+		rp.tile.sx = 0
+	} else if rp.tile.sx > 0 {
+		rp.tile.sx -= int32(rp.size[0])
 	}
-	if tl.y == 0 {
-		tl.sy = 0
-	} else if tl.sy > 0 {
-		tl.sy -= int32(rp.size[1])
+	if rp.tile.y == 0 {
+		rp.tile.sy = 0
+	} else if rp.tile.sy > 0 {
+		rp.tile.sy -= int32(rp.size[1])
 	}
-	rp.tile = &tl
 	if rp.xts >= 0 {
 		rp.x *= -1
 	}

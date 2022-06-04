@@ -462,7 +462,7 @@ func (f *Fnt) drawChar(
 	}
 	rp := RenderParams{
 		spr.Tex, paltex, spr.Size,
-		-x*sys.widthScale, -y*sys.heightScale, &notiling,
+		-x*sys.widthScale, -y*sys.heightScale, notiling,
 		xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0,
 		Rotation{},
