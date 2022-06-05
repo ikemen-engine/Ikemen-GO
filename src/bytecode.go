@@ -1344,7 +1344,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_data_defence:
 		sys.bcStack.PushI(c.gi().data.defence)
 	case OC_const_data_fall_defence_mul:
-		sys.bcStack.PushF(c.gi().data.fall.defence_mul)
+		sys.bcStack.PushF(1.0 / c.gi().data.fall.defence_mul)
 	case OC_const_data_liedown_time:
 		sys.bcStack.PushI(c.gi().data.liedown.time)
 	case OC_const_data_airjuggle:
