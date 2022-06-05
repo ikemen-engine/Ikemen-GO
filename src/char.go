@@ -3153,6 +3153,23 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
+		if c.hitdef.reversal_attr <= 0 {
+			i := 0
+			for i < len(c.targets) {
+				if i >= len(c.targets) {
+					break
+				}
+				if t := sys.playerID(c.targets[i]); t != nil {
+					if t.ss.moveType != MT_H {
+						c.targets[i] = c.targets[len(c.targets)-1]
+						c.targets = c.targets[:len(c.targets)-1]
+						t.ghv.hitid = -1
+					} else {
+						i++
+					}
+				}
+			}
+		}
 		c.stchtmp = false
 		return true
 	}
@@ -3177,27 +3194,6 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 			}
 		}
 		sys.changeStateNest = 0
-	}
-	if c.hitdef.reversal_attr <= 0 {
-		for i, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil {
-				for {
-					if i >= len(c.targets) {
-						break
-					}
-					if t.ss.moveType != MT_H {
-						c.targets[i] = c.targets[len(c.targets)-1]
-						c.targets = c.targets[:len(c.targets)-1]
-						t.ghv.hitid = -1
-					} else {
-						break
-					}
-				}
-				if i+1 >= len(c.targets) {
-					break
-				}
-			}
-		}
 	}
 }
 func (c *Char) changeState(no, anim, ctrl int32, ffx bool) {
