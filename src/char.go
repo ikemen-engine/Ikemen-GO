@@ -3153,6 +3153,23 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
+		if c.hitdef.reversal_attr <= 0 {
+			i := 0
+			for i < len(c.targets) {
+				if i >= len(c.targets) {
+					break
+				}
+				if t := sys.playerID(c.targets[i]); t != nil {
+					if t.ss.moveType != MT_H {
+						c.targets[i] = c.targets[len(c.targets)-1]
+						c.targets = c.targets[:len(c.targets)-1]
+						t.ghv.hitid = -1
+					} else {
+						i++
+					}
+				}
+			}
+		}
 		c.stchtmp = false
 		return true
 	}
@@ -4971,9 +4988,13 @@ func (c *Char) exitTarget(explremove bool) {
 	if c.hittmp >= 0 {
 		for _, hb := range c.ghv.hitBy {
 			if e := sys.playerID(hb[0]); e != nil {
-				e.removeTarget(c.id)
-				if explremove {
-					c.enemyExplodsRemove(e.playerNo)
+				if e.hitdef.reversal_attr <= 0 {
+					e.removeTarget(c.id)
+					if explremove {
+						c.enemyExplodsRemove(e.playerNo)
+					}
+				} else {
+					c.ghv.hitid = c.ghv.hitid >> 31
 				}
 			}
 		}
@@ -5456,7 +5477,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
-				c.ghv.hitid = -1
+				c.ghv.hitid = c.ghv.hitid >> 31
 				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
 				if c.comboExtraFrameWindow <= 0 {
 					c.fakeReceivedHits = 0

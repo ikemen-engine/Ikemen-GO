@@ -2736,7 +2736,7 @@ func triggerFunctions(l *lua.LState) {
 		case "data.defence":
 			ln = lua.LNumber(c.gi().data.defence)
 		case "data.fall.defence_mul":
-			ln = lua.LNumber(c.gi().data.fall.defence_mul)
+			ln = lua.LNumber(1.0 / c.gi().data.fall.defence_mul)
 		case "data.liedown.time":
 			ln = lua.LNumber(c.gi().data.liedown.time)
 		case "data.airjuggle":
