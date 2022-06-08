@@ -166,8 +166,8 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
-			-c[0]*sys.widthScale, -c[1]*sys.heightScale, notiling,
-			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale,
+			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
+			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale,
 			1, 0, Rotation{}, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
 		RenderSprite(params)
@@ -3145,7 +3145,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
-		if c.hitdef.reversal_attr <= 0 {
+		if c.hitdef.reversal_attr == 0 || c.hitdef.reversal_attr == -1<<31 {
 			i := 0
 			for i < len(c.targets) {
 				if i >= len(c.targets) {
@@ -4980,7 +4980,7 @@ func (c *Char) exitTarget(explremove bool) {
 	if c.hittmp >= 0 {
 		for _, hb := range c.ghv.hitBy {
 			if e := sys.playerID(hb[0]); e != nil {
-				if e.hitdef.reversal_attr <= 0 {
+				if e.hitdef.reversal_attr == 0 || e.hitdef.reversal_attr == -1<<31 {
 					e.removeTarget(c.id)
 					if explremove {
 						c.enemyExplodsRemove(e.playerNo)
@@ -5178,7 +5178,7 @@ func (c *Char) action() {
 						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
 						c.airJumpCount < c.gi().movement.airjump.num &&
 						c.cmd[0].Buffer.U > 0 {
-						if c.ss.no != 45 {
+						if c.ss.no != 45 || c.ss.time > 0 {
 							c.airJumpCount++
 							c.unsetSCF(SCF_airjump)
 							c.changeState(45, -1, -1, false)
@@ -6666,6 +6666,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.mctype = MC_Hit
 								}
 								if c.hitdef.reversal_attr > 0 {
+									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true

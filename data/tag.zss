@@ -268,7 +268,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 			} else if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
 				# last active player has left the screen or died
 				if map(_iksys_tagLastId) = 0
-					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
+					|| playerId(map(_iksys_tagLastId)),stateNo = playerId(map(_iksys_tagLastId)),const(StateTagWaitingOutside)
 					|| playerId(map(_iksys_tagLastId)),alive = 0
 				{
 					# get partner id in case of tag command
@@ -288,14 +288,14 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 						let partnerId = $previousPartnerId;
 					}
 					# having control, command buffered, partner standby
-					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
+					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = playerId($partnerId),const(StateTagWaitingOutside) {
 						mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 						mapSet{map: "_iksys_tagPartnerId"; value: 0}
 						lifebarAction{spr: const(MsgPartnerChange), 0}
 						tagOut{}
 						ctrlSet{value: 0}
 						assertSpecial{flag: noHardcodedKeys; flag2: noInput}
-						tagIn{stateNo: const(StateTagEnteringScreen); redirectId: $partnerId}
+						tagIn{stateNo: playerId($partnerId),const(StateTagEnteringScreen); redirectId: $partnerId}
 					}
 				}
 			}
@@ -329,7 +329,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 			mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 			lifebarAction{spr: const(MsgPartnerChange), 0}
 			tagOut{}
-			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
+			tagIn{stateNo: playerId($partnerId),const(StateTagJumpingIn); redirectId: $partnerId}
 		}
 	}
 	# Red Life regeneration
