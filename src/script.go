@@ -2236,18 +2236,6 @@ func systemScriptInit(l *lua.LState) {
 		time.Sleep(time.Duration((numArg(l, 1))) * time.Second)
 		return 0
 	})
-	luaRegister(l, "sndGetLength", func(*lua.LState) int {
-		s, ok := toUserData(l, 1).(*Snd)
-		if !ok {
-			userDataError(l, 1, s)
-		}
-		var frames int32
-		if sound := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); sound != nil {
-			frames = int32(math.Ceil(float64(sound.GetDuration() * 60)))
-		}
-		l.Push(lua.LNumber(frames))
-		return 1
-	})
 	luaRegister(l, "sndNew", func(l *lua.LState) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
