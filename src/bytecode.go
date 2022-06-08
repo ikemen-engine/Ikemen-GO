@@ -3237,11 +3237,11 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.anim.start_scale[1] /= crun.localscl
 			}
 		case explod_angle:
-			e.angle = exp[0].evalF(c)
+			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
-			e.yangle = exp[0].evalF(c)
+			e.rot.yangle = exp[0].evalF(c)
 		case explod_xangle:
-			e.xangle = exp[0].evalF(c)
+			e.rot.xangle = exp[0].evalF(c)
 		case explod_focallength:
 			e.fLength = exp[0].evalF(c)
 		case explod_ignorehitpause:
@@ -3454,13 +3454,13 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_angle:
 				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.angle = a })
+				eachExpl(func(e *Explod) { e.rot.angle = a })
 			case explod_yangle:
 				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.yangle = ya })
+				eachExpl(func(e *Explod) { e.rot.yangle = ya })
 			case explod_xangle:
 				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.xangle = xa })
+				eachExpl(func(e *Explod) { e.rot.xangle = xa })
 			case explod_projection:
 				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
 			case explod_focallength:

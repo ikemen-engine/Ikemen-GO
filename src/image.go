@@ -117,12 +117,12 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	}
 	return sys.workpal
 }
-func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
+func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, grayscale float32,
 	add, mul [3]float32) {
 	p := pf.getSynFx()
 	if !p.enable {
 		neg = false
-		color = 1
+		grayscale = 0
 		for i := range add {
 			add[i] = 0
 		}
@@ -132,7 +132,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, color float32,
 		return
 	}
 	neg = p.eInvertall
-	color = p.eColor
+	grayscale = 1 - p.eColor
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -262,6 +262,13 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	}
 	*palMap, pl.paletteMap = pl.paletteMap, *palMap
 	return true
+}
+
+func PaletteToTexture(pal []uint32) *Texture {
+	tx := newTexture()
+	tx.SetData(256, 1, 32, false,
+		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+	return tx
 }
 
 type SffHeader struct {
@@ -959,59 +966,30 @@ func (s *Sprite) readV2(f *os.File, offset int64, datasize uint32) error {
 	}
 	return nil
 }
-func (s *Sprite) glDraw(pal []uint32, mask int32, x, y float32, tile *[4]int32,
-	xts, xbs, ys, rxadd, agl, yagl, xagl float32, trans int32, window *[4]int32,
-	rcx, rcy float32, pfx *PalFX, paltex *Texture, projectionMode int32, fLength, xOffset, yOffset float32) {
-	if s.Tex == nil {
-		return
-	}
-	neg, color, padd, pmul := pfx.getFcPalFx(trans == -2)
-	if trans == -2 {
-		padd[0] *= -1
-		padd[1] *= -1
-		padd[2] *= -1
-	}
 
-	if s.coldepth > 8 {
-		RenderMugenFc(*s.Tex, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
-			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
+// Cache the provided palette data in a sprite. But first check if the
+// previously stored one is still valid.
+func (s *Sprite) CachePalette(pal []uint32) *Texture {
+	hasPalette := true
+	if s.PalTex == nil || len(pal) != len(s.paltemp) {
+		hasPalette = false
 	} else {
-		// If no loaded palette information is passed, check whether the cached one is still valid
-		hasPalette := true
-		if paltex == nil {
-			if s.PalTex == nil || len(pal) != len(s.paltemp) {
+		for i := range pal {
+			if pal[i] != s.paltemp[i] {
 				hasPalette = false
-			} else {
-				for i := range pal {
-					if pal[i] != s.paltemp[i] {
-						hasPalette = false
-						break
-					}
-				}
-			}
-			// If cached texture is valid, use it
-			if hasPalette {
-				paltex = s.PalTex
+				break
 			}
 		}
-
-		gl.ActiveTexture(gl.TEXTURE1)
-		if hasPalette {
-			gl.BindTexture(gl.TEXTURE_2D, paltex.handle)
-		} else {
-			// Generate, bind and cache palette texture
-			s.PalTex = newTexture()
-			s.PalTex.SetData(256, 1, 32, false,
-				unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
-			tmp := append([]uint32{}, pal...)
-			s.paltemp = tmp
-		}
-		RenderMugenPal(*s.Tex, mask, s.Size, x, y, tile, xts, xbs, ys, 1, rxadd, agl, yagl, xagl,
-			trans, window, rcx, rcy, neg, color, &padd, &pmul, projectionMode, fLength, xOffset, yOffset)
 	}
+	// If cached texture is invalid, generate a new one
+	if !hasPalette {
+		s.PalTex = PaletteToTexture(pal)
+		s.paltemp = append([]uint32{}, pal...)
+	}
+	return s.PalTex
 }
-func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *PalFX,
-	paltex *Texture, window *[4]int32) {
+
+func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, fx *PalFX, window *[4]int32) {
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	if xscale < 0 {
@@ -1020,9 +998,14 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, pal []uint32, fx *Pal
 	if yscale < 0 {
 		y *= -1
 	}
-	s.glDraw(pal, 0, -x*sys.widthScale, -y*sys.heightScale, &notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 0, angle, 0, 0,
-		sys.brightness*255>>8|1<<9, window, 0, 0, fx, paltex, 0, 0, -xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]))
+	rp := RenderParams{
+		s.Tex, s.PalTex, s.Size,
+		-x*sys.widthScale, -y*sys.heightScale, notiling,
+		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
+		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
+		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
+	}
+	RenderSprite(rp)
 }
 
 type Sff struct {
