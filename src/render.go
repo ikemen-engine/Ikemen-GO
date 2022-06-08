@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed" // Support for go:embed resources
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -118,79 +119,20 @@ var postVertices = f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
 
 var postShaderSelect []gl.Program
 
+//go:embed shaders/sprite.vs.glsl
+var vertShader string
+//go:embed shaders/sprite.fs.glsl
+var fragShader string
+//go:embed shaders/flat.fs.glsl
+var fragShaderFlat string
+//go:embed shaders/ident.vs.glsl
+var identVertShader string
+//go:embed shaders/ident.fs.glsl
+var identFragShader string
+
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
-	vertShader := `
-uniform mat4 modelview, projection;
-
-attribute vec2 position;
-attribute vec2 uv;
-
-varying vec2 texcoord;
-
-void main(void) {
-	texcoord = uv;
-	gl_Position = projection * (modelview * vec4(position, 0.0, 1.0));
-}`
-
-	// Main fragment shader, for RGBA and indexed sprites
-	fragShader := `
-uniform sampler2D tex;
-uniform sampler2D pal;
-
-uniform vec4 x1x2x4x3;
-uniform vec3 add, mul;
-uniform float alpha, gray;
-uniform int mask;
-uniform bool isRgba, isTrapez, neg;
-
-varying vec2 texcoord;
-
-void main(void) {
-	vec2 uv = texcoord;
-	if (isTrapez) {
-		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], uv[1]);
-		float right = mix(x1x2x4x3[3], x1x2x4x3[1], uv[1]);
-		uv[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
-	}
-	vec4 c = texture2D(tex, uv);
-	vec3 neg_base = vec3(1.0);
-	vec3 final_add = add;
-	vec4 final_mul = vec4(mul, alpha);
-	if (isRgba) {
-		neg_base *= alpha;
-		final_add *= c.a;
-		final_mul.rgb *= alpha;
-	} else {
-		if (int(255.25*c.r) == mask) {
-			c.a = 0.0;
-		} else {
-			c = texture2D(pal, vec2(c.r*0.9966, 0.5));
-		}
-	}
-	if (neg) c.rgb = neg_base - c.rgb;
-	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
-	gl_FragColor = c * final_mul;
-}`
-
-	// “Flat” fragment shader, for shadows and plain, untextured quads
-	fragShaderFlat := `
-uniform sampler2D tex;
-uniform vec3 color;
-uniform float alpha;
-uniform bool isShadow;
-
-varying vec2 texcoord;
-
-void main(void) {
-	vec4 p = vec4(color, alpha);
-	if (isShadow)
-		p *= texture2D(tex, texcoord).a;
-	gl_FragColor = p;
-}`
-
 	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
 		shader = gl.CreateShader(shaderType)
 		gl.ShaderSource(shader, "#version 100\nprecision mediump float;\n" + src)
@@ -727,24 +669,3 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.DeleteBuffer(vertexBuffer)
 	gl.DisableVertexAttribArray(flatShader.aPos)
 }
-
-var identVertShader string = `
-attribute vec2 VertCoord;
-uniform vec2 TextureSize;
-
-varying vec2 texcoord;
-
-void main()
-{
-	gl_Position = vec4(VertCoord, 0.0, 1.0);
-	texcoord = (VertCoord + 1.0) / 2.0;
-}`
-
-var identFragShader string = `
-uniform sampler2D Texture;
-
-varying vec2 texcoord;
-
-void main(void) {
-	gl_FragColor = texture2D(Texture, texcoord);
-}`
