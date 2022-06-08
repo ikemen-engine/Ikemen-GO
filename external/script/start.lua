@@ -1124,7 +1124,6 @@ function start.f_playWave(ref, name, g, n, loops)
 			main.t_selStages[ref][name .. '_wave_data'] = getWaveData(a.dir .. a.sound, g, n, loops or -1)
 		end
 		wavePlay(main.t_selStages[ref][name .. '_wave_data'])
-		return waveGetLength(main.t_selStages[ref][name .. '_wave_data'])
 	else
 		local sound = start.f_getCharData(ref).sound
 		if sound == nil or sound == '' then
@@ -1134,9 +1133,7 @@ function start.f_playWave(ref, name, g, n, loops)
 			start.f_getCharData(ref)[name .. '_wave_data'] = getWaveData(start.f_getCharData(ref).dir .. sound, g, n, loops or -1)
 		end
 		wavePlay(start.f_getCharData(ref)[name .. '_wave_data'])
-		return waveGetLength(start.f_getCharData(ref)[name .. '_wave_data'])
 	end
-	return 0
 end
 
 --removes char with particular ref from table
@@ -2607,8 +2604,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				-- cell selected or select screen timer reached 0
 				if (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer_count ~= -1 and timerSelect == -1) then
 					sndPlay(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])
-					local wavLength = start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
-					--start.p[side].screenDelay = math.max(wavLength, math.max(start.p[side].screenDelay, sndGetLength(motif.files.snd_data, start.f_getCursorData(player, '_cursor_done_snd')[1], start.f_getCursorData(player, '_cursor_done_snd')[2])))
+					start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side .. '_select_snd'][1], motif.select_info['p' .. side .. '_select_snd'][2])
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 					if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 						start.p[side].t_selTemp[member].pal = 1
