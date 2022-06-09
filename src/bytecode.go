@@ -2314,6 +2314,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, ctrl int32 = -1, -1, -1
 	fflg := false
+	changeState := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -2325,6 +2326,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 			fflg = exp[0].evalB(c)
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				changeState = rid.id == c.id
 				crun = rid
 			} else {
 				return false
@@ -2333,7 +2335,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	crun.changeState(v, a, ctrl, fflg)
-	return true
+	return changeState
 }
 
 type selfState changeState
@@ -2342,6 +2344,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, r, ctrl int32 = -1, -1, -1, -1
 	fflg := false
+	changeState := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -2359,6 +2362,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 			}
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				changeState = rid.id == c.id
 				crun = rid
 			} else {
 				return false
@@ -2367,7 +2371,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	crun.selfState(v, a, r, ctrl, fflg)
-	return true
+	return changeState
 }
 
 type tagIn StateControllerBase
