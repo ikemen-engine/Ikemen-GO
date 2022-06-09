@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -166,8 +167,8 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
-			-c[0]*sys.widthScale, -c[1]*sys.heightScale, notiling,
-			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale,
+			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
+			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale,
 			1, 0, Rotation{}, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
 		RenderSprite(params)
@@ -1479,6 +1480,28 @@ const (
 	PC_Cancel
 )
 
+type ParsedTrials struct {
+	trialspresent       bool
+	trialnames          []string
+	numoftrials         int32
+	currentTrial        int32
+	currenttrialStep    int32
+	trialnumsteps       []int32
+	trialdummymode      []string
+	trialguardmode      []string
+	trialdummybuttonjam []string
+	trialsteps          [][]string
+	trialglyphs         [][]string
+	trialstateno        [][]int32
+	trialanimno         [][]int32
+	trialisthrow        [][]bool
+	trialishelper       [][]bool
+	trialprojid         [][]int32
+	trialspecialbool    [][]bool
+	trialspecialstr     [][]string
+	trialspecialval     [][]int32
+}
+
 type CharGlobalInfo struct {
 	def              string
 	displayname      string
@@ -1509,6 +1532,7 @@ type CharGlobalInfo struct {
 	remapPreset      map[string]RemapPreset
 	remappedpal      [2]int32
 	localcoord       [2]float32
+	trialslist       ParsedTrials
 	ikemenver        [3]uint16
 }
 
@@ -1891,6 +1915,8 @@ func (c *Char) load(def string) error {
 	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
 	c.localscl = 320 / float32(c.localcoord)
 	gi.portraitscale = 1
+	var trialslist string
+	gi.trialslist.trialspresent = false
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -1922,6 +1948,154 @@ func (c *Char) load(def string) error {
 				anim, sound = is["anim"], is["sound"]
 				for i := range gi.pal {
 					gi.pal[i] = is[fmt.Sprintf("pal%v", i+1)]
+				}
+				trialslist = is["trialslist"]
+				if len(trialslist) > 0 {
+					var trials string
+					LoadFile(&trialslist, []string{def, "", sys.motifDir, "data/"}, func(file string) error {
+						trials, _ = LoadText(file)
+						return nil
+					})
+					var triallines []string
+					triallines = SplitAndTrim(trials, "\n")
+					gi.trialslist.numoftrials = 0
+					gi.trialslist.currentTrial = 1
+					gi.trialslist.currenttrialStep = 0
+					j := 0
+					for j < len(triallines) {
+						_, name, _ := ReadIniSection(triallines, &j)
+						switch name {
+						case "trialdef":
+							gi.trialslist.numoftrials++
+						}
+					}
+					gi.trialslist.trialdummymode = make([]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialguardmode = make([]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialdummybuttonjam = make([]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialnumsteps = make([]int32, gi.trialslist.numoftrials)
+					gi.trialslist.trialnames = make([]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialsteps = make([][]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialglyphs = make([][]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialstateno = make([][]int32, gi.trialslist.numoftrials)
+					gi.trialslist.trialanimno = make([][]int32, gi.trialslist.numoftrials)
+					gi.trialslist.trialisthrow = make([][]bool, gi.trialslist.numoftrials)
+					gi.trialslist.trialishelper = make([][]bool, gi.trialslist.numoftrials)
+					gi.trialslist.trialprojid = make([][]int32, gi.trialslist.numoftrials)
+					gi.trialslist.trialspecialbool = make([][]bool, gi.trialslist.numoftrials)
+					gi.trialslist.trialspecialstr = make([][]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialspecialval = make([][]int32, gi.trialslist.numoftrials)
+
+					ii := 0
+					j = 0
+					for j < len(triallines) {
+						is, name, _ := ReadIniSection(triallines, &j)
+						currenttrial := "trial." + strconv.Itoa(ii+1)
+						switch name {
+						case "trialdef":
+							if steps, ok := is.getString(currenttrial + ".steps"); !ok {
+								break
+							} else {
+								stepstemp, _ := strconv.ParseInt(steps, 10, 32)
+								gi.trialslist.trialnumsteps[ii] = int32(stepstemp)
+							}
+							if is[(currenttrial+".name")] != "" {
+								gi.trialslist.trialnames[ii] = is[(currenttrial + ".name")]
+							} else {
+								gi.trialslist.trialnames[ii] = ("Trial " + strconv.Itoa(ii+1))
+							}
+							if is[(currenttrial+".dummymode")] != "" {
+								gi.trialslist.trialdummymode[ii] = strings.ToLower(is[(currenttrial + ".dummymode")])
+							} else {
+								gi.trialslist.trialdummymode[ii] = "stand"
+							}
+							if is[(currenttrial+".guardmode")] != "" {
+								gi.trialslist.trialguardmode[ii] = strings.ToLower(is[(currenttrial + ".guardmode")])
+							} else {
+								gi.trialslist.trialguardmode[ii] = "none"
+							}
+							if is[(currenttrial+".dummybutton")] != "" {
+								gi.trialslist.trialdummybuttonjam[ii] = strings.ToLower(is[(currenttrial + ".dummybutton")])
+							} else {
+								gi.trialslist.trialdummybuttonjam[ii] = "none"
+							}
+							gi.trialslist.trialsteps[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialglyphs[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialstateno[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialanimno[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialisthrow[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialishelper[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialprojid[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialspecialbool[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialspecialstr[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialspecialval[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
+							for k := 0; k < int(gi.trialslist.trialnumsteps[ii]); k++ {
+								currenttrialplusstep := currenttrial + "." + strconv.Itoa(k+1)
+								gi.trialslist.trialsteps[ii][k] = is[(currenttrialplusstep + ".text")]
+								gi.trialslist.trialglyphs[ii][k] = is[(currenttrialplusstep + ".glyphs")]
+								if is[(currenttrialplusstep+".stateno")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".stateno")], 10, 32)
+									gi.trialslist.trialstateno[ii][k] = int32(temp)
+								} else {
+									break
+								}
+								if is[(currenttrialplusstep+".anim")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".anim")], 10, 32)
+									gi.trialslist.trialanimno[ii][k] = int32(temp)
+								} else {
+									gi.trialslist.trialanimno[ii][k] = int32(math.NaN())
+								}
+								if is[(currenttrialplusstep+".isthrow")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".isthrow")], 10, 32)
+									if temp != 0 {
+										gi.trialslist.trialisthrow[ii][k] = true
+									} else {
+										gi.trialslist.trialisthrow[ii][k] = false
+									}
+								} else {
+									gi.trialslist.trialisthrow[ii][k] = false
+								}
+								if is[(currenttrialplusstep+".ishelper")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".ishelper")], 10, 32)
+									if temp != 0 {
+										gi.trialslist.trialishelper[ii][k] = true
+									} else {
+										gi.trialslist.trialishelper[ii][k] = false
+									}
+								} else {
+									gi.trialslist.trialishelper[ii][k] = false
+								}
+								if is[(currenttrialplusstep+".projid")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".projid")], 10, 32)
+									gi.trialslist.trialprojid[ii][k] = int32(temp)
+								} else {
+									gi.trialslist.trialprojid[ii][k] = int32(math.NaN())
+								}
+								if is[(currenttrialplusstep+".specialbool")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".specialbool")], 10, 32)
+									if temp != 0 {
+										gi.trialslist.trialspecialbool[ii][k] = true
+									} else {
+										gi.trialslist.trialspecialbool[ii][k] = false
+									}
+								} else {
+									gi.trialslist.trialspecialbool[ii][k] = false
+								}
+								if is[(currenttrialplusstep+".specialstr")] != "" {
+									gi.trialslist.trialspecialstr[ii][k] = strings.ToLower(is[(currenttrialplusstep + ".specialstr")])
+								} else {
+									gi.trialslist.trialspecialstr[ii][k] = ""
+								}
+								if is[(currenttrialplusstep+".specialval")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".specialval")], 10, 32)
+									gi.trialslist.trialspecialval[ii][k] = int32(temp)
+								} else {
+									gi.trialslist.trialspecialval[ii][k] = int32(math.NaN())
+								}
+							}
+							ii++
+						}
+					}
+					gi.trialslist.trialspresent = true
 				}
 			}
 		case "palette ":

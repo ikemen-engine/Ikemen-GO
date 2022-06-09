@@ -3053,6 +3053,49 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(ln)
 		return 1
 	})
+	luaRegister(l, "gettrialinfo", func(*lua.LState) int {
+		switch strArg(l, 1) {
+		case "trialspresent":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialspresent))
+		case "numoftrials":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.numoftrials))
+		case "currenttrial":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.currentTrial))
+		case "currenttrialname":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialnames[int(numArg(l, 2))]))
+		case "currenttrialstep":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.currenttrialStep))
+		case "currenttrialdummymode":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialdummymode[int(numArg(l, 2))]))
+		case "currenttrialguardmode":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialguardmode[int(numArg(l, 2))]))
+		case "currenttrialdummybuttonjam":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialdummybuttonjam[int(numArg(l, 2))]))
+		case "currenttrialnumofsteps":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialnumsteps[int(numArg(l, 2))]))
+		case "currenttrialtext":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialsteps[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialglyphs":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialglyphs[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialstateno":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialstateno[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialanimno":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialanimno[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialisthrow":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialisthrow[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialishelper":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialishelper[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialprojid":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialprojid[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialspecialbool":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialspecialbool[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialspecialstr":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialspecialstr[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialspecialval":
+			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialspecialval[int(numArg(l, 2))][int(numArg(l, 3))]))
+		}
+		return 1
+	})
 	luaRegister(l, "hitcount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.hitCount))
 		return 1
