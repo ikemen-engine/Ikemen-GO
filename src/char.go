@@ -2032,6 +2032,14 @@ func (c *Char) load(def string) error {
 								currenttrialplusstep := currenttrial + "." + strconv.Itoa(k+1)
 								gi.trialslist.trialsteps[ii][k] = is[(currenttrialplusstep + ".text")]
 								gi.trialslist.trialglyphs[ii][k] = is[(currenttrialplusstep + ".glyphs")]
+								gi.trialslist.trialanimno[ii][k] = int32(math.NaN())
+								gi.trialslist.trialisthrow[ii][k] = false
+								gi.trialslist.trialishelper[ii][k] = false
+								gi.trialslist.trialprojid[ii][k] = int32(math.NaN())
+								gi.trialslist.trialspecialbool[ii][k] = false
+								gi.trialslist.trialspecialstr[ii][k] = is[(currenttrialplusstep + ".specialstr")]
+								gi.trialslist.trialspecialval[ii][k] = int32(math.NaN())
+
 								if is[(currenttrialplusstep+".stateno")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".stateno")], 10, 32)
 									gi.trialslist.trialstateno[ii][k] = int32(temp)
@@ -2041,8 +2049,6 @@ func (c *Char) load(def string) error {
 								if is[(currenttrialplusstep+".anim")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".anim")], 10, 32)
 									gi.trialslist.trialanimno[ii][k] = int32(temp)
-								} else {
-									gi.trialslist.trialanimno[ii][k] = int32(math.NaN())
 								}
 								if is[(currenttrialplusstep+".isthrow")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".isthrow")], 10, 32)
@@ -2051,8 +2057,6 @@ func (c *Char) load(def string) error {
 									} else {
 										gi.trialslist.trialisthrow[ii][k] = false
 									}
-								} else {
-									gi.trialslist.trialisthrow[ii][k] = false
 								}
 								if is[(currenttrialplusstep+".ishelper")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".ishelper")], 10, 32)
@@ -2061,14 +2065,10 @@ func (c *Char) load(def string) error {
 									} else {
 										gi.trialslist.trialishelper[ii][k] = false
 									}
-								} else {
-									gi.trialslist.trialishelper[ii][k] = false
 								}
 								if is[(currenttrialplusstep+".projid")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".projid")], 10, 32)
 									gi.trialslist.trialprojid[ii][k] = int32(temp)
-								} else {
-									gi.trialslist.trialprojid[ii][k] = int32(math.NaN())
 								}
 								if is[(currenttrialplusstep+".specialbool")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".specialbool")], 10, 32)
@@ -2077,19 +2077,10 @@ func (c *Char) load(def string) error {
 									} else {
 										gi.trialslist.trialspecialbool[ii][k] = false
 									}
-								} else {
-									gi.trialslist.trialspecialbool[ii][k] = false
-								}
-								if is[(currenttrialplusstep+".specialstr")] != "" {
-									gi.trialslist.trialspecialstr[ii][k] = strings.ToLower(is[(currenttrialplusstep + ".specialstr")])
-								} else {
-									gi.trialslist.trialspecialstr[ii][k] = ""
 								}
 								if is[(currenttrialplusstep+".specialval")] != "" {
 									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".specialval")], 10, 32)
 									gi.trialslist.trialspecialval[ii][k] = int32(temp)
-								} else {
-									gi.trialslist.trialspecialval[ii][k] = int32(math.NaN())
 								}
 							}
 							ii++
