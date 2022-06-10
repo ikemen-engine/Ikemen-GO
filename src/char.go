@@ -3159,7 +3159,9 @@ func (c *Char) stateChange2() bool {
 					} else {
 						i++
 					}
+					continue
 				}
+				i++
 			}
 		}
 		c.stchtmp = false
@@ -4423,7 +4425,7 @@ func (c *Char) ctrlOver() bool {
 		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
-	return c.scf(SCF_over) || (c.ctrlOver() && c.scf(SCF_ctrl) &&
+	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
 		c.ss.stateType != ST_A && c.ss.physics != ST_A)
 }
 func (c *Char) makeDust(x, y float32) {
@@ -5186,6 +5188,9 @@ func (c *Char) action() {
 					} else {
 						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
 							if c.ss.no != 10 {
+								if c.ss.no != 100 {
+									c.vel[0] = 0
+								}
 								c.changeState(10, -1, -1, false)
 							}
 						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
@@ -5229,7 +5234,7 @@ func (c *Char) action() {
 					c.setSCF(SCF_ko_round_middle)
 				}
 			}
-			if c.ss.no == 5150 {
+			if c.ss.no == 5150 && c.life <= 0 {
 				c.setSCF(SCF_over)
 			}
 			c.specialFlag = 0
