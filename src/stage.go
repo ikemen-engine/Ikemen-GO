@@ -56,49 +56,6 @@ const (
 	BT_VelAdd
 )
 
-type StagePropRoundpos struct {
-	typ int
-	x   float32
-	y   float32
-}
-
-type StageProps struct {
-	roundpos StagePropRoundpos	
-}
-
-func readStagePropRoundpos(is IniSection, roundpos *StagePropRoundpos) *StagePropRoundpos {
-	rp := strings.Split(is["roundpos"], ",")
-	switch strings.ToLower(strings.TrimSpace(rp[0])) {
-	case "none":
-		roundpos.typ = 0
-	case "round":
-		roundpos.typ = 1
-	case "floor":
-		roundpos.typ = 2
-	case "ceil":
-		roundpos.typ = 3
-	}
-	var xyroundpos float32
-	if len(rp) >= 2 {
-		s := strings.TrimSpace(rp[1]) 
-		if len(s) > 0 {
-			xyroundpos = float32(Atof(s))
-			roundpos.x = xyroundpos
-			roundpos.y = xyroundpos
-		}
-	}
-	var xroundpos float32
-	var yroundpos float32
-	if is.ReadF32("roundpos.x", &xroundpos) {
-		roundpos.x = xroundpos
-	}
-	if is.ReadF32("roundpos.y", &yroundpos) {
-		roundpos.y = yroundpos
-	}
-
-	return roundpos
-}
-
 type bgAction struct {
 	offset      [2]float32
 	sinoffset   [2]float32
@@ -161,7 +118,7 @@ type backGround struct {
 	zoomscaledelta     [2]float32
 	xbottomzoomdelta   float32
 	// Position rounding
-	roundpos           StagePropRoundpos
+	roundpos           Coord2DProp
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -357,7 +314,7 @@ func readBackGround(is IniSection, link *backGround,
 		}
 	}
 	bg.roundpos = sProps.roundpos
-	readStagePropRoundpos(is, &bg.roundpos)
+	is.ReadStagePropRoundpos("roundpos", &bg.roundpos)
 	return bg
 }
 func (bg *backGround) reset() {
@@ -692,7 +649,7 @@ func newStage(def string) *Stage {
 	s.sdw.fadeend = math.MinInt32
 	s.sdw.fadebgn = math.MinInt32
 	s.p[0].startx, s.p[1].startx = -70, 70
-	s.stageprops = StageProps{roundpos: StagePropRoundpos{typ:0,x:1,y:1}}
+	s.stageprops = newStageProps()
 	return s
 }
 func loadStage(def string, main bool) (*Stage, error) {
@@ -890,7 +847,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
-		readStagePropRoundpos(sec[0], &s.stageprops.roundpos)
+		sec[0].ReadStagePropRoundpos("roundpos", &s.stageprops.roundpos)
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
