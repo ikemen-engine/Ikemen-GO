@@ -374,13 +374,15 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			} else {
 				roundpos = bg.roundpos.y
 			}
-			switch bg.roundpos.typ {
-			case 1:
-				pos[i] = float32(math.Round(float64(float32(pos[i])/roundpos)))*roundpos
-			case 2:
-				pos[i] = float32(math.Floor(float64(float32(pos[i])/roundpos)))*roundpos
-			case 3:
-				pos[i] = float32(math.Ceil(float64(float32(pos[i])/roundpos)))*roundpos
+			if roundpos > 0 {
+				switch bg.roundpos.typ {
+				case 1:
+					pos[i] = float32(math.Round(float64(float32(pos[i])/roundpos)))*roundpos
+				case 2:
+					pos[i] = float32(math.Floor(float64(float32(pos[i])/roundpos)))*roundpos
+				case 3:
+					pos[i] = float32(math.Ceil(float64(float32(pos[i])/roundpos)))*roundpos
+				}
 			}
 		}
 	}
