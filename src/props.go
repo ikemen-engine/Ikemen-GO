@@ -45,13 +45,20 @@ func (is IniSection) ReadCoord2DProp(name string, propTypes map[string]int, out 
 			}
 		}
 	}
+	str = is[name+".type"]
+	if len(str) > 0 {
+		typ := strings.ToLower(strings.TrimSpace(str))
+		if val, ok := propTypes[typ]; ok {
+			out.typ = val
+		}
+	}
 	var x float32
 	var y float32
-	if is.ReadF32(str+".x", &x) {
+	if is.ReadF32(name+".x", &x) {
 		propRead = true
 		out.x = x
 	}
-	if is.ReadF32(str+".y", &y) {
+	if is.ReadF32(name+".y", &y) {
 		propRead = true
 		out.y = y
 	}
