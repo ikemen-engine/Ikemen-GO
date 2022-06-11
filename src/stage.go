@@ -56,6 +56,49 @@ const (
 	BT_VelAdd
 )
 
+type StagePropRoundpos struct {
+	typ int
+	x   float32
+	y   float32
+}
+
+type StageProps struct {
+	roundpos StagePropRoundpos	
+}
+
+func readStagePropRoundpos(is IniSection, roundpos *StagePropRoundpos) *StagePropRoundpos {
+	rp := strings.Split(is["roundpos"], ",")
+	switch strings.ToLower(strings.TrimSpace(rp[0])) {
+	case "none":
+		roundpos.typ = 0
+	case "round":
+		roundpos.typ = 1
+	case "floor":
+		roundpos.typ = 2
+	case "ceil":
+		roundpos.typ = 3
+	}
+	var xyroundpos float32
+	if len(rp) >= 2 {
+		s := strings.TrimSpace(rp[1]) 
+		if len(s) > 0 {
+			xyroundpos = float32(Atof(s))
+			roundpos.x = xyroundpos
+			roundpos.y = xyroundpos
+		}
+	}
+	var xroundpos float32
+	var yroundpos float32
+	if is.ReadF32("roundpos.x", &xroundpos) {
+		roundpos.x = xroundpos
+	}
+	if is.ReadF32("roundpos.y", &yroundpos) {
+		roundpos.y = yroundpos
+	}
+
+	return roundpos
+}
+
 type bgAction struct {
 	offset      [2]float32
 	sinoffset   [2]float32
@@ -117,6 +160,8 @@ type backGround struct {
 	zoomdelta          [2]float32
 	zoomscaledelta     [2]float32
 	xbottomzoomdelta   float32
+	// Position rounding
+	roundpos           StagePropRoundpos
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -126,7 +171,7 @@ func newBackGround(sff *Sff) *backGround {
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
-	sff *Sff, at AnimationTable, camstartx float32) *backGround {
+	sff *Sff, at AnimationTable, camstartx float32, sProps StageProps) *backGround {
 	bg := newBackGround(sff)
 	bg.camstartx = camstartx
 	typ := is["type"]
@@ -311,6 +356,8 @@ func readBackGround(is IniSection, link *backGround,
 			}
 		}
 	}
+	bg.roundpos = sProps.roundpos
+	readStagePropRoundpos(is, &bg.roundpos)
 	return bg
 }
 func (bg *backGround) reset() {
@@ -362,6 +409,24 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 
 	scly *= lclscl
 	sclx *= lscl[0]
+	if bg.roundpos.typ > 0 {
+		for i := 0; i < 2; i++ {
+			var roundpos float32
+			if i == 0 {
+				roundpos = bg.roundpos.x
+			} else {
+				roundpos = bg.roundpos.y
+			}
+			switch bg.roundpos.typ {
+			case 1:
+				pos[i] = float32(math.Round(float64(float32(pos[i])/roundpos)))*roundpos
+			case 2:
+				pos[i] = float32(math.Floor(float64(float32(pos[i])/roundpos)))*roundpos
+			case 3:
+				pos[i] = float32(math.Ceil(float64(float32(pos[i])/roundpos)))*roundpos
+			}
+		}
+	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
@@ -612,6 +677,7 @@ type Stage struct {
 	p1p3dist        float32
 	ver             [2]uint16
 	reload          bool
+	stageprops      StageProps
 }
 
 func newStage(def string) *Stage {
@@ -626,6 +692,7 @@ func newStage(def string) *Stage {
 	s.sdw.fadeend = math.MinInt32
 	s.sdw.fadebgn = math.MinInt32
 	s.p[0].startx, s.p[1].startx = -70, 70
+	s.stageprops = StageProps{roundpos: StagePropRoundpos{typ:0,x:1,y:1}}
 	return s
 }
 func loadStage(def string, main bool) (*Stage, error) {
@@ -823,6 +890,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		readStagePropRoundpos(sec[0], &s.stageprops.roundpos)
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
@@ -830,7 +898,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, float32(s.stageCamera.startx)))
+			s.sff, s.at, float32(s.stageCamera.startx), s.stageprops))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0

@@ -54,10 +54,12 @@ type BGDef struct {
 	resetbg    bool
 	localscl   float32
 	scale      [2]float32
+	stageprops StageProps
 }
 
 func newBGDef(def string) *BGDef {
 	s := &BGDef{def: def, localcoord: [...]float32{320, 240}, resetbg: true, localscl: 1, scale: [...]float32{1, 1}}
+	s.stageprops = StageProps{roundpos: StagePropRoundpos}
 	return s
 }
 
@@ -82,6 +84,7 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 	i = 0
 	if sec := defmap["info"]; len(sec) > 0 {
 		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
+		readStagePropRoundpos(sec[0], &s.stageprops.roundpos)
 	}
 	s.sff = sff
 	s.at = ReadAnimationTable(s.sff, lines, &i)
@@ -91,7 +94,7 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, 0))
+			s.sff, s.at, 0, s.stageprops))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
