@@ -793,7 +793,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 2 {
 			height = int32(numArg(l, 2))
 		}
-		filename := SearchFile(strArg(l, 1), []string{sys.motifDir, "", "data/", "font/"})
+		filename := SearchFile(strArg(l, 1), []string{"font/", sys.motifDir, "", "data/"})
 		fnt, err := loadFnt(filename, height)
 		if err != nil {
 			sys.errLog.Printf("failed to load %v (screenpack font): %v", filename, err)
