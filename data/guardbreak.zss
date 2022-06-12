@@ -120,33 +120,35 @@ if animTime = 0 || time > 99 {
 [StateDef -2]
 
 if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
-	# do nothing, global code disabled locally or executed by helper/stage
+	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	guardPointsSet{value: guardPointsMax}
 	mapSet{map: "_iksys_guardPointsCounter"; value: 0}
-	mapSet{map: "_iksys_guardReceivedDamage"; value: 0}
 } else if roundState = 2 && alive {
-	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
+	# Upon hit
+	ignoreHitPause if moveType = H {
+		# Reset cooldown counter
 		mapSet{map: "_iksys_guardPointsCounter"; value: 60}
+		# Coloring if guard points left <= 20%
 		if (gameTime % 5) = 0 && float(guardPoints) / guardPointsMax <= 0.2 {
 			palFx{time: 2; add: 200, 0, 0}
 		}
+		# Entering guard break state
 		ignoreHitPause if guardPoints = 0 && !guardBreak {
 			changeState{value: const(StateGuardBreakHit)}
 		}
-	} else if map(_iksys_guardPointsCounter) > 0 && moveType != H && getHitVar(isbound) = 0 && !standby {
+	# Otherwise decrease cooldown counter by 1 each frame
+	} else if map(_iksys_guardPointsCounter) > 0 {
 		mapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 	}
+	# Reset guard points and remove guard break flag if player is no longer in one of guard break states
 	ignoreHitPause if guardBreak && stateNo != [const(StateGuardBreakHit), const(StateGuardBreakRecover)] {
 		guardPointsSet{value: guardPointsMax}
 		guardBreakSet{value: 0}
 	}
+	# Guard points recovery
 	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
-		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)} # guard points recovery
+		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)}
 		mapSet{map: "_iksys_guardPointsCounter"; value: 30}
-	}
-	if receivedDamage != map(_iksys_guardReceivedDamage) {
-		mapSet{map: "_iksys_guardReceivedDamage"; value: receivedDamage}
-		mapSet{map: "_iksys_guardPointsCounter"; value: 60}
 	}
 }

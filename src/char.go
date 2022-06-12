@@ -54,8 +54,8 @@ const (
 	CSF_autoguard
 	CSF_animfreeze
 	CSF_postroundinput
-	CSF_nodizzypoints
-	CSF_noguardpoints
+	CSF_nodizzypointsdamage
+	CSF_noguardpointsdamage
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -76,8 +76,8 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypoints |
-		CSF_noguardpoints
+		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypointsdamage |
+		CSF_noguardpointsdamage
 )
 
 type GlobalSpecialFlag uint32
@@ -4004,7 +4004,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool)
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
-			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypoints) {
+			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
 				t.dizzyPointsAdd(int32(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"])))
 			}
 		}
@@ -5482,7 +5482,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallcount = 0
 				c.ghv.hitid = c.ghv.hitid >> 31
 				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
-				if c.comboExtraFrameWindow <= 0 {
+				if c.comboExtraFrameWindow <= 0 && !c.scf(SCF_dizzy) {
 					c.fakeReceivedHits = 0
 					c.fakeComboDmg = 0
 					c.fakeCombo = false
@@ -6317,7 +6317,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
-					if !c.sf(CSF_nodizzypoints) && !getter.scf(SCF_dizzy) {
+					if !c.sf(CSF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
 						getter.dizzyPointsAdd(hd.dizzypoints)
 					}
 				}
@@ -6360,7 +6360,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
-					if !c.sf(CSF_noguardpoints) {
+					if !c.sf(CSF_noguardpointsdamage) {
 						getter.guardPointsAdd(hd.guardpoints)
 					}
 				}

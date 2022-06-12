@@ -3699,7 +3699,6 @@ func (sc afterImageTime) Run(c *Char, _ []int32) bool {
 		switch id {
 		case afterImageTime_time:
 			time := exp[0].evalI(c)
-			println(time)
 			if time == 1 {
 				time = 0
 			}
