@@ -1233,15 +1233,6 @@ function main.f_round(num, places)
 	return math.floor(num + 0.5)
 end
 
---odd value rounding
-function main.f_oddRounding(v)
-	if v % 2 ~= 0 then
-		return 1
-	else
-		return 0
-	end
-end
-
 --return playerno teamside
 function main.f_playerSide(pn)
 	if pn % 2 ~= 0 then --odd value (Player1 side)
@@ -3819,7 +3810,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
 			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
 			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =    math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + (math.min(#t, motif[section].menu_window_visibleitems) - 1) * motif[section].menu_item_spacing[2],
 			r =     motif[section].menu_boxbg_col[1],
 			g =     motif[section].menu_boxbg_col[2],
 			b =     motif[section].menu_boxbg_col[3],
@@ -3975,7 +3966,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
 			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
 			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1,
 			r =     motif[section].menu_boxcursor_col[1],
 			g =     motif[section].menu_boxcursor_col[2],
 			b =     motif[section].menu_boxcursor_col[3],

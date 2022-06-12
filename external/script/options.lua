@@ -1946,7 +1946,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 				x1 = t_pos[i][1] + motif.option_info.keymenu_boxcursor_coords[1],
 				y1 = t_pos[i][2] + motif.option_info.keymenu_boxcursor_coords[2],
 				x2 = motif.option_info.keymenu_boxcursor_coords[3] - motif.option_info.keymenu_boxcursor_coords[1] + 1,
-				y2 = #t * (motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif.option_info.keymenu_boxcursor_coords[2]),
+				y2 = motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1 + (#t - 1) * motif.option_info.keymenu_item_spacing[2],
 			})
 			rect_boxbg:draw()
 		end
@@ -2157,7 +2157,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 					x1 = t_pos[i][1] + motif.option_info.keymenu_boxcursor_coords[1] + (cursorPosY - 1) * motif.option_info.keymenu_item_spacing[1],
 					y1 = t_pos[i][2] + motif.option_info.keymenu_boxcursor_coords[2] + (cursorPosY - 1) * motif.option_info.keymenu_item_spacing[2],
 					x2 = motif.option_info.keymenu_boxcursor_coords[3] - motif.option_info.keymenu_boxcursor_coords[1] + 1,
-					y2 = motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif.option_info.keymenu_boxcursor_coords[2]),
+					y2 = motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1,
 					src = src,
 					dst = dst,
 				})
