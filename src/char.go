@@ -4880,12 +4880,16 @@ func (c *Char) hasTargetOfHitdef(id int32) bool {
 func (c *Char) setBindTime(time int32) {
 	c.bindTime = time
 	if time == 0 {
-		c.bindToId = -1
+		if c.bindToId >= 0 {
+			c.bindToId = -1
+		}
 		c.bindFacing = 0
 	}
 }
 func (c *Char) setBindToId(to *Char) {
-	c.bindToId = to.id
+	if c.bindToId != to.id {
+		c.bindToId = -to.id
+	}
 	if c.bindFacing == 0 {
 		c.bindFacing = to.facing * 2
 	}
@@ -4897,11 +4901,23 @@ func (c *Char) bind() {
 	if c.bindTime == 0 {
 		return
 	}
-	if bt := sys.playerID(c.bindToId); bt != nil {
+	Bid := c.bindToId
+	if Bid < -1 {
+		if bt := sys.playerID(-Bid); bt != nil {
+			if bt.sf(CSF_destroy) {
+				c.setBindTime(0)
+				return
+			}
+		}
+		Bid *= -1
+	}
+	if bt := sys.playerID(Bid); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
-				c.selfState(5050, -1, -1, -1, false)
+				if c.ss.moveType == MT_H {
+					c.selfState(5050, -1, -1, -1, false)
+				}
 				c.setBindTime(0)
 				return
 			}
@@ -5213,12 +5229,15 @@ func (c *Char) action() {
 						}
 					}
 				}
-			} else if c.scf(SCF_ctrl) {
+			} else {
 				switch c.ss.no {
 				case 11:
 					c.changeState(12, -1, -1, false)
 				case 20:
-					c.changeState(0, -1, -1, false)
+					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
+						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+						c.changeState(0, -1, -1, false)
+					}
 				}
 			}
 		}
@@ -5559,13 +5578,20 @@ func (c *Char) tick() {
 	}
 	if c.bindTime > 0 {
 		if c.isBound() {
-			if bt := sys.playerID(c.bindToId); bt != nil && !bt.pause() {
+			Bid := c.bindToId
+			if Bid < -1 {
+				Bid *= -1
+			}
+			if bt := sys.playerID(Bid); bt != nil && !bt.pause() {
 				c.setBindTime(c.bindTime - 1)
 			}
 		} else {
 			if !c.pause() {
 				c.setBindTime(c.bindTime - 1)
 			}
+		}
+		if c.bindToId < -1 {
+			c.bindToId *= -1
 		}
 	}
 	if c.cmd == nil {
