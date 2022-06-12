@@ -2007,6 +2007,9 @@ local section = 0
 local row = 0
 local slot = false
 local content = main.f_fileRead(motif.files.select)
+local csRow = 0
+local csCol = 0
+local csCell = 0
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
@@ -2037,6 +2040,14 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%w+%]$') then
 		section = -1
 	elseif section == 1 then --[Characters]
+		csRow = (csCell % motif.select_info.columns) + 1
+		csCol = csCell - ((csRow - 1) * motif.select_info.columns) + 1
+		while not slot and motif.select_info['cell_' .. csCol .. '_' .. csRow .. '_skip'] == 1 do
+			main.f_addChar('-', true, true, false)
+			csCell = csCell + 1
+			csRow = (csCell % motif.select_info.columns) + 1
+			csCol = csCell - ((csCol - 1) * motif.select_info.columns) + 1
+		end
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		elseif lineCase:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
@@ -2044,8 +2055,12 @@ for line in content:gmatch('[^\r\n]+') do
 			slot = true
 		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
 			slot = false
+			csCell = csCell + 1
 		else
 			main.f_addChar(line, true, true, slot)
+			if not slot then
+				csCell = csCell + 1
+			end
 		end
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
