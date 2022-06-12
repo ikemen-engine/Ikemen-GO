@@ -802,6 +802,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(newUserData(l, fnt))
 		return 1
 	})
+	luaRegister(l, "freezeLifeBarTimer", func(*lua.LState) int {
+		sys.timerFrozen = boolArg(l, 1)
+		return 0
+	})
 	// Execute a match of gameplay
 	luaRegister(l, "game", func(l *lua.LState) int {
 		// Anonymous function to load characters and stages, and/or wait for them to finish loading
@@ -1029,6 +1033,7 @@ func systemScriptInit(l *lua.LState) {
 				tbl.RawSetString("p2score", lua.LNumber(sc[1]))
 				sys.timerStart = 0
 				sys.timerRounds = []int32{}
+				sys.timerFrozen = false
 				sys.scoreStart = [2]float32{}
 				sys.scoreRounds = [][2]float32{}
 				sys.timerCount = []int32{}

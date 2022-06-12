@@ -321,6 +321,8 @@ type System struct {
 	roundType       [2]RoundType
 	timerStart      int32
 	timerRounds     []int32
+	timerFrozen     bool
+	timerVal        string
 	scoreStart      [2]float32
 	scoreRounds     [][2]float32
 	matchData       *lua.LTable
@@ -2046,8 +2048,8 @@ func (s *System) fight() (reload bool) {
 								}
 							}
 						}
-					//} else {
-					//	s.chars[i][0].life = 0
+						//} else {
+						//	s.chars[i][0].life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,

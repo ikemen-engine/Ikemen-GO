@@ -1649,6 +1649,7 @@ type LifeBarRound struct {
 	cur                int32
 	wt, swt, dt        [4]int32
 	timerActive        bool
+	timerTickStart     int32
 	wint               [WT_NumTypes * 2]LbBgTextSnd
 	fadein_time        int32
 	fadein_col         uint32
@@ -1968,6 +1969,7 @@ func (ro *LifeBarRound) callFight() {
 	ro.cur, ro.wt[1], ro.swt[1], ro.dt[1] = 1, ro.fight_time, ro.fight_sndtime, 0
 	sys.timerCount = append(sys.timerCount, sys.gameTime)
 	ro.timerActive = true
+	ro.timerTickStart = int32(sys.tickCount)
 }
 func (ro *LifeBarRound) act() bool {
 	if (sys.paused && !sys.step) || sys.sf(GSF_roundfreeze) {
@@ -2265,6 +2267,7 @@ func (ro *LifeBarRound) reset() {
 	}
 	ro.introState = [2]bool{}
 	ro.firstAttack = [2]bool{}
+	ro.timerActive = false
 }
 func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 	ob := sys.brightness
@@ -2500,26 +2503,34 @@ func (tr *LifeBarTimer) bgDraw(layerno int16) {
 }
 func (tr *LifeBarTimer) draw(layerno int16, f []*Fnt) {
 	if tr.active && sys.lifebar.ti.framespercount > 0 &&
-		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil && sys.time >= 0 {
+		tr.text.font[0] >= 0 && int(tr.text.font[0]) < len(f) && f[tr.text.font[0]] != nil { //&& sys.time >= 0 {
 		text := tr.text.text
-		totalSec := float64(timeTotal()) / 60
-		h := math.Floor(totalSec / 3600)
-		m := math.Floor((totalSec/3600 - h) * 60)
-		s := math.Floor(((totalSec/3600-h)*60 - m) * 60)
-		x := math.Floor((((totalSec/3600-h)*60-m)*60 - s) * 100)
-		ms, ss, xs := fmt.Sprintf("%.0f", m), fmt.Sprintf("%.0f", s), fmt.Sprintf("%.0f", x)
-		if len(ms) < 2 {
-			ms = "0" + ms
+		if sys.timerFrozen {
+			text = fmt.Sprintf(sys.timerVal)
+		} else {
+			totalSec := float64(timeTotal()) / 60
+			if sys.time < 0 {
+				totalSec = float64(timeByTickCounts()) / 60
+			}
+			h := math.Floor(totalSec / 3600)
+			m := math.Floor((totalSec/3600 - h) * 60)
+			s := math.Floor(((totalSec/3600-h)*60 - m) * 60)
+			x := math.Floor((((totalSec/3600-h)*60-m)*60 - s) * 100)
+			ms, ss, xs := fmt.Sprintf("%.0f", m), fmt.Sprintf("%.0f", s), fmt.Sprintf("%.0f", x)
+			if len(ms) < 2 {
+				ms = "0" + ms
+			}
+			if len(ss) < 2 {
+				ss = "0" + ss
+			}
+			if len(xs) < 2 {
+				xs = "0" + xs
+			}
+			text = strings.Replace(text, "%m", ms, 1)
+			text = strings.Replace(text, "%s", ss, 1)
+			text = strings.Replace(text, "%x", xs, 1)
+			sys.timerVal = text
 		}
-		if len(ss) < 2 {
-			ss = "0" + ss
-		}
-		if len(xs) < 2 {
-			xs = "0" + xs
-		}
-		text = strings.Replace(text, "%m", ms, 1)
-		text = strings.Replace(text, "%s", ss, 1)
-		text = strings.Replace(text, "%x", xs, 1)
 		tr.text.lay.DrawText(float32(tr.pos[0])+sys.lifebarOffsetX, float32(tr.pos[1]), sys.lifebarScale, layerno,
 			text, f[tr.text.font[0]], tr.text.font[1], tr.text.font[2], tr.text.palfx, tr.text.frgba)
 		tr.top.Draw(float32(tr.pos[0])+sys.lifebarOffsetX, float32(tr.pos[1]), layerno, sys.lifebarScale)
@@ -2541,6 +2552,13 @@ func timeTotal() int32 {
 	}
 	if sys.lifebar.ro.timerActive {
 		t += timeElapsed()
+	}
+	return t
+}
+func timeByTickCounts() int32 {
+	t := sys.timerStart
+	if sys.lifebar.ro.timerActive {
+		t = int32(sys.tickCount) - sys.lifebar.ro.timerTickStart
 	}
 	return t
 }
