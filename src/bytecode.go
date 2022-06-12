@@ -4632,13 +4632,14 @@ const (
 	targetLifeAdd_id byte = iota
 	targetLifeAdd_absolute
 	targetLifeAdd_kill
+	targetLifeAdd_dizzy
 	targetLifeAdd_value
 	targetLifeAdd_redirectid
 )
 
 func (sc targetLifeAdd) Run(c *Char, _ []int32) bool {
 	crun := c
-	tar, a, k := crun.getTarget(-1), false, true
+	tar, a, k, r := crun.getTarget(-1), false, true, true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case targetLifeAdd_id:
@@ -4650,11 +4651,13 @@ func (sc targetLifeAdd) Run(c *Char, _ []int32) bool {
 			a = exp[0].evalB(c)
 		case targetLifeAdd_kill:
 			k = exp[0].evalB(c)
+		case targetLifeAdd_dizzy:
+			r = exp[0].evalB(c)
 		case targetLifeAdd_value:
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetLifeAdd(tar, exp[0].evalI(c), k, a)
+			crun.targetLifeAdd(tar, exp[0].evalI(c), k, a, r)
 		case targetLifeAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

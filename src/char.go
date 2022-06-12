@@ -54,6 +54,8 @@ const (
 	CSF_autoguard
 	CSF_animfreeze
 	CSF_postroundinput
+	CSF_nodizzypoints
+	CSF_noguardpoints
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -74,7 +76,8 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze | CSF_postroundinput
+		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypoints |
+		CSF_noguardpoints
 )
 
 type GlobalSpecialFlag uint32
@@ -3995,12 +3998,15 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 		}
 	}
 }
-func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
+func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypoints) {
+				t.dizzyPointsAdd(int32(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"])))
+			}
 		}
 	}
 }
@@ -6311,7 +6317,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
-					getter.dizzyPointsAdd(hd.dizzypoints)
+					if !c.sf(CSF_nodizzypoints) && !getter.scf(SCF_dizzy) {
+						getter.dizzyPointsAdd(hd.dizzypoints)
+					}
 				}
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
@@ -6352,7 +6360,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
-					getter.guardPointsAdd(hd.guardpoints)
+					if !c.sf(CSF_noguardpoints) {
+						getter.guardPointsAdd(hd.guardpoints)
+					}
 				}
 			}
 		}

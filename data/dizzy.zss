@@ -235,15 +235,13 @@ notHitBy{value: SCA; time: 1}
 #===============================================================================
 # StateDizzy
 #===============================================================================
-[StateDef 5300; type: S; moveType: U; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
+[StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
-	mapSet{map: "_iksys_DizzyState"; value: 0}
 	selfState{value: const(StateStand); ctrl: 1}
 }
 
 if time = 0 {
-	mapSet{map: "_iksys_DizzyState"; value: 1}
 	mapAdd{map: "_iksys_dizzyRecoveryTime"; value: 312}
 	posSet{y: 0}
 }
@@ -265,7 +263,6 @@ if time > 1 {
 
 if time > 8 {
 	if map(_iksys_dizzyRecoveryTime) <= 0 || roundState > 2 {
-		mapSet{map: "_iksys_DizzyState"; value: 0}
 		selfState{value: const(StateStand); ctrl: 1}
 	}
 }
@@ -282,6 +279,9 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
 	mapSet{map: "_iksys_dizzyReceivedDamage"; value: 0}
 } else if roundState = 2 && alive {
+	ignoreHitPause if hitDefAttr = SCA, HA {
+		assertSpecial{flag: nodizzypoints}
+	}
 	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	} else if map(_iksys_dizzyPointsCounter) > 0 && moveType != H && getHitVar(isbound) = 0 && !standby {
@@ -301,28 +301,16 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 			selfState{value: const(StateDizzyLyingDown)}
 		}
 	}
-	ignoreHitPause if dizzy && stateNo != [const(StateDizzy), const(StateDizzyLyingDown)] && (moveType != H || map(_iksys_DizzyState) > 0) {
+	ignoreHitPause if dizzy && stateNo != [const(StateDizzy), const(StateDizzyLyingDown)] {
 		dizzyPointsSet{value: dizzyPointsMax}
 		dizzySet{value: 0}
-	}
-	if map(_iksys_DizzyState) = 2 && moveType != H {
-		mapSet{map: "_iksys_DizzyState"; value: 0}
-	}
-	if receivedDamage != map(_iksys_dizzyReceivedDamage) {
-		if receivedDamage > map(_iksys_dizzyReceivedDamage) {
-			if map(_iksys_DizzyState) < 2 && getHitVar(attr) != [const(AttrStandingHyperAttack), const(AttrAerialHyperProjectile)] {
-				if map(_iksys_DizzyState) = 1 {
-					mapSet{map: "_iksys_DizzyState"; value: 2}
-				} else if getHitVar(dizzypoints) = 0 {
-					dizzyPointsAdd{value: (receivedDamage - map(_iksys_dizzyReceivedDamage)) * -1.8} # dizzy points drain
-				}
-			}
-		}
-		mapSet{map: "_iksys_dizzyReceivedDamage"; value: receivedDamage}
-		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
 		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)} # dizzy points recovery
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
+	}
+	if receivedDamage != map(_iksys_dizzyReceivedDamage) {
+		mapSet{map: "_iksys_dizzyReceivedDamage"; value: receivedDamage}
+		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
 	}
 }
