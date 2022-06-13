@@ -2390,6 +2390,10 @@ func (s *Select) addChar(def string) {
 	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
 		"\\", "/", -1)
 	tstr = fmt.Sprintf("Char added: %v", def)
+	if strings.ToLower(def) == "dummyslot" {
+		sc.name = "dummyslot"
+		return
+	}
 	if strings.ToLower(def) == "randomselect" {
 		sc.def, sc.name = "randomselect", "Random"
 		return

@@ -1998,8 +1998,6 @@ local section = 0
 local row = 0
 local slot = false
 local content = main.f_fileRead(motif.files.select)
-local csRow = 0
-local csCol = 0
 local csCell = 0
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
@@ -2031,10 +2029,10 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%w+%]$') then
 		section = -1
 	elseif section == 1 then --[Characters]
-		csRow = (csCell % motif.select_info.columns) + 1
-		csCol = csCell - ((csRow - 1) * motif.select_info.columns) + 1
+		local csRow = (csCell % motif.select_info.columns) + 1
+		local csCol = csCell - ((csRow - 1) * motif.select_info.columns) + 1
 		while not slot and motif.select_info['cell_' .. csCol .. '_' .. csRow .. '_skip'] == 1 do
-			main.f_addChar('-', true, true, false)
+			main.f_addChar('dummyslot', true, true, false)
 			csCell = csCell + 1
 			csRow = (csCell % motif.select_info.columns) + 1
 			csCol = csCell - ((csCol - 1) * motif.select_info.columns) + 1
