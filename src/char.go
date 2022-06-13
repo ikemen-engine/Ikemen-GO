@@ -3152,7 +3152,7 @@ func (c *Char) stateChange2() bool {
 					break
 				}
 				if t := sys.playerID(c.targets[i]); t != nil {
-					if t.ss.moveType != MT_H {
+					if t.ss.moveType != MT_H && !t.stchtmp {
 						c.targets[i] = c.targets[len(c.targets)-1]
 						c.targets = c.targets[:len(c.targets)-1]
 						t.ghv.hitid = -1
@@ -6519,7 +6519,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return
 	}
-
 	if proj {
 		for i, pr := range sys.projs {
 			if len(sys.projs[i]) == 0 {
@@ -6790,9 +6789,30 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 }
 func (cl *CharList) getHit() {
-	for _, c := range cl.runOrder {
-		cl.clsn(c, false)
+
+	sortedOrder := []int{}
+	for i, c := range cl.runOrder {
+		if c.hitdef.attr > 0 {
+			sortedOrder = append(sortedOrder, i)
+		}
 	}
+	soNum := []int{}
+	soCount := 0
+	for i := 0; i < len(cl.runOrder); i++ {
+		if soCount < len(sortedOrder) {
+			if sortedOrder[soCount] == i {
+				soCount++
+				continue
+			}
+		}
+		soNum = append(soNum, i)
+	}
+	sortedOrder = append(sortedOrder, soNum...)
+
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.clsn(cl.runOrder[sortedOrder[i]], false)
+	}
+
 	for _, c := range cl.runOrder {
 		cl.clsn(c, true)
 	}

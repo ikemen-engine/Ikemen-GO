@@ -2046,8 +2046,8 @@ func (s *System) fight() (reload bool) {
 								}
 							}
 						}
-					//} else {
-					//	s.chars[i][0].life = 0
+						//} else {
+						//	s.chars[i][0].life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,
