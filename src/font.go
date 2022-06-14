@@ -34,14 +34,13 @@ type Fnt struct {
 	colors    int32
 	offset    [2]int32
 	ttf       TtfFont
-	paltexs   map[[4]int32]*Texture
+	paltex    *Texture
 }
 
 func newFnt() *Fnt {
 	return &Fnt{
 		images:   make(map[int32]map[rune]*FntCharImage),
 		BankType: "palette",
-		paltexs:  make(map[[4]int32]*Texture),
 	}
 }
 
@@ -314,13 +313,8 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 }
 
 func LoadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
+	fileDir := SearchFile(filename, []string{fontfile, "font/", sys.motifDir, "", "data/"})
 	sff, err := loadSff(fileDir, false)
-
-	if err != nil {
-		err = nil
-		sff, err = loadSff(fileDir, false)
-	}
 
 	if err != nil {
 		panic(err)
@@ -455,13 +449,11 @@ func (f *Fnt) drawChar(
 
 	x -= xscl * float32(spr.Offset[0])
 	y -= yscl * float32(spr.Offset[1])
-	paltex := f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}]
-	if spr.coldepth <= 8 && paltex == nil {
-		paltex = spr.CachePalette(pal)
-		f.paltexs[[4]int32{bank, palfx.eMul[0], palfx.eMul[1], palfx.eMul[2]}] = paltex
+	if spr.coldepth <= 8 && f.paltex == nil {
+		f.paltex = spr.CachePalette(pal)
 	}
 	rp := RenderParams{
-		spr.Tex, paltex, spr.Size,
+		spr.Tex, f.paltex, spr.Size,
 		-x*sys.widthScale, -y*sys.heightScale, notiling,
 		xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0,
@@ -523,6 +515,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		pal = palfx.getFxPal(f.palettes[bank][:], false)
 	}
 
+	f.paltex = nil
 	for _, c := range txt {
 		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
 	}

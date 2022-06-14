@@ -793,7 +793,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 2 {
 			height = int32(numArg(l, 2))
 		}
-		filename := SearchFile(strArg(l, 1), []string{sys.motifDir, "", "data/", "font/"})
+		filename := SearchFile(strArg(l, 1), []string{"font/", sys.motifDir, "", "data/"})
 		fnt, err := loadFnt(filename, height)
 		if err != nil {
 			sys.errLog.Printf("failed to load %v (screenpack font): %v", filename, err)
@@ -2236,18 +2236,6 @@ func systemScriptInit(l *lua.LState) {
 		time.Sleep(time.Duration((numArg(l, 1))) * time.Second)
 		return 0
 	})
-	luaRegister(l, "sndGetLength", func(*lua.LState) int {
-		s, ok := toUserData(l, 1).(*Snd)
-		if !ok {
-			userDataError(l, 1, s)
-		}
-		var frames int32
-		if sound := s.Get([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}); sound != nil {
-			frames = int32(math.Ceil(float64(sound.GetDuration() * 60)))
-		}
-		l.Push(lua.LNumber(frames))
-		return 1
-	})
 	luaRegister(l, "sndNew", func(l *lua.LState) int {
 		snd, err := LoadSnd(strArg(l, 1))
 		if err != nil {
@@ -2539,14 +2527,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		sys.bgm.UpdateVolume()
 		return 0
-	})
-	luaRegister(l, "waveGetLength", func(*lua.LState) int {
-		s, ok := toUserData(l, 1).(*Sound)
-		if !ok {
-			userDataError(l, 1, s)
-		}
-		l.Push(lua.LNumber(int32(math.Ceil(float64(s.GetDuration() * 60)))))
-		return 1
 	})
 	luaRegister(l, "wavePlay", func(l *lua.LState) int {
 		s, ok := toUserData(l, 1).(*Sound)
@@ -3720,6 +3700,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "postroundinput":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
+		case "nodizzypointsdamage":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nodizzypointsdamage)))
+		case "noguardpointsdamage":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguardpointsdamage)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))

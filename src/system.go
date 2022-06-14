@@ -2046,8 +2046,8 @@ func (s *System) fight() (reload bool) {
 								}
 							}
 						}
-					} else {
-						s.chars[i][0].life = 0
+						//} else {
+						//	s.chars[i][0].life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,
@@ -2390,6 +2390,10 @@ func (s *Select) addChar(def string) {
 	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
 		"\\", "/", -1)
 	tstr = fmt.Sprintf("Char added: %v", def)
+	if strings.ToLower(def) == "dummyslot" {
+		sc.name = "dummyslot"
+		return
+	}
 	if strings.ToLower(def) == "randomselect" {
 		sc.def, sc.name = "randomselect", "Random"
 		return

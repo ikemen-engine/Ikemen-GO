@@ -54,6 +54,8 @@ const (
 	CSF_autoguard
 	CSF_animfreeze
 	CSF_postroundinput
+	CSF_nodizzypointsdamage
+	CSF_noguardpointsdamage
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -74,7 +76,8 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze | CSF_postroundinput
+		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypointsdamage |
+		CSF_noguardpointsdamage
 )
 
 type GlobalSpecialFlag uint32
@@ -166,8 +169,8 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
-			-c[0]*sys.widthScale, -c[1]*sys.heightScale, notiling,
-			c[2]*sys.widthScale, c[2]*sys.widthScale, c[3]*sys.heightScale,
+			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
+			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale,
 			1, 0, Rotation{}, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
 		RenderSprite(params)
@@ -1954,7 +1957,8 @@ func (c *Char) load(def string) error {
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
 	gi.constants["default.lifetoguardpointsmul"] = -1.5
-	gi.constants["default.lifetodizzypointsmul"] = 0
+	gi.constants["default.lifetodizzypointsmul"] = -1.8
+	gi.constants["super.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.25
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
@@ -3145,21 +3149,23 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
-		if c.hitdef.reversal_attr <= 0 {
+		if c.hitdef.reversal_attr == 0 || c.hitdef.reversal_attr == -1<<31 {
 			i := 0
 			for i < len(c.targets) {
 				if i >= len(c.targets) {
 					break
 				}
 				if t := sys.playerID(c.targets[i]); t != nil {
-					if t.ss.moveType != MT_H {
+					if t.ss.moveType != MT_H && !t.stchtmp {
 						c.targets[i] = c.targets[len(c.targets)-1]
 						c.targets = c.targets[:len(c.targets)-1]
 						t.ghv.hitid = -1
 					} else {
 						i++
 					}
+					continue
 				}
+				i++
 			}
 		}
 		c.stchtmp = false
@@ -3761,8 +3767,13 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower,
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
-	ifierrset(&hd.dizzypoints,
-		int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	if hd.attr&int32(AT_AH) != 0 {
+		ifierrset(&hd.dizzypoints,
+			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	} else {
+		ifierrset(&hd.dizzypoints,
+			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+	}
 	ifierrset(&hd.guardpoints,
 		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
 	ifierrset(&hd.redlife,
@@ -3993,12 +4004,15 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 		}
 	}
 }
-func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute bool) {
+func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
+				t.dizzyPointsAdd(int32(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"])))
+			}
 		}
 	}
 }
@@ -4423,7 +4437,7 @@ func (c *Char) ctrlOver() bool {
 		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
-	return c.scf(SCF_over) || (c.ctrlOver() && c.scf(SCF_ctrl) &&
+	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
 		c.ss.stateType != ST_A && c.ss.physics != ST_A)
 }
 func (c *Char) makeDust(x, y float32) {
@@ -4878,12 +4892,16 @@ func (c *Char) hasTargetOfHitdef(id int32) bool {
 func (c *Char) setBindTime(time int32) {
 	c.bindTime = time
 	if time == 0 {
-		c.bindToId = -1
+		if c.bindToId >= 0 {
+			c.bindToId = -1
+		}
 		c.bindFacing = 0
 	}
 }
 func (c *Char) setBindToId(to *Char) {
-	c.bindToId = to.id
+	if c.bindToId != to.id {
+		c.bindToId = -to.id
+	}
 	if c.bindFacing == 0 {
 		c.bindFacing = to.facing * 2
 	}
@@ -4895,11 +4913,23 @@ func (c *Char) bind() {
 	if c.bindTime == 0 {
 		return
 	}
-	if bt := sys.playerID(c.bindToId); bt != nil {
+	Bid := c.bindToId
+	if Bid < -1 {
+		if bt := sys.playerID(-Bid); bt != nil {
+			if bt.sf(CSF_destroy) {
+				c.setBindTime(0)
+				return
+			}
+		}
+		Bid *= -1
+	}
+	if bt := sys.playerID(Bid); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
-				c.selfState(5050, -1, -1, -1, false)
+				if c.ss.moveType == MT_H {
+					c.selfState(5050, -1, -1, -1, false)
+				}
 				c.setBindTime(0)
 				return
 			}
@@ -4980,7 +5010,7 @@ func (c *Char) exitTarget(explremove bool) {
 	if c.hittmp >= 0 {
 		for _, hb := range c.ghv.hitBy {
 			if e := sys.playerID(hb[0]); e != nil {
-				if e.hitdef.reversal_attr <= 0 {
+				if e.hitdef.reversal_attr == 0 || e.hitdef.reversal_attr == -1<<31 {
 					e.removeTarget(c.id)
 					if explremove {
 						c.enemyExplodsRemove(e.playerNo)
@@ -5178,7 +5208,7 @@ func (c *Char) action() {
 						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
 						c.airJumpCount < c.gi().movement.airjump.num &&
 						c.cmd[0].Buffer.U > 0 {
-						if c.ss.no != 45 {
+						if c.ss.no != 45 || c.ss.time > 0 {
 							c.airJumpCount++
 							c.unsetSCF(SCF_airjump)
 							c.changeState(45, -1, -1, false)
@@ -5186,6 +5216,9 @@ func (c *Char) action() {
 					} else {
 						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
 							if c.ss.no != 10 {
+								if c.ss.no != 100 {
+									c.vel[0] = 0
+								}
 								c.changeState(10, -1, -1, false)
 							}
 						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
@@ -5208,12 +5241,15 @@ func (c *Char) action() {
 						}
 					}
 				}
-			} else if c.scf(SCF_ctrl) {
+			} else {
 				switch c.ss.no {
 				case 11:
 					c.changeState(12, -1, -1, false)
 				case 20:
-					c.changeState(0, -1, -1, false)
+					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
+						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+						c.changeState(0, -1, -1, false)
+					}
 				}
 			}
 		}
@@ -5229,7 +5265,7 @@ func (c *Char) action() {
 					c.setSCF(SCF_ko_round_middle)
 				}
 			}
-			if c.ss.no == 5150 {
+			if c.ss.no == 5150 && c.life <= 0 {
 				c.setSCF(SCF_over)
 			}
 			c.specialFlag = 0
@@ -5471,7 +5507,7 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.fallcount = 0
 				c.ghv.hitid = c.ghv.hitid >> 31
 				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
-				if c.comboExtraFrameWindow <= 0 {
+				if c.comboExtraFrameWindow <= 0 && !c.scf(SCF_dizzy) {
 					c.fakeReceivedHits = 0
 					c.fakeComboDmg = 0
 					c.fakeCombo = false
@@ -5554,13 +5590,20 @@ func (c *Char) tick() {
 	}
 	if c.bindTime > 0 {
 		if c.isBound() {
-			if bt := sys.playerID(c.bindToId); bt != nil && !bt.pause() {
+			Bid := c.bindToId
+			if Bid < -1 {
+				Bid *= -1
+			}
+			if bt := sys.playerID(Bid); bt != nil && !bt.pause() {
 				c.setBindTime(c.bindTime - 1)
 			}
 		} else {
 			if !c.pause() {
 				c.setBindTime(c.bindTime - 1)
 			}
+		}
+		if c.bindToId < -1 {
+			c.bindToId *= -1
 		}
 	}
 	if c.cmd == nil {
@@ -6306,7 +6349,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
-					getter.dizzyPointsAdd(hd.dizzypoints)
+					if !c.sf(CSF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
+						getter.dizzyPointsAdd(hd.dizzypoints)
+					}
 				}
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
@@ -6347,7 +6392,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
-					getter.guardPointsAdd(hd.guardpoints)
+					if !c.sf(CSF_noguardpointsdamage) {
+						getter.guardPointsAdd(hd.guardpoints)
+					}
 				}
 			}
 		}
@@ -6488,7 +6535,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return
 	}
-
 	if proj {
 		for i, pr := range sys.projs {
 			if len(sys.projs[i]) == 0 {
@@ -6666,6 +6712,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.mctype = MC_Hit
 								}
 								if c.hitdef.reversal_attr > 0 {
+									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true
@@ -6758,9 +6805,30 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	}
 }
 func (cl *CharList) getHit() {
-	for _, c := range cl.runOrder {
-		cl.clsn(c, false)
+
+	sortedOrder := []int{}
+	for i, c := range cl.runOrder {
+		if c.hitdef.attr > 0 {
+			sortedOrder = append(sortedOrder, i)
+		}
 	}
+	soNum := []int{}
+	soCount := 0
+	for i := 0; i < len(cl.runOrder); i++ {
+		if soCount < len(sortedOrder) {
+			if sortedOrder[soCount] == i {
+				soCount++
+				continue
+			}
+		}
+		soNum = append(soNum, i)
+	}
+	sortedOrder = append(sortedOrder, soNum...)
+
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.clsn(cl.runOrder[sortedOrder[i]], false)
+	}
+
 	for _, c := range cl.runOrder {
 		cl.clsn(c, true)
 	}

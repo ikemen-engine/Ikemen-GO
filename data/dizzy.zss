@@ -235,17 +235,16 @@ notHitBy{value: SCA; time: 1}
 #===============================================================================
 # StateDizzy
 #===============================================================================
-[StateDef 5300; type: S; moveType: U; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
+[StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
-	mapSet{map: "_iksys_DizzyState"; value: 0}
 	selfState{value: const(StateStand); ctrl: 1}
 }
 
 if time = 0 {
-	mapSet{map: "_iksys_DizzyState"; value: 1}
 	mapAdd{map: "_iksys_dizzyRecoveryTime"; value: 312}
 	posSet{y: 0}
+	hitFallSet{value: 0}
 }
 
 if (time % 42) = 0 {
@@ -265,7 +264,6 @@ if time > 1 {
 
 if time > 8 {
 	if map(_iksys_dizzyRecoveryTime) <= 0 || roundState > 2 {
-		mapSet{map: "_iksys_DizzyState"; value: 0}
 		selfState{value: const(StateStand); ctrl: 1}
 	}
 }
@@ -276,18 +274,25 @@ if time > 8 {
 [StateDef -2]
 
 if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
-	# do nothing, global code disabled locally or executed by helper/stage
+	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
 	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
-	mapSet{map: "_iksys_dizzyReceivedDamage"; value: 0}
 } else if roundState = 2 && alive {
-	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
+	# Upon hit
+	ignoreHitPause if moveType = H {
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
-	} else if map(_iksys_dizzyPointsCounter) > 0 && moveType != H && getHitVar(isbound) = 0 && !standby {
+	# Otherwise decrease cooldown counter by 1 each frame
+	} else if map(_iksys_dizzyPointsCounter) > 0 {
 		mapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
 	}
+	# Entering dizzy state
 	ignoreHitPause if dizzyPoints = 0 {
+		# Become invulnerable until moving into StateDizzy
+		if stateNo != const(StateDizzy) {
+			notHitBy{value: SCA}
+		}
+		# Dizzy initial state depending on hit type
 		if stateNo = const(StateStandGetHit_knockedBack) || stateNo = const(StateCrouchGetHit_knockedBack) {
 			if getHitVar(hittime) = 0 {
 				call fDizzyBirdHelper();
@@ -301,28 +306,14 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 			selfState{value: const(StateDizzyLyingDown)}
 		}
 	}
-	ignoreHitPause if dizzy && stateNo != [const(StateDizzy), const(StateDizzyLyingDown)] && (moveType != H || map(_iksys_DizzyState) > 0) {
+	# Reset dizzy points and remove dizzy flag if player is no longer in one of dizzy states
+	ignoreHitPause if dizzy && stateNo != [const(StateDizzy), const(StateDizzyLyingDown)] {
 		dizzyPointsSet{value: dizzyPointsMax}
 		dizzySet{value: 0}
 	}
-	if map(_iksys_DizzyState) = 2 && moveType != H {
-		mapSet{map: "_iksys_DizzyState"; value: 0}
-	}
-	if receivedDamage != map(_iksys_dizzyReceivedDamage) {
-		if receivedDamage > map(_iksys_dizzyReceivedDamage) {
-			if map(_iksys_DizzyState) < 2 && getHitVar(attr) != [const(AttrStandingHyperAttack), const(AttrAerialHyperProjectile)] {
-				if map(_iksys_DizzyState) = 1 {
-					mapSet{map: "_iksys_DizzyState"; value: 2}
-				} else if getHitVar(dizzypoints) = 0 {
-					dizzyPointsAdd{value: (receivedDamage - map(_iksys_dizzyReceivedDamage)) * -1.8} # dizzy points drain
-				}
-			}
-		}
-		mapSet{map: "_iksys_dizzyReceivedDamage"; value: receivedDamage}
-		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
-	}
+	# Dizzy points recovery
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
-		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)} # dizzy points recovery
+		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)}
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
 	}
 }

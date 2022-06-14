@@ -210,10 +210,6 @@ func (s *Sound) GetStreamer() beep.StreamSeeker {
 	return streamer
 }
 
-func (s *Sound) GetDuration() float32 {
-	return float32(s.format.SampleRate.D(s.length))
-}
-
 // ------------------------------------------------------------------
 // Snd
 
