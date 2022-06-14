@@ -709,7 +709,7 @@ func (ghv GetHitVar) chainId() int32 {
 }
 func (ghv GetHitVar) idMatch(id int32) bool {
 	for _, v := range ghv.hitBy {
-		if v[0] == id {
+		if v[0] == id || v[0] == -id {
 			return true
 		}
 	}
@@ -4011,7 +4011,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool)
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
-				t.dizzyPointsAdd(int32(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"])))
+				t.dizzyPointsAdd(int32(dmg * float64(c.gi().constants["default.lifetodizzypointsmul"])))
 			}
 		}
 	}
@@ -5387,7 +5387,7 @@ func (c *Char) action() {
 	c.xScreenBound()
 	if !p {
 		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
+			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
 				t.bind()
 			}
 		}
