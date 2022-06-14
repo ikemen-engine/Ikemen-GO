@@ -702,6 +702,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
+		// If the MUGEN version is lower than 1.0, use camera pixel rounding (floor)
+		if s.ver[0] == 0 {
+			s.stageprops.roundpos.typ = 2
+		}
 		if sec[0].LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			s.attachedchardef = append(s.attachedchardef, filename)
 			return nil
