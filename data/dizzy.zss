@@ -115,6 +115,8 @@ if !dizzy {
 	dizzySet{value: 1}
 }
 
+notHitBy{value: SCA}
+
 if time = 0 {
 	if stateType = S {
 		if anim > const(AnimStandOrAirHitLow_light) {
@@ -149,6 +151,7 @@ if !dizzy {
 
 if time = 0 {
 	afterImageTime{time: 0}
+	notHitBy{value: SCA; time: 1}
 	if selfAnimExist(const(AnimAirFall_hitUpDiagonal)) {
 		changeAnim{value: const(AnimAirFall_hitUpDiagonal)}
 	}
@@ -160,6 +163,11 @@ if anim = [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
 		stateTypeSet{stateType: l}
 		changeAnim{value: const(AnimHittingGroundFromFall)}
 	}
+}
+
+# AnimHitGround + AnimGetUp
+if anim != [const(AnimAirFall), const(AnimAirFall_hitUpDiagonal)] {
+	notHitBy{value: SCA}
 }
 
 persistent(0) if animTime = 0 && anim = const(AnimHittingGroundFromFall) {
@@ -222,6 +230,8 @@ if (animTime = 0 && anim = [const(AnimGetUpFromLieDown), const(AnimGetUpFromLieD
 	changeState{value: const(StateDizzy)}
 }
 
+notHitBy{value: SCA; time: 1}
+
 #===============================================================================
 # StateDizzy
 #===============================================================================
@@ -269,10 +279,6 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
 	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
 } else if roundState = 2 && alive {
-	# Hyper attacks don't affect dizzy points
-	ignoreHitPause if hitDefAttr = SCA, HA {
-		assertSpecial{flag: nodizzypointsdamage}
-	}
 	# Upon hit
 	ignoreHitPause if moveType = H {
 		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
