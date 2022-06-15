@@ -84,7 +84,6 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 	i = 0
 	if sec := defmap["info"]; len(sec) > 0 {
 		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
-		sec[0].ReadStagePropRoundpos("roundpos", &s.stageprops.roundpos)
 	}
 	s.sff = sff
 	s.at = ReadAnimationTable(s.sff, lines, &i)
