@@ -8,6 +8,18 @@ import (
 	"strings"
 )
 
+type StageProps struct {
+	roundpos bool
+}
+
+func newStageProps() StageProps {
+	sp := StageProps{
+		roundpos: true,
+	}
+
+	return sp
+}
+
 type EnvShake struct {
 	time  int32
 	freq  float32
@@ -117,6 +129,8 @@ type backGround struct {
 	zoomdelta          [2]float32
 	zoomscaledelta     [2]float32
 	xbottomzoomdelta   float32
+	// Position rounding
+	roundpos           bool
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -126,7 +140,7 @@ func newBackGround(sff *Sff) *backGround {
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
-	sff *Sff, at AnimationTable, camstartx float32) *backGround {
+	sff *Sff, at AnimationTable, camstartx float32, sProps StageProps) *backGround {
 	bg := newBackGround(sff)
 	bg.camstartx = camstartx
 	typ := is["type"]
@@ -311,6 +325,8 @@ func readBackGround(is IniSection, link *backGround,
 			}
 		}
 	}
+	bg.roundpos = sProps.roundpos
+	sec[0].ReadBool("roundpos", &bg.roundpos)
 	return bg
 }
 func (bg *backGround) reset() {
@@ -362,20 +378,15 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 
 	scly *= lclscl
 	sclx *= lscl[0]
+	// This handles the flooring of the camera position in MUGEN versions earlier than 1.0.
+	if bg.roundpos {
+		for i := 0; i < 2; i++ {
+			pos[i] = float32(math.Floor(float64(pos[i])))
+		}
+	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
-	// x, y flooring has been commented out since it makes background velocity
-	// movement less smooth, regardless if the stage has zoom or not
-	/*if isStage && !sys.cam.ZoomEnable {
-		if bg.rasterx[1] == bg.rasterx[0] &&
-			bg.bga.sinlooptime[0] <= 0 && bg.bga.sinoffset[0] == 0 {
-			x = float32(math.Floor(float64(x/bgscl))) * bgscl
-		}
-		if bg.bga.sinlooptime[1] <= 0 && bg.bga.sinoffset[1] == 0 {
-			y = float32(math.Floor(float64(y/bgscl))) * bgscl
-		}
-	}*/
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
@@ -614,6 +625,7 @@ type Stage struct {
 	p1p3dist        float32
 	ver             [2]uint16
 	reload          bool
+	stageprops      StageProps
 }
 
 func newStage(def string) *Stage {
@@ -628,6 +640,7 @@ func newStage(def string) *Stage {
 	s.sdw.fadeend = math.MinInt32
 	s.sdw.fadebgn = math.MinInt32
 	s.p[0].startx, s.p[1].startx = -70, 70
+	s.stageprops = newStageProps()
 	return s
 }
 func loadStage(def string, main bool) (*Stage, error) {
@@ -677,6 +690,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 					break
 				}
 			}
+		}
+		// If the MUGEN version is lower than 1.0, use camera pixel rounding (floor)
+		if s.ver[0] == 0 {
+			s.stageprops.roundpos = true
 		}
 		if sec[0].LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			s.attachedchardef = append(s.attachedchardef, filename)
@@ -825,6 +842,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
@@ -832,7 +850,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, float32(s.stageCamera.startx)))
+			s.sff, s.at, float32(s.stageCamera.startx), s.stageprops))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
