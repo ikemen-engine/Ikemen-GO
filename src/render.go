@@ -96,7 +96,7 @@ func (rp *RenderParams) IsValid() bool {
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
-var vertexUv = f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
+var vertexBuffer, uvBuffer gl.Buffer
 
 var mainShader, flatShader *Shader
 
@@ -115,7 +115,7 @@ var postShader gl.Program
 var postVertAttrib gl.Attrib
 var postTexUniform gl.Uniform
 var postTexSizeUniform gl.Uniform
-var postVertices = f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
+var postVertBuffer gl.Buffer
 
 var postShaderSelect []gl.Program
 
@@ -178,6 +178,19 @@ func RenderInit() {
 	gl.ObjectLabel(prog, "Flat Shader")
 	flatShader = newShader(prog)
 	flatShader.RegisterUniforms("color", "isShadow")
+
+	// Persistent data buffers for rendering
+	vertexBuffer = gl.CreateBuffer()
+
+	uvData := f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
+	uvBuffer = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW)
+
+	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
+	postVertBuffer = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
 
 	// Compile postprocessing shaders
 
@@ -293,14 +306,13 @@ func unbindFB() {
 
 	gl.Uniform1i(postTexUniform, 0)
 	gl.Uniform2f(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-	vertexBuffer := gl.CreateBuffer()
-	gl.ObjectLabel(vertexBuffer, "Postprocess Vertex Buffer")
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, postVertices, gl.STATIC_DRAW)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
 	gl.EnableVertexAttribArray(postVertAttrib)
 	gl.VertexAttribPointer(postVertAttrib, 2, gl.FLOAT, false, 0, 0)
+
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	gl.DeleteBuffer(vertexBuffer)
+
 	gl.DisableVertexAttribArray(postVertAttrib)
 }
 
@@ -310,22 +322,17 @@ func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 flo
 		gl.Uniform4f(u, x1, x2, x4, x3)
 	}
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
-	vertexBuffer := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 	gl.EnableVertexAttribArray(s.aPos)
 	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
 
-	uvBuffer := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexUv, gl.STATIC_DRAW)
 	gl.EnableVertexAttribArray(s.aUv)
 	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-	gl.DeleteBuffer(vertexBuffer)
-	gl.DeleteBuffer(uvBuffer)
 	gl.DisableVertexAttribArray(s.aPos)
 	gl.DisableVertexAttribArray(s.aUv)
 }
@@ -654,7 +661,6 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x2, y1, x1, y2, x1, y1)
-	vertexBuffer := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 	gl.EnableVertexAttribArray(flatShader.aPos)
@@ -665,6 +671,5 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}, trans, true)
 
-	gl.DeleteBuffer(vertexBuffer)
 	gl.DisableVertexAttribArray(flatShader.aPos)
 }
