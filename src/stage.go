@@ -325,8 +325,9 @@ func readBackGround(is IniSection, link *backGround,
 			}
 		}
 	}
-	bg.roundpos = sProps.roundpos
-	sec[0].ReadBool("roundpos", &bg.roundpos)
+	if !is.ReadBool("roundpos", &bg.roundpos) {
+		bg.roundpos = sProps.roundpos
+	}
 	return bg
 }
 func (bg *backGround) reset() {
