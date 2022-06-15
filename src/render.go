@@ -135,7 +135,7 @@ var identFragShader string
 func RenderInit() {
 	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
 		shader = gl.CreateShader(shaderType)
-		gl.ShaderSource(shader, "#version 100\nprecision mediump float;\n" + src)
+		gl.ShaderSource(shader, "#version 100\nprecision highp float;\n" + src)
 		gl.CompileShader(shader)
 		ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)
 		if ok == 0 {
