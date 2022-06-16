@@ -73,7 +73,7 @@ var rbo_depth gl.Renderbuffer
 
 // MSAA
 var fbo_f gl.Framebuffer
-var fbo_f_texture gl.Texture
+var fbo_f_texture *Texture
 
 var postVertBuffer gl.Buffer
 var postShaderSelect []*ShaderProgram
@@ -162,13 +162,8 @@ func RenderInit() {
 	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
 
 	if sys.multisampleAntialiasing {
-		fbo_f_texture = gl.CreateTexture()
-		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		fbo_f_texture = newTexture()
+		fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
 	} else {
 		rbo_depth = gl.CreateRenderbuffer()
 		gl.ObjectLabel(rbo_depth, "Depth Renderbuffer")
@@ -186,7 +181,7 @@ func RenderInit() {
 
 		fbo_f = gl.CreateFramebuffer()
 		gl.BindFramebuffer(gl.FRAMEBUFFER, fbo_f)
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture, 0)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture.handle, 0)
 	} else {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_texture, 0)
 		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
@@ -218,7 +213,7 @@ func unbindFB() {
 	postShader.UseProgram()
 
 	if sys.multisampleAntialiasing {
-		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
+		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture.handle)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
 	}
