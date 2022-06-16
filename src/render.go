@@ -243,53 +243,54 @@ func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4,
 
 func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
 	tl Tiling, rcx float32) {
-	xtw, xbw := x3-x4, x2-x1
-	xts, xbs := xtw/width, xbw/width
-	topdist := xtw + xts*float32(tl.sx)
+	// Render a quad with optional horizontal tiling
+	//            p3
+	//    p4 o-----o-----o- - -o
+	//      /      |      \     ` .
+	//     /       |       \       `.
+	//    o--------o--------o- - - - o
+	//   p1         p2
+	topdist := (x3 - x4) * (1 + float32(tl.sx) / width)
+	botdist := (x2 - x1) * (1 + float32(tl.sx) / width)
+	xmax := float32(sys.scrrect[2])
 	if AbsF(topdist) >= 0.01 {
-		botdist := xbw + xbs*float32(tl.sx)
 		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
+		// Tile to the left (or to the right when topdist < 0)
 		if tl.x == 1 {
 			x1d, x2d, x3d, x4d := x1, x2, x3, x4
 			for {
-				x2d = x1d - xbs*float32(tl.sx)
-				x3d = x4d - xts*float32(tl.sx)
-				x4d = x3d - xtw
-				x1d = x2d - xbw
+				x1d -= botdist
+				x2d -= botdist
+				x3d -= topdist
+				x4d -= topdist
 				if topdist < 0 {
-					if x1d >= float32(sys.scrrect[2]) &&
-						x2d >= float32(sys.scrrect[2]) && x3d >= float32(sys.scrrect[2]) &&
-						x4d >= float32(sys.scrrect[2]) {
+					if x1d >= xmax && x2d >= xmax && x3d >= xmax && x4d >= xmax {
 						break
 					}
 				} else if x1d <= 0 && x2d <= 0 && x3d <= 0 && x4d <= 0 {
 					break
 				}
-				if (0 < x1d || 0 < x2d) &&
-					(x1d < float32(sys.scrrect[2]) || x2d < float32(sys.scrrect[2])) ||
-					(0 < x3d || 0 < x4d) &&
-						(x3d < float32(sys.scrrect[2]) || x4d < float32(sys.scrrect[2])) {
+				if (0 < x1d || 0 < x2d) && (x1d < xmax || x2d < xmax) ||
+					(0 < x3d || 0 < x4d) && (x3d < xmax || x4d < xmax) {
 					drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 				}
 			}
 		}
 	}
 	n := tl.x
+	// Tile to the right (or to the left when topdist < 0)
 	for {
 		if topdist > 0 {
-			if x1 >= float32(sys.scrrect[2]) && x2 >= float32(sys.scrrect[2]) &&
-				x3 >= float32(sys.scrrect[2]) && x4 >= float32(sys.scrrect[2]) {
+			if x1 >= xmax && x2 >= xmax && x3 >= xmax && x4 >= xmax {
 				break
 			}
 		} else if x1 <= 0 && x2 <= 0 && x3 <= 0 && x4 <= 0 {
 			break
 		}
-		if (0 < x1 || 0 < x2) &&
-			(x1 < float32(sys.scrrect[2]) || x2 < float32(sys.scrrect[2])) ||
-			(0 < x3 || 0 < x4) &&
-				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
+		if (0 < x1 || 0 < x2) && (x1 < xmax || x2 < xmax) ||
+			(0 < x3 || 0 < x4) && (x3 < xmax || x4 < xmax) {
 			drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		}
 		if tl.x != 1 && n != 0 {
@@ -298,10 +299,10 @@ func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4
 		if n == 0 || AbsF(topdist) < 0.01 {
 			break
 		}
-		x4 = x3 + xts*float32(tl.sx)
-		x1 = x2 + xbs*float32(tl.sx)
-		x2 = x1 + xbw
-		x3 = x4 + xtw
+		x1 += botdist
+		x2 += botdist
+		x3 += topdist
+		x4 += topdist
 	}
 }
 
