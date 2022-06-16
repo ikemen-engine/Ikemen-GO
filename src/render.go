@@ -11,42 +11,6 @@ import (
 	"golang.org/x/mobile/exp/f32"
 )
 
-type Shader struct {
-	// Program
-	program gl.Program
-	// Attribute locations
-	aPos gl.Attrib
-	aUv  gl.Attrib
-	// Common uniforms
-	uModelView  gl.Uniform
-	uProjection gl.Uniform
-	uTexture    gl.Uniform
-	uAlpha      gl.Uniform
-	// Additional uniforms
-	u map[string]gl.Uniform
-}
-
-func newShader(program gl.Program) (s *Shader) {
-	s = &Shader{program: program}
-
-	s.aPos = gl.GetAttribLocation(s.program, "position")
-	s.aUv = gl.GetAttribLocation(s.program, "uv")
-
-	s.uModelView = gl.GetUniformLocation(s.program, "modelview")
-	s.uProjection = gl.GetUniformLocation(s.program, "projection")
-	s.uTexture = gl.GetUniformLocation(s.program, "tex")
-	s.uAlpha = gl.GetUniformLocation(s.program, "alpha")
-	s.u = make(map[string]gl.Uniform)
-
-	return
-}
-
-func (s *Shader) RegisterUniforms(names ...string) {
-	for _, name := range names {
-		s.u[name] = gl.GetUniformLocation(s.program, name)
-	}
-}
-
 // Rotation holds rotation parameters
 type Rotation struct {
 	angle, xangle, yangle float32
@@ -98,7 +62,7 @@ func (rp *RenderParams) IsValid() bool {
 
 var vertexBuffer, uvBuffer gl.Buffer
 
-var mainShader, flatShader *Shader
+var mainShader, flatShader *ShaderProgram
 
 // Post-processing
 var fbo gl.Framebuffer
@@ -111,13 +75,8 @@ var rbo_depth gl.Renderbuffer
 var fbo_f gl.Framebuffer
 var fbo_f_texture gl.Texture
 
-var postShader gl.Program
-var postVertAttrib gl.Attrib
-var postTexUniform gl.Uniform
-var postTexSizeUniform gl.Uniform
 var postVertBuffer gl.Buffer
-
-var postShaderSelect []gl.Program
+var postShaderSelect []*ShaderProgram
 
 //go:embed shaders/sprite.vs.glsl
 var vertShader string
@@ -140,46 +99,10 @@ func RenderInit() {
 	sys.errLog.Printf("Using OpenGL %v (%v)",
 		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
-	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
-		shader = gl.CreateShader(shaderType)
-		gl.ShaderSource(shader, "#version 100\nprecision highp float;\n"+src)
-		gl.CompileShader(shader)
-		ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)
-		if ok == 0 {
-			log := gl.GetShaderInfoLog(shader)
-			gl.DeleteShader(shader)
-			panic(Error("Shader compile error: " + log))
-		}
-		return
-	}
-	link := func(v, f gl.Shader) (program gl.Program) {
-		program = gl.CreateProgram()
-		gl.AttachShader(program, v)
-		gl.AttachShader(program, f)
-		gl.LinkProgram(program)
-		// Mark shaders for deletion when the program is deleted
-		gl.DeleteShader(v)
-		gl.DeleteShader(f)
-		ok := gl.GetProgrami(program, gl.LINK_STATUS)
-		if ok == 0 {
-			log := gl.GetProgramInfoLog(program)
-			gl.DeleteProgram(program)
-			panic(Error("Link error: " + log))
-		}
-		return
-	}
-
-	vertObj := compile(gl.VERTEX_SHADER, vertShader)
-	fragObj := compile(gl.FRAGMENT_SHADER, fragShader)
-	prog := link(vertObj, fragObj)
-	gl.ObjectLabel(prog, "Main Shader")
-	mainShader = newShader(prog)
+	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
 	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mul", "x1x2x4x3", "isRgba", "isTrapez")
 
-	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFlat)
-	prog = link(vertObj, fragObj)
-	gl.ObjectLabel(prog, "Flat Shader")
-	flatShader = newShader(prog)
+	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
 
 	// Persistent data buffers for rendering
@@ -198,20 +121,17 @@ func RenderInit() {
 	// Compile postprocessing shaders
 
 	// Calculate total ammount of shaders loaded.
-	postShaderSelect = make([]gl.Program, 1+len(sys.externalShaderList))
+	postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
 	// Ident shader (no postprocessing)
-	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
-	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
-	postShaderSelect[0] = link(vertObj, fragObj)
-	gl.ObjectLabel(postShaderSelect[0], "Identity Shader")
+	postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
+	postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
-		vertObj = compile(gl.VERTEX_SHADER, sys.externalShaders[0][i])
-		fragObj = compile(gl.FRAGMENT_SHADER, sys.externalShaders[1][i])
-		postShaderSelect[1+i] = link(vertObj, fragObj)
-		gl.ObjectLabel(postShaderSelect[1+i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
+			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
 	}
 
 	if sys.multisampleAntialiasing {
@@ -292,14 +212,10 @@ func unbindFB() {
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
 
-	postShader = postShaderSelect[sys.postProcessingShader]
-
-	postVertAttrib = gl.GetAttribLocation(postShader, "VertCoord")
-	postTexUniform = gl.GetUniformLocation(postShader, "Texture")
-	postTexSizeUniform = gl.GetUniformLocation(postShader, "TextureSize")
+	postShader := postShaderSelect[sys.postProcessingShader]
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.UseProgram(postShader)
+	postShader.UseProgram()
 
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
@@ -307,19 +223,19 @@ func unbindFB() {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
 	}
 
-	gl.Uniform1i(postTexUniform, 0)
-	gl.Uniform2f(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	gl.Uniform1i(postShader.u["Texture"], 0)
+	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
-	gl.EnableVertexAttribArray(postVertAttrib)
-	gl.VertexAttribPointer(postVertAttrib, 2, gl.FLOAT, false, 0, 0)
+	gl.EnableVertexAttribArray(postShader.aVert)
+	gl.VertexAttribPointer(postShader.aVert, 2, gl.FLOAT, false, 0, 0)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-	gl.DisableVertexAttribArray(postVertAttrib)
+	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
-func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
+func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	gl.UniformMatrix4fv(s.uModelView, modelview[:])
 	if u, ok := s.u["x1x2x4x3"]; ok {
 		gl.Uniform4f(u, x1, x2, x4, x3)
@@ -339,7 +255,7 @@ func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 flo
 	gl.DisableVertexAttribArray(s.aPos)
 	gl.DisableVertexAttribArray(s.aUv)
 }
-func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
+func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl Tiling, rcx float32) {
 	topdist := xtw + xts*float32(tl.sx)
 	if AbsF(topdist) >= 0.01 {
@@ -401,7 +317,7 @@ func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, x
 	}
 }
 
-func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
+func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 	x1, y1 := rp.x+rp.rxadd*rp.ys*float32(rp.size[1]), rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
@@ -511,7 +427,7 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 }
-func rmMainSub(s *Shader, rp RenderParams) {
+func rmMainSub(s *ShaderProgram, rp RenderParams) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
@@ -561,7 +477,7 @@ func RenderSprite(rp RenderParams) {
 		return
 	}
 	rmInitSub(&rp)
-	gl.UseProgram(mainShader.program)
+	mainShader.UseProgram()
 	gl.Uniform1i(mainShader.uTexture, 0)
 	if rp.paltex == nil {
 		gl.Uniform1i(mainShader.u["isRgba"], 1)
@@ -596,7 +512,7 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 		return
 	}
 	rmInitSub(&rp)
-	gl.UseProgram(flatShader.program)
+	flatShader.UseProgram()
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(
 		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
@@ -654,7 +570,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 
-	gl.UseProgram(flatShader.program)
+	flatShader.UseProgram()
 	gl.UniformMatrix4fv(flatShader.uModelView, modelview[:])
 	gl.UniformMatrix4fv(flatShader.uProjection, proj[:])
 	gl.Uniform1i(flatShader.uTexture, 0)
