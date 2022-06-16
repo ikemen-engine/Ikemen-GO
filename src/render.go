@@ -236,20 +236,11 @@ func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4,
 		gl.Uniform4f(u, x1, x2, x4, x3)
 	}
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(s.aPos)
-	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-	gl.EnableVertexAttribArray(s.aUv)
-	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-
-	gl.DisableVertexAttribArray(s.aPos)
-	gl.DisableVertexAttribArray(s.aUv)
 }
+
 func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
 	tl Tiling, rcx float32) {
 	topdist := xtw + xts*float32(tl.sx)
@@ -428,10 +419,22 @@ func rmMainSub(s *ShaderProgram, rp RenderParams) {
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
+	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
+	gl.EnableVertexAttribArray(s.aUv)
+	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
+
+	// Keep vertexBuffer bound so that it can be updated in drawQuads()
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+	gl.EnableVertexAttribArray(s.aPos)
+	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
+
 	renderWithBlending(func(a float32) {
 		gl.Uniform1f(s.uAlpha, a)
 		rmTileSub(s, modelview, rp)
 	}, rp.trans, rp.paltex != nil)
+
+	gl.DisableVertexAttribArray(s.aPos)
+	gl.DisableVertexAttribArray(s.aUv)
 
 	gl.Disable(gl.SCISSOR_TEST)
 }
