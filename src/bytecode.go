@@ -3380,7 +3380,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_bindtime:
 				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.bindtime = t })
+				eachExpl(func(e *Explod) {
+					e.bindtime = t
+					e.setX(e.pos[0])
+					e.setY(e.pos[1])
+				})
 			case explod_removetime:
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) { e.removetime = t })

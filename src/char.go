@@ -610,6 +610,7 @@ func (hd *HitDef) clear() {
 		p1stateno:      -1,
 		p2stateno:      -1,
 		forcestand:     IErr,
+		guard_dist:     IErr,
 		down_velocity:  [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:        -1,
 		nochainid:      [...]int32{-1, -1},
@@ -1029,6 +1030,9 @@ func (e *Explod) setPos(c *Char) {
 			e.facing = float32(e.relativef)
 			e.setX(e.offset[0])
 			e.setY(e.offset[1])
+			if e.bindtime == 0 {
+				e.bindtime = 1
+			}
 		}
 	} else {
 		switch e.space {
@@ -6552,7 +6556,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
 				if !p.platform &&
-					dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
+					p.hitdef.guard_dist < 0 && dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
 					getter.inguarddist = true
 				}
 				if p.platform {
@@ -6664,7 +6668,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
-				if c.ss.moveType == MT_A && dist >= 0 && dist <= c.attackDist*c.localscl/getter.localscl {
+				if c.ss.moveType == MT_A && dist >= 0 && c.hitdef.guard_dist < 0 &&
+					dist <= c.attackDist*c.localscl/getter.localscl {
 					getter.inguarddist = true
 				}
 				if c.helperIndex != 0 {
