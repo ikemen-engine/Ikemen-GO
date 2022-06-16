@@ -241,8 +241,10 @@ func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4,
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
-func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
+func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
 	tl Tiling, rcx float32) {
+	xtw, xbw := x3-x4, x2-x1
+	xts, xbs := xtw/width, xbw/width
 	topdist := xtw + xts*float32(tl.sx)
 	if AbsF(topdist) >= 0.01 {
 		botdist := xbw + xbs*float32(tl.sx)
@@ -375,8 +377,8 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
-					(x3d-x4d)/float32(rp.size[0]), (x2d-x1d)/float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d,
+					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 		}
 	}
@@ -392,8 +394,8 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
-					(x3-x4)/float32(rp.size[0]), (x2-x1)/float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4,
+					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 			if rp.tile.y != 1 && n != 0 {
 				n--
