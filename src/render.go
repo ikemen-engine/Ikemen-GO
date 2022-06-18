@@ -241,9 +241,9 @@ func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4,
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
+// Render a quad with optional horizontal tiling
 func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
 	tl Tiling, rcx float32) {
-	// Render a quad with optional horizontal tiling
 	//            p3
 	//    p4 o-----o-----o- - -o
 	//      /      |      \     ` .
@@ -252,57 +252,33 @@ func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4
 	//   p1         p2
 	topdist := (x3 - x4) * (1 + float32(tl.sx) / width)
 	botdist := (x2 - x1) * (1 + float32(tl.sx) / width)
-	xmax := float32(sys.scrrect[2])
 	if AbsF(topdist) >= 0.01 {
 		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
-		// Tile to the left (or to the right when topdist < 0)
-		if tl.x == 1 {
-			x1d, x2d, x3d, x4d := x1, x2, x3, x4
-			for {
-				x1d -= botdist
-				x2d -= botdist
-				x3d -= topdist
-				x4d -= topdist
-				if topdist < 0 {
-					if x1d >= xmax && x2d >= xmax && x3d >= xmax && x4d >= xmax {
-						break
-					}
-				} else if x1d <= 0 && x2d <= 0 && x3d <= 0 && x4d <= 0 {
-					break
-				}
-				if (0 < x1d || 0 < x2d) && (x1d < xmax || x2d < xmax) ||
-					(0 < x3d || 0 < x4d) && (x3d < xmax || x4d < xmax) {
-					drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
-				}
-			}
-		}
 	}
-	n := tl.x
-	// Tile to the right (or to the left when topdist < 0)
-	for {
-		if topdist > 0 {
-			if x1 >= xmax && x2 >= xmax && x3 >= xmax && x4 >= xmax {
-				break
-			}
-		} else if x1 <= 0 && x2 <= 0 && x3 <= 0 && x4 <= 0 {
-			break
-		}
-		if (0 < x1 || 0 < x2) && (x1 < xmax || x2 < xmax) ||
-			(0 < x3 || 0 < x4) && (x3 < xmax || x4 < xmax) {
-			drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
-		}
-		if tl.x != 1 && n != 0 {
-			n--
-		}
-		if n == 0 || AbsF(topdist) < 0.01 {
-			break
-		}
-		x1 += botdist
-		x2 += botdist
-		x3 += topdist
-		x4 += topdist
+
+	// Compute left/right tiling bounds (or right/left when topdist < 0)
+	xmax := float32(sys.scrrect[2])
+	left, right := int32(0), int32(1)
+	if topdist >= 0.01 {
+		left = 1 - int32(math.Ceil(float64(MaxF(x3 / topdist, x2 / botdist))))
+		right = int32(math.Ceil(float64(MaxF((xmax - x4) / topdist, (xmax - x1) / botdist))))
+	} else if topdist <= -0.01 {
+		left = 1 - int32(math.Ceil(float64(MaxF((xmax - x3) / -topdist, (xmax - x2) / -botdist))))
+		right = int32(math.Ceil(float64(MaxF(x4 / -topdist, x1 / -botdist))))
+	}
+
+	if tl.x != 1 {
+		left = 0
+		right = Min(right, Max(tl.x, 1))
+	}
+
+	// Draw all quads in one loop
+	for n := left; n < right; n++ {
+		x1d, x2d := x1 + float32(n) * botdist, x2 + float32(n) * botdist
+		x3d, x4d := x3 + float32(n) * topdist, x4 + float32(n) * topdist
+		drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 	}
 }
 
