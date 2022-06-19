@@ -1961,9 +1961,11 @@ func (c *Char) load(def string) error {
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
 	gi.constants["default.lifetoguardpointsmul"] = -1.5
+	gi.constants["super.lifetoguardpointsmul"] = -0.33
 	gi.constants["default.lifetodizzypointsmul"] = -1.8
 	gi.constants["super.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.25
+	gi.constants["super.lifetoredlifemul"] = 0.25
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
 
@@ -3774,14 +3776,18 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+		ifierrset(&hd.guardpoints,
+			int32(c.gi().constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
+		ifierrset(&hd.redlife,
+			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
 	} else {
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+		ifierrset(&hd.guardpoints,
+			int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
+		ifierrset(&hd.redlife,
+			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
 	}
-	ifierrset(&hd.guardpoints,
-		int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
-	ifierrset(&hd.redlife,
-		int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}
