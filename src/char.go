@@ -1236,6 +1236,7 @@ type Projectile struct {
 	heightbound     [2]int32
 	pos             [2]float32
 	facing          float32
+	removefacing    float32
 	shadow          [3]int32
 	supermovetime   int32
 	pausemovetime   int32
@@ -1318,6 +1319,11 @@ func (p *Projectile) update(playerNo int) {
 					p.ani.UpdateSprite()
 				}
 				p.velocity = p.remvelocity
+				if p.facing == p.removefacing {
+					p.facing = p.removefacing
+				} else {
+					p.velocity[0] *= -1
+				}
 				p.accel, p.velmul, p.anim = [2]float32{}, [...]float32{1, 1}, -1
 				if p.hits >= 0 {
 					p.hits = -1
@@ -1350,7 +1356,7 @@ func (p *Projectile) update(playerNo int) {
 			p.velocity[i] += p.accel[i]
 			p.velocity[i] *= p.velmul[i]
 		}
-		if p.velocity[0] < 0 {
+		if p.velocity[0] < 0 && p.anim != -1 {
 			p.facing *= -1
 			p.velocity[0] *= -1
 			p.accel[0] *= -1
@@ -3118,9 +3124,9 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		return false
 	}
 	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
-	if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
-		c.enemyExplodsRemove(c.ss.sb.playerNo)
-	}
+	//if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
+	//	c.enemyExplodsRemove(c.ss.sb.playerNo)
+	//}
 	if newLs := 320 / float32(sys.chars[pn][0].localcoord); c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
@@ -3684,6 +3690,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
+	p.removefacing = c.facing
 	p.clsnScale = c.clsnScale
 	if p.velocity[0] < 0 {
 		p.facing *= -1
@@ -5022,9 +5029,9 @@ func (c *Char) exitTarget(explremove bool) {
 			if e := sys.playerID(hb[0]); e != nil {
 				if e.hitdef.reversal_attr == 0 || e.hitdef.reversal_attr == -1<<31 {
 					e.removeTarget(c.id)
-					if explremove {
-						c.enemyExplodsRemove(e.playerNo)
-					}
+					//if explremove {
+					//	c.enemyExplodsRemove(e.playerNo)
+					//}
 				} else {
 					c.ghv.hitid = c.ghv.hitid >> 31
 				}
