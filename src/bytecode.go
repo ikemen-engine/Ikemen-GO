@@ -1219,13 +1219,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
 		case OC_screenheight:
-			sys.bcStack.PushF(sys.screenHeight() / oc.localscl)
+			sys.bcStack.PushF(sys.screenHeight() / (320.0 / float32(oc.stCgi().localcoord[0])) /
+				((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2]))))
 		case OC_screenpos_x:
 			sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
 		case OC_screenpos_y:
 			sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
 		case OC_screenwidth:
-			sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
+			sys.bcStack.PushF(float32(oc.stCgi().localcoord[0]))
 		case OC_selfanimexist:
 			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
 		case OC_stateno:
