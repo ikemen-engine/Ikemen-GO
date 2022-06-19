@@ -1377,6 +1377,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(sys.listenPort))
 		return 1
 	})
+	luaRegister(l, "getLifeBarTimer", func(*lua.LState) int {
+		l.Push(lua.LString(sys.timerVal))
+		return 1
+	})
 	luaRegister(l, "getMatchMaxDrawGames", func(l *lua.LState) int {
 		tn := int(numArg(l, 1))
 		if tn < 1 || tn > 2 {
