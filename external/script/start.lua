@@ -1288,11 +1288,8 @@ function start.f_turnsRecovery()
 		return
 	end
 	start.turnsRecoveryInit = true
-	player(1)
-	local players = teamsize()
-	player(2)
-	players = players + teamsize()
-	for i = 1, players do
+	player(winnerteam())
+	for i = 1, teamsize() * 2 do
 		if player(i) and win() and alive() then --assign sys.debugWC if player i exists, member of winning team, alive
 			if (not matchover() and teammode() == 'turns') or main.lifePersistence then
 				setLife(math.min(lifemax(), life() + f_lifeRecovery(lifemax(), ratiolevel())))
