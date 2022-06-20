@@ -313,13 +313,8 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 }
 
 func LoadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
+	fileDir := SearchFile(filename, []string{fontfile, "font/", sys.motifDir, "", "data/"})
 	sff, err := loadSff(fileDir, false)
-
-	if err != nil {
-		err = nil
-		sff, err = loadSff(fileDir, false)
-	}
 
 	if err != nil {
 		panic(err)

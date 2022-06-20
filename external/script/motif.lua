@@ -265,6 +265,7 @@ local motif =
 		cell_random_switchtime = 4,
 		--cell_<col>_<row>_offset = {0, 0}, --Ikemen feature
 		--cell_<col>_<row>_facing = 1, --Ikemen feature
+		--cell_<col>_<row>_skip = 0, --Ikemen feature
 		p1_cursor_startcell = {0, 0},
 		p1_cursor_active_anim = -1,
 		p1_cursor_active_spr = {},

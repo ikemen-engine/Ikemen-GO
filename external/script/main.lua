@@ -1233,15 +1233,6 @@ function main.f_round(num, places)
 	return math.floor(num + 0.5)
 end
 
---odd value rounding
-function main.f_oddRounding(v)
-	if v % 2 ~= 0 then
-		return 1
-	else
-		return 0
-	end
-end
-
 --return playerno teamside
 function main.f_playerSide(pn)
 	if pn % 2 ~= 0 then --odd value (Player1 side)
@@ -2007,6 +1998,7 @@ local section = 0
 local row = 0
 local slot = false
 local content = main.f_fileRead(motif.files.select)
+local csCell = 0
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
 for line in content:gmatch('[^\r\n]+') do
@@ -2037,6 +2029,14 @@ for line in content:gmatch('[^\r\n]+') do
 	elseif lineCase:match('^%s*%[%w+%]$') then
 		section = -1
 	elseif section == 1 then --[Characters]
+		local csRow = (csCell % motif.select_info.columns) + 1
+		local csCol = csCell - ((csRow - 1) * motif.select_info.columns) + 1
+		while not slot and motif.select_info['cell_' .. csCol .. '_' .. csRow .. '_skip'] == 1 do
+			main.f_addChar('dummyslot', true, true, false)
+			csCell = csCell + 1
+			csRow = (csCell % motif.select_info.columns) + 1
+			csCol = csCell - ((csCol - 1) * motif.select_info.columns) + 1
+		end
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		elseif lineCase:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
@@ -2044,8 +2044,12 @@ for line in content:gmatch('[^\r\n]+') do
 			slot = true
 		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
 			slot = false
+			csCell = csCell + 1
 		else
 			main.f_addChar(line, true, true, slot)
+			if not slot then
+				csCell = csCell + 1
+			end
 		end
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
@@ -3819,7 +3823,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1],
 			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2],
 			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =    math.min(#t, motif[section].menu_window_visibleitems) * (motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1) + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + (math.min(#t, motif[section].menu_window_visibleitems) - 1) * motif[section].menu_item_spacing[2],
 			r =     motif[section].menu_boxbg_col[1],
 			g =     motif[section].menu_boxbg_col[2],
 			b =     motif[section].menu_boxbg_col[3],
@@ -3975,7 +3979,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			x1 =    motif[section].menu_pos[1] + motif[section].menu_boxcursor_coords[1] + (cursorPosY - 1) * motif[section].menu_item_spacing[1],
 			y1 =    motif[section].menu_pos[2] + motif[section].menu_boxcursor_coords[2] + (cursorPosY - 1) * motif[section].menu_item_spacing[2],
 			x2 =    motif[section].menu_boxcursor_coords[3] - motif[section].menu_boxcursor_coords[1] + 1,
-			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1 + main.f_oddRounding(motif[section].menu_boxcursor_coords[2]),
+			y2 =    motif[section].menu_boxcursor_coords[4] - motif[section].menu_boxcursor_coords[2] + 1,
 			r =     motif[section].menu_boxcursor_col[1],
 			g =     motif[section].menu_boxcursor_col[2],
 			b =     motif[section].menu_boxcursor_col[3],

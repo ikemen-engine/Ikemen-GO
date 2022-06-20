@@ -893,7 +893,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 			end
 			if dir ~= nil then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and motif.select_info['cell_' .. (selY + 1) .. '_' .. (selX + 1) .. '_skip'] ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 				break
 			elseif motif.select_info.searchemptyboxesup ~= 0 then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, motif.select_info.searchemptyboxesup)
@@ -914,7 +914,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 			end
 			if dir ~= nil then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and motif.select_info['cell_' .. (selY + 1) .. '_' .. (selX + 1) .. '_skip'] ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 				break
 			elseif motif.select_info.searchemptyboxesdown ~= 0 then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, motif.select_info.searchemptyboxesdown)
@@ -936,7 +936,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and motif.select_info['cell_' .. (selY + 1) .. '_' .. (selX + 1) .. '_skip'] ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 					break
 				end
 			end
@@ -954,7 +954,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and motif.select_info['cell_' .. (selY + 1) .. '_' .. (selX + 1) .. '_skip'] ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 					break
 				end
 			end
@@ -975,7 +975,7 @@ function start.f_searchEmptyBoxes(x, y, side, direction)
 			x = x + 1
 			if x >= motif.select_info.columns then
 				return false, 0
-			elseif start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
+			elseif motif.select_info['cell_' .. (y + 1) .. '_' .. (x + 1) .. '_skip'] ~= 1 and start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
 				return true, x
 			end
 		end
@@ -984,7 +984,7 @@ function start.f_searchEmptyBoxes(x, y, side, direction)
 			x = x - 1
 			if x < 0 then
 				return false, motif.select_info.columns - 1
-			elseif start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
+			elseif motif.select_info['cell_' .. (y + 1) .. '_' .. (x + 1) .. '_skip'] ~= 1 and start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
 				return true, x
 			end
 		end
@@ -2003,32 +2003,34 @@ function start.f_selectScreen()
 		--draw cell art
 		for row = 1, motif.select_info.rows do
 			for col = 1, motif.select_info.columns do
-				local t = start.t_grid[row][col]
-				--draw cell background
-				if (t.char ~= nil and (t.hidden == 0 or t.hidden == 3)) or motif.select_info.showemptyboxes == 1 then
-					main.f_animPosDraw(
-						motif.select_info.cell_bg_data,
-						motif.select_info.pos[1] + t.x,
-						motif.select_info.pos[2] + t.y,
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_bg_facing)
-					)
-				end
-				--draw random cell
-				if t.char == 'randomselect' or t.hidden == 3 then
-					main.f_animPosDraw(
-						motif.select_info.cell_random_data,
-						motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
-						motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing)
-					)
-				--draw face cell
-				elseif t.char ~= nil and t.hidden == 0 then
-					main.f_animPosDraw(
-						start.f_getCharData(t.char_ref).cell_data,
-						motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
-						motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-						(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
-					)
+				if motif.select_info['cell_' .. col .. '_' .. row .. '_skip'] ~= 1 then
+					local t = start.t_grid[row][col]
+					--draw cell background
+					if (t.char ~= nil and (t.hidden == 0 or t.hidden == 3)) or motif.select_info.showemptyboxes == 1 then
+						main.f_animPosDraw(
+							motif.select_info.cell_bg_data,
+							motif.select_info.pos[1] + t.x,
+							motif.select_info.pos[2] + t.y,
+							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_bg_facing)
+						)
+					end
+					--draw random cell
+					if t.char == 'randomselect' or t.hidden == 3 then
+						main.f_animPosDraw(
+							motif.select_info.cell_random_data,
+							motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
+							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
+							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing)
+						)
+					--draw face cell
+					elseif t.char ~= nil and t.hidden == 0 then
+						main.f_animPosDraw(
+							start.f_getCharData(t.char_ref).cell_data,
+							motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
+							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
+							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
+						)
+					end
 				end
 			end
 		end

@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"math"
 
-	mgl "github.com/go-gl/mathgl/mgl32"
 	gl "github.com/fyne-io/gl-js"
+	mgl "github.com/go-gl/mathgl/mgl32"
 	"golang.org/x/mobile/exp/f32"
 )
 
 type Shader struct {
 	// Program
-	program     gl.Program
+	program gl.Program
 	// Attribute locations
-	aPos        gl.Attrib
-	aUv         gl.Attrib
+	aPos gl.Attrib
+	aUv  gl.Attrib
 	// Common uniforms
 	uModelView  gl.Uniform
 	uProjection gl.Uniform
@@ -66,8 +66,8 @@ var notiling = Tiling{}
 // RenderParams holds the common data for all sprite rendering functions
 type RenderParams struct {
 	// Sprite texture and palette texture
-	tex      *Texture
-	paltex   *Texture
+	tex    *Texture
+	paltex *Texture
 	// Size, position, tiling, scaling and rotation
 	size     [2]uint16
 	x, y     float32
@@ -77,23 +77,23 @@ type RenderParams struct {
 	rxadd    float32
 	rot      Rotation
 	// Transparency, masking and palette effects
-	trans    int32
-	mask     int32
-	pfx      *PalFX
+	trans int32
+	mask  int32
+	pfx   *PalFX
 	// Clipping
-	window   *[4]int32
+	window *[4]int32
 	// Rotation center
 	rcx, rcy float32
 	// Perspective projection
 	projectionMode int32
-	fLength  float32
-	xOffset  float32
-	yOffset  float32
+	fLength        float32
+	xOffset        float32
+	yOffset        float32
 }
 
 func (rp *RenderParams) IsValid() bool {
-	return rp.tex.handle.IsValid() && IsFinite(rp.x + rp.y + rp.xts + rp.xbs + rp.ys + rp.vs +
-			rp.rxadd + rp.rot.angle + rp.rcx + rp.rcy)
+	return rp.tex.handle.IsValid() && IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+
+		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
 var vertexUv = f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
@@ -121,12 +121,16 @@ var postShaderSelect []gl.Program
 
 //go:embed shaders/sprite.vs.glsl
 var vertShader string
+
 //go:embed shaders/sprite.fs.glsl
 var fragShader string
+
 //go:embed shaders/flat.fs.glsl
 var fragShaderFlat string
+
 //go:embed shaders/ident.vs.glsl
 var identVertShader string
+
 //go:embed shaders/ident.fs.glsl
 var identFragShader string
 
@@ -135,7 +139,7 @@ var identFragShader string
 func RenderInit() {
 	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
 		shader = gl.CreateShader(shaderType)
-		gl.ShaderSource(shader, "#version 100\nprecision mediump float;\n" + src)
+		gl.ShaderSource(shader, "#version 100\nprecision highp float;\n"+src)
 		gl.CompileShader(shader)
 		ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)
 		if ok == 0 {
@@ -431,8 +435,8 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 		modelview = modelview.Mul4(mgl.Scale3D(1, rp.vs, 1))
 		modelview = modelview.Mul4(
 			mgl.Rotate3DX(-rp.rot.xangle * math.Pi / 180.0).Mul3(
-			mgl.Rotate3DY(rp.rot.yangle * math.Pi / 180.0)).Mul3(
-			mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0)).Mat4())
+				mgl.Rotate3DY(rp.rot.yangle * math.Pi / 180.0)).Mul3(
+				mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0)).Mat4())
 		modelview = modelview.Mul4(mgl.Translate3D(-rp.rcx, -rp.rcy, 0))
 
 		drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
@@ -503,14 +507,9 @@ func rmMainSub(s *Shader, rp RenderParams) {
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
-	aglOver := false
 	renderWithBlending(func(a float32) {
-		if aglOver {
-			rp.rot = Rotation{}
-		}
 		gl.Uniform1f(s.uAlpha, a)
 		rmTileSub(s, modelview, rp)
-		aglOver = true
 	}, rp.trans, rp.paltex != nil)
 
 	gl.Disable(gl.SCISSOR_TEST)
@@ -616,7 +615,7 @@ func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) 
 	case trans < 255:
 		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
-		render(float32(trans)/255)
+		render(float32(trans) / 255)
 	case trans < 512:
 		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
 		gl.BlendEquation(gl.FUNC_ADD)
@@ -626,12 +625,12 @@ func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) 
 		if dst < 255 {
 			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
 			gl.BlendEquation(gl.FUNC_ADD)
-			render(1-float32(dst)/255)
+			render(1 - float32(dst)/255)
 		}
 		if src > 0 {
 			gl.BlendFunc(blendSourceFactor, gl.ONE)
 			gl.BlendEquation(gl.FUNC_ADD)
-			render(float32(src)/255)
+			render(float32(src) / 255)
 		}
 	}
 	gl.Disable(gl.BLEND)

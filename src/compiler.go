@@ -620,8 +620,8 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 			return 0, Error("Invalid value: " + string(a))
 		}
 	}
-	hitdefflg := flg
-	for i, a := range att[1:] {
+	//hitdefflg := flg
+	for _, a := range att[1:] {
 		l := len(a)
 		if sys.ignoreMostErrors && l >= 2 {
 			a = strings.TrimSpace(a[:2])
@@ -659,23 +659,23 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 			flg |= int32(AT_HA | AT_HT | AT_HP)
 		default:
 			if sys.ignoreMostErrors && sys.cgi[c.playerNo].ver[0] == 1 {
-				if hitdef {
-					flg = hitdefflg
-				}
+				//if hitdef {
+				//	flg = hitdefflg
+				//}
 				return flg, nil
 			}
 			return 0, Error("Invalid value: " + a)
 		}
-		if i == 0 {
-			hitdefflg = flg
-		}
+		//if i == 0 {
+		//	hitdefflg = flg
+		//}
 		if l > 2 {
 			break
 		}
 	}
-	if hitdef {
-		flg = hitdefflg
-	}
+	//if hitdef {
+	//	flg = hitdefflg
+	//}
 	return flg, nil
 }
 func (c *Compiler) trgAttr(in *string) (int32, error) {
@@ -2517,6 +2517,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_animfreeze))
 		case "postroundinput":
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_postroundinput))
+		case "nodizzypointsdamage":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nodizzypointsdamage))
+		case "noguardpointsdamage":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noguardpointsdamage))
 		case "intro":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
 		case "roundnotover":
