@@ -229,7 +229,7 @@ function main.f_fileExists(file)
 end
 
 --prints "t" table content into "toFile" file
-function main.f_printTable(t, toFile, mode)
+function main.f_printTable(t, toFile)
 	local txt = ''
 	local print_t_cache = {}
 	local function sub_print_t(t, indent)
@@ -261,7 +261,7 @@ function main.f_printTable(t, toFile, mode)
 	else
 		sub_print_t(t, '  ')
 	end
-	main.f_fileWrite(toFile or 'debug/table_print.txt', txt, mode)
+	main.f_fileWrite(toFile or 'debug/table_print.txt', txt)
 end
 
 --prints "v" variable into "toFile" file
@@ -1983,8 +1983,6 @@ function main.f_addStage(file, hidden)
 	end
 	return stageNo
 end
-
-main.f_fileWrite('test.txt', '');
 
 main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
 main.t_orderChars = {}
