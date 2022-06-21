@@ -76,7 +76,7 @@ func readLbText(pre string, is IniSection, str string, ln int16, f []*Fnt, align
 		txt.font[0] = -1
 	}
 	if _, ok := is[pre+"text"]; ok {
-		txt.text, _ = is.getString(pre + "text")
+		txt.text, _, _ = is.getText(pre + "text")
 	} else {
 		txt.text = str
 	}
@@ -1364,7 +1364,7 @@ func readLifeBarCombo(pre string, is IniSection,
 	is.ReadF32(pre+"showspeed", &co.showspeed)
 	co.showspeed = MaxF(1, co.showspeed)
 	is.ReadF32(pre+"hidespeed", &co.hidespeed)
-	co.separator, _ = is.getString("format.decimal.separator")
+	co.separator, _, _ = is.getText("format.decimal.separator")
 	is.ReadI32("format.decimal.places", &co.places)
 	return co
 }
@@ -2568,8 +2568,8 @@ func readLifeBarScore(pre string, is IniSection,
 	sc := newLifeBarScore()
 	is.ReadI32(pre+"pos", &sc.pos[0], &sc.pos[1])
 	sc.text = *readLbText(pre+"text.", is, "", 0, f, 0)
-	sc.separator[0], _ = is.getString("format.integer.separator")
-	sc.separator[1], _ = is.getString("format.decimal.separator")
+	sc.separator[0], _, _ = is.getText("format.integer.separator")
+	sc.separator[1], _, _ = is.getText("format.decimal.separator")
 	is.ReadI32("format.integer.pad", &sc.pad)
 	is.ReadI32("format.decimal.places", &sc.places)
 	is.ReadF32("score.min", &sc.min)
@@ -2712,7 +2712,7 @@ func readLifeBarAiLevel(pre string, is IniSection,
 	ai := newLifeBarAiLevel()
 	is.ReadI32(pre+"pos", &ai.pos[0], &ai.pos[1])
 	ai.text = *readLbText(pre+"text.", is, "", 0, f, 0)
-	ai.separator, _ = is.getString("format.decimal.separator")
+	ai.separator, _, _ = is.getText("format.decimal.separator")
 	is.ReadI32("format.decimal.places", &ai.places)
 	ai.bg = *ReadAnimLayout(pre+"bg.", is, sff, at, 0)
 	ai.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)

@@ -2482,10 +2482,10 @@ func (s *Select) addChar(def string) {
 		case "arcade":
 			if arcade {
 				arcade = false
-				sc.intro, _ = is.getString("intro.storyboard")
-				sc.ending, _ = is.getString("ending.storyboard")
-				sc.arcadepath, _ = is.getString("arcadepath")
-				sc.ratiopath, _ = is.getString("ratiopath")
+				sc.intro, _, _ = is.getText("intro.storyboard")
+				sc.ending, _, _ = is.getText("ending.storyboard")
+				sc.arcadepath, _, _ = is.getText("arcadepath")
+				sc.ratiopath, _, _ = is.getText("ratiopath")
 			}
 		}
 	}
