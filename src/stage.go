@@ -800,30 +800,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		sec[0].ReadI32("boundlow", &boundlow)
 	}
-	reflect := true
-	if sec := defmap["shadow"]; len(sec) > 0 {
-		var tmp int32
-		if sec[0].ReadI32("intensity", &tmp) {
-			s.sdw.intensity = Clamp(tmp, 0, 255)
-		}
-		var r, g, b int32
-		// mugen 1.1 removed support for color
-		if (s.ver[0] != 1 || s.ver[1] != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
-			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
-		}
-		s.sdw.color = uint32(r<<16 | g<<8 | b)
-		sec[0].ReadF32("yscale", &s.sdw.yscale)
-		sec[0].ReadBool("reflect", &reflect)
-		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
-	}
-	if reflect {
-		if sec := defmap["reflection"]; len(sec) > 0 {
-			var tmp int32
-			if sec[0].ReadI32("intensity", &tmp) {
-				s.reflection = Clamp(tmp, 0, 255)
-			}
-		}
-	}
 	if sec := defmap["music"]; len(sec) > 0 {
 		s.bgmusic = sec[0]["bgmusic"]
 		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
@@ -844,6 +820,30 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadBool("debugbg", &s.debugbg)
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
+	}
+	reflect := true
+	if sec := defmap["shadow"]; len(sec) > 0 {
+		var tmp int32
+		if sec[0].ReadI32("intensity", &tmp) {
+			s.sdw.intensity = Clamp(tmp, 0, 255)
+		}
+		var r, g, b int32
+		// mugen 1.1 removed support for color
+		if (s.ver[0] != 1 || s.ver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
+			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+		}
+		s.sdw.color = uint32(r<<16 | g<<8 | b)
+		sec[0].ReadF32("yscale", &s.sdw.yscale)
+		sec[0].ReadBool("reflect", &reflect)
+		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
+	}
+	if reflect {
+		if sec := defmap["reflection"]; len(sec) > 0 {
+			var tmp int32
+			if sec[0].ReadI32("intensity", &tmp) {
+				s.reflection = Clamp(tmp, 0, 255)
+			}
+		}
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
