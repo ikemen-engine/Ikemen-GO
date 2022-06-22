@@ -4509,7 +4509,7 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		int16(dst[1])}]
 	if !ok || di < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("has no dest palette for RemapPal: %v,%v", dst[0], dst[1]))
-		di = si
+		return
 	}
 	if pfx.remap == nil {
 		pfx.remap = c.gi().sff.palList.GetPalMap()
