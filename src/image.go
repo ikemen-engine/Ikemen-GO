@@ -1339,17 +1339,10 @@ func captureScreen() {
 		}
 		img.Pix[j] = pixdata[i]
 	}
-	var filename string
 	for i := sys.captureNum; i < 999; i++ {
-		if i < 10 {
-			filename = fmt.Sprintf("ikemen00%d.png", i)
-		} else if i < 100 {
-			filename = fmt.Sprintf("ikemen0%d.png", i)
-		} else {
-			filename = fmt.Sprintf("ikemen%d.png", i)
-		}
-		if _, err := os.Stat(sys.screenshotFolder + filename); os.IsNotExist(err) {
-			file, _ := os.Create(sys.screenshotFolder + filename)
+		filename := fmt.Sprintf("%sikemen%03d.png", sys.screenshotFolder, i)
+		if _, err := os.Stat(filename); os.IsNotExist(err) {
+			file, _ := os.Create(filename)
 			defer file.Close()
 			png.Encode(file, img)
 			sys.captureNum = i

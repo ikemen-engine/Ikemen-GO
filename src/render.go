@@ -11,42 +11,6 @@ import (
 	"golang.org/x/mobile/exp/f32"
 )
 
-type Shader struct {
-	// Program
-	program gl.Program
-	// Attribute locations
-	aPos gl.Attrib
-	aUv  gl.Attrib
-	// Common uniforms
-	uModelView  gl.Uniform
-	uProjection gl.Uniform
-	uTexture    gl.Uniform
-	uAlpha      gl.Uniform
-	// Additional uniforms
-	u map[string]gl.Uniform
-}
-
-func newShader(program gl.Program) (s *Shader) {
-	s = &Shader{program: program}
-
-	s.aPos = gl.GetAttribLocation(s.program, "position")
-	s.aUv = gl.GetAttribLocation(s.program, "uv")
-
-	s.uModelView = gl.GetUniformLocation(s.program, "modelview")
-	s.uProjection = gl.GetUniformLocation(s.program, "projection")
-	s.uTexture = gl.GetUniformLocation(s.program, "tex")
-	s.uAlpha = gl.GetUniformLocation(s.program, "alpha")
-	s.u = make(map[string]gl.Uniform)
-
-	return
-}
-
-func (s *Shader) RegisterUniforms(names ...string) {
-	for _, name := range names {
-		s.u[name] = gl.GetUniformLocation(s.program, name)
-	}
-}
-
 // Rotation holds rotation parameters
 type Rotation struct {
 	angle, xangle, yangle float32
@@ -96,9 +60,9 @@ func (rp *RenderParams) IsValid() bool {
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
-var vertexUv = f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
+var vertexBuffer, uvBuffer gl.Buffer
 
-var mainShader, flatShader *Shader
+var mainShader, flatShader *ShaderProgram
 
 // Post-processing
 var fbo gl.Framebuffer
@@ -109,15 +73,10 @@ var rbo_depth gl.Renderbuffer
 
 // MSAA
 var fbo_f gl.Framebuffer
-var fbo_f_texture gl.Texture
+var fbo_f_texture *Texture
 
-var postShader gl.Program
-var postVertAttrib gl.Attrib
-var postTexUniform gl.Uniform
-var postTexSizeUniform gl.Uniform
-var postVertices = f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
-
-var postShaderSelect []gl.Program
+var postVertBuffer gl.Buffer
+var postShaderSelect []*ShaderProgram
 
 //go:embed shaders/sprite.vs.glsl
 var vertShader string
@@ -137,65 +96,42 @@ var identFragShader string
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
-	compile := func(shaderType gl.Enum, src string) (shader gl.Shader) {
-		shader = gl.CreateShader(shaderType)
-		gl.ShaderSource(shader, "#version 100\nprecision highp float;\n"+src)
-		gl.CompileShader(shader)
-		ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)
-		if ok == 0 {
-			log := gl.GetShaderInfoLog(shader)
-			gl.DeleteShader(shader)
-			panic(Error("Shader compile error: " + log))
-		}
-		return
-	}
-	link := func(v, f gl.Shader) (program gl.Program) {
-		program = gl.CreateProgram()
-		gl.AttachShader(program, v)
-		gl.AttachShader(program, f)
-		gl.LinkProgram(program)
-		// Mark shaders for deletion when the program is deleted
-		gl.DeleteShader(v)
-		gl.DeleteShader(f)
-		ok := gl.GetProgrami(program, gl.LINK_STATUS)
-		if ok == 0 {
-			log := gl.GetProgramInfoLog(program)
-			gl.DeleteProgram(program)
-			panic(Error("Link error: " + log))
-		}
-		return
-	}
+	sys.errLog.Printf("Using OpenGL %v (%v)",
+		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
-	vertObj := compile(gl.VERTEX_SHADER, vertShader)
-	fragObj := compile(gl.FRAGMENT_SHADER, fragShader)
-	prog := link(vertObj, fragObj)
-	gl.ObjectLabel(prog, "Main Shader")
-	mainShader = newShader(prog)
+	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
 	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mul", "x1x2x4x3", "isRgba", "isTrapez")
 
-	fragObj = compile(gl.FRAGMENT_SHADER, fragShaderFlat)
-	prog = link(vertObj, fragObj)
-	gl.ObjectLabel(prog, "Flat Shader")
-	flatShader = newShader(prog)
+	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
+
+	// Persistent data buffers for rendering
+	vertexBuffer = gl.CreateBuffer()
+
+	uvData := f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
+	uvBuffer = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW)
+
+	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
+	postVertBuffer = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
 
 	// Compile postprocessing shaders
 
 	// Calculate total ammount of shaders loaded.
-	postShaderSelect = make([]gl.Program, 1+len(sys.externalShaderList))
+	postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
 	// Ident shader (no postprocessing)
-	vertObj = compile(gl.VERTEX_SHADER, identVertShader)
-	fragObj = compile(gl.FRAGMENT_SHADER, identFragShader)
-	postShaderSelect[0] = link(vertObj, fragObj)
-	gl.ObjectLabel(postShaderSelect[0], "Identity Shader")
+	postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
+	postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
-		vertObj = compile(gl.VERTEX_SHADER, sys.externalShaders[0][i])
-		fragObj = compile(gl.FRAGMENT_SHADER, sys.externalShaders[1][i])
-		postShaderSelect[1+i] = link(vertObj, fragObj)
-		gl.ObjectLabel(postShaderSelect[1+i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
+			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
 	}
 
 	if sys.multisampleAntialiasing {
@@ -226,13 +162,8 @@ func RenderInit() {
 	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
 
 	if sys.multisampleAntialiasing {
-		fbo_f_texture = gl.CreateTexture()
-		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		fbo_f_texture = newTexture()
+		fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
 	} else {
 		rbo_depth = gl.CreateRenderbuffer()
 		gl.ObjectLabel(rbo_depth, "Depth Renderbuffer")
@@ -250,7 +181,7 @@ func RenderInit() {
 
 		fbo_f = gl.CreateFramebuffer()
 		gl.BindFramebuffer(gl.FRAMEBUFFER, fbo_f)
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture, 0)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture.handle, 0)
 	} else {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_texture, 0)
 		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
@@ -276,122 +207,82 @@ func unbindFB() {
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
 
-	postShader = postShaderSelect[sys.postProcessingShader]
-
-	postVertAttrib = gl.GetAttribLocation(postShader, "VertCoord")
-	postTexUniform = gl.GetUniformLocation(postShader, "Texture")
-	postTexSizeUniform = gl.GetUniformLocation(postShader, "TextureSize")
+	postShader := postShaderSelect[sys.postProcessingShader]
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.UseProgram(postShader)
+	postShader.UseProgram()
 
 	if sys.multisampleAntialiasing {
-		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture)
+		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture.handle)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
 	}
 
-	gl.Uniform1i(postTexUniform, 0)
-	gl.Uniform2f(postTexSizeUniform, float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-	vertexBuffer := gl.CreateBuffer()
-	gl.ObjectLabel(vertexBuffer, "Postprocess Vertex Buffer")
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, postVertices, gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(postVertAttrib)
-	gl.VertexAttribPointer(postVertAttrib, 2, gl.FLOAT, false, 0, 0)
+	gl.Uniform1i(postShader.u["Texture"], 0)
+	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
+	gl.EnableVertexAttribArray(postShader.aVert)
+	gl.VertexAttribPointer(postShader.aVert, 2, gl.FLOAT, false, 0, 0)
+
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	gl.DeleteBuffer(vertexBuffer)
-	gl.DisableVertexAttribArray(postVertAttrib)
+
+	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
-func drawQuads(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
+func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	gl.UniformMatrix4fv(s.uModelView, modelview[:])
 	if u, ok := s.u["x1x2x4x3"]; ok {
 		gl.Uniform4f(u, x1, x2, x4, x3)
 	}
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
-	vertexBuffer := gl.CreateBuffer()
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(s.aPos)
-	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
-
-	uvBuffer := gl.CreateBuffer()
-	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexUv, gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(s.aUv)
-	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-
-	gl.DeleteBuffer(vertexBuffer)
-	gl.DeleteBuffer(uvBuffer)
-	gl.DisableVertexAttribArray(s.aPos)
-	gl.DisableVertexAttribArray(s.aUv)
 }
-func rmTileHSub(s *Shader, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, xtw, xbw, xts, xbs float32,
+
+// Render a quad with optional horizontal tiling
+func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
 	tl Tiling, rcx float32) {
-	topdist := xtw + xts*float32(tl.sx)
+	//            p3
+	//    p4 o-----o-----o- - -o
+	//      /      |      \     ` .
+	//     /       |       \       `.
+	//    o--------o--------o- - - - o
+	//   p1         p2
+	topdist := (x3 - x4) * (1 + float32(tl.sx) / width)
+	botdist := (x2 - x1) * (1 + float32(tl.sx) / width)
 	if AbsF(topdist) >= 0.01 {
-		botdist := xbw + xbs*float32(tl.sx)
 		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
-		if tl.x == 1 {
-			x1d, x2d, x3d, x4d := x1, x2, x3, x4
-			for {
-				x2d = x1d - xbs*float32(tl.sx)
-				x3d = x4d - xts*float32(tl.sx)
-				x4d = x3d - xtw
-				x1d = x2d - xbw
-				if topdist < 0 {
-					if x1d >= float32(sys.scrrect[2]) &&
-						x2d >= float32(sys.scrrect[2]) && x3d >= float32(sys.scrrect[2]) &&
-						x4d >= float32(sys.scrrect[2]) {
-						break
-					}
-				} else if x1d <= 0 && x2d <= 0 && x3d <= 0 && x4d <= 0 {
-					break
-				}
-				if (0 < x1d || 0 < x2d) &&
-					(x1d < float32(sys.scrrect[2]) || x2d < float32(sys.scrrect[2])) ||
-					(0 < x3d || 0 < x4d) &&
-						(x3d < float32(sys.scrrect[2]) || x4d < float32(sys.scrrect[2])) {
-					drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
-				}
-			}
-		}
 	}
-	n := tl.x
-	for {
-		if topdist > 0 {
-			if x1 >= float32(sys.scrrect[2]) && x2 >= float32(sys.scrrect[2]) &&
-				x3 >= float32(sys.scrrect[2]) && x4 >= float32(sys.scrrect[2]) {
-				break
-			}
-		} else if x1 <= 0 && x2 <= 0 && x3 <= 0 && x4 <= 0 {
-			break
-		}
-		if (0 < x1 || 0 < x2) &&
-			(x1 < float32(sys.scrrect[2]) || x2 < float32(sys.scrrect[2])) ||
-			(0 < x3 || 0 < x4) &&
-				(x3 < float32(sys.scrrect[2]) || x4 < float32(sys.scrrect[2])) {
-			drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
-		}
-		if tl.x != 1 && n != 0 {
-			n--
-		}
-		if n == 0 || AbsF(topdist) < 0.01 {
-			break
-		}
-		x4 = x3 + xts*float32(tl.sx)
-		x1 = x2 + xbs*float32(tl.sx)
-		x2 = x1 + xbw
-		x3 = x4 + xtw
+
+	// Compute left/right tiling bounds (or right/left when topdist < 0)
+	xmax := float32(sys.scrrect[2])
+	left, right := int32(0), int32(1)
+	if topdist >= 0.01 {
+		left = 1 - int32(math.Ceil(float64(MaxF(x3 / topdist, x2 / botdist))))
+		right = int32(math.Ceil(float64(MaxF((xmax - x4) / topdist, (xmax - x1) / botdist))))
+	} else if topdist <= -0.01 {
+		left = 1 - int32(math.Ceil(float64(MaxF((xmax - x3) / -topdist, (xmax - x2) / -botdist))))
+		right = int32(math.Ceil(float64(MaxF(x4 / -topdist, x1 / -botdist))))
+	}
+
+	if tl.x != 1 {
+		left = 0
+		right = Min(right, Max(tl.x, 1))
+	}
+
+	// Draw all quads in one loop
+	for n := left; n < right; n++ {
+		x1d, x2d := x1 + float32(n) * botdist, x2 + float32(n) * botdist
+		x3d, x4d := x3 + float32(n) * topdist, x4 + float32(n) * topdist
+		drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 	}
 }
 
-func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
+func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 	x1, y1 := rp.x+rp.rxadd*rp.ys*float32(rp.size[1]), rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
@@ -463,8 +354,8 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, x3d-x4d, x2d-x1d,
-					(x3d-x4d)/float32(rp.size[0]), (x2d-x1d)/float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d,
+					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 		}
 	}
@@ -480,8 +371,8 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4, x3-x4, x2-x1,
-					(x3-x4)/float32(rp.size[0]), (x2-x1)/float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4,
+					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 			if rp.tile.y != 1 && n != 0 {
 				n--
@@ -501,16 +392,28 @@ func rmTileSub(s *Shader, modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 }
-func rmMainSub(s *Shader, rp RenderParams) {
+func rmMainSub(s *ShaderProgram, rp RenderParams) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	gl.UniformMatrix4fv(s.uProjection, proj[:])
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
+	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
+	gl.EnableVertexAttribArray(s.aUv)
+	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
+
+	// Keep vertexBuffer bound so that it can be updated in drawQuads()
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+	gl.EnableVertexAttribArray(s.aPos)
+	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
+
 	renderWithBlending(func(a float32) {
 		gl.Uniform1f(s.uAlpha, a)
 		rmTileSub(s, modelview, rp)
 	}, rp.trans, rp.paltex != nil)
+
+	gl.DisableVertexAttribArray(s.aPos)
+	gl.DisableVertexAttribArray(s.aUv)
 
 	gl.Disable(gl.SCISSOR_TEST)
 }
@@ -551,7 +454,7 @@ func RenderSprite(rp RenderParams) {
 		return
 	}
 	rmInitSub(&rp)
-	gl.UseProgram(mainShader.program)
+	mainShader.UseProgram()
 	gl.Uniform1i(mainShader.uTexture, 0)
 	if rp.paltex == nil {
 		gl.Uniform1i(mainShader.u["isRgba"], 1)
@@ -586,7 +489,7 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 		return
 	}
 	rmInitSub(&rp)
-	gl.UseProgram(flatShader.program)
+	flatShader.UseProgram()
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(
 		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
@@ -644,7 +547,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 
-	gl.UseProgram(flatShader.program)
+	flatShader.UseProgram()
 	gl.UniformMatrix4fv(flatShader.uModelView, modelview[:])
 	gl.UniformMatrix4fv(flatShader.uProjection, proj[:])
 	gl.Uniform1i(flatShader.uTexture, 0)
@@ -654,7 +557,6 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x2, y1, x1, y2, x1, y1)
-	vertexBuffer := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 	gl.EnableVertexAttribArray(flatShader.aPos)
@@ -665,6 +567,5 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}, trans, true)
 
-	gl.DeleteBuffer(vertexBuffer)
 	gl.DisableVertexAttribArray(flatShader.aPos)
 }
