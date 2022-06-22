@@ -6375,8 +6375,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if !sys.lifebar.ro.firstAttack[0] && !sys.lifebar.ro.firstAttack[1] &&
 					ghvset && getter.hoIdx < 0 && c.teamside != -1 {
-					sys.lifebar.ro.firstAttack[c.teamside] = true
-					sys.chars[c.playerNo][0].firstAttack = true
+					ts := c.teamside
+					pn := c.playerNo
+					if c.counterHit && Rand(0, 1) == 1 {
+						ts = getter.teamside
+						pn = getter.playerNo
+					}
+					sys.lifebar.ro.firstAttack[ts] = true
+					sys.chars[pn][0].firstAttack = true
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
