@@ -1121,16 +1121,20 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_frontedgedist:
 			sys.bcStack.PushI(int32(c.frontEdgeDist()))
 		case OC_gameheight:
+			// Backward compatibility exception. 1.0 characters often use it to
+			// display elements that weren't designed to be affected by zooming.
 			if c.gi().ver[0] == 1 && c.gi().ver[1] == 0 {
-				sys.bcStack.PushF(sys.screenHeight() / oc.localscl)
+				sys.bcStack.PushF(c.screenHeight())
 			} else {
 				sys.bcStack.PushF(c.gameHeight())
 			}
 		case OC_gametime:
 			sys.bcStack.PushI(sys.gameTime)
 		case OC_gamewidth:
+			// Backward compatibility exception. 1.0 characters often use it to
+			// display elements that weren't designed to be affected by zooming.
 			if c.gi().ver[0] == 1 && c.gi().ver[1] == 0 {
-				sys.bcStack.PushF(sys.screenWidth() / oc.localscl)
+				sys.bcStack.PushF(c.screenWidth())
 			} else {
 				sys.bcStack.PushF(c.gameWidth())
 			}
@@ -1219,14 +1223,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
 		case OC_screenheight:
-			sys.bcStack.PushF(sys.screenHeight() / (320.0 / float32(oc.stCgi().localcoord[0])) /
-				((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2]))))
+			sys.bcStack.PushF(c.screenHeight())
 		case OC_screenpos_x:
 			sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
 		case OC_screenpos_y:
 			sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
 		case OC_screenwidth:
-			sys.bcStack.PushF(float32(oc.stCgi().localcoord[0]))
+			sys.bcStack.PushF(c.screenWidth())
 		case OC_selfanimexist:
 			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
 		case OC_stateno:

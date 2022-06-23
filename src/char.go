@@ -2706,10 +2706,10 @@ func (c *Char) frontEdgeDist() float32 {
 	return c.pos[0] - sys.xmin/c.localscl
 }
 func (c *Char) gameHeight() float32 {
-	return 240 / c.localscl / sys.cam.Scale
+	return c.screenHeight() / sys.cam.Scale
 }
 func (c *Char) gameWidth() float32 {
-	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
+	return c.screenWidth() / sys.cam.Scale
 }
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
@@ -2977,6 +2977,13 @@ func (c *Char) screenPosX() float32 {
 }
 func (c *Char) screenPosY() float32 {
 	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
+}
+func (c *Char) screenHeight() float32 {
+	return sys.screenHeight() / (320.0 / float32(c.stCgi().localcoord[0])) /
+		((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2])))
+}
+func (c *Char) screenWidth() float32 {
+	return c.stCgi().localcoord[0]
 }
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
