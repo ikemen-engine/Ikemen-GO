@@ -1365,158 +1365,158 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_size_yscale:
 		sys.bcStack.PushF(c.size.yscale)
 	case OC_const_size_ground_back:
-		sys.bcStack.PushF(c.size.ground.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.ground.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_ground_front:
-		sys.bcStack.PushF(c.size.ground.front * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.ground.front * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_air_back:
-		sys.bcStack.PushF(c.size.air.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.air.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_air_front:
-		sys.bcStack.PushF(c.size.air.front * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.air.front * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_z_width:
-		sys.bcStack.PushF(c.size.z.width * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.z.width * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_height:
-		sys.bcStack.PushF(c.size.height * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.height * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_attack_dist:
-		sys.bcStack.PushF(c.size.attack.dist * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.attack.dist * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushF(c.size.attack.z.width[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.attack.z.width[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushF(c.size.attack.z.width[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.attack.z.width[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_proj_attack_dist:
-		sys.bcStack.PushF(c.size.proj.attack.dist * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.proj.attack.dist * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_proj_doscale:
 		sys.bcStack.PushI(c.size.proj.doscale)
 	case OC_const_size_head_pos_x:
-		sys.bcStack.PushF(c.size.head.pos[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.head.pos[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_head_pos_y:
-		sys.bcStack.PushF(c.size.head.pos[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.head.pos[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_mid_pos_x:
-		sys.bcStack.PushF(c.size.mid.pos[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.mid.pos[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_mid_pos_y:
-		sys.bcStack.PushF(c.size.mid.pos[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.mid.pos[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_shadowoffset:
-		sys.bcStack.PushF(c.size.shadowoffset * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.shadowoffset * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_draw_offset_x:
-		sys.bcStack.PushF(c.size.draw.offset[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.draw.offset[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_draw_offset_y:
-		sys.bcStack.PushF(c.size.draw.offset[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.size.draw.offset[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_walk_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.fwd * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.walk.fwd * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_walk_back_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.walk.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_walk_up_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.up.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.walk.up.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_walk_down_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.down.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.walk.down.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.run.fwd[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_fwd_y:
-		sys.bcStack.PushF(c.gi().velocity.run.fwd[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.fwd[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_back_x:
-		sys.bcStack.PushF(c.gi().velocity.run.back[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.back[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_back_y:
-		sys.bcStack.PushF(c.gi().velocity.run.back[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.back[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_up_x:
-		sys.bcStack.PushF(c.gi().velocity.run.up.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.up.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_up_y:
-		sys.bcStack.PushF(c.gi().velocity.run.up.y * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.up.y * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_down_x:
-		sys.bcStack.PushF(c.gi().velocity.run.down.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.down.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_run_down_y:
-		sys.bcStack.PushF(c.gi().velocity.run.down.y * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.run.down.y * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_y:
-		sys.bcStack.PushF(c.gi().velocity.jump.neu[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_neu_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.neu[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.neu[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.fwd * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.fwd * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.up.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_jump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.jump.down.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.back[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_back_y:
-		sys.bcStack.PushF(c.gi().velocity.runjump.back[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.back[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_y:
-		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.up.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_runjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.runjump.down.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_y:
-		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_neu_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.neu[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.neu[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_back_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_fwd_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.fwd * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.fwd * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.up.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.up.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_airjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.down.x * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.airjump.down.x * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_groundrecover_x:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_groundrecover_y:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_mul_x:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[0])
 	case OC_const_velocity_air_gethit_airrecover_mul_y:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.mul[1])
 	case OC_const_velocity_air_gethit_airrecover_add_x:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_add_y:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.add[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_back:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.back * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_fwd:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.fwd * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.fwd * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_up:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.up * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.up * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_air_gethit_airrecover_down:
-		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.down * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().velocity.air.gethit.airrecover.down * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_airjump_num:
 		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(int32(float32(c.gi().movement.airjump.height) * (320 / float32(c.localcoord)) / oc.localscl))
+		sys.bcStack.PushI(int32(float32(c.gi().movement.airjump.height) * (320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_yaccel:
-		sys.bcStack.PushF(c.gi().movement.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.yaccel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_stand_friction:
 		sys.bcStack.PushF(c.gi().movement.stand.friction)
 	case OC_const_movement_crouch_friction:
 		sys.bcStack.PushF(c.gi().movement.crouch.friction)
 	case OC_const_movement_stand_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.stand.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.stand.friction_threshold * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_crouch_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.crouch.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.crouch.friction_threshold * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundlevel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_groundrecover_ground_threshold:
 		sys.bcStack.PushF(
-			c.gi().movement.air.gethit.groundrecover.ground.threshold * (320 / float32(c.localcoord)) / oc.localscl)
+			c.gi().movement.air.gethit.groundrecover.ground.threshold * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_groundrecover_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.groundrecover.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.groundrecover.groundlevel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_airrecover_threshold:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.threshold * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.threshold * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_airrecover_yaccel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.airrecover.yaccel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_air_gethit_trip_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.air.gethit.trip.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.air.gethit.trip.groundlevel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_down_bounce_offset_x:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[0] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_down_bounce_offset_y:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[1] * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.offset[1] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_down_bounce_yaccel:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_down_bounce_groundlevel:
-		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel * (320 / c.localcoord) / oc.localscl)
 	case OC_const_movement_down_friction_threshold:
-		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * (320 / float32(c.localcoord)) / oc.localscl)
+		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * (320 / c.localcoord) / oc.localscl)
 	case OC_const_authorname:
 		sys.bcStack.PushB(c.gi().authorLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -2771,7 +2771,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		return false
 	}
 	if crun.minus == -2 || crun.minus == -4 {
-		h.localscl = (320 / float32(crun.localcoord))
+		h.localscl = (320 / crun.localcoord)
 		h.localcoord = crun.localcoord
 	} else {
 		h.localscl = crun.localscl
@@ -3268,7 +3268,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		return false
 	}
 	if c.minus == -2 || c.minus == -4 { //TODO: isn't this supposed to check crun instead of c?
-		e.localscl = (320 / float32(crun.localcoord))
+		e.localscl = (320 / crun.localcoord)
 	} else {
 		e.localscl = crun.localscl
 	}
@@ -4355,7 +4355,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		p.aimg.setupPalFX()
 	}
 	if crun.minus == -2 || crun.minus == -4 {
-		p.localscl = (320 / float32(crun.localcoord))
+		p.localscl = (320 / crun.localcoord)
 	} else {
 		p.localscl = crun.localscl
 	}
@@ -4399,7 +4399,7 @@ func (sc width) Run(c *Char, _ []int32) bool {
 		case width_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				lclscround = (320 / float32(c.localcoord)) / (320 / float32(crun.localcoord))
+				lclscround = (320 / c.localcoord) / (320 / crun.localcoord)
 			} else {
 				return false
 			}
