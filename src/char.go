@@ -1643,7 +1643,7 @@ type Char struct {
 	redLife         int32
 	juggle          int32
 	fallTime        int32
-	localcoord      int32
+	localcoord      float32
 	localscl        float32
 	size            CharSize
 	clsnScale       [2]float32
@@ -1901,8 +1901,8 @@ func (c *Char) load(def string) error {
 	cns, sprite, anim, sound := "", "", "", ""
 	info, files, keymap, mapArray := true, true, true, true
 	gi.localcoord = [...]float32{320, 240}
-	c.localcoord = int32(320 / (float32(sys.gameWidth) / 320))
-	c.localscl = 320 / float32(c.localcoord)
+	c.localcoord = 320 / (float32(sys.gameWidth) / 320)
+	c.localscl = 320 / c.localcoord
 	gi.portraitscale = 1
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
@@ -1923,8 +1923,8 @@ func (c *Char) load(def string) error {
 				gi.nameLow = strings.ToLower(c.name)
 				if is.ReadF32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
 					gi.portraitscale = 320 / gi.localcoord[0]
-					c.localcoord = int32(gi.localcoord[0] / (float32(sys.gameWidth) / 320))
-					c.localscl = 320 / float32(c.localcoord)
+					c.localcoord = gi.localcoord[0] / (float32(sys.gameWidth) / 320)
+					c.localscl = 320 / c.localcoord
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
@@ -2706,10 +2706,10 @@ func (c *Char) frontEdgeDist() float32 {
 	return c.pos[0] - sys.xmin/c.localscl
 }
 func (c *Char) gameHeight() float32 {
-	return 240 / c.localscl / sys.cam.Scale
+	return c.screenHeight() / sys.cam.Scale
 }
 func (c *Char) gameWidth() float32 {
-	return float32(sys.gameWidth) / c.localscl / sys.cam.Scale
+	return c.screenWidth() / sys.cam.Scale
 }
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
@@ -2978,6 +2978,13 @@ func (c *Char) screenPosX() float32 {
 func (c *Char) screenPosY() float32 {
 	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
 }
+func (c *Char) screenHeight() float32 {
+	return sys.screenHeight() / (320.0 / float32(c.stCgi().localcoord[0])) /
+		((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2])))
+}
+func (c *Char) screenWidth() float32 {
+	return c.stCgi().localcoord[0]
+}
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
 		return BytecodeSF()
@@ -3127,7 +3134,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	//if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
 	//	c.enemyExplodsRemove(c.ss.sb.playerNo)
 	//}
-	if newLs := 320 / float32(sys.chars[pn][0].localcoord); c.localscl != newLs {
+	if newLs := 320 / sys.chars[pn][0].localcoord; c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
 		c.pos[1] *= lsRatio
@@ -3816,11 +3823,11 @@ func (c *Char) setBEdge(be float32) {
 	c.setSF(CSF_backedge)
 }
 func (c *Char) setFWidth(fw float32) {
-	c.width[0] = c.defFW()*(320/float32(c.localcoord))/c.localscl + fw
+	c.width[0] = c.defFW()*(320/c.localcoord)/c.localscl + fw
 	c.setSF(CSF_frontwidth)
 }
 func (c *Char) setBWidth(bw float32) {
-	c.width[1] = c.defBW()*(320/float32(c.localcoord))/c.localscl + bw
+	c.width[1] = c.defBW()*(320/c.localcoord)/c.localscl + bw
 	c.setSF(CSF_backwidth)
 }
 func (c *Char) gethitAnimtype() Reaction {
@@ -4005,11 +4012,11 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 		if t := sys.playerID(tar[0]); t != nil {
 			switch hmf {
 			case HMF_M:
-				x += t.size.mid.pos[0] * (320 / float32(t.localcoord)) / c.localscl
-				y += t.size.mid.pos[1] * (320 / float32(t.localcoord)) / c.localscl
+				x += t.size.mid.pos[0] * (320 / t.localcoord) / c.localscl
+				y += t.size.mid.pos[1] * (320 / t.localcoord) / c.localscl
 			case HMF_H:
-				x += t.size.head.pos[0] * (320 / float32(t.localcoord)) / c.localscl
-				y += t.size.head.pos[1] * (320 / float32(t.localcoord)) / c.localscl
+				x += t.size.head.pos[0] * (320 / t.localcoord) / c.localscl
+				y += t.size.head.pos[1] * (320 / t.localcoord) / c.localscl
 			}
 			if !math.IsNaN(float64(x)) {
 				c.setX(t.pos[0]*t.localscl/c.localscl + t.facing*x)
@@ -4320,9 +4327,9 @@ func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	dist := c.distX(opp, oc)
 	var oppw float32
 	if dist == 0 || (dist < 0) != (opp.facing < 0) {
-		oppw = opp.facing * opp.width[0] * (320 / float32(opp.localcoord)) / oc.localscl
+		oppw = opp.facing * opp.width[0] * (320 / opp.localcoord) / oc.localscl
 	} else {
-		oppw = -opp.facing * opp.width[1] * (320 / float32(opp.localcoord)) / oc.localscl
+		oppw = -opp.facing * opp.width[1] * (320 / opp.localcoord) / oc.localscl
 	}
 	return dist + oppw - c.facing*c.width[0]
 }
@@ -4836,7 +4843,7 @@ func (c *Char) inGuardState() bool {
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
 }
 func (c *Char) gravity() {
-	c.vel[1] += c.gi().movement.yaccel * (320 / float32(c.localcoord)) / c.localscl
+	c.vel[1] += c.gi().movement.yaccel * (320 / c.localcoord) / c.localscl
 }
 
 // Updates pos based on multiple factors
@@ -5063,7 +5070,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	}
 	return sys.clsnHantei(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
-		clsn2, [...]float32{c.clsnScale[0] * (320 / float32(sys.chars[c.animPN][0].localcoord)), c.clsnScale[1] * (320 / float32(sys.chars[c.animPN][0].localcoord))},
+		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -5094,10 +5101,10 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	} else {
 		clsn2 = c.curFrame.Clsn2()
 	}
-	return sys.clsnHantei(clsn1, [...]float32{sys.chars[atk.animPN][0].clsnScale[0] * (320 / float32(sys.chars[atk.animPN][0].localcoord)), sys.chars[atk.animPN][0].clsnScale[1] * (320 / float32(sys.chars[atk.animPN][0].localcoord))},
+	return sys.clsnHantei(clsn1, [...]float32{sys.chars[atk.animPN][0].clsnScale[0] * (320 / sys.chars[atk.animPN][0].localcoord), sys.chars[atk.animPN][0].clsnScale[1] * (320 / sys.chars[atk.animPN][0].localcoord)},
 		[...]float32{atk.pos[0]*atk.localscl + atk.offsetX()*atk.localscl,
 			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl},
-		atk.facing, clsn2, [...]float32{sys.chars[c.animPN][0].clsnScale[0] * (320 / float32(sys.chars[c.animPN][0].localcoord)), sys.chars[c.animPN][0].clsnScale[1] * (320 / float32(sys.chars[c.animPN][0].localcoord))},
+		atk.facing, clsn2, [...]float32{sys.chars[c.animPN][0].clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), sys.chars[c.animPN][0].clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -5414,10 +5421,10 @@ func (c *Char) action() {
 		int8(Btoi(c.hitPause()))
 	if !c.hitPause() {
 		if !c.sf(CSF_frontwidth) {
-			c.width[0] = c.defFW() * (320 / float32(c.localcoord)) / c.localscl
+			c.width[0] = c.defFW() * (320 / c.localcoord) / c.localscl
 		}
 		if !c.sf(CSF_backwidth) {
-			c.width[1] = c.defBW() * (320 / float32(c.localcoord)) / c.localscl
+			c.width[1] = c.defBW() * (320 / c.localcoord) / c.localscl
 		}
 		if !c.sf(CSF_frontedge) {
 			c.edge[0] = 0
@@ -5758,7 +5765,7 @@ func (c *Char) cueDraw() {
 	}
 	if sys.clsnDraw && c.curFrame != nil {
 		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
-		xs, ys := c.facing*c.clsnScale[0]*(320/float32(sys.chars[c.animPN][0].localcoord)), c.clsnScale[1]*(320/float32(sys.chars[c.animPN][0].localcoord))
+		xs, ys := c.facing*c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord), c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
 		}
@@ -5779,14 +5786,14 @@ func (c *Char) cueDraw() {
 			}
 		}
 		if c.sf(CSF_playerpush) {
-			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height() * (320 / float32(c.localcoord)), c.width[0] * c.localscl, 0},
+			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height() * (320 / c.localcoord), c.width[0] * c.localscl, 0},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
 		//debug clsnText
 		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
 		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.height()*c.localscl + 240 - float32(sys.gameHeight)
 		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
-		y += -c.height()*(320/float32(c.localcoord)) + float32(sys.gameHeight-240)
+		y += -c.height()*(320/c.localcoord) + float32(sys.gameHeight-240)
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
@@ -5798,7 +5805,7 @@ func (c *Char) cueDraw() {
 	}
 	if c.anim != nil {
 		pos := [...]float32{c.drawPos[0]*c.localscl + c.offsetX()*c.localscl, c.drawPos[1]*c.localscl + c.offsetY()*c.localscl}
-		scl := [...]float32{c.facing * c.size.xscale * (320 / float32(c.localcoord)), c.size.yscale * (320 / float32(c.localcoord))}
+		scl := [...]float32{c.facing * c.size.xscale * (320 / c.localcoord), c.size.yscale * (320 / c.localcoord)}
 		agl := float32(0)
 		if c.sf(CSF_angledraw) {
 			agl = c.angle
@@ -5812,7 +5819,7 @@ func (c *Char) cueDraw() {
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScalse, false,
-				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / float32(c.localcoord)), 0, 0}
+				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / c.localcoord), 0, 0}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
 			}
@@ -6778,7 +6785,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
-				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/float32(c.localcoord))) &&
+				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/c.localcoord)) &&
 				// Z axis check
 				!(c.size.z.enable && getter.size.z.enable &&
 					((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
