@@ -14,7 +14,7 @@ type StageProps struct {
 
 func newStageProps() StageProps {
 	sp := StageProps{
-		roundpos: true,
+		roundpos: false,
 	}
 
 	return sp
@@ -129,7 +129,6 @@ type backGround struct {
 	zoomdelta          [2]float32
 	zoomscaledelta     [2]float32
 	xbottomzoomdelta   float32
-	// Position rounding
 	roundpos           bool
 }
 
