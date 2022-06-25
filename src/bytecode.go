@@ -3164,10 +3164,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.offset[1] = exp[1].evalF(c) * lclscround
 			}
 		case explod_random:
-			rndx := exp[0].evalF(c) * lclscround
+			rndx := (exp[0].evalF(c) / 2) * lclscround
 			e.offset[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
-				rndy := exp[1].evalF(c) * lclscround
+				rndy := (exp[1].evalF(c) / 2) * lclscround
 				e.offset[1] += RandF(-rndy, rndy)
 			}
 		case explod_postype:
@@ -3342,11 +3342,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					eachExpl(func(e *Explod) { e.offset[1] = y })
 				}
 			case explod_random:
-				rndx := exp[0].evalF(c) * lclscround
+				rndx := (exp[0].evalF(c) / 2) * lclscround
 				rndx = RandF(-rndx, rndx)
 				eachExpl(func(e *Explod) { e.offset[0] += rndx })
 				if len(exp) > 1 {
-					rndy := exp[1].evalF(c) * lclscround
+					rndy := (exp[1].evalF(c) / 2) * lclscround
 					rndy = RandF(-rndy, rndy)
 					eachExpl(func(e *Explod) { e.offset[1] += rndy })
 				}
@@ -3513,6 +3513,7 @@ const (
 
 func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	crun := c
+	var lclscround float32 = 1.0
 	var e *Explod
 	var i int
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
@@ -3520,6 +3521,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 			if id == gameMakeAnim_redirectid {
 				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 					crun = rid
+					lclscround = c.localscl / crun.localscl
 					e, i = crun.newExplod()
 					if e == nil {
 						return false
@@ -3538,16 +3540,16 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		}
 		switch id {
 		case gameMakeAnim_pos:
-			e.offset[0] = exp[0].evalF(c) * c.localscl / crun.localscl
+			e.offset[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * c.localscl / crun.localscl
+				e.offset[1] = exp[1].evalF(c) * lclscround
 			}
 		case gameMakeAnim_random:
-			rndx := exp[0].evalF(c)
-			e.offset[0] += RandF(-rndx, rndx) * c.localscl / crun.localscl
+			rndx := (exp[0].evalF(c) / 2) * lclscround
+			e.offset[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
-				rndy := exp[1].evalF(c)
-				e.offset[1] += RandF(-rndy, rndy) * c.localscl / crun.localscl
+				rndy := (exp[1].evalF(c) / 2) * lclscround
+				e.offset[1] += RandF(-rndy, rndy)
 			}
 		case gameMakeAnim_under:
 			e.ontop = !exp[0].evalB(c)
