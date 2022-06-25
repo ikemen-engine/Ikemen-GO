@@ -1071,9 +1071,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	p := false
 	if sys.super > 0 {
-		p = e.supermovetime >= 0 && e.time >= e.supermovetime
+		p = e.supermovetime >= 0 && e.time >= e.supermovetime+1
 	} else if sys.pause > 0 {
-		p = e.pausemovetime >= 0 && e.time >= e.pausemovetime
+		p = e.pausemovetime >= 0 && e.time >= e.pausemovetime+1
 	}
 	act := !p
 	if act && !e.ignorehitpause {
@@ -4150,7 +4150,12 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 			if i == r {
 				c.targets = append(c.targets, tid)
 			} else if t := sys.playerID(tid); t != nil {
-				t.gethitBindClear()
+				if t.isBound() {
+					if c.sf(CSF_gethit) {
+						t.selfState(5050, -1, -1, -1, false)
+					}
+					t.setBindTime(0)
+				}
 				t.ghv.dropId(c.id)
 			}
 		}
@@ -5665,6 +5670,7 @@ func (c *Char) tick() {
 			c.ss.clearWw()
 		}
 		c.hitPauseTime = 0
+		c.targetDrop(-1, false)
 		if c.hoIdx >= 0 && c.ho[c.hoIdx].forceair {
 			c.ss.stateType = ST_A
 		}
@@ -6690,7 +6696,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		gr += getter.pos[0] * getter.localscl
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
-			contact := 0
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
@@ -6729,13 +6734,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						dist <= float32(c.hitdef.guard_dist) {
 						getter.inguarddist = true
 					}
-					if c.hitdef.reversal_attr <= 0 {
-						contact = -1
-					}
 					if getter.hitCheck(c) {
-						if contact < 0 {
-							contact = 1
-						}
 						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
@@ -6756,7 +6755,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 											Btoi(c.gi().ver[0] == 1))
 									}
 								}
-								if !c.sf(CSF_gethit) {
+								if !c.sf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
+									getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
 									c.hitPauseTime = Max(1, c.hitdef.pausetime+
 										Btoi(c.gi().ver[0] == 1))
 								}
@@ -6797,8 +6797,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				cl += c.pos[0] * c.localscl
 				cr += c.pos[0] * c.localscl
-				if gl < cr && cl < gr && (contact > 0 ||
-					getter.clsnCheck(c, false, false)) {
+				if gl < cr && cl < gr &&
+					getter.clsnCheck(c, false, false) {
 					getter.pushed, c.pushed = true, true
 					tmp := getter.distX(c, getter)
 					if tmp == 0 {
