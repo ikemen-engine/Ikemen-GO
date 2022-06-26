@@ -5799,10 +5799,13 @@ func (sc fallEnvShake) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case fallEnvShake_:
-			sys.envShake = EnvShake{time: crun.ghv.fall.envshake_time,
-				freq: crun.ghv.fall.envshake_freq * math.Pi / 180,
-				ampl: crun.ghv.fall.envshake_ampl, phase: crun.ghv.fall.envshake_phase}
-			sys.envShake.setDefPhase()
+			if crun.ghv.fall.envshake_time > 0 {
+				sys.envShake = EnvShake{time: crun.ghv.fall.envshake_time,
+					freq: crun.ghv.fall.envshake_freq * math.Pi / 180,
+					ampl: crun.ghv.fall.envshake_ampl, phase: crun.ghv.fall.envshake_phase}
+				sys.envShake.setDefPhase()
+				crun.ghv.fall.envshake_time = 0
+			}
 		case fallEnvShake_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
