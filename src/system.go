@@ -2784,6 +2784,9 @@ func (l *Loader) loadChar(pn int) int {
 		p.clearCachedData()
 	} else {
 		p = newChar(pn, 0)
+		if sys.cgi[pn].sff != nil {
+			sys.cgi[pn].sff.sprites = nil
+		}
 		sys.cgi[pn].sff = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
