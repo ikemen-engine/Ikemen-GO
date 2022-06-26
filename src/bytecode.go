@@ -4309,8 +4309,14 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.anim_fflg = exp[0].evalB(c)
 		case projectile_supermovetime:
 			p.supermovetime = exp[0].evalI(c)
+			if p.supermovetime >= 0 {
+				p.supermovetime++
+			}
 		case projectile_pausemovetime:
 			p.pausemovetime = exp[0].evalI(c)
+			if p.pausemovetime >= 0 {
+				p.pausemovetime++
+			}
 		case projectile_ownpal:
 			op = exp[0].evalB(c)
 		case projectile_remappal:

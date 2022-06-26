@@ -3697,6 +3697,9 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
+	if p.misstime == 0 {
+		p.misstime = 1
+	}
 	p.removefacing = c.facing
 	p.clsnScale = c.clsnScale
 	if p.velocity[0] < 0 {
@@ -5831,20 +5834,20 @@ func (c *Char) cueDraw() {
 			}
 			return sd
 		}
-		if c.sf(CSF_invisible) {
-			if rec {
-				c.aimg.recAfterImg(sdf(), c.hitPause())
-			}
-		} else {
-			//if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
-			//	c.setSF(CSF_trans)
-			//	c.alpha = [...]int32{255, 0}
-			//}
-			sd := sdf()
-			c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause())
-			if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
-				sd.pos[0] -= c.facing
-			}
+		//if rec {
+		//	c.aimg.recAfterImg(sdf(), c.hitPause())
+		//}
+
+		//if c.gi().ver[0] != 1 && c.sf(CSF_angledraw) && !c.sf(CSF_trans) {
+		//	c.setSF(CSF_trans)
+		//	c.alpha = [...]int32{255, 0}
+		//}
+		sd := sdf()
+		c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause())
+		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
+			sd.pos[0] -= c.facing
+		}
+		if !c.sf(CSF_invisible) {
 			var sc, sa int32 = -1, 255
 			if c.sf(CSF_noshadow) {
 				sc = 0

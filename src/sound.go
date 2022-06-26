@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	audioOutLen    = 2048
-	audioFrequency = 48000
-	audioPrecision = 4
+	audioOutLen          = 2048
+	audioFrequency       = 48000
+	audioPrecision       = 4
 	audioResampleQuality = 3
 )
 
@@ -28,8 +28,8 @@ const (
 
 type Normalizer struct {
 	streamer beep.Streamer
-	mul  float64
-	l, r *NormalizerLR
+	mul      float64
+	l, r     *NormalizerLR
 }
 
 func NewNormalizer(st beep.Streamer) *Normalizer {
@@ -40,7 +40,7 @@ func NewNormalizer(st beep.Streamer) *Normalizer {
 
 func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 	s, ok = n.streamer.Stream(samples)
-	for i:= range samples[:s] {
+	for i := range samples[:s] {
 		lmul := n.l.process(n.mul, &samples[i][0])
 		rmul := n.r.process(n.mul, &samples[i][1])
 		if sys.audioDucking {
@@ -76,7 +76,7 @@ func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
 	}
 	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
 	n.average += (math.Abs(s) - n.average) / (audioFrequency * 2)
-	n.edge = float64(ClampF(float32(n.edge + n.edgeDelta), 0, 1))
+	n.edge = float64(ClampF(float32(n.edge+n.edgeDelta), 0, 1))
 	*sam = s
 	return mul
 }
@@ -90,10 +90,10 @@ type Bgm struct {
 	bgmLoopStart int
 	bgmLoopEnd   int
 	loop         int
-	streamer  beep.StreamSeekCloser
-	ctrl      *beep.Ctrl
-	volctrl   *effects.Volume
-	format    string
+	streamer     beep.StreamSeekCloser
+	ctrl         *beep.Ctrl
+	volctrl      *effects.Volume
+	format       string
 }
 
 func newBgm() *Bgm {
@@ -132,10 +132,10 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	} else if HasExtension(bgm.filename, ".wav") {
 		bgm.streamer, format, err = wav.Decode(f)
 		bgm.format = "wav"
-	// TODO: Reactivate FLAC support. Check that seeking/looping works correctly.
-	//} else if HasExtension(bgm.filename, ".flac") {
-	//	bgm.streamer, format, err = flac.Decode(f)
-	//	bgm.format = "flac"
+		// TODO: Reactivate FLAC support. Check that seeking/looping works correctly.
+		//} else if HasExtension(bgm.filename, ".flac") {
+		//	bgm.streamer, format, err = flac.Decode(f)
+		//	bgm.format = "flac"
 	} else {
 		err = Error(fmt.Sprintf("unsupported file extension: %v", bgm.filename))
 	}
@@ -188,11 +188,14 @@ func (bgm *Bgm) UpdateVolume() {
 
 type Sound struct {
 	wavData []byte
-	format beep.Format
-	length int
+	format  beep.Format
+	length  int
 }
 
 func readSound(f *os.File, size uint32) (*Sound, error) {
+	if size < 128 {
+		return nil, fmt.Errorf("wav size is too small")
+	}
 	wavData := make([]byte, size)
 	if _, err := f.Read(wavData); err != nil {
 		return nil, err
@@ -330,9 +333,9 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 
 type SoundEffect struct {
 	streamer beep.Streamer
-	volume float32
-	ls, p float32
-	x *float32
+	volume   float32
+	ls, p    float32
+	x        *float32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -362,7 +365,7 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	}
 
 	n, ok = s.streamer.Stream(samples)
-	for i:= range samples[:n] {
+	for i := range samples[:n] {
 		samples[i][0] *= float64(lv / 256)
 		samples[i][1] *= float64(rv / 256)
 	}
@@ -377,10 +380,10 @@ func (s *SoundEffect) Err() error {
 // SoundChannel
 
 type SoundChannel struct {
-	streamer  beep.StreamSeeker
-	sfx     *SoundEffect
-	ctrl    *beep.Ctrl
-	sound   *Sound
+	streamer beep.StreamSeeker
+	sfx      *SoundEffect
+	ctrl     *beep.Ctrl
+	sound    *Sound
 }
 
 func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
@@ -437,12 +440,12 @@ func newSoundChannels(size int32) *SoundChannels {
 	s.SetSize(size)
 	return s
 }
-func (s *SoundChannels) SetSize(size int32)  {
+func (s *SoundChannels) SetSize(size int32) {
 	if size > s.count() {
-		c := make([]SoundChannel, size - s.count())
+		c := make([]SoundChannel, size-s.count())
 		s.channels = append(s.channels, c...)
 	} else if size < s.count() {
-		for i := s.count()-1; i >= size; i-- {
+		for i := s.count() - 1; i >= size; i-- {
 			s.channels[i].Stop()
 		}
 		s.channels = s.channels[:size]
@@ -460,7 +463,7 @@ func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
 			}
 		}
 		if s.count() < ch+1 {
-			s.SetSize(ch+1)
+			s.SetSize(ch + 1)
 		}
 		s.channels[ch].Stop()
 		return &s.channels[ch]
