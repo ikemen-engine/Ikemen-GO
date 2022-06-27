@@ -2580,10 +2580,16 @@ end
 --creates sprite data out of table values
 local anim = ''
 local facing = ''
-function motif.f_loadSprData(t, v)
+function motif.f_loadSprData(t, v, sprdata, createlocalsprdata)
+	-- new optional arguments sprdata and createlocalsprdata
+	-- sprdata: can be specified to load a specific .sff. Useful for external modules.
+	-- createlocalsprdata: will export this function's output to a desired variable instead of inserting it back into t[data]. Useful if you want save sprite data in a variable inside of your module.
+	local localsprdata = {}
 	local animParam = v.s .. 'anim'
 	local sprParam = v.s .. 'spr'
 	local data = v.s .. 'data'
+	if sprdata == nil then sprdata = motif.files.spr_data end
+	if createlocalsprdata == nil then createlocalsprdata = false end
 	-- optional prefix argument only changes parameter name for anim/spr numbers assignment
 	if v.prefix ~= nil then
 		animParam = v.s .. v.prefix .. 'anim'
@@ -2594,15 +2600,27 @@ function motif.f_loadSprData(t, v)
 	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end
 	if t[animParam] ~= nil and t[animParam] ~= -1 and motif.anim[t[animParam]] ~= nil then --create animation data
 		if t[v.s .. 'facing'] == nil then t[v.s .. 'facing'] = 1 end
-		t[data] = main.f_animFromTable(
-			motif.anim[t[animParam]],
-			motif.files.spr_data,
-			(t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1],
-			(t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2],
-			t[v.s .. 'scale'][1],
-			t[v.s .. 'scale'][2],
-			motif.f_animFacing(t[v.s .. 'facing'])
-		)
+		if createlocalsprdata then
+			localsprdata = main.f_animFromTable(
+				motif.anim[t[animParam]],
+				sprdata, --motif.files.spr_data,
+				(t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1],
+				(t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2],
+				t[v.s .. 'scale'][1],
+				t[v.s .. 'scale'][2],
+				motif.f_animFacing(t[v.s .. 'facing'])
+			)
+		else
+			t[data] = main.f_animFromTable(
+				motif.anim[t[animParam]],
+				sprdata, --motif.files.spr_data,
+				(t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1],
+				(t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2],
+				t[v.s .. 'scale'][1],
+				t[v.s .. 'scale'][2],
+				motif.f_animFacing(t[v.s .. 'facing'])
+			)
+		end
 	elseif t[sprParam] ~= nil and #t[sprParam] > 0 then --create sprite data
 		if #t[sprParam] == 1 then --fix values
 			if type(t[sprParam][1]) == 'string' then
@@ -2612,14 +2630,32 @@ function motif.f_loadSprData(t, v)
 			end
 		end
 		if t[v.s .. 'facing'] == -1 then facing = ', H' else facing = '' end
-		t[data] = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. (t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1] .. ', ' .. (t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2] .. ', -1' .. facing)
-		animSetScale(t[data], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
-		animUpdate(t[data])
+		if createlocalsprdata then
+			localsprdata = animNew(sprdata, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. (t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1] .. ', ' .. (t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2] .. ', -1' .. facing)
+			animSetScale(localsprdata, t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
+			animUpdate(localsprdata)
+		else
+			t[data] = animNew(sprdata, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. (t[v.s .. 'offset'][1] + (v.x or 0)) / t[v.s .. 'scale'][1] .. ', ' .. (t[v.s .. 'offset'][2] + (v.y or 0)) / t[v.s .. 'scale'][2] .. ', -1' .. facing)
+			animSetScale(t[data], t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
+			animUpdate(t[data])
+		end
 	else --create dummy data
-		t[data] = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
-		animUpdate(t[data])
+		if createlocalsprdata then
+			localsprdata = animNew(sprdata, '-1,0, 0,0, -1')
+			animUpdate(localsprdata)
+		else
+			t[data] = animNew(sprdata, '-1,0, 0,0, -1')
+			animUpdate(t[data])
+		end
 	end
-	animSetWindow(t[data], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	if createlocalsprdata then
+		animSetWindow(localsprdata, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	else
+		animSetWindow(t[data], 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	end
+	if createlocalsprdata then
+		return localsprdata
+	end
 end
 
 --creates fadein/fadeout anim data

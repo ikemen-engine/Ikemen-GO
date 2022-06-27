@@ -1495,7 +1495,7 @@ const (
 
 type ParsedTrials struct {
 	trialspresent       bool
-	trialnames          []string
+	trialname           []string
 	numoftrials         int32
 	currentTrial        int32
 	currenttrialStep    int32
@@ -1503,12 +1503,14 @@ type ParsedTrials struct {
 	trialdummymode      []string
 	trialguardmode      []string
 	trialdummybuttonjam []string
-	trialsteps          [][]string
+	trialstepname       [][]string
 	trialglyphs         [][]string
 	trialstateno        [][]int32
 	trialanimno         [][]int32
 	trialisthrow        [][]bool
+	trialisnohit        [][]bool
 	trialishelper       [][]bool
+	trialiscounterhit   [][]bool
 	trialprojid         [][]int32
 	trialspecialbool    [][]bool
 	trialspecialstr     [][]string
@@ -1969,8 +1971,7 @@ func (c *Char) load(def string) error {
 						trials, _ = LoadText(file)
 						return nil
 					})
-					var triallines []string
-					triallines = SplitAndTrim(trials, "\n")
+					triallines := SplitAndTrim(trials, "\n")
 					gi.trialslist.numoftrials = 0
 					gi.trialslist.currentTrial = 1
 					gi.trialslist.currenttrialStep = 0
@@ -1986,13 +1987,15 @@ func (c *Char) load(def string) error {
 					gi.trialslist.trialguardmode = make([]string, gi.trialslist.numoftrials)
 					gi.trialslist.trialdummybuttonjam = make([]string, gi.trialslist.numoftrials)
 					gi.trialslist.trialnumsteps = make([]int32, gi.trialslist.numoftrials)
-					gi.trialslist.trialnames = make([]string, gi.trialslist.numoftrials)
-					gi.trialslist.trialsteps = make([][]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialname = make([]string, gi.trialslist.numoftrials)
+					gi.trialslist.trialstepname = make([][]string, gi.trialslist.numoftrials)
 					gi.trialslist.trialglyphs = make([][]string, gi.trialslist.numoftrials)
 					gi.trialslist.trialstateno = make([][]int32, gi.trialslist.numoftrials)
 					gi.trialslist.trialanimno = make([][]int32, gi.trialslist.numoftrials)
 					gi.trialslist.trialisthrow = make([][]bool, gi.trialslist.numoftrials)
+					gi.trialslist.trialisnohit = make([][]bool, gi.trialslist.numoftrials)
 					gi.trialslist.trialishelper = make([][]bool, gi.trialslist.numoftrials)
+					gi.trialslist.trialiscounterhit = make([][]bool, gi.trialslist.numoftrials)
 					gi.trialslist.trialprojid = make([][]int32, gi.trialslist.numoftrials)
 					gi.trialslist.trialspecialbool = make([][]bool, gi.trialslist.numoftrials)
 					gi.trialslist.trialspecialstr = make([][]string, gi.trialslist.numoftrials)
@@ -2012,9 +2015,9 @@ func (c *Char) load(def string) error {
 								gi.trialslist.trialnumsteps[ii] = int32(stepstemp)
 							}
 							if is[(currenttrial+".name")] != "" {
-								gi.trialslist.trialnames[ii] = is[(currenttrial + ".name")]
+								gi.trialslist.trialname[ii] = is[(currenttrial + ".name")]
 							} else {
-								gi.trialslist.trialnames[ii] = ("Trial " + strconv.Itoa(ii+1))
+								gi.trialslist.trialname[ii] = ("Trial " + strconv.Itoa(ii+1))
 							}
 							if is[(currenttrial+".dummymode")] != "" {
 								gi.trialslist.trialdummymode[ii] = strings.ToLower(is[(currenttrial + ".dummymode")])
@@ -2026,28 +2029,32 @@ func (c *Char) load(def string) error {
 							} else {
 								gi.trialslist.trialguardmode[ii] = "none"
 							}
-							if is[(currenttrial+".dummybutton")] != "" {
-								gi.trialslist.trialdummybuttonjam[ii] = strings.ToLower(is[(currenttrial + ".dummybutton")])
+							if is[(currenttrial+".dummybuttonjam")] != "" {
+								gi.trialslist.trialdummybuttonjam[ii] = strings.ToLower(is[(currenttrial + ".dummybuttonjam")])
 							} else {
 								gi.trialslist.trialdummybuttonjam[ii] = "none"
 							}
-							gi.trialslist.trialsteps[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialstepname[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialglyphs[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialstateno[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialanimno[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialisthrow[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialisnohit[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialishelper[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
+							gi.trialslist.trialiscounterhit[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialprojid[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialspecialbool[ii] = make([]bool, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialspecialstr[ii] = make([]string, gi.trialslist.trialnumsteps[ii])
 							gi.trialslist.trialspecialval[ii] = make([]int32, gi.trialslist.trialnumsteps[ii])
 							for k := 0; k < int(gi.trialslist.trialnumsteps[ii]); k++ {
 								currenttrialplusstep := currenttrial + "." + strconv.Itoa(k+1)
-								gi.trialslist.trialsteps[ii][k] = is[(currenttrialplusstep + ".text")]
+								gi.trialslist.trialstepname[ii][k] = is[(currenttrialplusstep + ".text")]
 								gi.trialslist.trialglyphs[ii][k] = is[(currenttrialplusstep + ".glyphs")]
 								gi.trialslist.trialanimno[ii][k] = int32(math.NaN())
 								gi.trialslist.trialisthrow[ii][k] = false
+								gi.trialslist.trialisnohit[ii][k] = false
 								gi.trialslist.trialishelper[ii][k] = false
+								gi.trialslist.trialiscounterhit[ii][k] = false
 								gi.trialslist.trialprojid[ii][k] = int32(math.NaN())
 								gi.trialslist.trialspecialbool[ii][k] = false
 								gi.trialslist.trialspecialstr[ii][k] = is[(currenttrialplusstep + ".specialstr")]
@@ -2064,19 +2071,27 @@ func (c *Char) load(def string) error {
 									gi.trialslist.trialanimno[ii][k] = int32(temp)
 								}
 								if is[(currenttrialplusstep+".isthrow")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".isthrow")], 10, 32)
-									if temp != 0 {
+									temp := strings.ToLower(is[(currenttrialplusstep + ".isthrow")])
+									if temp == "true" {
 										gi.trialslist.trialisthrow[ii][k] = true
-									} else {
-										gi.trialslist.trialisthrow[ii][k] = false
+									}
+								}
+								if is[(currenttrialplusstep+".isnohit")] != "" {
+									temp := strings.ToLower(is[(currenttrialplusstep + ".isnohit")])
+									if temp == "true" {
+										gi.trialslist.trialisnohit[ii][k] = true
+									}
+								}
+								if is[(currenttrialplusstep+".iscounterhit")] != "" {
+									temp := strings.ToLower(is[(currenttrialplusstep + ".iscounterhit")])
+									if temp == "true" {
+										gi.trialslist.trialiscounterhit[ii][k] = true
 									}
 								}
 								if is[(currenttrialplusstep+".ishelper")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".ishelper")], 10, 32)
-									if temp != 0 {
+									temp := strings.ToLower(is[(currenttrialplusstep + ".ishelper")])
+									if temp == "true" {
 										gi.trialslist.trialishelper[ii][k] = true
-									} else {
-										gi.trialslist.trialishelper[ii][k] = false
 									}
 								}
 								if is[(currenttrialplusstep+".projid")] != "" {
@@ -2084,11 +2099,9 @@ func (c *Char) load(def string) error {
 									gi.trialslist.trialprojid[ii][k] = int32(temp)
 								}
 								if is[(currenttrialplusstep+".specialbool")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialplusstep+".specialbool")], 10, 32)
-									if temp != 0 {
+									temp := strings.ToLower(is[(currenttrialplusstep + ".specialbool")])
+									if temp == "true" {
 										gi.trialslist.trialspecialbool[ii][k] = true
-									} else {
-										gi.trialslist.trialspecialbool[ii][k] = false
 									}
 								}
 								if is[(currenttrialplusstep+".specialval")] != "" {

@@ -3071,8 +3071,8 @@ func triggerFunctions(l *lua.LState) {
 		case "currenttrial":
 			l.Push(lua.LNumber(sys.cgi[0].trialslist.currentTrial))
 		case "currenttrialname":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialnames[int(numArg(l, 2))]))
-		case "currenttrialstep":
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialname[int(numArg(l, 2))]))
+		case "currenttrialstepname":
 			l.Push(lua.LNumber(sys.cgi[0].trialslist.currenttrialStep))
 		case "currenttrialdummymode":
 			l.Push(lua.LString(sys.cgi[0].trialslist.trialdummymode[int(numArg(l, 2))]))
@@ -3083,7 +3083,7 @@ func triggerFunctions(l *lua.LState) {
 		case "currenttrialnumofsteps":
 			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialnumsteps[int(numArg(l, 2))]))
 		case "currenttrialtext":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialsteps[int(numArg(l, 2))][int(numArg(l, 3))]))
+			l.Push(lua.LString(sys.cgi[0].trialslist.trialstepname[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialglyphs":
 			l.Push(lua.LString(sys.cgi[0].trialslist.trialglyphs[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialstateno":
@@ -3092,8 +3092,12 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialanimno[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialisthrow":
 			l.Push(lua.LBool(sys.cgi[0].trialslist.trialisthrow[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialisnohit":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialisnohit[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialishelper":
 			l.Push(lua.LBool(sys.cgi[0].trialslist.trialishelper[int(numArg(l, 2))][int(numArg(l, 3))]))
+		case "currenttrialiscounterhit":
+			l.Push(lua.LBool(sys.cgi[0].trialslist.trialiscounterhit[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialprojid":
 			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialprojid[int(numArg(l, 2))][int(numArg(l, 3))]))
 		case "currenttrialspecialbool":
