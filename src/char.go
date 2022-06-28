@@ -1380,7 +1380,10 @@ func (p *Projectile) clsn(playerNo int) {
 		}
 	}
 
-	for i := 0; i < playerNo && p.hits >= 0; i++ {
+	for i := 0; i < len(sys.chars) && p.hits >= 0; i++ {
+		if len(sys.chars[i]) == 0 || i == playerNo {
+			continue
+		}
 		for j, pr := range sys.projs[i] {
 			if pr.hits < 0 || pr.id < 0 || (pr.hitdef.affectteam != 0 &&
 				(p.hitdef.teamside-1 != pr.hitdef.teamside-1) != (pr.hitdef.affectteam > 0)) ||
