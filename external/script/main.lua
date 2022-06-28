@@ -1362,10 +1362,11 @@ function main.f_commandLine()
 			if main.flags['-p' .. num .. '.ai'] ~= nil then
 				ai = tonumber(main.flags['-p' .. num .. '.ai'])
 			end
+			local input = player
 			if main.flags['-p' .. num .. '.input'] ~= nil then
-				remapInput(num, tonumber(main.flags['-p' .. num .. '.input']))
+				input = tonumber(main.flags['-p' .. num .. '.input'])
 			end
-			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, override = {}})
+			table.insert(t, {character = v, player = player, num = num, pal = pal, ai = ai, input = input, override = {}})
 			if main.flags['-p' .. num .. '.life'] ~= nil then
 				t[#t].override['life'] = tonumber(main.flags['-p' .. num .. '.life'])
 			end
@@ -1462,9 +1463,7 @@ function main.f_commandLine()
 		end
 		selectChar(v.player, main.t_charDef[v.character:lower()], v.pal)
 		setCom(v.num, v.ai)
-		if v.ai == 0 and t_teamMode[v.player] == 3 then
-			remapInput(v.num, v.player)
-		end
+		remapInput(v.num, v.input)
 		overrideCharData(v.player, math.ceil(v.num / 2), v.override)
 		if start ~= nil then
 			if start.p[v.player].t_selected == nil then
