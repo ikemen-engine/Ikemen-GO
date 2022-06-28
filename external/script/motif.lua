@@ -2582,8 +2582,8 @@ local anim = ''
 local facing = ''
 function motif.f_loadSprData(t, v, sprdata, createlocalsprdata)
 	-- new optional arguments sprdata and createlocalsprdata
-	-- sprdata: can be specified to load a specific .sff. Useful for external modules.
-	-- createlocalsprdata: will export this function's output to a desired variable instead of inserting it back into t[data]. Useful if you want save sprite data in a variable inside of your module.
+	-- sprdata: can be specified to load a specific .sff. Useful for external modules. If unspecified, it will just load the .sff called out in motif.files.spr_data
+	-- createlocalsprdata: bool, will export this function's output to a desired variable instead of inserting it back into t[data]. Useful if you want save sprite data in a variable inside of your module.
 	local localsprdata = {}
 	local animParam = v.s .. 'anim'
 	local sprParam = v.s .. 'spr'
