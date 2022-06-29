@@ -40,16 +40,17 @@ function main() {
 			varMacOS
 			build
 		;;
+		[lL][iI][nN][uU][xX][aA][rR][mM])
+			varLinuxARM
+			build
+		;;
 		[lL][iI][nN][uU][xX])
 			varLinux
 			build
 		;;
 	esac
 
-	if [[ "${binName}" != "Default" ]]; then
-		# Mark file as executable.
-		chmod +x ./bin/$binName
-	else
+	if [[ "${binName}" == "Default" ]]; then
 		echo "Invalid target architecture \"${targetOS}\".";
 		exit 1
 	fi
@@ -95,6 +96,11 @@ function varLinux() {
 	#export CC=gcc
 	#export CXX=g++
 	binName="Ikemen_GO_Linux"
+}
+function varLinuxARM() {
+	export GOOS=linux
+	export GOARCH=arm64
+	binName="Ikemen_GO_LinuxARM"
 }
 
 # Build functions.
