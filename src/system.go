@@ -417,13 +417,13 @@ func (w *Window) toggleFullscreen() {
 
 	if w.fullscreen {
 		w.SetAttrib(glfw.Decorated, 1)
-		w.SetMonitor(nil, w.x, w.y, w.w, w.h, mode.RefreshRate)
+		w.SetMonitor(&glfw.Monitor{}, w.x, w.y, w.w, w.h, mode.RefreshRate)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	} else {
 		w.SetAttrib(glfw.Decorated, 0)
 		if sys.borderless {
 			w.SetSize(mode.Width, mode.Height)
-			w.SetMonitor(nil, 0, 0, mode.Width, mode.Height, mode.RefreshRate)
+			w.SetMonitor(&glfw.Monitor{}, 0, 0, mode.Width, mode.Height, mode.RefreshRate)
 		} else {
 			w.x, w.y = w.GetPos()
 			w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, mode.RefreshRate)
