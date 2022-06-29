@@ -12,20 +12,22 @@ varying vec2 texcoord;
 void main(void) {
 	vec2 uv = texcoord;
 	if (isTrapez) {
-		// ここから台形用のテクスチャ座標計算/ Compute texture coordinates for trapezoid from here
-		float left = -mix(x1x2x4x3[2], x1x2x4x3[0], uv[1]);
-		float right = mix(x1x2x4x3[3], x1x2x4x3[1], uv[1]);
-		uv[0] = (left + gl_FragCoord.x) / (left + right); // ここまで / To this point
+		// Compute left/right trapezoid bounds at height uv.y
+		vec2 bounds = mix(x1x2x4x3.zw, x1x2x4x3.xy, uv.y);
+		// Correct uv.x from the fragment position on that segment
+		uv.x = (gl_FragCoord.x - bounds[0]) / (bounds[1] - bounds[0]);
 	}
 	vec4 c = texture2D(tex, uv);
 	vec3 neg_base = vec3(1.0);
 	vec3 final_add = add;
 	vec4 final_mul = vec4(mul, alpha);
 	if (isRgba) {
+		// RGBA sprites use premultiplied alpha for transparency
 		neg_base *= alpha;
 		final_add *= c.a;
 		final_mul.rgb *= alpha;
 	} else {
+		// Colormap sprites use the old “buggy” Mugen way
 		if (int(255.25*c.r) == mask) {
 			c.a = 0.0;
 		} else {
