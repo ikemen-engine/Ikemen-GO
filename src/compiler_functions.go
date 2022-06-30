@@ -3443,6 +3443,9 @@ func (c *Compiler) forceFeedback(is IniSection, sc *StateControllerBase, _ int8)
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
+			if data[0] == '"' {
+				data = data[1 : len(data)-1]
+			}
 			var wf int32
 			switch strings.ToLower(data) {
 			case "sine":

@@ -500,14 +500,14 @@ func (a *Animation) UpdateSprite() {
 		nextDrawidx = a.loopstart
 	}
 	for _, i := range a.interpolate_offset {
-		if nextDrawidx == i {
+		if nextDrawidx == i && (a.frames[a.drawidx].Time >= 0) {
 			a.interpolate_offset_x = float32(a.frames[nextDrawidx].X-a.frames[a.drawidx].X) / float32(a.curFrame().Time) * float32(a.time)
 			a.interpolate_offset_y = float32(a.frames[nextDrawidx].Y-a.frames[a.drawidx].Y) / float32(a.curFrame().Time) * float32(a.time)
 			break
 		}
 	}
 	for _, i := range a.interpolate_scale {
-		if nextDrawidx == i {
+		if nextDrawidx == i && (a.frames[a.drawidx].Time >= 0) {
 			var drawframe_scale_x, nextframe_scale_x, drawframe_scale_y, nextframe_scale_y float32 = 1, 1, 1, 1
 			if len(a.frames[a.drawidx].Ex) > 2 {
 				if len(a.frames[a.drawidx].Ex[2]) > 0 {
@@ -533,7 +533,7 @@ func (a *Animation) UpdateSprite() {
 	a.scale_x *= a.start_scale[0]
 	a.scale_y *= a.start_scale[1]
 	for _, i := range a.interpolate_angle {
-		if nextDrawidx == i {
+		if nextDrawidx == i && (a.frames[a.drawidx].Time >= 0) {
 			var drawframe_angle, nextframe_angle float32 = 0, 0
 			if len(a.frames[a.drawidx].Ex) > 2 {
 				if len(a.frames[a.drawidx].Ex[2]) > 2 {
@@ -552,7 +552,7 @@ func (a *Animation) UpdateSprite() {
 	if byte(a.interpolate_blend_srcalpha) != 1 ||
 		byte(a.interpolate_blend_dstalpha) != 255 {
 		for _, i := range a.interpolate_blend {
-			if nextDrawidx == i {
+			if nextDrawidx == i && (a.frames[a.drawidx].Time >= 0) {
 				a.interpolate_blend_srcalpha += (float32(a.frames[nextDrawidx].SrcAlpha) - a.interpolate_blend_srcalpha) / float32(a.curFrame().Time) * float32(a.time)
 				a.interpolate_blend_dstalpha += (float32(a.frames[nextDrawidx].DstAlpha) - a.interpolate_blend_dstalpha) / float32(a.curFrame().Time) * float32(a.time)
 				if byte(a.interpolate_blend_srcalpha) == 1 && byte(a.interpolate_blend_dstalpha) == 255 {
@@ -716,12 +716,12 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	}
 	rp := RenderParams{
 		a.spr.Tex, paltex, a.spr.Size,
-		x*sys.widthScale,
-		y*sys.heightScale, a.tile, xs*sys.widthScale, xcs*xbs*h*sys.widthScale,
-		ys*sys.heightScale, 1, xcs*rxadd*sys.widthScale/sys.heightScale, rot,
-		trans, int32(a.mask), pfx, window, rcx, rcy, projectionMode, fLength*sys.heightScale,
-		xs*posLocalscl*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*a.start_scale[0]*(1/a.scale_x)*sys.widthScale,
-		ys*posLocalscl*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*a.start_scale[1]*(1/a.scale_y)*sys.heightScale,
+		x * sys.widthScale,
+		y * sys.heightScale, a.tile, xs * sys.widthScale, xcs * xbs * h * sys.widthScale,
+		ys * sys.heightScale, 1, xcs * rxadd * sys.widthScale / sys.heightScale, rot,
+		trans, int32(a.mask), pfx, window, rcx, rcy, projectionMode, fLength * sys.heightScale,
+		xs * posLocalscl * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * a.start_scale[0] * (1 / a.scale_x) * sys.widthScale,
+		ys * posLocalscl * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * a.start_scale[1] * (1 / a.scale_y) * sys.heightScale,
 	}
 	RenderSprite(rp)
 }
@@ -737,14 +737,14 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 
 	rp := RenderParams{
 		a.spr.Tex, nil, a.spr.Size,
-		AbsF(xscl*h)*float32(a.spr.Offset[0])*sys.widthScale,
-		AbsF(yscl*v)*float32(a.spr.Offset[1])*sys.heightScale, a.tile,
-		xscl*h*sys.widthScale, xscl*h*sys.widthScale,
-		yscl*v*sys.heightScale, vscl, 0, rot, 0, int32(a.mask), nil, &sys.scrrect,
-		(x+float32(sys.gameWidth)/2)*sys.widthScale, y*sys.heightScale,
+		AbsF(xscl*h) * float32(a.spr.Offset[0]) * sys.widthScale,
+		AbsF(yscl*v) * float32(a.spr.Offset[1]) * sys.heightScale, a.tile,
+		xscl * h * sys.widthScale, xscl * h * sys.widthScale,
+		yscl * v * sys.heightScale, vscl, 0, rot, 0, int32(a.mask), nil, &sys.scrrect,
+		(x + float32(sys.gameWidth)/2) * sys.widthScale, y * sys.heightScale,
 		projectionMode, fLength,
-		xscl*posLocalscl*h*(float32(a.frames[a.drawidx].X)+a.interpolate_offset_x)*(1/a.scale_x),
-		yscl*posLocalscl*vscl*v*(float32(a.frames[a.drawidx].Y)+a.interpolate_offset_y)*(1/a.scale_y),
+		xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x),
+		yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_y),
 	}
 
 	var draw func()

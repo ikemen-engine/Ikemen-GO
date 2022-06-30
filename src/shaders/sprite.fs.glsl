@@ -29,7 +29,7 @@ void main(void) {
 	} else {
 		// Colormap sprites use the old “buggy” Mugen way
 		if (int(255.25*c.r) == mask) {
-			c.a = 0.0;
+			final_mul = vec4(0.0);
 		} else {
 			c = texture2D(pal, vec2(c.r*0.9966, 0.5));
 		}

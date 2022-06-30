@@ -257,6 +257,9 @@ func readBackGround(is IniSection, link *backGround,
 		if bg.typ == 2 {
 			bg.anim.tile.y = 0
 		}
+		if bg.anim.tile.x < 0 {
+			bg.anim.tile.x = math.MaxInt32
+		}
 	}
 	if bg.typ == 2 {
 		if !is.readI32ForStage("width", &bg.width[0], &bg.width[1]) {
@@ -413,7 +416,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	rect[1] = int32(math.Floor(float64(startrect1)))
 	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
-	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0] + rect[2] > 0 && rect[1] + rect[3] > 0 {
+	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
 		bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
 			xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
 			Rotation{}, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1, false, 1, 0, 0)
