@@ -3779,7 +3779,7 @@ func cnsStringArray(arg string) ([]string, error) {
 
 // Compile a state file
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
-	filename, def string, negoverride bool) error {
+	filename, def string, negoverride bool, constants map[string]float32) error {
 	var str string
 	zss := HasExtension(filename, ".zss")
 	fnz := filename
@@ -3793,7 +3793,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				return err
 			}
 			str = string(b)
-			return c.stateCompileZ(states, fnz, str)
+			return c.stateCompileZ(states, fnz, str, constants)
 		}
 
 		// Try reading as an st file
@@ -3810,7 +3810,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			str = string(b)
 			return nil
 		}); err == nil {
-			return c.stateCompileZ(states, fnz, str)
+			return c.stateCompileZ(states, fnz, str, constants)
 		}
 		return err
 	}
@@ -3833,7 +3833,12 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			continue
 		}
 
-		c.stateNo = Atoi(line[10:])
+		// Parse state number
+		line = line[10:]
+		var err error
+		if c.stateNo, err = c.scanStateDef(&line, constants); err != nil {
+			return errmes(err)
+		}
 
 		// Skip if this state has already been added
 		if existInThisFile[c.stateNo] {
@@ -4281,6 +4286,28 @@ func (c *Compiler) scanI32(line *string) (int32, error) {
 	v, err := strconv.ParseInt(t, 10, 32)
 	return int32(v), err
 }
+func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int32, error) {
+	t := c.scan(line)
+	if t == "" {
+		return 0, c.yokisinaiToken()
+	}
+	if t == "const" {
+		c.scan(line)
+		k := c.scan(line)
+		c.scan(line)
+		var err error
+		v, ok := constants[k]
+		if !ok {
+			err = Error(fmt.Sprintf("StateDef constant not found: %v", k))
+		}
+		return int32(v), err
+	}
+	if t == "-" && len(*line) > 0 && (*line)[0] >= '0' && (*line)[0] <= '9' {
+		t += c.scan(line)
+	}
+	v, err := strconv.ParseInt(t, 10, 32)
+	return int32(v), err
+}
 func (c *Compiler) subBlock(line *string, root bool,
 	sbc *StateBytecode, numVars *int32) (*StateBlock, error) {
 	bl := newStateBlock()
@@ -4638,7 +4665,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.yokisinaiToken()
 }
 func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
-	filename, src string) error {
+	filename, src string, constants map[string]float32) error {
 	defer func(oime bool) {
 		sys.ignoreMostErrors = oime
 	}(sys.ignoreMostErrors)
@@ -4706,7 +4733,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 			return errmes(c.yokisinaiToken())
 		case "statedef":
 			var err error
-			if c.stateNo, err = c.scanI32(&line); err != nil {
+			if c.stateNo, err = c.scanStateDef(&line, constants); err != nil {
 				return errmes(err)
 			}
 			c.scan(&line)
@@ -4807,8 +4834,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 }
 
 // Compile a character definition file
-func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
-	error) {
+func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
 
@@ -4984,26 +5010,26 @@ func (c *Compiler) Compile(pn int, def string) (map[int32]StateBytecode,
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, def, sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0); err != nil {
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
 	}
 	// Compile states in command file
 	if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
-		sys.cgi[pn].ikemenver[1] == 0); err != nil {
+		sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 		return nil, err
 	}
 	// Compile states in common state file
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, def, sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0); err != nil {
+			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
 	// Compile common states from config
 	for _, s := range sys.commonStates {
-		if err := c.stateCompile(states, s, def, false); err != nil {
+		if err := c.stateCompile(states, s, def, false, constants); err != nil {
 			return nil, err
 		}
 	}

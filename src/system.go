@@ -2804,15 +2804,15 @@ func (l *Loader) loadChar(pn int) int {
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {
-		if sys.cgi[pn].states, l.err =
-			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
-			return -1
-		}
 		if l.err = p.load(cdef); l.err != nil {
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new char: %v", cdef)
+			return -1
+		}
+		if sys.cgi[pn].states, l.err =
+			newCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
+			sys.chars[pn] = nil
+			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
 			return -1
 		}
 		tstr = fmt.Sprintf("New char loaded: %v", cdef)
@@ -2872,15 +2872,15 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	sys.chars[pn] = make([]*Char, 1)
 	sys.chars[pn][0] = p
 	if sys.cgi[pn].sff == nil {
-		if sys.cgi[pn].states, l.err =
-			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
-			return -1
-		}
 		if l.err = p.load(cdef); l.err != nil {
 			sys.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
+			return -1
+		}
+		if sys.cgi[pn].states, l.err =
+			newCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
+			sys.chars[pn] = nil
+			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
 			return -1
 		}
 		tstr = fmt.Sprintf("New attachedchar loaded: %v", cdef)

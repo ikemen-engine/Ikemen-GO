@@ -57,7 +57,7 @@ playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 #===============================================================================
 # StateDizzyBirdsHelper [helper]
 #===============================================================================
-[StateDef 5310; type: A; physics: N; anim: -2; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateDizzyBirdsHelper); type: A; physics: N; anim: -2; velSet: 0, 0; ctrl: 0;]
 
 if parent,stateNo = const(StateDizzy) {
 	var(0) := -1; # in dizzy state
@@ -109,7 +109,7 @@ ignoreHitPause if var(0) > 0 {
 #===============================================================================
 # StateDizzyFallDown_standCrouch
 #===============================================================================
-[StateDef 5301; type: U; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateDizzyFallDown_standCrouch); type: U; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
 	dizzySet{value: 1}
@@ -142,7 +142,7 @@ if anim = const(AnimLieDownHit_stayDown) && (animTime = 0 || time > 36) {
 #===============================================================================
 # StateDizzyFallDown_air
 #===============================================================================
-[StateDef 5302; type: A; moveType: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
+[StateDef const(StateDizzyFallDown_air); type: A; moveType: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
 
 if !dizzy {
 	call fDizzyBirdHelper();
@@ -203,7 +203,7 @@ if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall)+9]
 #===============================================================================
 # StateDizzyLyingDown
 #===============================================================================
-[StateDef 5303; type: L; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateDizzyLyingDown); type: L; moveType: H; physics: N; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
 	call fDizzyBirdHelper();
@@ -235,7 +235,7 @@ notHitBy{value: SCA; time: 1}
 #===============================================================================
 # StateDizzy
 #===============================================================================
-[StateDef 5300; type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateDizzy); type: S; moveType: I; physics: S; anim: const(AnimDizzy); moveHitPersist: 1; velSet: 0, 0; ctrl: 0;]
 
 if !dizzy {
 	selfState{value: const(StateStand); ctrl: 1}

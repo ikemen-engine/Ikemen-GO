@@ -80,7 +80,7 @@ explod{
 #===============================================================================
 # StateTagEnteringScreen
 #===============================================================================
-[StateDef 5600;
+[StateDef const(StateTagEnteringScreen); 
 	type: S; moveType: H; physics: N;
 	anim: const(AnimTagEnteringScreen);
 	sprPriority: 2; ctrl: 0;
@@ -120,7 +120,7 @@ if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist
 #===============================================================================
 # StateTagLeavingScreen
 #===============================================================================
-[StateDef 5610;
+[StateDef const(StateTagLeavingScreen);
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
 	velSet: 0, 0; faceP2: 1;
@@ -143,7 +143,7 @@ mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 #===============================================================================
 # StateTagWaitingOutside
 #===============================================================================
-[StateDef 5611;
+[StateDef const(StateTagWaitingOutside);
 	type: A; moveType: I; physics: N;
 	anim: const(AnimStanding);
 	velSet: 0, 0; ctrl: 0;
@@ -163,7 +163,7 @@ posSet{
 #===============================================================================
 # StateTagJumpingIn
 #===============================================================================
-[StateDef 5620;
+[StateDef const(StateTagJumpingIn);
 	type: A; moveType: I; physics: N;
 	anim: const(AnimTagJumpingIn);
 	sprPriority: 2; ctrl: 0;
@@ -215,7 +215,7 @@ if time = 0 {
 #===============================================================================
 # StateTagLanding
 #===============================================================================
-[StateDef 5621;
+[StateDef const(StateTagLanding);
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLanding);
 	sprPriority: 2; ctrl: 0;

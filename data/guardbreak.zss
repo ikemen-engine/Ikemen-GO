@@ -2,7 +2,7 @@
 #===============================================================================
 # StateGuardBreakHit
 #===============================================================================
-[StateDef 5400; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakHit); type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
 if !guardBreak {
 	guardBreakSet{value: 1}
@@ -74,7 +74,7 @@ if (time > 13 && animTime = 0) || time > 36 {
 #===============================================================================
 # StateGuardBreakRecover
 #===============================================================================
-[StateDef 5401; type: U; physics: U; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakRecover); type: U; physics: U; velSet: 0, 0; ctrl: 0;]
 
 if stateType = A {
 	velAdd{y: const(movement.yaccel)}
