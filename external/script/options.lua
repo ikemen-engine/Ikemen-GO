@@ -194,6 +194,7 @@ options.t_itemname = {
 			config.VolumeMaster = 80
 			config.VolumeSfx = 80
 			config.VRetrace = 1
+			--config.WavChannels = 32
 			--config.WindowCentered = true
 			--config.WindowIcon = {"external/icons/IkemenCylia.png"}
 			--config.WindowTitle = "Ikemen GO"

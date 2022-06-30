@@ -266,6 +266,7 @@ type configSettings struct {
 	VolumeMaster               int
 	VolumeSfx                  int
 	VRetrace                   int
+	WavChannels                int32
 	WindowCentered             bool
 	WindowIcon                 []string
 	WindowTitle                string
@@ -311,26 +312,15 @@ func setupConfig() configSettings {
 	default:
 		tmp.AudioSampleRate = 44100
 	}
-	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
-		tmp.Framerate = 60
-	}
-	if tmp.MaxBgmVolume < 100 || tmp.MaxBgmVolume > 250 {
-		tmp.MaxBgmVolume = 100
-	}
-	if tmp.NumSimul[1] > MaxSimul {
-		tmp.NumSimul[1] = MaxSimul
-	}
-	if tmp.NumTag[1] > MaxSimul {
-		tmp.NumTag[1] = MaxSimul
-	}
-	if tmp.Players > MaxSimul*2 {
-		tmp.Players = MaxSimul * 2
-	}
-	if tmp.PanningRange > 100 {
-		tmp.PanningRange = 100
-	} else if tmp.PanningRange < 0 {
-		tmp.PanningRange = 0
-	}
+	tmp.Framerate = Clamp(tmp.Framerate, 1, 840)
+	tmp.MaxBgmVolume = int(Clamp(int32(tmp.MaxBgmVolume), 100, 250))
+	tmp.NumSimul[0] = int(Clamp(int32(tmp.NumSimul[0]), 2, int32(MaxSimul)))
+	tmp.NumSimul[1] = int(Clamp(int32(tmp.NumSimul[1]), int32(tmp.NumSimul[0]), int32(MaxSimul)))
+	tmp.NumTag[0] = int(Clamp(int32(tmp.NumTag[0]), 2, int32(MaxSimul)))
+	tmp.NumTag[1] = int(Clamp(int32(tmp.NumTag[1]), int32(tmp.NumTag[0]), int32(MaxSimul)))
+	tmp.PanningRange = ClampF(tmp.PanningRange, 0, 100)
+	tmp.Players = int(Clamp(int32(tmp.Players), 1, int32(MaxSimul)*2))
+	tmp.WavChannels = Clamp(tmp.WavChannels, 1, 256)
 	// Save config file
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
@@ -399,6 +389,7 @@ func setupConfig() configSettings {
 	sys.stereoEffects = tmp.StereoEffects
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
+	sys.wavChannels = tmp.WavChannels
 	sys.wavVolume = tmp.VolumeSfx
 	sys.windowCentered = tmp.WindowCentered
 	sys.windowMainIconLocation = tmp.WindowIcon

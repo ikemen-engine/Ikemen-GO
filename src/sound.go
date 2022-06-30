@@ -455,7 +455,7 @@ func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
 func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
-	ch = Min(255, ch)
+	ch = Min(sys.wavChannels-1, ch)
 	if ch >= 0 {
 		if lowpriority {
 			if s.count() > ch && s.channels[ch].IsPlaying() {
@@ -468,10 +468,10 @@ func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
 		s.channels[ch].Stop()
 		return &s.channels[ch]
 	}
-	if s.count() < 256 {
-		s.SetSize(256)
+	if s.count() < sys.wavChannels {
+		s.SetSize(sys.wavChannels)
 	}
-	for i := 255; i >= 0; i-- {
+	for i := sys.wavChannels - 1; i >= 0; i-- {
 		if !s.channels[i].IsPlaying() {
 			return &s.channels[i]
 		}

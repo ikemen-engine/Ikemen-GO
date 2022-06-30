@@ -112,6 +112,7 @@
     "VolumeMaster": 80,
     "VolumeSfx": 80,
     "VRetrace": 1,
+    "WavChannels": 32,
     "WindowCentered": true,
     "WindowIcon": [
         "external/icons/IkemenCylia_256.png",

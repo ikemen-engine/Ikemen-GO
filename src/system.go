@@ -73,6 +73,7 @@ var sys = System{
 	workpal:               make([]uint32, 256),
 	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
 	keyInput:              glfw.KeyUnknown,
+	wavChannels:           256,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
 	//FLAC_FrameWait:          -1,
@@ -266,6 +267,7 @@ type System struct {
 	keyString               string
 	timerCount              []int32
 	cmdFlags                map[string]string
+	wavChannels             int32
 	masterVolume            int
 	wavVolume               int
 	bgmVolume               int
