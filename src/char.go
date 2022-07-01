@@ -5396,7 +5396,7 @@ func (c *Char) action() {
 				c.curFrame = nil
 			}
 		}
-		if c.palfx != nil {
+		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
 		}
 		if c.ghv.damage != 0 {
