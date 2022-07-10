@@ -4008,8 +4008,14 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	case hitDef_ground_hittime:
 		hd.ground_hittime = exp[0].evalI(c)
 		hd.guard_hittime = hd.ground_hittime
+		hd.guard_slidetime = hd.ground_hittime
+		hd.guard_ctrltime = hd.ground_hittime
+		hd.airguard_ctrltime = hd.ground_hittime
 	case hitDef_guard_hittime:
 		hd.guard_hittime = exp[0].evalI(c)
+		hd.guard_slidetime = hd.guard_hittime
+		hd.guard_ctrltime = hd.guard_hittime
+		hd.airguard_ctrltime = hd.guard_hittime
 	case hitDef_guard_dist:
 		hd.guard_dist = exp[0].evalI(c)
 	case hitDef_pausetime:
@@ -4036,9 +4042,6 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		}
 	case hitDef_ground_slidetime:
 		hd.ground_slidetime = exp[0].evalI(c)
-		hd.guard_slidetime = hd.ground_slidetime
-		hd.guard_ctrltime = hd.ground_slidetime
-		hd.airguard_ctrltime = hd.ground_slidetime
 	case hitDef_guard_slidetime:
 		hd.guard_slidetime = exp[0].evalI(c)
 		hd.guard_ctrltime = hd.guard_slidetime
