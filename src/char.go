@@ -56,6 +56,7 @@ const (
 	CSF_postroundinput
 	CSF_nodizzypointsdamage
 	CSF_noguardpointsdamage
+	CSF_noredlifedamage
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -77,7 +78,7 @@ const (
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
 		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypointsdamage |
-		CSF_noguardpointsdamage
+		CSF_noguardpointsdamage | CSF_noredlifedamage
 )
 
 type GlobalSpecialFlag uint32
@@ -3795,18 +3796,18 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.dizzypoints,
-			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(c.gi().constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.redlife,
-			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.hitdamage)))
 	} else {
 		ifierrset(&hd.dizzypoints,
-			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.redlife,
-			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)*c.attackMul))
+			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)))
 	}
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
@@ -4041,7 +4042,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool)
 			t.lifeAdd(-dmg, true, true)
 			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
-				t.dizzyPointsAdd(int32(dmg * float64(c.gi().constants["default.lifetodizzypointsmul"])))
+				t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
 			}
 		}
 	}
@@ -4053,27 +4054,24 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 		}
 	}
 }
-func (c *Char) targetDizzyPointsAdd(tar []int32, add int32) {
+func (c *Char) targetDizzyPointsAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil {
-			t.dizzyPointsAdd(add)
+		if t := sys.playerID(tid); t != nil && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
+			t.dizzyPointsAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, false)), true)
 		}
 	}
 }
-func (c *Char) targetGuardPointsAdd(tar []int32, add int32) {
+func (c *Char) targetGuardPointsAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil {
-			t.guardPointsAdd(add)
+		if t := sys.playerID(tid); t != nil && !c.sf(CSF_noguardpointsdamage) {
+			t.guardPointsAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, false)), true)
 		}
 	}
 }
-func (c *Char) targetRedLifeAdd(tar []int32, add float64, absolute bool) {
+func (c *Char) targetRedLifeAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
-		if t := sys.playerID(tid); t != nil {
-			if !absolute {
-				add /= c.finalDefense
-			}
-			t.redLifeAdd(math.Ceil(add), true)
+		if t := sys.playerID(tid); t != nil && !c.sf(CSF_noredlifedamage) {
+			t.redLifeAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, true)), true)
 		}
 	}
 }
@@ -4180,13 +4178,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	}
 	damage = math.Ceil(damage)
 	if bounds {
-		min, max := float64(c.life-c.lifeMax), float64(Max(0, c.life-Btoi(!kill)))
-		if damage < min {
-			damage = min
-		}
-		if damage > max {
-			damage = max
-		}
+		damage = float64(Clamp(int32(damage), c.life-c.lifeMax, Max(0, c.life-Btoi(!kill))))
 	}
 	return int32(damage)
 }
@@ -4195,15 +4187,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		if !absolute {
 			add /= c.finalDefense
 		}
-		add = math.Floor(add)
-		max := float64(c.lifeMax - c.life)
-		if add > max {
-			add = max
-		}
-		min := float64(Btoi(!kill && c.life > 0) - c.life)
-		if add < min {
-			add = min
-		}
+		add = float64(Clamp(int32(add), Btoi(!kill && c.life > 0)-c.life, c.lifeMax-c.life))
 		if add < 0 {
 			c.comboDmg -= int32(add)
 			c.fakeComboDmg -= int32(add)
@@ -4269,16 +4253,26 @@ func (c *Char) powerSet(pow int32) {
 		sys.chars[c.playerNo][0].setPower(pow)
 	}
 }
-func (c *Char) dizzyPointsAdd(add int32) {
-	c.dizzyPointsSet(c.dizzyPoints + add)
+func (c *Char) dizzyPointsAdd(add float64, absolute bool) {
+	if add != 0 && c.roundState() != 3 {
+		if !absolute {
+			add /= c.finalDefense
+		}
+		c.dizzyPointsSet(c.dizzyPoints + int32(add))
+	}
 }
 func (c *Char) dizzyPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.stunbar {
 		c.dizzyPoints = Clamp(set, 0, c.dizzyPointsMax)
 	}
 }
-func (c *Char) guardPointsAdd(add int32) {
-	c.guardPointsSet(c.guardPoints + add)
+func (c *Char) guardPointsAdd(add float64, absolute bool) {
+	if add != 0 && c.roundState() != 3 {
+		if !absolute {
+			add /= c.finalDefense
+		}
+		c.guardPointsSet(c.guardPoints + int32(add))
+	}
 }
 func (c *Char) guardPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.guardbar {
@@ -5409,6 +5403,18 @@ func (c *Char) action() {
 		c.ghv.guarddamage = 0
 		c.ghv.hitpower = 0
 		c.ghv.guardpower = 0
+		if c.ghv.dizzypoints != 0 {
+			if c.ss.moveType == MT_H && !c.inGuardState() {
+				c.dizzyPointsAdd(float64(c.ghv.dizzypoints), true)
+			}
+			c.ghv.dizzypoints = 0
+		}
+		if c.ghv.guardpoints != 0 {
+			if c.ss.moveType == MT_H && c.inGuardState() {
+				c.guardPointsAdd(float64(c.ghv.guardpoints), true)
+			}
+			c.ghv.guardpoints = 0
+		}
 		if c.ghv.redlife != 0 {
 			if c.ss.moveType == MT_H && !c.inGuardState() {
 				c.redLifeAdd(float64(c.ghv.redlife), true)
@@ -5553,8 +5559,6 @@ func (c *Char) update(cvmin, cvmax,
 				c.receivedHits = 0
 				c.comboDmg = 0
 				c.ghv.attr = 0
-				c.ghv.dizzypoints = 0
-				c.ghv.guardpoints = 0
 				c.ghv.id = 0
 				c.ghv.playerNo = -1
 				c.ghv.score = 0
@@ -6116,9 +6120,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.id = hd.attackerID
-				ghv.dizzypoints = hd.dizzypoints
-				ghv.guardpoints = hd.guardpoints
-				ghv.redlife = hd.redlife
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -6282,6 +6283,18 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				float64(guarddamage)*float64(hits), true, false, attackMul, c, false)
 			getter.ghv.hitpower += hd.hitgivepower
 			getter.ghv.guardpower += hd.guardgivepower
+			if !c.sf(CSF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
+				getter.ghv.dizzypoints += getter.computeDamage(
+					float64(hd.dizzypoints)*float64(hits), false, false, attackMul, c, false)
+			}
+			if !c.sf(CSF_noguardpointsdamage) {
+				getter.ghv.guardpoints += getter.computeDamage(
+					float64(hd.guardpoints)*float64(hits), false, false, attackMul, c, false)
+			}
+			if !c.sf(CSF_noredlifedamage) {
+				getter.ghv.redlife += getter.computeDamage(
+					float64(hd.redlife)*float64(hits), false, false, attackMul, c, true)
+			}
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {
 					getter.ghv.fatal = true
@@ -6385,9 +6398,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
-					if !c.sf(CSF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
-						getter.dizzyPointsAdd(hd.dizzypoints)
-					}
 				}
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
@@ -6434,9 +6444,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
-					if !c.sf(CSF_noguardpointsdamage) {
-						getter.guardPointsAdd(hd.guardpoints)
-					}
 				}
 			}
 		}

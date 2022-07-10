@@ -125,6 +125,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nodizzypointsdamage)))
 			case "noguardpointsdamage":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noguardpointsdamage)))
+			case "noredlifedamage":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noredlifedamage)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
 			case "roundnotover":
@@ -3596,7 +3598,15 @@ func (c *Compiler) dizzyPointsAdd(is IniSection, sc *StateControllerBase, _ int8
 			dizzyPointsAdd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		return c.paramValue(is, sc, "value", dizzyPointsAdd_value, VT_Int, 1, true)
+		if err := c.paramValue(is, sc, "absolute",
+			dizzyPointsAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			dizzyPointsAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
 	})
 	return *ret, err
 }
@@ -3636,7 +3646,15 @@ func (c *Compiler) guardPointsAdd(is IniSection, sc *StateControllerBase, _ int8
 			guardPointsAdd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		return c.paramValue(is, sc, "value", guardPointsAdd_value, VT_Int, 1, true)
+		if err := c.paramValue(is, sc, "absolute",
+			guardPointsAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "value",
+			guardPointsAdd_value, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
 	})
 	return *ret, err
 }
@@ -4233,6 +4251,10 @@ func (c *Compiler) targetDizzyPointsAdd(is IniSection, sc *StateControllerBase, 
 			targetDizzyPointsAdd_id, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "absolute",
+			targetDizzyPointsAdd_absolute, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			targetDizzyPointsAdd_value, VT_Int, 1, true); err != nil {
 			return err
@@ -4249,6 +4271,10 @@ func (c *Compiler) targetGuardPointsAdd(is IniSection, sc *StateControllerBase, 
 		}
 		if err := c.paramValue(is, sc, "id",
 			targetGuardPointsAdd_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "absolute",
+			targetGuardPointsAdd_absolute, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",

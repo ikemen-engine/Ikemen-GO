@@ -3704,6 +3704,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nodizzypointsdamage)))
 		case "noguardpointsdamage":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguardpointsdamage)))
+		case "noredlifedamage":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noredlifedamage)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))

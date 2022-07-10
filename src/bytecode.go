@@ -6537,16 +6537,20 @@ func (sc dialogue) Run(c *Char, _ []int32) bool {
 type dizzyPointsAdd StateControllerBase
 
 const (
-	dizzyPointsAdd_value byte = iota
+	dizzyPointsAdd_absolute byte = iota
+	dizzyPointsAdd_value
 	dizzyPointsAdd_redirectid
 )
 
 func (sc dizzyPointsAdd) Run(c *Char, _ []int32) bool {
+	a := false
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
+		case dizzyPointsAdd_absolute:
+			a = exp[0].evalB(c)
 		case dizzyPointsAdd_value:
-			crun.dizzyPointsAdd(exp[0].evalI(c))
+			crun.dizzyPointsAdd(float64(exp[0].evalI(c)), a)
 		case dizzyPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6637,16 +6641,20 @@ func (sc guardBreakSet) Run(c *Char, _ []int32) bool {
 type guardPointsAdd StateControllerBase
 
 const (
-	guardPointsAdd_value byte = iota
+	guardPointsAdd_absolute byte = iota
+	guardPointsAdd_value
 	guardPointsAdd_redirectid
 )
 
 func (sc guardPointsAdd) Run(c *Char, _ []int32) bool {
+	a := false
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
+		case guardPointsAdd_absolute:
+			a = exp[0].evalB(c)
 		case guardPointsAdd_value:
-			crun.guardPointsAdd(exp[0].evalI(c))
+			crun.guardPointsAdd(float64(exp[0].evalI(c)), a)
 		case guardPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7374,13 +7382,14 @@ type targetDizzyPointsAdd StateControllerBase
 
 const (
 	targetDizzyPointsAdd_id byte = iota
+	targetDizzyPointsAdd_absolute
 	targetDizzyPointsAdd_value
 	targetDizzyPointsAdd_redirectid
 )
 
 func (sc targetDizzyPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
-	tar := crun.getTarget(-1)
+	tar, a := crun.getTarget(-1), false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case targetDizzyPointsAdd_id:
@@ -7388,11 +7397,13 @@ func (sc targetDizzyPointsAdd) Run(c *Char, _ []int32) bool {
 				return false
 			}
 			tar = crun.getTarget(exp[0].evalI(c))
+		case targetDizzyPointsAdd_absolute:
+			a = exp[0].evalB(c)
 		case targetDizzyPointsAdd_value:
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetDizzyPointsAdd(tar, exp[0].evalI(c))
+			crun.targetDizzyPointsAdd(tar, exp[0].evalI(c), a)
 		case targetDizzyPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7413,13 +7424,14 @@ type targetGuardPointsAdd StateControllerBase
 
 const (
 	targetGuardPointsAdd_id byte = iota
+	targetGuardPointsAdd_absolute
 	targetGuardPointsAdd_value
 	targetGuardPointsAdd_redirectid
 )
 
 func (sc targetGuardPointsAdd) Run(c *Char, _ []int32) bool {
 	crun := c
-	tar := crun.getTarget(-1)
+	tar, a := crun.getTarget(-1), false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case targetGuardPointsAdd_id:
@@ -7427,11 +7439,13 @@ func (sc targetGuardPointsAdd) Run(c *Char, _ []int32) bool {
 				return false
 			}
 			tar = crun.getTarget(exp[0].evalI(c))
+		case targetGuardPointsAdd_absolute:
+			a = exp[0].evalB(c)
 		case targetGuardPointsAdd_value:
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetGuardPointsAdd(tar, exp[0].evalI(c))
+			crun.targetGuardPointsAdd(tar, exp[0].evalI(c), a)
 		case targetGuardPointsAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7473,7 +7487,7 @@ func (sc targetRedLifeAdd) Run(c *Char, _ []int32) bool {
 			if len(tar) == 0 {
 				return false
 			}
-			crun.targetRedLifeAdd(tar, float64(exp[0].evalI(c)), a)
+			crun.targetRedLifeAdd(tar, exp[0].evalI(c), a)
 		case targetRedLifeAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
