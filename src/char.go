@@ -4035,12 +4035,14 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 		}
 	}
 }
-func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy bool) {
+func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redlife bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			t.lifeAdd(-dmg, true, true)
-			t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+			if redlife {
+				t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+			}
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
 				t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
 			}
@@ -4057,21 +4059,21 @@ func (c *Char) targetPowerAdd(tar []int32, power int32) {
 func (c *Char) targetDizzyPointsAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
-			t.dizzyPointsAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, false)), true)
+			t.dizzyPointsAdd(float64(t.computeDamage(float64(add), false, absolute, 1, c, false)), true)
 		}
 	}
 }
 func (c *Char) targetGuardPointsAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil && !c.sf(CSF_noguardpointsdamage) {
-			t.guardPointsAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, false)), true)
+			t.guardPointsAdd(float64(t.computeDamage(float64(add), false, absolute, 1, c, false)), true)
 		}
 	}
 }
 func (c *Char) targetRedLifeAdd(tar []int32, add int32, absolute bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil && !c.sf(CSF_noredlifedamage) {
-			t.redLifeAdd(float64(t.computeDamage(-float64(add), false, absolute, 1, c, true)), true)
+			t.redLifeAdd(float64(t.computeDamage(float64(add), false, absolute, 1, c, true)), true)
 		}
 	}
 }

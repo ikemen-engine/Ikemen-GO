@@ -2323,6 +2323,10 @@ func (c *Compiler) targetLifeAdd(is IniSection, sc *StateControllerBase, _ int8)
 			targetLifeAdd_dizzy, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "redlife",
+			targetLifeAdd_redlife, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "value",
 			targetLifeAdd_value, VT_Int, 1, true); err != nil {
 			return err
