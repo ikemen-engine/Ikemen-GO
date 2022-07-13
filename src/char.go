@@ -3788,12 +3788,10 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifierrset(&hd.hitgetpower,
 		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
-	ifierrset(&hd.guardgetpower,
-		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)*0.5))
+	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
 	ifierrset(&hd.hitgivepower,
 		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
-	ifierrset(&hd.guardgivepower,
-		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)*0.5))
+	ifierrset(&hd.guardgivepower, int32(float32(hd.hitgivepower)*0.5))
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
