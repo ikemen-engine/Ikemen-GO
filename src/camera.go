@@ -45,6 +45,7 @@ type Camera struct {
 	zoff                        float32
 	screenZoff                  float32
 	halfWidth                   float32
+	CameraZoomYBound            float32
 }
 
 func newCamera() *Camera {
@@ -52,8 +53,8 @@ func newCamera() *Camera {
 }
 func (c *Camera) Init() {
 	c.ZoomEnable = c.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
-	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6
-	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6
+	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
+	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
@@ -107,9 +108,11 @@ func (c *Camera) YBound(scl, y float32) float32 {
 		return 0
 	} else {
 		tmp := MaxF(0, 240-c.screenZoff)
-		return MaxF(0, c.boundH) + MinF(0, tmp*(1/scl-1),
-			MaxF(c.boundH-240+MaxF(float32(sys.gameHeight)/scl,
+		c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
+		Bound := MaxF(0, c.boundH-c.CameraZoomYBound) + MinF(0, tmp*(1/scl-1),
+			MaxF(c.boundH-c.CameraZoomYBound-240+MaxF(float32(sys.gameHeight)/scl,
 				tmp+c.screenZoff/scl), y+240*(1-MinF(1, scl))))
+		return Bound + c.CameraZoomYBound
 	}
 }
 func (c *Camera) BaseScale() float32 {

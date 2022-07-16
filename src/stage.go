@@ -389,7 +389,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
-	y := bg.start[1] - (pos[1]/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
+	y := bg.start[1] - ((pos[1]-sys.cam.CameraZoomYBound*(1-bg.zoomdelta[1]))/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
@@ -938,10 +938,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
 		if s.stageCamera.cutlow == math.MinInt32 {
 			//if omitted, the engine attempts to guess a reasonable set of values
-			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1]-s.stageCamera.zoffset) / s.localscl
+			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1]-s.stageCamera.zoffset)/s.localscl -
+				float32(boundlow)*s.localscl
 		} else {
 			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
-			s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
+			if s.stageCamera.cutlow < boundlow || boundlow <= 0 {
+				s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
+			} else {
+				s.stageCamera.drawOffsetY -= float32(boundlow) * s.localscl
+			}
 		}
 	}
 	s.mainstage = main
@@ -1103,10 +1108,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
 	scl2, boundlow := s.localscl*scl, float32(Max(0, s.stageCamera.boundhigh))
-	if pos[1] > boundlow {
-		yofs += (pos[1] - boundlow) * scl2
-		pos[1] = boundlow
-	} else if pos[1] < float32(s.stageCamera.boundhigh) {
+	if pos[1] <= boundlow && pos[1] < float32(s.stageCamera.boundhigh) {
 		yofs += (pos[1] - float32(s.stageCamera.boundhigh)) * scl2
 		pos[1] = float32(s.stageCamera.boundhigh)
 	}
@@ -1127,10 +1129,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 				yofs = 0
 			}
 		} else {
-			if -yofs < pos[1]*scl2 {
-				yofs += pos[1] * scl2
-				pos[1] = 0
-			} else {
+			if -yofs >= pos[1]*scl2 {
 				pos[1] += yofs / scl2
 				yofs = 0
 			}
@@ -1141,14 +1140,15 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	yofs += (s.stageCamera.drawOffsetY +
-		float32(s.stageCamera.localcoord[1]-240)*s.localscl) *
-		Pow(scl, ((360*float32(s.stageCamera.localcoord[0])+
-			160*float32(s.stageCamera.localcoord[1]))/float32(s.stageCamera.localcoord[0])+
-			s.stageCamera.drawOffsetY)/480)
+	yofs3 := (s.stageCamera.drawOffsetY +
+		float32(s.stageCamera.localcoord[1]-240)*s.localscl)
+	yofs4 := ((360*float32(s.stageCamera.localcoord[0]) +
+		160*float32(s.stageCamera.localcoord[1])) /
+		float32(s.stageCamera.localcoord[0])) / 480
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
+			b.draw(pos, scl, bgscl, s.localscl, s.scale,
+				yofs+yofs3*Pow(Pow(scl, b.zoomdelta[1]), yofs4)-s.stageCamera.drawOffsetY*(1-b.delta[1]*bgscl), true)
 		}
 	}
 }
