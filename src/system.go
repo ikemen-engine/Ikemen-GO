@@ -1474,9 +1474,9 @@ func (s *System) draw(x, y, scl float32) {
 	s.brightnessOld = s.brightness
 	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
 	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
-	fade := func(rect [4]int32, color uint32, alpha int32) {
-		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
-	}
+	//fade := func(rect [4]int32, color uint32, alpha int32) {
+	//	FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
+	//}
 	if s.envcol_time == 0 {
 		c := uint32(0)
 		if s.sf(GSF_nobg) {
@@ -1507,39 +1507,39 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.shadows.draw(x, y, scl*s.cam.BaseScale())
 		}
-		off := s.envShake.getOffset()
-		yofs, yofs2 := float32(s.gameHeight), float32(0)
-		if scl > 1 && s.cam.verticalfollow > 0 {
-			yofs = s.cam.screenZoff + float32(s.gameHeight-240)
-			yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
-		}
-		yofs *= 1/scl - 1
-		rect := s.scrrect
-		if off < (yofs-y+s.cam.boundH)*scl {
-			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
-				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
-			fade(rect, 0, 255)
-		}
-		if off > (-y+yofs2)*scl {
-			rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
-				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
-			rect[1] = s.scrrect[3] - rect[3]
-			fade(rect, 0, 255)
-		}
-		bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
-		xofs := float32(s.gameWidth) * (1/scl - 1) / 2
-		rect = s.scrrect
-		if x-xofs < bl {
-			rect[2] = (int32(math.Ceil(float64((bl-(x-xofs))*scl*
-				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
-			fade(rect, 0, 255)
-		}
-		if x+xofs > br {
-			rect[2] = (int32(math.Ceil(float64(((x+xofs)-br)*scl*
-				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
-			rect[0] = s.scrrect[2] - rect[2]
-			fade(rect, 0, 255)
-		}
+		//off := s.envShake.getOffset()
+		//yofs, yofs2 := float32(s.gameHeight), float32(0)
+		//if scl > 1 && s.cam.verticalfollow > 0 {
+		//	yofs = s.cam.screenZoff + float32(s.gameHeight-240)
+		//	yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
+		//}
+		//yofs *= 1/scl - 1
+		//rect := s.scrrect
+		//if off < (yofs-y+s.cam.boundH)*scl {
+		//	rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
+		//		float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+		//	fade(rect, 0, 255)
+		//}
+		//if off > (-y+yofs2)*scl {
+		//	rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
+		//		float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+		//	rect[1] = s.scrrect[3] - rect[3]
+		//	fade(rect, 0, 255)
+		//}
+		//bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
+		//xofs := float32(s.gameWidth) * (1/scl - 1) / 2
+		//rect = s.scrrect
+		//if x-xofs < bl {
+		//	rect[2] = (int32(math.Ceil(float64((bl-(x-xofs))*scl*
+		//		float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+		//	fade(rect, 0, 255)
+		//}
+		//if x+xofs > br {
+		//	rect[2] = (int32(math.Ceil(float64(((x+xofs)-br)*scl*
+		//		float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+		//	rect[0] = s.scrrect[2] - rect[2]
+		//	fade(rect, 0, 255)
+		//}
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
