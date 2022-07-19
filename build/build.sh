@@ -135,7 +135,7 @@ function checkOS() {
 		;;
 		*)
 			if [[ "$1" == "" ]]; then
-				echo "Unknow system \"${OSTYPE}\".";
+				echo "Unknown system \"${OSTYPE}\".";
 				exit 1
 			fi
 		;;
