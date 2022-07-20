@@ -1200,7 +1200,7 @@ function main.f_extractText(txt, var1, var2, var3, var4)
 	--store each line in different row
 	t = {}
 	str = str:gsub('\n', '\\n')
-	for i, c in ipairs(main.f_strsplit('\\n', str)) do --split string using "\n" delimiter
+	for i, c in ipairs(main.f_strsplit('%c?\\n', str)) do --split string using "\n" delimiter
 		t[i] = c
 	end
 	if #t == 0 then
@@ -2990,6 +2990,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.versusScreen = true
+		main.victoryScreen = true
 		main.txt_mainSelect:update({text = motif.select_info.title_watch_text})
 		setGameMode('watch')
 		hook.run("main.t_itemname")
