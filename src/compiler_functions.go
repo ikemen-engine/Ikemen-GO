@@ -4101,7 +4101,7 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			return err
 		}
 		if err := c.paramValue(is, sc, "time",
-			modifyBGCtrl_value, VT_Int, 3, false); err != nil {
+			modifyBGCtrl_time, VT_Int, 3, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",
