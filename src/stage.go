@@ -770,13 +770,13 @@ func loadStage(def string, main bool) (*Stage, error) {
 	} else if s.hires {
 		s.scale[1] *= 2
 	}
-	var boundlow int32
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
 		//sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
 		sec[0].ReadI32("boundleft", &s.stageCamera.boundleft)
 		sec[0].ReadI32("boundright", &s.stageCamera.boundright)
 		sec[0].ReadI32("boundhigh", &s.stageCamera.boundhigh)
+		sec[0].ReadI32("boundlow", &s.stageCamera.boundlow)
 		sec[0].ReadF32("verticalfollow", &s.stageCamera.verticalfollow)
 		sec[0].ReadI32("tension", &s.stageCamera.tension)
 		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) //TODO: not implemented
@@ -800,7 +800,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		if sec[0].ReadI32("tensionhigh", &tmp) {
 			s.stageCamera.floortension = int32(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0]))) - tmp
 		}
-		sec[0].ReadI32("boundlow", &boundlow)
 	}
 	if sec := defmap["music"]; len(sec) > 0 {
 		s.bgmusic = sec[0]["bgmusic"]
@@ -933,20 +932,19 @@ func loadStage(def string, main bool) (*Stage, error) {
 			MinF(float32(s.stageCamera.localcoord[1])*s.localscl*0.5*
 				(ratio1/ratio2-1), float32(Max(0, s.stageCamera.overdrawlow)))
 	}
-	s.stageCamera.drawOffsetY += float32(boundlow) * s.localscl
+	//s.stageCamera.drawOffsetY += float32(boundlow) * s.localscl
 	//TODO: test if it works reasonably close to mugen
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
 		if s.stageCamera.cutlow == math.MinInt32 {
 			//if omitted, the engine attempts to guess a reasonable set of values
-			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1]-s.stageCamera.zoffset)/s.localscl -
-				float32(boundlow)*s.localscl
+			s.stageCamera.drawOffsetY -= float32(s.stageCamera.localcoord[1]-s.stageCamera.zoffset) / s.localscl //- float32(s.stageCamera.boundlow)*s.localscl
 		} else {
 			//number of pixels into the bottom of the screen that may be cut from drawing when the screen aspect is shorter than the stage aspect
-			if s.stageCamera.cutlow < boundlow || boundlow <= 0 {
+			if s.stageCamera.cutlow < s.stageCamera.boundlow || s.stageCamera.boundlow <= 0 {
 				s.stageCamera.drawOffsetY -= float32(s.stageCamera.cutlow) * s.localscl
-			} else {
-				s.stageCamera.drawOffsetY -= float32(boundlow) * s.localscl
-			}
+			} // else {
+			//	s.stageCamera.drawOffsetY -= float32(s.stageCamera.boundlow) * s.localscl
+			//}
 		}
 	}
 	s.mainstage = main
@@ -1107,8 +1105,8 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		bgscl = 0.5
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
-	scl2, boundlow := s.localscl*scl, float32(Max(0, s.stageCamera.boundhigh))
-	if pos[1] <= boundlow && pos[1] < float32(s.stageCamera.boundhigh) {
+	scl2 := s.localscl * scl
+	if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh) {
 		yofs += (pos[1] - float32(s.stageCamera.boundhigh)) * scl2
 		pos[1] = float32(s.stageCamera.boundhigh)
 	}
