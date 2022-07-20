@@ -5620,7 +5620,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-		*lowest = MinF(0, MaxF(c.drawPos[1]*c.localscl, *lowest))
+		*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
 	}
 }
 func (c *Char) tick() {
