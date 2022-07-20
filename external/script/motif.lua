@@ -2432,7 +2432,7 @@ motif.training_info = main.f_tableMerge(motif.training_info, motif.menu_info)
 if t.menu_info == nil then t.menu_info = {} end
 if t.training_info == nil then t.training_info = {} end
 for k, v in pairs(t.menu_info) do
-	if not k:match('_itemname_') then
+	if t.training_info[k] == nil and not k:match('_itemname_') then
 		t.training_info[k] = v
 	end
 end
