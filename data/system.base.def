@@ -571,6 +571,9 @@
 	; Set to 1 to mark slot as dummy cell, without bloating select.def
 	;cell.<col>.<row>.skip = 1
 
+	; ticks between blinks when p2.cursor.blink = 1
+	p2.cursor.switchtime = 3
+
 	; cursor parameters defaults to p1 and p2 values, if not specified
 	;p<pn>.cursor.startcell = 0, 0
 	;p<pn>.cursor.active.anim = -1

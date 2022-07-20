@@ -292,6 +292,7 @@ local motif =
 		p2_cursor_done_facing = 1,
 		p2_cursor_done_scale = {1.0, 1.0},
 		p2_cursor_blink = 1,
+		p2_cursor_switchtime = 3, --Ikemen feature
 		p2_cursor_move_snd = {100, 0},
 		p2_cursor_done_snd = {100, 1},
 		p2_random_move_snd = {100, 0},

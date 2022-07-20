@@ -1942,6 +1942,7 @@ function start.f_selectScreen()
 	timerSelect = 0
 	local escFlag = false
 	local t_teamMenu = {{}, {}}
+	local blinkCount = 0
 	local counter = 0 - motif.select_info.fadein_time
 	-- generate team mode items table
 	for side = 1, 2 do
@@ -2063,6 +2064,11 @@ function start.f_selectScreen()
 			end
 		end
 		--team and select menu
+		if blinkCount < motif.select_info.p2_cursor_switchtime then
+			blinkCount = blinkCount + 1
+		else
+			blinkCount = 0
+		end
 		for side = 1, 2 do
 			if not start.p[side].teamEnd then
 				start.f_teamMenu(side, t_teamMenu[side])
@@ -2076,7 +2082,22 @@ function start.f_selectScreen()
 					--member selection
 					v.selectState = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
 					--draw active cursor
-					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 then
+					if side == 2 and motif.select_info.p2_cursor_blink == 1 then
+						local sameCell = false
+						for _, v2 in ipairs(start.p[1].t_selCmd) do							
+							if start.c[v.player].cell == start.c[v2.player].cell and v.selectState == 0 and v2.selectState == 0 then
+								if blinkCount == 0 then
+									start.c[v.player].blink = not start.c[v.player].blink
+								end
+								sameCell = true
+								break
+							end
+						end
+						if not sameCell then
+							start.c[v.player].blink = false
+						end
+					end
+					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
 						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, '_cursor_active')
 					end
 				end
@@ -2679,7 +2700,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 			if main.coop and (side == 1 or gamemode('versuscoop')) then --remaining members are controlled by different players
 				selectState = 4
-			else --next member controlled by this player should become selectable
+			elseif not start.p[side].selEnd then --next member controlled by this player should become selectable
 				selectState = 0
 			end
 		end
