@@ -221,7 +221,7 @@
 	connecting.join.text = "Now connecting to %s... (%s)"
 	;connecting.overlay.window = 0, 0, localcoordX, localcoordY
 	connecting.overlay.col = 0, 0, 0
-	connecting.overlay.alpha = 20, 100
+	connecting.overlay.alpha = 0, 128
 
 	; Controls screen rendered during adding new serverjoin IP address
 	textinput.offset = 25, 32
@@ -231,7 +231,7 @@
 	textinput.address.text = "Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button."
 	;textinput.overlay.window = 0, 0, localcoordX, localcoordY
 	textinput.overlay.col = 0, 0, 0
-	textinput.overlay.alpha = 20, 100
+	textinput.overlay.alpha = 0, 128
 
 	; Keys responsible for menu movement
 	menu.next.key = "$D&$F"
@@ -269,7 +269,7 @@
 	; values assigned to menu.pos and menu.boxcursor.coords parameters.
 	menu.boxbg.visible = 0
 	menu.boxbg.col = 0, 0, 0
-	menu.boxbg.alpha = 20, 100
+	menu.boxbg.alpha = 0, 128
 
 	; This art is rendered only if there are more menu itemanames to display
 	; than allowed by menu.window.visibleitems. Meant to be used as a visual
@@ -337,7 +337,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 [Infobox Text]
 "Welcome to SUEHIRO's I.K.E.M.E.N GO engine!
@@ -1111,7 +1111,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	p1.state = 5500, 5300
 	p1.yes.state = 5510, 180
@@ -1264,7 +1264,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	p1.state = 
 	p2.state = 
@@ -1299,7 +1299,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	p1.state = 180
 	p2.state = 
@@ -1344,7 +1344,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	p1.state = 175, 170
 	p1.win.state = 180
@@ -1379,7 +1379,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	p1.state = 175, 170
 	p1.win.state = 180
@@ -1478,7 +1478,7 @@
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
-	menu.boxbg.alpha = 20, 100
+	menu.boxbg.alpha = 0, 128
 
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
@@ -1560,7 +1560,7 @@
 	textinput.resheight.text = "Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel."
 	;textinput.overlay.window = 0, 0, localcoordX, localcoordY
 	textinput.overlay.col = 0, 0, 0
-	textinput.overlay.alpha = 20, 100
+	textinput.overlay.alpha = 0, 128
 
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
@@ -1734,7 +1734,7 @@
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
-	menu.boxbg.alpha = 20, 100
+	menu.boxbg.alpha = 0, 128
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
@@ -1813,7 +1813,7 @@
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
-	menu.boxbg.alpha = 20, 100
+	menu.boxbg.alpha = 0, 128
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
@@ -1828,7 +1828,7 @@
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
@@ -1854,7 +1854,7 @@
 	movelist.window.visibleitems = 18
 	;movelist.overlay.window = 0, 0, localcoordX, localcoordY
 	movelist.overlay.col = 0, 0, 0
-	movelist.overlay.alpha = 20, 100
+	movelist.overlay.alpha = 0, 128
 	movelist.arrow.up.anim = -1
 	movelist.arrow.up.spr = 
 	movelist.arrow.up.offset = 0, 0
@@ -2034,7 +2034,7 @@
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
 	menu.boxbg.visible = 0
 	menu.boxbg.col = 0, 0, 0
-	menu.boxbg.alpha = 20, 100
+	menu.boxbg.alpha = 0, 128
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
@@ -2253,7 +2253,7 @@
 	window.visibleitems = 10
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 	move.snd = 100, 0
 	done.snd = 100, 1
 	cancel.snd = 100, 2
@@ -2278,6 +2278,6 @@
 	text.shaders.text = "No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from \'./external/shaders' directory."
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
-	overlay.alpha = 20, 100
+	overlay.alpha = 0, 128
 	done.snd = 100, 0
 	cancel.snd = 100, 2
