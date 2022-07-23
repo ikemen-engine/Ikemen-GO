@@ -770,6 +770,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 	} else if s.hires {
 		s.scale[1] *= 2
 	}
+	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
+	s.stageCamera.localscl = s.localscl
+
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
 		//sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
@@ -779,7 +782,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("boundlow", &s.stageCamera.boundlow)
 		sec[0].ReadF32("verticalfollow", &s.stageCamera.verticalfollow)
 		sec[0].ReadI32("tension", &s.stageCamera.tension)
-		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) //TODO: not implemented
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
@@ -797,8 +799,12 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
 		var tmp int32
-		if sec[0].ReadI32("tensionhigh", &tmp) {
-			s.stageCamera.floortension = int32(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0]))) - tmp
+		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) //TODO: not implemented
+		if s.stageCamera.tensionlow != math.MinInt32 {
+			if sec[0].ReadI32("tensionhigh", &tmp) {
+				s.stageCamera.floortension = int32((240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0])) - float32(tmp)) * s.localscl)
+				s.stageCamera.verticalfollow = 1
+			}
 		}
 	}
 	if sec := defmap["music"]; len(sec) > 0 {
@@ -900,8 +906,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.bgc = append(s.bgc, *bgc)
 		}
 	}
-	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
-	s.stageCamera.localscl = s.localscl
 	if math.IsNaN(float64(s.leftbound)) {
 		s.leftbound = 1000
 	} else {
@@ -932,7 +936,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			MinF(float32(s.stageCamera.localcoord[1])*s.localscl*0.5*
 				(ratio1/ratio2-1), float32(Max(0, s.stageCamera.overdrawlow)))
 	}
-	//s.stageCamera.drawOffsetY += float32(boundlow) * s.localscl
+	//s.stageCamera.drawOffsetY += float32(s.stageCamera.boundlow) * s.localscl
 	//TODO: test if it works reasonably close to mugen
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
 		if s.stageCamera.cutlow == math.MinInt32 {
