@@ -1605,7 +1605,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "redlife",
-		hitDef_redlife, VT_Int, 1, false); err != nil {
+		hitDef_redlife, VT_Int, 2, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "score",
