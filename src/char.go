@@ -575,7 +575,8 @@ type HitDef struct {
 	attackerID                 int32
 	dizzypoints                int32
 	guardpoints                int32
-	redlife                    int32
+	hitredlife                 int32
+	guardredlife               int32
 	score                      [2]float32
 }
 
@@ -631,7 +632,8 @@ func (hd *HitDef) clear() {
 		playerNo:       -1,
 		dizzypoints:    IErr,
 		guardpoints:    IErr,
-		redlife:        IErr,
+		hitredlife:     IErr,
+		guardredlife:   IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
 	}
 	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
@@ -686,6 +688,8 @@ type GetHitVar struct {
 	guarddamage    int32
 	hitpower       int32
 	guardpower     int32
+	hitredlife     int32
+	guardredlife   int32
 	fatal          bool
 }
 
@@ -3797,15 +3801,19 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
 			int32(c.gi().constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)))
-		ifierrset(&hd.redlife,
+		ifierrset(&hd.hitredlife,
 			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.guardredlife,
+			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
 	} else {
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
 			int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
-		ifierrset(&hd.redlife,
+		ifierrset(&hd.hitredlife,
 			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.guardredlife,
+			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.guarddamage)))
 	}
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
@@ -5416,7 +5424,7 @@ func (c *Char) action() {
 			c.ghv.guardpoints = 0
 		}
 		if c.ghv.redlife != 0 {
-			if c.ss.moveType == MT_H && !c.inGuardState() {
+			if c.ss.moveType == MT_H {
 				c.redLifeAdd(float64(c.ghv.redlife), true)
 			}
 			c.ghv.redlife = 0
@@ -6089,6 +6097,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.setBindTime(0)
 			}
 			var absdamage, hitdamage, guarddamage int32
+			var absredlife int32
 			if ghvset {
 				ghv := &getter.ghv
 				cmb := (getter.ss.moveType == MT_H || getter.sf(CSF_gethit)) &&
@@ -6120,6 +6129,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.id = hd.attackerID
+				//ghv.redlife = hd.hitredlife
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -6141,6 +6151,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 					}
 					absdamage = hd.guarddamage
+					absredlife = hd.guardredlife
 					ghv.hitcount = hc
 				} else {
 					ghv.hitshaketime = Max(0, hd.shaketime)
@@ -6184,6 +6195,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime = 0
 					}
 					absdamage = hd.hitdamage
+					absredlife = hd.hitredlife
 					if cmb {
 						ghv.hitcount = hc + 1
 					} else {
@@ -6257,8 +6269,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			} else if hitType == 1 {
 				absdamage = hd.hitdamage
+				absredlife = hd.hitredlife
 			} else {
 				absdamage = hd.guarddamage
+				absredlife = hd.guardredlife
 			}
 			if sys.super > 0 {
 				getter.superMovetime =
@@ -6293,7 +6307,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			if !c.sf(CSF_noredlifedamage) {
 				getter.ghv.redlife += getter.computeDamage(
-					float64(hd.redlife)*float64(hits), false, false, attackMul, c, true)
+					float64(absredlife)*float64(hits), false, false, attackMul, c, true)
+				getter.ghv.hitredlife += getter.computeDamage(
+					float64(hd.hitredlife)*float64(hits), false, false, attackMul, c, true)
+				getter.ghv.guardredlife += getter.computeDamage(
+					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, true)
 			}
 			if ghvset && getter.ghv.damage >= getter.life {
 				if kill || !live {

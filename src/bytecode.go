@@ -4086,7 +4086,10 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	case hitDef_guardpoints:
 		hd.guardpoints = Max(IErr+1, exp[0].evalI(c))
 	case hitDef_redlife:
-		hd.redlife = Max(IErr+1, exp[0].evalI(c))
+		hd.hitredlife = Max(IErr+1, exp[0].evalI(c))
+		if len(exp) > 1 {
+			hd.guardredlife = exp[1].evalI(c)
+		}
 	case hitDef_score:
 		hd.score[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
