@@ -28,7 +28,7 @@ type stageCamera struct {
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
-		cuthigh: math.MinInt32, cutlow: math.MinInt32,
+		cuthigh: math.MinInt32, cutlow: math.MinInt32, tensionlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1}
 }
@@ -62,9 +62,9 @@ func (c *Camera) Init() {
 	c.boundH = MinF(0, float32(c.boundhigh)*c.localscl+
 		float32(sys.gameHeight)-c.drawOffsetY-
 		float32(sys.gameWidth)*float32(c.localcoord[1])/float32(c.localcoord[0]))
+
 	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-
-		float32(sys.gameHeight)-c.drawOffsetY+
-		float32(sys.gameWidth)*float32(c.localcoord[1])/float32(c.localcoord[0]))
+		float32(sys.gameHeight)-c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
 	}
@@ -115,9 +115,9 @@ func (c *Camera) YBound(scl, y float32) float32 {
 	} else {
 		tmp := MaxF(0, 240-c.screenZoff)
 		c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
-		bound := ClampF(y+240*(1-MinF(1, scl)),
+		bound := ClampF(y,
 			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
-			c.boundLo-c.CameraZoomYBound)
+			c.boundLo)
 		return bound + c.CameraZoomYBound
 	}
 }
@@ -175,9 +175,11 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		if highest < -ftension {
 			*y = (highest + ftension) * Pow(c.verticalfollow,
 				MinF(1, 1/Pow(c.Scale, 4)))
-		} else {
-			*y = (lowest + ftension) * Pow(c.verticalfollow,
+		} else if lowest > 0 {
+			*y = (lowest) * Pow(c.verticalfollow,
 				MinF(1, 1/Pow(c.Scale, 4)))
+		} else {
+			*y = 0
 		}
 	}
 	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
