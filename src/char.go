@@ -5965,6 +5965,12 @@ func (cl *CharList) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
+	// Find lowest character available and set it as initial highest
+	for _, c := range ro {
+		if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
+			*highest = MaxF(c.drawPos[1]*c.localscl, *highest)
+		}
+	}
 	for _, c := range ro {
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}

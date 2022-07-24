@@ -10,7 +10,7 @@ type stageCamera struct {
 	boundlow       int32
 	verticalfollow float32
 	tension        int32
-	tensionlow     int32 //TODO: not implemented
+	tensionlow     int32
 	floortension   int32
 	overdrawhigh   int32 //TODO: not implemented
 	overdrawlow    int32
@@ -59,12 +59,8 @@ func (c *Camera) Init() {
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
-	c.boundH = MinF(0, float32(c.boundhigh)*c.localscl+
-		float32(sys.gameHeight)-c.drawOffsetY-
-		float32(sys.gameWidth)*float32(c.localcoord[1])/float32(c.localcoord[0]))
-
-	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-
-		float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-float32(sys.gameHeight)-c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
 	}
@@ -75,14 +71,11 @@ func (c *Camera) Init() {
 		c.boundR)
 	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
 	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, MaxF(xminscl, yminscl)))
-	c.screenZoff = float32(c.zoffset)*c.localscl -
-		c.drawOffsetY + 240 - float32(sys.gameWidth)*
-		float32(c.localcoord[1])/float32(c.localcoord[0])
+	c.screenZoff = float32(c.zoffset-c.localcoord[1])*c.localscl + 240 - c.drawOffsetY
 }
 func (c *Camera) Update(scl, x, y float32) {
 	c.Scale = c.BaseScale() * scl
-	c.zoff = scl*(c.screenZoff+float32(sys.gameHeight)-240) +
-		(1-scl)*float32(sys.gameHeight)
+	c.zoff = (c.screenZoff-240)*scl + float32(sys.gameHeight)
 	for i := 0; i < 2; i++ {
 		c.Offset[i] = sys.stage.bga.offset[i] * sys.stage.localscl *
 			sys.stage.scale[i] * scl
@@ -164,23 +157,21 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	*x += vx
-	if lowest >= highest {
-		ftension := float32(c.floortension) * c.localscl
+	ftension := float32(c.floortension) * c.localscl
+	if ftension < 0 {
+		ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
 		if ftension < 0 {
-			ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
-			if ftension < 0 {
-				ftension = 0
-			}
+			ftension = 0
 		}
-		if highest < -ftension {
-			*y = (highest + ftension) * Pow(c.verticalfollow,
-				MinF(1, 1/Pow(c.Scale, 4)))
-		} else if lowest > 0 {
-			*y = (lowest) * Pow(c.verticalfollow,
-				MinF(1, 1/Pow(c.Scale, 4)))
-		} else {
-			*y = 0
-		}
+	}
+	if highest < -ftension {
+		*y = (highest + ftension) * Pow(c.verticalfollow,
+			MinF(1, 1/Pow(c.Scale, 4)))
+	} else if lowest > 0 {
+		*y = lowest * Pow(c.verticalfollow,
+			MinF(1, 1/Pow(c.Scale, 4)))
+	} else {
+		*y = 0
 	}
 	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
 		float32(sys.gameWidth-320)

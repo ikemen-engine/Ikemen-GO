@@ -799,7 +799,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
 		var tmp int32
-		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) //TODO: not implemented
+		sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow)
 		if s.stageCamera.tensionlow != math.MinInt32 {
 			if sec[0].ReadI32("tensionhigh", &tmp) {
 				s.stageCamera.floortension = int32((240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0])) - float32(tmp)) * s.localscl)
