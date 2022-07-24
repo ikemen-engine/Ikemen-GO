@@ -5460,7 +5460,7 @@ func (c *Char) action() {
 	}
 }
 func (c *Char) update(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+	leftest, rightest, highest *float32) {
 	if c.scf(SCF_disabled) {
 		return
 	}
@@ -5628,7 +5628,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-		*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
+		//*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
 	}
 }
 func (c *Char) tick() {
@@ -5949,7 +5949,7 @@ func (cl *CharList) delete(dc *Char) {
 	}
 }
 func (cl *CharList) action(x float32, cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+	leftest, rightest, highest *float32) {
 	sys.commandUpdate()
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
@@ -5959,14 +5959,20 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].action()
 	}
-	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
+	sys.charUpdate(cvmin, cvmax, leftest, rightest, highest)
 }
 func (cl *CharList) update(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+	leftest, rightest, highest *float32) {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
+	// Find lowest character available and set it as initial highest
 	for _, c := range ro {
-		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+		if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
+			*highest = MaxF(c.drawPos[1]*c.localscl, *highest)
+		}
+	}
+	for _, c := range ro {
+		c.update(cvmin, cvmax, leftest, rightest, highest)
 	}
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {

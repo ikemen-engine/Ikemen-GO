@@ -1049,8 +1049,8 @@ func (s *System) commandUpdate() {
 	}
 }
 func (s *System) charUpdate(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
-	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+	leftest, rightest, highest *float32) {
+	s.charList.update(cvmin, cvmax, leftest, rightest, highest)
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1084,8 +1084,7 @@ func (s *System) posReset() {
 		}
 	}
 }
-func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
-	sclMul float32) {
+func (s *System) action(x, y, highest *float32, scl float32) (leftest, rightest, sclMul float32) {
 	s.sprites = s.sprites[:0]
 	s.topSprites = s.topSprites[:0]
 	s.bottomSprites = s.bottomSprites[:0]
@@ -1097,11 +1096,8 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
 	s.cam.Update(scl, *x, *y)
-	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
+	var cvmin, cvmax float32 = 0, 0
 	leftest, rightest = *x, *x
-	if s.cam.verticalfollow > 0 {
-		lowest = s.cam.ScreenPos[1]
-	}
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1141,11 +1137,10 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(*x, &cvmin, &cvmax,
-			&highest, &lowest, &leftest, &rightest)
+		s.charList.action(*x, &cvmin, &cvmax, &leftest, &rightest, highest)
 		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
-		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
+		s.charUpdate(&cvmin, &cvmax, &leftest, &rightest, highest)
 	}
 	s.lifebar.step()
 	if s.superanim != nil {
@@ -1186,7 +1181,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	explUpdate(&s.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
-	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
+	sclMul = s.cam.action(x, y, leftest, rightest, *highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 	introSkip := false
 	if s.tickNextFrame() {
@@ -1925,7 +1920,7 @@ func (s *System) fight() (reload bool) {
 
 	oldWins, oldDraws := s.wins, s.draws
 	oldTeamLeader := s.teamLeader
-	var x, y, newx, newy, l, r float32
+	var x, y, newx, newy, l, r, h float32
 	var scl, sclmul float32
 	// Anonymous function to reset values, called at the start of each round
 	reset := func() {
@@ -1960,7 +1955,7 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		x, y, newx, newy, l, r, sclmul = 0, 0, 0, 0, 0, 0, 1
+		x, y, newx, newy, l, r, h, sclmul = 0, 0, 0, 0, 0, 0, 0, 1
 		scl = s.cam.startzoom
 		s.cam.Update(scl, x, y)
 	}
@@ -2086,7 +2081,7 @@ func (s *System) fight() (reload bool) {
 
 		// Update game state
 		newx, newy = x, y
-		l, r, sclmul = s.action(&newx, &newy, scl)
+		l, r, sclmul = s.action(&newx, &newy, &h, scl)
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {

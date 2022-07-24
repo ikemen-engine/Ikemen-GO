@@ -59,12 +59,8 @@ func (c *Camera) Init() {
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
-	c.boundH = MinF(0, float32(c.boundhigh)*c.localscl+
-		float32(sys.gameHeight)-c.drawOffsetY-
-		float32(sys.gameWidth)*float32(c.localcoord[1])/float32(c.localcoord[0]))
-
-	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-
-		float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl + float32(sys.gameHeight) - c.drawOffsetY)
+	c.boundLo = MaxF(0, float32(c.boundlow+c.localcoord[1])*c.localscl - float32(sys.gameHeight) + c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
 	}
@@ -75,14 +71,11 @@ func (c *Camera) Init() {
 		c.boundR)
 	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
 	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, MaxF(xminscl, yminscl)))
-	c.screenZoff = float32(c.zoffset)*c.localscl -
-		c.drawOffsetY + 240 - float32(sys.gameWidth)*
-		float32(c.localcoord[1])/float32(c.localcoord[0])
+	c.screenZoff = float32(c.zoffset-c.localcoord[1])*c.localscl + 240 - c.drawOffsetY
 }
 func (c *Camera) Update(scl, x, y float32) {
 	c.Scale = c.BaseScale() * scl
-	c.zoff = scl*(c.screenZoff+float32(sys.gameHeight)-240) +
-		(1-scl)*float32(sys.gameHeight)
+	c.zoff = (c.screenZoff-240)*scl + float32(sys.gameHeight)
 	for i := 0; i < 2; i++ {
 		c.Offset[i] = sys.stage.bga.offset[i] * sys.stage.localscl *
 			sys.stage.scale[i] * scl
@@ -130,7 +123,7 @@ func (c *Camera) GroundLevel() float32 {
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
 }
-func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
+func (c *Camera) action(x, y *float32, leftest, rightest, highest,
 	vmin, vmax float32, pause bool) (sclMul float32) {
 	tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
 	tmp, vx := (leftest+rightest)/2, vmin+vmax
@@ -164,23 +157,21 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	*x += vx
-	if lowest >= highest {
-		ftension := float32(c.floortension) * c.localscl
+	ftension := float32(c.floortension) * c.localscl
+	if ftension < 0 {
+		ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
 		if ftension < 0 {
-			ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
-			if ftension < 0 {
-				ftension = 0
-			}
+			ftension = 0
 		}
-		if highest < -ftension {
-			*y = (highest + ftension) * Pow(c.verticalfollow,
-				MinF(1, 1/Pow(c.Scale, 4)))
-		} else if lowest > 0 {
-			*y = (lowest) * Pow(c.verticalfollow,
-				MinF(1, 1/Pow(c.Scale, 4)))
-		} else {
-			*y = 0
-		}
+	}
+	if highest < -ftension {
+		*y = (highest + ftension) * Pow(c.verticalfollow,
+			MinF(1, 1/Pow(c.Scale, 4)))
+	} else if highest > 0 {
+		*y = highest * Pow(c.verticalfollow,
+			MinF(1, 1/Pow(c.Scale, 4)))
+	} else {
+		*y = 0
 	}
 	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
 		float32(sys.gameWidth-320)
@@ -188,7 +179,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		tmp = 0
 	}
 	tmp = MaxF(220/c.Scale, float32(math.Sqrt(float64(Pow(tmp, 2)+
-		Pow(lowest-highest, 2)))))
+		Pow(MinF(highest, 0), 2)))))
 	sclMul = tmp * c.Scale / MaxF(c.Scale, (400-80*MaxF(1, c.Scale))*
 		Pow(2, c.ZoomSpeed-2))
 	if sclMul >= 3/Pow(2, c.ZoomSpeed) {
