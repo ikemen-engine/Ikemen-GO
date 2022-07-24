@@ -1049,8 +1049,8 @@ func (s *System) commandUpdate() {
 	}
 }
 func (s *System) charUpdate(cvmin, cvmax,
-	leftest, rightest, highest *float32) {
-	s.charList.update(cvmin, cvmax, leftest, rightest, highest)
+	highest, lowest, leftest, rightest *float32) {
+	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1096,8 +1096,11 @@ func (s *System) action(x, y, highest *float32, scl float32) (leftest, rightest,
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
 	s.cam.Update(scl, *x, *y)
-	var cvmin, cvmax float32 = 0, 0
+	var cvmin, cvmax, lowest float32 = 0, 0, 0
 	leftest, rightest = *x, *x
+	if s.cam.verticalfollow > 0 {
+		lowest = s.cam.ScreenPos[1]
+	}
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1137,10 +1140,11 @@ func (s *System) action(x, y, highest *float32, scl float32) (leftest, rightest,
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(*x, &cvmin, &cvmax, &leftest, &rightest, highest)
+		s.charList.action(*x, &cvmin, &cvmax,
+			highest, &lowest, &leftest, &rightest)
 		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
-		s.charUpdate(&cvmin, &cvmax, &leftest, &rightest, highest)
+		s.charUpdate(&cvmin, &cvmax, highest, &lowest, &leftest, &rightest)
 	}
 	s.lifebar.step()
 	if s.superanim != nil {
@@ -1181,7 +1185,7 @@ func (s *System) action(x, y, highest *float32, scl float32) (leftest, rightest,
 	explUpdate(&s.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
-	sclMul = s.cam.action(x, y, leftest, rightest, *highest,
+	sclMul = s.cam.action(x, y, leftest, rightest, lowest, *highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 	introSkip := false
 	if s.tickNextFrame() {

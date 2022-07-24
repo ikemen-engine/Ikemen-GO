@@ -59,8 +59,8 @@ func (c *Camera) Init() {
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
-	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl + float32(sys.gameHeight) - c.drawOffsetY)
-	c.boundLo = MaxF(0, float32(c.boundlow+c.localcoord[1])*c.localscl - float32(sys.gameHeight) + c.drawOffsetY)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-float32(sys.gameHeight)-c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
 	}
@@ -123,7 +123,7 @@ func (c *Camera) GroundLevel() float32 {
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
 }
-func (c *Camera) action(x, y *float32, leftest, rightest, highest,
+func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 	vmin, vmax float32, pause bool) (sclMul float32) {
 	tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
 	tmp, vx := (leftest+rightest)/2, vmin+vmax
@@ -167,8 +167,8 @@ func (c *Camera) action(x, y *float32, leftest, rightest, highest,
 	if highest < -ftension {
 		*y = (highest + ftension) * Pow(c.verticalfollow,
 			MinF(1, 1/Pow(c.Scale, 4)))
-	} else if highest > 0 {
-		*y = highest * Pow(c.verticalfollow,
+	} else if lowest > 0 {
+		*y = lowest * Pow(c.verticalfollow,
 			MinF(1, 1/Pow(c.Scale, 4)))
 	} else {
 		*y = 0
@@ -179,7 +179,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, highest,
 		tmp = 0
 	}
 	tmp = MaxF(220/c.Scale, float32(math.Sqrt(float64(Pow(tmp, 2)+
-		Pow(MinF(highest, 0), 2)))))
+		Pow(lowest-highest, 2)))))
 	sclMul = tmp * c.Scale / MaxF(c.Scale, (400-80*MaxF(1, c.Scale))*
 		Pow(2, c.ZoomSpeed-2))
 	if sclMul >= 3/Pow(2, c.ZoomSpeed) {
