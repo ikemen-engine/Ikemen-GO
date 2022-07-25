@@ -5628,7 +5628,7 @@ func (c *Char) update(cvmin, cvmax,
 	}
 	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-		*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
+		//*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
 	}
 }
 func (c *Char) tick() {
@@ -5968,9 +5968,10 @@ func (cl *CharList) update(cvmin, cvmax,
 	// Find lowest character available and set it as initial highest
 	for _, c := range ro {
 		if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
-			*highest = MaxF(c.drawPos[1]*c.localscl, *highest)
+			*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
 		}
 	}
+	*highest = *lowest
 	for _, c := range ro {
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
 	}
