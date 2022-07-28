@@ -3708,6 +3708,10 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.misstime == 0 {
 		p.misstime = 1
 	}
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		p.hitdef.chainid = -1
+		p.hitdef.nochainid = [...]int32{-1, -1}
+	}
 	p.removefacing = c.facing
 	p.clsnScale = c.clsnScale
 	if p.velocity[0] < 0 {
@@ -5125,7 +5129,7 @@ func (c *Char) hitCheck(e *Char) bool {
 	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
 }
 func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
-	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid {
+	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
 		return false
 	}
 	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
