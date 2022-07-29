@@ -1470,8 +1470,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_air_back)
 		case "size.air.front":
 			out.append(OC_const_size_air_front)
-		case "size.z.width":
-			out.append(OC_const_size_z_width)
 		case "size.height":
 			out.append(OC_const_size_height)
 		case "size.attack.dist":
@@ -1498,6 +1496,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_draw_offset_x)
 		case "size.draw.offset.y":
 			out.append(OC_const_size_draw_offset_y)
+		case "size.z.width":
+			out.append(OC_const_size_z_width)
+		case "size.z.enable":
+			out.append(OC_const_size_z_enable)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":

@@ -254,7 +254,7 @@ type CharSize struct {
 		pos [2]float32
 	}
 	shadowoffset float32
-	draw         struct {
+	draw struct {
 		offset [2]float32
 	}
 	z struct {

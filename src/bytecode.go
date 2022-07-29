@@ -243,7 +243,6 @@ const (
 	OC_const_size_ground_front
 	OC_const_size_air_back
 	OC_const_size_air_front
-	OC_const_size_z_width
 	OC_const_size_height
 	OC_const_size_attack_dist
 	OC_const_size_attack_z_width_back
@@ -257,6 +256,8 @@ const (
 	OC_const_size_shadowoffset
 	OC_const_size_draw_offset_x
 	OC_const_size_draw_offset_y
+	OC_const_size_z_width
+	OC_const_size_z_enable
 	OC_const_velocity_walk_fwd_x
 	OC_const_velocity_walk_back_x
 	OC_const_velocity_walk_up_x
@@ -1375,8 +1376,6 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.air.back * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_air_front:
 		sys.bcStack.PushF(c.size.air.front * (320 / c.localcoord) / oc.localscl)
-	case OC_const_size_z_width:
-		sys.bcStack.PushF(c.size.z.width * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_height:
 		sys.bcStack.PushF(c.size.height * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_attack_dist:
@@ -1403,6 +1402,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.draw.offset[0] * (320 / c.localcoord) / oc.localscl)
 	case OC_const_size_draw_offset_y:
 		sys.bcStack.PushF(c.size.draw.offset[1] * (320 / c.localcoord) / oc.localscl)
+	case OC_const_size_z_width:
+		sys.bcStack.PushF(c.size.z.width * (320 / c.localcoord) / oc.localscl)
+	case OC_const_size_z_enable:
+		sys.bcStack.PushB(c.size.z.enable)
 	case OC_const_velocity_walk_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.fwd * (320 / c.localcoord) / oc.localscl)
 	case OC_const_velocity_walk_back_x:
