@@ -254,7 +254,7 @@ type CharSize struct {
 		pos [2]float32
 	}
 	shadowoffset float32
-	draw struct {
+	draw         struct {
 		offset [2]float32
 	}
 	z struct {
@@ -1076,9 +1076,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	p := false
 	if sys.super > 0 {
-		p = e.supermovetime >= 0 && e.time >= e.supermovetime+1
+		p = (e.supermovetime >= 0 && e.time >= e.supermovetime) || e.supermovetime < -2
 	} else if sys.pause > 0 {
-		p = e.pausemovetime >= 0 && e.time >= e.pausemovetime+1
+		p = (e.pausemovetime >= 0 && e.time >= e.pausemovetime) || e.pausemovetime < -2
 	}
 	act := !p
 	if act && !e.ignorehitpause {
@@ -1280,11 +1280,11 @@ func (p *Projectile) setPos(pos [2]float32) {
 func (p *Projectile) paused(playerNo int) bool {
 	//if !sys.chars[playerNo][0].pause() {
 	if sys.super > 0 {
-		if p.supermovetime == 0 {
+		if p.supermovetime == 0 || p.supermovetime < -1 {
 			return true
 		}
 	} else if sys.pause > 0 {
-		if p.pausemovetime == 0 {
+		if p.pausemovetime == 0 || p.pausemovetime < -1 {
 			return true
 		}
 	}

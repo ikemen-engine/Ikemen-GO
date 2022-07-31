@@ -3204,8 +3204,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_supermovetime:
 			e.supermovetime = exp[0].evalI(c)
+			if e.supermovetime >= 0 {
+				e.supermovetime = Max(e.supermovetime, e.supermovetime+1)
+			}
 		case explod_pausemovetime:
 			e.pausemovetime = exp[0].evalI(c)
+			if e.pausemovetime >= 0 {
+				e.pausemovetime = Max(e.pausemovetime, e.pausemovetime+1)
+			}
 		case explod_sprpriority:
 			e.sprpriority = exp[0].evalI(c)
 		case explod_ontop:
@@ -4316,12 +4322,12 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		case projectile_supermovetime:
 			p.supermovetime = exp[0].evalI(c)
 			if p.supermovetime >= 0 {
-				p.supermovetime++
+				p.supermovetime = Max(p.supermovetime, p.supermovetime+1)
 			}
 		case projectile_pausemovetime:
 			p.pausemovetime = exp[0].evalI(c)
 			if p.pausemovetime >= 0 {
-				p.pausemovetime++
+				p.pausemovetime = Max(p.pausemovetime, p.pausemovetime+1)
 			}
 		case projectile_ownpal:
 			op = exp[0].evalB(c)
