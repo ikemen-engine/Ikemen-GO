@@ -691,6 +691,10 @@ func (c *Compiler) explodSub(is IniSection,
 	if err := c.palFXSub(is, sc, "palfx."); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "clipwindow",
+		explod_clipwindow, VT_Float, 4, false); err != nil {
+		return err
+	}
 	return nil
 }
 func (c *Compiler) explod(is IniSection, sc *StateControllerBase,

@@ -3101,6 +3101,7 @@ const (
 	explod_ignorehitpause
 	explod_bindid
 	explod_space
+	explod_clipwindow
 	explod_redirectid
 )
 
@@ -3271,6 +3272,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.bindId = bId
 		case explod_projection:
 			e.projection = Projection(exp[0].evalI(c))
+		case explod_clipwindow:
+			e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 		default:
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 		}
@@ -3486,6 +3489,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
 			case explod_focallength:
 				eachExpl(func(e *Explod) { e.fLength = exp[0].evalF(c) })
+			case explod_clipwindow:
+				eachExpl(func(e *Explod) {
+					e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
+				})
 			case explod_ignorehitpause:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					ihp := exp[0].evalB(c)
