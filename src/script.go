@@ -1315,6 +1315,17 @@ func systemScriptInit(l *lua.LState) {
 						} else if axes[i] < -0.5 && i < 4 {
 							s = strconv.Itoa(-i*2 - 1)
 						}
+					} else if joystick[joy].GetGamepadName() == "PS3 Controller" {
+						if (len(axes) == 8 && i != 3 && i != 4 && i != 6 && i != 7) ||
+							(len(axes) == 6 && i != 2 && i != 5) {
+							// 8 axes in Windows (need to skip 3, 4, 6, 7) and
+							// 6 axes in Linux (need to skip 2 and 5)
+							if axes[i] < -0.2 {
+								s = strconv.Itoa(-i*2 - 1)
+							} else if axes[i] > 0.2 {
+								s = strconv.Itoa(-i*2 - 2)
+							}
+						}
 					} else if joystick[joy].GetGamepadName() != "PS4 Controller" || !(i == 3 || i == 4) {
 						if axes[i] < -0.2 {
 							s = strconv.Itoa(-i*2 - 1)
