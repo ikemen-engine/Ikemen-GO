@@ -725,7 +725,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	}
 	RenderSprite(rp)
 }
-func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
+func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl float32, rot Rotation,
 	pfx *PalFX, old bool, color uint32, alpha int32, facing float32, posLocalscl float32, projectionMode int32, fLength float32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
@@ -740,7 +740,7 @@ func (a *Animation) ShadowDraw(x, y, xscl, yscl, vscl float32, rot Rotation,
 		AbsF(xscl*h) * float32(a.spr.Offset[0]) * sys.widthScale,
 		AbsF(yscl*v) * float32(a.spr.Offset[1]) * sys.heightScale, a.tile,
 		xscl * h * sys.widthScale, xscl * h * sys.widthScale,
-		yscl * v * sys.heightScale, vscl, 0, rot, 0, int32(a.mask), nil, &sys.scrrect,
+		yscl * v * sys.heightScale, vscl, 0, rot, 0, int32(a.mask), nil, window,
 		(x + float32(sys.gameWidth)/2) * sys.widthScale, y * sys.heightScale,
 		projectionMode, fLength,
 		xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x),
@@ -841,6 +841,7 @@ type SprData struct {
 	posLocalscl float32
 	projection  int32
 	fLength     float32
+	window      [4]float32
 }
 type DrawList []*SprData
 
@@ -894,8 +895,25 @@ func (dl DrawList) draw(x, y, scl float32) {
 				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/cs -
 					(y - s.pos[1])}
 		}
-		s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
+			w := s.window
+			if w[0] > w[2] {
+				w[0], w[2] = w[2], w[0]
+			}
+			if w[1] > w[3] {
+				w[1], w[3] = w[3], w[1]
+			}
+			var window [4]int32
+			window[0] = int32((cs*(p[0]+float32(w[0])) + float32(sys.gameWidth)/2) * sys.widthScale)
+			window[1] = int32(cs * (p[1] + float32(w[1])) * sys.heightScale)
+			window[2] = int32(cs * (w[2] - w[0]) * sys.widthScale)
+			window[3] = int32(cs * (w[3] - w[1]) * sys.heightScale)
+			s.anim.Draw(&window, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
+				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+		} else {
+			s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
+				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+		}
 		sys.brightness = ob
 	}
 }
@@ -953,11 +971,33 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		}
 		color = color&0xff*alpha<<8&0xff0000 |
 			color&0xff00*alpha>>8&0xff00 | color&0xff0000*alpha>>24&0xff
-		s.anim.ShadowDraw(sys.cam.Offset[0]-(x-s.pos[0])*scl,
-			sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
-				(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
-			scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.rot,
-			&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
+		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
+			w := s.window
+			w[1], w[3] = -w[1], -w[3]
+			if w[0] > w[2] {
+				w[0], w[2] = w[2], w[0]
+			}
+			if (w[1] > w[3] && sys.stage.sdw.yscale > 0) || (w[1] < w[3] && sys.stage.sdw.yscale < 0) {
+				w[1], w[3] = w[3], w[1]
+			}
+			var window [4]int32
+
+			window[0] = int32((sys.cam.Offset[0] - ((x - s.pos[0]) * scl) + w[0]*scl + float32(sys.gameWidth)/2) * sys.widthScale)
+			window[1] = int32((sys.cam.GroundLevel() + sys.cam.Offset[1] - sys.envShake.getOffset() - (y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl + w[1]*sys.stage.sdw.yscale*scl) * sys.heightScale)
+			window[2] = int32(scl * (w[2] - w[0]) * sys.widthScale)
+			window[3] = int32(scl * (w[3] - w[1]) * sys.heightScale * sys.stage.sdw.yscale)
+			s.anim.ShadowDraw(&window, sys.cam.Offset[0]-(x-s.pos[0])*scl,
+				sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
+					(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
+				scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.rot,
+				&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
+		} else {
+			s.anim.ShadowDraw(&sys.scrrect, sys.cam.Offset[0]-(x-s.pos[0])*scl,
+				sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-
+					(y+s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
+				scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, s.rot,
+				&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
+		}
 	}
 }
 func (sl ShadowList) drawReflection(x, y, scl float32) {
@@ -977,10 +1017,33 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		if s.anim.srcAlpha == 1 && s.anim.dstAlpha == 255 {
 			s.anim.srcAlpha = 0
 		}
-		s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
-			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
-				(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
-			s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+
+		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
+			w := s.window
+			w[1], w[3] = -w[1], -w[3]
+			if w[0] > w[2] {
+				w[0], w[2] = w[2], w[0]
+			}
+			if w[1] > w[3] {
+				w[1], w[3] = w[3], w[1]
+			}
+			var window [4]int32
+			window[0] = int32((scl*(sys.cam.Offset[0]/scl-(x-s.pos[0])+float32(w[0])) + float32(sys.gameWidth)/2) * sys.widthScale)
+			window[1] = int32(scl * ((sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl - (y + s.pos[1] - s.offsetY) + float32(w[1])) * sys.heightScale)
+			window[2] = int32(scl * (w[2] - w[0]) * sys.widthScale)
+			window[3] = int32(scl * (w[3] - w[1]) * sys.heightScale)
+
+			s.anim.Draw(&window, sys.cam.Offset[0]/scl-(x-s.pos[0]),
+				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
+					(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
+				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+		} else {
+			s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]),
+				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-
+					(y+s.pos[1]-s.offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1], 0,
+				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+		}
+
 	}
 }
 
