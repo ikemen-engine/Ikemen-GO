@@ -4732,9 +4732,9 @@ func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
 }
 
 // MapSet() sets a map to a specific value.
-func (c *Char) mapSet(s string, Value float32, scType int32) {
+func (c *Char) mapSet(s string, Value float32, scType int32) BytecodeValue {
 	if s == "" {
-		return
+		return BytecodeSF()
 	}
 	key := strings.ToLower(s)
 	switch scType {
@@ -4795,6 +4795,7 @@ func (c *Char) mapSet(s string, Value float32, scType int32) {
 			}
 		}
 	}
+	return BytecodeFloat(Value)
 }
 
 func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time int32, timemul float32, top bool) {

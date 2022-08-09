@@ -3859,22 +3859,66 @@ func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase, _ int8) (Sta
 // TODO: Remove boilderplate from the Map's Compiler.
 func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
+		assign := false
+		var mapParam, mapName, value string
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "map", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
+			mapParam = data
+			// CNS: See if map parameter is ini-style or if it's an assign
+			ia := strings.Index(mapParam, "=")
+			if ia > 0 {
+				if strings.ToLower(SplitAndTrim(mapParam, "=")[0]) == "map" {
+					mapParam = strings.TrimSpace(mapParam[ia+1:])
+				} else {
+					mapParam = strings.TrimSpace(mapParam[3:])
+					assign = true
+				}
+			} else if !strings.HasPrefix(mapParam, "\"") {
+				return Error("Missing '='")
 			}
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Float, 1, false); err != nil {
-			return err
+		if len(mapParam) > 0 {
+			if assign {
+				if err := c.kakkohiraku(&mapParam); err != nil {
+					return err
+				}
+				mapName = c.token
+				c.token = c.tokenizer(&mapParam)
+				if err := c.kakkotojiru(); err != nil {
+					return err
+				}
+				c.token = c.tokenizer(&mapParam)
+				if c.token == ":=" {
+					value = strings.TrimSpace(mapParam)
+				} else {
+					return Error("Missing ':' before '='")
+				}
+			} else {
+				b := false
+				if err := c.stateParam(is, "value", func(data string) error {
+					b = true
+					value = data
+					return nil
+				}); err != nil {
+					return err
+				}
+				if b {
+					if len(mapParam) < 2 || mapParam[0] != '"' || mapParam[len(mapParam)-1] != '"' {
+						return Error("Not enclosed in \"")
+					}
+					mapName = mapParam[1:len(mapParam)-1]
+				}
+			}
+			if len(value) > 0 {
+				sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(mapName)))
+				c.scAdd(sc, mapSet_value, value, VT_Float, 1)
+			}
 		}
 		return nil
 	})

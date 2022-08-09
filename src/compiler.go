@@ -2570,12 +2570,30 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
 		}
-		out.append(OC_ex_)
-		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(c.token))))
+		var m string = c.token
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
+		c.token = c.tokenizer(in)
+		if c.token == ":=" {
+			c.token = c.tokenizer(in)
+			bv2, err := c.expEqne(&be2, in)
+			if err != nil {
+				return bvNone(), err
+			}
+			be2.appendValue(bv2)
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(be2)))
+			}
+			out.append(be2...)
+			out.append(OC_st_)
+			out.appendI32Op(OC_st_map, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+		} else {
+			out.append(OC_ex_)
+			out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+		}
+		return bvNone(), nil
 	case "memberno":
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":
@@ -3245,6 +3263,8 @@ func (c *Compiler) parseSection(
 		var name, data string
 		if len(line) >= 3 && strings.ToLower(line[:3]) == "var" {
 			name, data = "var", line
+		} else if len(line) >= 3 && strings.ToLower(line[:3]) == "map" {
+			name, data = "map", line
 		} else if len(line) >= 4 && strings.ToLower(line[:4]) == "fvar" {
 			name, data = "fvar", line
 		} else if len(line) >= 6 && strings.ToLower(line[:6]) == "sysvar" {

@@ -348,6 +348,7 @@ const (
 	OC_st_sysvar0add  = OC_var + OC_sysvar0
 	OC_st_fvar0add    = OC_var + OC_fvar0
 	OC_st_sysfvar0add = OC_var + OC_sysfvar0
+	OC_st_map
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -1313,6 +1314,10 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 	case OC_st_sysfvaradd:
 		v := sys.bcStack.Pop().ToF()
 		*sys.bcStack.Top() = c.sysFvarAdd(sys.bcStack.Top().ToI(), v)
+	case OC_st_map:
+		v := sys.bcStack.Pop().ToF()
+		sys.bcStack.Push(c.mapSet(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))], v, 0))
+		*i += 4
 	default:
 		vi := be[*i-1]
 		if vi < OC_st_sysvar0+NumSysVar {
