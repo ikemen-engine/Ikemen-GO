@@ -4921,16 +4921,20 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	}
 
 	// Load the command file
-	if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-		str, err := LoadText(filename)
-		if err != nil {
-			return err
+	if len(cmd) > 0 {
+		if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			str, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			str = str + sys.commonCmd
+			lines, i = SplitAndTrim(str, "\n"), 0
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		str = str + sys.commonCmd
-		lines, i = SplitAndTrim(str, "\n"), 0
-		return nil
-	}); err != nil {
-		return nil, err
+	} else {
+		lines, i = SplitAndTrim(sys.commonCmd, "\n"), 0
 	}
 
 	// Initialize command list data
@@ -5040,9 +5044,11 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		}
 	}
 	// Compile states in command file
-	if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
-		sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
-		return nil, err
+	if len(cmd) > 0 {
+		if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
+			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+			return nil, err
+		}
 	}
 	// Compile states in common state file
 	if len(stcommon) > 0 {

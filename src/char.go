@@ -1996,16 +1996,7 @@ func (c *Char) load(def string) error {
 		gi.constants[key] = float32(Atof(value))
 	}
 
-	if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-		str, err := LoadText(filename)
-		if err != nil {
-			return err
-		}
-		lines, i = SplitAndTrim(str, "\n"), 0
-		return nil
-	}); err != nil {
-		return err
-	}
+	// Init constants
 	gi.data.init()
 	c.size.init()
 	originLs := c.localscl * (320 / float32(sys.gameWidth))
@@ -2065,214 +2056,236 @@ func (c *Char) load(def string) error {
 	gi.remapPreset = make(map[string]RemapPreset)
 
 	data, size, velocity, movement, quotes, constants := true, true, true, true, true, true
-	for i < len(lines) {
-		is, name, subname := ReadIniSection(lines, &i)
-		switch name {
-		case "data":
-			if data {
-				data = false
-				is.ReadI32("life", &gi.data.life)
-				c.lifeMax = gi.data.life
-				is.ReadI32("power", &gi.data.power)
-				c.powerMax = gi.data.power
-				gi.data.dizzypoints = c.lifeMax
-				is.ReadI32("dizzypoints", &gi.data.dizzypoints)
-				c.dizzyPointsMax = gi.data.dizzypoints
-				gi.data.guardpoints = c.lifeMax
-				is.ReadI32("guardpoints", &gi.data.guardpoints)
-				c.guardPointsMax = gi.data.guardpoints
-				is.ReadI32("attack", &gi.data.attack)
-				is.ReadI32("defence", &gi.data.defence)
-				var i32 int32
-				if is.ReadI32("fall.defence_up", &i32) {
-					gi.data.fall.defence_mul = (float32(i32) + 100) / 100
-				}
-				if is.ReadI32("liedown.time", &i32) {
-					gi.data.liedown.time = Max(1, i32)
-				}
-				is.ReadI32("airjuggle", &gi.data.airjuggle)
-				is.ReadI32("sparkno", &gi.data.sparkno)
-				if gi.data.sparkno < 0 {
-					gi.data.sparkno = ^IErr
-				}
-				is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
-				if gi.data.guard.sparkno < 0 {
-					gi.data.guard.sparkno = ^IErr
-				}
-				is.ReadI32("ko.echo", &gi.data.ko.echo)
-				if is.ReadI32("volume", &i32) {
-					gi.data.volume = i32/2 + 256
-				}
-				if is.ReadI32("volumescale", &i32) {
-					gi.data.volume = i32 * 64 / 25
-				}
-				is.ReadI32("intpersistindex", &gi.data.intpersistindex)
-				is.ReadI32("floatpersistindex", &gi.data.floatpersistindex)
+	
+	if len(cns) > 0 {
+		if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			str, err := LoadText(filename)
+			if err != nil {
+				return err
 			}
-		case "size":
-			if size {
-				size = false
-
-				is.ReadF32("xscale", &c.size.xscale)
-				is.ReadF32("yscale", &c.size.yscale)
-				is.ReadF32("ground.back", &c.size.ground.back)
-				is.ReadF32("ground.front", &c.size.ground.front)
-				is.ReadF32("air.back", &c.size.air.back)
-				is.ReadF32("air.front", &c.size.air.front)
-				is.ReadF32("height", &c.size.height)
-				is.ReadF32("attack.dist", &c.size.attack.dist)
-				is.ReadF32("proj.attack.dist", &c.size.proj.attack.dist)
-				is.ReadI32("proj.doscale", &c.size.proj.doscale)
-				is.ReadF32("head.pos", &c.size.head.pos[0], &c.size.head.pos[1])
-				is.ReadF32("mid.pos", &c.size.mid.pos[0], &c.size.mid.pos[1])
-				is.ReadF32("shadowoffset", &c.size.shadowoffset)
-				is.ReadF32("draw.offset",
-					&c.size.draw.offset[0], &c.size.draw.offset[1])
-				is.ReadF32("z.width", &c.size.z.width)
-				var ztemp int32 = 0
-				is.ReadI32("z.enable", &ztemp)
-				if ztemp == 1 {
-					c.size.z.enable = true
-				}
-				is.ReadF32("attack.z.width",
-					&c.size.attack.z.width[0], &c.size.attack.z.width[1])
-			}
-		case "velocity":
-			if velocity {
-				velocity = false
-				is.ReadF32("walk.fwd", &gi.velocity.walk.fwd)
-				is.ReadF32("walk.back", &gi.velocity.walk.back)
-				is.ReadF32("walk.up.x", &gi.velocity.walk.up.x)
-				is.ReadF32("walk.down.x", &gi.velocity.walk.down.x)
-				is.ReadF32("run.fwd", &gi.velocity.run.fwd[0], &gi.velocity.run.fwd[1])
-				is.ReadF32("run.back",
-					&gi.velocity.run.back[0], &gi.velocity.run.back[1])
-				is.ReadF32("run.up.x", &gi.velocity.run.up.x)
-				is.ReadF32("run.up.y", &gi.velocity.run.up.y)
-				is.ReadF32("run.down.x", &gi.velocity.run.down.x)
-				is.ReadF32("run.down.y", &gi.velocity.run.down.y)
-				is.ReadF32("jump.neu",
-					&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
-				is.ReadF32("jump.back", &gi.velocity.jump.back)
-				is.ReadF32("jump.fwd", &gi.velocity.jump.fwd)
-				is.ReadF32("jump.up.x", &gi.velocity.jump.up.x)
-				is.ReadF32("jump.down.x", &gi.velocity.jump.down.x)
-				is.ReadF32("runjump.back",
-					&gi.velocity.runjump.back[0], &gi.velocity.runjump.back[1])
-				is.ReadF32("runjump.fwd",
-					&gi.velocity.runjump.fwd[0], &gi.velocity.runjump.fwd[1])
-				is.ReadF32("runjump.up.x", &gi.velocity.runjump.up.x)
-				is.ReadF32("runjump.down.x", &gi.velocity.runjump.down.x)
-				is.ReadF32("airjump.neu",
-					&gi.velocity.airjump.neu[0], &gi.velocity.airjump.neu[1])
-				is.ReadF32("airjump.back", &gi.velocity.airjump.back)
-				is.ReadF32("airjump.fwd", &gi.velocity.airjump.fwd)
-				is.ReadF32("airjump.up.x", &gi.velocity.airjump.up.x)
-				is.ReadF32("airjump.down.x", &gi.velocity.airjump.down.x)
-				is.ReadF32("air.gethit.groundrecover",
-					&gi.velocity.air.gethit.groundrecover[0],
-					&gi.velocity.air.gethit.groundrecover[1])
-				is.ReadF32("air.gethit.airrecover.mul",
-					&gi.velocity.air.gethit.airrecover.mul[0],
-					&gi.velocity.air.gethit.airrecover.mul[1])
-				is.ReadF32("air.gethit.airrecover.add",
-					&gi.velocity.air.gethit.airrecover.add[0],
-					&gi.velocity.air.gethit.airrecover.add[1])
-				is.ReadF32("air.gethit.airrecover.back",
-					&gi.velocity.air.gethit.airrecover.back)
-				is.ReadF32("air.gethit.airrecover.fwd",
-					&gi.velocity.air.gethit.airrecover.fwd)
-				is.ReadF32("air.gethit.airrecover.up",
-					&gi.velocity.air.gethit.airrecover.up)
-				is.ReadF32("air.gethit.airrecover.down",
-					&gi.velocity.air.gethit.airrecover.down)
-			}
-		case "movement":
-			if movement {
-				movement = false
-				is.ReadI32("airjump.num", &gi.movement.airjump.num)
-				is.ReadI32("airjump.height", &gi.movement.airjump.height)
-				is.ReadF32("yaccel", &gi.movement.yaccel)
-				is.ReadF32("stand.friction", &gi.movement.stand.friction)
-				is.ReadF32("stand.friction.threshold",
-					&gi.movement.stand.friction_threshold)
-				is.ReadF32("crouch.friction", &gi.movement.crouch.friction)
-				is.ReadF32("crouch.friction.threshold",
-					&gi.movement.crouch.friction_threshold)
-				is.ReadF32("air.gethit.groundlevel",
-					&gi.movement.air.gethit.groundlevel)
-				is.ReadF32("air.gethit.groundrecover.ground.threshold",
-					&gi.movement.air.gethit.groundrecover.ground.threshold)
-				is.ReadF32("air.gethit.groundrecover.groundlevel",
-					&gi.movement.air.gethit.groundrecover.groundlevel)
-				is.ReadF32("air.gethit.airrecover.threshold",
-					&gi.movement.air.gethit.airrecover.threshold)
-				is.ReadF32("air.gethit.airrecover.yaccel",
-					&gi.movement.air.gethit.airrecover.yaccel)
-				is.ReadF32("air.gethit.trip.groundlevel",
-					&gi.movement.air.gethit.trip.groundlevel)
-				is.ReadF32("down.bounce.offset",
-					&gi.movement.down.bounce.offset[0],
-					&gi.movement.down.bounce.offset[1])
-				is.ReadF32("down.bounce.yaccel", &gi.movement.down.bounce.yaccel)
-				is.ReadF32("down.bounce.groundlevel",
-					&gi.movement.down.bounce.groundlevel)
-				is.ReadF32("down.friction.threshold",
-					&gi.movement.down.friction_threshold)
-			}
-		case "quotes":
-			if quotes {
-				quotes = false
-				for i := range gi.quotes {
-					if is[fmt.Sprintf("victory%v", i)] != "" {
-						gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
-					}
-				}
-			}
-		case "constants":
-			if constants {
-				constants = false
-				for key, value := range is {
-					gi.constants[key] = float32(Atof(value))
-				}
-			}
-		case "remappreset ":
-			if len(subname) >= 1 {
-				if _, ok := gi.remapPreset[subname]; !ok {
-					gi.remapPreset[subname] = make(RemapPreset)
-				}
-				for key := range is {
-					k := strings.Split(key, ",")
-					if len(k) == 2 {
-						var v [2]int32
-						is.ReadI32(key, &v[0], &v[1])
-						if _, ok := gi.remapPreset[subname][int16(Atoi(k[0]))]; !ok {
-							gi.remapPreset[subname][int16(Atoi(k[0]))] = make(RemapTable)
+			lines, i = SplitAndTrim(str, "\n"), 0
+			for i < len(lines) {
+			is, name, subname := ReadIniSection(lines, &i)
+			switch name {
+				case "data":
+					if data {
+						data = false
+						is.ReadI32("life", &gi.data.life)
+						c.lifeMax = gi.data.life
+						is.ReadI32("power", &gi.data.power)
+						c.powerMax = gi.data.power
+						gi.data.dizzypoints = c.lifeMax
+						is.ReadI32("dizzypoints", &gi.data.dizzypoints)
+						c.dizzyPointsMax = gi.data.dizzypoints
+						gi.data.guardpoints = c.lifeMax
+						is.ReadI32("guardpoints", &gi.data.guardpoints)
+						c.guardPointsMax = gi.data.guardpoints
+						is.ReadI32("attack", &gi.data.attack)
+						is.ReadI32("defence", &gi.data.defence)
+						var i32 int32
+						if is.ReadI32("fall.defence_up", &i32) {
+							gi.data.fall.defence_mul = (float32(i32) + 100) / 100
 						}
-						gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(v[0]), int16(v[1])}
+						if is.ReadI32("liedown.time", &i32) {
+							gi.data.liedown.time = Max(1, i32)
+						}
+						is.ReadI32("airjuggle", &gi.data.airjuggle)
+						is.ReadI32("sparkno", &gi.data.sparkno)
+						if gi.data.sparkno < 0 {
+							gi.data.sparkno = ^IErr
+						}
+						is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
+						if gi.data.guard.sparkno < 0 {
+							gi.data.guard.sparkno = ^IErr
+						}
+						is.ReadI32("ko.echo", &gi.data.ko.echo)
+						if is.ReadI32("volume", &i32) {
+							gi.data.volume = i32/2 + 256
+						}
+						if is.ReadI32("volumescale", &i32) {
+							gi.data.volume = i32 * 64 / 25
+						}
+						is.ReadI32("intpersistindex", &gi.data.intpersistindex)
+						is.ReadI32("floatpersistindex", &gi.data.floatpersistindex)
+					}
+				case "size":
+					if size {
+						size = false
+
+						is.ReadF32("xscale", &c.size.xscale)
+						is.ReadF32("yscale", &c.size.yscale)
+						is.ReadF32("ground.back", &c.size.ground.back)
+						is.ReadF32("ground.front", &c.size.ground.front)
+						is.ReadF32("air.back", &c.size.air.back)
+						is.ReadF32("air.front", &c.size.air.front)
+						is.ReadF32("height", &c.size.height)
+						is.ReadF32("attack.dist", &c.size.attack.dist)
+						is.ReadF32("proj.attack.dist", &c.size.proj.attack.dist)
+						is.ReadI32("proj.doscale", &c.size.proj.doscale)
+						is.ReadF32("head.pos", &c.size.head.pos[0], &c.size.head.pos[1])
+						is.ReadF32("mid.pos", &c.size.mid.pos[0], &c.size.mid.pos[1])
+						is.ReadF32("shadowoffset", &c.size.shadowoffset)
+						is.ReadF32("draw.offset",
+							&c.size.draw.offset[0], &c.size.draw.offset[1])
+						is.ReadF32("z.width", &c.size.z.width)
+						var ztemp int32 = 0
+						is.ReadI32("z.enable", &ztemp)
+						if ztemp == 1 {
+							c.size.z.enable = true
+						}
+						is.ReadF32("attack.z.width",
+							&c.size.attack.z.width[0], &c.size.attack.z.width[1])
+					}
+				case "velocity":
+					if velocity {
+						velocity = false
+						is.ReadF32("walk.fwd", &gi.velocity.walk.fwd)
+						is.ReadF32("walk.back", &gi.velocity.walk.back)
+						is.ReadF32("walk.up.x", &gi.velocity.walk.up.x)
+						is.ReadF32("walk.down.x", &gi.velocity.walk.down.x)
+						is.ReadF32("run.fwd", &gi.velocity.run.fwd[0], &gi.velocity.run.fwd[1])
+						is.ReadF32("run.back",
+							&gi.velocity.run.back[0], &gi.velocity.run.back[1])
+						is.ReadF32("run.up.x", &gi.velocity.run.up.x)
+						is.ReadF32("run.up.y", &gi.velocity.run.up.y)
+						is.ReadF32("run.down.x", &gi.velocity.run.down.x)
+						is.ReadF32("run.down.y", &gi.velocity.run.down.y)
+						is.ReadF32("jump.neu",
+							&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
+						is.ReadF32("jump.back", &gi.velocity.jump.back)
+						is.ReadF32("jump.fwd", &gi.velocity.jump.fwd)
+						is.ReadF32("jump.up.x", &gi.velocity.jump.up.x)
+						is.ReadF32("jump.down.x", &gi.velocity.jump.down.x)
+						is.ReadF32("runjump.back",
+							&gi.velocity.runjump.back[0], &gi.velocity.runjump.back[1])
+						is.ReadF32("runjump.fwd",
+							&gi.velocity.runjump.fwd[0], &gi.velocity.runjump.fwd[1])
+						is.ReadF32("runjump.up.x", &gi.velocity.runjump.up.x)
+						is.ReadF32("runjump.down.x", &gi.velocity.runjump.down.x)
+						is.ReadF32("airjump.neu",
+							&gi.velocity.airjump.neu[0], &gi.velocity.airjump.neu[1])
+						is.ReadF32("airjump.back", &gi.velocity.airjump.back)
+						is.ReadF32("airjump.fwd", &gi.velocity.airjump.fwd)
+						is.ReadF32("airjump.up.x", &gi.velocity.airjump.up.x)
+						is.ReadF32("airjump.down.x", &gi.velocity.airjump.down.x)
+						is.ReadF32("air.gethit.groundrecover",
+							&gi.velocity.air.gethit.groundrecover[0],
+							&gi.velocity.air.gethit.groundrecover[1])
+						is.ReadF32("air.gethit.airrecover.mul",
+							&gi.velocity.air.gethit.airrecover.mul[0],
+							&gi.velocity.air.gethit.airrecover.mul[1])
+						is.ReadF32("air.gethit.airrecover.add",
+							&gi.velocity.air.gethit.airrecover.add[0],
+							&gi.velocity.air.gethit.airrecover.add[1])
+						is.ReadF32("air.gethit.airrecover.back",
+							&gi.velocity.air.gethit.airrecover.back)
+						is.ReadF32("air.gethit.airrecover.fwd",
+							&gi.velocity.air.gethit.airrecover.fwd)
+						is.ReadF32("air.gethit.airrecover.up",
+							&gi.velocity.air.gethit.airrecover.up)
+						is.ReadF32("air.gethit.airrecover.down",
+							&gi.velocity.air.gethit.airrecover.down)
+					}
+				case "movement":
+					if movement {
+						movement = false
+						is.ReadI32("airjump.num", &gi.movement.airjump.num)
+						is.ReadI32("airjump.height", &gi.movement.airjump.height)
+						is.ReadF32("yaccel", &gi.movement.yaccel)
+						is.ReadF32("stand.friction", &gi.movement.stand.friction)
+						is.ReadF32("stand.friction.threshold",
+							&gi.movement.stand.friction_threshold)
+						is.ReadF32("crouch.friction", &gi.movement.crouch.friction)
+						is.ReadF32("crouch.friction.threshold",
+							&gi.movement.crouch.friction_threshold)
+						is.ReadF32("air.gethit.groundlevel",
+							&gi.movement.air.gethit.groundlevel)
+						is.ReadF32("air.gethit.groundrecover.ground.threshold",
+							&gi.movement.air.gethit.groundrecover.ground.threshold)
+						is.ReadF32("air.gethit.groundrecover.groundlevel",
+							&gi.movement.air.gethit.groundrecover.groundlevel)
+						is.ReadF32("air.gethit.airrecover.threshold",
+							&gi.movement.air.gethit.airrecover.threshold)
+						is.ReadF32("air.gethit.airrecover.yaccel",
+							&gi.movement.air.gethit.airrecover.yaccel)
+						is.ReadF32("air.gethit.trip.groundlevel",
+							&gi.movement.air.gethit.trip.groundlevel)
+						is.ReadF32("down.bounce.offset",
+							&gi.movement.down.bounce.offset[0],
+							&gi.movement.down.bounce.offset[1])
+						is.ReadF32("down.bounce.yaccel", &gi.movement.down.bounce.yaccel)
+						is.ReadF32("down.bounce.groundlevel",
+							&gi.movement.down.bounce.groundlevel)
+						is.ReadF32("down.friction.threshold",
+							&gi.movement.down.friction_threshold)
+					}
+				case "quotes":
+					if quotes {
+						quotes = false
+						for i := range gi.quotes {
+							if is[fmt.Sprintf("victory%v", i)] != "" {
+								gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
+							}
+						}
+					}
+				case "constants":
+					if constants {
+						constants = false
+						for key, value := range is {
+							gi.constants[key] = float32(Atof(value))
+						}
+					}
+				case "remappreset ":
+					if len(subname) >= 1 {
+						if _, ok := gi.remapPreset[subname]; !ok {
+							gi.remapPreset[subname] = make(RemapPreset)
+						}
+						for key := range is {
+							k := strings.Split(key, ",")
+							if len(k) == 2 {
+								var v [2]int32
+								is.ReadI32(key, &v[0], &v[1])
+								if _, ok := gi.remapPreset[subname][int16(Atoi(k[0]))]; !ok {
+									gi.remapPreset[subname][int16(Atoi(k[0]))] = make(RemapTable)
+								}
+								gi.remapPreset[subname][int16(Atoi(k[0]))][int16(Atoi(k[1]))] = [...]int16{int16(v[0]), int16(v[1])}
+							}
+						}
 					}
 				}
 			}
-		}
-	}
-	if LoadFile(&sprite, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-		var err error
-		gi.sff, err = loadSff(filename, true)
-		return err
-	}); err != nil {
-		return err
-	}
-	if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-		str, err := LoadText(filename)
-		if err != nil {
+			return nil
+		}); err != nil {
 			return err
 		}
-		str = str + sys.commonAir
-		lines, i := SplitAndTrim(str, "\n"), 0
+	}
+	if len(sprite) > 0 {
+		if LoadFile(&sprite, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			var err error
+			gi.sff, err = loadSff(filename, true)
+			return err
+		}); err != nil {
+			return err
+		}
+	} else {
+		gi.sff = newSff()
+	}
+	if len(anim) > 0 {
+		if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			str, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			str = str + sys.commonAir
+			lines, i := SplitAndTrim(str, "\n"), 0
+			gi.anim = ReadAnimationTable(gi.sff, lines, &i)
+			return nil
+		}); err != nil {
+			return err
+		}
+	} else {
+		lines, i := SplitAndTrim(sys.commonAir, "\n"), 0
 		gi.anim = ReadAnimationTable(gi.sff, lines, &i)
-		return nil
-	}); err != nil {
-		return err
 	}
 	if len(sound) > 0 {
 		if LoadFile(&sound, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
