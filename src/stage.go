@@ -584,6 +584,7 @@ type stageShadow struct {
 	yscale    float32
 	fadeend   int32
 	fadebgn   int32
+	xshear    float32
 }
 type stagePlayer struct {
 	startx, starty, startz int32
@@ -843,6 +844,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
 		sec[0].ReadBool("reflect", &reflect)
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
+		sec[0].ReadF32("xshear", &s.sdw.xshear)
 	}
 	if reflect {
 		if sec := defmap["reflection"]; len(sec) > 0 {
