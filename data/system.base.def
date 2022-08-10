@@ -2271,6 +2271,7 @@
 	text.offset = 25, 33
 	text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	text.scale = 1.0, 1.0
+	text.ratio.text = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def."
 	text.reload.text = "Some selected options require Ikemen to be restarted.\nPress any key to exit the program."
 	text.noreload.text = "Some selected options require Ikemen to be restarted.\nPress any key to continue."
 	text.keys.text = "Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset."
