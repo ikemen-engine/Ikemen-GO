@@ -2976,6 +2976,12 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(0)
 		case "animtype":
 			ln = lua.LNumber(c.gethitAnimtype())
+		case "air.animtype":
+			ln = lua.LNumber(c.ghv.airanimtype)
+		case "ground.animtype":
+			ln = lua.LNumber(c.ghv.groundanimtype)
+		case "fall.animtype":
+			ln = lua.LNumber(c.ghv.fall.animtype)
 		case "airtype":
 			ln = lua.LNumber(c.ghv.airtype)
 		case "groundtype":

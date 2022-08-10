@@ -1679,6 +1679,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			switch c.token {
 			case "animtype":
 				out.append(OC_ex_gethitvar_animtype)
+			case "air.animtype":
+				out.append(OC_ex_gethitvar_air_animtype)
+			case "ground.animtype":
+				out.append(OC_ex_gethitvar_ground_animtype)
+			case "fall.animtype":
+				out.append(OC_ex_gethitvar_fall_animtype)
 			case "airtype":
 				out.append(OC_ex_gethitvar_airtype)
 			case "groundtype":

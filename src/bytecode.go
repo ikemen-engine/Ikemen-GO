@@ -378,6 +378,9 @@ const (
 	OC_ex_const480p
 	OC_ex_const720p
 	OC_ex_gethitvar_animtype
+	OC_ex_gethitvar_air_animtype
+	OC_ex_gethitvar_ground_animtype
+	OC_ex_gethitvar_fall_animtype
 	OC_ex_gethitvar_airtype
 	OC_ex_gethitvar_groundtype
 	OC_ex_gethitvar_damage
@@ -1661,6 +1664,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.constp(1280, sys.bcStack.Top().ToF())
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
+	case OC_ex_gethitvar_air_animtype:
+		sys.bcStack.PushI(int32(c.ghv.airanimtype))
+	case OC_ex_gethitvar_ground_animtype:
+		sys.bcStack.PushI(int32(c.ghv.groundanimtype))
+	case OC_ex_gethitvar_fall_animtype:
+		sys.bcStack.PushI(int32(c.ghv.fall.animtype))
 	case OC_ex_gethitvar_airtype:
 		sys.bcStack.PushI(int32(c.ghv.airtype))
 	case OC_ex_gethitvar_groundtype:
