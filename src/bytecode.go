@@ -7748,6 +7748,125 @@ const (
 	removePlatform_name
 )
 
+type modifyStageVar StateControllerBase
+
+const (
+	modifyStageVar_camera_boundleft byte = iota
+	modifyStageVar_camera_boundright
+	modifyStageVar_camera_boundhigh
+	modifyStageVar_camera_boundlow
+	modifyStageVar_camera_verticalfollow
+	modifyStageVar_camera_floortension
+	modifyStageVar_camera_tensionhigh
+	modifyStageVar_camera_tensionlow
+	modifyStageVar_camera_tension
+	modifyStageVar_camera_startzoom
+	modifyStageVar_camera_zoomout
+	modifyStageVar_camera_zoomin
+	modifyStageVar_camera_ytension_enable
+	modifyStageVar_playerinfo_leftbound
+	modifyStageVar_playerinfo_rightbound
+	modifyStageVar_scaling_topscale
+	modifyStageVar_bound_screenleft
+	modifyStageVar_bound_screenright
+	modifyStageVar_stageinfo_zoffset
+	modifyStageVar_stageinfo_zoffsetlink
+	modifyStageVar_stageinfo_xscale
+	modifyStageVar_stageinfo_yscale
+	modifyStageVar_shadow_intensity
+	modifyStageVar_shadow_color
+	modifyStageVar_shadow_yscale
+	modifyStageVar_shadow_fade_range
+	modifyStageVar_shadow_xshear
+	modifyStageVar_reflection_intensity
+	modifyStageVar_redirectid
+)
+
+func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
+	//crun := c
+	s := *&sys.stage
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyStageVar_camera_boundleft:
+			s.stageCamera.boundleft = exp[0].evalI(c)
+		case modifyStageVar_camera_boundright:
+			s.stageCamera.boundright = exp[0].evalI(c)
+		case modifyStageVar_camera_boundhigh:
+			s.stageCamera.boundhigh = exp[0].evalI(c)
+		case modifyStageVar_camera_boundlow:
+			s.stageCamera.boundlow = exp[0].evalI(c)
+		case modifyStageVar_camera_verticalfollow:
+			s.stageCamera.verticalfollow = exp[0].evalF(c)
+		case modifyStageVar_camera_floortension:
+			s.stageCamera.floortension = exp[0].evalI(c)
+		case modifyStageVar_camera_tensionhigh:
+			s.stageCamera.tensionhigh = exp[0].evalI(c)
+		case modifyStageVar_camera_tensionlow:
+			s.stageCamera.tensionlow = exp[0].evalI(c)
+		case modifyStageVar_camera_tension:
+			s.stageCamera.tension = exp[0].evalI(c)
+		case modifyStageVar_camera_startzoom:
+			s.stageCamera.startzoom = exp[0].evalF(c)
+		case modifyStageVar_camera_zoomout:
+			s.stageCamera.zoomout = exp[0].evalF(c)
+		case modifyStageVar_camera_zoomin:
+			s.stageCamera.zoomin = exp[0].evalF(c)
+		case modifyStageVar_camera_ytension_enable:
+			s.stageCamera.ytensionenable = exp[0].evalB(c)
+		case modifyStageVar_playerinfo_leftbound:
+			s.leftbound = exp[0].evalF(c)
+		case modifyStageVar_playerinfo_rightbound:
+			s.rightbound = exp[0].evalF(c)
+		case modifyStageVar_scaling_topscale:
+			if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+				s.stageCamera.ztopscale = exp[0].evalF(c)
+			}
+		case modifyStageVar_bound_screenleft:
+			s.screenleft = exp[0].evalI(c)
+		case modifyStageVar_bound_screenright:
+			s.screenright = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_zoffset:
+			s.stageCamera.zoffset = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_zoffsetlink:
+			s.zoffsetlink = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_xscale:
+			s.scale[0] = exp[0].evalF(c)
+		case modifyStageVar_stageinfo_yscale:
+			s.scale[1] = exp[0].evalF(c)
+		case modifyStageVar_shadow_intensity:
+			s.sdw.intensity = Clamp(exp[0].evalI(c), 0, 255)
+		case modifyStageVar_shadow_color:
+			// mugen 1.1 removed support for color
+			if (s.ver[0] != 1 || s.ver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) {
+				r := Clamp(exp[0].evalI(c), 0, 255)
+				g := Clamp(exp[1].evalI(c), 0, 255)
+				b := Clamp(exp[2].evalI(c), 0, 255)
+				s.sdw.color = uint32(r<<16 | g<<8 | b)
+			}
+		case modifyStageVar_shadow_yscale:
+			s.sdw.yscale = exp[0].evalF(c)
+		case modifyStageVar_shadow_fade_range:
+			s.sdw.fadeend = exp[0].evalI(c)
+			s.sdw.fadebgn = exp[1].evalI(c)
+		case modifyStageVar_shadow_xshear:
+			s.sdw.xshear = exp[0].evalF(c)
+		case modifyStageVar_reflection_intensity:
+			s.reflection = Clamp(exp[0].evalI(c), 0, 255)
+		case modifyStageVar_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				//crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.stage.reload = true // Stage will have to be reloaded if it's re-selected
+	sys.cam.stageCamera = s.stageCamera
+	sys.cam.Init()
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType

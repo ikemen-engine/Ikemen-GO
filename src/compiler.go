@@ -164,6 +164,7 @@ func newCompiler() *Compiler {
 		"targetredlifeadd":     c.targetRedLifeAdd,
 		"targetscoreadd":       c.targetScoreAdd,
 		"text":                 c.text,
+		"modifystagevar":       c.modifyStageVar,
 	}
 	return c
 }
