@@ -164,6 +164,7 @@ func newCompiler() *Compiler {
 		"targetredlifeadd":     c.targetRedLifeAdd,
 		"targetscoreadd":       c.targetScoreAdd,
 		"text":                 c.text,
+		"modifystagevar":       c.modifyStageVar,
 	}
 	return c
 }
@@ -2055,18 +2056,89 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		var opc OpCode
+		isStr := false
 		switch svname {
 		case "info.name":
 			opc = OC_const_stagevar_info_name
+			isStr = true
 		case "info.displayname":
 			opc = OC_const_stagevar_info_displayname
+			isStr = true
 		case "info.author":
 			opc = OC_const_stagevar_info_author
+			isStr = true
+		case "camera.boundleft":
+			opc = OC_const_stagevar_camera_boundleft
+		case "camera.boundright":
+			opc = OC_const_stagevar_camera_boundright
+		case "camera.boundhigh":
+			opc = OC_const_stagevar_camera_boundhigh
+		case "camera.boundlow":
+			opc = OC_const_stagevar_camera_boundlow
+		case "camera.verticalfollow":
+			opc = OC_const_stagevar_camera_verticalfollow
+		case "camera.floortension":
+			opc = OC_const_stagevar_camera_floortension
+		case "camera.tensionhigh":
+			opc = OC_const_stagevar_camera_tensionhigh
+		case "camera.tensionlow":
+			opc = OC_const_stagevar_camera_tensionlow
+		case "camera.tension":
+			opc = OC_const_stagevar_camera_tension
+		case "camera.startzoom":
+			opc = OC_const_stagevar_camera_startzoom
+		case "camera.zoomout":
+			opc = OC_const_stagevar_camera_zoomout
+		case "camera.zoomin":
+			opc = OC_const_stagevar_camera_zoomin
+		case "camera.ytension.enable":
+			opc = OC_const_stagevar_camera_ytension_enable
+		case "playerinfo.leftbound":
+			opc = OC_const_stagevar_playerinfo_leftbound
+		case "playerinfo.rightbound":
+			opc = OC_const_stagevar_playerinfo_rightbound
+		case "scaling.topscale":
+			opc = OC_const_stagevar_scaling_topscale
+		case "bound.screenleft":
+			opc = OC_const_stagevar_bound_screenleft
+		case "bound.screenright":
+			opc = OC_const_stagevar_bound_screenright
+		case "stageinfo.zoffset":
+			opc = OC_const_stagevar_stageinfo_zoffset
+		case "stageinfo.zoffsetlink":
+			opc = OC_const_stagevar_stageinfo_zoffsetlink
+		case "stageinfo.xscale":
+			opc = OC_const_stagevar_stageinfo_xscale
+		case "stageinfo.yscale":
+			opc = OC_const_stagevar_stageinfo_yscale
+		case "shadow.intensity":
+			opc = OC_const_stagevar_shadow_intensity
+		case "shadow.color.r":
+			opc = OC_const_stagevar_shadow_color_r
+		case "shadow.color.g":
+			opc = OC_const_stagevar_shadow_color_g
+		case "shadow.color.b":
+			opc = OC_const_stagevar_shadow_color_b
+		case "shadow.yscale":
+			opc = OC_const_stagevar_shadow_yscale
+		case "shadow.fade.range.begin":
+			opc = OC_const_stagevar_shadow_fade_range_begin
+		case "shadow.fade.range.end":
+			opc = OC_const_stagevar_shadow_fade_range_end
+		case "shadow.xshear":	
+			opc = OC_const_stagevar_shadow_xshear
+		case "reflection.intensity":
+			opc = OC_const_stagevar_reflection_intensity
 		default:
 			return bvNone(), Error("Invalid data: " + svname)
 		}
-		if err := nameSub(opc); err != nil {
-			return bvNone(), err
+		if isStr {
+			if err := nameSub(opc); err != nil {
+				return bvNone(), err
+			}
+		} else {
+			out.append(OC_const_)
+			out.append(opc)
 		}
 	case "teammode":
 		if err := eqne(func() error {
@@ -2576,12 +2648,30 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkohiraku(in); err != nil {
 			return bvNone(), err
 		}
-		out.append(OC_ex_)
-		out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(c.token))))
+		var m string = c.token
 		c.token = c.tokenizer(in)
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
+		c.token = c.tokenizer(in)
+		if c.token == ":=" {
+			c.token = c.tokenizer(in)
+			bv2, err := c.expEqne(&be2, in)
+			if err != nil {
+				return bvNone(), err
+			}
+			be2.appendValue(bv2)
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(be2)))
+			}
+			out.append(be2...)
+			out.append(OC_st_)
+			out.appendI32Op(OC_st_map, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+		} else {
+			out.append(OC_ex_)
+			out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+		}
+		return bvNone(), nil
 	case "memberno":
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":
@@ -3251,6 +3341,8 @@ func (c *Compiler) parseSection(
 		var name, data string
 		if len(line) >= 3 && strings.ToLower(line[:3]) == "var" {
 			name, data = "var", line
+		} else if len(line) >= 3 && strings.ToLower(line[:3]) == "map" {
+			name, data = "map", line
 		} else if len(line) >= 4 && strings.ToLower(line[:4]) == "fvar" {
 			name, data = "fvar", line
 		} else if len(line) >= 6 && strings.ToLower(line[:6]) == "sysvar" {
@@ -4907,16 +4999,20 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	}
 
 	// Load the command file
-	if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-		str, err := LoadText(filename)
-		if err != nil {
-			return err
+	if len(cmd) > 0 {
+		if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			str, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			str = str + sys.commonCmd
+			lines, i = SplitAndTrim(str, "\n"), 0
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		str = str + sys.commonCmd
-		lines, i = SplitAndTrim(str, "\n"), 0
-		return nil
-	}); err != nil {
-		return nil, err
+	} else {
+		lines, i = SplitAndTrim(sys.commonCmd, "\n"), 0
 	}
 
 	// Initialize command list data
@@ -5026,9 +5122,11 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		}
 	}
 	// Compile states in command file
-	if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
-		sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
-		return nil, err
+	if len(cmd) > 0 {
+		if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
+			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+			return nil, err
+		}
 	}
 	// Compile states in common state file
 	if len(stcommon) > 0 {

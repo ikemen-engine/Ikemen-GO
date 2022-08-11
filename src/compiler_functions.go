@@ -3859,22 +3859,66 @@ func (c *Compiler) loadFile(is IniSection, sc *StateControllerBase, _ int8) (Sta
 // TODO: Remove boilderplate from the Map's Compiler.
 func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
+		assign := false
+		var mapParam, mapName, value string
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "map", func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
+			mapParam = data
+			// CNS: See if map parameter is ini-style or if it's an assign
+			ia := strings.Index(mapParam, "=")
+			if ia > 0 {
+				if strings.ToLower(SplitAndTrim(mapParam, "=")[0]) == "map" {
+					mapParam = strings.TrimSpace(mapParam[ia+1:])
+				} else {
+					mapParam = strings.TrimSpace(mapParam[3:])
+					assign = true
+				}
+			} else if !strings.HasPrefix(mapParam, "\"") {
+				return Error("Missing '='")
 			}
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "value",
-			mapSet_value, VT_Float, 1, false); err != nil {
-			return err
+		if len(mapParam) > 0 {
+			if assign {
+				if err := c.kakkohiraku(&mapParam); err != nil {
+					return err
+				}
+				mapName = c.token
+				c.token = c.tokenizer(&mapParam)
+				if err := c.kakkotojiru(); err != nil {
+					return err
+				}
+				c.token = c.tokenizer(&mapParam)
+				if c.token == ":=" {
+					value = strings.TrimSpace(mapParam)
+				} else {
+					return Error("Missing ':' before '='")
+				}
+			} else {
+				b := false
+				if err := c.stateParam(is, "value", func(data string) error {
+					b = true
+					value = data
+					return nil
+				}); err != nil {
+					return err
+				}
+				if b {
+					if len(mapParam) < 2 || mapParam[0] != '"' || mapParam[len(mapParam)-1] != '"' {
+						return Error("Not enclosed in \"")
+					}
+					mapName = mapParam[1:len(mapParam)-1]
+				}
+			}
+			if len(value) > 0 {
+				sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(mapName)))
+				c.scAdd(sc, mapSet_value, value, VT_Float, 1)
+			}
 		}
 		return nil
 	})
@@ -4417,7 +4461,6 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 	})
 	return *ret, err
 }
-
 // Handles "createPlatform" parameters.
 func (c *Compiler) createPlatform(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*text)(sc), c.stateSec(is, func() error {
@@ -4492,7 +4535,128 @@ func (c *Compiler) createPlatform(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
-
+func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyStageVar)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyStageVar_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.ytension.enable",
+			modifyStageVar_camera_ytension_enable, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.boundleft",
+			modifyStageVar_camera_boundleft, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.boundright",
+			modifyStageVar_camera_boundright, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.boundhigh",
+			modifyStageVar_camera_boundhigh, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.boundlow",
+			modifyStageVar_camera_boundlow, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.verticalfollow",
+			modifyStageVar_camera_verticalfollow, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.floortension",
+			modifyStageVar_camera_floortension, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.tensionhigh",
+			modifyStageVar_camera_tensionhigh, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.tensionlow",
+			modifyStageVar_camera_tensionlow, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.tension",
+			modifyStageVar_camera_tension, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.startzoom",
+			modifyStageVar_camera_startzoom, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zoomout",
+			modifyStageVar_camera_zoomout, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zoomin",
+			modifyStageVar_camera_zoomin, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "playerinfo.leftbound",
+			modifyStageVar_playerinfo_leftbound, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "playerinfo.rightbound",
+			modifyStageVar_playerinfo_rightbound, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scaling.topscale",
+			modifyStageVar_scaling_topscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "bound.screenleft",
+			modifyStageVar_bound_screenleft, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "bound.screenright",
+			modifyStageVar_bound_screenright, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "stageinfo.zoffset",
+			modifyStageVar_stageinfo_zoffset, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "stageinfo.zoffsetlink",
+			modifyStageVar_stageinfo_zoffsetlink, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "stageinfo.xscale",
+			modifyStageVar_stageinfo_xscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "stageinfo.yscale",
+			modifyStageVar_stageinfo_yscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow.intensity",
+			modifyStageVar_shadow_intensity, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow.color",
+			modifyStageVar_shadow_color, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow.yscale",
+			modifyStageVar_shadow_yscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow.fade.range",
+			modifyStageVar_shadow_fade_range, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow.xshear",
+			modifyStageVar_shadow_xshear, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reflection.intensity",
+			modifyStageVar_reflection_intensity, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	return nullStateController, nil

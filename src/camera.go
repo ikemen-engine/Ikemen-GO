@@ -9,9 +9,10 @@ type stageCamera struct {
 	boundhigh      int32
 	boundlow       int32
 	verticalfollow float32
-	tension        int32
-	tensionlow     int32
 	floortension   int32
+	tensionhigh    int32
+	tensionlow     int32
+	tension        int32
 	overdrawhigh   int32 //TODO: not implemented
 	overdrawlow    int32
 	cuthigh        int32
@@ -24,13 +25,14 @@ type stageCamera struct {
 	startzoom      float32
 	zoomin         float32
 	zoomout        float32
+	ytensionenable bool
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tension: 50,
-		cuthigh: math.MinInt32, cutlow: math.MinInt32, tensionlow: math.MinInt32,
+		cuthigh: math.MinInt32, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false}
 }
 
 type Camera struct {
@@ -157,7 +159,12 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	*x += vx
-	ftension := float32(c.floortension) * c.localscl
+	ftension, vfollow := float32(c.floortension), c.verticalfollow
+	if c.ytensionenable {
+		ftension = (240/(float32(sys.gameWidth)/float32(c.localcoord[0])) - float32(c.tensionhigh)) * c.localscl
+		vfollow = 1
+	}
+	ftension *= c.localscl
 	if ftension < 0 {
 		ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
 		if ftension < 0 {
@@ -165,13 +172,13 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	if highest < -ftension {
-		*y = (highest + ftension) * Pow(c.verticalfollow,
+		*y = (highest + ftension) * Pow(vfollow,
 			MinF(1, 1/Pow(c.Scale, 4)))
 	} else if lowest > 0 {
-		*y = lowest * Pow(c.verticalfollow,
+		*y = lowest * Pow(vfollow,
 			MinF(1, 1/Pow(c.Scale, 4)))
 	} else {
-		*y = 0
+		*y = c.Pos[1] - c.CameraZoomYBound
 	}
 	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
 		float32(sys.gameWidth-320)

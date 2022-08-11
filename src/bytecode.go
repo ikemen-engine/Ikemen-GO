@@ -328,6 +328,37 @@ const (
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
+	OC_const_stagevar_camera_boundleft
+	OC_const_stagevar_camera_boundright
+	OC_const_stagevar_camera_boundhigh
+	OC_const_stagevar_camera_boundlow
+	OC_const_stagevar_camera_verticalfollow
+	OC_const_stagevar_camera_floortension
+	OC_const_stagevar_camera_tensionhigh
+	OC_const_stagevar_camera_tensionlow
+	OC_const_stagevar_camera_tension
+	OC_const_stagevar_camera_startzoom
+	OC_const_stagevar_camera_zoomout
+	OC_const_stagevar_camera_zoomin
+	OC_const_stagevar_camera_ytension_enable
+	OC_const_stagevar_playerinfo_leftbound
+	OC_const_stagevar_playerinfo_rightbound
+	OC_const_stagevar_scaling_topscale
+	OC_const_stagevar_bound_screenleft
+	OC_const_stagevar_bound_screenright
+	OC_const_stagevar_stageinfo_zoffset
+	OC_const_stagevar_stageinfo_zoffsetlink
+	OC_const_stagevar_stageinfo_xscale
+	OC_const_stagevar_stageinfo_yscale
+	OC_const_stagevar_shadow_intensity
+	OC_const_stagevar_shadow_color_r
+	OC_const_stagevar_shadow_color_g
+	OC_const_stagevar_shadow_color_b
+	OC_const_stagevar_shadow_yscale
+	OC_const_stagevar_shadow_fade_range_begin
+	OC_const_stagevar_shadow_fade_range_end
+	OC_const_stagevar_shadow_xshear
+	OC_const_stagevar_reflection_intensity
 	OC_const_constants
 	OC_const_stage_constants
 )
@@ -348,6 +379,7 @@ const (
 	OC_st_sysvar0add  = OC_var + OC_sysvar0
 	OC_st_fvar0add    = OC_var + OC_fvar0
 	OC_st_sysfvar0add = OC_var + OC_sysfvar0
+	OC_st_map
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -1316,6 +1348,10 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 	case OC_st_sysfvaradd:
 		v := sys.bcStack.Pop().ToF()
 		*sys.bcStack.Top() = c.sysFvarAdd(sys.bcStack.Top().ToI(), v)
+	case OC_st_map:
+		v := sys.bcStack.Pop().ToF()
+		sys.bcStack.Push(c.mapSet(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))], v, 0))
+		*i += 4
 	default:
 		vi := be[*i-1]
 		if vi < OC_st_sysvar0+NumSysVar {
@@ -1596,6 +1632,68 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_stagevar_camera_boundleft:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundleft)
+	case OC_const_stagevar_camera_boundright:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundright)
+	case OC_const_stagevar_camera_boundhigh:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundhigh)
+	case OC_const_stagevar_camera_boundlow:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundlow)
+	case OC_const_stagevar_camera_verticalfollow:
+		sys.bcStack.PushF(sys.stage.stageCamera.verticalfollow)
+	case OC_const_stagevar_camera_floortension:
+		sys.bcStack.PushI(sys.stage.stageCamera.floortension)
+	case OC_const_stagevar_camera_tensionhigh:
+		sys.bcStack.PushI(sys.stage.stageCamera.tensionhigh)
+	case OC_const_stagevar_camera_tensionlow:
+		sys.bcStack.PushI(sys.stage.stageCamera.tensionlow)
+	case OC_const_stagevar_camera_tension:
+		sys.bcStack.PushI(sys.stage.stageCamera.tension)
+	case OC_const_stagevar_camera_startzoom:
+		sys.bcStack.PushF(sys.stage.stageCamera.startzoom)
+	case OC_const_stagevar_camera_zoomout:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomout)
+	case OC_const_stagevar_camera_zoomin:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomin)
+	case OC_const_stagevar_camera_ytension_enable:
+		sys.bcStack.PushB(sys.stage.stageCamera.ytensionenable)
+	case OC_const_stagevar_playerinfo_leftbound:
+		sys.bcStack.PushF(sys.stage.leftbound)
+	case OC_const_stagevar_playerinfo_rightbound:
+		sys.bcStack.PushF(sys.stage.rightbound)
+	case OC_const_stagevar_scaling_topscale:
+		sys.bcStack.PushF(sys.stage.stageCamera.ztopscale)
+	case OC_const_stagevar_bound_screenleft:
+		sys.bcStack.PushI(sys.stage.screenleft)
+	case OC_const_stagevar_bound_screenright:
+		sys.bcStack.PushI(sys.stage.screenright)
+	case OC_const_stagevar_stageinfo_zoffset:
+		sys.bcStack.PushI(sys.stage.stageCamera.zoffset)
+	case OC_const_stagevar_stageinfo_zoffsetlink:
+		sys.bcStack.PushI(sys.stage.zoffsetlink)
+	case OC_const_stagevar_stageinfo_xscale:
+		sys.bcStack.PushF(sys.stage.scale[0])
+	case OC_const_stagevar_stageinfo_yscale:
+		sys.bcStack.PushF(sys.stage.scale[1])
+	case OC_const_stagevar_shadow_intensity:
+		sys.bcStack.PushI(sys.stage.sdw.intensity)
+	case OC_const_stagevar_shadow_color_r:
+		sys.bcStack.PushI(int32((sys.stage.sdw.color & 0xFF0000) >> 16))
+	case OC_const_stagevar_shadow_color_g:
+		sys.bcStack.PushI(int32((sys.stage.sdw.color & 0xFF00) >> 8))
+	case OC_const_stagevar_shadow_color_b:
+		sys.bcStack.PushI(int32(sys.stage.sdw.color & 0xFF))
+	case OC_const_stagevar_shadow_yscale:
+		sys.bcStack.PushF(sys.stage.sdw.yscale)
+	case OC_const_stagevar_shadow_fade_range_begin:
+		sys.bcStack.PushI(sys.stage.sdw.fadebgn)
+	case OC_const_stagevar_shadow_fade_range_end:
+		sys.bcStack.PushI(sys.stage.sdw.fadeend)
+	case OC_const_stagevar_shadow_xshear:
+		sys.bcStack.PushF(sys.stage.sdw.xshear)
+	case OC_const_stagevar_reflection_intensity:
+		sys.bcStack.PushI(sys.stage.reflection)
 	case OC_const_constants:
 		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])
@@ -7751,6 +7849,125 @@ const (
 	removePlatform_id byte = iota
 	removePlatform_name
 )
+
+type modifyStageVar StateControllerBase
+
+const (
+	modifyStageVar_camera_boundleft byte = iota
+	modifyStageVar_camera_boundright
+	modifyStageVar_camera_boundhigh
+	modifyStageVar_camera_boundlow
+	modifyStageVar_camera_verticalfollow
+	modifyStageVar_camera_floortension
+	modifyStageVar_camera_tensionhigh
+	modifyStageVar_camera_tensionlow
+	modifyStageVar_camera_tension
+	modifyStageVar_camera_startzoom
+	modifyStageVar_camera_zoomout
+	modifyStageVar_camera_zoomin
+	modifyStageVar_camera_ytension_enable
+	modifyStageVar_playerinfo_leftbound
+	modifyStageVar_playerinfo_rightbound
+	modifyStageVar_scaling_topscale
+	modifyStageVar_bound_screenleft
+	modifyStageVar_bound_screenright
+	modifyStageVar_stageinfo_zoffset
+	modifyStageVar_stageinfo_zoffsetlink
+	modifyStageVar_stageinfo_xscale
+	modifyStageVar_stageinfo_yscale
+	modifyStageVar_shadow_intensity
+	modifyStageVar_shadow_color
+	modifyStageVar_shadow_yscale
+	modifyStageVar_shadow_fade_range
+	modifyStageVar_shadow_xshear
+	modifyStageVar_reflection_intensity
+	modifyStageVar_redirectid
+)
+
+func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
+	//crun := c
+	s := *&sys.stage
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyStageVar_camera_boundleft:
+			s.stageCamera.boundleft = exp[0].evalI(c)
+		case modifyStageVar_camera_boundright:
+			s.stageCamera.boundright = exp[0].evalI(c)
+		case modifyStageVar_camera_boundhigh:
+			s.stageCamera.boundhigh = exp[0].evalI(c)
+		case modifyStageVar_camera_boundlow:
+			s.stageCamera.boundlow = exp[0].evalI(c)
+		case modifyStageVar_camera_verticalfollow:
+			s.stageCamera.verticalfollow = exp[0].evalF(c)
+		case modifyStageVar_camera_floortension:
+			s.stageCamera.floortension = exp[0].evalI(c)
+		case modifyStageVar_camera_tensionhigh:
+			s.stageCamera.tensionhigh = exp[0].evalI(c)
+		case modifyStageVar_camera_tensionlow:
+			s.stageCamera.tensionlow = exp[0].evalI(c)
+		case modifyStageVar_camera_tension:
+			s.stageCamera.tension = exp[0].evalI(c)
+		case modifyStageVar_camera_startzoom:
+			s.stageCamera.startzoom = exp[0].evalF(c)
+		case modifyStageVar_camera_zoomout:
+			s.stageCamera.zoomout = exp[0].evalF(c)
+		case modifyStageVar_camera_zoomin:
+			s.stageCamera.zoomin = exp[0].evalF(c)
+		case modifyStageVar_camera_ytension_enable:
+			s.stageCamera.ytensionenable = exp[0].evalB(c)
+		case modifyStageVar_playerinfo_leftbound:
+			s.leftbound = exp[0].evalF(c)
+		case modifyStageVar_playerinfo_rightbound:
+			s.rightbound = exp[0].evalF(c)
+		case modifyStageVar_scaling_topscale:
+			if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+				s.stageCamera.ztopscale = exp[0].evalF(c)
+			}
+		case modifyStageVar_bound_screenleft:
+			s.screenleft = exp[0].evalI(c)
+		case modifyStageVar_bound_screenright:
+			s.screenright = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_zoffset:
+			s.stageCamera.zoffset = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_zoffsetlink:
+			s.zoffsetlink = exp[0].evalI(c)
+		case modifyStageVar_stageinfo_xscale:
+			s.scale[0] = exp[0].evalF(c)
+		case modifyStageVar_stageinfo_yscale:
+			s.scale[1] = exp[0].evalF(c)
+		case modifyStageVar_shadow_intensity:
+			s.sdw.intensity = Clamp(exp[0].evalI(c), 0, 255)
+		case modifyStageVar_shadow_color:
+			// mugen 1.1 removed support for color
+			if (s.ver[0] != 1 || s.ver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) {
+				r := Clamp(exp[0].evalI(c), 0, 255)
+				g := Clamp(exp[1].evalI(c), 0, 255)
+				b := Clamp(exp[2].evalI(c), 0, 255)
+				s.sdw.color = uint32(r<<16 | g<<8 | b)
+			}
+		case modifyStageVar_shadow_yscale:
+			s.sdw.yscale = exp[0].evalF(c)
+		case modifyStageVar_shadow_fade_range:
+			s.sdw.fadeend = exp[0].evalI(c)
+			s.sdw.fadebgn = exp[1].evalI(c)
+		case modifyStageVar_shadow_xshear:
+			s.sdw.xshear = exp[0].evalF(c)
+		case modifyStageVar_reflection_intensity:
+			s.reflection = Clamp(exp[0].evalI(c), 0, 255)
+		case modifyStageVar_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				//crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.stage.reload = true // Stage will have to be reloaded if it's re-selected
+	sys.cam.stageCamera = s.stageCamera
+	sys.cam.Init()
+	return false
+}
 
 // StateDef data struct
 type StateBytecode struct {
