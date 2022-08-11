@@ -1095,14 +1095,9 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest, sclMul f
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
+	s.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
 	leftest, rightest = *x, *x
-	if s.cam.verticalfollow > 0 {
-		// Set initial lowest value as latest raw camera Y-pos
-		// This should make the camera rest in its latest position in case there's no player left to track
-		lowest = (*y - s.cam.CameraZoomYBound) / Pow(s.cam.verticalfollow, MinF(1, 1/Pow(s.cam.Scale, 4)))
-	}
-	s.cam.Update(scl, *x, *y)
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1187,13 +1182,6 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest, sclMul f
 	explUpdate(&s.underexplDrawlist, true)
 	leftest -= *x
 	rightest -= *x
-	if s.cam.tensionlow != math.MinInt32 {
-		// Highest can't be greater than 0 when working with tensionhigh/tensionlow
-		highest = MinF(highest, 0)
-	} else {
-		// When not using tensionhigh/tensionlow, this nullifies Y-axis positioning influence on zoom
-		lowest = highest
-	}
 	sclMul = s.cam.action(x, y, leftest, rightest, lowest, highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 	introSkip := false
@@ -2072,6 +2060,17 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 
+		// If frame is ready to tick and not paused
+		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
+			(s.pause <= 0 || !s.pausebg) {
+			// Update stage
+			s.stage.action()
+		}
+
+		// Update game state
+		newx, newy = x, y
+		l, r, sclmul = s.action(&newx, &newy, scl)
+		
 		// Update camera
 		scl = s.cam.ScaleBound(scl, sclmul)
 		tmp := (float32(s.gameWidth) / 2) / scl
@@ -2084,17 +2083,6 @@ func (s *System) fight() (reload bool) {
 			x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 		}
 		y = s.cam.YBound(scl, newy)
-
-		// If frame is ready to tick and not paused
-		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
-			(s.pause <= 0 || !s.pausebg) {
-			// Update stage
-			s.stage.action()
-		}
-
-		// Update game state
-		newx, newy = x, y
-		l, r, sclmul = s.action(&newx, &newy, scl)
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {

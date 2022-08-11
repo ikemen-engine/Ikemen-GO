@@ -5034,9 +5034,9 @@ func (c *Char) xScreenBound() {
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
-		x = MaxF(min+sys.xmin/c.localscl, MinF(max+sys.xmax/c.localscl, x))
+		x = ClampF(x, min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
 	}
-	x = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl, x))
+	x = ClampF(x, sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
 	c.setPosX(x)
 }
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
@@ -5046,7 +5046,7 @@ func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
-		x = MaxF(min+pxmin/c.localscl, MinF(max+pxmax/c.localscl, x))
+		x = ClampF(x, min+pxmin/c.localscl, max+pxmax/c.localscl)
 	}
 	c.setX(x)
 	c.xScreenBound()
@@ -5636,7 +5636,7 @@ func (c *Char) update(cvmin, cvmax,
 		min, max = -max, -min
 	}
 	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
-		c.drawPos[0] = MaxF(min+sys.xmin/c.localscl, MinF(max+sys.xmax/c.localscl, c.drawPos[0]))
+		c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
 	}
 	if c.sf(CSF_movecamera_x) && !c.scf(SCF_standby) {
 		*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
@@ -5649,7 +5649,8 @@ func (c *Char) update(cvmin, cvmax,
 	}
 	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-		//*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
+		*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
+		sys.cam.Pos[1] = 0 + sys.cam.CameraZoomYBound
 	}
 }
 func (c *Char) tick() {
@@ -5986,15 +5987,17 @@ func (cl *CharList) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
-	// Find lowest character available and set it as initial highest
-	for _, c := range ro {
-		if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
-			*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
-		}
-	}
-	*highest = *lowest
 	for _, c := range ro {
 		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+	}
+	if !sys.cam.ytensionenable {
+		*highest = *lowest
+		for _, c := range ro {
+			if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
+				*highest = MinF(c.drawPos[1]*c.localscl, *highest)
+			}
+		}
+		*lowest = *highest
 	}
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
@@ -6875,19 +6878,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
 					if getter.sf(CSF_screenbound) {
-						getter.pos[0] = MaxF(gxmin/getter.localscl, MinF(gxmax/getter.localscl, getter.pos[0]))
+						getter.pos[0] = ClampF(getter.pos[0], gxmin/getter.localscl, gxmax/getter.localscl)
 					}
 					if c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 						if c.facing > 0 {
 							l, r = -r, -l
 						}
-						c.pos[0] = MaxF(l+sys.xmin/c.localscl, MinF(r+sys.xmax/c.localscl, c.pos[0]))
+						c.pos[0] = ClampF(c.pos[0], l+sys.xmin/c.localscl, r+sys.xmax/c.localscl)
 					}
-					getter.pos[0] = MaxF(sys.stage.leftbound/getter.localscl, MinF(sys.stage.rightbound/getter.localscl,
-						getter.pos[0]))
-					c.pos[0] = MaxF(sys.stage.leftbound/c.localscl, MinF(sys.stage.rightbound/c.localscl,
-						c.pos[0]))
+					getter.pos[0] = ClampF(getter.pos[0], sys.stage.leftbound*sys.stage.localscl/getter.localscl, sys.stage.rightbound*sys.stage.localscl/getter.localscl)
+					c.pos[0] = ClampF(c.pos[0], sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
 					getter.drawPos[0], c.drawPos[0] = getter.pos[0], c.pos[0]
 				}
 			}
