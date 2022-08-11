@@ -328,6 +328,37 @@ const (
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
+	OC_const_stagevar_camera_boundleft
+	OC_const_stagevar_camera_boundright
+	OC_const_stagevar_camera_boundhigh
+	OC_const_stagevar_camera_boundlow
+	OC_const_stagevar_camera_verticalfollow
+	OC_const_stagevar_camera_floortension
+	OC_const_stagevar_camera_tensionhigh
+	OC_const_stagevar_camera_tensionlow
+	OC_const_stagevar_camera_tension
+	OC_const_stagevar_camera_startzoom
+	OC_const_stagevar_camera_zoomout
+	OC_const_stagevar_camera_zoomin
+	OC_const_stagevar_camera_ytension_enable
+	OC_const_stagevar_playerinfo_leftbound
+	OC_const_stagevar_playerinfo_rightbound
+	OC_const_stagevar_scaling_topscale
+	OC_const_stagevar_bound_screenleft
+	OC_const_stagevar_bound_screenright
+	OC_const_stagevar_stageinfo_zoffset
+	OC_const_stagevar_stageinfo_zoffsetlink
+	OC_const_stagevar_stageinfo_xscale
+	OC_const_stagevar_stageinfo_yscale
+	OC_const_stagevar_shadow_intensity
+	OC_const_stagevar_shadow_color_r
+	OC_const_stagevar_shadow_color_g
+	OC_const_stagevar_shadow_color_b
+	OC_const_stagevar_shadow_yscale
+	OC_const_stagevar_shadow_fade_range_begin
+	OC_const_stagevar_shadow_fade_range_end
+	OC_const_stagevar_shadow_xshear
+	OC_const_stagevar_reflection_intensity
 	OC_const_constants
 	OC_const_stage_constants
 )
@@ -1598,6 +1629,68 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_stagevar_camera_boundleft:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundleft)
+	case OC_const_stagevar_camera_boundright:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundright)
+	case OC_const_stagevar_camera_boundhigh:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundhigh)
+	case OC_const_stagevar_camera_boundlow:
+		sys.bcStack.PushI(sys.stage.stageCamera.boundlow)
+	case OC_const_stagevar_camera_verticalfollow:
+		sys.bcStack.PushF(sys.stage.stageCamera.verticalfollow)
+	case OC_const_stagevar_camera_floortension:
+		sys.bcStack.PushI(sys.stage.stageCamera.floortension)
+	case OC_const_stagevar_camera_tensionhigh:
+		sys.bcStack.PushI(sys.stage.stageCamera.tensionhigh)
+	case OC_const_stagevar_camera_tensionlow:
+		sys.bcStack.PushI(sys.stage.stageCamera.tensionlow)
+	case OC_const_stagevar_camera_tension:
+		sys.bcStack.PushI(sys.stage.stageCamera.tension)
+	case OC_const_stagevar_camera_startzoom:
+		sys.bcStack.PushF(sys.stage.stageCamera.startzoom)
+	case OC_const_stagevar_camera_zoomout:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomout)
+	case OC_const_stagevar_camera_zoomin:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomin)
+	case OC_const_stagevar_camera_ytension_enable:
+		sys.bcStack.PushB(sys.stage.stageCamera.ytensionenable)
+	case OC_const_stagevar_playerinfo_leftbound:
+		sys.bcStack.PushF(sys.stage.leftbound)
+	case OC_const_stagevar_playerinfo_rightbound:
+		sys.bcStack.PushF(sys.stage.rightbound)
+	case OC_const_stagevar_scaling_topscale:
+		sys.bcStack.PushF(sys.stage.stageCamera.ztopscale)
+	case OC_const_stagevar_bound_screenleft:
+		sys.bcStack.PushI(sys.stage.screenleft)
+	case OC_const_stagevar_bound_screenright:
+		sys.bcStack.PushI(sys.stage.screenright)
+	case OC_const_stagevar_stageinfo_zoffset:
+		sys.bcStack.PushI(sys.stage.stageCamera.zoffset)
+	case OC_const_stagevar_stageinfo_zoffsetlink:
+		sys.bcStack.PushI(sys.stage.zoffsetlink)
+	case OC_const_stagevar_stageinfo_xscale:
+		sys.bcStack.PushF(sys.stage.scale[0])
+	case OC_const_stagevar_stageinfo_yscale:
+		sys.bcStack.PushF(sys.stage.scale[1])
+	case OC_const_stagevar_shadow_intensity:
+		sys.bcStack.PushI(sys.stage.sdw.intensity)
+	case OC_const_stagevar_shadow_color_r:
+		sys.bcStack.PushI(int32((sys.stage.sdw.color & 0xFF0000) >> 16))
+	case OC_const_stagevar_shadow_color_g:
+		sys.bcStack.PushI(int32((sys.stage.sdw.color & 0xFF00) >> 8))
+	case OC_const_stagevar_shadow_color_b:
+		sys.bcStack.PushI(int32(sys.stage.sdw.color & 0xFF))
+	case OC_const_stagevar_shadow_yscale:
+		sys.bcStack.PushF(sys.stage.sdw.yscale)
+	case OC_const_stagevar_shadow_fade_range_begin:
+		sys.bcStack.PushI(sys.stage.sdw.fadebgn)
+	case OC_const_stagevar_shadow_fade_range_end:
+		sys.bcStack.PushI(sys.stage.sdw.fadeend)
+	case OC_const_stagevar_shadow_xshear:
+		sys.bcStack.PushF(sys.stage.sdw.xshear)
+	case OC_const_stagevar_reflection_intensity:
+		sys.bcStack.PushI(sys.stage.reflection)
 	case OC_const_constants:
 		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])

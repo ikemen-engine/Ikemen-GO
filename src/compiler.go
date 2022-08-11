@@ -2050,18 +2050,89 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		var opc OpCode
+		isStr := false
 		switch svname {
 		case "info.name":
 			opc = OC_const_stagevar_info_name
+			isStr = true
 		case "info.displayname":
 			opc = OC_const_stagevar_info_displayname
+			isStr = true
 		case "info.author":
 			opc = OC_const_stagevar_info_author
+			isStr = true
+		case "camera.boundleft":
+			opc = OC_const_stagevar_camera_boundleft
+		case "camera.boundright":
+			opc = OC_const_stagevar_camera_boundright
+		case "camera.boundhigh":
+			opc = OC_const_stagevar_camera_boundhigh
+		case "camera.boundlow":
+			opc = OC_const_stagevar_camera_boundlow
+		case "camera.verticalfollow":
+			opc = OC_const_stagevar_camera_verticalfollow
+		case "camera.floortension":
+			opc = OC_const_stagevar_camera_floortension
+		case "camera.tensionhigh":
+			opc = OC_const_stagevar_camera_tensionhigh
+		case "camera.tensionlow":
+			opc = OC_const_stagevar_camera_tensionlow
+		case "camera.tension":
+			opc = OC_const_stagevar_camera_tension
+		case "camera.startzoom":
+			opc = OC_const_stagevar_camera_startzoom
+		case "camera.zoomout":
+			opc = OC_const_stagevar_camera_zoomout
+		case "camera.zoomin":
+			opc = OC_const_stagevar_camera_zoomin
+		case "camera.ytension.enable":
+			opc = OC_const_stagevar_camera_ytension_enable
+		case "playerinfo.leftbound":
+			opc = OC_const_stagevar_playerinfo_leftbound
+		case "playerinfo.rightbound":
+			opc = OC_const_stagevar_playerinfo_rightbound
+		case "scaling.topscale":
+			opc = OC_const_stagevar_scaling_topscale
+		case "bound.screenleft":
+			opc = OC_const_stagevar_bound_screenleft
+		case "bound.screenright":
+			opc = OC_const_stagevar_bound_screenright
+		case "stageinfo.zoffset":
+			opc = OC_const_stagevar_stageinfo_zoffset
+		case "stageinfo.zoffsetlink":
+			opc = OC_const_stagevar_stageinfo_zoffsetlink
+		case "stageinfo.xscale":
+			opc = OC_const_stagevar_stageinfo_xscale
+		case "stageinfo.yscale":
+			opc = OC_const_stagevar_stageinfo_yscale
+		case "shadow.intensity":
+			opc = OC_const_stagevar_shadow_intensity
+		case "shadow.color.r":
+			opc = OC_const_stagevar_shadow_color_r
+		case "shadow.color.g":
+			opc = OC_const_stagevar_shadow_color_g
+		case "shadow.color.b":
+			opc = OC_const_stagevar_shadow_color_b
+		case "shadow.yscale":
+			opc = OC_const_stagevar_shadow_yscale
+		case "shadow.fade.range.begin":
+			opc = OC_const_stagevar_shadow_fade_range_begin
+		case "shadow.fade.range.end":
+			opc = OC_const_stagevar_shadow_fade_range_end
+		case "shadow.xshear":	
+			opc = OC_const_stagevar_shadow_xshear
+		case "reflection.intensity":
+			opc = OC_const_stagevar_reflection_intensity
 		default:
 			return bvNone(), Error("Invalid data: " + svname)
 		}
-		if err := nameSub(opc); err != nil {
-			return bvNone(), err
+		if isStr {
+			if err := nameSub(opc); err != nil {
+				return bvNone(), err
+			}
+		} else {
+			out.append(OC_const_)
+			out.append(opc)
 		}
 	case "teammode":
 		if err := eqne(func() error {
