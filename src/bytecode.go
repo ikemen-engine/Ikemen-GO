@@ -5171,6 +5171,7 @@ type screenBound StateControllerBase
 const (
 	screenBound_value byte = iota
 	screenBound_movecamera
+	screenBound_stagebound
 	screenBound_redirectid
 )
 
@@ -5198,6 +5199,12 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 				}
 			} else {
 				crun.unsetSF(CSF_movecamera_y)
+			}
+		case screenBound_stagebound:
+			if exp[0].evalB(c) {
+				crun.setSF(CSF_stagebound)
+			} else {
+				crun.unsetSF(CSF_stagebound)
 			}
 		case screenBound_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
