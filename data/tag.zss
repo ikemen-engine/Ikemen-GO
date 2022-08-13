@@ -86,19 +86,15 @@ explod{
 	sprPriority: 2; ctrl: 0;
 ]
 
-screenBound{value: 0; moveCamera: 1, 1}
+screenBound{value: 0; moveCamera: 1, 1; stageBound: 0}
 assertSpecial{flag: noTurnTarget}
 
 if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# set starting pos (redirected to gather consistent local coordinate space values ready for const240p conversion)
-	teamMapSet{
-		map: "_iksys_tagPosX";
-		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerId(getPlayerId(teamLeader)),id}
-	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
+	# set starting pos
+	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# store distance to switch initiation position
 	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - playerId(getPlayerId(teamLeader)),pos x)}
 	# set movement
@@ -127,18 +123,17 @@ if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist
 	ctrl: 0;
 ]
 
+screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
+
 if time = 0 {
 	turn{}
 }
 
 velSet{x: min(ifElse(const(velocity.run.fwd.x) != 0, const(velocity.run.fwd.x), const(velocity.walk.fwd.x) * 2), const240p(const(TagInVelX))); y: 0}
 
-if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iksys_tagLeavingPosX) = pos x {
+if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) {
 	changeState{value: const(StateTagWaitingOutside)}
 }
-
-# TODO: won't be needed once this bug is fixed: https://github.com/ikemen-engine/Ikemen-GO/issues/171
-mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
 #===============================================================================
 # StateTagWaitingOutside
@@ -149,8 +144,8 @@ mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 	velSet: 0, 0; ctrl: 0;
 ]
 
+screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
 assertSpecial{flag: invisible; flag2: noAutoTurn}
-screenBound{value: 0; moveCamera: 0, 0}
 
 # force standby character to always stay outside visible area
 posSet{
@@ -170,10 +165,10 @@ posSet{
 ]
 
 if roundState = 3 {
-	screenBound{value: 0; moveCamera: 0, 0}
+	screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
 	playerPush{value: 0}
 } else {
-	screenBound{value: 0; moveCamera: 1, 1}
+	screenBound{value: 0; moveCamera: 1, 1; stageBound: 0}
 	assertSpecial{flag: noTurnTarget}
 }
 
@@ -191,12 +186,8 @@ if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# set starting pos (redirected to gather consistent local coordinate space values ready for const240p conversion)
-	teamMapSet{
-		map: "_iksys_tagPosX";
-		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerId(getPlayerId(teamLeader)),id}
-	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
+	# set starting pos
+	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# change active player assignment if the battle still goes on
 	if roundState = 2 {
 		mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
@@ -308,7 +299,6 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 				(pos y >= 0 && stateNo != [const(StateTagEnteringScreen), const(StateTagWaitingOutside)]))
 			{
 				mapSet{map: "_iksys_tagIntroFlag"; value: 1}
-				mapSet{map: "_iksys_tagLeavingPosX"; value: pos x + 0.0001}
 				tagOut{stateNo: const(StateTagLeavingScreen)}
 			# tagged out, at the round end
 			} else if roundState = 3 {

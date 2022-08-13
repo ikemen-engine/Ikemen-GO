@@ -60,6 +60,7 @@ const (
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
+	CSF_stagebound
 	CSF_posfreeze
 	CSF_playerpush
 	CSF_angledraw
@@ -5036,7 +5037,9 @@ func (c *Char) xScreenBound() {
 		}
 		x = ClampF(x, min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
 	}
-	x = ClampF(x, sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
+	if c.sf(CSF_stagebound) {
+		x = ClampF(x, sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
+	}
 	c.setPosX(x)
 }
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
@@ -5328,6 +5331,7 @@ func (c *Char) action() {
 			}
 			c.specialFlag = 0
 			c.inputFlag = 0
+			c.setSF(CSF_stagebound)
 			if c.player {
 				if c.alive() || !c.scf(SCF_over) || !c.scf(SCF_ko_round_middle) {
 					c.setSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)

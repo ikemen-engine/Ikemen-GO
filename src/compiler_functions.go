@@ -2533,6 +2533,11 @@ func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase, _ int8) (
 		if !b {
 			sc.add(screenBound_movecamera, append(sc.iToExp(0), sc.iToExp(0)...))
 		}
+		if err := c.stateParam(is, "stagebound", func(data string) error {
+			return c.scAdd(sc, screenBound_stagebound, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
