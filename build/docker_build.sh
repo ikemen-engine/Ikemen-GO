@@ -16,31 +16,50 @@
 #         these variables select the cross-compiling parameters invoked. 
 #         Look inside the get.sh and build.sh for details. 
 #  -v   : maps a volume (folder) inside the  container (makes the current source code accessible inside the container)
-#       $(pwd):/code is source:destination and $(pwd) maps to current directory where the script is called.
-#  -i   : interactive. 
-#  -t   : allocate a pseudo terminal
-#  windblade/ikemen-dev:latest        : docker image configured with the tooling required to build the binaries.
-#  bash -c 'cd /code && bash -x get.sh' : command called when the container launches. In changes to the code directory
-#  then execute both get and build scripts 
+#         $(pwd):/ikemen is source:destination and $(pwd) maps to current directory where the script is called.
+#  -i   : interactive.
+#  -t   : allocate a pseudo terminal.
+#  windblade/ikemen-go-dev:latest                       : docker image configured with the tooling required to build the binaries.
+#  bash -c 'bash -c 'cd /ikemen/build && bash build.sh' : command called when the container launches. In changes to the code directory
+#  then execute both get and build scripts
 
 cd ..
 
+# Download Docker image
+docker pull windblade/ikemen-go-dev:latest
+
+# Create directories
 if [ ! -d ./bin ]; then
 	mkdir bin
 fi
 
 echo "------------------------------------------------------------"
-echo "Building linux binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Linux cmpt' 
+echo "Starting Build of Ikemen GO"
 
 echo "------------------------------------------------------------"
-echo "Building mac binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh MacOS' 
+echo "Building Linux binary..."
+docker run --rm -v $(pwd):/ikemen -i windblade/ikemen-go-dev:latest bash -c 'cd /ikemen/build && bash build.sh Linux' 
 
 echo "------------------------------------------------------------"
-echo "Building windows x64 binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win64' 
+echo "Building MacOS binary..."
+docker run --rm -v $(pwd):/ikemen -i windblade/ikemen-go-dev:latest bash -c 'cd /ikemen/build && bash build.sh MacOS' 
 
 echo "------------------------------------------------------------"
-echo "Building windows x86 binary..."
-docker run --rm -v $(pwd):/ikemen -it windblade/ikemen-dev:latest bash -c 'cd /ikemen/build  && bash build.sh Win32' 
+echo "Building Windows x64 binary..."
+cp 'windres/Ikemen_Cylia_x64.syso' 'src/Ikemen_V2_x64.syso'
+
+docker run --rm -v $(pwd):/ikemen -i windblade/ikemen-go-dev:latest bash -c 'cd /ikemen/build && bash build.sh Win64' 
+
+rm 'src/Ikemen_V2_x64.syso'
+
+echo "------------------------------------------------------------"
+echo "Building Windows x86 binary..."
+cp 'windres/Ikemen_Cylia_x86.syso' 'src/Ikemen_V2_x86.syso'
+
+docker run --rm -v $(pwd):/ikemen -i windblade/ikemen-go-dev:latest bash -c 'cd /ikemen/build && bash build.sh Win32' 
+
+rm 'src/Ikemen_V2_x86.syso'
+
+echo "------------------------------------------------------------"
+echo "Finished"
+echo "------------------------------------------------------------"

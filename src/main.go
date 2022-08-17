@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed" // Support for go:embed resources
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/sqweek/dialog"
+	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -22,7 +23,7 @@ func init() {
 // Checks if error is not null, if there is an error it displays a error dialogue box and crashes the program.
 func chk(err error) {
 	if err != nil {
-		dialog.Message(err.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(err.Error())
 		panic(err)
 	}
 }
@@ -30,7 +31,7 @@ func chk(err error) {
 // Extended version of 'chk()'
 func chkEX(err error, txt string) {
 	if err != nil {
-		dialog.Message(txt + err.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(txt + err.Error())
 		panic(Error(txt + err.Error()))
 	}
 }
@@ -54,7 +55,7 @@ func main() {
 	processCommandLine()
 
 	// Initialize OpenGL
-	chk(glfw.Init())
+	chk(glfw.Init(gl.ContextWatcher))
 	defer glfw.Terminate()
 
 	// Try reading stats
@@ -73,44 +74,41 @@ func main() {
 
 	// Check if the main lua file exists.
 	if ftemp, err1 := os.Open(tmp.System); err1 != nil {
-		ftemp.Close();
+		ftemp.Close()
 		var err2 = Error(
 			"Main lua file \"" + tmp.System + "\" error." +
-			"\n" + err1.Error(),
+				"\n" + err1.Error(),
 		)
-		dialog.Message(err2.Error()).Title("I.K.E.M.E.N Error").Error()
+		ShowErrorDialog(err2.Error())
 		panic(err2)
 	} else {
-		ftemp.Close();
+		ftemp.Close()
 	}
 
-	log := createLog("Ikemen.log")
-	defer closeLog(log)
 	// Initialize game and create window
 	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
 
 	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(tmp.System); err != nil {
 		// Display error logs.
-		fmt.Fprintln(log, err)
+		errorLog := createLog("Ikemen.log")
+		defer closeLog(errorLog)
+		fmt.Fprintln(errorLog, err)
 		switch err.(type) {
 		case *lua.ApiError:
 			errstr := strings.Split(err.Error(), "\n")[0]
 			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+				ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
 				panic(err)
 			}
 		default:
-			dialog.Message("%s\n\nError saved to Ikemen.log", err).Title("I.K.E.M.E.N Error").Error()
+			ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
 			panic(err)
 		}
 	}
 
 	// Shutdown
-	if !sys.gameEnd {
-		sys.gameEnd = true
-	}
-	<-sys.audioClose
+	sys.shutdown()
 }
 
 // Loops through given comand line arguments and processes them for later use by the game
@@ -149,13 +147,14 @@ Debug Options:
 -nojoy                  Disables joysticks
 -nomusic                Disables music
 -nosound                Disables all sound effects and music
+-windowed               Windowed mode (disables fullscreen)
 -togglelifebars         Disables display of the Life and Power bars
 -maxpowermode           Enables auto-refill of Power bars
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
 -speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
-				//dialog.Message(text).Title("I.K.E.M.E.N Command line options").Info()
+				//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
 				fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 				var s string
 				fmt.Scanln(&s)
@@ -267,6 +266,7 @@ type configSettings struct {
 	VolumeMaster               int
 	VolumeSfx                  int
 	VRetrace                   int
+	WavChannels                int32
 	WindowCentered             bool
 	WindowIcon                 []string
 	WindowTitle                string
@@ -284,298 +284,14 @@ type configSettings struct {
 	}
 }
 
+//go:embed resources/defaultConfig.json
+var defaultConfig []byte
+
 // Sets default config settings, then attemps to load existing config from disk
 func setupConfig() configSettings {
-	// Default Config
-	defcfg := []byte(strings.Join(strings.Split(
-		`{
-	"AIRamping": true,
-	"AIRandomColor": false,
-	"AISurvivalColor": true,
-	"AudioDucking": false,
-	"AudioSampleRate": 44100,
-	"AutoGuard": false,
-	"BarGuard": false,
-	"BarRedLife": true,
-	"BarStun": false,
-	"Borderless": false,
-	"ComboExtraFrameWindow": 0,
-	"CommonAir": "data/common.air",
-	"CommonCmd": "data/common.cmd",
-	"CommonConst": "data/common.const",
-	"CommonLua": [
-		"loop()"
-    ],
-	"CommonStates": [
-		"data/action.zss",
-		"data/dizzy.zss",
-		"data/guardbreak.zss",
-		"data/rank.zss",
-		"data/score.zss",
-		"data/tag.zss",
-		"data/training.zss"
-    ],
-	"ControllerStickSensitivity": 0.4,
-	"Credits": 10,
-	"DebugClipboardRows": 2,
-	"DebugClsnDarken": true,
-	"DebugConsoleRows": 15,
-	"DebugFont": "font/default-3x5-bold.def",
-	"DebugFontScale": 1,
-	"DebugKeys": true,
-	"DebugMode": true,
-	"Difficulty": 5,
-	"EscOpensMenu": true,
-	"ExternalShaders": [],
-	"FirstRun": true,
-	"FontShaderVer": 120,
-	"ForceStageZoomin": 0,
-	"ForceStageZoomout": 0,
-	"Framerate": 60,
-	"Fullscreen": false,
-	"FullscreenRefreshRate": 60,
-	"FullscreenWidth": -1,
-	"FullscreenHeight": -1,
-	"GameWidth": 640,
-	"GameHeight": 480,
-	"GameFramerate": 60,
-	"IP": {},
-	"LifeMul": 100,
-	"ListenPort": "7500",
-	"LoseSimul": true,
-	"LoseTag": false,
-	"MaxAfterImage": 128,
-	"MaxBgmVolume": 100,
-	"MaxDrawGames": -2,
-	"MaxExplod": 512,
-	"MaxHelper": 56,
-	"MaxPlayerProjectile": 256,
-	"Modules": [],
-	"Motif": "data/system.def",
-	"MSAA": false,
-	"NumSimul": [
-		2,
-		4
-	],
-	"NumTag": [
-		2,
-		4
-	],
-	"NumTurns": [
-		2,
-		4
-	],
-	"PanningRange": 30,
-	"Players": 4,
-	"PngSpriteFilter": true,
-	"PostProcessingShader": 0,
-	"QuickContinue": false,
-	"RatioAttack": [
-		0.82,
-		1,
-		1.17,
-		1.3
-	],
-	"RatioLife": [
-		0.8,
-		1,
-		1.17,
-		1.4
-	],
-	"RatioRecoveryBase": 0,
-	"RatioRecoveryBonus": 20,
-	"RoundsNumSimul": 2,
-	"RoundsNumSingle": 2,
-	"RoundsNumTag": 2,
-	"RoundTime": 99,
-	"ScreenshotFolder": "",
-	"StartStage": "stages/stage0-720.def",
-	"StereoEffects": true,
-	"System": "external/script/main.lua",
-	"Team1VS2Life": 100,
-	"TeamDuplicates": true,
-	"TeamLifeShare": false,
-	"TeamPowerShare": true,
-	"TrainingChar": "",
-	"TurnsRecoveryBase": 0,
-	"TurnsRecoveryBonus": 20,
-	"VolumeBgm": 80,
-	"VolumeMaster": 80,
-	"VolumeSfx": 80,
-	"VRetrace": 1,
-	"WindowCentered": true,
-	"WindowIcon": [
-		"external/icons/IkemenCylia_256.png",
-		"external/icons/IkemenCylia_96.png",
-		"external/icons/IkemenCylia_48.png"
-	],
-	"WindowTitle": "Ikemen GO",
-	"XinputTriggerSensitivity": 0,
-	"ZoomActive": true,
-	"ZoomDelay": false,
-	"ZoomSpeed": 1,
-	"KeyConfig": [
-		{
-			"Joystick": -1,
-			"Buttons": [
-				"UP",
-				"DOWN",
-				"LEFT",
-				"RIGHT",
-				"z",
-				"x",
-				"c",
-				"a",
-				"s",
-				"d",
-				"RETURN",
-				"q",
-				"w",
-				"Not used"
-			]
-		},
-		{
-			"Joystick": -1,
-			"Buttons": [
-				"i",
-				"k",
-				"j",
-				"l",
-				"f",
-				"g",
-				"h",
-				"r",
-				"t",
-				"y",
-				"RSHIFT",
-				"LBRACKET",
-				"RBRACKET",
-				"Not used"
-			]
-		},
-		{
-			"Joystick": -1,
-			"Buttons": [
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used"
-			]
-		},
-		{
-			"Joystick": -1,
-			"Buttons": [
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used",
-				"Not used"
-			]
-		}
-	],
-	"JoystickConfig": [
-		{
-			"Joystick": 0,
-			"Buttons": [
-				"10",
-				"12",
-				"13",
-				"11",
-				"0",
-				"1",
-				"5",
-				"2",
-				"3",
-				"-12",
-				"7",
-				"4",
-				"-10",
-				"6"
-			]
-		},
-		{
-			"Joystick": 1,
-			"Buttons": [
-				"10",
-				"12",
-				"13",
-				"11",
-				"0",
-				"1",
-				"5",
-				"2",
-				"3",
-				"-12",
-				"7",
-				"4",
-				"-10",
-				"6"
-			]
-		},
-		{
-			"Joystick": 2,
-			"Buttons": [
-				"10",
-				"12",
-				"13",
-				"11",
-				"0",
-				"1",
-				"5",
-				"2",
-				"3",
-				"-12",
-				"7",
-				"4",
-				"-10",
-				"6"
-			]
-		},
-		{
-			"Joystick": 3,
-			"Buttons": [
-				"10",
-				"12",
-				"13",
-				"11",
-				"0",
-				"1",
-				"5",
-				"2",
-				"3",
-				"-12",
-				"7",
-				"4",
-				"-10",
-				"6"
-			]
-		}
-	]
-}
-`, "\n"), "\r\n"))
-
 	// Unmarshal default config string into a struct
 	tmp := configSettings{}
-	chk(json.Unmarshal(defcfg, &tmp))
+	chk(json.Unmarshal(defaultConfig, &tmp))
 	// Config file path
 	cfgPath := "save/config.json"
 	// If a different config file is defined in the command line parameters, use it instead
@@ -596,26 +312,15 @@ func setupConfig() configSettings {
 	default:
 		tmp.AudioSampleRate = 44100
 	}
-	if tmp.Framerate <= 0 || tmp.Framerate > 840 {
-		tmp.Framerate = 60
-	}
-	if tmp.MaxBgmVolume < 100 || tmp.MaxBgmVolume > 250 {
-		tmp.MaxBgmVolume = 100
-	}
-	if tmp.NumSimul[1] > MaxSimul {
-		tmp.NumSimul[1] = MaxSimul
-	}
-	if tmp.NumTag[1] > MaxSimul {
-		tmp.NumTag[1] = MaxSimul
-	}
-	if tmp.Players > MaxSimul*2 {
-		tmp.Players = MaxSimul * 2
-	}
-	if tmp.PanningRange > 100 {
-		tmp.PanningRange = 100
-	} else if tmp.PanningRange < 0 {
-		tmp.PanningRange = 0
-	}
+	tmp.Framerate = Clamp(tmp.Framerate, 1, 840)
+	tmp.MaxBgmVolume = int(Clamp(int32(tmp.MaxBgmVolume), 100, 250))
+	tmp.NumSimul[0] = int(Clamp(int32(tmp.NumSimul[0]), 2, int32(MaxSimul)))
+	tmp.NumSimul[1] = int(Clamp(int32(tmp.NumSimul[1]), int32(tmp.NumSimul[0]), int32(MaxSimul)))
+	tmp.NumTag[0] = int(Clamp(int32(tmp.NumTag[0]), 2, int32(MaxSimul)))
+	tmp.NumTag[1] = int(Clamp(int32(tmp.NumTag[1]), int32(tmp.NumTag[0]), int32(MaxSimul)))
+	tmp.PanningRange = ClampF(tmp.PanningRange, 0, 100)
+	tmp.Players = int(Clamp(int32(tmp.Players), 1, int32(MaxSimul)*2))
+	tmp.WavChannels = Clamp(tmp.WavChannels, 1, 256)
 	// Save config file
 	cfg, _ := json.MarshalIndent(tmp, "", "	")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
@@ -660,7 +365,6 @@ func setupConfig() configSettings {
 	sys.gameWidth = tmp.GameWidth
 	sys.gameHeight = tmp.GameHeight
 	sys.gameSpeed = tmp.GameFramerate / float32(tmp.Framerate)
-
 	sys.helperMax = tmp.MaxHelper
 	sys.lifeMul = tmp.LifeMul / 100
 	sys.lifeShare = [...]bool{tmp.TeamLifeShare, tmp.TeamLifeShare}
@@ -685,6 +389,7 @@ func setupConfig() configSettings {
 	sys.stereoEffects = tmp.StereoEffects
 	sys.team1VS2Life = tmp.Team1VS2Life / 100
 	sys.vRetrace = tmp.VRetrace
+	sys.wavChannels = tmp.WavChannels
 	sys.wavVolume = tmp.VolumeSfx
 	sys.windowCentered = tmp.WindowCentered
 	sys.windowMainIconLocation = tmp.WindowIcon

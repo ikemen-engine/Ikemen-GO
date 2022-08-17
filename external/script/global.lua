@@ -146,7 +146,7 @@ function boolToInt(bool)
 end
 
 function engineInfo()
-	return string.format('VSync: %d; Speed: %d/%d%%', vsync(), gameLogicSpeed(), gamespeed())
+	return string.format('Frames: %d, VSync: %d; Speed: %d/%d%%', tickcount(), vsync(), gameLogicSpeed(), gamespeed())
 end
 
 function playerInfo()
@@ -176,7 +176,7 @@ local endFlag = false
 
 --function called during match via config.json CommonLua
 function loop()
-	hook.run("loop.start")
+	hook.run("loop")
 	if start == nil then --match started via command line without -loadmotif flag
 		if esc() then
 			endMatch()
@@ -216,19 +216,15 @@ function loop()
 			end
 		end
 		start.turnsRecoveryInit = false
-		start.rankInit = false
 		start.dialogueInit = false
 	end
-	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 then
+	if winnerteam() ~= -1 and player(winnerteam()) and roundstate() == 4 and isasserted("over") then
 		--turns life recovery
 		start.f_turnsRecovery()
-		--rank
-		start.f_rank()
 	end
 	--dialogue
 	if indialogue() then
 		start.f_dialogue()
-		hook.run("loop.dialog")
 	--match end
 	elseif roundstate() == -1 then
 		if not endFlag then
@@ -248,17 +244,15 @@ function loop()
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		togglePostMatch(false)
 	end
-	hook.run("loop." .. gamemode() .. "#always")
+	hook.run("loop#" .. gamemode())
 	--pause menu
 	if main.pauseMenu then
 		playerBufReset()
 		menu.f_run()
-		hook.run("loop.pause")
 	else
-		hook.run("loop." .. gamemode())
 		main.f_cmdInput()
 		--esc / m
-		if (esc() or (main.f_input(main.t_players, {'m'})) and not network()) and not start.challengerInit then
+		if (esc() or (main.f_input(main.t_players, {'m'}) and not network())) and not start.challengerInit then
 			if network() or gamemode('demo') or gamemode('randomtest') or (not config.EscOpensMenu and esc()) then
 				endMatch()
 			else

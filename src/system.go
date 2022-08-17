@@ -10,7 +10,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,10 +18,8 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/ikemen-engine/go-openal/openal"
-	"github.com/sqweek/dialog"
+	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -40,7 +37,7 @@ var (
 // The only instance of a System struct.
 // Do not create more than 1.
 var sys = System{
-	gs:                GameState{randseed:int32(time.Now().UnixNano()), cam: *newCamera()},
+	gs:                GameState{randseed: int32(time.Now().UnixNano()), cam: *newCamera()},
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
@@ -51,9 +48,9 @@ var sys = System{
 	lifeMul:           1,
 	team1VS2Life:      1,
 	turnsRecoveryRate: 1.0 / 300,
-	mixer:             *newMixer(),
+	soundMixer:        &beep.Mixer{},
 	bgm:               *newBgm(),
-	sounds:            newSounds(16),
+	soundChannels:     newSoundChannels(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	sel:               *newSelect(),
@@ -73,9 +70,9 @@ var sys = System{
 	statusDraw:            true,
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
-	errLog:                log.New(os.Stderr, "", 0),
-	audioClose:            make(chan bool, 1),
+	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
 	keyInput:              glfw.KeyUnknown,
+	wavChannels:           256,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
 	//FLAC_FrameWait:          -1,
@@ -105,24 +102,24 @@ const (
 )
 
 type GameState struct {
-	randseed                int32
-	time                    int32
-	gameTime                int32
-	charArray               []Char
-	chars                   [MaxSimul*2 + MaxAttachedChar][]int
-	charList                CharList
-	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
-	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
-	topexplDrawlist         [MaxSimul*2 + MaxAttachedChar][]int
-	underexplDrawlist       [MaxSimul*2 + MaxAttachedChar][]int
-	cam                     Camera
-	ac                      activeCamera
+	randseed          int32
+	time              int32
+	gameTime          int32
+	charArray         []Char
+	chars             [MaxSimul*2 + MaxAttachedChar][]int
+	charList          CharList
+	explods           [MaxSimul*2 + MaxAttachedChar][]Explod
+	explDrawlist      [MaxSimul*2 + MaxAttachedChar][]int
+	topexplDrawlist   [MaxSimul*2 + MaxAttachedChar][]int
+	underexplDrawlist [MaxSimul*2 + MaxAttachedChar][]int
+	cam               Camera
+	ac                activeCamera
 }
 
 func (gs *GameState) clone() (result *GameState) {
 	result = &GameState{}
 	*result = *gs
-	
+
 	// Manually copy references that shallow copy poorly, as needed
 	// Pointers, slices, maps, functions, channels etc
 	result.charArray = make([]Char, len(gs.charArray))
@@ -182,35 +179,37 @@ func (state *GameState) appendChar(c *Char) (index int) {
 // Remove Char objects from the game state.
 // Parameter is presumably a slice from state.chars
 func (state *GameState) removeCharSlice(removedChars ...int) {
-	if (removedChars == nil || state.charArray == nil) {
-		return;
+	if removedChars == nil || state.charArray == nil {
+		return
 	}
-	if (len(removedChars) > 0) {
+	if len(removedChars) > 0 {
 		// Duplicate so we don't edit the original collection
 		removed := make([]int, 0)
-		removed = append (removed, removedChars...)
+		removed = append(removed, removedChars...)
 		// Sort the removed chars ascending
-		sort.Slice(removed, func(p, q int) bool { 
-			return removed[p] < removed[q] })
+		sort.Slice(removed, func(p, q int) bool {
+			return removed[p] < removed[q]
+		})
 
 		// Loop through removed, remove each element from the game state chars
 		oi := 0
 		for _, cidx := range removed {
 			idx := cidx - oi
-			if (idx >= len(state.charArray)) {
+			if idx >= len(state.charArray) {
 				panic("Tried removing a character index not in the game state")
 			}
-			
+
 			// Clear state index from element
 			state.charArray[idx].stateIdx = -1
 			// If element is found, remove
 			state.charArray = append(state.charArray[:idx], state.charArray[idx+1:]...)
 			oi++
 		}
-		
+
 		// Sort the removed chars descending
-		sort.Slice(removed, func(p, q int) bool { 
-			return removed[p] > removed[q] })
+		sort.Slice(removed, func(p, q int) bool {
+			return removed[p] > removed[q]
+		})
 
 		// Loop through chars by player and adjust their indices as needed
 		for i := range state.chars {
@@ -219,7 +218,7 @@ func (state *GameState) removeCharSlice(removedChars ...int) {
 				// reduce the value to close gaps
 				for k, cidx := range removed {
 					oi := len(removed) - k
-					if (state.chars[i][j] > cidx) {
+					if state.chars[i][j] > cidx {
 						state.chars[i][j] -= oi
 						break
 					}
@@ -252,11 +251,9 @@ type System struct {
 	debugFont               *TextSprite
 	debugDraw               bool
 	debugRef                [2]int
-	mixer                   Mixer
+	soundMixer              *beep.Mixer
 	bgm                     Bgm
-	audioContext            *openal.Context
-	nullSndBuf              [audioOutLen * 2]int16
-	sounds                  Sounds
+	soundChannels           *SoundChannels
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	sel                     Select
@@ -284,127 +281,128 @@ type System struct {
 	loader                  Loader
 
 	// Game State
-	gs                      GameState
-	savedGs                 *GameState
-	saveStateFlag           bool
-	loadStateFlag           bool
-	cgi                     [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
-	tmode                   [2]TeamMode
-	numSimul, numTurns      [2]int32
-	esc                     bool
-	loadMutex               sync.Mutex
-	ignoreMostErrors        bool
-	stringPool              [MaxSimul*2 + MaxAttachedChar]StringPool
-	bcStack, bcVarStack     BytecodeStack
-	bcVar                   []BytecodeValue
-	workingChar             *Char
-	workingState            *StateBytecode
-	specialFlag             GlobalSpecialFlag
-	afterImageMax           int32
-	comboExtraFrameWindow   int32
-	envShake                EnvShake
-	pause                   int32
-	pausetime               int32
-	pausebg                 bool
-	pauseendcmdbuftime      int32
-	pauseplayer             int
-	super                   int32
-	supertime               int32
-	superpausebg            bool
-	superendcmdbuftime      int32
-	superplayer             int
-	superdarken             bool
-	superanim               *Animation
-	superpmap               PalFX
-	superpos                [2]float32
-	superfacing             float32
-	superp2defmul           float32
-	envcol                  [3]int32
-	envcol_time             int32
-	envcol_under            bool
-	stage                   *Stage
-	stageList               map[int32]*Stage
-	stageLoop               bool
-	stageLoopNo             int
-	helperMax               int32
-	nextCharId              int32
-	wincnt                  wincntMap
-	wincntFileName          string
-	powerShare              [2]bool
-	tickCount               int
-	oldTickCount            int
-	tickCountF              float32
-	lastTick                float32
-	nextAddTime             float32
-	oldNextAddTime          float32
-	screenleft              float32
-	screenright             float32
-	xmin, xmax              float32
-	winskipped              bool
-	paused, step            bool
-	roundResetFlg           bool
-	reloadFlg               bool
-	reloadStageFlg          bool
-	reloadLifebarFlg        bool
-	reloadCharSlot          [MaxSimul*2 + MaxAttachedChar]bool
-	shortcutScripts         map[ShortcutKey]*ShortcutScript
-	turbo                   float32
-	commandLine             chan string
-	drawScale               float32
-	zoomlag                 float32
-	zoomScale               float32
-	zoomPosXLag             float32
-	zoomPosYLag             float32
-	enableZoomstate         bool
-	zoomPos                 [2]float32
-	debugWC                 *Char
-	finish                  FinishType
-	waitdown                int32
-	slowtime                int32
-	shuttertime             int32
-	fadeintime              int32
-	fadeouttime             int32
-	projs                   [MaxSimul*2 + MaxAttachedChar][]Projectile
-	changeStateNest         int32
-	sprites                 DrawList
-	topSprites              DrawList
-	bottomSprites           DrawList
-	shadows                 ShadowList
-	drawc1                  ClsnRect
-	drawc2                  ClsnRect
-	drawc2sp                ClsnRect
-	drawc2mtk               ClsnRect
-	drawwh                  ClsnRect
-	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
-	accel                   float32
-	clsnSpr                 Sprite
-	clsnDraw                bool
-	statusDraw              bool
-	mainThreadTask          chan func()
-	explodMax               int
-	workpal                 []uint32
-	playerProjectileMax     int
-	errLog                  *log.Logger
-	audioClose              chan bool
-	nomusic                 bool
-	workBe                  []BytecodeExp
-	lifeShare               [2]bool
-	loseSimul               bool
-	loseTag                 bool
-	allowDebugKeys          bool
-	allowDebugMode          bool
-	commonAir               string
-	commonCmd               string
-	keyInput                glfw.Key
-	keyString               string
-	timerCount              []int32
-	cmdFlags                map[string]string
-	masterVolume            int
-	wavVolume               int
-	bgmVolume               int
-	audioDucking            bool
-	windowTitle             string
-	screenshotFolder        string
+	gs                    GameState
+	savedGs               *GameState
+	saveStateFlag         bool
+	loadStateFlag         bool
+	cgi                   [MaxSimul*2 + MaxAttachedChar]CharGlobalInfo
+	tmode                 [2]TeamMode
+	numSimul, numTurns    [2]int32
+	esc                   bool
+	loadMutex             sync.Mutex
+	ignoreMostErrors      bool
+	stringPool            [MaxSimul*2 + MaxAttachedChar]StringPool
+	bcStack, bcVarStack   BytecodeStack
+	bcVar                 []BytecodeValue
+	workingChar           *Char
+	workingState          *StateBytecode
+	specialFlag           GlobalSpecialFlag
+	afterImageMax         int32
+	comboExtraFrameWindow int32
+	envShake              EnvShake
+	pause                 int32
+	pausetime             int32
+	pausebg               bool
+	pauseendcmdbuftime    int32
+	pauseplayer           int
+	super                 int32
+	supertime             int32
+	superpausebg          bool
+	superendcmdbuftime    int32
+	superplayer           int
+	superdarken           bool
+	superanim             *Animation
+	superpmap             PalFX
+	superpos              [2]float32
+	superfacing           float32
+	superp2defmul         float32
+	envcol                [3]int32
+	envcol_time           int32
+	envcol_under          bool
+	stage                 *Stage
+	stageList             map[int32]*Stage
+	stageLoop             bool
+	stageLoopNo           int
+	helperMax             int32
+	nextCharId            int32
+	wincnt                wincntMap
+	wincntFileName        string
+	powerShare            [2]bool
+	tickCount             int
+	oldTickCount          int
+	tickCountF            float32
+	lastTick              float32
+	nextAddTime           float32
+	oldNextAddTime        float32
+	screenleft            float32
+	screenright           float32
+	xmin, xmax            float32
+	winskipped            bool
+	paused, step          bool
+	roundResetFlg         bool
+	reloadFlg             bool
+	reloadStageFlg        bool
+	reloadLifebarFlg      bool
+	reloadCharSlot        [MaxSimul*2 + MaxAttachedChar]bool
+	shortcutScripts       map[ShortcutKey]*ShortcutScript
+	turbo                 float32
+	commandLine           chan string
+	drawScale             float32
+	zoomlag               float32
+	zoomScale             float32
+	zoomPosXLag           float32
+	zoomPosYLag           float32
+	enableZoomstate       bool
+	zoomCameraBound       bool
+	zoomPos               [2]float32
+	debugWC               *Char
+	finish                FinishType
+	waitdown              int32
+	slowtime              int32
+	shuttertime           int32
+	fadeintime            int32
+	fadeouttime           int32
+	projs                 [MaxSimul*2 + MaxAttachedChar][]Projectile
+	changeStateNest       int32
+	sprites               DrawList
+	topSprites            DrawList
+	bottomSprites         DrawList
+	shadows               ShadowList
+	drawc1                ClsnRect
+	drawc2                ClsnRect
+	drawc2sp              ClsnRect
+	drawc2mtk             ClsnRect
+	drawwh                ClsnRect
+	autoguard             [MaxSimul*2 + MaxAttachedChar]bool
+	accel                 float32
+	clsnSpr               Sprite
+	clsnDraw              bool
+	statusDraw            bool
+	mainThreadTask        chan func()
+	explodMax             int
+	workpal               []uint32
+	playerProjectileMax   int
+	errLog                *log.Logger
+	nomusic               bool
+	workBe                []BytecodeExp
+	lifeShare             [2]bool
+	loseSimul             bool
+	loseTag               bool
+	allowDebugKeys        bool
+	allowDebugMode        bool
+	commonAir             string
+	commonCmd             string
+	keyInput              glfw.Key
+	keyString             string
+	timerCount            []int32
+	cmdFlags              map[string]string
+	wavChannels           int32
+	masterVolume          int
+	wavVolume             int
+	bgmVolume             int
+	audioDucking          bool
+	windowTitle           string
+	screenshotFolder      string
 	//FLAC_FrameWait          int
 
 	// Resolution variables
@@ -472,7 +470,6 @@ type System struct {
 	statusLFunc     *lua.LFunction
 	listLFunc       []*lua.LFunction
 	introSkipped    bool
-	fightOver       bool
 	endMatch        bool
 	continueFlg     bool
 	dialogueFlg     bool
@@ -480,6 +477,7 @@ type System struct {
 	dialogueBarsFlg bool
 	noSoundFlg      bool
 	postMatchFlg    bool
+	playBgmFlg      bool
 	brightnessOld   int32
 	clsnDarken      bool
 	maxBgmVolume    int
@@ -499,44 +497,68 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var err error
 	var window *glfw.Window
 	var monitor *glfw.Monitor
+
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
-	mode := monitor.GetVideoMode()
-	x, y := (mode.Width-w)/2, (mode.Height-h)/2
-	if s.fullscreen {
-		if window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil); err != nil {
-			return nil, fmt.Errorf("failed to create window: %w", err)
-		}
-		if runtime.GOOS == "windows" && s.borderless {
+
+	var mode = monitor.GetVideoMode()
+	var x, y = (mode.Width - w) / 2, (mode.Height - h) / 2
+
+	// "-windowed" overrides the configuration setting but does not change it
+	_, forceWindowed := sys.cmdFlags["-windowed"]
+	fullscreen := s.fullscreen && !forceWindowed
+
+	// Create main window.
+	// NOTE: Borderless fullscreen is in reality just a window without borders.
+	if fullscreen && !s.borderless {
+		window, err = glfw.CreateWindow(w, h, s.windowTitle, monitor, nil)
+	} else {
+		window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create window: %w", err)
+	}
+
+	// Set windows atributes
+	if fullscreen {
+		window.SetPos(0, 0)
+		if s.borderless {
 			window.SetAttrib(glfw.Decorated, 0)
-			window.SetPos(0, 0)
-			window.SetSize(w, h)
+			window.SetSize(mode.Width, mode.Height)
 		}
 		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	} else {
-		if window, err = glfw.CreateWindow(w, h, s.windowTitle, nil, nil); err != nil {
-			return nil, fmt.Errorf("failed to create window: %w", err)
-		}
+		window.SetSize(w, h)
+		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 		if s.windowCentered {
 			window.SetPos(x, y)
 		}
-		window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	}
+
 	window.MakeContextCurrent()
 	window.SetKeyCallback(keyCallback)
 	window.SetCharModsCallback(charCallback)
-	ret := &Window{window, s.windowTitle, s.fullscreen, x, y, w, h}
+	ret := &Window{window, s.windowTitle, fullscreen, x, y, w, h}
 	return ret, err
 }
 
 func (w *Window) toggleFullscreen() {
+	var mode = glfw.GetPrimaryMonitor().GetVideoMode()
+
 	if w.fullscreen {
-		w.SetMonitor(nil, w.x, w.y, w.w, w.h, 60)
+		w.SetAttrib(glfw.Decorated, 1)
+		w.SetMonitor(&glfw.Monitor{}, w.x, w.y, w.w, w.h, mode.RefreshRate)
 		w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 	} else {
-		w.x, w.y = w.GetPos()
-		w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, 60)
+		w.SetAttrib(glfw.Decorated, 0)
+		if sys.borderless {
+			w.SetSize(mode.Width, mode.Height)
+			w.SetMonitor(&glfw.Monitor{}, 0, 0, mode.Width, mode.Height, mode.RefreshRate)
+		} else {
+			w.x, w.y = w.GetPos()
+			w.SetMonitor(glfw.GetPrimaryMonitor(), w.x, w.y, w.w, w.h, mode.RefreshRate)
+		}
 		w.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	}
 	if sys.vRetrace != -1 {
@@ -549,7 +571,7 @@ func (w *Window) toggleFullscreen() {
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
 	var err error
-	// Create a GLWF window.
+	// Create a GLFW window.
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -560,8 +582,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
-	// Initialize OpenGL.
-	chk(gl.Init())
 
 	// Check if the shader selected is currently available.
 	if s.postProcessingShader < int32(len(s.externalShaderList)) {
@@ -604,9 +624,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	// Now we proceed to int the render.
 	RenderInit()
 	// And the audio.
-	s.audioOpen()
-	sr := beep.SampleRate(Mp3SampleRate)
-	speaker.Init(sr, sr.N(time.Second/10))
+	speaker.Init(audioFrequency, audioOutLen)
+	speaker.Play(NewNormalizer(s.soundMixer))
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -631,7 +650,7 @@ func (s *System) init(w, h int32) *lua.LState {
 			f[i], err = os.Open(iconLocation)
 			if err != nil {
 				var dErr = "Icon file can not be found.\nPanic: " + err.Error()
-				dialog.Message(dErr).Title("I.K.E.M.E.N Error").Error()
+				ShowErrorDialog(dErr)
 				panic(Error(dErr))
 			}
 			s.windowMainIcon[i], _, err = image.Decode(f[i])
@@ -653,6 +672,12 @@ func (s *System) init(w, h int32) *lua.LState {
 		}
 	}()
 	return l
+}
+func (s *System) shutdown() {
+	if !sys.gameEnd {
+		sys.gameEnd = true
+	}
+	speaker.Close()
 }
 func (s *System) setWindowSize(w, h int32) {
 	s.scrrect[2], s.scrrect[3] = w, h
@@ -713,7 +738,9 @@ func (s *System) await(fps int) bool {
 	}
 	s.eventUpdate()
 	if !s.frameSkip {
-		gl.Viewport(0, 0, s.scrrect[2], s.scrrect[3])
+		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
+		//gl.Viewport(0, 0, int32(width), int32(height))
+		gl.Viewport(0, 0, int(s.scrrect[2]), int(s.scrrect[3]))
 		if s.netInput == nil {
 			gl.Clear(gl.COLOR_BUFFER_BIT)
 		}
@@ -736,87 +763,35 @@ func (s *System) update() bool {
 	}
 	return s.await(FPS)
 }
-func (s *System) audioOpen() {
-	if s.audioContext == nil {
-		device := openal.OpenDevice("")
-		if device == nil {
-			chk(openal.Err())
+func (s *System) tickSound() {
+	s.soundChannels.Tick()
+	if !s.noSoundFlg {
+		for i, ch := range s.gs.chars {
+			for _, c := range ch {
+				char := s.gs.charArray[s.gs.chars[i][c]]
+				char.soundChannels.Tick()
+			}
 		}
-		s.audioContext = device.CreateContext()
-		if err := device.Err(); err != nil {
-			s.errLog.Println(err.Error())
-		}
-		s.audioContext.Activate()
-		go s.soundWrite()
 	}
-}
-func (s *System) soundWrite() {
-	defer func() { s.audioClose <- true }()
-	src := NewAudioSource()
-	processed := false
-	for !s.gameEnd {
-		if src.Src.State() != openal.Playing {
-			src.Src.Play()
-		}
-		if !processed {
-			time.Sleep(10 * time.Millisecond)
-		}
-		processed = false
-		if src.Src.BuffersProcessed() > 0 {
-			var out []int16
-			select {
-			case out = <-s.mixer.out:
-			default:
-				out = s.nullSndBuf[:]
-			}
-			buf := src.Src.UnqueueBuffer()
-			buf.SetDataInt16(openal.FormatStereo16, out, audioFrequency)
-			src.Src.QueueBuffer(buf)
-			if err := openal.Err(); err != nil {
-				s.errLog.Println(err.Error())
-			}
-			processed = true
-		}
-		if !s.nomusic {
-			if s.bgm.ctrl != nil && s.bgm.streamer != nil {
-				s.bgm.ctrl.Paused = false
-				if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-					speaker.Lock()
-					s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
-					speaker.Unlock()
-				}
-			}
-		} else {
-			if s.bgm.ctrl != nil {
-				s.bgm.Pause()
+	if !s.nomusic {
+		speaker.Lock()
+		if s.bgm.ctrl != nil && s.bgm.streamer != nil {
+			s.bgm.ctrl.Paused = false
+			if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
+				s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
 			}
 		}
+		speaker.Unlock()
+	} else {
+		s.bgm.Pause()
+	}
 
-		//if s.FLAC_FrameWait >= 0 {
-		//	if s.FLAC_FrameWait == 0 {
-		//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
-		//	}
-		//	s.FLAC_FrameWait--
-		//}
-	}
-	src.Delete()
-	openal.NullContext.Activate()
-	device := s.audioContext.GetDevice()
-	s.audioContext.Destroy()
-	s.audioContext = nil
-	device.CloseDevice()
-}
-func (s *System) playSound() {
-	if s.mixer.write() {
-		s.sounds.mixSounds()
-		if !s.noSoundFlg {
-			for pn := range s.gs.chars {
-				for _, c := range s.getPlayerEtAl(pn) {
-					c.sounds.mixSounds()
-				}
-			}
-		}
-	}
+	//if s.FLAC_FrameWait >= 0 {
+	//	if s.FLAC_FrameWait == 0 {
+	//		s.bgm.PlayMemAudio(s.bgm.loop, s.bgm.bgmVolume)
+	//	}
+	//	s.FLAC_FrameWait--
+	//}
 }
 func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
@@ -939,17 +914,14 @@ func (s *System) clsnHantei(clsn1 []float32, scl1, pos1 [2]float32,
 		scl2[0] *= -1
 	}
 	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
+		l1, r1 := clsn1[i1], clsn1[i1+2]+1
+		if facing1 < 0 {
+			l1, r1 = -r1, -l1
+		}
 		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
-			var l1, r1, l2, r2 float32
-			if facing1 > 0 {
-				l1, r1 = clsn1[i1], clsn1[i1+2]+1
-			} else {
-				l1, r1 = -clsn1[i1+2], -clsn1[i1]+1
-			}
-			if facing2 > 0 {
-				l2, r2 = clsn2[i2], clsn2[i2+2]+1
-			} else {
-				l2, r2 = -clsn2[i2+2], -clsn2[i2]+1
+			l2, r2 := clsn2[i2], clsn2[i2+2]+1
+			if facing2 < 0 {
+				l2, r2 = -r2, -l2
 			}
 			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
 				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
@@ -966,17 +938,19 @@ func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
 }
+
 // Get a Char from the game state using the System chars collection
 func (s *System) getChar(pn int, index int) *Char {
-	if (index >= len(s.gs.chars[pn])) {
+	if index >= len(s.gs.chars[pn]) {
 		return nil
 	}
 	cidx := s.gs.chars[pn][index]
-	if (cidx >= len(s.gs.charArray)) {
+	if cidx >= len(s.gs.charArray) {
 		return nil
 	}
 	return &s.gs.charArray[cidx]
 }
+
 // Get all player Chars
 func (s *System) getPlayers() []*Char {
 	result := make([]*Char, 0)
@@ -985,10 +959,11 @@ func (s *System) getPlayers() []*Char {
 	}
 	return result
 }
+
 // Get a player and all of its associated Char objects, presumably all helpers
 func (s *System) getPlayerEtAl(pn int) []*Char {
 	result := make([]*Char, 0)
-	if (pn >= len(s.gs.chars) || pn < 0) {
+	if pn >= len(s.gs.chars) || pn < 0 {
 		panic("Invalid player index")
 	}
 	for idx := range s.gs.chars[pn] {
@@ -996,6 +971,7 @@ func (s *System) getPlayerEtAl(pn int) []*Char {
 	}
 	return result
 }
+
 // Get the associated Char objects of a player, presumably all helpers
 func (s *System) getPlayerHelpers(pn int) []*Char {
 	return s.getPlayerEtAl(pn)[1:]
@@ -1012,39 +988,40 @@ func (s *System) resetGblEffect() {
 	s.specialFlag = 0
 }
 func (s *System) stopAllSound() {
-	for pn := range s.gs.chars {
-		for _, c := range s.getPlayerEtAl(pn) {
-			c.sounds = c.sounds[:0]
+	for i, p := range s.gs.chars {
+		for _, c := range p {
+			char := s.gs.charArray[s.gs.chars[i][c]]
+			char.soundChannels.SetSize(0)
 		}
 	}
 }
 func (s *System) clearAllSound() {
-	s.sounds = newSounds(len(s.sounds))
-	s.mixer.sendBuf = nil
-	s.mixer.bufClear()
+	s.soundChannels.StopAll()
 	s.stopAllSound()
 }
 func (s *System) playerClear(pn int, destroy bool) {
 	if len(s.gs.chars[pn]) > 0 {
 		p := s.getChar(pn, 0)
 		for _, h := range s.getPlayerHelpers(pn) {
-			if destroy || !h.preserve {
+			if destroy || h.preserve == 0 || (s.roundResetFlg && h.preserve == s.round) {
 				h.destroy()
 			}
-			h.sounds = h.sounds[:0]
+			h.soundChannels.SetSize(0)
 		}
 		if destroy {
 			p.children = p.children[:0]
 		} else {
 			for i, cid := range p.children {
-				ch := sys.playerID(cid);
-				if ch != nil && !ch.preserve {
-					p.children[i] = -1
+				ch := sys.playerID(cid)
+				if ch != nil {
+					if ch.preserve == 0 || (s.roundResetFlg && ch.preserve == s.round) {
+						p.children[i] = -1
+					}
 				}
 			}
 		}
 		p.targets = p.targets[:0]
-		p.sounds = p.sounds[:0]
+		p.soundChannels.SetSize(0)
 	}
 	s.projs[pn] = s.projs[pn][:0]
 	s.gs.explods[pn] = s.gs.explods[pn][:0]
@@ -1063,7 +1040,6 @@ func (s *System) nextRound() {
 	s.winType = [...]WinType{WT_N, WT_N}
 	s.winTrigger = [...]WinType{WT_N, WT_N}
 	s.lastHitter = [2]int{-1, -1}
-	s.fightOver = false
 	s.waitdown = s.lifebar.ro.over_hittime*s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time
 	s.shuttertime = 0
@@ -1282,8 +1258,7 @@ func (s *System) posReset() {
 		}
 	}
 }
-func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
-	sclMul float32) {
+func (s *System) action(x, y *float32, scl float32) (leftest, rightest, sclMul float32) {
 	s.sprites = s.sprites[:0]
 	s.topSprites = s.topSprites[:0]
 	s.bottomSprites = s.bottomSprites[:0]
@@ -1297,9 +1272,6 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	s.gs.cam.Update(scl, *x, *y)
 	var cvmin, cvmax, highest, lowest float32 = 0, 0, 0, 0
 	leftest, rightest = *x, *x
-	if s.gs.cam.verticalfollow > 0 {
-		lowest = s.gs.cam.ScreenPos[1]
-	}
 	if s.tickFrame() {
 		s.xmin = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] + s.screenleft
 		s.xmax = s.gs.cam.ScreenPos[0] + s.gs.cam.Offset[0] +
@@ -1315,6 +1287,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 			s.envcol_time--
 		}
 		s.enableZoomstate = false
+		s.zoomCameraBound = true
 		if s.super > 0 {
 			s.super--
 		} else if s.pause > 0 {
@@ -1344,20 +1317,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
-	fightOver := true
-	for i := 0; i < MaxSimul*2; i += 2 {
-		if len(s.gs.chars[i]) > 0 && !s.getChar(i, 0).scf(SCF_over) &&
-			!s.getChar(i, 0).scf(SCF_ko) {
-			fightOver = false
-			break
-		}
-	}
-	s.fightOver = fightOver
 	s.lifebar.step()
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
-			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, 0, 0, 0, [2]float32{},
-			false, true, s.cgi[s.superplayer].ver[0] != 1, 1, 1}, 0, 0, 0, 0)
+			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, Rotation{}, [2]float32{},
+			false, true, s.cgi[s.superplayer].ver[0] != 1, 1, 1, 0, 0, [4]float32{0, 0, 0, 0}}, 0, 0, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil
 		}
@@ -1540,16 +1504,11 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 					s.winType[0], s.winType[1] = WT_T, WT_T
 				}
 			}
-			if s.intro == 0 && (ko[0] || ko[1]) {
+			if s.intro >= -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
 					s.finish, s.winTeam = FT_DKO, -1
 				} else {
-					s.finish = FT_KO
-					if ko[0] {
-						s.winTeam = 1
-					} else {
-						s.winTeam = 0
-					}
+					s.finish, s.winTeam = FT_KO, int(Btoi(ko[0]))
 				}
 			}
 			if ft != s.finish {
@@ -1670,7 +1629,7 @@ func (s *System) action(x, y *float32, scl float32) (leftest, rightest,
 		}
 		s.turbo = spd
 	}
-	s.playSound()
+	s.tickSound()
 	if introSkip {
 		sclMul = 1 / scl
 	}
@@ -1684,20 +1643,19 @@ func (s *System) draw(x, y, scl float32) {
 	s.brightnessOld = s.brightness
 	s.brightness = 0x100 >> uint(Btoi(s.super > 0 && s.superdarken))
 	bgx, bgy := x/s.stage.localscl, y/s.stage.localscl
-	fade := func(rect [4]int32, color uint32, alpha int32) {
-		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
-	}
+	//fade := func(rect [4]int32, color uint32, alpha int32) {
+	//	FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
+	//}
 	if s.envcol_time == 0 {
+		c := uint32(0)
 		if s.sf(GSF_nobg) {
-			c := uint32(0)
 			if s.allPalFX.enable {
 				var rgb [3]int32
 				if s.allPalFX.eInvertall {
 					rgb = [...]int32{0xff, 0xff, 0xff}
 				}
 				for i, v := range rgb {
-					rgb[i] = Max(0, Min(0xff,
-						(v+s.allPalFX.eAdd[i])*s.allPalFX.eMul[i]>>8))
+					rgb[i] = Clamp((v+s.allPalFX.eAdd[i])*s.allPalFX.eMul[i]>>8, 0, 0xff)
 				}
 				c = uint32(rgb[2] | rgb[1]<<8 | rgb[0]<<16)
 			}
@@ -1705,6 +1663,9 @@ func (s *System) draw(x, y, scl float32) {
 		} else {
 			if s.stage.debugbg {
 				FillRect(s.scrrect, 0xff00ff, 0xff)
+			} else {
+				c = uint32(s.stage.bgclearcolor[2]&0xff | s.stage.bgclearcolor[1]&0xff<<8 | s.stage.bgclearcolor[0]&0xff<<16)
+				FillRect(s.scrrect, c, 0xff)
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
@@ -1715,39 +1676,39 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.shadows.draw(x, y, scl*s.gs.cam.BaseScale())
 		}
-		off := s.envShake.getOffset()
-		yofs, yofs2 := float32(s.gameHeight), float32(0)
-		if scl > 1 && s.gs.cam.verticalfollow > 0 {
-			yofs = s.gs.cam.screenZoff + float32(s.gameHeight-240)
-			yofs2 = (240 - s.gs.cam.screenZoff) * (1 - 1/scl)
-		}
-		yofs *= 1/scl - 1
-		rect := s.scrrect
-		if off < (yofs-y+s.gs.cam.boundH)*scl {
-			rect[3] = (int32(math.Ceil(float64(((yofs-y+s.gs.cam.boundH)*scl-off)*
-				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
-			fade(rect, 0, 255)
-		}
-		if off > (-y+yofs2)*scl {
-			rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
-				float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
-			rect[1] = s.scrrect[3] - rect[3]
-			fade(rect, 0, 255)
-		}
-		bl, br := MinF(x, s.gs.cam.boundL), MaxF(x, s.gs.cam.boundR)
-		xofs := float32(s.gameWidth) * (1/scl - 1) / 2
-		rect = s.scrrect
-		if x-xofs < bl {
-			rect[2] = (int32(math.Ceil(float64((bl-(x-xofs))*scl*
-				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
-			fade(rect, 0, 255)
-		}
-		if x+xofs > br {
-			rect[2] = (int32(math.Ceil(float64(((x+xofs)-br)*scl*
-				float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
-			rect[0] = s.scrrect[2] - rect[2]
-			fade(rect, 0, 255)
-		}
+		//off := s.envShake.getOffset()
+		//yofs, yofs2 := float32(s.gameHeight), float32(0)
+		//if scl > 1 && s.cam.verticalfollow > 0 {
+		//	yofs = s.cam.screenZoff + float32(s.gameHeight-240)
+		//	yofs2 = (240 - s.cam.screenZoff) * (1 - 1/scl)
+		//}
+		//yofs *= 1/scl - 1
+		//rect := s.scrrect
+		//if off < (yofs-y+s.cam.boundH)*scl {
+		//	rect[3] = (int32(math.Ceil(float64(((yofs-y+s.cam.boundH)*scl-off)*
+		//		float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+		//	fade(rect, 0, 255)
+		//}
+		//if off > (-y+yofs2)*scl {
+		//	rect[3] = (int32(math.Ceil(float64(((y-yofs2)*scl+off)*
+		//		float32(s.scrrect[3])))) + s.gameHeight - 1) / s.gameHeight
+		//	rect[1] = s.scrrect[3] - rect[3]
+		//	fade(rect, 0, 255)
+		//}
+		//bl, br := MinF(x, s.cam.boundL), MaxF(x, s.cam.boundR)
+		//xofs := float32(s.gameWidth) * (1/scl - 1) / 2
+		//rect = s.scrrect
+		//if x-xofs < bl {
+		//	rect[2] = (int32(math.Ceil(float64((bl-(x-xofs))*scl*
+		//		float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+		//	fade(rect, 0, 255)
+		//}
+		//if x+xofs > br {
+		//	rect[2] = (int32(math.Ceil(float64(((x+xofs)-br)*scl*
+		//		float32(s.scrrect[2])))) + s.gameWidth - 1) / s.gameWidth
+		//	rect[0] = s.scrrect[2] - rect[2]
+		//	fade(rect, 0, 255)
+		//}
 		s.lifebar.draw(-1)
 		s.lifebar.draw(0)
 	} else {
@@ -1826,7 +1787,7 @@ func (s *System) drawDebug() {
 			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / s.heightScale
 			s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 1, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba, true)
+				s.debugFont.palfx, s.debugFont.frgba)
 		}
 	}
 	if s.debugDraw {
@@ -1902,7 +1863,7 @@ func (s *System) drawDebug() {
 			s.debugFont.SetColor(t.r, t.g, t.b)
 			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
 				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba, true)
+				s.debugFont.palfx, s.debugFont.frgba)
 		}
 	}
 }
@@ -1921,8 +1882,9 @@ func (s *System) fight() (reload bool) {
 		s.allPalFX.clear()
 		s.allPalFX.enable = false
 		for i, p := range s.gs.chars {
+			c := s.getChar(i, 0)
 			if len(p) > 0 {
-				s.playerClear(i, true)
+				s.playerClear(i, s.matchOver() || (s.tmode[i&1] == TM_Turns && c.life <= 0))
 			}
 		}
 		s.wincnt.update()
@@ -2081,7 +2043,7 @@ func (s *System) fight() (reload bool) {
 			foo := math.Pow(lvmul, float64(-level[i]))
 			p.lifeMax = Max(1, int32(math.Floor(foo*float64(lm))))
 
-			if s.roundsExisted[i&1] > 0 {
+			if p.roundsExisted() > 0 {
 				/* If character already existed for a round, presumably because of turns mode, just update life */
 				p.life = Min(p.lifeMax, int32(math.Ceil(foo*float64(p.life))))
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
@@ -2130,7 +2092,7 @@ func (s *System) fight() (reload bool) {
 
 	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
-		s.bgm.Open(s.stage.bgmusic, true, 1, 100, 0, 0)
+		s.bgm.Open(s.stage.bgmusic, 1, 100, 0, 0)
 	}
 
 	oldWins, oldDraws := s.wins, s.draws
@@ -2187,16 +2149,16 @@ func (s *System) fight() (reload bool) {
 		}
 
 		// Save/load state
-		if (s.saveStateFlag) {
+		if s.saveStateFlag {
 			s.savedGs = s.gs.clone()
 
 		} else if s.loadStateFlag {
-			if (s.savedGs != nil) {
+			if s.savedGs != nil {
 				s.gs = *s.savedGs.clone()
 			}
 		}
-		s.saveStateFlag = false;
-		s.loadStateFlag = false;
+		s.saveStateFlag = false
+		s.loadStateFlag = false
 
 		// If next round
 		if s.roundOver() && !fin {
@@ -2207,7 +2169,7 @@ func (s *System) fight() (reload bool) {
 			s.clearAllSound()
 			tbl_roundNo := s.luaLState.NewTable()
 			for _, p := range s.getPlayers() {
-				if p != nil {
+				if p != nil && p.teamside != -1 {
 					tmp := s.luaLState.NewTable()
 					tmp.RawSetString("name", lua.LString(p.name))
 					tmp.RawSetString("id", lua.LNumber(p.id))
@@ -2269,8 +2231,8 @@ func (s *System) fight() (reload bool) {
 								}
 							}
 						}
-					} else {
-						firstP.life = 0
+						//} else {
+						//	s.chars[i][0].life = 0
 					}
 				}
 				// If match isn't over, presumably this is turns mode,
@@ -2283,6 +2245,13 @@ func (s *System) fight() (reload bool) {
 				s.postMatchFlg = true
 				fin = true
 			}
+		}
+
+		// If frame is ready to tick and not paused
+		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
+			(s.pause <= 0 || !s.pausebg) {
+			// Update stage
+			s.stage.action()
 		}
 
 		// Update camera
@@ -2298,13 +2267,6 @@ func (s *System) fight() (reload bool) {
 			ac.x = float32(math.Ceil(float64(ac.x)*4-0.5) / 4)
 		}
 		ac.y = s.gs.cam.YBound(ac.scl, ac.newy)
-
-		// If frame is ready to tick and not paused
-		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
-			(s.pause <= 0 || !s.pausebg) {
-			// Update stage
-			s.stage.action()
-		}
 
 		// Update game state
 		ac.newx, ac.newy = ac.x, ac.y
@@ -2335,8 +2297,13 @@ func (s *System) fight() (reload bool) {
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
 					s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*ac.scl-s.drawScale)*s.zoomlag) * s.zoomScale * ac.scl
 				}
-				dscl = MaxF(s.gs.cam.MinScale, s.drawScale/s.gs.cam.BaseScale())
-				dx = s.gs.cam.XBound(dscl, ac.x+s.zoomPosXLag/ac.scl)
+				if s.zoomCameraBound {
+					dscl = MaxF(s.gs.cam.MinScale, s.drawScale/s.gs.cam.BaseScale())
+					dx = s.gs.cam.XBound(dscl, ac.x+s.zoomPosXLag/ac.scl)
+				} else {
+					dscl = s.drawScale / s.gs.cam.BaseScale()
+					dx = ac.x + s.zoomPosXLag/ac.scl
+				}
 				dy = ac.y + s.zoomPosYLag
 			} else {
 				s.zoomlag = 0
@@ -2542,6 +2509,7 @@ type OverrideCharData struct {
 	ratioLevel  int32
 	lifeRatio   float32
 	attackRatio float32
+	existed     bool
 }
 
 func newOverrideCharData() *OverrideCharData {
@@ -2608,6 +2576,10 @@ func (s *Select) addChar(def string) {
 	def = strings.Replace(strings.TrimSpace(strings.Split(def, ",")[0]),
 		"\\", "/", -1)
 	tstr = fmt.Sprintf("Char added: %v", def)
+	if strings.ToLower(def) == "dummyslot" {
+		sc.name = "dummyslot"
+		return
+	}
 	if strings.ToLower(def) == "randomselect" {
 		sc.def, sc.name = "randomselect", "Random"
 		return
@@ -2696,10 +2668,10 @@ func (s *Select) addChar(def string) {
 		case "arcade":
 			if arcade {
 				arcade = false
-				sc.intro, _ = is.getString("intro.storyboard")
-				sc.ending, _ = is.getString("ending.storyboard")
-				sc.arcadepath, _ = is.getString("arcadepath")
-				sc.ratiopath, _ = is.getString("ratiopath")
+				sc.intro, _, _ = is.getText("intro.storyboard")
+				sc.ending, _, _ = is.getText("ending.storyboard")
+				sc.arcadepath, _, _ = is.getText("arcadepath")
+				sc.ratiopath, _, _ = is.getText("ratiopath")
 			}
 		}
 	}
@@ -2938,6 +2910,9 @@ func newLoader() *Loader {
 }
 
 func (l *Loader) loadChar(pn int) int {
+	if sys.roundsExisted[pn&1] > 0 {
+		return 1
+	}
 	sys.loadMutex.Lock()
 	result := -1
 	nsel := len(sys.sel.selected[pn&1])
@@ -2995,12 +2970,12 @@ func (l *Loader) loadChar(pn int) int {
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
-		if sys.roundsExisted[pn&1] == 0 {
-			p.clearCachedData()
-		}
-		sys.gs.appendChar(p)
+		p.clearCachedData()
 	} else {
-		_, p = sys.gs.addChar(pn, 0)
+		p = newChar(pn, 0)
+		if sys.cgi[pn].sff != nil {
+			sys.cgi[pn].sff.sprites = nil
+		}
 		sys.cgi[pn].sff = nil
 		if len(sys.gs.chars[pn]) > 0 {
 			existingP := sys.getChar(pn, 0)
@@ -3012,34 +2987,33 @@ func (l *Loader) loadChar(pn int) int {
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
-
-	sys.gs.removeCharSlice(sys.gs.chars[pn]...)
 	pidx := len(sys.gs.charArray) - 1
 	p = &sys.gs.charArray[pidx]
-
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.gs.chars[pn] = make([]int, 1)
 	sys.gs.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
-		if sys.cgi[pn].states, l.err =
-			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
-			sys.gs.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
-			return -1
-		}
 		if l.err = p.load(cdef); l.err != nil {
 			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
 			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new char: %v", cdef)
 			return -1
 		}
+		if sys.cgi[pn].states, l.err =
+			newCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
+			sys.gs.chars[pn] = nil
+			tstr = fmt.Sprintf("WARNING: Failed to compile new char states: %v", cdef)
+			return -1
+		}
 		tstr = fmt.Sprintf("New char loaded: %v", cdef)
 	} else {
 		tstr = fmt.Sprintf("Cached char loaded: %v", cdef)
 	}
-	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = pal //sys.cgi[pn].palkeymap[pal-1] + 1
-	}
+	sys.cgi[pn].palno = pal //sys.cgi[pn].palkeymap[pal-1] + 1
 	if pn < len(sys.lifebar.fa[sys.tmode[pn&1]]) &&
 		sys.tmode[pn&1] == TM_Turns && sys.round == 1 {
 		fa := sys.lifebar.fa[sys.tmode[pn&1]][pn]
@@ -3054,8 +3028,11 @@ func (l *Loader) loadChar(pn int) int {
 	return 1
 }
 
-func (l *Loader) loadAttachedChar(atcpn int) int {
-	pn := atcpn + MaxSimul*2
+func (l *Loader) loadAttachedChar(pn int) int {
+	if sys.round != 1 {
+		return 1
+	}
+	atcpn := pn - MaxSimul*2
 	var tstr string
 	tnow := time.Now()
 	defer func() {
@@ -3082,6 +3059,11 @@ func (l *Loader) loadAttachedChar(atcpn int) int {
 	p.memberNo = -atcpn
 	p.selectNo = -atcpn
 	p.teamside = -1
+	if !p.ocd().existed {
+		p.varRangeSet(0, int32(NumVar)-1, 0)
+		p.fvarRangeSet(0, int32(NumFvar)-1, 0)
+		p.ocd().existed = true
+	}
 	sys.com[pn] = 8
 
 	sys.gs.removeCharSlice(sys.gs.chars[pn]...)
@@ -3091,26 +3073,23 @@ func (l *Loader) loadAttachedChar(atcpn int) int {
 	sys.gs.chars[pn] = make([]int, 1)
 	sys.gs.chars[pn][0] = pidx
 	if sys.cgi[pn].sff == nil {
-		if sys.cgi[pn].states, l.err =
-			newCompiler().Compile(p.playerNo, cdef); l.err != nil {
-			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
-			sys.gs.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
-			return -1
-		}
 		if l.err = p.load(cdef); l.err != nil {
 			sys.gs.removeCharSlice(sys.gs.chars[pn]...)
 			sys.gs.chars[pn] = nil
 			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
 			return -1
 		}
+		if sys.cgi[pn].states, l.err =
+			newCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
+			sys.gs.chars[pn] = nil
+			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
+			return -1
+		}
 		tstr = fmt.Sprintf("New attachedchar loaded: %v", cdef)
 	} else {
 		tstr = fmt.Sprintf("Cached attachedchar loaded: %v", cdef)
 	}
-	if sys.roundsExisted[pn&1] == 0 {
-		sys.cgi[pn].palno = 1
-	}
+	sys.cgi[pn].palno = 1
 	return 1
 }
 
@@ -3127,17 +3106,11 @@ func (l *Loader) loadStage() bool {
 			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
-			for i := range sys.stageList[0].attachedchardef {
-				l.loadAttachedChar(i)
-			}
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
-		for i := range sys.stageList[0].attachedchardef {
-			l.loadAttachedChar(i)
-		}
 		sys.stage = sys.stageList[0]
 	}
 	return l.err == nil
@@ -3154,10 +3127,22 @@ func (l *Loader) load() {
 		return true
 	}
 	for !stageDone || !allCharDone() {
-		// Load chars
+		if !stageDone && sys.sel.selectedStageNo >= 0 {
+			if !l.loadStage() {
+				l.state = LS_Error
+				return
+			}
+			stageDone = true
+		}
 		for i, b := range charDone {
 			if !b {
-				result := l.loadChar(i)
+				result := -1
+				if i < len(sys.gs.chars)-MaxAttachedChar ||
+					len(sys.stageList[0].attachedchardef) <= i-MaxSimul*2 {
+					result = l.loadChar(i)
+				} else {
+					result = l.loadAttachedChar(i)
+				}
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -3166,28 +3151,13 @@ func (l *Loader) load() {
 				}
 			}
 		}
-		// Load stage and attached char
-		if !stageDone && sys.sel.selectedStageNo >= 0 {
-			if !l.loadStage() {
-				l.state = LS_Error
-				return
-			}
-			stageDone = true
-		}
-		// Clear unused chars data
-		if stageDone {
-			for i := 0; i < 2; i++ {
-				if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
-					sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
-					for j := i + 2; j < len(sys.gs.chars); j += 2 {
-						if !charDone[j] {
-							if j < len(sys.gs.chars)-len(sys.stageList[0].attachedchardef) {
-								sys.gs.removeCharSlice(sys.gs.chars[j]...)
-								sys.gs.chars[j], sys.cgi[j].states = nil, nil
-								sys.cgi[j].wakewakaLength = 0
-							}
-							charDone[j] = true
-						}
+		for i := 0; i < 2; i++ {
+			if !charDone[i+2] && len(sys.sel.selected[i]) > 0 &&
+				sys.tmode[i] != TM_Simul && sys.tmode[i] != TM_Tag {
+				for j := i + 2; j < len(sys.gs.chars); j += 2 {
+					if !charDone[j] {
+						sys.gs.chars[j], sys.cgi[j].states, charDone[j] = nil, nil, true
+						sys.cgi[j].wakewakaLength = 0
 					}
 				}
 			}

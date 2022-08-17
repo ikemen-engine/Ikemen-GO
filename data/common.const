@@ -4,7 +4,6 @@
 Default.Enable.Action = 1
 Default.Enable.Dizzy = 1
 Default.Enable.GuardBreak = 1
-Default.Enable.Rank = 1
 Default.Enable.Score = 1
 Default.Enable.Tag = 1
 
@@ -12,9 +11,12 @@ Default.Enable.Tag = 1
 Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
 Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
 Super.TargetDefenceMul = 1.5        ; multiplier for how much damage a super does when you combo into it (ignored if SuperPause p2defmul option is set)
-Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver gets when an attack is blocked (overridden by guardpoints HitDef option)
-Default.LifeToDizzyPointsMul = 0    ; multiplier for dizzy points the receiver gets when an attack successfully hits (overridden by dizzypoints HitDef option)
-Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when an attack successfully hits (overridden by redlife HitDef option)
+Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver gets when a normal/special attack is blocked (overridden by guardpoints HitDef option)
+Super.LifeToGuardPointsMul = -0.33  ; multiplier for guard points the receiver gets when a super attack is blocked (overridden by guardpoints HitDef option)
+Default.LifeToDizzyPointsMul = -1.8 ; multiplier for dizzy points the receiver gets when a normal/special attack successfully hits (overridden by dizzypoints HitDef option)
+Super.LifeToDizzyPointsMul = 0      ; multiplier for dizzy points the receiver gets when a super attack successfully hits (overridden by dizzypoints HitDef option)
+Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when a normal/special attack successfully hits (overridden by redlife HitDef option)
+Super.LifeToRedLifeMul = 0.25       ; multiplier for red life the receiver gets when a super attack successfully hits (overridden by redlife HitDef option)
 Default.IgnoreDefeatedEnemies = 1   ; prevents EnemyNear from redirecting defeated enemies (toggle)
 Input.PauseOnHitPause = 1           ; controls if inputs should be retained during hit pause
 
@@ -25,6 +27,7 @@ TagCommandAIChance = 50        ; affects default AI switching probability (range
 TagCounterSwitchPower = 1000   ; counter switch power cost (used in MvCI ver only)
 TagRedLifeRegenFrames = 30     ; red life regeneration interval (in frames)
 TagRedLifeRegenPercent = 0.005 ; red life regenerated each interval (percentage of max life)
+TagSwitchCooldown = 0          ; number of ticks the tag switch cooldown lasts
 
 ; Character Reserved Action Numbers
 AnimStanding = 0
@@ -268,15 +271,15 @@ AttrAerialNormalThrow = 132
 AttrStandingNormalProjectile = 257
 AttrCrouchingNormalProjectile = 258
 AttrAerialNormalProjectile = 260
-AttrStandingSuperAttack = 513
-AttrCrouchingSuperAttack = 514
-AttrAerialSuperAttack = 516
-AttrStandingSuperThrow = 1025
-AttrCrouchingSuperThrow = 1026
-AttrAerialSuperThrow = 1028
-AttrStandingSuperProjectile = 2049
-AttrCrouchingSuperProjectile = 2050
-AttrAerialSuperProjectile = 2052
+AttrStandingSpecialAttack = 513
+AttrCrouchingSpecialAttack = 514
+AttrAerialSpecialAttack = 516
+AttrStandingSpecialThrow = 1025
+AttrCrouchingSpecialThrow = 1026
+AttrAerialSpecialThrow = 1028
+AttrStandingSpecialProjectile = 2049
+AttrCrouchingSpecialProjectile = 2050
+AttrAerialSpecialProjectile = 2052
 AttrStandingHyperAttack = 4097
 AttrCrouchingHyperAttack = 4098
 AttrAerialHyperAttack = 4100
