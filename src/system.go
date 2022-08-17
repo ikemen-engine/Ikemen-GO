@@ -766,11 +766,8 @@ func (s *System) update() bool {
 func (s *System) tickSound() {
 	s.soundChannels.Tick()
 	if !s.noSoundFlg {
-		for i, ch := range s.gs.chars {
-			for _, c := range ch {
-				char := s.gs.charArray[s.gs.chars[i][c]]
-				char.soundChannels.Tick()
-			}
+		for _, ch := range s.gs.charArray {
+			ch.soundChannels.Tick()
 		}
 	}
 	if !s.nomusic {

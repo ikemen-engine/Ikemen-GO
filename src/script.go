@@ -855,27 +855,49 @@ func systemScriptInit(l *lua.LState) {
 				if sys.round == 1 {
 					sys.gs.charList.clear()
 				}
-				// Reset and setup characters
-				sys.gs.charList.clear()
+				nextId := sys.helperMax
+
 				for i := 0; i < MaxSimul*2; i += 2 {
 					if len(sys.gs.chars[i]) > 0 {
-						sys.getChar(i, 0).id = sys.newCharId()
+						if sys.round == 1 {
+							sys.getChar(i, 0).id = sys.newCharId()
+						} else if sys.getChar(i, 0).roundsExisted() == 0 {
+							sys.getChar(i, 0).id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := 1; i < MaxSimul*2; i += 2 {
 					if len(sys.gs.chars[i]) > 0 {
-						sys.getChar(i, 0).id = sys.newCharId()
+						if sys.round == 1 {
+							sys.getChar(i, 0).id = sys.newCharId()
+						} else if sys.getChar(i, 0).roundsExisted() == 0 {
+							sys.getChar(i, 0).id = nextId
+						}
+						nextId++
 					}
 				}
 				for i := MaxSimul * 2; i < MaxSimul*2+MaxAttachedChar; i += 1 {
 					if len(sys.gs.chars[i]) > 0 {
-						sys.getChar(i, 0).id = sys.newCharId()
+						if sys.round == 1 {
+							sys.getChar(i, 0).id = sys.newCharId()
+						} else if sys.getChar(i, 0).roundsExisted() == 0 {
+							sys.getChar(i, 0).id = nextId
+						}
+						nextId++
 					}
 				}
 				for i, c := range sys.getPlayers() {
 					if c != nil {
-						sys.gs.charList.add(c)
-						if sys.roundsExisted[i&1] == 0 {
+						p[i] = c
+						if sys.round == 1 {
+							sys.gs.charList.add(c)
+						} else if c.roundsExisted() == 0 {
+							if !sys.gs.charList.replace(c, i, 0) {
+								panic(fmt.Errorf("failed to replace player: %v", i))
+							}
+						}
+						if c.roundsExisted() == 0 {
 							c.loadPalette()
 						}
 						for j, cj := range sys.getPlayers() {
@@ -938,13 +960,6 @@ func systemScriptInit(l *lua.LState) {
 					w2 := sys.wins[1] >= sys.matchWins[1]
 					if w1 != w2 {
 						winp = Btoi(w1) + Btoi(w2)*2
-					}
-				}
-
-				// Set players, for use outside this anonymous function
-				for i, c := range sys.getPlayers() {
-					if c != nil {
-						p[i] = c
 					}
 				}
 
