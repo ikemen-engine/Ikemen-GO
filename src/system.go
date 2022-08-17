@@ -988,10 +988,9 @@ func (s *System) resetGblEffect() {
 	s.specialFlag = 0
 }
 func (s *System) stopAllSound() {
-	for i, p := range s.gs.chars {
-		for _, c := range p {
-			char := s.gs.charArray[s.gs.chars[i][c]]
-			char.soundChannels.SetSize(0)
+	for pn := range s.gs.chars {
+		for _, c := range s.getPlayerEtAl(pn) {
+			c.soundChannels.SetSize(0)
 		}
 	}
 }
@@ -2247,13 +2246,6 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 
-		// If frame is ready to tick and not paused
-		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
-			(s.pause <= 0 || !s.pausebg) {
-			// Update stage
-			s.stage.action()
-		}
-
 		// Update camera
 		ac := &s.gs.ac
 		ac.scl = s.gs.cam.ScaleBound(ac.scl, ac.sclmul)
@@ -2271,6 +2263,13 @@ func (s *System) fight() (reload bool) {
 		// Update game state
 		ac.newx, ac.newy = ac.x, ac.y
 		ac.l, ac.r, ac.sclmul = s.action(&ac.newx, &ac.newy, ac.scl)
+
+		// If frame is ready to tick and not paused
+		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
+			(s.pause <= 0 || !s.pausebg) {
+			// Update stage
+			s.stage.action()
+		}
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
@@ -2970,9 +2969,12 @@ func (l *Loader) loadChar(pn int) int {
 		if sys.com[pn] != 0 {
 			p.key ^= -1
 		}
-		p.clearCachedData()
+		if sys.roundsExisted[pn&1] == 0 {
+			p.clearCachedData()
+		}
+		sys.gs.appendChar(p)
 	} else {
-		p = newChar(pn, 0)
+		_, p = sys.gs.addChar(pn, 0)
 		if sys.cgi[pn].sff != nil {
 			sys.cgi[pn].sff.sprites = nil
 		}
@@ -2987,6 +2989,8 @@ func (l *Loader) loadChar(pn int) int {
 	p.memberNo = memberNo
 	p.selectNo = sys.sel.selected[pn&1][memberNo][0]
 	p.teamside = p.playerNo & 1
+
+	sys.gs.removeCharSlice(sys.gs.chars[pn]...)
 	pidx := len(sys.gs.charArray) - 1
 	p = &sys.gs.charArray[pidx]
 	if !p.ocd().existed {
