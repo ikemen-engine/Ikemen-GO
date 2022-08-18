@@ -1712,6 +1712,7 @@ type Char struct {
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
 	inputFlag             InputBits
+	pauseBool             bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5226,19 +5227,19 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	}
 	return true
 }
-func (c *Char) action() {
+func (c *Char) actionPrepare() {
 	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
-	p := false
+	c.pauseBool = false
 	if c.cmd != nil {
 		if sys.super > 0 {
-			p = c.superMovetime == 0
+			c.pauseBool = c.superMovetime == 0
 		} else if sys.pause > 0 && c.pauseMovetime == 0 {
-			p = true
+			c.pauseBool = true
 		}
 	}
-	c.acttmp = -int8(Btoi(p)) * 2
+	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	c.unsetSCF(SCF_guard)
 	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
@@ -5249,7 +5250,7 @@ func (c *Char) action() {
 			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
 		c.setSCF(SCF_guard)
 	}
-	if !p {
+	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ss.stateType == ST_A {
 				if c.cmd[0].Buffer.U < 0 {
@@ -5368,11 +5369,16 @@ func (c *Char) action() {
 			c.offset = [2]float32{}
 		}
 	}
+}
+func (c *Char) actionRunStates() {
+	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
+	}
 	c.minus = -4
 	if sb, ok := c.gi().states[-4]; ok {
 		sb.run(c)
 	}
-	if !p {
+	if !c.pauseBool {
 		c.minus = -3
 		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[2]) {
 			if sb, ok := c.gi().states[-3]; ok {
@@ -5394,6 +5400,13 @@ func (c *Char) action() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
+	}
+}
+func (c *Char) actionFinish() {
+	if (c.minus != 2 && c.minus != 0) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
+	}
+	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
 				c.changeState(5120, -1, -1, false)
@@ -5459,7 +5472,7 @@ func (c *Char) action() {
 		}
 	}
 	c.xScreenBound()
-	if !p {
+	if !c.pauseBool {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
 				t.bind()
@@ -5977,14 +5990,24 @@ func (cl *CharList) delete(dc *Char) {
 func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
+	// Prepare characters before performing their actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionPrepare()
+	}
+	// Run character state controllers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].action()
+			cl.runOrder[i].actionRunStates()
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].action()
+		cl.runOrder[i].actionRunStates()
 	}
+	// Finish performing character actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionFinish()
+	}
+	// Update chars
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
 }
 func (cl *CharList) update(cvmin, cvmax,
