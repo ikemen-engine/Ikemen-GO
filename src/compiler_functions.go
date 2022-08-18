@@ -3899,10 +3899,10 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 					return err
 				}
 				c.token = c.tokenizer(&mapParam)
-				if c.token == ":=" {
+				if c.token == "=" || c.token == ":=" {
 					value = strings.TrimSpace(mapParam)
 				} else {
-					return Error("Missing ':' before '='")
+					return Error("Invalid operator: " + c.token)
 				}
 			} else {
 				b := false

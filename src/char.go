@@ -1600,7 +1600,7 @@ type CharSystemVar struct {
 	bindFacing       float32
 	hitPauseTime     int32
 	angle            float32
-	angleScalse      [2]float32
+	angleScale       [2]float32
 	alpha            [2]int32
 	recoverTime      int32
 	systemFlag       SystemCharFlag
@@ -1837,7 +1837,7 @@ func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
-		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
+		angleScale: [...]float32{1, 1}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		fallDefenseMul:  1,
@@ -5340,7 +5340,7 @@ func (c *Char) action() {
 					}
 				}
 			}
-			c.angleScalse = [...]float32{1, 1}
+			c.angleScale = [...]float32{1, 1}
 			c.attackDist = float32(c.size.attack.dist)
 			c.offset = [2]float32{}
 			for i, hb := range c.hitby {
@@ -5364,7 +5364,7 @@ func (c *Char) action() {
 		c.unsetSF(CSF_noautoturn)
 		if c.gi().ver[0] == 1 {
 			c.unsetSF(CSF_assertspecial | CSF_angledraw)
-			c.angleScalse = [...]float32{1, 1}
+			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
 	}
@@ -5868,7 +5868,7 @@ func (c *Char) cueDraw() {
 		rec := sys.tickNextFrame() && c.acttmp > 0
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
-				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScalse, false,
+				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
 				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / c.localcoord), 0, 0, [4]float32{0, 0, 0, 0}}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
