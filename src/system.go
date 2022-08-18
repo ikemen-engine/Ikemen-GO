@@ -1715,6 +1715,8 @@ func (s *System) fight() (reload bool) {
 		}
 		s.wincnt.update()
 	}()
+	var oldStageVars Stage
+	oldStageVars.copyStageVars(s.stage)
 	var life, pow, gpow, spow, rlife [len(s.chars)]int32
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32
@@ -1952,6 +1954,7 @@ func (s *System) fight() (reload bool) {
 				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 		}
+		s.stage.copyStageVars(&oldStageVars)
 		s.resetFrameTime()
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
@@ -2029,6 +2032,7 @@ func (s *System) fight() (reload bool) {
 					}
 				}
 				oldWins, oldDraws = s.wins, s.draws
+				oldStageVars.copyStageVars(s.stage)
 				reset()
 			} else {
 				/* End match, or prepare for a new character in turns mode */
