@@ -80,25 +80,21 @@ explod{
 #===============================================================================
 # StateTagEnteringScreen
 #===============================================================================
-[StateDef 5600;
+[StateDef const(StateTagEnteringScreen); 
 	type: S; moveType: H; physics: N;
 	anim: const(AnimTagEnteringScreen);
 	sprPriority: 2; ctrl: 0;
 ]
 
-screenBound{value: 0; moveCamera: 1, 1}
+screenBound{value: 0; moveCamera: 1, 1; stageBound: 0}
 assertSpecial{flag: noTurnTarget}
 
 if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# set starting pos (redirected to gather consistent local coordinate space values ready for const240p conversion)
-	teamMapSet{
-		map: "_iksys_tagPosX";
-		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerId(getPlayerId(teamLeader)),id}
-	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
+	# set starting pos
+	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# store distance to switch initiation position
 	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - playerId(getPlayerId(teamLeader)),pos x)}
 	# set movement
@@ -111,13 +107,6 @@ if time = 0 {
 	mapAdd{map: "_iksys_tagSwitchDist"; value: -vel x}
 }
 
-# regain control right after entering screen (unused in this state by default)
-if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
-	stateTypeSet{moveType: I} # disables countermeasure against global states triggering when character is off-screen
-	ctrlSet{value: 1}
-	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
-}
-
 # continue until reaching place where the switch was initiated, but stop in front of enemy
 if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X < const240p(30)) {
 	velSet{x: 0; y: 0}
@@ -127,12 +116,14 @@ if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist
 #===============================================================================
 # StateTagLeavingScreen
 #===============================================================================
-[StateDef 5610;
+[StateDef const(StateTagLeavingScreen);
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprPriority: -2;
 	velSet: 0, 0; faceP2: 1;
 	ctrl: 0;
 ]
+
+screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
 
 if time = 0 {
 	turn{}
@@ -140,24 +131,21 @@ if time = 0 {
 
 velSet{x: min(ifElse(const(velocity.run.fwd.x) != 0, const(velocity.run.fwd.x), const(velocity.walk.fwd.x) * 2), const240p(const(TagInVelX))); y: 0}
 
-if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) || map(_iksys_tagLeavingPosX) = pos x {
+if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) {
 	changeState{value: const(StateTagWaitingOutside)}
 }
-
-# TODO: won't be needed once this bug is fixed: https://github.com/Windblade-GR01/Ikemen-GO/issues/171
-mapSet{map: "_iksys_tagLeavingPosX"; value: pos x}
 
 #===============================================================================
 # StateTagWaitingOutside
 #===============================================================================
-[StateDef 5611;
+[StateDef const(StateTagWaitingOutside);
 	type: A; moveType: I; physics: N;
 	anim: const(AnimStanding);
 	velSet: 0, 0; ctrl: 0;
 ]
 
+screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
 assertSpecial{flag: invisible; flag2: noAutoTurn}
-screenBound{value: 0; moveCamera: 0, 0}
 
 # force standby character to always stay outside visible area
 posSet{
@@ -170,17 +158,17 @@ posSet{
 #===============================================================================
 # StateTagJumpingIn
 #===============================================================================
-[StateDef 5620;
+[StateDef const(StateTagJumpingIn);
 	type: A; moveType: I; physics: N;
 	anim: const(AnimTagJumpingIn);
 	sprPriority: 2; ctrl: 0;
 ]
 
 if roundState = 3 {
-	screenBound{value: 0; moveCamera: 0, 0}
+	screenBound{value: 0; moveCamera: 0, 0; stageBound: 0}
 	playerPush{value: 0}
 } else {
-	screenBound{value: 0; moveCamera: 1, 1}
+	screenBound{value: 0; moveCamera: 1, 1; stageBound: 0}
 	assertSpecial{flag: noTurnTarget}
 }
 
@@ -190,21 +178,16 @@ if backEdgeBodyDist <= 0 {
 }
 
 # regain control right after entering screen, in case of active player loss
-if !ctrl && backEdgeBodyDist >= 0 && map(_iksys_tagRegainCtrl) = 1 {
+if !ctrl && backEdgeBodyDist >= 0 {
 	ctrlSet{value: 1}
-	mapSet{map: "_iksys_tagRegainCtrl"; value: 0}
 }
 
 if time = 0 {
 	if facing != playerId(getPlayerId(teamLeader)),facing {
 		turn{}
 	}
-	# set starting pos (redirected to gather consistent local coordinate space values ready for const240p conversion)
-	teamMapSet{
-		map: "_iksys_tagPosX";
-		value: pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing;
-		redirectId: playerId(getPlayerId(teamLeader)),id}
-	posSet{x: const240p(map(_iksys_tagPosX)); y: 0}
+	# set starting pos
+	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# change active player assignment if the battle still goes on
 	if roundState = 2 {
 		mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
@@ -223,7 +206,7 @@ if time = 0 {
 #===============================================================================
 # StateTagLanding
 #===============================================================================
-[StateDef 5621;
+[StateDef const(StateTagLanding);
 	type: S; moveType: I; physics: N;
 	anim: const(AnimTagLanding);
 	sprPriority: 2; ctrl: 0;
@@ -253,6 +236,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	} else {
 		mapSet{map: "_iksys_tagIntroFlag"; value: 0}
 	}
+	mapSet{map: "_iksys_tagSwitchCooldown"; value: 0}
 } else if map(_iksys_tagActive) = 1 {
 	if roundState = 4 {
 		mapSet{map: "_iksys_tagActive"; value: 0}
@@ -268,11 +252,14 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		}
 		# active player
 		if playerNo = teamLeader {
+			# delay next check if cooldown is active
+			if map(_iksys_tagSwitchCooldown) > 0 {
+				mapAdd{map: "_iksys_tagSwitchCooldown"; value: -1}
 			# not being hit; standing idle or at least on the ground
-			if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
+			} else if $beingHit = 0 && (stateNo = const(StateStand) || pos y >= 0) {
 				# last active player has left the screen or died
 				if map(_iksys_tagLastId) = 0
-					|| playerId(map(_iksys_tagLastId)),stateNo = const(StateTagWaitingOutside)
+					|| playerId(map(_iksys_tagLastId)),stateNo = playerId(map(_iksys_tagLastId)),const(StateTagWaitingOutside)
 					|| playerId(map(_iksys_tagLastId)),alive = 0
 				{
 					# get partner id in case of tag command
@@ -292,13 +279,14 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 						let partnerId = $previousPartnerId;
 					}
 					# having control, command buffered, partner standby
-					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = const(StateTagWaitingOutside) {
+					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = playerId($partnerId),const(StateTagWaitingOutside) {
+						mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 						mapSet{map: "_iksys_tagPartnerId"; value: 0}
 						lifebarAction{spr: const(MsgPartnerChange), 0}
 						tagOut{}
 						ctrlSet{value: 0}
 						assertSpecial{flag: noHardcodedKeys; flag2: noInput}
-						tagIn{stateNo: const(StateTagEnteringScreen); redirectId: $partnerId}
+						tagIn{stateNo: playerId($partnerId),const(StateTagEnteringScreen); redirectId: $partnerId}
 					}
 				}
 			}
@@ -311,7 +299,6 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 				(pos y >= 0 && stateNo != [const(StateTagEnteringScreen), const(StateTagWaitingOutside)]))
 			{
 				mapSet{map: "_iksys_tagIntroFlag"; value: 1}
-				mapSet{map: "_iksys_tagLeavingPosX"; value: pos x + 0.0001}
 				tagOut{stateNo: const(StateTagLeavingScreen)}
 			# tagged out, at the round end
 			} else if roundState = 3 {
@@ -329,10 +316,10 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		# bring next team member
 		let partnerId = call fTagGetPartnerId(1);
 		if $partnerId > 0 {
+			mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
 			lifebarAction{spr: const(MsgPartnerChange), 0}
-			mapSet{map: "_iksys_tagRegainCtrl"; value: 1; redirectId: $partnerId}
-			tagIn{stateNo: const(StateTagJumpingIn); redirectId: $partnerId}
 			tagOut{}
+			tagIn{stateNo: playerId($partnerId),const(StateTagJumpingIn); redirectId: $partnerId}
 		}
 	}
 	# Red Life regeneration

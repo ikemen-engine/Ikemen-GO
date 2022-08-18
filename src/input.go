@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
+	glfw "github.com/fyne-io/glfw-js"
 )
 
 type CommandKey byte
@@ -588,8 +588,10 @@ func (sk ShortcutKey) Test(k glfw.Key, m glfw.ModifierKey) bool {
 	return k == sk.Key &&
 		m&(glfw.ModShift|glfw.ModControl|glfw.ModAlt) == sk.Mod
 }
-func keyCallback(_ *glfw.Window, key glfw.Key, _ int,
-	action glfw.Action, mk glfw.ModifierKey) {
+func keyCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, mk glfw.ModifierKey) {
+	if key == glfw.KeyUnknown {
+		return
+	}
 	switch action {
 	case glfw.Release:
 		sys.keyState[key] = false
@@ -1781,8 +1783,7 @@ func (c *Command) Clear() {
 		c.held[i] = false
 	}
 }
-func (c *Command) bufTest(cbuf *CommandBuffer, ai bool,
-	holdTemp *[CK_Last + 1]bool) bool {
+func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]bool) bool {
 	anyHeld, notHeld := false, 0
 	if len(c.hold) > 0 && !ai {
 		if holdTemp == nil {

@@ -12,6 +12,10 @@ Copyright (c) 2020 Shiyo Kakuge
 Copyright (c) 2021 Kamekaze
 Copyright (c) 2021 two4teezee
 Copyright (c) 2021 Super
+Copyright (c) 2022 Eiton
+Copyright (c) 2022 Sam Hocevar
+Copyright (c) 2022 GaryCXJk
+Copyright (c) 2022 Lazin3ss
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

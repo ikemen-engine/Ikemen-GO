@@ -1,13 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
-
-	"github.com/ikemen-engine/go-openal/openal"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
@@ -19,500 +17,222 @@ import (
 )
 
 const (
-	audioOutLen    = 2048
-	audioFrequency = 48000
+	audioOutLen          = 2048
+	audioFrequency       = 48000
+	audioPrecision       = 4
+	audioResampleQuality = 3
 )
-
-// ------------------------------------------------------------------
-// Audio Source
-
-// AudioSource structure.
-// It contains OpenAl's sound destination and buffer
-type AudioSource struct {
-	Src  openal.Source
-	bufs openal.Buffers
-}
-
-func NewAudioSource() (s *AudioSource) {
-	s = &AudioSource{Src: openal.NewSource(), bufs: openal.NewBuffers(2)}
-	for i := range s.bufs {
-		s.bufs[i].SetDataInt16(openal.FormatStereo16, sys.nullSndBuf[:],
-			audioFrequency)
-	}
-	s.Src.QueueBuffers(s.bufs)
-	if err := openal.Err(); err != nil {
-		println(err.Error())
-	}
-	return
-}
-func (s *AudioSource) Delete() {
-	for s.Src.BuffersQueued() > 0 {
-		s.Src.UnqueueBuffer()
-	}
-	s.bufs.Delete()
-	s.Src.Delete()
-}
-
-// ------------------------------------------------------------------
-// Mixer
-
-type Mixer struct {
-	buf        [audioOutLen * 2]float32
-	sendBuf    []int16
-	out        chan []int16
-	normalizer *Normalizer
-}
-
-func newMixer() *Mixer {
-	return &Mixer{out: make(chan []int16, 1), normalizer: NewNormalizer()}
-}
-func (m *Mixer) bufClear() {
-	for i := range m.buf {
-		m.buf[i] = 0
-	}
-}
-func (m *Mixer) write() bool {
-	if m.sendBuf == nil {
-		m.sendBuf = make([]int16, len(m.buf))
-		for i := 0; i <= len(m.sendBuf)-2; i += 2 {
-			l, r := m.normalizer.Process(m.buf[i], m.buf[i+1])
-			m.sendBuf[i] = int16(32767 * l)
-			m.sendBuf[i+1] = int16(32767 * r)
-		}
-	}
-	select {
-	case m.out <- m.sendBuf:
-	default:
-		return false
-	}
-	m.sendBuf = nil
-	m.bufClear()
-	return true
-}
-func (m *Mixer) Mix(wav []byte, fidx float64, bytesPerSample, channels int,
-	sampleRate float64, loop bool, lv, rv float32) float64 {
-	fidxadd := sampleRate / audioFrequency
-	if fidxadd > 0 {
-		switch bytesPerSample {
-		case 1:
-			switch channels {
-			case 1: //mix_m8
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := int(fidx)
-					if iidx >= len(wav) {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					sam := (float32(wav[iidx]) - 128) / 128
-					m.buf[i] += lv * sam
-					m.buf[i+1] += rv * sam
-					fidx += fidxadd
-				}
-				return fidx
-			case 2: //mix_s8
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 2 * int(fidx)
-					if iidx > len(wav)-2 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					m.buf[i] += lv * (float32(wav[iidx]) - 128) / 128
-					m.buf[i+1] += rv * (float32(wav[iidx+1]) - 128) / 128
-					fidx += fidxadd
-				}
-				return fidx
-			}
-		case 2:
-			switch channels {
-			case 1: //mix_m16
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 2 * int(fidx)
-					if iidx > len(wav)-2 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					sam := float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i] += lv * sam
-					m.buf[i+1] += rv * sam
-					fidx += fidxadd
-				}
-				return fidx
-			case 2: //mix_s16
-				for i := 0; i <= len(m.buf)-2; i += 2 {
-					iidx := 4 * int(fidx)
-					if iidx > len(wav)-4 {
-						if !loop {
-							break
-						}
-						iidx, fidx = 0, 0
-					}
-					m.buf[i] += lv *
-						float32(int(wav[iidx])|int(int8(wav[iidx+1]))<<8) / (1 << 15)
-					m.buf[i+1] += rv *
-						float32(int(wav[iidx+2])|int(int8(wav[iidx+3]))<<8) / (1 << 15)
-					fidx += fidxadd
-				}
-				return fidx
-			}
-		}
-	}
-	return float64(len(wav))
-}
 
 // ------------------------------------------------------------------
 // Normalizer
 
 type Normalizer struct {
-	mul  float64
-	l, r *NormalizerLR
+	streamer beep.Streamer
+	mul      float64
+	l, r     *NormalizerLR
 }
 
-func NewNormalizer() *Normalizer {
-	return &Normalizer{mul: 4, l: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0},
+func NewNormalizer(st beep.Streamer) *Normalizer {
+	return &Normalizer{streamer: st, mul: 4,
+		l: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0},
 		r: &NormalizerLR{1, 0, 1, 1 / 32.0, 0, 0}}
 }
-func (n *Normalizer) Process(l, r float32) (float32, float32) {
-	lmul := n.l.process(n.mul, &l)
-	rmul := n.r.process(n.mul, &r)
-	if sys.audioDucking {
-		if lmul < rmul {
-			n.mul = lmul
+
+func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
+	s, ok = n.streamer.Stream(samples)
+	for i := range samples[:s] {
+		lmul := n.l.process(n.mul, &samples[i][0])
+		rmul := n.r.process(n.mul, &samples[i][1])
+		if sys.audioDucking {
+			n.mul = math.Min(16.0, math.Min(lmul, rmul))
 		} else {
-			n.mul = rmul
+			n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
 		}
-		if n.mul > 16 {
-			n.mul = 16
-		}
-	} else {
-		n.mul = 0.5 * (float64(sys.wavVolume) * float64(sys.masterVolume) * 0.0001)
 	}
-	return l, r
+	return s, ok
+}
+
+func (n *Normalizer) Err() error {
+	return n.streamer.Err()
 }
 
 type NormalizerLR struct {
-	heri, herihenka, fue, heikin, katayori, katayori2 float64
+	edge, edgeDelta, gain, average, bias, bias2 float64
 }
 
-func (n *NormalizerLR) process(bai float64, sam *float32) float64 {
-	n.katayori = (n.katayori*audioFrequency/110 + float64(*sam)) /
-		(audioFrequency/110.0 + 1)
-	n.katayori2 = (n.katayori2*audioFrequency/112640 + float64(*sam)) /
-		(audioFrequency/112640.0 + 1)
-	s := (n.katayori2 - n.katayori) * bai
+func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
+	n.bias += (*sam - n.bias) / (audioFrequency/110.0 + 1)
+	n.bias2 += (*sam - n.bias2) / (audioFrequency/112640.0 + 1)
+	s := (n.bias2 - n.bias) * mul
 	if math.Abs(s) > 1 {
-		bai *= math.Pow(1/math.Abs(s), n.heri)
-		n.herihenka += 32 * (1 - n.heri) / float64(audioFrequency+32)
-		if s < 0 {
-			s = -1
-		} else {
-			s = 1
-		}
+		mul *= math.Pow(math.Abs(s), -n.edge)
+		n.edgeDelta += 32 * (1 - n.edge) / float64(audioFrequency+32)
+		s = math.Copysign(1.0, s)
 	} else {
 		tmp := (1 - math.Pow(1-math.Abs(s), 64)) * math.Pow(0.5-math.Abs(s), 3)
-		bai += bai * (n.heri*(1/32.0-n.heikin)/n.fue + tmp*n.fue*(1-n.heri)/32) /
+		mul += mul * (n.edge*(1/32.0-n.average)/n.gain + tmp*n.gain*(1-n.edge)/32) /
 			(audioFrequency*2/8.0 + 1)
-		n.herihenka -= (0.5 - n.heikin) * n.heri / (audioFrequency * 2)
+		n.edgeDelta -= (0.5 - n.average) * n.edge / (audioFrequency * 2)
 	}
-	n.fue += (32*n.fue*(1/n.fue-math.Abs(s)) - n.fue) /
-		(32 * audioFrequency * 2)
-	n.heikin += (math.Abs(s) - n.heikin) / (audioFrequency * 2)
-	n.heri += n.herihenka
-	if n.heri < 0 {
-		n.heri = 0
-	} else if n.heri > 0 {
-		n.heri = 1
-	}
-	*sam = float32(s)
-	return bai
+	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
+	n.average += (math.Abs(s) - n.average) / (audioFrequency * 2)
+	n.edge = float64(ClampF(float32(n.edge+n.edgeDelta), 0, 1))
+	*sam = s
+	return mul
 }
 
 // ------------------------------------------------------------------
 // Bgm
 
 type Bgm struct {
-	filename            string
-	bgmVolume           int
-	bgmLoopStart        int
-	bgmLoopEnd          int
-	defaultFilename     string
-	defaultBgmVolume    int
-	defaultbgmLoopStart int
-	defaultbgmLoopEnd   int
-	loop                int
-	// TODO: Use this.
-	//sampleRate          beep.SampleRate
-	streamer  beep.StreamSeekCloser
-	ctrl      *beep.Ctrl
-	resampler *beep.Resampler
-	volume    *effects.Volume
-	format    string
+	filename     string
+	bgmVolume    int
+	bgmLoopStart int
+	bgmLoopEnd   int
+	loop         int
+	streamer     beep.StreamSeekCloser
+	ctrl         *beep.Ctrl
+	volctrl      *effects.Volume
+	format       string
 }
 
 func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) Open(filename string, isDefaultBGM bool, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
-	if filepath.Base(bgm.filename) == filepath.Base(filename) {
-		return
-	}
+func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
-	if isDefaultBGM {
-		bgm.defaultFilename = filename
-		bgm.defaultBgmVolume = bgmVolume
-		bgm.defaultbgmLoopStart = bgmLoopStart
-		bgm.defaultbgmLoopEnd = bgmLoopEnd
+	// Starve the current music streamer
+	if bgm.ctrl != nil {
+		speaker.Lock()
+		bgm.ctrl.Streamer = nil
+		speaker.Unlock()
 	}
-	speaker.Clear()
-	
-	// TODO: Throw a degbug warning if this triggers
-	if bgmVolume > sys.maxBgmVolume {
-		bgmVolume = sys.maxBgmVolume
+	// Special value "" is used to stop music
+	if filename == "" {
+		return
 	}
 
+	f, err := os.Open(bgm.filename)
+	if err != nil {
+		sys.errLog.Printf("Failed to open bgm: %v", err)
+		return
+	}
+	var format beep.Format
 	if HasExtension(bgm.filename, ".ogg") {
-		bgm.ReadVorbis(loop, bgmVolume)
+		bgm.streamer, format, err = vorbis.Decode(f)
+		bgm.format = "ogg"
 	} else if HasExtension(bgm.filename, ".mp3") {
-		bgm.ReadMp3(loop, bgmVolume)
-		//} else if HasExtension(bgm.filename, ".flac") {
-		//	bgm.ConvertFLAC(loop, bgmVolume)
+		bgm.streamer, format, err = mp3.Decode(f)
+		bgm.format = "mp3"
 	} else if HasExtension(bgm.filename, ".wav") {
-		bgm.ReadWav(loop, bgmVolume)
+		bgm.streamer, format, err = wav.Decode(f)
+		bgm.format = "wav"
+		// TODO: Reactivate FLAC support. Check that seeking/looping works correctly.
+		//} else if HasExtension(bgm.filename, ".flac") {
+		//	bgm.streamer, format, err = flac.Decode(f)
+		//	bgm.format = "flac"
+	} else {
+		err = Error(fmt.Sprintf("unsupported file extension: %v", bgm.filename))
 	}
-}
-
-func (bgm *Bgm) ReadMp3(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := mp3.Decode(f)
-	bgm.streamer = s
-	bgm.format = "mp3"
 	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-/*
-// TODO: Now that we are using modules this should work again if we configure it correctly.
-func (bgm *Bgm) ReadFLAC(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := flac.Decode(f)
-	bgm.streamer = s
-	bgm.format = "flac"
-
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-// SCREW THE FLAC.SEEK FUNCTION, IT DOES NOT WORK SO WE ARE GOING TO CONVERT THIS TO WAV
-// Update: Now the flac dependecy broke. (-_-)
-func (bgm *Bgm) ConvertFLAC(loop int, bgmVolume int) {
-	// We open the flac
-	f1, _ := os.Open(bgm.filename)
-	// And create a temp one
-	f2, _ := os.Create("save/tempaudio.wav")
-
-	// Open decode and convert
-	s, format, err := flac.Decode(f1)
-	wav.Encode(f2, s, format)
-
-	bgm.filename = "save/tempaudio.wav"
-	//bgm.tempfile = f2
-	bgm.format = "flac"
-
-	s.Close()
-
-	if err != nil {
+		f.Close()
+		sys.errLog.Printf("Failed to load bgm: %v", err)
 		return
 	}
 
-	sys.FLAC_FrameWait = 120
-}
-*/
-
-func (bgm *Bgm) PlayMemAudio(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := wav.Decode(f)
-	bgm.streamer = s
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadVorbis(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := vorbis.Decode(f)
-	bgm.streamer = s
-	bgm.format = "ogg"
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadWav(loop int, bgmVolume int) {
-	f, _ := os.Open(bgm.filename)
-	s, format, err := wav.Decode(f)
-	bgm.streamer = s
-	bgm.format = "wav"
-	if err != nil {
-		return
-	}
-	bgm.ReadFormat(format, loop, bgmVolume)
-}
-
-func (bgm *Bgm) ReadFormat(format beep.Format, loop int, bgmVolume int) {
 	loopCount := int(1)
 	if loop > 0 {
 		loopCount = -1
 	}
 	streamer := beep.Loop(loopCount, bgm.streamer)
-	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgmVolume)/100)
-	bgm.volume = &effects.Volume{Streamer: streamer, Base: 2, Volume: volume, Silent: volume <= -5}
-	bgm.resampler = beep.Resample(int(3), format.SampleRate, beep.SampleRate(Mp3SampleRate), bgm.volume)
-	bgm.ctrl = &beep.Ctrl{Streamer: bgm.resampler}
+	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
+	resampler := beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volctrl)
+	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
+	bgm.UpdateVolume()
 	speaker.Play(bgm.ctrl)
 }
 
 func (bgm *Bgm) Pause() {
+	// FIXME: there is no method to unpause!
+	if bgm.ctrl == nil {
+		return
+	}
 	speaker.Lock()
 	bgm.ctrl.Paused = true
 	speaker.Unlock()
 }
 
 func (bgm *Bgm) UpdateVolume() {
+	if bgm.volctrl == nil {
+		return
+	}
+	// TODO: Throw a debug warning if this triggers
+	if bgm.bgmVolume > sys.maxBgmVolume {
+		bgm.bgmVolume = sys.maxBgmVolume
+	}
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	silent := volume <= -5
 	speaker.Lock()
-	bgm.volume.Volume = -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	bgm.volctrl.Volume = volume
+	bgm.volctrl.Silent = silent
 	speaker.Unlock()
 }
 
 // ------------------------------------------------------------------
-// Wave
+// Sound
 
-type Wave struct {
-	SamplesPerSec  uint32
-	Channels       uint16
-	BytesPerSample uint16
-	Wav            []byte
+type Sound struct {
+	wavData []byte
+	format  beep.Format
+	length  int
 }
 
-func ReadWave(f *os.File, ofs int64) (*Wave, error) {
-	buf := make([]byte, 4)
-	n, err := f.Read(buf)
+func readSound(f *os.File, size uint32) (*Sound, error) {
+	if size < 128 {
+		return nil, fmt.Errorf("wav size is too small")
+	}
+	wavData := make([]byte, size)
+	if _, err := f.Read(wavData); err != nil {
+		return nil, err
+	}
+	// Decode the sound at least once, so that we know the format is OK
+	s, fmt, err := wav.Decode(bytes.NewReader(wavData))
 	if err != nil {
 		return nil, err
 	}
-	if string(buf[:n]) != "RIFF" {
-		return nil, Error("Not RIFF")
-	}
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-	var riffSize uint32
-	if err := read(&riffSize); err != nil {
-		return nil, err
-	}
-	riffSize += 8
-	if n, err = f.Read(buf); err != nil {
-		return nil, err
-	}
-	if string(buf[:n]) != "WAVE" {
-		return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}, nil
-	}
-	fmtSize, dataSize := uint32(0), uint32(0)
-	w := Wave{}
-	riffend := ofs + 16 + int64(riffSize)
-	ofs += 28
-	for (fmtSize == 0 || dataSize == 0) && ofs < riffend {
-		if n, err = f.Read(buf); err != nil {
-			return nil, err
-		}
-		var size uint32
-		if err := read(&size); err != nil {
-			return nil, err
-		}
-		switch string(buf[:n]) {
-		case "fmt ":
-			fmtSize = size
-			var fmtID uint16
-			if err := read(&fmtID); err != nil {
-				return nil, err
-			}
-			if fmtID != 1 {
-				return nil, Error("Not a linear PCM")
-			}
-			if err := read(&w.Channels); err != nil {
-				return nil, err
-			}
-			if w.Channels < 1 || w.Channels > 2 {
-				return nil, Error(fmt.Sprintf("Invalid number of channels: %d", w.Channels))
-			}
-			if err := read(&w.SamplesPerSec); err != nil {
-				return nil, err
-			}
-			if w.SamplesPerSec < 1 || w.SamplesPerSec >= 0xfffff {
-				return nil, Error(fmt.Sprintf("Invalid frequency: %d", w.SamplesPerSec))
-			}
-			var musi uint32
-			if err := read(&musi); err != nil {
-				return nil, err
-			}
-			var mushi uint16
-			if err := read(&mushi); err != nil {
-				return nil, err
-			}
-			if err := read(&w.BytesPerSample); err != nil {
-				return nil, err
-			}
-			if w.BytesPerSample != 8 && w.BytesPerSample != 16 {
-				return nil, Error(fmt.Sprintf("Invalid bit number: %d", w.BytesPerSample))
-			}
-			w.BytesPerSample >>= 3
-		case "data":
-			dataSize = size
-			w.Wav = make([]byte, dataSize)
-			if err := binary.Read(f, binary.LittleEndian, w.Wav); err != nil {
-				return nil, err
-			}
-		}
-		ofs += int64(size) + 8
-		f.Seek(ofs, 0)
-	}
-	if fmtSize == 0 {
-		if dataSize > 0 {
-			return nil, Error("fmt is missing")
-		}
-		return nil, nil
-	}
-	return &w, nil
+	return &Sound{wavData, fmt, s.Len()}, nil
+}
+
+func (s *Sound) GetStreamer() beep.StreamSeeker {
+	streamer, _, _ := wav.Decode(bytes.NewReader(s.wavData))
+	return streamer
 }
 
 // ------------------------------------------------------------------
 // Snd
 
 type Snd struct {
-	table     map[[2]int32]*Wave
+	table     map[[2]int32]*Sound
 	ver, ver2 uint16
 }
 
 func newSnd() *Snd {
-	return &Snd{table: make(map[[2]int32]*Wave)}
+	return &Snd{table: make(map[[2]int32]*Sound)}
 }
 
 func LoadSnd(filename string) (*Snd, error) {
+	return LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] >= 0 && gn[1] >= 0 }, 0)
+}
+
+// Parse a .snd file and return an Snd structure with its contents
+// The "keepItem" function allows to filter out unwanted waves.
+// If max > 0, the function returns immediately when a matching entry is found. It also gives up after "max" non-matching entries.
+func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) (*Snd, error) {
 	s := newSnd()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -544,95 +264,6 @@ func LoadSnd(filename string) (*Snd, error) {
 	if err := read(&subHeaderOffset); err != nil {
 		return nil, err
 	}
-	for i := uint32(0); i < numberOfSounds; i++ {
-		f.Seek(int64(subHeaderOffset), 0)
-		var nextSubHeaderOffset uint32
-		if err := read(&nextSubHeaderOffset); err != nil {
-			return nil, err
-		}
-		var subFileLenght uint32
-		if err := read(&subFileLenght); err != nil {
-			return nil, err
-		}
-		var num [2]int32
-		if err := read(&num); err != nil {
-			return nil, err
-		}
-		if num[0] >= 0 && num[1] >= 0 {
-			_, ok := s.table[num]
-			if !ok {
-				tmp, err := ReadWave(f, int64(subHeaderOffset))
-				if err != nil {
-					sys.errLog.Printf("%v sound can't be read: %v,%v\n", filename, num[0], num[1])
-				} else {
-					s.table[num] = tmp
-				}
-			}
-		}
-		subHeaderOffset = nextSubHeaderOffset
-	}
-	return s, nil
-}
-func (s *Snd) Get(gn [2]int32) *Wave {
-	return s.table[gn]
-}
-func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
-	c := sys.sounds.GetChannel()
-	if c == nil {
-		return false
-	}
-	c.sound = s.Get(gn)
-	c.SetVolume(float32(volumescale * 64 / 25))
-	c.SetPan(pan, 0, nil)
-	return c.sound != nil
-}
-func (s *Snd) stop(gn [2]int32) {
-	w := s.Get(gn)
-	for k, v := range sys.sounds {
-		if v.sound != nil && v.sound == w {
-			sys.sounds[k] = Sound{volume: 256, freqmul: 1}
-			//break
-		}
-	}
-}
-
-func newWave() *Wave {
-	return &Wave{SamplesPerSec: 11025, Channels: 1, BytesPerSample: 1}
-}
-func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
-	w := newWave()
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { chk(f.Close()) }()
-	buf := make([]byte, 12)
-	var n int
-	if n, err = f.Read(buf); err != nil {
-		return nil, err
-	}
-	if string(buf[:n]) != "ElecbyteSnd\x00" {
-		return nil, Error("Unrecognized SND file, invalid header")
-	}
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-	var ver uint16
-	if err := read(&ver); err != nil {
-		return nil, err
-	}
-	var ver2 uint16
-	if err := read(&ver2); err != nil {
-		return nil, err
-	}
-	var numberOfSounds uint32
-	if err := read(&numberOfSounds); err != nil {
-		return nil, err
-	}
-	var subHeaderOffset uint32
-	if err := read(&subHeaderOffset); err != nil {
-		return nil, err
-	}
 	loops := numberOfSounds
 	if max > 0 && max < numberOfSounds {
 		loops = max
@@ -643,54 +274,71 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Wave, error) {
 		if err := read(&nextSubHeaderOffset); err != nil {
 			return nil, err
 		}
-		var subFileLenght uint32
-		if err := read(&subFileLenght); err != nil {
+		var subFileLength uint32
+		if err := read(&subFileLength); err != nil {
 			return nil, err
 		}
 		var num [2]int32
 		if err := read(&num); err != nil {
 			return nil, err
 		}
-		if num[0] == g && num[1] == s {
-			tmp, err := ReadWave(f, int64(subHeaderOffset))
-			if err != nil {
-				return nil, err
+		if keepItem(num) {
+			_, ok := s.table[num]
+			if !ok {
+				tmp, err := readSound(f, subFileLength)
+				if err != nil {
+					sys.errLog.Printf("%v sound %v,%v can't be read: %v\n", filename, num[0], num[1], err)
+					if max > 0 {
+						return nil, err
+					}
+				} else {
+					s.table[num] = tmp
+					if max > 0 {
+						break
+					}
+				}
 			}
-			return tmp, nil
 		}
 		subHeaderOffset = nextSubHeaderOffset
 	}
-	return w, nil
+	return s, nil
 }
-func (w *Wave) play() bool {
-	c := sys.sounds.GetChannel()
-	if c == nil {
-		return false
+func (s *Snd) Get(gn [2]int32) *Sound {
+	return s.table[gn]
+}
+func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
+	sound := s.Get(gn)
+	return sys.soundChannels.Play(sound, volumescale, pan)
+}
+func (s *Snd) stop(gn [2]int32) {
+	sound := s.Get(gn)
+	sys.soundChannels.Stop(sound)
+}
+
+func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
+	// Load the snd file
+	snd, err := LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] == g && gn[1] == s }, max)
+	if err != nil {
+		return nil, err
 	}
-	c.sound = w
-	return c.sound != nil
-}
-func (w *Wave) getDuration() float32 {
-	return float32(len(w.Wav)) / float32((w.SamplesPerSec * uint32(w.Channels) * uint32(w.BytesPerSample)))
+	tmp, ok := snd.table[[2]int32{g, s}]
+	if !ok {
+		return nil, nil
+	}
+	return tmp, nil
 }
 
 // ------------------------------------------------------------------
-// Sound
+// SoundEffect (handles volume and panning)
 
-type Sound struct {
-	sound   *Wave
-	volume  float32
-	loop    bool
-	freqmul float32
-	fidx    float64
-	ls, p   float32
-	x       *float32
+type SoundEffect struct {
+	streamer beep.Streamer
+	volume   float32
+	ls, p    float32
+	x        *float32
 }
 
-func (s *Sound) mix() {
-	if s.sound == nil {
-		return
-	}
+func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
 	lv, rv := s.volume, s.volume
 	if sys.stereoEffects && (s.x != nil || s.p != 0) {
@@ -715,55 +363,176 @@ func (s *Sound) mix() {
 			rv = 0
 		}
 	}
-	s.fidx = sys.mixer.Mix(s.sound.Wav, s.fidx,
-		int(s.sound.BytesPerSample), int(s.sound.Channels),
-		float64(s.sound.SamplesPerSec)*float64(s.freqmul), s.loop,
-		lv/256, rv/256)
-	if int(s.fidx) >= len(s.sound.Wav)/
-		int(s.sound.BytesPerSample*s.sound.Channels) {
-		s.sound = nil
-		s.fidx = 0
+
+	n, ok = s.streamer.Stream(samples)
+	for i := range samples[:n] {
+		samples[i][0] *= float64(lv / 256)
+		samples[i][1] *= float64(rv / 256)
+	}
+	return n, ok
+}
+
+func (s *SoundEffect) Err() error {
+	return s.streamer.Err()
+}
+
+// ------------------------------------------------------------------
+// SoundChannel
+
+type SoundChannel struct {
+	streamer beep.StreamSeeker
+	sfx      *SoundEffect
+	ctrl     *beep.Ctrl
+	sound    *Sound
+}
+
+func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
+	if sound == nil {
+		return
+	}
+	s.sound = sound
+	s.streamer = s.sound.GetStreamer()
+	loopCount := int(1)
+	if loop {
+		loopCount = -1
+	}
+	looper := beep.Loop(loopCount, s.streamer)
+	s.sfx = &SoundEffect{streamer: looper, volume: 256}
+	srcRate := s.sound.format.SampleRate
+	dstRate := beep.SampleRate(audioFrequency / freqmul)
+	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
+	s.ctrl = &beep.Ctrl{Streamer: resampler}
+	sys.soundMixer.Add(s.ctrl)
+}
+func (s *SoundChannel) IsPlaying() bool {
+	return s.sound != nil
+}
+func (s *SoundChannel) Stop() {
+	if s.ctrl != nil {
+		speaker.Lock()
+		s.ctrl.Streamer = nil
+		speaker.Unlock()
+	}
+	s.sound = nil
+}
+func (s *SoundChannel) SetVolume(vol float32) {
+	if s.ctrl != nil {
+		s.sfx.volume = ClampF(vol, 0, 512)
+	}
+}
+func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
+	if s.ctrl != nil {
+		s.sfx.ls = ls
+		s.sfx.x = x
+		s.sfx.p = p * ls
 	}
 }
 
-func (s *Sound) SetVolume(vol float32) {
-	if vol < 0 {
-		s.volume = 0
-	} else if vol > 512 {
-		s.volume = 512
-	} else {
-		s.volume = vol
-	}
-}
-func (s *Sound) SetPan(p, ls float32, x *float32) {
-	s.ls = ls
-	s.x = x
-	if p != 0 {
-		s.p = p * ls
-	} else {
-		s.p = 0
-	}
+// ------------------------------------------------------------------
+// SoundChannels (collection of prioritised sound channels)
+
+type SoundChannels struct {
+	channels []SoundChannel
 }
 
-type Sounds []Sound
-
-func newSounds(size int) (s Sounds) {
-	s = make(Sounds, size)
-	for i := range s {
-		s[i] = Sound{volume: 256, freqmul: 1}
-	}
-	return
+func newSoundChannels(size int32) *SoundChannels {
+	s := &SoundChannels{}
+	s.SetSize(size)
+	return s
 }
-func (s Sounds) GetChannel() *Sound {
-	for i := range s {
-		if s[i].sound == nil {
-			return &s[i]
+func (s *SoundChannels) SetSize(size int32) {
+	if size > s.count() {
+		c := make([]SoundChannel, size-s.count())
+		s.channels = append(s.channels, c...)
+	} else if size < s.count() {
+		for i := s.count() - 1; i >= size; i-- {
+			s.channels[i].Stop()
+		}
+		s.channels = s.channels[:size]
+	}
+}
+func (s *SoundChannels) count() int32 {
+	return int32(len(s.channels))
+}
+func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
+	ch = Min(sys.wavChannels-1, ch)
+	if ch >= 0 {
+		if lowpriority {
+			if s.count() > ch && s.channels[ch].IsPlaying() {
+				return nil
+			}
+		}
+		if s.count() < ch+1 {
+			s.SetSize(ch + 1)
+		}
+		s.channels[ch].Stop()
+		return &s.channels[ch]
+	}
+	if s.count() < sys.wavChannels {
+		s.SetSize(sys.wavChannels)
+	}
+	for i := sys.wavChannels - 1; i >= 0; i-- {
+		if !s.channels[i].IsPlaying() {
+			return &s.channels[i]
 		}
 	}
 	return nil
 }
-func (s Sounds) mixSounds() {
-	for i := range s {
-		s[i].mix()
+func (s *SoundChannels) reserveChannel() *SoundChannel {
+	for i := range s.channels {
+		if !s.channels[i].IsPlaying() {
+			return &s.channels[i]
+		}
+	}
+	return nil
+}
+func (s *SoundChannels) Get(ch int32) *SoundChannel {
+	if ch >= 0 && ch < s.count() {
+		return &s.channels[ch]
+	}
+	return nil
+}
+func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32) bool {
+	if sound == nil {
+		return false
+	}
+	c := s.reserveChannel()
+	if c == nil {
+		return false
+	}
+	c.Play(sound, false, 1.0)
+	c.SetVolume(float32(volumescale * 64 / 25))
+	c.SetPan(pan, 0, nil)
+	return true
+}
+func (s *SoundChannels) IsPlaying(sound *Sound) bool {
+	for _, v := range s.channels {
+		if v.sound != nil && v.sound == sound {
+			return true
+		}
+	}
+	return false
+}
+func (s *SoundChannels) Stop(sound *Sound) {
+	for k, v := range s.channels {
+		if v.sound != nil && v.sound == sound {
+			s.channels[k].Stop()
+		}
+	}
+}
+func (s *SoundChannels) StopAll() {
+	for k, v := range s.channels {
+		if v.sound != nil {
+			s.channels[k].Stop()
+		}
+	}
+}
+func (s *SoundChannels) Tick() {
+	for i := range s.channels {
+		if s.channels[i].IsPlaying() {
+			if s.channels[i].streamer.Position() >= s.channels[i].sound.length {
+				s.channels[i].sound = nil
+			}
+		}
 	}
 }

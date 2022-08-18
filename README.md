@@ -12,16 +12,16 @@ On MacOS or Linux, double-click on `Ikemen_GO.command`
 These instructions are for those interested in developing the Ikemen_GO engine. Instructions on contributing with custom stages, fonts, characters and other resources can be found in the community forum.
 
 ### Building on Windows
-Check the instructions [here](https://github.com/Windblade-GR01/Ikemen_GO/wiki/Building-on-Windows)
+Check the instructions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-Windows)
 
 ### Building on Mac
-Check the insturctions [here](https://github.com/Windblade-GR01/Ikemen_GO/wiki/Building-on-MacOS)
+Check the insturctions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-MacOS)
 
 ### Building on Linux
-Check the instructions [here](https://github.com/Windblade-GR01/Ikemen_GO/wiki/Building-on-Linux)
+Check the instructions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-Linux)
 
 ### Debugging
-Download the [Mugen dependencies](https://github.com/Windblade-GR01/Ikemen_GO-Elecbyte-Screenpack) and unpack them into the Ikemen_GO source directory.  
+Download the [Mugen dependencies](https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack) and unpack them into the Ikemen-GO source directory.
 Then, use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
 
 ### Cross-compiling binaries with docker (Linux/Windows/MacOS)
@@ -48,7 +48,7 @@ NOTE: InstallBuilder is free for opensource projects. But you need to [get a lic
 Do not include copyrighted dependencies in the bundle.
 
 ## Features added since Mugen
-Refer to the wiki article [Details of new features](https://github.com/Windblade-GR01/Ikemen_GO/wiki/Details-of-new-features) to see new features added that are not available in Mugen 1.1 and bellow.
+Refer to the wiki article [Details of new features](https://github.com/ikemen-engine/Ikemen-GO/wiki) to see new features added that are not available in Mugen 1.1 and bellow.
 
 ## References
 Suehiro repo (Original creator of the engine)  

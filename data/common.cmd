@@ -1,4 +1,9 @@
 [Command]
+name = "recovery"
+command = 
+time = 1
+
+[Command]
 name = "TagShiftBack"
 command = d
 time = 1
