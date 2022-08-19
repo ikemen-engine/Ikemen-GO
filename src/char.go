@@ -1600,7 +1600,7 @@ type CharSystemVar struct {
 	bindFacing       float32
 	hitPauseTime     int32
 	angle            float32
-	angleScalse      [2]float32
+	angleScale       [2]float32
 	alpha            [2]int32
 	recoverTime      int32
 	systemFlag       SystemCharFlag
@@ -1712,6 +1712,7 @@ type Char struct {
 	nextHitScale          map[int32][3]*HitScale
 	activeHitScale        map[int32][3]*HitScale
 	inputFlag             InputBits
+	pauseBool             bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -1837,7 +1838,7 @@ func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
-		angleScalse: [...]float32{1, 1}, alpha: [...]int32{255, 0},
+		angleScale: [...]float32{1, 1}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		fallDefenseMul:  1,
@@ -5226,19 +5227,19 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 	}
 	return true
 }
-func (c *Char) action() {
+func (c *Char) actionPrepare() {
 	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
-	p := false
+	c.pauseBool = false
 	if c.cmd != nil {
 		if sys.super > 0 {
-			p = c.superMovetime == 0
+			c.pauseBool = c.superMovetime == 0
 		} else if sys.pause > 0 && c.pauseMovetime == 0 {
-			p = true
+			c.pauseBool = true
 		}
 	}
-	c.acttmp = -int8(Btoi(p)) * 2
+	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	c.unsetSCF(SCF_guard)
 	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
@@ -5249,7 +5250,7 @@ func (c *Char) action() {
 			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
 		c.setSCF(SCF_guard)
 	}
-	if !p {
+	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ss.stateType == ST_A {
 				if c.cmd[0].Buffer.U < 0 {
@@ -5340,7 +5341,7 @@ func (c *Char) action() {
 					}
 				}
 			}
-			c.angleScalse = [...]float32{1, 1}
+			c.angleScale = [...]float32{1, 1}
 			c.attackDist = float32(c.size.attack.dist)
 			c.offset = [2]float32{}
 			for i, hb := range c.hitby {
@@ -5364,15 +5365,20 @@ func (c *Char) action() {
 		c.unsetSF(CSF_noautoturn)
 		if c.gi().ver[0] == 1 {
 			c.unsetSF(CSF_assertspecial | CSF_angledraw)
-			c.angleScalse = [...]float32{1, 1}
+			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
+	}
+}
+func (c *Char) actionRunStates() {
+	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
 	}
 	c.minus = -4
 	if sb, ok := c.gi().states[-4]; ok {
 		sb.run(c)
 	}
-	if !p {
+	if !c.pauseBool {
 		c.minus = -3
 		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[2]) {
 			if sb, ok := c.gi().states[-3]; ok {
@@ -5394,6 +5400,13 @@ func (c *Char) action() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
+	}
+}
+func (c *Char) actionFinish() {
+	if (c.minus != 2 && c.minus != 0) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
+	}
+	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
 				c.changeState(5120, -1, -1, false)
@@ -5459,7 +5472,7 @@ func (c *Char) action() {
 		}
 	}
 	c.xScreenBound()
-	if !p {
+	if !c.pauseBool {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
 				t.bind()
@@ -5868,7 +5881,7 @@ func (c *Char) cueDraw() {
 		rec := sys.tickNextFrame() && c.acttmp > 0
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
-				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScalse, false,
+				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
 				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / c.localcoord), 0, 0, [4]float32{0, 0, 0, 0}}
 			if !c.sf(CSF_trans) {
 				sd.alpha[0] = -1
@@ -5977,14 +5990,24 @@ func (cl *CharList) delete(dc *Char) {
 func (cl *CharList) action(x float32, cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
 	sys.commandUpdate()
+	// Prepare characters before performing their actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionPrepare()
+	}
+	// Run character state controllers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].action()
+			cl.runOrder[i].actionRunStates()
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].action()
+		cl.runOrder[i].actionRunStates()
 	}
+	// Finish performing character actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionFinish()
+	}
+	// Update chars
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
 }
 func (cl *CharList) update(cvmin, cvmax,

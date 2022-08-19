@@ -771,7 +771,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
 	s.stageCamera.localscl = s.localscl
-
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
 		//sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
@@ -802,27 +801,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadI32("tensionhigh", &s.stageCamera.tensionhigh)
 		}
 	}
-	if sec := defmap["music"]; len(sec) > 0 {
-		s.bgmusic = sec[0]["bgmusic"]
-		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
-		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
-		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
-	}
-	if sec := defmap["bgdef"]; len(sec) > 0 {
-		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-			sff, err := loadSff(filename, false)
-			if err != nil {
-				return err
-			}
-			*s.sff = *sff
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-		sec[0].ReadBool("debugbg", &s.debugbg)
-		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
-		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
-	}
 	reflect := true
 	if sec := defmap["shadow"]; len(sec) > 0 {
 		var tmp int32
@@ -847,6 +825,27 @@ func loadStage(def string, main bool) (*Stage, error) {
 				s.reflection = Clamp(tmp, 0, 255)
 			}
 		}
+	}
+	if sec := defmap["music"]; len(sec) > 0 {
+		s.bgmusic = sec[0]["bgmusic"]
+		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
+		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
+		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
+	}
+	if sec := defmap["bgdef"]; len(sec) > 0 {
+		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			sff, err := loadSff(filename, false)
+			if err != nil {
+				return err
+			}
+			*s.sff = *sff
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		sec[0].ReadBool("debugbg", &s.debugbg)
+		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
@@ -939,6 +938,37 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	s.mainstage = main
 	return s, nil
+}
+func (s *Stage) copyStageVars(src *Stage) {
+	s.stageCamera.boundleft = src.stageCamera.boundleft
+	s.stageCamera.boundright = src.stageCamera.boundright
+	s.stageCamera.boundhigh = src.stageCamera.boundhigh
+	s.stageCamera.boundlow = src.stageCamera.boundlow
+	s.stageCamera.verticalfollow = src.stageCamera.verticalfollow
+	s.stageCamera.floortension = src.stageCamera.floortension
+	s.stageCamera.tensionhigh = src.stageCamera.tensionhigh
+	s.stageCamera.tensionlow = src.stageCamera.tensionlow
+	s.stageCamera.tension = src.stageCamera.tension
+	s.stageCamera.startzoom = src.stageCamera.startzoom
+	s.stageCamera.zoomout = src.stageCamera.zoomout
+	s.stageCamera.zoomin = src.stageCamera.zoomin
+	s.stageCamera.ytensionenable = src.stageCamera.ytensionenable
+	s.leftbound = src.leftbound
+	s.rightbound = src.rightbound
+	s.stageCamera.ztopscale = src.stageCamera.ztopscale
+	s.screenleft = src.screenleft
+	s.screenright = src.screenright
+	s.stageCamera.zoffset = src.stageCamera.zoffset
+	s.zoffsetlink = src.zoffsetlink
+	s.scale[0] = src.scale[0]
+	s.scale[1] = src.scale[1]
+	s.sdw.intensity = src.sdw.intensity
+	s.sdw.color = src.sdw.color
+	s.sdw.yscale = src.sdw.yscale
+	s.sdw.fadeend = src.sdw.fadeend
+	s.sdw.fadebgn = src.sdw.fadebgn
+	s.sdw.xshear = src.sdw.xshear
+	s.reflection = src.reflection
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {
