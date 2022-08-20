@@ -48,7 +48,7 @@ func (es *EnvShake) next() {
 }
 func (es *EnvShake) getOffset() float32 {
 	if es.time > 0 {
-		return float32(es.ampl) * 0.5 * float32(math.Sin(float64(es.phase)))
+		return float32(es.ampl) * float32(math.Sin(float64(es.phase)))
 	}
 	return 0
 }
