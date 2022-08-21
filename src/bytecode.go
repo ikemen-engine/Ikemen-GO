@@ -5265,7 +5265,7 @@ func (sc envShake) Run(c *Char, _ []int32) bool {
 		case envShake_phase:
 			sys.envShake.phase = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180) * c.localscl
 		case envShake_freq:
-			sys.envShake.freq = exp[0].evalF(c)
+			sys.envShake.freq = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180)
 		}
 		return true
 	})
