@@ -1292,7 +1292,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getJoystickPresent", func(*lua.LState) int {
 		joy := int(numArg(l, 1))
-		present := joystick[joy].IsPresent()
+		present := joy >= 0 && joy < len(joystick) && joystick[joy].IsPresent()
 		l.Push(lua.LBool(present))
 		return 1
 	})
@@ -1300,7 +1300,7 @@ func systemScriptInit(l *lua.LState) {
 		var s string
 		var joy, min, max int = 0, 0, len(joystick)
 		if l.GetTop() >= 1 {
-			min = int(numArg(l, 1))
+			min = int(Clamp(int32(numArg(l, 1)), 0, int32(len(joystick) - 1)))
 			max = min + 1
 		}
 		for joy = min; joy < max; joy++ {
