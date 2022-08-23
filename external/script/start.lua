@@ -2875,6 +2875,10 @@ function start.f_selectVersus(active, t_orderSelect)
 		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.versusbgdef.bg, false)
+		--draw portraits and order icons
+		for side = 1, 2 do
+			start.f_drawPortraits(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side]), side, motif.vs_screen, '', false, t_icon[side])
+		end
 		--draw order values
 		for side = 1, 2 do
 			if t_orderSelect[side] then
@@ -2894,10 +2898,6 @@ function start.f_selectVersus(active, t_orderSelect)
 					)
 				end
 			end
-		end
-		--draw portraits and order icons
-		for side = 1, 2 do
-			start.f_drawPortraits(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side]), side, motif.vs_screen, '', false, t_icon[side])
 		end
 		--draw names
 		for side = 1, 2 do
