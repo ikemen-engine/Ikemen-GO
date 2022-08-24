@@ -728,14 +728,10 @@ func (s *System) screenWidth() float32 {
 func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
+func (s *System) roundWinTime() bool {
+	return s.intro < -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime+s.lifebar.ro.over_wintime)
+}
 func (s *System) roundOver() bool {
-	if s.intro < -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime+
-		s.lifebar.ro.over_wintime) && s.tickFrame() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-		s.intro = Min(s.intro, -(s.lifebar.ro.over_hittime +
-			s.lifebar.ro.over_waittime + s.lifebar.ro.over_time -
-			s.lifebar.ro.start_waittime))
-		s.winskipped = true
-	}
 	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
 		s.lifebar.ro.over_time)
 }
@@ -1403,6 +1399,13 @@ func (s *System) action(x, y, scl *float32) {
 			}
 			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
 				inclWinCount()
+			}
+			// Check if player skipped win pose time
+			if s.tickFrame() && s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
+				s.intro = Min(s.intro, -(s.lifebar.ro.over_hittime +
+					s.lifebar.ro.over_waittime + s.lifebar.ro.over_time -
+					s.lifebar.ro.start_waittime))
+				s.winskipped = true
 			}
 			rs4t := -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime)
 			if s.winskipped || !s.sf(GSF_roundnotover) ||
