@@ -2375,6 +2375,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 	var g, n, ch, vo int32 = -1, 0, -1, 100
 	var p, fr float32 = 0, 1
 	x := &c.pos[0]
+	ls := c.localscl
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case playSnd_value:
@@ -2391,6 +2392,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			p = exp[0].evalF(c)
 		case playSnd_abspan:
 			x = nil
+			ls = 1
 			p = exp[0].evalF(c)
 		case playSnd_volume:
 			vo = vo + int32(float64(exp[0].evalI(c))*(25.0/64.0))
@@ -2404,13 +2406,14 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				x = &crun.pos[0]
+				ls = crun.localscl
 			} else {
 				return false
 			}
 		}
 		return true
 	})
-	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, x, true)
+	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true)
 	return false
 }
 
@@ -5428,7 +5431,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, nil, false)
+				vo, 0, 1, 1, nil, false)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

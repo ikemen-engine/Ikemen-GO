@@ -350,18 +350,8 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 		}
 		sc := sys.panningRange / 100
 		of := (100 - sys.panningRange) / 200
-		lv = s.volume * 2 * (r*sc + of)
-		rv = s.volume * 2 * ((1-r)*sc + of)
-		if lv > 512 {
-			lv = 512
-		} else if lv < 0 {
-			lv = 0
-		}
-		if rv > 512 {
-			rv = 512
-		} else if rv < 0 {
-			rv = 0
-		}
+		lv = ClampF(s.volume*2*(r*sc+of), 0, 512)
+		rv = ClampF(s.volume*2*((1-r)*sc+of), 0, 512)
 	}
 
 	n, ok = s.streamer.Stream(samples)

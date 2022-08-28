@@ -443,6 +443,7 @@ func systemScriptInit(l *lua.LState) {
 		var g, n, ch, vo int32 = -1, 0, -1, 100
 		var p, fr float32 = 0, 1
 		x := &sys.chars[pn-1][0].pos[0]
+		ls := sys.chars[pn-1][0].localscl
 		if l.GetTop() >= 2 {
 			g = int32(numArg(l, 2))
 		}
@@ -470,7 +471,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 10 {
 			p = float32(numArg(l, 10))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, x, false)
+		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
@@ -1300,7 +1301,7 @@ func systemScriptInit(l *lua.LState) {
 		var s string
 		var joy, min, max int = 0, 0, len(joystick)
 		if l.GetTop() >= 1 {
-			min = int(Clamp(int32(numArg(l, 1)), 0, int32(len(joystick) - 1)))
+			min = int(Clamp(int32(numArg(l, 1)), 0, int32(len(joystick)-1)))
 			max = min + 1
 		}
 		for joy = min; joy < max; joy++ {

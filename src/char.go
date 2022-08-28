@@ -2058,7 +2058,7 @@ func (c *Char) load(def string) error {
 	gi.remapPreset = make(map[string]RemapPreset)
 
 	data, size, velocity, movement, quotes, constants := true, true, true, true, true, true
-	
+
 	if len(cns) > 0 {
 		if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			str, err := LoadText(filename)
@@ -2067,8 +2067,8 @@ func (c *Char) load(def string) error {
 			}
 			lines, i = SplitAndTrim(str, "\n"), 0
 			for i < len(lines) {
-			is, name, subname := ReadIniSection(lines, &i)
-			switch name {
+				is, name, subname := ReadIniSection(lines, &i)
+				switch name {
 				case "data":
 					if data {
 						data = false
@@ -3082,7 +3082,7 @@ func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	p, freqmul float32, x *float32, log bool) {
+	p, freqmul, ls float32, x *float32, log bool) {
 	if g < 0 {
 		return
 	}
@@ -3131,7 +3131,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		//		ch.SetVolume(float32(c.gi().data.volume + vol))
 		//	}
 		//}
-		ch.SetPan(p*c.facing, c.localscl, x)
+		ch.SetPan(p*c.facing, ls, x)
 	}
 }
 
@@ -5810,7 +5810,7 @@ func (c *Char) tick() {
 		if c.life <= 0 && !sys.sf(GSF_noko) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, &c.pos[0], false)
+				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false)
 			}
 			c.setSCF(SCF_ko)
 		}
@@ -6468,7 +6468,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.hitsound[1],
-					-1, vo, 0, 1, &getter.pos[0], true)
+					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -6514,7 +6514,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.guardsound[1],
-					-1, vo, 0, 1, &getter.pos[0], true)
+					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)
