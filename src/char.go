@@ -5370,7 +5370,7 @@ func (c *Char) actionPrepare() {
 		}
 	}
 }
-func (c *Char) actionRunStates() {
+func (c *Char) actionRun() {
 	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
@@ -5400,11 +5400,30 @@ func (c *Char) actionRunStates() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
+				t.bind()
+			}
+		}
 	}
 }
 func (c *Char) actionFinish() {
 	if (c.minus != 2 && c.minus != 0) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
+	}
+	if !c.hitPause() {
+		if !c.sf(CSF_frontwidth) {
+			c.width[0] = c.defFW() * (320 / c.localcoord) / c.localscl
+		}
+		if !c.sf(CSF_backwidth) {
+			c.width[1] = c.defBW() * (320 / c.localcoord) / c.localscl
+		}
+		if !c.sf(CSF_frontedge) {
+			c.edge[0] = 0
+		}
+		if !c.sf(CSF_backedge) {
+			c.edge[1] = 0
+		}
 	}
 	if !c.pauseBool {
 		if !c.hitPause() {
@@ -5472,30 +5491,9 @@ func (c *Char) actionFinish() {
 		}
 	}
 	c.xScreenBound()
-	if !c.pauseBool {
-		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
-				t.bind()
-			}
-		}
-	}
 	c.minus = 1
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
 		int8(Btoi(c.hitPause()))
-	if !c.hitPause() {
-		if !c.sf(CSF_frontwidth) {
-			c.width[0] = c.defFW() * (320 / c.localcoord) / c.localscl
-		}
-		if !c.sf(CSF_backwidth) {
-			c.width[1] = c.defBW() * (320 / c.localcoord) / c.localscl
-		}
-		if !c.sf(CSF_frontedge) {
-			c.edge[0] = 0
-		}
-		if !c.sf(CSF_backedge) {
-			c.edge[1] = 0
-		}
-	}
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
@@ -5997,11 +5995,11 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 	// Run character state controllers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].actionRunStates()
+			cl.runOrder[i].actionRun()
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionRunStates()
+		cl.runOrder[i].actionRun()
 	}
 	// Finish performing character actions
 	for i := 0; i < len(cl.runOrder); i++ {
