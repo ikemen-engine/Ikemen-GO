@@ -140,7 +140,6 @@ func RenderInit() {
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	fbo_texture = gl.CreateTexture()
-	gl.ObjectLabel(fbo_texture, "Main Framebuffer Texture")
 
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, fbo_texture)
@@ -166,14 +165,12 @@ func RenderInit() {
 		fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
 	} else {
 		rbo_depth = gl.CreateRenderbuffer()
-		gl.ObjectLabel(rbo_depth, "Depth Renderbuffer")
 		gl.BindRenderbuffer(gl.RENDERBUFFER, rbo_depth)
 		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
 		gl.BindRenderbuffer(gl.RENDERBUFFER, gl.NoRenderbuffer)
 	}
 
 	fbo = gl.CreateFramebuffer()
-	gl.ObjectLabel(fbo, "Main Framebuffer")
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
 
 	if sys.multisampleAntialiasing {
