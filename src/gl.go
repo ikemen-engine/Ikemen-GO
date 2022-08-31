@@ -31,7 +31,6 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	vertObj := compileShader(gl.VERTEX_SHADER, vert)
 	fragObj := compileShader(gl.FRAGMENT_SHADER, frag)
 	prog := linkProgram(vertObj, fragObj)
-	gl.ObjectLabel(prog, id)
 
 	s = &ShaderProgram{program: prog}
 	s.aPos = gl.GetAttribLocation(s.program, "position")
