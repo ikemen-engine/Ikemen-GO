@@ -66,9 +66,9 @@ func (c *Camera) Init() {
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
 	}
-	if c.boundlow < 0 {
-		c.boundLo += float32(c.boundlow) * c.localscl
-	}
+	//if c.boundlow < 0 {
+	//	c.boundLo += float32(c.boundlow) * c.localscl
+	//}
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
 	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
@@ -159,7 +159,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	*x += vx
-	ftension, vfollow := float32(c.floortension), c.verticalfollow
+	ftension, vfollow := float32(c.floortension)-c.drawOffsetY, c.verticalfollow
 	if c.ytensionenable {
 		ftension = (240/(float32(sys.gameWidth)/float32(c.localcoord[0])) - float32(c.tensionhigh)) * c.localscl
 		vfollow = 1
