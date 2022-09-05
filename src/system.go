@@ -729,7 +729,7 @@ func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
 func (s *System) roundWinTime() bool {
-	return s.intro < -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime+s.lifebar.ro.over_wintime)
+	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime + s.lifebar.ro.over_wintime)
 }
 func (s *System) roundOver() bool {
 	return s.intro < -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime +
@@ -1093,7 +1093,7 @@ func (s *System) action(x, y, scl *float32) {
 	s.clsnText = nil
 	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
 	leftest, rightest = *x, *x
-	
+
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1140,7 +1140,7 @@ func (s *System) action(x, y, scl *float32) {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
 	s.lifebar.step()
-	
+
 	// Action camera
 	var newx, newy float32 = *x, *y
 	var sclMul float32
@@ -1148,7 +1148,7 @@ func (s *System) action(x, y, scl *float32) {
 	rightest -= *x
 	sclMul = s.cam.action(&newx, &newy, leftest, rightest, lowest, highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
-	
+
 	// Update camera
 	introSkip := false
 	if s.tickNextFrame() {
@@ -1201,7 +1201,7 @@ func (s *System) action(x, y, scl *float32) {
 	}
 	*y = s.cam.YBound(*scl, newy)
 	s.cam.Update(*scl, *x, *y)
-	
+
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
 			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, Rotation{}, [2]float32{},
@@ -1238,7 +1238,7 @@ func (s *System) action(x, y, scl *float32) {
 	explUpdate(&s.explDrawlist, true)
 	explUpdate(&s.topexplDrawlist, false)
 	explUpdate(&s.underexplDrawlist, true)
-	
+
 	if s.lifebar.ro.act() {
 		if s.intro > s.lifebar.ro.ctrl_time {
 			s.intro--
@@ -1451,7 +1451,7 @@ func (s *System) action(x, y, scl *float32) {
 									p[0].life = p[0].lifeMax
 								}
 							}
-							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() {
+							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() && p[0].animNo != 5 {
 								p[0].setSCF(SCF_over)
 								if p[0].win() {
 									p[0].selfState(180, -1, -1, 1, false)
@@ -1471,7 +1471,7 @@ func (s *System) action(x, y, scl *float32) {
 			s.intro = 0
 		}
 	}
-	
+
 	if s.tickNextFrame() {
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
