@@ -2125,7 +2125,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_shadow_fade_range_begin
 		case "shadow.fade.range.end":
 			opc = OC_const_stagevar_shadow_fade_range_end
-		case "shadow.xshear":	
+		case "shadow.xshear":
 			opc = OC_const_stagevar_shadow_xshear
 		case "reflection.intensity":
 			opc = OC_const_stagevar_reflection_intensity
@@ -4393,11 +4393,11 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 	if t == "" {
 		return 0, c.yokisinaiToken()
 	}
+	var err error
 	if t == "const" {
 		c.scan(line)
 		k := c.scan(line)
 		c.scan(line)
-		var err error
 		v, ok := constants[k]
 		if !ok {
 			err = Error(fmt.Sprintf("StateDef constant not found: %v", k))
@@ -4407,8 +4407,8 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 	if t == "-" && len(*line) > 0 && (*line)[0] >= '0' && (*line)[0] <= '9' {
 		t += c.scan(line)
 	}
-	v, err := strconv.ParseInt(t, 10, 32)
-	return int32(v), err
+	v := Atoi(t)
+	return v, err
 }
 func (c *Compiler) subBlock(line *string, root bool,
 	sbc *StateBytecode, numVars *int32) (*StateBlock, error) {
