@@ -15,7 +15,7 @@ These instructions are for those interested in developing the Ikemen_GO engine. 
 Check the instructions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-Windows)
 
 ### Building on Mac
-Check the insturctions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-MacOS)
+Check the instructions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-MacOS)
 
 ### Building on Linux
 Check the instructions [here](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building-on-Linux)
