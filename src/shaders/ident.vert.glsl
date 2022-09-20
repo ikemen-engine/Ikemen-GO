@@ -1,7 +1,10 @@
-attribute vec2 VertCoord;
+#version 400
+precision highp float;
+
 uniform vec2 TextureSize;
 
-varying vec2 texcoord;
+in vec2 VertCoord;
+out vec2 texcoord;
 
 void main()
 {

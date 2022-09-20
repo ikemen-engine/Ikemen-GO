@@ -2,7 +2,6 @@ package main
 
 import (
 	"runtime"
-	"strings"
 
 	gl "github.com/fyne-io/gl-js"
 )
@@ -57,9 +56,6 @@ func (s *ShaderProgram) UseProgram() {
 
 func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
 	shader = gl.CreateShader(shaderType)
-	if !strings.Contains(src, "gl_TexCoord") {
-		src = "#version 100\nprecision highp float;\n" + src
-	}
 	gl.ShaderSource(shader, src)
 	gl.CompileShader(shader)
 	ok := gl.GetShaderi(shader, gl.COMPILE_STATUS)

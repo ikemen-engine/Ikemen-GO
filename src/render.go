@@ -78,19 +78,19 @@ var fbo_f_texture *Texture
 var postVertBuffer gl.Buffer
 var postShaderSelect []*ShaderProgram
 
-//go:embed shaders/sprite.vs.glsl
+//go:embed shaders/sprite.vert.glsl
 var vertShader string
 
-//go:embed shaders/sprite.fs.glsl
+//go:embed shaders/sprite.frag.glsl
 var fragShader string
 
-//go:embed shaders/flat.fs.glsl
+//go:embed shaders/flat.frag.glsl
 var fragShaderFlat string
 
-//go:embed shaders/ident.vs.glsl
+//go:embed shaders/ident.vert.glsl
 var identVertShader string
 
-//go:embed shaders/ident.fs.glsl
+//go:embed shaders/ident.frag.glsl
 var identFragShader string
 
 // Render initialization.
@@ -100,7 +100,7 @@ func RenderInit() {
 		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
 	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mul", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
@@ -474,7 +474,7 @@ func RenderSprite(rp RenderParams) {
 	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
 	gl.Uniform1f(mainShader.u["gray"], grayscale)
 	gl.Uniform3fv(mainShader.u["add"], padd[:])
-	gl.Uniform3fv(mainShader.u["mul"], pmul[:])
+	gl.Uniform3fv(mainShader.u["mult"], pmul[:])
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
