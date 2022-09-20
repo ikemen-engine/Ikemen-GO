@@ -1,9 +1,15 @@
+//go:build !kinc
+
 package main
 
 import (
+	_ "embed" // Support for go:embed resources
+	"encoding/binary"
+	"fmt"
 	"runtime"
 
 	gl "github.com/fyne-io/gl-js"
+	"golang.org/x/mobile/exp/f32"
 )
 
 // ------------------------------------------------------------------
@@ -123,4 +129,150 @@ func (t *Texture) SetData(width, height, depth int32, filter bool, data []byte) 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+}
+
+// ------------------------------------------------------------------
+// Renderer
+
+type Renderer struct {
+	fbo           gl.Framebuffer
+	fbo_texture   gl.Texture
+	// Normal rendering
+	rbo_depth     gl.Renderbuffer
+	// MSAA rendering
+	fbo_f         gl.Framebuffer
+	fbo_f_texture *Texture
+	// Post-processing shaders
+	postVertBuffer gl.Buffer
+	postShaderSelect []*ShaderProgram
+}
+
+//go:embed shaders/ident.vert.glsl
+var identVertShader string
+
+//go:embed shaders/ident.frag.glsl
+var identFragShader string
+
+func newRenderer() (r *Renderer) {
+	sys.errLog.Printf("Using OpenGL %v (%v)",
+		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
+
+	r = &Renderer{}
+	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
+
+	// Data buffers for rendering
+	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
+	r.postVertBuffer = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
+
+	// Compile postprocessing shaders
+
+	// Calculate total amount of shaders loaded.
+	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
+
+	// Ident shader (no postprocessing)
+	r.postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
+	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
+
+	// External Shaders
+	for i := 0; i < len(sys.externalShaderList); i++ {
+		r.postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
+			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
+	}
+
+	if sys.multisampleAntialiasing {
+		gl.Enable(gl.MULTISAMPLE)
+	}
+
+	gl.ActiveTexture(gl.TEXTURE0)
+	r.fbo_texture = gl.CreateTexture()
+
+	if sys.multisampleAntialiasing {
+		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, r.fbo_texture)
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
+	}
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+	if sys.multisampleAntialiasing {
+		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, int(sys.scrrect[2]), int(sys.scrrect[3]), false)
+	} else {
+		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	}
+
+	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
+
+	if sys.multisampleAntialiasing {
+		r.fbo_f_texture = newTexture()
+		r.fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
+	} else {
+		r.rbo_depth = gl.CreateRenderbuffer()
+		gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
+		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
+		gl.BindRenderbuffer(gl.RENDERBUFFER, gl.NoRenderbuffer)
+	}
+
+	r.fbo = gl.CreateFramebuffer()
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+
+	if sys.multisampleAntialiasing {
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, r.fbo_texture, 0)
+
+		r.fbo_f = gl.CreateFramebuffer()
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_f)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.fbo_f_texture.handle, 0)
+	} else {
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.fbo_texture, 0)
+		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.rbo_depth)
+	}
+
+	if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
+		sys.errLog.Printf("framebuffer create failed: 0x%x", status)
+	}
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
+
+	return
+}
+
+func (r *Renderer) BeginFrame() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+}
+
+func (r *Renderer) EndFrame() {
+	if sys.multisampleAntialiasing {
+		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.fbo_f)
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
+		gl.BlitFramebuffer(0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), 0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.COLOR_BUFFER_BIT, gl.LINEAR)
+	}
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
+
+	postShader := r.postShaderSelect[sys.postProcessingShader]
+
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	postShader.UseProgram()
+
+	if sys.multisampleAntialiasing {
+		gl.BindTexture(gl.TEXTURE_2D, r.fbo_f_texture.handle)
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
+	}
+
+	gl.Uniform1i(postShader.u["Texture"], 0)
+	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	gl.EnableVertexAttribArray(postShader.aVert)
+	gl.VertexAttribPointer(postShader.aVert, 2, gl.FLOAT, false, 0, 0)
+
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
+	gl.DisableVertexAttribArray(postShader.aVert)
 }
