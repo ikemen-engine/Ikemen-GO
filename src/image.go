@@ -1002,7 +1002,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, fx *PalFX, window *[4
 		s.Tex, s.PalTex, s.Size,
 		-x*sys.widthScale, -y*sys.heightScale, notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
-		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
+		Rotation{angle, 0, 0}, 0, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
 		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
 	}
 	RenderSprite(rp)

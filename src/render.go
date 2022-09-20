@@ -41,8 +41,9 @@ type RenderParams struct {
 	rxadd    float32
 	rot      Rotation
 	// Transparency, masking and palette effects
-	trans int32
-	mask  int32
+	tint  uint32 // Sprite tint for shadows (unused yet)
+	trans int32  // Mugen transparency blending
+	mask  int32  // Mask for transparency
 	pfx   *PalFX
 	// Clipping
 	window *[4]int32
@@ -100,7 +101,7 @@ func RenderInit() {
 		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
 	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterUniforms("pal", "tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
