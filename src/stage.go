@@ -62,6 +62,7 @@ const (
 	BT_Enable
 	BT_PosSet
 	BT_PosAdd
+	BT_RemapPal	
 	BT_SinX
 	BT_SinY
 	BT_VelSet
@@ -432,6 +433,8 @@ type bgCtrl struct {
 	_type        BgcType
 	x, y         float32
 	v            [3]int32
+	src          [2]int32
+	dst          [2]int32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -443,6 +446,7 @@ func newBgCtrl() *bgCtrl {
 func (bgc *bgCtrl) read(is IniSection, idx int) {
 	bgc.idx = idx
 	xy := false
+	srcdst := false	
 	switch strings.ToLower(is["type"]) {
 	case "anim":
 		bgc._type = BT_Anim
@@ -452,6 +456,9 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc._type = BT_Enable
 	case "null":
 		bgc._type = BT_Null
+	case "remappal":
+		bgc._type = BT_RemapPal
+		srcdst = true
 	case "posset":
 		bgc._type = BT_PosSet
 		xy = true
@@ -476,7 +483,10 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 	if xy {
 		is.readF32ForStage("x", &bgc.x)
 		is.readF32ForStage("y", &bgc.y)
-	} else if is.ReadF32("value", &bgc.x) {
+	} else if srcdst {
+		is.readI32ForStage("source", &bgc.src[0], &bgc.src[1])
+		is.readI32ForStage("dest", &bgc.dst[0], &bgc.dst[1])
+	}else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
 	is.ReadI32("sctrlid", &bgc.sctrlid)
@@ -1007,6 +1017,19 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 		for i := range bgc.bg {
 			bgc.bg[i].visible, bgc.bg[i].active = bgc.v[0] != 0, bgc.v[0] != 0
 		}
+	case BT_RemapPal:
+		if bgc.src[0] >= 0 && bgc.src[1] >= 0 && bgc.dst[0] >= 0 && bgc.dst[1] >= 0 {
+			si, ok := s.sff.palList.PalTable[[...]int16{int16(bgc.src[0]), int16(bgc.src[1])}]
+			if !ok || si < 0 {
+				return
+			}
+			var di int
+			di, ok = s.sff.palList.PalTable[[...]int16{int16(bgc.dst[0]), int16(bgc.dst[1])}]
+			if !ok || di < 0 {
+				return
+			}
+			s.sff.palList.Remap(si, di)
+		}
 	case BT_PosSet:
 		for i := range bgc.bg {
 			if bgc.xEnable() {
@@ -1171,6 +1194,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	}
 }
 func (s *Stage) reset() {
+	s.sff.palList.ResetRemap()
 	s.bga.clear()
 	for i := range s.bg {
 		s.bg[i].reset()
@@ -1185,7 +1209,7 @@ func (s *Stage) reset() {
 	s.stageTime = 0
 }
 
-func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
+func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -1211,6 +1235,14 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
 			}
 			if !math.IsNaN(float64(y)) {
 				s.bgc[i].y = y
+			}
+			if src[0] != IErr && src[1] != IErr {
+				s.bgc[i].src[0] = src[0]
+				s.bgc[i].src[1] = src[1]
+			}
+			if dst[0] != IErr && dst[1] != IErr {
+				s.bgc[i].dst[0] = dst[0]
+				s.bgc[i].dst[1] = dst[1]
 			}
 			s.reload = true
 		}

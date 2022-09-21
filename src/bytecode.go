@@ -7421,6 +7421,8 @@ const (
 	modifyBGCtrl_value
 	modifyBGCtrl_x
 	modifyBGCtrl_y
+	modifyBGCtrl_src
+	modifyBGCtrl_dst
 	modifyBGCtrl_redirectid
 )
 
@@ -7429,6 +7431,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	var cid int32
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
+	s, d := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyBGCtrl_id:
@@ -7453,6 +7456,16 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c)
 		case modifyBGCtrl_y:
 			y = exp[0].evalF(c)
+		case modifyBGCtrl_src:
+			if len(exp) > 1 {
+				s[0] = exp[0].evalI(c)
+				s[1] = exp[1].evalI(c)
+			}
+		case modifyBGCtrl_dst:
+			if len(exp) > 1 {
+				d[0] = exp[0].evalI(c)
+				d[1] = exp[1].evalI(c)
+			}
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
@@ -7462,7 +7475,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, s, d)
 	return false
 }
 

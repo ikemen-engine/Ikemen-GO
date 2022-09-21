@@ -4169,6 +4169,14 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyBGCtrl_y, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "source",
+			modifyBGCtrl_src, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dest",
+			modifyBGCtrl_dst, VT_Int, 2, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
