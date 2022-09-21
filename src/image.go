@@ -265,9 +265,8 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 }
 
 func PaletteToTexture(pal []uint32) *Texture {
-	tx := newTexture()
-	tx.SetData(256, 1, 32, false,
-		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+	tx := newTexture(256, 1, 32)
+	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4), false)
 	return tx
 }
 
@@ -525,15 +524,15 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture()
-		s.Tex.SetData(int32(s.Size[0]), int32(s.Size[1]), 8, false, px)
+		s.Tex = newTexture(int32(s.Size[0]), int32(s.Size[1]), 8)
+		s.Tex.SetData(px, false)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture()
-		s.Tex.SetData(sprWidth, sprHeight, sprDepth, sys.pngFilter, data)
+		s.Tex = newTexture(sprWidth, sprHeight, sprDepth)
+		s.Tex.SetData(data, sys.pngFilter)
 	}
 }
 

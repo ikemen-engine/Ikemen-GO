@@ -94,12 +94,15 @@ func linkProgram(v, f gl.Shader) (program gl.Program) {
 // Texture
 
 type Texture struct {
+	width  int32
+	height int32
+	depth  int32
 	handle gl.Texture
 }
 
 // Generate a new texture name
-func newTexture() (t *Texture) {
-	t = &Texture{gl.CreateTexture()}
+func newTexture(width, height, depth int32) (t *Texture) {
+	t = &Texture{width, height, depth, gl.CreateTexture()}
 	runtime.SetFinalizer(t, func (t *Texture) {
 		sys.mainThreadTask <- func() {
 			gl.DeleteTexture(t.handle)
@@ -109,22 +112,22 @@ func newTexture() (t *Texture) {
 }
 
 // Bind a texture and upload texel data to it
-func (t *Texture) SetData(width, height, depth int32, filter bool, data []byte) {
+func (t *Texture) SetData(data []byte, filter bool) {
 	var interp int = gl.NEAREST
 	if filter {
 		interp = gl.LINEAR
 	}
 
 	var format gl.Enum = gl.LUMINANCE
-	if depth == 24 {
+	if t.depth == 24 {
 		format = gl.RGB
-	} else if depth == 32 {
+	} else if t.depth == 32 {
 		format = gl.RGBA
 	}
 
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, int(width), int(height), format, gl.UNSIGNED_BYTE, data)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, int(t.width), int(t.height), format, gl.UNSIGNED_BYTE, data)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interp)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -209,8 +212,8 @@ func newRenderer() (r *Renderer) {
 	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
 
 	if sys.multisampleAntialiasing {
-		r.fbo_f_texture = newTexture()
-		r.fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
+		r.fbo_f_texture = newTexture(sys.scrrect[2], sys.scrrect[3], 32)
+		r.fbo_f_texture.SetData(nil, false)
 	} else {
 		r.rbo_depth = gl.CreateRenderbuffer()
 		gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
