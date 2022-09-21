@@ -56,7 +56,7 @@ type RenderParams struct {
 }
 
 func (rp *RenderParams) IsValid() bool {
-	return rp.tex.handle.IsValid() && IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+
+	return rp.tex.IsValid() && IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
@@ -326,8 +326,7 @@ func RenderSprite(rp RenderParams) {
 	if rp.paltex == nil {
 		gl.Uniform1i(mainShader.u["isRgba"], 1)
 	} else {
-		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, rp.paltex.handle)
+		rp.paltex.Bind(1)
 		gl.Uniform1i(mainShader.u["pal"], 1)
 		gl.Uniform1i(mainShader.u["isRgba"], 0)
 		gl.Uniform1i(mainShader.u["mask"], int(rp.mask))
@@ -346,8 +345,7 @@ func RenderSprite(rp RenderParams) {
 	gl.Uniform3fv(mainShader.u["add"], padd[:])
 	gl.Uniform3fv(mainShader.u["mult"], pmul[:])
 
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
+	rp.tex.Bind(0)
 	rmMainSub(mainShader, rp)
 }
 
@@ -357,12 +355,12 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	}
 	rmInitSub(&rp)
 	flatShader.UseProgram()
+	rp.tex.Bind(0)
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(
 		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
-	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
 	rmMainSub(flatShader, rp)
 }
 

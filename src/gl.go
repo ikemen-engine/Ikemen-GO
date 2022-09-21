@@ -134,6 +134,17 @@ func (t *Texture) SetData(data []byte, filter bool) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 }
 
+// Return whether texture has a valid handle
+func (t *Texture) IsValid() bool {
+	return t.handle.IsValid()
+}
+
+// Bind texture
+func (t *Texture) Bind(unit int) {
+	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+}
+
 // ------------------------------------------------------------------
 // Renderer
 
