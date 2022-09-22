@@ -1323,7 +1323,7 @@ func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
 	return &osp
 }
 func captureScreen() {
-	width, height := sys.window.Window.GetSize()
+	width, height := sys.window.GetSize()
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	renderer.EndFrame()

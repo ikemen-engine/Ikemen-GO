@@ -437,7 +437,7 @@ func (s *System) init(w, h int32) *lua.LState {
 			}
 			s.windowMainIcon[i], _, err = image.Decode(f[i])
 		}
-		s.window.Window.SetIcon(s.windowMainIcon)
+		s.window.SetIcon(s.windowMainIcon)
 		chk(err)
 	}
 	// [Icon add end]
@@ -494,7 +494,7 @@ func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
 		renderer.EndFrame()
-		s.window.Window.SwapBuffers()
+		s.window.SwapBuffers()
 		// Begin the next frame
 		renderer.BeginFrame()
 	}

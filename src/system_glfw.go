@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 
 	glfw "github.com/fyne-io/glfw-js"
 )
@@ -72,6 +73,22 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	window.SetCharModsCallback(charCallback)
 	ret := &Window{window, s.windowTitle, fullscreen, x, y, w, h}
 	return ret, err
+}
+
+func (w *Window) SwapBuffers() {
+	w.Window.SwapBuffers()
+}
+
+func (w *Window) SetIcon(icon []image.Image) {
+	w.Window.SetIcon(icon)
+}
+
+func (w *Window) GetSize() (int, int) {
+	return w.Window.GetSize()
+}
+
+func (w *Window) GetClipboardString() (string, error) {
+	return w.Window.GetClipboardString()
 }
 
 func (w *Window) toggleFullscreen() {
