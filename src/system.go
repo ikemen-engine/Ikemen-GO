@@ -648,9 +648,9 @@ func (s *System) tickSound() {
 		speaker.Lock()
 		if s.bgm.ctrl != nil && s.bgm.streamer != nil {
 			s.bgm.ctrl.Paused = false
-			if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-				s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
-			}
+			// if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
+				// s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
+			// }
 		}
 		speaker.Unlock()
 	} else {
@@ -1942,7 +1942,7 @@ func (s *System) fight() (reload bool) {
 
 	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
-		s.bgm.Open(s.stage.bgmusic, 1, 100, 0, 0)
+		s.bgm.Open(s.stage.bgmusic, 1, int(s.stage.bgmvolume), int(s.stage.bgmloopstart), int(s.stage.bgmloopend))
 	}
 
 	oldWins, oldDraws := s.wins, s.draws
