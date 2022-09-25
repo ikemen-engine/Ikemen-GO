@@ -265,9 +265,8 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 }
 
 func PaletteToTexture(pal []uint32) *Texture {
-	tx := newTexture()
-	tx.SetData(256, 1, 32, false,
-		unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+	tx := newTexture(256, 1, 32)
+	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4), false)
 	return tx
 }
 
@@ -525,15 +524,15 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture()
-		s.Tex.SetData(int32(s.Size[0]), int32(s.Size[1]), 8, false, px)
+		s.Tex = newTexture(int32(s.Size[0]), int32(s.Size[1]), 8)
+		s.Tex.SetData(px, false)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture()
-		s.Tex.SetData(sprWidth, sprHeight, sprDepth, sys.pngFilter, data)
+		s.Tex = newTexture(sprWidth, sprHeight, sprDepth)
+		s.Tex.SetData(data, sys.pngFilter)
 	}
 }
 
@@ -1002,7 +1001,7 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, fx *PalFX, window *[4
 		s.Tex, s.PalTex, s.Size,
 		-x*sys.widthScale, -y*sys.heightScale, notiling,
 		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
-		Rotation{angle, 0, 0}, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
+		Rotation{angle, 0, 0}, 0, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
 		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
 	}
 	RenderSprite(rp)
@@ -1324,11 +1323,12 @@ func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
 	return &osp
 }
 func captureScreen() {
-	width, height := sys.window.Window.GetSize()
+	width, height := sys.window.GetSize()
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	unbindFB()
+	renderer.EndFrame()
 	gl.ReadPixels(pixdata, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
+	renderer.BeginFrame()
 	for i := 0; i < 4*width*height; i++ {
 		var x, y, j int
 		x = i % (width * 4)

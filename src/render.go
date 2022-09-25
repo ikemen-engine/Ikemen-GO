@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed" // Support for go:embed resources
 	"encoding/binary"
-	"fmt"
 	"math"
 
 	gl "github.com/fyne-io/gl-js"
@@ -41,8 +40,9 @@ type RenderParams struct {
 	rxadd    float32
 	rot      Rotation
 	// Transparency, masking and palette effects
-	trans int32
-	mask  int32
+	tint  uint32 // Sprite tint for shadows (unused yet)
+	trans int32  // Mugen transparency blending
+	mask  int32  // Mask for transparency
 	pfx   *PalFX
 	// Clipping
 	window *[4]int32
@@ -56,51 +56,34 @@ type RenderParams struct {
 }
 
 func (rp *RenderParams) IsValid() bool {
-	return rp.tex.handle.IsValid() && IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+
+	return rp.tex.IsValid() && IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
+
+// The global rendering backend
+var renderer *Renderer
 
 var vertexBuffer, uvBuffer gl.Buffer
 
 var mainShader, flatShader *ShaderProgram
 
-// Post-processing
-var fbo gl.Framebuffer
-var fbo_texture gl.Texture
-
-// Clasic AA
-var rbo_depth gl.Renderbuffer
-
-// MSAA
-var fbo_f gl.Framebuffer
-var fbo_f_texture *Texture
-
-var postVertBuffer gl.Buffer
-var postShaderSelect []*ShaderProgram
-
-//go:embed shaders/sprite.vs.glsl
+//go:embed shaders/sprite.vert.glsl
 var vertShader string
 
-//go:embed shaders/sprite.fs.glsl
+//go:embed shaders/sprite.frag.glsl
 var fragShader string
 
-//go:embed shaders/flat.fs.glsl
+//go:embed shaders/flat.frag.glsl
 var fragShaderFlat string
-
-//go:embed shaders/ident.vs.glsl
-var identVertShader string
-
-//go:embed shaders/ident.fs.glsl
-var identFragShader string
 
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
-	sys.errLog.Printf("Using OpenGL %v (%v)",
-		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
+	renderer = newRenderer()
 
+	// Sprite shaders
 	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("pal", "mask", "neg", "gray", "add", "mul", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterUniforms("pal", "tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
@@ -112,119 +95,6 @@ func RenderInit() {
 	uvBuffer = gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW)
-
-	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
-	postVertBuffer = gl.CreateBuffer()
-	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
-
-	// Compile postprocessing shaders
-
-	// Calculate total ammount of shaders loaded.
-	postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
-
-	// Ident shader (no postprocessing)
-	postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
-	postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
-
-	// External Shaders
-	for i := 0; i < len(sys.externalShaderList); i++ {
-		postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
-			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
-		postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
-	}
-
-	if sys.multisampleAntialiasing {
-		gl.Enable(gl.MULTISAMPLE)
-	}
-
-	gl.ActiveTexture(gl.TEXTURE0)
-	fbo_texture = gl.CreateTexture()
-
-	if sys.multisampleAntialiasing {
-		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, fbo_texture)
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
-	}
-
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-
-	if sys.multisampleAntialiasing {
-		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, int(sys.scrrect[2]), int(sys.scrrect[3]), false)
-	} else {
-		gl.TexImage2D(gl.TEXTURE_2D, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.RGBA, gl.UNSIGNED_BYTE, nil)
-	}
-
-	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
-
-	if sys.multisampleAntialiasing {
-		fbo_f_texture = newTexture()
-		fbo_f_texture.SetData(sys.scrrect[2], sys.scrrect[3], 32, false, nil)
-	} else {
-		rbo_depth = gl.CreateRenderbuffer()
-		gl.BindRenderbuffer(gl.RENDERBUFFER, rbo_depth)
-		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
-		gl.BindRenderbuffer(gl.RENDERBUFFER, gl.NoRenderbuffer)
-	}
-
-	fbo = gl.CreateFramebuffer()
-	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
-
-	if sys.multisampleAntialiasing {
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, fbo_texture, 0)
-
-		fbo_f = gl.CreateFramebuffer()
-		gl.BindFramebuffer(gl.FRAMEBUFFER, fbo_f)
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_f_texture.handle, 0)
-	} else {
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbo_texture, 0)
-		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo_depth)
-	}
-
-	if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
-		sys.errLog.Printf("framebuffer create failed: 0x%x", status)
-	}
-
-	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
-}
-
-func bindFB() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
-}
-
-func unbindFB() {
-	if sys.multisampleAntialiasing {
-		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo_f)
-		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fbo)
-		gl.BlitFramebuffer(0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), 0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]), gl.COLOR_BUFFER_BIT, gl.LINEAR)
-	}
-
-	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
-
-	postShader := postShaderSelect[sys.postProcessingShader]
-
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	postShader.UseProgram()
-
-	if sys.multisampleAntialiasing {
-		gl.BindTexture(gl.TEXTURE_2D, fbo_f_texture.handle)
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, fbo_texture)
-	}
-
-	gl.Uniform1i(postShader.u["Texture"], 0)
-	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, postVertBuffer)
-	gl.EnableVertexAttribArray(postShader.aVert)
-	gl.VertexAttribPointer(postShader.aVert, 2, gl.FLOAT, false, 0, 0)
-
-	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-
-	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
 func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
@@ -456,8 +326,7 @@ func RenderSprite(rp RenderParams) {
 	if rp.paltex == nil {
 		gl.Uniform1i(mainShader.u["isRgba"], 1)
 	} else {
-		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, rp.paltex.handle)
+		rp.paltex.Bind(1)
 		gl.Uniform1i(mainShader.u["pal"], 1)
 		gl.Uniform1i(mainShader.u["isRgba"], 0)
 		gl.Uniform1i(mainShader.u["mask"], int(rp.mask))
@@ -474,10 +343,9 @@ func RenderSprite(rp RenderParams) {
 	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
 	gl.Uniform1f(mainShader.u["gray"], grayscale)
 	gl.Uniform3fv(mainShader.u["add"], padd[:])
-	gl.Uniform3fv(mainShader.u["mul"], pmul[:])
+	gl.Uniform3fv(mainShader.u["mult"], pmul[:])
 
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
+	rp.tex.Bind(0)
 	rmMainSub(mainShader, rp)
 }
 
@@ -487,12 +355,12 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	}
 	rmInitSub(&rp)
 	flatShader.UseProgram()
+	rp.tex.Bind(0)
 	gl.Uniform1i(flatShader.uTexture, 0)
 	gl.Uniform3f(
 		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
 		float32(color&0xff)/255)
 	gl.Uniform1i(flatShader.u["isShadow"], 1)
-	gl.BindTexture(gl.TEXTURE_2D, rp.tex.handle)
 	rmMainSub(flatShader, rp)
 }
 

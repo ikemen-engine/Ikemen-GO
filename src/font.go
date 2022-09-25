@@ -458,7 +458,7 @@ func (f *Fnt) drawChar(
 		xscl*sys.widthScale, xscl*sys.widthScale,
 		yscl*sys.heightScale, 1, 0,
 		Rotation{},
-		sys.brightness*255>>8|1<<9, 0,
+		0, sys.brightness*255>>8|1<<9, 0,
 		nil, window, 0, 0,
 		0, 0, -xscl*float32(spr.Offset[0]), -yscl*float32(spr.Offset[1]),
 	}
