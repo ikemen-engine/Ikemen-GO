@@ -82,6 +82,62 @@ func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
 }
 
 // ------------------------------------------------------------------
+// Bgm Loop Streamer
+
+// Based on Loop() from Beep package. It adds support for loop points.
+
+type bgmLooper struct {
+	s         beep.StreamSeeker
+	loopcount int
+	loopstart int
+	loopend   int
+}
+
+func BgmLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) beep.Streamer {
+	if loopstart < 0 || loopstart >= s.Len() {
+		loopstart = 0
+	}
+	if loopend <= loopstart {
+		loopend = s.Len()
+	}
+	return &bgmLooper{
+		s:         s,
+		loopcount: loopcount,
+		loopstart: loopstart,
+		loopend:   loopend,
+	}
+}
+
+func (b *bgmLooper) Stream(samples [][2]float64) (n int, ok bool) {
+	if b.loopcount == 0 || b.s.Err() != nil {
+		return 0, false
+	}
+	for len(samples) > 0 {
+		sn, sok := b.s.Stream(samples)
+		if !sok || b.s.Position() >= b.loopend {
+			if b.loopcount > 0 {
+				b.loopcount--
+			}
+			if b.loopcount == 0 {
+				break
+			}
+			err := b.s.Seek(b.loopstart)
+			if err != nil {
+				return n, true
+			}
+			continue
+		}
+		samples = samples[sn:]
+		n += sn
+	}
+	return n, true
+}
+
+func (b *bgmLooper) Err() error {
+	return b.s.Err()
+}
+
+// ------------------------------------------------------------------
 // Bgm
 
 type Bgm struct {
@@ -149,7 +205,8 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	if loop > 0 {
 		loopCount = -1
 	}
-	streamer := beep.Loop(loopCount, bgm.streamer)
+	//streamer := beep.Loop(loopCount, bgm.streamer)
+	streamer := BgmLooper(bgm.streamer, loopCount, bgm.bgmLoopStart, bgm.bgmLoopEnd)
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
 	resampler := beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}

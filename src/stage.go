@@ -619,6 +619,9 @@ type Stage struct {
 	bgclearcolor    [3]int32
 	localscl        float32
 	scale           [2]float32
+	bgmvolume       int32
+	bgmloopstart    int32
+	bgmloopend      int32
 	bgmratiolife    int32
 	bgmtriggerlife  int32
 	bgmtriggeralt   int32
@@ -637,7 +640,7 @@ func newStage(def string) *Stage {
 		rightbound: 1000, screenleft: 15, screenright: 15,
 		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
-		constants: make(map[string]float32), p1p3dist: 25}
+		constants: make(map[string]float32), p1p3dist: 25, bgmvolume: 100}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.sdw.yscale = 0.4
@@ -828,6 +831,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	if sec := defmap["music"]; len(sec) > 0 {
 		s.bgmusic = sec[0]["bgmusic"]
+		sec[0].ReadI32("bgmvolume", &s.bgmvolume)
+		sec[0].ReadI32("bgmloopstart", &s.bgmloopstart)
+		sec[0].ReadI32("bgmloopend", &s.bgmloopend)
 		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
 		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
 		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
