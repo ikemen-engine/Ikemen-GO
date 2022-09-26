@@ -2,12 +2,10 @@ package main
 
 import (
 	_ "embed" // Support for go:embed resources
-	"encoding/binary"
 	"math"
 
 	gl "github.com/fyne-io/gl-js"
 	mgl "github.com/go-gl/mathgl/mgl32"
-	"golang.org/x/mobile/exp/f32"
 )
 
 // Rotation holds rotation parameters
@@ -63,8 +61,6 @@ func (rp *RenderParams) IsValid() bool {
 // The global rendering backend
 var renderer *Renderer
 
-var vertexBuffer gl.Buffer
-
 var mainShader, flatShader *ShaderProgram
 
 //go:embed shaders/sprite.vert.glsl
@@ -83,25 +79,21 @@ func RenderInit() {
 
 	// Sprite shaders
 	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("pal", "tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterUniforms("tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterTextures("pal")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
-
-	// Persistent data buffer for rendering
-	vertexBuffer = gl.CreateBuffer()
 }
 
 func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	s.UniformMatrix("modelview", modelview[:])
 	s.UniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
-	vertexPosition := f32.Bytes(binary.LittleEndian,
+	s.SetVertexData(
 		x2, y2, 1, 1,
 		x3, y3, 1, 0,
 		x1, y1, 0, 1,
 		x4, y4, 0, 0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 
 	renderer.RenderQuad()
 }
@@ -263,8 +255,6 @@ func rmMainSub(s *ShaderProgram, rp RenderParams) {
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
-	// Must bind buffer before enabling attributes
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	s.EnableAttribs()
 
 	renderWithBlending(func(a float32) {
@@ -402,13 +392,11 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	vertexPosition := f32.Bytes(binary.LittleEndian,
+	flatShader.SetVertexData(
 		x2, y2, 1, 1,
 		x2, y1, 1, 0,
 		x1, y2, 0, 1,
 		x1, y1, 0, 0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 
 	flatShader.UseProgram()
 	flatShader.UniformMatrix("modelview", modelview[:])

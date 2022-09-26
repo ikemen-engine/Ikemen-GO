@@ -41,7 +41,8 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 
 	s.u = make(map[string]gl.Uniform)
 	s.t = make(map[string]int)
-	s.RegisterUniforms("modelview", "projection", "tex", "alpha")
+	s.RegisterUniforms("modelview", "projection", "alpha")
+	s.RegisterTextures("tex")
 	return
 }
 
@@ -51,11 +52,21 @@ func (s *ShaderProgram) RegisterUniforms(names ...string) {
 	}
 }
 
+func (s *ShaderProgram) RegisterTextures(names ...string) {
+	for _, name := range names {
+		s.u[name] = gl.GetUniformLocation(s.program, name)
+		s.t[name] = len(s.t)
+	}
+}
+
 func (s *ShaderProgram) UseProgram() {
 	gl.UseProgram(s.program)
 }
 
 func (s *ShaderProgram) EnableAttribs() {
+	// Must bind buffer before enabling attributes
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vertexBuffer)
+
 	gl.EnableVertexAttribArray(s.aPos)
 	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 16, 0)
 	gl.EnableVertexAttribArray(s.aUv)
@@ -97,15 +108,16 @@ func (s *ShaderProgram) UniformMatrix(name string, value []float32) {
 }
 
 func (s *ShaderProgram) UniformTexture(name string, t *Texture) {
-	loc := s.u[name]
-	unit, ok := s.t[name]
-	if !ok {
-		unit = len(s.t)
-		s.t[name] = unit
-	}
+	loc, unit := s.u[name], s.t[name]
 	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.Uniform1i(loc, unit)
+}
+
+func (s *ShaderProgram) SetVertexData(values ...float32) {
+	data := f32.Bytes(binary.LittleEndian, values...)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
 }
 
 func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
@@ -201,6 +213,8 @@ type Renderer struct {
 	// Post-processing shaders
 	postVertBuffer gl.Buffer
 	postShaderSelect []*ShaderProgram
+	// Vertex data for primitive rendering
+	vertexBuffer gl.Buffer
 }
 
 //go:embed shaders/ident.vert.glsl
@@ -221,6 +235,8 @@ func newRenderer() (r *Renderer) {
 	r.postVertBuffer = gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
+
+	r.vertexBuffer = gl.CreateBuffer()
 
 	// Compile postprocessing shaders
 
