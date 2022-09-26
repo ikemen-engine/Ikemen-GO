@@ -103,7 +103,7 @@ func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4,
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 
-	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	renderer.RenderQuad()
 }
 
 // Render a quad with optional horizontal tiling
@@ -313,12 +313,11 @@ func RenderSprite(rp RenderParams) {
 	}
 	rmInitSub(&rp)
 	mainShader.UseProgram()
-	mainShader.UniformI("tex", 0)
+	mainShader.UniformTexture("tex", rp.tex)
 	if rp.paltex == nil {
 		mainShader.UniformI("isRgba", 1)
 	} else {
-		rp.paltex.Bind(1)
-		mainShader.UniformI("pal", 1)
+		mainShader.UniformTexture("pal", rp.paltex)
 		mainShader.UniformI("isRgba", 0)
 		mainShader.UniformI("mask", int(rp.mask))
 	}
@@ -336,7 +335,6 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UniformFv("add", padd[:])
 	mainShader.UniformFv("mult", pmul[:])
 
-	rp.tex.Bind(0)
 	rmMainSub(mainShader, rp)
 }
 
@@ -346,8 +344,7 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	}
 	rmInitSub(&rp)
 	flatShader.UseProgram()
-	rp.tex.Bind(0)
-	flatShader.UniformI("tex", 0)
+	flatShader.UniformTexture("tex", rp.tex)
 	flatShader.UniformF("color",
 		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
 	flatShader.UniformI("isShadow", 1)
@@ -416,14 +413,13 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	flatShader.UseProgram()
 	flatShader.UniformMatrix("modelview", modelview[:])
 	flatShader.UniformMatrix("projection", proj[:])
-	flatShader.UniformI("tex", 0)
 	flatShader.UniformF("color", r, g, b)
 	flatShader.UniformI("isShadow", 0)
 	flatShader.EnableAttribs()
 
 	renderWithBlending(func(a float32) {
 		flatShader.UniformF("alpha", a)
-		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+		renderer.RenderQuad()
 	}, trans, true)
 
 	flatShader.DisableAttribs()

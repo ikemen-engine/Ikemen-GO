@@ -25,6 +25,8 @@ type ShaderProgram struct {
 	aVert gl.Attrib
 	// Uniforms
 	u map[string]gl.Uniform
+	// Texture units
+	t map[string]int
 }
 
 func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
@@ -38,6 +40,7 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	s.aVert = gl.GetAttribLocation(s.program, "VertCoord")
 
 	s.u = make(map[string]gl.Uniform)
+	s.t = make(map[string]int)
 	s.RegisterUniforms("modelview", "projection", "tex", "alpha")
 	return
 }
@@ -91,6 +94,18 @@ func (s *ShaderProgram) UniformFv(name string, values []float32) {
 func (s *ShaderProgram) UniformMatrix(name string, value []float32) {
 	loc := s.u[name]
 	gl.UniformMatrix4fv(loc, value)
+}
+
+func (s *ShaderProgram) UniformTexture(name string, t *Texture) {
+	loc := s.u[name]
+	unit, ok := s.t[name]
+	if !ok {
+		unit = len(s.t)
+		s.t[name] = unit
+	}
+	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	gl.Uniform1i(loc, unit)
 }
 
 func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
@@ -170,12 +185,6 @@ func (t *Texture) SetData(data []byte, filter bool) {
 // Return whether texture has a valid handle
 func (t *Texture) IsValid() bool {
 	return t.handle.IsValid()
-}
-
-// Bind texture
-func (t *Texture) Bind(unit int) {
-	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
-	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 }
 
 // ------------------------------------------------------------------
@@ -306,12 +315,12 @@ func (r *Renderer) EndFrame() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	postShader.UseProgram()
 
+	gl.ActiveTexture(gl.TEXTURE0)
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_f_texture.handle)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
 	}
-
 	postShader.UniformI("Texture", 0)
 	postShader.UniformF("TextureSize", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
@@ -322,4 +331,8 @@ func (r *Renderer) EndFrame() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
 	gl.DisableVertexAttribArray(postShader.aVert)
+}
+
+func (r *Renderer) RenderQuad() {
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
