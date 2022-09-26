@@ -23,12 +23,7 @@ type ShaderProgram struct {
 	aUv  gl.Attrib
 	// Attribute locations (postprocess shaders)
 	aVert gl.Attrib
-	// Common uniforms used by most shaders
-	uModelView  gl.Uniform
-	uProjection gl.Uniform
-	uTexture    gl.Uniform
-	uAlpha      gl.Uniform
-	// Additional uniforms
+	// Uniforms
 	u map[string]gl.Uniform
 }
 
@@ -42,11 +37,8 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	s.aUv = gl.GetAttribLocation(s.program, "uv")
 	s.aVert = gl.GetAttribLocation(s.program, "VertCoord")
 
-	s.uModelView = gl.GetUniformLocation(s.program, "modelview")
-	s.uProjection = gl.GetUniformLocation(s.program, "projection")
-	s.uTexture = gl.GetUniformLocation(s.program, "tex")
-	s.uAlpha = gl.GetUniformLocation(s.program, "alpha")
 	s.u = make(map[string]gl.Uniform)
+	s.RegisterUniforms("modelview", "projection", "tex", "alpha")
 	return
 }
 
@@ -58,6 +50,35 @@ func (s *ShaderProgram) RegisterUniforms(names ...string) {
 
 func (s *ShaderProgram) UseProgram() {
 	gl.UseProgram(s.program)
+}
+
+func (s *ShaderProgram) UniformI(name string, val int) {
+	loc := s.u[name]
+	gl.Uniform1i(loc, val)
+}
+
+func (s *ShaderProgram) UniformF(name string, values ...float32) {
+	loc := s.u[name]
+	switch len(values) {
+	case 1: gl.Uniform1f(loc, values[0])
+	case 2: gl.Uniform2f(loc, values[0], values[1])
+	case 3: gl.Uniform3f(loc, values[0], values[1], values[2])
+	case 4: gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
+	}
+}
+
+func (s *ShaderProgram) UniformFv(name string, values []float32) {
+	loc := s.u[name]
+	switch len(values) {
+	case 2: gl.Uniform2fv(loc, values)
+	case 3: gl.Uniform3fv(loc, values)
+	case 4: gl.Uniform4fv(loc, values)
+	}
+}
+
+func (s *ShaderProgram) UniformMatrix(name string, value []float32) {
+	loc := s.u[name]
+	gl.UniformMatrix4fv(loc, value)
 }
 
 func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
@@ -279,8 +300,8 @@ func (r *Renderer) EndFrame() {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
 	}
 
-	gl.Uniform1i(postShader.u["Texture"], 0)
-	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	postShader.UniformI("Texture", 0)
+	postShader.UniformF("TextureSize", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 	gl.EnableVertexAttribArray(postShader.aVert)

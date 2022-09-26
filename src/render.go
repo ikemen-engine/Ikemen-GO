@@ -98,10 +98,8 @@ func RenderInit() {
 }
 
 func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
-	gl.UniformMatrix4fv(s.uModelView, modelview[:])
-	if u, ok := s.u["x1x2x4x3"]; ok {
-		gl.Uniform4f(u, x1, x2, x4, x3)
-	}
+	s.UniformMatrix("modelview", modelview[:])
+	s.UniformF("x1x2x4x3", x1, x2, x4, x3) // Uniform is optional
 	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
 	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
 
@@ -261,7 +259,7 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 }
 func rmMainSub(s *ShaderProgram, rp RenderParams) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-	gl.UniformMatrix4fv(s.uProjection, proj[:])
+	s.UniformMatrix("projection", proj[:])
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
@@ -275,7 +273,7 @@ func rmMainSub(s *ShaderProgram, rp RenderParams) {
 	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
 
 	renderWithBlending(func(a float32) {
-		gl.Uniform1f(s.uAlpha, a)
+		s.UniformF("alpha", a)
 		rmTileSub(s, modelview, rp)
 	}, rp.trans, rp.paltex != nil)
 
@@ -322,16 +320,16 @@ func RenderSprite(rp RenderParams) {
 	}
 	rmInitSub(&rp)
 	mainShader.UseProgram()
-	gl.Uniform1i(mainShader.uTexture, 0)
+	mainShader.UniformI("tex", 0)
 	if rp.paltex == nil {
-		gl.Uniform1i(mainShader.u["isRgba"], 1)
+		mainShader.UniformI("isRgba", 1)
 	} else {
 		rp.paltex.Bind(1)
-		gl.Uniform1i(mainShader.u["pal"], 1)
-		gl.Uniform1i(mainShader.u["isRgba"], 0)
-		gl.Uniform1i(mainShader.u["mask"], int(rp.mask))
+		mainShader.UniformI("pal", 1)
+		mainShader.UniformI("isRgba", 0)
+		mainShader.UniformI("mask", int(rp.mask))
 	}
-	gl.Uniform1i(mainShader.u["isTrapez"], int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
+	mainShader.UniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
 	if rp.pfx != nil {
@@ -340,10 +338,10 @@ func RenderSprite(rp RenderParams) {
 			padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		}
 	}
-	gl.Uniform1i(mainShader.u["neg"], int(Btoi(neg)))
-	gl.Uniform1f(mainShader.u["gray"], grayscale)
-	gl.Uniform3fv(mainShader.u["add"], padd[:])
-	gl.Uniform3fv(mainShader.u["mult"], pmul[:])
+	mainShader.UniformI("neg", int(Btoi(neg)))
+	mainShader.UniformF("gray", grayscale)
+	mainShader.UniformFv("add", padd[:])
+	mainShader.UniformFv("mult", pmul[:])
 
 	rp.tex.Bind(0)
 	rmMainSub(mainShader, rp)
@@ -356,11 +354,10 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	rmInitSub(&rp)
 	flatShader.UseProgram()
 	rp.tex.Bind(0)
-	gl.Uniform1i(flatShader.uTexture, 0)
-	gl.Uniform3f(
-		flatShader.u["color"], float32(color>>16&0xff)/255, float32(color>>8&0xff)/255,
-		float32(color&0xff)/255)
-	gl.Uniform1i(flatShader.u["isShadow"], 1)
+	flatShader.UniformI("tex", 0)
+	flatShader.UniformF("color",
+		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
+	flatShader.UniformI("isShadow", 1)
 	rmMainSub(flatShader, rp)
 }
 
@@ -413,11 +410,11 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 
 	flatShader.UseProgram()
-	gl.UniformMatrix4fv(flatShader.uModelView, modelview[:])
-	gl.UniformMatrix4fv(flatShader.uProjection, proj[:])
-	gl.Uniform1i(flatShader.uTexture, 0)
-	gl.Uniform3f(flatShader.u["color"], r, g, b)
-	gl.Uniform1i(flatShader.u["isShadow"], 0)
+	flatShader.UniformMatrix("modelview", modelview[:])
+	flatShader.UniformMatrix("projection", proj[:])
+	flatShader.UniformI("tex", 0)
+	flatShader.UniformF("color", r, g, b)
+	flatShader.UniformI("isShadow", 0)
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
@@ -428,7 +425,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	gl.VertexAttribPointer(flatShader.aPos, 2, gl.FLOAT, false, 0, 0)
 
 	renderWithBlending(func(a float32) {
-		gl.Uniform1f(flatShader.uAlpha, a)
+		flatShader.UniformF("alpha", a)
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}, trans, true)
 
