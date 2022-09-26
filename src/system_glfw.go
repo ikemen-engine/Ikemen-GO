@@ -63,14 +63,15 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		}
 	}
 
+	window.MakeContextCurrent()
+	window.SetKeyCallback(keyCallback)
+	window.SetCharModsCallback(charCallback)
+
 	// V-Sync
 	if s.vRetrace >= 0 {
 		glfw.SwapInterval(s.vRetrace)
 	}
 
-	window.MakeContextCurrent()
-	window.SetKeyCallback(keyCallback)
-	window.SetCharModsCallback(charCallback)
 	ret := &Window{window, s.windowTitle, fullscreen, x, y, w, h}
 	return ret, err
 }
