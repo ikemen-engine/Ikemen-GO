@@ -52,6 +52,18 @@ func (s *ShaderProgram) UseProgram() {
 	gl.UseProgram(s.program)
 }
 
+func (s *ShaderProgram) EnableAttribs() {
+	gl.EnableVertexAttribArray(s.aPos)
+	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 16, 0)
+	gl.EnableVertexAttribArray(s.aUv)
+	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 16, 8)
+}
+
+func (s *ShaderProgram) DisableAttribs() {
+	gl.DisableVertexAttribArray(s.aPos)
+	gl.DisableVertexAttribArray(s.aUv)
+}
+
 func (s *ShaderProgram) UniformI(name string, val int) {
 	loc := s.u[name]
 	gl.Uniform1i(loc, val)
