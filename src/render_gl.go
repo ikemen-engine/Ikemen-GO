@@ -313,6 +313,10 @@ func newRenderer() (r *Renderer) {
 	return
 }
 
+func (r *Renderer) IsOpenGL() bool {
+	return true
+}
+
 func (r *Renderer) BeginFrame() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }

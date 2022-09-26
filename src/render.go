@@ -63,6 +63,8 @@ var renderer *Renderer
 
 var mainShader, flatShader *ShaderProgram
 
+var nullTexture *Texture
+
 //go:embed shaders/sprite.vert.glsl
 var vertShader string
 
@@ -84,6 +86,9 @@ func RenderInit() {
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
+	flatShader.RegisterTextures("pal") // TODO: remove this later
+
+	nullTexture = newTexture(1, 1, 32)
 }
 
 func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
@@ -305,6 +310,7 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UseProgram()
 	mainShader.UniformTexture("tex", rp.tex)
 	if rp.paltex == nil {
+		mainShader.UniformTexture("pal", nullTexture)
 		mainShader.UniformI("isRgba", 1)
 	} else {
 		mainShader.UniformTexture("pal", rp.paltex)
@@ -335,6 +341,7 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	rmInitSub(&rp)
 	flatShader.UseProgram()
 	flatShader.UniformTexture("tex", rp.tex)
+	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
 	flatShader.UniformF("color",
 		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
 	flatShader.UniformI("isShadow", 1)
@@ -403,6 +410,8 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	flatShader.UniformMatrix("projection", proj[:])
 	flatShader.UniformF("color", r, g, b)
 	flatShader.UniformI("isShadow", 0)
+	flatShader.UniformTexture("tex", nullTexture)
+	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
 	flatShader.EnableAttribs()
 
 	renderWithBlending(func(a float32) {
