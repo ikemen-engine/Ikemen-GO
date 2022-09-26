@@ -167,9 +167,6 @@ type Renderer struct {
 	vertexBuffer gl.Buffer
 }
 
-// The global rendering backend
-var gfx = &Renderer{}
-
 //go:embed shaders/sprite.vert.glsl
 var vertShader string
 
@@ -278,10 +275,6 @@ func (r *Renderer) Init() {
 }
 
 func (r *Renderer) Close() {
-}
-
-func (r *Renderer) IsOpenGL() bool {
-	return true
 }
 
 func (r *Renderer) BeginFrame() {
