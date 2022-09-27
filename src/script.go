@@ -1288,35 +1288,33 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getJoystickName", func(*lua.LState) int {
-		l.Push(lua.LString(joystick[int(numArg(l, 1))].GetGamepadName()))
+		l.Push(lua.LString(input.GetJoystickName(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "getJoystickPresent", func(*lua.LState) int {
-		joy := int(numArg(l, 1))
-		present := joy >= 0 && joy < len(joystick) && joystick[joy].IsPresent()
-		l.Push(lua.LBool(present))
+		l.Push(lua.LBool(input.IsJoystickPresent(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "getJoystickKey", func(*lua.LState) int {
 		var s string
-		var joy, min, max int = 0, 0, len(joystick)
+		var joy, min, max int = 0, 0, input.GetMaxJoystickCount()
 		if l.GetTop() >= 1 {
-			min = int(Clamp(int32(numArg(l, 1)), 0, int32(len(joystick)-1)))
+			min = int(Clamp(int32(numArg(l, 1)), 0, int32(max-1)))
 			max = min + 1
 		}
 		for joy = min; joy < max; joy++ {
-			if joystick[joy].IsPresent() {
-				axes := joystick[joy].GetAxes()
-				btns := joystick[joy].GetButtons()
+			if input.IsJoystickPresent(joy) {
+				axes := input.GetJoystickAxes(joy)
+				btns := input.GetJoystickButtons(joy)
+				name := input.GetJoystickName(joy)
 				for i := range axes {
-					if strings.Contains(joystick[joy].GetGamepadName(), "XInput") ||
-						strings.Contains(joystick[joy].GetGamepadName(), "X360") {
+					if strings.Contains(name, "XInput") || strings.Contains(name, "X360") {
 						if axes[i] > 0.5 {
 							s = strconv.Itoa(-i*2 - 2)
 						} else if axes[i] < -0.5 && i < 4 {
 							s = strconv.Itoa(-i*2 - 1)
 						}
-					} else if joystick[joy].GetGamepadName() == "PS3 Controller" {
+					} else if name == "PS3 Controller" {
 						if (len(axes) == 8 && i != 3 && i != 4 && i != 6 && i != 7) ||
 							(len(axes) == 6 && i != 2 && i != 5) {
 							// 8 axes in Windows (need to skip 3, 4, 6, 7) and
@@ -1327,7 +1325,7 @@ func systemScriptInit(l *lua.LState) {
 								s = strconv.Itoa(-i*2 - 2)
 							}
 						}
-					} else if joystick[joy].GetGamepadName() != "PS4 Controller" || !(i == 3 || i == 4) {
+					} else if name != "PS4 Controller" || !(i == 3 || i == 4) {
 						if axes[i] < -0.2 {
 							s = strconv.Itoa(-i*2 - 1)
 						} else if axes[i] > 0.2 {
