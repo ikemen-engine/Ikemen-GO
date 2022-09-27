@@ -25,6 +25,8 @@ type ShaderProgram struct {
 	aVert gl.Attrib
 	// Uniforms
 	u map[string]gl.Uniform
+	// Texture units
+	t map[string]int
 }
 
 func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
@@ -38,7 +40,9 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	s.aVert = gl.GetAttribLocation(s.program, "VertCoord")
 
 	s.u = make(map[string]gl.Uniform)
-	s.RegisterUniforms("modelview", "projection", "tex", "alpha")
+	s.t = make(map[string]int)
+	s.RegisterUniforms("modelview", "projection", "alpha")
+	s.RegisterTextures("tex")
 	return
 }
 
@@ -48,8 +52,30 @@ func (s *ShaderProgram) RegisterUniforms(names ...string) {
 	}
 }
 
+func (s *ShaderProgram) RegisterTextures(names ...string) {
+	for _, name := range names {
+		s.u[name] = gl.GetUniformLocation(s.program, name)
+		s.t[name] = len(s.t)
+	}
+}
+
 func (s *ShaderProgram) UseProgram() {
 	gl.UseProgram(s.program)
+}
+
+func (s *ShaderProgram) EnableAttribs() {
+	// Must bind buffer before enabling attributes
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vertexBuffer)
+
+	gl.EnableVertexAttribArray(s.aPos)
+	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 16, 0)
+	gl.EnableVertexAttribArray(s.aUv)
+	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 16, 8)
+}
+
+func (s *ShaderProgram) DisableAttribs() {
+	gl.DisableVertexAttribArray(s.aPos)
+	gl.DisableVertexAttribArray(s.aUv)
 }
 
 func (s *ShaderProgram) UniformI(name string, val int) {
@@ -79,6 +105,19 @@ func (s *ShaderProgram) UniformFv(name string, values []float32) {
 func (s *ShaderProgram) UniformMatrix(name string, value []float32) {
 	loc := s.u[name]
 	gl.UniformMatrix4fv(loc, value)
+}
+
+func (s *ShaderProgram) UniformTexture(name string, t *Texture) {
+	loc, unit := s.u[name], s.t[name]
+	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	gl.Uniform1i(loc, unit)
+}
+
+func (s *ShaderProgram) SetVertexData(values ...float32) {
+	data := f32.Bytes(binary.LittleEndian, values...)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
 }
 
 func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
@@ -160,12 +199,6 @@ func (t *Texture) IsValid() bool {
 	return t.handle.IsValid()
 }
 
-// Bind texture
-func (t *Texture) Bind(unit int) {
-	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
-	gl.BindTexture(gl.TEXTURE_2D, t.handle)
-}
-
 // ------------------------------------------------------------------
 // Renderer
 
@@ -180,6 +213,8 @@ type Renderer struct {
 	// Post-processing shaders
 	postVertBuffer gl.Buffer
 	postShaderSelect []*ShaderProgram
+	// Vertex data for primitive rendering
+	vertexBuffer gl.Buffer
 }
 
 //go:embed shaders/ident.vert.glsl
@@ -200,6 +235,8 @@ func newRenderer() (r *Renderer) {
 	r.postVertBuffer = gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
+
+	r.vertexBuffer = gl.CreateBuffer()
 
 	// Compile postprocessing shaders
 
@@ -276,6 +313,10 @@ func newRenderer() (r *Renderer) {
 	return
 }
 
+func (r *Renderer) IsOpenGL() bool {
+	return true
+}
+
 func (r *Renderer) BeginFrame() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }
@@ -294,12 +335,12 @@ func (r *Renderer) EndFrame() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	postShader.UseProgram()
 
+	gl.ActiveTexture(gl.TEXTURE0)
 	if sys.multisampleAntialiasing {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_f_texture.handle)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
 	}
-
 	postShader.UniformI("Texture", 0)
 	postShader.UniformF("TextureSize", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
@@ -310,4 +351,8 @@ func (r *Renderer) EndFrame() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
 	gl.DisableVertexAttribArray(postShader.aVert)
+}
+
+func (r *Renderer) RenderQuad() {
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }

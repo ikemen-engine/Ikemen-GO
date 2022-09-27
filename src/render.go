@@ -2,12 +2,10 @@ package main
 
 import (
 	_ "embed" // Support for go:embed resources
-	"encoding/binary"
 	"math"
 
 	gl "github.com/fyne-io/gl-js"
 	mgl "github.com/go-gl/mathgl/mgl32"
-	"golang.org/x/mobile/exp/f32"
 )
 
 // Rotation holds rotation parameters
@@ -63,9 +61,9 @@ func (rp *RenderParams) IsValid() bool {
 // The global rendering backend
 var renderer *Renderer
 
-var vertexBuffer, uvBuffer gl.Buffer
-
 var mainShader, flatShader *ShaderProgram
+
+var nullTexture *Texture
 
 //go:embed shaders/sprite.vert.glsl
 var vertShader string
@@ -83,27 +81,26 @@ func RenderInit() {
 
 	// Sprite shaders
 	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("pal", "tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterUniforms("tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
+	mainShader.RegisterTextures("pal")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
 	flatShader.RegisterUniforms("color", "isShadow")
+	flatShader.RegisterTextures("pal") // TODO: remove this later
 
-	// Persistent data buffers for rendering
-	vertexBuffer = gl.CreateBuffer()
-
-	uvData := f32.Bytes(binary.LittleEndian, 1, 1, 1, 0, 0, 1, 0, 0)
-	uvBuffer = gl.CreateBuffer()
-	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW)
+	nullTexture = newTexture(1, 1, 32)
 }
 
 func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	s.UniformMatrix("modelview", modelview[:])
-	s.UniformF("x1x2x4x3", x1, x2, x4, x3) // Uniform is optional
-	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x3, y3, x1, y1, x4, y4)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
+	s.UniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+	s.SetVertexData(
+		x2, y2, 1, 1,
+		x3, y3, 1, 0,
+		x1, y1, 0, 1,
+		x4, y4, 0, 0)
 
-	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	renderer.RenderQuad()
 }
 
 // Render a quad with optional horizontal tiling
@@ -263,23 +260,14 @@ func rmMainSub(s *ShaderProgram, rp RenderParams) {
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-	gl.EnableVertexAttribArray(s.aUv)
-	gl.VertexAttribPointer(s.aUv, 2, gl.FLOAT, false, 0, 0)
-
-	// Keep vertexBuffer bound so that it can be updated in drawQuads()
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.EnableVertexAttribArray(s.aPos)
-	gl.VertexAttribPointer(s.aPos, 2, gl.FLOAT, false, 0, 0)
+	s.EnableAttribs()
 
 	renderWithBlending(func(a float32) {
 		s.UniformF("alpha", a)
 		rmTileSub(s, modelview, rp)
 	}, rp.trans, rp.paltex != nil)
 
-	gl.DisableVertexAttribArray(s.aPos)
-	gl.DisableVertexAttribArray(s.aUv)
-
+	s.DisableAttribs()
 	gl.Disable(gl.SCISSOR_TEST)
 }
 
@@ -320,12 +308,12 @@ func RenderSprite(rp RenderParams) {
 	}
 	rmInitSub(&rp)
 	mainShader.UseProgram()
-	mainShader.UniformI("tex", 0)
+	mainShader.UniformTexture("tex", rp.tex)
 	if rp.paltex == nil {
+		mainShader.UniformTexture("pal", nullTexture)
 		mainShader.UniformI("isRgba", 1)
 	} else {
-		rp.paltex.Bind(1)
-		mainShader.UniformI("pal", 1)
+		mainShader.UniformTexture("pal", rp.paltex)
 		mainShader.UniformI("isRgba", 0)
 		mainShader.UniformI("mask", int(rp.mask))
 	}
@@ -343,7 +331,6 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UniformFv("add", padd[:])
 	mainShader.UniformFv("mult", pmul[:])
 
-	rp.tex.Bind(0)
 	rmMainSub(mainShader, rp)
 }
 
@@ -353,11 +340,12 @@ func RenderFlatSprite(rp RenderParams, color uint32) {
 	}
 	rmInitSub(&rp)
 	flatShader.UseProgram()
-	rp.tex.Bind(0)
-	flatShader.UniformI("tex", 0)
+	flatShader.UniformTexture("tex", rp.tex)
+	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
 	flatShader.UniformF("color",
 		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
 	flatShader.UniformI("isShadow", 1)
+
 	rmMainSub(flatShader, rp)
 }
 
@@ -409,25 +397,27 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 
+	x1, y1 := float32(rect[0]), -float32(rect[1])
+	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
+	flatShader.SetVertexData(
+		x2, y2, 1, 1,
+		x2, y1, 1, 0,
+		x1, y2, 0, 1,
+		x1, y1, 0, 0)
+
 	flatShader.UseProgram()
 	flatShader.UniformMatrix("modelview", modelview[:])
 	flatShader.UniformMatrix("projection", proj[:])
-	flatShader.UniformI("tex", 0)
 	flatShader.UniformF("color", r, g, b)
 	flatShader.UniformI("isShadow", 0)
-
-	x1, y1 := float32(rect[0]), -float32(rect[1])
-	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	vertexPosition := f32.Bytes(binary.LittleEndian, x2, y2, x2, y1, x1, y2, x1, y1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, vertexPosition, gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(flatShader.aPos)
-	gl.VertexAttribPointer(flatShader.aPos, 2, gl.FLOAT, false, 0, 0)
+	flatShader.UniformTexture("tex", nullTexture)
+	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
+	flatShader.EnableAttribs()
 
 	renderWithBlending(func(a float32) {
 		flatShader.UniformF("alpha", a)
-		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+		renderer.RenderQuad()
 	}, trans, true)
 
-	gl.DisableVertexAttribArray(flatShader.aPos)
+	flatShader.DisableAttribs()
 }
