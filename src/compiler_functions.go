@@ -4170,11 +4170,31 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			return err
 		}
 		if err := c.paramValue(is, sc, "source",
-			modifyBGCtrl_src, VT_Int, 2, false); err != nil {
+			modifyBGCtrl_source, VT_Int, 2, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "dest",
-			modifyBGCtrl_dst, VT_Int, 2, false); err != nil {
+			modifyBGCtrl_dest, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "add",
+			modifyBGCtrl_add, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "mul",
+			modifyBGCtrl_mul, VT_Int, 3, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "sinadd",
+			modifyBGCtrl_sinadd, VT_Int, 4, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "invertall",
+			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "color",
+			modifyBGCtrl_color, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil

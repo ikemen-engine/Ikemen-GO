@@ -7421,8 +7421,13 @@ const (
 	modifyBGCtrl_value
 	modifyBGCtrl_x
 	modifyBGCtrl_y
-	modifyBGCtrl_src
-	modifyBGCtrl_dst
+	modifyBGCtrl_source
+	modifyBGCtrl_dest
+	modifyBGCtrl_add
+	modifyBGCtrl_mul
+	modifyBGCtrl_sinadd
+	modifyBGCtrl_invertall
+	modifyBGCtrl_color
 	modifyBGCtrl_redirectid
 )
 
@@ -7431,7 +7436,9 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	var cid int32
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
-	s, d := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	add, mul, sinadd := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
+	invall, color := IErr, float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyBGCtrl_id:
@@ -7456,16 +7463,53 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c)
 		case modifyBGCtrl_y:
 			y = exp[0].evalF(c)
-		case modifyBGCtrl_src:
+		case modifyBGCtrl_source:
+			src[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
-				s[0] = exp[0].evalI(c)
-				s[1] = exp[1].evalI(c)
+				src[1] = exp[1].evalI(c)
 			}
-		case modifyBGCtrl_dst:
+		case modifyBGCtrl_dest:
+			dst[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
-				d[0] = exp[0].evalI(c)
-				d[1] = exp[1].evalI(c)
+				dst[1] = exp[1].evalI(c)
 			}
+		case modifyBGCtrl_add:
+			add[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				add[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					add[2] = exp[2].evalI(c)
+				}
+			}
+		case modifyBGCtrl_mul:
+			mul[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				mul[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					mul[2] = exp[2].evalI(c)
+				}
+			}
+		case modifyBGCtrl_sinadd:
+			var side int32 = 1
+			if len(exp) > 3 {
+				if exp[3].evalI(c) < 0 {
+					sinadd[3] = -exp[3].evalI(c)
+					side = -1
+				} else {
+					sinadd[3] = exp[3].evalI(c)
+				}
+			}
+			sinadd[0] = exp[0].evalI(c) * side
+			if len(exp) > 1 {
+				sinadd[1] = exp[1].evalI(c) * side
+				if len(exp) > 2 {
+					sinadd[2] = exp[2].evalI(c) * side
+				}
+			}
+		case modifyBGCtrl_invertall:
+			invall = exp[0].evalI(c)
+		case modifyBGCtrl_color:
+			color = ClampF(exp[0].evalF(c) / 256, 0, 1)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
@@ -7475,7 +7519,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, s, d)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, invall, color)
 	return false
 }
 
