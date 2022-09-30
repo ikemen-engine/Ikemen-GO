@@ -2367,12 +2367,13 @@ const (
 	playSnd_freqmul
 	playSnd_loop
 	playSnd_redirectid
+	playSnd_priority
 )
 
 func (sc playSnd) Run(c *Char, _ []int32) bool {
 	crun := c
 	f, lw, lp := false, false, false
-	var g, n, ch, vo int32 = -1, 0, -1, 100
+	var g, n, ch, vo, pri int32 = -1, 0, -1, 100, 0
 	var p, fr float32 = 0, 1
 	x := &c.pos[0]
 	ls := c.localscl
@@ -2402,6 +2403,8 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			fr = exp[0].evalF(c)
 		case playSnd_loop:
 			lp = exp[0].evalB(c)
+		case playSnd_priority:
+			pri = exp[0].evalI(c)
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -2413,7 +2416,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true)
+	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true, pri)
 	return false
 }
 
@@ -5431,7 +5434,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			crun.playSound(exp[0].evalB(c), false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, 1, nil, false)
+				vo, 0, 1, 1, nil, false, 0)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

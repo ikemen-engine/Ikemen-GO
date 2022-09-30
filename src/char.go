@@ -3082,7 +3082,7 @@ func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
 func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
-	p, freqmul, ls float32, x *float32, log bool) {
+	p, freqmul, ls float32, x *float32, log bool, priority int32) {
 	if g < 0 {
 		return
 	}
@@ -3115,7 +3115,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			return
 		}
 	}
-	if ch := c.soundChannels.New(chNo, lowpriority); ch != nil {
+	if ch := c.soundChannels.New(chNo, lowpriority, priority); ch != nil {
 		ch.Play(s, loop, freqmul)
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
@@ -3123,6 +3123,9 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 			ch.SetVolume(256)
 		} else {
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
+		}
+		if chNo >= 0 && priority != 0 {
+			ch.SetPrioirty(priority)
 		}
 		//} else {
 		//	if f {
@@ -5808,7 +5811,7 @@ func (c *Char) tick() {
 		if c.life <= 0 && !sys.sf(GSF_noko) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false)
+				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
 		}
@@ -6466,7 +6469,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.hitsound[1],
-					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true)
+					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -6512,7 +6515,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				vo := int32(100)
 				c.playSound(f, false, false, sg, hd.guardsound[1],
-					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true)
+					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)

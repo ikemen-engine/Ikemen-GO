@@ -471,7 +471,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 10 {
 			p = float32(numArg(l, 10))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false)
+		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false, 0)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
