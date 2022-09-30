@@ -440,7 +440,7 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
 		f, lw, lp := false, false, false
-		var g, n, ch, vo int32 = -1, 0, -1, 100
+		var g, n, ch, vo, priority int32 = -1, 0, -1, 100, 0
 		var p, fr float32 = 0, 1
 		x := &sys.chars[pn-1][0].pos[0]
 		ls := sys.chars[pn-1][0].localscl
@@ -471,7 +471,10 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 10 {
 			p = float32(numArg(l, 10))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false, 0)
+		if l.GetTop() >= 11 {
+			priority = int32(numArg(l, 11))
+		}
+		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
