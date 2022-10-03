@@ -38,7 +38,7 @@ type RenderParams struct {
 	rxadd    float32
 	rot      Rotation
 	// Transparency, masking and palette effects
-	tint  uint32 // Sprite tint for shadows (unused yet)
+	tint  uint32 // Sprite tint for shadows
 	trans int32  // Mugen transparency blending
 	mask  int32  // Mask for transparency
 	pfx   *PalFX
@@ -85,7 +85,7 @@ func RenderInit() {
 	mainShader.RegisterTextures("pal")
 
 	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
-	flatShader.RegisterUniforms("color", "isShadow")
+	flatShader.RegisterUniforms("color")
 	flatShader.RegisterTextures("pal") // TODO: remove this later
 
 	nullTexture = newTexture(1, 1, 32)
@@ -320,6 +320,9 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
+	tint := [4]float32{float32(rp.tint&0xff)/255, float32(rp.tint>>8&0xff)/255,
+		float32(rp.tint>>16&0xff)/255, float32(rp.tint>>24&0xff)/255}
+
 	if rp.pfx != nil {
 		neg, grayscale, padd, pmul = rp.pfx.getFcPalFx(rp.trans == -2)
 		if rp.trans == -2 {
@@ -330,23 +333,9 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UniformF("gray", grayscale)
 	mainShader.UniformFv("add", padd[:])
 	mainShader.UniformFv("mult", pmul[:])
+	mainShader.UniformFv("tint", tint[:])
 
 	rmMainSub(mainShader, rp)
-}
-
-func RenderFlatSprite(rp RenderParams, color uint32) {
-	if !rp.IsValid() {
-		return
-	}
-	rmInitSub(&rp)
-	flatShader.UseProgram()
-	flatShader.UniformTexture("tex", rp.tex)
-	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
-	flatShader.UniformF("color",
-		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
-	flatShader.UniformI("isShadow", 1)
-
-	rmMainSub(flatShader, rp)
 }
 
 func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) {
@@ -410,7 +399,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	flatShader.UniformMatrix("projection", proj[:])
 	flatShader.UniformF("color", r, g, b)
 	flatShader.UniformI("isShadow", 0)
-	flatShader.UniformTexture("tex", nullTexture)
+	flatShader.UniformTexture("tex", nullTexture) // TODO: remove this later
 	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
 	flatShader.EnableAttribs()
 

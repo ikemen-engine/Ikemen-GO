@@ -5,6 +5,7 @@ uniform sampler2D tex;
 uniform sampler2D pal;
 
 uniform vec4 x1x2x4x3;
+uniform vec4 tint;
 uniform vec3 add, mult;
 uniform float alpha, gray;
 uniform int mask;
@@ -37,7 +38,13 @@ void main(void) {
 			c = texture(pal, vec2(c.r*0.9966, 0.5));
 		}
 	}
+
 	if (neg) c.rgb = neg_base - c.rgb;
 	c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
-	gl_FragColor = c * final_mul;
+	c *= final_mul;
+
+	// Add a final tint (used for shadows)
+	c.rgb = mix(c.rgb, tint.rgb, tint.a);
+
+	gl_FragColor = c;
 }
