@@ -353,6 +353,12 @@ func (r *Renderer) EndFrame() {
 	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
+func (r *Renderer) ReadPixels(data[]uint8, width, height int) {
+	r.EndFrame()
+	gl.ReadPixels(data, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
+	r.BeginFrame()
+}
+
 func (r *Renderer) RenderQuad() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
