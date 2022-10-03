@@ -268,7 +268,7 @@ func rmMainSub(s *ShaderProgram, rp RenderParams) {
 	}, rp.trans, rp.paltex != nil)
 
 	s.DisableAttribs()
-	gl.Disable(gl.SCISSOR_TEST)
+	renderer.DisableScissor()
 }
 
 func rmInitSub(rp *RenderParams) {
@@ -297,8 +297,8 @@ func rmInitSub(rp *RenderParams) {
 		rp.y *= -1
 	}
 	rp.y += rp.rcy
-	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(rp.window[0], sys.scrrect[3]-(rp.window[1]+rp.window[3]),
+	renderer.EnableScissor(rp.window[0],
+		sys.scrrect[3]-(rp.window[1]+rp.window[3]),
 		rp.window[2], rp.window[3])
 }
 
