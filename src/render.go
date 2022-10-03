@@ -254,22 +254,6 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 }
-func rmMainSub(s *ShaderProgram, rp RenderParams) {
-	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-	s.UniformMatrix("projection", proj[:])
-
-	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
-
-	s.EnableAttribs()
-
-	renderWithBlending(func(a float32) {
-		s.UniformF("alpha", a)
-		rmTileSub(s, modelview, rp)
-	}, rp.trans, rp.paltex != nil)
-
-	s.DisableAttribs()
-	renderer.DisableScissor()
-}
 
 func rmInitSub(rp *RenderParams) {
 	if rp.vs < 0 {
@@ -297,16 +281,15 @@ func rmInitSub(rp *RenderParams) {
 		rp.y *= -1
 	}
 	rp.y += rp.rcy
-	renderer.EnableScissor(rp.window[0],
-		sys.scrrect[3]-(rp.window[1]+rp.window[3]),
-		rp.window[2], rp.window[3])
 }
 
 func RenderSprite(rp RenderParams) {
 	if !rp.IsValid() {
 		return
 	}
+
 	rmInitSub(&rp)
+
 	mainShader.UseProgram()
 	mainShader.UniformTexture("tex", rp.tex)
 	if rp.paltex == nil {
@@ -335,7 +318,23 @@ func RenderSprite(rp RenderParams) {
 	mainShader.UniformFv("mult", pmul[:])
 	mainShader.UniformFv("tint", tint[:])
 
-	rmMainSub(mainShader, rp)
+	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
+	mainShader.UniformMatrix("projection", proj[:])
+
+	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
+
+	renderer.EnableScissor(rp.window[0],
+		sys.scrrect[3]-(rp.window[1]+rp.window[3]),
+		rp.window[2], rp.window[3])
+	mainShader.EnableAttribs()
+
+	renderWithBlending(func(a float32) {
+		mainShader.UniformF("alpha", a)
+		rmTileSub(mainShader, modelview, rp)
+	}, rp.trans, rp.paltex != nil)
+
+	mainShader.DisableAttribs()
+	renderer.DisableScissor()
 }
 
 func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) {
