@@ -494,10 +494,10 @@ func (s *System) runMainThreadTask() {
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
-		renderer.EndFrame()
+		gfx.EndFrame()
 		s.window.SwapBuffers()
 		// Begin the next frame
-		renderer.BeginFrame()
+		gfx.BeginFrame()
 	}
 	s.runMainThreadTask()
 	now := time.Now()

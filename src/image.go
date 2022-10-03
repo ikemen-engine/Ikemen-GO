@@ -1324,7 +1324,7 @@ func captureScreen() {
 	width, height := sys.window.GetSize()
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	renderer.ReadPixels(pixdata, width, height)
+	gfx.ReadPixels(pixdata, width, height)
 	for i := 0; i < 4*width*height; i++ {
 		var x, y, j int
 		x = i % (width * 4)
