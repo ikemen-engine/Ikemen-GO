@@ -78,6 +78,26 @@ func (s *ShaderProgram) DisableAttribs() {
 	gl.DisableVertexAttribArray(s.aUv)
 }
 
+func (s *ShaderProgram) SetBlending(eq BlendEquation, src, dst BlendFunc) {
+	gl.Enable(gl.BLEND)
+	eq_lut := map[BlendEquation]gl.Enum {
+		BlendAdd: gl.FUNC_ADD,
+		BlendReverseSubtract: gl.FUNC_REVERSE_SUBTRACT,
+	}
+	gl.BlendEquation(eq_lut[eq])
+	func_lut := map[BlendFunc]gl.Enum {
+		BlendOne: gl.ONE,
+		BlendZero: gl.ZERO,
+		BlendSrcAlpha: gl.SRC_ALPHA,
+		BlendOneMinusSrcAlpha: gl.ONE_MINUS_SRC_ALPHA,
+	}
+	gl.BlendFunc(func_lut[src], func_lut[dst])
+}
+
+func (s *ShaderProgram) DisableBlending() {
+	gl.Disable(gl.BLEND)
+}
+
 func (s *ShaderProgram) UniformI(name string, val int) {
 	loc := s.u[name]
 	gl.Uniform1i(loc, val)

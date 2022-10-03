@@ -4,8 +4,23 @@ import (
 	_ "embed" // Support for go:embed resources
 	"math"
 
-	gl "github.com/fyne-io/gl-js"
 	mgl "github.com/go-gl/mathgl/mgl32"
+)
+
+type BlendFunc int
+
+const (
+	BlendOne = BlendFunc(iota)
+	BlendZero
+	BlendSrcAlpha
+	BlendOneMinusSrcAlpha
+)
+
+type BlendEquation int
+
+const  (
+	BlendAdd = BlendEquation(iota)
+	BlendReverseSubtract
 )
 
 // Rotation holds rotation parameters
@@ -290,18 +305,6 @@ func RenderSprite(rp RenderParams) {
 
 	rmInitSub(&rp)
 
-	mainShader.UseProgram()
-	mainShader.UniformTexture("tex", rp.tex)
-	if rp.paltex == nil {
-		mainShader.UniformTexture("pal", nullTexture)
-		mainShader.UniformI("isRgba", 1)
-	} else {
-		mainShader.UniformTexture("pal", rp.paltex)
-		mainShader.UniformI("isRgba", 0)
-		mainShader.UniformI("mask", int(rp.mask))
-	}
-	mainShader.UniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
-
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
 	tint := [4]float32{float32(rp.tint&0xff)/255, float32(rp.tint>>8&0xff)/255,
 		float32(rp.tint>>16&0xff)/255, float32(rp.tint>>24&0xff)/255}
@@ -312,69 +315,73 @@ func RenderSprite(rp RenderParams) {
 			padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		}
 	}
-	mainShader.UniformI("neg", int(Btoi(neg)))
-	mainShader.UniformF("gray", grayscale)
-	mainShader.UniformFv("add", padd[:])
-	mainShader.UniformFv("mult", pmul[:])
-	mainShader.UniformFv("tint", tint[:])
 
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-	mainShader.UniformMatrix("projection", proj[:])
-
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
 	renderer.EnableScissor(rp.window[0],
 		sys.scrrect[3]-(rp.window[1]+rp.window[3]),
 		rp.window[2], rp.window[3])
-	mainShader.EnableAttribs()
 
-	renderWithBlending(func(a float32) {
+	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
+
+		mainShader.UseProgram()
+
+		mainShader.UniformMatrix("projection", proj[:])
+		mainShader.UniformTexture("tex", rp.tex)
+		if rp.paltex == nil {
+			mainShader.UniformTexture("pal", nullTexture)
+			mainShader.UniformI("isRgba", 1)
+		} else {
+			mainShader.UniformTexture("pal", rp.paltex)
+			mainShader.UniformI("isRgba", 0)
+			mainShader.UniformI("mask", int(rp.mask))
+		}
+		mainShader.UniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
+
+		mainShader.UniformI("neg", int(Btoi(neg)))
+		mainShader.UniformF("gray", grayscale)
+		mainShader.UniformFv("add", padd[:])
+		mainShader.UniformFv("mult", pmul[:])
+		mainShader.UniformFv("tint", tint[:])
+
+		mainShader.EnableAttribs()
+		mainShader.SetBlending(eq, src, dst)
 		mainShader.UniformF("alpha", a)
+
 		rmTileSub(mainShader, modelview, rp)
+
+		mainShader.DisableBlending()
+		mainShader.DisableAttribs()
 	}, rp.trans, rp.paltex != nil)
 
-	mainShader.DisableAttribs()
 	renderer.DisableScissor()
 }
 
-func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) {
-	var blendSourceFactor gl.Enum = gl.SRC_ALPHA
+func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool) {
+	blendSourceFactor := BlendSrcAlpha
 	if !correctAlpha {
-		blendSourceFactor = gl.ONE
+		blendSourceFactor = BlendOne
 	}
-	gl.Enable(gl.BLEND)
 	switch {
 	case trans == -1:
-		gl.BlendFunc(blendSourceFactor, gl.ONE)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(1)
+		render(BlendAdd, blendSourceFactor, BlendOne, 1)
 	case trans == -2:
-		gl.BlendFunc(gl.ONE, gl.ONE)
-		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		render(1)
+		render(BlendReverseSubtract, BlendOne, BlendOne, 1)
 	case trans <= 0:
 	case trans < 255:
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(float32(trans) / 255)
+		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans) / 255)
 	case trans < 512:
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(1)
+		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
-			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
-			gl.BlendEquation(gl.FUNC_ADD)
-			render(1 - float32(dst)/255)
+			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1 - float32(dst)/255)
 		}
 		if src > 0 {
-			gl.BlendFunc(blendSourceFactor, gl.ONE)
-			gl.BlendEquation(gl.FUNC_ADD)
-			render(float32(src) / 255)
+			render(BlendAdd, blendSourceFactor, BlendOne, float32(src) / 255)
 		}
 	}
-	gl.Disable(gl.BLEND)
 }
 
 func FillRect(rect [4]int32, color uint32, trans int32) {
@@ -387,25 +394,25 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	flatShader.SetVertexData(
-		x2, y2, 1, 1,
-		x2, y1, 1, 0,
-		x1, y2, 0, 1,
-		x1, y1, 0, 0)
 
-	flatShader.UseProgram()
-	flatShader.UniformMatrix("modelview", modelview[:])
-	flatShader.UniformMatrix("projection", proj[:])
-	flatShader.UniformF("color", r, g, b)
-	flatShader.UniformI("isShadow", 0)
-	flatShader.UniformTexture("tex", nullTexture) // TODO: remove this later
-	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
-	flatShader.EnableAttribs()
+	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
+		flatShader.UseProgram()
+		flatShader.SetBlending(eq, src, dst)
+		flatShader.SetVertexData(
+			x2, y2, 1, 1,
+			x2, y1, 1, 0,
+			x1, y2, 0, 1,
+			x1, y1, 0, 0)
 
-	renderWithBlending(func(a float32) {
+		flatShader.UniformMatrix("modelview", modelview[:])
+		flatShader.UniformMatrix("projection", proj[:])
+		flatShader.UniformF("color", r, g, b)
 		flatShader.UniformF("alpha", a)
+		flatShader.UniformTexture("tex", nullTexture) // TODO: remove this later
+		flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
+		flatShader.EnableAttribs()
 		renderer.RenderQuad()
+		flatShader.DisableAttribs()
+		flatShader.DisableBlending()
 	}, trans, true)
-
-	flatShader.DisableAttribs()
 }
