@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	gl "github.com/fyne-io/gl-js"
-	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -54,10 +52,6 @@ func main() {
 
 	processCommandLine()
 
-	// Initialize OpenGL
-	chk(glfw.Init(gl.ContextWatcher))
-	defer glfw.Terminate()
-
 	// Try reading stats
 	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
 		// If there was an error reading, write an empty json file
@@ -87,6 +81,7 @@ func main() {
 
 	// Initialize game and create window
 	sys.luaLState = sys.init(tmp.GameWidth, tmp.GameHeight)
+	defer sys.shutdown()
 
 	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(tmp.System); err != nil {
@@ -106,9 +101,6 @@ func main() {
 			panic(err)
 		}
 	}
-
-	// Shutdown
-	sys.shutdown()
 }
 
 // Loops through given comand line arguments and processes them for later use by the game

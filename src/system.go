@@ -459,6 +459,7 @@ func (s *System) shutdown() {
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
+	s.window.Close()
 	speaker.Close()
 }
 func (s *System) setWindowSize(w, h int32) {
