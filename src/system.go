@@ -18,7 +18,6 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	gl "github.com/fyne-io/gl-js"
 	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -491,6 +490,7 @@ func (s *System) runMainThreadTask() {
 		}
 	}
 }
+
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
@@ -520,16 +520,9 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {
-		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
-		//gl.Viewport(0, 0, int32(width), int32(height))
-		gl.Viewport(0, 0, int(s.scrrect[2]), int(s.scrrect[3]))
-		if s.netInput == nil {
-			gl.Clear(gl.COLOR_BUFFER_BIT)
-		}
-	}
 	return !s.gameEnd
 }
+
 func (s *System) update() bool {
 	s.frameCounter++
 	if s.fileInput != nil {

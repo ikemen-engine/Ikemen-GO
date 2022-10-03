@@ -319,6 +319,8 @@ func (r *Renderer) IsOpenGL() bool {
 
 func (r *Renderer) BeginFrame() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+	gl.Viewport(0, 0, int(sys.scrrect[2]), int(sys.scrrect[3]))
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 func (r *Renderer) EndFrame() {
