@@ -167,6 +167,9 @@ type Renderer struct {
 	vertexBuffer gl.Buffer
 }
 
+// The global rendering backend
+var gfx = &Renderer{}
+
 //go:embed shaders/sprite.vert.glsl
 var vertShader string
 
@@ -179,11 +182,12 @@ var identVertShader string
 //go:embed shaders/ident.frag.glsl
 var identFragShader string
 
-func newRenderer() (r *Renderer) {
+// Render initialization.
+// Creates the default shaders, the framebuffer and enables MSAA.
+func (r *Renderer) Init() {
 	sys.errLog.Printf("Using OpenGL %v (%v)",
 		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
-	r = &Renderer{}
 	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
 	// Data buffers for rendering
@@ -271,8 +275,9 @@ func newRenderer() (r *Renderer) {
 	}
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, gl.NoFramebuffer)
+}
 
-	return
+func (r *Renderer) Close() {
 }
 
 func (r *Renderer) IsOpenGL() bool {

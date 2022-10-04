@@ -370,7 +370,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 
 	// Loading of external shader data.
-	// We need to do this before the render initialization at "RenderInit()"
+	// We need to do this before the render initialization at "gfx.Init()"
 	if len(s.externalShaderList) > 0 {
 		// First we initialize arrays.
 		s.externalShaders = make([][]string, 2)
@@ -402,8 +402,9 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 	// PS: The "\x00" is what is know as Null Terminator.
 
-	// Now we proceed to int the render.
-	RenderInit()
+	// Now we proceed to init the render.
+	gfx.Init()
+	gfx.BeginFrame()
 	// And the audio.
 	speaker.Init(audioFrequency, audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
@@ -458,6 +459,7 @@ func (s *System) shutdown() {
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
+	gfx.Close()
 	s.window.Close()
 	speaker.Close()
 }

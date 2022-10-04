@@ -72,15 +72,6 @@ func (rp *RenderParams) IsValid() bool {
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
-// The global rendering backend
-var gfx *Renderer
-
-// Render initialization.
-// Creates the default shaders, the framebuffer and enables MSAA.
-func RenderInit() {
-	gfx = newRenderer()
-}
-
 func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	gfx.SetUniformMatrix("modelview", modelview[:])
 	gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
