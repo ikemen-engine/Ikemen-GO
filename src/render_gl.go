@@ -53,8 +53,6 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 
 	s.u = make(map[string]gl.Uniform)
 	s.t = make(map[string]int)
-	s.RegisterUniforms("modelview", "projection", "alpha")
-	s.RegisterTextures("tex")
 	return
 }
 
@@ -165,9 +163,15 @@ type Renderer struct {
 	postVertBuffer gl.Buffer
 	postShaderSelect []*ShaderProgram
 	// Shader and vertex data for primitive rendering
-	currentProgram *ShaderProgram
+	spriteShader *ShaderProgram
 	vertexBuffer gl.Buffer
 }
+
+//go:embed shaders/sprite.vert.glsl
+var vertShader string
+
+//go:embed shaders/sprite.frag.glsl
+var fragShader string
 
 //go:embed shaders/ident.vert.glsl
 var identVertShader string
@@ -189,6 +193,12 @@ func newRenderer() (r *Renderer) {
 	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
 
 	r.vertexBuffer = gl.CreateBuffer()
+
+	// Sprite shader
+	r.spriteShader = newShaderProgram(vertShader, fragShader, "Main Shader")
+	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez")
+	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Compile postprocessing shaders
 
@@ -308,9 +318,8 @@ func (r *Renderer) EndFrame() {
 	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
-func (r *Renderer) SetPipeline (p *ShaderProgram, eq BlendEquation, src, dst BlendFunc) {
-	r.currentProgram = p
-	gl.UseProgram(p.program)
+func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
+	gl.UseProgram(r.spriteShader.program)
 
 	gl.BlendEquation(BlendEquationLUT[eq])
 	gl.BlendFunc(BlendFunctionLUT[src], BlendFunctionLUT[dst])
@@ -319,15 +328,15 @@ func (r *Renderer) SetPipeline (p *ShaderProgram, eq BlendEquation, src, dst Ble
 	// Must bind buffer before enabling attributes
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 
-	gl.EnableVertexAttribArray(p.aPos)
-	gl.VertexAttribPointer(p.aPos, 2, gl.FLOAT, false, 16, 0)
-	gl.EnableVertexAttribArray(p.aUv)
-	gl.VertexAttribPointer(p.aUv, 2, gl.FLOAT, false, 16, 8)
+	gl.EnableVertexAttribArray(r.spriteShader.aPos)
+	gl.VertexAttribPointer(r.spriteShader.aPos, 2, gl.FLOAT, false, 16, 0)
+	gl.EnableVertexAttribArray(r.spriteShader.aUv)
+	gl.VertexAttribPointer(r.spriteShader.aUv, 2, gl.FLOAT, false, 16, 8)
 }
 
 func (r *Renderer) ReleasePipeline() {
-	gl.DisableVertexAttribArray(r.currentProgram.aPos)
-	gl.DisableVertexAttribArray(r.currentProgram.aUv)
+	gl.DisableVertexAttribArray(r.spriteShader.aPos)
+	gl.DisableVertexAttribArray(r.spriteShader.aUv)
 	gl.Disable(gl.BLEND)
 }
 
@@ -347,12 +356,12 @@ func (r *Renderer) DisableScissor() {
 }
 
 func (r *Renderer) SetUniformI(name string, val int) {
-	loc := r.currentProgram.u[name]
+	loc := r.spriteShader.u[name]
 	gl.Uniform1i(loc, val)
 }
 
 func (r *Renderer) SetUniformF(name string, values ...float32) {
-	loc := r.currentProgram.u[name]
+	loc := r.spriteShader.u[name]
 	switch len(values) {
 	case 1: gl.Uniform1f(loc, values[0])
 	case 2: gl.Uniform2f(loc, values[0], values[1])
@@ -362,7 +371,7 @@ func (r *Renderer) SetUniformF(name string, values ...float32) {
 }
 
 func (r *Renderer) SetUniformFv(name string, values []float32) {
-	loc := r.currentProgram.u[name]
+	loc := r.spriteShader.u[name]
 	switch len(values) {
 	case 2: gl.Uniform2fv(loc, values)
 	case 3: gl.Uniform3fv(loc, values)
@@ -371,12 +380,12 @@ func (r *Renderer) SetUniformFv(name string, values []float32) {
 }
 
 func (r *Renderer) SetUniformMatrix(name string, value []float32) {
-	loc := r.currentProgram.u[name]
+	loc := r.spriteShader.u[name]
 	gl.UniformMatrix4fv(loc, value)
 }
 
 func (r *Renderer) SetTexture(name string, t *Texture) {
-	loc, unit := r.currentProgram.u[name], r.currentProgram.t[name]
+	loc, unit := r.spriteShader.u[name], r.spriteShader.t[name]
 	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.Uniform1i(loc, unit)

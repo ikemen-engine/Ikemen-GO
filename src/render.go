@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed" // Support for go:embed resources
 	"math"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
@@ -76,34 +75,10 @@ func (rp *RenderParams) IsValid() bool {
 // The global rendering backend
 var gfx *Renderer
 
-var mainShader, flatShader *ShaderProgram
-
-var nullTexture *Texture
-
-//go:embed shaders/sprite.vert.glsl
-var vertShader string
-
-//go:embed shaders/sprite.frag.glsl
-var fragShader string
-
-//go:embed shaders/flat.frag.glsl
-var fragShaderFlat string
-
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func RenderInit() {
 	gfx = newRenderer()
-
-	// Sprite shaders
-	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
-	mainShader.RegisterTextures("pal")
-
-	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
-	flatShader.RegisterUniforms("color")
-	flatShader.RegisterTextures("pal") // TODO: remove this later
-
-	nullTexture = newTexture(1, 1, 32)
 }
 
 func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
@@ -325,12 +300,11 @@ func RenderSprite(rp RenderParams) {
 
 	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
 
-		gfx.SetPipeline(mainShader, eq, src, dst)
+		gfx.SetPipeline(eq, src, dst)
 
 		gfx.SetUniformMatrix("projection", proj[:])
 		gfx.SetTexture("tex", rp.tex)
 		if rp.paltex == nil {
-			gfx.SetTexture("pal", nullTexture)
 			gfx.SetUniformI("isRgba", 1)
 		} else {
 			gfx.SetTexture("pal", rp.paltex)
@@ -338,6 +312,7 @@ func RenderSprite(rp RenderParams) {
 			gfx.SetUniformI("mask", int(rp.mask))
 		}
 		gfx.SetUniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
+		gfx.SetUniformI("isFlat", 0)
 
 		gfx.SetUniformI("neg", int(Btoi(neg)))
 		gfx.SetUniformF("gray", grayscale)
@@ -392,7 +367,7 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
 
 	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
-		gfx.SetPipeline(flatShader, eq, src, dst)
+		gfx.SetPipeline(eq, src, dst)
 		gfx.SetVertexData(
 			x2, y2, 1, 1,
 			x2, y1, 1, 0,
@@ -401,10 +376,8 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 
 		gfx.SetUniformMatrix("modelview", modelview[:])
 		gfx.SetUniformMatrix("projection", proj[:])
-		gfx.SetUniformF("color", r, g, b)
-		gfx.SetUniformF("alpha", a)
-		gfx.SetTexture("tex", nullTexture) // TODO: remove this later
-		gfx.SetTexture("pal", nullTexture) // TODO: remove this later
+		gfx.SetUniformI("isFlat", 1)
+		gfx.SetUniformF("tint", r, g, b, a)
 		gfx.RenderQuad()
 		gfx.ReleasePipeline()
 	}, trans, true)
