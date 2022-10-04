@@ -43,29 +43,16 @@ static kinc_g4_shader_t *load_shader(const char *filename, kinc_g4_shader_type_t
 */
 import "C"
 
-// ------------------------------------------------------------------
-// Pipeline
-
-type Pipeline struct {
-	pipeline *C.kinc_g4_pipeline_t
-	u map[string]C.kinc_g4_constant_location_t
-	t map[string]C.kinc_g4_texture_unit_t
+var BlendEquationLUT = map[BlendEquation]C.kinc_g4_blending_operation_t {
+	BlendAdd: C.KINC_G4_BLENDOP_ADD,
+	BlendReverseSubtract: C.KINC_G4_BLENDOP_REVERSE_SUBTRACT,
 }
 
-func (p *Pipeline) RegisterTextures(names ...string) {
-	for _, name := range names {
-		cname := C.CString(name)
-		p.t[name] = C.kinc_g4_pipeline_get_texture_unit(p.pipeline, cname)
-		C.free(unsafe.Pointer(cname))
-	}
-}
-
-func (p *Pipeline) RegisterUniforms(names ...string) {
-	for _, name := range names {
-		cname := C.CString(name)
-		p.u[name] = C.kinc_g4_pipeline_get_constant_location(p.pipeline, cname)
-		C.free(unsafe.Pointer(cname))
-	}
+var BlendFunctionLUT = map[BlendFunc]C.kinc_g4_blending_factor_t {
+	BlendOne: C.KINC_G4_BLEND_ONE,
+	BlendZero: C.KINC_G4_BLEND_ZERO,
+	BlendSrcAlpha: C.KINC_G4_BLEND_SOURCE_ALPHA,
+	BlendOneMinusSrcAlpha: C.KINC_G4_BLEND_INV_SOURCE_ALPHA,
 }
 
 // ------------------------------------------------------------------
@@ -118,14 +105,49 @@ func (t *Texture) IsValid() bool {
 }
 
 // ------------------------------------------------------------------
+// Pipeline
+
+type PipelineParams struct {
+	eq BlendEquation
+	src BlendFunc
+	dst BlendFunc
+}
+
+type Pipeline struct {
+	kp *C.kinc_g4_pipeline_t
+	u map[string]C.kinc_g4_constant_location_t
+	t map[string]C.kinc_g4_texture_unit_t
+}
+
+func (p *Pipeline) RegisterTextures(names ...string) {
+	for _, name := range names {
+		cname := C.CString(name)
+		p.t[name] = C.kinc_g4_pipeline_get_texture_unit(p.kp, cname)
+		C.free(unsafe.Pointer(cname))
+	}
+}
+
+func (p *Pipeline) RegisterUniforms(names ...string) {
+	for _, name := range names {
+		cname := C.CString(name)
+		p.u[name] = C.kinc_g4_pipeline_get_constant_location(p.kp, cname)
+		C.free(unsafe.Pointer(cname))
+	}
+}
+
+// ------------------------------------------------------------------
 // Renderer
 
 type Renderer struct {
 	layout *C.kinc_g4_vertex_structure_t
 	indexBuffer *C.kinc_g4_index_buffer_t
 	vertexBuffer *C.kinc_g4_vertex_buffer_t
+	// All pipelines use the same shaders
+	vertexShader *C.kinc_g4_shader_t
+	fragmentShader *C.kinc_g4_shader_t
 	// The rendering pipelines
-	currentPipeline Pipeline
+	pipelineCache map[PipelineParams]*Pipeline
+	currentPipeline *Pipeline
 }
 
 func (r *Renderer) Init() {
@@ -151,34 +173,10 @@ func (r *Renderer) Init() {
 	r.vertexBuffer = (*C.kinc_g4_vertex_buffer_t)(C.malloc(C.sizeof_kinc_g4_vertex_buffer_t))
 	C.kinc_g4_vertex_buffer_init(r.vertexBuffer, 4, r.layout, C.KINC_G4_USAGE_DYNAMIC, 0)
 
-	vs := C.load_shader(C.CString("sprite.vert"), C.KINC_G4_SHADER_TYPE_VERTEX)
-	fs := C.load_shader(C.CString("sprite.frag"), C.KINC_G4_SHADER_TYPE_FRAGMENT)
+	r.vertexShader = C.load_shader(C.CString("sprite.vert"), C.KINC_G4_SHADER_TYPE_VERTEX)
+	r.fragmentShader = C.load_shader(C.CString("sprite.frag"), C.KINC_G4_SHADER_TYPE_FRAGMENT)
 
-	p := (*C.kinc_g4_pipeline_t)(C.malloc(C.sizeof_kinc_g4_pipeline_t))
-	C.kinc_g4_pipeline_init(p)
-	p.vertex_shader = vs
-	p.fragment_shader = fs
-	p.input_layout[0] = r.layout
-	p.input_layout[1] = nil
-
-	p.depth_write = false
-	p.depth_mode = C.KINC_G4_COMPARE_ALWAYS
-
-	p.blend_operation = C.KINC_G4_BLENDOP_ADD
-	p.alpha_blend_operation = C.KINC_G4_BLENDOP_REVERSE_SUBTRACT
-	p.blend_source = C.KINC_G4_BLEND_SOURCE_ALPHA
-	p.blend_destination = C.KINC_G4_BLEND_INV_SOURCE_ALPHA
-	p.alpha_blend_source = C.KINC_G4_BLEND_ZERO
-	p.alpha_blend_destination = C.KINC_G4_BLEND_ONE
-
-	C.kinc_g4_pipeline_compile(p)
-
-	r.currentPipeline.pipeline = p
-	r.currentPipeline.u = make(map[string]C.kinc_g4_constant_location_t)
-	r.currentPipeline.t = make(map[string]C.kinc_g4_texture_unit_t)
-	r.currentPipeline.RegisterUniforms("modelview", "projection", "x1x2x4x3",
-		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez")
-	r.currentPipeline.RegisterTextures("pal", "tex")
+	r.pipelineCache = make(map[PipelineParams]*Pipeline)
 }
 
 func (r *Renderer) Close() {
@@ -186,7 +184,7 @@ func (r *Renderer) Close() {
 
 func (r *Renderer) BeginFrame() {
 	C.kinc_g4_begin(0)
-	C.kinc_g4_clear(C.KINC_G4_CLEAR_COLOR, 0xffff8800, 0.0, 0)
+	C.kinc_g4_clear(C.KINC_G4_CLEAR_COLOR, 0xff000000, 0.0, 0)
 }
 
 func (r *Renderer) EndFrame() {
@@ -194,7 +192,40 @@ func (r *Renderer) EndFrame() {
 }
 
 func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
-	C.kinc_g4_set_pipeline(r.currentPipeline.pipeline)
+	params := PipelineParams{ eq, src, dst }
+	p, ok := r.pipelineCache[params]
+	if !ok {
+		// Parameters are unknown, compile a pipeline on-the-fly and cache it
+		kp := (*C.kinc_g4_pipeline_t)(C.malloc(C.sizeof_kinc_g4_pipeline_t))
+		C.kinc_g4_pipeline_init(kp)
+		kp.vertex_shader = r.vertexShader
+		kp.fragment_shader = r.fragmentShader
+		kp.input_layout[0] = r.layout
+		kp.input_layout[1] = nil
+
+		kp.depth_write = false
+		kp.depth_mode = C.KINC_G4_COMPARE_ALWAYS
+
+		kp.blend_operation = BlendEquationLUT[eq]
+		kp.alpha_blend_operation = C.KINC_G4_BLENDOP_ADD
+		kp.blend_source = BlendFunctionLUT[src]
+		kp.blend_destination = BlendFunctionLUT[dst]
+		kp.alpha_blend_source = C.KINC_G4_BLEND_ZERO
+		kp.alpha_blend_destination = C.KINC_G4_BLEND_ONE
+
+		C.kinc_g4_pipeline_compile(kp)
+
+		p = &Pipeline{ kp: kp }
+		p.u = make(map[string]C.kinc_g4_constant_location_t)
+		p.t = make(map[string]C.kinc_g4_texture_unit_t)
+		p.RegisterUniforms("modelview", "projection", "x1x2x4x3",
+			"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez")
+		p.RegisterTextures("pal", "tex")
+
+		r.pipelineCache[params] = p
+	}
+	r.currentPipeline = p
+	C.kinc_g4_set_pipeline(p.kp)
 }
 
 func (r *Renderer) ReleasePipeline() {
