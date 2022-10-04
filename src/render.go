@@ -294,9 +294,7 @@ func RenderSprite(rp RenderParams) {
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
-	gfx.EnableScissor(rp.window[0],
-		sys.scrrect[3]-(rp.window[1]+rp.window[3]),
-		rp.window[2], rp.window[3])
+	gfx.Scissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
 
 	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
 

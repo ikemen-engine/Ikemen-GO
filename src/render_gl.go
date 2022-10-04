@@ -346,9 +346,9 @@ func (r *Renderer) ReadPixels(data[]uint8, width, height int) {
 	r.BeginFrame()
 }
 
-func (r *Renderer) EnableScissor(x, y, width, height int32) {
+func (r *Renderer) Scissor(x, y, width, height int32) {
 	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(x, y, width, height)
+	gl.Scissor(x, sys.scrrect[3] - (y + height), width, height)
 }
 
 func (r *Renderer) DisableScissor() {
