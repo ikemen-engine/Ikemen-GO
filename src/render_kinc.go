@@ -62,6 +62,7 @@ type Texture struct {
 	width  int32
 	height int32
 	depth  int32
+	filter bool
 	handle *C.kinc_g4_texture_t
 }
 
@@ -73,7 +74,7 @@ var TextureFormatLUT = map[int32]C.kinc_image_format_t {
 
 func newTexture(width, height, depth int32) (t *Texture) {
 	handle := (*C.kinc_g4_texture_t)(C.malloc(C.sizeof_kinc_g4_texture_t))
-	t = &Texture{width, height, depth, handle}
+	t = &Texture{width, height, depth, false, handle}
 
 	C.kinc_g4_texture_init(t.handle,
 		 C.int(width), C.int(height), TextureFormatLUT[depth])
@@ -89,6 +90,7 @@ func newTexture(width, height, depth int32) (t *Texture) {
 }
 
 func (t *Texture) SetData(data []byte, filter bool) {
+	t.filter = filter
 	pixels := C.kinc_g4_texture_lock(t.handle)
 	stride := C.kinc_g4_texture_stride(t.handle)
 	rowBytes := t.width * (t.depth / 8)
@@ -271,6 +273,16 @@ func (r *Renderer) SetUniformMatrix(name string, val []float32) {
 func (r *Renderer) SetTexture(name string, t *Texture) {
 	unit := r.currentPipeline.t[name]
 	C.kinc_g4_set_texture(unit, t.handle)
+	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_U, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP);
+	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_V, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP);
+	if t.filter {
+		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR);
+		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR);
+	} else {
+		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT);
+		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT);
+	}
+	C.kinc_g4_set_texture_mipmap_filter(unit, C.KINC_G4_MIPMAP_FILTER_NONE);
 }
 
 func (r *Renderer) SetVertexData(values ...float32) {
