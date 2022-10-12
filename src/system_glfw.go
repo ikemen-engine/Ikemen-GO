@@ -7,6 +7,7 @@ import (
 	"image"
 
 	glfw "github.com/fyne-io/glfw-js"
+	gl "github.com/fyne-io/gl-js"
 )
 
 type Window struct {
@@ -20,6 +21,9 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var err error
 	var window *glfw.Window
 	var monitor *glfw.Monitor
+
+	// Initialize OpenGL
+	chk(glfw.Init(gl.ContextWatcher))
 
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
@@ -122,4 +126,8 @@ func (w *Window) pollEvents() {
 
 func (w *Window) shouldClose() bool {
 	return w.Window.ShouldClose()
+}
+
+func (w *Window) Close() {
+	glfw.Terminate()
 }

@@ -1,11 +1,25 @@
 package main
 
 import (
-	_ "embed" // Support for go:embed resources
 	"math"
 
-	gl "github.com/fyne-io/gl-js"
 	mgl "github.com/go-gl/mathgl/mgl32"
+)
+
+type BlendFunc int
+
+const (
+	BlendOne = BlendFunc(iota)
+	BlendZero
+	BlendSrcAlpha
+	BlendOneMinusSrcAlpha
+)
+
+type BlendEquation int
+
+const  (
+	BlendAdd = BlendEquation(iota)
+	BlendReverseSubtract
 )
 
 // Rotation holds rotation parameters
@@ -38,7 +52,7 @@ type RenderParams struct {
 	rxadd    float32
 	rot      Rotation
 	// Transparency, masking and palette effects
-	tint  uint32 // Sprite tint for shadows (unused yet)
+	tint  uint32 // Sprite tint for shadows
 	trans int32  // Mugen transparency blending
 	mask  int32  // Mask for transparency
 	pfx   *PalFX
@@ -58,53 +72,20 @@ func (rp *RenderParams) IsValid() bool {
 		rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
-// The global rendering backend
-var renderer *Renderer
-
-var mainShader, flatShader *ShaderProgram
-
-var nullTexture *Texture
-
-//go:embed shaders/sprite.vert.glsl
-var vertShader string
-
-//go:embed shaders/sprite.frag.glsl
-var fragShader string
-
-//go:embed shaders/flat.frag.glsl
-var fragShaderFlat string
-
-// Render initialization.
-// Creates the default shaders, the framebuffer and enables MSAA.
-func RenderInit() {
-	renderer = newRenderer()
-
-	// Sprite shaders
-	mainShader = newShaderProgram(vertShader, fragShader, "Main Shader")
-	mainShader.RegisterUniforms("tint", "mask", "neg", "gray", "add", "mult", "x1x2x4x3", "isRgba", "isTrapez")
-	mainShader.RegisterTextures("pal")
-
-	flatShader = newShaderProgram(vertShader, fragShaderFlat, "Flat Shader")
-	flatShader.RegisterUniforms("color", "isShadow")
-	flatShader.RegisterTextures("pal") // TODO: remove this later
-
-	nullTexture = newTexture(1, 1, 32)
-}
-
-func drawQuads(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
-	s.UniformMatrix("modelview", modelview[:])
-	s.UniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
-	s.SetVertexData(
+func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
+	gfx.SetUniformMatrix("modelview", modelview[:])
+	gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+	gfx.SetVertexData(
 		x2, y2, 1, 1,
 		x3, y3, 1, 0,
 		x1, y1, 0, 1,
 		x4, y4, 0, 0)
 
-	renderer.RenderQuad()
+	gfx.RenderQuad()
 }
 
 // Render a quad with optional horizontal tiling
-func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
+func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
 	tl Tiling, rcx float32) {
 	//            p3
 	//    p4 o-----o-----o- - -o
@@ -140,11 +121,11 @@ func rmTileHSub(s *ShaderProgram, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4
 	for n := left; n < right; n++ {
 		x1d, x2d := x1 + float32(n) * botdist, x2 + float32(n) * botdist
 		x3d, x4d := x3 + float32(n) * topdist, x4 + float32(n) * topdist
-		drawQuads(s, modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+		drawQuads(modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 	}
 }
 
-func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
+func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 	x1, y1 := rp.x+rp.rxadd*rp.ys*float32(rp.size[1]), rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
@@ -192,7 +173,7 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 				mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0)).Mat4())
 		modelview = modelview.Mul4(mgl.Translate3D(-rp.rcx, -rp.rcy, 0))
 
-		drawQuads(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4)
+		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		return
 	}
 	if rp.tile.y == 1 && rp.xbs != 0 {
@@ -216,7 +197,7 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d,
+				rmTileHSub(modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d,
 					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 		}
@@ -233,7 +214,7 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				rmTileHSub(s, modelview, x1, y1, x2, y2, x3, y3, x4, y4,
+				rmTileHSub(modelview, x1, y1, x2, y2, x3, y3, x4, y4,
 					float32(rp.size[0]), rp.tile, rp.rcx)
 			}
 			if rp.tile.y != 1 && n != 0 {
@@ -253,22 +234,6 @@ func rmTileSub(s *ShaderProgram, modelview mgl.Mat4, rp RenderParams) {
 			y1 = y2
 		}
 	}
-}
-func rmMainSub(s *ShaderProgram, rp RenderParams) {
-	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
-	s.UniformMatrix("projection", proj[:])
-
-	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
-
-	s.EnableAttribs()
-
-	renderWithBlending(func(a float32) {
-		s.UniformF("alpha", a)
-		rmTileSub(s, modelview, rp)
-	}, rp.trans, rp.paltex != nil)
-
-	s.DisableAttribs()
-	gl.Disable(gl.SCISSOR_TEST)
 }
 
 func rmInitSub(rp *RenderParams) {
@@ -297,96 +262,86 @@ func rmInitSub(rp *RenderParams) {
 		rp.y *= -1
 	}
 	rp.y += rp.rcy
-	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(rp.window[0], sys.scrrect[3]-(rp.window[1]+rp.window[3]),
-		rp.window[2], rp.window[3])
 }
 
 func RenderSprite(rp RenderParams) {
 	if !rp.IsValid() {
 		return
 	}
+
 	rmInitSub(&rp)
-	mainShader.UseProgram()
-	mainShader.UniformTexture("tex", rp.tex)
-	if rp.paltex == nil {
-		mainShader.UniformTexture("pal", nullTexture)
-		mainShader.UniformI("isRgba", 1)
-	} else {
-		mainShader.UniformTexture("pal", rp.paltex)
-		mainShader.UniformI("isRgba", 0)
-		mainShader.UniformI("mask", int(rp.mask))
-	}
-	mainShader.UniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
+	tint := [4]float32{float32(rp.tint&0xff)/255, float32(rp.tint>>8&0xff)/255,
+		float32(rp.tint>>16&0xff)/255, float32(rp.tint>>24&0xff)/255}
+
 	if rp.pfx != nil {
 		neg, grayscale, padd, pmul = rp.pfx.getFcPalFx(rp.trans == -2)
 		if rp.trans == -2 {
 			padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		}
 	}
-	mainShader.UniformI("neg", int(Btoi(neg)))
-	mainShader.UniformF("gray", grayscale)
-	mainShader.UniformFv("add", padd[:])
-	mainShader.UniformFv("mult", pmul[:])
 
-	rmMainSub(mainShader, rp)
+	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
+	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
+
+	gfx.Scissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
+
+	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
+
+		gfx.SetPipeline(eq, src, dst)
+
+		gfx.SetUniformMatrix("projection", proj[:])
+		gfx.SetTexture("tex", rp.tex)
+		if rp.paltex == nil {
+			gfx.SetUniformI("isRgba", 1)
+		} else {
+			gfx.SetTexture("pal", rp.paltex)
+			gfx.SetUniformI("isRgba", 0)
+			gfx.SetUniformI("mask", int(rp.mask))
+		}
+		gfx.SetUniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
+		gfx.SetUniformI("isFlat", 0)
+
+		gfx.SetUniformI("neg", int(Btoi(neg)))
+		gfx.SetUniformF("gray", grayscale)
+		gfx.SetUniformFv("add", padd[:])
+		gfx.SetUniformFv("mult", pmul[:])
+		gfx.SetUniformFv("tint", tint[:])
+		gfx.SetUniformF("alpha", a)
+
+		rmTileSub(modelview, rp)
+
+		gfx.ReleasePipeline()
+	}, rp.trans, rp.paltex != nil)
+
+	gfx.DisableScissor()
 }
 
-func RenderFlatSprite(rp RenderParams, color uint32) {
-	if !rp.IsValid() {
-		return
-	}
-	rmInitSub(&rp)
-	flatShader.UseProgram()
-	flatShader.UniformTexture("tex", rp.tex)
-	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
-	flatShader.UniformF("color",
-		float32(color>>16&0xff)/255, float32(color>>8&0xff)/255, float32(color&0xff)/255)
-	flatShader.UniformI("isShadow", 1)
-
-	rmMainSub(flatShader, rp)
-}
-
-func renderWithBlending(render func(a float32), trans int32, correctAlpha bool) {
-	var blendSourceFactor gl.Enum = gl.SRC_ALPHA
+func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool) {
+	blendSourceFactor := BlendSrcAlpha
 	if !correctAlpha {
-		blendSourceFactor = gl.ONE
+		blendSourceFactor = BlendOne
 	}
-	gl.Enable(gl.BLEND)
 	switch {
 	case trans == -1:
-		gl.BlendFunc(blendSourceFactor, gl.ONE)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(1)
+		render(BlendAdd, blendSourceFactor, BlendOne, 1)
 	case trans == -2:
-		gl.BlendFunc(gl.ONE, gl.ONE)
-		gl.BlendEquation(gl.FUNC_REVERSE_SUBTRACT)
-		render(1)
+		render(BlendReverseSubtract, BlendOne, BlendOne, 1)
 	case trans <= 0:
 	case trans < 255:
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(float32(trans) / 255)
+		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans) / 255)
 	case trans < 512:
-		gl.BlendFunc(blendSourceFactor, gl.ONE_MINUS_SRC_ALPHA)
-		gl.BlendEquation(gl.FUNC_ADD)
-		render(1)
+		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
-			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
-			gl.BlendEquation(gl.FUNC_ADD)
-			render(1 - float32(dst)/255)
+			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1 - float32(dst)/255)
 		}
 		if src > 0 {
-			gl.BlendFunc(blendSourceFactor, gl.ONE)
-			gl.BlendEquation(gl.FUNC_ADD)
-			render(float32(src) / 255)
+			render(BlendAdd, blendSourceFactor, BlendOne, float32(src) / 255)
 		}
 	}
-	gl.Disable(gl.BLEND)
 }
 
 func FillRect(rect [4]int32, color uint32, trans int32) {
@@ -399,25 +354,20 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
-	flatShader.SetVertexData(
-		x2, y2, 1, 1,
-		x2, y1, 1, 0,
-		x1, y2, 0, 1,
-		x1, y1, 0, 0)
 
-	flatShader.UseProgram()
-	flatShader.UniformMatrix("modelview", modelview[:])
-	flatShader.UniformMatrix("projection", proj[:])
-	flatShader.UniformF("color", r, g, b)
-	flatShader.UniformI("isShadow", 0)
-	flatShader.UniformTexture("tex", nullTexture)
-	flatShader.UniformTexture("pal", nullTexture) // TODO: remove this later
-	flatShader.EnableAttribs()
+	renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
+		gfx.SetPipeline(eq, src, dst)
+		gfx.SetVertexData(
+			x2, y2, 1, 1,
+			x2, y1, 1, 0,
+			x1, y2, 0, 1,
+			x1, y1, 0, 0)
 
-	renderWithBlending(func(a float32) {
-		flatShader.UniformF("alpha", a)
-		renderer.RenderQuad()
+		gfx.SetUniformMatrix("modelview", modelview[:])
+		gfx.SetUniformMatrix("projection", proj[:])
+		gfx.SetUniformI("isFlat", 1)
+		gfx.SetUniformF("tint", r, g, b, a)
+		gfx.RenderQuad()
+		gfx.ReleasePipeline()
 	}, trans, true)
-
-	flatShader.DisableAttribs()
 }

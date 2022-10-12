@@ -740,19 +740,15 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		AbsF(xscl*h) * float32(a.spr.Offset[0]) * sys.widthScale,
 		AbsF(yscl*v) * float32(a.spr.Offset[1]) * sys.heightScale, a.tile,
 		xscl * h * sys.widthScale, xscl * h * sys.widthScale,
-		yscl * v * sys.heightScale, vscl, rxadd, rot, 0, 0, int32(a.mask), nil, window,
+		yscl * v * sys.heightScale, vscl, rxadd, rot, color | 0xff000000, 0, int32(a.mask), nil, window,
 		(x + float32(sys.gameWidth)/2) * sys.widthScale, y * sys.heightScale,
 		projectionMode, fLength,
 		xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x),
 		yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_y),
 	}
 
-	var draw func()
-	if a.spr.coldepth > 8 {
-		draw = func() {
-			RenderFlatSprite(rp, color)
-		}
-	} else {
+	// TODO: This is redundant now that rp.tint is used to colorise the shadow
+	if a.spr.coldepth <= 8 {
 		var pal [256]uint32
 		if color != 0 || alpha > 0 {
 			paltemp := a.spr.paltemp
@@ -767,17 +763,15 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 			}
 		}
 		rp.paltex = PaletteToTexture(pal[:])
-		draw = func() {
-			RenderSprite(rp)
-		}
 	}
+
 	if color != 0 {
 		rp.trans = -2
-		draw()
+		RenderSprite(rp)
 	}
 	if alpha > 0 {
 		rp.trans = (256-alpha)<<10 | 1<<9
-		draw()
+		RenderSprite(rp)
 	}
 }
 

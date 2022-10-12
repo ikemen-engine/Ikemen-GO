@@ -18,7 +18,6 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	gl "github.com/fyne-io/gl-js"
 	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -371,7 +370,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 
 	// Loading of external shader data.
-	// We need to do this before the render initialization at "RenderInit()"
+	// We need to do this before the render initialization at "gfx.Init()"
 	if len(s.externalShaderList) > 0 {
 		// First we initialize arrays.
 		s.externalShaders = make([][]string, 2)
@@ -403,8 +402,9 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 	// PS: The "\x00" is what is know as Null Terminator.
 
-	// Now we proceed to int the render.
-	RenderInit()
+	// Now we proceed to init the render.
+	gfx.Init()
+	gfx.BeginFrame()
 	// And the audio.
 	speaker.Init(audioFrequency, audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
@@ -459,6 +459,8 @@ func (s *System) shutdown() {
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
+	gfx.Close()
+	s.window.Close()
 	speaker.Close()
 }
 func (s *System) setWindowSize(w, h int32) {
@@ -490,13 +492,14 @@ func (s *System) runMainThreadTask() {
 		}
 	}
 }
+
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
-		renderer.EndFrame()
+		gfx.EndFrame()
 		s.window.SwapBuffers()
 		// Begin the next frame
-		renderer.BeginFrame()
+		gfx.BeginFrame()
 	}
 	s.runMainThreadTask()
 	now := time.Now()
@@ -519,16 +522,9 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
-	if !s.frameSkip {
-		//var width, height = glfw.GetCurrentContext().GetFramebufferSize()
-		//gl.Viewport(0, 0, int32(width), int32(height))
-		gl.Viewport(0, 0, int(s.scrrect[2]), int(s.scrrect[3]))
-		if s.netInput == nil {
-			gl.Clear(gl.COLOR_BUFFER_BIT)
-		}
-	}
 	return !s.gameEnd
 }
+
 func (s *System) update() bool {
 	s.frameCounter++
 	if s.fileInput != nil {
