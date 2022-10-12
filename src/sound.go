@@ -393,6 +393,7 @@ type SoundEffect struct {
 	volume   float32
 	ls, p    float32
 	x        *float32
+	priority int32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -444,7 +445,7 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 		loopCount = -1
 	}
 	looper := beep.Loop(loopCount, s.streamer)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(audioFrequency / freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
@@ -474,6 +475,11 @@ func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 		s.sfx.p = p * ls
 	}
 }
+func (s *SoundChannel) SetPrioirty(priority int32) {
+	if s.ctrl != nil {
+		s.sfx.priority = priority
+	}
+}
 
 // ------------------------------------------------------------------
 // SoundChannels (collection of prioritised sound channels)
@@ -501,11 +507,11 @@ func (s *SoundChannels) SetSize(size int32) {
 func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
-func (s *SoundChannels) New(ch int32, lowpriority bool) *SoundChannel {
+func (s *SoundChannels) New(ch int32, lowpriority bool, priority int32) *SoundChannel {
 	ch = Min(sys.wavChannels-1, ch)
 	if ch >= 0 {
-		if lowpriority {
-			if s.count() > ch && s.channels[ch].IsPlaying() {
+		if s.count() > ch && s.channels[ch].IsPlaying() {
+			if (lowpriority && priority <= s.channels[ch].sfx.priority) || priority < s.channels[ch].sfx.priority {
 				return nil
 			}
 		}

@@ -244,6 +244,10 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase, _ int8) (Stat
 			playSnd_loop, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "priority",
+			playSnd_priority, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -3917,7 +3921,7 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 					if len(mapParam) < 2 || mapParam[0] != '"' || mapParam[len(mapParam)-1] != '"' {
 						return Error("Not enclosed in \"")
 					}
-					mapName = mapParam[1:len(mapParam)-1]
+					mapName = mapParam[1 : len(mapParam)-1]
 				}
 			}
 			if len(value) > 0 {
@@ -4494,6 +4498,7 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 	})
 	return *ret, err
 }
+
 // Handles "createPlatform" parameters.
 func (c *Compiler) createPlatform(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*text)(sc), c.stateSec(is, func() error {
@@ -4690,6 +4695,7 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
+
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	return nullStateController, nil
