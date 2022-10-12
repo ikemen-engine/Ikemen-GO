@@ -60,8 +60,10 @@ const (
 	BT_Anim
 	BT_Visible
 	BT_Enable
+	BT_PalFX
 	BT_PosSet
 	BT_PosAdd
+	BT_RemapPal
 	BT_SinX
 	BT_SinY
 	BT_VelSet
@@ -99,6 +101,7 @@ func (bga *bgAction) action() {
 
 type backGround struct {
 	typ                int
+	palfx              *PalFX
 	anim               Animation
 	bga                bgAction
 	id                 int32
@@ -133,7 +136,7 @@ type backGround struct {
 }
 
 func newBackGround(sff *Sff) *backGround {
-	return &backGround{anim: *newAnimation(sff), delta: [...]float32{1, 1}, zoomdelta: [...]float32{1, math.MaxFloat32},
+	return &backGround{palfx: newPalFX(), anim: *newAnimation(sff), delta: [...]float32{1, 1}, zoomdelta: [...]float32{1, math.MaxFloat32},
 		xscale: [...]float32{1, 1}, rasterx: [...]float32{1, 1}, yscalestart: 100, scalestart: [...]float32{1, 1}, xbottomzoomdelta: math.MaxFloat32,
 		zoomscaledelta: [...]float32{math.MaxFloat32, math.MaxFloat32}, actionno: -1, visible: true, active: true, autoresizeparallax: false,
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
@@ -333,12 +336,14 @@ func readBackGround(is IniSection, link *backGround,
 	return bg
 }
 func (bg *backGround) reset() {
+	bg.palfx.clear()
 	bg.anim.Reset()
 	bg.bga.clear()
 	bg.bga.vel = bg.startv
 	bg.bga.radius = bg.startrad
 	bg.bga.sintime = bg.startsint
 	bg.bga.sinlooptime = bg.startsinlt
+	bg.palfx.time = -1
 }
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool) {
@@ -419,7 +424,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
 		bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
 			xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
-			Rotation{}, float32(sys.gameWidth)/2, &sys.bgPalFX, true, 1, false, 1, 0, 0)
+			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0)
 	}
 }
 
@@ -432,6 +437,13 @@ type bgCtrl struct {
 	_type        BgcType
 	x, y         float32
 	v            [3]int32
+	src          [2]int32
+	dst          [2]int32
+	add          [3]int32
+	mul          [3]int32
+	sinadd       [4]int32
+	invall       bool
+	color        float32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -443,6 +455,8 @@ func newBgCtrl() *bgCtrl {
 func (bgc *bgCtrl) read(is IniSection, idx int) {
 	bgc.idx = idx
 	xy := false
+	srcdst := false
+	palfx := false
 	switch strings.ToLower(is["type"]) {
 	case "anim":
 		bgc._type = BT_Anim
@@ -452,12 +466,27 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc._type = BT_Enable
 	case "null":
 		bgc._type = BT_Null
+	case "palfx":
+		bgc._type = BT_PalFX
+		palfx = true
+		// Default values for PalFX
+		bgc.add = [3]int32{0, 0, 0}
+		bgc.mul = [3]int32{256, 256, 256}
+		bgc.sinadd = [4]int32{0, 0, 0, 0}
+		bgc.invall = false
+		bgc.color = 1
 	case "posset":
 		bgc._type = BT_PosSet
 		xy = true
 	case "posadd":
 		bgc._type = BT_PosAdd
 		xy = true
+	case "remappal":
+		bgc._type = BT_RemapPal
+		srcdst = true
+		// Default values for RemapPal
+		bgc.src = [2]int32{-1, 0}
+		bgc.dst = [2]int32{-1, 0}
 	case "sinx":
 		bgc._type = BT_SinX
 	case "siny":
@@ -476,6 +505,26 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 	if xy {
 		is.readF32ForStage("x", &bgc.x)
 		is.readF32ForStage("y", &bgc.y)
+	} else if srcdst {
+		is.readI32ForStage("source", &bgc.src[0], &bgc.src[1])
+		is.readI32ForStage("dest", &bgc.dst[0], &bgc.dst[1])
+	} else if palfx {
+		is.readI32ForStage("add", &bgc.add[0], &bgc.add[1], &bgc.add[2])
+		is.readI32ForStage("mul", &bgc.mul[0], &bgc.mul[1], &bgc.mul[2])
+		if is.readI32ForStage("sinadd", &bgc.sinadd[0], &bgc.sinadd[1], &bgc.sinadd[2], &bgc.sinadd[3]) {
+			if bgc.sinadd[3] < 0 {
+				for i := 0; i < 4; i++ {
+					bgc.sinadd[i] = -bgc.sinadd[i]
+				}
+			}
+		}
+		var tmp int32
+		if is.ReadI32("invertall", &tmp) {
+			bgc.invall = tmp != 0
+		}
+		if is.ReadF32("color", &bgc.color) {
+			bgc.color = ClampF(bgc.color / 256, 0, 1)
+		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
@@ -1013,6 +1062,17 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 		for i := range bgc.bg {
 			bgc.bg[i].visible, bgc.bg[i].active = bgc.v[0] != 0, bgc.v[0] != 0
 		}
+	case BT_PalFX:
+		for i := range bgc.bg {
+			bgc.bg[i].palfx.add = bgc.add
+			bgc.bg[i].palfx.mul = bgc.mul
+			bgc.bg[i].palfx.sinadd[0] = bgc.sinadd[0]
+			bgc.bg[i].palfx.sinadd[1] = bgc.sinadd[1]
+			bgc.bg[i].palfx.sinadd[2] = bgc.sinadd[2]
+			bgc.bg[i].palfx.cycletime = bgc.sinadd[3]
+			bgc.bg[i].palfx.invertall = bgc.invall
+			bgc.bg[i].palfx.color = bgc.color
+		}
 	case BT_PosSet:
 		for i := range bgc.bg {
 			if bgc.xEnable() {
@@ -1046,6 +1106,26 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			if bgc.yEnable() {
 				s.bga.pos[1] += bgc.y
 			}
+		}
+	case BT_RemapPal:
+		if bgc.src[0] >= 0 && bgc.src[1] >= 0 && bgc.dst[1] >= 0 {
+			// Get source pal
+			si, ok := s.sff.palList.PalTable[[...]int16{int16(bgc.src[0]), int16(bgc.src[1])}]
+			if !ok || si < 0 {
+				return
+			}
+			var di int
+			if bgc.dst[0] < 0 {
+				// Set dest pal to source pal (remap gets reset)
+				di = si
+			} else {
+				// Get dest pal
+				di, ok = s.sff.palList.PalTable[[...]int16{int16(bgc.dst[0]), int16(bgc.dst[1])}]
+				if !ok || di < 0 {
+					return
+				}
+			}
+			s.sff.palList.Remap(si, di)
 		}
 	case BT_SinX, BT_SinY:
 		ii := Btoi(bgc._type == BT_SinY)
@@ -1109,6 +1189,10 @@ func (s *Stage) action() {
 	s.bga.action()
 	link, zlink := 0, -1
 	for i, b := range s.bg {
+		b.palfx.step()
+		if sys.bgPalFX.time != 0 {
+			b.palfx.synthesize(sys.bgPalFX)
+		}
 		if b.active {
 			s.bg[i].bga.action()
 			if i > 0 && b.positionlink {
@@ -1177,6 +1261,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	}
 }
 func (s *Stage) reset() {
+	s.sff.palList.ResetRemap()
 	s.bga.clear()
 	for i := range s.bg {
 		s.bg[i].reset()
@@ -1191,7 +1276,8 @@ func (s *Stage) reset() {
 	s.stageTime = 0
 }
 
-func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
+func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
+	add, mul [3]int32, sinadd [4]int32, invall int32, color float32) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -1203,14 +1289,10 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
 			if t[2] != IErr {
 				s.bgc[i].looptime = t[2]
 			}
-			if v[0] != IErr {
-				s.bgc[i].v[0] = v[0]
-			}
-			if v[1] != IErr {
-				s.bgc[i].v[1] = v[1]
-			}
-			if v[2] != IErr {
-				s.bgc[i].v[2] = v[2]
+			for j := 0; j < 3; j++ {
+				if v[j] != IErr {
+					s.bgc[i].v[j] = v[j]
+				}
 			}
 			if !math.IsNaN(float64(x)) {
 				s.bgc[i].x = x
@@ -1218,6 +1300,37 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32) {
 			if !math.IsNaN(float64(y)) {
 				s.bgc[i].y = y
 			}
+			for j := 0; j < 2; j++ {
+				if src[j] != IErr {
+					s.bgc[i].src[j] = src[j]
+				}
+			}
+			for j := 0; j < 2; j++ {
+				if dst[j] != IErr {
+					s.bgc[i].dst[j] = dst[j]
+				}
+			}
+			for j := 0; j < 3; j++ {
+				if add[j] != IErr {
+					s.bgc[i].add[j] = add[j]
+				}
+			}
+			for j := 0; j < 3; j++ {
+				if mul[j] != IErr {
+					s.bgc[i].mul[j] = mul[j]
+				}
+			}
+			for j := 0; j < 4; j++ {
+				if sinadd[j] != IErr {
+					s.bgc[i].sinadd[j] = sinadd[j]
+				}
+			}
+			if invall != IErr {
+				s.bgc[i].invall = invall != 0
+			}
+			if !math.IsNaN(float64(color)) {
+				s.bgc[i].color = color
+			} 
 			s.reload = true
 		}
 	}
