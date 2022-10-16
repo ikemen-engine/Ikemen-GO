@@ -498,8 +498,8 @@ func (s *System) await(fps int) bool {
 		// Render the finished frame
 		gfx.EndFrame()
 		s.window.SwapBuffers()
-		// Begin the next frame
-		gfx.BeginFrame()
+		// Begin the next frame after events have been processed
+		defer gfx.BeginFrame()
 	}
 	s.runMainThreadTask()
 	now := time.Now()
