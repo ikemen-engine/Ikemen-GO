@@ -72,9 +72,9 @@ var TextureFormatLUT = map[int32]C.kinc_image_format_t {
 	32: C.KINC_IMAGE_FORMAT_RGBA32,
 }
 
-func newTexture(width, height, depth int32) (t *Texture) {
+func newTexture(width, height, depth int32, filter bool) (t *Texture) {
 	handle := (*C.kinc_g4_texture_t)(C.malloc(C.sizeof_kinc_g4_texture_t))
-	t = &Texture{width, height, depth, false, handle}
+	t = &Texture{width, height, depth, filter, handle}
 
 	C.kinc_g4_texture_init(t.handle,
 		 C.int(width), C.int(height), TextureFormatLUT[depth])
@@ -89,8 +89,7 @@ func newTexture(width, height, depth int32) (t *Texture) {
 	return
 }
 
-func (t *Texture) SetData(data []byte, filter bool) {
-	t.filter = filter
+func (t *Texture) SetData(data []byte) {
 	pixels := C.kinc_g4_texture_lock(t.handle)
 	stride := C.kinc_g4_texture_stride(t.handle)
 	rowBytes := t.width * (t.depth / 8)

@@ -12,6 +12,12 @@ import (
 	"golang.org/x/mobile/exp/f32"
 )
 
+var InternalFormatLUT = map[int32]gl.Enum {
+	8: gl.LUMINANCE,
+	24: gl.RGB,
+	32: gl.RGBA,
+}
+
 var BlendEquationLUT = map[BlendEquation]gl.Enum {
 	BlendAdd: gl.FUNC_ADD,
 	BlendReverseSubtract: gl.FUNC_REVERSE_SUBTRACT,
@@ -106,12 +112,13 @@ type Texture struct {
 	width  int32
 	height int32
 	depth  int32
+	filter bool
 	handle gl.Texture
 }
 
 // Generate a new texture name
-func newTexture(width, height, depth int32) (t *Texture) {
-	t = &Texture{width, height, depth, gl.CreateTexture()}
+func newTexture(width, height, depth int32, filter bool) (t *Texture) {
+	t = &Texture{width, height, depth, filter, gl.CreateTexture()}
 	runtime.SetFinalizer(t, func (t *Texture) {
 		sys.mainThreadTask <- func() {
 			gl.DeleteTexture(t.handle)
@@ -121,18 +128,13 @@ func newTexture(width, height, depth int32) (t *Texture) {
 }
 
 // Bind a texture and upload texel data to it
-func (t *Texture) SetData(data []byte, filter bool) {
+func (t *Texture) SetData(data []byte) {
 	var interp int = gl.NEAREST
-	if filter {
+	if t.filter {
 		interp = gl.LINEAR
 	}
 
-	var format gl.Enum = gl.LUMINANCE
-	if t.depth == 24 {
-		format = gl.RGB
-	} else if t.depth == 32 {
-		format = gl.RGBA
-	}
+	format := InternalFormatLUT[Max(t.depth, 8)]
 
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -244,8 +246,8 @@ func (r *Renderer) Init() {
 	gl.BindTexture(gl.TEXTURE_2D, gl.NoTexture)
 
 	if sys.multisampleAntialiasing {
-		r.fbo_f_texture = newTexture(sys.scrrect[2], sys.scrrect[3], 32)
-		r.fbo_f_texture.SetData(nil, false)
+		r.fbo_f_texture = newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
+		r.fbo_f_texture.SetData(nil)
 	} else {
 		r.rbo_depth = gl.CreateRenderbuffer()
 		gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
