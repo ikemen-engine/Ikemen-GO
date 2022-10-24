@@ -48,8 +48,8 @@ void main(void) {
 		c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
 		c *= final_mul;
 
-		// Add a final tint (used for shadows)
-		c.rgb = mix(c.rgb, tint.rgb, tint.a);
+		// Add a final tint (used for shadows); make sure the result has premultiplied alpha
+		c.rgb = mix(c.rgb, tint.rgb * c.a, tint.a);
 
 		gl_FragColor = c;
 	}
