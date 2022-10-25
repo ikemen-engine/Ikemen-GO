@@ -6,6 +6,10 @@ import (
 	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
+// The global, platform-specific rendering backend
+var gfx = &Renderer{}
+
+// Blend constants
 type BlendFunc int
 
 const (
