@@ -10,6 +10,16 @@ import (
 	glfw "github.com/fyne-io/glfw-js"
 )
 
+var KeyUnknown = StringToKey("")
+var KeyEscape  = StringToKey("ESCAPE")
+var KeyEnter   = StringToKey("RETURN")
+var KeyInsert  = StringToKey("INSERT")
+var KeyF12     = StringToKey("F12")
+
+var ModAlt          = NewModifierKey(false, true, false)
+var ModCtrlAlt      = NewModifierKey(true,  true, false)
+var ModCtrlAltShift = NewModifierKey(true,  true, true)
+
 type CommandKey byte
 
 const (
@@ -84,6 +94,7 @@ type ShortcutScript struct {
 	Pause    bool
 	DebugKey bool
 }
+
 type ShortcutKey struct {
 	Key Key
 	Mod ModifierKey
@@ -92,46 +103,37 @@ type ShortcutKey struct {
 func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 	sk := &ShortcutKey{}
 	sk.Key = key
-	sk.Mod = 0
-	if ctrl {
-		sk.Mod |= glfw.ModControl
-	}
-	if alt {
-		sk.Mod |= glfw.ModAlt
-	}
-	if shift {
-		sk.Mod |= glfw.ModShift
-	}
+	sk.Mod = NewModifierKey(ctrl, alt, shift)
 	return sk
 }
+
 func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
-	return k == sk.Key &&
-		m&(glfw.ModShift|glfw.ModControl|glfw.ModAlt) == sk.Mod
+	return k == sk.Key && (m & ModCtrlAltShift) == sk.Mod
 }
 func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk ModifierKey) {
-	if key == glfw.KeyUnknown {
+	if key == KeyUnknown {
 		return
 	}
 	switch action {
 	case glfw.Release:
 		sys.keyState[key] = false
-		sys.keyInput = glfw.KeyUnknown
+		sys.keyInput = KeyUnknown
 		sys.keyString = ""
 	case glfw.Press:
 		sys.keyState[key] = true
 		sys.keyInput = key
 		sys.esc = sys.esc ||
-			key == glfw.KeyEscape && mk&(glfw.ModControl|glfw.ModAlt) == 0
+			key == KeyEscape && (mk & ModCtrlAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			if sys.netInput == nil && (sys.fileInput == nil || !v.DebugKey) &&
 				(!sys.paused || sys.step || v.Pause) && (sys.allowDebugKeys || !v.DebugKey) {
 				v.Activate = v.Activate || k.Test(key, mk)
 			}
 		}
-		if key == glfw.KeyF12 {
+		if key == KeyF12 {
 			captureScreen()
 		}
-		if key == glfw.KeyEnter && mk&(glfw.ModAlt) != 0 {
+		if key == KeyEnter && (mk & ModAlt) != 0 {
 			sys.window.toggleFullscreen()
 		}
 	}

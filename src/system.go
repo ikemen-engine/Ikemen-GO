@@ -18,7 +18,6 @@ import (
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -71,7 +70,7 @@ var sys = System{
 	mainThreadTask:        make(chan func(), 65536),
 	workpal:               make([]uint32, 256),
 	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
-	keyInput:              glfw.KeyUnknown,
+	keyInput:              KeyUnknown,
 	wavChannels:           256,
 	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,

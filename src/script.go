@@ -69,7 +69,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "addHotkey", func(*lua.LState) int {
 		l.Push(lua.LBool(func() bool {
 			k := StringToKey(strArg(l, 1))
-			if k == glfw.KeyUnknown {
+			if k == KeyUnknown {
 				return false
 			}
 			sk := *NewShortcutKey(k, boolArg(l, 2), boolArg(l, 3), boolArg(l, 4))
@@ -1356,7 +1356,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		var s string
-		if sys.keyInput != glfw.KeyUnknown {
+		if sys.keyInput != KeyUnknown {
 			s = KeyToString(sys.keyInput)
 		}
 		if l.GetTop() == 0 {
@@ -1371,8 +1371,8 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getKeyText", func(*lua.LState) int {
 		s := ""
-		if sys.keyInput != glfw.KeyUnknown {
-			if sys.keyInput == glfw.KeyInsert {
+		if sys.keyInput != KeyUnknown {
+			if sys.keyInput == KeyInsert {
 				s, _ = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
@@ -1645,7 +1645,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "resetKey", func(*lua.LState) int {
-		sys.keyInput = glfw.KeyUnknown
+		sys.keyInput = KeyUnknown
 		sys.keyString = ""
 		return 0
 	})

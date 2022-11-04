@@ -155,6 +155,19 @@ func KeyToString(k glfw.Key) string {
 	return ""
 }
 
+func NewModifierKey(ctrl, alt, shift bool) (mod glfw.ModifierKey) {
+	if ctrl {
+		mod |= glfw.ModControl
+	}
+	if alt {
+		mod |= glfw.ModAlt
+	}
+	if shift {
+		mod |= glfw.ModShift
+	}
+	return
+}
+
 var input = Input{
 	joystick: []glfw.Joystick{glfw.Joystick1, glfw.Joystick2, glfw.Joystick3,
 		glfw.Joystick4, glfw.Joystick5, glfw.Joystick6, glfw.Joystick7,
