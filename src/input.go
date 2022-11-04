@@ -85,11 +85,11 @@ type ShortcutScript struct {
 	DebugKey bool
 }
 type ShortcutKey struct {
-	Key glfw.Key
-	Mod glfw.ModifierKey
+	Key Key
+	Mod ModifierKey
 }
 
-func NewShortcutKey(key glfw.Key, ctrl, alt, shift bool) *ShortcutKey {
+func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 	sk := &ShortcutKey{}
 	sk.Key = key
 	sk.Mod = 0
@@ -104,11 +104,11 @@ func NewShortcutKey(key glfw.Key, ctrl, alt, shift bool) *ShortcutKey {
 	}
 	return sk
 }
-func (sk ShortcutKey) Test(k glfw.Key, m glfw.ModifierKey) bool {
+func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 	return k == sk.Key &&
 		m&(glfw.ModShift|glfw.ModControl|glfw.ModAlt) == sk.Mod
 }
-func keyCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, mk glfw.ModifierKey) {
+func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk ModifierKey) {
 	if key == glfw.KeyUnknown {
 		return
 	}
@@ -137,13 +137,13 @@ func keyCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, mk glf
 	}
 }
 
-func charCallback(_ *glfw.Window, char rune, mk glfw.ModifierKey) {
+func charCallback(_ *glfw.Window, char rune, mk ModifierKey) {
 	sys.keyString = string(char)
 }
 
 func JoystickState(joy, button int) bool {
 	if joy < 0 {
-		return sys.keyState[glfw.Key(button)]
+		return sys.keyState[Key(button)]
 	}
 	if joy >= input.GetMaxJoystickCount() {
 		return false

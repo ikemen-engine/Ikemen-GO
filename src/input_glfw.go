@@ -10,8 +10,8 @@ type Input struct {
 	joystick []glfw.Joystick
 }
 
-type Key glfw.Key
-type ModifierKey glfw.ModifierKey
+type Key = glfw.Key
+type ModifierKey = glfw.ModifierKey
 
 var KeyToStringLUT = map[glfw.Key]string {
 	glfw.KeyEnter: "RETURN",

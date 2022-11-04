@@ -53,7 +53,7 @@ var sys = System{
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	sel:               *newSelect(),
-	keyState:          make(map[glfw.Key]bool),
+	keyState:          make(map[Key]bool),
 	match:             1,
 	listenPort:        "7500",
 	loader:            *newLoader(),
@@ -124,7 +124,7 @@ type System struct {
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	sel                     Select
-	keyState                map[glfw.Key]bool
+	keyState                map[Key]bool
 	netInput                *NetInput
 	fileInput               *FileInput
 	aiInput                 [MaxSimul*2 + MaxAttachedChar]AiInput
@@ -262,7 +262,7 @@ type System struct {
 	allowDebugMode          bool
 	commonAir               string
 	commonCmd               string
-	keyInput                glfw.Key
+	keyInput                Key
 	keyString               string
 	timerCount              []int32
 	cmdFlags                map[string]string
