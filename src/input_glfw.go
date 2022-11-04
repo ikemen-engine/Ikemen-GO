@@ -13,6 +13,14 @@ type Input struct {
 type Key = glfw.Key
 type ModifierKey = glfw.ModifierKey
 
+const (
+	KeyUnknown = glfw.KeyUnknown
+	KeyEscape  = glfw.KeyEscape
+	KeyEnter   = glfw.KeyEnter
+	KeyInsert  = glfw.KeyInsert
+	KeyF12     = glfw.KeyF12
+)
+
 var KeyToStringLUT = map[glfw.Key]string {
 	glfw.KeyEnter: "RETURN",
 	glfw.KeyEscape: "ESCAPE",

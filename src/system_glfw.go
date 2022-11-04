@@ -131,3 +131,16 @@ func (w *Window) shouldClose() bool {
 func (w *Window) Close() {
 	glfw.Terminate()
 }
+
+func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk ModifierKey) {
+	switch action {
+	case glfw.Release:
+		OnKeyReleased(key, mk)
+	case glfw.Press:
+		OnKeyPressed(key, mk)
+	}
+}
+
+func charCallback(_ *glfw.Window, char rune, mk ModifierKey) {
+	OnTextEntered(string(char))
+}

@@ -6,15 +6,7 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	glfw "github.com/fyne-io/glfw-js"
 )
-
-var KeyUnknown = StringToKey("")
-var KeyEscape  = StringToKey("ESCAPE")
-var KeyEnter   = StringToKey("RETURN")
-var KeyInsert  = StringToKey("INSERT")
-var KeyF12     = StringToKey("F12")
 
 var ModAlt          = NewModifierKey(false, true, false)
 var ModCtrlAlt      = NewModifierKey(true,  true, false)
@@ -110,16 +102,17 @@ func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 	return k == sk.Key && (m & ModCtrlAltShift) == sk.Mod
 }
-func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk ModifierKey) {
-	if key == KeyUnknown {
-		return
-	}
-	switch action {
-	case glfw.Release:
+
+func OnKeyReleased(key Key, mk ModifierKey) {
+	if key != KeyUnknown {
 		sys.keyState[key] = false
 		sys.keyInput = KeyUnknown
 		sys.keyString = ""
-	case glfw.Press:
+	}
+}
+
+func OnKeyPressed(key Key, mk ModifierKey) {
+	if key != KeyUnknown {
 		sys.keyState[key] = true
 		sys.keyInput = key
 		sys.esc = sys.esc ||
@@ -139,8 +132,8 @@ func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk Modifier
 	}
 }
 
-func charCallback(_ *glfw.Window, char rune, mk ModifierKey) {
-	sys.keyString = string(char)
+func OnTextEntered(s string) {
+	sys.keyString = s
 }
 
 func JoystickState(joy, button int) bool {
