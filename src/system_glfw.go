@@ -88,6 +88,10 @@ func (w *Window) SetIcon(icon []image.Image) {
 	w.Window.SetIcon(icon)
 }
 
+func (w *Window) SetSwapInterval(interval int) {
+	glfw.SwapInterval(interval)
+}
+
 func (w *Window) GetSize() (int, int) {
 	return w.Window.GetSize()
 }

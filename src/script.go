@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	glfw "github.com/fyne-io/glfw-js"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -684,7 +683,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "enterReplay", func(*lua.LState) int {
 		if sys.vRetrace >= 0 {
-			glfw.SwapInterval(1) //broken frame skipping when set to 0
+			sys.window.SetSwapInterval(1) //broken frame skipping when set to 0
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
 		sys.fileInput = OpenFileInput(strArg(l, 1))
@@ -706,7 +705,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
 		if sys.vRetrace >= 0 {
-			glfw.SwapInterval(sys.vRetrace)
+			sys.window.SetSwapInterval(sys.vRetrace)
 		}
 		if sys.fileInput != nil {
 			sys.fileInput.Close()
@@ -2531,7 +2530,7 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			sys.vRetrace = 0
 		}
-		glfw.SwapInterval(sys.vRetrace)
+		sys.window.SetSwapInterval(sys.vRetrace)
 		return 0
 	})
 	luaRegister(l, "updateVolume", func(l *lua.LState) int {

@@ -53,6 +53,10 @@ func (w *Window) SetIcon(icon []image.Image) {
 	// TODO
 }
 
+func (w *Window) SetSwapInterval(interval int) {
+	// TODO
+}
+
 func (w *Window) GetSize() (int, int) {
         return w.width, w.height
 }
