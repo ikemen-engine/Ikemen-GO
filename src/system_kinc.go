@@ -33,7 +33,9 @@ type Window struct {
 func (s *System) newWindow(w, h int) (*Window, error) {
 	ret := &Window{width: w, height: h}
 	handle := C.kinc_init(C.CString(s.windowTitle), C.int(w), C.int(h), nil, nil)
-	C.kinc_window_set_close_callback(handle, (C.close_callback_t)(C.close_callback), unsafe.Pointer(&ret.closing))
+	C.kinc_window_set_close_callback(handle, (C.close_callback_t)(C.close_callback),
+		unsafe.Pointer(&ret.closing))
+	// TODO: add keyboard input callbacks
 	return ret, nil
 }
 
@@ -48,6 +50,10 @@ func (w *Window) SwapBuffers() {
 }
 
 func (w *Window) SetIcon(icon []image.Image) {
+	// TODO
+}
+
+func (w *Window) SetSwapInterval(interval int) {
 	// TODO
 }
 

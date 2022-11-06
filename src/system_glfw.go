@@ -88,6 +88,10 @@ func (w *Window) SetIcon(icon []image.Image) {
 	w.Window.SetIcon(icon)
 }
 
+func (w *Window) SetSwapInterval(interval int) {
+	glfw.SwapInterval(interval)
+}
+
 func (w *Window) GetSize() (int, int) {
 	return w.Window.GetSize()
 }
@@ -130,4 +134,17 @@ func (w *Window) shouldClose() bool {
 
 func (w *Window) Close() {
 	glfw.Terminate()
+}
+
+func keyCallback(_ *glfw.Window, key Key, _ int, action glfw.Action, mk ModifierKey) {
+	switch action {
+	case glfw.Release:
+		OnKeyReleased(key, mk)
+	case glfw.Press:
+		OnKeyPressed(key, mk)
+	}
+}
+
+func charCallback(_ *glfw.Window, char rune, mk ModifierKey) {
+	OnTextEntered(string(char))
 }

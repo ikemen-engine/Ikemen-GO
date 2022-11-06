@@ -10,8 +10,16 @@ type Input struct {
 	joystick []glfw.Joystick
 }
 
-type Key glfw.Key
-type ModifierKey glfw.ModifierKey
+type Key = glfw.Key
+type ModifierKey = glfw.ModifierKey
+
+const (
+	KeyUnknown = glfw.KeyUnknown
+	KeyEscape  = glfw.KeyEscape
+	KeyEnter   = glfw.KeyEnter
+	KeyInsert  = glfw.KeyInsert
+	KeyF12     = glfw.KeyF12
+)
 
 var KeyToStringLUT = map[glfw.Key]string {
 	glfw.KeyEnter: "RETURN",
@@ -153,6 +161,19 @@ func KeyToString(k glfw.Key) string {
 		return s
 	}
 	return ""
+}
+
+func NewModifierKey(ctrl, alt, shift bool) (mod glfw.ModifierKey) {
+	if ctrl {
+		mod |= glfw.ModControl
+	}
+	if alt {
+		mod |= glfw.ModAlt
+	}
+	if shift {
+		mod |= glfw.ModShift
+	}
+	return
 }
 
 var input = Input{
