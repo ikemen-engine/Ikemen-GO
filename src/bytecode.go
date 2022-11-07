@@ -488,6 +488,7 @@ const (
 	OC_ex_physics
 	OC_ex_playerno
 	OC_ex_rand
+	OC_ex_prandom
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
@@ -1939,6 +1940,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_rand:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
+	case OC_ex_prandom:
+		sys.bcStack.PushI(Prand(0, 999))
 	case OC_ex_ratiolevel:
 		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:

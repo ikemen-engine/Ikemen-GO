@@ -284,6 +284,7 @@ var triggerMap = map[string]int{
 	"projhit":           1,
 	"projhittime":       1,
 	"random":            1,
+	"prandom":            1,
 	"rightedge":         1,
 	"rootdist":          1,
 	"roundno":           1,
@@ -1984,6 +1985,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_projhittime)
 	case "random":
 		out.append(OC_random)
+	case "prandom":
+		out.append(OC_ex_, OC_ex_prandom)
 	case "rightedge":
 		out.append(OC_rightedge)
 	case "roundno":

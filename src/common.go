@@ -26,6 +26,7 @@ func Random() int32 {
 }
 func Srand(s int32)             { sys.randseed = s }
 func Rand(min, max int32) int32 { return min + Random()/(IMax/(max-min+1)+1) }
+func Prand(min, max int32) int32 { return min + sys.randseed/(IMax/(max-min+1)+1) }
 
 func RandF32(min, max float32) float32 {
 	return min + float32(Random())/(float32(IMax)/(max-min+1.0)+1.0)
