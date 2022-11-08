@@ -1053,6 +1053,8 @@ func systemScriptInit(l *lua.LState) {
 				sys.dialogueBarsFlg = false
 				sys.noSoundFlg = false
 				sys.postMatchFlg = false
+				sys.preFightTime += sys.gameTime
+				sys.gameTime = 0
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				return 2
@@ -2956,7 +2958,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "gametime", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.gameTime))
+		l.Push(lua.LNumber(sys.gameTime + sys.preFightTime))
 		return 1
 	})
 	luaRegister(l, "gamewidth", func(*lua.LState) int {
@@ -3683,6 +3685,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "dizzypointsmax", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.dizzyPointsMax))
+		return 1
+	})
+	luaRegister(l, "fighttime", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.gameTime))
 		return 1
 	})
 	luaRegister(l, "firstattack", func(*lua.LState) int {

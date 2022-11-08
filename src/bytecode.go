@@ -462,6 +462,7 @@ const (
 	OC_ex_dizzy
 	OC_ex_dizzypoints
 	OC_ex_dizzypointsmax
+	OC_ex_fighttime
 	OC_ex_firstattack
 	OC_ex_framespercount
 	OC_ex_float
@@ -1165,7 +1166,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushF(c.gameHeight())
 			}
 		case OC_gametime:
-			sys.bcStack.PushI(sys.gameTime)
+			sys.bcStack.PushI(sys.gameTime + sys.preFightTime)
 		case OC_gamewidth:
 			// Backward compatibility exception. 1.0 characters often use it to
 			// display elements that weren't designed to be affected by zooming.
@@ -1872,6 +1873,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.dizzyPointsMax)
 	case OC_ex_drawpalno:
 		sys.bcStack.PushI(c.gi().drawpalno)
+	case OC_ex_fighttime:
+		sys.bcStack.PushI(sys.gameTime)
 	case OC_ex_firstattack:
 		sys.bcStack.PushB(c.firstAttack)
 	case OC_ex_framespercount:
@@ -7512,7 +7515,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_color:
-			color = ClampF(exp[0].evalF(c) / 256, 0, 1)
+			color = ClampF(exp[0].evalF(c)/256, 0, 1)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
