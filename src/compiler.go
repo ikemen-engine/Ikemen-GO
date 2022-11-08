@@ -319,6 +319,7 @@ var triggerMap = map[string]int{
 	"dizzy":            1,
 	"dizzypoints":      1,
 	"dizzypointsmax":   1,
+	"fighttime":        1,
 	"firstattack":      1,
 	"framespercount":   1,
 	"gamemode":         1,
@@ -2510,6 +2511,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzypoints)
 	case "dizzypointsmax":
 		out.append(OC_ex_, OC_ex_dizzypointsmax)
+	case "fighttime":
+		out.append(OC_ex_, OC_ex_fighttime)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
 	case "framespercount":

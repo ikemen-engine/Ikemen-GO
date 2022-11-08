@@ -316,6 +316,7 @@ type System struct {
 
 	gameMode        string
 	frameCounter    int32
+	preFightTime    int32
 	motifDir        string
 	captureNum      int
 	roundType       [2]RoundType
@@ -526,6 +527,9 @@ func (s *System) await(fps int) bool {
 
 func (s *System) update() bool {
 	s.frameCounter++
+	if s.gameTime == 0 {
+		s.preFightTime = s.frameCounter
+	}
 	if s.fileInput != nil {
 		if s.anyHardButton() {
 			s.await(FPS * 4)
@@ -555,7 +559,7 @@ func (s *System) tickSound() {
 		if s.bgm.ctrl != nil && s.bgm.streamer != nil {
 			s.bgm.ctrl.Paused = false
 			// if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-				// s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
+			// s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
 			// }
 		}
 		speaker.Unlock()
