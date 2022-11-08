@@ -8,7 +8,7 @@ require (
 	github.com/fyne-io/gl-js v0.0.0-20220516203408-b35fbccb7063
 	github.com/fyne-io/glfw-js v0.0.0-20220504231515-a6fbf4331c1f
 	github.com/go-gl/mathgl v1.0.0
-	github.com/ikemen-engine/glfont v0.0.0-20220323132206-8bdc165eee08
+	github.com/ikemen-engine/glfont v0.0.0-20220605115542-3cdf39329aa1
 	github.com/sqweek/dialog v0.0.0-20220504154117-be45b268883a
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64
 	golang.org/x/mobile v0.0.0-20211207041440-4e6c2922fdee
