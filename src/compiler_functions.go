@@ -491,7 +491,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			return err
 		}
 		if err := c.paramValue(is, sc, "size.proj.doscale",
-			helper_size_proj_doscale, VT_Bool, 1, false); err != nil {
+			helper_size_proj_doscale, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "size.head.pos",
