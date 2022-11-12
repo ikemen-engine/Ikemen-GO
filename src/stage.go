@@ -523,7 +523,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 			bgc.invall = tmp != 0
 		}
 		if is.ReadF32("color", &bgc.color) {
-			bgc.color = ClampF(bgc.color / 256, 0, 1)
+			bgc.color = ClampF(bgc.color/256, 0, 1)
 		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
@@ -1184,16 +1184,20 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 	}
 }
 func (s *Stage) action() {
-	s.stageTime++
-	s.bgct.step(s)
-	s.bga.action()
-	link, zlink := 0, -1
+	link, zlink, paused := 0, -1, true
+	if sys.tickFrame() && (sys.super <= 0 || !sys.superpausebg) &&
+		(sys.pause <= 0 || !sys.pausebg) {
+		paused = false
+		s.stageTime++
+		s.bgct.step(s)
+		s.bga.action()
+	}
 	for i, b := range s.bg {
 		b.palfx.step()
-		if sys.bgPalFX.time != 0 {
+		if sys.bgPalFX.enable {
 			b.palfx.synthesize(sys.bgPalFX)
 		}
-		if b.active {
+		if b.active && !paused {
 			s.bg[i].bga.action()
 			if i > 0 && b.positionlink {
 				s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
@@ -1330,7 +1334,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(color)) {
 				s.bgc[i].color = color
-			} 
+			}
 			s.reload = true
 		}
 	}

@@ -166,11 +166,13 @@ func (pf *PalFX) step() {
 		pf.eInvertall = pf.invertall
 		pf.eNegType = pf.negType
 		pf.sinAdd(&pf.eAdd)
-		if pf.cycletime > 0 {
-			pf.sintime = (pf.sintime + 1) % pf.cycletime
-		}
-		if pf.time > 0 {
-			pf.time--
+		if !sys.paused || sys.step {
+			if pf.cycletime > 0 {
+				pf.sintime = (pf.sintime + 1) % pf.cycletime
+			}
+			if pf.time > 0 {
+				pf.time--
+			}
 		}
 	}
 }
@@ -264,7 +266,7 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 
 func PaletteToTexture(pal []uint32) *Texture {
 	tx := newTexture(256, 1, 32, false)
-	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal) * 4))
+	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4))
 	return tx
 }
 
@@ -997,10 +999,10 @@ func (s *Sprite) Draw(x, y, xscale, yscale, angle float32, fx *PalFX, window *[4
 	}
 	rp := RenderParams{
 		s.Tex, s.PalTex, s.Size,
-		-x*sys.widthScale, -y*sys.heightScale, notiling,
-		xscale*sys.widthScale, xscale*sys.widthScale, yscale*sys.heightScale, 1, 0,
-		Rotation{angle, 0, 0}, 0, sys.brightness*255>>8|1<<9, 0, fx, window, 0, 0, 0, 0,
-		-xscale*float32(s.Offset[0]), -yscale*float32(s.Offset[1]),
+		-x * sys.widthScale, -y * sys.heightScale, notiling,
+		xscale * sys.widthScale, xscale * sys.widthScale, yscale * sys.heightScale, 1, 0,
+		Rotation{angle, 0, 0}, 0, sys.brightness*255>>8 | 1<<9, 0, fx, window, 0, 0, 0, 0,
+		-xscale * float32(s.Offset[0]), -yscale * float32(s.Offset[1]),
 	}
 	RenderSprite(rp)
 }

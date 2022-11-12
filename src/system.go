@@ -1013,7 +1013,7 @@ func (s *System) action(x, y, scl *float32) {
 			s.xmax = s.xmin
 		}
 		s.allPalFX.step()
-		s.bgPalFX.step()
+		//s.bgPalFX.step()
 		s.envShake.next()
 		if s.envcol_time > 0 {
 			s.envcol_time--
@@ -1997,12 +1997,8 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 
-		// If frame is ready to tick and not paused
-		if s.tickFrame() && (s.super <= 0 || !s.superpausebg) &&
-			(s.pause <= 0 || !s.pausebg) {
-			// Update stage
-			s.stage.action()
-		}
+		s.bgPalFX.step()
+		s.stage.action()
 
 		// Update game state
 		s.action(&x, &y, &scl)
