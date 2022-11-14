@@ -3564,6 +3564,9 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 			}
 			sys.errLog.Printf("%v%v\n", str, n)
 		}
+	} else if ffx {
+		a.start_scale[0] /= c.localscl
+		a.start_scale[1] /= c.localscl
 	}
 	return
 }

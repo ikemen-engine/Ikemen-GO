@@ -3366,10 +3366,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
 		case explod_angle:
 			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3586,10 +3582,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_anim:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-					if anim != nil && exp[0].evalB(c) { // ffx
-						anim.start_scale[0] /= crun.localscl
-						anim.start_scale[1] /= crun.localscl
-					}
 					eachExpl(func(e *Explod) { e.anim = anim })
 				}
 			case explod_angle:
@@ -3687,10 +3679,6 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
 		}
 		return true
 	})
