@@ -853,6 +853,30 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadI32("tensionhigh", &s.stageCamera.tensionhigh)
 		}
 	}
+	if sec := defmap["music"]; len(sec) > 0 {
+		s.bgmusic = sec[0]["bgmusic"]
+		sec[0].ReadI32("bgmvolume", &s.bgmvolume)
+		sec[0].ReadI32("bgmloopstart", &s.bgmloopstart)
+		sec[0].ReadI32("bgmloopend", &s.bgmloopend)
+		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
+		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
+		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
+	}
+	if sec := defmap["bgdef"]; len(sec) > 0 {
+		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			sff, err := loadSff(filename, false)
+			if err != nil {
+				return err
+			}
+			*s.sff = *sff
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		sec[0].ReadBool("debugbg", &s.debugbg)
+		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
+	}
 	reflect := true
 	if sec := defmap["shadow"]; len(sec) > 0 {
 		var tmp int32
@@ -877,30 +901,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 				s.reflection = Clamp(tmp, 0, 255)
 			}
 		}
-	}
-	if sec := defmap["music"]; len(sec) > 0 {
-		s.bgmusic = sec[0]["bgmusic"]
-		sec[0].ReadI32("bgmvolume", &s.bgmvolume)
-		sec[0].ReadI32("bgmloopstart", &s.bgmloopstart)
-		sec[0].ReadI32("bgmloopend", &s.bgmloopend)
-		sec[0].ReadI32("bgmratio.life", &s.bgmratiolife)
-		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
-		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
-	}
-	if sec := defmap["bgdef"]; len(sec) > 0 {
-		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-			sff, err := loadSff(filename, false)
-			if err != nil {
-				return err
-			}
-			*s.sff = *sff
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-		sec[0].ReadBool("debugbg", &s.debugbg)
-		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
-		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
