@@ -1195,7 +1195,22 @@ func (s *Stage) action() {
 	for i, b := range s.bg {
 		b.palfx.step()
 		if sys.bgPalFX.enable {
-			b.palfx.synthesize(sys.bgPalFX)
+			// TODO: Finish proper synthesization of bgPalFX into PalFX from bg element
+			// (Right now, bgPalFX just overrides all unique parameters from BG Elements' PalFX)
+			// for j := 0; j < 3; j++ {
+				// if sys.bgPalFX.invertall {
+					// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
+					// b.palfx.eMul[j] = 256
+				// }
+				// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
+				// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
+			// }
+			// b.palfx.synthesize(sys.bgPalFX)
+			b.palfx.eAdd = sys.bgPalFX.eAdd
+			b.palfx.eMul = sys.bgPalFX.eMul
+			b.palfx.eColor = sys.bgPalFX.eColor
+			b.palfx.eInvertall = sys.bgPalFX.eInvertall
+			b.palfx.eNegType = sys.bgPalFX.eNegType
 		}
 		if b.active && !paused {
 			s.bg[i].bga.action()
@@ -1308,32 +1323,33 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 				if src[j] != IErr {
 					s.bgc[i].src[j] = src[j]
 				}
-			}
-			for j := 0; j < 2; j++ {
 				if dst[j] != IErr {
 					s.bgc[i].dst[j] = dst[j]
+				}
+			}
+			var side int32 = 1
+			if sinadd[3] != IErr {
+				if sinadd[3] < 0 {
+					sinadd[3] = -sinadd[3]
+					side = -1
 				}
 			}
 			for j := 0; j < 3; j++ {
 				if add[j] != IErr {
 					s.bgc[i].add[j] = add[j]
 				}
-			}
-			for j := 0; j < 3; j++ {
 				if mul[j] != IErr {
 					s.bgc[i].mul[j] = mul[j]
 				}
-			}
-			for j := 0; j < 4; j++ {
 				if sinadd[j] != IErr {
-					s.bgc[i].sinadd[j] = sinadd[j]
+					s.bgc[i].sinadd[j] = sinadd[j] * side
 				}
 			}
 			if invall != IErr {
 				s.bgc[i].invall = invall != 0
 			}
 			if !math.IsNaN(float64(color)) {
-				s.bgc[i].color = color
+				s.bgc[i].color = ClampF(color/256, 0, 1)
 			}
 			s.reload = true
 		}

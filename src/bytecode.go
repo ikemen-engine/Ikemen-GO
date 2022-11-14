@@ -7484,26 +7484,20 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case modifyBGCtrl_sinadd:
-			var side int32 = 1
-			if len(exp) > 3 {
-				if exp[3].evalI(c) < 0 {
-					sinadd[3] = -exp[3].evalI(c)
-					side = -1
-				} else {
-					sinadd[3] = exp[3].evalI(c)
-				}
-			}
-			sinadd[0] = exp[0].evalI(c) * side
+			sinadd[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
-				sinadd[1] = exp[1].evalI(c) * side
+				sinadd[1] = exp[1].evalI(c)
 				if len(exp) > 2 {
-					sinadd[2] = exp[2].evalI(c) * side
+					sinadd[2] = exp[2].evalI(c)
+					if len(exp) > 3 {
+						sinadd[3] = exp[3].evalI(c)
+					}
 				}
 			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_color:
-			color = ClampF(exp[0].evalF(c)/256, 0, 1)
+			color = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
