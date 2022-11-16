@@ -3120,7 +3120,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
 		if f {
-			ch.SetVolume(256)
+			ch.SetVolume(float32(vol * 64 / 25))
 		} else {
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}
