@@ -268,7 +268,7 @@ func systemScriptInit(l *lua.LState) {
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
 				case "color":
-					a.palfx.color = MaxF(0, MinF(1, float32(lua.LVAsNumber(value))/256))
+					a.palfx.color = float32(lua.LVAsNumber(value))/256
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}

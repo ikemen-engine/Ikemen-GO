@@ -3102,7 +3102,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_time:
 		pfd.time = exp[0].evalI(c)
 	case palFX_color:
-		pfd.color = MaxF(0, MinF(1, exp[0].evalF(c)/256))
+		pfd.color = exp[0].evalF(c)/256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)
