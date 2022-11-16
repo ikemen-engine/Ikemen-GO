@@ -3403,6 +3403,8 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		}
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, false)
+	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
+	h.actionPrepare()
 }
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
@@ -3564,6 +3566,9 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 			}
 			sys.errLog.Printf("%v%v\n", str, n)
 		}
+	} else if ffx {
+		a.start_scale[0] /= c.localscl
+		a.start_scale[1] /= c.localscl
 	}
 	return
 }
@@ -5401,16 +5406,6 @@ func (c *Char) actionRun() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
-		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
-				t.bind()
-			}
-		}
-	}
-}
-func (c *Char) actionFinish() {
-	if (c.minus != 2 && c.minus != 0) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
-		return
 	}
 	if !c.hitPause() {
 		if !c.sf(CSF_frontwidth) {
@@ -5456,9 +5451,6 @@ func (c *Char) actionFinish() {
 				c.curFrame = nil
 			}
 		}
-		if c.palfx != nil && c.ownpal {
-			c.palfx.step()
-		}
 		if c.ghv.damage != 0 {
 			if c.ss.moveType == MT_H {
 				c.lifeAdd(-float64(c.ghv.damage), true, true)
@@ -5491,10 +5483,27 @@ func (c *Char) actionFinish() {
 			c.gi().pctime++
 		}
 	}
-	c.xScreenBound()
+	if !c.pauseBool {
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
+				t.bind()
+			}
+		}
+	}
 	c.minus = 1
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
 		int8(Btoi(c.hitPause()))
+}
+func (c *Char) actionFinish() {
+	if (c.minus < 1) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
+	}
+	if !c.pauseBool {
+		if c.palfx != nil && c.ownpal {
+			c.palfx.step()
+		}
+	}
+	c.xScreenBound()
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {

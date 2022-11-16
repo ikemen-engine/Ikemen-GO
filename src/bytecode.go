@@ -3366,10 +3366,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
 		case explod_angle:
 			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3586,10 +3582,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_anim:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					anim := crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-					if anim != nil && exp[0].evalB(c) { // ffx
-						anim.start_scale[0] /= crun.localscl
-						anim.start_scale[1] /= crun.localscl
-					}
 					eachExpl(func(e *Explod) { e.anim = anim })
 				}
 			case explod_angle:
@@ -3687,10 +3679,6 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 			e.ontop = !exp[0].evalB(c)
 		case gameMakeAnim_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), exp[0].evalB(c), false)
-			if e.anim != nil && exp[0].evalB(c) { // ffx
-				e.anim.start_scale[0] /= crun.localscl
-				e.anim.start_scale[1] /= crun.localscl
-			}
 		}
 		return true
 	})
@@ -7496,26 +7484,20 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case modifyBGCtrl_sinadd:
-			var side int32 = 1
-			if len(exp) > 3 {
-				if exp[3].evalI(c) < 0 {
-					sinadd[3] = -exp[3].evalI(c)
-					side = -1
-				} else {
-					sinadd[3] = exp[3].evalI(c)
-				}
-			}
-			sinadd[0] = exp[0].evalI(c) * side
+			sinadd[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
-				sinadd[1] = exp[1].evalI(c) * side
+				sinadd[1] = exp[1].evalI(c)
 				if len(exp) > 2 {
-					sinadd[2] = exp[2].evalI(c) * side
+					sinadd[2] = exp[2].evalI(c)
+					if len(exp) > 3 {
+						sinadd[3] = exp[3].evalI(c)
+					}
 				}
 			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_color:
-			color = ClampF(exp[0].evalF(c)/256, 0, 1)
+			color = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
