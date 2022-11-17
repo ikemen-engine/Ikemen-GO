@@ -2693,12 +2693,14 @@ type changeAnim StateControllerBase
 const (
 	changeAnim_elem byte = iota
 	changeAnim_value
+	changeAnim_readplayerid
 	changeAnim_redirectid
 )
 
 func (sc changeAnim) Run(c *Char, _ []int32) bool {
 	crun := c
 	var elem int32
+	var r int = -1
 	setelem := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -2706,9 +2708,19 @@ func (sc changeAnim) Run(c *Char, _ []int32) bool {
 			elem = exp[0].evalI(c)
 			setelem = true
 		case changeAnim_value:
-			crun.changeAnim(exp[1].evalI(c), exp[0].evalB(c))
+			pn := crun.playerNo
+			if r != -1 {
+				pn = r
+			}
+			crun.changeAnimEx(exp[1].evalI(c), pn, exp[0].evalB(c), false)
 			if setelem {
 				crun.setAnimElem(elem)
+			}
+		case changeAnim_readplayerid:
+			if rpid := sys.playerID(exp[0].evalI(c)); rpid != nil {
+				r = rpid.playerNo
+			} else {
+				return false
 			}
 		case changeAnim_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -3102,7 +3114,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_time:
 		pfd.time = exp[0].evalI(c)
 	case palFX_color:
-		pfd.color = MaxF(0, MinF(1, exp[0].evalF(c)/256))
+		pfd.color = exp[0].evalF(c)/256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)

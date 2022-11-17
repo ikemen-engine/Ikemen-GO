@@ -2628,10 +2628,10 @@ end
 for k, v in pairs(motif) do
 	if type(v) == "table" then
 		if motif[k].fadein_anim ~= nil and motif[k].fadein_anim > -1 then
-			motif.f_loadSprData(motif[v], {s = 'fadein_'})
+			motif.f_loadSprData(v, {s = 'fadein_'})
 		end
 		if motif[k].fadeout_anim ~= nil and motif[k].fadeout_anim > -1 then
-			motif.f_loadSprData(motif[v], {s = 'fadeout_'})
+			motif.f_loadSprData(v, {s = 'fadeout_'})
 		end
 	end
 end

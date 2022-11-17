@@ -2435,12 +2435,17 @@ func (c *Char) setSprPriority(sprpriority int32) {
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
-func (c *Char) changeAnim(animNo int32, ffx bool) {
-	if a := c.getAnim(animNo, ffx, true); a != nil {
+func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
+	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
 		c.animNo = animNo
+		// If player is in custom state and used ChangeAnim2
+		if alt {
+			c.animPN = playerNo
+			a.sff = sys.cgi[c.playerNo].sff
+		}
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
 			sys.chars[c.animPN][0].size.yscale}
 		if c.hitPause() {
@@ -2448,19 +2453,11 @@ func (c *Char) changeAnim(animNo int32, ffx bool) {
 		}
 	}
 }
+func (c *Char) changeAnim(animNo int32, ffx bool) {
+	c.changeAnimEx(animNo, c.playerNo, ffx, false)
+}
 func (c *Char) changeAnim2(animNo int32, ffx bool) {
-	if a := sys.chars[c.ss.sb.playerNo][0].getAnim(animNo, ffx, true); a != nil {
-		c.anim = a
-		c.anim.remap = c.remapSpr
-		c.animPN = c.ss.sb.playerNo
-		c.animNo = animNo
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale}
-		a.sff = sys.cgi[c.playerNo].sff
-		if c.hitPause() {
-			c.curFrame = a.CurrentFrame()
-		}
-	}
+	c.changeAnimEx(animNo, c.ss.sb.playerNo, ffx, true)
 }
 func (c *Char) setAnimElem(e int32) {
 	if c.anim != nil {
@@ -3120,7 +3117,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
 		if f {
-			ch.SetVolume(256)
+			ch.SetVolume(float32(vol * 64 / 25))
 		} else {
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}

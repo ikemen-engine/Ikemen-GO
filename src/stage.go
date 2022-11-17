@@ -523,7 +523,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 			bgc.invall = tmp != 0
 		}
 		if is.ReadF32("color", &bgc.color) {
-			bgc.color = ClampF(bgc.color/256, 0, 1)
+			bgc.color = bgc.color/256
 		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
@@ -1349,7 +1349,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 				s.bgc[i].invall = invall != 0
 			}
 			if !math.IsNaN(float64(color)) {
-				s.bgc[i].color = ClampF(color/256, 0, 1)
+				s.bgc[i].color = color/256
 			}
 			s.reload = true
 		}
