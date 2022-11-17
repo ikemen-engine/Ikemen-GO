@@ -166,7 +166,7 @@ func (pf *PalFX) step() {
 		pf.eInvertall = pf.invertall
 		pf.eNegType = pf.negType
 		pf.sinAdd(&pf.eAdd)
-		if !sys.paused || sys.step {
+		if sys.tickFrame() {
 			if pf.cycletime > 0 {
 				pf.sintime = (pf.sintime + 1) % pf.cycletime
 			}
