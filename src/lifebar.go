@@ -1403,15 +1403,13 @@ func (co *LifeBarCombo) step(combo, fakeCombo, damage int32, percentage float32,
 			}
 		}
 		if co.oldd != damage {
-			co.curd = damage
+			co.curd, co.oldd = damage, damage
 		}
 		if co.oldp != percentage {
-			co.curp = percentage
+			co.curp, co.oldp = percentage, percentage
 		}
 	}
 	co.old = fakeCombo
-	co.oldd = damage
-	co.oldp = percentage
 }
 func (co *LifeBarCombo) reset() {
 	co.bg.Reset()
