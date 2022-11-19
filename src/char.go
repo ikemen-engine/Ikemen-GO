@@ -1853,6 +1853,9 @@ func (c *Char) clear2() {
 		}
 	} else {
 		c.palfx = nil
+		if c.teamside == -1 {
+			c.setSCF(SCF_standby)
+		}
 	}
 	c.aimg.timegap = -1
 	c.enemyNearClear()
