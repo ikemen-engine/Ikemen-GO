@@ -3197,25 +3197,6 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
-		if c.hitdef.reversal_attr == 0 || c.hitdef.reversal_attr == -1<<31 {
-			i := 0
-			for i < len(c.targets) {
-				if i >= len(c.targets) {
-					break
-				}
-				if t := sys.playerID(c.targets[i]); t != nil {
-					if t.ss.moveType != MT_H && !t.stchtmp {
-						c.targets[i] = c.targets[len(c.targets)-1]
-						c.targets = c.targets[:len(c.targets)-1]
-						t.ghv.hitid = -1
-					} else {
-						i++
-					}
-					continue
-				}
-				i++
-			}
-		}
 		c.stchtmp = false
 		return true
 	}
@@ -5066,6 +5047,27 @@ func (c *Char) gethitBindClear() {
 		c.setBindTime(0)
 	}
 }
+func (c *Char) dropTargets() {
+	if c.hitdef.reversal_attr == 0 || c.hitdef.reversal_attr == -1<<31 {
+		i := 0
+		for i < len(c.targets) {
+			if i >= len(c.targets) {
+				break
+			}
+			if t := sys.playerID(c.targets[i]); t != nil {
+				if t.ss.moveType != MT_H && !t.stchtmp {
+					c.targets[i] = c.targets[len(c.targets)-1]
+					c.targets = c.targets[:len(c.targets)-1]
+					t.ghv.hitid = -1
+				} else {
+					i++
+				}
+				continue
+			}
+			i++
+		}
+	}
+}
 func (c *Char) removeTarget(pid int32) {
 	for i, t := range c.targets {
 		if t == pid {
@@ -5403,6 +5405,7 @@ func (c *Char) actionRun() {
 				sb.run(c)
 			}
 		}
+		c.dropTargets()
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
