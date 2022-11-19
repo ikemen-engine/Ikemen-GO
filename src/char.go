@@ -220,8 +220,8 @@ func (cd *CharData) init() {
 	cd.guard.sparkno = 40
 	cd.ko.echo = 0
 	cd.volume = 256
-	cd.intpersistindex = 0
-	cd.floatpersistindex = 0
+	cd.intpersistindex = 60
+	cd.floatpersistindex = 40
 }
 
 type CharSize struct {
