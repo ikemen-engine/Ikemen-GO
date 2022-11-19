@@ -3996,7 +3996,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, tit
 			animUpdate(motif[section].menu_arrow_up_data)
 			animDraw(motif[section].menu_arrow_up_data)
 		end
-		if item >= cursorPosY and items_shown < #t then
+		if item >= cursorPosY and item + motif[section].menu_window_visibleitems - cursorPosY < #t then
 			animUpdate(motif[section].menu_arrow_down_data)
 			animDraw(motif[section].menu_arrow_down_data)
 		end
