@@ -5410,44 +5410,17 @@ func (c *Char) actionRun() {
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
-	if !c.hitPause() {
-		if !c.sf(CSF_frontwidth) {
-			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
-		}
-		if !c.sf(CSF_backwidth) {
-			c.width[1] = c.defBW() * ((320 / c.localcoord) / c.localscl)
-		}
-		if !c.sf(CSF_frontedge) {
-			c.edge[0] = 0
-		}
-		if !c.sf(CSF_backedge) {
-			c.edge[1] = 0
-		}
-	}
 	if !c.pauseBool {
 		if !c.hitPause() {
-			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
-				c.changeState(5120, -1, -1, false)
-			}
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
 				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, false)
 			}
-			for {
-				c.posUpdate()
-				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
-					c.ss.no == 105 {
-					break
-				}
-				c.changeState(52, -1, -1, false)
-			}
 			c.ss.time++
 			if c.mctime > 0 {
 				c.mctime++
 			}
-			c.setFacing(c.p1facing)
-			c.p1facing = 0
 			if c.anim != nil {
 				c.curFrame = c.anim.CurrentFrame()
 			} else {
@@ -5485,8 +5458,6 @@ func (c *Char) actionRun() {
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
-	}
-	if !c.pauseBool {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
 				t.bind()
@@ -5501,12 +5472,44 @@ func (c *Char) actionFinish() {
 	if (c.minus < 1) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+	// Hack: temporal change to minus == 0 to avoid frame locks
+	c.minus = 0
+	if !c.hitPause() {
+		if !c.sf(CSF_frontwidth) {
+			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
+		}
+		if !c.sf(CSF_backwidth) {
+			c.width[1] = c.defBW() * ((320 / c.localcoord) / c.localscl)
+		}
+		if !c.sf(CSF_frontedge) {
+			c.edge[0] = 0
+		}
+		if !c.sf(CSF_backedge) {
+			c.edge[1] = 0
+		}
+	}
 	if !c.pauseBool {
+		if !c.hitPause() {
+			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
+				c.changeState(5120, -1, -1, false)
+			}
+			for {
+				c.posUpdate()
+				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
+					c.ss.no == 105 {
+					break
+				}
+				c.changeState(52, -1, -1, false)
+			}
+			c.setFacing(c.p1facing)
+			c.p1facing = 0
+		}
 		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
 		}
 	}
 	c.xScreenBound()
+	c.minus = 1
 }
 func (c *Char) update(cvmin, cvmax,
 	highest, lowest, leftest, rightest *float32) {
