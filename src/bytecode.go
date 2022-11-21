@@ -2403,7 +2403,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		case playSnd_volumescale:
 			vo = exp[0].evalI(c)
 		case playSnd_freqmul:
-			fr = exp[0].evalF(c)
+			fr = ClampF(exp[0].evalF(c), 0.01, 5)
 		case playSnd_loop:
 			lp = exp[0].evalB(c)
 		case playSnd_priority:
@@ -3114,7 +3114,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_time:
 		pfd.time = exp[0].evalI(c)
 	case palFX_color:
-		pfd.color = exp[0].evalF(c)/256
+		pfd.color = exp[0].evalF(c) / 256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)
