@@ -5231,7 +5231,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 		default:
 			return true
 		}
-		return !countercheck(&c.hitdef)
+		return true //!countercheck(&c.hitdef)
 	}
 	return true
 }
