@@ -5417,10 +5417,6 @@ func (c *Char) actionRun() {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, false)
 			}
-			c.ss.time++
-			if c.mctime > 0 {
-				c.mctime++
-			}
 			if c.anim != nil {
 				c.curFrame = c.anim.CurrentFrame()
 			} else {
@@ -5500,6 +5496,10 @@ func (c *Char) actionFinish() {
 					break
 				}
 				c.changeState(52, -1, -1, false)
+			}
+			c.ss.time++
+			if c.mctime > 0 {
+				c.mctime++
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
