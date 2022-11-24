@@ -6343,6 +6343,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						getter.bindPos[1] = float32(math.NaN())
 					}
+				} else if getter.bindToId == c.id || getter.bindToId == -c.id {
+					getter.setBindTime(0)
 				}
 			} else if hitType == 1 {
 				absdamage = hd.hitdamage
