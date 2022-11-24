@@ -4414,16 +4414,22 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 	return v, err
 }
 func (c *Compiler) subBlock(line *string, root bool,
-	sbc *StateBytecode, numVars *int32) (*StateBlock, error) {
+	sbc *StateBytecode, numVars *int32, ignorehitpause bool) (*StateBlock, error) {
 	bl := newStateBlock()
+	// Inherit ignorehitpause from partner block
+	if ignorehitpause {
+		bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
+	}
+	ihpRead := false
 	for {
 		switch c.token {
 		case "ignorehitpause":
-			if bl.ignorehitpause >= -1 {
+			if ihpRead {
 				return nil, c.yokisinaiToken()
 			}
 			bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
 			c.scan(line)
+			ihpRead = true
 			continue
 		case "persistent":
 			if sbc == nil {
@@ -4505,7 +4511,7 @@ func (c *Compiler) subBlock(line *string, root bool,
 		c.scan(line)
 		var err error
 		if bl.elseBlock, err = c.subBlock(line, root,
-			sbc, numVars); err != nil {
+			sbc, numVars, ignorehitpause); err != nil {
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause >= -1 {
@@ -4609,7 +4615,8 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			}
 			return nil
 		case "if", "ignorehitpause", "persistent":
-			if sbl, err := c.subBlock(line, root, sbc, numVars); err != nil {
+			if sbl, err := c.subBlock(line, root, sbc, numVars,
+				bl != nil && bl.ignorehitpause >= -1); err != nil {
 				return err
 			} else {
 				if bl != nil && sbl.ignorehitpause >= -1 {
