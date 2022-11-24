@@ -6792,8 +6792,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		if getter.facing > 0 {
 			gxmin, gxmax = -gxmax, -gxmin
 		}
-		gxmin += sys.xmin
-		gxmax += sys.xmax
+		gxmin += sys.xmin / getter.localscl
+		gxmax += sys.xmax / getter.localscl
 		getter.inguarddist = false
 		getter.unsetSF(CSF_gethit)
 		gl, gr := -getter.width[0]*getter.localscl, getter.width[1]*getter.localscl
@@ -6924,7 +6924,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
 					if getter.sf(CSF_screenbound) {
-						getter.pos[0] = ClampF(getter.pos[0], gxmin/getter.localscl, gxmax/getter.localscl)
+						getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 					}
 					if c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
