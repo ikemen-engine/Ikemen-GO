@@ -3181,6 +3181,11 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ghv.fall.yvelocity *= lsRatio
 		c.ghv.yaccel *= lsRatio
 
+		c.width[0] *= lsRatio
+		c.width[1] *= lsRatio
+		c.edge[0] *= lsRatio
+		c.edge[1] *= lsRatio
+
 		c.localscl = newLs
 	}
 	var ok bool
@@ -6789,13 +6794,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.atktmp = orgatktmp
 		}
 	} else {
-		gxmin = getter.getEdge(getter.edge[0], true)
-		gxmax = -getter.getEdge(getter.edge[1], true)
-		if getter.facing > 0 {
-			gxmin, gxmax = -gxmax, -gxmin
-		}
-		gxmin += sys.xmin / getter.localscl
-		gxmax += sys.xmax / getter.localscl
 		getter.inguarddist = false
 		getter.unsetSF(CSF_gethit)
 		gl, gr := -getter.width[0]*getter.localscl, getter.width[1]*getter.localscl
@@ -6907,6 +6905,15 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				cl += c.pos[0] * c.localscl
 				cr += c.pos[0] * c.localscl
+
+				gxmin = getter.getEdge(getter.edge[0], true)
+				gxmax = -getter.getEdge(getter.edge[1], true)
+				if getter.facing > 0 {
+					gxmin, gxmax = -gxmax, -gxmin
+				}
+				gxmin += sys.xmin / getter.localscl
+				gxmax += sys.xmax / getter.localscl
+
 				if gl < cr && cl < gr &&
 					getter.clsnCheck(c, false, false) {
 					getter.pushed, c.pushed = true, true
