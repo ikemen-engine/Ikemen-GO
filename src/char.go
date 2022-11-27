@@ -6065,8 +6065,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				return hd.p2stateno >= 0
 			}
 			return getter.acttmp > 0
-		}() || hd.p1stateno >= 0 && (c.sf(CSF_gethit) || c.stchtmp &&
-			c.ss.sb.playerNo != hd.playerNo) {
+		}() || getter.sf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 ||
+			hd.p1stateno >= 0 && (c.sf(CSF_gethit) ||
+				c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
 			return 0
 		}
 		guard := (proj || !c.sf(CSF_unguardable)) && getter.scf(SCF_guard) &&
