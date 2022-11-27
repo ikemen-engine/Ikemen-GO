@@ -4416,7 +4416,7 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 func (c *Compiler) subBlock(line *string, root bool,
 	sbc *StateBytecode, numVars *int32, ignorehitpause bool) (*StateBlock, error) {
 	bl := newStateBlock()
-	// Inherit ignorehitpause from partner block
+	// Inherit ignorehitpause from parent block
 	if ignorehitpause {
 		bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
 	}
