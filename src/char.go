@@ -6019,8 +6019,14 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		cl.runOrder[i].actionPrepare()
 	}
 	// Run character state controllers
+	// Process priority based on movetype: A > I > H (or anything else)
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
+			cl.runOrder[i].actionRun()
+		}
+	}
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].ss.moveType == MT_I {
 			cl.runOrder[i].actionRun()
 		}
 	}
