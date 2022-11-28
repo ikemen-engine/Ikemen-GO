@@ -2448,6 +2448,17 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
 		if alt {
 			c.animPN = playerNo
 			a.sff = sys.cgi[c.playerNo].sff
+		// Fix palette if anim doesn't belong to char and sff header version is 1.x
+		} else if c.playerNo != playerNo && c.anim.sff.header.Ver0 == 1 {
+			di := c.anim.sff.palList.PalTable[[...]int16{1,1}]
+			spr := c.anim.sff.GetSprite(0, 0)
+			if spr != nil {
+				c.anim.sff.palList.Remap(spr.palidx, di)
+			}
+			spr = c.anim.sff.GetSprite(9000, 0)
+			if spr != nil {
+				c.anim.sff.palList.Remap(spr.palidx, di)
+			}
 		}
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
 			sys.chars[c.animPN][0].size.yscale}
