@@ -2448,9 +2448,9 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
 		if alt {
 			c.animPN = playerNo
 			a.sff = sys.cgi[c.playerNo].sff
-		// Fix palette if anim doesn't belong to char and sff header version is 1.x
+			// Fix palette if anim doesn't belong to char and sff header version is 1.x
 		} else if c.playerNo != playerNo && c.anim.sff.header.Ver0 == 1 {
-			di := c.anim.sff.palList.PalTable[[...]int16{1,1}]
+			di := c.anim.sff.palList.PalTable[[...]int16{1, 1}]
 			spr := c.anim.sff.GetSprite(0, 0)
 			if spr != nil {
 				c.anim.sff.palList.Remap(spr.palidx, di)
@@ -5247,7 +5247,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 		default:
 			return true
 		}
-		return true //!countercheck(&c.hitdef)
+		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id)
 	}
 	return true
 }
