@@ -1644,6 +1644,7 @@ type Char struct {
 	player          bool
 	animPN          int
 	animNo          int32
+	prevAnimNo      int32
 	life            int32
 	lifeMax         int32
 	power           int32
@@ -1876,6 +1877,7 @@ func (c *Char) clearCachedData() {
 	c.ownpal = true
 	c.animPN = -1
 	c.animNo = 0
+	c.prevAnimNo = 0
 	c.stchtmp = false
 	c.inguarddist = false
 	c.p1facing = 0
@@ -2443,6 +2445,7 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
+		c.prevAnimNo = c.animNo
 		c.animNo = animNo
 		// If player is in custom state and used ChangeAnim2
 		if alt {
