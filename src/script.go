@@ -988,7 +988,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 				// Reset roundsExisted to 0 if the losing side is on turns mode
 				for i := 0; i < 2; i++ {
-					if p[i].life <= 0 && sys.tmode[i] == TM_Turns {
+					if !p[i].win() && sys.tmode[i] == TM_Turns {
 						sys.lifebar.fa[TM_Turns][i].numko++
 						sys.lifebar.nm[TM_Turns][i].numko++
 						sys.roundsExisted[i] = 0
