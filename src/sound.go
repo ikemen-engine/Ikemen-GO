@@ -156,7 +156,7 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd int) {
+func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int) {
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
@@ -211,6 +211,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd 
 	resampler := beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
 	bgm.UpdateVolume()
+	bgm.streamer.Seek(startPosition)
 	speaker.Play(bgm.ctrl)
 }
 

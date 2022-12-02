@@ -7538,6 +7538,7 @@ const (
 	playBgm_loop
 	playBgm_loopstart
 	playBgm_loopend
+	playBgm_startposition
 	playBgm_redirectid
 )
 
@@ -7545,7 +7546,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
 	var b bool
 	var bgm string
-	var loop, volume, loopstart, loopend int = 1, 100, 0, 0
+	var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case playBgm_bgm:
@@ -7565,6 +7566,8 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			loopstart = int(exp[0].evalI(c))
 		case playBgm_loopend:
 			loopend = int(exp[0].evalI(c))
+		case playBgm_startposition:
+			startposition = int(exp[0].evalI(c))
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7575,7 +7578,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
-		sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition)
 		sys.playBgmFlg = true
 	}
 	return false
