@@ -284,6 +284,7 @@ var triggerMap = map[string]int{
 	"projhit":           1,
 	"projhittime":       1,
 	"random":            1,
+	"reversaldefattr":   1,
 	"rightedge":         1,
 	"rootdist":          1,
 	"roundno":           1,
@@ -1990,6 +1991,20 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_projhittime)
 	case "random":
 		out.append(OC_random)
+
+	case "reversaldefattr":
+		hda := func() error {
+			if attr, err := c.trgAttr(in); err != nil {
+				return err
+			} else {
+				out.append(OC_ex_)
+				out.appendI32Op(OC_ex_reversaldefattr, attr)
+			}
+			return nil
+		}
+		if err := eqne(hda); err != nil {
+			return bvNone(), err
+		}
 	case "rightedge":
 		out.append(OC_rightedge)
 	case "roundno":

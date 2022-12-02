@@ -650,6 +650,10 @@ func (hd *HitDef) testAttr(attr int32) bool {
 	attr &= hd.attr
 	return attr&int32(ST_MASK) != 0 && attr&^int32(ST_MASK)&^(-1<<31) != 0
 }
+func (hd *HitDef) testReversalAttr(attr int32) bool {
+	attr &= hd.reversal_attr
+	return attr&int32(ST_MASK) != 0 && attr&^int32(ST_MASK)&^(-1<<31) != 0
+}
 
 type GetHitVar struct {
 	hitBy [][2]int32
@@ -2975,6 +2979,9 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
+}
+func (c *Char) reversalDefAttr(attr int32) bool {
+	return c.hitdef.testReversalAttr(attr)
 }
 func (c *Char) rightEdge() float32 {
 	return sys.cam.ScreenPos[0]/c.localscl + c.gameWidth()

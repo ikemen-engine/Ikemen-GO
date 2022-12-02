@@ -512,6 +512,7 @@ const (
 	OC_ex_vel_z
 	OC_ex_jugglepoints
 	OC_ex_prevanimno
+	OC_ex_reversaldefattr
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1990,6 +1991,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.juggle)
 	case OC_ex_prevanimno:
 		sys.bcStack.PushI(c.prevAnimNo)
+	case OC_ex_reversaldefattr:
+		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
