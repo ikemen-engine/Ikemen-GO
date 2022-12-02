@@ -1789,22 +1789,25 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			return nil
 		}
-		if sys.cgi[c.playerNo].ver[0] == 1 {
-			if err := eqne(hda); err != nil {
-				return bvNone(), err
-			}
-		} else {
-			if not, err := c.kyuushiki(in); err != nil {
-				if sys.ignoreMostErrors {
-					out.appendValue(BytecodeBool(false))
-				} else {
-					return bvNone(), err
-				}
-			} else if err := hda(); err != nil {
-				return bvNone(), err
-			} else if not && !sys.ignoreMostErrors {
-				return bvNone(), Error("hitdefattr doesn't support '!=' in this mugenversion")
-			}
+		// if sys.cgi[c.playerNo].ver[0] == 1 {
+			// if err := eqne(hda); err != nil {
+				// return bvNone(), err
+			// }
+		// } else {
+			// if not, err := c.kyuushiki(in); err != nil {
+				// if sys.ignoreMostErrors {
+					// out.appendValue(BytecodeBool(false))
+				// } else {
+					// return bvNone(), err
+				// }
+			// } else if err := hda(); err != nil {
+				// return bvNone(), err
+			// } else if not && !sys.ignoreMostErrors {
+				// return bvNone(), Error("hitdefattr doesn't support '!=' in this mugenversion")
+			// }
+		// }
+		if err := eqne(hda); err != nil {
+			return bvNone(), err
 		}
 	case "hitfall":
 		out.append(OC_hitfall)
@@ -1962,6 +1965,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_playeridexist)
+	case "prevanimno":
+		out.append(OC_ex_, OC_ex_prevanimno)
 	case "prevstateno":
 		out.append(OC_prevstateno)
 	case "projcanceltime":
