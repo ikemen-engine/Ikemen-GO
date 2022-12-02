@@ -1965,8 +1965,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_playeridexist)
-	case "prevanimno":
-		out.append(OC_ex_, OC_ex_prevanimno)
+	case "prevanim":
+		out.append(OC_ex_, OC_ex_prevanim)
 	case "prevstateno":
 		out.append(OC_prevstateno)
 	case "projcanceltime":

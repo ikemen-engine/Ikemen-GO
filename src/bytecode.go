@@ -511,7 +511,7 @@ const (
 	OC_ex_pos_z
 	OC_ex_vel_z
 	OC_ex_jugglepoints
-	OC_ex_prevanimno
+	OC_ex_prevanim
 	OC_ex_reversaldefattr
 )
 const (
@@ -1989,7 +1989,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.vel[2] * (c.localscl / oc.localscl))
 	case OC_ex_jugglepoints:
 		sys.bcStack.PushI(c.juggle)
-	case OC_ex_prevanimno:
+	case OC_ex_prevanim:
 		sys.bcStack.PushI(c.prevAnimNo)
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
