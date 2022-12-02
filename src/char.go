@@ -2977,7 +2977,7 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(c.gi().pctime)
 }
-func (c *Char) reversalAttr(attr int32) bool {
+func (c *Char) reversalDefAttr(attr int32) bool {
 	return c.hitdef.testReversalAttr(attr)
 }
 func (c *Char) rightEdge() float32 {
