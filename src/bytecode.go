@@ -513,6 +513,8 @@ const (
 	OC_ex_jugglepoints
 	OC_ex_prevanim
 	OC_ex_reversaldefattr
+	OC_ex_bgmlength
+	OC_ex_bgmposition
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1994,6 +1996,18 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
 		*i += 4
+	case OC_ex_bgmlength:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
+		}
+	case OC_ex_bgmposition:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
+		}
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

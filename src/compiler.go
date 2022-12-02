@@ -1397,6 +1397,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_backedgebodydist)
 	case "backedgedist":
 		out.append(OC_backedgedist)
+	case "bgmlength":
+		out.append(OC_ex_, OC_ex_bgmlength)
+	case "bgmposition":
+		out.append(OC_ex_, OC_ex_bgmposition)
 	case "bottomedge":
 		out.append(OC_bottomedge)
 	case "camerapos":
