@@ -5470,6 +5470,10 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if sys.superanim != nil {
+		sys.superanim.start_scale[0] *= crun.localscl
+		sys.superanim.start_scale[1] *= crun.localscl
+	}
 	crun.setSuperPauseTime(t, mt, uh)
 	return false
 }

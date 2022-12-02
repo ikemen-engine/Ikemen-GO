@@ -4515,6 +4515,10 @@ func (c *Char) over() bool {
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
 		e.anim = c.getAnim(120, true, false)
+		if e.anim != nil {
+			e.anim.start_scale[0] *= c.localscl
+			e.anim.start_scale[1] *= c.localscl
+		}
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
 		e.offset = [...]float32{x, y}
@@ -6501,6 +6505,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				e.localscl = 1
 				if !ffx {
 					e.scale = [...]float32{c.localscl, c.localscl}
+				} else if e.anim != nil {
+					e.anim.start_scale[0] *= c.localscl
+					e.anim.start_scale[1] *= c.localscl
 				}
 				e.setPos(p1)
 				c.insertExplod(i)
