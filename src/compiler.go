@@ -1397,6 +1397,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_backedgebodydist)
 	case "backedgedist":
 		out.append(OC_backedgedist)
+	case "bgmlength":
+		out.append(OC_ex_, OC_ex_bgmlength)
+	case "bgmposition":
+		out.append(OC_ex_, OC_ex_bgmposition)
 	case "bottomedge":
 		out.append(OC_bottomedge)
 	case "camerapos":
@@ -1965,8 +1969,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_playeridexist)
-	case "prevanimno":
-		out.append(OC_ex_, OC_ex_prevanimno)
+	case "prevanim":
+		out.append(OC_ex_, OC_ex_prevanim)
 	case "prevstateno":
 		out.append(OC_prevstateno)
 	case "projcanceltime":

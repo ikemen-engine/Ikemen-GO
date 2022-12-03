@@ -511,8 +511,10 @@ const (
 	OC_ex_pos_z
 	OC_ex_vel_z
 	OC_ex_jugglepoints
-	OC_ex_prevanimno
+	OC_ex_prevanim
 	OC_ex_reversaldefattr
+	OC_ex_bgmlength
+	OC_ex_bgmposition
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -1989,11 +1991,23 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.vel[2] * (c.localscl / oc.localscl))
 	case OC_ex_jugglepoints:
 		sys.bcStack.PushI(c.juggle)
-	case OC_ex_prevanimno:
+	case OC_ex_prevanim:
 		sys.bcStack.PushI(c.prevAnimNo)
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
 		*i += 4
+	case OC_ex_bgmlength:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
+		}
+	case OC_ex_bgmposition:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
+		}
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5456,6 +5470,10 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if sys.superanim != nil {
+		sys.superanim.start_scale[0] *= crun.localscl
+		sys.superanim.start_scale[1] *= crun.localscl
+	}
 	crun.setSuperPauseTime(t, mt, uh)
 	return false
 }
@@ -7538,6 +7556,7 @@ const (
 	playBgm_loop
 	playBgm_loopstart
 	playBgm_loopend
+	playBgm_startposition
 	playBgm_redirectid
 )
 
@@ -7545,7 +7564,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
 	var b bool
 	var bgm string
-	var loop, volume, loopstart, loopend int = 1, 100, 0, 0
+	var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case playBgm_bgm:
@@ -7565,6 +7584,8 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			loopstart = int(exp[0].evalI(c))
 		case playBgm_loopend:
 			loopend = int(exp[0].evalI(c))
+		case playBgm_startposition:
+			startposition = int(exp[0].evalI(c))
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7575,7 +7596,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
-		sys.bgm.Open(bgm, loop, volume, loopstart, loopend)
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition)
 		sys.playBgmFlg = true
 	}
 	return false
