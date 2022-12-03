@@ -4299,7 +4299,9 @@ function start.f_dialogue()
 	local t = start.t_dialogue
 	--draw bg
 	for side = 1, 2 do
-		animUpdate(motif.dialogue_info['p' .. side .. '_bg_data'])
+		if not paused() then
+			animUpdate(motif.dialogue_info['p' .. side .. '_bg_data'])
+		end
 		animDraw(motif.dialogue_info['p' .. side .. '_bg_data'])
 	end
 	if not paused() then
