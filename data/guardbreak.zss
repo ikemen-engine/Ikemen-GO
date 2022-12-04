@@ -2,13 +2,15 @@
 #===============================================================================
 # StateGuardBreakHit
 #===============================================================================
-[StateDef const(StateGuardBreakHit); type: U; physics: U; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakHit); type: U; moveType: I; physics: N; velSet: 0, 0; ctrl: 0;]
 
 if !guardBreak {
 	guardBreakSet{value: 1}
 }
 
 if time = 0 {
+	# New map to track the effective time the player is vulnerable in the next state. Not sure if name is acceptable
+	mapSet{map: "_iksys_guardBreakTime"; value: 0}
 	playSnd{value: F5400, 0}
 	explod{
 		anim: F const(FxGuardBreakShockwave);
@@ -42,7 +44,7 @@ if time < 13 {
 	}
 }
 
-persistent(0) if time = 0 {
+if time = 0 {
 	explod{
 		anim: F const(FxBackgroundColor);
 		sprPriority: -6000;
@@ -56,61 +58,87 @@ persistent(0) if time = 0 {
 		ownPal: 1;
 		ignoreHitPause: 1;
 	}
-	pause{time: 13; movetime: 13}
+	# Removed the pause as it doesn't exist in the main reference game and it affected every player on screen
 	stateTypeSet{physics: stateType}
+	# Changed animations a bit. I think all of them could use common guard break constants later
 	if stateType = S {
 		changeAnim{value: const(AnimStandOrAirHitHigh_hard)}
 	} else if stateType = C {
 		changeAnim{value: const(AnimCrouchHit_hard)}
 	} else {
-		changeAnim{value: const(AnimStandOrAirHitLow_hard)}
+		changeAnim{value: const(AnimStandOrAirHitHigh_hard)} # High hit makes the character look more open than low hit
 	}
+} else {
+	changeAnim{value: Anim}
 }
 
-if (time > 13 && animTime = 0) || time > 36 {
+# Every character stays in these states the same time, regardless of animation timing
+if time >= 20 {
 	selfState{value: const(StateGuardBreakRecover)}
 }
 
 #===============================================================================
 # StateGuardBreakRecover
 #===============================================================================
-[StateDef const(StateGuardBreakRecover); type: U; physics: U; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakRecover); type: U; moveType: I; physics: N; velSet: 0, 0; ctrl: 0;]
 
+# Transition from air to ground
 if stateType = A {
-	velAdd{y: const(movement.yaccel)}
-	if pos y >= 0 && vel y > 0 {
+	velAdd{y: const240p(1.0)} # Characters fall down fast regardless of their own acceleration constants
+	if vel y > 0 && pos y > -vel y {
 		velSet{y: 0}
 		posSet{y: 0}
+		stateTypeSet{statetype: S; physics: S}
+		# If using actual guard break animations the character would have a transition here
 	}
 }
 
 if time = 0 {
-	stateTypeSet{physics: stateType}
+	if stateType = S {
+		stateTypeSet{physics: S}
+	} else if stateType = C {
+		stateTypeSet{physics: C}
+	} else {
+		stateTypeSet{physics: N}
+	}
+} else if statetype != A {
+	mapAdd{map: "_iksys_guardBreakTime"; value: 1} # Time that the character is in the air does not count towards total guard break time
+}
+
+if map(_iksys_guardBreakTime) < 45 {
+	if anim = [const(AnimStandOrAirHitHigh_light), const(AnimCrouchRecover_hard)] {
+		if animtime = -1 {
+			changeanim{value: anim; elem: animelemno(-1)} # Freeze last frame if reusing one of the required hit animations
+		}
+	}
+	if (time % 2) = 0 {
+		if (time % 4) {
+			offset{x: -const240p(1)}
+		} else {
+			offset{x: const240p(1)}
+		}
+	}
+}
+
+# Change to recovery animation
+if map(_iksys_guardBreakTime) = 45 {
 	if stateType = S {
 		changeAnim{value: const(AnimStandRecoverHigh_hard)}
 	} else if stateType = C {
 		changeAnim{value: const(AnimCrouchRecover_hard)}
 	} else {
-		changeAnim{value: const(AnimStandRecoverLow_hard)}
+		changeAnim{value: const(AnimStandRecoverHigh_hard)}
 	}
 }
 
-if time <= 80 {
-	changeAnim{value: Anim}
-	if (time % 2) = 0 {
-		if (time % 4) {
-			offset{x: -const240p(1)}
-		} else {
-			offset{x: 1}
-		}
-	}
-}
-
-if animTime = 0 || time > 99 {
+# Return to neutral
+if map(_iksys_guardBreakTime) >= 60 {
 	if stateType = S {
 		selfState{value: const(StateStand); ctrl: 1}
-	} else {
+	} else if stateType = C {
 		selfState{value: const(StateCrouching); ctrl: 1}
+	} else {
+		selfState{value: const(StateAirGetHit_recoveringInAirNotFalling); ctrl: 1}
 	}
 }
 
@@ -131,8 +159,8 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	}
 	# Upon block
 	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
-		# Coloring if guard points left <= 20%
-		if (gameTime % 5) = 0 && float(guardPoints) / guardPointsMax <= 0.2 {
+		# Coloring if guard points left are under 333 or 50% for characters with a small guard bar
+		if (gameTime % 5) = 0 && guardPoints <= min((0.5 * guardPointsMax), 333) {
 			palFx{time: 2; add: 200, 0, 0}
 		}
 		# Entering guard break state
