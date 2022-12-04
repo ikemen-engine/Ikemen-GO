@@ -4640,7 +4640,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			return nil
 		case "if", "ignorehitpause", "persistent":
 			if sbl, err := c.subBlock(line, root, sbc, numVars,
-				bl != nil && bl.ignorehitpause >= -1); err != nil {
+				bl != nil && bl.ctrlsIgnorehitpause); err != nil {
 				return err
 			} else {
 				if bl != nil && sbl.ignorehitpause >= -1 {
