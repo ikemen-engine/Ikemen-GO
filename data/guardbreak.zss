@@ -9,8 +9,9 @@ if !guardBreak {
 }
 
 if time = 0 {
-	# New map to track the effective time the player is vulnerable in the next state. Not sure if name is acceptable
-	mapSet{map: "_iksys_guardBreakTime"; value: 0}
+	if pos y < 0 {
+		statetypeset{statetype: A} # Just in case
+	}
 	playSnd{value: F5400, 0}
 	explod{
 		anim: F const(FxGuardBreakShockwave);
@@ -74,7 +75,11 @@ if time = 0 {
 
 # Every character stays in these states the same time, regardless of animation timing
 if time >= 20 {
-	selfState{value: const(StateGuardBreakRecover)}
+	if vel y >= 0 && pos y >= -vel y { # If at ground level now or in the next frame
+		selfState{value: const(StateGuardBreakRecover)}
+	} else {
+		velAdd{y: const240p(1.0)} # Characters fall down fast regardless of their own acceleration constants
+	}
 }
 
 #===============================================================================
@@ -82,30 +87,21 @@ if time >= 20 {
 #===============================================================================
 [StateDef const(StateGuardBreakRecover); type: U; moveType: I; physics: N; velSet: 0, 0; ctrl: 0;]
 
-# Transition from air to ground
-if stateType = A {
-	velAdd{y: const240p(1.0)} # Characters fall down fast regardless of their own acceleration constants
-	if vel y > 0 && pos y > -vel y {
-		velSet{y: 0}
-		posSet{y: 0}
-		stateTypeSet{statetype: S; physics: S}
-		# If using actual guard break animations the character would have a transition here
-	}
-}
-
 if time = 0 {
-	if stateType = S {
-		stateTypeSet{physics: S}
+	posSet{y: 0}
+	if stateType = A {
+		stateTypeSet{statetype: S; physics: S}
+		if anim != const(AnimStandOrAirHitHigh_hard) {
+			changeanim{value: const(AnimStandOrAirHitHigh_hard)} # If using actual guard break animations the character would have a transition here
+		}
 	} else if stateType = C {
-		stateTypeSet{physics: C}
+		stateTypeSet{statetype: C; physics: C}
 	} else {
-		stateTypeSet{physics: N}
+		stateTypeSet{statetype: S; physics: S}
 	}
-} else if statetype != A {
-	mapAdd{map: "_iksys_guardBreakTime"; value: 1} # Time that the character is in the air does not count towards total guard break time
 }
 
-if map(_iksys_guardBreakTime) < 45 {
+if time < 45 {
 	if anim = [const(AnimStandOrAirHitHigh_light), const(AnimCrouchRecover_hard)] {
 		if animtime = -1 {
 			changeanim{value: anim; elem: animelemno(-1)} # Freeze last frame if reusing one of the required hit animations
@@ -121,7 +117,7 @@ if map(_iksys_guardBreakTime) < 45 {
 }
 
 # Change to recovery animation
-if map(_iksys_guardBreakTime) = 45 {
+if time = 45 {
 	if stateType = S {
 		changeAnim{value: const(AnimStandRecoverHigh_hard)}
 	} else if stateType = C {
@@ -132,7 +128,7 @@ if map(_iksys_guardBreakTime) = 45 {
 }
 
 # Return to neutral
-if map(_iksys_guardBreakTime) >= 60 {
+if time >= 60 {
 	if stateType = S {
 		selfState{value: const(StateStand); ctrl: 1}
 	} else if stateType = C {
