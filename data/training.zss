@@ -30,7 +30,7 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 } else if roundState = 0 {
 	# Round start reset
 	powerSet{value: powerMax}
-	powerSet{value: playerId(getPlayerId(1)),powerMax; redirectId: playerId(getPlayerId(1)),id}
+	powerSet{value: player(1),powerMax; redirectId: player(1),id}
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0}
 	mapSet{map: "_iksys_trainingDirection"; value: 0}
 	mapSet{map: "_iksys_trainingAirJumpNum"; value: 0}
@@ -41,7 +41,7 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	# Life and Power recovery
 	call fTrainingRecovery(getPlayerId(1));
 	call fTrainingRecovery(getPlayerId(2));
-	let n = playerId(getPlayerId(1)),numPartner;
+	let n = player(1),numPartner;
 	if $n >= 1 {
 		call fTrainingRecovery(getPlayerId(3));
 		if $n >= 2 {

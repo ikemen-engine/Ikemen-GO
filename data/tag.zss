@@ -90,17 +90,17 @@ screenBound{value: 0; moveCamera: 1, 1; stageBound: 0}
 assertSpecial{flag: noTurnTarget}
 
 if time = 0 {
-	if facing != playerId(getPlayerId(teamLeader)),facing {
+	if facing != player(teamLeader),facing {
 		turn{}
 	}
 	# set starting pos
 	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# store distance to switch initiation position
-	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - playerId(getPlayerId(teamLeader)),pos x)}
+	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - player(teamLeader),pos x)}
 	# set movement
 	velSet{x: min(const240p(const(TagInVelX)), map(_iksys_tagSwitchDist) / const(TagInTime)); y: 0}
 	# change active player assignment
-	mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
+	mapSet{map: "_iksys_tagLastId"; value: player(teamLeader),id}
 	tagIn{leader: playerNo}
 	call fTagSwitchExplod();
 } else {
@@ -149,10 +149,8 @@ assertSpecial{flag: invisible; flag2: noAutoTurn}
 
 # force standby character to always stay outside visible area
 posSet{
-	x: (playerId(getPlayerId(teamLeader)),pos x
-		- playerId(getPlayerId(teamLeader)),screenPos x - const240p(160)) * -facing;
-	y: playerId(getPlayerId(teamLeader)),pos y
-		- playerId(getPlayerId(teamLeader)),screenPos y - const240p(160);
+	x: (player(teamLeader),pos x - player(teamLeader),screenPos x - const240p(160)) * -facing;
+	y: player(teamLeader),pos y - player(teamLeader),screenPos y - const240p(160);
 }
 
 #===============================================================================
@@ -183,14 +181,14 @@ if !ctrl && backEdgeBodyDist >= 0 {
 }
 
 if time = 0 {
-	if facing != playerId(getPlayerId(teamLeader)),facing {
+	if facing != player(teamLeader),facing {
 		turn{}
 	}
 	# set starting pos
 	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# change active player assignment if the battle still goes on
 	if roundState = 2 {
-		mapSet{map: "_iksys_tagLastId"; value: playerId(getPlayerId(teamLeader)),id}
+		mapSet{map: "_iksys_tagLastId"; value: player(teamLeader),id}
 		tagIn{leader: playerNo}
 		call fTagSwitchExplod();
 	}
