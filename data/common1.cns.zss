@@ -357,12 +357,15 @@ call HiToLoAndLoToHi();
 [Function GuardShaking(anim)]
 changeAnim{value: $anim}
 if hitShakeOver {
-	changeState{value: 151 + 2 * (command = "holddown")}
+	changeState{value: 151 + 2 * (command = "holddown"); ctrl: hitover}
 }
 call HiToLoAndLoToHi();
 
 #-------------------------------------------------------------------------------
 [Function GuardKnockedBack(nextState)]
+if ctrl && hitover {
+	changeState{value: $nextState;}
+}
 if time = 0 {
 	hitVelSet{x: 1}
 }
@@ -374,7 +377,7 @@ if time = getHitVar(ctrlTime) {
 }
 call HiToLoAndLoToHi();
 if hitOver {
-	changeState{value: $nextState; ctrl: 1}
+	ctrlset{value: 1}
 }
 
 #-------------------------------------------------------------------------------
@@ -485,6 +488,9 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 [Function GetHitKnockedBack(lAnim, nextState)]
+if ctrl {
+	changeState{value: $nextState}
+}
 if time = 0 {
 	hitVelSet{x: 1}
 }
@@ -497,7 +503,7 @@ if time >= getHitVar(slideTime) {
 if hitOver {
 	velSet{x: 0}
 	DefenceMulSet{value: 1}
-	changeState{value: $nextState; ctrl: 1}
+	ctrlset{value: 1}
 }
 
 #-------------------------------------------------------------------------------
@@ -516,7 +522,7 @@ if anim = 5000 || anim = 5010 {
 	forceFeedback{time: 15; waveform: sinesquare; ampl: 140}
 }
 if hitShakeOver {
-	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5001)}
+	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5001); ctrl: hitOver}
 }
 
 #-------------------------------------------------------------------------------
@@ -534,7 +540,7 @@ if (time = 0 && (getHitVar(yVel) || getHitVar(fall))) || pos y != 0 {
 	stateTypeSet{stateType: A}
 }
 if hitShakeOver {
-	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5011)}
+	changeState{value: ifElse(getHitVar(yVel) || getHitVar(fall), 5030, 5011); ctrl: hitOver}
 }
 if anim = 5020 {
 	forceFeedback{time: 6; waveform: square}
