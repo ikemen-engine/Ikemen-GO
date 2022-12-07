@@ -1160,7 +1160,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	switch c.token {
 	case "":
 		return bvNone(), Error("Nothing assigned")
-	case "root", "parent", "helper", "target", "partner",
+	case "root", "player", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid":
 		switch c.token {
 		case "parent":
@@ -1171,6 +1171,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token = c.tokenizer(in)
 		default:
 			switch c.token {
+			case "player":
+				opc = OC_player
 			case "helper":
 				opc = OC_helper
 			case "target":
@@ -1201,6 +1203,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					be1.appendValue(BytecodeInt(-1))
 				case OC_partner, OC_enemy, OC_enemynear:
 					be1.appendValue(BytecodeInt(0))
+				case OC_player:
+					return bvNone(), Error("Missing '(' after player")
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
 				}
@@ -2014,7 +2018,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "roundno":
 		out.append(OC_ex_, OC_ex_roundno)
 	case "roundsexisted":
-		out.append(OC_roundsexisted)
+		out.append(OC_ex_, OC_ex_roundsexisted)
 	case "roundstate":
 		out.append(OC_roundstate)
 	case "screenheight":
