@@ -7799,7 +7799,6 @@ func (sc text) Run(c *Char, _ []int32) bool {
 	var sn int = -1
 	var fflg bool
 	var fnt int = -1
-	var r, g, b int32 = 255, 255, 255
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case text_removetime:
@@ -7834,13 +7833,14 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				ts.yscl = exp[1].evalF(c)
 			}
 		case text_color:
-			r = exp[0].evalI(c)
+			var r, g, b int32 = exp[0].evalI(c), 255, 255
 			if len(exp) > 1 {
 				g = exp[1].evalI(c)
 				if len(exp) > 2 {
 					b = exp[2].evalI(c)
 				}
 			}
+			ts.SetColor(r, g, b)
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7859,22 +7859,13 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		ts.text = OldSprintf("%v", params...)
 	}
 	// font assignment
-	var ok bool
+	fntList := crun.gi().fnt
 	if fflg {
-		if fnt >= 0 && fnt < len(sys.lifebar.fnt) && sys.lifebar.fnt[fnt] != nil {
-			ts.fnt = sys.lifebar.fnt[fnt]
-			ok = true
-		}
-	} else {
-		f := crun.gi().fnt
-		if fnt >= 0 && fnt < len(f) && f[fnt] != nil {
-			ts.fnt = f[fnt]
-			ok = true
-		}
+		fntList = sys.lifebar.fnt
 	}
-	// color assignment
-	ts.SetColor(r, g, b)
-	if !ok {
+	if fnt >= 0 && fnt < len(fntList) && fntList[fnt] != nil {
+		ts.fnt = fntList[fnt]
+	} else {
 		ts.fnt = sys.debugFont.fnt
 	}
 	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
