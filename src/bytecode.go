@@ -7865,8 +7865,8 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ts.fnt = sys.lifebar.fnt[fnt]
 			ok = true
 		}
-	} else if crun.selectNo >= 0 {
-		f := sys.sel.GetChar(crun.selectNo).fnt
+	} else {
+		f := crun.gi().fnt
 		if fnt >= 0 && fnt < len(f) && f[fnt] != nil {
 			ts.fnt = f[fnt]
 			ok = true

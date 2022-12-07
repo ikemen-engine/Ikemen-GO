@@ -1539,6 +1539,7 @@ type CharGlobalInfo struct {
 	remappedpal      [2]int32
 	localcoord       [2]float32
 	ikemenver        [3]uint16
+	fnt              [10]*Fnt
 }
 
 func (cgi *CharGlobalInfo) clearPCTime() {
@@ -1911,6 +1912,7 @@ func (c *Char) load(def string) error {
 	gi.def, gi.displayname, gi.lifebarname, gi.author = def, "", "", ""
 	gi.sff, gi.snd, gi.quotes = nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
+	gi.fnt = [10]*Fnt{}
 	for i := range gi.palkeymap {
 		gi.palkeymap[i] = int32(i)
 	}
@@ -1926,6 +1928,7 @@ func (c *Char) load(def string) error {
 	c.localcoord = 320 / (float32(sys.gameWidth) / 320)
 	c.localscl = 320 / c.localcoord
 	gi.portraitscale = 1
+	var fnt [10][2]string
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -1957,6 +1960,10 @@ func (c *Char) load(def string) error {
 				anim, sound = is["anim"], is["sound"]
 				for i := range gi.pal {
 					gi.pal[i] = is[fmt.Sprintf("pal%v", i+1)]
+				}
+				for i := range fnt {
+					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
+					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
 				}
 			}
 		case "palette ":
@@ -2308,6 +2315,27 @@ func (c *Char) load(def string) error {
 		}
 	} else {
 		gi.snd = newSnd()
+	}
+	if c.teamside != -1 {
+		// Get fonts from preloaded data
+		gi.fnt = sys.sel.GetChar(c.selectNo).fnt
+	} else {
+		// Load fonts for AttachedChar
+		for i, f := range fnt {
+			if len(f[0]) > 0 {
+				LoadFile(&f[0], []string{def, sys.motifDir, "", "data/", "font/"}, func(filename string) error {
+					var err error
+					var height int32 = -1
+					if len(f[1]) > 0 {
+						height = Atoi(f[1])
+					}
+					if gi.fnt[i], err = loadFnt(filename, height); err != nil {
+						sys.errLog.Printf("failed to load %v (char font): %v", filename, err)
+					}
+					return nil
+				})
+			}
+		}
 	}
 	return nil
 }
