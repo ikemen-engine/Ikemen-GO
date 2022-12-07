@@ -374,7 +374,8 @@ if time = getHitVar(ctrlTime) {
 }
 call HiToLoAndLoToHi();
 if hitOver {
-	changeState{value: $nextState; ctrl: 1}
+	if ctrl {changeState{value: $nextState}}
+	ctrlset{value: 1}
 }
 
 #-------------------------------------------------------------------------------
@@ -497,7 +498,8 @@ if time >= getHitVar(slideTime) {
 if hitOver {
 	velSet{x: 0}
 	DefenceMulSet{value: 1}
-	changeState{value: $nextState; ctrl: 1}
+	if ctrl{changeState{value: $nextState}}
+	ctrlset{value: 1}
 }
 
 #-------------------------------------------------------------------------------
