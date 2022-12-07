@@ -551,7 +551,7 @@ type TextSprite struct {
 }
 
 func NewTextSprite() *TextSprite {
-	return &TextSprite{
+	ts := &TextSprite{
 		align:      1,
 		x:          sys.luaSpriteOffsetX,
 		xscl:       1,
@@ -562,6 +562,8 @@ func NewTextSprite() *TextSprite {
 		removetime: 1,
 		layerno:    1,
 	}
+	ts.palfx.setColor(255, 255, 255)
+	return ts
 }
 
 func (ts *TextSprite) SetWindow(x, y, w, h float32) {

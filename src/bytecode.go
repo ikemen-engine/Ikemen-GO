@@ -7859,20 +7859,13 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		ts.text = OldSprintf("%v", params...)
 	}
 	// font assignment
-	var ok bool
+	fntList := crun.gi().fnt
 	if fflg {
-		if fnt >= 0 && fnt < len(sys.lifebar.fnt) && sys.lifebar.fnt[fnt] != nil {
-			ts.fnt = sys.lifebar.fnt[fnt]
-			ok = true
-		}
-	} else if crun.selectNo >= 0 {
-		f := sys.sel.GetChar(crun.selectNo).fnt
-		if fnt >= 0 && fnt < len(f) && f[fnt] != nil {
-			ts.fnt = f[fnt]
-			ok = true
-		}
+		fntList = sys.lifebar.fnt
 	}
-	if !ok {
+	if fnt >= 0 && fnt < len(fntList) && fntList[fnt] != nil {
+		ts.fnt = fntList[fnt]
+	} else {
 		ts.fnt = sys.debugFont.fnt
 	}
 	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
