@@ -203,7 +203,7 @@ const (
 	OC_hitfall
 	OC_hitvel_x
 	OC_hitvel_y
-	OC_roundsexisted
+	OC_player
 	OC_parent
 	OC_root
 	OC_helper
@@ -402,6 +402,7 @@ const (
 	OC_ex_matchover
 	OC_ex_matchno
 	OC_ex_roundno
+	OC_ex_roundsexisted
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
 	OC_ex_majorversion
@@ -929,6 +930,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			fallthrough
 		case OC_jmp:
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_player:
+			if c = sys.playerID(c.getPlayerID(int(sys.bcStack.Pop().ToI()))); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_parent:
 			if c = c.parent(); c != nil {
 				i += 4
@@ -1259,8 +1267,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(Rand(0, 999))
 		case OC_rightedge:
 			sys.bcStack.PushF(c.rightEdge())
-		case OC_roundsexisted:
-			sys.bcStack.PushI(c.roundsExisted())
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
 		case OC_screenheight:
@@ -1755,6 +1761,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.match)
 	case OC_ex_roundno:
 		sys.bcStack.PushI(sys.round)
+	case OC_ex_roundsexisted:
+		sys.bcStack.PushI(c.roundsExisted())
 	case OC_ex_ishometeam:
 		sys.bcStack.PushB(c.teamside == sys.home)
 	case OC_ex_tickspersecond:
