@@ -7799,6 +7799,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 	var sn int = -1
 	var fflg bool
 	var fnt int = -1
+	var r, g, b int32 = 255, 255, 255
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case text_removetime:
@@ -7833,14 +7834,13 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				ts.yscl = exp[1].evalF(c)
 			}
 		case text_color:
-			var r, g, b int32 = exp[0].evalI(c), 255, 255
+			r = exp[0].evalI(c)
 			if len(exp) > 1 {
 				g = exp[1].evalI(c)
 				if len(exp) > 2 {
 					b = exp[2].evalI(c)
 				}
 			}
-			ts.SetColor(r, g, b)
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7872,6 +7872,8 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ok = true
 		}
 	}
+	// color assignment
+	ts.SetColor(r, g, b)
 	if !ok {
 		ts.fnt = sys.debugFont.fnt
 	}
