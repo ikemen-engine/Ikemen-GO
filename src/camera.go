@@ -61,7 +61,8 @@ func (c *Camera) Init() {
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
-	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) -
+		((1-c.zoomout)*100)*(1/c.zoomout)*2.1*(float32(sys.gameHeight)/240)
 	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
