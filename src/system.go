@@ -1003,7 +1003,11 @@ func (s *System) action(x, y, scl *float32) {
 	s.clsnText = nil
 	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
 	leftest, rightest = *x, *x
-
+	if s.cam.ytensionenable {
+		if *y < 0 {
+			lowest = (*y - s.cam.CameraZoomYBound)
+		}
+	}
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
