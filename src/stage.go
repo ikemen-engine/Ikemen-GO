@@ -523,7 +523,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 			bgc.invall = tmp != 0
 		}
 		if is.ReadF32("color", &bgc.color) {
-			bgc.color = bgc.color/256
+			bgc.color = bgc.color / 256
 		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
@@ -976,7 +976,12 @@ func loadStage(def string, main bool) (*Stage, error) {
 			MinF(float32(s.stageCamera.localcoord[1])*s.localscl*0.5*
 				(ratio1/ratio2-1), float32(Max(0, s.stageCamera.overdrawlow)))
 	}
-	s.stageCamera.drawOffsetY += MinF(float32(s.stageCamera.boundlow), MaxF(0, float32(s.stageCamera.floortension)*s.stageCamera.verticalfollow)) * s.localscl
+	if !s.stageCamera.ytensionenable {
+		s.stageCamera.drawOffsetY += MinF(float32(s.stageCamera.boundlow), MaxF(0, float32(s.stageCamera.floortension)*s.stageCamera.verticalfollow)) * s.localscl
+	} else {
+		s.stageCamera.drawOffsetY += MaxF(0, MinF(float32(s.stageCamera.boundlow),
+			(-26+(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0])))-float32(s.stageCamera.tensionhigh)))) * s.localscl
+	}
 	//TODO: test if it works reasonably close to mugen
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
 		if s.stageCamera.cutlow == math.MinInt32 {
@@ -1198,12 +1203,12 @@ func (s *Stage) action() {
 			// TODO: Finish proper synthesization of bgPalFX into PalFX from bg element
 			// (Right now, bgPalFX just overrides all unique parameters from BG Elements' PalFX)
 			// for j := 0; j < 3; j++ {
-				// if sys.bgPalFX.invertall {
-					// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
-					// b.palfx.eMul[j] = 256
-				// }
-				// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
-				// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
+			// if sys.bgPalFX.invertall {
+			// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
+			// b.palfx.eMul[j] = 256
+			// }
+			// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
+			// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
 			// }
 			// b.palfx.synthesize(sys.bgPalFX)
 			b.palfx.eAdd = sys.bgPalFX.eAdd
@@ -1235,9 +1240,10 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
 	scl2 := s.localscl * scl
-	if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh) {
-		yofs += (pos[1] - float32(s.stageCamera.boundhigh)) * scl2
-		pos[1] = float32(s.stageCamera.boundhigh)
+	if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh)-sys.cam.ExtraBoundH {
+		yofs += (pos[1]-float32(s.stageCamera.boundhigh))*scl2 +
+			sys.cam.ExtraBoundH*scl
+		pos[1] = float32(s.stageCamera.boundhigh) - sys.cam.ExtraBoundH/s.localscl
 	}
 	if s.stageCamera.verticalfollow > 0 {
 		if yofs < 0 {
@@ -1349,7 +1355,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 				s.bgc[i].invall = invall != 0
 			}
 			if !math.IsNaN(float64(color)) {
-				s.bgc[i].color = color/256
+				s.bgc[i].color = color / 256
 			}
 			s.reload = true
 		}

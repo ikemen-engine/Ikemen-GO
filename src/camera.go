@@ -45,6 +45,7 @@ type Camera struct {
 	XMin, XMax                      float32
 	Scale, MinScale                 float32
 	boundL, boundR, boundH, boundLo float32
+	ExtraBoundH                     float32
 	zoff                            float32
 	screenZoff                      float32
 	halfWidth                       float32
@@ -61,8 +62,8 @@ func (c *Camera) Init() {
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
-	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) -
-		((1-c.zoomout)*100)*(1/c.zoomout)*2.1*(float32(sys.gameHeight)/240)
+	c.ExtraBoundH = ((1 - c.zoomout) * 100) * (1 / c.zoomout) * 2.1 * (float32(sys.gameHeight) / 240)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) - c.ExtraBoundH
 	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-c.drawOffsetY)
 	if c.boundhigh > 0 {
 		c.boundH += float32(c.boundhigh) * c.localscl
@@ -160,9 +161,10 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	*x += vx
-	ftension, vfollow, ftensionlow := float32(c.floortension)*c.localscl-c.drawOffsetY, c.verticalfollow, c.drawOffsetY
+	ftension, vfollow, ftensionlow := float32(c.floortension)*c.localscl-c.drawOffsetY, c.verticalfollow, -c.drawOffsetY
 	if c.ytensionenable {
-		ftension = -26 + ((240/(float32(sys.gameWidth)/float32(c.localcoord[0])))/c.Scale-float32(c.tensionhigh)-float32(c.boundlow))*c.localscl
+		heightValue := (240 / (float32(sys.gameWidth) / float32(c.localcoord[0])))
+		ftension = (heightValue/c.Scale - float32(c.tensionhigh) - float32(c.drawOffsetY) - (heightValue - float32(c.zoffset))) * c.localscl
 		vfollow = 1
 	}
 	if ftension < 0 {
@@ -172,7 +174,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 		}
 	}
 	if highest < -ftension {
-		*y = (highest + ftension + MaxF(0, lowest)) * Pow(vfollow,
+		*y = (highest + ftension + MaxF(0, lowest+ftensionlow)) * Pow(vfollow,
 			MinF(1, 1/Pow(c.Scale, 4)))
 	} else if lowest > -ftensionlow {
 		*y = (lowest + ftensionlow) * Pow(vfollow,
