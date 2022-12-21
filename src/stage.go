@@ -1238,6 +1238,9 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	if s.hires {
 		bgscl = 0.5
 	}
+	if s.stageCamera.boundhigh > 0 {
+		y += float32(s.stageCamera.boundhigh)
+	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
 	scl2 := s.localscl * scl
 	if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh)-sys.cam.ExtraBoundH {
