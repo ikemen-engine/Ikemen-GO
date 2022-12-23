@@ -1156,8 +1156,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_command:
-			sys.bcStack.PushB(c.command(sys.workingState.playerNo,
-				int(*(*int32)(unsafe.Pointer(&be[i])))))
+			sys.bcStack.PushB(c.commandByName(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]))
 			i += 4
 		case OC_ctrl:
 			sys.bcStack.PushB(c.ctrl())

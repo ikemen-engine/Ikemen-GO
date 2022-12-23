@@ -1426,11 +1426,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if err := text(); err != nil {
 				return err
 			}
-			i, ok := c.cmdl.Names[c.token]
-			if !ok {
+			if _, ok := c.cmdl.Names[c.token]; !ok {
 				return Error("Command doesn't exist: " + c.token)
 			}
-			out.appendI32Op(OC_command, int32(i))
+			out.appendI32Op(OC_command, int32(sys.stringPool[c.playerNo].Add(c.token)))
 			return nil
 		}); err != nil {
 			return bvNone(), err
