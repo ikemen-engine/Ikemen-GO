@@ -516,6 +516,7 @@ const (
 	OC_ex_reversaldefattr
 	OC_ex_bgmlength
 	OC_ex_bgmposition
+	OC_ex_selfcommand
 )
 const (
 	NumVar     = OC_sysvar0 - OC_var0
@@ -2015,6 +2016,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
 		}
+	case OC_ex_selfcommand:
+		sys.bcStack.PushB(c.command(sys.workingState.playerNo,
+				int(*(*int32)(unsafe.Pointer(&be[*i])))))
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
