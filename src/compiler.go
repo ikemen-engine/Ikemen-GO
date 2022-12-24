@@ -352,6 +352,7 @@ var triggerMap = map[string]int{
 	"score":            1,
 	"scoretotal":       1,
 	"selfstatenoexist": 1,
+	"selfcommand":      1,
 	"sprpriority":      1,
 	"stagebackedge":    1,
 	"stageconst":       1,
@@ -1421,7 +1422,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_camerazoom)
 	case "canrecover":
 		out.append(OC_canrecover)
-	case "command":
+	case "command", "selfcommand":
+		switch c.token {
+			case "command":
+				opc = OC_command
+			case "selfcommand":
+				opc = OC_ex_selfcommand
+		}
 		if err := eqne(func() error {
 			if err := text(); err != nil {
 				return err
@@ -1430,7 +1437,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if !ok {
 				return Error("Command doesn't exist: " + c.token)
 			}
-			out.appendI32Op(OC_command, int32(i))
+			if opc == OC_command {
+				i = sys.stringPool[c.playerNo].Add(c.token)
+			} else {
+				out.append(OC_ex_)
+			}
+			out.appendI32Op(opc, int32(i))
 			return nil
 		}); err != nil {
 			return bvNone(), err
@@ -2084,7 +2096,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.kakkotojiru(); err != nil {
 			return bvNone(), err
 		}
-		var opc OpCode
 		isStr := false
 		switch svname {
 		case "info.name":

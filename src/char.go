@@ -3833,9 +3833,9 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
-	if hd.animtype == RA_Back {
-		hd.animtype = RA_Hard
-	}
+	// if hd.animtype == RA_Back {
+		// hd.animtype = RA_Hard
+	// }
 	if hd.air_type == HT_Unknown {
 		if hd.ground_type == HT_Trip {
 			hd.air_type = HT_High
@@ -3908,9 +3908,15 @@ func (c *Char) setBWidth(bw float32) {
 }
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallf {
+		if c.ghv.fall.animtype < RA_Back {
+			return RA_Back
+		}
 		return c.ghv.fall.animtype
 	} else if c.ss.stateType == ST_A {
 		return c.ghv.airanimtype
+	}
+	if c.ghv.groundanimtype == RA_Back {
+		return RA_Hard
 	}
 	return c.ghv.groundanimtype
 }
@@ -5038,12 +5044,12 @@ func (c *Char) bind() {
 				c.setBindTime(0)
 				return
 			}
-			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.setXV(c.facing * bt.facing * bt.vel[0])
-			}
-			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.setYV(bt.vel[1])
-			}
+			// if !math.IsNaN(float64(c.bindPos[0])) {
+				// c.setXV(c.facing * bt.facing * bt.vel[0])
+			// }
+			// if !math.IsNaN(float64(c.bindPos[1])) {
+				// c.setYV(bt.vel[1])
+			// }
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			f := bt.facing
@@ -5518,9 +5524,16 @@ func (c *Char) actionRun() {
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
+		// Set vel on binded targets
 		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
-				t.bind()
+			if t := sys.playerID(tid); t != nil && t.bindTime > 0 && !t.sf(CSF_destroy) &&
+				(t.bindToId == c.id || -t.bindToId == c.id) {
+				if !math.IsNaN(float64(t.bindPos[0])) {
+					t.setXV(t.facing * c.facing * c.vel[0])
+				}
+				if !math.IsNaN(float64(t.bindPos[1])) {
+					t.setYV(c.vel[1])
+				}
 			}
 		}
 	}
@@ -5572,6 +5585,13 @@ func (c *Char) actionFinish() {
 		}
 	}
 	c.xScreenBound()
+	if !c.pauseBool {
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
+				t.bind()
+			}
+		}
+	}
 	c.minus = 1
 }
 func (c *Char) update(cvmin, cvmax,
@@ -6461,9 +6481,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if kill || !live {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
-					if getter.ghv.fall.animtype < RA_Back {
-						getter.ghv.fall.animtype = RA_Back
-					}
+					// if getter.ghv.fall.animtype < RA_Back {
+						// getter.ghv.fall.animtype = RA_Back
+					// }
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
