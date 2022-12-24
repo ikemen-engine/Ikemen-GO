@@ -354,10 +354,18 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	xras := (bg.rasterx[1] - bg.rasterx[0]) / bg.rasterx[0]
 	xbs, dx := bg.xscale[1], MaxF(0, bg.delta[0]*bgscl)
-	sclx := MaxF(0, scl+(1-scl)*(1-dx))
-	scly := MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
-	var sclx_recip float32 = 1
+	var sclx_recip, sclx, scly float32 = 1, 1, 1
 	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
+	if bg.zoomdelta[0] != math.MaxFloat32 {
+		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
+		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
+		if !bg.autoresizeparallax {
+			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
+		}
+	} else {
+		sclx = MaxF(0, scl+(1-scl)*(1-dx))
+		scly = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
+	}
 	if sclx != 0 && bg.autoresizeparallax {
 		tmp := 1 / sclx
 		if bg.xbottomzoomdelta != math.MaxFloat32 {
@@ -369,13 +377,6 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		xras -= tmp - 1
 		xbs *= tmp
 	}
-	if bg.zoomdelta[0] != math.MaxFloat32 {
-		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
-		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
-		if !bg.autoresizeparallax {
-			sclx_recip = (1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1))
-		}
-	}
 	var xs3, ys3 float32 = 1, 1
 	if bg.zoomscaledelta[0] != math.MaxFloat32 {
 		xs3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[0])) / sclx)
@@ -383,7 +384,6 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if bg.zoomscaledelta[1] != math.MaxFloat32 {
 		ys3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[1])) / scly)
 	}
-
 	scly *= lclscl
 	sclx *= lscl[0]
 	// This handles the flooring of the camera position in MUGEN versions earlier than 1.0.
@@ -394,7 +394,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
-	y := bg.start[1] - ((pos[1]-sys.cam.CameraZoomYBound*(1-bg.zoomdelta[1]))/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
+	y := bg.start[1] - ((pos[1]-(sys.cam.CameraZoomYBound/lscl[1])*(1-bg.zoomdelta[1]))/stgscl[1])*bg.delta[1] + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
@@ -979,8 +979,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if !s.stageCamera.ytensionenable {
 		s.stageCamera.drawOffsetY += MinF(float32(s.stageCamera.boundlow), MaxF(0, float32(s.stageCamera.floortension)*s.stageCamera.verticalfollow)) * s.localscl
 	} else {
-		s.stageCamera.drawOffsetY += MaxF(0, MinF(float32(s.stageCamera.boundlow),
-			(-26+(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0])))-float32(s.stageCamera.tensionhigh)))) * s.localscl
+		s.stageCamera.drawOffsetY += MinF(float32(s.stageCamera.boundlow),
+			MaxF(0, (-26+(240/(float32(sys.gameWidth)/float32(s.stageCamera.localcoord[0])))-float32(s.stageCamera.tensionhigh)))) * s.localscl
 	}
 	//TODO: test if it works reasonably close to mugen
 	if sys.gameWidth > s.stageCamera.localcoord[0]*3*320/(s.stageCamera.localcoord[1]*4) {
