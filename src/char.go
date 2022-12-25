@@ -3834,7 +3834,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		hd.air_animtype = hd.animtype
 	}
 	// if hd.animtype == RA_Back {
-		// hd.animtype = RA_Hard
+	// hd.animtype = RA_Hard
 	// }
 	if hd.air_type == HT_Unknown {
 		if hd.ground_type == HT_Trip {
@@ -5045,10 +5045,10 @@ func (c *Char) bind() {
 				return
 			}
 			// if !math.IsNaN(float64(c.bindPos[0])) {
-				// c.setXV(c.facing * bt.facing * bt.vel[0])
+			// c.setXV(c.facing * bt.facing * bt.vel[0])
 			// }
 			// if !math.IsNaN(float64(c.bindPos[1])) {
-				// c.setYV(bt.vel[1])
+			// c.setYV(bt.vel[1])
 			// }
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
@@ -5576,6 +5576,7 @@ func (c *Char) actionFinish() {
 					break
 				}
 				c.changeState(52, -1, -1, false)
+				c.ss.time++
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
@@ -6482,7 +6483,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
 					// if getter.ghv.fall.animtype < RA_Back {
-						// getter.ghv.fall.animtype = RA_Back
+					// getter.ghv.fall.animtype = RA_Back
 					// }
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
