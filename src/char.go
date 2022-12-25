@@ -6015,7 +6015,7 @@ func (c *Char) cueDraw() {
 			c.exitTarget(false)
 		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
-			c.superDefenseMul = sys.superp2defmul
+			c.superDefenseMul *= sys.superp2defmul
 		}
 		c.minus = 2
 		c.oldPos = c.pos
