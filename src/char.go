@@ -5227,7 +5227,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	}
 	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
-			if nci >= 0 && c.ghv.hitid == nci {
+			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == h.attackerID {
 				return false
 			}
 		}
@@ -6889,7 +6889,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
+				(getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && c.hitdef.guard_dist < 0 &&
 					dist <= c.attackDist*(c.localscl/getter.localscl) {
