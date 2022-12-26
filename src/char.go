@@ -3834,7 +3834,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		hd.air_animtype = hd.animtype
 	}
 	// if hd.animtype == RA_Back {
-		// hd.animtype = RA_Hard
+	// hd.animtype = RA_Hard
 	// }
 	if hd.air_type == HT_Unknown {
 		if hd.ground_type == HT_Trip {
@@ -5045,10 +5045,10 @@ func (c *Char) bind() {
 				return
 			}
 			// if !math.IsNaN(float64(c.bindPos[0])) {
-				// c.setXV(c.facing * bt.facing * bt.vel[0])
+			// c.setXV(c.facing * bt.facing * bt.vel[0])
 			// }
 			// if !math.IsNaN(float64(c.bindPos[1])) {
-				// c.setYV(bt.vel[1])
+			// c.setYV(bt.vel[1])
 			// }
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
@@ -5227,7 +5227,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	}
 	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
-			if nci >= 0 && c.ghv.hitid == nci {
+			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == h.attackerID {
 				return false
 			}
 		}
@@ -5576,6 +5576,7 @@ func (c *Char) actionFinish() {
 					break
 				}
 				c.changeState(52, -1, -1, false)
+				c.ss.time++
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
@@ -6014,7 +6015,7 @@ func (c *Char) cueDraw() {
 			c.exitTarget(false)
 		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
-			c.superDefenseMul = sys.superp2defmul
+			c.superDefenseMul *= sys.superp2defmul
 		}
 		c.minus = 2
 		c.oldPos = c.pos
@@ -6482,7 +6483,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
 					// if getter.ghv.fall.animtype < RA_Back {
-						// getter.ghv.fall.animtype = RA_Back
+					// getter.ghv.fall.animtype = RA_Back
 					// }
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
@@ -6888,7 +6889,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-				(getter.teamside != c.teamside) == (c.hitdef.affectteam > 0)) {
+				(getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0)) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && c.hitdef.guard_dist < 0 &&
 					dist <= c.attackDist*(c.localscl/getter.localscl) {

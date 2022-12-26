@@ -83,8 +83,7 @@ func (c *Camera) Update(scl, x, y float32) {
 	c.Scale = c.BaseScale() * scl
 	c.zoff = (c.screenZoff-240)*scl + float32(sys.gameHeight)
 	for i := 0; i < 2; i++ {
-		c.Offset[i] = sys.stage.bga.offset[i] * sys.stage.localscl *
-			sys.stage.scale[i] * scl
+		c.Offset[i] = sys.stage.bga.offset[i] * sys.stage.localscl * scl
 	}
 	c.ScreenPos[0] = x - c.halfWidth/c.Scale - c.Offset[0]
 	c.ScreenPos[1] = y - (c.GroundLevel()-float32(sys.gameHeight-240)*scl)/
