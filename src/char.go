@@ -3299,6 +3299,11 @@ func (c *Char) destroy() {
 		c.fakeCombo = false
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
+				if t.bindToId == c.id {
+					if t.ss.moveType == MT_H {
+						t.selfState(5050, -1, -1, -1, false)
+					}
+				}
 				t.gethitBindClear()
 				t.ghv.dropId(c.id)
 			}
@@ -5003,15 +5008,13 @@ func (c *Char) hasTargetOfHitdef(id int32) bool {
 func (c *Char) setBindTime(time int32) {
 	c.bindTime = time
 	if time == 0 {
-		if c.bindToId >= 0 {
-			c.bindToId = -1
-		}
+		c.bindToId = -1
 		c.bindFacing = 0
 	}
 }
 func (c *Char) setBindToId(to *Char) {
 	if c.bindToId != to.id {
-		c.bindToId = -to.id
+		c.bindToId = to.id
 	}
 	if c.bindFacing == 0 {
 		c.bindFacing = to.facing * 2
@@ -5022,19 +5025,12 @@ func (c *Char) setBindToId(to *Char) {
 }
 func (c *Char) bind() {
 	if c.bindTime == 0 {
+		if c.bindToId > 0 {
+			c.setBindTime(0)
+		}
 		return
 	}
-	Bid := c.bindToId
-	if Bid < -1 {
-		if bt := sys.playerID(-Bid); bt != nil {
-			if bt.sf(CSF_destroy) {
-				c.setBindTime(0)
-				return
-			}
-		}
-		Bid *= -1
-	}
-	if bt := sys.playerID(Bid); bt != nil {
+	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if bt.sf(CSF_destroy) {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
@@ -5044,12 +5040,12 @@ func (c *Char) bind() {
 				c.setBindTime(0)
 				return
 			}
-			// if !math.IsNaN(float64(c.bindPos[0])) {
-			// c.setXV(c.facing * bt.facing * bt.vel[0])
-			// }
-			// if !math.IsNaN(float64(c.bindPos[1])) {
-			// c.setYV(bt.vel[1])
-			// }
+			if !math.IsNaN(float64(c.bindPos[0])) {
+				c.setXV(c.facing * bt.facing * bt.vel[0])
+			}
+			if !math.IsNaN(float64(c.bindPos[1])) {
+				c.setYV(bt.vel[1])
+			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			f := bt.facing
@@ -5525,17 +5521,7 @@ func (c *Char) actionRun() {
 			c.gi().pctime++
 		}
 		// Set vel on binded targets
-		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && t.bindTime > 0 && !t.sf(CSF_destroy) &&
-				(t.bindToId == c.id || -t.bindToId == c.id) {
-				if !math.IsNaN(float64(t.bindPos[0])) {
-					t.setXV(t.facing * c.facing * c.vel[0])
-				}
-				if !math.IsNaN(float64(t.bindPos[1])) {
-					t.setYV(c.vel[1])
-				}
-			}
-		}
+
 	}
 	c.minus = 1
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
@@ -5588,7 +5574,7 @@ func (c *Char) actionFinish() {
 	c.xScreenBound()
 	if !c.pauseBool {
 		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && (t.bindToId == c.id || -t.bindToId == c.id) {
+			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
 				t.bind()
 			}
 		}
@@ -5774,20 +5760,13 @@ func (c *Char) tick() {
 	}
 	if c.bindTime > 0 {
 		if c.isBound() {
-			Bid := c.bindToId
-			if Bid < -1 {
-				Bid *= -1
-			}
-			if bt := sys.playerID(Bid); bt != nil && !bt.pause() {
-				c.setBindTime(c.bindTime - 1)
+			if bt := sys.playerID(c.bindToId); bt != nil && !bt.pause() {
+				c.bindTime -= 1
 			}
 		} else {
 			if !c.pause() {
 				c.setBindTime(c.bindTime - 1)
 			}
-		}
-		if c.bindToId < -1 {
-			c.bindToId *= -1
 		}
 	}
 	if c.cmd == nil {
@@ -6429,7 +6408,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						getter.bindPos[1] = float32(math.NaN())
 					}
-				} else if getter.bindToId == c.id || getter.bindToId == -c.id {
+				} else if getter.bindToId == c.id {
 					getter.setBindTime(0)
 				}
 			} else if hitType == 1 {
