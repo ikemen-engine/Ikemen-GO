@@ -1244,9 +1244,21 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
-			sys.bcStack.PushF((c.pos[0]*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
+			var bindVelx float32
+			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
+				if sys.playerID(c.bindToId) != nil {
+					bindVelx = c.vel[0]
+				}
+			}
+			sys.bcStack.PushF(((c.pos[0]+bindVelx)*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
-			sys.bcStack.PushF((c.pos[1] - c.platformPosY) * (c.localscl / oc.localscl))
+			var bindVely float32
+			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) {
+				if sys.playerID(c.bindToId) != nil {
+					bindVely = c.vel[1]
+				}
+			}
+			sys.bcStack.PushF((c.pos[1] + bindVely - c.platformPosY) * (c.localscl / oc.localscl))
 		case OC_power:
 			sys.bcStack.PushI(c.getPower())
 		case OC_powermax:
@@ -2018,7 +2030,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_selfcommand:
 		sys.bcStack.PushB(c.command(sys.workingState.playerNo,
-				int(*(*int32)(unsafe.Pointer(&be[*i])))))
+			int(*(*int32)(unsafe.Pointer(&be[*i])))))
 		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])

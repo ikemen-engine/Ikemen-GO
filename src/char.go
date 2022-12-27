@@ -5040,12 +5040,12 @@ func (c *Char) bind() {
 				c.setBindTime(0)
 				return
 			}
-			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.setXV(c.facing * bt.facing * bt.vel[0])
-			}
-			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.setYV(bt.vel[1])
-			}
+			//if !math.IsNaN(float64(c.bindPos[0])) {
+			//c.setXV(c.facing * bt.facing * bt.vel[0])
+			//}
+			//if !math.IsNaN(float64(c.bindPos[1])) {
+			//c.setYV(bt.vel[1])
+			//}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			f := bt.facing
@@ -5521,7 +5521,17 @@ func (c *Char) actionRun() {
 			c.gi().pctime++
 		}
 		// Set vel on binded targets
-
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil && t.bindTime > 0 && !t.sf(CSF_destroy) &&
+				t.bindToId == c.id {
+				if !math.IsNaN(float64(t.bindPos[0])) {
+					t.setXV(t.facing * c.facing * c.vel[0])
+				}
+				if !math.IsNaN(float64(t.bindPos[1])) {
+					t.setYV(c.vel[1])
+				}
+			}
+		}
 	}
 	c.minus = 1
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
