@@ -1245,7 +1245,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
 			var bindVelx float32
-			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
+			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) && c.stCgi().ikemenver[0] == 0 {
 				if sys.playerID(c.bindToId) != nil {
 					bindVelx = c.vel[0]
 				}
@@ -1253,7 +1253,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(((c.pos[0]+bindVelx)*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:
 			var bindVely float32
-			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) {
+			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) && c.stCgi().ikemenver[0] == 0 {
 				if sys.playerID(c.bindToId) != nil {
 					bindVely = c.vel[1]
 				}
