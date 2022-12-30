@@ -6927,6 +6927,27 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true
+
+									fall := getter.ghv.fallf
+									getter.ghv.clear()
+									getter.ghv.attr = c.hitdef.attr
+									getter.ghv.hitid = c.hitdef.id
+									getter.ghv.fall = c.hitdef.fall
+									getter.fallTime = 0
+									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
+									getter.ghv.fall.yvelocity = c.hitdef.fall.yvelocity * (c.localscl / getter.localscl)
+									if c.hitdef.forcenofall {
+										fall = false
+									}
+									if getter.ss.stateType == ST_A {
+										getter.ghv.fallf = c.hitdef.air_fall
+									} else if getter.ss.stateType == ST_L {
+										getter.ghv.fallf = c.hitdef.ground_fall
+									} else {
+										getter.ghv.fallf = c.hitdef.ground_fall
+									}
+									getter.ghv.fallf = getter.ghv.fallf || fall
+
 									getter.targetsOfHitdef = append(getter.targetsOfHitdef, c.id)
 									if getter.hittmp == 0 {
 										getter.hittmp = -1
