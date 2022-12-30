@@ -6878,7 +6878,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-				(getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0)) {
+				((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
+				((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
 				dist := -getter.distX(c, getter) * c.facing
 				if c.ss.moveType == MT_A && dist >= 0 && c.hitdef.guard_dist < 0 &&
 					dist <= c.attackDist*(c.localscl/getter.localscl) {
