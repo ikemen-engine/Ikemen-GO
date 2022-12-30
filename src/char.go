@@ -3826,17 +3826,15 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	ifierrset(&hd.fall.envshake_ampl, -4)
-	if hd.fall.animtype == RA_Unknown {
-		if hd.air_animtype != RA_Unknown {
-			hd.fall.animtype = hd.air_animtype
-		} else if hd.animtype < RA_Back {
-			hd.fall.animtype = RA_Back
-		} else {
-			hd.fall.animtype = hd.animtype
-		}
-	}
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
+	}
+	if hd.fall.animtype == RA_Unknown {
+		if hd.air_animtype >= RA_Up {
+			hd.fall.animtype = hd.air_animtype
+		} else {
+			hd.fall.animtype = RA_Back
+		}
 	}
 	// if hd.animtype == RA_Back {
 	// hd.animtype = RA_Hard
@@ -3913,9 +3911,6 @@ func (c *Char) setBWidth(bw float32) {
 }
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallf {
-		if c.ghv.fall.animtype < RA_Back {
-			return RA_Back
-		}
 		return c.ghv.fall.animtype
 	} else if c.ss.stateType == ST_A {
 		return c.ghv.airanimtype
