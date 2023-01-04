@@ -1602,6 +1602,7 @@ type CharSystemVar struct {
 	bindTime         int32
 	bindToId         int32
 	bindPos          [2]float32
+	bindPosAdd       [2]float32
 	bindFacing       float32
 	hitPauseTime     int32
 	angle            float32
@@ -4403,7 +4404,17 @@ func (c *Char) consecutiveWins() int32 {
 	return sys.consecutiveWins[c.teamside]
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
-	return (opp.pos[0]*opp.localscl - c.pos[0]*c.localscl) / oc.localscl
+	currentPosX := c.pos[0] * c.localscl
+	if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if bt := sys.playerID(c.bindToId); bt != nil {
+			f := bt.facing
+			if AbsF(c.bindFacing) == 2 {
+				f = c.bindFacing / 2
+			}
+			currentPosX = bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])
+		}
+	}
+	return (opp.pos[0]*opp.localscl - currentPosX) / oc.localscl
 }
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	dist := c.distX(opp, oc)
@@ -4429,7 +4440,13 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeSF()
 	}
-	dist := (rd.pos[1]*rd.localscl - c.pos[1]*c.localscl) / oc.localscl
+	currentPosY := c.pos[1] * c.localscl
+	if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if bt := sys.playerID(c.bindToId); bt != nil {
+			currentPosY = bt.pos[1]*bt.localscl/c.localscl + (c.bindPos[1] + c.bindPosAdd[1])
+		}
+	}
+	dist := (rd.pos[1]*rd.localscl - currentPosY) / oc.localscl
 	return BytecodeFloat(dist)
 }
 func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
@@ -4978,6 +4995,7 @@ func (c *Char) posUpdate() {
 			c.velOff = 0
 		}
 	}
+	c.bindPosAdd = [...]float32{0, 0}
 }
 func (c *Char) addTarget(id int32) {
 	if !c.hasTarget(id) {
@@ -5047,14 +5065,14 @@ func (c *Char) bind() {
 			if AbsF(c.bindFacing) == 2 {
 				f = c.bindFacing / 2
 			}
-			c.setX(bt.pos[0]*bt.localscl/c.localscl + f*c.bindPos[0])
+			c.setX(bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0]))
 			c.drawPos[0] += bt.drawPos[0] - bt.pos[0]
 			c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
 			c.pushed = c.pushed || bt.pushed
 			c.ghv.xoff = 0
 		}
 		if !math.IsNaN(float64(c.bindPos[1])) {
-			c.setY(bt.pos[1]*bt.localscl/c.localscl + c.bindPos[1])
+			c.setY(bt.pos[1]*bt.localscl/c.localscl + (c.bindPos[1] + c.bindPosAdd[1]))
 			c.drawPos[1] += bt.drawPos[1] - bt.pos[1]
 			c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
 			c.ghv.yoff = 0
