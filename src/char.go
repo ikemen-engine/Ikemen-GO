@@ -5836,7 +5836,16 @@ func (c *Char) tick() {
 			pn = c.ghv.playerNo
 		}
 		if c.stchtmp {
-			c.ss.prevno = 0
+			switch c.ss.stateType {
+			case ST_S:
+				c.ss.prevno = 5000
+			case ST_C:
+				c.ss.prevno = 5010
+			case ST_A:
+				c.ss.prevno = 5020
+			case ST_L:
+				c.ss.prevno = 5080
+			}
 		} else if c.ss.stateType == ST_L {
 			if c.pos[1] == 0 {
 				c.changeStateEx(5080, pn, -1, 0, false)
