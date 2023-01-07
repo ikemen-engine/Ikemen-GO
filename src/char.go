@@ -1850,7 +1850,8 @@ func (c *Char) clear2() {
 		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		fallDefenseMul:  1,
 		superDefenseMul: 1,
-		customDefense:   1}
+		customDefense:   1,
+		finalDefense:    1.0}
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 && c.teamside != -1 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
