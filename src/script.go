@@ -268,7 +268,7 @@ func systemScriptInit(l *lua.LState) {
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
 				case "color":
-					a.palfx.color = float32(lua.LVAsNumber(value))/256
+					a.palfx.color = float32(lua.LVAsNumber(value)) / 256
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -2647,7 +2647,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(ret))
 		return 1
 	})
-
+	luaRegister(l, "p2", func(*lua.LState) int {
+		ret := false
+		if c := sys.debugWC.p2(); c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.aiLevel()))
