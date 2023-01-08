@@ -1678,6 +1678,7 @@ type Char struct {
 	targets         []int32
 	targetsOfHitdef []int32
 	enemynear       [2][]*Char
+	p2enemy         []*Char
 	pos             [3]float32
 	drawPos         [3]float32
 	oldPos          [3]float32
@@ -7133,26 +7134,33 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log boo
 	if int(n) < len(*cache) {
 		return (*cache)[n]
 	}
-	*cache = (*cache)[:0]
-	var add func(*Char, int)
-	add = func(e *Char, idx int) {
+	if p2 {
+		cache = &c.p2enemy
+	} else {
+		*cache = (*cache)[:0]
+	}
+	var add func(*Char, int, float32)
+	add = func(e *Char, idx int, adddist float32) {
 		for i := idx; i <= int(n); i++ {
 			if i >= len(*cache) {
 				*cache = append(*cache, e)
 				return
 			}
-			if AbsF(c.distX(e, c)) < AbsF(c.distX((*cache)[i], c)) {
-				add((*cache)[i], i+1)
+			if AbsF(c.distX(e, c))+adddist < AbsF(c.distX((*cache)[i], c)) {
+				add((*cache)[i], i+1, adddist)
 				(*cache)[i] = e
 				return
 			}
 		}
 	}
 	for _, e := range cl.runOrder {
-		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) &&
-			(p2 && !e.scf(SCF_ko_round_middle) ||
-				(!p2 && e.helperIndex == 0 && (!ignoreDefeatedEnemy || ignoreDefeatedEnemy && (!e.scf(SCF_ko_round_middle) || sys.roundEnd())))) {
-			add(e, 0)
+		if e.player && e.teamside != c.teamside && !e.scf(SCF_standby) {
+			if p2 && !e.scf(SCF_ko_round_middle) {
+				add(e, 0, 30)
+			}
+			if !p2 && e.helperIndex == 0 && (!ignoreDefeatedEnemy || ignoreDefeatedEnemy && (!e.scf(SCF_ko_round_middle) || sys.roundEnd())) {
+				add(e, 0, 0)
+			}
 		}
 	}
 	if int(n) >= len(*cache) {

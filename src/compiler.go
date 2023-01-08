@@ -180,6 +180,7 @@ var triggerMap = map[string]int{
 	"enemy":     0,
 	"enemynear": 0,
 	"playerid":  0,
+	"p2":        0,
 	//vanilla triggers
 	"abs":               1,
 	"acos":              1,
@@ -764,14 +765,17 @@ func (c *Compiler) kakkohiraku(in *string) error {
 	return nil
 }
 
-/* TODO: Case sensitive maps
-func (c *Compiler) kakkohirakuCS(in *string) error {
-	if c.tokenizerCS(in) != "(" {
-		return Error("Missing '(' after " + c.token)
+/*
+TODO: Case sensitive maps
+
+	func (c *Compiler) kakkohirakuCS(in *string) error {
+		if c.tokenizerCS(in) != "(" {
+			return Error("Missing '(' after " + c.token)
+		}
+		c.token = c.tokenizerCS(in)
+		return nil
 	}
-	c.token = c.tokenizerCS(in)
-	return nil
-}*/
+*/
 func (c *Compiler) kakkotojiru() error {
 	c.usiroOp = true
 	if c.token != ")" {
@@ -1162,13 +1166,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "":
 		return bvNone(), Error("Nothing assigned")
 	case "root", "player", "parent", "helper", "target", "partner",
-		"enemy", "enemynear", "playerid":
+		"enemy", "enemynear", "playerid", "p2":
 		switch c.token {
 		case "parent":
 			opc = OC_parent
 			c.token = c.tokenizer(in)
 		case "root":
 			opc = OC_root
+			c.token = c.tokenizer(in)
+		case "p2":
+			opc = OC_p2
 			c.token = c.tokenizer(in)
 		default:
 			switch c.token {
@@ -1424,10 +1431,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_canrecover)
 	case "command", "selfcommand":
 		switch c.token {
-			case "command":
-				opc = OC_command
-			case "selfcommand":
-				opc = OC_ex_selfcommand
+		case "command":
+			opc = OC_command
+		case "selfcommand":
+			opc = OC_ex_selfcommand
 		}
 		if err := eqne(func() error {
 			if err := text(); err != nil {
@@ -1810,21 +1817,21 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		}
 		// if sys.cgi[c.playerNo].ver[0] == 1 {
-			// if err := eqne(hda); err != nil {
-				// return bvNone(), err
-			// }
+		// if err := eqne(hda); err != nil {
+		// return bvNone(), err
+		// }
 		// } else {
-			// if not, err := c.kyuushiki(in); err != nil {
-				// if sys.ignoreMostErrors {
-					// out.appendValue(BytecodeBool(false))
-				// } else {
-					// return bvNone(), err
-				// }
-			// } else if err := hda(); err != nil {
-				// return bvNone(), err
-			// } else if not && !sys.ignoreMostErrors {
-				// return bvNone(), Error("hitdefattr doesn't support '!=' in this mugenversion")
-			// }
+		// if not, err := c.kyuushiki(in); err != nil {
+		// if sys.ignoreMostErrors {
+		// out.appendValue(BytecodeBool(false))
+		// } else {
+		// return bvNone(), err
+		// }
+		// } else if err := hda(); err != nil {
+		// return bvNone(), err
+		// } else if not && !sys.ignoreMostErrors {
+		// return bvNone(), Error("hitdefattr doesn't support '!=' in this mugenversion")
+		// }
 		// }
 		if err := eqne(hda); err != nil {
 			return bvNone(), err
