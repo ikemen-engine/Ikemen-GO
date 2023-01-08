@@ -2645,6 +2645,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noguardpointsdamage))
 		case "noredlifedamage":
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noredlifedamage))
+		case "nomakedust":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nomakedust))
 		case "intro":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
 		case "roundnotover":
