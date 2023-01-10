@@ -990,7 +990,7 @@ func (s *System) posReset() {
 		}
 	}
 }
-func (s *System) action(x, y, scl *float32) {
+func (s *System) action() {
 	s.sprites = s.sprites[:0]
 	s.topSprites = s.topSprites[:0]
 	s.bottomSprites = s.bottomSprites[:0]
@@ -1001,11 +1001,12 @@ func (s *System) action(x, y, scl *float32) {
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
+	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
-	leftest, rightest = *x, *x
+	leftest, rightest = x, x
 	if s.cam.ytensionenable {
-		if *y < 0 {
-			lowest = (*y - s.cam.CameraZoomYBound)
+		if y < 0 {
+			lowest = (y - s.cam.CameraZoomYBound)
 		}
 	}
 	if s.tickFrame() {
@@ -1047,7 +1048,7 @@ func (s *System) action(x, y, scl *float32) {
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(*x, &cvmin, &cvmax,
+		s.charList.action(x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
 		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
@@ -1056,10 +1057,10 @@ func (s *System) action(x, y, scl *float32) {
 	s.lifebar.step()
 
 	// Action camera
-	var newx, newy float32 = *x, *y
+	leftest -= x
+	rightest -= x
+	var newx, newy float32 = x, y
 	var sclMul float32
-	leftest -= *x
-	rightest -= *x
 	sclMul = s.cam.action(&newx, &newy, leftest, rightest, lowest, highest,
 		cvmin, cvmax, s.super > 0 || s.pause > 0)
 
@@ -1099,22 +1100,22 @@ func (s *System) action(x, y, scl *float32) {
 		}
 	}
 	if introSkip {
-		sclMul = 1 / *scl
+		sclMul = 1 / scl
 	}
 	leftest = (leftest - s.screenleft) * s.cam.BaseScale()
 	rightest = (rightest + s.screenright) * s.cam.BaseScale()
-	*scl = s.cam.ScaleBound(*scl, sclMul)
-	tmp := (float32(s.gameWidth) / 2) / *scl
-	if AbsF((leftest+rightest)-(newx-*x)*2) >= tmp/2 {
-		tmp = MaxF(0, MinF(tmp, MaxF((newx-*x)-leftest, rightest-(newx-*x))))
+	scl = s.cam.ScaleBound(scl, sclMul)
+	tmp := (float32(s.gameWidth) / 2) / scl
+	if AbsF((leftest+rightest)-(newx-x)*2) >= tmp/2 {
+		tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-leftest, rightest-(newx-x))))
 	}
-	*x = s.cam.XBound(*scl, MinF(*x+leftest+tmp, MaxF(*x+rightest-tmp, newx)))
+	x = s.cam.XBound(scl, MinF(x+leftest+tmp, MaxF(x+rightest-tmp, newx)))
 	if !s.cam.ZoomEnable {
 		// Pos X の誤差が出ないように精度を落とす
-		*x = float32(math.Ceil(float64(*x)*4-0.5) / 4)
+		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
-	*y = s.cam.YBound(*scl, newy)
-	s.cam.Update(*scl, *x, *y)
+	y = s.cam.YBound(scl, newy)
+	s.cam.Update(scl, x, y)
 
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
@@ -1861,7 +1862,6 @@ func (s *System) fight() (reload bool) {
 
 	oldWins, oldDraws := s.wins, s.draws
 	oldTeamLeader := s.teamLeader
-	var x, y, scl float32
 	// Anonymous function to reset values, called at the start of each round
 	reset := func() {
 		s.wins, s.draws = oldWins, oldDraws
@@ -1896,9 +1896,7 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		x, y = 0, 0
-		scl = s.cam.startzoom
-		s.cam.Update(scl, x, y)
+		s.cam.Update(s.cam.startzoom, 0, 0)
 	}
 	reset()
 
@@ -2005,7 +2003,7 @@ func (s *System) fight() (reload bool) {
 		s.stage.action()
 
 		// Update game state
-		s.action(&x, &y, &scl)
+		s.action()
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
@@ -2025,6 +2023,7 @@ func (s *System) fight() (reload bool) {
 		}
 		// Render frame
 		if !s.frameSkip {
+			x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 			dx, dy, dscl := x, y, scl
 			if s.enableZoomstate {
 				if !s.debugPaused() {
