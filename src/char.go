@@ -5390,7 +5390,9 @@ func (c *Char) actionPrepare() {
 			} else {
 				switch c.ss.no {
 				case 11:
-					c.changeState(12, -1, -1, false)
+					if !c.sf(CSF_nostand) {
+						c.changeState(12, -1, -1, false)
+					}
 				case 20:
 					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
 						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
