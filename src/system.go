@@ -1001,7 +1001,7 @@ func (s *System) action() {
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
 	s.clsnText = nil
-	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
+	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
 	leftest, rightest = x, x
 	if s.cam.ytensionenable {
@@ -2033,12 +2033,12 @@ func (s *System) fight() (reload bool) {
 				}
 				if s.zoomCameraBound {
 					dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-					dx = s.cam.XBound(dscl, x+s.zoomPosXLag/scl)
+					dx = s.cam.XBound(dscl, x+ClampF(s.zoomPosXLag/scl, -s.cam.halfWidth/scl*2*(1-1/s.zoomScale), s.cam.halfWidth/scl*2*(1-1/s.zoomScale)))
 				} else {
 					dscl = s.drawScale / s.cam.BaseScale()
 					dx = x + s.zoomPosXLag/scl
 				}
-				dy = y + s.zoomPosYLag
+				dy = y + s.zoomPosYLag/scl
 			} else {
 				s.zoomlag = 0
 				s.zoomPosXLag = 0
