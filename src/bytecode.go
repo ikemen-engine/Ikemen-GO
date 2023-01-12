@@ -2194,14 +2194,16 @@ func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
 
-/*func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
-	for _, v := range f {
-		var be BytecodeExp
-		be.appendValue(BytecodeFloat(v))
-		exp = append(exp, be)
+/*
+	func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
+		for _, v := range f {
+			var be BytecodeExp
+			be.appendValue(BytecodeFloat(v))
+			exp = append(exp, be)
+		}
+		return
 	}
-	return
-}*/
+*/
 func (StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	for _, v := range i {
 		var be BytecodeExp
@@ -6587,11 +6589,13 @@ const (
 	zoom_lag
 	zoom_redirectid
 	zoom_camerabound
+	zoom_time
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
 	crun := c
 	zoompos := [2]float32{0, 0}
+	t := int32(1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
@@ -6601,11 +6605,12 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 			}
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
-			sys.enableZoomstate = true
 		case zoom_camerabound:
 			sys.zoomCameraBound = exp[0].evalB(c)
 		case zoom_lag:
 			sys.zoomlag = exp[0].evalF(c)
+		case zoom_time:
+			t = exp[0].evalI(c)
 		case zoom_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6617,6 +6622,7 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	})
 	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
 	sys.zoomPos[1] = zoompos[1]
+	sys.enableZoomtime = t
 	return false
 }
 
