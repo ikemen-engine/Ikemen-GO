@@ -216,7 +216,7 @@ type System struct {
 	zoomScale               float32
 	zoomPosXLag             float32
 	zoomPosYLag             float32
-	enableZoomstate         bool
+	enableZoomtime          int32
 	zoomCameraBound         bool
 	zoomPos                 [2]float32
 	debugWC                 *Char
@@ -1023,8 +1023,11 @@ func (s *System) action() {
 		if s.envcol_time > 0 {
 			s.envcol_time--
 		}
-		s.enableZoomstate = false
-		s.zoomCameraBound = true
+		if s.enableZoomtime > 0 {
+			s.enableZoomtime--
+		} else {
+			s.zoomCameraBound = true
+		}
 		if s.super > 0 {
 			s.super--
 		} else if s.pause > 0 {
@@ -2025,7 +2028,7 @@ func (s *System) fight() (reload bool) {
 		if !s.frameSkip {
 			x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 			dx, dy, dscl := x, y, scl
-			if s.enableZoomstate {
+			if s.enableZoomtime > 0 {
 				if !s.debugPaused() {
 					s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
 					s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
