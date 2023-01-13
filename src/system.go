@@ -404,7 +404,7 @@ func (s *System) init(w, h int32) *lua.LState {
 
 	// Now we proceed to init the render.
 	gfx.Init()
-	gfx.BeginFrame()
+	gfx.BeginFrame(false)
 	// And the audio.
 	speaker.Init(audioFrequency, audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
@@ -498,8 +498,9 @@ func (s *System) await(fps int) bool {
 		// Render the finished frame
 		gfx.EndFrame()
 		s.window.SwapBuffers()
-		// Begin the next frame after events have been processed
-		defer gfx.BeginFrame()
+		// Begin the next frame after events have been processed. Do not clear
+		// the screen if network input is present.
+		defer gfx.BeginFrame(sys.netInput == nil)
 	}
 	s.runMainThreadTask()
 	now := time.Now()
