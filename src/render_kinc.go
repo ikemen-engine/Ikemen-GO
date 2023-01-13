@@ -183,9 +183,11 @@ func (r *Renderer) Init() {
 func (r *Renderer) Close() {
 }
 
-func (r *Renderer) BeginFrame() {
+func (r *Renderer) BeginFrame(clear bool) {
 	C.kinc_g4_begin(0)
-	C.kinc_g4_clear(C.KINC_G4_CLEAR_COLOR, 0xff000000, 0.0, 0)
+	if clear {
+		C.kinc_g4_clear(C.KINC_G4_CLEAR_COLOR, 0xff000000, 0.0, 0)
+	}
 }
 
 func (r *Renderer) EndFrame() {
