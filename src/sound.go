@@ -215,13 +215,12 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	speaker.Play(bgm.ctrl)
 }
 
-func (bgm *Bgm) Pause() {
-	// FIXME: there is no method to unpause!
+func (bgm *Bgm) SetPaused(paused bool) {
 	if bgm.ctrl == nil {
 		return
 	}
 	speaker.Lock()
-	bgm.ctrl.Paused = true
+	bgm.ctrl.Paused = paused
 	speaker.Unlock()
 }
 
