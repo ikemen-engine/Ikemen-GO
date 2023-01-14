@@ -555,18 +555,7 @@ func (s *System) tickSound() {
 		}
 	}
 
-	if !s.nomusic {
-		speaker.Lock()
-		if s.bgm.ctrl != nil && s.bgm.streamer != nil {
-			s.bgm.ctrl.Paused = false
-			// if s.bgm.bgmLoopEnd > 0 && s.bgm.streamer.Position() >= s.bgm.bgmLoopEnd {
-			// s.bgm.streamer.Seek(s.bgm.bgmLoopStart)
-			// }
-		}
-		speaker.Unlock()
-	} else {
-		s.bgm.Pause()
-	}
+	s.bgm.SetPaused(s.nomusic || s.paused)
 
 	//if s.FLAC_FrameWait >= 0 {
 	//	if s.FLAC_FrameWait == 0 {
