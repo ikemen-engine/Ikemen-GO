@@ -2145,7 +2145,7 @@ for line in content:gmatch('[^\r\n]+') do
 				rmax = tonumber(rmax) or tonumber(rmin)
 				order = tonumber(order)
 				if (rmin and tonumber(rmin)) == nil or (order and tonumber(order)) == nil or (rmin and tonumber(rmin)) < 1
-					or (rmin and tonumber(rmin)) > 4 or (rmax and tonumber(rmax)) < 1 or (rmax and tonumber(rmax))> 4
+					or (rmin and tonumber(rmin)) > 4 or (rmax and tonumber(rmax)) < 1 or (rmax and tonumber(rmax)) > 4
 					or (rmin and tonumber(rmin)) > (rmax and tonumber(rmax)) then
 					main.f_warning(main.f_extractText(motif.warning_info.text_ratio_text), motif.titlebgdef)
 					main.t_selOptions[rowName .. 'ratiomatches'] = nil
