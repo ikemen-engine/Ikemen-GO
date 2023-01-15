@@ -6625,6 +6625,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
+			if ghvset || getter.sf(CSF_gethit) {
+				getter.receivedHits += hd.numhits * hits
+				getter.fakeReceivedHits += hd.numhits * hits
+				if c.teamside != -1 {
+					sys.lifebar.co[c.teamside].combo += hd.numhits * hits
+					sys.lifebar.co[c.teamside].fakeCombo += hd.numhits * hits
+				}
+			}
 		} else {
 			if hd.guard_sparkno != IErr {
 				if hd.reversal_attr > 0 {
@@ -6747,12 +6755,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.ampl = int32(float32(hd.envshake_ampl) * c.localscl)
 				sys.envShake.phase = hd.envshake_phase
 				sys.envShake.setDefPhase()
-			}
-			getter.receivedHits += hd.numhits * hits
-			getter.fakeReceivedHits += hd.numhits * hits
-			if c.teamside != -1 {
-				sys.lifebar.co[c.teamside].combo += hd.numhits * hits
-				sys.lifebar.co[c.teamside].fakeCombo += hd.numhits * hits
 			}
 			//getter.getcombodmg += hd.hitdamage
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
