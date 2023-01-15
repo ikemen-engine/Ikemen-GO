@@ -1869,6 +1869,7 @@ func (c *Char) clear2() {
 	}
 	c.aimg.timegap = -1
 	c.enemyNearClear()
+	c.p2enemy = c.p2enemy[:0]
 	c.targets = c.targets[:0]
 	c.cpucmd = -1
 }
