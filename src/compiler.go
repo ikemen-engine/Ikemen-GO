@@ -4522,6 +4522,10 @@ func (c *Compiler) subBlock(line *string, root bool,
 		if err := c.switchBlock(line, bl, sbc, numVars); err != nil {
 			return nil, err
 		}
+	case "while":
+		if err := c.loopBlock(line, bl, sbc, numVars); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, c.yokisinaiToken()
 	}
@@ -4663,6 +4667,27 @@ func (c *Compiler) switchBlock(line *string, bl *StateBlock,
 	}
 	return nil
 }
+func (c *Compiler) loopBlock(line *string, bl *StateBlock,
+	sbc *StateBytecode, numVars *int32) error {
+	bl.loopBlock = true
+	switch c.token {
+	// case "for": // TODO: make for loop
+	case "while":
+		expr, _, err := c.readSentence(line)
+		if err != nil {
+			return err
+		}
+		otk := c.token
+		if bl.trigger, err = c.fullExpression(&expr, VT_Bool); err != nil {
+			return err
+		}
+		c.token = otk
+		if err := c.needToken("{"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func (c *Compiler) callFunc(line *string, root bool,
 	ctrls *[]StateController, ret []uint8) error {
 	var cf callFunction
@@ -4757,7 +4782,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 				return c.yokisinaiToken()
 			}
 			return nil
-		case "if", "ignorehitpause", "persistent", "switch":
+		case "if", "ignorehitpause", "persistent", "switch", "while":
 			if sbl, err := c.subBlock(line, root, sbc, numVars,
 				bl != nil && bl.ctrlsIgnorehitpause); err != nil {
 				return err

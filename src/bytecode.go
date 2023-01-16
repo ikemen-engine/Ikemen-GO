@@ -2075,6 +2075,7 @@ func (cf callFunction) Run(c *Char, _ []int32) (changeState bool) {
 }
 
 type StateBlock struct {
+	// Basic block fields
 	persistent          int32
 	persistentIndex     int32
 	ignorehitpause      int32
@@ -2082,6 +2083,8 @@ type StateBlock struct {
 	trigger             BytecodeExp
 	elseBlock           *StateBlock
 	ctrls               []StateController
+	// Loop fields
+	loopBlock           bool
 }
 
 func newStateBlock() *StateBlock {
@@ -2107,22 +2110,42 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 		}
 	}
 	sys.workingChar = c
-	if len(b.trigger) > 0 && !b.trigger.evalB(c) {
-		if b.elseBlock != nil {
-			return b.elseBlock.Run(c, ps)
-		}
-		return false
-	}
-	for _, sc := range b.ctrls {
-		switch sc.(type) {
-		case StateBlock:
-		default:
-			if !b.ctrlsIgnorehitpause && c.hitPause() {
-				continue
+	if b.loopBlock {
+		for {
+			if len(b.trigger) > 0 && !b.trigger.evalB(c) {
+				break
+			}
+			for _, sc := range b.ctrls {
+				switch sc.(type) {
+				case StateBlock:
+				default:
+					if !b.ctrlsIgnorehitpause && c.hitPause() {
+						continue
+					}
+				}
+				if sc.Run(c, ps) {
+					return true
+				}
 			}
 		}
-		if sc.Run(c, ps) {
-			return true
+	} else {
+		if len(b.trigger) > 0 && !b.trigger.evalB(c) {
+			if b.elseBlock != nil {
+				return b.elseBlock.Run(c, ps)
+			}
+			return false
+		}
+		for _, sc := range b.ctrls {
+			switch sc.(type) {
+			case StateBlock:
+			default:
+				if !b.ctrlsIgnorehitpause && c.hitPause() {
+					continue
+				}
+			}
+			if sc.Run(c, ps) {
+				return true
+			}
 		}
 	}
 	if b.persistentIndex >= 0 {
