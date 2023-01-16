@@ -2085,6 +2085,12 @@ type StateBlock struct {
 	ctrls               []StateController
 	// Loop fields
 	loopBlock           bool
+	forLoop             bool
+	forAssign           bool
+	forCtrlVar          varAssign
+	forExpression       [3]BytecodeExp
+	forBegin, forEnd    int32
+	forIncrement        int32
 }
 
 func newStateBlock() *StateBlock {
@@ -2111,21 +2117,63 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 	}
 	sys.workingChar = c
 	if b.loopBlock {
-		for {
-			if len(b.trigger) > 0 && !b.trigger.evalB(c) {
-				break
+		if b.forLoop {
+			if b.forAssign {
+				// Initial assign to control variable
+				b.forCtrlVar.Run(c, ps)
+				b.forBegin = sys.bcVar[b.forCtrlVar.vari].ToI()
+			} else {
+				b.forBegin = b.forExpression[0].evalI(c)
 			}
-			for _, sc := range b.ctrls {
-				switch sc.(type) {
-				case StateBlock:
-				default:
-					if !b.ctrlsIgnorehitpause && c.hitPause() {
-						continue
+			b.forEnd, b.forIncrement = b.forExpression[1].evalI(c), b.forExpression[2].evalI(c)
+		}
+		// Start loop
+		interrupt := false
+		for {
+			// Decide if while loop should be stopped
+			if !b.forLoop {
+				// While loop needs to eval conditional indefinitely until it returns false
+				if len(b.trigger) > 0 && !b.trigger.evalB(c) {
+					interrupt = true
+				}
+			}
+			// Run state controllers
+			if !interrupt {
+				for _, sc := range b.ctrls {
+					switch sc.(type) {
+					case StateBlock:
+					default:
+						if !b.ctrlsIgnorehitpause && c.hitPause() {
+							continue
+						}
+					}
+					if sc.Run(c, ps) {
+						return true
 					}
 				}
-				if sc.Run(c, ps) {
-					return true
+			}
+			// Decide if for loop should be stopped
+			if b.forLoop {
+				// Update loop count
+				if b.forAssign {
+					b.forBegin = sys.bcVar[b.forCtrlVar.vari].ToI() + b.forIncrement
+				} else {
+					b.forBegin += b.forIncrement
 				}
+				if b.forIncrement > 0 {
+					if b.forBegin > b.forEnd {
+						interrupt = true
+					}
+				} else if b.forBegin < b.forEnd { 
+					interrupt = true
+				}
+				// Update control variable if loop should keep going
+				if b.forAssign && !interrupt {
+					sys.bcVar[b.forCtrlVar.vari].SetI(b.forBegin + b.forIncrement)
+				}
+			}
+			if interrupt {
+				break
 			}
 		}
 	} else {
