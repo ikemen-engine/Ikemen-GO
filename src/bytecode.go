@@ -2085,6 +2085,7 @@ type StateBlock struct {
 	ctrls               []StateController
 	// Loop fields
 	loopBlock           bool
+	nestedInLoop        bool
 	forLoop             bool
 	forAssign           bool
 	forCtrlVar          varAssign
@@ -2148,6 +2149,15 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 						}
 					}
 					if sc.Run(c, ps) {
+						if sys.loopBreak {
+							sys.loopBreak = false
+							interrupt = true
+							break
+						}
+						if sys.loopContinue {
+							sys.loopContinue = false
+							break
+						}
 						return true
 					}
 				}
@@ -2217,6 +2227,20 @@ type varAssign struct {
 func (va varAssign) Run(c *Char, _ []int32) (changeState bool) {
 	sys.bcVar[va.vari] = va.be.run(c)
 	return false
+}
+
+type LoopBreak struct{}
+
+func (lb LoopBreak) Run(c *Char, _ []int32) (stop bool) {
+	sys.loopBreak = true
+	return true
+}
+
+type LoopContinue struct{}
+
+func (lc LoopContinue) Run(c *Char, _ []int32) (stop bool) {
+	sys.loopContinue = true
+	return true
 }
 
 type StateControllerBase []byte

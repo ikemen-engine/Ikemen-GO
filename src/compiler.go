@@ -4439,8 +4439,8 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 }
 // Sets attributes to a StateBlock, like IgnoreHitPause, Persistent
 func (c *Compiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBytecode,
-	inheritIhp bool) error {
-	// Inherit ignorehitpause from parent block
+	inheritIhp, nestedInLoop bool) error {
+	// Inherit ignorehitpause/loop attr from parent block
 	if inheritIhp {
 		bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
 		// Avoid re-reading ignorehitpause
@@ -4448,6 +4448,7 @@ func (c *Compiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateByteco
 			c.scan(line)
 		}
 	}
+	bl.nestedInLoop = nestedInLoop
 	for {
 		switch c.token {
 		case "ignorehitpause":
@@ -4495,9 +4496,9 @@ func (c *Compiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateByteco
 	return nil
 }
 func (c *Compiler) subBlock(line *string, root bool,
-	sbc *StateBytecode, numVars *int32, inheritIhp bool) (*StateBlock, error) {
+	sbc *StateBytecode, numVars *int32, inheritIhp, nestedInLoop bool) (*StateBlock, error) {
 	bl := newStateBlock()
-	if err := c.blockAttribSet(line, bl, sbc, inheritIhp); err != nil {
+	if err := c.blockAttribSet(line, bl, sbc, inheritIhp, nestedInLoop); err != nil {
 		return nil, err
 	}
 	compileMain, compileElse := true, false
@@ -4558,7 +4559,7 @@ func (c *Compiler) subBlock(line *string, root bool,
 		c.scan(line)
 		var err error
 		if bl.elseBlock, err = c.subBlock(line, root,
-			sbc, numVars, inheritIhp); err != nil {
+			sbc, numVars, inheritIhp, nestedInLoop); err != nil {
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause >= -1 {
@@ -4580,7 +4581,7 @@ func (c *Compiler) switchBlock(line *string, bl *StateBlock,
 	c.scan(line)
 	compileCaseBlock := func(sbl *StateBlock, expr *string) error {
 		if err := c.blockAttribSet(line, sbl, sbc,
-			bl != nil && bl.ctrlsIgnorehitpause); err != nil {
+			bl != nil && bl.ctrlsIgnorehitpause, bl != nil && bl.nestedInLoop); err != nil {
 			return err
 		}
 		otk := c.token
@@ -4670,6 +4671,7 @@ func (c *Compiler) switchBlock(line *string, bl *StateBlock,
 func (c *Compiler) loopBlock(line *string, root bool, bl *StateBlock,
 	sbc *StateBytecode, numVars *int32) error {
 	bl.loopBlock = true
+	bl.nestedInLoop = true
 	switch c.token {
 	case "for":
 		bl.forLoop = true
@@ -4902,7 +4904,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 			return nil
 		case "for", "if", "ignorehitpause", "persistent", "switch", "while":
 			if sbl, err := c.subBlock(line, root, sbc, numVars,
-				bl != nil && bl.ctrlsIgnorehitpause); err != nil {
+				bl != nil && bl.ctrlsIgnorehitpause, bl != nil && bl.nestedInLoop); err != nil {
 				return err
 			} else {
 				if bl != nil && sbl.ignorehitpause >= -1 {
@@ -4914,6 +4916,28 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 		case "call":
 			if err := c.callFunc(line, root, ctrls, nil); err != nil {
 				return err
+			}
+			continue
+		case "break", "continue":
+			if bl.nestedInLoop {
+				switch c.token {
+					case "break":
+						*ctrls = append(*ctrls, LoopBreak{})
+					case "continue":
+						*ctrls = append(*ctrls, LoopContinue{})
+				}
+				c.scan(line)
+				if err := c.needToken(";"); err != nil {
+					return err
+				}
+				if root {
+					if err := c.statementEnd(line); err != nil {
+						return err
+					}
+				}
+				c.scan(line)
+			} else {
+				return Error(fmt.Sprintf("%v can only be used inside a loop block", c.token))
 			}
 			continue
 		case "let":
