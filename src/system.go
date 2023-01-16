@@ -355,6 +355,8 @@ type System struct {
 	stereoEffects   bool
 	panningRange    float32
 	windowCentered  bool
+	loopBreak       bool
+	loopContinue    bool
 }
 
 // Initialize stuff, this is called after the config int at main.go
