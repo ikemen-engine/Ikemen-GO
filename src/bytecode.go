@@ -2179,7 +2179,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 				}
 				// Update control variable if loop should keep going
 				if b.forAssign && !interrupt {
-					sys.bcVar[b.forCtrlVar.vari].SetI(b.forBegin + b.forIncrement)
+					sys.bcVar[b.forCtrlVar.vari].SetI(b.forBegin)
 				}
 			}
 			if interrupt {
