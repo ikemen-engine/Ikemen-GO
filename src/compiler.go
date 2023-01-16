@@ -1030,46 +1030,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		return bv, nil
 	}
 	_var := func(sys, f bool) error {
-		bv1, err := c.oneArg(out, in, rd, false)
+		_, err := c.oneArg(out, in, rd, true)
 		if err != nil {
 			return err
 		}
 		var oc OpCode
 		c.token = c.tokenizer(in)
-		set, _else := c.token == ":=", false
-		if !bv1.IsNone() && bv1.ToI() >= 0 {
-			switch [...]bool{sys, f} {
-			case [...]bool{false, false}:
-				if bv1.ToI() < int32(NumVar) {
-					oc = OC_var0 + OpCode(bv1.ToI()) // OC_st_var0と同じ値
-				} else {
-					_else = true
-				}
-			case [...]bool{false, true}:
-				if bv1.ToI() < int32(NumFvar) {
-					oc = OC_fvar0 + OpCode(bv1.ToI()) // OC_st_fvar0と同じ値
-				} else {
-					_else = true
-				}
-			case [...]bool{true, false}:
-				if bv1.ToI() < int32(NumSysVar) {
-					oc = OC_sysvar0 + OpCode(bv1.ToI()) // OC_st_sysvar0と同じ値
-				} else {
-					_else = true
-				}
-			case [...]bool{true, true}:
-				if bv1.ToI() < int32(NumSysFvar) {
-					oc = OC_sysfvar0 + OpCode(bv1.ToI()) // OC_st_sysfvar0と同じ値
-				} else {
-					_else = true
-				}
-			}
-		} else {
-			_else = true
-		}
-		if _else {
-			out.appendValue(bv1)
-		}
+		set := c.token == ":="
 		if set {
 			c.token = c.tokenizer(in)
 			var be2 BytecodeExp
@@ -1084,19 +1051,26 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be2...)
 			out.append(OC_st_)
 		}
-		if _else {
-			switch [...]bool{sys, f} {
-			case [...]bool{false, false}:
-				oc = OC_var
-			case [...]bool{false, true}:
-				oc = OC_fvar
-			case [...]bool{true, false}:
-				oc = OC_sysvar
-			case [...]bool{true, true}:
-				oc = OC_sysfvar
-			}
+		switch [...]bool{sys, f} {
+		case [...]bool{false, false}:
+			oc = OC_var
 			if set {
-				oc += OC_st_var - OC_var
+				oc = OC_st_var
+			}
+		case [...]bool{false, true}:
+			oc = OC_fvar
+			if set {
+				oc = OC_st_fvar
+			}
+		case [...]bool{true, false}:
+			oc = OC_sysvar
+			if set {
+				oc = OC_st_sysvar
+			}
+		case [...]bool{true, true}:
+			oc = OC_sysfvar
+			if set {
+				oc = OC_st_sysfvar
 			}
 		}
 		out.append(oc)

@@ -71,7 +71,7 @@ const (
 type OpCode byte
 
 const (
-	OC_var OpCode = iota + 110
+	OC_var OpCode = iota
 	OC_sysvar
 	OC_fvar
 	OC_sysfvar
@@ -217,10 +217,6 @@ const (
 	OC_const_
 	OC_st_
 	OC_ex_
-	OC_var0     = 0
-	OC_sysvar0  = 60
-	OC_fvar0    = 65
-	OC_sysfvar0 = 105
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -363,7 +359,7 @@ const (
 	OC_const_stage_constants
 )
 const (
-	OC_st_var OpCode = iota + OC_var*2
+	OC_st_var OpCode = iota
 	OC_st_sysvar
 	OC_st_fvar
 	OC_st_sysfvar
@@ -371,14 +367,6 @@ const (
 	OC_st_sysvaradd
 	OC_st_fvaradd
 	OC_st_sysfvaradd
-	OC_st_var0        = OC_var0
-	OC_st_sysvar0     = OC_sysvar0
-	OC_st_fvar0       = OC_fvar0
-	OC_st_sysfvar0    = OC_sysfvar0
-	OC_st_var0add     = OC_var + OC_var0
-	OC_st_sysvar0add  = OC_var + OC_sysvar0
-	OC_st_fvar0add    = OC_var + OC_fvar0
-	OC_st_sysfvar0add = OC_var + OC_sysfvar0
 	OC_st_map
 )
 const (
@@ -519,10 +507,10 @@ const (
 	OC_ex_selfcommand
 )
 const (
-	NumVar     = OC_sysvar0 - OC_var0
-	NumSysVar  = OC_fvar0 - OC_sysvar0
-	NumFvar    = OC_sysfvar0 - OC_fvar0
-	NumSysFvar = OC_var - OC_sysfvar0
+	NumVar     = 60
+	NumSysVar  = 5
+	NumFvar    = 40
+	NumSysFvar = 5
 )
 
 type StringPool struct {
@@ -1332,13 +1320,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_localvar:
 			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
 			i++
-		default:
-			vi := be[i-1]
-			if vi < OC_sysvar0+NumSysVar {
-				sys.bcStack.PushI(c.ivar[vi-OC_var0])
-			} else {
-				sys.bcStack.PushF(c.fvar[vi-OC_fvar0])
-			}
 		}
 		c = oc
 	}
@@ -1375,24 +1356,6 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		v := sys.bcStack.Pop().ToF()
 		sys.bcStack.Push(c.mapSet(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))], v, 0))
 		*i += 4
-	default:
-		vi := be[*i-1]
-		if vi < OC_st_sysvar0+NumSysVar {
-			c.ivar[vi-OC_st_var0] = sys.bcStack.Top().ToI()
-			sys.bcStack.Top().SetI(c.ivar[vi-OC_st_var0])
-		} else if vi < OC_st_sysfvar0+NumSysFvar {
-			c.fvar[vi-OC_st_fvar0] = sys.bcStack.Top().ToF()
-			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0])
-		} else if vi < OC_st_sysvar0add+NumSysVar {
-			c.ivar[vi-OC_st_var0add] += sys.bcStack.Top().ToI()
-			sys.bcStack.Top().SetI(c.ivar[vi-OC_st_var0add])
-		} else if vi < OC_st_sysfvar0add+NumSysFvar {
-			c.fvar[vi-OC_st_fvar0add] += sys.bcStack.Top().ToF()
-			sys.bcStack.Top().SetF(c.fvar[vi-OC_st_fvar0add])
-		} else {
-			sys.errLog.Printf("%v\n", be[*i-1])
-			c.panic()
-		}
 	}
 }
 func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
