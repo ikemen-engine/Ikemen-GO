@@ -5928,6 +5928,14 @@ func (c *Char) tick() {
 				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
+			for _, cl := range sys.charList.runOrder {
+				for i, p2cl := range cl.p2enemy {
+					if p2cl == c {
+						cl.p2enemy = cl.p2enemy[:i+copy(cl.p2enemy[i:], cl.p2enemy[i+1:])]
+						break
+					}
+				}
+			}
 		}
 		if c.ss.moveType != MT_H {
 			c.recoverTime = c.gi().data.liedown.time
@@ -6625,6 +6633,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
+			if ghvset || getter.sf(CSF_gethit) {
+				getter.receivedHits += hd.numhits * hits
+				getter.fakeReceivedHits += hd.numhits * hits
+				if c.teamside != -1 {
+					sys.lifebar.co[c.teamside].combo += hd.numhits * hits
+					sys.lifebar.co[c.teamside].fakeCombo += hd.numhits * hits
+				}
+			}
 		} else {
 			if hd.guard_sparkno != IErr {
 				if hd.reversal_attr > 0 {
@@ -6747,12 +6763,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.ampl = int32(float32(hd.envshake_ampl) * c.localscl)
 				sys.envShake.phase = hd.envshake_phase
 				sys.envShake.setDefPhase()
-			}
-			getter.receivedHits += hd.numhits * hits
-			getter.fakeReceivedHits += hd.numhits * hits
-			if c.teamside != -1 {
-				sys.lifebar.co[c.teamside].combo += hd.numhits * hits
-				sys.lifebar.co[c.teamside].fakeCombo += hd.numhits * hits
 			}
 			//getter.getcombodmg += hd.hitdamage
 			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
