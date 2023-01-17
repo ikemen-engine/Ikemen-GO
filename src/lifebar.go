@@ -2863,10 +2863,21 @@ func (mo *LifeBarMode) draw(layerno int16, f []*Fnt) {
 	}
 }
 
+type FightFx struct {
+	fat      AnimationTable
+	fsff     *Sff
+	fsnd     *Snd
+	fx_scale float32
+}
+
+func newFightFx() *FightFx {
+	return &FightFx{fsff: &Sff{}, fx_scale: 1.0}
+}
+
 type Lifebar struct {
-	at, fat    AnimationTable
-	sff, fsff  *Sff
-	snd, fsnd  *Snd
+	at        AnimationTable
+	sff       *Sff
+	snd       *Snd
 	fnt        [10]*Fnt
 	ref        [2]int
 	order      [2][]int
@@ -2896,7 +2907,6 @@ type Lifebar struct {
 	guardbar   bool
 	stunbar    bool
 	hidebars   bool
-	fx_scale   float32
 	fnt_scale  float32
 	deffile    string
 	textsprite []*TextSprite
@@ -2907,7 +2917,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &Lifebar{sff: &Sff{}, fsff: &Sff{}, snd: &Snd{},
+	l := &Lifebar{sff: &Sff{}, snd: &Snd{},
 		hb: [...][]*HealthBar{make([]*HealthBar, 2), make([]*HealthBar, 8),
 			make([]*HealthBar, 2), make([]*HealthBar, 8), make([]*HealthBar, 6),
 			make([]*HealthBar, 8), make([]*HealthBar, 6), make([]*HealthBar, 8)},
@@ -2926,7 +2936,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		nm: [...][]*LifeBarName{make([]*LifeBarName, 2), make([]*LifeBarName, 8),
 			make([]*LifeBarName, 2), make([]*LifeBarName, 8), make([]*LifeBarName, 6),
 			make([]*LifeBarName, 8), make([]*LifeBarName, 6), make([]*LifeBarName, 8)},
-		active: true, bars: true, mode: true, fx_scale: 1, fnt_scale: 1}
+		active: true, bars: true, mode: true, fnt_scale: 1}
 	l.missing = map[string]int{
 		"[tag lifebar]": 3, "[simul_3p lifebar]": 4, "[simul_4p lifebar]": 5,
 		"[tag_3p lifebar]": 6, "[tag_4p lifebar]": 7, "[simul powerbar]": 1,
@@ -2957,6 +2967,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	l.at = ReadAnimationTable(l.sff, lines, &i)
 	i = 0
 	filesflg := true
+	ffx := newFightFx()
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
@@ -2996,7 +3007,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 						if err != nil {
 							return err
 						}
-						*l.fsff = *s
+						*ffx.fsff = *s
 						return nil
 					}); err != nil {
 					return nil, err
@@ -3008,14 +3019,14 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 							return err
 						}
 						lines, i := SplitAndTrim(str, "\n"), 0
-						l.fat = ReadAnimationTable(l.fsff, lines, &i)
+						ffx.fat = ReadAnimationTable(ffx.fsff, lines, &i)
 						return nil
 					}); err != nil {
 					return nil, err
 				}
 				if is.LoadFile("common.snd", []string{deffile, sys.motifDir, "", "data/"},
 					func(filename string) error {
-						l.fsnd, err = LoadSnd(filename)
+						ffx.fsnd, err = LoadSnd(filename)
 						return err
 					}); err != nil {
 					return nil, err
@@ -3041,7 +3052,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}
 			}
 		case "fightfx":
-			is.ReadF32("scale", &l.fx_scale)
+			is.ReadF32("scale", &ffx.fx_scale)
 		case "lifebar":
 			if l.hb[0][0] == nil {
 				l.hb[0][0] = readHealthBar("p1.", is, l.sff, l.at, l.fnt[:])
@@ -3388,12 +3399,14 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			}
 		}
 	}
+	sys.ffx["f"] = ffx
 	//fightfx scale
-	//if math.IsNaN(float64(l.fx_scale)) {
-	//	l.fx_scale = float32(sys.lifebarLocalcoord[0]) / 320
+	//if math.IsNaN(float64(sys.ffx["f"].fx_scale)) {
+	//	sys.ffx["f"].fx_scale = float32(sys.lifebarLocalcoord[0]) / 320
 	//}
-	for _, a := range l.fat {
-		a.start_scale = [...]float32{sys.lifebarScale * l.fx_scale, sys.lifebarScale * l.fx_scale}
+	for _, a := range sys.ffx["f"].fat {
+		a.start_scale = [...]float32{sys.lifebarScale * sys.ffx["f"].fx_scale,
+			sys.lifebarScale * sys.ffx["f"].fx_scale}
 	}
 	//Iterate over map in a stable iteration order
 	keys := make([]string, 0, len(l.missing))
@@ -3507,7 +3520,7 @@ func (l *Lifebar) reloadLifebar() {
 	lb.redlifebar = l.redlifebar
 	lb.guardbar = l.guardbar
 	lb.stunbar = l.stunbar
-	lb.fx_scale = l.fx_scale
+	// lb.fx_scale = l.fx_scale
 	sys.lifebar = *lb
 }
 func (l *Lifebar) step() {

@@ -51,6 +51,7 @@ var sys = System{
 	soundChannels:     newSoundChannels(16),
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
+	ffx:               make(map[string]*FightFx),
 	sel:               *newSelect(),
 	keyState:          make(map[Key]bool),
 	match:             1,
@@ -122,6 +123,7 @@ type System struct {
 	soundChannels           *SoundChannels
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
+	ffx                     map[string]*FightFx
 	sel                     Select
 	keyState                map[Key]bool
 	netInput                *NetInput

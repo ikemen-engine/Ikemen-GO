@@ -1144,7 +1144,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		sprs = &sys.bottomSprites
 	}
 	var pfx *PalFX
-	if e.palfx != nil && (e.anim.sff != sys.lifebar.fsff || e.ownpal) {
+	if e.palfx != nil && (e.anim.sff != sys.ffx["f"].fsff || e.ownpal) {
 		pfx = e.palfx
 	} else {
 		pfx = &PalFX{}
@@ -3142,8 +3142,8 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 	}
 	var s *Sound
 	if f {
-		if sys.lifebar.fsnd != nil {
-			s = sys.lifebar.fsnd.Get([...]int32{g, n})
+		if sys.ffx["f"].fsnd != nil {
+			s = sys.ffx["f"].fsnd.Get([...]int32{g, n})
 		}
 	} else {
 		if c.gi().snd != nil {
@@ -3490,7 +3490,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	}
 	e.anim.UpdateSprite()
 	if e.ownpal {
-		if e.anim.sff != sys.lifebar.fsff {
+		if e.anim.sff != sys.ffx["f"].fsff {
 			remap := make([]int, len(e.palfx.remap))
 			copy(remap, e.palfx.remap)
 			e.palfx = newPalFX()
@@ -3590,7 +3590,7 @@ func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
 		return nil
 	}
 	if ffx {
-		a = sys.lifebar.fat.get(n)
+		a = sys.ffx["f"].fat.get(n)
 	} else {
 		a = c.gi().anim.get(n)
 	}
