@@ -138,7 +138,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, grayscale float32,
 	for i, v := range p.eAdd {
 		add[i] = float32(v) / 255
 		if transNeg {
-			add[i] *= -1
+			//add[i] *= -1
 			mul[i] = float32(p.eMul[(i+1)%3]+p.eMul[(i+2)%3]) / 512
 		} else {
 			mul[i] = float32(p.eMul[i]) / 256
@@ -369,130 +369,132 @@ func newSprite() *Sprite {
 	return &Sprite{palidx: -1}
 }
 
-/*func loadFromSff(filename string, g, n int16) (*Sprite, error) {
-	s := newSprite()
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { chk(f.Close()) }()
-	h := &SffHeader{}
-	var lofs, tofs uint32
-	if err := h.Read(f, &lofs, &tofs); err != nil {
-		return nil, err
-	}
-	var shofs, xofs, size uint32 = h.FirstSpriteHeaderOffset, 0, 0
-	var indexOfPrevious uint16
-	pl := &PaletteList{}
-	pl.init()
-	foo := func() error {
-		switch h.Ver0 {
-		case 1:
-			if err := s.readHeader(f, &xofs, &size, &indexOfPrevious); err != nil {
-				return err
-			}
-		case 2:
-			if err := s.readHeaderV2(f, &xofs, &size,
-				lofs, tofs, &indexOfPrevious); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	var dummy *Sprite
-	var newSubHeaderOffset []uint32
-	newSubHeaderOffset = append(newSubHeaderOffset, shofs)
-	i := 0
-	for ; i < int(h.NumberOfSprites); i++ {
-		newSubHeaderOffset = append(newSubHeaderOffset, shofs)
-		f.Seek(int64(shofs), 0)
-		if err := foo(); err != nil {
+/*
+	func loadFromSff(filename string, g, n int16) (*Sprite, error) {
+		s := newSprite()
+		f, err := os.Open(filename)
+		if err != nil {
 			return nil, err
 		}
-		if s.palidx < 0 || s.Group == g && s.Number == n {
-			ip := len(newSubHeaderOffset)
-			for size == 0 {
-				if int(indexOfPrevious) >= ip {
-					return nil, Error("link is invalid")
-				}
-				ip = int(indexOfPrevious)
-				if h.Ver0 == 1 {
-					shofs = newSubHeaderOffset[ip]
-				} else {
-					shofs = h.FirstSpriteHeaderOffset + uint32(ip)*28
-				}
-				f.Seek(int64(shofs), 0)
-				if err := foo(); err != nil {
-					return nil, err
-				}
-			}
+		defer func() { chk(f.Close()) }()
+		h := &SffHeader{}
+		var lofs, tofs uint32
+		if err := h.Read(f, &lofs, &tofs); err != nil {
+			return nil, err
+		}
+		var shofs, xofs, size uint32 = h.FirstSpriteHeaderOffset, 0, 0
+		var indexOfPrevious uint16
+		pl := &PaletteList{}
+		pl.init()
+		foo := func() error {
 			switch h.Ver0 {
 			case 1:
-				if err := s.read(f, h, int64(shofs+32), size, xofs, dummy,
-					pl, false); err != nil {
-					return nil, err
+				if err := s.readHeader(f, &xofs, &size, &indexOfPrevious); err != nil {
+					return err
 				}
 			case 2:
-				if err := s.readV2(f, int64(xofs), size); err != nil {
+				if err := s.readHeaderV2(f, &xofs, &size,
+					lofs, tofs, &indexOfPrevious); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		var dummy *Sprite
+		var newSubHeaderOffset []uint32
+		newSubHeaderOffset = append(newSubHeaderOffset, shofs)
+		i := 0
+		for ; i < int(h.NumberOfSprites); i++ {
+			newSubHeaderOffset = append(newSubHeaderOffset, shofs)
+			f.Seek(int64(shofs), 0)
+			if err := foo(); err != nil {
+				return nil, err
+			}
+			if s.palidx < 0 || s.Group == g && s.Number == n {
+				ip := len(newSubHeaderOffset)
+				for size == 0 {
+					if int(indexOfPrevious) >= ip {
+						return nil, Error("link is invalid")
+					}
+					ip = int(indexOfPrevious)
+					if h.Ver0 == 1 {
+						shofs = newSubHeaderOffset[ip]
+					} else {
+						shofs = h.FirstSpriteHeaderOffset + uint32(ip)*28
+					}
+					f.Seek(int64(shofs), 0)
+					if err := foo(); err != nil {
+						return nil, err
+					}
+				}
+				switch h.Ver0 {
+				case 1:
+					if err := s.read(f, h, int64(shofs+32), size, xofs, dummy,
+						pl, false); err != nil {
+						return nil, err
+					}
+				case 2:
+					if err := s.readV2(f, int64(xofs), size); err != nil {
+						return nil, err
+					}
+				}
+				if s.Group == g && s.Number == n {
+					break
+				}
+				dummy = &Sprite{palidx: s.palidx}
+			}
+			if h.Ver0 == 1 {
+				shofs = xofs
+			} else {
+				shofs += 28
+			}
+		}
+		if i == int(h.NumberOfSprites) {
+			return nil, Error(fmt.Sprintf("Sprite not found: %v, %v", g, n))
+		}
+		if h.Ver0 == 1 {
+			s.Pal = pl.Get(s.palidx)
+			s.palidx = -1
+			return s, nil
+		}
+		if s.coldepth <= 8 {
+			read := func(x interface{}) error {
+				return binary.Read(f, binary.LittleEndian, x)
+			}
+			size = 0
+			indexOfPrevious = uint16(s.palidx)
+			ip := indexOfPrevious + 1
+			for size == 0 && ip != indexOfPrevious {
+				ip = indexOfPrevious
+				shofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
+				f.Seek(int64(shofs)+6, 0)
+				if err := read(&indexOfPrevious); err != nil {
+					return nil, err
+				}
+				if err := read(&xofs); err != nil {
+					return nil, err
+				}
+				if err := read(&size); err != nil {
 					return nil, err
 				}
 			}
-			if s.Group == g && s.Number == n {
-				break
+			f.Seek(int64(lofs+xofs), 0)
+			s.Pal = make([]uint32, 256)
+			var rgba [4]byte
+			for i := 0; i < int(size)/4 && i < len(s.Pal); i++ {
+				if err := read(rgba[:]); err != nil {
+					return nil, err
+				}
+				if h.Ver2 == 0 {
+					rgba[3] = 255
+				}
+				s.Pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 			}
-			dummy = &Sprite{palidx: s.palidx}
+			s.palidx = -1
 		}
-		if h.Ver0 == 1 {
-			shofs = xofs
-		} else {
-			shofs += 28
-		}
-	}
-	if i == int(h.NumberOfSprites) {
-		return nil, Error(fmt.Sprintf("Sprite not found: %v, %v", g, n))
-	}
-	if h.Ver0 == 1 {
-		s.Pal = pl.Get(s.palidx)
-		s.palidx = -1
 		return s, nil
 	}
-	if s.coldepth <= 8 {
-		read := func(x interface{}) error {
-			return binary.Read(f, binary.LittleEndian, x)
-		}
-		size = 0
-		indexOfPrevious = uint16(s.palidx)
-		ip := indexOfPrevious + 1
-		for size == 0 && ip != indexOfPrevious {
-			ip = indexOfPrevious
-			shofs = h.FirstPaletteHeaderOffset + uint32(ip)*16
-			f.Seek(int64(shofs)+6, 0)
-			if err := read(&indexOfPrevious); err != nil {
-				return nil, err
-			}
-			if err := read(&xofs); err != nil {
-				return nil, err
-			}
-			if err := read(&size); err != nil {
-				return nil, err
-			}
-		}
-		f.Seek(int64(lofs+xofs), 0)
-		s.Pal = make([]uint32, 256)
-		var rgba [4]byte
-		for i := 0; i < int(size)/4 && i < len(s.Pal); i++ {
-			if err := read(rgba[:]); err != nil {
-				return nil, err
-			}
-			if h.Ver2 == 0 {
-				rgba[3] = 255
-			}
-			s.Pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
-		}
-		s.palidx = -1
-	}
-	return s, nil
-}*/
+*/
 func (s *Sprite) shareCopy(src *Sprite) {
 	s.Pal = src.Pal
 	s.Tex = src.Tex
@@ -1029,7 +1031,7 @@ type SffCacheEntry struct {
 	refCount int
 }
 
-var SffCache = map[string]*SffCacheEntry {}
+var SffCache = map[string]*SffCacheEntry{}
 
 func loadSff(filename string, char bool) (*Sff, error) {
 	// If this SFF is already in the cache, just return a copy
@@ -1169,8 +1171,8 @@ func loadSff(filename string, char bool) (*Sff, error) {
 	}
 
 	// Store a copy of this SFF in the cache
-	SffCache[filename] = &SffCacheEntry{ *s, 1 }
-	runtime.SetFinalizer(s, func (s *Sff) {
+	SffCache[filename] = &SffCacheEntry{*s, 1}
+	runtime.SetFinalizer(s, func(s *Sff) {
 		cached := SffCache[filename]
 		cached.refCount--
 		if cached.refCount == 0 {

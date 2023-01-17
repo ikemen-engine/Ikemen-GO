@@ -394,11 +394,11 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
-	yScrollPos := ((pos[1] - (sys.cam.CameraZoomYBound / lclscl)) / stgscl[1]) * bg.delta[1]
+	yScrollPos := ((pos[1] - (sys.cam.CameraZoomYBound / lclscl)) / stgscl[1]) * bg.delta[1] * bgscl
 	yScrollPos += ((sys.cam.CameraZoomYBound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) / bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * (pos[1] - sys.cam.CameraZoomYBound) * bg.delta[1] * bgscl
-	ys := ((100-pos[1]*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
+	ys := ((100-(pos[1]-sys.cam.CameraZoomYBound)*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
 	x *= bgscl
 	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]

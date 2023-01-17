@@ -5928,6 +5928,14 @@ func (c *Char) tick() {
 				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
+			for _, cl := range sys.charList.runOrder {
+				for i, p2cl := range cl.p2enemy {
+					if p2cl == c {
+						cl.p2enemy = cl.p2enemy[:i+copy(cl.p2enemy[i:], cl.p2enemy[i+1:])]
+						break
+					}
+				}
+			}
 		}
 		if c.ss.moveType != MT_H {
 			c.recoverTime = c.gi().data.liedown.time
