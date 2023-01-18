@@ -3454,6 +3454,26 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	}
 	return nil
 }
+// Returns FX prefix from a data string, removes prefix from the data
+func (c *Compiler) getDataPrefix(data *string, ffxDefault bool) (prefix string) {
+	if len(*data) > 1 {
+		// Check prefix
+		re := regexp.MustCompile(sys.ffxRegexp)
+		prefix = re.FindString(strings.ToLower(*data))
+		if prefix != "" {
+			// Remove prefix from data string
+			re = regexp.MustCompile("[^a-z]")
+			m := re.Split(strings.ToLower(*data)[len(prefix):], -1)
+			if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
+				*data = (*data)[len(prefix):]
+			}
+		}
+	}
+	if ffxDefault && prefix == "" {
+		prefix = "f"
+	}
+	return
+}
 func (c *Compiler) exprs(data string, vt ValueType,
 	numArg int) ([]BytecodeExp, error) {
 	bes := []BytecodeExp{}
@@ -3834,19 +3854,9 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			return err
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}

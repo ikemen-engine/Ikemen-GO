@@ -511,10 +511,14 @@ type HitDef struct {
 	guard_pausetime            int32
 	guard_shaketime            int32
 	sparkno                    int32
+	sparkno_ffx                string
 	guard_sparkno              int32
+	guard_sparkno_ffx          string
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
+	hitsound_ffx                string
 	guardsound                 [2]int32
+	guardsound_ffx              string
 	ground_type                HitType
 	air_type                   HitType
 	ground_slidetime           int32
@@ -584,19 +588,23 @@ type HitDef struct {
 
 func (hd *HitDef) clear() {
 	*hd = HitDef{
-		hitflag:       int32(ST_S | ST_C | ST_A | ST_F),
-		affectteam:    1,
-		teamside:      -1,
-		animtype:      RA_Light,
-		air_animtype:  RA_Unknown,
-		priority:      4,
-		bothhittype:   AT_Hit,
-		sparkno:       IErr,
-		guard_sparkno: IErr,
-		hitsound:      [...]int32{IErr, 0},
-		guardsound:    [...]int32{IErr, 0},
-		ground_type:   HT_High,
-		air_type:      HT_Unknown,
+		hitflag:           int32(ST_S | ST_C | ST_A | ST_F),
+		affectteam:        1,
+		teamside:          -1,
+		animtype:          RA_Light,
+		air_animtype:      RA_Unknown,
+		priority:          4,
+		bothhittype:       AT_Hit,
+		sparkno:           -1,
+		sparkno_ffx:       "f",
+		guard_sparkno:     -1,
+		guard_sparkno_ffx: "f",
+		hitsound:          [...]int32{-1, 0},
+		hitsound_ffx:      "f",
+		guardsound:        [...]int32{-1, 0},
+		guardsound_ffx:    "f",
+		ground_type:       HT_High,
+		air_type:          HT_Unknown,
 		// Both default to 20, not documented in Mugen docs.
 		air_hittime:  20,
 		down_hittime: 20,
@@ -1144,7 +1152,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		sprs = &sys.bottomSprites
 	}
 	var pfx *PalFX
-	if e.palfx != nil && (e.anim.sff != sys.lifebar.fsff || e.ownpal) {
+	if e.palfx != nil && (e.anim.sff != sys.ffx["f"].fsff || e.ownpal) {
 		pfx = e.palfx
 	} else {
 		pfx = &PalFX{}
@@ -1224,13 +1232,13 @@ type Projectile struct {
 	hitdef          HitDef
 	id              int32
 	anim            int32
-	anim_fflg       bool
+	anim_ffx        string
 	hitanim         int32
-	hitanim_fflg    bool
+	hitanim_ffx     string
 	remanim         int32
-	remanim_fflg    bool
+	remanim_ffx     string
 	cancelanim      int32
-	cancelanim_fflg bool
+	cancelanim_ffx  string
 	scale           [2]float32
 	angle           float32
 	clsnScale       [2]float32
@@ -1306,11 +1314,11 @@ func (p *Projectile) update(playerNo int) {
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
 				if p.hits == -1 {
-					if p.hitanim != p.anim || p.hitanim_fflg != p.anim_fflg {
-						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_fflg, true)
+					if p.hitanim != p.anim || p.hitanim_ffx != p.anim_ffx {
+						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_ffx, true)
 					}
-				} else if p.cancelanim != p.anim || p.cancelanim_fflg != p.anim_fflg {
-					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_fflg, true)
+				} else if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
+					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
 				}
 			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
@@ -1322,8 +1330,8 @@ func (p *Projectile) update(playerNo int) {
 				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
 				p.removetime == 0 ||
 				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
-				if p.remanim != p.anim || p.remanim_fflg != p.anim_fflg {
-					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_fflg, true)
+				if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
+					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 				}
 			} else {
 				rem = false
@@ -2114,13 +2122,7 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadI32("airjuggle", &gi.data.airjuggle)
 						is.ReadI32("sparkno", &gi.data.sparkno)
-						if gi.data.sparkno < 0 {
-							gi.data.sparkno = ^IErr
-						}
 						is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
-						if gi.data.guard.sparkno < 0 {
-							gi.data.guard.sparkno = ^IErr
-						}
 						is.ReadI32("ko.echo", &gi.data.ko.echo)
 						if is.ReadI32("volume", &i32) {
 							gi.data.volume = i32/2 + 256
@@ -2134,7 +2136,6 @@ func (c *Char) load(def string) error {
 				case "size":
 					if size {
 						size = false
-
 						is.ReadF32("xscale", &c.size.xscale)
 						is.ReadF32("yscale", &c.size.yscale)
 						is.ReadF32("ground.back", &c.size.ground.back)
@@ -2477,7 +2478,7 @@ func (c *Char) setSprPriority(sprpriority int32) {
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
-func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
+func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
@@ -2507,10 +2508,10 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx, alt bool) {
 		}
 	}
 }
-func (c *Char) changeAnim(animNo int32, ffx bool) {
+func (c *Char) changeAnim(animNo int32, ffx string) {
 	c.changeAnimEx(animNo, c.playerNo, ffx, false)
 }
-func (c *Char) changeAnim2(animNo int32, ffx bool) {
+func (c *Char) changeAnim2(animNo int32, ffx string) {
 	c.changeAnimEx(animNo, c.ss.sb.playerNo, ffx, true)
 }
 func (c *Char) setAnimElem(e int32) {
@@ -3135,33 +3136,33 @@ func (c *Char) winPerfect() bool {
 func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
-func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
+func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int32,
 	p, freqmul, ls float32, x *float32, log bool, priority int32) {
 	if g < 0 {
 		return
 	}
 	var s *Sound
-	if f {
-		if sys.lifebar.fsnd != nil {
-			s = sys.lifebar.fsnd.Get([...]int32{g, n})
-		}
-	} else {
+	if ffx == "" || ffx == "s" {
 		if c.gi().snd != nil {
 			s = c.gi().snd.Get([...]int32{g, n})
+		}
+	} else {
+		if sys.ffx[ffx] != nil && sys.ffx[ffx].fsnd != nil {
+			s = sys.ffx[ffx].fsnd.Get([...]int32{g, n})
 		}
 	}
 	if s == nil {
 		if log {
-			if f {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("F sound %v,%v doesn't exist", g, n))
+			if ffx != "" {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("%v sound %v,%v doesn't exist", strings.ToUpper(ffx), g, n))
 			} else {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
 			}
 		}
 		if !sys.ignoreMostErrors {
 			str := "Sound doesn't exist: "
-			if f {
-				str += "F:"
+			if ffx != "" {
+				str += ffx + ":"
 			} else {
 				str += fmt.Sprintf("P%v:", c.playerNo+1)
 			}
@@ -3173,7 +3174,7 @@ func (c *Char) playSound(f, lowpriority, loop bool, g, n, chNo, vol int32,
 		ch.Play(s, loop, freqmul)
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
-		if f {
+		if ffx != "" {
 			ch.SetVolume(float32(vol * 64 / 25))
 		} else {
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
@@ -3198,9 +3199,9 @@ func (c *Char) turn() {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeAnim(5, false)
+				c.changeAnim(5, "")
 			case ST_C:
-				c.changeAnim(6, false)
+				c.changeAnim(6, "")
 			}
 			c.setFacing(-c.facing)
 		}
@@ -3261,7 +3262,7 @@ func (c *Char) stateChange2() bool {
 	}
 	return false
 }
-func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
+func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.turn()
 	}
@@ -3282,10 +3283,10 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx bool) {
 		sys.changeStateNest = 0
 	}
 }
-func (c *Char) changeState(no, anim, ctrl int32, ffx bool) {
+func (c *Char) changeState(no, anim, ctrl int32, ffx string) {
 	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl, ffx)
 }
-func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx bool) {
+func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
 	var playerno int
 	if readplayerid >= 0 {
 		playerno = int(readplayerid)
@@ -3306,7 +3307,7 @@ func (c *Char) destroy() {
 			if t := sys.playerID(tid); t != nil {
 				if t.bindToId == c.id {
 					if t.ss.moveType == MT_H {
-						t.selfState(5050, -1, -1, -1, false)
+						t.selfState(5050, -1, -1, -1, "")
 					}
 				}
 				t.gethitBindClear()
@@ -3447,7 +3448,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 			h.mapArray[key] = value
 		}
 	}
-	h.changeStateEx(st, c.playerNo, 0, 1, false)
+	h.changeStateEx(st, c.playerNo, 0, 1, "")
 	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
 	h.actionPrepare()
 }
@@ -3490,7 +3491,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	}
 	e.anim.UpdateSprite()
 	if e.ownpal {
-		if e.anim.sff != sys.lifebar.fsff {
+		if e.anim.sff != sys.ffx["f"].fsff {
 			remap := make([]int, len(e.palfx.remap))
 			copy(remap, e.palfx.remap)
 			e.palfx = newPalFX()
@@ -3582,36 +3583,38 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.topexplDrawlist[en], false)
 	remove(&sys.underexplDrawlist[en], true)
 }
-func (c *Char) getAnim(n int32, ffx, log bool) (a *Animation) {
+func (c *Char) getAnim(n int32, ffx string, log bool) (a *Animation) {
 	if n == -2 {
 		return &Animation{}
 	}
 	if n < 0 {
 		return nil
 	}
-	if ffx {
-		a = sys.lifebar.fat.get(n)
+	if ffx != "" && ffx != "s" {
+		if sys.ffx[ffx] != nil && sys.ffx[ffx].fat != nil {
+			a = sys.ffx[ffx].fat.get(n)
+		}
 	} else {
 		a = c.gi().anim.get(n)
 	}
 	if a == nil {
 		if log {
-			if ffx {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid F action %v", n))
+			if ffx != "" && ffx != "s" {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid %v action %v", strings.ToUpper(ffx), n))
 			} else {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
 			}
 		}
 		if !sys.ignoreMostErrors {
 			str := "存在しないアニメ: "
-			if ffx {
-				str += "F:"
+			if ffx != "" && ffx != "s" {
+				str += strings.ToUpper(ffx) + ":"
 			} else {
 				str += fmt.Sprintf("P%v:", c.playerNo+1)
 			}
 			sys.errLog.Printf("%v%v\n", str, n)
 		}
-	} else if ffx {
+	} else if ffx != "" && ffx != "s" {
 		a.start_scale[0] /= c.localscl
 		a.start_scale[1] /= c.localscl
 	}
@@ -3762,7 +3765,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.anim < -1 {
 		p.anim = 0
 	}
-	p.ani = c.getAnim(p.anim, p.anim_fflg, true)
+	p.ani = c.getAnim(p.anim, p.anim_ffx, true)
 	if p.ani == nil && c.anim != nil {
 		p.ani = &Animation{}
 		*p.ani = *c.anim
@@ -4238,7 +4241,7 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 			} else if t := sys.playerID(tid); t != nil {
 				if t.isBound() {
 					if c.sf(CSF_gethit) {
-						t.selfState(5050, -1, -1, -1, false)
+						t.selfState(5050, -1, -1, -1, "")
 					}
 					t.setBindTime(0)
 				}
@@ -4569,7 +4572,7 @@ func (c *Char) over() bool {
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
-		e.anim = c.getAnim(120, true, false)
+		e.anim = c.getAnim(120, "f", false)
 		if e.anim != nil {
 			e.anim.start_scale[0] *= c.localscl
 			e.anim.start_scale[1] *= c.localscl
@@ -5052,7 +5055,7 @@ func (c *Char) bind() {
 			if bt.sf(CSF_destroy) {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
 				if c.ss.moveType == MT_H {
-					c.selfState(5050, -1, -1, -1, false)
+					c.selfState(5050, -1, -1, -1, "")
 				}
 				c.setBindTime(0)
 				return
@@ -5349,7 +5352,7 @@ func (c *Char) actionPrepare() {
 				if !c.sf(CSF_nohardcodedkeys) {
 					if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
 						if c.ss.no != 40 {
-							c.changeState(40, -1, -1, false)
+							c.changeState(40, -1, -1, "")
 						}
 					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
 						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
@@ -5358,7 +5361,7 @@ func (c *Char) actionPrepare() {
 						if c.ss.no != 45 || c.ss.time > 0 {
 							c.airJumpCount++
 							c.unsetSCF(SCF_airjump)
-							c.changeState(45, -1, -1, false)
+							c.changeState(45, -1, -1, "")
 						}
 					} else {
 						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
@@ -5366,25 +5369,25 @@ func (c *Char) actionPrepare() {
 								if c.ss.no != 100 {
 									c.vel[0] = 0
 								}
-								c.changeState(10, -1, -1, false)
+								c.changeState(10, -1, -1, "")
 							}
 						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
 							if c.ss.no != 12 {
-								c.changeState(12, -1, -1, false)
+								c.changeState(12, -1, -1, "")
 							}
 						} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
 							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
 								c.cmd[0].Buffer.B > 0) {
 							if c.ss.no != 20 {
-								c.changeState(20, -1, -1, false)
+								c.changeState(20, -1, -1, "")
 							}
 						} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
 							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-							c.changeState(0, -1, -1, false)
+							c.changeState(0, -1, -1, "")
 						}
 						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
 							!c.inGuardState() {
-							c.changeState(120, -1, -1, false)
+							c.changeState(120, -1, -1, "")
 						}
 					}
 				}
@@ -5392,12 +5395,12 @@ func (c *Char) actionPrepare() {
 				switch c.ss.no {
 				case 11:
 					if !c.sf(CSF_nostand) {
-						c.changeState(12, -1, -1, false)
+						c.changeState(12, -1, -1, "")
 					}
 				case 20:
 					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
 						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-						c.changeState(0, -1, -1, false)
+						c.changeState(0, -1, -1, "")
 					}
 				}
 			}
@@ -5494,7 +5497,7 @@ func (c *Char) actionRun() {
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
 				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
-					Btoi(c.ss.stateType == ST_A)*51, -1, -1, false)
+					Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
 			}
 			if c.ss.no != 5120 || c.ss.time != 0 {
 				c.ss.time++
@@ -5579,7 +5582,7 @@ func (c *Char) actionFinish() {
 	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
-				c.changeState(5120, -1, -1, false)
+				c.changeState(5120, -1, -1, "")
 			}
 			if c.ss.no == 5120 && c.ss.time == 0 {
 				c.ss.time++
@@ -5590,7 +5593,7 @@ func (c *Char) actionFinish() {
 					c.ss.no == 105 {
 					break
 				}
-				c.changeState(52, -1, -1, false)
+				c.changeState(52, -1, -1, "")
 				c.ss.time++
 			}
 			c.setFacing(c.p1facing)
@@ -5854,7 +5857,7 @@ func (c *Char) tick() {
 			}
 		} else if c.ss.stateType == ST_L {
 			if c.pos[1] == 0 {
-				c.changeStateEx(5080, pn, -1, 0, false)
+				c.changeStateEx(5080, pn, -1, 0, "")
 				if c.recoverTime > 0 {
 					c.recoverTime--
 				}
@@ -5862,30 +5865,30 @@ func (c *Char) tick() {
 					c.pos[1] += 15 / c.localscl
 				}
 			} else {
-				c.changeStateEx(5020, pn, -1, 0, false)
+				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.selfState(150, -1, -1, 0, false)
+				c.selfState(150, -1, -1, 0, "")
 			case ST_C:
-				c.selfState(152, -1, -1, 0, false)
+				c.selfState(152, -1, -1, 0, "")
 			case ST_A:
-				c.selfState(154, -1, -1, 0, false)
+				c.selfState(154, -1, -1, 0, "")
 			}
 		} else if c.ghv._type == HT_Trip {
-			c.changeStateEx(5070, pn, -1, 0, false)
+			c.changeStateEx(5070, pn, -1, 0, "")
 		} else {
 			if c.ghv.forcestand && c.ss.stateType == ST_C {
 				c.ss.stateType = ST_S
 			}
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeStateEx(5000, pn, -1, 0, false)
+				c.changeStateEx(5000, pn, -1, 0, "")
 			case ST_C:
-				c.changeStateEx(5010, pn, -1, 0, false)
+				c.changeStateEx(5010, pn, -1, 0, "")
 			case ST_A:
-				c.changeStateEx(5020, pn, -1, 0, false)
+				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		}
 		if c.hoIdx >= 0 {
@@ -5914,10 +5917,10 @@ func (c *Char) tick() {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
 				c.ss.moveType != MT_H && !sys.sf(GSF_noko) {
 				c.ghv.fallf = true
-				c.selfState(5030, -1, -1, -1, false)
+				c.selfState(5030, -1, -1, -1, "")
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
-				c.selfState(5120, -1, -1, -1, false)
+				c.selfState(5120, -1, -1, -1, "")
 			}
 		}
 	}
@@ -5925,7 +5928,7 @@ func (c *Char) tick() {
 		if c.life <= 0 && !sys.sf(GSF_noko) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound(false, false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
+				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
 			for _, cl := range sys.charList.runOrder {
@@ -6542,11 +6545,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		}
-		hitspark := func(p1, p2 *Char, animNo int32) {
-			ffx := animNo < 0
-			if ffx {
-				animNo ^= -1
-			}
+		hitspark := func(p1, p2 *Char, animNo int32, ffx string) {
 			off := pos
 			if !proj {
 				off[0] = p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl
@@ -6577,7 +6576,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				e.supermovetime = -1
 				e.pausemovetime = -1
 				e.localscl = 1
-				if !ffx {
+				if ffx == "" || ffx == "s" {
 					e.scale = [...]float32{c.localscl, c.localscl}
 				} else if e.anim != nil {
 					e.anim.start_scale[0] *= c.localscl
@@ -6588,21 +6587,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		if Abs(hitType) == 1 {
-			if hd.sparkno != IErr {
+			if hd.sparkno >= 0 {
 				if hd.reversal_attr > 0 {
-					hitspark(getter, c, hd.sparkno)
+					hitspark(getter, c, hd.sparkno, hd.sparkno_ffx)
 				} else {
-					hitspark(c, getter, hd.sparkno)
+					hitspark(c, getter, hd.sparkno, hd.sparkno_ffx)
 				}
 			}
-			if hd.hitsound[0] != IErr {
-				sg := hd.hitsound[0]
-				f := sg < 0
-				if f {
-					sg ^= -1
-				}
+			if hd.hitsound[0] >= 0 {
 				vo := int32(100)
-				c.playSound(f, false, false, sg, hd.hitsound[1],
+				c.playSound(hd.hitsound_ffx, false, false, hd.hitsound[0], hd.hitsound[1],
 					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {
@@ -6642,21 +6636,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		} else {
-			if hd.guard_sparkno != IErr {
+			if hd.guard_sparkno >= 0 {
 				if hd.reversal_attr > 0 {
-					hitspark(getter, c, hd.guard_sparkno)
+					hitspark(getter, c, hd.guard_sparkno, hd.guard_sparkno_ffx)
 				} else {
-					hitspark(c, getter, hd.guard_sparkno)
+					hitspark(c, getter, hd.guard_sparkno, hd.guard_sparkno_ffx)
 				}
 			}
-			if hd.guardsound[0] != IErr {
-				sg := hd.guardsound[0]
-				f := sg < 0
-				if f {
-					sg ^= -1
-				}
+			if hd.guardsound[0] >= 0 {
 				vo := int32(100)
-				c.playSound(f, false, false, sg, hd.guardsound[1],
+				c.playSound(hd.guardsound_ffx, false, false, hd.guardsound[0], hd.guardsound[1],
 					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {

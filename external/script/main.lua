@@ -1332,6 +1332,7 @@ function main.f_commandLine()
 	local roundTime = config.RoundTime
 	if main.flags['-loadmotif'] == nil then
 		loadLifebar(main.lifebarDef)
+		loadCommonFx()
 	end
 	setLifebarElements({guardbar = config.BarGuard, stunbar = config.BarStun, redlifebar = config.BarRedLife})
 	local frames = framespercount()
@@ -1519,6 +1520,7 @@ main.txt_loading = main.f_createTextImg(motif.title_info, 'loading')
 main.txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
+loadCommonFx()
 main.f_loadingRefresh(main.txt_loading)
 main.timeFramesPerCount = framespercount()
 main.f_updateRoundsNum()

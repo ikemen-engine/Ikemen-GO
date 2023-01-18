@@ -195,19 +195,9 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase, _ int8) (Stat
 		f := false
 		if err := c.stateParam(is, "value", func(data string) error {
 			f = true
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' || strings.ToLower(data)[0] == 's' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = strings.ToLower(data)[0] == 'f'
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, playSnd_value, data, VT_Int, 2,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -269,19 +259,9 @@ func (c *Compiler) changeStateSub(is IniSection,
 		return err
 	}
 	if err := c.stateParam(is, "anim", func(data string) error {
-		fflg := false
-		if len(data) > 1 {
-			if strings.ToLower(data)[0] == 'f' {
-				re := regexp.MustCompile("[^a-z]")
-				m := re.Split(strings.ToLower(data)[1:], -1)
-				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-					fflg = true
-					data = data[1:]
-				}
-			}
-		}
+		prefix := c.getDataPrefix(&data, false) 
 		return c.scAdd(sc, changeState_anim, data, VT_Int, 1,
-			sc.iToExp(Btoi(fflg))...)
+			sc.beToExp(BytecodeExp(prefix))...)
 	}); err != nil {
 		return err
 	}
@@ -401,19 +381,9 @@ func (c *Compiler) changeAnimSub(is IniSection,
 		return err
 	}
 	if err := c.stateParam(is, "value", func(data string) error {
-		fflg := false
-		if len(data) > 1 {
-			if strings.ToLower(data)[0] == 'f' {
-				re := regexp.MustCompile("[^a-z]")
-				m := re.Split(strings.ToLower(data)[1:], -1)
-				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-					fflg = true
-					data = data[1:]
-				}
-			}
-		}
+		prefix := c.getDataPrefix(&data, false)
 		return c.scAdd(sc, changeAnim_value, data, VT_Int, 1,
-			sc.iToExp(Btoi(fflg))...)
+			sc.beToExp(BytecodeExp(prefix))...)
 	}); err != nil {
 		return err
 	}
@@ -722,19 +692,9 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -772,19 +732,9 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -832,19 +782,9 @@ func (c *Compiler) gameMakeAnim(is IniSection, sc *StateControllerBase, _ int8) 
 		b := false
 		anim := func(data string) error {
 			b = true
-			fflg := true
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 's' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = false
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, true)
 			return c.scAdd(sc, gameMakeAnim_anim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			return anim(data)
@@ -1290,18 +1230,8 @@ func (c *Compiler) hitDefSub(is IniSection,
 		return err
 	}
 	hsnd := func(id byte, data string) error {
-		fflg := true
-		if len(data) > 1 {
-			if strings.ToLower(data)[0] == 'f' || strings.ToLower(data)[0] == 's' {
-				re := regexp.MustCompile("[^a-z]")
-				m := re.Split(strings.ToLower(data)[1:], -1)
-				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-					fflg = strings.ToLower(data)[0] == 'f'
-					data = data[1:]
-				}
-			}
-		}
-		return c.scAdd(sc, id, data, VT_Int, 2, sc.iToExp(Btoi(fflg))...)
+		prefix := c.getDataPrefix(&data, true)
+		return c.scAdd(sc, id, data, VT_Int, 2, sc.beToExp(BytecodeExp(prefix))...)
 	}
 	if err := c.stateParam(is, "hitsound", func(data string) error {
 		return hsnd(hitDef_hitsound, data)
@@ -1395,18 +1325,9 @@ func (c *Compiler) hitDefSub(is IniSection,
 		return err
 	}
 	sprk := func(id byte, data string) error {
-		fflg := true
-		if len(data) > 1 {
-			if strings.ToLower(data)[0] == 's' {
-				re := regexp.MustCompile("[^a-z]")
-				m := re.Split(strings.ToLower(data)[1:], -1)
-				if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-					fflg = false
-					data = data[1:]
-				}
-			}
-		}
-		return c.scAdd(sc, id, data, VT_Int, 1, sc.iToExp(Btoi(fflg))...)
+		prefix := c.getDataPrefix(&data, true)
+		return c.scAdd(sc, id, data, VT_Int, 1,
+			sc.beToExp(BytecodeExp(prefix))...)
 	}
 	if err := c.stateParam(is, "sparkno", func(data string) error {
 		return sprk(hitDef_sparkno, data)
@@ -1699,53 +1620,23 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if err := c.stateParam(is, "projhitanim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, projectile_projhitanim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "projremanim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, projectile_projremanim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "projcancelanim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, projectile_projcancelanim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -1800,19 +1691,9 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			return err
 		}
 		if err := c.stateParam(is, "projanim", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, projectile_projanim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -2636,19 +2517,9 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase, _ int8) (S
 			return err
 		}
 		if err := c.stateParam(is, "anim", func(data string) error {
-			fflg := true
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' || strings.ToLower(data)[0] == 's' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = strings.ToLower(data)[0] == 'f'
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, true)
 			return c.scAdd(sc, superPause_anim, data, VT_Int, 1,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -2669,19 +2540,9 @@ func (c *Compiler) superPause(is IniSection, sc *StateControllerBase, _ int8) (S
 			return err
 		}
 		if err := c.stateParam(is, "sound", func(data string) error {
-			fflg := true
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' || strings.ToLower(data)[0] == 's' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = strings.ToLower(data)[0] == 'f'
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, true)
 			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
-				sc.iToExp(Btoi(fflg))...)
+				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
 			return err
 		}
@@ -4429,17 +4290,8 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 			return err
 		}
 		if err := c.stateParam(is, "font", func(data string) error {
-			fflg := false
-			if len(data) > 1 {
-				if strings.ToLower(data)[0] == 'f' {
-					re := regexp.MustCompile("[^a-z]")
-					m := re.Split(strings.ToLower(data)[1:], -1)
-					if _, ok := triggerMap[m[0]]; ok || m[0] == "" {
-						fflg = true
-						data = data[1:]
-					}
-				}
-			}
+			prefix := c.getDataPrefix(&data, false)
+			fflg := prefix == "f"
 			return c.scAdd(sc, text_font, data, VT_Int, 1,
 				sc.iToExp(Btoi(fflg))...)
 		}); err != nil {
