@@ -52,6 +52,7 @@ var sys = System{
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	ffx:               make(map[string]*FightFx),
+	ffxRegexp:         "^(f)|^(s)",
 	sel:               *newSelect(),
 	keyState:          make(map[Key]bool),
 	match:             1,
@@ -124,6 +125,7 @@ type System struct {
 	allPalFX, bgPalFX       PalFX
 	lifebar                 Lifebar
 	ffx                     map[string]*FightFx
+	ffxRegexp               string
 	sel                     Select
 	keyState                map[Key]bool
 	netInput                *NetInput
@@ -262,8 +264,6 @@ type System struct {
 	loseTag                 bool
 	allowDebugKeys          bool
 	allowDebugMode          bool
-	commonAir               string
-	commonCmd               string
 	keyInput                Key
 	keyString               string
 	timerCount              []int32
@@ -276,6 +276,14 @@ type System struct {
 	windowTitle             string
 	screenshotFolder        string
 	//FLAC_FrameWait          int
+	
+	// Common Files
+	commonAir    string
+	commonCmd    string
+	commonConst  string
+	commonFx     []string
+	commonLua    []string
+	commonStates []string
 
 	// Resolution variables
 	fullscreen            bool
@@ -330,9 +338,6 @@ type System struct {
 	matchData       *lua.LTable
 	consecutiveWins [2]int32
 	teamLeader      [2]int
-	commonConst     string
-	commonLua       []string
-	commonStates    []string
 	gameSpeed       float32
 	maxPowerMode    bool
 	clsnText        []ClsnText
@@ -847,7 +852,7 @@ func (s *System) nextRound() {
 	}
 	for _, p := range s.chars {
 		if len(p) > 0 {
-			p[0].selfState(5900, 0, -1, 0, false)
+			p[0].selfState(5900, 0, -1, 0, "")
 		}
 	}
 }
@@ -1077,7 +1082,7 @@ func (s *System) action() {
 					for i, p := range s.chars {
 						if len(p) > 0 {
 							s.playerClear(i, false)
-							p[0].selfState(0, -1, -1, 0, false)
+							p[0].selfState(0, -1, -1, 0, "")
 						}
 					}
 					ox := newx
@@ -1172,7 +1177,7 @@ func (s *System) action() {
 							if p[0].ss.no == 0 {
 								p[0].setCtrl(true)
 							} else {
-								p[0].selfState(0, -1, -1, 1, false)
+								p[0].selfState(0, -1, -1, 1, "")
 							}
 						}
 					}
@@ -1368,11 +1373,11 @@ func (s *System) action() {
 							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() && p[0].animNo != 5 {
 								p[0].setSCF(SCF_over)
 								if p[0].win() {
-									p[0].selfState(180, -1, -1, 1, false)
+									p[0].selfState(180, -1, -1, 1, "")
 								} else if p[0].lose() {
-									p[0].selfState(170, -1, -1, 1, false)
+									p[0].selfState(170, -1, -1, 1, "")
 								} else {
-									p[0].selfState(175, -1, -1, 1, false)
+									p[0].selfState(175, -1, -1, 1, "")
 								}
 							}
 						}

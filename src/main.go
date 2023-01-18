@@ -187,6 +187,7 @@ type configSettings struct {
 	CommonAir                  string
 	CommonCmd                  string
 	CommonConst                string
+	CommonFx                   []string
 	CommonLua                  []string
 	CommonStates               []string
 	ControllerStickSensitivity float32
@@ -339,6 +340,7 @@ func setupConfig() configSettings {
 		sys.commonCmd = "\n" + string(cmd)
 	}
 	sys.commonConst = tmp.CommonConst
+	sys.commonFx = tmp.CommonFx
 	sys.commonLua = tmp.CommonLua
 	sys.commonStates = tmp.CommonStates
 	sys.clipboardRows = tmp.DebugClipboardRows

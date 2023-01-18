@@ -2874,6 +2874,81 @@ func newFightFx() *FightFx {
 	return &FightFx{fsff: &Sff{}, fx_scale: 1.0}
 }
 
+func loadFightFx(deffile string) error {
+	str, err := LoadText(deffile)
+	if err != nil {
+		return err
+	}
+	ffx := newFightFx()
+	prefix := ""
+	lines, i := SplitAndTrim(str, "\n"), 0
+	info, files := true, true
+	for i < len(lines) {
+		// Parse each ini section
+		is, name, _ := ReadIniSection(lines, &i)
+		switch name {
+		case "info":
+			// Read info for FightFx storing and scaling
+			if info {
+				info = false
+				var ok bool
+				prefix, ok, _ = is.getText("prefix")
+				if !ok || prefix == "" {
+					return Error("A prefix must be declared")
+				}
+				prefix = strings.ToLower(prefix)
+				if prefix == "f" || prefix == "s" {
+					return Error(fmt.Sprintf("%v preffix is reserved for the system and cannot be used", strings.ToUpper(prefix)))
+				}
+				is.ReadF32("fx.scale", &ffx.fx_scale)
+			}
+		case "files":
+			// Read files section to find sff, air and snd files
+			if files {
+				files = false
+				if is.LoadFile("sff", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						s, err := loadSff(filename, false)
+						if err != nil {
+							return err
+						}
+						*ffx.fsff = *s
+						return nil
+					}); err != nil {
+					return err
+				}
+				if is.LoadFile("air", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						str, err := LoadText(filename)
+						if err != nil {
+							return err
+						}
+						lines, i := SplitAndTrim(str, "\n"), 0
+						ffx.fat = ReadAnimationTable(ffx.fsff, lines, &i)
+						return nil
+					}); err != nil {
+					return err
+				}
+				if is.LoadFile("snd", []string{deffile, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						ffx.fsnd, err = LoadSnd(filename)
+						return err
+					}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	// Set fx scale to anims
+	for _, a := range ffx.fat {
+		a.start_scale = [...]float32{sys.lifebarScale * ffx.fx_scale,
+			sys.lifebarScale * ffx.fx_scale}
+	}
+	sys.ffx[prefix] = ffx
+	sys.ffxRegexp += "|^(" + prefix + ")"
+	return nil
+}
+
 type Lifebar struct {
 	at        AnimationTable
 	sff       *Sff

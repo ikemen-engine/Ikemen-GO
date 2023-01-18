@@ -385,7 +385,11 @@ func systemScriptInit(l *lua.LState) {
 				if l.GetTop() >= 4 {
 					ffx = boolArg(l, 4)
 				}
-				c[0].changeAnim(an, ffx)
+				preffix := ""
+				if ffx {
+					preffix = "f"
+				}
+				c[0].changeAnim(an, preffix)
 				if l.GetTop() >= 3 {
 					c[0].setAnimElem(int32(numArg(l, 3)))
 				}
@@ -412,7 +416,7 @@ func systemScriptInit(l *lua.LState) {
 						ch.unsetSCF(SCF_disabled)
 					}
 				}
-				c[0].changeState(st, -1, -1, false)
+				c[0].changeState(st, -1, -1, "")
 				l.Push(lua.LBool(true))
 				return 1
 			}
@@ -473,7 +477,11 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 11 {
 			priority = int32(numArg(l, 11))
 		}
-		sys.chars[pn-1][0].playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority)
+		preffix := ""
+		if f {
+			preffix = "f"
+		}
+		sys.chars[pn-1][0].playSound(preffix, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
@@ -1438,6 +1446,15 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(newUserData(l, w))
 		return 1
 	})
+	luaRegister(l, "loadCommonFx", func(l *lua.LState) int {
+		var err error
+		for _, def := range(sys.commonFx) {
+			if err = loadFightFx(def); err != nil {
+				l.RaiseError("\nCan't load %v: %v\n", def, err.Error())
+			}
+		}
+		return 0
+	})
 	luaRegister(l, "loadDebugFont", func(l *lua.LState) int {
 		ts := NewTextSprite()
 		f, err := loadFnt(strArg(l, 1), -1)
@@ -1767,7 +1784,7 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "selfState", func(*lua.LState) int {
-		sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1, false)
+		sys.debugWC.selfState(int32(numArg(l, 1)), -1, -1, 1, "")
 		return 0
 	})
 	luaRegister(l, "setAccel", func(*lua.LState) int {
