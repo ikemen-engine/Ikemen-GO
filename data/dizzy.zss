@@ -6,6 +6,7 @@
 [Function fDizzyBirdHelper()]
 if !numHelper(const(StateDizzyBirdsHelper)) {
 	explod{
+		# Do note all all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
 		anim: GO const(FxBackgroundColor);
 		sprPriority: -6000;
 		space: screen;

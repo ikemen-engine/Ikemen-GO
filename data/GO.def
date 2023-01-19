@@ -1,8 +1,0 @@
-﻿[Info]
-prefix = GO
-fx.scale = 1
-
-[Files]
-sff = gofx.sff
-air = gofx.air
-snd = gofx.snd
