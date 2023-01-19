@@ -13,9 +13,7 @@
     "CommonAir": "data/common.air",
     "CommonCmd": "data/common.cmd",
     "CommonConst": "data/common.const",
-    "CommonFx": [
-    "data/gofx.def"
-    ],
+    "CommonFx": [],
     "CommonLua": [
         "loop()"
     ],
