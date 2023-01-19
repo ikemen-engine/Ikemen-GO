@@ -277,11 +277,11 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
-	mapSet{map: "_iksys_dizzyPointsCounter"; value: 0}
+	map(_iksys_dizzyPointsCounter) := 0;
 } else if roundState = 2 && alive {
 	# Upon hit
 	ignoreHitPause if moveType = H {
-		mapSet{map: "_iksys_dizzyPointsCounter"; value: 120}
+		map(_iksys_dizzyPointsCounter) := 120;
 	# Otherwise decrease cooldown counter by 1 each frame
 	} else if map(_iksys_dizzyPointsCounter) > 0 {
 		mapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
@@ -314,6 +314,6 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Dizzy points recovery
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
 		dizzyPointsAdd{value: round(float(dizzyPointsMax) / 100, 0)}
-		mapSet{map: "_iksys_dizzyPointsCounter"; value: 2}
+		map(_iksys_dizzyPointsCounter) := 2;
 	}
 }

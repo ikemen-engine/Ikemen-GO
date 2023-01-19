@@ -10,7 +10,7 @@ if !guardBreak {
 
 if time = 0 {
 	if pos y < 0 {
-		statetypeset{statetype: A} # Just in case
+		stateTypeSet{statetype: A} # Just in case
 	}
 	playSnd{value: F5400, 0}
 	explod{
@@ -92,7 +92,7 @@ if time = 0 {
 	if stateType = A {
 		stateTypeSet{statetype: S; physics: S}
 		if anim != const(AnimStandOrAirHitHigh_hard) {
-			changeanim{value: const(AnimStandOrAirHitHigh_hard)} # If using actual guard break animations the character would have a transition here
+			changeAnim{value: const(AnimStandOrAirHitHigh_hard)} # If using actual guard break animations the character would have a transition here
 		}
 	} else if stateType = C {
 		stateTypeSet{statetype: C; physics: C}
@@ -103,8 +103,8 @@ if time = 0 {
 
 if time < 45 {
 	if anim = [const(AnimStandOrAirHitHigh_light), const(AnimCrouchRecover_hard)] {
-		if animtime = -1 {
-			changeanim{value: anim; elem: animelemno(-1)} # Freeze last frame if reusing one of the required hit animations
+		if animTime = -1 {
+			changeAnim{value: anim; elem: animElemNo(-1)} # Freeze last frame if reusing one of the required hit animations
 		}
 	}
 	if (time % 2) = 0 {
@@ -147,11 +147,11 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	guardPointsSet{value: guardPointsMax}
-	mapSet{map: "_iksys_guardPointsCounter"; value: 0}
+	map(_iksys_guardPointsCounter) := 0;
 } else if roundState = 2 && alive {
 	# Reset cooldown counter
 	ignoreHitPause if moveType = H {
-		mapSet{map: "_iksys_guardPointsCounter"; value: 60}
+		map(_iksys_guardPointsCounter) := 60;
 	}
 	# Upon block
 	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
@@ -175,6 +175,6 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	# Guard points recovery
 	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
 		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)}
-		mapSet{map: "_iksys_guardPointsCounter"; value: 30}
+		map(_iksys_guardPointsCounter) := 30;
 	}
 }

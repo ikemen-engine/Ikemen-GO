@@ -3,46 +3,36 @@
 # Functions
 #===============================================================================
 # Returns tagged in char id
-[Function fTagPartnerRange(partnerId) ret]
-if $partnerId > getPlayerId(teamSide) + numPartner {
-	let partnerId = getPlayerId(teamSide);
-} else if $partnerId < getPlayerId(teamSide) {
-	let partnerId = getPlayerId(teamSide) + numPartner;
-}
-let ret = $partnerId;
 
-[Function fTagGetPartnerId(add) ret]
-let partnerId = call fTagPartnerRange(id + $add);
-if playerId($partnerId),alive = 0 {
-	let partnerCnt = 1;
-	if $partnerCnt = min(numPartner, 3) {
-		let partnerId = 0;
+[Function fTagGetPartnerId(add) partnerId]
+let partnerId = 0;
+for i = 0; numPartner; 1 {
+	let member = memberNo + $add;
+	if $member > numPartner + 1 {
+		let member = 1;
+	} else if $member < 1 {
+		let member = numPartner + 1;
+	}
+	if teamSide = 1 {
+		let pn = $member * 2 - 1;
 	} else {
-		let partnerId = call fTagPartnerRange($partnerId + $add);
-		if playerId($partnerId),alive = 0 {
-			let partnerCnt = $partnerCnt + 1;
-			if $partnerCnt = min(numPartner, 3) {
-				let partnerId = 0;
-			} else {
-				let partnerId = call fTagPartnerRange($partnerId + $add);
-				if playerId($partnerId),alive = 0 {
-					let partnerId = 0;
-				}
-			}
-		}
+		let pn = $member * 2;
+	}	
+	if player($pn),alive {
+		let partnerId = player($pn),id;
+		break;
 	}
 }
-let ret = $partnerId;
 
 # Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
 # TODO: Balance default AI switch scaling.
-[Function fTagAISwitch(nextPartnerId, previousPartnerId) ret]
-let ret = 0;
+[Function fTagAISwitch(nextPartnerId, previousPartnerId) partnerId]
+let partnerId = 0;
 if const(TagCommandAIChance) >= rand(1, 100) {
 	if command = "TagShiftFwd" {
-		let ret = $nextPartnerId;
+		let partnerId = $nextPartnerId;
 	} else if command = "TagShiftBack" {
-		let ret = $previousPartnerId;
+		let partnerId = $previousPartnerId;
 	}
 }
 
@@ -96,11 +86,11 @@ if time = 0 {
 	# set starting pos
 	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# store distance to switch initiation position
-	mapSet{map: "_iksys_tagSwitchDist"; value: abs(pos x - player(teamLeader),pos x)}
+	map(_iksys_tagSwitchDist) := abs(pos x - player(teamLeader),pos x);
 	# set movement
 	velSet{x: min(const240p(const(TagInVelX)), map(_iksys_tagSwitchDist) / const(TagInTime)); y: 0}
 	# change active player assignment
-	mapSet{map: "_iksys_tagLastId"; value: player(teamLeader),id}
+	map(_iksys_tagLastId) := player(teamLeader),id;
 	tagIn{leader: playerNo}
 	call fTagSwitchExplod();
 } else {
@@ -188,7 +178,7 @@ if time = 0 {
 	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
 	# change active player assignment if the battle still goes on
 	if roundState = 2 {
-		mapSet{map: "_iksys_tagLastId"; value: player(teamLeader),id}
+		map(_iksys_tagLastId) := player(teamLeader),id;
 		tagIn{leader: playerNo}
 		call fTagSwitchExplod();
 	}
@@ -226,18 +216,24 @@ if animTime >= 0 {
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	# do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 && teamMode = Tag {
-	mapSet{map: "_iksys_tagActive"; value: 1}
-	mapSet{map: "_iksys_tagLastId"; value: 0}
-	mapSet{map: "_iksys_tagPartnerId"; value: 0}
+	map(_iksys_tagActive) := 1;
+	map(_iksys_tagLastId) := 0;
+	map(_iksys_tagPartnerId) := 0;
 	if playerNo = teamLeader {
-		mapSet{map: "_iksys_tagIntroFlag"; value: 1}
+		map(_iksys_tagIntroFlag) := 1;
 	} else {
-		mapSet{map: "_iksys_tagIntroFlag"; value: 0}
+		map(_iksys_tagIntroFlag) := 0;
+		screenBound{value: 0; moveCamera: 0, 0}
 	}
-	mapSet{map: "_iksys_tagSwitchCooldown"; value: 0}
+	map(_iksys_tagSwitchCooldown) := 0;
 } else if map(_iksys_tagActive) = 1 {
+	# fix erratic camera during intros
+	if roundState = 1 && playerNo != teamLeader {
+		screenBound{value: 0; moveCamera: 0, 0}
+	}
+	# disable tag over win poses
 	if roundState = 4 {
-		mapSet{map: "_iksys_tagActive"; value: 0}
+		map(_iksys_tagActive) := 0;
 	# alive players
 	} else if alive {
 		let beingHit = 0;
@@ -268,7 +264,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 						# id is remembered by AI player, switch will happen at first frame that meets switch conditions
 						if map(_iksys_tagPartnerId) = 0 {
 							let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
-							mapSet{map: "_iksys_tagPartnerId"; value: $partnerId}
+							map(_iksys_tagPartnerId) := $partnerId;
 						}
 						let partnerId = map(_iksys_tagPartnerId);
 					} else if command = "TagShiftFwd" {
@@ -279,7 +275,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 					# having control, command buffered, partner standby
 					if ctrl && $partnerId > 0 && playerId($partnerId),stateNo = playerId($partnerId),const(StateTagWaitingOutside) {
 						mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectId: $partnerId}
-						mapSet{map: "_iksys_tagPartnerId"; value: 0}
+						map(_iksys_tagPartnerId) := 0;
 						lifebarAction{spr: const(MsgPartnerChange), 0}
 						tagOut{}
 						ctrlSet{value: 0}
@@ -296,7 +292,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 				&& (stateNo = const(StateStand) ||
 				(pos y >= 0 && stateNo != [const(StateTagEnteringScreen), const(StateTagWaitingOutside)]))
 			{
-				mapSet{map: "_iksys_tagIntroFlag"; value: 1}
+				map(_iksys_tagIntroFlag) := 1;
 				tagOut{stateNo: const(StateTagLeavingScreen)}
 			# tagged out, at the round end
 			} else if roundState = 3 {
@@ -310,7 +306,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	} else if playerNo = teamLeader
 		&& stateNo = [const(StateDownedGetHit_hitGroundFromFall), const(StateDownedGetHit_lyingDefeated)]
 	{
-		mapSet{map: "_iksys_tagActive"; value: 0}
+		map(_iksys_tagActive) := 0;
 		# bring next team member
 		let partnerId = call fTagGetPartnerId(1);
 		if $partnerId > 0 {
