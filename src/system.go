@@ -52,7 +52,7 @@ var sys = System{
 	allPalFX:          *newPalFX(),
 	bgPalFX:           *newPalFX(),
 	ffx:               make(map[string]*FightFx),
-	ffxRegexp:         "^(f)|^(s)",
+	ffxRegexp:         "^(f)|^(s)|^(go)",
 	sel:               *newSelect(),
 	keyState:          make(map[Key]bool),
 	match:             1,
