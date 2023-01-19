@@ -6,7 +6,7 @@
 [Function fDizzyBirdHelper()]
 if !numHelper(const(StateDizzyBirdsHelper)) {
 	explod{
-		anim: F const(FxBackgroundColor);
+		anim: GO const(FxBackgroundColor);
 		sprPriority: -6000;
 		space: screen;
 		posType: left;
@@ -33,7 +33,7 @@ let fvarB = cos($fvarA) * var(2) * 0.25;
 let fvarC = (cos($fvarA) + 3) * 0.12 * ifElse(($fvarB < 0), -1, 1) * ((time % 9) * 0.05 + 1);
 explod{
 	id: 0;
-	anim: F const(FxDizzyEffect) + var(10);
+	anim: GO const(FxDizzyEffect) + var(10);
 	posType: p1;
 	pos: floor(sin($fvarA) * var(2)), floor($fvarB + fVar(11));
 	sprPriority: ifElse($fvarB > 0, 6, -6);
@@ -46,13 +46,13 @@ explod{
 # Dizzy Hit Ground Explod (direct copy from common1)
 [Function fDizzyHitGroundExplod(vely)]
 explod{
-	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
+	anim: GO (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	posType: p1;
 	pos: 0, 0;
 	facing: Facing;
 	sprPriority: ifElse($vely <= const240p(14), -10, 10);
 }
-playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
+playSnd{value: GO7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #===============================================================================
 # StateDizzyBirdsHelper [helper]
@@ -248,7 +248,7 @@ if time = 0 {
 }
 
 if (time % 42) = 0 {
-	playSnd{value: F5300, 0; channel: 2}
+	playSnd{value: GO5300, 0; channel: 2}
 }
 
 if time > 1 {
