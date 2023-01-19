@@ -53,7 +53,8 @@ if aiLevel = 0 {
 	}
 }
 explod{
-	anim: F $anim;
+	# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
+	anim: GO $anim;
 	posType: p1;
 	pos: 0, floor((const(size.head.pos.y) - const(size.ground.front) / 2 - const(size.ground.back) / 2));
 	sprPriority: 5;

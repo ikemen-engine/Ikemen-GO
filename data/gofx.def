@@ -1,0 +1,11 @@
+﻿; This is a CommonFx file for ikemen. 
+; It's meant to handle some system fx and sfx (dizzy, guardbreak) outside of the default fightfx and common.snd to ensure backwards compatibility with preexisting mugen hitsparks.
+; If you're installing or developing your own fightfx, and it already includes custom animations for Ikemen's functions, you can disable this file from config.json. 
+[Info]
+prefix = GO; This prefix is to be used instead of "F" when calling animations or sounds from this file.
+fx.scale = 1
+
+[Files]
+sff = gofx.sff; A copy of the default fightfx.sff
+air = gofx.air; A copy of the default fighfx.air, with some animations taken out.
+snd = gofx.snd; A copy of the default common.snd

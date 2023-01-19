@@ -12,9 +12,10 @@ if time = 0 {
 	if pos y < 0 {
 		stateTypeSet{statetype: A} # Just in case
 	}
-	playSnd{value: F5400, 0}
+	playSnd{value: GO5400, 0}
 	explod{
-		anim: F const(FxGuardBreakShockwave);
+		# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
+		anim: GO const(FxGuardBreakShockwave);
 		posType: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
 		sprPriority: 7;
@@ -29,7 +30,7 @@ if time = 0 {
 
 if time < 13 {
 	explod{
-		anim: F const(FxGuardBreakSpark) + rand(0, 2);
+		anim: GO const(FxGuardBreakSpark) + rand(0, 2);
 		posType: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
 		sprPriority: 6;
@@ -47,7 +48,7 @@ if time < 13 {
 
 if time = 0 {
 	explod{
-		anim: F const(FxBackgroundColor);
+		anim: GO const(FxBackgroundColor);
 		sprPriority: -6000;
 		space: screen;
 		posType: left;
