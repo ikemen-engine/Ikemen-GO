@@ -14,7 +14,7 @@ if time = 0 {
 	}
 	playSnd{value: GO5400, 0}
 	explod{
-		# Do note all all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
+		# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
 		anim: GO const(FxGuardBreakShockwave);
 		posType: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
