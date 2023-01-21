@@ -143,38 +143,38 @@ func JoystickState(joy, button int) bool {
 	if joy >= input.GetMaxJoystickCount() {
 		return false
 	}
-	btns := input.GetJoystickButtons(joy)
-	if button < 0 {
-		button = -button - 1
-		axes := input.GetJoystickAxes(joy)
-
-		if len(axes)*2 <= button {
+	if button >= 0 {
+		// Query button state
+		btns := input.GetJoystickButtons(joy)
+		if button >= len(btns) {
 			return false
 		}
+		return btns[button] != 0
+	} else {
+		// Query axis state
+		axis := -button - 1
+		axes := input.GetJoystickAxes(joy)
+		if axis >= len(axes)*2 {
+			return false
+		}
+
+		// Read value and invert sign for odd indices
+		val := axes[axis/2] * float32((axis & 1) * 2 - 1)
 
 		var joyName = input.GetJoystickName(joy)
 
-		//Xbox360コントローラーのLRトリガー判定
-		if (button == 9 || button == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360")) {
-			return axes[button/2] > sys.xinputTriggerSensitivity
+		// Xbox360コントローラーのLRトリガー判定
+		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360")) {
+			return val > sys.xinputTriggerSensitivity
 		}
 
 		// Ignore trigger axis on PS4 (We already have buttons)
-		if (button >= 6 && button <= 9) && joyName == "PS4 Controller" {
+		if (axis >= 6 && axis <= 9) && joyName == "PS4 Controller" {
 			return false
 		}
 
-		switch button & 1 {
-		case 0:
-			return axes[button/2] < -sys.controllerStickSensitivity
-		case 1:
-			return axes[button/2] > sys.controllerStickSensitivity
-		}
+		return val > sys.controllerStickSensitivity
 	}
-	if len(btns) <= button {
-		return false
-	}
-	return btns[button] != 0
 }
 
 type KeyConfig struct{ Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int }
