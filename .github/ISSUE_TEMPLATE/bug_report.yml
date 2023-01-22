@@ -9,11 +9,6 @@ body:
       placeholder: |
         Description ...
 
-        Reproduction steps
-        1. Go to ...
-        2. Click on ...
-        3. Scroll down to ...
-        4. See error
     validations:
       required: true
 
@@ -23,8 +18,6 @@ body:
       label: To Reproduce
       description: Detailed steps to reproduce the behavior.
       placeholder: |
-        Description ...
-
         1. Download character from ... (don't forget about this step, it's crucial for reproducing the issue locally)
         2. Start the match and perform a move using following commands ...
         3. See error
