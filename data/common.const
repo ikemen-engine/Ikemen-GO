@@ -7,6 +7,11 @@ Default.Enable.GuardBreak = 1
 Default.Enable.Score = 1
 Default.Enable.Tag = 1
 
+; Backward compatibility toggles
+Default.LegacyGameDistanceSpec = 0  ; 1 prevents GameWidth/GameHeight from being affected by stage zoom for non-mugenversion 1.1 chars
+Default.IgnoreDefeatedEnemies = 1   ; 1 prevents EnemyNear from redirecting defeated enemies
+Input.PauseOnHitPause = 1           ; 1 makes inputs to be retained during hit pause
+
 ; Rules
 Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
 Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
@@ -17,8 +22,6 @@ Default.LifeToDizzyPointsMul = -1.8 ; multiplier for dizzy points the receiver g
 Super.LifeToDizzyPointsMul = 0      ; multiplier for dizzy points the receiver gets when a super attack successfully hits (overridden by dizzypoints HitDef option)
 Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when a normal/special attack successfully hits (overridden by redlife HitDef option)
 Super.LifeToRedLifeMul = 0.25       ; multiplier for red life the receiver gets when a super attack successfully hits (overridden by redlife HitDef option)
-Default.IgnoreDefeatedEnemies = 1   ; prevents EnemyNear from redirecting defeated enemies (toggle)
-Input.PauseOnHitPause = 1           ; controls if inputs should be retained during hit pause
 
 ; tag.zss options
 TagInTime = 20                 ; tag-in total switch time

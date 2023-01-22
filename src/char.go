@@ -2014,6 +2014,7 @@ func (c *Char) load(def string) error {
 	gi.constants["super.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.25
 	gi.constants["super.lifetoredlifemul"] = 0.25
+	gi.constants["default.legacygamedistancespec"] = 0
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
 
