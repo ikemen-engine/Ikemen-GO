@@ -5,13 +5,13 @@ go 1.18
 require (
 	github.com/faiface/beep v1.1.0
 	github.com/flopp/go-findfont v0.1.0
-	github.com/fyne-io/gl-js v0.0.0-20220516203408-b35fbccb7063
-	github.com/fyne-io/glfw-js v0.0.0-20220504231515-a6fbf4331c1f
+	github.com/fyne-io/gl-js v0.0.0-20220802150000-8e339395f381
+	github.com/fyne-io/glfw-js v0.0.0-20220517201726-bebc2019cd33
 	github.com/go-gl/mathgl v1.0.0
-	github.com/ikemen-engine/glfont v0.0.0-20220605115542-3cdf39329aa1
-	github.com/sqweek/dialog v0.0.0-20220504154117-be45b268883a
+	github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23
+	github.com/sqweek/dialog v0.0.0-20220809060634-e981b270ebbf
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64
-	golang.org/x/mobile v0.0.0-20211207041440-4e6c2922fdee
+	golang.org/x/mobile v0.0.0-20221110043201-43a038452099
 )
 
 require (
@@ -27,6 +27,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
-	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect
 )
