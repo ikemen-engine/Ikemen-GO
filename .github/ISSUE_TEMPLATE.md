@@ -7,8 +7,6 @@ assignees: ''
 
 ---
 
-You **must** post issues only here. Feature requests **must** be posted in [discussions](https://github.com/ikemen-engine/Ikemen-GO/discussions).
-
 **Describe the bug**
 A clear and concise description of what the bug is.
 
