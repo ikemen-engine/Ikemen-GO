@@ -1,0 +1,79 @@
+name: 🐛 Bug Report
+description: Create a bug report to help us improve
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: |
+        Description ...
+
+        Reproduction steps
+        1. Go to ...
+        2. Click on ...
+        3. Scroll down to ...
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: repo-steps
+    attributes:
+      label: To Reproduce
+      description: Detailed steps to reproduce the behavior.
+      placeholder: |
+        Description ...
+
+        1. Download character from ... (don't forget about this step, it's crucial for reproducing the issue locally)
+        2. Start the match and perform a move using following commands ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: false
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots / Video
+      description: If applicable, add screenshots and/or videos to help explain your problem.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Engine Version (or source code date)
+      placeholder: v0.98.2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      description: What OS are you using?
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other (mention in description)
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context or search terms
+      description: |
+        - Any other context about the problem
+        - Search terms to help others discover this
+    validations:
+      required: false
