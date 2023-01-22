@@ -47,7 +47,8 @@ explod{
 # Dizzy Hit Ground Explod (direct copy from common1)
 [Function fDizzyHitGroundExplod(vely)]
 explod{
-	anim: GO (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
+	# This anim is the only one called from fightfx.air
+	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	posType: p1;
 	pos: 0, 0;
 	facing: Facing;
