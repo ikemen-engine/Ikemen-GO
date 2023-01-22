@@ -6,7 +6,7 @@
 [Function fDizzyBirdHelper()]
 if !numHelper(const(StateDizzyBirdsHelper)) {
 	explod{
-		# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
+		# Do note most anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
 		anim: GO const(FxBackgroundColor);
 		sprPriority: -6000;
 		space: screen;
@@ -47,13 +47,15 @@ explod{
 # Dizzy Hit Ground Explod (direct copy from common1)
 [Function fDizzyHitGroundExplod(vely)]
 explod{
-	anim: GO (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
+	# This anim is the only one called from fightfx.air
+	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	posType: p1;
 	pos: 0, 0;
 	facing: Facing;
 	sprPriority: ifElse($vely <= const240p(14), -10, 10);
 }
-playSnd{value: GO7, ($vely > const240p(5)) + ($vely > const240p(14))}
+# This sound is the only one called from common.snd
+playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #===============================================================================
 # StateDizzyBirdsHelper [helper]
