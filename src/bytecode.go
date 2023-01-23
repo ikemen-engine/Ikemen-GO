@@ -1159,7 +1159,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.frontEdgeDist()))
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
-			if (c.stCgi().ver[0] == 0 || c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0) &&
+			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
 				c.gi().constants["default.legacygamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenHeight())
 			} else {
@@ -1169,7 +1169,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(sys.gameTime + sys.preFightTime)
 		case OC_gamewidth:
 			// Optional exception preventing GameWidth from being affected by stage zoom.
-			if (c.stCgi().ver[0] == 0 || c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0) &&
+			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
 				c.gi().constants["default.legacygamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenWidth())
 			} else {
