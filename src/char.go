@@ -352,17 +352,19 @@ type CharVelocity struct {
 				up   float32
 				down float32
 			}
+			ko struct {
+				add  [2]float32
+				ymin float32
+			}
 		}
 	}
-	ko struct {
-		air struct {
-			add  [2]float32
-			ymin float32
-		}
-		notair struct {
-			xmul float32
-			add  [2]float32
-			ymin float32
+	ground struct {
+		gethit struct {
+			ko struct {
+				xmul float32
+				add  [2]float32
+				ymin float32
+			}
 		}
 	}
 }
@@ -379,11 +381,11 @@ func (cv *CharVelocity) init() {
 	cv.airjump.neu = [...]float32{0, -8.1}
 	cv.airjump.back = -2.55
 	cv.airjump.fwd = 2.5
-	cv.ko.air.add = [...]float32{-2, -2}
-	cv.ko.air.ymin = -3
-	cv.ko.notair.xmul = 0.66
-	cv.ko.notair.add = [...]float32{-2.5, -2}
-	cv.ko.notair.ymin = -6
+	cv.air.gethit.ko.add = [...]float32{-2, -2}
+	cv.air.gethit.ko.ymin = -3
+	cv.ground.gethit.ko.xmul = 0.66
+	cv.ground.gethit.ko.add = [...]float32{-2.5, -2}
+	cv.ground.gethit.ko.ymin = -6
 }
 
 type CharMovement struct {
@@ -2083,12 +2085,12 @@ func (c *Char) load(def string) error {
 	gi.velocity.airjump.back /= originLs
 	gi.velocity.airjump.fwd /= originLs
 
-	gi.velocity.ko.air.add[0] /= originLs
-	gi.velocity.ko.air.add[1] /= originLs
-	gi.velocity.ko.air.ymin /= originLs
-	gi.velocity.ko.notair.add[0] /= originLs
-	gi.velocity.ko.notair.add[1] /= originLs
-	gi.velocity.ko.notair.ymin /= originLs
+	gi.velocity.air.gethit.ko.add[0] /= originLs
+	gi.velocity.air.gethit.ko.add[1] /= originLs
+	gi.velocity.air.gethit.ko.ymin /= originLs
+	gi.velocity.ground.gethit.ko.add[0] /= originLs
+	gi.velocity.ground.gethit.ko.add[1] /= originLs
+	gi.velocity.ground.gethit.ko.ymin /= originLs
 
 	gi.movement.init()
 
@@ -2233,13 +2235,13 @@ func (c *Char) load(def string) error {
 							&gi.velocity.air.gethit.airrecover.up)
 						is.ReadF32("air.gethit.airrecover.down",
 							&gi.velocity.air.gethit.airrecover.down)
-						is.ReadF32("ko.air.add", &gi.velocity.ko.air.add[0],
-							&gi.velocity.ko.air.add[1])
-						is.ReadF32("ko.air.ymin", &gi.velocity.ko.air.ymin)
-						is.ReadF32("ko.notair.xmul", &gi.velocity.ko.notair.xmul)
-						is.ReadF32("ko.notair.add", &gi.velocity.ko.notair.add[0],
-							&gi.velocity.ko.notair.add[1])
-						is.ReadF32("ko.notair.ymin", &gi.velocity.ko.notair.ymin)
+						is.ReadF32("air.gethit.ko.add", &gi.velocity.air.gethit.ko.add[0],
+							&gi.velocity.air.gethit.ko.add[1])
+						is.ReadF32("air.gethit.ko.ymin", &gi.velocity.air.gethit.ko.ymin)
+						is.ReadF32("ground.gethit.ko.xmul", &gi.velocity.ground.gethit.ko.xmul)
+						is.ReadF32("ground.gethit.ko.add", &gi.velocity.ground.gethit.ko.add[0],
+							&gi.velocity.ground.gethit.ko.add[1])
+						is.ReadF32("ground.gethit.ko.ymin", &gi.velocity.ground.gethit.ko.ymin)
 					}
 				case "movement":
 					if movement {
@@ -6547,25 +6549,25 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel += getter.gi().velocity.ko.air.add[0]
+								getter.ghv.xvel += getter.gi().velocity.air.gethit.ko.add[0]
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel += getter.gi().velocity.ko.air.add[1]
-								if getter.ghv.yvel > getter.gi().velocity.ko.air.ymin {
-									getter.ghv.yvel = getter.gi().velocity.ko.air.ymin
+								getter.ghv.yvel += getter.gi().velocity.air.gethit.ko.add[1]
+								if getter.ghv.yvel > getter.gi().velocity.air.gethit.ko.ymin {
+									getter.ghv.yvel = getter.gi().velocity.air.gethit.ko.ymin
 								}
 							}
 						} else {
 							if getter.ghv.yvel == 0 {
-								getter.ghv.xvel *= getter.gi().velocity.ko.notair.xmul
+								getter.ghv.xvel *= getter.gi().velocity.ground.gethit.ko.xmul
 							}
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel += getter.gi().velocity.ko.notair.add[0]
+								getter.ghv.xvel += getter.gi().velocity.ground.gethit.ko.add[0]
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel += getter.gi().velocity.ko.notair.add[1]
-								if getter.ghv.yvel > getter.gi().velocity.ko.notair.ymin {
-									getter.ghv.yvel = getter.gi().velocity.ko.notair.ymin
+								getter.ghv.yvel += getter.gi().velocity.ground.gethit.ko.add[1]
+								if getter.ghv.yvel > getter.gi().velocity.ground.gethit.ko.ymin {
+									getter.ghv.yvel = getter.gi().velocity.ground.gethit.ko.ymin
 								}
 							}
 						}

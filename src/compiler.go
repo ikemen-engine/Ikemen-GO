@@ -1584,6 +1584,20 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_velocity_air_gethit_airrecover_up)
 		case "velocity.air.gethit.airrecover.down":
 			out.append(OC_const_velocity_air_gethit_airrecover_down)
+		case "velocity.air.gethit.ko.add.x":
+			out.append(OC_const_velocity_air_gethit_ko_add_x)
+		case "velocity.air.gethit.ko.add.y":
+			out.append(OC_const_velocity_air_gethit_ko_add_y)
+		case "velocity.air.gethit.ko.ymin":
+			out.append(OC_const_velocity_air_gethit_ko_ymin)
+		case "velocity.ground.gethit.ko.xmul":
+			out.append(OC_const_velocity_ground_gethit_ko_xmul)
+		case "velocity.ground.gethit.ko.add.x":
+			out.append(OC_const_velocity_ground_gethit_ko_add_x)
+		case "velocity.ground.gethit.ko.add.y":
+			out.append(OC_const_velocity_ground_gethit_ko_add_y)
+		case "velocity.ground.gethit.ko.ymin":
+			out.append(OC_const_velocity_ground_gethit_ko_ymin)
 		case "movement.airjump.num":
 			out.append(OC_const_movement_airjump_num)
 		case "movement.airjump.height":
