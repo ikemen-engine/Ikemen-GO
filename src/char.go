@@ -354,6 +354,17 @@ type CharVelocity struct {
 			}
 		}
 	}
+	ko struct {
+		air struct {
+			add  [2]float32
+			ymin float32
+		}
+		notair struct {
+			xmul float32
+			add  [2]float32
+			ymin float32
+		}
+	}
 }
 
 func (cv *CharVelocity) init() {
@@ -368,6 +379,11 @@ func (cv *CharVelocity) init() {
 	cv.airjump.neu = [...]float32{0, -8.1}
 	cv.airjump.back = -2.55
 	cv.airjump.fwd = 2.5
+	cv.ko.air.add = [...]float32{-2, -2}
+	cv.ko.air.ymin = -3
+	cv.ko.notair.xmul = 0.66
+	cv.ko.notair.add = [...]float32{-2.5, -2}
+	cv.ko.notair.ymin = -6
 }
 
 type CharMovement struct {
@@ -2067,6 +2083,13 @@ func (c *Char) load(def string) error {
 	gi.velocity.airjump.back /= originLs
 	gi.velocity.airjump.fwd /= originLs
 
+	gi.velocity.ko.air.add[0] /= originLs
+	gi.velocity.ko.air.add[1] /= originLs
+	gi.velocity.ko.air.ymin /= originLs
+	gi.velocity.ko.notair.add[0] /= originLs
+	gi.velocity.ko.notair.add[1] /= originLs
+	gi.velocity.ko.notair.ymin /= originLs
+
 	gi.movement.init()
 
 	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
@@ -2210,6 +2233,13 @@ func (c *Char) load(def string) error {
 							&gi.velocity.air.gethit.airrecover.up)
 						is.ReadF32("air.gethit.airrecover.down",
 							&gi.velocity.air.gethit.airrecover.down)
+						is.ReadF32("ko.air.add", &gi.velocity.ko.air.add[0],
+							&gi.velocity.ko.air.add[1])
+						is.ReadF32("ko.air.ymin", &gi.velocity.ko.air.ymin)
+						is.ReadF32("ko.notair.xmul", &gi.velocity.ko.notair.xmul)
+						is.ReadF32("ko.notair.add", &gi.velocity.ko.notair.add[0],
+							&gi.velocity.ko.notair.add[1])
+						is.ReadF32("ko.notair.ymin", &gi.velocity.ko.notair.ymin)
 					}
 				case "movement":
 					if movement {
@@ -6517,25 +6547,25 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
+								getter.ghv.xvel += getter.gi().velocity.ko.air.add[0]
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
-								if getter.ghv.yvel > -3/getter.localscl/(320/float32(sys.gameWidth)) {
-									getter.ghv.yvel = -3 / getter.localscl / (320 / float32(sys.gameWidth))
+								getter.ghv.yvel += getter.gi().velocity.ko.air.add[1]
+								if getter.ghv.yvel > getter.gi().velocity.ko.air.ymin {
+									getter.ghv.yvel = getter.gi().velocity.ko.air.ymin
 								}
 							}
 						} else {
 							if getter.ghv.yvel == 0 {
-								getter.ghv.xvel *= 0.66
+								getter.ghv.xvel *= getter.gi().velocity.ko.notair.xmul
 							}
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel -= 2.5 / getter.localscl / (320 / float32(sys.gameWidth))
+								getter.ghv.xvel += getter.gi().velocity.ko.notair.add[0]
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
-								if getter.ghv.yvel > -6/getter.localscl/(320/float32(sys.gameWidth)) {
-									getter.ghv.yvel = -6 / getter.localscl / (320 / float32(sys.gameWidth))
+								getter.ghv.yvel += getter.gi().velocity.ko.notair.add[1]
+								if getter.ghv.yvel > getter.gi().velocity.ko.notair.ymin {
+									getter.ghv.yvel = getter.gi().velocity.ko.notair.ymin
 								}
 							}
 						}
