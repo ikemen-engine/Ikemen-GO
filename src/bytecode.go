@@ -1525,7 +1525,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_air_gethit_ko_ymin:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.ko.ymin * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_ground_gethit_ko_xmul:
-		sys.bcStack.PushF(c.gi().velocity.ground.gethit.ko.xmul * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.ground.gethit.ko.xmul
 	case OC_const_velocity_ground_gethit_ko_add_x:
 		sys.bcStack.PushF(c.gi().velocity.ground.gethit.ko.add[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_ground_gethit_ko_add_y:
