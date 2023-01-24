@@ -6517,12 +6517,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
+								getter.ghv.xvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
-								if getter.ghv.yvel > -3*getter.localscl*(320/float32(sys.gameWidth)) {
-									getter.ghv.yvel = -3 * getter.localscl * (320 / float32(sys.gameWidth))
+								getter.ghv.yvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
+								if getter.ghv.yvel > -3/getter.localscl/(320/float32(sys.gameWidth)) {
+									getter.ghv.yvel = -3 / getter.localscl / (320 / float32(sys.gameWidth))
 								}
 							}
 						} else {
@@ -6530,12 +6530,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								getter.ghv.xvel *= 0.66
 							}
 							if getter.ghv.xvel < 0 {
-								getter.ghv.xvel -= 2.5 * getter.localscl * (320 / float32(sys.gameWidth))
+								getter.ghv.xvel -= 2.5 / getter.localscl / (320 / float32(sys.gameWidth))
 							}
 							if getter.ghv.yvel <= 0 {
-								getter.ghv.yvel -= 2 * getter.localscl * (320 / float32(sys.gameWidth))
-								if getter.ghv.yvel > -6*getter.localscl*(320/float32(sys.gameWidth)) {
-									getter.ghv.yvel = -6 * getter.localscl * (320 / float32(sys.gameWidth))
+								getter.ghv.yvel -= 2 / getter.localscl / (320 / float32(sys.gameWidth))
+								if getter.ghv.yvel > -6/getter.localscl/(320/float32(sys.gameWidth)) {
+									getter.ghv.yvel = -6 / getter.localscl / (320 / float32(sys.gameWidth))
 								}
 							}
 						}
