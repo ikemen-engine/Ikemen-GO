@@ -534,9 +534,9 @@ type HitDef struct {
 	guard_sparkno_ffx          string
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
-	hitsound_ffx                string
+	hitsound_ffx               string
 	guardsound                 [2]int32
-	guardsound_ffx              string
+	guardsound_ffx             string
 	ground_type                HitType
 	air_type                   HitType
 	ground_slidetime           int32
@@ -1558,6 +1558,7 @@ type CharGlobalInfo struct {
 	wakewakaLength   int32
 	pctype           ProjContact
 	pctime, pcid     int32
+	projidcount      int
 	unhittable       int32
 	quotes           [MaxQuotes]string
 	portraitscale    float32
@@ -3775,11 +3776,12 @@ func (c *Char) hitAdd(h int32) {
 	}
 }
 func (c *Char) newProj() *Projectile {
-	for i, p := range sys.projs[c.playerNo] {
-		if p.id < 0 {
+	for i := c.gi().projidcount; i < len(sys.projs[c.playerNo]); i++ {
+		if sys.projs[c.playerNo][i].id < 0 {
 			sys.projs[c.playerNo][i].clear()
 			sys.projs[c.playerNo][i].id = 0
 			sys.projs[c.playerNo][i].palfx = c.getPalfx()
+			c.gi().projidcount = i
 			return &sys.projs[c.playerNo][i]
 		}
 	}
@@ -5575,6 +5577,7 @@ func (c *Char) actionRun() {
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
+		c.gi().projidcount = 0
 		// Set vel on binded targets
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindTime > 0 && !t.sf(CSF_destroy) &&
@@ -6827,6 +6830,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c := sys.chars[i][0]
 			orgatktmp := c.atktmp
 			c.atktmp = -1
+			ap_projhit := false
 			for j := range pr {
 				p := &pr[j]
 				if (i == getter.playerNo && getter.helperIndex == 0 && !p.platform) ||
@@ -6889,9 +6893,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if !(getter.stchtmp && (getter.sf(CSF_gethit) || getter.acttmp > 0)) &&
 					(c.sf(CSF_nojugglecheck) || getter.ghv.getJuggle(c.id,
-						c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
-					p.timemiss <= 0 && p.hitpause <= 0 && getter.hittable(&p.hitdef,
-					c, ST_N, func(h *HitDef) bool { return false }) {
+						c.gi().data.airjuggle) >= p.hitdef.air_juggle) && (!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
+					p.timemiss <= 0 && (p.hitpause <= 0 || p.hitpause > 0 && p.hitdef.hitonce <= 0) &&
+					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
 					if getter.sf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallf)) + 1
@@ -6919,6 +6923,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								sys.cgi[i].pcid = p.id
 								p.hitpause = Max(0, p.hitdef.guard_pausetime)
 							}
+						}
+						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
+						if p.hitdef.attr&int32(AT_AP) != 0 {
+							ap_projhit = true
 						}
 					}
 					getter.hittmp = orghittmp
