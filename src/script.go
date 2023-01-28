@@ -1065,6 +1065,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.postMatchFlg = false
 				sys.preFightTime += sys.gameTime
 				sys.gameTime = 0
+				sys.cam.CameraZoomYBound = 0
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				return 2
@@ -1450,7 +1451,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "loadCommonFx", func(l *lua.LState) int {
 		var err error
-		for _, def := range(sys.commonFx) {
+		for _, def := range sys.commonFx {
 			if err = loadFightFx(def); err != nil {
 				l.RaiseError("\nCan't load %v: %v\n", def, err.Error())
 			}
