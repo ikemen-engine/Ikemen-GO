@@ -87,7 +87,7 @@ if map(birdState) >= 32 {
 }
 
 # Check if helper should destroy itself
-if roundState != 2 || parent, alive = 0 || parent, dizzy = 0 || parent, ctrl || parent, standby {
+if parent, alive = 0 || parent, dizzy = 0 || parent, ctrl || parent, standby {
 	map(birdState) := map(birdState) + 1;
 } else {
 	map(birdState) := 0;
@@ -262,7 +262,7 @@ if !dizzy || time > 300 {
 #===============================================================================
 # StateDizzyLyingDown
 #===============================================================================
-[StateDef const(StateDizzyLyingDown); type: U; moveType: H; physics: N; ctrl: 0;]
+[StateDef const(StateDizzyLyingDown); type: L; moveType: H; physics: N; ctrl: 0;]
 
 notHitBy{value: SCA; time: 1}
 
@@ -277,7 +277,6 @@ if time = 0 {
 	posSet{y: 0}
 	velSet{y: 0}
 	dizzySet{value: 1}
-	stateTypeSet{stateType: L}
 }
 
 # Hitting ground animation
@@ -369,7 +368,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	map(_iksys_dizzyPointsCounter) := 0;
 	map(_iksys_dizzyLimit) := 0;
 
-} else ignoreHitPause if roundState = 2 && alive {
+} else ignoreHitPause if alive {
 
 	# Upon hit, set cooldown counter
 	# Cooldown time could be a character constant
