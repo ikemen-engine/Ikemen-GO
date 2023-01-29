@@ -65,21 +65,21 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 			# normal attacks
 			case [const(AttrStandingHyperAttack), const(AttrAerialHyperAttack)]:
 				let dmgMul = 10;
-			case [const(AttrStandingSuperAttack), const(AttrAerialSuperAttack)]:
+			case [const(AttrStandingSpecialAttack), const(AttrAerialSpecialAttack)]:
 				let dmgMul = 9;
 			case [const(AttrStandingNormalAttack), const(AttrAerialNormalAttack)]:
 				let dmgMul = 8;
 			# throws
 			case [const(AttrStandingHyperThrow), const(AttrAerialHyperThrow)]:
 				let dmgMul = 10;
-			case [const(AttrStandingSuperThrow), const(AttrAerialSuperThrow)]:
+			case [const(AttrStandingSpecialThrow), const(AttrAerialSpecialThrow)]:
 				let dmgMul = 9;
 			case [const(AttrStandingNormalThrow), const(AttrAerialNormalThrow)]:
 				let dmgMul = 8;
 			# projectiles
 			case [const(AttrStandingHyperProjectile), const(AttrAerialHyperProjectile)]:
 				let dmgMul = 10;
-			case [const(AttrStandingSuperProjectile), const(AttrAerialSuperProjectile)]:
+			case [const(AttrStandingSpecialProjectile), const(AttrAerialSpecialProjectile)]:
 				let dmgMul = 9;
 			case [const(AttrStandingNormalProjectile), const(AttrAerialNormalProjectile)]:
 				let dmgMul = 8;
