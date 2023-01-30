@@ -1173,7 +1173,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushF(c.gameHeight())
 			}
 		case OC_gametime:
-			sys.bcStack.PushI(sys.gameTime + sys.preFightTime)
+			var pfTime int32
+			if sys.netInput != nil {
+				pfTime = sys.netInput.preFightTime
+			} else if sys.fileInput != nil {
+				pfTime = sys.fileInput.pfTime
+			} else {
+				pfTime = sys.preFightTime
+			}
+			sys.bcStack.PushI(sys.gameTime + pfTime)
 		case OC_gamewidth:
 			// Optional exception preventing GameWidth from being affected by stage zoom.
 			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
@@ -2105,14 +2113,14 @@ type StateBlock struct {
 	elseBlock           *StateBlock
 	ctrls               []StateController
 	// Loop fields
-	loopBlock           bool
-	nestedInLoop        bool
-	forLoop             bool
-	forAssign           bool
-	forCtrlVar          varAssign
-	forExpression       [3]BytecodeExp
-	forBegin, forEnd    int32
-	forIncrement        int32
+	loopBlock        bool
+	nestedInLoop     bool
+	forLoop          bool
+	forAssign        bool
+	forCtrlVar       varAssign
+	forExpression    [3]BytecodeExp
+	forBegin, forEnd int32
+	forIncrement     int32
 }
 
 func newStateBlock() *StateBlock {
@@ -2195,7 +2203,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 					if b.forBegin > b.forEnd {
 						interrupt = true
 					}
-				} else if b.forBegin < b.forEnd { 
+				} else if b.forBegin < b.forEnd {
 					interrupt = true
 				}
 				// Update control variable if loop should keep going
