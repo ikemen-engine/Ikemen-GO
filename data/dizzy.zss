@@ -131,7 +131,7 @@ if map(birdState) <= 0 {
 	playSnd{
 		value: GO5300, 0;
 		channel: 2; lowpriority: 1;
-		volumescale: ifelse(parent, stateno = const(StateDizzy), 100 * (180 - min(120, parent,time)) / 180.0, 100)
+		volumescale: ifelse(parent, stateNo = const(StateDizzy), 100 * (180 - min(120, parent,time)) / 180.0, 100)
 	}
 
 }
@@ -210,7 +210,9 @@ if anim = const(AnimStandOrAirHitTransition) {
 }
 if anim = [const(AnimAirFall), const(AnimAirFall) + 9] {
 	if vel y > 0 {
-		changeAnim{value: const(AnimAirFall_comingDown) + (anim % 10) * SelfAnimExist(const(AnimAirFall_comingDown) + (anim % 10))}
+		if SelfAnimExist(const(AnimAirFall_comingDown) + (anim % 10)) {
+			changeAnim{value: const(AnimAirFall_comingDown) + (anim % 10)}
+		}
 	}
 }
 
@@ -372,7 +374,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Upon hit, set cooldown counter
 	# Cooldown time could be a character constant
-	if moveType = H {
+	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
 		map(_iksys_dizzyPointsCounter) := 60;
 	# Otherwise decrease cooldown counter by 1 each frame
 	} else if map(_iksys_dizzyPointsCounter) > 0 {
@@ -381,7 +383,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Freeze dizzy points if character was already dizzied once in the combo
 	if map(_iksys_dizzyLimit) {
-		if stateno != const(StateDizzy) {
+		if stateNo != const(StateDizzy) {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
 		}
@@ -420,7 +422,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		}
 
 		# Reset dizzy points and remove dizzy flag if the player is no longer being hit
-		if (movetype != H || map(_iksys_dizzyLimit)) && stateno != const(StateDizzy) {
+		if (movetype != H || map(_iksys_dizzyLimit)) && stateNo != const(StateDizzy) {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
 		}
