@@ -314,8 +314,8 @@ func setupConfig() configSettings {
 	tmp.PanningRange = ClampF(tmp.PanningRange, 0, 100)
 	tmp.Players = int(Clamp(int32(tmp.Players), 1, int32(MaxSimul)*2))
 	tmp.WavChannels = Clamp(tmp.WavChannels, 1, 256)
-	// Save config file
-	cfg, _ := json.MarshalIndent(tmp, "", "	")
+	// Save config file, indent with two spaces to match calls to json.encode() in the Lua code
+	cfg, _ := json.MarshalIndent(tmp, "", "  ")
 	chk(ioutil.WriteFile(cfgPath, cfg, 0644))
 
 	// Set each config property to the system object
