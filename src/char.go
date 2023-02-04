@@ -221,8 +221,8 @@ func (cd *CharData) init() {
 	cd.guard.sparkno = 40
 	cd.ko.echo = 0
 	cd.volume = 256
-	cd.intpersistindex = 60
-	cd.floatpersistindex = 40
+	cd.intpersistindex = NumVar
+	cd.floatpersistindex = NumFvar
 }
 
 type CharSize struct {
@@ -2157,8 +2157,14 @@ func (c *Char) load(def string) error {
 						if is.ReadI32("volumescale", &i32) {
 							gi.data.volume = i32 * 64 / 25
 						}
-						is.ReadI32("intpersistindex", &gi.data.intpersistindex)
-						is.ReadI32("floatpersistindex", &gi.data.floatpersistindex)
+						if _, ok := is["intpersistindex"]; ok {
+							gi.data.intpersistindex = 0
+							is.ReadI32("intpersistindex", &gi.data.intpersistindex)
+						}
+						if _, ok := is["floatpersistindex"]; ok {
+							gi.data.floatpersistindex = 0
+							is.ReadI32("floatpersistindex", &gi.data.floatpersistindex)
+						}
 					}
 				case "size":
 					if size {
