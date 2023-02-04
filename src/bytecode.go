@@ -2145,7 +2145,9 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			return false
 		}
 	}
-	sys.workingChar = c
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/963
+	//sys.workingChar = c
+	sys.workingChar = sys.chars[c.ss.sb.playerNo][0]
 	if b.loopBlock {
 		if b.forLoop {
 			if b.forAssign {
