@@ -529,7 +529,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			return err
 		}
 		if err := c.paramValue(is, sc, "inheritchannels",
-			helper_inheritjuggle, VT_Int, 1, false); err != nil {
+			helper_inheritchannels, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "immortal",
