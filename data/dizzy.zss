@@ -218,7 +218,8 @@ if anim = [const(AnimAirFall), const(AnimAirFall) + 9] {
 
 # Hit ground from fall
 if anim = [const(AnimStandOrAirHitBack), const(AnimLieDownHit_hitUpIntoAir)] {
-	if pos y + vel y >= 0 && vel y > 0 {
+	if vel y > 0 &&
+	pos y >= ifelse(anim = [const(AnimAirFall) + 1, const(AnimAirFall) + 9] || anim = [const(AnimAirFall_comingDown) + 1, const(AnimAirFall_comingDown) + 9], 0, const(movement.air.gethit.groundlevel)) {
 		stateTypeSet{stateType: L}
 		changeAnim{value: const(AnimHittingGroundFromFall) + (anim % 10) * SelfAnimExist(const(AnimHittingGroundFromFall) + (anim % 10))}
 	}
