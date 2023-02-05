@@ -3711,12 +3711,20 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.anim.totaltime))
 		return 1
 	})
+	luaRegister(l, "attack", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.attackMul * 100))
+		return 1
+	})
 	luaRegister(l, "combocount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.comboCount()))
 		return 1
 	})
 	luaRegister(l, "consecutivewins", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.consecutiveWins[sys.debugWC.teamside]))
+		return 1
+	})
+	luaRegister(l, "defence", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.finalDefense * 100))
 		return 1
 	})
 	luaRegister(l, "dizzy", func(*lua.LState) int {
@@ -4027,16 +4035,8 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.animPN) + 1)
 		return 1
 	})
-	luaRegister(l, "attack", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.attackMul * 100))
-		return 1
-	})
 	luaRegister(l, "continue", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.continueFlg))
-		return 1
-	})
-	luaRegister(l, "defence", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.finalDefense * 100))
 		return 1
 	})
 	luaRegister(l, "displayname", func(*lua.LState) int {
