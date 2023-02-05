@@ -528,6 +528,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			helper_inheritjuggle, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "inheritchannels",
+			helper_inheritjuggle, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "immortal",
 			helper_immortal, VT_Bool, 1, false); err != nil {
 			return err
@@ -1238,9 +1242,17 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "hitsound.channel",
+		hitDef_hitsound_channel, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, "guardsound", func(data string) error {
 		return hsnd(hitDef_guardsound, data)
 	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guardsound.channel",
+		hitDef_guardsound_channel, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "priority", func(data string) error {

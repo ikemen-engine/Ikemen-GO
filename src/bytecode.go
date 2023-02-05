@@ -2927,6 +2927,7 @@ const (
 	helper_remappal
 	helper_extendsmap
 	helper_inheritjuggle
+	helper_inheritchannels
 	helper_immortal
 	helper_kovelocity
 	helper_preserve
@@ -3026,6 +3027,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			extmap = exp[0].evalB(c)
 		case helper_inheritjuggle:
 			h.inheritJuggle = exp[0].evalI(c)
+		case helper_inheritchannels:
+			h.inheritChannels = exp[0].evalI(c)
 		case helper_immortal:
 			h.immortal = exp[0].evalB(c)
 		case helper_kovelocity:
@@ -4030,7 +4033,9 @@ const (
 	hitDef_givepower
 	hitDef_numhits
 	hitDef_hitsound
+	hitDef_hitsound_channel
 	hitDef_guardsound
+	hitDef_guardsound_channel
 	hitDef_priority
 	hitDef_p1stateno
 	hitDef_p2stateno
@@ -4167,12 +4172,16 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 2 {
 			hd.hitsound[1] = exp[2].evalI(c)
 		}
+	case hitDef_hitsound_channel:
+		hd.hitsound_channel = exp[0].evalI(c)
 	case hitDef_guardsound:
 		hd.guardsound_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		hd.guardsound[0] = exp[1].evalI(c)
 		if len(exp) > 2 {
 			hd.guardsound[1] = exp[2].evalI(c)
 		}
+	case hitDef_guardsound_channel:
+		hd.guardsound_channel = exp[0].evalI(c)
 	case hitDef_priority:
 		hd.priority = exp[0].evalI(c)
 		hd.bothhittype = AiuchiType(exp[1].evalI(c))

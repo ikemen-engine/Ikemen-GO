@@ -534,8 +534,10 @@ type HitDef struct {
 	guard_sparkno_ffx          string
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
+	hitsound_channel           int32
 	hitsound_ffx               string
 	guardsound                 [2]int32
+	guardsound_channel         int32
 	guardsound_ffx             string
 	ground_type                HitType
 	air_type                   HitType
@@ -606,23 +608,25 @@ type HitDef struct {
 
 func (hd *HitDef) clear() {
 	*hd = HitDef{
-		hitflag:           int32(ST_S | ST_C | ST_A | ST_F),
-		affectteam:        1,
-		teamside:          -1,
-		animtype:          RA_Light,
-		air_animtype:      RA_Unknown,
-		priority:          4,
-		bothhittype:       AT_Hit,
-		sparkno:           -1,
-		sparkno_ffx:       "f",
-		guard_sparkno:     -1,
-		guard_sparkno_ffx: "f",
-		hitsound:          [...]int32{-1, 0},
-		hitsound_ffx:      "f",
-		guardsound:        [...]int32{-1, 0},
-		guardsound_ffx:    "f",
-		ground_type:       HT_High,
-		air_type:          HT_Unknown,
+		hitflag:            int32(ST_S | ST_C | ST_A | ST_F),
+		affectteam:         1,
+		teamside:           -1,
+		animtype:           RA_Light,
+		air_animtype:       RA_Unknown,
+		priority:           4,
+		bothhittype:        AT_Hit,
+		sparkno:            -1,
+		sparkno_ffx:        "f",
+		guard_sparkno:      -1,
+		guard_sparkno_ffx:  "f",
+		hitsound:           [...]int32{-1, 0},
+		hitsound_channel:   -1,
+		hitsound_ffx:       "f",
+		guardsound:         [...]int32{-1, 0},
+		guardsound_channel: -1,
+		guardsound_ffx:     "f",
+		ground_type:        HT_High,
+		air_type:           HT_Unknown,
 		// Both default to 20, not documented in Mugen docs.
 		air_hittime:  20,
 		down_hittime: 20,
@@ -1736,6 +1740,7 @@ type Char struct {
 	selectNo              int
 	comboExtraFrameWindow int32
 	inheritJuggle         int32
+	inheritChannels       int32
 	mapArray              map[string]float32
 	mapDefault            map[string]float32
 	remapSpr              RemapPreset
@@ -3210,7 +3215,13 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 			return
 		}
 	}
-	if ch := c.soundChannels.New(chNo, lowpriority, priority); ch != nil {
+	crun := c
+	if c.inheritChannels == 1 && c.parent() != nil {
+		crun = c.parent()
+	} else if c.inheritChannels == 2 && c.root() != nil {
+		crun = c.root()
+	}
+	if ch := crun.soundChannels.New(chNo, lowpriority, priority); ch != nil {
 		ch.Play(s, loop, freqmul)
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().ver[0] == 1 {
@@ -6639,7 +6650,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.hitsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.hitsound_ffx, false, false, hd.hitsound[0], hd.hitsound[1],
-					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
+					hd.hitsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -6688,7 +6699,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.guardsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.guardsound_ffx, false, false, hd.guardsound[0], hd.guardsound[1],
-					-1, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
+					hd.guardsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)
