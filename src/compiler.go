@@ -2634,6 +2634,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_animfreeze))
 		case "postroundinput":
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_postroundinput))
+		case "nohitdamage":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nohitdamage))
+		case "noguarddamage":
+			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noguarddamage))
 		case "nodizzypointsdamage":
 			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nodizzypointsdamage))
 		case "noguardpointsdamage":

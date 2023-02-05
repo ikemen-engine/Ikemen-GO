@@ -3832,6 +3832,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
 		case "postroundinput":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
+		case "nohitdamage":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nohitdamage)))
+		case "noguarddamage":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguarddamage)))
 		case "nodizzypointsdamage":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nodizzypointsdamage)))
 		case "noguardpointsdamage":

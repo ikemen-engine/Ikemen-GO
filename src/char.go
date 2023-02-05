@@ -54,6 +54,8 @@ const (
 	CSF_autoguard
 	CSF_animfreeze
 	CSF_postroundinput
+	CSF_nohitdamage
+	CSF_noguarddamage
 	CSF_nodizzypointsdamage
 	CSF_noguardpointsdamage
 	CSF_noredlifedamage
@@ -79,8 +81,9 @@ const (
 		CSF_nohardcodedkeys | CSF_nogetupfromliedown |
 		CSF_nofastrecoverfromliedown | CSF_nofallcount | CSF_nofalldefenceup |
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
-		CSF_animfreeze | CSF_postroundinput | CSF_nodizzypointsdamage |
-		CSF_noguardpointsdamage | CSF_noredlifedamage | CSF_nomakedust
+		CSF_animfreeze | CSF_postroundinput | CSF_nohitdamage |
+		CSF_noguarddamage | CSF_nodizzypointsdamage | CSF_noguardpointsdamage |
+		CSF_noredlifedamage | CSF_nomakedust
 )
 
 type GlobalSpecialFlag uint32
@@ -6394,8 +6397,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.xvel = hd.guard_velocity * (c.localscl / getter.localscl)
 						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 					}
-					absdamage = hd.guarddamage
-					absredlife = hd.guardredlife
+					if !getter.sf(CSF_noguarddamage) {
+						absdamage = hd.guarddamage
+						absredlife = hd.guardredlife
+					}
 					ghv.hitcount = hc
 				} else {
 					ghv.hitshaketime = Max(0, hd.shaketime)
@@ -6438,8 +6443,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if ghv.hittime < 0 {
 						ghv.hittime = 0
 					}
-					absdamage = hd.hitdamage
-					absredlife = hd.hitredlife
+					if !getter.sf(CSF_nohitdamage) {
+						absdamage = hd.hitdamage
+						absredlife = hd.hitredlife
+					}
 					if cmb {
 						ghv.hitcount = hc + 1
 					} else {
@@ -6514,9 +6521,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.setBindTime(0)
 				}
 			} else if hitType == 1 {
-				absdamage = hd.hitdamage
-				absredlife = hd.hitredlife
-			} else {
+				if !getter.sf(CSF_nohitdamage) {
+					absdamage = hd.hitdamage
+					absredlife = hd.hitredlife
+				}
+			} else if !getter.sf(CSF_noguarddamage) {
 				absdamage = hd.guarddamage
 				absredlife = hd.guardredlife
 			}

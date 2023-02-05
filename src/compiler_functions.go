@@ -121,6 +121,10 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_animfreeze)))
 			case "postroundinput":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_postroundinput)))
+			case "nohitdamage":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nohitdamage)))
+			case "noguarddamage":
+				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noguarddamage)))
 			case "nodizzypointsdamage":
 				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nodizzypointsdamage)))
 			case "noguardpointsdamage":
