@@ -1449,15 +1449,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(newUserData(l, w))
 		return 1
 	})
-	luaRegister(l, "loadCommonFx", func(l *lua.LState) int {
-		var err error
-		for _, def := range sys.commonFx {
-			if err = loadFightFx(def); err != nil {
-				l.RaiseError("\nCan't load %v: %v\n", def, err.Error())
-			}
-		}
-		return 0
-	})
 	luaRegister(l, "loadDebugFont", func(l *lua.LState) int {
 		ts := NewTextSprite()
 		f, err := loadFnt(strArg(l, 1), -1)

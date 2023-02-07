@@ -3046,6 +3046,12 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 	i = 0
 	filesflg := true
 	ffx := newFightFx()
+	// Load Common FX first
+	for _, def := range sys.commonFx {
+		if err := loadFightFx(def); err != nil {
+			return nil, err
+		}
+	}
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
 		switch name {
