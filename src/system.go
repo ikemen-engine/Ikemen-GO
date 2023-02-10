@@ -1819,7 +1819,7 @@ func (s *System) fight() (reload bool) {
 			} else if s.round == 1 || s.tmode[i&1] == TM_Turns {
 				/* If round 1 or a new character in turns mode, initialize values */
 				if p[0].ocd().life != -1 {
-					p[0].life = p[0].ocd().life
+					p[0].life = Clamp(p[0].ocd().life, 0, p[0].lifeMax)
 				} else {
 					p[0].life = p[0].lifeMax
 				}
@@ -1827,8 +1827,8 @@ func (s *System) fight() (reload bool) {
 					if s.maxPowerMode {
 						p[0].power = p[0].powerMax
 					} else if p[0].ocd().power != -1 {
-						p[0].power = p[0].ocd().power
-					} else {
+						p[0].power = Clamp(p[0].ocd().power, 0, p[0].powerMax)
+					} else if !sys.consecutiveRounds || sys.consecutiveWins[0] == 0 {
 						p[0].power = 0
 					}
 				}
@@ -1846,12 +1846,12 @@ func (s *System) fight() (reload bool) {
 			}
 
 			if p[0].ocd().guardPoints != -1 {
-				p[0].guardPoints = p[0].ocd().guardPoints
+				p[0].guardPoints = Clamp(p[0].ocd().guardPoints, 0, p[0].guardPointsMax)
 			} else {
 				p[0].guardPoints = p[0].guardPointsMax
 			}
 			if p[0].ocd().dizzyPoints != -1 {
-				p[0].dizzyPoints = p[0].ocd().dizzyPoints
+				p[0].dizzyPoints = Clamp(p[0].ocd().dizzyPoints, 0, p[0].dizzyPointsMax)
 			} else {
 				p[0].dizzyPoints = p[0].dizzyPointsMax
 			}

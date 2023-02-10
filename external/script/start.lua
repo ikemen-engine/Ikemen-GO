@@ -1512,6 +1512,8 @@ end
 function start.f_selectReset(hardReset)
 	esc(false)
 	setMatchNo(1)
+	setConsecutiveWins(1, 0)
+	setConsecutiveWins(2, 0)
 	setContinue(false)
 	main.f_cmdInput()
 	local col = 1
@@ -1609,6 +1611,8 @@ function start.f_selectChallenger()
 	local matchNo_sav = matchno()
 	local p1cmd = main.t_remaps[1]
 	local p2cmd = main.t_remaps[start.challenger]
+	local p1ConsecutiveWins = getConsecutiveWins(1)
+	local p2ConsecutiveWins = getConsecutiveWins(2)
 	--start challenger match
 	main.f_default()
 	main.f_playerInput(p1cmd, 1)
@@ -1627,14 +1631,13 @@ function start.f_selectChallenger()
 	if not ok then
 		return false
 	end
-	if getConsecutiveWins(1) > 0 then
-		setConsecutiveWins(1, getConsecutiveWins(1) - 1)
-	end
 	start.p = t_p_sav
 	start.c = t_c_sav
 	start.winCnt = winCnt_sav
 	start.loseCnt = loseCnt_sav
 	setMatchNo(matchNo_sav)
+	setConsecutiveWins(1, p1ConsecutiveWins)
+	setConsecutiveWins(2, p2ConsecutiveWins)
 	return true
 end
 
