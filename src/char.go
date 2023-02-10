@@ -1159,6 +1159,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 				e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1]
 			} else {
 				e.bindtime = 0
+				e.setX(e.pos[0])
+				e.setY(e.pos[1])
 			}
 		}
 	} else {
