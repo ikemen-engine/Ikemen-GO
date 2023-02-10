@@ -1157,11 +1157,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushB(false)
 			} else {
 				pno := c.playerNo
-				if oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
-					pno = sys.workingState.playerNo
-				}
 				cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-				sys.bcStack.PushB(ok && c.command(pno, cmd))
+				ok = ok && c.command(pno, cmd)
+				if !ok && oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 && pno != sys.workingState.playerNo {
+					pno = sys.workingState.playerNo
+					cmd, ok = c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
+					ok = ok && c.command(pno, cmd)
+				}
+				sys.bcStack.PushB(ok)
 			}
 			i += 4
 		case OC_ctrl:
