@@ -2081,15 +2081,15 @@ func (ro *LifeBarRound) act() bool {
 				sys.introSkipped = false
 			}
 			if !ro.introState[0] {
-				roundNo := sys.round
+				roundNum := sys.round
 				if sys.consecutiveRounds {
-					roundNo = sys.consecutiveWins[0] + 1
+					roundNum = sys.consecutiveWins[0] + 1
 				}
 				if ro.swt[0] == 0 {
 					if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
 						ro.snd.play(ro.round_final.snd, 100, 0)
-					} else if int(roundNo) <= len(ro.round) && ro.round[roundNo-1].snd[0] != -1 {
-						ro.snd.play(ro.round[roundNo-1].snd, 100, 0)
+					} else if int(roundNum) <= len(ro.round) && ro.round[roundNum-1].snd[0] != -1 {
+						ro.snd.play(ro.round[roundNum-1].snd, 100, 0)
 					} else {
 						ro.snd.play(ro.round_default.snd, 100, 0)
 					}
@@ -2115,14 +2115,14 @@ func (ro *LifeBarRound) act() bool {
 							}
 						}
 						ro.introState[0] = ro.round_final.End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true)
-					} else if int(roundNo) <= len(ro.round) {
+					} else if int(roundNum) <= len(ro.round) {
 						ro.round_default_top.Action()
-						ro.round[roundNo-1].Action()
+						ro.round[roundNum-1].Action()
 						ro.round_default.Action()
 						for i := len(ro.round_default_bg) - 1; i >= 0; i-- {
 							ro.round_default_bg[i].Action()
 						}
-						ro.introState[0] = ro.round[roundNo-1].End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true)
+						ro.introState[0] = ro.round[roundNum-1].End(ro.dt[0], true) && ro.round_default.End(ro.dt[0], true)
 					} else {
 						ro.round_default_top.Action()
 						ro.round_default.Action()
@@ -2361,9 +2361,9 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 			ro.round_default_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 		}
 		var round_ref AnimTextSnd
-		roundNo := sys.round
+		roundNum := sys.round
 		if sys.consecutiveRounds {
-			roundNo = sys.consecutiveWins[0] + 1
+			roundNum = sys.consecutiveWins[0] + 1
 		}
 		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && (ro.round_final.text.font[0] != -1 ||
 			len(ro.round_final.anim.anim.frames) > 0 || len(ro.round_final_bg[0].anim.frames) > 0) {
@@ -2371,19 +2371,19 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 				ro.round_final_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			}
 			round_ref = ro.round_final
-		} else if int(roundNo) <= len(ro.round) {
-			round_ref = ro.round[roundNo-1]
+		} else if int(roundNum) <= len(ro.round) {
+			round_ref = ro.round[roundNum-1]
 		}
 		tmp := ro.round_default.text.text
 		if round_ref.text.text == "" {
-			ro.round_default.text.text = OldSprintf(tmp, roundNo)
+			ro.round_default.text.text = OldSprintf(tmp, roundNum)
 		} else {
 			ro.round_default.text.text = ""
 		}
 		ro.round_default.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 		ro.round_default.text.text = tmp
 		tmp = round_ref.text.text
-		round_ref.text.text = OldSprintf(tmp, roundNo)
+		round_ref.text.text = OldSprintf(tmp, roundNum)
 		round_ref.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 		round_ref.text.text = tmp
 		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && len(ro.round_final_top.anim.frames) > 0 {

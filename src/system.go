@@ -794,14 +794,10 @@ func (s *System) nextRound() {
 		s.roundType = [2]RoundType{RT_Final, RT_Final}
 	}
 	var roundRef int32
-	roundNo := s.round
-	if s.consecutiveRounds {
-		roundNo = s.consecutiveWins[0] + 1
-	}
-	if roundNo == 1 {
+	if s.round == 1 {
 		s.stageLoopNo = 0
 	} else {
-		roundRef = roundNo
+		roundRef = s.round
 	}
 	if s.stageLoop && !s.roundResetFlg {
 		var keys []int
@@ -818,7 +814,7 @@ func (s *System) nextRound() {
 	var swap bool
 	if _, ok := s.stageList[roundRef]; ok {
 		s.stage = s.stageList[roundRef]
-		if roundNo > 1 && !s.roundResetFlg {
+		if s.round > 1 && !s.roundResetFlg {
 			swap = true
 		}
 	}
