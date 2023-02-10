@@ -2180,6 +2180,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "setConsecutiveRounds", func(l *lua.LState) int {
+		sys.consecutiveRounds = boolArg(l, 1)
+		return 0
+	})
 	luaRegister(l, "setStereoEffects", func(l *lua.LState) int {
 		sys.stereoEffects = boolArg(l, 1)
 		return 0

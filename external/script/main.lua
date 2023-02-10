@@ -2397,6 +2397,7 @@ function main.f_default()
 	setAutoLevel(false)
 	setConsecutiveWins(1, 0)
 	setConsecutiveWins(2, 0)
+	setConsecutiveRounds(false)
 	setContinue(false)
 	setGameMode('')
 	setHomeTeam(2) --http://mugenguild.com/forum/topics/ishometeam-triggers-169132.0.html
@@ -2587,6 +2588,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_netplaysurvivalcoop_text})
+		setConsecutiveRounds(true)
 		setGameMode('netplaysurvivalcoop')
 		hook.run("main.t_itemname")
 		return start.f_selectMode
@@ -2755,6 +2757,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survival_text})
+		setConsecutiveRounds(true)
 		setGameMode('survival')
 		hook.run("main.t_itemname")
 		return start.f_selectMode
@@ -2794,6 +2797,7 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		main.txt_mainSelect:update({text = motif.select_info.title_survivalcoop_text})
+		setConsecutiveRounds(true)
 		setGameMode('survivalcoop')
 		hook.run("main.t_itemname")
 		return start.f_selectMode
