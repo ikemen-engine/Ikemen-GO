@@ -43,7 +43,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 	}
 	# Reversal
 	if moveReversed = 1 && map(_iksys_actionMoveReversedFlag) = 0 {
-		lifebarAction{spr: const(MsgReversal), 0; redirectId: enemy,id}
+		lifebarAction{spr: const(MsgReversal), 0; redirectid: enemy,id}
 		map(_iksys_actionMoveReversedFlag) := 1;
 	} else if moveReversed = 0 && map(_iksys_actionMoveReversedFlag) = 1 {
 		map(_iksys_actionMoveReversedFlag) := 0;

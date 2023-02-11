@@ -9,15 +9,15 @@
 #===============================================================================
 # Functions
 #===============================================================================
-[Function fTrainingRecovery(pid)]
-if playerId($pid),ctrl = 0 {
-	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectId: playerId($pid),id}
-} else if playerId($pid),map(_iksys_trainingDummyCounter) >= 60 {
-	lifeSet{value: playerId($pid),lifeMax; redirectId: playerId($pid),id}
-	powerSet{value: playerId($pid),powerMax; redirectId: playerId($pid),id}
-	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectId: playerId($pid),id}
+[Function fTrainingRecovery(pn)]
+if player($pn),ctrl = 0 {
+	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
+} else if player($pn),map(_iksys_trainingDummyCounter) >= 60 {
+	lifeSet{value: player($pn),lifeMax; redirectid: player($pn),id}
+	powerSet{value: player($pn),powerMax; redirectid: player($pn),id}
+	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
 } else {
-	mapAdd{map: "_iksys_trainingDummyCounter"; value: 1; redirectId: playerId($pid),id}
+	mapAdd{map: "_iksys_trainingDummyCounter"; value: 1; redirectid: player($pn),id}
 }
 
 #===============================================================================
@@ -30,7 +30,7 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 } else if roundState = 0 {
 	# Round start reset
 	powerSet{value: powerMax}
-	powerSet{value: player(1),powerMax; redirectId: player(1),id}
+	powerSet{value: player(1),powerMax; redirectid: player(1),id}
 	map(_iksys_trainingDummyCounter) := 0;
 	map(_iksys_trainingDirection) := 0;
 	map(_iksys_trainingAirJumpNum) := 0;
@@ -39,17 +39,11 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 		assertSpecial{flag: noKo}
 	}
 	# Life and Power recovery
-	call fTrainingRecovery(getPlayerId(1));
-	call fTrainingRecovery(getPlayerId(2));
-	let n = player(1),numPartner;
-	if $n >= 1 {
-		call fTrainingRecovery(getPlayerId(3));
-		if $n >= 2 {
-			call fTrainingRecovery(getPlayerId(5));
-			if $n >= 3 {
-				call fTrainingRecovery(getPlayerId(7));
-			}
-		}
+	for i = 1; player(1),numPartner + 1; 1 {
+		call fTrainingRecovery($i * 2 - 1);
+	}
+	for i = 1; player(2),numPartner + 1; 1 {
+		call fTrainingRecovery($i * 2);
 	}
 	# Dummy Control: Cooperative
 	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {

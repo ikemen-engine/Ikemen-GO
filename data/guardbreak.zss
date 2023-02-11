@@ -2,7 +2,7 @@
 #===============================================================================
 # StateGuardBreakHit
 #===============================================================================
-[StateDef const(StateGuardBreakHit); type: U; moveType: I; physics: N; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakHit); type: U; movetype: I; physics: N; velset: 0, 0; ctrl: 0;]
 
 if !guardBreak {
 	guardBreakSet{value: 1}
@@ -12,53 +12,53 @@ if time = 0 {
 	if pos y < 0 {
 		stateTypeSet{statetype: A} # Just in case
 	}
-	playSnd{value: GO5400, 0}
+	playSnd{value: GO 5400, 0}
 	explod{
 		# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
 		anim: GO const(FxGuardBreakShockwave);
-		posType: p1;
+		postype: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
-		sprPriority: 7;
-		ownPal: 1;
+		sprpriority: 7;
+		ownpal: 1;
 		scale: 0.15, 4.5;
 		trans: add;
 		alpha: 256, 256;
-		pauseMoveTime: -1;
-		ignoreHitPause: 1;
+		pausemovetime: -1;
+		ignorehitpause: 1;
 	}
 }
 
 if time < 13 {
 	explod{
 		anim: GO const(FxGuardBreakSpark) + rand(0, 2);
-		posType: p1;
+		postype: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
-		sprPriority: 6;
-		ownPal: 1;
+		sprpriority: 6;
+		ownpal: 1;
 		random: floor(const(size.height) / 8 * const(size.xscale)), floor(const(size.height) * const(size.yscale));
 		scale: rand(0, 8) * 0.03 + 0.25, rand(0, 8) * 0.03 + 0.25;
 		vel: -(rand(0, 17) + 5) * 0.36, (rand(0, 18) - 8) * 0.36;
 		accel: 0.038, 0;
-		facing: ifElse(Random < 500, 1, -1);
-		vfacing: ifElse(Random < 500, 1, -1);
-		pauseMoveTime: -1;
-		ignoreHitPause: 1;
+		facing: ifElse(random < 500, 1, -1);
+		vfacing: ifElse(random < 500, 1, -1);
+		pausemovetime: -1;
+		ignorehitpause: 1;
 	}
 }
 
 if time = 0 {
 	explod{
 		anim: GO const(FxBackgroundColor);
-		sprPriority: -6000;
+		sprpriority: -6000;
 		space: screen;
-		posType: left;
+		postype: left;
 		pos: 0, screenHeight / 2; # color 0 (blue)
 		scale: 320, 7.5 * screenHeight / const240p(240);
-		bindTime: -1;
-		superMoveTime: -1;
-		pauseMoveTime: -1;
-		ownPal: 1;
-		ignoreHitPause: 1;
+		bindtime: -1;
+		supermovetime: -1;
+		pausemovetime: -1;
+		ownpal: 1;
+		ignorehitpause: 1;
 	}
 	# Removed the pause as it doesn't exist in the main reference game and it affected every player on screen
 	stateTypeSet{physics: stateType}
@@ -71,7 +71,7 @@ if time = 0 {
 		changeAnim{value: const(AnimStandOrAirHitHigh_hard)} # High hit makes the character look more open than low hit
 	}
 } else {
-	changeAnim{value: Anim}
+	changeAnim{value: anim}
 }
 
 # Every character stays in these states the same time, regardless of animation timing
@@ -86,7 +86,7 @@ if time >= 20 {
 #===============================================================================
 # StateGuardBreakRecover
 #===============================================================================
-[StateDef const(StateGuardBreakRecover); type: U; moveType: I; physics: N; velSet: 0, 0; ctrl: 0;]
+[StateDef const(StateGuardBreakRecover); type: U; movetype: I; physics: N; velset: 0, 0; ctrl: 0;]
 
 if time = 0 {
 	posSet{y: 0}
@@ -165,7 +165,7 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 			changeState{value: const(StateGuardBreakHit)}
 		}
 	# Otherwise decrease cooldown counter by 1 each frame
-	} else if map(_iksys_guardPointsCounter) > 0 && getHitVar(isbound) = 0 && !standby {
+	} else if map(_iksys_guardPointsCounter) > 0 && getHitVar(isBound) = 0 && !standby {
 		mapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 	}
 	# Reset guard points and remove guard break flag if player is no longer in one of guard break states

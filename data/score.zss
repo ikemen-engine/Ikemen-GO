@@ -59,7 +59,7 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 } else ignoreHitPause if roundState > 0 {
 	# score: damage bonus
 	if receivedDamage != map(_iksys_scoreReceivedDamage) {
-		if receivedDamage > 0 && getHitVar(score) = 0 && getHitVar(playerno) != 0 && playerId(getHitVar(id)),teamSide != teamSide {
+		if receivedDamage > 0 && getHitVar(score) = 0 && getHitVar(playerNo) != 0 && playerId(getHitVar(id)),teamSide != teamSide {
 			let dmgMul = 0;
 			switch getHitVar(attr) {
 			# normal attacks
@@ -85,7 +85,7 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 				let dmgMul = 8;
 			}
 			if $dmgMul > 0 {
-				scoreAdd{value: round((receivedDamage - map(_iksys_scoreReceivedDamage)) * $dmgMul, -2); redirectId: getHitVar(id)}
+				scoreAdd{value: round((receivedDamage - map(_iksys_scoreReceivedDamage)) * $dmgMul, -2); redirectid: getHitVar(id)}
 			}
 		}
 		map(_iksys_scoreReceivedDamage) := receivedDamage;
