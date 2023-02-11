@@ -548,6 +548,10 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			helper_preserve, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "standby",
+			helper_standby, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

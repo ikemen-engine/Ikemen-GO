@@ -2944,6 +2944,7 @@ const (
 	helper_immortal
 	helper_kovelocity
 	helper_preserve
+	helper_standby
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -3049,6 +3050,12 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_preserve:
 			if exp[0].evalB(c) {
 				h.preserve = sys.round
+			}
+		case helper_standby:
+			if exp[0].evalB(c) {
+				h.setSCF(SCF_standby)
+			} else {
+				h.unsetSCF(SCF_standby)
 			}
 		}
 		return true
