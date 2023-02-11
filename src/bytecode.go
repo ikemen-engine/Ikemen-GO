@@ -125,84 +125,6 @@ const (
 	OC_floor
 	OC_ceil
 	OC_ifelse
-	OC_time
-	OC_animtime
-	OC_animelemtime
-	OC_animelemno
-	OC_statetype
-	OC_movetype
-	OC_ctrl
-	OC_command
-	OC_random
-	OC_pos_x
-	OC_pos_y
-	OC_vel_x
-	OC_vel_y
-	OC_screenpos_x
-	OC_screenpos_y
-	OC_facing
-	OC_anim
-	OC_animexist
-	OC_selfanimexist
-	OC_alive
-	OC_life
-	OC_lifemax
-	OC_power
-	OC_powermax
-	OC_canrecover
-	OC_roundstate
-	OC_ishelper
-	OC_numhelper
-	OC_numexplod
-	OC_numprojid
-	OC_numproj
-	OC_teammode
-	OC_teamside
-	OC_hitdefattr
-	OC_inguarddist
-	OC_movecontact
-	OC_movehit
-	OC_moveguarded
-	OC_movereversed
-	OC_projcontacttime
-	OC_projhittime
-	OC_projguardedtime
-	OC_projcanceltime
-	OC_backedge
-	OC_backedgedist
-	OC_backedgebodydist
-	OC_frontedge
-	OC_frontedgedist
-	OC_frontedgebodydist
-	OC_leftedge
-	OC_rightedge
-	OC_topedge
-	OC_bottomedge
-	OC_camerapos_x
-	OC_camerapos_y
-	OC_camerazoom
-	OC_gamewidth
-	OC_gameheight
-	OC_screenwidth
-	OC_screenheight
-	OC_stateno
-	OC_prevstateno
-	OC_id
-	OC_playeridexist
-	OC_gametime
-	OC_numtarget
-	OC_numenemy
-	OC_numpartner
-	OC_ailevel
-	OC_palno
-	OC_hitcount
-	OC_uniqhitcount
-	OC_hitpausetime
-	OC_hitover
-	OC_hitshakeover
-	OC_hitfall
-	OC_hitvel_x
-	OC_hitvel_y
 	OC_player
 	OC_parent
 	OC_root
@@ -377,34 +299,52 @@ const (
 	OC_st_map
 )
 const (
-	OC_ex_p2dist_x OpCode = iota
-	OC_ex_p2dist_y
-	OC_ex_p2bodydist_x
-	OC_ex_parentdist_x
-	OC_ex_parentdist_y
-	OC_ex_rootdist_x
-	OC_ex_rootdist_y
-	OC_ex_win
-	OC_ex_winko
-	OC_ex_wintime
-	OC_ex_winperfect
-	OC_ex_winspecial
-	OC_ex_winhyper
-	OC_ex_lose
-	OC_ex_loseko
-	OC_ex_losetime
-	OC_ex_drawgame
-	OC_ex_matchover
-	OC_ex_matchno
-	OC_ex_roundno
-	OC_ex_roundsexisted
-	OC_ex_ishometeam
-	OC_ex_tickspersecond
-	OC_ex_majorversion
-	OC_ex_drawpalno
+	OC_ex_ailevel OpCode = iota
+	OC_ex_ailevelf
+	OC_ex_alive
+	OC_ex_anim
+	OC_ex_animelemlength
+	OC_ex_animelemno
+	OC_ex_animelemtime
+	OC_ex_animexist
+	OC_ex_animlength
+	OC_ex_animtime
+	OC_ex_attack
+	OC_ex_backedge
+	OC_ex_backedgebodydist
+	OC_ex_backedgedist
+	OC_ex_bgmlength
+	OC_ex_bgmposition
+	OC_ex_bottomedge
+	OC_ex_camerapos_x
+	OC_ex_camerapos_y
+	OC_ex_camerazoom
+	OC_ex_canrecover
+	OC_ex_combocount
+	OC_ex_command
+	OC_ex_consecutivewins
 	OC_ex_const240p
 	OC_ex_const480p
 	OC_ex_const720p
+	OC_ex_ctrl
+	OC_ex_defence
+	OC_ex_dizzy
+	OC_ex_dizzypoints
+	OC_ex_dizzypointsmax
+	OC_ex_drawgame
+	OC_ex_drawpalno
+	OC_ex_facing
+	OC_ex_fighttime
+	OC_ex_firstattack
+	OC_ex_float
+	OC_ex_framespercount
+	OC_ex_frontedge
+	OC_ex_frontedgebodydist
+	OC_ex_frontedgedist
+	OC_ex_gameheight
+	OC_ex_gamemode
+	OC_ex_gametime
+	OC_ex_gamewidth
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_air_animtype
 	OC_ex_gethitvar_ground_animtype
@@ -441,78 +381,138 @@ const (
 	OC_ex_gethitvar_fall_envshake_phase
 	OC_ex_gethitvar_attr
 	OC_ex_gethitvar_dizzypoints
+	OC_ex_gethitvar_guarddamage
 	OC_ex_gethitvar_guardpoints
+	OC_ex_gethitvar_guardpower
+	OC_ex_gethitvar_hitdamage
+	OC_ex_gethitvar_hitpower
 	OC_ex_gethitvar_id
 	OC_ex_gethitvar_playerno
 	OC_ex_gethitvar_redlife
 	OC_ex_gethitvar_score
-	OC_ex_gethitvar_hitdamage
-	OC_ex_gethitvar_guarddamage
-	OC_ex_gethitvar_hitpower
-	OC_ex_gethitvar_guardpower
-	OC_ex_ailevelf
-	OC_ex_animelemlength
-	OC_ex_animlength
-	OC_ex_attack
-	OC_ex_combocount
-	OC_ex_consecutivewins
-	OC_ex_defence
-	OC_ex_dizzy
-	OC_ex_dizzypoints
-	OC_ex_dizzypointsmax
-	OC_ex_fighttime
-	OC_ex_firstattack
-	OC_ex_framespercount
-	OC_ex_float
-	OC_ex_gamemode
 	OC_ex_getplayerid
 	OC_ex_groundangle
 	OC_ex_guardbreak
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
 	OC_ex_helpername
+	OC_ex_hitcount
+	OC_ex_hitdefattr
+	OC_ex_hitfall
+	OC_ex_hitover
 	OC_ex_hitoverridden
+	OC_ex_hitpausetime
+	OC_ex_hitshakeover
+	OC_ex_hitvel_x
+	OC_ex_hitvel_y
+	OC_ex_id
 	OC_ex_incustomstate
 	OC_ex_indialogue
+	OC_ex_inguarddist
 	OC_ex_isassertedchar
 	OC_ex_isassertedglobal
+	OC_ex_ishelper
+	OC_ex_ishometeam
 	OC_ex_ishost
+	OC_ex_jugglepoints
+	OC_ex_leftedge
+	OC_ex_life
+	OC_ex_lifemax
 	OC_ex_localscale
+	OC_ex_lose
+	OC_ex_loseko
+	OC_ex_losetime
+	OC_ex_majorversion
 	OC_ex_maparray
+	OC_ex_matchno
+	OC_ex_matchover
 	OC_ex_max
-	OC_ex_min
 	OC_ex_memberno
+	OC_ex_min
+	OC_ex_movecontact
 	OC_ex_movecountered
+	OC_ex_moveguarded
+	OC_ex_movehit
+	OC_ex_movereversed
+	OC_ex_movetype
+	OC_ex_numenemy
+	OC_ex_numexplod
+	OC_ex_numhelper
+	OC_ex_numpartner
+	OC_ex_numproj
+	OC_ex_numprojid
+	OC_ex_numtarget
+	OC_ex_p2bodydist_x
+	OC_ex_p2dist_x
+	OC_ex_p2dist_y
+	OC_ex_palno
+	OC_ex_parentdist_x
+	OC_ex_parentdist_y
 	OC_ex_pausetime
 	OC_ex_physics
+	OC_ex_playeridexist
 	OC_ex_playerno
+	OC_ex_pos_x
+	OC_ex_pos_y
+	OC_ex_pos_z
+	OC_ex_power
+	OC_ex_powermax
+	OC_ex_prevanim
+	OC_ex_prevstateno
+	OC_ex_projcanceltime
+	OC_ex_projcontacttime
+	OC_ex_projguardedtime
+	OC_ex_projhittime
 	OC_ex_rand
+	OC_ex_random
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_redlife
+	OC_ex_reversaldefattr
+	OC_ex_rightedge
+	OC_ex_rootdist_x
+	OC_ex_rootdist_y
 	OC_ex_round
+	OC_ex_roundno
+	OC_ex_roundsexisted
+	OC_ex_roundstate
 	OC_ex_roundtype
 	OC_ex_score
 	OC_ex_scoretotal
+	OC_ex_screenheight
+	OC_ex_screenpos_x
+	OC_ex_screenpos_y
+	OC_ex_screenwidth
+	OC_ex_selfanimexist
 	OC_ex_selfstatenoexist
 	OC_ex_sprpriority
 	OC_ex_stagebackedge
 	OC_ex_stagefrontedge
 	OC_ex_stagetime
 	OC_ex_standby
+	OC_ex_stateno
+	OC_ex_statetype
 	OC_ex_teamleader
+	OC_ex_teammode
+	OC_ex_teamside
 	OC_ex_teamsize
+	OC_ex_tickspersecond
+	OC_ex_time
 	OC_ex_timeelapsed
 	OC_ex_timeremaining
 	OC_ex_timetotal
-	OC_ex_pos_z
+	OC_ex_topedge
+	OC_ex_uniqhitcount
+	OC_ex_vel_x
+	OC_ex_vel_y
 	OC_ex_vel_z
-	OC_ex_jugglepoints
-	OC_ex_prevanim
-	OC_ex_reversaldefattr
-	OC_ex_bgmlength
-	OC_ex_bgmposition
+	OC_ex_win
+	OC_ex_winhyper
+	OC_ex_winko
+	OC_ex_winperfect
+	OC_ex_winspecial
+	OC_ex_wintime
 )
 const (
 	NumVar     = 60
@@ -1122,212 +1122,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Dup()
 		case OC_swap:
 			sys.bcStack.Swap()
-		case OC_ailevel:
-			sys.bcStack.PushI(int32(c.aiLevel()))
-		case OC_alive:
-			sys.bcStack.PushB(c.alive())
-		case OC_anim:
-			sys.bcStack.PushI(c.animNo)
-		case OC_animelemno:
-			*sys.bcStack.Top() = c.animElemNo(sys.bcStack.Top().ToI())
-		case OC_animelemtime:
-			*sys.bcStack.Top() = c.animElemTime(sys.bcStack.Top().ToI())
-		case OC_animexist:
-			*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
-		case OC_animtime:
-			sys.bcStack.PushI(c.animTime())
-		case OC_backedge:
-			sys.bcStack.PushF(c.backEdge())
-		case OC_backedgebodydist:
-			sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
-		case OC_backedgedist:
-			sys.bcStack.PushI(int32(c.backEdgeDist()))
-		case OC_bottomedge:
-			sys.bcStack.PushF(c.bottomEdge())
-		case OC_camerapos_x:
-			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
-		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
-		case OC_camerazoom:
-			sys.bcStack.PushF(sys.cam.Scale)
-		case OC_canrecover:
-			sys.bcStack.PushB(c.canRecover())
-		case OC_command:
-			if c.cmd == nil {
-				sys.bcStack.PushB(false)
-			} else {
-				pno := c.playerNo
-				if oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
-					pno = sys.workingState.playerNo
-				}
-				cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-				sys.bcStack.PushB(ok && c.command(pno, cmd))
-			}
-			i += 4
-		case OC_ctrl:
-			sys.bcStack.PushB(c.ctrl())
-		case OC_facing:
-			sys.bcStack.PushI(int32(c.facing))
-		case OC_frontedge:
-			sys.bcStack.PushF(c.frontEdge())
-		case OC_frontedgebodydist:
-			sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
-		case OC_frontedgedist:
-			sys.bcStack.PushI(int32(c.frontEdgeDist()))
-		case OC_gameheight:
-			// Optional exception preventing GameHeight from being affected by stage zoom.
-			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
-				c.gi().constants["default.legacygamedistancespec"] == 1 {
-				sys.bcStack.PushF(c.screenHeight())
-			} else {
-				sys.bcStack.PushF(c.gameHeight())
-			}
-		case OC_gametime:
-			var pfTime int32
-			if sys.netInput != nil {
-				pfTime = sys.netInput.preFightTime
-			} else if sys.fileInput != nil {
-				pfTime = sys.fileInput.pfTime
-			} else {
-				pfTime = sys.preFightTime
-			}
-			sys.bcStack.PushI(sys.gameTime + pfTime)
-		case OC_gamewidth:
-			// Optional exception preventing GameWidth from being affected by stage zoom.
-			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
-				c.gi().constants["default.legacygamedistancespec"] == 1 {
-				sys.bcStack.PushF(c.screenWidth())
-			} else {
-				sys.bcStack.PushF(c.gameWidth())
-			}
-		case OC_hitcount:
-			sys.bcStack.PushI(c.hitCount)
-		case OC_hitdefattr:
-			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
-			i += 4
-		case OC_hitfall:
-			sys.bcStack.PushB(c.ghv.fallf)
-		case OC_hitover:
-			sys.bcStack.PushB(c.hitOver())
-		case OC_hitpausetime:
-			sys.bcStack.PushI(c.hitPauseTime)
-		case OC_hitshakeover:
-			sys.bcStack.PushB(c.hitShakeOver())
-		case OC_hitvel_x:
-			sys.bcStack.PushF(c.hitVelX() * (c.localscl / oc.localscl))
-		case OC_hitvel_y:
-			sys.bcStack.PushF(c.hitVelY() * (c.localscl / oc.localscl))
-		case OC_id:
-			sys.bcStack.PushI(c.id)
-		case OC_inguarddist:
-			sys.bcStack.PushB(c.inguarddist)
-		case OC_ishelper:
-			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
-		case OC_leftedge:
-			sys.bcStack.PushF(c.leftEdge())
-		case OC_life:
-			sys.bcStack.PushI(c.life)
-		case OC_lifemax:
-			sys.bcStack.PushI(c.lifeMax)
-		case OC_movecontact:
-			sys.bcStack.PushI(c.moveContact())
-		case OC_moveguarded:
-			sys.bcStack.PushI(c.moveGuarded())
-		case OC_movehit:
-			sys.bcStack.PushI(c.moveHit())
-		case OC_movereversed:
-			sys.bcStack.PushI(c.moveReversed())
-		case OC_movetype:
-			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
-			i++
-		case OC_numenemy:
-			sys.bcStack.PushI(c.numEnemy())
-		case OC_numexplod:
-			*sys.bcStack.Top() = c.numExplod(*sys.bcStack.Top())
-		case OC_numhelper:
-			*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
-		case OC_numpartner:
-			sys.bcStack.PushI(c.numPartner())
-		case OC_numproj:
-			sys.bcStack.PushI(c.numProj())
-		case OC_numprojid:
-			*sys.bcStack.Top() = c.numProjID(*sys.bcStack.Top())
-		case OC_numtarget:
-			*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())
-		case OC_palno:
-			sys.bcStack.PushI(c.palno())
-		case OC_pos_x:
-			var bindVelx float32
-			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-				if sys.playerID(c.bindToId) != nil {
-					bindVelx = c.vel[0]
-				}
-			}
-			sys.bcStack.PushF(((c.pos[0]+bindVelx)*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
-		case OC_pos_y:
-			var bindVely float32
-			if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-				if sys.playerID(c.bindToId) != nil {
-					bindVely = c.vel[1]
-				}
-			}
-			sys.bcStack.PushF((c.pos[1] + bindVely - c.platformPosY) * (c.localscl / oc.localscl))
-		case OC_power:
-			sys.bcStack.PushI(c.getPower())
-		case OC_powermax:
-			sys.bcStack.PushI(c.powerMax)
-		case OC_playeridexist:
-			*sys.bcStack.Top() = sys.playerIDExist(*sys.bcStack.Top())
-		case OC_prevstateno:
-			sys.bcStack.PushI(c.ss.prevno)
-		case OC_projcanceltime:
-			*sys.bcStack.Top() = c.projCancelTime(*sys.bcStack.Top())
-		case OC_projcontacttime:
-			*sys.bcStack.Top() = c.projContactTime(*sys.bcStack.Top())
-		case OC_projguardedtime:
-			*sys.bcStack.Top() = c.projGuardedTime(*sys.bcStack.Top())
-		case OC_projhittime:
-			*sys.bcStack.Top() = c.projHitTime(*sys.bcStack.Top())
-		case OC_random:
-			sys.bcStack.PushI(Rand(0, 999))
-		case OC_rightedge:
-			sys.bcStack.PushF(c.rightEdge())
-		case OC_roundstate:
-			sys.bcStack.PushI(c.roundState())
-		case OC_screenheight:
-			sys.bcStack.PushF(c.screenHeight())
-		case OC_screenpos_x:
-			sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
-		case OC_screenpos_y:
-			sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
-		case OC_screenwidth:
-			sys.bcStack.PushF(c.screenWidth())
-		case OC_selfanimexist:
-			*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
-		case OC_stateno:
-			sys.bcStack.PushI(c.ss.no)
-		case OC_statetype:
-			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
-			i++
-		case OC_teammode:
-			if c.teamside == -1 {
-				sys.bcStack.PushB(TM_Single == TeamMode(be[i]))
-			} else {
-				sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
-			}
-			i++
-		case OC_teamside:
-			sys.bcStack.PushI(int32(c.teamside) + 1)
-		case OC_time:
-			sys.bcStack.PushI(c.time())
-		case OC_topedge:
-			sys.bcStack.PushF(c.topEdge())
-		case OC_uniqhitcount:
-			sys.bcStack.PushI(c.uniqHitCount)
-		case OC_vel_x:
-			sys.bcStack.PushF(c.vel[0] * (c.localscl / oc.localscl))
-		case OC_vel_y:
-			sys.bcStack.PushF(c.vel[1] * (c.localscl / oc.localscl))
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
@@ -1735,58 +1529,144 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	(*i)++
 	switch be[*i-1] {
-	case OC_ex_p2dist_x:
-		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
-	case OC_ex_p2dist_y:
-		sys.bcStack.Push(c.rdDistY(c.p2(), oc))
-	case OC_ex_p2bodydist_x:
-		sys.bcStack.Push(c.p2BodyDistX(oc))
-	case OC_ex_parentdist_x:
-		sys.bcStack.Push(c.rdDistX(c.parent(), oc))
-	case OC_ex_parentdist_y:
-		sys.bcStack.Push(c.rdDistY(c.parent(), oc))
-	case OC_ex_rootdist_x:
-		sys.bcStack.Push(c.rdDistX(c.root(), oc))
-	case OC_ex_rootdist_y:
-		sys.bcStack.Push(c.rdDistY(c.root(), oc))
-	case OC_ex_win:
-		sys.bcStack.PushB(c.win())
-	case OC_ex_winko:
-		sys.bcStack.PushB(c.winKO())
-	case OC_ex_wintime:
-		sys.bcStack.PushB(c.winTime())
-	case OC_ex_winperfect:
-		sys.bcStack.PushB(c.winPerfect())
-	case OC_ex_winspecial:
-		sys.bcStack.PushB(c.winType(WT_S))
-	case OC_ex_winhyper:
-		sys.bcStack.PushB(c.winType(WT_H))
-	case OC_ex_lose:
-		sys.bcStack.PushB(c.lose())
-	case OC_ex_loseko:
-		sys.bcStack.PushB(c.loseKO())
-	case OC_ex_losetime:
-		sys.bcStack.PushB(c.loseTime())
-	case OC_ex_drawgame:
-		sys.bcStack.PushB(c.drawgame())
-	case OC_ex_matchover:
-		sys.bcStack.PushB(sys.matchOver())
-	case OC_ex_matchno:
-		sys.bcStack.PushI(sys.match)
-	case OC_ex_roundno:
-		sys.bcStack.PushI(sys.round)
-	case OC_ex_roundsexisted:
-		sys.bcStack.PushI(c.roundsExisted())
-	case OC_ex_ishometeam:
-		sys.bcStack.PushB(c.teamside == sys.home)
-	case OC_ex_tickspersecond:
-		sys.bcStack.PushI(int32(FPS))
+	case OC_ex_ailevel:
+		sys.bcStack.PushI(int32(c.aiLevel()))
+	case OC_ex_ailevelf:
+		sys.bcStack.PushF(c.aiLevel())
+	case OC_ex_alive:
+		sys.bcStack.PushB(c.alive())
+	case OC_ex_anim:
+		sys.bcStack.PushI(c.animNo)
+	case OC_ex_animelemlength:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(f.Time)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animelemno:
+		*sys.bcStack.Top() = c.animElemNo(sys.bcStack.Top().ToI())
+	case OC_ex_animelemtime:
+		*sys.bcStack.Top() = c.animElemTime(sys.bcStack.Top().ToI())
+	case OC_ex_animexist:
+		*sys.bcStack.Top() = c.animExist(sys.workingChar, *sys.bcStack.Top())
+	case OC_ex_animlength:
+		sys.bcStack.PushI(c.anim.totaltime)
+	case OC_ex_animtime:
+		sys.bcStack.PushI(c.animTime())
+	case OC_ex_attack:
+		sys.bcStack.PushF(c.attackMul * 100)
+	case OC_ex_backedge:
+		sys.bcStack.PushF(c.backEdge())
+	case OC_ex_backedgebodydist:
+		sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
+	case OC_ex_backedgedist:
+		sys.bcStack.PushI(int32(c.backEdgeDist()))
+	case OC_ex_bgmlength:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
+		}
+	case OC_ex_bgmposition:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
+		}
+	case OC_ex_bottomedge:
+		sys.bcStack.PushF(c.bottomEdge())
+	case OC_ex_camerapos_x:
+		sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
+	case OC_ex_camerapos_y:
+		sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
+	case OC_ex_camerazoom:
+		sys.bcStack.PushF(sys.cam.Scale)
+	case OC_ex_canrecover:
+		sys.bcStack.PushB(c.canRecover())
+	case OC_ex_combocount:
+		sys.bcStack.PushI(c.comboCount())
+	case OC_ex_command:
+		if c.cmd == nil {
+			sys.bcStack.PushB(false)
+		} else {
+			pno := c.playerNo
+			if oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
+				pno = sys.workingState.playerNo
+			}
+			cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))]]
+			sys.bcStack.PushB(ok && c.command(pno, cmd))
+		}
+		*i += 4
+	case OC_ex_consecutivewins:
+		sys.bcStack.PushI(c.consecutiveWins())
 	case OC_ex_const240p:
 		*sys.bcStack.Top() = c.constp(320, sys.bcStack.Top().ToF())
 	case OC_ex_const480p:
 		*sys.bcStack.Top() = c.constp(640, sys.bcStack.Top().ToF())
 	case OC_ex_const720p:
 		*sys.bcStack.Top() = c.constp(1280, sys.bcStack.Top().ToF())
+	case OC_ex_ctrl:
+		sys.bcStack.PushB(c.ctrl())
+	case OC_ex_defence:
+		sys.bcStack.PushF(float32(c.finalDefense * 100))
+	case OC_ex_dizzy:
+		sys.bcStack.PushB(c.scf(SCF_dizzy))
+	case OC_ex_dizzypoints:
+		sys.bcStack.PushI(c.dizzyPoints)
+	case OC_ex_dizzypointsmax:
+		sys.bcStack.PushI(c.dizzyPointsMax)
+	case OC_ex_drawgame:
+		sys.bcStack.PushB(c.drawgame())
+	case OC_ex_drawpalno:
+		sys.bcStack.PushI(c.gi().drawpalno)
+	case OC_ex_facing:
+		sys.bcStack.PushI(int32(c.facing))
+	case OC_ex_fighttime:
+		sys.bcStack.PushI(sys.gameTime)
+	case OC_ex_firstattack:
+		sys.bcStack.PushB(c.firstAttack)
+	case OC_ex_float:
+		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
+	case OC_ex_framespercount:
+		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
+	case OC_ex_frontedge:
+		sys.bcStack.PushF(c.frontEdge())
+	case OC_ex_frontedgebodydist:
+		sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
+	case OC_ex_frontedgedist:
+		sys.bcStack.PushI(int32(c.frontEdgeDist()))
+	case OC_ex_gameheight:
+		// optional exception preventing GameHeight from being affected by stage zoom.
+		if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
+			c.gi().constants["default.legacygamedistancespec"] == 1 {
+			sys.bcStack.PushF(c.screenHeight())
+		} else {
+			sys.bcStack.PushF(c.gameHeight())
+		}
+	case OC_ex_gamemode:
+		sys.bcStack.PushB(strings.ToLower(sys.gameMode) ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_ex_gametime:
+		var pfTime int32
+		if sys.netInput != nil {
+			pfTime = sys.netInput.preFightTime
+		} else if sys.fileInput != nil {
+			pfTime = sys.fileInput.pfTime
+		} else {
+			pfTime = sys.preFightTime
+		}
+		sys.bcStack.PushI(sys.gameTime + pfTime)
+	case OC_ex_gamewidth:
+		// optional exception preventing GameWidth from being affected by stage zoom.
+		if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
+			c.gi().constants["default.legacygamedistancespec"] == 1 {
+			sys.bcStack.PushF(c.screenWidth())
+		} else {
+			sys.bcStack.PushF(c.gameWidth())
+		}
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.gethitAnimtype()))
 	case OC_ex_gethitvar_air_animtype:
@@ -1859,8 +1739,16 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.attr)
 	case OC_ex_gethitvar_dizzypoints:
 		sys.bcStack.PushI(c.ghv.dizzypoints)
+	case OC_ex_gethitvar_guarddamage:
+		sys.bcStack.PushI(c.ghv.guarddamage)
 	case OC_ex_gethitvar_guardpoints:
 		sys.bcStack.PushI(c.ghv.guardpoints)
+	case OC_ex_gethitvar_guardpower:
+		sys.bcStack.PushI(c.ghv.guardpower)
+	case OC_ex_gethitvar_hitdamage:
+		sys.bcStack.PushI(c.ghv.hitdamage)
+	case OC_ex_gethitvar_hitpower:
+		sys.bcStack.PushI(c.ghv.hitpower)
 	case OC_ex_gethitvar_id:
 		sys.bcStack.PushI(c.ghv.id)
 	case OC_ex_gethitvar_playerno:
@@ -1869,53 +1757,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.redlife)
 	case OC_ex_gethitvar_score:
 		sys.bcStack.PushF(c.ghv.score)
-	case OC_ex_gethitvar_hitdamage:
-		sys.bcStack.PushI(c.ghv.hitdamage)
-	case OC_ex_gethitvar_guarddamage:
-		sys.bcStack.PushI(c.ghv.guarddamage)
-	case OC_ex_gethitvar_hitpower:
-		sys.bcStack.PushI(c.ghv.hitpower)
-	case OC_ex_gethitvar_guardpower:
-		sys.bcStack.PushI(c.ghv.guardpower)
-	case OC_ex_ailevelf:
-		sys.bcStack.PushF(c.aiLevel())
-	case OC_ex_animelemlength:
-		if f := c.anim.CurrentFrame(); f != nil {
-			sys.bcStack.PushI(f.Time)
-		} else {
-			sys.bcStack.PushI(0)
-		}
-	case OC_ex_animlength:
-		sys.bcStack.PushI(c.anim.totaltime)
-	case OC_ex_attack:
-		sys.bcStack.PushF(c.attackMul * 100)
-	case OC_ex_combocount:
-		sys.bcStack.PushI(c.comboCount())
-	case OC_ex_consecutivewins:
-		sys.bcStack.PushI(c.consecutiveWins())
-	case OC_ex_defence:
-		sys.bcStack.PushF(float32(c.finalDefense * 100))
-	case OC_ex_dizzy:
-		sys.bcStack.PushB(c.scf(SCF_dizzy))
-	case OC_ex_dizzypoints:
-		sys.bcStack.PushI(c.dizzyPoints)
-	case OC_ex_dizzypointsmax:
-		sys.bcStack.PushI(c.dizzyPointsMax)
-	case OC_ex_drawpalno:
-		sys.bcStack.PushI(c.gi().drawpalno)
-	case OC_ex_fighttime:
-		sys.bcStack.PushI(sys.gameTime)
-	case OC_ex_firstattack:
-		sys.bcStack.PushB(c.firstAttack)
-	case OC_ex_framespercount:
-		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
-	case OC_ex_float:
-		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
-	case OC_ex_gamemode:
-		sys.bcStack.PushB(strings.ToLower(sys.gameMode) ==
-			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
-				unsafe.Pointer(&be[*i]))])
-		*i += 4
 	case OC_ex_getplayerid:
 		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
 	case OC_ex_groundangle:
@@ -1931,22 +1772,61 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_ex_hitcount:
+		sys.bcStack.PushI(c.hitCount)
+	case OC_ex_hitdefattr:
+		sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
+		*i += 4
+	case OC_ex_hitfall:
+		sys.bcStack.PushB(c.ghv.fallf)
+	case OC_ex_hitover:
+		sys.bcStack.PushB(c.hitOver())
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoIdx >= 0)
+	case OC_ex_hitpausetime:
+		sys.bcStack.PushI(c.hitPauseTime)
+	case OC_ex_hitshakeover:
+		sys.bcStack.PushB(c.hitShakeOver())
+	case OC_ex_hitvel_x:
+		sys.bcStack.PushF(c.hitVelX() * (c.localscl / oc.localscl))
+	case OC_ex_hitvel_y:
+		sys.bcStack.PushF(c.hitVelY() * (c.localscl / oc.localscl))
+	case OC_ex_id:
+		sys.bcStack.PushI(c.id)
 	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
+	case OC_ex_inguarddist:
+		sys.bcStack.PushB(c.inguarddist)
 	case OC_ex_isassertedchar:
 		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
 		*i += 4
 	case OC_ex_isassertedglobal:
 		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
 		*i += 4
+	case OC_ex_ishelper:
+		*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
+	case OC_ex_ishometeam:
+		sys.bcStack.PushB(c.teamside == sys.home)
 	case OC_ex_ishost:
 		sys.bcStack.PushB(c.isHost())
+	case OC_ex_jugglepoints:
+		sys.bcStack.PushI(c.juggle)
+	case OC_ex_leftedge:
+		sys.bcStack.PushF(c.leftEdge())
+	case OC_ex_life:
+		sys.bcStack.PushI(c.life)
+	case OC_ex_lifemax:
+		sys.bcStack.PushI(c.lifeMax)
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
+	case OC_ex_lose:
+		sys.bcStack.PushB(c.lose())
+	case OC_ex_loseko:
+		sys.bcStack.PushB(c.loseKO())
+	case OC_ex_losetime:
+		sys.bcStack.PushB(c.loseTime())
 	case OC_ex_majorversion:
 		sys.bcStack.PushI(int32(c.gi().ver[0]))
 	case OC_ex_maparray:
@@ -1955,23 +1835,102 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)
+	case OC_ex_matchno:
+		sys.bcStack.PushI(sys.match)
+	case OC_ex_matchover:
+		sys.bcStack.PushB(sys.matchOver())
+	case OC_ex_memberno:
+		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
-	case OC_ex_memberno:
-		sys.bcStack.PushI(int32(c.memberNo) + 1)
+	case OC_ex_movecontact:
+		sys.bcStack.PushI(c.moveContact())
 	case OC_ex_movecountered:
 		sys.bcStack.PushI(c.moveCountered())
+	case OC_ex_moveguarded:
+		sys.bcStack.PushI(c.moveGuarded())
+	case OC_ex_movehit:
+		sys.bcStack.PushI(c.moveHit())
+	case OC_ex_movereversed:
+		sys.bcStack.PushI(c.moveReversed())
+	case OC_ex_movetype:
+		sys.bcStack.PushB(c.ss.moveType == MoveType(be[*i])<<15)
+		*i++
+	case OC_ex_numenemy:
+		sys.bcStack.PushI(c.numEnemy())
+	case OC_ex_numexplod:
+		*sys.bcStack.Top() = c.numExplod(*sys.bcStack.Top())
+	case OC_ex_numhelper:
+		*sys.bcStack.Top() = c.numHelper(*sys.bcStack.Top())
+	case OC_ex_numpartner:
+		sys.bcStack.PushI(c.numPartner())
+	case OC_ex_numproj:
+		sys.bcStack.PushI(c.numProj())
+	case OC_ex_numprojid:
+		*sys.bcStack.Top() = c.numProjID(*sys.bcStack.Top())
+	case OC_ex_numtarget:
+		*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())	
+	case OC_ex_p2bodydist_x:
+		sys.bcStack.Push(c.p2BodyDistX(oc))
+	case OC_ex_p2dist_x:
+		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
+	case OC_ex_p2dist_y:
+		sys.bcStack.Push(c.rdDistY(c.p2(), oc))
+	case OC_ex_palno:
+		sys.bcStack.PushI(c.palno())
+	case OC_ex_parentdist_x:
+		sys.bcStack.Push(c.rdDistX(c.parent(), oc))
+	case OC_ex_parentdist_y:
+		sys.bcStack.Push(c.rdDistY(c.parent(), oc))
 	case OC_ex_pausetime:
 		sys.bcStack.PushI(c.pauseTime())
 	case OC_ex_physics:
 		sys.bcStack.PushB(c.ss.physics == StateType(be[*i]))
 		*i++
+	case OC_ex_playeridexist:
+		*sys.bcStack.Top() = sys.playerIDExist(*sys.bcStack.Top())
 	case OC_ex_playerno:
 		sys.bcStack.PushI(int32(c.playerNo) + 1)
+	case OC_ex_pos_x:
+		var bindVelx float32
+		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			if sys.playerID(c.bindToId) != nil {
+				bindVelx = c.vel[0]
+			}
+		}
+		sys.bcStack.PushF(((c.pos[0]+bindVelx)*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
+	case OC_ex_pos_y:
+		var bindVely float32
+		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			if sys.playerID(c.bindToId) != nil {
+				bindVely = c.vel[1]
+			}
+		}
+		sys.bcStack.PushF((c.pos[1] + bindVely - c.platformPosY) * (c.localscl / oc.localscl))
+	case OC_ex_pos_z:
+		sys.bcStack.PushF(c.pos[2] * (c.localscl / oc.localscl))
+	case OC_ex_power:
+		sys.bcStack.PushI(c.getPower())
+	case OC_ex_powermax:
+		sys.bcStack.PushI(c.powerMax)
+	case OC_ex_prevanim:
+		sys.bcStack.PushI(c.prevAnimNo)
+	case OC_ex_prevstateno:
+		sys.bcStack.PushI(c.ss.prevno)
+	case OC_ex_projcanceltime:
+		*sys.bcStack.Top() = c.projCancelTime(*sys.bcStack.Top())
+	case OC_ex_projcontacttime:
+		*sys.bcStack.Top() = c.projContactTime(*sys.bcStack.Top())
+	case OC_ex_projguardedtime:
+		*sys.bcStack.Top() = c.projGuardedTime(*sys.bcStack.Top())
+	case OC_ex_projhittime:
+		*sys.bcStack.Top() = c.projHitTime(*sys.bcStack.Top())
 	case OC_ex_rand:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
+	case OC_ex_random:
+		sys.bcStack.PushI(Rand(0, 999))
 	case OC_ex_ratiolevel:
 		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
@@ -1980,15 +1939,40 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.receivedHits)
 	case OC_ex_redlife:
 		sys.bcStack.PushI(c.redLife)
+	case OC_ex_reversaldefattr:
+		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
+		*i += 4
+	case OC_ex_rightedge:
+		sys.bcStack.PushF(c.rightEdge())
+	case OC_ex_rootdist_x:
+		sys.bcStack.Push(c.rdDistX(c.root(), oc))
+	case OC_ex_rootdist_y:
+		sys.bcStack.Push(c.rdDistY(c.root(), oc))
 	case OC_ex_round:
 		v2 := sys.bcStack.Pop()
 		be.round(sys.bcStack.Top(), v2)
+	case OC_ex_roundno:
+		sys.bcStack.PushI(sys.round)
+	case OC_ex_roundsexisted:
+		sys.bcStack.PushI(c.roundsExisted())
+	case OC_ex_roundstate:
+		sys.bcStack.PushI(c.roundState())
 	case OC_ex_roundtype:
 		sys.bcStack.PushI(c.roundType())
 	case OC_ex_score:
 		sys.bcStack.PushF(c.score())
 	case OC_ex_scoretotal:
 		sys.bcStack.PushF(c.scoreTotal())
+	case OC_ex_screenheight:
+		sys.bcStack.PushF(c.screenHeight())
+	case OC_ex_screenpos_x:
+		sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
+	case OC_ex_screenpos_y:
+		sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
+	case OC_ex_screenwidth:
+		sys.bcStack.PushF(c.screenWidth())
+	case OC_ex_selfanimexist:
+		*sys.bcStack.Top() = c.selfAnimExist(*sys.bcStack.Top())
 	case OC_ex_selfstatenoexist:
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
 	case OC_ex_sprpriority:
@@ -2001,39 +1985,56 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:
 		sys.bcStack.PushB(c.scf(SCF_standby))
+	case OC_ex_stateno:
+		sys.bcStack.PushI(c.ss.no)
+	case OC_ex_statetype:
+		sys.bcStack.PushB(c.ss.stateType == StateType(be[*i]))
+		*i++
 	case OC_ex_teamleader:
 		sys.bcStack.PushI(int32(c.teamLeader()))
+	case OC_ex_teammode:
+		if c.teamside == -1 {
+			sys.bcStack.PushB(TM_Single == TeamMode(be[*i]))
+		} else {
+			sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[*i]))
+		}
+		*i++
+	case OC_ex_teamside:
+		sys.bcStack.PushI(int32(c.teamside) + 1)
 	case OC_ex_teamsize:
 		sys.bcStack.PushI(c.teamSize())
+	case OC_ex_tickspersecond:
+		sys.bcStack.PushI(int32(FPS))
+	case OC_ex_time:
+		sys.bcStack.PushI(c.time())
 	case OC_ex_timeelapsed:
 		sys.bcStack.PushI(timeElapsed())
 	case OC_ex_timeremaining:
 		sys.bcStack.PushI(timeRemaining())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
-	case OC_ex_pos_z:
-		sys.bcStack.PushF(c.pos[2] * (c.localscl / oc.localscl))
+	case OC_ex_topedge:
+		sys.bcStack.PushF(c.topEdge())
+	case OC_ex_uniqhitcount:
+		sys.bcStack.PushI(c.uniqHitCount)
+	case OC_ex_vel_x:
+		sys.bcStack.PushF(c.vel[0] * (c.localscl / oc.localscl))
+	case OC_ex_vel_y:
+		sys.bcStack.PushF(c.vel[1] * (c.localscl / oc.localscl))
 	case OC_ex_vel_z:
 		sys.bcStack.PushF(c.vel[2] * (c.localscl / oc.localscl))
-	case OC_ex_jugglepoints:
-		sys.bcStack.PushI(c.juggle)
-	case OC_ex_prevanim:
-		sys.bcStack.PushI(c.prevAnimNo)
-	case OC_ex_reversaldefattr:
-		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
-		*i += 4
-	case OC_ex_bgmlength:
-		if sys.bgm.streamer == nil {
-			sys.bcStack.PushI(0)
-		} else {
-			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
-		}
-	case OC_ex_bgmposition:
-		if sys.bgm.streamer == nil {
-			sys.bcStack.PushI(0)
-		} else {
-			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
-		}
+	case OC_ex_win:
+		sys.bcStack.PushB(c.win())
+	case OC_ex_winhyper:
+		sys.bcStack.PushB(c.winType(WT_H))
+	case OC_ex_winko:
+		sys.bcStack.PushB(c.winKO())
+	case OC_ex_winperfect:
+		sys.bcStack.PushB(c.winPerfect())
+	case OC_ex_winspecial:
+		sys.bcStack.PushB(c.winType(WT_S))
+	case OC_ex_wintime:
+		sys.bcStack.PushB(c.winTime())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
