@@ -1162,14 +1162,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "":
 		return bvNone(), Error("Nothing assigned")
 	// redirections
-	case "root", "player", "parent", "helper", "target", "partner",
+	case "player", "root", "parent", "helper", "target", "partner",
 		"enemy", "enemynear", "playerid", "p2":
 		switch c.token {
-		case "parent":
-			opc = OC_parent
-			c.token = c.tokenizer(in)
 		case "root":
 			opc = OC_root
+			c.token = c.tokenizer(in)
+		case "parent":
+			opc = OC_parent
 			c.token = c.tokenizer(in)
 		case "p2":
 			opc = OC_p2
@@ -1943,100 +1943,100 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "fall.envshake.dir":
 			bv.SetI(0)
 		default:
-			out.append(OC_ex_)
+			out.append(OC_gethitvar_)
 			switch c.token {
 			// mugen gethitvar
 			case "animtype":
-				out.append(OC_ex_gethitvar_animtype)
+				out.append(OC_gethitvar_animtype)
 			case "air.animtype":
-				out.append(OC_ex_gethitvar_air_animtype)
+				out.append(OC_gethitvar_air_animtype)
 			case "ground.animtype":
-				out.append(OC_ex_gethitvar_ground_animtype)
+				out.append(OC_gethitvar_ground_animtype)
 			case "fall.animtype":
-				out.append(OC_ex_gethitvar_fall_animtype)
+				out.append(OC_gethitvar_fall_animtype)
 			case "airtype":
-				out.append(OC_ex_gethitvar_airtype)
+				out.append(OC_gethitvar_airtype)
 			case "groundtype":
-				out.append(OC_ex_gethitvar_groundtype)
+				out.append(OC_gethitvar_groundtype)
 			case "damage":
-				out.append(OC_ex_gethitvar_damage)
+				out.append(OC_gethitvar_damage)
 			case "hitcount":
-				out.append(OC_ex_gethitvar_hitcount)
+				out.append(OC_gethitvar_hitcount)
 			case "fallcount":
-				out.append(OC_ex_gethitvar_fallcount)
+				out.append(OC_gethitvar_fallcount)
 			case "hitshaketime":
-				out.append(OC_ex_gethitvar_hitshaketime)
+				out.append(OC_gethitvar_hitshaketime)
 			case "hittime":
-				out.append(OC_ex_gethitvar_hittime)
+				out.append(OC_gethitvar_hittime)
 			case "slidetime":
-				out.append(OC_ex_gethitvar_slidetime)
+				out.append(OC_gethitvar_slidetime)
 			case "ctrltime":
-				out.append(OC_ex_gethitvar_ctrltime)
+				out.append(OC_gethitvar_ctrltime)
 			case "recovertime":
-				out.append(OC_ex_gethitvar_recovertime)
+				out.append(OC_gethitvar_recovertime)
 			case "xoff":
-				out.append(OC_ex_gethitvar_xoff)
+				out.append(OC_gethitvar_xoff)
 			case "yoff":
-				out.append(OC_ex_gethitvar_yoff)
+				out.append(OC_gethitvar_yoff)
 			case "xvel":
-				out.append(OC_ex_gethitvar_xvel)
+				out.append(OC_gethitvar_xvel)
 			case "yvel":
-				out.append(OC_ex_gethitvar_yvel)
+				out.append(OC_gethitvar_yvel)
 			case "yaccel":
-				out.append(OC_ex_gethitvar_yaccel)
+				out.append(OC_gethitvar_yaccel)
 			case "hitid", "chainid":
-				out.append(OC_ex_gethitvar_chainid)
+				out.append(OC_gethitvar_chainid)
 			case "guarded":
-				out.append(OC_ex_gethitvar_guarded)
+				out.append(OC_gethitvar_guarded)
 			case "isbound":
-				out.append(OC_ex_gethitvar_isbound)
+				out.append(OC_gethitvar_isbound)
 			case "fall":
-				out.append(OC_ex_gethitvar_fall)
+				out.append(OC_gethitvar_fall)
 			case "fall.damage":
-				out.append(OC_ex_gethitvar_fall_damage)
+				out.append(OC_gethitvar_fall_damage)
 			case "fall.xvel":
-				out.append(OC_ex_gethitvar_fall_xvel)
+				out.append(OC_gethitvar_fall_xvel)
 			case "fall.yvel":
-				out.append(OC_ex_gethitvar_fall_yvel)
+				out.append(OC_gethitvar_fall_yvel)
 			case "fall.recover":
-				out.append(OC_ex_gethitvar_fall_recover)
+				out.append(OC_gethitvar_fall_recover)
 			case "fall.time":
-				out.append(OC_ex_gethitvar_fall_time)
+				out.append(OC_gethitvar_fall_time)
 			case "fall.recovertime":
-				out.append(OC_ex_gethitvar_fall_recovertime)
+				out.append(OC_gethitvar_fall_recovertime)
 			case "fall.kill":
-				out.append(OC_ex_gethitvar_fall_kill)
+				out.append(OC_gethitvar_fall_kill)
 			case "fall.envshake.time":
-				out.append(OC_ex_gethitvar_fall_envshake_time)
+				out.append(OC_gethitvar_fall_envshake_time)
 			case "fall.envshake.freq":
-				out.append(OC_ex_gethitvar_fall_envshake_freq)
+				out.append(OC_gethitvar_fall_envshake_freq)
 			case "fall.envshake.ampl":
-				out.append(OC_ex_gethitvar_fall_envshake_ampl)
+				out.append(OC_gethitvar_fall_envshake_ampl)
 			case "fall.envshake.phase":
-				out.append(OC_ex_gethitvar_fall_envshake_phase)
+				out.append(OC_gethitvar_fall_envshake_phase)
 			// expanded gethitvar
 			case "attr":
-				out.append(OC_ex_gethitvar_attr)
+				out.append(OC_gethitvar_attr)
 			case "dizzypoints":
-				out.append(OC_ex_gethitvar_dizzypoints)
+				out.append(OC_gethitvar_dizzypoints)
 			case "guarddamage":
-				out.append(OC_ex_gethitvar_guarddamage)
+				out.append(OC_gethitvar_guarddamage)
 			case "guardpoints":
-				out.append(OC_ex_gethitvar_guardpoints)
+				out.append(OC_gethitvar_guardpoints)
 			case "guardpower":
-				out.append(OC_ex_gethitvar_guardpower)
+				out.append(OC_gethitvar_guardpower)
 			case "hitdamage":
-				out.append(OC_ex_gethitvar_hitdamage)
+				out.append(OC_gethitvar_hitdamage)
 			case "hitpower":
-				out.append(OC_ex_gethitvar_hitpower)
+				out.append(OC_gethitvar_hitpower)
 			case "id":
-				out.append(OC_ex_gethitvar_id)
+				out.append(OC_gethitvar_id)
 			case "playerno":
-				out.append(OC_ex_gethitvar_playerno)
+				out.append(OC_gethitvar_playerno)
 			case "redlife":
-				out.append(OC_ex_gethitvar_redlife)
+				out.append(OC_gethitvar_redlife)
 			case "score":
-				out.append(OC_ex_gethitvar_score)
+				out.append(OC_gethitvar_score)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}

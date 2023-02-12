@@ -126,8 +126,8 @@ const (
 	OC_ceil
 	OC_ifelse
 	OC_player
-	OC_parent
 	OC_root
+	OC_parent
 	OC_helper
 	OC_target
 	OC_partner
@@ -136,9 +136,21 @@ const (
 	OC_playerid
 	OC_p2
 	OC_rdreset
-	OC_const_
 	OC_st_
+	OC_const_
+	OC_gethitvar_
 	OC_ex_
+)
+const (
+	OC_st_var OpCode = iota
+	OC_st_sysvar
+	OC_st_fvar
+	OC_st_sysfvar
+	OC_st_varadd
+	OC_st_sysvaradd
+	OC_st_fvaradd
+	OC_st_sysfvaradd
+	OC_st_map
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -288,15 +300,51 @@ const (
 	OC_const_stage_constants
 )
 const (
-	OC_st_var OpCode = iota
-	OC_st_sysvar
-	OC_st_fvar
-	OC_st_sysfvar
-	OC_st_varadd
-	OC_st_sysvaradd
-	OC_st_fvaradd
-	OC_st_sysfvaradd
-	OC_st_map
+	OC_gethitvar_animtype OpCode = iota
+	OC_gethitvar_air_animtype
+	OC_gethitvar_ground_animtype
+	OC_gethitvar_fall_animtype
+	OC_gethitvar_airtype
+	OC_gethitvar_groundtype
+	OC_gethitvar_damage
+	OC_gethitvar_hitcount
+	OC_gethitvar_fallcount
+	OC_gethitvar_hitshaketime
+	OC_gethitvar_hittime
+	OC_gethitvar_slidetime
+	OC_gethitvar_ctrltime
+	OC_gethitvar_recovertime
+	OC_gethitvar_xoff
+	OC_gethitvar_yoff
+	OC_gethitvar_xvel
+	OC_gethitvar_yvel
+	OC_gethitvar_yaccel
+	OC_gethitvar_chainid
+	OC_gethitvar_guarded
+	OC_gethitvar_isbound
+	OC_gethitvar_fall
+	OC_gethitvar_fall_damage
+	OC_gethitvar_fall_xvel
+	OC_gethitvar_fall_yvel
+	OC_gethitvar_fall_recover
+	OC_gethitvar_fall_time
+	OC_gethitvar_fall_recovertime
+	OC_gethitvar_fall_kill
+	OC_gethitvar_fall_envshake_time
+	OC_gethitvar_fall_envshake_freq
+	OC_gethitvar_fall_envshake_ampl
+	OC_gethitvar_fall_envshake_phase
+	OC_gethitvar_attr
+	OC_gethitvar_dizzypoints
+	OC_gethitvar_guarddamage
+	OC_gethitvar_guardpoints
+	OC_gethitvar_guardpower
+	OC_gethitvar_hitdamage
+	OC_gethitvar_hitpower
+	OC_gethitvar_id
+	OC_gethitvar_playerno
+	OC_gethitvar_redlife
+	OC_gethitvar_score
 )
 const (
 	OC_ex_ailevel OpCode = iota
@@ -345,51 +393,6 @@ const (
 	OC_ex_gamemode
 	OC_ex_gametime
 	OC_ex_gamewidth
-	OC_ex_gethitvar_animtype
-	OC_ex_gethitvar_air_animtype
-	OC_ex_gethitvar_ground_animtype
-	OC_ex_gethitvar_fall_animtype
-	OC_ex_gethitvar_airtype
-	OC_ex_gethitvar_groundtype
-	OC_ex_gethitvar_damage
-	OC_ex_gethitvar_hitcount
-	OC_ex_gethitvar_fallcount
-	OC_ex_gethitvar_hitshaketime
-	OC_ex_gethitvar_hittime
-	OC_ex_gethitvar_slidetime
-	OC_ex_gethitvar_ctrltime
-	OC_ex_gethitvar_recovertime
-	OC_ex_gethitvar_xoff
-	OC_ex_gethitvar_yoff
-	OC_ex_gethitvar_xvel
-	OC_ex_gethitvar_yvel
-	OC_ex_gethitvar_yaccel
-	OC_ex_gethitvar_chainid
-	OC_ex_gethitvar_guarded
-	OC_ex_gethitvar_isbound
-	OC_ex_gethitvar_fall
-	OC_ex_gethitvar_fall_damage
-	OC_ex_gethitvar_fall_xvel
-	OC_ex_gethitvar_fall_yvel
-	OC_ex_gethitvar_fall_recover
-	OC_ex_gethitvar_fall_time
-	OC_ex_gethitvar_fall_recovertime
-	OC_ex_gethitvar_fall_kill
-	OC_ex_gethitvar_fall_envshake_time
-	OC_ex_gethitvar_fall_envshake_freq
-	OC_ex_gethitvar_fall_envshake_ampl
-	OC_ex_gethitvar_fall_envshake_phase
-	OC_ex_gethitvar_attr
-	OC_ex_gethitvar_dizzypoints
-	OC_ex_gethitvar_guarddamage
-	OC_ex_gethitvar_guardpoints
-	OC_ex_gethitvar_guardpower
-	OC_ex_gethitvar_hitdamage
-	OC_ex_gethitvar_hitpower
-	OC_ex_gethitvar_id
-	OC_ex_gethitvar_playerno
-	OC_ex_gethitvar_redlife
-	OC_ex_gethitvar_score
 	OC_ex_getplayerid
 	OC_ex_groundangle
 	OC_ex_guardbreak
@@ -934,15 +937,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_parent:
-			if c = c.parent(); c != nil {
+		case OC_root:
+			if c = c.root(); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_root:
-			if c = c.root(); c != nil {
+		case OC_parent:
+			if c = c.parent(); c != nil {
 				i += 4
 				continue
 			}
@@ -1126,6 +1129,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			be.run_st(c, &i)
 		case OC_const_:
 			be.run_const(c, &i, oc)
+		case OC_gethitvar_:
+			be.run_gethitvar(c, &i, oc)
 		case OC_ex_:
 			be.run_ex(c, &i, oc)
 		case OC_var:
@@ -1526,6 +1531,104 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		c.panic()
 	}
 }
+func (be BytecodeExp) run_gethitvar(c *Char, i *int, oc *Char) {
+	(*i)++
+	switch be[*i-1] {
+	case OC_gethitvar_animtype:
+		sys.bcStack.PushI(int32(c.gethitAnimtype()))
+	case OC_gethitvar_air_animtype:
+		sys.bcStack.PushI(int32(c.ghv.airanimtype))
+	case OC_gethitvar_ground_animtype:
+		sys.bcStack.PushI(int32(c.ghv.groundanimtype))
+	case OC_gethitvar_fall_animtype:
+		sys.bcStack.PushI(int32(c.ghv.fall.animtype))
+	case OC_gethitvar_airtype:
+		sys.bcStack.PushI(int32(c.ghv.airtype))
+	case OC_gethitvar_groundtype:
+		sys.bcStack.PushI(int32(c.ghv.groundtype))
+	case OC_gethitvar_damage:
+		sys.bcStack.PushI(c.ghv.damage)
+	case OC_gethitvar_hitcount:
+		sys.bcStack.PushI(c.ghv.hitcount)
+	case OC_gethitvar_fallcount:
+		sys.bcStack.PushI(c.ghv.fallcount)
+	case OC_gethitvar_hitshaketime:
+		sys.bcStack.PushI(c.ghv.hitshaketime)
+	case OC_gethitvar_hittime:
+		sys.bcStack.PushI(c.ghv.hittime)
+	case OC_gethitvar_slidetime:
+		sys.bcStack.PushI(c.ghv.slidetime)
+	case OC_gethitvar_ctrltime:
+		sys.bcStack.PushI(c.ghv.ctrltime)
+	case OC_gethitvar_recovertime:
+		sys.bcStack.PushI(c.recoverTime)
+	case OC_gethitvar_xoff:
+		sys.bcStack.PushF(c.ghv.xoff * (c.localscl / oc.localscl))
+	case OC_gethitvar_yoff:
+		sys.bcStack.PushF(c.ghv.yoff * (c.localscl / oc.localscl))
+	case OC_gethitvar_xvel:
+		sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
+	case OC_gethitvar_yvel:
+		sys.bcStack.PushF(c.ghv.yvel * (c.localscl / oc.localscl))
+	case OC_gethitvar_yaccel:
+		sys.bcStack.PushF(c.ghv.getYaccel(oc) * (c.localscl / oc.localscl))
+	case OC_gethitvar_chainid:
+		sys.bcStack.PushI(c.ghv.chainId())
+	case OC_gethitvar_guarded:
+		sys.bcStack.PushB(c.ghv.guarded)
+	case OC_gethitvar_isbound:
+		sys.bcStack.PushB(c.isBound())
+	case OC_gethitvar_fall:
+		sys.bcStack.PushB(c.ghv.fallf)
+	case OC_gethitvar_fall_damage:
+		sys.bcStack.PushI(c.ghv.fall.damage)
+	case OC_gethitvar_fall_xvel:
+		sys.bcStack.PushF(c.ghv.fall.xvel() * (c.localscl / oc.localscl))
+	case OC_gethitvar_fall_yvel:
+		sys.bcStack.PushF(c.ghv.fall.yvelocity * (c.localscl / oc.localscl))
+	case OC_gethitvar_fall_recover:
+		sys.bcStack.PushB(c.ghv.fall.recover)
+	case OC_gethitvar_fall_time:
+		sys.bcStack.PushI(c.fallTime)
+	case OC_gethitvar_fall_recovertime:
+		sys.bcStack.PushI(c.ghv.fall.recovertime)
+	case OC_gethitvar_fall_kill:
+		sys.bcStack.PushB(c.ghv.fall.kill)
+	case OC_gethitvar_fall_envshake_time:
+		sys.bcStack.PushI(c.ghv.fall.envshake_time)
+	case OC_gethitvar_fall_envshake_freq:
+		sys.bcStack.PushF(c.ghv.fall.envshake_freq)
+	case OC_gethitvar_fall_envshake_ampl:
+		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * (c.localscl / oc.localscl)))
+	case OC_gethitvar_fall_envshake_phase:
+		sys.bcStack.PushF(c.ghv.fall.envshake_phase * (c.localscl / oc.localscl))
+	case OC_gethitvar_attr:
+		sys.bcStack.PushI(c.ghv.attr)
+	case OC_gethitvar_dizzypoints:
+		sys.bcStack.PushI(c.ghv.dizzypoints)
+	case OC_gethitvar_guarddamage:
+		sys.bcStack.PushI(c.ghv.guarddamage)
+	case OC_gethitvar_guardpoints:
+		sys.bcStack.PushI(c.ghv.guardpoints)
+	case OC_gethitvar_guardpower:
+		sys.bcStack.PushI(c.ghv.guardpower)
+	case OC_gethitvar_hitdamage:
+		sys.bcStack.PushI(c.ghv.hitdamage)
+	case OC_gethitvar_hitpower:
+		sys.bcStack.PushI(c.ghv.hitpower)
+	case OC_gethitvar_id:
+		sys.bcStack.PushI(c.ghv.id)
+	case OC_gethitvar_playerno:
+		sys.bcStack.PushI(int32(c.ghv.playerNo) + 1)
+	case OC_gethitvar_redlife:
+		sys.bcStack.PushI(c.ghv.redlife)
+	case OC_gethitvar_score:
+		sys.bcStack.PushF(c.ghv.score)
+	default:
+		sys.errLog.Printf("%v\n", be[*i-1])
+		c.panic()
+	}
+}
 func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	(*i)++
 	switch be[*i-1] {
@@ -1667,96 +1770,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushF(c.gameWidth())
 		}
-	case OC_ex_gethitvar_animtype:
-		sys.bcStack.PushI(int32(c.gethitAnimtype()))
-	case OC_ex_gethitvar_air_animtype:
-		sys.bcStack.PushI(int32(c.ghv.airanimtype))
-	case OC_ex_gethitvar_ground_animtype:
-		sys.bcStack.PushI(int32(c.ghv.groundanimtype))
-	case OC_ex_gethitvar_fall_animtype:
-		sys.bcStack.PushI(int32(c.ghv.fall.animtype))
-	case OC_ex_gethitvar_airtype:
-		sys.bcStack.PushI(int32(c.ghv.airtype))
-	case OC_ex_gethitvar_groundtype:
-		sys.bcStack.PushI(int32(c.ghv.groundtype))
-	case OC_ex_gethitvar_damage:
-		sys.bcStack.PushI(c.ghv.damage)
-	case OC_ex_gethitvar_hitcount:
-		sys.bcStack.PushI(c.ghv.hitcount)
-	case OC_ex_gethitvar_fallcount:
-		sys.bcStack.PushI(c.ghv.fallcount)
-	case OC_ex_gethitvar_hitshaketime:
-		sys.bcStack.PushI(c.ghv.hitshaketime)
-	case OC_ex_gethitvar_hittime:
-		sys.bcStack.PushI(c.ghv.hittime)
-	case OC_ex_gethitvar_slidetime:
-		sys.bcStack.PushI(c.ghv.slidetime)
-	case OC_ex_gethitvar_ctrltime:
-		sys.bcStack.PushI(c.ghv.ctrltime)
-	case OC_ex_gethitvar_recovertime:
-		sys.bcStack.PushI(c.recoverTime)
-	case OC_ex_gethitvar_xoff:
-		sys.bcStack.PushF(c.ghv.xoff * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_yoff:
-		sys.bcStack.PushF(c.ghv.yoff * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_xvel:
-		sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_yvel:
-		sys.bcStack.PushF(c.ghv.yvel * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_yaccel:
-		sys.bcStack.PushF(c.ghv.getYaccel(oc) * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_chainid:
-		sys.bcStack.PushI(c.ghv.chainId())
-	case OC_ex_gethitvar_guarded:
-		sys.bcStack.PushB(c.ghv.guarded)
-	case OC_ex_gethitvar_isbound:
-		sys.bcStack.PushB(c.isBound())
-	case OC_ex_gethitvar_fall:
-		sys.bcStack.PushB(c.ghv.fallf)
-	case OC_ex_gethitvar_fall_damage:
-		sys.bcStack.PushI(c.ghv.fall.damage)
-	case OC_ex_gethitvar_fall_xvel:
-		sys.bcStack.PushF(c.ghv.fall.xvel() * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_fall_yvel:
-		sys.bcStack.PushF(c.ghv.fall.yvelocity * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_fall_recover:
-		sys.bcStack.PushB(c.ghv.fall.recover)
-	case OC_ex_gethitvar_fall_time:
-		sys.bcStack.PushI(c.fallTime)
-	case OC_ex_gethitvar_fall_recovertime:
-		sys.bcStack.PushI(c.ghv.fall.recovertime)
-	case OC_ex_gethitvar_fall_kill:
-		sys.bcStack.PushB(c.ghv.fall.kill)
-	case OC_ex_gethitvar_fall_envshake_time:
-		sys.bcStack.PushI(c.ghv.fall.envshake_time)
-	case OC_ex_gethitvar_fall_envshake_freq:
-		sys.bcStack.PushF(c.ghv.fall.envshake_freq)
-	case OC_ex_gethitvar_fall_envshake_ampl:
-		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * (c.localscl / oc.localscl)))
-	case OC_ex_gethitvar_fall_envshake_phase:
-		sys.bcStack.PushF(c.ghv.fall.envshake_phase * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_attr:
-		sys.bcStack.PushI(c.ghv.attr)
-	case OC_ex_gethitvar_dizzypoints:
-		sys.bcStack.PushI(c.ghv.dizzypoints)
-	case OC_ex_gethitvar_guarddamage:
-		sys.bcStack.PushI(c.ghv.guarddamage)
-	case OC_ex_gethitvar_guardpoints:
-		sys.bcStack.PushI(c.ghv.guardpoints)
-	case OC_ex_gethitvar_guardpower:
-		sys.bcStack.PushI(c.ghv.guardpower)
-	case OC_ex_gethitvar_hitdamage:
-		sys.bcStack.PushI(c.ghv.hitdamage)
-	case OC_ex_gethitvar_hitpower:
-		sys.bcStack.PushI(c.ghv.hitpower)
-	case OC_ex_gethitvar_id:
-		sys.bcStack.PushI(c.ghv.id)
-	case OC_ex_gethitvar_playerno:
-		sys.bcStack.PushI(int32(c.ghv.playerNo) + 1)
-	case OC_ex_gethitvar_redlife:
-		sys.bcStack.PushI(c.ghv.redlife)
-	case OC_ex_gethitvar_score:
-		sys.bcStack.PushF(c.ghv.score)
 	case OC_ex_getplayerid:
 		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
 	case OC_ex_groundangle:
